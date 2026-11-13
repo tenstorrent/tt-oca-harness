@@ -319,67 +319,75 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low, no FLR")
 
-        await self.csr_write("FLR_DELAY", FLR_DELAY, _DELAY)
-        await self.csr_read("FLR_DELAY_RB", FLR_DELAY, expected=_DELAY)
-        await self.csr_write("FLR_HOLD", FLR_HOLD, _HOLD)
-        await self.csr_read("FLR_HOLD_RB", FLR_HOLD, expected=_HOLD)
-        await self._tick()
-        assert self._samples[self._tick_no] == (1, 1, 1), (
-            f"resets not released before the first pattern: {self._last_state()}"
-        )
-        await self._ticks(_CDC_REF)
-        self._waits.append(f"cdc_allowance={_CDC_REF}ref")
-        draw = self._draw()
-        control_low, glitch_low_n, long_low_n = draw["control"], draw["glitch"], draw["long"]
-        self._step_done("S1")
+        # smc_deglitch_cg samples the pin runs and the FLR holds of S1 to S8; the
+        # compares stay outside the window.
+        dut.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            await self.csr_write("FLR_DELAY", FLR_DELAY, _DELAY)
+            await self.csr_read("FLR_DELAY_RB", FLR_DELAY, expected=_DELAY)
+            await self.csr_write("FLR_HOLD", FLR_HOLD, _HOLD)
+            await self.csr_read("FLR_HOLD_RB", FLR_HOLD, expected=_HOLD)
+            await self._tick()
+            assert self._samples[self._tick_no] == (1, 1, 1), (
+                f"resets not released before the first pattern: {self._last_state()}"
+            )
+            await self._ticks(_CDC_REF)
+            self._waits.append(f"cdc_allowance={_CDC_REF}ref")
+            draw = self._draw()
+            control_low, glitch_low_n, long_low_n = draw["control"], draw["glitch"], draw["long"]
+            self._step_done("S1")
 
-        # S2: positive control, a drawn low at or above the filter.
-        control = await self._pin_run("S2", [(0, control_low)])
-        await self._settle_pin(control)
-        ctl_rel = {o: control["release"][o] - control["high"] for o in OUTPUTS}
-        self._step_done("S2")
+            # S2: positive control, a drawn low at or above the filter.
+            control = await self._pin_run("S2", [(0, control_low)])
+            await self._settle_pin(control)
+            ctl_rel = {o: control["release"][o] - control["high"] for o in OUTPUTS}
+            self._step_done("S2")
 
-        # S3: a drawn low below the filter, then 64 reference-clock cycles with the pin high.
-        glitch_low = self._pin(0)
-        await self._ticks(glitch_low_n)
-        glitch_high = self._pin(1)
-        await self._ticks(GLITCH_AFTER_HIGH)
-        glitch_end = self._tick_no
-        self._step_done("S3")
+            # S3: a drawn low below the filter, then 64 reference-clock cycles with the pin high.
+            glitch_low = self._pin(0)
+            await self._ticks(glitch_low_n)
+            glitch_high = self._pin(1)
+            await self._ticks(GLITCH_AFTER_HIGH)
+            glitch_end = self._tick_no
+            self._step_done("S3")
 
-        # S4: a drawn low below the filter, high 1, a drawn low at or above it.
-        reassert = await self._pin_run(
-            "S4", [(0, draw["reassert_pre"]), (1, 1), (0, draw["reassert"])]
-        )
-        await self._settle_pin(reassert)
-        self._step_done("S4")
+            # S4: a drawn low below the filter, high 1, a drawn low at or above it.
+            reassert = await self._pin_run(
+                "S4", [(0, draw["reassert_pre"]), (1, 1), (0, draw["reassert"])]
+            )
+            await self._settle_pin(reassert)
+            self._step_done("S4")
 
-        # S5: a drawn long low.
-        long_low = await self._pin_run("S5", [(0, long_low_n)])
-        await self._settle_pin(long_low)
-        self._step_done("S5")
+            # S5: a drawn long low.
+            long_low = await self._pin_run("S5", [(0, long_low_n)])
+            await self._settle_pin(long_low)
+            self._step_done("S5")
 
-        # S6: FLR alone.
-        base = await self._flr("S6")
-        await self._flr_finish(base)
-        self._step_done("S6")
+            # S6: FLR alone.
+            base = await self._flr("S6")
+            await self._flr_finish(base)
+            self._step_done("S6")
 
-        # S7: drawn sub-32 low segments inside the hold, placed after the cool fall.
-        hold7 = await self._flr("S7")
-        await self._ticks(draw["delay7"])
-        pins7 = await self._pin_run("S7", draw["seg7"])
-        await self._flr_finish(hold7)
-        self._step_done("S7")
+            # S7: drawn sub-32 low segments inside the hold, placed after the cool fall.
+            hold7 = await self._flr("S7")
+            await self._ticks(draw["delay7"])
+            pins7 = await self._pin_run("S7", draw["seg7"])
+            await self._flr_finish(hold7)
+            self._step_done("S7")
 
-        # S8: release and re-assert inside the hold, widths and placement drawn.
-        if draw["later8"] == "hold":
-            self._place_hold8(draw, ctl_rel)
-        drawn = f"seed {self.seed} {draw}"
-        hold8 = await self._flr("S8")
-        await self._ticks(draw["delay8"])
-        pins8 = await self._pin_run("S8", draw["seg8"])
-        await self._flr_finish(hold8)
-        self._step_done("S8")
+            # S8: release and re-assert inside the hold, widths and placement drawn.
+            if draw["later8"] == "hold":
+                self._place_hold8(draw, ctl_rel)
+            drawn = f"seed {self.seed} {draw}"
+            hold8 = await self._flr("S8")
+            await self._ticks(draw["delay8"])
+            pins8 = await self._pin_run("S8", draw["seg8"])
+            await self._flr_finish(hold8)
+            self._step_done("S8")
+        finally:
+            dut.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
         await ClockCycles(dut.clk_ref_i, 2)
 
         # CHK-COOLRST-GLITCH-REJECT

@@ -329,8 +329,12 @@ them, isolation and FLR, and the protection, inbound and outbound filters.
 |Points |Records
 |`c_reset_op_*`, `c_release_*`, `c_reassert_*`, `c_reset_state_*` |Each reset source asserted, each release edge, and the held, partial and released states
 |`c_reset_kind_cold_graded`, `c_reset_kind_cool_pin_graded`, `c_reset_kind_flr_graded`,
-`c_reset_kind_wdt_graded` |Each reset kind asserted inside the graded window of
-`smc_reset_mid_transaction_rand_test`, the twins of `smc_reset_kind_inflight_cg`
+`c_reset_kind_wdt_graded` |Each assertion of a reset kind inside the graded window of
+`smc_reset_mid_transaction_rand_test`, counted once: at the fall with an operation in flight or
+with the window's SPM burst completed before it (the recorded bins), otherwise when the window's
+operation appears; a window with no operation counts no twin, and an assertion after the
+window's engine operation has finished counts no twin; the twins of
+`smc_reset_kind_inflight_cg`
 |`c_powergood_rise_stretched`, `c_cold_reset_*`, `c_async_assert_observed`, `c_sync_deassert_observed`, `c_multi_stage_sync_present`, `c_release_primary_periph`, `c_*_held_in_primary_reset`, `c_warm_cascaded_from_primary`, `c_region_size_reset_16mib`, `c_config_registers_at_reset_value`, `c_ss_config_driven`, `c_reset_*_boot_seq_done`, `c_telemetry_reset_*` |Power-on ordering, what the primary reset holds, the boot-sequence gate
 |`c_sw_isolate_per_subsystem`, `c_flr_isolate_*`, `c_single_sequence_per_rising_edge`, `c_no_sequence_on_level_hold`, `c_warm_from_*_wdt`, `c_cool_reset_from_gpio_pin_61` |Isolation terms, FLR sequencing, warm and cool reset sources
 |`c_awprot_*`, `c_arprot_*`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`, `c_inbound_filter_*` |Protection filter exact and nearest-miss matches, the JTAG2AXI path, the inbound filter
@@ -508,6 +512,60 @@ enable bit set and a count of 1 to the reset value has been written and read bac
 gate; a done whose status contradicts the stall class |The pinned count-0 legs and the
 reset-count recovery write carry no qualifying word (the group's Ignore-bins line); the
 failing outcome of `CHK-EFUSE-TMO-RD` and `CHK-EFUSE-TMO-PROG` counts in no cell
+|`smc_reset_fcov::smc_deglitch_cg` |A pin pulse that begins before the FLR cool reset falls |Not
+drawn: the owner starts every pin segment of its hold steps inside the hold; the cell stays with
+`smc_cool_reset_pin_flr_overlap_test`, which raises no gate (the group's Ignore-bins line)
+|`smc_reset_fcov::smc_deglitch_cg` |`cp_width` of a pin low run that begins inside an FLR hold
+|Counted by `cp_flr_overlap` only: the FLR cool reset holds the primary reset over the whole hold
+(`clk_rst.adoc`, Reset Architecture, the primary reset as the AND of the de-glitched pin and the
+FLR cool reset), so such a run has no primary-reset outcome of its own width
+|`smc_reset_fcov::smc_deglitch_cg` |The cold-reset path |No cold pulse width is drawn: the owner
+draws the widths on the cool pin, and `rst_cold_ni` stays with the reset agent
+|`smc_reset_fcov::smc_deglitch_cg` |A width whose primary-reset assertion is contrary to the
+function: a run below 32 with a primary reset reading 0 before the run resolves, or one of 32 and above whose two
+primary resets have not both read 0 within 128 reference-clock samples of its first low |The
+failing outcome of `CHK-COOLRST-GLITCH-REJECT`; counts in no cell
+|`smc_reset_fcov::smc_deglitch_cg` |The broken-low restart, the release offset and the release
+without extension |The owner's compares (`CHK-COOLRST-REASSERT-RESTART`,
+`CHK-COOLRST-RELEASE-NO-EXTENSION`), not an outcome axis of `cp_width`, whose outcome is the
+assertion function alone; their pin runs count by width in `cp_width`
+|`smc_reset_fcov::smc_deglitch_cg` |`cp_flr_overlap` of a hold during which a primary reset read 1
+after either read 0 and before its expected release (a primary reset asserting later than the other
+inside the hold, or a release earlier than the control's offset after the later source's end), whose
+primary reset releases after its expected sample, or whose primary resets do not both read 1 within
+256 reference-clock samples of the later source's end |The failing outcome of
+`CHK-COOLRST-REASSERT-IN-HOLD` and `CHK-COOLRST-RELEASE-REASSERT-HOLD`; counts in no cell
+|`smc_reset_fcov::smc_deglitch_cg` |`cp_flr_overlap` of a hold whose release offsets from the
+later source's end differ from that source's control (the window's last control hold, with no pin
+fall inside it, for the hold; the pin control run for the pin), or with no control hold before it,
+or a later-source hold with no pin control before it |The failing outcome of the FLR-alone compare
+of `CHK-COOLRST-REASSERT-IN-HOLD` and of the release compare of
+`CHK-COOLRST-RELEASE-REASSERT-HOLD`; with no control there is no offset to compare; counts in no
+cell
+|`smc_reset_fcov::smc_deglitch_cg` |`cp_width` of a run of 32 and above that a new pin fall
+supersedes before both primary resets read 0 |Its outcome is unresolved when the next run begins;
+the owner waits for the primary assertion and release after every run of 32 and above, so the
+walk produces none; counts in no cell
+|`smc_reset_fcov::smc_powergood_glitch_cg` |The cold-reset assertion latency against the
+32-cycle de-glitch wait |`port_table.adoc` (the `rst_cold_ni` row) states the assertion without
+that wait, and the owner compares no latency (the group's Ignore-bins line); `cp_cold_assert`
+records the levels as a recorded bin
+|`smc_reset_fcov::smc_powergood_glitch_cg` |An external interrupt edge against the glitch and its
+synchronizer product cell |The owner drives no external interrupt, so no edge position is drawn;
+the synchronizer cells stay with the external-interrupt entries
+|`smc_reset_fcov::smc_powergood_glitch_cg` |A `cp_glitch_len` window whose run saw no
+`powergood_stable_o` fall, or in which `tb_sync_irq`, `tb_gpio_irq_any` or `tb_uart_irq_any` read
+1 at a sample from the gate's rise to its fall |The glitch did not reach the DUT, or the failing
+outcome of `CHK-IRQ-PG-GLITCH-NO-SPURIOUS`; counts in no cell
+|`smc_reset_fcov::smc_powergood_glitch_cg` |A `cp_glitch_len` window whose gate falls before
+`powergood_stable_o`, `rst_cold_stable_ref_clk_no`, `rst_primary_ref_clk_no` and
+`rst_primary_smc_clk_no` have each read 1 after the glitch record (the `powergood_i` rise) |A glitch
+window without recovery: a DUT held in reset reads all-zero interrupt aggregates, and the owner's
+step 5 `WAIT_STATE` recovery proof failed; counts in no cell
+|`smc_reset_fcov::smc_powergood_glitch_cg` |An interrupt reaching the PLIC pending bit of sources 1
+to 3 (`tb_plic_pending_low`) inside the window |The inputs that feed those bits are undriven in the
+owner's window, so the bit cannot read 1 there and a term on it grades nothing; the aggregates the
+owner's checker grades carry the outcome; counts in no cell
 |===
 
 Verilator and VCS build the same goal bins for each covergroup because no
@@ -527,8 +585,9 @@ coverpoints of `smc_reset_kind_inflight_cg`, and `cp_rule`, `cp_probe` and
 `smc_outstanding_cg`, `cp_row_kind`, `cp_dir_size` and `cp_port` of
 `smc_map_row_response_cg`, and `cp_block_enc` of `smc_state_inject_cg`,
 `cp_slot_kind` and `cp_refusal` of `smc_efuse_lock_cg`, `cp_image_op` of
-`smc_efuse_jtag_lc_cg` and `cp_stall_status` and `cp_count` of
-`smc_efuse_timeout_cg` (each led by a flag or kind code that only a graded
+`smc_efuse_jtag_lc_cg`, `cp_stall_status` and `cp_count` of
+`smc_efuse_timeout_cg`, `cp_width` and `cp_flr_overlap` of `smc_deglitch_cg` and
+`cp_glitch_len` of `smc_powergood_glitch_cg` (each led by a flag or kind code that only a graded
 sample carries, with one `pass:[`define]` macro per entry, channel, region,
 port, row kind, block, slot or image writing the bins of one axis product). On
 Verilator, a value that
@@ -933,8 +992,10 @@ reset's assertion and samples the L2-frontend isolate's pending count, prints wh
 inside the reset (issued into the cluster, response not returned) and requires one such pass per
 seed, so an SPM pass whose burst completed before the assertion is a recorded bin, not one of the
 42: 6 recorded bins (`rec_*`: cold, cool pin and FLR x SPM write and SPM read with the burst's
-response returned before the assertion); one tuple coverpoint `{kind, op, phase}` with one bin per
-goal cell and per recorded bin; one sample per pass, at the first assertion edge on `clk_ref_i`
+response returned before the assertion; a returned response counts until the next SPM burst starts
+or `tb_fcov_gate` rises, so the burst is the window's own); one tuple coverpoint
+`{kind, op, phase}` with one bin per goal cell and per recorded bin; one sample per pass, at the
+first assertion edge on `clk_ref_i`
 after the gate rises (the fall of `rst_cold_ni`, of the cool pin, of the FLR cool reset and not the
 FLR request, or of the watchdog reset); the operation and phase are frozen at the first `clk_smc_i`
 edge at which any of those four sources is seen low, so they are those at the last `clk_smc_i` edge
@@ -945,11 +1006,21 @@ before its AW handshake, in data from AW to WLAST and awaiting from WLAST to B; 
 before its AR handshake, awaiting from AR to its first R beat (the R beats are the response) and
 in data from the first R beat to RLAST; an engine is in data while SYS_OUT write data is owed or an
 R or W burst is under way, awaiting while only a read address or a write response is outstanding,
-and before when nothing is outstanding; an SPM burst is in flight from its `AWVALID` or `ARVALID`,
-so a burst whose address is not yet presented samples no cell; a pass with no operation in flight
-at the assertion (an engine that finished first) samples no cell; each reset kind also has an
-`OCAH_FCOV_COVER` twin, the kind's assertion inside the graded window: `c_reset_kind_cold_graded`,
-`c_reset_kind_cool_pin_graded`, `c_reset_kind_flr_graded`, `c_reset_kind_wdt_graded`; the stated
+and before when nothing is outstanding; a handshake accepted at the edge at which the snapshot
+freezes counts as accepted: an SPM address handshake (a write in data, a read awaiting), WLAST (a
+write awaiting), the first R beat (a read in data), B and RLAST (completed) and the SYS_OUT
+handshakes of an engine (its phase after them); an SPM burst is in
+flight from its `AWVALID` or `ARVALID`, so a burst whose address is not yet presented samples no
+cell; a pass with no operation in flight at the assertion (an engine that finished first) samples
+no cell; each reset kind also has an `OCAH_FCOV_COVER` twin, which counts each assertion of the
+owner's window once: at the fall with an operation in flight, or with the window's SPM burst
+completed before the assertion (the recorded bins), otherwise when the window's operation appears,
+at the first `clk_ref_i` edge at which an SPM address is presented or an operation is busy while
+the gate stays high and no other source falls: `c_reset_kind_cold_graded`,
+`c_reset_kind_cool_pin_graded`, `c_reset_kind_flr_graded`, `c_reset_kind_wdt_graded`; a window
+with no operation counts no twin, and an assertion after the window's engine operation has
+finished counts no twin;
+the stated
 outcome is warm reset low at every sample at which primary is low, and for the watchdog warm low
 with primary high (`clk_rst.adoc`, Reset Architecture, the reset equations), graded by the owner
 |`rst_cold_ni`, `rst_cool_ni` (`rst_cool_n_from_pin_i`), `tb_rst_cool_from_flr`,
@@ -966,7 +1037,9 @@ their values across a warm reset), and the 4 cells of `misc_wrap.SCRATCH_COLD_WA
 recorded bins (`clk_rst.adoc`, Reset Architecture, states that `rst_warm_smc_clk_no` resets "the
 warm scratch register" without naming which register it is; the Blocked features row of
 SMC_VPLAN); one tuple coverpoint `{kind, class}`; each class is sampled once per pass, at the
-SEP_IN read after the pass's sampled assertion that completes the class, when every register of
+SEP_IN read after the window's first assertion that completes the class (the kind is that of the
+window's first assertion, which arms the class tracker whether or not `cp_kind_op_phase` samples
+it), when every register of
 the class has been read in the window and each read returned OKAY with that function (the RDL
 reset value where the kind clears the class, the pattern last written over SEP_IN where it keeps
 it); one read of a member that misses keeps the class unsampled for the pass; a recorded bin is
@@ -999,16 +1072,53 @@ and its storage is the Blocked legs row of SMC_VPLAN on `SS_CONFIG`).
 *Description*: Cool-reset pin pulse width against the 32-cycle de-glitch filter, and the overlap of
 a pin pulse with the FLR hold.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_cool_reset_deglitch_window_test` is an
-existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the pulse
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_reset_fcov::smc_deglitch_cg`, handle
+`u_cg_deglitch`, sampled while the owner `smc_cool_reset_deglitch_window_test` holds
+`tb_fcov_gate` high from before the first FLR counter write of its step 1 to after its step 8,
+before its compares, and only while no SPM, DMA or zeroer operation has been in flight at a
+`clk_smc_i` edge since the gate rose (`op_seen_q`: loaded at the gate's rise with whether one is
+in flight, set at any later edge with one while the gate is high, cleared while `powergood_i` is
+low; the owner's FLR counter and `ISOLATE_REQ_SMC_REG` accesses lie outside the SPM window and set
+nothing); a `cp_width` run is a low run of `rst_cool_ni` whose first low `clk_ref_i` sample has
+`tb_rst_cool_from_flr` high, its width the count of consecutive low samples; a run of 32 and above
+is sampled at the later of its end and the sample by which both primary resets have read 0, when
+both have read 0 within 128 reference-clock samples of its first low sample; a run below 32 is
+sampled at the first of two samples, the 128th counted from its first low sample and the first low
+sample of the next run, when neither primary reset read 0 from its first low through that sample;
+a run of 32 and above that a new run supersedes before both primary resets read 0, and a run that begins
+inside an FLR hold, sample no `cp_width` cell; a `cp_flr_overlap` hold is a low run of
+`tb_rst_cool_from_flr`, by the pin runs whose first low sample falls inside it: the sub-32 cell
+when at least one such run exists and every one is below 32, the later-source cell when a run of
+32 and above ended and the pin fell again inside the hold; the hold's no-release window opens at
+the first `clk_ref_i` sample inside the hold at which `rst_primary_ref_clk_no` or
+`rst_primary_smc_clk_no` reads 0 (the first assertion, not both), each primary reset's release is
+the first sample from there at which it reads 1, and the hold is sampled at the first sample, from
+the later of the hold's end (the first `tb_rst_cool_from_flr` high sample) and the end of the last
+such pin run (the first pin high sample), by which both have released, when that sample lies within
+the owner's bench release bound of 256 reference-clock samples of that later instant; the window
+closes, and each primary reset must release exactly, at its expected sample: the hold's end plus
+that reset's release offset in the control, the last hold since the gate rose with no pin fall
+inside it whose primary resets did not release before its end (the owner's step 6, FLR alone; an
+offset counts samples from the hold's end to the release), or, for the later-source cell when the
+last pin run is of 32 and above and the pin is the later source, the end of that run plus that
+reset's release offset in the pin control (the later source being the one whose end plus its
+control's offset is later); the pin control is the first pin low run of 32 and above under the gate
+with `tb_rst_cool_from_flr` high throughout, whose primary resets each read 0 and then read 1 at or
+after its end with the pin and `tb_rst_cool_from_flr` high until both have (the owner's step 2), its
+offset per primary reset the count of samples from the run's end to that release; so a primary
+reset that reads 1 inside the window (one that asserts later than the other, or releases before its
+expected sample), a release after it or outside the bound, a hold with no control before it, a
+later-source hold with no pin control before it, and a hold with no pin fall inside it sample
+nothing).
+Owner's draw: "the seed draws the pulse
 widths on either side of the 32-reference-cycle filter and the placement and widths of the pin
 segments inside the FLR hold".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_width` |pulse width on `rst_cool_ni` in reference cycles (1, 2 to 30, 31, 32, 33 to 64, above 64: 6); 6 cells; the outcome is the stated function of the width: filtered below 32 consecutive low samples, asserted at 32 and above (`clk_rst.adoc`, Reset Architecture and Power-Good and Cold Reset) |`rst_cool_n_from_pin_i` low width counted on `clk_ref_i`; `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no` |`smc_cool_reset_deglitch_window_test` |planned
-|`cp_flr_overlap` |pin segments placed inside the FLR hold, by width class (segments below 32 reference cycles: the hold is neither shortened nor extended and the release offset from the cool-reset rise equals the control's; a segment of 32 and above released and re-asserted inside the hold: no released sample until the later source ends and the release inside the bench bound: 2); 2 cells (`clk_rst.adoc`, Reset Architecture, the primary reset as the AND of the stable cold reset, the de-glitched pin and the FLR cool reset) |`rst_cool_n_from_pin_i`, `tb_rst_cool_from_flr`, `tb_cfg_flr_pf_active`, `rst_primary_smc_clk_no` |`smc_cool_reset_deglitch_window_test` |planned
+|`cp_width` |pulse width on `rst_cool_ni` in reference cycles (1, 2 to 30, 31, 32, 33 to 64, above 64: 6); 6 cells; the outcome is the assertion function of the width: below 32 consecutive low samples no primary reset falls from the run's first low sample until the next run begins or the bench bound of 128 reference cycles expires, whichever comes first, at 32 and above both fall within it (`clk_rst.adoc`, Reset Architecture and Power-Good and Cold Reset); the release and restart legs are the owner's compares |`rst_cool_n_from_pin_i` low width counted on `clk_ref_i`; `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no` |`smc_cool_reset_deglitch_window_test` |live
+|`cp_flr_overlap` |pin segments placed inside the FLR hold, by width class (segments below 32 reference cycles: no released sample from the first primary-reset assertion inside the hold to the cool-reset rise plus the FLR-alone control's release offset, and each primary reset's release exactly at that offset from that rise, within the bench bound of 256 reference cycles, the control being the last FLR hold of the window with no pin fall inside it, so the hold is neither shortened nor extended; a segment of 32 and above released and re-asserted inside the hold: no released sample from the first primary-reset assertion inside the hold to the later source's end plus that source's control offset, the pin control's (the owner's step 2 low run) when the pin is the later source and the FLR-alone control's when the hold is, and each primary reset's release exactly there, within that bound: 2); 2 cells (`clk_rst.adoc`, Reset Architecture, the primary reset as the AND of the stable cold reset, the de-glitched pin and the FLR cool reset) |`rst_cool_n_from_pin_i`, `tb_rst_cool_from_flr`, `tb_cfg_flr_pf_active`, `rst_primary_smc_clk_no` |`smc_cool_reset_deglitch_window_test` |live
 |===
 
 *Ignore bins*: the pin pulse beginning before the FLR cool reset falls (not drawn; the owner's walk
@@ -1016,27 +1126,50 @@ starts every pin segment inside the hold; the cell stays with
 `smc_cool_reset_pin_flr_overlap_test`); the cold-reset path (no cold pulse width is drawn: the owner
 draws the widths on the cool pin, and `rst_cold_ni` stays with the reset agent); a width x outcome
 cell contrary to the function (the failing outcome of the owner's filtered and asserted compares);
-the broken-low restart and the release-offset legs (directed steps of the existing walk, not drawn).
+a hold with a released sample from the first primary-reset assertion inside it to the expected
+release, a release outside the bench bound or a hold whose release offsets from the later source's
+end differ from that source's control (the failing outcome of the owner's hold compares); a hold
+with no control hold before it in the window, or a later-source hold with no pin control (no offset
+to compare); the broken-low restart, the release-offset and the release
+without extension legs (the owner's compares, not an outcome axis of `cp_width`).
 
 ==== `smc_powergood_glitch_cg`
 *Description*: Power-good glitch length and the cold-reset assertion under it.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_irq_during_powergood_glitch_test` is an
-existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the glitch
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_reset_fcov::smc_powergood_glitch_cg`,
+handle `u_cg_powergood_glitch`, sampled while the owner `smc_irq_during_powergood_glitch_test`
+holds `tb_fcov_gate` high from after its idle baseline IRQ sample to after its watcher ruling,
+before its recovered IRQ sample, behind the gate alone: its trackers clear when the gate rises and
+not on the `powergood_i` low that is its stimulus, and a `powergood_i` fall at the gate's rising
+sample starts a run; a run inside which `powergood_stable_o` fell leaves the window's glitch
+record at the `powergood_i` rise, the first high `clk_ref_i` sample after the run: the count of
+consecutive low samples of the run; `cp_glitch_len` samples that record at the falling edge of
+`tb_fcov_gate`, only when `tb_sync_irq`, `tb_gpio_irq_any` and `tb_uart_irq_any` read 0 at every
+`clk_ref_i` sample from the gate's rise to its last sample with the gate high (the PLIC pending bits of sources 1 to 3
+(`tb_plic_pending_low`) are fed by the external and temperature interrupt inputs, which nothing in
+the owner's window drives, so they are no term of the outcome and the three aggregates the owner's
+checker grades carry it), and when
+`powergood_stable_o`, `rst_cold_stable_ref_clk_no`, `rst_primary_ref_clk_no` and
+`rst_primary_smc_clk_no` have each read 1 at some `clk_ref_i` sample after the one that took the
+record and before the gate fell (the recovery the owner proves with its step 5 `WAIT_STATE`); a
+window with no glitch record, or whose gate falls without that recovery, samples nothing; `cp_cold_assert` is sampled at the first `clk_ref_i` sample inside
+the low run at which `powergood_stable_o`, `rst_cold_stable_ref_clk_no`, `rst_primary_ref_clk_no`
+and `rst_primary_smc_clk_no` all read 0, once per run). Owner's draw: "the seed draws the glitch
 length"; the owner drives no external interrupt, so no edge position is a cell.
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_glitch_len` |glitch length in reference cycles (below 32, 32, above 32: 3); 3 cells; the stated outcome of every cell is the IRQ aggregate reading 0 at every sample from before the glitch until after the recovery (`clk_rst.adoc`, Power-Good and Cold Reset, Power-good low holds functional reset); the shortest length is the 8 reference cycles the owner's sequence holds while it dispatches its mid-glitch samples, a bench bucket; 32 is the cold de-glitch value of `clk_rst.adoc`, which `port_table.adoc` (the `rst_cold_ni` row) states the power-good path asserts the cold reset without waiting for |`powergood_i`, `powergood_stable_o`, `tb_plic_pending_low` |`smc_irq_during_powergood_glitch_test` |planned
-|`cp_cold_assert` |the cold-stable reset and both primary resets asserted at the owner's mid-glitch `RAW_SAMPLE` with `powergood_stable_o` at 0 (1 recorded bin: the owner's sample sees the levels at an unstated time inside the glitch, after its mid-glitch IRQ samples, and the assertion latency against the 32-cycle de-glitch wait is compared by nothing; `port_table.adoc`, the `rst_cold_ni` row, states the latency the power-good path does not take, "A falling `powergood_i` asserts the downstream cold reset without that wait") |`powergood_i`, `powergood_stable_o`, `rst_cold_stable_ref_clk_no`, `rst_primary_ref_clk_no`, `rst_primary_smc_clk_no` |`smc_irq_during_powergood_glitch_test` |planned
+|`cp_glitch_len` |glitch length in reference cycles (below 32, 32, above 32: 3); 3 cells; the stated outcome of every cell is the three IRQ aggregates reading 0 at every sample from the gate's rise, before the glitch, to its fall, after the recovery (`clk_rst.adoc`, Power-Good and Cold Reset, Power-good low holds functional reset); the shortest length is the 8 reference cycles the owner's sequence holds while it dispatches its mid-glitch samples, a bench bucket; 32 is the cold de-glitch value of `clk_rst.adoc`, which `port_table.adoc` (the `rst_cold_ni` row) states the power-good path asserts the cold reset without waiting for |`powergood_i`, `powergood_stable_o`, `tb_sync_irq`, `tb_gpio_irq_any`, `tb_uart_irq_any` |`smc_irq_during_powergood_glitch_test` |live
+|`cp_cold_assert` |the cold-stable reset and both primary resets asserted with `powergood_stable_o` at 0, sampled at the first `clk_ref_i` sample inside the `powergood_i` low run at which `powergood_stable_o`, `rst_cold_stable_ref_clk_no`, `rst_primary_ref_clk_no` and `rst_primary_smc_clk_no` read 0 (1 recorded bin); the assertion latency against the 32-cycle de-glitch wait is left out by the group's Ignore-bins line (`port_table.adoc`, the `rst_cold_ni` row: "A falling `powergood_i` asserts the downstream cold reset without that wait") |`powergood_i`, `powergood_stable_o`, `rst_cold_stable_ref_clk_no`, `rst_primary_ref_clk_no`, `rst_primary_smc_clk_no` |`smc_irq_during_powergood_glitch_test` |live
 |===
 
 *Ignore bins*: the assertion latency of the cold reset against the 32-cycle de-glitch wait
-(`port_table.adoc` states the assertion without that wait, but the owner compares no latency, so no
-latency cell is counted and the recorded bin above holds the levels the owner's sample sees); an
-interrupt reaching the PLIC pending bit inside the window (the failing outcome of
-`CHK-IRQ-PG-GLITCH-NO-SPURIOUS`); an external interrupt edge against the glitch and its synchronizer
+(`port_table.adoc` states the assertion without that wait, and the owner compares no latency, so
+no latency cell is counted and the recorded bin above holds the levels at the first sample at
+which all four read 0); an interrupt aggregate reading 1 inside the window (the failing outcome of
+`CHK-IRQ-PG-GLITCH-NO-SPURIOUS`); a glitch window without recovery, whose gate falls before the four
+resets the record names have each read 1 after it (counts in no cell); an external interrupt edge against the glitch and its synchronizer
 product cell (the owner drives no external interrupt, so no edge position is drawn; the synchronizer
 cells stay with the external-interrupt entries).
 

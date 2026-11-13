@@ -54375,7 +54375,33 @@ extents and the eFuse map fills its decoded extent), one SEP_IN access at a time
 Zeroer control beats complete OKAY at the SYS_OUT responder, so none of those groups samples;
 the lifecycle and timeout owners drive no reset, and the lock owner none under its gate; the
 three launch no DMA, program no filter, region or zeroer register and issue one access at a
-time. Drives no `smc_wrapper` port and changes no stimulus.
+time. `cp_kind_op_phase` of `smc_reset_kind_inflight_cg` samples an assertion only when an SPM,
+DMA or zeroer operation is in flight at the fall or the window's SPM burst completes before it
+(`kind_sample_e`); its four twins count each assertion of the window once, at the fall when an
+operation is in flight or completed, otherwise when the window's operation appears, and none in a
+window with no operation or for an assertion after the window's engine operation has finished; the
+class tracker of `cp_kind_domain` arms on the window's first
+assertion whether or not `cp_kind_op_phase` samples it. The de-glitch owner issues no SPM, DMA or
+zeroer operation, so its cool-pin and FLR falls open no `cp_kind_op_phase` cell and no twin, and
+the tracker its first cool-pin fall arms samples nothing: its FLR counter reads precede that fall
+and its `ISOLATE_REQ_SMC_REG` reads are no class member. `smc_deglitch_cg` samples only while no SPM, DMA or
+zeroer operation has been in flight since the gate rose (`op_seen_q`, reloaded on every rise from
+the operation in flight at that edge): each
+window of the reset owner carries such an operation, so its cool-pin and FLR falls open no
+de-glitch cell, and its FLR holds carry no pin fall inside them. The de-glitch owner raises the
+gate before the FLR counter writes of its step 1 and drops it after its step 8; those writes and
+its `ISOLATE_REQ_SMC_REG` accesses lie in the reset-unit extent, outside the SPM window, name no
+filter entry, region, zeroer, timeout or eFuse register, drive no hook and no JTAG access, and are
+issued one at a time, so they open no cell of another group. `smc_powergood_glitch_cg` samples
+behind the gate alone, `cp_glitch_len` at the gate's fall after the owner's watcher ruling with
+`tb_sync_irq`, `tb_gpio_irq_any` and `tb_uart_irq_any` at 0 from the gate's rise and the recovery
+seen after the glitch record: the power-good
+owner's window, from after its idle baseline IRQ sample to after its watcher ruling, holds no SEP_IN access, no hook and no reset-source fall the reset group
+counts (its `powergood_i` low disables that group's samples and twins, and after the rise no
+operation is in flight), and no other owner drives `powergood_i` under its gate; the reset owner
+`smc_reset_mid_transaction_rand_test` is the only other owner that drives the cool pin or the FLR
+request under its gate, and since each of its windows carries an operation, its falls open no
+de-glitch cell. Drives no `smc_wrapper` port and changes no stimulus.
 |The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`,
 `smc_map_row_fcov` and `smc_efuse_ctrl_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
@@ -54384,7 +54410,8 @@ time. Drives no `smc_wrapper` port and changes no stimulus.
 `smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`,
 `smc_map_row_response_matrix_test`, `smc_state_fault_inject_test`,
 `smc_efuse_map_locks_register_test`, `smc_efuse_jtag_lc_access_matrix_test`,
-`smc_efuse_read_program_timeout_test`
+`smc_efuse_read_program_timeout_test`, `smc_cool_reset_deglitch_window_test`,
+`smc_irq_during_powergood_glitch_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]
