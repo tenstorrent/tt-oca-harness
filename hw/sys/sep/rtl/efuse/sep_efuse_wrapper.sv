@@ -8,7 +8,7 @@
 // register slave is muxed with the Key Manager AXI-Lite path into the eFuse controller; the
 // shim slave is muxed with JTAG shim accesses onto efuse_bank_ctrl_req_o through an axi_cut.
 // JTAG accesses go to the eFuse controller inside the eFuse register page and to the shim
-// inside the EFUSE_SHIM_SIZE bytes at the base of the external aperture; every other JTAG
+// inside the EFUSE_SHIM_SIZE bytes at the base of the sep_external window; every other JTAG
 // access receives DECERR with read data 0xBADCAB1E. In a restricted state (PROD / RMA_SiP, or
 // an LC-state differential-decode integrity error), so does every JTAG access outside the
 // MMR / token register space, which stays accessible for RMA_SiP token programming.
@@ -22,7 +22,7 @@
 
 module sep_efuse_wrapper #(
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
-                                                 // at the base of the external aperture.
+                                                 // at the base of the sep_external window.
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
 ) (

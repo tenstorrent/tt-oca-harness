@@ -32,8 +32,8 @@ eFuse shim window and the AXI4 extension port. {sep-axi-connectivity-ref} gives
 the permitted paths. The IFU and LSU reach the boot ROM through a dedicated AXI
 mux rather than the crossbar, and the IFU crossbar port reaches only the SRAM.
 The eFuse shim subordinate takes the eFuse shim CSR window at the base of the
-external aperture to the crypto subsystem; the rest of the aperture goes to the
-extension port.
+external window to the crypto subsystem; the rest of the external window goes to
+the extension port.
 
 The grey boxes are the memory macros and IP that the integration layer
 instantiates outside the SEP. The Adams Bridge and its SRAMs are present only

@@ -34,7 +34,7 @@ module sep_crypto #(
                                                  // entropy muxes; must equal
                                                  // SepCryptoEdnEndpointCount (3).
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
-                                                 // at the base of the external aperture.
+                                                 // at the base of the sep_external window.
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
 ) (
@@ -51,8 +51,8 @@ module sep_crypto #(
   input  sep_pkg::sep_32_64_6_12_axi_req_t        sep_crypto_axi_req_i,  // Full AXI4 slave from local crossbar.
   output sep_pkg::sep_32_64_6_12_axi_resp_t       sep_crypto_axi_resp_o,  // Response from the crypto interconnect to the local crossbar.
 
-  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,  // eFuse shim CSR leg, from the local crossbar's efuse_shim target.
-  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,  // Response to the eFuse shim CSR leg, from the eFuse wrapper.
+  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,  // eFuse shim CSR request from the local crossbar's efuse_shim target.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,  // Response to efuse_shim_axi_req_i, from the eFuse wrapper.
 
   output logic                               entropy_source_irq_o,  // Entropy source interrupt.
 

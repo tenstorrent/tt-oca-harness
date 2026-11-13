@@ -3,13 +3,12 @@
 
 // Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.
 //
-// Address rules are explicit integration apertures in AddrMap below:
-// the mailbox pages (0x10A0_0000-0x10A0_7FFF) to the mailbox, and to the system CSRs the
-// scratch page and the remap, outbound filter, inbound filter and sep_cpu_ctrl pages, each from
-// its sep_top_addrmap_pkg base to the 4 KiB page boundary after its registers; sep_system_csr
-// answers the addresses of those pages outside its register windows. Every other address in
-// 0x10A0_8000-0x10A4_FFFF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR
-// responder; the rest of the space below 0x4000_0000 goes to smn_inbound_from_xbar. Both
+// AddrMap sends the mailbox pages (0x10A0_0000-0x10A0_7FFF) to the mailbox, and to the system
+// CSRs the scratch page and the remap, outbound filter, inbound filter and sep_cpu_ctrl pages,
+// each from its sep_top_addrmap_pkg base to the 4 KiB page boundary after its registers;
+// sep_system_csr answers the addresses of those pages outside its register windows. Every other
+// address in 0x10A0_8000-0x10A4_FFFF, and anything at or above 0x4000_0000, gets the axi_xbar
+// DECERR responder; the rest of the space below 0x4000_0000 goes to smn_inbound_from_xbar. Both
 // initiators reach every target.
 // Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit;
 // smn_inbound_from_xbar stays full AXI4, with one more ID bit than the initiators.

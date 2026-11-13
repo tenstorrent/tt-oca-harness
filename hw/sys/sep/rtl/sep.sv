@@ -7,7 +7,7 @@
 // and Key Manager error interfaces to the integrator.
 // sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl
 // CSRs for the SMU AXI crossbar SEP-target rule.
-// The local crossbar routes the eFuse shim CSR window at the base of the external aperture
+// The local crossbar routes the eFuse shim CSR window at the base of the sep_external window
 // to the eFuse wrapper; the rest leave on sep_external_axi_req_o through an axi_cut. PIC source i+1 is internal interrupt i
 // for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and
 // bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps
@@ -25,7 +25,7 @@ module sep #(
   parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports; must
                                                  // be 3, one per entropy mux leg.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
-                                                 // at the base of the external aperture, routed
+                                                 // at the base of the sep_external window, routed
                                                  // to the eFuse wrapper.
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
@@ -211,7 +211,7 @@ module sep #(
   input logic secure_tm_req_i,                // Secure test mode request strap, latched into
                                               // secure_tm_o.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,  // Request for the external aperture 0x2000_0000-0x3FFF_FFFF outside the eFuse
+  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,  // Request for the sep_external window 0x2000_0000-0x3FFF_FFFF outside the eFuse
                                                                      // shim window.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp_i,  // Response to sep_external_axi_req_o.
 
