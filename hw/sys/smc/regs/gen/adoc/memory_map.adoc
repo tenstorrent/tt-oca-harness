@@ -77,7 +77,7 @@
 .Notes
 [[smc-components-note-1]]^[1]^ Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0. +
 [[smc-components-note-2]]^[2]^ Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture. +
-[[smc-components-note-3]]^[3]^ A burst that reaches past offset 0x137 answers SLVERR on every beat, including those inside the registers. +
+[[smc-components-note-3]]^[3]^ The registers accept single-beat accesses only. A burst answers SLVERR with read data 0xBADCAB1E on every beat, including a burst inside the registers. +
 [[smc-components-note-4]]^[4]^ Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped. +
 [[smc-components-note-5]]^[5]^ A write answers SLVERR and leaves the ROM unchanged. +
 [[smc-components-note-6]]^[6]^ 0x544, 0x102C and the word 0x2C past each enable context (0x202C, 0x20AC, ... 0x23AC) are the upper halves of live 64-bit words, so a 64-bit read there returns live data.

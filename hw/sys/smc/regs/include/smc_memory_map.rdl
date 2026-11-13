@@ -80,7 +80,7 @@
     smc_mailbox->desc = "Thirty-two bidirectional mailbox pairs.";
     dma_ctrl->ocah_aperture_size = 0x1000;
     dma_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
-    dma_ctrl->ocah_past_extent_note = "A burst that reaches past offset 0x137 answers SLVERR on every beat, including those inside the registers.";
+    dma_ctrl->ocah_past_extent_note = "The registers accept single-beat accesses only. A burst answers SLVERR with read data 0xBADCAB1E on every beat, including a burst inside the registers.";
     dma_ctrl->desc = "Direct-memory-access controller.";
     smc_cpu_ctrl->ocah_aperture_size = 0x1000;
     smc_cpu_ctrl->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
