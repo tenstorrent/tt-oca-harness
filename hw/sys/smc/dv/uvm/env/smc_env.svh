@@ -144,10 +144,6 @@ class smc_env extends ocah_env;
       m_zeroer_burst_observer.observed_ap.connect(m_scoreboard.zeroer_observed_export);
       m_zeroer_burst_observer.declaration_ap.connect(m_scoreboard.zeroer_declared_export);
       m_zeroer_burst_observer.status_ap.connect(m_scoreboard.zeroer_status_export);
-      m_zeroer_burst_observer.evidence = m_scoreboard.m_evidence;
-      m_vseqr.m_zeroer_range_ref_model = m_zeroer_range_ref_model;
-      m_vseqr.m_zeroer_burst_observer = m_zeroer_burst_observer;
-      m_vseqr.m_sys_out_monitor = m_sys_out_axi_env.m_monitor;
     end
     m_sep_in_axi_env.item_ap.connect(m_sep_in_history.analysis_export);
     // scratch_csr: the monitor stream feeds the reference model and the

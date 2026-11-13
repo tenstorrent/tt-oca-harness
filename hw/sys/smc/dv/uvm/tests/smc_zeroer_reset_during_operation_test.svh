@@ -13,6 +13,16 @@ class smc_zeroer_reset_during_operation_test extends smc_base_test;
     cfg.require_feature(SmcFeatureZeroerRange);
   endfunction
 
+  virtual function void plumb_scenario_seq(ocah_sequence seq);
+    smc_zeroer_reset_during_operation_test_seq zeroer_seq;
+    super.plumb_scenario_seq(seq);
+    if (!$cast(zeroer_seq, seq)) begin
+      `uvm_fatal(get_type_name(), "Invalid Zeroer reset scenario sequence")
+    end
+    zeroer_seq.zeroer_ref_model = m_env.m_zeroer_range_ref_model;
+    zeroer_seq.zeroer_observer = m_env.m_zeroer_burst_observer;
+  endfunction
+
   virtual function ocah_sequence create_scenario_seq();
     return smc_zeroer_reset_during_operation_test_seq::type_id::create("seq");
   endfunction

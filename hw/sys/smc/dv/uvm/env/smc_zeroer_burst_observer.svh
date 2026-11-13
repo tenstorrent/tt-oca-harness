@@ -86,8 +86,8 @@ class smc_zeroer_burst_observer extends ocah_subscriber #(ocah_axi_item);
     if (t.direction != OCAH_AXI_DIR_WRITE) return;
     status.epoch = epoch;
     status.detail = t.convert2string();
-    if (t.burst != OCAH_AXI_BURST_INCR || t.size != SmcMemSize ||
-        t.address % SmcMemBytes != 0 || t.data_words.size() != t.expected_beats ||
+    if (t.burst != OCAH_AXI_BURST_INCR || t.size != SmcSysOutSize ||
+        t.address % SmcSysOutBeatBytes != 0 || t.data_words.size() != t.expected_beats ||
         t.strobes.size() != t.data_words.size()) begin
       status.shape_errors = 1;
       status_ap.write(status);
@@ -98,15 +98,15 @@ class smc_zeroer_burst_observer extends ocah_subscriber #(ocah_axi_item);
       bit old_command = interrupted.exists(k);
       bit active = d.epoch == epoch && !closed.exists(k);
       if (t.address < d.destination + 64'(d.size) &&
-          t.address + 64'(t.data_words.size() * SmcMemBytes) > d.destination) begin
+          t.address + 64'(t.data_words.size() * SmcSysOutBeatBytes) > d.destination) begin
         if (old_command) old_bursts[d.phase_index]++;
         else if (active) completed[k]++;
       end
     end
     foreach (t.data_words[beat]) begin
-      for (int unsigned lane = 0; lane < SmcMemBytes; lane++) begin
+      for (int unsigned lane = 0; lane < SmcSysOutBeatBytes; lane++) begin
         bit found = 0;
-        bit [63:0] addr = t.address + 64'(beat * SmcMemBytes + lane);
+        bit [63:0] addr = t.address + 64'(beat * SmcSysOutBeatBytes + lane);
         if (!t.strobes[beat][lane]) continue;
         foreach (commands[k]) begin
           smc_zeroer_range_sample d = commands[k];

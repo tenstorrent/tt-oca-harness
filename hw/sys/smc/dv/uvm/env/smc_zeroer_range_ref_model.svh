@@ -48,18 +48,36 @@ class smc_zeroer_range_ref_model extends ocah_ref_model #(ocah_axi_item, smc_zer
     if (!t.is_ok()) return;
     if (t.size != SmcMemSize || t.data_words.size() != 1 ||
         t.strobes.size() != 1 || t.strobes[0] != 8'hFF || t.start_time < previous_end)
-      `uvm_fatal(get_type_name(), "Zeroer predictor excludes narrow or overlapping writes")
+      `uvm_fatal(get_type_name(), $sformatf(
+                 "Zeroer predictor excludes narrow or overlapping writes: %s previous_end=%0t",
+                 t.convert2string(),
+                 previous_end
+                 ))
     previous_end = t.end_time;
     if (t.address == SmcZeroerDestAddr) begin
       destination = t.data_words[0];
       if (destination[63:56] != 0)
-        `uvm_fatal(get_type_name(), "Zeroer predictor excludes addresses above 56 bits")
+        `uvm_fatal(get_type_name(), $sformatf(
+                   "Zeroer predictor excludes addresses above 56 bits: %s destination=%016h",
+                   t.convert2string(),
+                   destination
+                   ))
     end else if (t.address == SmcZeroerSizeAddr) begin
       size_bytes = t.data_words[0];
     end else if (size_bytes != 0) begin
       if (size_bytes > MaxPredictedBytes || destination >= cfg.sys_out_mem_bytes ||
           size_bytes > cfg.sys_out_mem_bytes - destination)
-        `uvm_fatal(get_type_name(), "Zeroer predictor exceeds allocation bound or responder window")
+        `uvm_fatal(get_type_name(), $sformatf(
+                   {
+                     "Zeroer predictor exceeds allocation bound or responder window: %s ",
+                     "destination=%016h size=%0d allocation_bound=%0d backing_bytes=%0d"
+                   },
+                   t.convert2string(),
+                   destination,
+                   size_bytes,
+                   MaxPredictedBytes,
+                   cfg.sys_out_mem_bytes
+                   ))
       expected = smc_zeroer_range_sample::type_id::create("expected");
       expected.epoch = epoch;
       expected.command_id = ++command_id;

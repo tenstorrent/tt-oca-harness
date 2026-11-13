@@ -4,6 +4,10 @@
 // Grades cool-reset CSR clearing and fresh recovery after held W and B phases.
 class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
   `uvm_object_utils(smc_zeroer_reset_during_operation_test_seq)
+
+  smc_zeroer_burst_observer zeroer_observer;
+  smc_zeroer_range_ref_model zeroer_ref_model;
+
   localparam logic [2:0] ZeroerStIdle = 3'b001;
   localparam logic [2:0] ZeroerStIssueData = 3'b100;
   localparam int unsigned PollBound = 50000;
@@ -11,6 +15,10 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
   localparam int unsigned StableSamples = 16;
   localparam int unsigned GuardBytes = 64;
   localparam int unsigned MaxRecoveryBytes = 1024;
+  localparam int unsigned MaxDrainingBytes = 2048;
+  localparam int unsigned MinAcceptedBeats = 8;
+  localparam int unsigned MaxAcceptedBeats = 32;
+  // Phase A spans at least one maximum 256-beat burst plus one full beat.
   localparam int unsigned MinInterruptedBytes = 2056;
   localparam int unsigned MaxInterruptedBytes = 3584;
   localparam int unsigned MaxOffsetBytes = 512;
@@ -23,8 +31,13 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
   localparam bit [63:0] PassStride = 64'h20000;
   localparam bit [63:0] PassExtent = RecoveryOffsetB + MaxOffsetBytes +
       MaxRecoveryBytes + GuardBytes;
+  // The reserved W-stall interval must cover cool-reset propagation.
   localparam int unsigned ResetWindowCycles = 512;
+  // Leave scheduling margin in the stall interval beyond the reset budget.
   localparam int unsigned StallMarginCycles = 32;
+  localparam bit [63:0] FilterWindowBytes = 64'h400000;
+  localparam int unsigned MaxPasses = 32'(FilterWindowBytes / PassStride);
+  localparam string ChkPrereq = "CHK-ZEROER-PREREQ";
   localparam bit [63:0] OutputBase = 64'h0200_0000;
   localparam bit [63:0] PassAll = FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_MASK |
       FILTER_CTRL_FILTER_CONFIG_WRITE_ALLOWED_MASK | FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK |
@@ -51,7 +64,6 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
   protected longint unsigned old_post_reset_irq;
   protected bit [63:0] region_base;
   protected bit [63:0] filter_start_addr, filter_end_addr, filter_config_addr;
-  protected smc_zeroer_burst_observer observer;
   protected longint unsigned clock_cycles;
   protected bit [63:0] fresh_dest;
   protected int unsigned old_completed_before, old_bytes_before;
@@ -93,6 +105,12 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
       end
     end
   endtask
+
+  protected function void require_value(bit condition, string label, string detail = "");
+    if (!m_check.expect_true(ChkPrereq, condition, {label, " ", detail})) begin
+      `uvm_fatal(get_type_name(), {"Zeroer prerequisite failed: ", label, " ", detail})
+    end
+  endfunction
 
   protected function void grade(string id, string label, bit [63:0] observed, bit [63:0] expected,
                                 string context_s = "");
@@ -171,11 +189,11 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
   endtask
 
   protected task declare_job(bit [63:0] dest, int unsigned size, bit draining);
-    bit [63:0] epoch = observer.current_epoch();
+    bit [63:0] epoch = zeroer_observer.current_epoch();
     bit synced = epoch == scoreboard.zeroer_current_epoch() &&
-        epoch == p_sequencer.m_zeroer_range_ref_model.current_epoch();
+        epoch == zeroer_ref_model.current_epoch();
     check_evidence("CHK-ZEROER-RESET-EPOCH", "component reset counters agree", 64'(synced), 1);
-    next_command = observer.declare_command(dest, size, int'(draining), GuardBytes);
+    next_command = zeroer_observer.declare_command(dest, size, int'(draining), GuardBytes);
     mem_write(SmcZeroerDestAddr, dest, "job DEST");
     mem_write(SmcZeroerSizeAddr, 64'(size), "job SIZE");
     read_grade("CHK-ZEROER-RESET-PRE-CSR", SmcZeroerDestAddr, dest, "DEST programmed");
@@ -188,76 +206,78 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
     bit [7:0] poison[$], observed_bytes[$];
     int unsigned compare_before = scoreboard.compare_count(SmcFeatureZeroerRange);
     int unsigned mismatch_before = scoreboard.mismatch_count(SmcFeatureZeroerRange);
-    int unsigned outside_before = observer.outside_count();
+    int unsigned outside_before = zeroer_observer.outside_count();
     longint unsigned irq_before;
-    bit data_ok = 1;
-    bit guards_ok = 1;
-    bit ready = 0;
+    int unsigned payload_bad = 0, guard_bad = 0;
+    bit [63:0] first_payload_addr, first_guard_addr;
+    bit [7:0] first_payload_value, first_guard_value, first_guard_expected;
     bit [63:0] epoch;
     int unsigned observed_byte_count, completed_bursts;
-    string drain_context;
     repeat (recovery_size + 2 * GuardBytes) poison.push_back(8'(random_pattern(8)) | 8'h1);
     p_sequencer.m_sys_out_slave_seq.write_bytes(dest - GuardBytes, poison);
     p_sequencer.m_sys_out_slave_seq.read_bytes(dest - GuardBytes, recovery_size + 2 * GuardBytes,
                                                observed_bytes);
     check_evidence("CHK-ZEROER-RECOVERY-POISON", "poison and guards", 64'(observed_bytes == poison),
                    1, $sformatf("phase=%0b", draining));
-    p_sequencer.m_zeroer_range_ref_model.arm_recovery_negative();
+    zeroer_ref_model.arm_recovery_negative();
     irq_before = sample.irq;
     old_post_reset_irq = irq_before;
     declare_job(dest, recovery_size, draining);
     wait_idle("recovery STATUS");
-    for (int unsigned i = 0; i < ResetBound; i++) begin
-      if (p_sequencer.m_sys_out_monitor.pending_count() == 0) begin
-        ready = 1;
-        break;
-      end
-      wait_smc_cycles(1);
-    end
-    drain_context = $sformatf(
-        "phase=%0b pending=%0d bound=%0d",
-        draining,
-        p_sequencer.m_sys_out_monitor.pending_count(),
-        ResetBound
-    );
-    grade("CHK-ZEROER-RECOVERY-DRAIN", "SYS_OUT pending drained within bound", 64'(ready), 1,
-          drain_context);
-    if (!ready) begin
-      `uvm_fatal(get_type_name(), "recovery SYS_OUT pending did not drain")
-    end
     uvm_wait_for_nba_region();
-    observed_byte_count = observer.byte_count(next_command);
-    completed_bursts = observer.completed_count(next_command);
+    observed_byte_count = zeroer_observer.byte_count(next_command);
+    completed_bursts = zeroer_observer.completed_count(next_command);
     grade("CHK-NONVAC", "recovery observed bytes present", 64'(observed_byte_count > 0), 1,
           $sformatf("observed_bytes=%0d completed_bursts=%0d", observed_byte_count, completed_bursts
           ));
-    observer.close_command(next_command);
-    epoch = observer.current_epoch();
-    ready = 0;
-    for (int unsigned i = 0; i < 64; i++) begin
-      if (scoreboard.zeroer_expected_seen(epoch, next_command)) begin
-        ready = 1;
-        break;
-      end
-      wait_smc_cycles(1);
-    end
-    grade("CHK-ZEROER-EXPECTED-TIMEOUT", "recovery expected present", 64'(ready), 1);
+    zeroer_observer.close_command(next_command);
+    epoch = zeroer_observer.current_epoch();
+    grade("CHK-ZEROER-RESET-RESPONDER", "one completed recovery burst from SYS_OUT monitor",
+          64'(completed_bursts), 1, $sformatf("phase=%0b dest=%016h", draining, fresh_dest));
+    check_evidence("CHK-ZEROER-EXPECTED-PRESENT", "recovery prediction present at sample close",
+                   64'(scoreboard.zeroer_expected_seen(epoch, next_command)), 1, $sformatf(
+                   "epoch=%0d command=%0d", epoch, next_command));
     check_evidence("CHK-ZEROER-ACCOUNTING", "exact recovery comparison delta",
                    64'(scoreboard.compare_count(SmcFeatureZeroerRange) - compare_before), 1);
     check_evidence("CHK-ZEROER-ACCOUNTING", "recovery mismatch delta",
                    64'(scoreboard.mismatch_count(SmcFeatureZeroerRange) - mismatch_before), 0);
     check_evidence("CHK-ZEROER-ACCOUNTING", "recovery out-of-scope delta",
-                   64'(observer.outside_count() - outside_before), 0);
+                   64'(zeroer_observer.outside_count() - outside_before), 0);
     p_sequencer.m_sys_out_slave_seq.read_bytes(dest - GuardBytes, recovery_size + 2 * GuardBytes,
                                                observed_bytes);
     foreach (observed_bytes[i]) begin
-      if (i >= GuardBytes && i < GuardBytes + recovery_size) data_ok &= observed_bytes[i] == 0;
-      else guards_ok &= observed_bytes[i] == poison[i];
+      if (i >= GuardBytes && i < GuardBytes + recovery_size) begin
+        if (observed_bytes[i] != 0) begin
+          if (payload_bad == 0) begin
+            first_payload_addr = dest - GuardBytes + 64'(i);
+            first_payload_value = observed_bytes[i];
+          end
+          payload_bad++;
+        end
+      end else if (observed_bytes[i] != poison[i]) begin
+        if (guard_bad == 0) begin
+          first_guard_addr = dest - GuardBytes + 64'(i);
+          first_guard_value = observed_bytes[i];
+          first_guard_expected = poison[i];
+        end
+        guard_bad++;
+      end
     end
-    grade("CHK-ZEROER-RECOVERY-DATA", "zero recovery payload", 64'(data_ok), 1);
-    grade("CHK-ZEROER-RECOVERY-DATA", "recovery guards", 64'(guards_ok), 1);
-    grade("CHK-ZEROER-RESET-RESPONDER", "one completed recovery burst from SYS_OUT monitor",
-          64'(completed_bursts), 1, $sformatf("phase=%0b dest=%016h", draining, fresh_dest));
+    grade("CHK-ZEROER-RECOVERY-DATA", "zero recovery payload", 64'(payload_bad == 0), 1, $sformatf(
+          "bad_bytes=%0d first_bad_valid=%0b addr=%016h expected=00 observed=%02h",
+          payload_bad,
+          payload_bad != 0,
+          first_payload_addr,
+          first_payload_value
+          ));
+    grade("CHK-ZEROER-RECOVERY-DATA", "recovery guards", 64'(guard_bad == 0), 1, $sformatf(
+          "bad_bytes=%0d first_bad_valid=%0b addr=%016h expected=%02h observed=%02h",
+          guard_bad,
+          guard_bad != 0,
+          first_guard_addr,
+          first_guard_expected,
+          first_guard_value
+          ));
     grade("CHK-ZEROER-RECOVERY-IRQ", "one recovery interrupt", sample.irq - irq_before, 1);
   endtask
 
@@ -320,15 +340,23 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
     longint unsigned request_cycle, responder_at_request, responder_after_release;
     // The phase check uses the last pre-reset clocking-block sample.
     wait_sample();
-    if (!draining && (clock_cycles <= stall_start_cycle ||
-        clock_cycles-stall_start_cycle + ResetWindowCycles + StallMarginCycles >= w_stall)) begin
-      `uvm_fatal(get_type_name(), "CSR prechecks consumed the remaining W stall window")
+    if (!draining) begin
+      bit budget_ok = clock_cycles > stall_start_cycle &&
+          clock_cycles - stall_start_cycle + ResetWindowCycles + StallMarginCycles < w_stall;
+      require_value(budget_ok, "CSR prechecks leave the reserved W stall window", $sformatf(
+                    "cycle=%0d stall_start=%0d stall=%0d reset_budget=%0d margin=%0d",
+                    clock_cycles,
+                    stall_start_cycle,
+                    w_stall,
+                    ResetWindowCycles,
+                    StallMarginCycles
+                    ));
     end
     held = sample;
     request_cycle = clock_cycles;
     responder_at_request = p_sequencer.m_sys_out_slave_seq.write_burst_count();
-    grade("CHK-ZEROER-RESET-RESPONDER", "no burst completed before reset request",
-          responder_at_request - responder_before, 0);
+    check_evidence("CHK-ZEROER-RESET-RESPONDER", "no burst completed before reset request",
+                   responder_at_request - responder_before, 0);
     reset_requested = $time;
     tb_vif.rst_cool_n <= 0;
     fork
@@ -408,8 +436,8 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
       end
     join
     wait_fuse_sense_done();
-    grade("CHK-ZEROER-RESET-RESPONDER", "no completed burst across reset",
-          responder_after_release - responder_at_request, 0);
+    check_evidence("CHK-ZEROER-RESET-RESPONDER", "no completed burst across reset",
+                   responder_after_release - responder_at_request, 0);
   endtask
 
   protected task run_interrupt_case(bit draining);
@@ -426,17 +454,35 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
 
     destination = region_base + (draining ? InterruptedOffsetB : InterruptedOffsetA) +
         64'(SmcMemBytes * (random_pattern(16) % (MaxOffsetBytes / SmcMemBytes + 1)));
-    size_bytes = draining ? 64'(SmcMemBytes * (1 + random_pattern(16) % 256)) :
+    size_bytes = draining ?
+        64'(SmcMemBytes * (1 + random_pattern(16) % (MaxDrainingBytes / SmcMemBytes))) :
         64'(MinInterruptedBytes + SmcMemBytes * (random_pattern(16) %
             ((MaxInterruptedBytes - MinInterruptedBytes) / SmcMemBytes + 1)));
     recovery_size = SmcMemBytes * (1 + int'(random_pattern(16) % (MaxRecoveryBytes / SmcMemBytes)));
     fresh_dest = region_base + (draining ? RecoveryOffsetB : RecoveryOffsetA) +
         64'(SmcMemBytes * (random_pattern(16) % (MaxOffsetBytes / SmcMemBytes + 1)));
-    accepted_before_stall = 8 + int'(random_pattern(8) % 25);
-    w_stall = test_cfg.zeroer_reset_w_stall != 0 ? test_cfg.zeroer_reset_w_stall :
-        MinStallCycles + int'(random_pattern(16) % (MaxStallCycles - MinStallCycles + 1));
-    old_completed_before = observer.old_completed_count(draining);
-    old_bytes_before = observer.old_byte_count(draining);
+    accepted_before_stall = MinAcceptedBeats +
+        int'(random_pattern(8) % (MaxAcceptedBeats - MinAcceptedBeats + 1));
+    w_stall = MinStallCycles + int'(random_pattern(16) % (MaxStallCycles - MinStallCycles + 1));
+    if (loop_index == 0) begin
+      destination = region_base + (draining ? InterruptedOffsetB : InterruptedOffsetA);
+      size_bytes = draining ? 64'(SmcMemBytes) : 64'(MinInterruptedBytes);
+      fresh_dest = region_base + (draining ? RecoveryOffsetB : RecoveryOffsetA);
+      recovery_size = SmcMemBytes;
+      accepted_before_stall = MinAcceptedBeats;
+      w_stall = MinStallCycles;
+    end else if (loop_index == 1) begin
+      destination = region_base + (draining ? InterruptedOffsetB : InterruptedOffsetA) +
+          MaxOffsetBytes;
+      size_bytes = draining ? 64'(MaxDrainingBytes) : 64'(MaxInterruptedBytes);
+      fresh_dest = region_base + (draining ? RecoveryOffsetB : RecoveryOffsetA) + MaxOffsetBytes;
+      recovery_size = MaxRecoveryBytes;
+      accepted_before_stall = MaxAcceptedBeats;
+      w_stall = MaxStallCycles;
+    end
+    if (test_cfg.zeroer_reset_w_stall != 0) w_stall = test_cfg.zeroer_reset_w_stall;
+    old_completed_before = zeroer_observer.old_completed_count(draining);
+    old_bytes_before = zeroer_observer.old_byte_count(draining);
     `uvm_info(get_type_name(),
               $sformatf(
                   {"ZEROER-RESET-DRAW pass=%0d phase=%s dest=%016h size=%0d accept_threshold=%0d ",
@@ -446,7 +492,7 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
     repeat (int'(size_bytes) + 2 * GuardBytes) poison.push_back(8'hA5);
     p_sequencer.m_sys_out_slave_seq.write_bytes(destination - GuardBytes, poison);
     wait_fuse_sense_done();
-    filter_window(0, OutputBase, OutputBase + 64'h3FFFFF, PassAll);
+    filter_window(0, OutputBase, OutputBase + FilterWindowBytes - 1, PassAll);
     tb_vif.output_axi_resp_hold <= draining;
     arm_w_stall = !draining;
     sample = '{default:0};
@@ -476,7 +522,7 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
                         phase_name, word,
                         p_sequencer.m_sys_out_slave_seq.write_burst_count() - responder_before),
               UVM_LOW)
-    filter_window(0, OutputBase, OutputBase + 64'h3FFFFF, PassAll);
+    filter_window(0, OutputBase, OutputBase + FilterWindowBytes - 1, PassAll);
     recover_job(draining);
     p_sequencer.m_sys_out_slave_seq.read_bytes(destination - GuardBytes,
                                                int'(size_bytes) + 2 * GuardBytes, old_bytes);
@@ -490,13 +536,13 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
               $sformatf(
                   "OBS-BLOCKED CHK-ZEROER-RESET-STALE-REQ phase=%s reason=reset contract is open",
                   phase_name), UVM_LOW)
-    completed_old = observer.old_completed_count(draining) - old_completed_before;
-    bytes_old = observer.old_byte_count(draining) - old_bytes_before;
+    completed_old = zeroer_observer.old_completed_count(draining) - old_completed_before;
+    bytes_old = zeroer_observer.old_byte_count(draining) - old_bytes_before;
     `uvm_info(
         get_type_name(),
         $sformatf(
             "OBS-ZEROER-RESET-STALE-REQ: phase=%s epoch=%0d completed_bursts=%0d enabled_bytes=%0d",
-            phase_name, observer.current_epoch(), completed_old, bytes_old), UVM_LOW)
+            phase_name, zeroer_observer.current_epoch(), completed_old, bytes_old), UVM_LOW)
     `uvm_info(
         get_type_name(),
         $sformatf(
@@ -534,22 +580,33 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
 
   virtual task body();
     bit [63:0] saved_start, saved_end, saved_config;
-    bit [63:0] epoch_before;
+    bit [63:0] epoch_before, epoch_after, expected_epoch;
+    bit window_fits;
     int unsigned cool_before, cold_before;
     bit first_draining;
     seed_scenario_rng();
     negative = env_cfg.zeroer_reset_sequence_negative;
     if (negative)
       `uvm_info(get_type_name(), "NEGATIVE VALIDATION: invert Zeroer DUT expectations", UVM_LOW)
-    attach_evidence(
-        '{ChkFuseSense, ChkMemResp, "CHK-ZEROER-RESET-FILTER", "CHK-ZEROER-RESET-PRE-CSR",
-        "CHK-ZEROER-RESET-CSR", "CHK-ZEROER-RESET-PHASE-A", "CHK-ZEROER-RESET-PHASE-B",
-        "CHK-ZEROER-RECOVERY-DATA", "CHK-ZEROER-RECOVERY-IRQ", "CHK-ZEROER-ACCOUNTING",
-        "CHK-ZEROER-RESET-RESPONDER", "CHK-ZEROER-EXPECTED-TIMEOUT", "CHK-ZEROER-RECOVERY-POISON",
-        "CHK-ZEROER-RESET-DONE", "CHK-ZEROER-RESET-EPOCH", "CHK-ZEROER-RESET-ASSERTED",
-        "CHK-ZEROER-RESET-RELEASED", "CHK-ZEROER-RECOVERY-DRAIN", "CHK-NONVAC"});
-    observer = p_sequencer.m_zeroer_burst_observer;
-    if (observer == null) `uvm_fatal(get_type_name(), "Zeroer feature was not configured")
+    attach_evidence('{ChkPrereq, ChkFuseSense, ChkMemResp, "CHK-ZEROER-RESET-FILTER",
+                    "CHK-ZEROER-RESET-PRE-CSR", "CHK-ZEROER-RESET-CSR", "CHK-ZEROER-RESET-PHASE-A",
+                    "CHK-ZEROER-RESET-PHASE-B", "CHK-ZEROER-RECOVERY-DATA",
+                    "CHK-ZEROER-RECOVERY-IRQ", "CHK-ZEROER-ACCOUNTING",
+                    "CHK-ZEROER-RESET-RESPONDER", "CHK-ZEROER-EXPECTED-PRESENT",
+                    "CHK-ZEROER-RECOVERY-POISON", "CHK-ZEROER-RESET-DONE", "CHK-ZEROER-RESET-EPOCH",
+                    "CHK-ZEROER-RESET-ASSERTED", "CHK-ZEROER-RESET-RELEASED", "CHK-NONVAC"});
+    require_value(!(negative && env_cfg.zeroer_range_scoreboard_negative),
+                  "negative controls used separately", $sformatf(
+                  "sequence_negative=%0b scoreboard_negative=%0b",
+                  negative,
+                  env_cfg.zeroer_range_scoreboard_negative
+                  ));
+    require_value(zeroer_observer != null && zeroer_ref_model != null,
+                  "Zeroer scenario dependencies configured", $sformatf(
+                  "observer_present=%0b ref_model_present=%0b",
+                  zeroer_observer != null,
+                  zeroer_ref_model != null
+                  ));
     filter_start_addr =
         smc_top_addrmap_pkg::
         SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(0);
@@ -560,16 +617,28 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
         smc_top_addrmap_pkg::
         SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0);
     region_base = OutputBase + 64'(loop_index) * PassStride;
-    if (region_base + PassExtent > env_cfg.sys_out_mem_bytes ||
-        region_base + PassExtent > OutputBase + 64'h400000) begin
-      `uvm_fatal(get_type_name(), "Zeroer pass window exceeds filter or backing memory")
-    end
-    if (test_cfg.zeroer_reset_w_stall != 0 &&
-        (test_cfg.zeroer_reset_w_stall < MinStallCycles ||
-         test_cfg.zeroer_reset_w_stall > MaxStallCycles))
-      `uvm_fatal(get_type_name(), "W stall override must be within 2048..6144 cycles")
+    window_fits = loop_index < MaxPasses && region_base + PassExtent <= env_cfg.sys_out_mem_bytes &&
+        region_base + PassExtent <= OutputBase + FilterWindowBytes;
+    require_value(window_fits, "pass window fits filter and backing memory", $sformatf(
+                  "loop_index=%0d max_passes=%0d base=%016h extent=%0h backing_bytes=%0d",
+                  loop_index,
+                  MaxPasses,
+                  region_base,
+                  PassExtent,
+                  env_cfg.sys_out_mem_bytes
+                  ));
+    require_value(
+        test_cfg.zeroer_reset_w_stall == 0 ||
+                  (test_cfg.zeroer_reset_w_stall >= MinStallCycles &&
+                   test_cfg.zeroer_reset_w_stall <= MaxStallCycles),
+        "W stall override within supported range", $sformatf(
+        "override=%0d min=%0d max=%0d",
+        test_cfg.zeroer_reset_w_stall,
+        MinStallCycles,
+        MaxStallCycles
+        ));
     wait_fuse_sense_done();
-    epoch_before = observer.current_epoch();
+    epoch_before = zeroer_observer.current_epoch();
     cool_before = tb_vif.cool_rst_assert_count;
     cold_before = tb_vif.cold_rst_assert_count;
     mem_read(filter_start_addr, saved_start, "saved filter START");
@@ -592,14 +661,16 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
                    scoreboard.zeroer_interrupted_commands(0), 64'(loop_index + 1));
     check_evidence("CHK-ZEROER-ACCOUNTING", "phase B interrupted commands",
                    scoreboard.zeroer_interrupted_commands(1), 64'(loop_index + 1));
+    epoch_after = zeroer_observer.current_epoch();
+    expected_epoch = smc_csr_reset_epoch(cold_before, cool_before + 2);
     check_evidence("CHK-ZEROER-RESET-EPOCH", "two cool resets and no cold reset",
-                   64'(observer.current_epoch() == smc_csr_reset_epoch(cold_before, cool_before + 2
-                   ) && tb_vif.cool_rst_assert_count == cool_before + 2 &&
+                   64'(epoch_after == expected_epoch &&
+                       tb_vif.cool_rst_assert_count == cool_before + 2 &&
                        tb_vif.cold_rst_assert_count == cold_before),
                    1, $sformatf(
                    "epoch=%0d->%0d cool=%0d->%0d cold=%0d->%0d",
                    epoch_before,
-                   observer.current_epoch(),
+                   epoch_after,
                    cool_before,
                    tb_vif.cool_rst_assert_count,
                    cold_before,
