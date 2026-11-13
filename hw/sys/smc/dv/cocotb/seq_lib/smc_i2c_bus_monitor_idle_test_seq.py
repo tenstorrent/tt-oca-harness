@@ -21,14 +21,21 @@ Three legs per instance:
   exit is witnessed twice: with the cleared interrupt staying clear through a
   hold as long as the park that raised it (SCL held low, or the bus released
   after the STOP), and with a further park raising it again, which a counter
-  that never left the idling state cannot do once cleared. `TIMING4.T_BUF` is
-  programmed long for this leaf so the post-STOP window is wide enough to
-  drive into rather than a handful of cycles.
+  that never left the idling state cannot do once cleared.
 * **Enable with multi-controller monitoring** -- the monitor enters the idling
   state directly when it is enabled with `CTRL.MULTI_CONTROLLER_MONITOR_EN`
   set, which is the only way to reach it without the bus being busy first.
   Here the bus is quiet throughout, so the timeout can only have been counted
   in that state.
+* **Initial Bus Busy** -- `i2c.rdl` states that a `0`->`1` of
+  `MULTI_CONTROLLER_MONITOR_EN` with both roles clear starts the monitor in
+  the Bus Busy state, and that `HOST_TIMEOUT_CTRL` must be nonzero for it to
+  reach Bus Free. The instance is enabled that way with `HOST_TIMEOUT_CTRL` at
+  0, then given the controller role and a queued write: no START may appear
+  on the quiet bus within twice the value the control uses. Enabled again
+  with `HOST_TIMEOUT_CTRL.VAL` nonzero, the same queued write starts no
+  earlier than `VAL` peripheral clocks after the enable and within a bound
+  past it.
 """
 
 from __future__ import annotations
@@ -40,19 +47,27 @@ from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_i2c_field_masks import (
     I2C_ACQ_SIGNAL_NONE,
+    I2C_CONTROLLER_EVENTS_ALL,
     I2C_CTRL_ACQ_START_STOP_EN,
+    I2C_CTRL_ENABLEHOST,
     I2C_CTRL_ENABLETARGET,
     I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN,
+    I2C_FDATA_START,
+    I2C_FDATA_STOP,
     I2C_FIFO_CTRL_ACQRST,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_HOST_FIFO_STATUS_FMTLVL,
     I2C_INTR_HOST_TIMEOUT,
     I2C_STATUS_ACQEMPTY,
+    I2C_STATUS_HOSTIDLE,
     I2C_STATUS_TARGETIDLE,
+    I2C_WRAP_CTRL_HOST,
     I2C_WRAP_CTRL_TARGET,
     acq_abyte,
     acq_signal,
 )
+from .smc_i2c_master_target_test_seq import _fdata, _i2c_u32
 from .smc_i2c_protocol_vip import SmcI2cMasterVip
 from .smc_i2c_slot_utils import drive_to_slot, park_scl_high, release_bus
 from .smc_i2c_target_smbus_test_seq import (
@@ -63,6 +78,7 @@ from .smc_i2c_target_smbus_test_seq import (
     _pack_timing3,
     _pack_timing4,
 )
+from .smc_i2c_wire_timing_test_seq import WireRecorder
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
@@ -75,15 +91,21 @@ VIP_SPEED = 2_000_000
 # Inactive timeout in core clock cycles, and a park comfortably longer than it.
 HOST_TIMEOUT_VAL = 1000
 PARK_NS = 30_000
-# Bus-free time after a STOP, also in core clock cycles. Programmed long so the
-# window after a STOP is wide enough for the bench to drive the bus low again
-# inside it; the default few cycles is shorter than a cocotb round trip.
-T_BUF_LONG = 3000
 
 POLL_CYCLES = 200
 POLL_LIMIT = 200
 DRAIN_LIMIT = 400
 SETTLE_CYCLES = 20
+
+#: Idle count the initial-busy control programs, in core clock cycles; the
+#: zero-value leg waits twice that for a START that must not come, and the
+#: control's START is bounded past the count by the two register writes that
+#: follow the enable and the controller's own START setup.
+INIT_BUSY_VAL = 6000
+NO_START_CYCLES = 2 * INIT_BUSY_VAL
+START_BOUND_CYCLES = 3000
+START_POLL_CYCLES = 64
+FDATA_NAKOK = _i2c_u32("I2C__FDATA__NAKOK_bm")
 
 
 class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
@@ -92,6 +114,7 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_i2c_bus_monitor_idle_test_seq") -> None:
         super().__init__(name)
         self.idle_timeouts: dict[int, int] = {}
+        self.init_busy: dict[int, tuple[int, int, int]] = {}
 
     @staticmethod
     def _addr(symbol: str, idx: int) -> int:
@@ -107,7 +130,7 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
             ("TIMING1", _pack_timing1(2, 2)),
             ("TIMING2", _pack_timing2(5, 4)),
             ("TIMING3", _pack_timing3(2, 5)),
-            ("TIMING4", _pack_timing4(4, T_BUF_LONG)),
+            ("TIMING4", _pack_timing4(4, 5)),
         ):
             await self.csr_write(f"I2C{idx}_{reg}", self._addr(reg, idx), value)
 
@@ -270,17 +293,12 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
             f"while the bus stayed free for {PARK_NS} ns after a STOP",
         )
 
-        # A further park raises it once more, and a STOP out of that one is
-        # followed by the bus pulled low inside the bus-free window. T_BUF is
-        # long for this leaf, so that window is wide enough to drive into.
+        # A further park raises it once more.
         await self._reset_fifos(idx)
         await drive_to_slot(vip, TARGET_ADDR[idx], SWEEP_BYTE, "data", 3)
         await park_scl_high(vip, PARK_NS)
         await self._expect_timeout(idx, f"I2C{idx}_BM_STOP_REPARK", "on a park following the STOP")
         await vip.send_stop()
-        vip._pull_scl(True)
-        vip._pull_sda(True)
-        await Timer(vip._bit_ns, unit="ns")
         await release_bus(vip)
         await self._wait_target_idle(idx, f"I2C{idx}_BM_RESUME")
         await self._clear_intr(idx)
@@ -289,13 +307,11 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
             "CHK-I2C%d-BUSMON-RESUME: the monitor left the idling state both ways -- after a "
             "park raised HOST_TIMEOUT, SCL held low for %d ns kept the cleared interrupt "
             "clear and a second park raised it again; after a STOP, the released bus held for "
-            "%d ns kept it clear and a further park raised it again, whose STOP was followed "
-            "by the bus pulled low inside the %d-cycle bus-free window -- and the instance "
-            "ran a clean write after",
+            "%d ns kept it clear and a further park raised it again -- and the instance ran a "
+            "clean write after",
             idx,
             PARK_NS,
             PARK_NS,
-            T_BUF_LONG,
         )
 
     # --- leg: enable with multi-controller monitoring ---------------------
@@ -312,27 +328,139 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
         """
         await self.csr_write(f"I2C{idx}_CTRL_OFF_MC", self._addr("CTRL", idx), 0)
         await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
-        await self.csr_write(
-            f"I2C{idx}_CTRL_MC",
-            self._addr("CTRL", idx),
+        ctrl_mc = (
             I2C_CTRL_ENABLETARGET
             | I2C_CTRL_ACQ_START_STOP_EN
-            | I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN,
+            | I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN
         )
+        await self.csr_write(f"I2C{idx}_CTRL_MC", self._addr("CTRL", idx), ctrl_mc)
+        await self.csr_read(f"I2C{idx}_CTRL_MC_RB", self._addr("CTRL", idx), expected=ctrl_mc)
         await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        await self._clean_transaction(vip, idx, f"I2C{idx}_BM_MC_RECOVER")
         await self.csr_write(
             f"I2C{idx}_CTRL_PLAIN",
             self._addr("CTRL", idx),
             I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN,
         )
-        await self._clean_transaction(vip, idx, f"I2C{idx}_BM_MC_RECOVER")
         cocotb.log.info(
             "CHK-I2C%d-BUSMON-MULTI-ENABLE: the instance was enabled with "
-            "CTRL.MULTI_CONTROLLER_MONITOR_EN set on a quiet bus and then ran a clean write "
-            "that was acquired byte for byte; the monitor's entry into its idling state on "
-            "that enable is stimulus here, with no register that reports it",
+            "CTRL.MULTI_CONTROLLER_MONITOR_EN set on a quiet bus (CTRL read back 0x%08x) and, "
+            "with the bit still set, ran a clean write that was acquired byte for byte; the "
+            "monitor's entry into its idling state on that enable is stimulus here, with no "
+            "register that reports it",
             idx,
+            ctrl_mc,
         )
+
+    # --- leg: the monitor starts busy, and stays busy with VAL at 0 --------
+    async def _controller_monitor_enable(
+        self, idx: int, label: str, val: int, rec: WireRecorder
+    ) -> tuple[int, int]:
+        """Enable the monitor with both roles clear, then the controller role and one write.
+
+        Returns the recorder cycle before and after the enabling write, which
+        bracket the instant the monitor started counting.
+        """
+        await self.csr_write(f"{label}_CTRL_OFF", self._addr("CTRL", idx), 0)
+        await self.csr_write(f"{label}_HOST_TIMEOUT", self._addr("HOST_TIMEOUT_CTRL", idx), val)
+        await self.csr_read(
+            f"{label}_HOST_TIMEOUT_RB", self._addr("HOST_TIMEOUT_CTRL", idx), expected=val
+        )
+        await self.csr_write(
+            f"{label}_FIFO_RST", self._addr("FIFO_CTRL", idx), I2C_FIFO_CTRL_RXRST_FMTRST
+        )
+        await self.csr_write(
+            f"{label}_EVENTS_CLR", self._addr("CONTROLLER_EVENTS", idx), I2C_CONTROLLER_EVENTS_ALL
+        )
+        before = rec.cycle
+        await self.csr_write(
+            f"{label}_CTRL_MONITOR", self._addr("CTRL", idx), I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN
+        )
+        after = rec.cycle
+        await self.csr_write(
+            f"{label}_CTRL_HOST",
+            self._addr("CTRL", idx),
+            I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN | I2C_CTRL_ENABLEHOST,
+        )
+        await self.csr_write(
+            f"{label}_FDATA",
+            self._addr("FDATA", idx),
+            _fdata(TARGET_ADDR[idx] << 1, I2C_FDATA_START | I2C_FDATA_STOP | FDATA_NAKOK),
+        )
+        return before, after
+
+    async def _fmt_level(self, idx: int, label: str) -> int:
+        fifo = await self.csr_read(f"{label}_HOST_FIFO_STATUS", self._addr("HOST_FIFO_STATUS", idx))
+        return fifo & I2C_HOST_FIFO_STATUS_FMTLVL
+
+    async def _init_busy(self, idx: int) -> None:
+        label = f"I2C{idx}_BM_INIT"
+        await self.csr_write(f"{label}_WRAP_HOST", self._wrap_addr(idx), I2C_WRAP_CTRL_HOST)
+        await self._program_timing(idx)
+        rec = WireRecorder()
+        rec.start()
+
+        # VAL 0: the monitor starts busy and never counts out to free, so the
+        # queued write stays in the FMT FIFO and the bus sees no START.
+        await self._controller_monitor_enable(idx, f"{label}_ZERO", 0, rec)
+        await ClockCycles(cocotb.top.clk_periph_i, NO_START_CYCLES)
+        zero_level = await self._fmt_level(idx, f"{label}_ZERO")
+        assert rec.starts == 0 and rec.stops == 0, (
+            f"I2C{idx}: {rec.starts} START and {rec.stops} STOP on the pads within "
+            f"{NO_START_CYCLES} clk_periph_i cycles of a queued write with the monitor enabled "
+            f"first and HOST_TIMEOUT_CTRL.VAL=0; i2c.rdl starts the monitor in Bus Busy and "
+            f"needs a nonzero VAL to leave it"
+        )
+        assert zero_level == 1, (
+            f"I2C{idx}: HOST_FIFO_STATUS.FMTLVL={zero_level} while the write waits on a bus the "
+            f"monitor reports busy; the queued entry stays in the FMT FIFO"
+        )
+        await self.csr_write(f"{label}_ZERO_CTRL_OFF", self._addr("CTRL", idx), 0)
+        await self.csr_write(
+            f"{label}_ZERO_FIFO_RST", self._addr("FIFO_CTRL", idx), I2C_FIFO_CTRL_RXRST_FMTRST
+        )
+        dropped = await self._fmt_level(idx, f"{label}_ZERO_DROP")
+        assert dropped == 0, f"I2C{idx}: FMTLVL={dropped} after FMTRST"
+
+        # VAL nonzero: the same enable counts VAL idle cycles out and the
+        # queued write starts no earlier than VAL after it, and soon after.
+        before, after = await self._controller_monitor_enable(
+            idx, f"{label}_VAL", INIT_BUSY_VAL, rec
+        )
+        bound = after + INIT_BUSY_VAL + START_BOUND_CYCLES
+        while rec.starts == 0 and rec.cycle < bound:
+            await ClockCycles(cocotb.top.clk_periph_i, START_POLL_CYCLES)
+        assert rec.starts >= 1, (
+            f"I2C{idx}: no START within {INIT_BUSY_VAL + START_BOUND_CYCLES} clk_periph_i cycles "
+            f"of enabling the monitor with HOST_TIMEOUT_CTRL.VAL={INIT_BUSY_VAL}; {rec.state()}"
+        )
+        start = next(t for t, line, level in rec.events if line == "sda" and level == 0)
+        assert start - before >= INIT_BUSY_VAL, (
+            f"I2C{idx}: the START came {start - before} clk_periph_i cycles after the enabling "
+            f"write was issued, before HOST_TIMEOUT_CTRL.VAL={INIT_BUSY_VAL} idle cycles were "
+            f"counted out"
+        )
+        while rec.stops == 0 and rec.cycle < bound + START_BOUND_CYCLES:
+            await ClockCycles(cocotb.top.clk_periph_i, START_POLL_CYCLES)
+        assert rec.stops == 1 and rec.starts == 1, (
+            f"I2C{idx}: {rec.starts} START and {rec.stops} STOP after the write; {rec.state()}"
+        )
+        status = 0
+        for _ in range(POLL_LIMIT):
+            status = await self.csr_read(f"{label}_VAL_STATUS", self._addr("STATUS", idx))
+            if status & I2C_STATUS_HOSTIDLE:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+        assert status & I2C_STATUS_HOSTIDLE, f"I2C{idx}: HOSTIDLE never set (STATUS=0x{status:08x})"
+        rec.stop()
+        await self.csr_write(f"{label}_VAL_CTRL_OFF", self._addr("CTRL", idx), 0)
+        await self.csr_write(
+            f"{label}_VAL_EVENTS_CLR",
+            self._addr("CONTROLLER_EVENTS", idx),
+            I2C_CONTROLLER_EVENTS_ALL,
+        )
+        await self.csr_write(f"{label}_WRAP_OFF", self._wrap_addr(idx), 0)
+        self.init_busy[idx] = (start - before, start - after, zero_level)
 
     async def body(self) -> None:
         assert "smc_i2c_shared_bus" in cocotb.plusargs, (
@@ -352,4 +480,19 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
             await self._idle_timeout(vip, idx)
             await self._resume_and_stop(vip, idx)
             await self._multi_controller_enable(vip, idx)
+            await self._init_busy(idx)
         await self._disconnect_all()
+        cocotb.log.info(
+            "CHK-I2C-BUSMON-INIT-BUSY: on each of I2C%s, enabled with "
+            "CTRL.MULTI_CONTROLLER_MONITOR_EN alone and then given the controller role and a "
+            "queued write, HOST_TIMEOUT_CTRL.VAL=0 kept the bus free of any START for %d "
+            "clk_periph_i cycles with the entry still in the FMT FIFO, and VAL=%d let the write "
+            "start between %d and %d cycles after the enabling write (measured per instance, "
+            "from before and from after that write: %s)",
+            ", I2C".join(str(i) for i in sorted(self.init_busy)),
+            NO_START_CYCLES,
+            INIT_BUSY_VAL,
+            INIT_BUSY_VAL,
+            INIT_BUSY_VAL + START_BOUND_CYCLES,
+            {f"I2C{i}": v[:2] for i, v in sorted(self.init_busy.items())},
+        )

@@ -5,7 +5,7 @@
 //
 // Instantiates one gpio interface per pad behind an AXI-Lite demux whose error target
 // returns DECERR with data 0xBADCAB1E outside the GPIO window. Assigns fixed pads to SPI,
-// UART, I3C, I2C, AVSBus, the system timer, and the isolate-request, boot-stall and
+// UART, I3C, I2C, AVSBus, PWM, the system timer, and the isolate-request, boot-stall and
 // cool-reset pins; each function's enable drives the pad's LSIO select, which the gpio
 // registers can disable. The pad mapping is combinational.
 
@@ -110,7 +110,7 @@ module smc_padring #(
                                                             // instance's SCL and SDA
                                                             // pads, active-high:
                                                             // GPIO 27-28 for instance 0,
-                                                            // 63-64 for instance 1, and
+                                                            // 65-66 for instance 1, and
                                                             // from 29 upward for the
                                                             // rest.
   output logic [smc_config_pkg::NumI3c-1:0] i3c_scl_o,   // SCL sampled from each I3C
@@ -180,10 +180,16 @@ module smc_padring #(
                                         // GPIO 51.
 
   input  logic rst_cool_ni,             // Cool reset for other chiplets, active-low;
-                                        // pulls GPIO 62 low while asserted and leaves it
+                                        // pulls GPIO 64 low while asserted and leaves it
                                         // undriven otherwise.
   output logic isolate_req_pin_o,       // Isolation request sampled from GPIO 53, not
                                         // synchronized to clk_i.
+
+  input  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_i,   // PWM channel outputs; channel
+                                                            // i is driven onto GPIO 59+i.
+  input  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_pad_en_i,   // Selects GPIO 59+i for
+                                                                   // PWM channel i,
+                                                                   // active-high.
 
   output logic [smc_pkg::NumGpioWraps-1:0] lsio_interface_select_o,    // LSIO select per pad,
                                                                        // high where a
@@ -293,6 +299,9 @@ module smc_padring #(
   // LSIO Interface //
   ////////////////////
 
+  localparam int unsigned PwmPadBase = 59;
+  `OCAH_ASSERT_STATIC(PwmPadsFit_A, PwmPadBase + smc_config_pkg::NumPwmOutputs <= 63)
+
   logic [smc_pkg::NumGpioWraps-1:0] lsio_core2pad_en_n;
   logic [smc_pkg::NumGpioWraps-1:0] lsio_core2pad_data;
   logic [smc_pkg::NumGpioWraps-1:0] lsio_pad2core_en_n;
@@ -367,7 +376,7 @@ module smc_padring #(
     lsio_pad2core_en_n[28]      = smc_padring_pkg::ENABLED;
     i3c_sda_o[0]                = lsio_pad2core_data[28];
 
-    // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[63,64])
+    // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[65,66])
     for (integer i = 0; i < (smc_config_pkg::NumI3c - 2); i = i + 1) begin : gen_i3c_connections
       lsio_interface_select_o[29+(2*i)] = i3c_enable_i[2+i];
       lsio_core2pad_en_n[29+(2*i)]      = i3c_scl_oen_i[2+i];
@@ -384,17 +393,17 @@ module smc_padring #(
 
     // I3C[1] fully unbonded (both SCL and SDA)
 
-    lsio_interface_select_o[63] = i3c_enable_i[1];
-    lsio_core2pad_en_n[63]      = i3c_scl_oen_i[1];
-    lsio_core2pad_data[63]      = i3c_scl_i[1];
-    lsio_pad2core_en_n[63]      = smc_padring_pkg::ENABLED;
-    i3c_scl_o[1]                = lsio_pad2core_data[63];
+    lsio_interface_select_o[65] = i3c_enable_i[1];
+    lsio_core2pad_en_n[65]      = i3c_scl_oen_i[1];
+    lsio_core2pad_data[65]      = i3c_scl_i[1];
+    lsio_pad2core_en_n[65]      = smc_padring_pkg::ENABLED;
+    i3c_scl_o[1]                = lsio_pad2core_data[65];
 
-    lsio_interface_select_o[64] = i3c_enable_i[1];
-    lsio_core2pad_en_n[64]      = ~(~i3c_sda_oen_i[1] | i3c_sda_pp_i[1]);
-    lsio_core2pad_data[64]      = i3c_sda_i[1];
-    lsio_pad2core_en_n[64]      = smc_padring_pkg::ENABLED;
-    i3c_sda_o[1]                = lsio_pad2core_data[64];
+    lsio_interface_select_o[66] = i3c_enable_i[1];
+    lsio_core2pad_en_n[66]      = ~(~i3c_sda_oen_i[1] | i3c_sda_pp_i[1]);
+    lsio_core2pad_data[66]      = i3c_sda_i[1];
+    lsio_pad2core_en_n[66]      = smc_padring_pkg::ENABLED;
+    i3c_sda_o[1]                = lsio_pad2core_data[66];
 
     // I2C
     for (integer i = 0; i < smc_config_pkg::NumI2c; i = i + 1) begin : gen_i2c_connections
@@ -513,17 +522,25 @@ module smc_padring #(
     lsio_core2pad_data[58]      = '0;
     lsio_pad2core_en_n[58]      = smc_padring_pkg::DISABLED;
 
+    // PWM
+    for (int unsigned i = 0; i < smc_config_pkg::NumPwmOutputs; i++) begin : gen_pwm_connections
+      lsio_interface_select_o[PwmPadBase+i] = pwm_pad_en_i[i];
+      lsio_core2pad_en_n[PwmPadBase+i]      = smc_padring_pkg::ENABLED;
+      lsio_core2pad_data[PwmPadBase+i]      = pwm_i[i];
+      lsio_pad2core_en_n[PwmPadBase+i]      = smc_padring_pkg::DISABLED;
+    end
+
     // Cool Reset In
-    lsio_interface_select_o[61] = '0;
-    lsio_core2pad_en_n[61]      = smc_padring_pkg::DISABLED;
-    lsio_core2pad_data[61]      = '0;
-    lsio_pad2core_en_n[61]      = smc_padring_pkg::DISABLED;
+    lsio_interface_select_o[63] = '0;
+    lsio_core2pad_en_n[63]      = smc_padring_pkg::DISABLED;
+    lsio_core2pad_data[63]      = '0;
+    lsio_pad2core_en_n[63]      = smc_padring_pkg::DISABLED;
 
     // Cool Reset Out
-    lsio_interface_select_o[62] = 1'b1;
-    lsio_core2pad_en_n[62]      = rst_cool_ni;
-    lsio_core2pad_data[62]      = 1'b0;
-    lsio_pad2core_en_n[62]      = smc_padring_pkg::DISABLED;
+    lsio_interface_select_o[64] = 1'b1;
+    lsio_core2pad_en_n[64]      = rst_cool_ni;
+    lsio_core2pad_data[64]      = 1'b0;
+    lsio_pad2core_en_n[64]      = smc_padring_pkg::DISABLED;
 
   end
 
@@ -540,14 +557,15 @@ module smc_padring #(
     // Assertion to protect against truncation on casts
     `OCAH_ASSERT_STATIC(
         GpioIntfSizeFits_A,
-        smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::AddrWidth))
+        smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::AddrWidth))
 
     // GPIO interface
     gpio #(
       .MAX_TRANS                  (MAX_TRANS),
       .INPUT_BY_DEFAULT           (InputByDefault),
 
-      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE))
+      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::AddrWidth'(
+          smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE))
     ) u_gpio_interface (
       .clk_i                  (clk_i),
       .rst_primary_ni         (rst_primary_ni),

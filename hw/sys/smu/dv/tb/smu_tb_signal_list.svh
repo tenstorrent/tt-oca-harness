@@ -78,6 +78,15 @@
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_aw_count_o)
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_ar_count_o)
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_b_count_o)
+// The same port's request VALIDs, sampled on every clock so a test can tell
+// a closed bridge from a tap that never resolves.
+`SMU_TB_OUT(logic, dtp_smc_dbg_aw_valid_o)
+`SMU_TB_OUT(logic, dtp_smc_dbg_w_valid_o)
+`SMU_TB_OUT(logic, dtp_smc_dbg_ar_valid_o)
+// The same port's AW and AR AxCACHE, the value the bridge issues; read while
+// the matching VALID is high.
+`SMU_TB_OUT(logic [3:0], dtp_smc_dbg_aw_cache_o)
+`SMU_TB_OUT(logic [3:0], dtp_smc_dbg_ar_cache_o)
 `SMU_TB_IN(logic, clk_ref_i)
 `SMU_TB_IN(logic, clk_periph_i)
 // The clocks pll_wrap delivers to the SMU: the model's own outputs, so a
@@ -152,6 +161,10 @@
 // write" from "the SMU crossbar did not route it to ext_out", which are the
 // two ways a firmware mailbox handshake goes silent.
 `SMU_TB_OUT(logic [31:0], sep_smn_out_aw_count_o)
+`SMU_TB_OUT(logic [31:0], sep_smn_out_ar_count_o)
+// SMC -> crossbar (smc_out) AW and AR handshakes at the crossbar's input port.
+`SMU_TB_OUT(logic [31:0], smc_smn_out_aw_count_o)
+`SMU_TB_OUT(logic [31:0], smc_smn_out_ar_count_o)
 `SMU_TB_OUT(logic [55:0], sep_xbar_global_base_o)
 `SMU_TB_OUT(logic [31:0], sep_xbar_region_size_o)
 // Crossbar -> SEP inbound AW. Separates "the crossbar never routed the
@@ -185,6 +198,13 @@
 `SMU_TB_OUT(logic [31:0], sep_csr_errslv_aw_count_o)  // ...or was classified ERR_SLV
 `SMU_TB_OUT(logic [31:0], smu_axi_out_write_count_o)
 `SMU_TB_OUT(logic [31:0], smu_axi_out_read_count_o)
+// $bits of the ID and user fields of the smu AXI boundary ports, one byte per
+// channel. ID: [7:0] AW, [15:8] B, [23:16] R, [31:24] AR. User: [7:0] AW,
+// [15:8] W, [23:16] B, [31:24] R, [39:32] AR.
+`SMU_TB_OUT(logic [31:0], obs_smu_axi_in_id_widths_o)
+`SMU_TB_OUT(logic [31:0], obs_smu_axi_out_id_widths_o)
+`SMU_TB_OUT(logic [39:0], obs_smu_axi_in_user_widths_o)
+`SMU_TB_OUT(logic [39:0], obs_smu_axi_out_user_widths_o)
 // Outbound-boundary handshake split: write_count only moves on B, so it
 // cannot separate a stalled write from one the crossbar never routed here.
 // aw_valid says the beat was presented at the boundary; aw_ready says the
@@ -349,6 +369,8 @@
 `SMU_TB_OUT(logic, obs_xbar_rst_n_o)
 `SMU_TB_OUT(logic, obs_smc_tel_clk_o)
 `SMU_TB_OUT(logic, obs_sep_wdt_clk_o)
+// The SEP's smc_fuse_sense_done_i input, as the SMU wires it.
+`SMU_TB_OUT(logic, obs_sep_smc_fuse_sense_done_i_o)
 // SMC reset-controller power-good synchronizer output, and a sticky record of
 // it having been observed deasserted. Both come from inside u_dut; powergood_o
 // below is the input pin echoed back.
@@ -433,6 +455,9 @@
 `SMU_TB_IN(logic, tb_secure_tm_req)
 // Clears the SRAM auto-initialisation strap the scratch-RAM preload raises.
 `SMU_TB_IN(logic, tb_smc_sram_auto_init_restore)
+// FCOV graded-window gate. The owning leaf of a cov/sv covergroup that
+// samples only inside a graded window holds it 1 over that window. Idle 0.
+`SMU_TB_IN(logic, tb_fcov_gate)
 `SMU_TB_OUT(logic, tb_secure_tm)
 // Cross-trigger port pads. The DTP is the pad controller on all four
 // groups. CT_Req_out sits on an ocah_open_drain_bus shared wire, a private

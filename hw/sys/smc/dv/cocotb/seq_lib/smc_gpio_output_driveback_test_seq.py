@@ -20,13 +20,14 @@ DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit16     interface_enable  select register values to drive the pad
 
 After the wrap-0 leg, every GPIO interface except the bench-owned pads 27, 28
-and 51, the boot-stall pad 57 and the cool-reset-in pad 61 is walked alone
+and 51, the boot-stall pad 57 and the cool-reset-in pad 63 is walked alone
 with lsio_disable set: enable_rx_tx 01 (TX), 00, 11, then the reset word, each
 written and read back over SEP_IN before ``tb_core2pad_en_o``,
 ``tb_pad2core_en_o`` and ``tb_core2pad_o`` are sampled. Each interface's pad
 p_w is the one ``core2pad_en_o`` bit that differs between its TX and 00
 samples. The absolute enable levels and DATA_CTRL.pad2core are logged, not
-compared (SF-013). The AVS controller drives the data bits of pads 49 and 50
+compared; the pad enable polarity and pad2core under enable 11 are open. The
+AVS controller drives the data bits of pads 49 and 50
 (AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE resets to 0, so the AVS clock runs while the
 bus is idle); every other-pads compare logs those two data bits instead of
 comparing them and keeps their enables.
@@ -41,27 +42,30 @@ from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_pad_table import gpio_pad_count, pad_index
 from .smc_regblock_field_sweep_utils import reg_instances
 
-GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
-_CORE2PAD = 1 << 0
-_TX_ENABLE = 1 << 4  # enable_rx_tx = 2'b01
-_IF_ENABLE = 1 << 16  # interface_enable
+_CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
+# enable_rx_tx = 2'b01, TX enabled.
+_TX_ENABLE = 1 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
+_IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
+# clk_smc_i cycles the wrap-0 leg waits for the pad bus to reach the programmed state.
+_PAD_BOUND = 64
 
 OUT_DRIVE_HIGH = _IF_ENABLE | _TX_ENABLE | _CORE2PAD
 OUT_DRIVE_LOW = _IF_ENABLE | _TX_ENABLE
 OUT_DISABLE = 0
 
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 #: Interfaces left out of the walk, as the testcase contract names them.
 EXCLUDED_PADS = {
@@ -69,7 +73,7 @@ EXCLUDED_PADS = {
     28: "bench-owned",
     51: "bench-owned",
     57: "boot stall",
-    61: "cool reset in",
+    63: "cool reset in",
 }
 #: Pads whose core2pad_o data bit the AVS controller drives; the other-pads compares
 #: log it instead of comparing it, and keep comparing their enables.
@@ -81,8 +85,8 @@ TRANSITIONS = (
     ("BOTH-OFF", "RESTORE"),
     ("RESTORE", "RESET-WORD"),
 )
-#: Interfaces the testcase contract walks (0..64 minus the five above).
-WALKED_COUNT = 60
+#: Interfaces the testcase contract walks (0..66 minus the five above).
+WALKED_COUNT = 62
 #: (term, enable_rx_tx) for each write of one interface, in walk order.
 WALK_TERMS = (("TX", 0b01), ("BOTH-OFF", 0b00), ("RESTORE", 0b11), ("RESET-WORD", None))
 
@@ -127,6 +131,19 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         ch = bits[-1 - bit] if bit < len(bits) else "?"
         assert ch in "01", f"GPIO wrap0 pad[{bit}] {what} reads {ch!r}, not a driven 0/1"
 
+    async def _await_pad(self, dut, predicate, label: str) -> int:
+        """Per-cycle poll of (core2pad_en_o, core2pad_o) until ``predicate``; expiry raises."""
+        en = val = 0
+        for cycle in range(1, _PAD_BOUND + 1):
+            await ClockCycles(dut.clk_smc_i, 1)
+            en, val = self._en_vec(dut), self._val_vec(dut)
+            if predicate(en, val):
+                return cycle
+        raise AssertionError(
+            f"{label}: the pad bus did not reach the programmed state within {_PAD_BOUND} "
+            f"clk_smc_i cycles (last core2pad_en_o=0x{en:x} core2pad_o=0x{val:x})"
+        )
+
     async def _wrap0_leg(self) -> None:
         dut = cocotb.top
 
@@ -142,7 +159,13 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         # 1) Enable TX + drive value high. Exactly one output-enable bit (the
         #    pad owned by GPIO wrap 0) must newly assert, and its value = 1.
         await self.csr_write("GPIO0_TX_HIGH", GPIO0_DATA_CTRL, OUT_DRIVE_HIGH)
-        await ClockCycles(dut.clk_smc_i, 8)
+        await self._await_pad(
+            dut,
+            lambda en, val: (en & ~base_en & mask & val) != 0,
+            "GPIO0_TX_HIGH",
+        )
+        # A second enable rising up to _PAD_BOUND cycles after the owned pad is in the sample.
+        await ClockCycles(dut.clk_smc_i, _PAD_BOUND)
         newly_en = self._en_vec(dut) & (~base_en & mask)
         assert newly_en != 0, (
             "programming GPIO wrap0 as TX asserted no new pad output-enable "
@@ -161,7 +184,7 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
 
         # 2) Keep TX enabled, drive value low -> value clears, enable stays.
         await self.csr_write("GPIO0_TX_LOW", GPIO0_DATA_CTRL, OUT_DRIVE_LOW)
-        await ClockCycles(dut.clk_smc_i, 8)
+        await self._await_pad(dut, lambda en, val: (val & pad_bit) == 0, "GPIO0_TX_LOW")
         self._require_resolved(dut.tb_core2pad_en_o, pad_idx, "output-enable")
         self._require_resolved(dut.tb_core2pad_o, pad_idx, "value")
         en_low = self._en_vec(dut)
@@ -175,7 +198,7 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
 
         # 3) Disable the register interface -> pad output released.
         await self.csr_write("GPIO0_DISABLE", GPIO0_DATA_CTRL, OUT_DISABLE)
-        await ClockCycles(dut.clk_smc_i, 8)
+        await self._await_pad(dut, lambda en, val: (en & pad_bit) == 0, "GPIO0_DISABLE")
         self._require_resolved(dut.tb_core2pad_en_o, pad_idx, "output-enable")
         en_off = self._en_vec(dut)
         assert (en_off & pad_bit) == 0, (
@@ -426,7 +449,9 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
                 f"the integrator pad table puts {function} on pad {pad_index(function)}, not {q}"
             )
         walk = [w for w in range(count) if w not in EXCLUDED_PADS]
-        assert len(walk) == WALKED_COUNT, f"{len(walk)} interfaces to walk, contract says 60"
+        assert len(walk) == WALKED_COUNT, (
+            f"{len(walk)} interfaces to walk, contract says {WALKED_COUNT}"
+        )
         cocotb.log.info(
             "walk: %d interfaces of %d; excluded %s; words %s",
             len(walk),
@@ -482,7 +507,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
             "CHK-GPIO-PAD-TX-ENABLE: %d interfaces, %d distinct pads, en(TX)!=en(00) on p_w "
             "only, core2pad_o[p_w]=1 on all %d; no other pad's enable bit and no other "
             "pad's data bit outside 49/50 changed; measured core2pad_en_o[p_w] level under "
-            "TX: %d read 1, %d read 0 (SF-013); core2pad_o[49]/[50] logged, not compared: "
+            "TX: %d read 1, %d read 0 (open: the pad enable polarity and pad2core under enable "
+            "11); core2pad_o[49]/[50] logged, not compared: "
             "%s; w->p_w %s",
             n_walked,
             n_distinct,
@@ -504,7 +530,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-GPIO-PAD-RESTORE: %d/%d tx-en back to TX level, rx-en toggled, baseline after "
-            "reset word; pad2core logged (LINKED-ISSUE SF-013): %d read 1, %d read 0; "
+            "reset word; pad2core logged (LINKED-ISSUE: the pad enable polarity and pad2core "
+            "under enable 11): %d read 1, %d read 0; "
             "core2pad_o[49]/[50] logged, not compared: %s; pad2core per w %s",
             n_walked,
             n_walked,

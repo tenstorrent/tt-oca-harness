@@ -4,9 +4,9 @@
 
 Sources hw/ip/gpio/regs/gpio_intf.rdl (ACCESS_FILTER), integrator GPIO pad table.
 
-Instance 60 is the pad the integrator table reserves. Both requirement fields take every
-value 0..7 with both enables clear, then each enable bit is set and cleared with an access
-that satisfies the filter it arms.
+Instance 60 is the PWM[1] pad; with PWM CTRL.PAD_EN at its reset 0 the pad is register-controlled
+GPIO. Both requirement fields take every value 0..7 with both enables clear, then each enable bit
+is set and cleared with an access that satisfies the filter it arms.
 """
 
 from __future__ import annotations
@@ -20,14 +20,14 @@ from .smc_pad_table import pad_function
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
 _ACCESS_FILTER = (
-    "gpio_intf/ACCESS_FILTER",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM",
-    "GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/ACCESS_FILTER",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
 )
 
 _INSTANCE = 60
-_INSTANCE_FUNCTION = "Reserved"
+_INSTANCE_FUNCTION = "PWM[1]"
 _WR_EN = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__WRITE_FILTER_ENABLE_bm")
 _RD_EN = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__READ_FILTER_ENABLE_bm")
 _AW_BP = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_bp")

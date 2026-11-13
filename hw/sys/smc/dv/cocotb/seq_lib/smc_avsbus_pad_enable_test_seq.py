@@ -13,7 +13,7 @@ With AVS_GPIO_ENABLE cleared, DATA_CTRL.lsio_select is written alone on pads 49.
 (hw/ip/gpio/doc/architecture.adoc, priority 3 software-forced LSIO). The DATA_CTRL
 readback is compared on its RW fields; lsio_enable, pad2core and the pad enable and
 data levels are measured and printed, because whether the cleared field removes the
-hardware LSIO request on those pads is not specified (SF-015).
+hardware LSIO request on those pads is not specified.
 """
 
 from __future__ import annotations
@@ -207,7 +207,7 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         cfg = await self.csr_read("LSIO_CFG_RMW", AVS_CONFIG)
         await self.csr_write("LSIO_CFG_CLEAR", AVS_CONFIG, cfg & ~GPIO_ENABLE_BM)
         cleared = await self._read_okay("LSIO_CFG_CLEAR_RB", AVS_CONFIG)
-        assert cleared == 0x0, (
+        assert cleared == 0, (
             f"AVS_CONFIG reads 0x{cleared:08x} after clearing AVS_GPIO_ENABLE, expected 0x0"
         )
         before = {pad: self._pad_levels(pad) for _, pad in PADS}
@@ -215,8 +215,10 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         pad2core: dict[int, int] = {}
         after: dict[int, tuple[int, int, int]] = {}
         for _, pad in PADS:
-            ctrl = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
-            ctrl_en = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
+            ctrl = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
+            ctrl_en = smc_indexed_addr(
+                "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad
+            )
             en = await self._read_okay(f"LSIO_DCE_{pad}", ctrl_en)
             assert en == 0x0, f"GPIO_INTF[{pad}] DATA_CTRL_ENABLE reads 0x{en:08x}, not its reset 0"
             await self.csr_write(f"LSIO_SEL_{pad}", ctrl, LSIO_SELECT)
@@ -239,8 +241,9 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         restore = await self.csr_read("LSIO_CFG_RESTORE_RMW", AVS_CONFIG)
         await self.csr_write("LSIO_CFG_RESTORE", AVS_CONFIG, restore | GPIO_ENABLE_BM)
         restored = await self._read_okay("LSIO_CFG_RESTORE_RB", AVS_CONFIG)
-        assert restored == 0x1, (
-            f"AVS_CONFIG reads 0x{restored:08x} after restoring AVS_GPIO_ENABLE, expected 0x1"
+        assert restored == GPIO_ENABLE_BM, (
+            f"AVS_CONFIG reads 0x{restored:08x} after restoring AVS_GPIO_ENABLE, "
+            f"expected 0x{GPIO_ENABLE_BM:x}"
         )
         pads = "/".join(str(p) for _, p in PADS)
         return (
@@ -248,10 +251,12 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
             f"pads {pads} DATA_CTRL rw==lsio_select (0x{LSIO_SELECT:08x}) then rw==0, OKAY, "
             f"{self.lsio_compares} readbacks compared; "
             f"lsio_enable={'/'.join(str(lsio_enable[p]) for _, p in PADS)} "
-            f"pad2core={'/'.join(str(pad2core[p]) for _, p in PADS)} (measured, LINKED-ISSUE "
-            f"SF-015); pad (c2p_en,p2c_en,c2p) lsio_select 0 -> 1 "
+            f"pad2core={'/'.join(str(pad2core[p]) for _, p in PADS)} (measured, LINKED-ISSUE: "
+            f"whether a cleared AVS_GPIO_ENABLE drops the LSIO request on the AVS pads); pad "
+            f"(c2p_en,p2c_en,c2p) lsio_select 0 -> 1 "
             + " ".join(f"{p}:{before[p]}->{after[p]}" for _, p in PADS)
-            + " (measured, LINKED-ISSUE SF-013/SF-015)"
+            + " (measured, LINKED-ISSUE: the polarity of the pad output and input enables; "
+            "whether a cleared AVS_GPIO_ENABLE drops the LSIO request on the AVS pads)"
         )
 
     async def _await_clock_enable(self, label: str, want: int) -> dict[str, tuple[int, int]]:

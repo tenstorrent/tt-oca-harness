@@ -21,7 +21,7 @@ from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import _REPO, _field_mask, smc_addr
+from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
 # smc_addr_map.py exposes no accessor for these two generated headers;
@@ -62,8 +62,8 @@ MAILBOX_IRQEN = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
 # are all 0, as is the rest of the 64-bit read-only register.
 MAILBOX_STATUS_IDLE = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__EMPTY_bm")
 # ERROR_FLAGS: no read-from-empty / write-to-full has been attempted yet, so
-# both sticky flags (READ_ERROR, WRITE_ERROR) must still be clear.
-MAILBOX_ERROR_FLAGS_IDLE = 0
+# both sticky flags (READ_ERROR, WRITE_ERROR) must still read their RDL reset.
+MAILBOX_ERROR_FLAGS_IDLE = reg_reset_word(_AXIL_MAILBOX_H, "AXIL_MAILBOX", "ERROR")
 
 # IRQEN is a plain rw enable register (eirq/rtirq/wtirq), so its readback is an
 # exact mirror of what was written.
@@ -76,7 +76,9 @@ MAILBOX_ERROR_FLAGS_IDLE = 0
 # documented in hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc). So the exact
 # readback is `min(written, MAILBOX_DEPTH - 1)` -- a stated exact expectation
 # that an all-zero dead register fails ([EXACT-EXPECTATION]). Their
-# restore-to-0 leg is exact either way (0 is always in range).
+# restore-to-0 leg is exact either way (0 is always in range). Both written
+# values are even and the golden for MailboxDepth 2 is 1, so a register that keeps only
+# the low bits of the write reads a value other than the golden.
 CLAMPED_THRESHOLD = "clamped-to-depth"
 
 
@@ -92,7 +94,7 @@ IRQEN_PATTERN = (
 )
 
 WRITE_READBACK = [
-    ("WIRQT", MAILBOX_WIRQT, 0x5, CLAMPED_THRESHOLD),
+    ("WIRQT", MAILBOX_WIRQT, 0x4, CLAMPED_THRESHOLD),
     ("RIRQT", MAILBOX_RIRQT, 0x6, CLAMPED_THRESHOLD),
     ("IRQEN", MAILBOX_IRQEN, IRQEN_PATTERN, IRQEN_PATTERN),
 ]
@@ -248,7 +250,7 @@ class smc_mailbox_ext_irq_seq(smc_base_test_seq):
     The outbound port of mailbox m is at `0xC001_8000 + m * 0x1000`, its inbound partner
     `0x800` above it, and the 32 outbound-port interrupts leave the SMC on
     `smc_ext_mailbox_interrupts_o` (`axi_lite_mailbox_unit/doc/index.adoc`). Which bit each
-    pair drives is not specified (SF-032), so the pair-to-bit map is measured and logged and
+    pair drives is not specified, so the pair-to-bit map is measured and logged and
     only its one-hot shape and distinctness are compared.
     """
 
@@ -511,7 +513,8 @@ class smc_mailbox_ext_irq_seq(smc_base_test_seq):
         wmap = self._check_map("W", self.wirq_map)
         cocotb.log.info(
             "CHK-MAILBOX-EXT-WIRQ: %d/%d pairs raise one distinct bit and clear it; "
-            "map=<%s> (bit assignment SF-032, logged)",
+            "map=<%s> (bit assignment open: which external interrupt bit each mailbox pair "
+            "drives, logged)",
             len(self.wirq_map),
             NUM_MAILBOX_PAIRS,
             wmap,
@@ -520,7 +523,8 @@ class smc_mailbox_ext_irq_seq(smc_base_test_seq):
         differ = [k for k in self.rirq_map if self.rirq_map[k] != self.wirq_map[k]]
         cocotb.log.info(
             "CHK-MAILBOX-EXT-RIRQ: %d/%d pairs raise one distinct bit and clear it; "
-            "map=<%s>; pairs whose read bit differs from the write bit: %s (SF-032, logged)",
+            "map=<%s>; pairs whose read bit differs from the write bit: %s (open: which "
+            "external interrupt bit each mailbox pair drives, logged)",
             len(self.rirq_map),
             NUM_MAILBOX_PAIRS,
             rmap,

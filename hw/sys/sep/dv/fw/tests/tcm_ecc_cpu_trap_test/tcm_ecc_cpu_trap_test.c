@@ -3,8 +3,8 @@
 //
 // CPU-path TCM ECC: the correctable counters MICCMECT and MDCCMECT, their
 // threshold and clamp, the MCEIP delivery, the uncorrectable DCCM load and
-// store traps, and the NMI of an uncorrectable DCCM vector-table read on the
-// fast-interrupt path.
+// store traps, the NMI of an uncorrectable DCCM vector-table read on the
+// fast-interrupt path, and one uncorrectable ICCM fetch.
 //
 // The host (cocotb/tests/cpu/sep_tcm_ecc_cpu_trap_test.py) draws the threshold
 // exponent t, the arming order, the flipped words and bits, and patches them
@@ -20,12 +20,13 @@
 //                                  MICCMECT, MDCCMECT, mip, mie, mstatus and
 //                                  the trap count, read after the access, and
 //                                  the counter reads of the wait before them
-//   ARM leg= kind= traps_before= traps_after= ic= dc= mip=
+//   ARM leg= kind= traps_before= traps_after= ic= dc= mip= mie= mst=
 //   TRAP i= tag= mcause= mscause= mepc=
 //   MEIP when= w0..w7= micect=
 //   CLAMP ic31= dc31= ict= dct=
 //   UNC-NBR access= got= traps= / UNC access= traps=
 //   NMI-SETUP vec= vec_rb= lock_rb= tbl= / NMI mcause= mepc= vec_rb= entry=
+//   IUE traps= nmis= nmi_mcause= nmi_mepc=
 //
 // DCCM layout. The flipped DCCM words and the NMI vector table lie in the
 // reserved window 0xC005_0000 to 0xC005_13FF, between the end of .bss and the
@@ -82,6 +83,7 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define CSR_MSCAUSE 0x7FF
 #define CSR_MEIVT 0xBC8
 #define MIE_MCEIE (1u << 30)
+#define MSTATUS_MPIE (1u << 7)
 #define CNT_MASK 0x07FFFFFFu
 #define MCAUSE_IRQ 0x80000000u
 #define PIC_SRC 2u  // mailbox interrupt 1 (hw/sys/sep/doc/interrupts.adoc)
@@ -103,11 +105,12 @@ enum {
     TAG_ST_NBR,
     TAG_ST,
     TAG_NMI,
+    TAG_ICCM_UE,
 };
 static const char *const k_tag[] = {
     "none",       "iccm_arm",   "dccm_zero", "dccm_silent", "dccm_miss_arm",
     "dccm_cross", "dccm_reach", "dccm_post", "ld_nbr",      "ld",
-    "st_nbr",     "st",         "nmi",
+    "st_nbr",     "st",         "nmi",       "iccm_ue",
 };
 
 struct trap_rec {
@@ -117,6 +120,8 @@ static volatile struct trap_rec g_tlog[TLOG];
 static volatile uint32_t g_ntrap;
 static volatile uint32_t g_tag;
 static uint32_t g_tprinted;
+// 1 while a silent site runs with mstatus.MIE set and mie clear.
+static volatile uint32_t g_silent;
 
 // Per-slot samples of the ICCM block: MICCMECT, MDCCMECT, mip.
 static volatile uint32_t g_iccm_samp[NFLIP_MAX * 3u];
@@ -192,8 +197,13 @@ void __attribute__((interrupt("machine"), aligned(4))) trap_handler(void) {
     if (mc & MCAUSE_IRQ) {
         // The handler clears the enable of the request it took, so mret does
         // not re-enter: mie[30] for MCEIP, mie.MEIE for an external interrupt.
+        // An MCEIP trap in a silent site also clears mstatus.MPIE, so mret
+        // returns with mstatus.MIE clear even on a core that ignores mie[30].
         if ((mc & 0x7FFFFFFFu) == 30u) {
             CSR_CLEAR(mie, MIE_MCEIE);
+            if (g_silent) {
+                CSR_CLEAR(mstatus, MSTATUS_MPIE);
+            }
         } else {
             CSR_CLEAR(mie, MIE_MEIE);
         }
@@ -307,6 +317,21 @@ static uint32_t arm_wait_clear(uint32_t tag) {
     return n0;
 }
 
+// A silent site runs with mstatus.MIE set and every mie enable clear: PIC
+// source 2 is pending with its PIC enable set, so mie.MEIE must stay clear too.
+// The corrected errors of the site are counted and raise MCEIP, but no
+// interrupt is taken while mie[30] is clear.
+static void silent_begin(void) {
+    g_silent = 1u;
+    CSR_WRITE(mie, 0u);
+    CSR_SET(mstatus, MSTATUS_MIE);
+}
+
+static void silent_end(void) {
+    CSR_CLEAR(mstatus, MSTATUS_MIE);
+    g_silent = 0u;
+}
+
 static void put_arm(const char *leg, const char *kind, uint32_t n0, const struct samp *s) {
     sep_mbx_puts("ARM");
     rec_str("leg", leg);
@@ -316,6 +341,8 @@ static void put_arm(const char *leg, const char *kind, uint32_t n0, const struct
     rec_hex("ic", s->ic);
     rec_hex("dc", s->dc);
     rec_hex("mip", s->mip);
+    rec_hex("mie", s->mie);
+    rec_hex("mst", s->mst);
     rec_end();
     put_traps();
 }
@@ -353,12 +380,14 @@ static void iccm_leg(void) {
     struct samp s;
     uint32_t n = g_prm[P_NFLIP];
     rec_mark(1, "iccm");
+    silent_begin();
     take(&s);
     put_samp("iccm", "before", 0u, &s);
     mark("B", "iccm_block", 0u);
     iccm_block(g_iccm_samp);
     take_after(&s, 1u, n);
     mark("E", "iccm_block", 0u);
+    silent_end();
     put_samp("iccm", "quiet", n, &s);
     for (uint32_t i = 0; i < NFLIP_MAX; i++) {
         sep_mbx_puts("ISLOT");
@@ -425,6 +454,7 @@ static void dccm_leg(void) {
     put_samp("dccm", "pre", 0u, &s);
     uint32_t goal = order == 0u ? thr - 1u : thr;
     uint32_t cnt = s.dc & CNT_MASK;
+    silent_begin();
     while (k < n && cnt < goal) {
         uint32_t v = dccm_access(k, TAG_DCCM_SILENT, &s);
         put_samp("dccm", "silent", k, &s);
@@ -432,6 +462,7 @@ static void dccm_leg(void) {
         cnt = s.dc & CNT_MASK;
         k++;
     }
+    silent_end();
     uint32_t form = order;
     if (order == 0u && cnt != thr - 1u) {
         form = 1u; // the readback skipped 2^t - 1: the reach-first form
@@ -470,12 +501,76 @@ static void dccm_leg(void) {
         mark("E", "dccm_reach_arm", 0u);
         put_arm("dccm", "reach", n0, &s);
     }
+    silent_begin();
     while (k < n) {
         uint32_t v = dccm_access(k, TAG_DCCM_POST, &s);
         put_samp("dccm", "post", k, &s);
         put_data(k, v);
         k++;
     }
+    silent_end();
+    put_traps();
+}
+
+// ICCM block of the uncorrectable fetch leg. iccm_ue_word is an encoding of
+// lui x0, 0xE1F00, which writes nothing and differs from every slot word of
+// iccm_block; the host flips two bits of its stored word. The 32 leading nops
+// keep a sequential prefetch from the code placed before the block away from
+// the word. A trap or an NMI on the word resumes at iccm_ue_resume.
+__asm__(".section .text.iccm_ue_block,\"ax\",@progbits\n"
+        ".balign 64\n"
+        ".global iccm_ue_block\n"
+        "iccm_ue_block:\n"
+        ".option push\n"
+        ".option norvc\n"
+        ".rept 32\n nop\n .endr\n"
+        ".global iccm_ue_word\n"
+        "iccm_ue_word:\n"
+        ".word 0xE1F00037\n"
+        ".global iccm_ue_resume\n"
+        "iccm_ue_resume:\n"
+        ".rept 8\n nop\n .endr\n"
+        "ret\n"
+        ".option pop\n"
+        ".previous\n");
+void iccm_ue_block(void);
+extern const uint32_t iccm_ue_resume[];
+
+static volatile uint32_t g_iue_nmi;
+static volatile uint32_t g_iue_nmi_mcause;
+static volatile uint32_t g_iue_nmi_mepc;
+
+// NMI handler of the uncorrectable fetch leg: it records the NMI and returns to
+// iccm_ue_resume.
+static void iue_nmi_h(void) {
+    g_iue_nmi_mcause = CSR_READ(mcause);
+    g_iue_nmi_mepc = CSR_READ(mepc);
+    g_iue_nmi = g_iue_nmi + 1u;
+    CSR_WRITE(mepc, (uint32_t)(uintptr_t)iccm_ue_resume);
+}
+
+// Uncorrectable ICCM fetch. The interrupt chapter and the SEP_NMI_VEC register
+// text state different traps for it, so the leg takes either one: the trap
+// handler resumes at mepc + 4 (iccm_ue_resume) and the NMI handler at
+// iccm_ue_resume. The IUE record logs which one came; the host grades the
+// sep_ras_o field, not the trap.
+static void iccm_ue_leg(void) {
+    rec_mark(1, "iccm_ue");
+    nmi_register_handler(iue_nmi_h);
+    nmi_set_vector_reg();
+    uint32_t n0 = g_ntrap;
+    g_tag = TAG_ICCM_UE;
+    mark("B", "iccm_ue", 0u);
+    iccm_ue_block();
+    for (uint32_t i = 0; i < g_prm[P_WAIT] && g_ntrap == n0 && g_iue_nmi == 0u; i++) {
+    }
+    mark("E", "iccm_ue", 0u);
+    sep_mbx_puts("IUE");
+    rec_hex("traps", g_ntrap - n0);
+    rec_hex("nmis", g_iue_nmi);
+    rec_hex("nmi_mcause", g_iue_nmi_mcause);
+    rec_hex("nmi_mepc", g_iue_nmi_mepc);
+    rec_end();
     put_traps();
 }
 
@@ -488,10 +583,12 @@ static void dccm_leg(void) {
 static void pic_src2_pending(void) {
     uint32_t m = PIC_MBOX;
     volatile uint32_t *cfg =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(m);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+            m);
     volatile uint32_t *st =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(m);
-    volatile uint32_t *en = (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(m);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(m);
+    volatile uint32_t *en =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(m);
     uint32_t base = m * SEP_AXIL_MBOX_STRIDE;
     uint32_t s = SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + base;
     cfg[0] = 0u;
@@ -677,6 +774,7 @@ int main(void) {
     put_traps();
     put_meip("dccm_store");
 
+    iccm_ue_leg();
     nmi_leg();
     rec_mark(0, "end");
     sep_mbx_puts("PASS: TCM ECC CPU trap\n");

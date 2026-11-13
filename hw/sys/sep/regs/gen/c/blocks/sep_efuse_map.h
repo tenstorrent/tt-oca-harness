@@ -438,7 +438,7 @@ extern "C" {
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp 0
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bw 8
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_reset 0xf
-// Unused
+// Reserved; hardware ignores these bits. A read returns whatever the fuse word or the last write left in them, so software masks reads to lc_state.
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bm 0xffffff00
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bp 8
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bw 24

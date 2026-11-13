@@ -57,6 +57,8 @@ from smc_reg import (  # noqa: E402
     FILTER_CTRL_END_ADDR_REG_DEFAULT,
     GPIO_INTF_ACCESS_FILTER_REG_DEFAULT,
     I2C_STATUS_REG_DEFAULT,
+    PWM_CTRL_CTRL_REG_DEFAULT,
+    PWM_DUTY_CYCLE_REG_DEFAULT,
     RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_DEFAULT,
     RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT,
     RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT,
@@ -89,11 +91,13 @@ MISC_LAST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BAS
 MISC_WRAP_BASE = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
 MISC_WRAP_SIZE = smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
 
-# --- GPIO: 65 interface instances ----------------------------------------------------
-GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
-GPIO0_ACCESS_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
+# --- GPIO: 67 interface instances ----------------------------------------------------
+GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
+GPIO0_ACCESS_FILTER = smc_indexed_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0
+)
 GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
 )
 
 # --- Words past a generated block's extent -------------------------------------------------
@@ -101,8 +105,8 @@ GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
 # go to the error slave: past the GPIO_INTF instances (TOTAL_SIZE), past
 # misc_wrap (SIZE), and, in the data-accelerator range, past the DMA block
 # (the gap below the zeroer) and past the zeroer block.
-GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
-    "SMC_TOP_GPIO_INTF_TOTAL_SIZE"
+GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE"
 )
 MISC_PAST_LAST = MISC_WRAP_BASE + MISC_WRAP_SIZE + 4
 DMA_DESC_FIRST = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
@@ -145,22 +149,32 @@ TELEMETRY0_STATUS = smc_indexed_addr(
 OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
-# The DFX block is the last one the generated map declares below the fabric
+PWM_NUM = smc_addr("SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_NUM")
+PWM_DUTY_CYCLE_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_DUTY_CYCLE_BASE_ADDR", 0)
+PWM_BLINK_PARAM_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR", 0)
+# BLINK_PARAM is the last array in the PWM block and resets to 0.
+PWM_BLINK_PARAM_LAST = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR", PWM_NUM - 1)
+# CTRL.PAD_EN has one bit per channel; every other CTRL bit reads 0.
+PWM_CTRL = smc_addr("SMC_TOP_SMC_PWM_PWM_CTRL_CTRL_BASE_ADDR")
+PWM_PAD_EN_ALL = (1 << PWM_NUM) - 1
+# The PWM block is the last one the generated map declares below the fabric
 # control registers at 0xC001_0000. The first address past the aperture the
-# RDL reserves for it (ocah_aperture_size, 2 KiB) belongs to no block.
-DFX_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("dfx_ctrl")[1] + 1
-assert generated_unit_at(DFX_REGION_BEYOND - LOCAL_BASE_RESET) is None
-assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
+# RDL reserves for it (ocah_aperture_size, 4 KiB) belongs to no block.
+SECDFT_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("smc_pwm")[1] + 1
+assert generated_unit_at(SECDFT_REGION_BEYOND - LOCAL_BASE_RESET) is None
+assert SECDFT_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
 
 # --- fabric control ----------------------------------------------------------------------------
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
-OUTBOUND_NUM = smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_NUM")
+OUTBOUND_NUM = smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM")
 OUTBOUND_LAST_END = smc_indexed_addr(
-    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_NUM - 1
+    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_NUM - 1
 )
 # First 4 KiB page after the outbound filter array; the mailbox array starts one
 # page later, so nothing in the generated map claims this address.
-FABRIC_CTRL_BEYOND = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0) + 0x1000
+FABRIC_CTRL_BEYOND = (
+    smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0) + 0x1000
+)
 assert FABRIC_CTRL_BEYOND < smc_addr("SMC_TOP_SMC_MAILBOX_BASE_ADDR")
 
 # --- mailbox: 32 outbound + 32 inbound -------------------------------------------------------
@@ -211,7 +225,7 @@ _SPM_PATTERN_HI = 0x5A5A_A5A5_FFFF_FFF8
 # Exact-value compares this body issues (reads carrying ``expected=``). A
 # literal, so a table edit that silently dropped an expectation fails here
 # rather than shrinking the floor with it.
-EXPECTED_VALUE_CHECKS = 56
+EXPECTED_VALUE_CHECKS = 64
 EXPECTED_DECERR_CHECKS = 4
 
 
@@ -357,13 +371,29 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT,
             length=8,
         )
-        await self.read_decerr("SECDFT_REGION_BEYOND", DFX_REGION_BEYOND)
+        await self.read_reset(
+            "SECDFT_PWM_DUTY_CYCLE_0", PWM_DUTY_CYCLE_0, PWM_DUTY_CYCLE_REG_DEFAULT
+        )
+        await self.rw_coresident(
+            [
+                ("SECDFT_PWM_BLINK_PARAM_0", PWM_BLINK_PARAM_0, _PATTERN_A, 0),
+                (f"SECDFT_PWM_BLINK_PARAM_{PWM_NUM - 1}", PWM_BLINK_PARAM_LAST, _PATTERN_B, 0),
+                ("SECDFT_PWM_CTRL", PWM_CTRL, PWM_PAD_EN_ALL, PWM_CTRL_CTRL_REG_DEFAULT),
+            ]
+        )
+        await self.csr_write("SECDFT_PWM_CTRL_ONES", PWM_CTRL, 0xFFFF_FFFF)
+        await self.csr_read("SECDFT_PWM_CTRL_ONES_RB", PWM_CTRL, expected=PWM_PAD_EN_ALL)
+        await self.csr_write("SECDFT_PWM_CTRL_CLEAR", PWM_CTRL, PWM_CTRL_CTRL_REG_DEFAULT)
+        await self.read_decerr("SECDFT_REGION_BEYOND", SECDFT_REGION_BEYOND)
         self.close_cell(
             "security-timing-dft-region",
             f"eFuse READ_REQ_TIMEOUT=0x{EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT:x}, "
             f"telemetry STATUS=0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}, OCTS "
-            f"CTRL=0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}, DFX STATUS_SMU=0x{DFX_STATUS_IDLE:x}; "
-            f"0x{DFX_REGION_BEYOND:08x} answered DECERR",
+            f"CTRL=0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}, DFX STATUS_SMU=0x{DFX_STATUS_IDLE:x}, "
+            f"PWM DUTY_CYCLE_0=0x{PWM_DUTY_CYCLE_REG_DEFAULT:x}, PWM BLINK_PARAM_0, "
+            f"BLINK_PARAM_{PWM_NUM - 1} and CTRL held distinct co-resident patterns; "
+            f"CTRL read 0x{PWM_PAD_EN_ALL:x} after an all-ones write; "
+            f"0x{SECDFT_REGION_BEYOND:08x} answered DECERR",
         )
 
     async def _region_fabric_control(self) -> None:
@@ -539,7 +569,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # nine are the intended error-slave probes: three past the WDT, DFX and
+        # nine are the intended error-slave probes: three past the WDT, PWM and
         # fabric-control windows; two in the adopter window, answered by its
         # terminator (the supplementary base, since this bench attaches no
         # supplementary device, and the first word past the straps block); and
@@ -548,7 +578,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         self.env.axi_monitor.expected_decerr_addrs.update(
             {
                 WDT_REGION_BEYOND,
-                DFX_REGION_BEYOND,
+                SECDFT_REGION_BEYOND,
                 FABRIC_CTRL_BEYOND,
                 EXTERNAL_SUPPLEMENTARY_BASE,
                 STRAPS_BEYOND,
@@ -587,7 +617,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.close_cell(
             "beyond-region-does-not",
-            f"0x{WDT_REGION_BEYOND:08x}, 0x{DFX_REGION_BEYOND:08x} and 0x{FABRIC_CTRL_BEYOND:08x} "
+            f"0x{WDT_REGION_BEYOND:08x}, 0x{SECDFT_REGION_BEYOND:08x} and 0x{FABRIC_CTRL_BEYOND:08x} "
             f"(no generated-map block, no crossbar rule) each answered DECERR",
         )
         self.close_cell(

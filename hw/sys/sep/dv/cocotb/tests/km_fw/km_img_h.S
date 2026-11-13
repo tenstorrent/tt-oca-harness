@@ -26,7 +26,7 @@
 # response ID in bits [15:8], and the separator is on the last word (END_MAGIC).
 # After the message the image spins.
 #
-# Report message (word index: content). 263 words.
+# Report message (word index: content). 264 words.
 #     0  MAGIC 0x4B4D4948 ("KMIH")
 #     1  LAYOUT: version << 16 | word count
 #     2  x5 at entry
@@ -64,7 +64,10 @@
 #   259  OWN read back after a store of its complement
 #   260  SRAM_WRITE_LOCK_VIOLATION after that store
 #   261  the KM byte address of OWN
-#   262  END_MAGIC 0x4B4D4945 ("KMIE"), with the separator
+#   262  SRAM_WRITE_LOCK_VIOLATION at entry, read after words 16-20 and
+#        saved to SRAM 0xF838 (region 30); every earlier store of the image
+#        is to region 30, which the handover does not lock
+#   263  END_MAGIC 0x4B4D4945 ("KMIE"), with the separator
 #
 # Build (output committed as ../km_img_h.parhex; the 32-bit word is the low 8
 # hex digits of each line, the parity nibble is not used for an SRAM image):
@@ -82,8 +85,8 @@
 
     .equ MAGIC,         0x4B4D4948
     .equ END_MAGIC,     0x4B4D4945
-    .equ LAYOUT_VERSION, 1
-    .equ REPORT_WORDS,  263
+    .equ LAYOUT_VERSION, 2
+    .equ REPORT_WORDS,  264
     .equ LAYOUT,        ((LAYOUT_VERSION << 16) | REPORT_WORDS)
     .equ CTRL_PROBE,    0x4B4D5756
     .equ KEY_VALID,     KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm
@@ -100,6 +103,7 @@
     .equ OUT_FULL,      KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bm
     .equ SRAM_END,      (KEY_MANAGER_SRAM_BASE_ADDR + KEY_MANAGER_SRAM_SIZE)
     .equ SNAP_OFF,      (SRAM_END - 0x800 - MBOX)   // SRAM 0xF800, region 30
+    .equ VIOL_SNAP,     (SNAP_OFF + 4 * N_GPR)      // SRAM_WRITE_LOCK_VIOLATION at entry
     .equ R31_OFF,       (SRAM_END - 4 - MBOX)       // SRAM 0xFFFC, region 31
 
     .equ CSR,           KEY_MANAGER_KMCSR_BASE_ADDR
@@ -149,6 +153,8 @@ _start:
     lla   x12, tbl_a
     li    x13, N_TBL_A
     jal   x9, put_tbl
+    lw    x2, C_VIOL(x14)
+    sw    x2, VIOL_SNAP(x15)
     li    x2, -1
     maskirq 10, 2
     jal   x1, put
@@ -239,6 +245,8 @@ free_done:
     lw    x10, C_VIOL(x14)
     jal   x1, put
     mv    x10, x3
+    jal   x1, put
+    lw    x10, VIOL_SNAP(x15)
     jal   x1, put
 
     li    x10, END_MAGIC

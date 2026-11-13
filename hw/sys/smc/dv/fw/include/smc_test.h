@@ -33,7 +33,9 @@
  * ERROR_COUNT_REG and SEED_REG are both 3, so raise_error()'s count write at
  * the bottom of this file lands on the register the seed was delivered in, and
  * get_seed() reads whatever was written last. The testbench owns that register
- * too: it delivers the seed in SCRATCH[3] and reads it back.
+ * too: it delivers the seed in SCRATCH[3] and reads it back. The production
+ * boot ROM also uses SCRATCH[3], as the SEP's park request, and clears it on
+ * entry, so an image the target ROM starts reads a seed of 0.
  *
  * A test that both raises errors and reads the seed cannot trust either
  * value: every index 0..15 is written by some firmware test, and the seed's

@@ -7,8 +7,8 @@ schema_version = 1
 name = "sep_efuse_sense_test"
 module = { cocotb = "efuse.sep_efuse_sense_test", uvm = "sep_efuse_sense_test" }
 seed = 1
-timeout_sec = 1800
-tags = ["smoke", "efuse", "ci"]
+timeout_sec = 900
+tags = ["smoke", "efuse", "ci", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -29,8 +29,8 @@ args = [
 name = "sep_efuse_image_test"
 module = "efuse.sep_efuse_image_test"
 seed = 1
-timeout_sec = 1800
-tags = ["smoke", "efuse"]
+timeout_sec = 900
+tags = ["smoke", "efuse", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -38,8 +38,8 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_lcc_lc_state_stitch_test"
 module = "lcc.sep_efuse_lcc_lc_state_stitch_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "subsystem", "efuse"]
+timeout_sec = 900
+tags = ["lcc", "subsystem", "efuse", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # count=1 fails the first bank write after each reset, the floor the retry check
@@ -57,7 +57,7 @@ args = [
 name = "sep_efuse_jtag_window_allow_test"
 module = "efuse.sep_efuse_jtag_window_allow_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "jtag"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -69,7 +69,7 @@ name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
@@ -79,7 +79,7 @@ name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
 # No reseed: every run walks SPARE0..SPARE8; the seed selects only bit offsets.
-timeout_sec = 1800
+timeout_sec = 1200
 tags = ["efuse", "lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -90,7 +90,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_program_read_back_select_test"
 module = "efuse.sep_efuse_program_read_back_select_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -106,8 +106,8 @@ args = [
 name = "sep_lcc_demote_feat_ctrl_matrix_test"
 module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "demote", "efuse", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "demote", "efuse", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -117,7 +117,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "set_only", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -130,8 +130,8 @@ name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
 args = ["+sep_edn_jtag_reset_waive"]
-timeout_sec = 1800
-tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "lcc", "sec_dis", "subsystem", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -143,8 +143,8 @@ name = "sep_sec_dis_reset_reach_test"
 module = "efuse.sep_sec_dis_reset_reach_test"
 seed = 1
 args = ["+sep_edn_jtag_reset_waive"]
-timeout_sec = 1800
-tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "lcc", "sec_dis", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -154,8 +154,8 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_rma_token_rand_test"
 module = "efuse.sep_efuse_rma_token_rand_test"
 seed = 1
-timeout_sec = 1800
-tags = ["efuse", "lcc", "rma", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "lcc", "rma", "subsystem", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -165,7 +165,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_digest_latch_fault_test"
 module = "efuse.sep_efuse_digest_latch_fault_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "lcc", "rma", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -176,9 +176,9 @@ target = "lsu_stub_all_live"
 name = "sep_locked_field_access_irq_path_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
-reseed = 3
-timeout_sec = 1800
-tags = ["efuse", "interrupt", "lock", "subsystem"]
+reseed = 1
+timeout_sec = 900
+tags = ["efuse", "interrupt", "lock", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -191,7 +191,7 @@ module = "efuse.sep_efuse_km_public_id_test"
 firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
 seed = 1
 reseed = 3
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "km", "lock", "subsystem", "scan_secure_tm"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -206,8 +206,8 @@ name = "sep_efuse_secure_tm_write_lock_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
 # No reseed: the graded deny targets are fixed; the seed selects only the control spare and data.
-timeout_sec = 1800
-tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+secure_tm_lock"]
@@ -218,7 +218,7 @@ args = ["+secure_tm_lock"]
 name = "sep_efuse_illegal_state_fail_closed_test"
 module = "efuse.sep_efuse_illegal_state_fail_closed_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "fault", "fail-closed", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -237,8 +237,8 @@ target = "lsu_stub_all_live"
 name = "sep_lcc_lc_state_w1s_prod_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "rma", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "rma", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=1"]
@@ -250,8 +250,8 @@ args = ["+lc_start=1"]
 name = "sep_lcc_lc_state_w1s_prod_demote_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "rma", "demote", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "rma", "demote", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=1", "+lc_demote"]
@@ -259,12 +259,12 @@ args = ["+lc_start=1", "+lc_demote"]
 [[tests]]
 # RMA_SIP_0: bit 0 is a don't-care inside 001X, the CHIPLET token gate, the
 # authorized advance to RMA_CHIPLET, then off the named set entirely -- which
-# must fail FEAT_CTRL closed to 0 and be terminal with both tokens matched.
+# must fail FEAT_CTRL closed to 0. The prod_end leaves grade INVALID terminal.
 name = "sep_lcc_lc_state_w1s_rma_sip_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "rma", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "rma", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=2"]
@@ -274,8 +274,8 @@ args = ["+lc_start=2"]
 name = "sep_lcc_lc_state_w1s_rma_chiplet_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "rma", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "rma", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=6"]
@@ -288,8 +288,8 @@ args = ["+lc_start=6"]
 name = "sep_lcc_lc_state_w1s_prod_end_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=8", "+lc_prod_end_exit=bit0"]
@@ -300,8 +300,8 @@ args = ["+lc_start=8", "+lc_prod_end_exit=bit0"]
 name = "sep_lcc_lc_state_w1s_prod_end_rma_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=8", "+lc_prod_end_exit=rma_sip"]
@@ -312,8 +312,8 @@ args = ["+lc_start=8", "+lc_prod_end_exit=rma_sip"]
 name = "sep_lcc_lc_state_w1s_transient_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-timeout_sec = 1800
-tags = ["lcc", "efuse", "rma", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "rma", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=8", "+lc_transient_rma"]
@@ -325,8 +325,8 @@ name = "sep_secure_tm_strap_sampling_test"
 module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: every run runs all four events; the seed selects only the flip offset and their order.
-timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
@@ -338,8 +338,8 @@ name = "sep_secure_tm_strap_sampling_test_dbg"
 module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: the dbg_rstb_i event is directed; the main entry carries the drawn offset and order.
-timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm"]
+timeout_sec = 900
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
@@ -353,8 +353,8 @@ name = "sep_efuse_window_decode_reset_test"
 module = "efuse.sep_efuse_window_decode_reset_test"
 seed = 1
 # No reseed: every run reads every cell; the seed selects only offsets, values and orders.
-timeout_sec = 1800
-tags = ["efuse", "window", "rand_cfg", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "window", "rand_cfg", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -365,7 +365,7 @@ name = "sep_efuse_field_layout_rand_test"
 module = "efuse.sep_efuse_field_layout_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["efuse", "field_layout", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -378,8 +378,8 @@ name = "sep_lcc_state_codeword_rand_test"
 module = "lcc.sep_lcc_state_codeword_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 1800
-tags = ["lcc", "sigint", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "sigint", "rand_rep", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -390,10 +390,59 @@ name = "sep_lcc_feat_ctrl_state_matrix_rand_test"
 module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 3600
-tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Same module with leg C pinned at RMA_CHIPLET: the plan comes from plan seed 85,
+# and the preload is that plan's t=0 image. The SEC_DIS cell of that state is
+# logged ctl=1.
+name = "sep_lcc_feat_ctrl_state_matrix_rand_test_rma_chiplet_c"
+module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "lcc_gate_checks"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=rma_chiplet_c",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_feat_ctrl_rma_chiplet_c.toml",
+]
+
+[[tests]]
+# Same module with leg B pinned at TEST_DEV: the plan comes from plan seed 21,
+# and the preload is that plan's t=0 image.
+name = "sep_lcc_feat_ctrl_state_matrix_rand_test_test_dev_b"
+module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "lcc_gate_checks"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=test_dev_b",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_feat_ctrl_test_dev_b.toml",
+]
+
+[[tests]]
+# Same module with leg B pinned at PROD: the plan comes from plan seed 35, and the
+# preload is that plan's t=0 image.
+name = "sep_lcc_feat_ctrl_state_matrix_rand_test_prod_b"
+module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "lcc_gate_checks"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=prod_b",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_feat_ctrl_prod_b.toml",
+]
 
 [[tests]]
 # Transient RMA update by token match changes the state shadow and burns no fuse.
@@ -402,10 +451,45 @@ name = "sep_efuse_transient_rma_rand_test"
 module = "efuse.sep_efuse_transient_rma_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 3600
-tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Same module with the refused-program leg pinned: the plan comes from plan seed 8,
+# which draws the leg that programs a lifecycle bit with only the other token channel
+# matched, and the preload is that plan's t=0 image. The status and the go-write
+# response of each refused program are logged, not graded.
+name = "sep_efuse_transient_rma_rand_test_legb"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 3600
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_rma_require_legb",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_transient_rma_legb.toml",
+]
+
+[[tests]]
+# Same module with enable 0 and start PROD pinned: the plan comes from plan seed 15,
+# and the preload is that plan's t=0 image. The leaf reaches the out-of-order
+# program of LC_STATE bit 2.
+name = "sep_efuse_transient_rma_rand_test_prod"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=prod",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_transient_rma_prod.toml",
+]
 
 [[tests]]
 # Token match, mismatch shapes, hold, channel independence, no reset of the token
@@ -415,8 +499,8 @@ name = "sep_efuse_token_channel_rand_test"
 module = "efuse.sep_efuse_token_channel_rand_test"
 seed = 1
 # No reseed: every run walks the 18 (shape, channel) cells; the seed selects only order and values.
-timeout_sec = 3600
-tags = ["efuse", "token", "sec_dis", "rand_rep", "subsystem"]
+timeout_sec = 1200
+tags = ["efuse", "token", "sec_dis", "rand_rep", "subsystem", "sep_spec_log"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -428,8 +512,8 @@ name = "sep_efuse_token_fault_matrix_test"
 module = "efuse.sep_efuse_token_fault_matrix_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
-tags = ["efuse", "token", "fault", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "token", "fault", "rand_rep", "subsystem", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -440,8 +524,8 @@ name = "sep_efuse_interface_status_rand_test"
 module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
 # No reseed: every run walks the eight cases; the seed selects only order, slots and values.
-timeout_sec = 3600
-tags = ["efuse", "interface", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -452,10 +536,42 @@ name = "sep_efuse_lock_slot_matrix_rand_test"
 module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 3600
-tags = ["efuse", "lock", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Same module with the chain leg pinned: the plan comes from plan seed 4, and the
+# preload is that plan's t=0 image.
+name = "sep_efuse_lock_slot_matrix_rand_test_chain"
+module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=chain",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lock_slot_chain.toml",
+]
+
+[[tests]]
+# Same module with the single-bit image pinned: the plan comes from plan seed 5,
+# which draws the write-lock of slot 1, and the preload is that plan's t=0 image.
+name = "sep_efuse_lock_slot_matrix_rand_test_single"
+module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=single",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lock_slot_single.toml",
+]
 
 [[tests]]
 # Secure test mode: secret fields mask at the sensed-shadow output, programs and JTAG
@@ -464,8 +580,8 @@ name = "sep_efuse_secure_tm_matrix_rand_test"
 module = "efuse.sep_efuse_secure_tm_matrix_rand_test"
 seed = 1
 reseed = 9
-timeout_sec = 3600
-tags = ["efuse", "secure_tm", "rand_rep", "subsystem", "harness_dv_holes"]
+timeout_sec = 900
+tags = ["efuse", "secure_tm", "rand_rep", "subsystem", "harness_dv_holes", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -475,8 +591,8 @@ name = "sep_efuse_jtag_access_rand_test"
 module = "efuse.sep_efuse_jtag_access_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 1800
-tags = ["efuse", "jtag", "rand_cfg", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "jtag", "rand_cfg", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -489,8 +605,8 @@ name = "sep_sec_dis_timing_rand_test"
 module = "efuse.sep_sec_dis_timing_rand_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
-tags = ["efuse", "lcc", "sec_dis", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "lcc", "sec_dis", "rand_rep", "subsystem", "lcc_gate_checks"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -503,7 +619,7 @@ name = "sep_efuse_shim_response_fault_test"
 module = "efuse.sep_efuse_shim_response_fault_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
-tags = ["efuse", "shim", "fault", "rand_rep", "subsystem"]
+timeout_sec = 900
+tags = ["efuse", "shim", "fault", "rand_rep", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

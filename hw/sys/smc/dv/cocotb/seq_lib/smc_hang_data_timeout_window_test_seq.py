@@ -702,7 +702,8 @@ class smc_hang_data_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-DATAWIN-DISABLE-AFTER-TIMEOUT",
             f"irq 1 -> 0 after enable=0 ({dis['drop']} cycles from the write issue, write "
-            f"response at cycle {dis['write_done']}; SF-018 measured, not compared), "
+            f"response at cycle {dis['write_done']}; the cycles from the enable-clear write to "
+            f"the interrupt drop are open: measured, not compared), "
             f"0x{dis['held']:x} held rises irq=0 raw286=0, CTRL.irq=0 "
             f"(CTRL=0x{dis['clear_rd']:x}); before: data=1 raw286=1 at rise {dis['rise']} after "
             f"the SYS_OUT handshake, CTRL=0x{dis['set_rd']:x} irq=1; no re-assertion in "

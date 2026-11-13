@@ -19,7 +19,7 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import fabric_output_remap_regions
-from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, indexed_block_count, sym
+from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -44,7 +44,7 @@ AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
 STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
 # Region count from fabric.adoc ("Sixteen remap regions") and the RDL array.
 # IDX_START is log2(AP window / N), so a size or count change fails import.
-N_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
+N_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP")
 _AP_WINDOW = sym("AP_REGION_MEM_SIZE")
 if _AP_WINDOW % N_REGIONS:
     raise RuntimeError(
@@ -58,16 +58,18 @@ if N_REGIONS != fabric_output_remap_regions():
     raise RuntimeError(
         f"RDL has {N_REGIONS} AP remap regions; fabric.adoc states {fabric_output_remap_regions()}"
     )
-# `outbound_filter_ctrl[32]`; the count comes from the export so a seed can
+# `outbound_filter_ctrl_wrap` holds NUM_ENTRIES (32); the count comes from the export so a seed can
 # select any entry the bank actually has.
-OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
+OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL")
 
 # sep_outbound_mbx STDOUT window. The responder OKAYs every outbound address;
 # only console capture decodes the write address.
 REMAP_TARGET_BASE = 0x8000_0000
-REMAP_ATTRS = AP_OUTPUT_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
-REMAP_OFFSET_MASK = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
-REMAP_VALID = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
+REMAP_ATTRS = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.offset("REGION_REGION_ATTRS")
+REMAP_OFFSET_MASK = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "offset"
+)
+REMAP_VALID = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask("REGION_REGION_ATTRS", "valid")
 
 RESP_OKAY = 0
 RESP_DECERR = 3
@@ -184,7 +186,7 @@ def _selftest() -> None:
     assert remap_access_addr(AP_REGION_BASE, 0, 0) == AP_REGION_BASE
     cfg = SepOutboundRemapCfg(1)
     assert cfg.access_addr != cfg.expect_addr
-    _ = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
+    _ = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
 
 
 _selftest()

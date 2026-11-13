@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from env import sep_km_img_h as imgh
+from env.sep_chk_log import word_digest
+from env.sep_efuse_plan import SECRET_FIELDS
 from env.sep_seeded_rng import SepSeededRng
 
 TEST = "sep_km_handover_rand_test"
@@ -251,12 +253,13 @@ class Plan:
             "DRAW bad_image=" + ",".join(f"0x{w:08x}" for w in self.bad_image),
         ]
         for name, words in self.fuse.items():
-            lines.append(f"DRAW fuse {name}=" + ",".join(f"0x{w:08x}" for w in words))
+            if name in SECRET_FIELDS:
+                lines.append(f"DRAW fuse {name} words={len(words)} sha={word_digest(words)}")
+            else:
+                lines.append(f"DRAW fuse {name}=" + ",".join(f"0x{w:08x}" for w in words))
         for p, keys in ((1, self.keys1), (2, self.keys2)):
             for i, k in enumerate(keys):
-                lines.append(
-                    f"DRAW pass{p} key{i} words={len(k)} " + ",".join(f"0x{w:08x}" for w in k)
-                )
+                lines.append(f"DRAW pass{p} key{i} words={len(k)} key_sha={word_digest(k)}")
         lines.append("DRAW junk=" + ",".join(f"0x{w:08x}" for w in self.junk))
         return lines
 
@@ -283,6 +286,8 @@ def draw_plan(seed: int, fuse_words: dict[str, int]) -> Plan:
     keys1 = tuple([_nonzero(rng, taken) for _ in range(n)] for n, _ in PASS1_KEYS)
     keys2 = tuple([_nonzero(rng, taken) for _ in range(n)] for n, _ in PASS2_KEYS)
     junk = [rng.getrandbits(32) for _ in range(JUNK_WORDS)]
+    while not junk[0]:
+        junk[0] = rng.getrandbits(32)
     if n1 + n2 + len(imgh.read_image()) > STREAM_BUDGET:
         raise RuntimeError("the drawn images exceed the stream budget of the leaf")
     return Plan(
@@ -362,14 +367,22 @@ def grade_regs(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
 
 
 def grade_noirq(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
-    """CHK-HO-NOIRQ, with its control: a read-locked key read shows AXI_SLVERR."""
+    """CHK-HO-NOIRQ: no IRQ_STATUS bit and no SRAM_WRITE_LOCK_VIOLATION bit at the jump.
+
+    Controls: a read-locked key read shows AXI_SLVERR, and the dropped store to
+    region 31 shows its violation bit, so each read path shows a set bit.
+    """
     sticky = rep.irq_status & IRQ_STATUS_DEFINED
     slverr_seen = any(s.lock_use and s.slv for s in rep.slots)
-    return sticky == 0 and slverr_seen, {
+    viol31_seen = bool(rep.r31_viol >> rep.r31_region & 1)
+    ok = sticky == 0 and rep.viol_at_entry == 0 and slverr_seen and viol31_seen
+    return ok, {
         "pass": exp.no,
         "irq_status": f"0x{sticky:03x}",
         "irq_status_word": _h(rep.irq_status),
+        "viol": _h(rep.viol_at_entry),
         "control_slverr_seen": int(slverr_seen),
+        "control_viol31_seen": int(viol31_seen),
     }
 
 
@@ -473,7 +486,8 @@ def grade_sk_words(words: list[int], exp: PassExp) -> tuple[bool, Fields]:
         "pass": exp.no,
         "words_before_nonzero": sum(1 for w in exp.sk_words_before if w),
         "words_nonzero": sum(1 for w in words if w),
-        "words": ",".join(_h(w) for w in words),
+        "nonzero_at": [i for i, w in enumerate(words) if w],
+        "words_sha": word_digest(words),
     }
 
 
@@ -507,6 +521,7 @@ def grade_sram(
     wmap: list[int],
     jump_seen: int,
     wmap_end: list[int],
+    clear_seen: int,
 ) -> tuple[bool, Fields]:
     """CHK-HO-SRAM. The store and violation readbacks are logged with control=1.
 
@@ -514,15 +529,17 @@ def grade_sram(
     region from the handover command to the first fetch at the image entry, so
     no store of the image counts. The scramble writes every word of every
     unlocked region, so each unlocked region reads REGION_WORDS. No capture
-    (``jump_seen`` 0) fails the check. Locked regions are logged only;
-    ``wmap_end``, KM-WMAP at the end of the report, is logged as a control.
+    (``jump_seen`` 0) fails the check, and so does a capture flag that reads 1
+    after the clear at the baseline of the pass (``clear_seen``), because the
+    capture of an earlier pass would then be graded. Locked regions are logged
+    only; ``wmap_end``, KM-WMAP at the end of the report, is logged as a control.
     """
     locked_regions = bin(exp.sram_lock).count("1")
     min_unlocked = SRAM_WORDS - REGION_WORDS * locked_regions
     unlocked = [r for r in range(N_REGIONS) if not (exp.sram_lock >> r) & 1]
     short = [r for r in unlocked if wmap[r] != REGION_WORDS]
     words_unlocked = sum(wmap[r] for r in unlocked)
-    ok = rep.sram_lock == exp.sram_lock and jump_seen == 1 and not short
+    ok = rep.sram_lock == exp.sram_lock and clear_seen == 0 and jump_seen == 1 and not short
     own_bit = 1 << rep.own_region
     r31_bit = 1 << rep.r31_region
     return ok, {
@@ -541,16 +558,21 @@ def grade_sram(
         "regions_short": len(short),
         "first_short": f"{short[0]}:{wmap[short[0]]}" if short else "-",
         "locked_regions": locked_regions,
+        "clear_seen": clear_seen,
         "jump_seen": jump_seen,
         "control_end_words": sum(wmap_end),
     }
 
 
-def grade_mbox(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
-    """CHK-HO-MBOX: no junk inbound word survives the handover."""
-    return rep.inbound_empty == 1, {
+def grade_mbox(rep: imgh.ImgHReport, exp: PassExp, junk_head: int) -> tuple[bool, Fields]:
+    """CHK-HO-MBOX: the junk inbound words reach the inbound FIFO and none
+    survives the handover. ``junk_head`` is 1 when KM-INFIFO showed the first
+    junk word at the head of the FIFO after the post."""
+    landed = junk_head == 1 or not exp.junk
+    return rep.inbound_empty == 1 and landed, {
         "pass": exp.no,
         "inbound_empty": rep.inbound_empty,
         "km_status": _h(rep.km_status),
         "junk": exp.junk,
+        "junk_at_head": junk_head,
     }

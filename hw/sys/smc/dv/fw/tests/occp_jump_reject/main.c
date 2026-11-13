@@ -6,6 +6,8 @@
  *
  * Issues JUMP commands to random in-range addresses, expects each to be rejected,
  * and checks the SMC status buffer for JUMP_SECURITY errors.
+ * With the STATUS_RPT_DISABLE strap set, the status-buffer check is replaced by one GET_SMC_STATUS
+ * that must return Unsupported_StatusID.
  */
 
 #include "occp_test_common.h"
@@ -15,7 +17,13 @@
 static void validate_smc_status_buffer_for_jump_reject(test_context_t *ctx) {
     simputs("=== Validating SMC status buffer for JUMP rejection ===\n");
     if (ctx->status_reporting_disabled) {
-        simputs("STATUS_RPT_DISABLE strap active; skipping SMC status buffer validation\n");
+        uint32_t rejected_status;
+        simputs("STATUS_RPT_DISABLE strap active; expecting GET_SMC_STATUS to be rejected\n");
+        if (occp_send_get_smc_status_command(ctx, ctx->slave_addr, &rejected_status) !=
+            OCCP_SUCCESS) {
+            simputs("FAIL: GET_SMC_STATUS not rejected with OCCP_UNSUPPORTED_STATUS\n");
+            ctx->overall_result = false;
+        }
         return;
     }
 

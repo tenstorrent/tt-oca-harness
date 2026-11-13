@@ -666,6 +666,16 @@ module smc_uvm_top
         end
     end
 
+    // +smc_sep_security_disable: hold sep_security_disable_i at 1 from t=0 for
+    // the whole run; without the plusarg it stays 0.
+    initial begin
+        tb_sep_security_disable = 1'b0;
+        if ($test$plusargs("smc_sep_security_disable")) begin
+            tb_sep_security_disable = 1'b1;
+            $display("[tb_top] +smc_sep_security_disable: sep_security_disable_i held 1 from t=0");
+        end
+    end
+
     // Minimal LSIO open-drain resolver for I2C0. The SMC padring maps I2C0
     // SCL/SDA to the I2C0 GPIO pads. Released lines resolve high; either the DUT
     // or cocotb side may pull a line low.
@@ -752,6 +762,11 @@ module smc_uvm_top
                                   !u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
     assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);
     assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
+    assign tb_i3c0_scl_drive_high = u_dut.u_smc.u_smc_peripherals.i3c_scl_oe_to_pad[0] &&
+                                    u_dut.u_smc.u_smc_peripherals.i3c_scl_to_pad[0];
+    assign tb_i3c0_sda_pp_sel = u_dut.u_smc.u_smc_peripherals.i3c_sel_od_pp_to_pad[0];
+    assign tb_i3c0_sda_oe     = u_dut.u_smc.u_smc_peripherals.i3c_sda_oe_to_pad[0];
+    assign tb_i3c0_sda_out    = u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
 
     for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_csr_count
         logic [31:0] reads_q;
@@ -1267,6 +1282,31 @@ module smc_uvm_top
     assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
     `undef CPU_MEM_DV
 
+    // Scratch macro peek. The bank selector is a mux over constant generate
+    // indices, because a hierarchical reference into a generate block needs a
+    // constant index.
+    logic [$clog2(chipyard_4core_mem_pkg::NumSramBanks)-1:0]       cpu_scratch_peek_bank;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamAddrWidth-1:0] cpu_scratch_peek_entry;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0]
+        cpu_scratch_peek_bank_data [chipyard_4core_mem_pkg::NumSramBanks];
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0] cpu_scratch_peek_word;
+
+    always_comb begin
+        cpu_scratch_peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                                     32'(tb_cpu_scratch_peek_offset));
+        cpu_scratch_peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                                     32'(tb_cpu_scratch_peek_offset));
+    end
+
+    for (genvar b = 0; b < chipyard_4core_mem_pkg::NumSramBanks; b++) begin : gen_cpu_scratch_peek
+        assign cpu_scratch_peek_bank_data[b] =
+            u_dut.u_smc_ip_integration.u_mems.gen_scratch_rams[b].u_mem.u_mem
+                .mem[cpu_scratch_peek_entry];
+    end
+
+    assign cpu_scratch_peek_word    = cpu_scratch_peek_bank_data[cpu_scratch_peek_bank];
+    assign tb_cpu_scratch_peek_data = cpu_scratch_peek_word[63:0];
+
     // Probe pin on the cocotb init surface; do not OR into the score.
     logic unused_ecc_probe;
     assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
@@ -1395,10 +1435,9 @@ module smc_uvm_top
         .smc_fuse_reset_n_delayed_o (tb_fuse_reset_n),
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (ext_boot_seq_done),
-        // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
-        // shadow regs exposed unsensed, warm domain held in reset) is unreachable
-        // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
-        .sep_security_disable_i     (1'b0),
+        // 0 unless +smc_sep_security_disable (eFuse sense bypass: sense FSM never
+        // routed to the bank, shadow regs exposed unsensed, warm domain held in reset).
+        .sep_security_disable_i     (tb_sep_security_disable),
         .lc_state_i                 (lc_state_drv),
         .smc_ndmreset_request_i     (tb_ndmreset_request),
         .smc_ndmreset_process_o     (tb_ndmreset_process),
@@ -1602,6 +1641,7 @@ module smc_uvm_top
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_uart_irq_combined = u_dut.u_smc.peripheral_interrupts[21:18];
     assign tb_i2c_irq = u_dut.u_smc.peripheral_interrupts[25:23];
+    assign tb_i3c_irq = u_dut.u_smc.peripheral_interrupts[12 +: smc_config_pkg::NumI3c];
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];
@@ -1642,6 +1682,60 @@ module smc_uvm_top
     assign tb_axil_efuse_bank_active = u_dut.u_smc.efuse_bank_ctrl_req_o.aw_valid | u_dut.u_smc.efuse_bank_ctrl_req_o.w_valid |
                                        u_dut.u_smc.efuse_bank_ctrl_req_o.ar_valid;
     assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_external_active | tb_axil_efuse_bank_active;
+
+    // Handshake observability of three fabric links: each vector carries the
+    // five AXI channel valids (or readies) of one link, bit order [4:0] =
+    // {r, ar, b, w, aw}. The periph link is AXI-Lite, the CPU front and CPU
+    // MMIO links are full AXI; a valid or ready is taken from whichever of
+    // the request or response struct drives it. The CPU front link also
+    // exposes its AR ID, R ID and RLAST.
+    assign tb_periph_axil_valid = {u_dut.u_smc.axil_peripherals_resp.r_valid,
+                                   u_dut.u_smc.axil_peripherals_req.ar_valid,
+                                   u_dut.u_smc.axil_peripherals_resp.b_valid,
+                                   u_dut.u_smc.axil_peripherals_req.w_valid,
+                                   u_dut.u_smc.axil_peripherals_req.aw_valid};
+    assign tb_periph_axil_ready = {u_dut.u_smc.axil_peripherals_req.r_ready,
+                                   u_dut.u_smc.axil_peripherals_resp.ar_ready,
+                                   u_dut.u_smc.axil_peripherals_req.b_ready,
+                                   u_dut.u_smc.axil_peripherals_resp.w_ready,
+                                   u_dut.u_smc.axil_peripherals_resp.aw_ready};
+    assign tb_cpu_front_valid = {u_dut.u_smc.cpu_axi_front_port_resp.r_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_req.ar_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.b_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_req.w_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_req.aw_valid};
+    assign tb_cpu_front_arid  = u_dut.u_smc.cpu_axi_front_port_req.ar.id;
+    assign tb_cpu_front_rid   = u_dut.u_smc.cpu_axi_front_port_resp.r.id;
+    assign tb_cpu_front_rlast = u_dut.u_smc.cpu_axi_front_port_resp.r.last;
+    assign tb_cpu_front_ready = {u_dut.u_smc.cpu_axi_front_port_req.r_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.ar_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_req.b_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.w_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.aw_ready};
+    assign tb_cpu_mmio_valid = {u_dut.u_smc.cpu_axi_mmio_port_resp.r_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.b_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.w_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid};
+    assign tb_cpu_mmio_ready = {u_dut.u_smc.cpu_axi_mmio_port_req.r_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.ar_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.b_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.w_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.aw_ready};
+    // The cluster side of the two CPU isolation blocks, same bit order: the
+    // L2 frontend isolate's master port and the MMIO isolate's slave port.
+    assign tb_cpu_l2_iso_valid =
+        {u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_resp.r_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.ar_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_resp.b_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.w_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.aw_valid};
+    assign tb_cpu_mmio_cpu_valid =
+        {u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_resp.r_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.ar_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_resp.b_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.w_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.aw_valid};
 
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =
@@ -1687,6 +1781,8 @@ module smc_uvm_top
     assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
     assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;
     assign tb_cpu_l2_pending_ar    = `SMC_L2_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_l2_slv_arvalid   = `SMC_L2_ISO.slv_req_i.ar_valid;
+    assign tb_cpu_l2_slv_arready   = `SMC_L2_ISO.slv_resp_o.ar_ready;
     assign tb_cpu_l2_flush_active  = `SMC_L2_ISO.flush_active_q;
     assign tb_cpu_mmio_isolated    = `SMC_CPU.mmio_isolated;
     assign tb_cpu_mmio_pending_aw  = `SMC_MMIO_ISO.i_axi_isolate.pending_aw_q;
@@ -1733,6 +1829,9 @@ module smc_uvm_top
         u_dut.u_smc.u_smc_peripherals.ndmreset_request_smc_clk;
     assign tb_uart_irq_raw      = u_dut.u_smc.u_smc_peripherals.uart_irq_periph_clk;
     assign tb_uart_err_raw      = u_dut.u_smc.u_smc_peripherals.uart_err_periph_clk;
+    assign tb_i2c_intg_err      = u_dut.u_smc.u_smc_peripherals.i2c_fifo_intg_err_periph_clk;
+    assign tb_ras_i2c_intg_err  = smc_ras.i2c_intg_err;
+    assign tb_ras_uart_intg_err = smc_ras.uart_intg_err;
     assign tb_logengine_irq_raw = u_dut.u_smc.u_smc_peripherals.log_engine_irq_periph_clk;
     assign tb_telemetry_irq     = u_dut.u_smc.u_smc_peripherals.telemetry_irq;
     assign tb_sep_wdt_irq_sync  = u_dut.u_smc.u_smc_peripherals.rst_ext_wdt_smc_clk;
@@ -1764,7 +1863,13 @@ module smc_uvm_top
     assign tb_plic_priority_low = {`SMC_PLIC.priority_2[0], `SMC_PLIC.priority_1[0],
                                    `SMC_PLIC.priority_0[0]};
     assign tb_plic_pending_331  = `SMC_PLIC.pending_330;
+    assign tb_plic_pending_323  = `SMC_PLIC.pending_322;
     assign tb_plic_pending_324  = `SMC_PLIC.pending_323;
+    assign tb_plic_pending_329  = `SMC_PLIC.pending_328;
+    assign tb_plic_pending_330  = `SMC_PLIC.pending_329;
+    assign tb_plic_pending_332  = `SMC_PLIC.pending_331;
+    assign tb_plic_pending_321  = `SMC_PLIC.pending_320;
+    assign tb_plic_pending_322  = `SMC_PLIC.pending_321;
 
     assign tb_clint_mtime      = `SMC_CLINT.time_0;
     assign tb_clint_mtimecmp0  = `SMC_CLINT.pad;
@@ -1842,6 +1947,7 @@ module smc_uvm_top
     assign tb_zeroer_wstrb   = `SMC_ZEROER.mst_axi_req_o.w.strb;
     assign tb_zeroer_wdata   = `SMC_ZEROER.mst_axi_req_o.w.data;
     assign tb_zeroer_bvalid  = `SMC_ZEROER.mst_axi_resp_i.b_valid;
+    assign tb_zeroer_bready  = `SMC_ZEROER.mst_axi_req_o.b_ready;
     assign tb_zeroer_outstanding = `SMC_ZEROER.outstanding_reqs;
     assign tb_zeroer_dest_addr   = `SMC_ZEROER.dest_addr;
     assign tb_zeroer_size        = `SMC_ZEROER.size;
@@ -1876,6 +1982,69 @@ module smc_uvm_top
         `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
     assign tb_remap_jtag_ar_hit =
         `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
+
+    // Outstanding-read limit probes of the input fabric. The SEP region demux
+    // has no spill registers, so its own slave port is the point its ID
+    // counters push and pop at; the error subordinate's FIFO pushes and pops at
+    // its port.
+    assign tb_sep_demux_arvalid     = `SMC_INB.sep_axi_cut_req.ar_valid;
+    assign tb_sep_demux_arready     = `SMC_INB.sep_axi_cut_resp.ar_ready;
+    assign tb_sep_demux_arid        = `SMC_INB.sep_axi_cut_req.ar.id;
+    assign tb_sep_demux_rvalid      = `SMC_INB.sep_axi_cut_resp.r_valid;
+    assign tb_sep_demux_rready      = `SMC_INB.sep_axi_cut_req.r_ready;
+    assign tb_sep_demux_rlast       = `SMC_INB.sep_axi_cut_resp.r.last;
+    assign tb_sep_errslv_arvalid    = `SMC_INB.sep_err_slv_req.ar_valid;
+    assign tb_sep_errslv_arready    = `SMC_INB.sep_err_slv_resp.ar_ready;
+    assign tb_sep_errslv_rvalid     = `SMC_INB.sep_err_slv_resp.r_valid;
+    assign tb_sep_errslv_rready     = `SMC_INB.sep_err_slv_req.r_ready;
+    assign tb_sep_errslv_rlast      = `SMC_INB.sep_err_slv_resp.r.last;
+    assign tb_sep_errslv_rfifo_full = `SMC_INB.u_sep_region_err_slv.r_fifo_full;
+    `undef SMC_INB
+
+    // Outstanding-read limit probes of the local fabric. The local crossbar
+    // cuts every port, so the SEP_IN demux is probed inside its spill
+    // registers, at the ports of the simple demux that owns the ID counters;
+    // the internal CSR port is the crossbar's own master port. The internal CSR
+    // crossbar's demux is probed at the handshakes that push and pop its read
+    // FIFO; its SMC_BASE_CONFIG port is the crossbar's own master port.
+    `define SMC_LFAB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_local_fabric
+    `define SMC_LXBAR `SMC_LFAB.u_smc_local_xbar
+    `define SMC_LXBAR_SEP_DEMUX \
+        `SMC_LXBAR.u_axi_xbar.i_xbar_unmuxed.gen_slv_port_demux[1].i_axi_demux.i_demux_simple
+    `define SMC_LITE_XBAR `SMC_LFAB.u_smc_internal_axi_lite_xbar
+    `define SMC_LITE_DEMUX \
+        `SMC_LITE_XBAR.u_axi_lite_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux
+    assign tb_lxbar_sep_arvalid     = `SMC_LXBAR_SEP_DEMUX.slv_req_i.ar_valid;
+    assign tb_lxbar_sep_arready     = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.ar_ready;
+    assign tb_lxbar_sep_rvalid      = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.r_valid;
+    assign tb_lxbar_sep_rready      = `SMC_LXBAR_SEP_DEMUX.slv_req_i.r_ready;
+    assign tb_lxbar_sep_rlast       = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.r.last;
+    assign tb_lxbar_lreg_arvalid    = `SMC_LXBAR.xbar_mst_req[2].ar_valid;
+    assign tb_lxbar_lreg_arready    = `SMC_LXBAR.xbar_mst_resp[2].ar_ready;
+    assign tb_lxbar_lreg_rvalid     = `SMC_LXBAR.xbar_mst_resp[2].r_valid;
+    assign tb_lxbar_lreg_rready     = `SMC_LXBAR.xbar_mst_req[2].r_ready;
+    assign tb_lxbar_lreg_rlast      = `SMC_LXBAR.xbar_mst_resp[2].r.last;
+    assign tb_lite_demux_arvalid    = `SMC_LITE_DEMUX.slv_ar_valid;
+    assign tb_lite_demux_arready    = `SMC_LITE_DEMUX.slv_ar_ready;
+    assign tb_lite_demux_rvalid     = `SMC_LITE_DEMUX.slv_r_valid;
+    assign tb_lite_demux_rready     = `SMC_LITE_DEMUX.slv_r_ready;
+    assign tb_lite_demux_rfifo_full = `SMC_LITE_DEMUX.r_fifo_full;
+    assign tb_lite_cfg_arvalid      = `SMC_LITE_XBAR.xbar_mst_req[0].ar_valid;
+    assign tb_lite_cfg_arready      = `SMC_LITE_XBAR.xbar_mst_resp[0].ar_ready;
+    assign tb_lite_cfg_rvalid       = `SMC_LITE_XBAR.xbar_mst_resp[0].r_valid;
+    assign tb_lite_cfg_rready       = `SMC_LITE_XBAR.xbar_mst_req[0].r_ready;
+    `undef SMC_LITE_DEMUX
+    `undef SMC_LITE_XBAR
+    `undef SMC_LXBAR_SEP_DEMUX
+    `undef SMC_LXBAR
+    `undef SMC_LFAB
+
+    // System inbound filter clock gate (axi_cg_snoop in the input fabric).
+    assign tb_sys_in_filter_clk_active = u_dut.u_smc.u_smc_base.sys_in_filter_clk_active;
+    assign tb_sys_in_filter_bus_active = u_dut.u_smc.u_smc_base.sys_in_filter_bus_active;
+    `define SMC_INB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
+    assign tb_sys_in_filter_arvalid = `SMC_INB.sys_axi_cut_req.ar_valid;
+    assign tb_sys_in_filter_arready = `SMC_INB.sys_axi_cut_resp.ar_ready;
     `undef SMC_INB
 
     // Isolation / FLR sequencing state. The two watchdog timeout pins are
@@ -1927,6 +2096,12 @@ module smc_uvm_top
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
     `undef SMC_MBX0
+    // The live OCTS count and the timer's own pulse ports on either side of the padring.
+    assign tb_octs_timer_count = `SMC_PERIPH.u_system_timer_octs.timer_count_o;
+    assign tb_octs_core_sync_load_out = `SMC_PERIPH.timer_sync_load_primary;
+    assign tb_octs_core_credit_out    = `SMC_PERIPH.timer_cnt_credit_primary;
+    assign tb_octs_core_sync_load_in  = `SMC_PERIPH.timer_sync_load_secondary;
+    assign tb_octs_core_credit_in     = `SMC_PERIPH.timer_cnt_credit_secondary;
     `undef SMC_PERIPH
 
     // TB glue: pulse tb_dfd_fault_inject to latch a deterministic token. This
@@ -1988,7 +2163,40 @@ module smc_uvm_top
         .fuse_reset_ni               (tb_fuse_reset_n),
         .ss0_warm_reset_ni           (tb_ss0_warm_reset_n),
         .ndmreset_process_i          (tb_ndmreset_process),
-        .ndmreset_irq_i              (tb_ndmreset_irq)
+        .ndmreset_irq_i              (tb_ndmreset_irq),
+        .sep_awvalid_i               (s_axi_awvalid),
+        .sep_awready_i               (s_axi_awready),
+        .sep_awaddr_i                (s_axi_awaddr),
+        .sep_wvalid_i                (s_axi_wvalid),
+        .sep_wready_i                (s_axi_wready),
+        .sep_wlast_i                 (s_axi_wlast),
+        .sep_wdata_i                 (s_axi_wdata),
+        .sep_bvalid_i                (s_axi_bvalid),
+        .sep_bready_i                (s_axi_bready),
+        .sep_bresp_i                 (s_axi_bresp),
+        .sep_arvalid_i               (s_axi_arvalid),
+        .sep_arready_i               (s_axi_arready),
+        .sep_araddr_i                (s_axi_araddr),
+        .sep_rvalid_i                (s_axi_rvalid),
+        .sep_rready_i                (s_axi_rready),
+        .sep_rlast_i                 (s_axi_rlast),
+        .sep_rresp_i                 (s_axi_rresp),
+        .sep_rdata_i                 (s_axi_rdata),
+        .dma_busy_i                  (tb_dma_busy),
+        .zeroer_busy_i               (tb_zeroer_busy),
+        .out_awvalid_i               (u_output_axi_if.awvalid),
+        .out_awready_i               (u_output_axi_if.awready),
+        .out_wvalid_i                (u_output_axi_if.wvalid),
+        .out_wready_i                (u_output_axi_if.wready),
+        .out_wlast_i                 (u_output_axi_if.wlast),
+        .out_bvalid_i                (u_output_axi_if.bvalid),
+        .out_bready_i                (u_output_axi_if.bready),
+        .out_arvalid_i               (u_output_axi_if.arvalid),
+        .out_arready_i               (u_output_axi_if.arready),
+        .out_rvalid_i                (u_output_axi_if.rvalid),
+        .out_rready_i                (u_output_axi_if.rready),
+        .out_rlast_i                 (u_output_axi_if.rlast),
+        .fcov_gate_i                 (tb_fcov_gate)
     );
 
     smc_clk_fcov u_smc_clk_fcov (
@@ -2112,6 +2320,18 @@ module smc_uvm_top
         .src_addr_i            (tb_dma_src_addr),
         .dst_addr_i            (tb_dma_dst_addr),
         .length_i              (tb_dma_length),
+        .reps_i                (tb_dma_reps),
+        .sep_awvalid_i         (s_axi_awvalid),
+        .sep_awready_i         (s_axi_awready),
+        .sep_awaddr_i          (s_axi_awaddr),
+        .sep_wvalid_i          (s_axi_wvalid),
+        .sep_wready_i          (s_axi_wready),
+        .sep_wlast_i           (s_axi_wlast),
+        .sep_wdata_i           (s_axi_wdata),
+        .sep_bvalid_i          (s_axi_bvalid),
+        .sep_bready_i          (s_axi_bready),
+        .sep_bresp_i           (s_axi_bresp),
+        .fcov_gate_i           (tb_fcov_gate),
         .fe_req_valid_i        (tb_dma_fe_req_valid),
         .fe_req_ready_i        (tb_dma_fe_req_ready),
         .trans_complete_i      (tb_dma_trans_complete),
@@ -2200,7 +2420,76 @@ module smc_uvm_top
         .inb_write_hit_i        (tb_inb_write_hit),
         .inb_read_hit_i         (tb_inb_read_hit),
         .inb_isolate_write_i    (tb_inb_isolate_write),
-        .inb_isolate_read_i     (tb_inb_isolate_read)
+        .inb_isolate_read_i     (tb_inb_isolate_read),
+        .sep_awvalid_i          (s_axi_awvalid),
+        .sep_awready_i          (s_axi_awready),
+        .sep_awaddr_i           (s_axi_awaddr),
+        .sep_wvalid_i           (s_axi_wvalid),
+        .sep_wready_i           (s_axi_wready),
+        .sep_wlast_i            (s_axi_wlast),
+        .sep_wdata_i            (s_axi_wdata),
+        .sep_wstrb_i            (s_axi_wstrb),
+        .sep_bvalid_i           (s_axi_bvalid),
+        .sep_bready_i           (s_axi_bready),
+        .sep_bresp_i            (s_axi_bresp),
+        .sys_awvalid_i          (sys_axi_awvalid),
+        .sys_awready_i          (sys_axi_awready),
+        .sys_awaddr_i           (sys_axi_awaddr),
+        .sys_awlen_i            (sys_axi_awlen),
+        .sys_awprot_i           (sys_axi_awprot),
+        .sys_awuser_i           (sys_axi_awuser),
+        .sys_arvalid_i          (sys_axi_arvalid),
+        .sys_arready_i          (sys_axi_arready),
+        .sys_araddr_i           (sys_axi_araddr),
+        .sys_arlen_i            (sys_axi_arlen),
+        .sys_arprot_i           (sys_axi_arprot),
+        .sys_aruser_i           (sys_axi_aruser),
+        .sys_bvalid_i           (sys_axi_bvalid),
+        .sys_bready_i           (sys_axi_bready),
+        .sys_bresp_i            (sys_axi_bresp),
+        .sys_rvalid_i           (sys_axi_rvalid),
+        .sys_rready_i           (sys_axi_rready),
+        .sys_rlast_i            (sys_axi_rlast),
+        .sys_rresp_i            (sys_axi_rresp),
+        .jtag_awready_i         (jtag_axi_awready),
+        .jtag_awaddr_i          (jtag_axi_awaddr),
+        .jtag_awlen_i           (jtag_axi_awlen),
+        .jtag_awprot_i          (jtag_axi_awprot),
+        .jtag_awuser_i          (jtag_axi_awuser),
+        .jtag_arready_i         (jtag_axi_arready),
+        .jtag_araddr_i          (jtag_axi_araddr),
+        .jtag_arlen_i           (jtag_axi_arlen),
+        .jtag_arprot_i          (jtag_axi_arprot),
+        .jtag_aruser_i          (jtag_axi_aruser),
+        .jtag_bvalid_i          (jtag_axi_bvalid),
+        .jtag_bready_i          (jtag_axi_bready),
+        .jtag_bresp_i           (jtag_axi_bresp),
+        .jtag_rvalid_i          (jtag_axi_rvalid),
+        .jtag_rready_i          (jtag_axi_rready),
+        .jtag_rlast_i           (jtag_axi_rlast),
+        .jtag_rresp_i           (jtag_axi_rresp),
+        .jtag_awcache_i         (jtag_axi_awcache),
+        .jtag_arcache_i         (jtag_axi_arcache),
+        .sep_arvalid_i          (s_axi_arvalid),
+        .sep_arready_i          (s_axi_arready),
+        .sep_araddr_i           (s_axi_araddr),
+        .sep_rvalid_i           (s_axi_rvalid),
+        .sep_rready_i           (s_axi_rready),
+        .sep_rlast_i            (s_axi_rlast),
+        .sep_rresp_i            (s_axi_rresp),
+        .out_awvalid_i          (tb_output_axi_awvalid),
+        .out_awready_i          (tb_output_axi_awready),
+        .out_awaddr_i           (tb_output_axi_awaddr),
+        .out_awlen_i            (u_output_axi_if.awlen),
+        .out_awprot_i           (u_output_axi_if.awprot),
+        .out_awcache_i          (u_output_axi_if.awcache),
+        .out_arvalid_i          (tb_output_axi_arvalid),
+        .out_arready_i          (tb_output_axi_arready),
+        .out_araddr_i           (tb_output_axi_araddr),
+        .out_arlen_i            (u_output_axi_if.arlen),
+        .out_arprot_i           (u_output_axi_if.arprot),
+        .out_arcache_i          (u_output_axi_if.arcache),
+        .fcov_gate_i            (tb_fcov_gate)
     );
 
     smc_fabric_fcov u_smc_fabric_fcov (
@@ -2221,6 +2510,7 @@ module smc_uvm_top
         .sep_wready_i               (s_axi_wready),
         .sep_wlast_i                (s_axi_wlast),
         .sep_wstrb_i                (s_axi_wstrb),
+        .sep_wdata_i                (s_axi_wdata),
         .sep_bvalid_i               (s_axi_bvalid),
         .sep_bready_i               (s_axi_bready),
         .sep_bresp_i                (s_axi_bresp),
@@ -2233,6 +2523,7 @@ module smc_uvm_top
         .sep_rlast_i                (s_axi_rlast),
         .sep_rresp_i                (s_axi_rresp),
         .sep_r_hold_i               (tb_sep_axi_r_hold),
+        .sep_r_raw_valid_i          (tb_sep_axi_r_raw_valid),
         .sep_awaddr_i               (s_axi_awaddr),
         .sep_araddr_i               (s_axi_araddr),
         .sep_awid_i                 (s_axi_awid),
@@ -2257,6 +2548,7 @@ module smc_uvm_top
         .sys_rlast_i                (sys_axi_rlast),
         .sys_rresp_i                (sys_axi_rresp),
         .sys_r_hold_i               (tb_sys_axi_r_hold),
+        .sys_r_raw_valid_i          (tb_sys_axi_r_raw_valid),
 
         .jtag_awvalid_i             (jtag_axi_awvalid),
         .jtag_awready_i             (jtag_axi_awready),
@@ -2274,6 +2566,12 @@ module smc_uvm_top
         .jtag_rready_i              (jtag_axi_rready),
         .jtag_rlast_i               (jtag_axi_rlast),
         .jtag_rresp_i               (jtag_axi_rresp),
+        .jtag_awaddr_i              (jtag_axi_awaddr),
+        .jtag_araddr_i              (jtag_axi_araddr),
+        .jtag_awid_i                (jtag_axi_awid),
+        .jtag_arid_i                (jtag_axi_arid),
+        .jtag_bid_i                 (jtag_axi_bid),
+        .jtag_rid_i                 (jtag_axi_rid),
 
         .ej_awvalid_i               (ej_axi_awvalid),
         .ej_awready_i               (ej_axi_awready),
@@ -2302,7 +2600,22 @@ module smc_uvm_top
         .out_rresp_i                (tb_output_axi_rresp),
         .out_resp_hold_i            (tb_output_axi_resp_hold),
         .out_write_count_i          (tb_output_axi_write_count),
-        .out_read_count_i           (tb_output_axi_read_count)
+        .out_read_count_i           (tb_output_axi_read_count),
+        .out_awaddr_i               (tb_output_axi_awaddr),
+        .out_araddr_i               (tb_output_axi_araddr),
+        .out_awid_i                 (u_output_axi_if.awid),
+        .out_arid_i                 (u_output_axi_if.arid),
+        .out_bid_i                  (u_output_axi_if.bid),
+        .out_rid_i                  (u_output_axi_if.rid),
+        .out_awlen_i                (u_output_axi_if.awlen),
+        .out_awsize_i               (u_output_axi_if.awsize),
+        .out_arlen_i                (u_output_axi_if.arlen),
+        .out_arsize_i               (u_output_axi_if.arsize),
+        .out_rlast_i                (u_output_axi_if.rlast),
+        .dma_busy_i                 (tb_dma_busy),
+        .zeroer_busy_i              (tb_zeroer_busy),
+        .rst_primary_ni             (rst_primary_smc_clk_no),
+        .fcov_gate_i                (tb_fcov_gate)
     );
 
     // Spec-derived P0 coverage: address map over SEP_IN, reset sequencing,
@@ -2350,6 +2663,54 @@ module smc_uvm_top
         .lc_state_i     (tb_lc_state),
         .region_size_i  (smc_region_size),
         .ext_active_i   (tb_axil_external_active)
+    );
+
+    // The memory-map row-response covergroup: SEP_IN and SYS_IN completions
+    // past a unit's decoded extent, between apertures or outside both inbound
+    // apertures, inside the owning leaf's graded window. Same port rule.
+    smc_map_row_fcov u_smc_map_row_fcov (
+        .clk_smc_i      (clk_smc),
+        .rst_cold_ni    (rst_cold_n_int),
+        .sep_awvalid_i  (s_axi_awvalid),
+        .sep_awready_i  (s_axi_awready),
+        .sep_awaddr_i   (s_axi_awaddr),
+        .sep_awsize_i   (s_axi_awsize),
+        .sep_wvalid_i   (s_axi_wvalid),
+        .sep_wready_i   (s_axi_wready),
+        .sep_wlast_i    (s_axi_wlast),
+        .sep_wdata_i    (s_axi_wdata),
+        .sep_wstrb_i    (s_axi_wstrb),
+        .sep_bvalid_i   (s_axi_bvalid),
+        .sep_bready_i   (s_axi_bready),
+        .sep_bresp_i    (s_axi_bresp),
+        .sep_arvalid_i  (s_axi_arvalid),
+        .sep_arready_i  (s_axi_arready),
+        .sep_araddr_i   (s_axi_araddr),
+        .sep_arsize_i   (s_axi_arsize),
+        .sep_rvalid_i   (s_axi_rvalid),
+        .sep_rready_i   (s_axi_rready),
+        .sep_rlast_i    (s_axi_rlast),
+        .sep_rresp_i    (s_axi_rresp),
+        .sep_rdata_i    (s_axi_rdata),
+        .sys_awvalid_i  (sys_axi_awvalid),
+        .sys_awready_i  (sys_axi_awready),
+        .sys_awaddr_i   (sys_axi_awaddr),
+        .sys_awsize_i   (sys_axi_awsize),
+        .sys_bvalid_i   (sys_axi_bvalid),
+        .sys_bready_i   (sys_axi_bready),
+        .sys_bresp_i    (sys_axi_bresp),
+        .sys_arvalid_i  (sys_axi_arvalid),
+        .sys_arready_i  (sys_axi_arready),
+        .sys_araddr_i   (sys_axi_araddr),
+        .sys_arsize_i   (sys_axi_arsize),
+        .sys_rvalid_i   (sys_axi_rvalid),
+        .sys_rready_i   (sys_axi_rready),
+        .sys_rlast_i    (sys_axi_rlast),
+        .sys_rresp_i    (sys_axi_rresp),
+        .sys_rdata_i    (sys_axi_rdata),
+        .region_size_i  (smc_region_size),
+        .i2c_cg_en_i    (tb_i2c_cg_en),
+        .fcov_gate_i    (tb_fcov_gate)
     );
 
     smc_rst_seq_fcov u_smc_rst_seq_fcov (
@@ -2474,6 +2835,160 @@ module smc_uvm_top
         .program_addr_i     (tb_efuse_program_addr)
     );
 
+    // eFuse-control covergroups (smc_efuse_ctrl_fcov): the state injections,
+    // the eFuse-map lock walk, the lifecycle-gated JTAG eFuse accesses and
+    // the request timeouts, inside the owning leaves' graded windows. Every
+    // port is a tb signal, a smc_wrapper boundary port or the lifecycle
+    // integrity flag u_smc_efuse_fcov takes.
+    smc_efuse_ctrl_fcov #(
+        .LC_STATE_WIDTH ($bits(tb_lc_state)),
+        .SHADOW_BITS    (smc_efuse_pkg::NumEfuseBits)
+    ) u_smc_efuse_ctrl_fcov (
+        .clk_smc_i           (clk_smc),
+        .rst_cold_ni         (rst_cold_n_int),
+        .sep_awvalid_i       (s_axi_awvalid),
+        .sep_awready_i       (s_axi_awready),
+        .sep_awaddr_i        (s_axi_awaddr),
+        .sep_awsize_i        (s_axi_awsize),
+        .sep_wvalid_i        (s_axi_wvalid),
+        .sep_wready_i        (s_axi_wready),
+        .sep_wlast_i         (s_axi_wlast),
+        .sep_wdata_i         (s_axi_wdata),
+        .sep_wstrb_i         (s_axi_wstrb),
+        .sep_bvalid_i        (s_axi_bvalid),
+        .sep_bready_i        (s_axi_bready),
+        .sep_bresp_i         (s_axi_bresp),
+        .sep_arvalid_i       (s_axi_arvalid),
+        .sep_arready_i       (s_axi_arready),
+        .sep_araddr_i        (s_axi_araddr),
+        .sep_arsize_i        (s_axi_arsize),
+        .sep_rvalid_i        (s_axi_rvalid),
+        .sep_rready_i        (s_axi_rready),
+        .sep_rlast_i         (s_axi_rlast),
+        .sep_rresp_i         (s_axi_rresp),
+        .sep_rdata_i         (s_axi_rdata),
+        .ej_awvalid_i        (ej_axi_awvalid),
+        .ej_awready_i        (ej_axi_awready),
+        .ej_awaddr_i         (ej_axi_awaddr),
+        .ej_bvalid_i         (ej_axi_bvalid),
+        .ej_bready_i         (ej_axi_bready),
+        .ej_bresp_i          (ej_axi_bresp),
+        .ej_arvalid_i        (ej_axi_arvalid),
+        .ej_arready_i        (ej_axi_arready),
+        .ej_araddr_i         (ej_axi_araddr),
+        .ej_rvalid_i         (ej_axi_rvalid),
+        .ej_rready_i         (ej_axi_rready),
+        .ej_rresp_i          (ej_axi_rresp),
+        .ej_rdata_i          (ej_axi_rdata),
+        .lc_state_i          (tb_lc_state),
+        .lc_sigint_err_i     (lc_sigint_err),
+        .zeroer_inject_en_i  (tb_zeroer_state_inject_en),
+        .zeroer_inject_i     (tb_zeroer_state_inject),
+        .zeroer_state_i      (tb_zeroer_state),
+        .zeroer_busy_i       (tb_zeroer_busy),
+        .zeroer_intp_i       (tb_zeroer_intp),
+        .program_inject_en_i (tb_efuse_program_state_inject_en),
+        .program_inject_i    (tb_efuse_program_state_inject),
+        .program_req_valid_i (tb_efuse_program_req_valid),
+        .program_busy_i      (tb_efuse_program_busy),
+        .program_done_i      (tb_efuse_program_done),
+        .program_error_i     (tb_efuse_program_error),
+        .read_inject_en_i    (tb_efuse_read_state_inject_en),
+        .read_inject_i       (tb_efuse_read_state_inject),
+        .read_req_valid_i    (tb_efuse_read_req_valid),
+        .read_busy_i         (tb_efuse_read_busy),
+        .read_done_i         (tb_efuse_read_done),
+        .read_error_i        (tb_efuse_read_error),
+        .shim_resp_valid_i   (tb_efuse_shim_resp_valid),
+        .locks_i             (tb_efuse_locks),
+        .shadow_probe_i      (efuse_shadow_probe_o),
+        .fcov_gate_i         (tb_fcov_gate)
+    );
+
+    // AXI order and depth coverage (smc_axi_order_fcov) on the three inbound
+    // ports, one instance per port, on the requests and responses the DUT
+    // sees and on the reset of the port checkers.
+    smc_axi_order_fcov #(
+        .PORT      ("SEP_IN"),
+        .ID_WIDTH  (6),
+        .MAX_DEPTH (16)
+    ) u_sep_in_order_fcov (                // SEP_IN
+        .clk_i     (clk_smc),
+        .rst_ni    (rst_primary_smc_clk_no),
+        .awvalid_i (sep_axi_in_req.aw_valid),
+        .awready_i (sep_axi_in_resp.aw_ready),
+        .awid_i    (sep_axi_in_req.aw.id),
+        .wvalid_i  (sep_axi_in_req.w_valid),
+        .wready_i  (sep_axi_in_resp.w_ready),
+        .wlast_i   (sep_axi_in_req.w.last),
+        .bvalid_i  (sep_axi_in_resp.b_valid),
+        .bready_i  (sep_axi_in_req.b_ready),
+        .bid_i     (sep_axi_in_resp.b.id),
+        .bresp_i   (sep_axi_in_resp.b.resp),
+        .arvalid_i (sep_axi_in_req.ar_valid),
+        .arready_i (sep_axi_in_resp.ar_ready),
+        .arid_i    (sep_axi_in_req.ar.id),
+        .rvalid_i  (sep_axi_in_resp.r_valid),
+        .rready_i  (sep_axi_in_req.r_ready),
+        .rid_i     (sep_axi_in_resp.r.id),
+        .rresp_i   (sep_axi_in_resp.r.resp),
+        .rlast_i   (sep_axi_in_resp.r.last)
+    );
+
+    smc_axi_order_fcov #(
+        .PORT      ("SYS_IN"),
+        .ID_WIDTH  (6),
+        .MAX_DEPTH (16)
+    ) u_sys_in_order_fcov (                // SYS_IN
+        .clk_i     (clk_smc),
+        .rst_ni    (rst_primary_smc_clk_no),
+        .awvalid_i (sys_axi_in_req.aw_valid),
+        .awready_i (sys_axi_in_resp.aw_ready),
+        .awid_i    (sys_axi_in_req.aw.id),
+        .wvalid_i  (sys_axi_in_req.w_valid),
+        .wready_i  (sys_axi_in_resp.w_ready),
+        .wlast_i   (sys_axi_in_req.w.last),
+        .bvalid_i  (sys_axi_in_resp.b_valid),
+        .bready_i  (sys_axi_in_req.b_ready),
+        .bid_i     (sys_axi_in_resp.b.id),
+        .bresp_i   (sys_axi_in_resp.b.resp),
+        .arvalid_i (sys_axi_in_req.ar_valid),
+        .arready_i (sys_axi_in_resp.ar_ready),
+        .arid_i    (sys_axi_in_req.ar.id),
+        .rvalid_i  (sys_axi_in_resp.r_valid),
+        .rready_i  (sys_axi_in_req.r_ready),
+        .rid_i     (sys_axi_in_resp.r.id),
+        .rresp_i   (sys_axi_in_resp.r.resp),
+        .rlast_i   (sys_axi_in_resp.r.last)
+    );
+
+    smc_axi_order_fcov #(
+        .PORT      ("JTAG_IN"),
+        .ID_WIDTH  (2),
+        .MAX_DEPTH (16)
+    ) u_jtag_in_order_fcov (                // JTAG_IN
+        .clk_i     (clk_smc),
+        .rst_ni    (rst_primary_smc_clk_no),
+        .awvalid_i (jtag_axi_in_req.aw_valid),
+        .awready_i (jtag_axi_in_resp.aw_ready),
+        .awid_i    (jtag_axi_in_req.aw.id),
+        .wvalid_i  (jtag_axi_in_req.w_valid),
+        .wready_i  (jtag_axi_in_resp.w_ready),
+        .wlast_i   (jtag_axi_in_req.w.last),
+        .bvalid_i  (jtag_axi_in_resp.b_valid),
+        .bready_i  (jtag_axi_in_req.b_ready),
+        .bid_i     (jtag_axi_in_resp.b.id),
+        .bresp_i   (jtag_axi_in_resp.b.resp),
+        .arvalid_i (jtag_axi_in_req.ar_valid),
+        .arready_i (jtag_axi_in_resp.ar_ready),
+        .arid_i    (jtag_axi_in_req.ar.id),
+        .rvalid_i  (jtag_axi_in_resp.r_valid),
+        .rready_i  (jtag_axi_in_req.r_ready),
+        .rid_i     (jtag_axi_in_resp.r.id),
+        .rresp_i   (jtag_axi_in_resp.r.resp),
+        .rlast_i   (jtag_axi_in_resp.r.last)
+    );
+
 
     // ------------------------------------------------------------------
     // AXI4 and AXI4-Lite protocol checkers (ocah_axi_sva) on the SMC AXI
@@ -2485,12 +3000,43 @@ module smc_uvm_top
     // the responder. Nothing answers on the DTP CSR link (its response is tied
     // idle), so no AW or AR handshake occurs there.
     //
-    // aresetn is the primary SMC reset rst_primary_smc_clk_no on every link. A
-    // CPU-only reset from smc_reset_unit is outside it: no reset rule grades
-    // it, and a transaction open at that reset stays in the checker's
-    // outstanding tracking until the next primary reset. The checkers are on
-    // in every run once the primary reset is known, ANDed with
-    // smc_tb_if.axi_sva_en under SV-UVM.
+    // aresetn is the primary SMC reset rst_primary_smc_clk_no on each of these
+    // ten links. A CPU-only reset or a warm reset is outside it: no reset rule
+    // of these ten grades it, and a transaction open at that reset stays in
+    // the checker's outstanding tracking until it completes or the next
+    // primary reset, so a response that arrives after the partial reset is
+    // still matched to its request. The checkers are on in every run once the
+    // primary reset is known, ANDed with smc_tb_if.axi_sva_en under SV-UVM.
+    //
+    // Two more instances grade a link against the reset of its own domain:
+    // u_cpu_mmio_uncore_rst_axi_sva watches the CPU MMIO link on the cluster
+    // uncore reset (tb_cpu_uncore_reset_n), and u_misc_warm_axil_sva watches
+    // the SCRATCH_COLD_WARM leg of the misc wrapper's AXI-Lite demux on the
+    // wrapper's warm reset. Their reset rules grade VALID in that reset and
+    // their tracking flushes on it. The MMIO port is shared by the four cores
+    // behind the uncore bridge: the uncore reset isolates it, and a core reset
+    // or core reset pulse leaves it connected, carrying the other cores'
+    // traffic, so no core reset is a reset of this link. The MMIO instance
+    // sets MASTER_SYNC_RESET: AWVALID, WVALID and ARVALID may stay high on the
+    // first edge that samples the uncore reset low and must be low from the
+    // next edge on. Each is on once its reset is known; the MMIO instance also
+    // follows the CPU-port hold-off below, and the misc instance is off on the
+    // warm-reset cycles where its leg carries the AR the one leaf that presents
+    // it on purpose issues (+smc_misc_warm_in_reset_assertoff beside it). The
+    // CPU front port has no
+    // core-reset instance: it carries CPU_CTRL traffic while a core is held,
+    // so its AXI domain is the primary reset.
+    //
+    // Sixteen more instances grade, on the primary reset, the links inside
+    // smc and the two AXI-Lite links smc drives into smc_ip_integration:
+    // the data accelerator links (the iDMA master into the input fabric and
+    // the local crossbar into the iDMA control port), the internal CSR
+    // AXI-Lite links (DFX CSR, alias, M-mode and Xvisor remap control,
+    // inbound and outbound filter control, AXI-Lite mailbox, base config),
+    // the fabric-internal links (the input fabric's local and output-fabric
+    // outputs, the filtered SYS path and the SEP ID remap path), and the
+    // boundary AXI-Lite links to the adopter external window and the eFuse
+    // shim CSRs. The AXI4 ones track 16 transactions, the AXI-Lite ones 8.
     //
     // On SYS_IN, JTAG_IN, SEP_IN and the OTP AXI-Lite the bench is the
     // master, and its request lines are top-level inputs that stay X or Z
@@ -2504,15 +3050,33 @@ module smc_uvm_top
     // with 24 writes open; MAX_OUTSTANDING on those three checkers sizes their
     // write tracking (twice MAX_OUTSTANDING entries) above that.
     //
-    // The rules, the handshake counts and the +axi_sva_need_<port> check are
-    // live under VCS only (the Verilator targets pass no --assert). A test
-    // that names a port with +axi_sva_need_<port> fails when that checker
-    // graded no AW or AR handshake.
+    // The two-state rules, the handshake counts and the +axi_sva_need_<port>
+    // check are live on both simulators (the Verilator targets pass
+    // --assert); the X-hygiene rules are live under VCS only. A test that
+    // names a port with +axi_sva_need_<port> fails when that checker graded
+    // no AW or AR handshake.
     //
-    // This checks PROTOCOL, not data.
-`define SMC_AXI_SVA_PORTS(REQ, RSP)                                         \
+    // Beside each checker an smc_axi_data_known_sva instance, with the
+    // checker's enable and reset, judges the data the link's DUT side drives:
+    // every strobed WDATA byte known while WVALID where smc is the manager,
+    // RDATA known on an OKAY or EXOKAY beat where smc is the subordinate. Those
+    // rules are four-state and live under VCS only; the final block prints
+    // CHK-AXI-DATA-KNOWN-W and -R with the summed judged-beat counts and one
+    // INFO-AXI-DATA-KNOWN-<PORT> line per instance.
+    //
+    // Each checker also counts its READY stalls while enabled (AW, W and AR
+    // VALID without the subordinate's READY, B and R VALID without the
+    // manager's READY) and prints CHK-AXI-STALL-<PORT>; a test that names a
+    // port with +axi_sva_need_stall_<port> fails when all five counts are 0.
+    //
+    // The nine SMC-internal AXI4 managers (CPU MMIO, CPU front, iDMA, iDMA
+    // control, the four fabric-internal links and SYS_OUT) carry a two-state
+    // SMC_AXI_AWATOP_ZERO_<PORT> rule in gen_<port>_atop_sva, live on both
+    // simulators, and the final block prints CHK-AXI-ATOP-ZERO-<PORT> with
+    // the AW samples each rule evaluated.
+`define SMC_AXI_SVA_PORTS_RST(REQ, RSP, RST)                                \
         .aclk    (clk_smc),                                                 \
-        .aresetn (rst_primary_smc_clk_no),                                  \
+        .aresetn (RST),                                                     \
         .awid    (REQ.aw.id),                                               \
         .awaddr  (REQ.aw.addr),                                             \
         .awlen   (REQ.aw.len),                                              \
@@ -2547,11 +3111,13 @@ module smc_uvm_top
         .rvalid  (RSP.r_valid),                                             \
         .rready  (REQ.r_ready)
 
+`define SMC_AXI_SVA_PORTS(REQ, RSP) `SMC_AXI_SVA_PORTS_RST(REQ, RSP, rst_primary_smc_clk_no)
+
     // AXI-Lite carries no ID, length, burst, lock or last: each is tied to
     // its single-beat value, and SIZE is log2 of the data bytes.
-`define SMC_AXIL_SVA_PORTS(REQ, RSP, SIZE)                                  \
+`define SMC_AXIL_SVA_PORTS_RST(REQ, RSP, SIZE, RST)                         \
         .aclk    (clk_smc),                                                 \
-        .aresetn (rst_primary_smc_clk_no),                                  \
+        .aresetn (RST),                                                     \
         .awid    (1'b0),                                                    \
         .awaddr  (REQ.aw.addr),                                             \
         .awlen   (8'd0),                                                    \
@@ -2586,6 +3152,9 @@ module smc_uvm_top
         .rvalid  (RSP.r_valid),                                             \
         .rready  (REQ.r_ready)
 
+`define SMC_AXIL_SVA_PORTS(REQ, RSP, SIZE) \
+        `SMC_AXIL_SVA_PORTS_RST(REQ, RSP, SIZE, rst_primary_smc_clk_no)
+
 `define SMC_AXI_HS(REQ, RSP) \
         (((REQ.aw_valid && RSP.aw_ready) || (REQ.ar_valid && RSP.ar_ready)) === 1'b1)
 
@@ -2614,6 +3183,87 @@ module smc_uvm_top
         if (`SMC_AXI_MASTER_KNOWN(ej_axi_req))      otp_jtag_axil_sva_armed <= 1'b1;
     end
 
+    // Illegal-encoding inject (+smc_axi_wrap_len1_inject; error inject,
+    // docs/SMC_TB_ARCH.adoc). A WRAP burst with AxLEN = 0, the reserved AxBURST
+    // 2'b11 and an INCR burst whose footprint crosses a 4 KiB boundary break the
+    // WRAP-length, burst-legal and 4 KiB rules of the checker. With the plusarg,
+    // four checkers see AxBURST = INCR on an AW or AR with the reserved
+    // encoding or with AxBURST = WRAP and AxLEN = 0, and see an INCR that
+    // crosses a 4 KiB boundary at its 4 KiB-aligned base, so they track each
+    // such request with its real length and check every other rule on it:
+    // u_sep_in_axi_sva and u_sys_in_axi_sva at the inbound ports, and
+    // u_sep_remap_axi_sva and u_filtered_sys_axi_sva on the fabric links the
+    // fabric forwards those requests to unchanged. Only those four checkers
+    // take the mapped copies (sva_sep_in_req, sva_sys_in_req, sva_sep_remap_req,
+    // sva_filtered_sys_req); the DUT, the handshake and stall counters, the
+    // data-known and the coverage instances see the real requests. The owner
+    // leaf drives those requests as error injection.
+    bit axi_wrap_len1_inject = $test$plusargs("smc_axi_wrap_len1_inject");
+    function automatic logic [1:0] sva_burst(input logic [1:0] burst, input logic [7:0] len);
+        if (axi_wrap_len1_inject && (burst == 2'b11 || (burst == 2'b10 && len == 8'd0)))
+            return 2'b01;
+        return burst;
+    endfunction
+    function automatic logic [55:0] sva_addr(input logic [55:0] addr, input logic [7:0] len,
+                                             input logic [2:0] size, input logic [1:0] burst);
+        logic [12:0] span;
+        span = ((13'(addr[11:0]) >> size) << size) + ((13'(len) + 13'd1) << size);
+        if (axi_wrap_len1_inject && burst == 2'b01 && span > 13'h1000)
+            return {addr[55:12], 12'h000};
+        return addr;
+    endfunction
+
+    smc_sep_in_56_64_6_12_axi_req_t sva_sep_in_req;
+    smc_sys_in_56_64_6_12_axi_req_t sva_sys_in_req;
+    always_comb begin
+        sva_sep_in_req          = sep_axi_in_req;
+        sva_sep_in_req.aw.burst = sva_burst(sep_axi_in_req.aw.burst, sep_axi_in_req.aw.len);
+        sva_sep_in_req.ar.burst = sva_burst(sep_axi_in_req.ar.burst, sep_axi_in_req.ar.len);
+        sva_sep_in_req.aw.addr  = sva_addr(sep_axi_in_req.aw.addr, sep_axi_in_req.aw.len,
+                                           sep_axi_in_req.aw.size, sva_sep_in_req.aw.burst);
+        sva_sep_in_req.ar.addr  = sva_addr(sep_axi_in_req.ar.addr, sep_axi_in_req.ar.len,
+                                           sep_axi_in_req.ar.size, sva_sep_in_req.ar.burst);
+        sva_sys_in_req          = sys_axi_in_req;
+        sva_sys_in_req.aw.burst = sva_burst(sys_axi_in_req.aw.burst, sys_axi_in_req.aw.len);
+        sva_sys_in_req.ar.burst = sva_burst(sys_axi_in_req.ar.burst, sys_axi_in_req.ar.len);
+        sva_sys_in_req.aw.addr  = sva_addr(sys_axi_in_req.aw.addr, sys_axi_in_req.aw.len,
+                                           sys_axi_in_req.aw.size, sva_sys_in_req.aw.burst);
+        sva_sys_in_req.ar.addr  = sva_addr(sys_axi_in_req.ar.addr, sys_axi_in_req.ar.len,
+                                           sys_axi_in_req.ar.size, sva_sys_in_req.ar.burst);
+    end
+
+    // The AW/AR view u_sep_in_axi_sva and u_sys_in_axi_sva receive, for cocotb.
+    logic        tb_g11_view_sep_in_awvalid, tb_g11_view_sep_in_arvalid;
+    logic [1:0]  tb_g11_view_sep_in_awburst, tb_g11_view_sep_in_arburst;
+    logic [2:0]  tb_g11_view_sep_in_awsize, tb_g11_view_sep_in_arsize;
+    logic [7:0]  tb_g11_view_sep_in_awlen, tb_g11_view_sep_in_arlen;
+    logic [55:0] tb_g11_view_sep_in_awaddr, tb_g11_view_sep_in_araddr;
+    logic        tb_g11_view_sys_in_awvalid, tb_g11_view_sys_in_arvalid;
+    logic [1:0]  tb_g11_view_sys_in_awburst, tb_g11_view_sys_in_arburst;
+    logic [2:0]  tb_g11_view_sys_in_awsize, tb_g11_view_sys_in_arsize;
+    logic [7:0]  tb_g11_view_sys_in_awlen, tb_g11_view_sys_in_arlen;
+    logic [55:0] tb_g11_view_sys_in_awaddr, tb_g11_view_sys_in_araddr;
+    assign tb_g11_view_sep_in_awvalid = sva_sep_in_req.aw_valid;
+    assign tb_g11_view_sep_in_awburst = sva_sep_in_req.aw.burst;
+    assign tb_g11_view_sep_in_awsize = sva_sep_in_req.aw.size;
+    assign tb_g11_view_sep_in_awlen = sva_sep_in_req.aw.len;
+    assign tb_g11_view_sep_in_awaddr = sva_sep_in_req.aw.addr;
+    assign tb_g11_view_sep_in_arvalid = sva_sep_in_req.ar_valid;
+    assign tb_g11_view_sep_in_arburst = sva_sep_in_req.ar.burst;
+    assign tb_g11_view_sep_in_arsize = sva_sep_in_req.ar.size;
+    assign tb_g11_view_sep_in_arlen = sva_sep_in_req.ar.len;
+    assign tb_g11_view_sep_in_araddr = sva_sep_in_req.ar.addr;
+    assign tb_g11_view_sys_in_awvalid = sva_sys_in_req.aw_valid;
+    assign tb_g11_view_sys_in_awburst = sva_sys_in_req.aw.burst;
+    assign tb_g11_view_sys_in_awsize = sva_sys_in_req.aw.size;
+    assign tb_g11_view_sys_in_awlen = sva_sys_in_req.aw.len;
+    assign tb_g11_view_sys_in_awaddr = sva_sys_in_req.aw.addr;
+    assign tb_g11_view_sys_in_arvalid = sva_sys_in_req.ar_valid;
+    assign tb_g11_view_sys_in_arburst = sva_sys_in_req.ar.burst;
+    assign tb_g11_view_sys_in_arsize = sva_sys_in_req.ar.size;
+    assign tb_g11_view_sys_in_arlen = sva_sys_in_req.ar.len;
+    assign tb_g11_view_sys_in_araddr = sva_sys_in_req.ar.addr;
+
     ocah_axi_sva #(
         .IS_LITE         (1'b0),
         .ADDR_WIDTH      (56),
@@ -2622,7 +3272,7 @@ module smc_uvm_top
         .MAX_OUTSTANDING (16)
     ) u_sys_in_axi_sva (                  // SYS_IN, TB master into smc
         .en_i (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed),
-        `SMC_AXI_SVA_PORTS(sys_axi_in_req, sys_axi_in_resp)
+        `SMC_AXI_SVA_PORTS(sva_sys_in_req, sys_axi_in_resp)
     );
 
     ocah_axi_sva #(
@@ -2644,7 +3294,7 @@ module smc_uvm_top
         .MAX_OUTSTANDING (16)
     ) u_sep_in_axi_sva (                  // SEP_IN, TB master into smc
         .en_i (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed),
-        `SMC_AXI_SVA_PORTS(sep_axi_in_req, sep_axi_in_resp)
+        `SMC_AXI_SVA_PORTS(sva_sep_in_req, sep_axi_in_resp)
     );
 
     ocah_axi_sva #(
@@ -2721,10 +3371,1063 @@ module smc_uvm_top
                             u_dut.u_smc.axil_peripherals_resp, 3'd2)
     );
 
+`define SMC_BASE u_dut.u_smc.u_smc_base
+`define SMC_FAB  u_dut.u_smc.u_smc_base.u_smc_fabric
+
+    // Address, data and ID widths of the SMC-internal and boundary checkers; the
+    // final block prints them as OBS-G3-WIDTHS.
+    localparam int unsigned SvaDmaAddrWidth         = 56;
+    localparam int unsigned SvaDmaDataWidth         = 64;
+    localparam int unsigned SvaDmaIdWidth           = 4;
+    localparam int unsigned SvaDmaCtrlAddrWidth     = 32;
+    localparam int unsigned SvaDmaCtrlDataWidth     = 64;
+    localparam int unsigned SvaDmaCtrlIdWidth       = 8;
+    localparam int unsigned SvaLocalOutAddrWidth    = 32;
+    localparam int unsigned SvaLocalOutDataWidth    = 64;
+    localparam int unsigned SvaLocalOutIdWidth      = 6;
+    localparam int unsigned SvaToOutputAddrWidth    = 56;
+    localparam int unsigned SvaToOutputDataWidth    = 64;
+    localparam int unsigned SvaToOutputIdWidth      = 6;
+    localparam int unsigned SvaFilteredSysAddrWidth = 32;
+    localparam int unsigned SvaFilteredSysDataWidth = 64;
+    localparam int unsigned SvaFilteredSysIdWidth   = 6;
+    localparam int unsigned SvaSepRemapAddrWidth    = 32;
+    localparam int unsigned SvaSepRemapDataWidth    = 64;
+    localparam int unsigned SvaSepRemapIdWidth      = 6;
+    localparam int unsigned SvaCsrLiteAddrWidth     = 32;
+    localparam int unsigned SvaCsrLiteDataWidth     = 64;
+    localparam int unsigned SvaBoundaryLiteAddrWidth = 32;
+    localparam int unsigned SvaBoundaryLiteDataWidth = 32;
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (SvaDmaAddrWidth),
+        .DATA_WIDTH      (SvaDmaDataWidth),
+        .ID_WIDTH        (SvaDmaIdWidth),
+        .MAX_OUTSTANDING (16)
+    ) u_dma_axi_sva (                     // data accelerator master into the input fabric
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(`SMC_BASE.axi_data_accel_req,
+                           `SMC_BASE.axi_data_accel_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (SvaDmaCtrlAddrWidth),
+        .DATA_WIDTH      (SvaDmaCtrlDataWidth),
+        .ID_WIDTH        (SvaDmaCtrlIdWidth),
+        .MAX_OUTSTANDING (16)
+    ) u_dma_ctrl_axi_sva (                // local crossbar into the data accelerator control
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(`SMC_BASE.axi_data_accel_ctrl_req,
+                           `SMC_BASE.axi_data_accel_ctrl_rsp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_dfx_csr_axil_sva (                // CSR AXI-Lite into the DFX CSR block
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_dfx_csr_req,
+                            `SMC_BASE.axil_dfx_csr_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_ar_ctrl_axil_sva (                // CSR AXI-Lite into the alias remap control
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_aR_ctrl_req,
+                            `SMC_BASE.axil_aR_ctrl_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_mr_ctrl_axil_sva (                // CSR AXI-Lite into the M-mode remap control
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_mR_ctrl_req,
+                            `SMC_BASE.axil_mR_ctrl_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_xr_ctrl_axil_sva (                // CSR AXI-Lite into the Xvisor remap control
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_xR_ctrl_req,
+                            `SMC_BASE.axil_xR_ctrl_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_infilt_ctrl_axil_sva (            // CSR AXI-Lite into the inbound filter control
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_inbound_filter_ctrl_req,
+                            `SMC_BASE.axil_inbound_filter_ctrl_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_outfilt_ctrl_axil_sva (           // CSR AXI-Lite into the outbound filter control
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_outbound_filter_ctrl_req,
+                            `SMC_BASE.axil_outbound_filter_ctrl_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_mailbox_axil_sva (                // CSR AXI-Lite into the AXI-Lite mailbox
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_mailbox_req,
+                            `SMC_BASE.axil_mailbox_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaCsrLiteAddrWidth),
+        .DATA_WIDTH (SvaCsrLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_base_config_axil_sva (            // CSR AXI-Lite into the base config block
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(`SMC_BASE.axil_smc_base_config_req,
+                            `SMC_BASE.axil_smc_base_config_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (SvaLocalOutAddrWidth),
+        .DATA_WIDTH      (SvaLocalOutDataWidth),
+        .ID_WIDTH        (SvaLocalOutIdWidth),
+        .MAX_OUTSTANDING (16)
+    ) u_local_out_axi_sva (               // input fabric into the local crossbar
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(`SMC_FAB.axi_local_out_req,
+                           `SMC_FAB.axi_local_out_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (SvaToOutputAddrWidth),
+        .DATA_WIDTH      (SvaToOutputDataWidth),
+        .ID_WIDTH        (SvaToOutputIdWidth),
+        .MAX_OUTSTANDING (16)
+    ) u_to_output_axi_sva (               // input fabric into the output fabric
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(`SMC_FAB.axi_to_output_fabric_req,
+                           `SMC_FAB.axi_to_output_fabric_resp)
+    );
+
+    // The fabric forwards the illegal encodings of the inject leaf unchanged,
+    // so under +smc_axi_wrap_len1_inject u_filtered_sys_axi_sva and
+    // u_sep_remap_axi_sva take the same mapped view as the inbound checkers.
+    // The tb_g11_fwd_* probes carry the real forwarded encodings.
+    smc_local_32_64_6_12_axi_req_t sva_filtered_sys_req;
+    smc_local_32_64_6_12_axi_req_t sva_sep_remap_req;
+    always_comb begin
+        sva_filtered_sys_req          = `SMC_FAB.filtered_sys_axi_out_req;
+        sva_filtered_sys_req.aw.burst = sva_burst(`SMC_FAB.filtered_sys_axi_out_req.aw.burst,
+                                                  `SMC_FAB.filtered_sys_axi_out_req.aw.len);
+        sva_filtered_sys_req.ar.burst = sva_burst(`SMC_FAB.filtered_sys_axi_out_req.ar.burst,
+                                                  `SMC_FAB.filtered_sys_axi_out_req.ar.len);
+        sva_filtered_sys_req.aw.addr  = 32'(sva_addr(
+            56'(`SMC_FAB.filtered_sys_axi_out_req.aw.addr),
+            `SMC_FAB.filtered_sys_axi_out_req.aw.len,
+            `SMC_FAB.filtered_sys_axi_out_req.aw.size, sva_filtered_sys_req.aw.burst));
+        sva_filtered_sys_req.ar.addr  = 32'(sva_addr(
+            56'(`SMC_FAB.filtered_sys_axi_out_req.ar.addr),
+            `SMC_FAB.filtered_sys_axi_out_req.ar.len,
+            `SMC_FAB.filtered_sys_axi_out_req.ar.size, sva_filtered_sys_req.ar.burst));
+        sva_sep_remap_req             = `SMC_FAB.sep_axi_id_remap_req;
+        sva_sep_remap_req.aw.burst    = sva_burst(`SMC_FAB.sep_axi_id_remap_req.aw.burst,
+                                                  `SMC_FAB.sep_axi_id_remap_req.aw.len);
+        sva_sep_remap_req.ar.burst    = sva_burst(`SMC_FAB.sep_axi_id_remap_req.ar.burst,
+                                                  `SMC_FAB.sep_axi_id_remap_req.ar.len);
+        sva_sep_remap_req.aw.addr     = 32'(sva_addr(
+            56'(`SMC_FAB.sep_axi_id_remap_req.aw.addr),
+            `SMC_FAB.sep_axi_id_remap_req.aw.len,
+            `SMC_FAB.sep_axi_id_remap_req.aw.size, sva_sep_remap_req.aw.burst));
+        sva_sep_remap_req.ar.addr     = 32'(sva_addr(
+            56'(`SMC_FAB.sep_axi_id_remap_req.ar.addr),
+            `SMC_FAB.sep_axi_id_remap_req.ar.len,
+            `SMC_FAB.sep_axi_id_remap_req.ar.size, sva_sep_remap_req.ar.burst));
+    end
+
+    // The AW/AR view u_sep_remap_axi_sva and u_filtered_sys_axi_sva receive, for cocotb.
+    logic        tb_g11_view_sep_remap_awvalid, tb_g11_view_sep_remap_arvalid;
+    logic [1:0]  tb_g11_view_sep_remap_awburst, tb_g11_view_sep_remap_arburst;
+    logic [2:0]  tb_g11_view_sep_remap_awsize, tb_g11_view_sep_remap_arsize;
+    logic [7:0]  tb_g11_view_sep_remap_awlen, tb_g11_view_sep_remap_arlen;
+    logic [31:0] tb_g11_view_sep_remap_awaddr, tb_g11_view_sep_remap_araddr;
+    logic        tb_g11_view_filtered_sys_awvalid, tb_g11_view_filtered_sys_arvalid;
+    logic [1:0]  tb_g11_view_filtered_sys_awburst, tb_g11_view_filtered_sys_arburst;
+    logic [2:0]  tb_g11_view_filtered_sys_awsize, tb_g11_view_filtered_sys_arsize;
+    logic [7:0]  tb_g11_view_filtered_sys_awlen, tb_g11_view_filtered_sys_arlen;
+    logic [31:0] tb_g11_view_filtered_sys_awaddr, tb_g11_view_filtered_sys_araddr;
+    assign tb_g11_view_sep_remap_awvalid = sva_sep_remap_req.aw_valid;
+    assign tb_g11_view_sep_remap_awburst = sva_sep_remap_req.aw.burst;
+    assign tb_g11_view_sep_remap_awsize = sva_sep_remap_req.aw.size;
+    assign tb_g11_view_sep_remap_awlen = sva_sep_remap_req.aw.len;
+    assign tb_g11_view_sep_remap_awaddr = sva_sep_remap_req.aw.addr;
+    assign tb_g11_view_sep_remap_arvalid = sva_sep_remap_req.ar_valid;
+    assign tb_g11_view_sep_remap_arburst = sva_sep_remap_req.ar.burst;
+    assign tb_g11_view_sep_remap_arsize = sva_sep_remap_req.ar.size;
+    assign tb_g11_view_sep_remap_arlen = sva_sep_remap_req.ar.len;
+    assign tb_g11_view_sep_remap_araddr = sva_sep_remap_req.ar.addr;
+    assign tb_g11_view_filtered_sys_awvalid = sva_filtered_sys_req.aw_valid;
+    assign tb_g11_view_filtered_sys_awburst = sva_filtered_sys_req.aw.burst;
+    assign tb_g11_view_filtered_sys_awsize = sva_filtered_sys_req.aw.size;
+    assign tb_g11_view_filtered_sys_awlen = sva_filtered_sys_req.aw.len;
+    assign tb_g11_view_filtered_sys_awaddr = sva_filtered_sys_req.aw.addr;
+    assign tb_g11_view_filtered_sys_arvalid = sva_filtered_sys_req.ar_valid;
+    assign tb_g11_view_filtered_sys_arburst = sva_filtered_sys_req.ar.burst;
+    assign tb_g11_view_filtered_sys_arsize = sva_filtered_sys_req.ar.size;
+    assign tb_g11_view_filtered_sys_arlen = sva_filtered_sys_req.ar.len;
+    assign tb_g11_view_filtered_sys_araddr = sva_filtered_sys_req.ar.addr;
+
+    // AW/AR handshakes and encodings of the two fabric links, as the DUT drives them.
+    logic        tb_g11_fwd_sep_aw_hs, tb_g11_fwd_sep_ar_hs;
+    logic        tb_g11_fwd_sys_aw_hs, tb_g11_fwd_sys_ar_hs;
+    logic [1:0]  tb_g11_fwd_sep_awburst, tb_g11_fwd_sep_arburst;
+    logic [1:0]  tb_g11_fwd_sys_awburst, tb_g11_fwd_sys_arburst;
+    logic [7:0]  tb_g11_fwd_sep_awlen, tb_g11_fwd_sep_arlen;
+    logic [7:0]  tb_g11_fwd_sys_awlen, tb_g11_fwd_sys_arlen;
+    logic [31:0] tb_g11_fwd_sep_awaddr, tb_g11_fwd_sep_araddr;
+    logic [31:0] tb_g11_fwd_sys_awaddr, tb_g11_fwd_sys_araddr;
+    assign tb_g11_fwd_sep_aw_hs   = `SMC_FAB.sep_axi_id_remap_req.aw_valid &&
+                                    `SMC_FAB.sep_axi_id_remap_resp.aw_ready;
+    assign tb_g11_fwd_sep_ar_hs   = `SMC_FAB.sep_axi_id_remap_req.ar_valid &&
+                                    `SMC_FAB.sep_axi_id_remap_resp.ar_ready;
+    assign tb_g11_fwd_sep_awburst = `SMC_FAB.sep_axi_id_remap_req.aw.burst;
+    assign tb_g11_fwd_sep_arburst = `SMC_FAB.sep_axi_id_remap_req.ar.burst;
+    assign tb_g11_fwd_sep_awlen   = `SMC_FAB.sep_axi_id_remap_req.aw.len;
+    assign tb_g11_fwd_sep_arlen   = `SMC_FAB.sep_axi_id_remap_req.ar.len;
+    assign tb_g11_fwd_sep_awaddr  = `SMC_FAB.sep_axi_id_remap_req.aw.addr;
+    assign tb_g11_fwd_sep_araddr  = `SMC_FAB.sep_axi_id_remap_req.ar.addr;
+    assign tb_g11_fwd_sys_aw_hs   = `SMC_FAB.filtered_sys_axi_out_req.aw_valid &&
+                                    `SMC_FAB.filtered_sys_axi_out_resp.aw_ready;
+    assign tb_g11_fwd_sys_ar_hs   = `SMC_FAB.filtered_sys_axi_out_req.ar_valid &&
+                                    `SMC_FAB.filtered_sys_axi_out_resp.ar_ready;
+    assign tb_g11_fwd_sys_awburst = `SMC_FAB.filtered_sys_axi_out_req.aw.burst;
+    assign tb_g11_fwd_sys_arburst = `SMC_FAB.filtered_sys_axi_out_req.ar.burst;
+    assign tb_g11_fwd_sys_awlen   = `SMC_FAB.filtered_sys_axi_out_req.aw.len;
+    assign tb_g11_fwd_sys_arlen   = `SMC_FAB.filtered_sys_axi_out_req.ar.len;
+    assign tb_g11_fwd_sys_awaddr  = `SMC_FAB.filtered_sys_axi_out_req.aw.addr;
+    assign tb_g11_fwd_sys_araddr  = `SMC_FAB.filtered_sys_axi_out_req.ar.addr;
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (SvaFilteredSysAddrWidth),
+        .DATA_WIDTH      (SvaFilteredSysDataWidth),
+        .ID_WIDTH        (SvaFilteredSysIdWidth),
+        .MAX_OUTSTANDING (16)
+    ) u_filtered_sys_axi_sva (            // inbound filter output of the SYS path
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(sva_filtered_sys_req, `SMC_FAB.filtered_sys_axi_out_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (SvaSepRemapAddrWidth),
+        .DATA_WIDTH      (SvaSepRemapDataWidth),
+        .ID_WIDTH        (SvaSepRemapIdWidth),
+        .MAX_OUTSTANDING (16)
+    ) u_sep_remap_axi_sva (               // SEP ID remap output
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(sva_sep_remap_req, `SMC_FAB.sep_axi_id_remap_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaBoundaryLiteAddrWidth),
+        .DATA_WIDTH (SvaBoundaryLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_external_axil_sva (               // smc AXI-Lite into the adopter external window
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(u_dut.u_smc.smc_external_req_o,
+                            u_dut.u_smc.smc_external_resp_i, 3'd2)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (SvaBoundaryLiteAddrWidth),
+        .DATA_WIDTH (SvaBoundaryLiteDataWidth),
+        .ID_WIDTH   (1)
+    ) u_efuse_bank_axil_sva (             // smc AXI-Lite into the eFuse shim CSRs
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(u_dut.u_smc.efuse_bank_ctrl_req_o,
+                            u_dut.u_smc.efuse_bank_ctrl_resp_i, 3'd2)
+    );
+
+`define SMC_AXI_UNCORE_RST_ON \
+        (!$isunknown(tb_cpu_uncore_reset_n) && `SMC_AXI_SVA_ON && !cpu_reset_probe)
+`define SMC_AXI_MISC_WARM_ON (!$isunknown(misc_warm_rst_n) && `SMC_AXI_SVA_ON)
+
+    smc_pkg::smc_axil_32_32_req_t  misc_warm_req;
+    smc_pkg::smc_axil_32_32_resp_t misc_warm_resp;
+    logic                          misc_warm_rst_n;
+    assign misc_warm_req   = u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap
+                                 .from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM];
+    assign misc_warm_resp  = u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap
+                                 .from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM];
+    assign misc_warm_rst_n = u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.rst_warm_ni;
+
+    ocah_axi_sva #(
+        .IS_LITE           (1'b0),
+        .ADDR_WIDTH        (56),
+        .DATA_WIDTH        (64),
+        .ID_WIDTH          (3),
+        .MASTER_SYNC_RESET (1'b1)
+    ) u_cpu_mmio_uncore_rst_axi_sva (     // CPU MMIO port on the cluster uncore reset
+        .en_i (`SMC_AXI_UNCORE_RST_ON),
+        `SMC_AXI_SVA_PORTS_RST(u_dut.u_smc.cpu_axi_mmio_port_req,
+                               u_dut.u_smc.cpu_axi_mmio_port_resp, tb_cpu_uncore_reset_n)
+    );
+
+    // The warm-domain reproducer (smc_warm_domain_access_during_reset_test)
+    // reads SCRATCH_COLD_WARM while the warm reset is low on purpose, and the
+    // primary-reset demux presents that AR on this leg in its reset. That leaf
+    // alone asks this instance off on the cycles of that reset where the leg's
+    // ARVALID is high. The reset rules are the only rules live in that reset
+    // (every other rule is disabled by aresetn low and the tracking is in its
+    // flush), so the hold-off reaches those rules on the cycles the leaf's AR
+    // occupies and nothing else: they stay live on every other reset cycle,
+    // the instance grades the leg in full once the reset releases, and the
+    // shadow counters above and below keep counting through the window.
+    bit misc_warm_in_reset_probe = $test$plusargs("smc_misc_warm_in_reset_assertoff");
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_misc_warm_axil_sva (              // misc demux SCRATCH_COLD_WARM leg on the warm reset
+        .en_i (`SMC_AXI_MISC_WARM_ON &&
+               !(misc_warm_in_reset_probe && misc_warm_rst_n === 1'b0 &&
+                 misc_warm_req.ar_valid === 1'b1)),
+        `SMC_AXIL_SVA_PORTS_RST(misc_warm_req, misc_warm_resp, 3'd2, misc_warm_rst_n)
+    );
+
+    // Reset-protocol rules of cpu.adoc and clk_rst.adoc (smc_reset_sva.sv):
+    // the uncore reset handshake, the cluster boundary isolate, the reset
+    // tree, the isolated ports, the force-mode flush and the FLR cool-reset
+    // pulse, graded on every edge. Two-state, live on both simulators.
+`define SMC_RST_SVA_CPU  u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
+`define SMC_RST_SVA_CTRL u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap
+`define SMC_RST_SVA_L2   `SMC_RST_SVA_CPU.u_l2_frontend_axi_isolate
+`define SMC_RST_SVA_COOL u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap
+`define SMC_RST_SVA_PAD62 u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
+    smc_reset_sva #(
+        .NUM_CORES       ($bits(tb_cpu_core_resets_n)),
+        .JTAG_CTRL_WIDTH ($bits(tb_jtag_reset_ctrl))
+    ) u_smc_reset_sva (
+        .clk_smc_i                  (clk_smc),
+        .clk_ref_i                  (clk_ref),
+        .en_i                       (`SMC_AXI_SVA_ON),
+        .powergood_stable_i         (powergood_stable_o),
+        .rst_primary_smc_clk_ni     (rst_primary_smc_clk_no),
+        .rst_wdt_smc_clk_ni         (rst_wdt_smc_clk_no),
+        .rst_warm_smc_clk_ni        (tb_rst_warm_smc_clk_n),
+        .rst_cold_stable_ref_clk_ni (rst_cold_stable_ref_clk_no),
+        .jtag_reset_ctrl_i          (tb_jtag_reset_ctrl),
+        .cpu_isolate_req_i          (tb_cpu_isolate_req),
+        .cpu_drained_i              (tb_cpu_drained),
+        .cpu_reset_timeout_i        (tb_cpu_reset_timeout),
+        .cpu_reset_applied_i        (tb_cpu_reset_applied),
+        .cpu_timeout_mode_i         (`SMC_RST_SVA_CTRL.timeout_mode),
+        .cpu_isolate_flush_i        (`SMC_RST_SVA_CTRL.isolate_flush_o),
+        .cpu_uncore_reset_ni        (tb_cpu_uncore_reset_n),
+        .cpu_core_resets_ni         (tb_cpu_core_resets_n),
+        .init_mem_done_i            (smc_init_mem_done_o),
+        .cpu_cluster_isolate_i      (tb_cpu_cluster_isolate),
+        .cpu_l2_isolated_i          (tb_cpu_l2_isolated),
+        .cpu_mmio_isolated_i        (tb_cpu_mmio_isolated),
+        .cpu_l2_flush_active_i      (tb_cpu_l2_flush_active),
+        .cpu_mmio_flush_active_i    (tb_cpu_mmio_flush_active),
+        .cpu_wb_pc_valid_i          (`SMC_RST_SVA_CPU.wb_pc_valid_o),
+        .cpu_wb_reg_pc_i            (`SMC_RST_SVA_CPU.wb_reg_pc_o),
+        .cpu_wdt_reset_i            (`SMC_RST_SVA_CPU.wdt_reset_o),
+        .cpu_l2_pending_aw_i        (tb_cpu_l2_pending_aw),
+        .cpu_l2_pending_ar_i        (tb_cpu_l2_pending_ar),
+        .cpu_mmio_pending_aw_i      (tb_cpu_mmio_pending_aw),
+        .cpu_mmio_pending_ar_i      (tb_cpu_mmio_pending_ar),
+        .l2_slv_aw_valid_i          (`SMC_RST_SVA_L2.slv_req_i.aw_valid),
+        .l2_slv_aw_ready_i          (`SMC_RST_SVA_L2.slv_resp_o.aw_ready),
+        .l2_slv_ar_valid_i          (`SMC_RST_SVA_L2.slv_req_i.ar_valid),
+        .l2_slv_ar_ready_i          (`SMC_RST_SVA_L2.slv_resp_o.ar_ready),
+        .mmio_port_aw_valid_i       (u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid),
+        .mmio_port_aw_ready_i       (u_dut.u_smc.cpu_axi_mmio_port_resp.aw_ready),
+        .mmio_port_w_valid_i        (u_dut.u_smc.cpu_axi_mmio_port_req.w_valid),
+        .mmio_port_w_ready_i        (u_dut.u_smc.cpu_axi_mmio_port_resp.w_ready),
+        .mmio_port_ar_valid_i       (u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid),
+        .mmio_port_ar_ready_i       (u_dut.u_smc.cpu_axi_mmio_port_resp.ar_ready),
+        .mmio_cpu_b_valid_i         (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.b_valid),
+        .mmio_cpu_b_resp_i          (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.b.resp),
+        .mmio_cpu_r_valid_i         (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.r_valid),
+        .mmio_cpu_r_resp_i          (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.r.resp),
+        .flr_posedge_ref_i          (tb_flr_posedge_ref),
+        .flr_counter_state_i        (tb_flr_counter_state),
+        .flr_cool_reset_ni          (`SMC_RST_SVA_COOL.rst_cool_no),
+        .flr_hold_count_ref_i       (`SMC_RST_SVA_COOL.flr_reset_set_cnt_ref_clk),
+        .cool_reset_ni              (tb_rst_cool_from_flr),
+        .pad62_lsio_pin_i           (`SMC_RST_SVA_PAD62.lsio_pin),
+        .core2pad_62_i              (tb_core2pad_o[62]),
+        .core2pad_en_62_i           (tb_core2pad_en_o[62])
+    );
+`undef SMC_RST_SVA_PAD62
+`undef SMC_RST_SVA_COOL
+`undef SMC_RST_SVA_L2
+`undef SMC_RST_SVA_CTRL
+`undef SMC_RST_SVA_CPU
+
+    // Four-state data rules beside every checker instance, on the data the
+    // link's DUT side drives: the strobed WDATA lanes where smc is the
+    // manager, the OKAY/EXOKAY RDATA where smc is the subordinate. Each has
+    // the enable and reset of its checker; VCS only.
+`define SMC_AXI_DK_W(REQ) .wdata(REQ.w.data), .wstrb(REQ.w.strb), .wvalid(REQ.w_valid)
+`define SMC_AXI_DK_R(RSP) .rdata(RSP.r.data), .rresp(RSP.r.resp), .rvalid(RSP.r_valid)
+`define SMC_AXI_DK_W_IDLE(DW) .wdata({DW{1'b0}}), .wstrb({DW/8{1'b0}}), .wvalid(1'b0)
+`define SMC_AXI_DK_R_IDLE(DW) .rdata({DW{1'b0}}), .rresp(2'b00), .rvalid(1'b0)
+
+    int unsigned axi_dk_w_sys_in, axi_dk_r_sys_in;
+    int unsigned axi_dk_w_jtag_in, axi_dk_r_jtag_in;
+    int unsigned axi_dk_w_sep_in, axi_dk_r_sep_in;
+    int unsigned axi_dk_w_sys_out, axi_dk_r_sys_out;
+    int unsigned axi_dk_w_cpu_front, axi_dk_r_cpu_front;
+    int unsigned axi_dk_w_cpu_mmio, axi_dk_r_cpu_mmio;
+    int unsigned axi_dk_w_otp_jtag, axi_dk_r_otp_jtag;
+    int unsigned axi_dk_w_dtp_csr, axi_dk_r_dtp_csr;
+    int unsigned axi_dk_w_log_engine, axi_dk_r_log_engine;
+    int unsigned axi_dk_w_periph, axi_dk_r_periph;
+    int unsigned axi_dk_w_cpu_mmio_uncore_rst, axi_dk_r_cpu_mmio_uncore_rst;
+    int unsigned axi_dk_w_misc_warm, axi_dk_r_misc_warm;
+    int unsigned axi_dk_w_dma, axi_dk_r_dma;
+    int unsigned axi_dk_w_dma_ctrl, axi_dk_r_dma_ctrl;
+    int unsigned axi_dk_w_dfx_csr, axi_dk_r_dfx_csr;
+    int unsigned axi_dk_w_ar_ctrl, axi_dk_r_ar_ctrl;
+    int unsigned axi_dk_w_mr_ctrl, axi_dk_r_mr_ctrl;
+    int unsigned axi_dk_w_xr_ctrl, axi_dk_r_xr_ctrl;
+    int unsigned axi_dk_w_infilt_ctrl, axi_dk_r_infilt_ctrl;
+    int unsigned axi_dk_w_outfilt_ctrl, axi_dk_r_outfilt_ctrl;
+    int unsigned axi_dk_w_mailbox, axi_dk_r_mailbox;
+    int unsigned axi_dk_w_base_config, axi_dk_r_base_config;
+    int unsigned axi_dk_w_local_out, axi_dk_r_local_out;
+    int unsigned axi_dk_w_to_output, axi_dk_r_to_output;
+    int unsigned axi_dk_w_filtered_sys, axi_dk_r_filtered_sys;
+    int unsigned axi_dk_w_sep_remap, axi_dk_r_sep_remap;
+    int unsigned axi_dk_w_external, axi_dk_r_external;
+    int unsigned axi_dk_w_efuse_bank, axi_dk_r_efuse_bank;
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_sys_in_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(sys_axi_in_resp),
+        .w_beats_o (axi_dk_w_sys_in),
+        .r_beats_o (axi_dk_r_sys_in)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_jtag_in_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON && jtag_in_axi_sva_armed),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(jtag_axi_in_resp),
+        .w_beats_o (axi_dk_w_jtag_in),
+        .r_beats_o (axi_dk_r_jtag_in)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_sep_in_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        // tb_rdata_known_hold turns the whole instance off for the window of a
+        // declared observed-only read (by time, not per read; see the signal list).
+        .en_i      (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed && (tb_rdata_known_hold !== 1'b1)),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(sep_axi_in_resp),
+        .w_beats_o (axi_dk_w_sep_in),
+        .r_beats_o (axi_dk_r_sep_in)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_sys_out_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(output_axi_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_sys_out),
+        .r_beats_o (axi_dk_r_sys_out)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_cpu_front_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON && !cpu_reset_probe),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(u_dut.u_smc.cpu_axi_front_port_resp),
+        .w_beats_o (axi_dk_w_cpu_front),
+        .r_beats_o (axi_dk_r_cpu_front)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_cpu_mmio_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON && !cpu_reset_probe),
+        `SMC_AXI_DK_W(u_dut.u_smc.cpu_axi_mmio_port_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_cpu_mmio),
+        .r_beats_o (axi_dk_r_cpu_mmio)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (32),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_otp_jtag_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON && otp_jtag_axil_sva_armed),
+        `SMC_AXI_DK_W_IDLE(32),
+        `SMC_AXI_DK_R(ej_axi_resp),
+        .w_beats_o (axi_dk_w_otp_jtag),
+        .r_beats_o (axi_dk_r_otp_jtag)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (32),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_dtp_csr_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(axil_dtp_csr_req),
+        `SMC_AXI_DK_R_IDLE(32),
+        .w_beats_o (axi_dk_w_dtp_csr),
+        .r_beats_o (axi_dk_r_dtp_csr)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_log_engine_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(u_dut.u_smc.axil_log_engine_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_log_engine),
+        .r_beats_o (axi_dk_r_log_engine)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (32),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_periph_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        // tb_rdata_known_hold turns the whole instance off for the window of a
+        // declared observed-only read (by time, not per read; see the signal list).
+        .en_i      (`SMC_AXI_SVA_ON && (tb_rdata_known_hold !== 1'b1)),
+        `SMC_AXI_DK_W_IDLE(32),
+        `SMC_AXI_DK_R(u_dut.u_smc.axil_peripherals_resp),
+        .w_beats_o (axi_dk_w_periph),
+        .r_beats_o (axi_dk_r_periph)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_cpu_mmio_uncore_rst_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (tb_cpu_uncore_reset_n),
+        .en_i      (`SMC_AXI_UNCORE_RST_ON),
+        `SMC_AXI_DK_W(u_dut.u_smc.cpu_axi_mmio_port_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_cpu_mmio_uncore_rst),
+        .r_beats_o (axi_dk_r_cpu_mmio_uncore_rst)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (32),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_misc_warm_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (misc_warm_rst_n),
+        .en_i      (`SMC_AXI_MISC_WARM_ON),
+        `SMC_AXI_DK_W_IDLE(32),
+        `SMC_AXI_DK_R(misc_warm_resp),
+        .w_beats_o (axi_dk_w_misc_warm),
+        .r_beats_o (axi_dk_r_misc_warm)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_dma_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(`SMC_BASE.axi_data_accel_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_dma),
+        .r_beats_o (axi_dk_r_dma)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_dma_ctrl_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(`SMC_BASE.axi_data_accel_ctrl_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_dma_ctrl),
+        .r_beats_o (axi_dk_r_dma_ctrl)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_dfx_csr_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_dfx_csr_resp),
+        .w_beats_o (axi_dk_w_dfx_csr),
+        .r_beats_o (axi_dk_r_dfx_csr)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_ar_ctrl_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_aR_ctrl_resp),
+        .w_beats_o (axi_dk_w_ar_ctrl),
+        .r_beats_o (axi_dk_r_ar_ctrl)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_mr_ctrl_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_mR_ctrl_resp),
+        .w_beats_o (axi_dk_w_mr_ctrl),
+        .r_beats_o (axi_dk_r_mr_ctrl)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_xr_ctrl_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_xR_ctrl_resp),
+        .w_beats_o (axi_dk_w_xr_ctrl),
+        .r_beats_o (axi_dk_r_xr_ctrl)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_infilt_ctrl_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_inbound_filter_ctrl_resp),
+        .w_beats_o (axi_dk_w_infilt_ctrl),
+        .r_beats_o (axi_dk_r_infilt_ctrl)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_outfilt_ctrl_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_outbound_filter_ctrl_resp),
+        .w_beats_o (axi_dk_w_outfilt_ctrl),
+        .r_beats_o (axi_dk_r_outfilt_ctrl)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_mailbox_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_mailbox_resp),
+        .w_beats_o (axi_dk_w_mailbox),
+        .r_beats_o (axi_dk_r_mailbox)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_R_DATA_RULE (1'b1)
+    ) u_base_config_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W_IDLE(64),
+        `SMC_AXI_DK_R(`SMC_BASE.axil_smc_base_config_resp),
+        .w_beats_o (axi_dk_w_base_config),
+        .r_beats_o (axi_dk_r_base_config)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_local_out_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(`SMC_FAB.axi_local_out_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_local_out),
+        .r_beats_o (axi_dk_r_local_out)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_to_output_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(`SMC_FAB.axi_to_output_fabric_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_to_output),
+        .r_beats_o (axi_dk_r_to_output)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_filtered_sys_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(`SMC_FAB.filtered_sys_axi_out_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_filtered_sys),
+        .r_beats_o (axi_dk_r_filtered_sys)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (64),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_sep_remap_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(`SMC_FAB.sep_axi_id_remap_req),
+        `SMC_AXI_DK_R_IDLE(64),
+        .w_beats_o (axi_dk_w_sep_remap),
+        .r_beats_o (axi_dk_r_sep_remap)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (32),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_external_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(u_dut.u_smc.smc_external_req_o),
+        `SMC_AXI_DK_R_IDLE(32),
+        .w_beats_o (axi_dk_w_external),
+        .r_beats_o (axi_dk_r_external)
+    );
+
+    smc_axi_data_known_sva #(
+        .DATA_WIDTH     (32),
+        .EN_W_DATA_RULE (1'b1)
+    ) u_efuse_bank_data_sva (
+        .aclk      (clk_smc),
+        .aresetn   (rst_primary_smc_clk_no),
+        .en_i      (`SMC_AXI_SVA_ON),
+        `SMC_AXI_DK_W(u_dut.u_smc.efuse_bank_ctrl_req_o),
+        `SMC_AXI_DK_R_IDLE(32),
+        .w_beats_o (axi_dk_w_efuse_bank),
+        .r_beats_o (axi_dk_r_efuse_bank)
+    );
+
+    // No SMC-internal AXI4 master issues an atomic transaction: AWATOP is 0
+    // whenever AWVALID is high on each of them. The rules are two-state and
+    // live on both simulators.
+`include "ocah_sva_macros.svh"
+
+    if (1) begin : gen_cpu_mmio_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_CPU_MMIO,
+                         u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid
+                         |-> u_dut.u_smc.cpu_axi_mmio_port_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_cpu_front_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && u_dut.u_smc.cpu_axi_front_port_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_CPU_FRONT,
+                         u_dut.u_smc.cpu_axi_front_port_req.aw_valid
+                         |-> u_dut.u_smc.cpu_axi_front_port_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_dma_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && `SMC_BASE.axi_data_accel_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_DMA,
+                         `SMC_BASE.axi_data_accel_req.aw_valid
+                         |-> `SMC_BASE.axi_data_accel_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_dma_ctrl_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && `SMC_BASE.axi_data_accel_ctrl_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_DMA_CTRL,
+                         `SMC_BASE.axi_data_accel_ctrl_req.aw_valid
+                         |-> `SMC_BASE.axi_data_accel_ctrl_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_local_out_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && `SMC_FAB.axi_local_out_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_LOCAL_OUT,
+                         `SMC_FAB.axi_local_out_req.aw_valid
+                         |-> `SMC_FAB.axi_local_out_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_to_output_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && `SMC_FAB.axi_to_output_fabric_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_TO_OUTPUT,
+                         `SMC_FAB.axi_to_output_fabric_req.aw_valid
+                         |-> `SMC_FAB.axi_to_output_fabric_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_filtered_sys_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && `SMC_FAB.filtered_sys_axi_out_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_FILTERED_SYS,
+                         `SMC_FAB.filtered_sys_axi_out_req.aw_valid
+                         |-> `SMC_FAB.filtered_sys_axi_out_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_sep_remap_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && `SMC_FAB.sep_axi_id_remap_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_SEP_REMAP,
+                         `SMC_FAB.sep_axi_id_remap_req.aw_valid
+                         |-> `SMC_FAB.sep_axi_id_remap_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+
+    if (1) begin : gen_sys_out_atop_sva
+        int unsigned aw_evaluated;
+        always_ff @(posedge clk_smc) begin
+            if ((rst_primary_smc_clk_no && output_axi_req.aw_valid) === 1'b1)
+                aw_evaluated <= aw_evaluated + 1;
+        end
+        `OCAH_SVA_ASSERT(SMC_AXI_AWATOP_ZERO_SYS_OUT,
+                         output_axi_req.aw_valid
+                         |-> output_axi_req.aw.atop == '0,
+                         clk_smc, !rst_primary_smc_clk_no)
+    end
+    // Own-reset observation for the partial-reset leaf: the edges each
+    // own-domain checker spent with its reset low, the edges at which the
+    // condition of one of their <CH>_VALID_RESET_LOW rules held, the AW/W/AR
+    // valids of the CPU MMIO master on the first edge that sampled the uncore
+    // reset low, the AW/AR handshakes the front-port checker graded while the
+    // core reset was low, and the CPU MMIO responses (one per B and per R
+    // carrying RLAST) split by OKAY.
+`define SMC_AXI_ANY_VALID(REQ, RSP) \
+        ((REQ.aw_valid || REQ.w_valid || REQ.ar_valid || RSP.b_valid || RSP.r_valid) === 1'b1)
+`define SMC_AXI_RSP_VALID(RSP) ((RSP.b_valid || RSP.r_valid) === 1'b1)
+    logic        cpu_uncore_rst_q, misc_warm_rst_q;
+    int unsigned axi_uncore_rst_edges, axi_misc_warm_rst_edges, axi_own_rst_valid_hits;
+    int unsigned cpu_mmio_msr_first_edges, axi_cpu_front_core_held_hs;
+    int unsigned cpu_mmio_rsp_okay, cpu_mmio_rsp_err;
+    logic [2:0]  cpu_mmio_msr_first_edge_valid;  // {AWVALID, WVALID, ARVALID}
+    always_ff @(posedge clk_smc) begin
+        cpu_uncore_rst_q <= tb_cpu_uncore_reset_n;
+        misc_warm_rst_q <= misc_warm_rst_n;
+        if (`SMC_AXI_UNCORE_RST_ON && tb_cpu_uncore_reset_n === 1'b0) begin
+            axi_uncore_rst_edges <= axi_uncore_rst_edges + 1;
+            if (cpu_uncore_rst_q === 1'b1) begin
+                cpu_mmio_msr_first_edges      <= cpu_mmio_msr_first_edges + 1;
+                cpu_mmio_msr_first_edge_valid <= {u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid,
+                                                  u_dut.u_smc.cpu_axi_mmio_port_req.w_valid,
+                                                  u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid};
+            end
+            if ((cpu_uncore_rst_q === 1'b0 &&
+                 `SMC_AXI_ANY_VALID(u_dut.u_smc.cpu_axi_mmio_port_req,
+                                    u_dut.u_smc.cpu_axi_mmio_port_resp)) ||
+                `SMC_AXI_RSP_VALID(u_dut.u_smc.cpu_axi_mmio_port_resp))
+                axi_own_rst_valid_hits <= axi_own_rst_valid_hits + 1;
+        end
+        if (`SMC_AXI_SVA_ON && !cpu_reset_probe && tb_cpu_core_reset_n === 1'b0 &&
+            `SMC_AXI_HS(u_dut.u_smc.cpu_axi_front_port_req,
+                        u_dut.u_smc.cpu_axi_front_port_resp))
+            axi_cpu_front_core_held_hs <= axi_cpu_front_core_held_hs + 1;
+        if (`SMC_AXI_SVA_ON) begin
+            if ((u_dut.u_smc.cpu_axi_mmio_port_resp.b_valid &&
+                 u_dut.u_smc.cpu_axi_mmio_port_req.b_ready) === 1'b1) begin
+                if (u_dut.u_smc.cpu_axi_mmio_port_resp.b.resp === 2'b00)
+                    cpu_mmio_rsp_okay <= cpu_mmio_rsp_okay + 1;
+                else cpu_mmio_rsp_err <= cpu_mmio_rsp_err + 1;
+            end
+            if ((u_dut.u_smc.cpu_axi_mmio_port_resp.r_valid &&
+                 u_dut.u_smc.cpu_axi_mmio_port_req.r_ready &&
+                 u_dut.u_smc.cpu_axi_mmio_port_resp.r.last) === 1'b1) begin
+                if (u_dut.u_smc.cpu_axi_mmio_port_resp.r.resp === 2'b00)
+                    cpu_mmio_rsp_okay <= cpu_mmio_rsp_okay + 1;
+                else cpu_mmio_rsp_err <= cpu_mmio_rsp_err + 1;
+            end
+        end
+        if (`SMC_AXI_MISC_WARM_ON && misc_warm_rst_n === 1'b0) begin
+            axi_misc_warm_rst_edges <= axi_misc_warm_rst_edges + 1;
+            if (`SMC_AXI_ANY_VALID(misc_warm_req, misc_warm_resp))
+                axi_own_rst_valid_hits <= axi_own_rst_valid_hits + 1;
+        end
+    end
+
+    // READY stalls each checker graded while enabled: AW, W and AR count
+    // VALID && !READY with the subordinate's READY, B and R with the
+    // manager's READY.
+`define SMC_AXI_STALL(CNT, EN, REQ, RSP)                                           \
+        if (EN) begin                                                                  \
+            if ((REQ.aw_valid && !RSP.aw_ready) === 1'b1) CNT[0] <= CNT[0] + 1;  \
+            if ((REQ.w_valid && !RSP.w_ready) === 1'b1) CNT[1] <= CNT[1] + 1;    \
+            if ((RSP.b_valid && !REQ.b_ready) === 1'b1) CNT[2] <= CNT[2] + 1;    \
+            if ((REQ.ar_valid && !RSP.ar_ready) === 1'b1) CNT[3] <= CNT[3] + 1;  \
+            if ((RSP.r_valid && !REQ.r_ready) === 1'b1) CNT[4] <= CNT[4] + 1;    \
+        end
+`define SMC_AXI_STALL_SUM(CNT) (CNT[0] + CNT[1] + CNT[2] + CNT[3] + CNT[4])
+`define SMC_AXI_STALL_ARGS(CNT) CNT[0], CNT[1], CNT[2], CNT[3], CNT[4]
+`define SMC_AXI_STALL_UNPLACED(TOK, CNT, INST)                                    \
+        if (`SMC_AXI_STALL_SUM(CNT) == 0)                                              \
+            $display("OBS-AXI-STALL-UNPLACED: %s=aw/w/b/ar/r all 0 instance=%s", TOK, INST)
+
+    int unsigned axi_stall_sys_in[5];  // {aw, w, b, ar, r}
+    int unsigned axi_stall_jtag_in[5];
+    int unsigned axi_stall_sep_in[5];
+    int unsigned axi_stall_sys_out[5];
+    int unsigned axi_stall_cpu_front[5];
+    int unsigned axi_stall_cpu_mmio[5];
+    int unsigned axi_stall_otp_jtag[5];
+    int unsigned axi_stall_dtp_csr[5];
+    int unsigned axi_stall_log_engine[5];
+    int unsigned axi_stall_periph[5];
+    int unsigned axi_stall_cpu_mmio_uncore_rst[5];
+    int unsigned axi_stall_misc_warm[5];
+    int unsigned axi_stall_dma[5];
+    int unsigned axi_stall_dma_ctrl[5];
+    int unsigned axi_stall_dfx_csr[5];
+    int unsigned axi_stall_ar_ctrl[5];
+    int unsigned axi_stall_mr_ctrl[5];
+    int unsigned axi_stall_xr_ctrl[5];
+    int unsigned axi_stall_infilt_ctrl[5];
+    int unsigned axi_stall_outfilt_ctrl[5];
+    int unsigned axi_stall_mailbox[5];
+    int unsigned axi_stall_base_config[5];
+    int unsigned axi_stall_local_out[5];
+    int unsigned axi_stall_to_output[5];
+    int unsigned axi_stall_filtered_sys[5];
+    int unsigned axi_stall_sep_remap[5];
+    int unsigned axi_stall_external[5];
+    int unsigned axi_stall_efuse_bank[5];
+
     // AW and AR handshakes each checker graded.
     int unsigned axi_hs_sys_in, axi_hs_jtag_in, axi_hs_sep_in, axi_hs_sys_out;
     int unsigned axi_hs_cpu_front, axi_hs_cpu_mmio, axi_hs_otp_jtag, axi_hs_dtp_csr;
     int unsigned axi_hs_log_engine, axi_hs_periph;
+    int unsigned axi_hs_cpu_mmio_uncore_rst, axi_hs_misc_warm;
+    int unsigned axi_hs_dma, axi_hs_dma_ctrl, axi_hs_dfx_csr, axi_hs_ar_ctrl;
+    int unsigned axi_hs_mr_ctrl, axi_hs_xr_ctrl, axi_hs_infilt_ctrl, axi_hs_outfilt_ctrl;
+    int unsigned axi_hs_mailbox, axi_hs_base_config, axi_hs_local_out, axi_hs_to_output;
+    int unsigned axi_hs_filtered_sys, axi_hs_sep_remap, axi_hs_external, axi_hs_efuse_bank;
     always_ff @(posedge clk_smc) begin
         if (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed &&
             `SMC_AXI_HS(sys_axi_in_req, sys_axi_in_resp))
@@ -2756,8 +4459,139 @@ module smc_uvm_top
         if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(u_dut.u_smc.axil_peripherals_req,
                                            u_dut.u_smc.axil_peripherals_resp))
             axi_hs_periph <= axi_hs_periph + 1;
+        if (`SMC_AXI_UNCORE_RST_ON &&
+            `SMC_AXI_HS(u_dut.u_smc.cpu_axi_mmio_port_req,
+                        u_dut.u_smc.cpu_axi_mmio_port_resp))
+            axi_hs_cpu_mmio_uncore_rst <= axi_hs_cpu_mmio_uncore_rst + 1;
+        if (`SMC_AXI_MISC_WARM_ON && `SMC_AXI_HS(misc_warm_req, misc_warm_resp))
+            axi_hs_misc_warm <= axi_hs_misc_warm + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axi_data_accel_req,
+                                           `SMC_BASE.axi_data_accel_resp))
+            axi_hs_dma <= axi_hs_dma + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axi_data_accel_ctrl_req,
+                                           `SMC_BASE.axi_data_accel_ctrl_rsp))
+            axi_hs_dma_ctrl <= axi_hs_dma_ctrl + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_dfx_csr_req, `SMC_BASE.axil_dfx_csr_resp))
+            axi_hs_dfx_csr <= axi_hs_dfx_csr + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_aR_ctrl_req, `SMC_BASE.axil_aR_ctrl_resp))
+            axi_hs_ar_ctrl <= axi_hs_ar_ctrl + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_mR_ctrl_req, `SMC_BASE.axil_mR_ctrl_resp))
+            axi_hs_mr_ctrl <= axi_hs_mr_ctrl + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_xR_ctrl_req, `SMC_BASE.axil_xR_ctrl_resp))
+            axi_hs_xr_ctrl <= axi_hs_xr_ctrl + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_inbound_filter_ctrl_req,
+                                           `SMC_BASE.axil_inbound_filter_ctrl_resp))
+            axi_hs_infilt_ctrl <= axi_hs_infilt_ctrl + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_outbound_filter_ctrl_req,
+                                           `SMC_BASE.axil_outbound_filter_ctrl_resp))
+            axi_hs_outfilt_ctrl <= axi_hs_outfilt_ctrl + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_mailbox_req, `SMC_BASE.axil_mailbox_resp))
+            axi_hs_mailbox <= axi_hs_mailbox + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axil_smc_base_config_req,
+                                           `SMC_BASE.axil_smc_base_config_resp))
+            axi_hs_base_config <= axi_hs_base_config + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_FAB.axi_local_out_req, `SMC_FAB.axi_local_out_resp))
+            axi_hs_local_out <= axi_hs_local_out + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_FAB.axi_to_output_fabric_req,
+                                           `SMC_FAB.axi_to_output_fabric_resp))
+            axi_hs_to_output <= axi_hs_to_output + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_FAB.filtered_sys_axi_out_req,
+                                           `SMC_FAB.filtered_sys_axi_out_resp))
+            axi_hs_filtered_sys <= axi_hs_filtered_sys + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_FAB.sep_axi_id_remap_req,
+                                           `SMC_FAB.sep_axi_id_remap_resp))
+            axi_hs_sep_remap <= axi_hs_sep_remap + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(u_dut.u_smc.smc_external_req_o,
+                                           u_dut.u_smc.smc_external_resp_i))
+            axi_hs_external <= axi_hs_external + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(u_dut.u_smc.efuse_bank_ctrl_req_o,
+                                           u_dut.u_smc.efuse_bank_ctrl_resp_i))
+            axi_hs_efuse_bank <= axi_hs_efuse_bank + 1;
+        `SMC_AXI_STALL(axi_stall_sys_in, `SMC_AXI_SVA_ON && sys_in_axi_sva_armed,
+                       sys_axi_in_req,
+                       sys_axi_in_resp)
+        `SMC_AXI_STALL(axi_stall_jtag_in, `SMC_AXI_SVA_ON && jtag_in_axi_sva_armed,
+                       jtag_axi_in_req,
+                       jtag_axi_in_resp)
+        `SMC_AXI_STALL(axi_stall_sep_in, `SMC_AXI_SVA_ON && sep_in_axi_sva_armed,
+                       sep_axi_in_req,
+                       sep_axi_in_resp)
+        `SMC_AXI_STALL(axi_stall_sys_out, `SMC_AXI_SVA_ON,
+                       output_axi_req,
+                       output_axi_resp)
+        `SMC_AXI_STALL(axi_stall_cpu_front, `SMC_AXI_SVA_ON && !cpu_reset_probe,
+                       u_dut.u_smc.cpu_axi_front_port_req,
+                       u_dut.u_smc.cpu_axi_front_port_resp)
+        `SMC_AXI_STALL(axi_stall_cpu_mmio, `SMC_AXI_SVA_ON && !cpu_reset_probe,
+                       u_dut.u_smc.cpu_axi_mmio_port_req,
+                       u_dut.u_smc.cpu_axi_mmio_port_resp)
+        `SMC_AXI_STALL(axi_stall_otp_jtag, `SMC_AXI_SVA_ON && otp_jtag_axil_sva_armed,
+                       ej_axi_req,
+                       ej_axi_resp)
+        `SMC_AXI_STALL(axi_stall_dtp_csr, `SMC_AXI_SVA_ON,
+                       axil_dtp_csr_req,
+                       axil_dtp_csr_resp)
+        `SMC_AXI_STALL(axi_stall_log_engine, `SMC_AXI_SVA_ON,
+                       u_dut.u_smc.axil_log_engine_req,
+                       u_dut.u_smc.axil_log_engine_resp)
+        `SMC_AXI_STALL(axi_stall_periph, `SMC_AXI_SVA_ON,
+                       u_dut.u_smc.axil_peripherals_req,
+                       u_dut.u_smc.axil_peripherals_resp)
+        `SMC_AXI_STALL(axi_stall_cpu_mmio_uncore_rst, `SMC_AXI_UNCORE_RST_ON,
+                       u_dut.u_smc.cpu_axi_mmio_port_req,
+                       u_dut.u_smc.cpu_axi_mmio_port_resp)
+        `SMC_AXI_STALL(axi_stall_misc_warm, `SMC_AXI_MISC_WARM_ON,
+                       misc_warm_req,
+                       misc_warm_resp)
+        `SMC_AXI_STALL(axi_stall_dma, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axi_data_accel_req,
+                       `SMC_BASE.axi_data_accel_resp)
+        `SMC_AXI_STALL(axi_stall_dma_ctrl, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axi_data_accel_ctrl_req,
+                       `SMC_BASE.axi_data_accel_ctrl_rsp)
+        `SMC_AXI_STALL(axi_stall_dfx_csr, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_dfx_csr_req,
+                       `SMC_BASE.axil_dfx_csr_resp)
+        `SMC_AXI_STALL(axi_stall_ar_ctrl, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_aR_ctrl_req,
+                       `SMC_BASE.axil_aR_ctrl_resp)
+        `SMC_AXI_STALL(axi_stall_mr_ctrl, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_mR_ctrl_req,
+                       `SMC_BASE.axil_mR_ctrl_resp)
+        `SMC_AXI_STALL(axi_stall_xr_ctrl, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_xR_ctrl_req,
+                       `SMC_BASE.axil_xR_ctrl_resp)
+        `SMC_AXI_STALL(axi_stall_infilt_ctrl, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_inbound_filter_ctrl_req,
+                       `SMC_BASE.axil_inbound_filter_ctrl_resp)
+        `SMC_AXI_STALL(axi_stall_outfilt_ctrl, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_outbound_filter_ctrl_req,
+                       `SMC_BASE.axil_outbound_filter_ctrl_resp)
+        `SMC_AXI_STALL(axi_stall_mailbox, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_mailbox_req,
+                       `SMC_BASE.axil_mailbox_resp)
+        `SMC_AXI_STALL(axi_stall_base_config, `SMC_AXI_SVA_ON,
+                       `SMC_BASE.axil_smc_base_config_req,
+                       `SMC_BASE.axil_smc_base_config_resp)
+        `SMC_AXI_STALL(axi_stall_local_out, `SMC_AXI_SVA_ON,
+                       `SMC_FAB.axi_local_out_req,
+                       `SMC_FAB.axi_local_out_resp)
+        `SMC_AXI_STALL(axi_stall_to_output, `SMC_AXI_SVA_ON,
+                       `SMC_FAB.axi_to_output_fabric_req,
+                       `SMC_FAB.axi_to_output_fabric_resp)
+        `SMC_AXI_STALL(axi_stall_filtered_sys, `SMC_AXI_SVA_ON,
+                       `SMC_FAB.filtered_sys_axi_out_req,
+                       `SMC_FAB.filtered_sys_axi_out_resp)
+        `SMC_AXI_STALL(axi_stall_sep_remap, `SMC_AXI_SVA_ON,
+                       `SMC_FAB.sep_axi_id_remap_req,
+                       `SMC_FAB.sep_axi_id_remap_resp)
+        `SMC_AXI_STALL(axi_stall_external, `SMC_AXI_SVA_ON,
+                       u_dut.u_smc.smc_external_req_o,
+                       u_dut.u_smc.smc_external_resp_i)
+        `SMC_AXI_STALL(axi_stall_efuse_bank, `SMC_AXI_SVA_ON,
+                       u_dut.u_smc.efuse_bank_ctrl_req_o,
+                       u_dut.u_smc.efuse_bank_ctrl_resp_i)
     end
-`ifndef VERILATOR
     final begin
         $display("CHK-AXI-SVA-SYS-IN: aw_ar_handshakes=%0d instance=u_sys_in_axi_sva",
                  axi_hs_sys_in);
@@ -2779,44 +4613,488 @@ module smc_uvm_top
                  axi_hs_log_engine);
         $display("CHK-AXI-SVA-PERIPH: aw_ar_handshakes=%0d instance=u_periph_axil_sva",
                  axi_hs_periph);
+        $display("CHK-AXI-SVA-CPU-MMIO-UNCORE-RST: aw_ar_handshakes=%0d instance=%s",
+                 axi_hs_cpu_mmio_uncore_rst, "u_cpu_mmio_uncore_rst_axi_sva");
+        $display("CHK-AXI-SVA-MISC-WARM: aw_ar_handshakes=%0d instance=u_misc_warm_axil_sva",
+                 axi_hs_misc_warm);
+        $display("CHK-AXI-SVA-DMA: aw_ar_handshakes=%0d instance=u_dma_axi_sva",
+                 axi_hs_dma);
+        $display("CHK-AXI-SVA-DMA-CTRL: aw_ar_handshakes=%0d instance=u_dma_ctrl_axi_sva",
+                 axi_hs_dma_ctrl);
+        $display("CHK-AXI-SVA-DFX-CSR: aw_ar_handshakes=%0d instance=u_dfx_csr_axil_sva",
+                 axi_hs_dfx_csr);
+        $display("CHK-AXI-SVA-AR-CTRL: aw_ar_handshakes=%0d instance=u_ar_ctrl_axil_sva",
+                 axi_hs_ar_ctrl);
+        $display("CHK-AXI-SVA-MR-CTRL: aw_ar_handshakes=%0d instance=u_mr_ctrl_axil_sva",
+                 axi_hs_mr_ctrl);
+        $display("CHK-AXI-SVA-XR-CTRL: aw_ar_handshakes=%0d instance=u_xr_ctrl_axil_sva",
+                 axi_hs_xr_ctrl);
+        $display("CHK-AXI-SVA-INFILT-CTRL: aw_ar_handshakes=%0d instance=u_infilt_ctrl_axil_sva",
+                 axi_hs_infilt_ctrl);
+        $display("CHK-AXI-SVA-OUTFILT-CTRL: aw_ar_handshakes=%0d instance=u_outfilt_ctrl_axil_sva",
+                 axi_hs_outfilt_ctrl);
+        $display("CHK-AXI-SVA-MAILBOX: aw_ar_handshakes=%0d instance=u_mailbox_axil_sva",
+                 axi_hs_mailbox);
+        $display("CHK-AXI-SVA-BASE-CONFIG: aw_ar_handshakes=%0d instance=u_base_config_axil_sva",
+                 axi_hs_base_config);
+        $display("CHK-AXI-SVA-LOCAL-OUT: aw_ar_handshakes=%0d instance=u_local_out_axi_sva",
+                 axi_hs_local_out);
+        $display("CHK-AXI-SVA-TO-OUTPUT: aw_ar_handshakes=%0d instance=u_to_output_axi_sva",
+                 axi_hs_to_output);
+        $display("CHK-AXI-SVA-FILTERED-SYS: aw_ar_handshakes=%0d instance=u_filtered_sys_axi_sva",
+                 axi_hs_filtered_sys);
+        $display("CHK-AXI-SVA-SEP-REMAP: aw_ar_handshakes=%0d instance=u_sep_remap_axi_sva",
+                 axi_hs_sep_remap);
+        $display("CHK-AXI-SVA-EXTERNAL: aw_ar_handshakes=%0d instance=u_external_axil_sva",
+                 axi_hs_external);
+        $display("CHK-AXI-SVA-EFUSE-BANK: aw_ar_handshakes=%0d instance=u_efuse_bank_axil_sva",
+                 axi_hs_efuse_bank);
+        $display("OBS-G3-WIDTHS: dma=%0d/%0d/%0d dma_ctrl=%0d/%0d/%0d local_out=%0d/%0d/%0d %s",
+                 SvaDmaAddrWidth, SvaDmaDataWidth, SvaDmaIdWidth, SvaDmaCtrlAddrWidth,
+                 SvaDmaCtrlDataWidth, SvaDmaCtrlIdWidth, SvaLocalOutAddrWidth,
+                 SvaLocalOutDataWidth, SvaLocalOutIdWidth,
+                 $sformatf("to_output=%0d/%0d/%0d filtered_sys=%0d/%0d/%0d %s",
+                           SvaToOutputAddrWidth, SvaToOutputDataWidth, SvaToOutputIdWidth,
+                           SvaFilteredSysAddrWidth, SvaFilteredSysDataWidth,
+                           SvaFilteredSysIdWidth,
+                           $sformatf("sep_remap=%0d/%0d/%0d csr_lite=%0d/%0d boundary_lite=%0d/%0d",
+                                     SvaSepRemapAddrWidth, SvaSepRemapDataWidth,
+                                     SvaSepRemapIdWidth, SvaCsrLiteAddrWidth,
+                                     SvaCsrLiteDataWidth, SvaBoundaryLiteAddrWidth,
+                                     SvaBoundaryLiteDataWidth)));
         if ($test$plusargs("axi_sva_need_sys_in") && axi_hs_sys_in == 0)
-            $error({"u_sys_in_axi_sva: +axi_sva_need_sys_in, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_sys_in_axi_sva: +axi_sva_need_sys_in, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_jtag_in") && axi_hs_jtag_in == 0)
-            $error({"u_jtag_in_axi_sva: +axi_sva_need_jtag_in, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_jtag_in_axi_sva: +axi_sva_need_jtag_in, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_sep_in") && axi_hs_sep_in == 0)
-            $error({"u_sep_in_axi_sva: +axi_sva_need_sep_in, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_sep_in_axi_sva: +axi_sva_need_sep_in, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_sys_out") && axi_hs_sys_out == 0)
-            $error({"u_sys_out_axi_sva: +axi_sva_need_sys_out, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_sys_out_axi_sva: +axi_sva_need_sys_out, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_cpu_front") && axi_hs_cpu_front == 0)
-            $error({"u_cpu_front_axi_sva: +axi_sva_need_cpu_front, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_cpu_front_axi_sva: +axi_sva_need_cpu_front, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_cpu_mmio") && axi_hs_cpu_mmio == 0)
-            $error({"u_cpu_mmio_axi_sva: +axi_sva_need_cpu_mmio, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_cpu_mmio_axi_sva: +axi_sva_need_cpu_mmio, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_otp_jtag") && axi_hs_otp_jtag == 0)
-            $error({"u_otp_jtag_axil_sva: +axi_sva_need_otp_jtag, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_otp_jtag_axil_sva: +axi_sva_need_otp_jtag, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_dtp_csr") && axi_hs_dtp_csr == 0)
-            $error({"u_dtp_csr_axil_sva: +axi_sva_need_dtp_csr, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_dtp_csr_axil_sva: +axi_sva_need_dtp_csr, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_log_engine") && axi_hs_log_engine == 0)
-            $error({"u_log_engine_axil_sva: +axi_sva_need_log_engine, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_log_engine_axil_sva: +axi_sva_need_log_engine, ",
+                          "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_periph") && axi_hs_periph == 0)
-            $error({"u_periph_axil_sva: +axi_sva_need_periph, ",
-                    "but no AW or AR handshake was graded"});
+            $error("%s", {"u_periph_axil_sva: +axi_sva_need_periph, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_cpu_mmio_uncore_rst") && axi_hs_cpu_mmio_uncore_rst == 0)
+            $error("%s", {"u_cpu_mmio_uncore_rst_axi_sva: ",
+                          "+axi_sva_need_cpu_mmio_uncore_rst, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_misc_warm") && axi_hs_misc_warm == 0)
+            $error("%s", {"u_misc_warm_axil_sva: +axi_sva_need_misc_warm, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_dma") && axi_hs_dma == 0)
+            $error("%s", {"u_dma_axi_sva: +axi_sva_need_dma, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_dma_ctrl") && axi_hs_dma_ctrl == 0)
+            $error("%s", {"u_dma_ctrl_axi_sva: +axi_sva_need_dma_ctrl, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_dfx_csr") && axi_hs_dfx_csr == 0)
+            $error("%s", {"u_dfx_csr_axil_sva: +axi_sva_need_dfx_csr, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_ar_ctrl") && axi_hs_ar_ctrl == 0)
+            $error("%s", {"u_ar_ctrl_axil_sva: +axi_sva_need_ar_ctrl, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_mr_ctrl") && axi_hs_mr_ctrl == 0)
+            $error("%s", {"u_mr_ctrl_axil_sva: +axi_sva_need_mr_ctrl, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_xr_ctrl") && axi_hs_xr_ctrl == 0)
+            $error("%s", {"u_xr_ctrl_axil_sva: +axi_sva_need_xr_ctrl, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_infilt_ctrl") && axi_hs_infilt_ctrl == 0)
+            $error("%s", {"u_infilt_ctrl_axil_sva: +axi_sva_need_infilt_ctrl, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_outfilt_ctrl") && axi_hs_outfilt_ctrl == 0)
+            $error("%s", {"u_outfilt_ctrl_axil_sva: +axi_sva_need_outfilt_ctrl, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_mailbox") && axi_hs_mailbox == 0)
+            $error("%s", {"u_mailbox_axil_sva: +axi_sva_need_mailbox, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_base_config") && axi_hs_base_config == 0)
+            $error("%s", {"u_base_config_axil_sva: +axi_sva_need_base_config, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_local_out") && axi_hs_local_out == 0)
+            $error("%s", {"u_local_out_axi_sva: +axi_sva_need_local_out, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_to_output") && axi_hs_to_output == 0)
+            $error("%s", {"u_to_output_axi_sva: +axi_sva_need_to_output, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_filtered_sys") && axi_hs_filtered_sys == 0)
+            $error("%s", {"u_filtered_sys_axi_sva: +axi_sva_need_filtered_sys, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_sep_remap") && axi_hs_sep_remap == 0)
+            $error("%s", {"u_sep_remap_axi_sva: +axi_sva_need_sep_remap, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_external") && axi_hs_external == 0)
+            $error("%s", {"u_external_axil_sva: +axi_sva_need_external, ",
+                          "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_efuse_bank") && axi_hs_efuse_bank == 0)
+            $error("%s", {"u_efuse_bank_axil_sva: +axi_sva_need_efuse_bank, ",
+                          "but no AW or AR handshake was graded"});
+        $display("CHK-AXI-DATA-KNOWN-W: instances=%0d beats_checked=%0d", 13,
+                 axi_dk_w_sys_out + axi_dk_w_cpu_mmio + axi_dk_w_dtp_csr + axi_dk_w_log_engine +
+                 axi_dk_w_cpu_mmio_uncore_rst + axi_dk_w_dma + axi_dk_w_dma_ctrl +
+                 axi_dk_w_local_out + axi_dk_w_to_output + axi_dk_w_filtered_sys +
+                 axi_dk_w_sep_remap + axi_dk_w_external + axi_dk_w_efuse_bank);
+        $display("CHK-AXI-DATA-KNOWN-R: instances=%0d beats_checked=%0d", 15,
+                 axi_dk_r_sys_in + axi_dk_r_jtag_in + axi_dk_r_sep_in + axi_dk_r_cpu_front +
+                 axi_dk_r_otp_jtag + axi_dk_r_periph + axi_dk_r_misc_warm + axi_dk_r_dfx_csr +
+                 axi_dk_r_ar_ctrl + axi_dk_r_mr_ctrl + axi_dk_r_xr_ctrl + axi_dk_r_infilt_ctrl +
+                 axi_dk_r_outfilt_ctrl + axi_dk_r_mailbox + axi_dk_r_base_config);
+        $display("INFO-AXI-DATA-KNOWN-SYS-IN: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_sys_in, axi_dk_r_sys_in);
+        $display("INFO-AXI-DATA-KNOWN-JTAG-IN: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_jtag_in, axi_dk_r_jtag_in);
+        $display("INFO-AXI-DATA-KNOWN-SEP-IN: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_sep_in, axi_dk_r_sep_in);
+        $display("INFO-AXI-DATA-KNOWN-SYS-OUT: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_sys_out, axi_dk_r_sys_out);
+        $display("INFO-AXI-DATA-KNOWN-CPU-FRONT: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_cpu_front, axi_dk_r_cpu_front);
+        $display("INFO-AXI-DATA-KNOWN-CPU-MMIO: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_cpu_mmio, axi_dk_r_cpu_mmio);
+        $display("INFO-AXI-DATA-KNOWN-OTP-JTAG: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_otp_jtag, axi_dk_r_otp_jtag);
+        $display("INFO-AXI-DATA-KNOWN-DTP-CSR: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_dtp_csr, axi_dk_r_dtp_csr);
+        $display("INFO-AXI-DATA-KNOWN-LOG-ENGINE: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_log_engine, axi_dk_r_log_engine);
+        $display("INFO-AXI-DATA-KNOWN-PERIPH: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_periph, axi_dk_r_periph);
+        $display("INFO-AXI-DATA-KNOWN-CPU-MMIO-UNCORE-RST: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_cpu_mmio_uncore_rst, axi_dk_r_cpu_mmio_uncore_rst);
+        $display("INFO-AXI-DATA-KNOWN-MISC-WARM: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_misc_warm, axi_dk_r_misc_warm);
+        $display("INFO-AXI-DATA-KNOWN-DMA: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_dma, axi_dk_r_dma);
+        $display("INFO-AXI-DATA-KNOWN-DMA-CTRL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_dma_ctrl, axi_dk_r_dma_ctrl);
+        $display("INFO-AXI-DATA-KNOWN-DFX-CSR: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_dfx_csr, axi_dk_r_dfx_csr);
+        $display("INFO-AXI-DATA-KNOWN-AR-CTRL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_ar_ctrl, axi_dk_r_ar_ctrl);
+        $display("INFO-AXI-DATA-KNOWN-MR-CTRL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_mr_ctrl, axi_dk_r_mr_ctrl);
+        $display("INFO-AXI-DATA-KNOWN-XR-CTRL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_xr_ctrl, axi_dk_r_xr_ctrl);
+        $display("INFO-AXI-DATA-KNOWN-INFILT-CTRL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_infilt_ctrl, axi_dk_r_infilt_ctrl);
+        $display("INFO-AXI-DATA-KNOWN-OUTFILT-CTRL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_outfilt_ctrl, axi_dk_r_outfilt_ctrl);
+        $display("INFO-AXI-DATA-KNOWN-MAILBOX: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_mailbox, axi_dk_r_mailbox);
+        $display("INFO-AXI-DATA-KNOWN-BASE-CONFIG: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_base_config, axi_dk_r_base_config);
+        $display("INFO-AXI-DATA-KNOWN-LOCAL-OUT: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_local_out, axi_dk_r_local_out);
+        $display("INFO-AXI-DATA-KNOWN-TO-OUTPUT: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_to_output, axi_dk_r_to_output);
+        $display("INFO-AXI-DATA-KNOWN-FILTERED-SYS: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_filtered_sys, axi_dk_r_filtered_sys);
+        $display("INFO-AXI-DATA-KNOWN-SEP-REMAP: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_sep_remap, axi_dk_r_sep_remap);
+        $display("INFO-AXI-DATA-KNOWN-EXTERNAL: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_external, axi_dk_r_external);
+        $display("INFO-AXI-DATA-KNOWN-EFUSE-BANK: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_efuse_bank, axi_dk_r_efuse_bank);
+        $display("CHK-AXI-STALL-SYS-IN: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_sys_in), "u_sys_in_axi_sva");
+        $display("CHK-AXI-STALL-JTAG-IN: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_jtag_in), "u_jtag_in_axi_sva");
+        $display("CHK-AXI-STALL-SEP-IN: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_sep_in), "u_sep_in_axi_sva");
+        $display("CHK-AXI-STALL-SYS-OUT: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_sys_out), "u_sys_out_axi_sva");
+        $display("CHK-AXI-STALL-CPU-FRONT: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_cpu_front), "u_cpu_front_axi_sva");
+        $display("CHK-AXI-STALL-CPU-MMIO: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_cpu_mmio), "u_cpu_mmio_axi_sva");
+        $display("CHK-AXI-STALL-OTP-JTAG: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_otp_jtag), "u_otp_jtag_axil_sva");
+        $display("CHK-AXI-STALL-DTP-CSR: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_dtp_csr), "u_dtp_csr_axil_sva");
+        $display("CHK-AXI-STALL-LOG-ENGINE: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_log_engine), "u_log_engine_axil_sva");
+        $display("CHK-AXI-STALL-PERIPH: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_periph), "u_periph_axil_sva");
+        $display("CHK-AXI-STALL-CPU-MMIO-UNCORE-RST: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_cpu_mmio_uncore_rst),
+                 "u_cpu_mmio_uncore_rst_axi_sva");
+        $display("CHK-AXI-STALL-MISC-WARM: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_misc_warm), "u_misc_warm_axil_sva");
+        $display("CHK-AXI-STALL-DMA: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_dma), "u_dma_axi_sva");
+        $display("CHK-AXI-STALL-DMA-CTRL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_dma_ctrl), "u_dma_ctrl_axi_sva");
+        $display("CHK-AXI-STALL-DFX-CSR: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_dfx_csr), "u_dfx_csr_axil_sva");
+        $display("CHK-AXI-STALL-AR-CTRL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_ar_ctrl), "u_ar_ctrl_axil_sva");
+        $display("CHK-AXI-STALL-MR-CTRL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_mr_ctrl), "u_mr_ctrl_axil_sva");
+        $display("CHK-AXI-STALL-XR-CTRL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_xr_ctrl), "u_xr_ctrl_axil_sva");
+        $display("CHK-AXI-STALL-INFILT-CTRL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_infilt_ctrl), "u_infilt_ctrl_axil_sva");
+        $display("CHK-AXI-STALL-OUTFILT-CTRL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_outfilt_ctrl), "u_outfilt_ctrl_axil_sva");
+        $display("CHK-AXI-STALL-MAILBOX: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_mailbox), "u_mailbox_axil_sva");
+        $display("CHK-AXI-STALL-BASE-CONFIG: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_base_config), "u_base_config_axil_sva");
+        $display("CHK-AXI-STALL-LOCAL-OUT: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_local_out), "u_local_out_axi_sva");
+        $display("CHK-AXI-STALL-TO-OUTPUT: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_to_output), "u_to_output_axi_sva");
+        $display("CHK-AXI-STALL-FILTERED-SYS: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_filtered_sys), "u_filtered_sys_axi_sva");
+        $display("CHK-AXI-STALL-SEP-REMAP: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_sep_remap), "u_sep_remap_axi_sva");
+        $display("CHK-AXI-STALL-EXTERNAL: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_external), "u_external_axil_sva");
+        $display("CHK-AXI-STALL-EFUSE-BANK: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_efuse_bank), "u_efuse_bank_axil_sva");
+        $display("CHK-AXI-ATOP-ZERO-CPU-MMIO: aw_evaluated=%0d",
+                 gen_cpu_mmio_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-CPU-FRONT: aw_evaluated=%0d",
+                 gen_cpu_front_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-DMA: aw_evaluated=%0d",
+                 gen_dma_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-DMA-CTRL: aw_evaluated=%0d",
+                 gen_dma_ctrl_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-LOCAL-OUT: aw_evaluated=%0d",
+                 gen_local_out_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-TO-OUTPUT: aw_evaluated=%0d",
+                 gen_to_output_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-FILTERED-SYS: aw_evaluated=%0d",
+                 gen_filtered_sys_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-SEP-REMAP: aw_evaluated=%0d",
+                 gen_sep_remap_atop_sva.aw_evaluated);
+        $display("CHK-AXI-ATOP-ZERO-SYS-OUT: aw_evaluated=%0d",
+                 gen_sys_out_atop_sva.aw_evaluated);
+        // A checker whose five READY-stall counters are all 0 graded no
+        // back-pressure on its link in this run.
+        `SMC_AXI_STALL_UNPLACED("SYS-IN", axi_stall_sys_in, "u_sys_in_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("JTAG-IN", axi_stall_jtag_in, "u_jtag_in_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("SEP-IN", axi_stall_sep_in, "u_sep_in_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("SYS-OUT", axi_stall_sys_out, "u_sys_out_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("CPU-FRONT", axi_stall_cpu_front, "u_cpu_front_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("CPU-MMIO", axi_stall_cpu_mmio, "u_cpu_mmio_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("OTP-JTAG", axi_stall_otp_jtag, "u_otp_jtag_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("DTP-CSR", axi_stall_dtp_csr, "u_dtp_csr_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("LOG-ENGINE", axi_stall_log_engine, "u_log_engine_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("PERIPH", axi_stall_periph, "u_periph_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("CPU-MMIO-UNCORE-RST", axi_stall_cpu_mmio_uncore_rst,
+                                "u_cpu_mmio_uncore_rst_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("MISC-WARM", axi_stall_misc_warm, "u_misc_warm_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("DMA", axi_stall_dma, "u_dma_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("DMA-CTRL", axi_stall_dma_ctrl, "u_dma_ctrl_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("DFX-CSR", axi_stall_dfx_csr, "u_dfx_csr_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("AR-CTRL", axi_stall_ar_ctrl, "u_ar_ctrl_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("MR-CTRL", axi_stall_mr_ctrl, "u_mr_ctrl_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("XR-CTRL", axi_stall_xr_ctrl, "u_xr_ctrl_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("INFILT-CTRL", axi_stall_infilt_ctrl, "u_infilt_ctrl_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("OUTFILT-CTRL", axi_stall_outfilt_ctrl, "u_outfilt_ctrl_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("MAILBOX", axi_stall_mailbox, "u_mailbox_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("BASE-CONFIG", axi_stall_base_config, "u_base_config_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("LOCAL-OUT", axi_stall_local_out, "u_local_out_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("TO-OUTPUT", axi_stall_to_output, "u_to_output_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("FILTERED-SYS", axi_stall_filtered_sys, "u_filtered_sys_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("SEP-REMAP", axi_stall_sep_remap, "u_sep_remap_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("EXTERNAL", axi_stall_external, "u_external_axil_sva");
+        `SMC_AXI_STALL_UNPLACED("EFUSE-BANK", axi_stall_efuse_bank, "u_efuse_bank_axil_sva");
+        $write("OBS-G10-ATOP-SPEC:");
+        $write(" CPU-MMIO=aw_evaluated=%0d", gen_cpu_mmio_atop_sva.aw_evaluated);
+        $write(" CPU-FRONT=aw_evaluated=%0d", gen_cpu_front_atop_sva.aw_evaluated);
+        $write(" DMA=aw_evaluated=%0d", gen_dma_atop_sva.aw_evaluated);
+        $write(" DMA-CTRL=aw_evaluated=%0d", gen_dma_ctrl_atop_sva.aw_evaluated);
+        $write(" LOCAL-OUT=aw_evaluated=%0d", gen_local_out_atop_sva.aw_evaluated);
+        $write(" TO-OUTPUT=aw_evaluated=%0d", gen_to_output_atop_sva.aw_evaluated);
+        $write(" FILTERED-SYS=aw_evaluated=%0d", gen_filtered_sys_atop_sva.aw_evaluated);
+        $write(" SEP-REMAP=aw_evaluated=%0d", gen_sep_remap_atop_sva.aw_evaluated);
+        $write(" SYS-OUT=aw_evaluated=%0d", gen_sys_out_atop_sva.aw_evaluated);
+        $display(" (no pinned chapter states whether an SMC AXI4 master may issue a ",
+                 "non-zero AWATOP; the SMC_AXI_AWATOP_ZERO assertions require AWATOP 0 on ",
+                 "every AW, the value IHI 0022 gives a manager that issues no atomic ",
+                 "transaction)");
+        if ($test$plusargs("axi_sva_need_stall_sys_in") &&
+            `SMC_AXI_STALL_SUM(axi_stall_sys_in) == 0)
+            $error("%s", {"u_sys_in_axi_sva: ",
+                          "+axi_sva_need_stall_sys_in, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_jtag_in") &&
+            `SMC_AXI_STALL_SUM(axi_stall_jtag_in) == 0)
+            $error("%s", {"u_jtag_in_axi_sva: ",
+                          "+axi_sva_need_stall_jtag_in, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_sep_in") &&
+            `SMC_AXI_STALL_SUM(axi_stall_sep_in) == 0)
+            $error("%s", {"u_sep_in_axi_sva: ",
+                          "+axi_sva_need_stall_sep_in, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_sys_out") &&
+            `SMC_AXI_STALL_SUM(axi_stall_sys_out) == 0)
+            $error("%s", {"u_sys_out_axi_sva: ",
+                          "+axi_sva_need_stall_sys_out, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_cpu_front") &&
+            `SMC_AXI_STALL_SUM(axi_stall_cpu_front) == 0)
+            $error("%s", {"u_cpu_front_axi_sva: ",
+                          "+axi_sva_need_stall_cpu_front, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_cpu_mmio") &&
+            `SMC_AXI_STALL_SUM(axi_stall_cpu_mmio) == 0)
+            $error("%s", {"u_cpu_mmio_axi_sva: ",
+                          "+axi_sva_need_stall_cpu_mmio, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_otp_jtag") &&
+            `SMC_AXI_STALL_SUM(axi_stall_otp_jtag) == 0)
+            $error("%s", {"u_otp_jtag_axil_sva: ",
+                          "+axi_sva_need_stall_otp_jtag, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_dtp_csr") &&
+            `SMC_AXI_STALL_SUM(axi_stall_dtp_csr) == 0)
+            $error("%s", {"u_dtp_csr_axil_sva: ",
+                          "+axi_sva_need_stall_dtp_csr, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_log_engine") &&
+            `SMC_AXI_STALL_SUM(axi_stall_log_engine) == 0)
+            $error("%s", {"u_log_engine_axil_sva: ",
+                          "+axi_sva_need_stall_log_engine, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_periph") &&
+            `SMC_AXI_STALL_SUM(axi_stall_periph) == 0)
+            $error("%s", {"u_periph_axil_sva: ",
+                          "+axi_sva_need_stall_periph, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_cpu_mmio_uncore_rst") &&
+            `SMC_AXI_STALL_SUM(axi_stall_cpu_mmio_uncore_rst) == 0)
+            $error("%s", {"u_cpu_mmio_uncore_rst_axi_sva: ",
+                          "+axi_sva_need_stall_cpu_mmio_uncore_rst, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_misc_warm") &&
+            `SMC_AXI_STALL_SUM(axi_stall_misc_warm) == 0)
+            $error("%s", {"u_misc_warm_axil_sva: ",
+                          "+axi_sva_need_stall_misc_warm, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_dma") &&
+            `SMC_AXI_STALL_SUM(axi_stall_dma) == 0)
+            $error("%s", {"u_dma_axi_sva: ",
+                          "+axi_sva_need_stall_dma, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_dma_ctrl") &&
+            `SMC_AXI_STALL_SUM(axi_stall_dma_ctrl) == 0)
+            $error("%s", {"u_dma_ctrl_axi_sva: ",
+                          "+axi_sva_need_stall_dma_ctrl, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_dfx_csr") &&
+            `SMC_AXI_STALL_SUM(axi_stall_dfx_csr) == 0)
+            $error("%s", {"u_dfx_csr_axil_sva: ",
+                          "+axi_sva_need_stall_dfx_csr, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_ar_ctrl") &&
+            `SMC_AXI_STALL_SUM(axi_stall_ar_ctrl) == 0)
+            $error("%s", {"u_ar_ctrl_axil_sva: ",
+                          "+axi_sva_need_stall_ar_ctrl, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_mr_ctrl") &&
+            `SMC_AXI_STALL_SUM(axi_stall_mr_ctrl) == 0)
+            $error("%s", {"u_mr_ctrl_axil_sva: ",
+                          "+axi_sva_need_stall_mr_ctrl, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_xr_ctrl") &&
+            `SMC_AXI_STALL_SUM(axi_stall_xr_ctrl) == 0)
+            $error("%s", {"u_xr_ctrl_axil_sva: ",
+                          "+axi_sva_need_stall_xr_ctrl, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_infilt_ctrl") &&
+            `SMC_AXI_STALL_SUM(axi_stall_infilt_ctrl) == 0)
+            $error("%s", {"u_infilt_ctrl_axil_sva: ",
+                          "+axi_sva_need_stall_infilt_ctrl, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_outfilt_ctrl") &&
+            `SMC_AXI_STALL_SUM(axi_stall_outfilt_ctrl) == 0)
+            $error("%s", {"u_outfilt_ctrl_axil_sva: ",
+                          "+axi_sva_need_stall_outfilt_ctrl, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_mailbox") &&
+            `SMC_AXI_STALL_SUM(axi_stall_mailbox) == 0)
+            $error("%s", {"u_mailbox_axil_sva: ",
+                          "+axi_sva_need_stall_mailbox, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_base_config") &&
+            `SMC_AXI_STALL_SUM(axi_stall_base_config) == 0)
+            $error("%s", {"u_base_config_axil_sva: ",
+                          "+axi_sva_need_stall_base_config, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_local_out") &&
+            `SMC_AXI_STALL_SUM(axi_stall_local_out) == 0)
+            $error("%s", {"u_local_out_axi_sva: ",
+                          "+axi_sva_need_stall_local_out, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_to_output") &&
+            `SMC_AXI_STALL_SUM(axi_stall_to_output) == 0)
+            $error("%s", {"u_to_output_axi_sva: ",
+                          "+axi_sva_need_stall_to_output, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_filtered_sys") &&
+            `SMC_AXI_STALL_SUM(axi_stall_filtered_sys) == 0)
+            $error("%s", {"u_filtered_sys_axi_sva: ",
+                          "+axi_sva_need_stall_filtered_sys, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_sep_remap") &&
+            `SMC_AXI_STALL_SUM(axi_stall_sep_remap) == 0)
+            $error("%s", {"u_sep_remap_axi_sva: ",
+                          "+axi_sva_need_stall_sep_remap, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_external") &&
+            `SMC_AXI_STALL_SUM(axi_stall_external) == 0)
+            $error("%s", {"u_external_axil_sva: ",
+                          "+axi_sva_need_stall_external, ",
+                          "but no READY stall was counted"});
+        if ($test$plusargs("axi_sva_need_stall_efuse_bank") &&
+            `SMC_AXI_STALL_SUM(axi_stall_efuse_bank) == 0)
+            $error("%s", {"u_efuse_bank_axil_sva: ",
+                          "+axi_sva_need_stall_efuse_bank, ",
+                          "but no READY stall was counted"});
     end
-`endif
 
+`undef SMC_AXI_STALL_ARGS
+`undef SMC_AXI_STALL_SUM
+`undef SMC_AXI_STALL
+`undef SMC_AXI_DK_R_IDLE
+`undef SMC_AXI_DK_W_IDLE
+`undef SMC_AXI_DK_R
+`undef SMC_AXI_DK_W
+`undef SMC_FAB
+`undef SMC_BASE
+`undef SMC_AXI_RSP_VALID
+`undef SMC_AXI_ANY_VALID
+`undef SMC_AXI_MISC_WARM_ON
+`undef SMC_AXI_UNCORE_RST_ON
 `undef SMC_AXI_MASTER_KNOWN
 `undef SMC_AXI_SVA_ON
 `undef SMC_AXI_HS
 `undef SMC_AXIL_SVA_PORTS
+`undef SMC_AXIL_SVA_PORTS_RST
 `undef SMC_AXI_SVA_PORTS
+`undef SMC_AXI_SVA_PORTS_RST
 
 `else  // SMC_DUAL
     // ==================================================================
@@ -2974,12 +5252,12 @@ module smc_uvm_top
     // firmware's RNG, so all three selectable channels are wired.
     //
     // Channel-to-pad mapping is smc_padring.sv's, not smc_rom_defs.h's:
-    //   I3C[0] -> 27/28, I3C[1] -> 63/64, I3C[2] -> 29/30, I3C[3] -> 31/32.
+    //   I3C[0] -> 27/28, I3C[1] -> 65/66, I3C[2] -> 29/30, I3C[3] -> 31/32.
     // ------------------------------------------------------------------
     localparam int unsigned NumSharedI3c = 3;
     localparam int unsigned SharedI3cIdx    [NumSharedI3c] = '{0,  1,  3};
-    localparam int unsigned SharedI3cSclPad [NumSharedI3c] = '{27, 63, 31};
-    localparam int unsigned SharedI3cSdaPad [NumSharedI3c] = '{28, 64, 32};
+    localparam int unsigned SharedI3cSclPad [NumSharedI3c] = '{27, 65, 31};
+    localparam int unsigned SharedI3cSdaPad [NumSharedI3c] = '{28, 66, 32};
 
     logic [NumSharedI3c-1:0] i3c_scl_dut_low, i3c_sda_dut_low;
     logic [NumSharedI3c-1:0] i3c_scl_bfm_low, i3c_sda_bfm_low;
@@ -3831,6 +6109,9 @@ module smc_uvm_top
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
 
+    // FCOV graded-window gate: no covergroup that needs it is sampled here.
+    assign tb_fcov_gate = 1'b0;
+
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.
     assign tb_test_en_i        = 1'b0;
@@ -3907,6 +6188,7 @@ module smc_uvm_top
     assign tb_cpu_ecc_poke_en      = 1'b0;
     assign tb_cpu_ecc_poke_entry   = '0;
     assign tb_cpu_ecc_poke_mask    = '0;
+    assign tb_cpu_scratch_peek_offset = '0;
     assign tb_dfd_fault_inject     = 1'b0;
 
     // Product lifecycle state idle: complementary TEST_DEV ({~0, 0}).

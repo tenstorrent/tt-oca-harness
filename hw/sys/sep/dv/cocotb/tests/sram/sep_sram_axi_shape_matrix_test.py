@@ -44,9 +44,33 @@ Checkers:
                         write; the post-reset write shows on the tap, and a
                         response after the readback request carries the
                         post-reset value as read data.
+  CHK-SRAM-STRB         over a word written in full, one single-beat 8-byte
+                        inbound write for each WSTRB 0x00 to 0x0F in a seeded
+                        order, and one with a drawn 8-bit sparse strobe: the
+                        write answers OKAY, and the word read back holds the
+                        new data in each strobed lane and the stored word in
+                        every other lane, so strobe 0x00 changes nothing (AMBA
+                        AXI write strobes, through ``hw/sys/sep/doc/fabric.adoc``,
+                        AXI4 crossbar and SRAM target). Every leg runs, and the
+                        leaf then fails once, naming each failing leg.
 Controls (not counted): CTRL-SRAM-FILTER (inbound filter entry readback),
 CTRL-SRAM-REACH (both masters write and read back the first and last word, each
-of the 15 word-address bits and 128 drawn words).
+of the 15 word-address bits and 128 drawn words), CTRL-SRAM-STRB-PRE (the
+CPU-LSU master reads back the full write of a strobe leg) and CTRL-SRAM-STRB
+(the W handshake on ``m_axi`` carries the strobe of the leg and the written
+data, and one B beat with the ID of the write follows).
+
+Open-value leg (logged, not graded): no specification or RDL states the result.
+  OBS-SRAM-FLIP  one drawn bit of a written word flipped in the SRAM macro array:
+                 the response and data of an 8-byte inbound read of the word and
+                 the read data of the PR-SRAM tap. Control CTRL-SRAM-FLIP: the
+                 macro array holds the written word before the flip and the word
+                 with the drawn bit flipped after it.
+``ocah_axi_vip`` places a full strobe on an aligned 8-byte beat and does not
+issue a sparse or zero strobe. The leaf drives ``m_axi_wstrb`` from the falling
+edge after the VIP raises WVALID, so the DUT samples the drawn strobe on every
+edge of that beat. The flip is a backdoor write of the macro array
+(``u_sep_sram.gen_ram_inst[0].u_mem.mem``, public under Verilator).
 
 Environment choices (logged): the per-access completion bound, the bound of the
 waits on ``dbg_sep_reset_n_o``, and the quiet wait for a stale beat. The
@@ -70,9 +94,12 @@ request from the SRAM base ``SEP_SRAM_MEM_BASE_ADDR`` (``docs/SEP_TB_ARCH.adoc``
 PR-SRAM entry); the leaf compares it at 8-byte word granularity.
 
 The graded window (owner code of this test) is open around the outstanding
-bursts, the refused bursts, the single-beat bursts and each reset in flight. The
-filter setup, the reach control, the refusal controls and the W measurement run
-with the window closed.
+bursts, the refused bursts, the single-beat bursts, the strobe legs and each
+reset in flight. The filter setup, the reach control, the refusal controls, the
+open-value leg and the W measurement run with the window closed. After
+CHK-SRAM-STRB passes for a WSTRB 0x00 to 0x0F leg, the leaf writes that value
+to the pass label of ``sep_sram_access_cg.cp_sram_wstrb``
+(``set_sram_access_pass``).
 """
 
 from __future__ import annotations
@@ -82,12 +109,17 @@ import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, with_timeout
 from env.sep_axi_chan_mon import SepAxiChanMon
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+    set_sram_access_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, sym
 from seq_lib.sep_fabric_csr_bank_seq import (
     F_ALLOW_BURST,
     F_ALLOW_NS,
@@ -135,6 +167,11 @@ RESET_BOUND = 2_000  # clk_i cycles for dbg_sep_reset_n_o to follow rst_ni
 FOLLOW_BOUND = 2_000  # clk_i cycles for a request handshake or a response
 QUIET_CYCLES = 256  # quiet wait for a stale beat after the post-reset readback
 SETTLE_CYCLES = 8  # idle clocks between bursts of one phase
+# Seed salts of the strobe and flip legs, so the draws above keep their seed mapping.
+LEG_SALT = 0x5A5 << 48
+WALK_SALT = 0x5A6 << 48
+# Every WSTRB value of the low four lanes of the 8-byte inbound beat.
+WALK_STRBS = range(16)
 
 PROG_FIELDS = (
     F_ENTRY_ENABLED
@@ -142,7 +179,7 @@ PROG_FIELDS = (
     | F_WRITE_ALLOWED
     | F_ALLOW_BURST
     | F_ALLOW_NS
-    | INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "src_id")
+    | INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "src_id")
 )
 
 
@@ -160,6 +197,12 @@ def beat_addrs(burst: int, start: int, beats: int, size: int) -> list[int]:
     span = beats * size
     lo = start - start % span
     return [lo + (start - lo + i * size) % span for i in range(beats)]
+
+
+def contiguous(strb: int) -> bool:
+    """True when the set bits of a nonzero strobe form one run."""
+    run = strb >> ((strb & -strb).bit_length() - 1)
+    return run & (run + 1) == 0
 
 
 def words_of(addrs: list[int], size: int) -> list[int]:
@@ -333,6 +376,47 @@ class _Cfg:
         self.meas_data = uniq64()
         self.meas_ids = rng.sample(list(S_IDS), 2)
 
+        # Strobe legs on the inbound master, each over a word written in full: every
+        # WSTRB 0x00-0x0F in a seeded order, then the drawn 8-bit sparse strobe.
+        # Each new value differs from the stored one in every byte, so each lane
+        # shows which value it holds. The stored-bit flip is an open-value leg.
+        leg = SepSeededRng(seed ^ LEG_SALT)
+        a_sparse, a_flip = (SRAM_BASE + w * WORD for w in leg.sample(range(N_WORDS), 2))
+        sparse = [s for s in range(1, 0xFF) if not contiguous(s)]
+        pres: set[int] = set()
+
+        def strb_leg(rng: SepSeededRng, kind: str, strb: int, addr: int) -> dict:
+            pre = 0
+            while pre == 0 or pre in pres:
+                pre = rng.getrandbits(64)
+            pres.add(pre)
+            diff = int.from_bytes(bytes(rng.randrange(1, 256) for _ in range(WORD)), "little")
+            return {
+                "kind": kind,
+                "strb": strb,
+                "addr": addr,
+                "pre": pre,
+                "data": pre ^ diff,
+                "id": rng.choice(M_IDS),
+                "lsu_id": rng.choice(S_IDS),
+            }
+
+        sparse_leg = strb_leg(leg, "sparse", leg.choice(sparse), a_sparse)
+        self.flip = {
+            "addr": a_flip,
+            "value": leg.getrandbits(64),
+            "bit": leg.randrange(64),
+            "id": leg.choice(M_IDS),
+        }
+        walk = SepSeededRng(seed ^ WALK_SALT)
+        masks = list(WALK_STRBS)
+        walk.shuffle(masks)
+        free = [w for w in range(N_WORDS) if SRAM_BASE + w * WORD not in (a_sparse, a_flip)]
+        words = walk.sample(free, len(masks))
+        self.strb_legs = [
+            strb_leg(walk, "walk", m, SRAM_BASE + w * WORD) for m, w in zip(masks, words)
+        ] + [sparse_leg]
+
     def draw_lines(self) -> list[str]:
         out = []
         for m in MASTERS:
@@ -366,6 +450,15 @@ class _Cfg:
             )
         )
         out.append(f"meas=@0x{self.meas_addr:08x} ids={self.meas_ids}")
+        out.append(
+            " ".join(
+                f"strb_{x['kind']}=0x{x['strb']:02x}/@0x{x['addr']:08x}/pre={_w(x['pre'])}"
+                f"/data={_w(x['data'])}/id={x['id']}/lsu_id={x['lsu_id']}"
+                for x in self.strb_legs
+            )
+            + f" flip=@0x{self.flip['addr']:08x}/value={_w(self.flip['value'])}"
+            f"/bit={self.flip['bit']}/id={self.flip['id']}"
+        )
         return out
 
 
@@ -379,6 +472,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         "CHK-SRAM-SINGLE",
         "CHK-SRAM-OTF",
         "CHK-SRAM-OTF-REPLAY",
+        "CHK-SRAM-STRB",
     )
 
     # ---- access primitives ---------------------------------------------------
@@ -485,16 +579,26 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
                 "START_ADDR",
                 cfg.start_addr_reg,
                 SRAM_BASE,
-                INBOUND_FILTER_CTRL_0.mask32("START_ADDR"),
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("START_ADDR"),
             ),
             (
                 "START_ADDR_HI",
                 cfg.start_addr_reg + 4,
                 0,
-                INBOUND_FILTER_CTRL_0.mask("START_ADDR") >> 32,
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask("START_ADDR") >> 32,
             ),
-            ("END_ADDR", cfg.end_addr_reg, SRAM_LAST, INBOUND_FILTER_CTRL_0.mask32("END_ADDR")),
-            ("END_ADDR_HI", cfg.end_addr_reg + 4, 0, INBOUND_FILTER_CTRL_0.mask("END_ADDR") >> 32),
+            (
+                "END_ADDR",
+                cfg.end_addr_reg,
+                SRAM_LAST,
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("END_ADDR"),
+            ),
+            (
+                "END_ADDR_HI",
+                cfg.end_addr_reg + 4,
+                0,
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask("END_ADDR") >> 32,
+            ),
         )
         parts = []
         for name, addr, want, mask in checks:
@@ -686,6 +790,13 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             )
             self.logger.error(msg)
             raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-SRAM-REFUSE seen: %s INCR burst @0x%08x and single-beat FIXED @0x%08x "
+            "wrote and read back with OKAY",
+            b.fmt(),
+            ctrl,
+            words[0],
+        )
         # Pre-read.
         pre = {w: await self._read_word("inbound", w, b.axi_id) for w in words}
         for w in words:
@@ -773,7 +884,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         self.logger.info("CHK-SRAM-SINGLE PASS: %s", line)
         self.n_checks += 1
 
-    # ---- step 8: response window W ---------------------------------------------
+    # ---- step 10: response window W --------------------------------------------
     async def _follow(self, op: str, axi_id: int, *, land_at: int | None) -> dict[str, int | None]:
         """Sample the s_axi pins each clock (read-only phase) after an issue.
 
@@ -870,7 +981,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             )
         return win
 
-    # ---- step 9: reset in flight -------------------------------------------------
+    # ---- step 11: reset in flight ------------------------------------------------
     async def _wait_level(self, sig, level: int, bound: int, what: str) -> int:
         """Clocks until ``sig`` reads ``level``. A wait for 0 raises on X/Z, so an
         unknown sample never counts as low; a wait for 1 resolves X/Z to 0 and
@@ -1009,6 +1120,196 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         self.logger.info("CHK-SRAM-OTF-REPLAY PASS: %s", line)
         self.n_checks += 1
 
+    # ---- strobe legs and the stored-bit flip ------------------------------------
+    def _sram_mem(self):
+        sram = cocotb.top.u_dut.u_sep_ip_integration.u_sep_sram
+        try:
+            return sram.gen_ram_inst[0].u_mem.mem
+        except (IndexError, AttributeError):
+            # VCS lists the instance as the child ``gen_ram_inst[0].u_mem``.
+            return sram._id("gen_ram_inst[0].u_mem", extended=False).mem
+
+    async def _leg_pass(self, leg: str) -> None:
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_open_value_leg_pass(leg, self.logger)
+        await ClockCycles(clk, 2)
+        set_open_value_leg_pass(None, self.logger)
+
+    async def _drive_strb(self, strb: int, seen: dict) -> None:
+        """Drive ``m_axi_wstrb`` to ``strb`` at each falling edge while WVALID is high.
+
+        Returns after the falling edge whose read-only phase shows WVALID and
+        WREADY high, so the W handshake on the next rising edge takes ``strb``;
+        ``seen`` then holds the strobe and data of that beat. Bounded by
+        FOLLOW_BOUND clocks; ``seen`` stays empty on a timeout.
+        """
+        top = cocotb.top
+        for _ in range(FOLLOW_BOUND):
+            await FallingEdge(top.clk_i)
+            if self.rd(top.m_axi_wvalid, allow_unknown=True) != 1:
+                continue
+            top.m_axi_wstrb.value = strb
+            await ReadOnly()
+            if self.rd(top.m_axi_wready, allow_unknown=True) == 1:
+                seen["wstrb"] = self.rd(top.m_axi_wstrb)
+                seen["wdata"] = self.rd(top.m_axi_wdata)
+                return
+
+    async def _strb_leg(self, x: dict) -> str | None:
+        """One strobe leg; returns None when CHK-SRAM-STRB passed, else the failure."""
+        seed, kind, strb, addr, axi_id = self.plan.seed, x["kind"], x["strb"], x["addr"], x["id"]
+        clk = cocotb.top.clk_i
+        tag = f"seed={seed} kind={kind} wstrb=0x{strb:02x} @0x{addr:08x}"
+        await self._write_word("inbound", addr, x["pre"], WORD, axi_id)
+        pre_rb = await self._read_word("cpu_lsu", addr, x["lsu_id"])
+        pre_fields = f"{tag} readback={_w(pre_rb)} expect={_w(x['pre'])}"
+        if pre_rb != x["pre"]:
+            msg = f"CTRL-MISSING SRAM-STRB-PRE: {pre_fields}"
+            self.logger.error(msg)
+            await self._write_word("inbound", addr, x["pre"], WORD, axi_id)
+            return msg
+        self.logger.info("CTRL-SRAM-STRB-PRE seen: %s", pre_fields)
+        mark = self.mon_m.mark()
+        tap_mark = self.sram_tap.mark()
+        macro_mark = self.macro_tap.mark()
+        seen: dict = {}
+        drive = cocotb.start_soon(self._drive_strb(strb, seen))
+        ev = self._issue(
+            "inbound",
+            "W",
+            INCR,
+            addr,
+            beats=1,
+            size=WORD,
+            axi_id=axi_id,
+            data=x["data"].to_bytes(WORD, "little"),
+        )
+        raw = await self._wait(ev, f"{kind} strobe write @0x{addr:08x}")
+        await drive
+        await ClockCycles(clk, 2)
+        bresp = [b.resp for b in self._beats(self.mon_m, mark, "b", axi_id)]
+        wstrb, wdata = seen.get("wstrb"), seen.get("wdata")
+        reached = wstrb == strb and wdata == x["data"] and len(bresp) == 1
+        fields = (
+            f"seed={seed} kind={kind} wstrb={'none' if wstrb is None else f'0x{wstrb:02x}'} "
+            f"expect=0x{strb:02x} wdata_match={int(wdata == x['data'])} b_beats={len(bresp)} "
+            f"@0x{addr:08x} id={axi_id}"
+        )
+        if not reached:
+            msg = f"CTRL-MISSING SRAM-STRB: {fields}"
+            self.logger.error(msg)
+            await self._write_word("inbound", addr, x["pre"], WORD, axi_id)
+            return msg
+        self.logger.info("CTRL-SRAM-STRB seen: %s", fields)
+        got = await self._read_word("inbound", addr, axi_id)
+        off = addr - SRAM_BASE
+        reqs = [
+            f"we={b.we}/strb={'X' if b.strb is None else f'0x{b.strb:02x}'}"
+            for b in self.sram_tap.since(tap_mark, "req")
+            if b.addr is not None and b.addr & ~(WORD - 1) == off and b.we == 1
+        ]
+        wmask = [
+            "X" if b.wmask is None else f"0x{b.wmask:016x}"
+            for b in self.macro_tap.since(macro_mark, "req")
+            if b.addr == off // WORD and b.we == 1
+        ]
+        lanes = int.from_bytes(bytes(0xFF if strb >> i & 1 else 0 for i in range(WORD)), "little")
+        expect = (x["pre"] & ~lanes | x["data"] & lanes) & M64
+        code = worst_resp(getattr(raw, "resp", None))
+        line = (
+            f"{tag} pre={_w(x['pre'])} wdata={_w(x['data'])} bresp={RESP_NAME.get(code, code)} "
+            f"readback={_w(got)} expect={_w(expect)} sram_req=[{','.join(reqs)}] "
+            f"macro_wmask=[{','.join(wmask)}]"
+        )
+        await self._write_word("inbound", addr, x["pre"], WORD, axi_id)
+        if got != expect or code != OKAY:
+            msg = f"CHK-SRAM-STRB FAIL: {line} xor={_w(got ^ expect)}"
+            self.logger.error(msg)
+            return msg
+        self.logger.info("CHK-SRAM-STRB PASS: %s", line)
+        return None
+
+    async def _sram_pass(self, point: int, cell: int) -> None:
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_sram_access_pass(point, cell, self.logger)
+        await ClockCycles(clk, 2)
+        set_sram_access_pass(0, log=self.logger)
+
+    async def _strb_walk(self) -> None:
+        """Every strobe leg; the leaf fails once after the last leg, naming each failure."""
+        legs = self.plan.strb_legs
+        fails: list[str] = []
+        open_graded_window(TEST, self.logger)
+        for x in legs:
+            msg = await self._strb_leg(x)
+            if msg is not None:
+                fails.append(msg)
+            elif x["kind"] == "walk":
+                await self._sram_pass(1, x["strb"])
+        close_graded_window(self.logger)
+        if fails:
+            raise AssertionError(
+                f"CHK-SRAM-STRB FAIL: {len(fails)} of {len(legs)} legs: " + " | ".join(fails)
+            )
+        self.logger.info(
+            "CHK-SRAM-STRB PASS: legs=%d walk=%d order=%s sparse=%s",
+            len(legs),
+            sum(x["kind"] == "walk" for x in legs),
+            ",".join(f"0x{x['strb']:02x}" for x in legs if x["kind"] == "walk"),
+            ",".join(f"0x{x['strb']:02x}" for x in legs if x["kind"] == "sparse"),
+        )
+        self.n_checks += 1
+
+    async def _flip_leg(self) -> None:
+        f = self.plan.flip
+        seed, addr, value, axi_id = self.plan.seed, f["addr"], f["value"], f["id"]
+        mask = 1 << f["bit"]
+        clk = cocotb.top.clk_i
+        await self._write_word("inbound", addr, value, WORD, axi_id)
+        word = self._sram_mem()[(addr - SRAM_BASE) // WORD]
+        await RisingEdge(clk)
+        await ReadOnly()
+        before = self.rd(word)
+        await FallingEdge(clk)
+        word.value = before ^ mask
+        await RisingEdge(clk)
+        await ReadOnly()
+        after = self.rd(word)
+        fields = (
+            f"seed={seed} @0x{addr:08x} bit={f['bit']} before={_w(before)} "
+            f"backdoor={_w(after)} expect={_w(value ^ mask)}"
+        )
+        if before != value or after != value ^ mask:
+            msg = f"CTRL-MISSING SRAM-FLIP: {fields}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-SRAM-FLIP seen: %s", fields)
+        await self._leg_pass("sram_macro_bit_flip")
+        tap_mark = self.sram_tap.mark()
+        code, rd = await self._single("inbound", "R", addr, WORD, axi_id=axi_id)
+        await ClockCycles(clk, 2)
+        rdata = int.from_bytes(rd, "little") if len(rd) == WORD else None
+        memif = [
+            "X" if b.rdata is None else _w(b.rdata) for b in self.sram_tap.since(tap_mark, "rsp")
+        ]
+        self.logger.info(
+            "OBS-SRAM-FLIP seed=%d @0x%08x bit=%d written=%s stored=%s resp=%s rdata=%s "
+            "rdata_flipped=%d rdata_written=%d memif_rdata=[%s]",
+            seed,
+            addr,
+            f["bit"],
+            _w(value),
+            _w(after),
+            RESP_NAME.get(code, code),
+            "none" if rdata is None else _w(rdata),
+            int(rdata == value ^ mask),
+            int(rdata == value),
+            ",".join(memif),
+        )
+        await self._write_word("inbound", addr, value, WORD, axi_id)
+
     # ---- scenario ------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -1043,6 +1344,10 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             await self._single_case(m, burst, addr, value, axi_id)
 
         self.sram_tap = SepFabricTap("PR-SRAM").start()
+        self.macro_tap = SepFabricTap("PR-SRAM-MACRO").start()
+        await self._strb_walk()
+        await self._flip_leg()
+        await self.macro_tap.stop()
         windows = await self._measure()
         for path in plan.paths:
             await self._otf(path, windows[path])

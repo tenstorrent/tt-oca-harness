@@ -33,6 +33,7 @@ from smc_occp_dual_defs import (
     describe_post_code,
     format_activity,
     payload_entry_offset,
+    peek_target_scratch,
     pick_payload_addresses,
     post_code_boot_phase,
     post_code_error,
@@ -62,17 +63,6 @@ REQUIRED_EVIDENCE = (
 )
 
 
-async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
-    # Backdoor array read: bypasses the CPU D-cache but works while the cluster is isolated.
-    dut.tb_dut_scratch_peek_offset.value = offset
-    # One delta plus a clock edge so the comb mux settles before sampling.
-    await ClockCycles(dut.clk_smc_i, 2)
-    return (
-        int(dut.tb_dut_scratch_peek_data.value),
-        int(dut.tb_dut_scratch_peek_ecc.value),
-    )
-
-
 def _payload_words(payload_bin: str) -> list[int]:
     data = Path(payload_bin).read_bytes()
     return [int.from_bytes(data[i : i + 8], "little") for i in range(0, len(data), 8)]
@@ -82,7 +72,7 @@ async def _describe_landing(dut, target_offset: int, expect_words) -> str:
     lines = []
     mismatches = 0
     for idx, expected in enumerate(expect_words):
-        got, ecc = await _peek_target_scratch(dut, target_offset + idx * 8)
+        got, ecc = await peek_target_scratch(dut, target_offset + idx * 8)
         ok = got == expected
         if not ok:
             mismatches += 1
@@ -102,7 +92,7 @@ async def _describe_landing(dut, target_offset: int, expect_words) -> str:
 async def _scan_for_payload(dut, signature: int, limit: int = 0x10_0000) -> str:
     hits = []
     for offset in range(0, limit, 8):
-        word, _ = await _peek_target_scratch(dut, offset)
+        word, _ = await peek_target_scratch(dut, offset)
         if word == signature:
             hits.append(offset)
             if len(hits) >= 8:
@@ -322,8 +312,8 @@ async def smc_occp_dual_unsecure_boot_test(harness: SmcDualHarness) -> None:
             )
 
         if not transfer_landed:
-            first, first_ecc = await _peek_target_scratch(dut, target_offset)
-            last, _ = await _peek_target_scratch(dut, target_offset + (len(expect_words) - 1) * 8)
+            first, first_ecc = await peek_target_scratch(dut, target_offset)
+            last, _ = await peek_target_scratch(dut, target_offset + (len(expect_words) - 1) * 8)
             if first == expect_words[0] and last == expect_words[-1]:
                 transfer_landed = True
                 cocotb.log.info(

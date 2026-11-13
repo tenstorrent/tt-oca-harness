@@ -108,3 +108,35 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_dm_autoexec_notimpl_test"
+module = "smc_jtag_dm_autoexec_notimpl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_dm_hawindow_resethalt_test"
+module = "smc_jtag_dm_hawindow_resethalt_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_dm_haltgroup_test"
+module = "smc_jtag_dm_haltgroup_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_dm_sba_uncore_hold_test"
+module = "smc_jtag_dm_sba_uncore_hold_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

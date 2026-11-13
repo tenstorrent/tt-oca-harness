@@ -42,12 +42,12 @@ turn with INTR_ENABLE=0: INTR_TEST=0x01 then 0x10 must read back 0x01 then
 returns within 64 cycles. Each bit is then enabled, forced, masked and cleared
 while `tb_uart_irq_combined` is sampled; the line levels are logged, not
 compared, because no pinned source states the combining function of the
-instance line (SF-001). A real fetch error comes from `LOG_REGION_ADDR` at the
+instance line. A real fetch error comes from `LOG_REGION_ADDR` at the
 refusing address `smc_log_engine_fetch_error_test` uses, with the UART in
-loopback so the write side can drain; it must latch LOG_FETCH_ERR alone. The
-write port reaches only the wrapper's own UART, so LOG_WRITE_ERR is set
-through INTR_TEST=0x10 (SF-039), and the two bits clear one written 1 at a
-time. A last erroring fetch with only INTR_ENABLE.LOG_FETCH_ERR set on the
+loopback so the write side can drain; it must latch LOG_FETCH_ERR alone.
+LOG_WRITE_ERR is set through INTR_TEST=0x10 here (the real write-port error
+is graded by `smc_log_engine_fetch_error_test`), and the two bits clear one
+written 1 at a time. A last erroring fetch with only INTR_ENABLE.LOG_FETCH_ERR set on the
 stimulated engine logs the line before submission, while latched and after
 the clear.
 """
@@ -128,6 +128,9 @@ _BITS = (
     ("LOG_FETCH_ERR", ENABLE_FETCH, TEST_FETCH, STATUS_FETCH),
     ("LOG_WRITE_ERR", ENABLE_WRITE, TEST_WRITE, STATUS_WRITE),
 )
+# log_engine.rdl declares LOG_REGION_ADDR regwidth 64, accesswidth 32, so the
+# 32-bit word holding LOG_REGION_ADDR_HI sits at its bit position in bytes.
+_REGION_HI_OFFSET = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp") // 8
 _ERR_REGION_SIZE = 0x80
 _ERR_LOG_BYTES = 8
 _REREAD_CYCLES = 64
@@ -159,16 +162,23 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
 
     async def _wait_irq(self, dut, want: int, label: str) -> int:
         """Wait for the aggregate to reach `want`; expiry raises."""
-        got = self._irq(dut)
-        for _ in range(_IRQ_BOUND):
-            got = self._irq(dut)
-            if got == want:
-                return got
-            await ClockCycles(dut.clk_smc_i, 1)
+        got = await self._first_irq(dut, want)
+        if got == want:
+            return got
         raise AssertionError(
             f"{label}: tb_uart_irq_combined[0] still {got}, expected {want}, after "
             f"{_IRQ_BOUND} clk_smc_i cycles"
         )
+
+    async def _first_irq(self, dut, want: int) -> int:
+        """Non-raising twin of `_wait_irq`: the last value seen within the bound."""
+        got = self._irq(dut)
+        for _ in range(_IRQ_BOUND):
+            got = self._irq(dut)
+            if got == want:
+                break
+            await ClockCycles(dut.clk_smc_i, 1)
+        return got
 
     async def _held_irq(self, dut, want: int) -> tuple[int, int] | None:
         """First (cycle, value) at which the line left `want`, else None.
@@ -303,12 +313,23 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         await self.csr_write("LOG_INTR_TEST_MASKED", LOG_INTR_TEST, FETCH_ERR_TEST)
         await self.csr_write("LOG_INTR_ENABLE_LATE", LOG_INTR_ENABLE, FETCH_ERR_ENABLE)
         late = await self.csr_read("LOG_INTR_STATUS_LATE", LOG_INTR_STATUS)
-        if (late & FETCH_ERR_STATUS) == FETCH_ERR_STATUS:
+        # "Surfaces" is the line: the latched bit must raise irq_o once the
+        # enable returns, within the same bound the arm leg uses.
+        late_irq = await self._first_irq(dut, 1)
+        if (late & FETCH_ERR_STATUS) == FETCH_ERR_STATUS and late_irq == 1:
             cocotb.log.info(
                 "CHK-LOG-ENGINE-INTR-MASK-LATCH: a singlepulse INTR_TEST issued "
-                "with INTR_ENABLE=0 was latched and surfaced once the enable "
-                "was set (INTR_STATUS=0x%x)",
+                "with INTR_ENABLE=0 was latched (INTR_STATUS=0x%x) and raised "
+                "tb_uart_irq_combined[0] once the enable was set",
                 late,
+            )
+        elif (late & FETCH_ERR_STATUS) == FETCH_ERR_STATUS:
+            failures.append(
+                f"CHK-LOG-ENGINE-INTR-MASK-LATCH: INTR_STATUS latched the masked "
+                f"pulse (0x{late:x}), but tb_uart_irq_combined[0] still read "
+                f"{late_irq} {_IRQ_BOUND} clk_smc_i cycles after INTR_ENABLE was set "
+                f"back to 0x{FETCH_ERR_ENABLE:x}. irq_o is the OR of enabled, latched "
+                f"status, so the late enable must raise it"
             )
         else:
             failures.append(
@@ -432,7 +453,7 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_SIZE", engine_reg(n, "LOG_REGION_SIZE"), _ERR_REGION_SIZE)
         region = engine_reg(n, "LOG_REGION_ADDR")
         await self.csr_write(f"{label}_REGION_LO", region, REFUSING_ADDR & 0xFFFF_FFFF)
-        await self.csr_write(f"{label}_REGION_HI", region + 4, REFUSING_ADDR >> 32)
+        await self.csr_write(f"{label}_REGION_HI", region + _REGION_HI_OFFSET, REFUSING_ADDR >> 32)
         await self.csr_write(
             f"{label}_WRITE_ADDR", engine_reg(n, "LOG_WRITE_ADDR"), uart_base(n) + THR_OFFSET
         )
@@ -487,7 +508,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         )
         self._fence("LOGENG13_TEST_FORCE", ("CHK-LOGENG13-TEST-FORCE",))
 
-        # ---- S4: line with the mask on / off / cleared (SF-001) ------------
+        # ---- S4: line with the mask on / off / cleared ------------
+        # Open: how the per-instance UART interrupt line combines its sources.
         mask_log = []
         for n in _ENGINES:
             for name, enable, test, status in _BITS:
@@ -512,7 +534,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
                 )
         self._chk(
             "CHK-LOGENG13-LINE-MASK",
-            "LINKED-ISSUE SF-001 line levels measured, not compared; " + "; ".join(mask_log),
+            "LINKED-ISSUE: how the per-instance UART interrupt line combines its sources; line "
+            "levels measured, not compared; " + "; ".join(mask_log),
         )
         self._fence("LOGENG13_LINE_MASK", ("CHK-LOGENG13-LINE-MASK",))
 
@@ -559,8 +582,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-LOGENG13-WRITE-ERR-TEST",
             "INTR_TEST=0x10 with INTR_ENABLE=0x0 set LOG_WRITE_ERR and the written 0x10 cleared "
-            f"it: {'; '.join(wtest_log)}; a real write-port error is NOT-REACHABLE-AT-THIS-LEVEL "
-            "(SF-039)",
+            f"it: {'; '.join(wtest_log)}; the real write-port error is graded by "
+            "CHK-LOGENG-WRITE-ERR-REAL (smc_log_engine_fetch_error_test)",
         )
         self._chk(
             "CHK-LOGENG13-PARTIAL-W1C",
@@ -571,7 +594,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             "LOGENG13_WRITE_ERR_TEST", ("CHK-LOGENG13-WRITE-ERR-TEST", "CHK-LOGENG13-PARTIAL-W1C")
         )
 
-        # ---- S6: enabled real fetch error and the line (SF-001) ------------
+        # ---- S6: enabled real fetch error and the line ------------
+        # Open: how the per-instance UART interrupt line combines its sources.
         real_log = []
         for n in _ENGINES:
             for m in _ENGINES:
@@ -600,7 +624,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             )
         self._chk(
             "CHK-LOGENG13-LINE-REAL",
-            "LINKED-ISSUE SF-001 line levels measured, not compared; INTR_ENABLE=0x01 on the "
+            "LINKED-ISSUE: how the per-instance UART interrupt line combines its sources; line "
+            "levels measured, not compared; INTR_ENABLE=0x01 on the "
             "stimulated engine only, others read INTR_STATUS=0x0; " + "; ".join(real_log),
         )
         self._fence("LOGENG13_LINE_REAL", ("CHK-LOGENG13-LINE-REAL",))
@@ -610,7 +635,7 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             await self.csr_write(f"E{n}_REGION_SIZE_CLR", engine_reg(n, "LOG_REGION_SIZE"), 0)
             region = engine_reg(n, "LOG_REGION_ADDR")
             await self.csr_write(f"E{n}_REGION_LO_CLR", region, 0)
-            await self.csr_write(f"E{n}_REGION_HI_CLR", region + 4, 0)
+            await self.csr_write(f"E{n}_REGION_HI_CLR", region + _REGION_HI_OFFSET, 0)
             await restore_uart(self, n)
         await self.csr_write("E13_UART_CG_RESTORE", CLOCK_GATE_CONTROL, cg)
 

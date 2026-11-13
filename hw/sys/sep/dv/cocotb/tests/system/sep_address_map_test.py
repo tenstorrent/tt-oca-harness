@@ -10,21 +10,38 @@ not a live alias of the neighbouring registers. Not a full dead-space walk.
 Bring-up holds the CPU off. Expected offsets/resets/masks come from
 env/sep_reg_meta.py and the ABR / pool seq constants; see sep_address_map_seq.
 The eFuse-shim window boundary must select the shim port for its first word and
-leave SEP on the next word (CHK-EXT-DEMUX-BOUND).
+leave SEP on the next word (CHK-EXT-DEMUX-BOUND); the PR-EXT tap shows that
+next word's read on the extension port (CTRL-EXT-DEMUX-PORT) and no read of
+the first word there (CTRL-EXT-DEMUX-SHIM). The PR-OUT tap shows that no
+fabric-walk read leaves on the outbound port, and that a read of an SMU-aperture
+word behind an enabled outbound filter pair, in the same tap window after the
+walk, puts exactly one AR at that address on the port (CTRL-FABRIC-WALK-LOCAL).
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
-from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map_seq
+from seq_lib.sep_address_map_seq import (
+    CPU_CTRL_INTERIOR_HOLES,
+    FABRIC_BLOCKS,
+    WRITE_READBACK,
+    sep_address_map_seq,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_fabric_filter_bank_seq import SMU_PAGE, SMU_PAGE_WORD, SepFilterBank
 
 RESP_OKAY = 0
 RESP_DECERR = 3
 MASK32 = 0xFFFF_FFFF
+# Rows of FABRIC_BLOCKS: one CSR in each LSU-reachable block that the
+# sep_address_map_seq docstring lists.
+FABRIC_WALK_ROWS = 22
+# Outbound filter entries opened over the SMU page for the PR-OUT liveness read.
+OUT_PAIR = (0, 1)
 
 # Generated SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP window. An unmapped address
 # in the remainder of that external aperture answers DECERR (AXI decode).
@@ -39,14 +56,16 @@ class sep_address_map_test(sep_base_test):
     # Every graded contract this leaf owns. Dropping any one of them is the
     # failure mode a clean exit would otherwise hide.
     required_evidence = (
+        "CHK-CPU-CTRL-RESET",
         "CHK-REFCNT-READ",
         "CHK-BASEADDR-RW",
         "CHK-RW-READBACK",
         "CHK-FABRIC-WALK",
         "CHK-CPU-CTRL-HOLE",
         "CHK-EXT-DEMUX-BOUND",
+        "CHK-SEP-TEST-CTRL-RO",
     )
-    min_evidence = 6
+    min_evidence = 8
 
     async def _access(
         self,
@@ -70,8 +89,12 @@ class sep_address_map_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        seq = sep_address_map_seq("addr_map_seq")
+        outf = SepFilterBank(self, "out")
+        await outf.program_pair(OUT_PAIR, SMU_PAGE, SMU_PAGE + 0xFFF)
+        seq = sep_address_map_seq("addr_map_seq", out_probe=SMU_PAGE_WORD)
         await self.start_seq(seq)
+        for idx in OUT_PAIR:
+            await outf.restore_reset(idx)
         # The scoreboard accumulates response/value errors and defers its raise
         # to check_phase. Without this gate every CHK-* PASS line below prints
         # on a run that has already failed, and a PASS token in a kept log must
@@ -82,18 +105,67 @@ class sep_address_map_test(sep_base_test):
             f"CHK-ADDRMAP FAIL: {len(sb_errors)} scoreboard error(s) before "
             f"the PASS summary; first: {sb_errors[0]}"
         )
+        wrong = [f"{n}=0x{got:08x}/0x{exp:08x}" for n, exp, got in seq.reset_reads if got != exp]
+        assert seq.reset_reads and not wrong, (
+            f"CHK-CPU-CTRL-RESET FAIL: {len(seq.reset_reads)} reset read(s), "
+            f"mismatch (got/exp) {wrong}"
+        )
         self.logger.info(
-            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
-            seq.ref_counter_high,
+            "CHK-CPU-CTRL-RESET PASS: regs=%d each equals its RDL reset value: %s",
+            len(seq.reset_reads),
+            ", ".join(f"{n} exp=0x{e:08x} rd=0x{g:08x}" for n, e, g in seq.reset_reads),
+        )
+        self.logger.info(
+            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER low half advanced 0x%08x -> 0x%08x "
+            "(high 0x%08x)",
+            seq.ref_counter_first_low,
             seq.ref_counter_low,
+            seq.ref_counter_high,
+        )
+        assert seq.test_ctrl_reads is not None, (
+            "CHK-SEP-TEST-CTRL-RO FAIL: the SEP_TEST_CTRL write check did not run"
+        )
+        tc_mask = SEP_CPU_CTRL.mask32("SEP_TEST_CTRL")
+        tc_v0, _, tc_v1 = seq.test_ctrl_reads
+        assert (tc_v0 ^ tc_v1) & tc_mask == 0, (
+            f"CHK-SEP-TEST-CTRL-RO FAIL: fields before=0x{tc_v0 & tc_mask:08x} "
+            f"after=0x{tc_v1 & tc_mask:08x} (mask 0x{tc_mask:08x})"
         )
         self.logger.info(
-            "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore",
-            seq.base_addr_rw_checks,
+            "CHK-SEP-TEST-CTRL-RO PASS: fields before=0x%08x after=0x%08x (mask 0x%08x) "
+            "equal across a write of the complement, write resp=%d",
+            tc_v0 & tc_mask,
+            tc_v1 & tc_mask,
+            tc_mask,
+            seq.test_ctrl_wr_resp,
+        )
+        rw_bad = [r for r in seq.base_addr_rw if r[2] != r[1] or r[4] != r[3]]
+        assert seq.base_addr_rw and not rw_bad, (
+            f"CHK-BASEADDR-RW FAIL: (name, expect, readback, reset, restored) {rw_bad or 'none run'}"
         )
         self.logger.info(
-            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore%s",
-            seq.write_readback_checks,
+            "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore: %s",
+            len(seq.base_addr_rw),
+            ", ".join(
+                f"{n} wr=0x{e:08x} rd=0x{g:08x} reset=0x{r:08x} restored=0x{s:08x}"
+                for n, e, g, r, s in seq.base_addr_rw
+            ),
+        )
+        planned_rw = [name for name, _pattern in WRITE_READBACK] + ["CLOCK_GATE_CTRL"]
+        checked_rw = [r[0] for r in seq.write_readback]
+        wrb_bad = [r for r in seq.write_readback if r[2] != r[1] or r[4] != r[3]]
+        assert checked_rw == planned_rw and not wrb_bad, (
+            f"CHK-RW-READBACK FAIL: checked={checked_rw} planned={planned_rw} "
+            f"mismatch (name, expect, readback, reset, restored) {wrb_bad}"
+        )
+        self.logger.info(
+            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore->readback: "
+            "%s%s",
+            len(seq.write_readback),
+            ", ".join(
+                f"{n} wr=0x{e:08x} rd=0x{g:08x} reset=0x{r:08x} restored=0x{s:08x}"
+                for n, e, g, r, s in seq.write_readback
+            ),
             (
                 f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "
                 f"`reserved` placeholders with no software-usable fields: "
@@ -102,9 +174,51 @@ class sep_address_map_test(sep_base_test):
             if seq.write_readback_storage_only
             else "",
         )
+        walk_ars = seq.fabric_walk_out_ars
+        probe_ars = seq.out_probe_ars
+        walk = (
+            f"rows={len(seq.fabric_walk_rows)} pr_out_ar={len(walk_ars)} "
+            f"[{' '.join(b.fmt() for b in walk_ars)}] "
+            f"live_addr=0x{SMU_PAGE_WORD:x} live_ar={len(probe_ars)} "
+            f"[{' '.join(b.fmt() for b in probe_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): a read that leaves on the outbound port
+        # is answered OKAY by the bench responder, so CHK-FABRIC-WALK needs no
+        # walk read on PR-OUT. The liveness read in the same window must show its
+        # one AR there, so an absence cannot come from a tap that records nothing.
+        if walk_ars or len(probe_ars) != 1 or probe_ars[0].addr != SMU_PAGE_WORD:
+            self.logger.error("CTRL-MISSING FABRIC-WALK-LOCAL: %s", walk)
+            raise AssertionError(f"CTRL-MISSING FABRIC-WALK-LOCAL: {walk}")
+        self.logger.info("CTRL-FABRIC-WALK-LOCAL seen: %s", walk)
+        # The scoreboard also grades the response of every row and the value of
+        # a row with an expectation; the gate above stops the leaf on any error.
+        # This check requires that every row was read, answered OKAY and, where
+        # it has an expectation, returned it, so a shorter walk fails.
+        planned = [name for name, _addr, _exp in FABRIC_BLOCKS]
+        walked = [r[0] for r in seq.fabric_walk_rows]
+        not_ok = [(n, rc) for n, _e, _g, ok, rc in seq.fabric_walk_rows if not ok]
+        wrong = [
+            (n, f"0x{e:08x}", f"0x{g:08x}")
+            for n, e, g, _ok, _rc in seq.fabric_walk_rows
+            if e is not None and g != e
+        ]
+        rows = (
+            f"rows={len(walked)} planned={len(planned)} expected={FABRIC_WALK_ROWS} "
+            f"not_okay={not_ok} mismatch (name, expect, read)={wrong} "
+            f"missing={[n for n in planned if n not in walked]}"
+        )
+        assert (
+            len(planned) == FABRIC_WALK_ROWS and walked == planned and not not_ok and not wrong
+        ), f"CHK-FABRIC-WALK FAIL: {rows}"
         self.logger.info(
-            "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
-            seq.fabric_walk_checks,
+            "CHK-FABRIC-WALK PASS: rows=%d of %d, each LSU-reachable block CSR read and "
+            "answered OKAY; value-checked against a non-zero RDL reset: %s; OKAY only: %s",
+            len(walked),
+            FABRIC_WALK_ROWS,
+            ", ".join(
+                f"{n} exp=0x{e:08x} rd=0x{g:08x}" for n, e, g, _ok, _rc in seq.fabric_walk_rows if e
+            ),
+            ", ".join(f"{n} resp={rc}" for n, e, _g, _ok, rc in seq.fabric_walk_rows if not e),
         )
 
         # 0x158-0x177 owns no register: sep_cpu_ctrl.rdl places
@@ -134,7 +248,13 @@ class sep_address_map_test(sep_base_test):
             "dead, so the no-alias check below would hold for the wrong reason"
         )
 
-        hole_ok = 0
+        # The bench outbound responder also answers OKAY with zero, so the hole
+        # accesses must not leave SEP: the PR-OUT and PR-EXT taps record no AR or
+        # AW while they run (CTRL-CPU-CTRL-HOLE-LOCAL).
+        hole_out = SepFabricTap("PR-OUT").start()
+        hole_ext = SepFabricTap("PR-EXT").start()
+        hole_out_mark, hole_ext_mark = hole_out.mark(), hole_ext.mark()
+        hole_reads: list[str] = []
         for addr in CPU_CTRL_INTERIOR_HOLES:
             hole = await self._access(SepAxiOp.READ, addr)
             assert not hole.timed_out, (
@@ -143,14 +263,14 @@ class sep_address_map_test(sep_base_test):
             )
             assert hole.resp_code == RESP_OKAY, (
                 f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} resp={hole.resp_code}, "
-                "expected OKAY -- memory_map.adoc says a unit accepts an offset "
-                "inside its extent that owns no register"
+                "expected OKAY -- doc/trm/src/memory_map.adoc: an offset between "
+                "the registers of a register block answers OKAY"
             )
             got = hole.rdata & MASK32
             assert got == 0, (
                 f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} data=0x{got:08x}, expected zero"
             )
-            hole_ok += 1
+            hole_reads.append(f"0x{addr:08x} resp={hole.resp_code} rd=0x{got:08x}")
 
         # A hole write must not land on the live neighbour, whose value is now the
         # probe the control above proved writable.
@@ -159,9 +279,22 @@ class sep_address_map_test(sep_base_test):
         assert not wr.timed_out, f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} timed out"
         assert wr.resp_code == RESP_OKAY, (
             f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} resp={wr.resp_code}, "
-            "expected OKAY -- memory_map.adoc says a unit accepts an offset "
-            "inside its extent that owns no register"
+            "expected OKAY -- doc/trm/src/memory_map.adoc: an offset between "
+            "the registers of a register block answers OKAY"
         )
+        left = hole_out.since(hole_out_mark) + hole_ext.since(hole_ext_mark)
+        hole_out.check_life(hole_out_mark)
+        hole_ext.check_life(hole_ext_mark)
+        await hole_out.stop()
+        await hole_ext.stop()
+        local = (
+            f"reads={len(CPU_CTRL_INTERIOR_HOLES)} write=0x{named:08x} "
+            f"pr_out={[(b.ch, b.fields.get('addr')) for b in hole_out.since(hole_out_mark)]} "
+            f"pr_ext={[(b.ch, b.fields.get('addr')) for b in hole_ext.since(hole_ext_mark)]}"
+        )
+        if left:
+            raise AssertionError(f"CTRL-MISSING CPU-CTRL-HOLE-LOCAL: {local}")
+        self.logger.info("CTRL-CPU-CTRL-HOLE-LOCAL: %s expect no AR/AW", local)
         sw_after = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
         assert sw_after == probe, (
             f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed SEP_SW_DEBUG "
@@ -170,19 +303,28 @@ class sep_address_map_test(sep_base_test):
         await self._access(SepAxiOp.WRITE, sw_addr, wdata=sw_restore)
 
         self.logger.info(
-            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) read OKAY with zero, "
-            "the hole write retired OKAY, and none aliases SEP_SW_DEBUG "
-            "(control write proved it writable)",
-            hole_ok,
+            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) read OKAY with zero: %s; "
+            "hole write 0x%08x resp=%d; SEP_SW_DEBUG control wr=0x%08x rd=0x%08x, "
+            "after the hole write rd=0x%08x",
+            len(hole_reads),
+            ", ".join(hole_reads),
+            named,
+            wr.resp_code,
+            probe,
+            sw_live,
+            sw_after,
         )
 
         # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is Tenstorrent-owned
         # decode on an adopter-owned aperture: the first word selects the eFuse
-        # shim port, the next word leaves SEP and is terminated by the extension
-        # error slave. This leaf selects both master ports of u_efuse_shim_demux.
-        # The two responses must differ. The value behind the shim is adopter
-        # owned and is not graded -- only which port the decode chose.
+        # shim port and the next word answers DECERR. The two responses must
+        # differ. CTRL-EXT-DEMUX-PORT shows on the PR-EXT tap that the next word
+        # leaves SEP on the extension port and that the port answers it DECERR.
+        # The value behind the shim is adopter owned and is not graded.
         off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE
+        ext = SepFabricTap("PR-EXT").start()
+        ext_rsp = SepFabricTap("PR-EXT-RSP").start()
+        ext_mark, rsp_mark = ext.mark(), ext_rsp.mark()
         # Keyed off the response rather than the monitor tally: the monitor
         # counts on its own clock edge, which may not have run when start_seq
         # returns, and a standing credit would absorb the next unexpected DECERR
@@ -198,11 +340,46 @@ class sep_address_map_test(sep_base_test):
         )
         assert past.resp_code == RESP_DECERR, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} resp={past.resp_code}, "
-            f"expected DECERR (3) from the extension error slave -- one word past "
-            f"the shim window must leave SEP"
+            f"expected DECERR (3) one word past the shim window"
         )
+        ars = ext.since(ext_mark, "ar")
+        rs = ext_rsp.since(rsp_mark, "r")
+        port = (
+            f"addr=0x{off:08x} ar=[{' '.join(b.fmt() for b in ars)}] "
+            f"r=[{' '.join(b.fmt() for b in rs)}]"
+        )
+        # Same text as SepChkLog.ctrl(): CHK-EXT-DEMUX-BOUND reads its DECERR as
+        # the extension port's answer, so a read that never reached the port, or
+        # a port reply other than one DECERR beat to that request, fails the leaf.
+        if not (
+            len(ars) == 1
+            and ars[0].addr == off
+            and ars[0].id is not None
+            and len(rs) == 1
+            and rs[0].resp == RESP_DECERR
+            and rs[0].id == ars[0].id
+            and rs[0].last == 1
+        ):
+            self.logger.error("CTRL-MISSING EXT-DEMUX-PORT: %s", port)
+            raise AssertionError(f"CTRL-MISSING EXT-DEMUX-PORT: {port}")
+        self.logger.info("CTRL-EXT-DEMUX-PORT seen: %s", port)
 
+        shim_mark = ext.mark()
         inside = await self._access(SepAxiOp.READ, EFUSE_SHIM_BASE)
+        shim_ars = ext.since(shim_mark, "ar")
+        await ext.stop()
+        await ext_rsp.stop()
+        shim = (
+            f"addr=0x{EFUSE_SHIM_BASE:08x} ext_ar={len(shim_ars)} "
+            f"[{' '.join(b.fmt() for b in shim_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): memory_map.adoc sends the shim window to
+        # the eFuse controller rather than out the extension port, so
+        # CHK-EXT-DEMUX-BOUND needs that read to put no AR on PR-EXT.
+        if shim_ars:
+            self.logger.error("CTRL-MISSING EXT-DEMUX-SHIM: %s", shim)
+            raise AssertionError(f"CTRL-MISSING EXT-DEMUX-SHIM: {shim}")
+        self.logger.info("CTRL-EXT-DEMUX-SHIM seen: %s", shim)
         assert not inside.timed_out, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} timed out"
         )
@@ -213,10 +390,11 @@ class sep_address_map_test(sep_base_test):
         )
         self.logger.info(
             "CHK-EXT-DEMUX-BOUND PASS: 0x%08x selected the shim port (resp=%d) "
-            "and 0x%08x left SEP to the extension error slave (DECERR); the "
-            "%d-byte window boundary is graded, the adopter value is not",
+            "and 0x%08x answered DECERR on the extension port (resp=%d); the %d-byte "
+            "window boundary is graded, the adopter value is not",
             EFUSE_SHIM_BASE,
             inside.resp_code,
             off,
+            past.resp_code,
             EFUSE_SHIM_SIZE,
         )

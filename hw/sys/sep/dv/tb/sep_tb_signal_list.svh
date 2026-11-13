@@ -74,9 +74,15 @@
 `SEP_TB_IN(logic, jtag_ic_reset_tdi_i)
 `SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-// pair onto the LCC decoder input (no legal OTP image can present one). See
-// the force block in tb_top.sv.
+// pair onto the selected pairs of the LCC decoder input (no legal OTP image can
+// present one). See the force block in tb_top.sv.
 `SEP_TB_IN(logic, lc_sigint_inject_i)
+// Pairs the inject breaks: bit i is pair i, {data_i[4+i], data_i[i]} of the
+// decoder input. 0, or a value with an X or Z bit, selects all four pairs.
+`SEP_TB_IN(logic [sep_pkg::LcStateBitWidth-1:0], lc_sigint_pair_mask_i)
+// Rail value of a broken pair: 1 drives both rails to 1; 0, X or Z drives both
+// rails to 0.
+`SEP_TB_IN(logic, lc_sigint_bad_value_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
 //   3'b001 collapse instance 0 of the selected comparator (both rails 0).
@@ -157,6 +163,15 @@
 `SEP_TB_IN(logic, crypto_alert_inject_i)
 `SEP_TB_IN(logic [3:0], crypto_alert_inject_idx_i)
 `SEP_TB_IN(logic, crypto_alert_inject_val_i)
+// DMA alert sender inject. Default 0. While dma_alert_inject_i is 1, tb forces
+// alert_p and alert_n of the secure DMA alert receiver both to
+// dma_alert_inject_val_i, which is not a differential code. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, dma_alert_inject_i)
+`SEP_TB_IN(logic, dma_alert_inject_val_i)
+// The secure DMA alert receiver pair {alert_p, alert_n}, as the receiver sees
+// it (after the dma_alert_inject_i force). Observation-only.
+`SEP_TB_OUT(logic [1:0], dma_alert_rx_probe_o)
 // OTBN memory integrity flip. Live only in a run with +sep_otbn_intg_flip.
 // While otbn_intg_flip_en_i is 1, every read response that the OTBN core takes
 // from the memory otbn_intg_flip_mem_i selects (0 IMEM, 1 DMEM) reaches the
@@ -197,6 +212,12 @@
 // docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
 `SEP_TB_IN(logic [11:0], esrc_noise_stuck_en_i)
 `SEP_TB_IN(logic [11:0], esrc_noise_stuck_val_i)
+// ESRC main state machine error-output inject. Default 0. While
+// esrc_main_sm_err_inject_i is 1, the error output of the entropy-source main
+// state machine, as entropy_source reads it (main_sm_err), is forced to 1. The
+// state machine is not forced. Error inject, docs/SEP_TB_ARCH.adoc. See the force
+// block in tb_top.sv.
+`SEP_TB_IN(logic, esrc_main_sm_err_inject_i)
 // Key Manager OTP input rail flip (HK-OTP). Default 0. While
 // km_otp_flip_en_i is 1, the KM OTP input otp_data_i of the Key Manager is
 // held at the value it had at the rise of the input XOR km_otp_flip_mask_i.
@@ -235,7 +256,14 @@
 // One pulse per arm. Error inject, docs/SEP_TB_ARCH.adoc. See the force block
 // in tb_top.sv.
 `SEP_TB_IN(logic, km_irqset_arm_i)
-`SEP_TB_IN(logic [11:0], km_irqset_mask_i)
+`SEP_TB_IN(logic [KM_CSR_IRQ_SET_REG_RSVD_SHIFT-1:0], km_irqset_mask_i)
+// Key Manager mailbox flow-error inject. Default 0. At the first falling edge
+// with km_mbox_ovf_inject_i at 1 the KM outbound-overflow detect net of the KM
+// mailbox is forced to 1 for one clock; km_mbox_udf_inject_i does the same for
+// the KM inbound-underflow detect net. One pulse per rise of the input. The
+// FIFOs are not forced. Error inject, docs/SEP_TB_ARCH.adoc.
+`SEP_TB_IN(logic, km_mbox_ovf_inject_i)
+`SEP_TB_IN(logic, km_mbox_udf_inject_i)
 // Key Manager CPU internal IRQ lines (HK-CPUIRQ). Default 0. At the first
 // falling edge with km_cpuirq_arm_i at 1 and a non-zero km_cpuirq_lines_i, bit
 // 0 drives PicoRV32 irq line 1 (EBREAK or illegal instruction) and bit 1 drives
@@ -245,13 +273,17 @@
 `SEP_TB_IN(logic [1:0], km_cpuirq_lines_i)
 // Key Manager KPV read-data bit flip (HK-KPV). Default 0. While
 // km_kpv_flip_en_i is 1, every KM-port read of the logical word index
-// km_kpv_flip_index_i (slot x 16 + word) returns the read data after the
-// descrambler with bit km_kpv_flip_bit_i inverted. The stored word does not
-// change. Error inject, docs/SEP_TB_ARCH.adoc. See the force block in
+// km_kpv_flip_index_i (slot x words per slot + word) returns the read data
+// after the descrambler with bit km_kpv_flip_bit_i inverted. The stored word
+// does not change. Error inject, docs/SEP_TB_ARCH.adoc. See the force block in
 // tb_top.sv.
 `SEP_TB_IN(logic, km_kpv_flip_en_i)
-`SEP_TB_IN(logic [9:0], km_kpv_flip_index_i)
-`SEP_TB_IN(logic [4:0], km_kpv_flip_bit_i)
+`SEP_TB_IN(logic [$clog2(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_NUM *
+                         key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM)-1:0],
+           km_kpv_flip_index_i)
+`SEP_TB_IN(logic [$clog2(8 * key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_SIZE /
+                         key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM)-1:0],
+           km_kpv_flip_bit_i)
 // Key Manager macro response parity flip (HK-PAR). Default 0. While
 // km_par_arm_i is 1, the N-th read response (N = km_par_n_i, from 1) since the
 // arm of the ROM (km_par_mem_i 0) or the SRAM (km_par_mem_i 1) reaches the KM
@@ -305,6 +337,12 @@
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
 `SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
+// Machine timer interrupt pin of sep (sep_wrapper timer_int, mip.MTIP). A value
+// other than 1 drives 0. Default 0 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic, timer_int_i)
+// Machine software interrupt pin of sep (sep_wrapper soft_int, mip.MSIP). A
+// value other than 1 drives 0. Default 0 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic, soft_int_i)
 // Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
 // smn_outbound_resp_hold_i=1 keeps the responder from raising a B or R
 // response; one already on offer completes, and the requests are still
@@ -573,6 +611,23 @@
 // value STATUS.READY reports. Zero in a build without
 // Adams Bridge. Owner: sep_abr_zeroize_latency_test.
 `SEP_TB_OUT(logic [1:0], abr_zeroize_ready_probe_o)
+// Adams Bridge AHB-lite counters on the wrapper bus into abr_top, reset with
+// the bench reset: abr_ahb_xfer_count_o the accepted address phases (HTRANS
+// bit 1 with HREADYOUT high), abr_ahb_wait_count_o the clocks with HREADYOUT
+// low, abr_ahb_err_count_o the clocks with HRESP high. Zero in a build without
+// Adams Bridge. Observation-only. User: sep_abr_access_size_test.
+`SEP_TB_OUT(logic [31:0], abr_ahb_xfer_count_o)
+`SEP_TB_OUT(logic [31:0], abr_ahb_wait_count_o)
+`SEP_TB_OUT(logic [31:0], abr_ahb_err_count_o)
+// AES masking parameters of the OpenTitan AES core: bit 0 SecMasking, bit 1
+// SecAllowForcingMasks. VCS only; the Verilator build ties it to 0.
+// Observation-only. User: sep_crypto_shadow_update_err_rand_test.
+`SEP_TB_OUT(logic [1:0], aes_sec_params_o)
+// CSRNG gate inputs at the DRBG instance: the OTP enable of the software
+// application read (MuBi8) and the lifecycle hardware-debug enable (lc_tx_t).
+// Observation-only. User: sep_drbg_cmd_sequence_rand_test.
+`SEP_TB_OUT(logic [7:0], csrng_sw_app_read_en_o)
+`SEP_TB_OUT(logic [3:0], csrng_lc_hw_debug_en_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
@@ -586,6 +641,24 @@
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
 `SEP_TB_OUT(logic [31:0], km_cpu_fetch_count_o)
 `SEP_TB_OUT(logic [31:0], km_kmcsr_irq_entry_count_o)
+// KM CPU ready-mux counters, reset with the bench reset. Per source (ROM, SRAM,
+// AXI adapter): *_ready_on_target_count_o counts the clocks with the source
+// ready high while the KM CPU request is valid for that source,
+// *_ready_off_target_count_o the clocks with the source ready high while it
+// is not. Observation-only. User: sep_km_mailbox_km_side_rand_test.
+`SEP_TB_OUT(logic [31:0], km_rom_ready_on_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_ready_on_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_axi_ready_on_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_rom_ready_off_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_ready_off_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_axi_ready_off_target_count_o)
+// KM CPU AXI-adapter write capture, reset with the bench reset: the address
+// and strobes of the last adapter write handshake (valid, ready and a non-zero
+// strobe in one clock), and the count of those handshakes whose strobes are
+// not 4'hf. Observation-only. User: sep_km_key_bank_register_rand_test.
+`SEP_TB_OUT(logic [31:0], km_axi_wr_addr_o)
+`SEP_TB_OUT(logic [3:0], km_axi_wr_strb_o)
+`SEP_TB_OUT(logic [31:0], km_axi_subword_wr_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
@@ -619,30 +692,35 @@
 // Monitor only; PIC vector bits 30 and 31 carry the same faults.
 `SEP_TB_OUT(logic, km_unrecoverable_err_o)
 `SEP_TB_OUT(logic, km_recoverable_err_o)
+// The whole sep_ras_o struct of the DUT (frontdoor), monitor only. Bit
+// positions follow sep_pkg::sep_ras_t declaration order, first field at the
+// MSB; cocotb/env/sep_ras_map.py names them.
+`SEP_TB_OUT(logic [$bits(sep_pkg::sep_ras_t)-1:0], sep_ras_probe_o)
 `SEP_TB_OUT(logic, km_abr_sk_valid_o)
 `SEP_TB_OUT(logic [255:0], km_abr_sk_key_o)
 `SEP_TB_OUT(logic, km_abr_sk_irq_status_o)
 `SEP_TB_OUT(logic, km_abr_sk_irq_enable_o)
 // KM-KPV: CTRL[s] at [4*s +: 4] in register bit order {seal, erase, lock_use,
-// lock_write}, and the 1024 stored KPV words in stored (physical) order,
+// lock_write}, and the stored KPV words in stored (physical) order,
 // word i at [32*i +: 32]. The stored words have no reset.
-`SEP_TB_OUT(logic [255:0], km_kpv_ctrl_o)
-`SEP_TB_OUT(logic [32767:0], km_kpv_words_o)
+`SEP_TB_OUT(logic [4*key_manager_addrmap_pkg::KEY_MANAGER_KPV_CTRL_NUM-1:0], km_kpv_ctrl_o)
+`SEP_TB_OUT(logic [8*key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE-1:0],
+            km_kpv_words_o)
 // KM-CSR, every clock: IRQ_STATUS, IRQ_ENABLE, the interrupt aggregate (OR
 // of status AND enable), RECOVERABLE_ERR, BOOT_STATUS.COLD_BOOT_DONE,
 // SRAM_EXEC_MODE, OTP_READ_LOCK, OTP_READ_LOCK_COLD, OTP_CHANGE_STATUS (field
 // bit order of km_csr.adoc), the SCRAMBLER_KEY register value, the count of
 // KM writes to SCRAMBLER_KEY since the bench reset, and SCRAMBLER_CTRL
 // {lock, enable}.
-`SEP_TB_OUT(logic [11:0], km_csr_irq_status_o)
-`SEP_TB_OUT(logic [11:0], km_csr_irq_enable_o)
+`SEP_TB_OUT(logic [KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT-1:0], km_csr_irq_status_o)
+`SEP_TB_OUT(logic [KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT-1:0], km_csr_irq_enable_o)
 `SEP_TB_OUT(logic, km_csr_irq_o)
 `SEP_TB_OUT(logic, km_csr_recov_err_o)
 `SEP_TB_OUT(logic, km_csr_cold_boot_done_o)
 `SEP_TB_OUT(logic, km_csr_sram_exec_mode_o)
-`SEP_TB_OUT(logic [8:0], km_csr_otp_read_lock_o)
-`SEP_TB_OUT(logic [8:0], km_csr_otp_read_lock_cold_o)
-`SEP_TB_OUT(logic [8:0], km_csr_otp_change_status_o)
+`SEP_TB_OUT(logic [KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT-1:0], km_csr_otp_read_lock_o)
+`SEP_TB_OUT(logic [KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT-1:0], km_csr_otp_read_lock_cold_o)
+`SEP_TB_OUT(logic [KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT-1:0], km_csr_otp_change_status_o)
 `SEP_TB_OUT(logic [31:0], km_csr_scrambler_key_o)
 `SEP_TB_OUT(logic [31:0], km_csr_scrambler_key_wr_count_o)
 `SEP_TB_OUT(logic [1:0], km_csr_scrambler_ctrl_o)
@@ -660,36 +738,58 @@
 // KM-BUS (key-path part): the requests on the five KM key-path ports of the
 // crypto interconnect, ahead of the isolation stages: AR and AW valid, ready
 // and address. Index i (address at [32*i +: 32]) is bench isolate stage 8 + i:
-// 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
+// 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR. W valid, ready, data ([32*i +: 32])
+// and strobe ([4*i +: 4]).
 `SEP_TB_OUT(logic [4:0], km_key_ar_valid_o)
 `SEP_TB_OUT(logic [4:0], km_key_ar_ready_o)
 `SEP_TB_OUT(logic [5*32-1:0], km_key_ar_addr_o)
 `SEP_TB_OUT(logic [4:0], km_key_aw_valid_o)
 `SEP_TB_OUT(logic [4:0], km_key_aw_ready_o)
 `SEP_TB_OUT(logic [5*32-1:0], km_key_aw_addr_o)
+`SEP_TB_OUT(logic [4:0], km_key_w_valid_o)
+`SEP_TB_OUT(logic [4:0], km_key_w_ready_o)
+`SEP_TB_OUT(logic [5*32-1:0], km_key_w_data_o)
+`SEP_TB_OUT(logic [5*4-1:0], km_key_w_strb_o)
 // KM-OUTFIFO: fill level of the outbound FIFO of the KM mailbox, every clock.
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
 // KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
 `SEP_TB_OUT(logic [32:0], km_infifo_head_o)
-// KM-WMAP: per SRAM write-lock region r (256 words) at [9*r +: 9], the count
-// of distinct logical words written with we at 1 on the sep output
-// km_sram_mem_req_o since the bench reset or the last clock with
-// km_sram_wmap_clr_i at 1 (bench state only; default 0).
+// KM-FETCH: the native memory request of the KM CPU wrapper (u_cpu), every
+// clock. A transfer completes on a clock with valid and ready high; instr marks
+// an instruction fetch; wstrb is 0 for a read.
+`SEP_TB_OUT(logic, km_mem_valid_o)
+`SEP_TB_OUT(logic, km_mem_ready_o)
+`SEP_TB_OUT(logic, km_mem_instr_o)
+`SEP_TB_OUT(logic [31:0], km_mem_addr_o)
+`SEP_TB_OUT(logic [3:0], km_mem_wstrb_o)
+// KM-WMAP: per SRAM write-lock region r at [9*r +: 9], the count of distinct
+// logical words written with we at 1 on the sep output km_sram_mem_req_o since
+// the bench reset or the last clock with km_sram_wmap_clr_i at 1 (bench state
+// only; default 0).
 `SEP_TB_IN(logic, km_sram_wmap_clr_i)
-`SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_region_o)
+`SEP_TB_OUT(logic [$countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK)*9-1:0], km_sram_wmap_region_o)
 // KM-WMAP-JUMP: the KM-WMAP counts captured in the clock of the first
 // completed KM CPU instruction fetch at 0x8000 since the bench reset or the
 // last clear, km_sram_write_count_o in the same clock, and the flag that the
 // capture took place.
-`SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_jump_o)
+`SEP_TB_OUT(logic [$countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK)*9-1:0], km_sram_wmap_jump_o)
 `SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
 `SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
 // KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid},
-// the readies of the same channels {ar_ready, aw_ready, w_ready} and the KM CPU
-// warm reset rst_warm_sync_n.
+// the readies of the same channels {ar_ready, aw_ready, w_ready} and the KM
+// CPU warm reset rst_warm_sync_n. Slave side, bit i = KM crossbar master port
+// i (km_axi_lite_xbar AddrMap index, 10 ports): the AR, AW and W handshakes, the
+// R and B valids and the R and B handshakes.
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_valid_o)
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_ready_o)
 `SEP_TB_OUT(logic, km_cpu_rst_n_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_ar_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_aw_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_w_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_r_valid_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_b_valid_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_r_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_b_hs_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the KM OTP
 // input equals the live OTP word; the withdrawal pulse has been driven since
 // the arm, and the sink TREADY in the pulse clock; the sampler sink TVALID
@@ -720,6 +820,10 @@
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_write_count_o)
+// Count of accepted OTBN TL-UL A-channel writes into the IMEM window whose
+// byte mask is not 4'hf, reset with the bench reset. Observation-only. User:
+// sep_fabric_row_response_matrix_test.
+`SEP_TB_OUT(logic [31:0], otbn_imem_tl_partial_wr_count_o)
 // ESRC -> DRBG -> CSRNG -> EDN -> KM entropy datapath probes. The driven noise
 // (esrc_noise_o) is the deterministic stimulus; the rest are DUT observation
 // points for the alive smoke and CHK1-CHK5 golden-vs-probe scoreboard.
@@ -737,6 +841,7 @@
 `SEP_TB_OUT(logic, esrc_compress_vld_o)  // CHK2: compressor output valid
 `SEP_TB_OUT(logic [31:0], esrc_compress_data_o)  // CHK2: compressor output word
 `SEP_TB_OUT(logic, drbg_seed_valid_o)  // seed accumulated/presented to CSRNG
+`SEP_TB_OUT(logic, drbg_seed_word_ready_o)  // seed packer ready for an entropy word
 `SEP_TB_OUT(logic, drbg_es_ack_o)  // CSRNG seed-handshake ack
 `SEP_TB_OUT(logic [383:0], drbg_es_bits_o)  // CHK4: 384-bit hardware seed
 `SEP_TB_OUT(logic, drbg_genbits_vld_o)  // CHK4: CTR_DRBG genbits valid
@@ -846,6 +951,8 @@
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
+`SEP_TB_OUT(
+    logic, km_entropy_tuser_o)  // post-mux EDN->KM tuser (entropy_muxed_req[0].tuser, the FIPS bit)
 // CHK5 crypto EDN sinks: the SEP EDN's crypto leg (entropy_muxed_req[1]) fans
 // out through drbg_axis_edn_adapter to native EDN clients crypto_edn[0]=AES,
 // [1]=KMAC, [2]=OTBN-RND, [3]=OTBN-URND. A delivered word to sink i is the cycle
@@ -855,6 +962,12 @@
 `SEP_TB_OUT(logic [3:0], crypto_edn_ack_o)  // bit i = crypto_edn_rsp[i].edn_ack
 `SEP_TB_OUT(logic [127:0], crypto_edn_bus_o)  // word i = crypto_edn_rsp[i].edn_bus ([32*i +: 32])
 `SEP_TB_OUT(logic [3:0], crypto_edn_fips_o)  // bit i = crypto_edn_rsp[i].edn_fips
+// Round-robin arbiter of the crypto EDN adapter (u_axis_edn_crypto_s3c_scan
+// .u_arbiter): bit i is the request / grant of client i (0 AES, 1 KMAC,
+// 2 OTBN-RND, 3 OTBN-URND). A grant is high only in the clock the arbiter
+// output is accepted.
+`SEP_TB_OUT(logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0], edn_crypto_arb_req_o)
+`SEP_TB_OUT(logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0], edn_crypto_arb_gnt_o)
 // Client side of the EDN synchronizer (prim_sync_reqack_data, data from DST to
 // SRC) inside each native crypto client, same client index as crypto_edn_*_o.
 // The client takes data_o on the clock with src_req_i && src_ack_o.
@@ -936,9 +1049,11 @@
 // stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
 // (valid and ready on the same clock) and the B and R response codes (two bits per
 // stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
-// slv_resp_o ports.
+// slv_resp_o ports. iso_slv_ar_valid_probe_o is the AR valid alone, so a read can be
+// seen pending at a stage before its handshake.
 `SEP_TB_OUT(logic [13:0], iso_slv_aw_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_hs_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_ar_valid_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_b_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
@@ -958,6 +1073,9 @@
 // (u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q, clocked by clk_wdt_i).
 // Read-only.
 `SEP_TB_OUT(logic [31:0], wdt_wdog_count_o)
+// AON timer wakeup core (u_wdt_aon_timer.u_core): bit 32 wkup_intr_o, bits 31:0
+// the low word of the wakeup count it compares. clk_wdt_i domain. Read-only XMR.
+`SEP_TB_OUT(logic [32:0], aon_wkup_probe_o)
 // sep_reset_n override select at the SEP boundary
 // (u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd): the value SEP receives
 // after the pin-or-TDR mux.
@@ -972,6 +1090,8 @@
 // mux (u_sep_cpu.u_el2_veer_wrapper): bit 8 dmi_en, bit 7 dmi_wr_en, bits 6:0
 // dmi_addr. Read-only. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic [8:0], dmi_req_probe_o)
+// dmi_active output of sep (frontdoor DUT output).
+`SEP_TB_OUT(logic, dmi_active_probe_o)
 // Read source of SEP_CPU_CTRL.TIMEOUT_INTERRUPT.reserved (sw=r, hw=w, no storage):
 // the hwif_in value that the register block returns on a read, on each clock.
 `SEP_TB_OUT(logic, timeout_interrupt_probe_o)
@@ -990,6 +1110,10 @@
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// Saturating count of cycles where the VeeR LSU sees a DMA DCCM write request
+// and a store-buffer DCCM write request in the same clock. 0 on the CPU-stub
+// build.
+`SEP_TB_OUT(logic [31:0], dma_cpu_dccm_overlap_count_o)
 // SPI-to-DMA transmit pacing, observation-only: the OpenTitan SPI host
 // transmit-FIFO depth, the SPI trigger bit at the secure DMA input, and the
 // DMA STATUS.busy flop. No CSR shows the trigger or the FIFO depth while the
@@ -998,6 +1122,15 @@
 `SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
 `SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
 `SEP_TB_OUT(logic, dma_busy_probe_o)
+// OpenTitan SPI host fatal_fault alert sender output, observation-only:
+// [1] alert_p, [0] alert_n of u_spi_host.alert_tx_o[0]. sep_ot_spi_wrap leaves
+// the port open, so no CSR or port shows the alert that ALERT_TEST raises
+// (owner `sep_spi_ot_host_csr_irq_rand_test`).
+`SEP_TB_OUT(logic [1:0], spi_alert_tx_probe_o)
+// SEP_TEST_CTRL read strobe of the CPU control register block,
+// observation-only: 1 while a read at the SEP_TEST_CTRL offset is presented to
+// the register (owner `sep_address_map_test`).
+`SEP_TB_OUT(logic, sep_test_ctrl_rd_probe_o)
 // Secure DMA master request after the DMA local-alias remap (net
 // u_sep.dma_axi_req, response u_sep.dma_axi_resp), observation-only. Bit
 // layout, LSB first: [0] ar_valid, [1] ar_ready, [33:2] ar.addr, [41:34]
@@ -1007,10 +1140,30 @@
 // cocotb/env/sep_dma_tap.py decodes it. A handshake is VALID and READY high on
 // one clk_i edge. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [104:0], dma_axi_req_probe_o)
+// Secure DMA master W data (net u_sep.dma_axi_req.w.data), observation-only,
+// valid on a W handshake of dma_axi_req_probe_o (bits 90 and 91 high). With
+// the WSTRB field of that probe it shows the byte-lane placement. Outside
+// every tb ready/valid cone.
+`SEP_TB_OUT(logic [sep_pkg::SEP_32_64_3_12_DATA_WIDTH-1:0], dma_axi_wdata_probe_o)
+// Secure DMA master response USER, observation-only (net u_sep.dma_axi_resp):
+// dma_resp_buser_o is b.user, valid on a B handshake of dma_axi_req_probe_o;
+// dma_resp_ruser_o is r.user, valid on a clock with bits 0 and 1 of
+// dma_resp_r_hs_o high. dma_resp_r_hs_o layout: [0] r_valid, [1] r_ready,
+// [2] r.last. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [11:0], dma_resp_buser_o)
+`SEP_TB_OUT(logic [11:0], dma_resp_ruser_o)
+`SEP_TB_OUT(logic [2:0], dma_resp_r_hs_o)
 // Secure DMA STATUS levels, observation-only: bit i is the stored value of
 // STATUS bit i (0 BUSY, 1 DONE, 2 ABORTED, 3 ERROR, 4 SHA2_DIGEST_VALID,
 // 5 CHUNK_DONE), read from the register flops on each clock.
 `SEP_TB_OUT(logic [5:0], dma_status_probe_o)
+// Secure DMA zero-fill fault inject. While a zero fill (CONTROL.OPCODE 4) runs
+// with its destination in the region dma_fill_fault_sel_i names (1 ICCM,
+// 2 the base of SEP SRAM), tb_top forces the engine's host-port response error,
+// so the fill ends in BUS_ERROR. 0 injects nothing.
+`SEP_TB_IN(logic [1:0], dma_fill_fault_sel_i)
+// Rising clock edges, since reset, on which the zero-fill fault condition held.
+`SEP_TB_OUT(logic [31:0], dma_fill_fault_count_o)
 // Crypto alert receiver pulses, observation-only: bit i is
 // u_sep_crypto.crypto_alert_pulse[i], the alert of receiver index i (HMAC [0],
 // OTBN [2:1], AES [4:3], KMAC [6:5], CSRNG [8:7], EDN [10:9]).
@@ -1204,13 +1357,15 @@
 `SEP_TB_OUT(logic, pr_dmacsr_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dmacsr_araddr_o)
 // PR-INFLT: the request out of the inbound filter (u_inbound_filter), before
-// the global-to-local remap; it carries the global address.
+// the global-to-local remap; it carries the global address and AxUSER.
 `SEP_TB_OUT(logic, pr_inflt_awvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_awready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_awaddr_o)
+`SEP_TB_OUT(logic [11:0], pr_inflt_awuser_o)
 `SEP_TB_OUT(logic, pr_inflt_arvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_arready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_araddr_o)
+`SEP_TB_OUT(logic [11:0], pr_inflt_aruser_o)
 // PR-CPU: AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests, before any
 // remap (u_sep_cpu lsu_axi_req_raw, ifu_axi_req_raw); tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, pr_cpu_lsu_awvalid_o)
@@ -1467,6 +1622,10 @@
 `SEP_TB_IN(logic, bh_smc_en_i)
 `SEP_TB_IN(logic [55:0], bh_smc_base_i)
 `SEP_TB_IN(logic [55:0], bh_smc_size_i)
+// SMC aperture inputs of the DUT (smc_global_base_addr_i, smc_region_size_i),
+// observation-only. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [55:0], smc_base_probe_o)
+`SEP_TB_OUT(logic [55:0], smc_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -1505,6 +1664,8 @@
 `SEP_TB_OUT(logic, jtag_filter_lc_sigint_err_probe_o)
 // The sep input jtag_id_i as the DUT receives it. Read-only tap.
 `SEP_TB_OUT(logic [31:1], jtag_id_probe_o)
+// The sep input jtag_trst_ni as the DUT receives it. Read-only tap.
+`SEP_TB_OUT(logic, jtag_trst_probe_o)
 // Post-guard fuse command at the sep output efuse_shim_command_req_o: valid,
 // command, bit address, program data and word count. Read-only taps.
 `SEP_TB_OUT(logic, efuse_shim_cmd_valid_o)
@@ -1566,6 +1727,19 @@
 // The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector,
 // read-only XMR.
 `SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
+// lc_state_o of sep: the differentially encoded lifecycle state (frontdoor DUT
+// output).
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_state_probe_o)
+// Input of the lifecycle-state decoder (read-only XMR): pair i is
+// {data_i[LcStateBitWidth+i], data_i[i]}, after any sigint inject force.
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_dec_data_probe_o)
+// AXI-Lite write port of the lifecycle controller register block. Read-only
+// taps: the number of write-address handshakes since time 0 (wraps), the
+// register offset of the last one, and the data of the last write-data
+// handshake.
+`SEP_TB_OUT(logic [15:0], lcc_wr_count_probe_o)
+`SEP_TB_OUT(logic [4:0], lcc_wr_addr_probe_o)
+`SEP_TB_OUT(logic [63:0], lcc_wr_data_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.

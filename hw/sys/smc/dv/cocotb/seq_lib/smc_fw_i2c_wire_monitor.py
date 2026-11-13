@@ -36,6 +36,8 @@ class I2cWireFrame:
     addr_acked: bool | None = None
     #: (byte, acked) in wire order, after the address byte.
     data: list[tuple[int, bool]] = field(default_factory=list)
+    #: True once a STOP closed this frame; a repeated START leaves it False.
+    stop_closed: bool = False
 
     @property
     def rw(self) -> str:
@@ -88,6 +90,8 @@ class SmcFwI2cWireMonitor:
                     bits = []
                 elif (not prev_sda) and sda:
                     self.stops += 1
+                    if frame is not None:
+                        frame.stop_closed = True
                     frame = None
                     bits = []
             elif (not prev_scl) and scl and frame is not None:

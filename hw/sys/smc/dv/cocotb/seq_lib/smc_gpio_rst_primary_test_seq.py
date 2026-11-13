@@ -19,11 +19,18 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_function
 
+# The PWM[1] pad; with PWM CTRL.PAD_EN at its reset 0 the pad is register-controlled GPIO.
 WRAP = 60
+assert pad_function(WRAP) == "PWM[1]", (
+    f"the integrator pad table gives pad {WRAP} the function {pad_function(WRAP)!r}, not 'PWM[1]'"
+)
 
-DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", WRAP)
-DATA_CTRL_ENABLE = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", WRAP)
+DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", WRAP)
+DATA_CTRL_ENABLE = smc_indexed_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", WRAP
+)
 
 _RX_ENABLE = 2 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
 _IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")

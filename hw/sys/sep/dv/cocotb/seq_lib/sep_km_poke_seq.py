@@ -7,8 +7,10 @@ The test builds a list of KM bus operations with the builders of
 list to ``SEP_WRITE_DATA`` through the SEP-side mailbox, waits (bounded) for the
 image to finish it, and reads every result from KM SRAM words 0 to 97 through
 ``km_sram_probe_o`` (``KM-RESULT``). Each data word and each ``slv``/``dec``
-flag is a value the image read from the DUT; nothing in a result comes from the
-host, except the word of a ``mark`` or ``sync`` op.
+flag is a value the image read from the DUT, with three exceptions: the word of
+a ``mark`` or ``sync`` op comes from the host, a ``jump`` returns the ``x12``
+its target leaves (the ROM upper-half target copies the host's ``a0`` there),
+and a write op without its read-back flag returns 0.
 
 A wait that runs out raises ``AssertionError``: a timeout fails the leaf and is
 not a verdict about the contract. A result word with an unknown bit raises

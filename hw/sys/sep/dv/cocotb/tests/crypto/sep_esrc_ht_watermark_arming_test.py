@@ -4,7 +4,9 @@
 
 no_cpu / +skip_fuse_sense / +esrc_noise_force. HEALTH_TEST_CTRL.ENABLE stays 0 on
 every arming leg. RANDCFG walks every supported selector through MODULE_ENABLE,
-then an unsupported selector and two low-mode falls (APT_LO, MARKOV_LO).
+then an unsupported selector and two low-mode falls (APT_LO, MARKOV_LO). After the
+last fall, with the graded window closed, one source leg per selector drives a
+fixed noise pattern.
 
 Contract (hw/ip/entropy_source/regs/entropy_source.rdl HT_WATERMARK_NUM :799-807,
 HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
@@ -15,13 +17,41 @@ HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
                    0xFFFF for a low-watermark mode (rdl:811). The entry arm of each leg
                    (the opposite polarity) is graded the same way.
   CHK-UNSUPPORTED  after a write of an unsupported selector, a MODULE_ENABLE pulse arms
-                   0x0000, the REPCNT_HI value (rdl:805: "Unsupported values select
-                   REPCNT_HI"). The entry holds 0xFFFF, so a dropped write fails.
+                   0x0000, the high-mode arm value (rdl:805: "Unsupported values select
+                   REPCNT_HI"; rdl:811). The entry holds 0xFFFF, so a dropped write
+                   fails. Which counter the watermark then tracks is not graded;
+                   OBS-HT-WM-SOURCE logs it.
   OBS-HT-UNSUP-SEL the HT_WATERMARK_NUM readback after that write. Logged, not graded:
                    no text states the stored or read value of an unsupported selector.
   CHK-LOW-FALL     a low-mode watermark arms 0xFFFF and falls from it once health
                    tests run.
   CHK-RANDCFG      every encoding of enum WATERMARK_TEST (rdl:790-796) armed to its value.
+  OBS-HT-WM-SOURCE for each of the five selectors and the unsupported value: the
+                   selector readback, the arm value, the noise pattern, the word
+                   count, the HT_WATERMARK value after that pattern ran with the
+                   health tests on, and moved (watermark differs from the arm
+                   value). The value is logged, not graded: no text states which
+                   test instance or statistic feeds HT_WATERMARK, so no expected
+                   count exists. The legs run outside the graded window and draw
+                   nothing from the seed.
+
+Source legs. Every lane carries one fixed pattern, chosen so that the input
+statistic of the selected test moves away from the arm value:
+  REPCNT_HI  stuck1: one run for the whole leg (highest repetition count).
+  APT_HI     stuck1: all ones (highest one-count).
+  APT_LO     stuck0: no ones (lowest one-count).
+  MARKOV_HI  alternate: a transition on every word (highest alternation count).
+  MARKOV_LO  square32: one transition per 32 words (lowest alternation count).
+  unsupported: the REPCNT_HI pattern and word count, so its line compares with
+  the REPCNT_HI line (rdl:805).
+The decorrelator (architecture.adoc:107) and the BIW mix (:115) sit between the
+forced bit and the 32-bit health test, so the pattern sets the input statistic,
+not the counted value. The APT and Markov tests compare at window boundaries
+(architecture.adoc:124; rdl:330, HEALTH_TEST_WINDOW_SIZE counts valid entropy
+words per APT and Markov window), so their legs run the reset window (the leaf
+never writes HEALTH_TEST_WINDOW_SIZE) plus one eighth, which holds at least one
+window boundary with the tests on. The repetition count is continuous, so its
+legs run 256 words. A leg whose watermark stays at the arm value logs moved=0.
 
 FCOV: the graded window of owner sep_esrc_ht_watermark_arming_test opens after the
 health tests are held off and covers the arm walk, the unsupported leg and each
@@ -41,14 +71,29 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import NextTimeStep, RisingEdge
+from env.sep_chk_log import SepChkLog
+from env.sep_esrc_pattern_noise import (
+    NUM_LANES,
+    Alternate,
+    EsrcStrobeTimeout,
+    LanePattern,
+    SepEsrcPatternNoise,
+    Square,
+    Stuck,
+)
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
+from sep_reg_meta import ENTROPY_SOURCE
 from seq_lib.sep_esrc_ht_watermark_seq import (
+    APT_HI,
     APT_LO,
     ARM_HIGH,
     ARM_LOW,
+    MARKOV_HI,
+    MARKOV_LO,
     RDL_MODE_COUNT,
     REPCNT_HI,
+    SUPPORTED,
     SepHtWatermark,
     SepHtWatermarkCfg,
     arm_value,
@@ -58,6 +103,18 @@ from seq_lib.sep_esrc_ht_watermark_seq import (
 TEST = "sep_esrc_ht_watermark_arming_test"
 _FALL_TIMEOUT_CYCLES = 80_000
 _FALL_POLL_EVERY = 64
+_HT_WINDOW_WORDS = ENTROPY_SOURCE.value("HEALTH_TEST_WINDOW_SIZE") & 0xFFFF
+_WINDOW_LEG_WORDS = _HT_WINDOW_WORDS + _HT_WINDOW_WORDS // 8
+_REPCNT_LEG_WORDS = 256
+# Source legs: selector -> (pattern on every lane, word count).
+_SOURCE_LEGS: dict[int, tuple[LanePattern, int]] = {
+    REPCNT_HI: (Stuck(1), _REPCNT_LEG_WORDS),
+    APT_HI: (Stuck(1), _WINDOW_LEG_WORDS),
+    APT_LO: (Stuck(0), _WINDOW_LEG_WORDS),
+    MARKOV_HI: (Alternate(0), _WINDOW_LEG_WORDS),
+    MARKOV_LO: (Square(32, 0), _WINDOW_LEG_WORDS),
+}
+_SOURCE_CYCLES_PER_WORD_BOUND = 64
 
 
 @pyuvm.test()
@@ -66,10 +123,8 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
 
     def _grade(self, chk: str, ok: bool, text: str) -> None:
         """One PASS or FAIL line; a FAIL is logged, closes the graded window, then raises."""
-        if ok:
-            self.logger.info("%s PASS: %s", chk, text)
+        if self.chk.ok(chk, ok, detail=text):
             return
-        self.logger.error("%s FAIL: %s", chk, text)
         close_graded_window(self.logger)
         raise AssertionError(f"{chk} FAIL: {text}")
 
@@ -147,7 +202,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             "CHK-UNSUPPORTED",
             got == ARM_HIGH,
             f"after MODULE_ENABLE HT_WATERMARK=0x{got:04x} want 0x{ARM_HIGH:04x} "
-            f"(0x{sel:x} resolves to REPCNT_HI)",
+            f"(0x{sel:x}: high-mode arm value)",
         )
 
     async def _check_low_fall(self, ht: SepHtWatermark, sel: int) -> None:
@@ -180,9 +235,61 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             f"{_FALL_TIMEOUT_CYCLES} cycles after ENABLE (want below 0x{ARM_LOW:04x})",
         )
 
+    async def _observe_source(self, ht: SepHtWatermark, sel: int) -> None:
+        """OBS-HT-WM-SOURCE: HT_WATERMARK after the fixed pattern of selector ``sel``.
+
+        An unsupported ``sel`` runs the REPCNT_HI pattern and word count. The leg
+        grades nothing: a selector that does not settle to the written value
+        (``sel_settled=0``) or a pattern that delivers fewer words than asked
+        within the pacing bound (``short``) is logged on the record, not raised.
+        """
+        pattern, want_words = _SOURCE_LEGS.get(sel, _SOURCE_LEGS[REPCNT_HI])
+        await ht.hold_health_tests_off()
+        sel_settled = 1
+        if sel in SUPPORTED:
+            try:
+                await ht.write_num(sel)
+            except AssertionError:
+                sel_settled = 0
+        else:
+            await ht.write_unsupported(sel)
+        sel_rb = await ht.read_num()
+        await ht.pulse_module_enable()
+        arm = await ht.read_watermark()
+        noise = SepEsrcPatternNoise(logger=self.logger)
+        noise.start([pattern] * NUM_LANES)
+        try:
+            await ht.enable_sample_path()
+            await ht.enable_health_tests()
+            mark = noise.mark()
+            short = 0
+            try:
+                await noise.wait_words(want_words, want_words * _SOURCE_CYCLES_PER_WORD_BOUND)
+            except EsrcStrobeTimeout as exc:
+                short = exc.missing
+            words = noise.words_since(mark)
+            wm = await ht.read_watermark()
+        finally:
+            await noise.stop()
+        await ht.hold_health_tests_off()
+        self.chk.obs(
+            "HT-WM-SOURCE",
+            sel=f"0x{sel:x}",
+            sel_rb=f"0x{sel_rb:x}",
+            sel_settled=sel_settled,
+            arm=f"0x{arm:04x}",
+            pattern=pattern.describe(),
+            words=words,
+            short=short,
+            watermark=f"0x{wm:04x}",
+            moved=wm != arm,
+        )
+
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        cfg = SepHtWatermarkCfg(self.random_seed())
+        seed = self.random_seed()
+        self.chk = SepChkLog(self, TEST, seed)
+        cfg = SepHtWatermarkCfg(seed)
         ht = SepHtWatermark(self)
         self.logger.info("esrc ht watermark arming: %s", cfg.summary())
 
@@ -211,6 +318,8 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
                 await ht.hold_health_tests_off()
                 if fall_sel != cfg.fall_sels[-1]:
                     open_graded_window(TEST, self.logger)
+            for sel in (*SUPPORTED, cfg.unsupported):
+                await self._observe_source(ht, sel)
         except BaseException:
             # A failure may resume from ReadOnly, where no value can be written.
             await NextTimeStep()
@@ -224,3 +333,4 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             f"0x{cfg.unsupported:x}",
             [sel_name(s) for s in cfg.fall_sels],
         )
+        self.chk.finish()

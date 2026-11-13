@@ -44,6 +44,24 @@ CHK-POOL-LOW-HIGH, before the pool EDN capture and the entropy bring-up, so
 the [36] fall at the first fill is inside it, and closes after
 CHK-EMPTY-SLVERR and the CHK-POOL-LEVEL-STEP class floor. A raise closes it.
 
+CHK-RAS-ENTROPY_FILL_STALL-<HALF> (``hw/sys/sep/doc/port_table.adoc:130``, row
+``sep_ras_o``, which states "The ``sep_pkg::sep_ras_t`` field comments state how each
+one is held and cleared", and that field comment in ``hw/sys/sep/rtl/sep_pkg.sv``): the field is a
+hang level, high from STALL_THRESH cycles without an EDN acknowledge until the
+next acknowledge. The tap ``sep_ras_probe_o`` and ``pool_edn_ack_o`` are watched
+on every ``clk_i``. Each half is its own check line
+(``CHK-RAS-ENTROPY_FILL_STALL-<HALF>``); a FAIL is recorded and the leaf raises
+at the end of the graded body:
+  IDLE   0 on every clock from the first fill to the EDN disable, while EDN
+         acknowledges flow or the pool is full.
+  RISE   rises after the EDN disable, by the STATUS read that first shows
+         fill_stall 1.
+  SHAPE  1 on every clock from that rise to the first clock with
+         ``pool_edn_ack_o`` 1 after the EDN re-enable.
+  CLEAR  0 at most STALL_RAS_CLEAR_LAG (2) clocks after that acknowledge.
+The field before the first fill (OBS-RAS-ENTROPY_FILL_STALL-BRINGUP), the rise
+delay and the fall delay (OBS-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
+
 RANDCFG: extra accepted pops come from the run seed. Every seed walks the
 high-bit mirrors of the live registers (the offsets that catch a truncated
 decode) and all three unique-dead offsets. Run mode: no_cpu with
@@ -56,10 +74,12 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from ocah_axi_vip import AxiTimingProfile
 from sep_base_test import sep_base_test
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 from seq_lib.sep_entropy_pool_seq import (
     FIFO_DEPTH,
     HALF_UPPER,
@@ -97,6 +117,20 @@ STALL_POLL_STEP = 64
 # the wait in a few polls. A pool that does not fill fails CHK-POOL-FILL at this
 # ceiling, well inside the testlist timeout.
 FILL_POLL_CAP = 4096
+# The CHK-STALL-CLEAR bound, in clocks; also the wait limit for the RAS field fall.
+STALL_CLEAR_CAP = 20000
+# DV-owned allowance, in clocks, from the acknowledge to the RAS field fall: the field
+# holds "until the next acknowledge" (port_table.adoc:130, delegating to the sep_pkg
+# field comment), and the allowance covers one register stage and the sampling edge.
+STALL_RAS_CLEAR_LAG = 2
+
+
+async def _capture_ar_at(addr: int) -> dict[str, int]:
+    """The next AR handshake at ``addr``; background reads at other addresses are skipped."""
+    while True:
+        ar = await capture_addr_handshake("ar")
+        if ar["addr"] == addr:
+            return ar
 
 
 class _LevelStep:
@@ -209,6 +243,54 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"sep_internal_interrupts[{idx}] did not become {expect} in {cycles} cycles"
         )
 
+    def _ras_chk(self, half: str, ok: bool, **fields) -> None:
+        """Log one CHK-RAS-ENTROPY_FILL_STALL half; a FAIL is kept for the end of the body."""
+        self._ras_lines.ok(f"RAS-ENTROPY_FILL_STALL-{half}", ok, **fields)
+
+    async def _ras_hold_clear(self, m_dis, m_en, a_en) -> None:
+        """SHAPE and CLEAR halves, from the stall rise to the fall after the next acknowledge."""
+        ras, ack = self._ras, self._ack
+        # Both watchers sample the same clk_i edges, so their clock counts differ by a constant.
+        offset = ras.clk - ack.clk
+        ack_rises = ack.rise_clks_since(a_en)
+        if self._ack_level_at_en == 1:
+            ack_clk = a_en.clk + offset
+        elif ack_rises:
+            ack_clk = ack_rises[0] + offset
+        else:
+            ack_clk = None
+        rises = ras.rise_clks_since(m_dis)
+        r1 = rises[0] if rises else None
+        if r1 is not None and ack_clk is not None and ras.clk < ack_clk + STALL_CLEAR_CAP:
+            if not [c for c in ras.fall_clks_since(m_dis) if c > r1 and c >= ack_clk]:
+                try:
+                    await ras.wait_level(0, ack_clk + STALL_CLEAR_CAP - ras.clk)
+                except BitWatchTimeout:
+                    pass
+        falls = [c for c in ras.fall_clks_since(m_dis) if r1 is not None and c > r1]
+        early = [c for c in falls if ack_clk is None or c < ack_clk]
+        self._ras_chk(
+            "SHAPE",
+            r1 is not None and ack_clk is not None and not early,
+            rise_clk=r1,
+            ack_clk=ack_clk,
+            falls_before_ack=early[:8],
+            ack_at_enable=self._ack_level_at_en,
+        )
+        clear = next((c for c in falls if ack_clk is not None and c >= ack_clk), None)
+        self._ras_chk(
+            "CLEAR",
+            clear is not None and clear <= ack_clk + STALL_RAS_CLEAR_LAG,
+            ack_clk=ack_clk,
+            fall_clk=clear,
+            bound=STALL_RAS_CLEAR_LAG,
+        )
+        self._ras_lines.obs(
+            "RAS-ENTROPY_FILL_STALL-DELAY",
+            fall_after_ack=None if clear is None else clear - ack_clk,
+            enable_to_ack=None if ack_clk is None else ack_clk - m_en.clk,
+        )
+
     async def _arm_not_full_no_ack(self, pool: SepEntropyPool) -> int:
         """Pop leftover until the pool has room and EDN acks have stopped.
 
@@ -312,10 +394,20 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
         idx, hi_first = hits[0]
         mon = self.env.axi_monitor
+        half_ar: list[int] = []
         mon.open_error_rdata_window()
         try:
             for label, addr in HALF_UPPER:
+                ar_task = cocotb.start_soon(_capture_ar_at(addr))
                 half = await pool.access(addr, expect_error=True, nbytes=4)
+                ar = take_handshake(ar_task)
+                # AxSIZE 2 is a 4-byte beat (AMBA IHI 0022, A3.4.1), so the refusal
+                # graded below answers a 32-bit read and not a wider one.
+                assert ar is not None and ar["addr"] == addr and ar["size"] == 2, (
+                    f"CHK-HALF-READ FAIL: {label} upper-word read presented AR={ar}, "
+                    f"expected addr=0x{addr:08x} size=2"
+                )
+                half_ar.append(ar["size"])
                 assert half.resp_code == RESP_SLVERR and half.rdata == 0 and not half.timed_out, (
                     f"CHK-HALF-READ FAIL: 32-bit read of the {label} upper word "
                     f"0x{addr:08x} resp={half.resp_code} rdata=0x{half.rdata:x} "
@@ -343,11 +435,12 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self._pop_next = idx + 4
         self._pop_hi_first = hi_first
         self.logger.info(
-            "CHK-HALF-READ PASS: %d 32-bit upper-word reads (%s) -> SLVERR RDATA=0, "
-            "fifo_level held at %d; the next 64-bit pop returned 0x%016x, the word "
+            "CHK-HALF-READ PASS: %d 32-bit upper-word reads (%s, arsize=%s) -> SLVERR "
+            "RDATA=0, fifo_level held at %d; the next 64-bit pop returned 0x%016x, the word "
             "after 0x%016x in the captured EDN stream (beat %d, %s)",
             len(HALF_UPPER),
             ",".join(f"0x{a:08x}" for _l, a in HALF_UPPER),
+            ",".join(map(str, half_ar)),
             level1,
             after.rdata,
             before.rdata,
@@ -366,6 +459,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             assert err == 0, f"pool_err set in status 0x{st:x}"
             if pool_flag(st, ST_POOL_LOW) == expect:
                 return st
+            self._fill_prev_level = level
             await ClockCycles(cocotb.top.clk_i, 20)
         raise AssertionError(
             f"CHK-POOL-FILL FAIL: status pool_low never became {expect} in {iters} "
@@ -385,10 +479,15 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"pool_low={low} at level={level}"
         )
         self._edge_levels.append(level)
+        self._edge_trace.append((level, low))
         return level
 
     async def run_scenario(self) -> None:
         self._edge_levels: list[int] = []
+        # (level, pool_low) of every _check_low_edge read, and the last fill
+        # poll level that still read pool_low 1.
+        self._edge_trace: list[tuple[int, int]] = []
+        self._fill_prev_level: int | None = None
         self._pool_beats: list[int] = []
         self._pop_next = 0
         self._pop_hi_first = False
@@ -397,6 +496,17 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         await self.bring_up_no_cpu()
         pool = _LevelStepPool(self)
+        check_tap_width(cocotb.top.sep_ras_probe_o)
+        self._ras_lines = RasChkLines(self.logger, self.random_seed())
+        self._ras = SepBitWatch(
+            cocotb.top.sep_ras_probe_o,
+            {"entropy_fill_stall": ras_bit("entropy_fill_stall")},
+            name="sep_ras",
+        ).start()
+        self._ack = SepBitWatch(
+            cocotb.top.pool_edn_ack_o, name="pool_edn_ack", xz_fail=False
+        ).start()
+        self._ras_m0 = self._ras.mark()
 
         # [36] high while empty, before any fill. A stuck-low source fails here.
         # The low watermark is not stated, so pool_low at empty is logged only. The
@@ -465,7 +575,15 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self.start_fifo_drain()
 
         st_fill = await self._wait_pool_low(pool, 0)
+        m_idle = self._ras.mark()
+        self._ras_lines.obs(
+            "RAS-ENTROPY_FILL_STALL-BRINGUP",
+            rises=self._ras.rises_since(self._ras_m0),
+            high_clocks=self._ras.high_clocks_since(self._ras_m0),
+            level_at_fill=self._ras.level(),
+        )
         level_fill = pool_level(st_fill)
+        self._fill_level = level_fill
         low_fill = pool_flag(st_fill, ST_POOL_LOW)
         irq_fill = await self._irq(IRQ_POOL_LOW)
         # A clear is claimed only after pool_low and [36] read 1 together at
@@ -520,21 +638,29 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             len(cfg.unmapped_offs),
         )
 
+        idle_high = self._ras.high_clocks_since(m_idle)
+        self._ras_chk(
+            "IDLE", idle_high == 0, clocks=self._ras.clk - m_idle.clk, high_clocks=idle_high
+        )
+
         # ESRC MODULE_ENABLE=0 does not drop AUTO-mode EDN acks. EDN_ENABLE=False
         # is what leaves the pool request outstanding without ack. Pop after
         # that so req_pending stays high (a full pool holds it low and clears
         # the stall counter). The live/unmapped write walk is here, with room
         # in the FIFO: a full pool cannot show a refused fill.
+        m_dis = self._ras.mark()
         await pool.disable_edn()
         level_room = await self._arm_not_full_no_ack(pool)
         # DUT-side precondition for the refused-fill check: the pool has an
         # outstanding entropy request, which is what keeps req_pending asserted.
         req = cocotb.top.pool_edn_req_o.value
         assert req.is_resolvable, f"pool_edn_req_o is unresolvable ({req})"
-        assert int(req) == 1, (
-            f"write-SLVERR arming left no outstanding pool request "
-            f"(level={level_room}, pool_edn_req_o=0)"
+        arm_line = (
+            f"CTRL-WRITE-ARM {'PASS' if int(req) == 1 else 'FAIL'}: "
+            f"pool_edn_req_o={int(req)} level={level_room}"
         )
+        assert int(req) == 1, arm_line
+        self.logger.info(arm_line)
         write_cells = (
             ("status", POOL_STATUS),
             ("irq-cause", POOL_IRQ_CAUSE),
@@ -564,10 +690,9 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             )
         self.logger.info(
             "CHK-WRITE-SLVERR PASS: %d live/unmapped write cells, AW and W observed "
-            "in the same cycle, returned SLVERR, level unchanged (%d < depth %d)",
+            "in the same cycle, returned SLVERR, level unchanged (%d)",
             len(write_cells),
             level_room,
-            FIFO_DEPTH,
         )
 
         # AW and W carry no ordering requirement between them (AMBA IHI 0022
@@ -628,6 +753,18 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             waited += STALL_POLL_STEP
             st_stall = await pool.status()
         fill_stall = pool_flag(st_stall, ST_FILL_STALL)
+        ras_rises = self._ras.rise_clks_since(m_dis)
+        self._ras_chk(
+            "RISE",
+            bool(ras_rises),
+            status_fill_stall=fill_stall,
+            rises=len(ras_rises),
+            polled_clocks=waited,
+        )
+        self._ras_lines.obs(
+            "RAS-ENTROPY_FILL_STALL-DELAY",
+            rise_after_edn_disable=ras_rises[0] - m_dis.clk if ras_rises else None,
+        )
         self.logger.info(
             "OBS-POOL-STALL-TIME ns=%d polled_clocks=%d fill_stall=%d level=%d",
             get_sim_time("ns") - t_stall0,
@@ -693,10 +830,14 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             level_room,
         )
 
+        m_en = self._ras.mark()
+        a_en = self._ack.mark()
+        self._ack_level_at_en = self._ack.level()
         await pool.enable_edn()
         await pool.enable_esrc()
-        await self._wait_irq(IRQ_FILL_STALL, 0, cycles=20000)
+        await self._wait_irq(IRQ_FILL_STALL, 0, cycles=STALL_CLEAR_CAP)
         self.logger.info("CHK-STALL-CLEAR PASS: [37]=0 after EDN/ESRC re-enable")
+        await self._ras_hold_clear(m_dis, m_en, a_en)
 
         await pool.disable_edn()
         await pool.disable_esrc()
@@ -728,6 +869,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         # Drain to empty so the empty-pop SLVERR is a real empty, not a race.
         drain_iters = 0
+        drain_mark = len(self._edge_trace)
         while True:
             st_drain = await pool.status()
             level = await self._check_low_edge(st_drain)
@@ -749,6 +891,17 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             drain_iters,
             self._pop_next,
             len(self._pool_beats),
+        )
+        # No line states the low watermark: the levels where pool_low changes are logged.
+        drain = self._edge_trace[drain_mark:]
+        first_low = next((lv for lv, lo in drain if lo == 1), None)
+        self.logger.info(
+            "OBS-POOL-LOW-LEVEL drain_first_low_level=%s fill_clear_level=%d "
+            "fill_last_low_level=%s drain_trace=%s",
+            first_low,
+            self._fill_level,
+            self._fill_prev_level,
+            ",".join(f"{lv}:{lo}" for lv, lo in drain),
         )
         # The drain loop graded [36] against STATUS pool_low down to level 0
         # (CHK-POOL-LOW-EDGE); the pool_low value at empty is not stated.
@@ -781,4 +934,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             self._step.skipped,
             self._step.summary(),
         )
+        await self._ras.stop()
+        await self._ack.stop()
+        if self._ras_lines.fails:
+            raise AssertionError("; ".join(self._ras_lines.fails))
         return capture

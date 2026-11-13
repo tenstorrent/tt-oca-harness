@@ -21,12 +21,29 @@ this order, over the CPU-LSU master on ``s_axi``:
   advances over one poll pass), a larger bark threshold barks later in
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
-  Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
-  response within the bounded wait (CHK-WDT-ALERT-ACCESS). No spec sentence
-  states the response code of a backed register write, so OBS-WDT-ALERT-RESP
-  logs the ``BRESP`` code and does not grade it.
-* Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold;
-  OBS-WDT-CLKSTOP logs what the timer core does (no pass/fail).
+  Bite Reset; ``aon_timer.adoc``). Three ``INTR_TEST`` writes (wakeup bit, bark
+  bit, both; drawn order) with both timers counting force exactly their bits,
+  clear on a write of 1, and leave both counts advancing with no bite request
+  (CHK-WDT-INTRTEST-COUNT); OBS-WDT-INTRTEST-WKUP-CAUSE logs ``WKUP_CAUSE``
+  after each write. After a bark, a ``WDOG_BARK_THOLD`` raised a drawn 64 to 128
+  counts above the count and a clear of the bark bit keep the bark line and
+  status at 0 until the count reaches the new threshold (CHK-WDT-BARK-REARM). A
+  write of 1 to ``ALERT_TEST`` gets a write
+  response within the bounded wait (CTRL-WDT-ALERT-RESP, CTRL-MISSING
+  otherwise), and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 before
+  the write and rises within ``SRC13_WINDOW`` ``clk_i`` cycles after it
+  (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
+  leaf. OBS-WDT-ALERT-RESP logs the response code, not graded: no
+  specification states the response code of a legal register write. With
+  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, OBS-WDT-PAUSE-RUN logs the
+  count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
+  ``clk_wdt_i`` edges between the two count reads; no specification states
+  the level of the sleep input of the timer in SEP. Control
+  CTRL-WDT-PAUSE-RUN: ``WDOG_CTRL`` reads both bits 1 before the first count
+  read.
+* Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold; the
+  count advances by the ``clk_wdt_i`` edges of the hold (CHK-WDT-CLKSTOP-COUNT),
+  and OBS-WDT-CLKSTOP logs the bite request (not graded).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
   boundary at prescaler 0, 1 and a drawn value of 2 to 15, with both half
   orders, within the same early and late count bounds, and a larger threshold
@@ -37,7 +54,11 @@ this order, over the CPU-LSU master on ``s_axi``:
   fall while counting.
 * Leg L. ``WDOG_REGWEN`` stays 0 after a write of 1, and ``regwen`` and the four
   thresholds keep their values over ``dbg_rstb_i`` (VCS, full-CPU build only), a
-  software engine reset and a ``sep_reset_n`` override (CHK-REGWEN-HOLD). A
+  software engine reset and a ``sep_reset_n`` override (CHK-REGWEN-HOLD). Each
+  event reads its reset load low in the pulse (``dbg_rst_l_probe_o``,
+  ``hmac_gated_rst_n_probe_o``, ``dbg_sep_reset_n_o``; ``sep_cpu_reset_n_o`` for
+  ``wdt_rst_ni``) and logs CTRL-REGWEN-HOLD-EVENT or CTRL-REGWEN-WDTRST-EVENT
+  with the value read; a load that does not fall fails as CTRL-MISSING. A
   ``wdt_rst_ni`` pulse returns every watchdog timer register to its
   register-description reset value and clears the bark interrupt
   (CHK-REGWEN-WDTRST), and the leg then programs and locks the thresholds
@@ -88,6 +109,16 @@ WDOG_BARK_THOLD" (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:
   read.
 * CHK-WKUP-TIME. In each wakeup run, ``|dcount x (p + 1) - E_wdt| <= p + A``
   (``p``: the prescaler; ``p`` covers the tick phase at the two reads).
+* Exact early bound (CHK-WDT-ORDER, CHK-WDT-MAX, CHK-WKUP-WIDE). On the
+  ``clk_i`` edge where the bark line, the bite request or the wakeup bit of
+  ``aon_wkup_probe_o`` first rises, the count tap (``wdt_wdog_count_o``, or the
+  low word of ``aon_wkup_probe_o``) is at or above the threshold
+  (``README.md:35,55-56``), so an event that fires early fails with no
+  allowance. ``A`` stays only in the bounds on the bus reads. A rise later than
+  the threshold passes this bound, so whether the watchdog compare includes the
+  threshold itself is not graded: OBS-WDT-BITE-EQ logs, for each run of
+  CHK-WDT-ORDER and CHK-WDT-MAX, the count tap at the first bark and bite rise
+  minus its threshold ("none" for a missing rise).
 
 Each of these windows also requires ``dcount x (p + 1) > 2 x bound``, so a count
 at half or twice the stated rate is outside the bound. Control: CTRL-WDT-ENABLE
@@ -120,7 +151,9 @@ edges in (t0, t1].
   ``:295-308``). With regwen 0 a ``WDOG_CTRL`` write reads back unchanged, and
   writes to ``WDOG_COUNT``, ``WKUP_CTRL``, ``WKUP_COUNT_HI/LO`` and
   ``WKUP_THOLD_HI/LO`` read back the written value. CTRL-REGWEN-LOCKED grades the
-  thresholds.
+  thresholds: after a write to each with regwen 0, each reads back its value from
+  before the lock, and each write has a completed AXI response (not a timeout);
+  the line logs both read-backs and both response codes.
 * CHK-WDT-PET. "Pet the watchdog by writing zero to the WDOG_COUNT register."
   (``<aon>/doc/programmers_guide.md:13``). The first count read after the pet is
   below the count read before it and at most ``E(pet write, read done)``.
@@ -133,6 +166,18 @@ edges in (t0, t1].
   ``WDOG_BARK_THOLD - A``, so the petted count stays clear of the threshold
   (CTRL-MISSING otherwise); CTRL-WDT-PET-BARK: the same run barks later, at a
   count of at least ``WDOG_BARK_THOLD - A``.
+* CHK-WDT-PET-BITE. A bite comes only "when the count is at least
+  ``WDOG_BITE_THOLD``" (``<aon>/README.md:56``) and a pet "resets the count to
+  zero" (``<aon>/README.md:57-58``; ``doc/programmers_guide.md:13``), so a pet
+  after the bark and before the bite threshold keeps ``wdt_timer_rst_req_o`` at
+  0 on every ``clk_i`` edge up to ``WDOG_BITE_THOLD + A + 1`` periods after the
+  enable read-back, where an unpetted run bites; the bark status
+  (``INTR_STATE.wdog_timer_bark``, rw1c, ``doc/registers.md:224``) stays 1
+  until its write-1-to-clear and reads 0 after it. Bite threshold
+  ``WDOG_BARK_THOLD + PET_BITE_GAP``. Controls: CTRL-WDT-PET-BITE, both
+  thresholds of the run read back as written before the enable; the bark is
+  set before the pet, and the count read before the pet is below
+  ``WDOG_BITE_THOLD - A`` (CTRL-MISSING otherwise).
 * CHK-WDT-THOLD-ZERO. "If the timer is enabled, there is a "bark" on every AON
   clock tick when the count is at least WDOG_BARK_THOLD." (``<aon>/README.md:55``).
   With ``WDOG_BARK_THOLD`` = 0 the bark status is 1 at the status read issued
@@ -191,6 +236,30 @@ edges in (t0, t1].
   its state over the pulse while its sender resets raises no alert in this
   window, so this clause does not show that the receivers take the watchdog
   reset.
+* CHK-BITE-HOLD (whole leaf). ``wdt_timer_rst_req_o`` "Holds until `wdt_rst_ni`
+  resets the watchdog." (``hw/sys/sep/doc/port_table.adoc:26``;
+  ``doc/integrator/src/smu-sep.adoc:58-60``), and the watchdog reset is
+  "Asserted by cold reset and by `wdt_rst_ni`" (``hw/sys/sep/doc/clk_rst.adoc:62``).
+  A sampler reads ``wdt_timer_rst_req_o``, ``wdt_rst_ni_i`` and ``rst_ni`` in the
+  read-only phase of every ``clk_i`` rising edge from the bring-up to the end of
+  the leaf. A span opens at a request sample of 1 after a sample other than 1,
+  with both resets high, and closes at the first sample where ``wdt_rst_ni_i`` or
+  ``rst_ni`` reads 0. The request reads 1 at every other sample of a span; a span
+  still open at the end of the leaf fails, and a leaf with no span fails as
+  CTRL-MISSING. Every bite request of the leaf (the runs of leg T, leg H, and the
+  threshold-below and bite-before-bark runs of leg P) ends in a CHK-BITE-CLEAR
+  pulse.
+* CHK-WDT-NO-SPURIOUS (whole leaf). The watchdog alert is ``fatal_fault``,
+  raised on a fatal bus integrity fault (``<aon>/data/aon_timer.hjson:42-46``),
+  and a bite needs an enabled timer at a count at or above ``WDOG_BITE_THOLD``
+  (``<aon>/README.md:56``). Two ``SepBitWatch`` watchers read
+  ``wdt_timer_rst_req_o`` and the alert tap ``wdt_alert_probe_o`` on every
+  ``clk_i`` edge from the bring-up to the end of the leaf. The bite request
+  does not rise in legs R, W, S, L, K and C (leg L holds the ``wdt_rst_ni_i``
+  pulses and the cold reset); the alert does not rise in any leg, except from
+  the ``ALERT_TEST`` write to the end of leg T. Controls on the same watchers:
+  the alert rises after the ``ALERT_TEST`` write and the bite request rises in
+  leg T (CTRL-MISSING otherwise).
 * CHK-WKUP-PRESC-MAX. "The number of cycles per tick is one more than the
   12-bit WKUP_CTRL.prescaler field." (``<aon>/README.md:32``). At prescaler 4095
   the ``clk_wdt_i`` edges ``E`` over N = 32 consecutive count steps satisfy
@@ -238,17 +307,30 @@ CHK-WKUP-PRESC-MAX and CHK-WKUP-RESTART use no allowance: a lagging copy only
 lowers a CHK-WDT-PET read, and the two bracketed steps of CHK-WKUP-PRESC-MAX see the
 same copy delay. The lower count bounds of CHK-WKUP-CARRY-READ use ``A`` for the
 age of the count copy.
-"A pet after the bark stops the bite" is not graded: no sentence states it.
 
-Leg H logs and does not grade. The watchdog clock input is "independent of the
-system clock so that the WDT can detect system clock failures"
-(``doc/integrator/src/smu-sep.adoc:51-53``; ``doc/trm/src/clock_domains.adoc:84-86``):
-that states intent, and no sentence says that the count or the bite request
-advances while ``clk_i`` is stopped. The leg enables the watchdog from a count
-of 0 with a drawn bark and bite threshold, reads ``WDOG_COUNT`` once, and then
-holds ``clk_i`` low over ``N`` ``clk_wdt_i`` periods, ``N`` = the bite threshold
-minus the count tap at the hold start plus ``CLKSTOP_PAST`` (8, at least 4).
+Leg H grades the count and logs the bite request. The timer core runs on
+``clk_wdt_i`` (``hw/sys/sep/doc/clk_rst.adoc:25-26``;
+``hw/sys/sep/doc/port_table.adoc:22``, "``clk_wdt_i`` ... 200 kHz clock for
+watchdog timer.") and the count "increments on every tick of the AON clock"
+(``<aon>/README.md:52``), so the count advances while ``clk_i`` is stopped. The
+watchdog clock input is "independent of the system clock so that the WDT can
+detect system clock failures" (``doc/integrator/src/smu-sep.adoc:51-53``;
+``doc/trm/src/clock_domains.adoc:84-86``): that states intent, and no sentence
+says that the bite request rises while ``clk_i`` is stopped. The leg enables the
+watchdog from a count of 0 with a drawn bark and bite threshold, reads
+``WDOG_COUNT`` once, and then holds ``clk_i`` low over ``N`` ``clk_wdt_i``
+periods, ``N`` = the bite threshold minus the count tap at the hold start plus
+``CLKSTOP_PAST`` (8, at least 4).
 
+* CHK-WDT-CLKSTOP-COUNT. ``|dcount - E_wdt| <= 1``: ``dcount`` is the count tap
+  ``wdt_wdog_count_o`` at the end of the hold minus the tap at its start, and
+  ``E_wdt`` the ``clk_wdt_i`` rising edges counted at the pin between the two
+  taps. The start tap is read at a ``clk_i`` falling edge, which can share a time
+  step with a ``clk_wdt_i`` rise (both clocks start on the ``PHASE_GRID_PS``
+  grid), so it may read before or after that increment; the end tap is read at a
+  ``clk_wdt_i`` falling edge. A count that stops with ``clk_i`` (``dcount`` 0) or
+  runs at half rate is outside the bound when ``E_wdt`` is at least
+  ``CLKSTOP_MIN_E`` (CTRL-MISSING otherwise).
 * OBS-WDT-CLKSTOP. The count tap ``wdt_wdog_count_o`` at the start and the end
   of the hold, the ``clk_wdt_i`` edges counted at the pin between them, and the
   level of ``wdt_timer_rst_req_o`` at both ends with the time and the
@@ -262,26 +344,30 @@ bite request holds, a ``wdt_rst_ni_i`` pulse clears it (CHK-BITE-CLEAR).
 
 Checkers: CHK-REFCNT-RATE, CHK-REFCNT-PHASE, CHK-REFCNT-WRITE,
 CHK-REFCNT-RESET, CHK-REFCNT-SPACED, CHK-WDT-ORDER, CHK-WDT-THOLD-MONO, CHK-WDT-MAX,
-CHK-WDT-INTRTEST, CHK-WDT-ALERT-ACCESS, CHK-WKUP-WIDE, CHK-WKUP-LATER,
-CHK-WDT-SHAPE, CHK-WDT-COHERENT, CHK-REGWEN-STICKY, CHK-REGWEN-HOLD,
-CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR, CHK-WDT-RATE,
-CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
-CHK-WDT-PET-HOLD, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
-CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ. Controls (not
-counted): CTRL-WDT-ENABLE, CTRL-WDT-THOLD, CTRL-WDT-PAUSE, CTRL-WKUP-SMALL,
-CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-WDTRST-ARMED, CTRL-WDT-PET-BARK,
+CHK-WDT-INTRTEST, CHK-WKUP-WIDE, CHK-WKUP-LATER, CHK-WDT-SHAPE, CHK-WDT-COHERENT,
+CHK-REGWEN-STICKY, CHK-REGWEN-HOLD, CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR,
+CHK-BITE-HOLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
+CHK-WDT-PET-HOLD, CHK-WDT-PET-BITE, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
+CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ, CHK-WDT-CLKSTOP-COUNT,
+CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS. Controls (not
+counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
+CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
+CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
-CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED. Observations (not graded): OBS-WDT-CLKSTOP,
-OBS-WDT-ALERT-RESP, OBS-BITE-CLEAR-EDGE, OBS-REFCNT-SPACED-LAT.
+CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP,
+CTRL-WDT-ALERT-REACH, CTRL-WDT-INTRTEST-WKUP-CAUSE.
+Observations (not graded): OBS-WDT-CLKSTOP, OBS-BITE-CLEAR-EDGE,
+OBS-REFCNT-SPACED-LAT, OBS-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
+OBS-WDT-ALERT-RESP, OBS-WDT-INTRTEST-WKUP-CAUSE.
 
 The graded window (owner code of this test) opens at leg R and closes for the
-enable control run, leg H, the small wakeup control runs, the preload of each
-reset event, the CTRL-WDT-PET-BARK run, the count wait of CHK-WDT-THOLD-BELOW,
-and at the end of the leaf. The sampler holds every cell the window fills and
+enable control run, the pause-in-sleep run, leg H, the small wakeup control
+runs, the preload of each reset event, the CTRL-WDT-PET-BARK run, the count
+wait of CHK-WDT-THOLD-BELOW, and at the end of the leaf. The sampler holds every cell the window fills and
 samples the held cells once, when the leaf writes the release bit of its pass
 label after every check passed; a failing leaf writes the drop bit. The bark-line
 cells of ``cp_thold_order`` fill only inside the graded runs of CHK-WDT-ORDER and
-CHK-WDT-MAX, whose LINE clause reads the bark line (tap ``wdt_bark_probe_o``).
+CHK-WDT-MAX, whose PASS line carries the bark-line clause (tap ``wdt_bark_probe_o``).
 """
 
 from __future__ import annotations
@@ -293,13 +379,16 @@ import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, with_timeout
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
+from env.sep_bit_watch import SepBitWatch
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
+from env.sep_fabric_common import RESP_OKAY
 from env.sep_fcov_gate import (
     TIMER_CONTRACT_PASS_DROP,
     TIMER_CONTRACT_PASS_ORDER_RUN,
     TIMER_CONTRACT_PASS_RELEASE,
     close_graded_window,
     open_graded_window,
+    set_open_value_leg_pass,
     set_timer_contract_pass,
 )
 from env.sep_field_compare import field_compare
@@ -393,6 +482,7 @@ POLL_READS = 200  # bound on the poll reads of one register write
 REFCNT_ARM_REF = 200  # clk_ref_i cycles bound of the 2^40 arm poll
 REFCNT_POLL = 400  # bound on the reads of the reload poll
 WDT_WAIT = 64  # clk_wdt_i periods of the wait in the controls and leg L
+SRC13_WINDOW = 4 * P_W * 16  # clk_i cycles of the PIC source 13 sample after ALERT_TEST
 RESET_BOUND = 4_000  # clk_i cycles for a reset tap to read 1
 OVRD_CYCLES = 24  # clk_i cycles the sep_reset_n override holds the reset
 PULSE_CYCLES = 16  # clk_i cycles of a wdt_rst_ni or dbg_rstb_i pulse
@@ -404,6 +494,9 @@ TWO40 = 1 << 40
 FAR = 1 << 33  # least distance of a reload value from the count before its write
 WDOG_FAR_BARK = 0xFFFF_0000  # bark threshold far above every count of leg P
 WDOG_FAR_BITE = 0xFFFF_FFF0  # bite threshold far above every count of leg P
+PET_BITE_GAP = 64  # WDOG_BITE_THOLD - WDOG_BARK_THOLD of the pet-after-bark run
+BITE_FIRST_BITE = 0x40  # bite threshold of the bite-before-bark run
+BITE_FIRST_BARK = 0x400  # bark threshold of the bite-before-bark run
 PRESC_MAX = 0xFFF  # largest 12-bit WKUP_CTRL.prescaler
 PRESC_EARLY = 64  # clk_wdt_i periods before an expected count step that a poll starts
 PRESC_LATE = 512  # clk_wdt_i periods after an expected count step that a poll gives up
@@ -411,6 +504,9 @@ CARRY_MARGIN = 256  # counts from the leg K carry preload to the 32-bit carry
 PRESC_RUN = 32  # N: count steps between the two bracketed steps of CHK-WKUP-PRESC-MAX
 CLKSTOP_PAST = 8  # clk_wdt_i periods of the leg H hold past the bite threshold (at least 4)
 CLKSTOP_RUN = 8  # clk_i cycles after the leg H restart before the first read
+# Least E_wdt of the leg H hold at which a stopped count (dcount 0) and a half-rate count
+# both miss the bound of 1 of CHK-WDT-CLKSTOP-COUNT.
+CLKSTOP_MIN_E = 4
 # Spaced reload pair of leg R. SPACED_MIN_REF: "separate consecutive writes by at least
 # eight reference-clock periods" (doc/programmer/src/sep-smc-common.adoc:516-518).
 SPACED_MIN_REF = 8
@@ -419,6 +515,15 @@ SPACED_MAX_REF = 12  # largest drawn spacing (environment choice)
 # write, and not one of RATIOS (the pairs are not a rate pass).
 SPACED_RATIO = 16
 SPACED_STAY_READS = 16  # reads after the first readback in the window that stay in it
+# Bark re-arm of leg T: the new WDOG_BARK_THOLD is the count read after the bark plus a
+# drawn gap in [REARM_GAP_LO, REARM_GAP_HI] clk_wdt_i periods (environment choice: wide
+# enough for the threshold write, its read-back and the clear before the count gets there).
+REARM_GAP_LO = 64
+REARM_GAP_HI = 128
+LEG_T_SALT = 0x7E_A12B  # salt of the leg T re-arm and INTR_TEST draw stream
+# Legs whose every clk_i edge CHK-WDT-NO-SPURIOUS grades for a wdt_timer_rst_req_o rise.
+# The other legs run bite requests on purpose.
+NO_BITE_LEGS = ("R", "W", "S", "L", "K", "C")
 
 
 async def _aw_handshake() -> int:
@@ -437,6 +542,18 @@ async def _aw_handshake() -> int:
 
 def _gap(order: list[int]) -> str:
     return ",".join(str(g) for g in order)
+
+
+def _hexmap(regs: dict[str, int]) -> str:
+    return ",".join(f"{n}:0x{v:x}" for n, v in regs.items())
+
+
+def _level(sig) -> int | None:
+    """A 1-bit ``sig`` as 0 or 1, or None when it reads X, Z or another unknown."""
+    v = sig.value
+    bits = getattr(v, "binstr", None)
+    bits = (bits if bits is not None else str(v)).strip()
+    return int(bits) if bits in ("0", "1") else None
 
 
 class _Cfg:
@@ -542,6 +659,12 @@ class _Cfg:
                 pair.append(w)
                 seen.append(w)
             self.spaced.append(tuple(pair))
+        # Leg T bark re-arm and INTR_TEST count steps draw from their own salted
+        # stream, so every draw above keeps its seed mapping.
+        rng_t = SepSeededRng(seed ^ LEG_T_SALT)
+        self.rearm_gap = rng_t.randrange(REARM_GAP_LO, REARM_GAP_HI + 1)
+        self.intrtest_order = [WKUP_BIT, BARK_BIT, WKUP_BIT | BARK_BIT]
+        rng_t.shuffle(self.intrtest_order)
 
     def order_of(self, p: int) -> str:
         if p == 0:
@@ -568,7 +691,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WDT-THOLD-MONO",
         "CHK-WDT-MAX",
         "CHK-WDT-INTRTEST",
-        "CHK-WDT-ALERT-ACCESS",
         "CHK-WKUP-WIDE",
         "CHK-WKUP-LATER",
         "CHK-WDT-SHAPE",
@@ -578,18 +700,24 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-REGWEN-WDTRST",
         "CHK-REGWEN-COLD",
         "CHK-BITE-CLEAR",
+        "CHK-BITE-HOLD",
         "CHK-WDT-RATE",
         "CHK-WDT-BARK-TIME",
         "CHK-WKUP-TIME",
         "CHK-REGWEN-LOCK-SCOPE",
         "CHK-WDT-PET",
         "CHK-WDT-PET-HOLD",
+        "CHK-WDT-PET-BITE",
         "CHK-WDT-THOLD-ZERO",
         "CHK-WDT-THOLD-BELOW",
         "CHK-WKUP-PRESC-MAX",
         "CHK-WKUP-THOLD-ZERO",
         "CHK-WKUP-RESTART",
         "CHK-WKUP-CARRY-READ",
+        "CHK-WDT-CLKSTOP-COUNT",
+        "CHK-WDT-BARK-REARM",
+        "CHK-WDT-INTRTEST-COUNT",
+        "CHK-WDT-NO-SPURIOUS",
     )
 
     # -- primitives -----------------------------------------------------------
@@ -630,6 +758,30 @@ class sep_timer_clock_contract_test(sep_base_test):
     async def _wr(self, addr: int, value: int) -> None:
         await self.wdt.write(addr, value & M32)
 
+    async def _wr_logged(self, tag: str, addr: int, value: int, what: str) -> None:
+        """Write one timer register and log its B handshake as ``CTRL-<tag>``.
+
+        For a write whose graded readback equals the value before it, this line
+        shows that the write reached the DUT. A write with no B, or with a
+        response other than OKAY, fails the leaf as ``CTRL-MISSING <tag>``.
+        """
+        wseq = SepAxiAccessSeq(
+            f"{tag.lower()}_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=value & M32,
+            length=4,
+            size=self.wdt._AXI_SIZE,
+        )
+        await self.start_seq(wseq)
+        b_line = (
+            f"{what} write=0x{value & M32:x} timed_out={int(wseq.timed_out)} "
+            f"bresp={wseq.resp_code} expect={RESP_OKAY}"
+        )
+        if wseq.timed_out or wseq.resp_code != RESP_OKAY:
+            raise AssertionError(f"CTRL-MISSING {tag}: {b_line}")
+        self.logger.info("CTRL-%s: %s", tag, b_line)
+
     async def _poll_eq(self, name: str, addr: int, want: int, mask: int, chk: str) -> int:
         """Poll a timer register until its field bits equal ``want``. Returns the read."""
         got = 0
@@ -644,6 +796,24 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"{chk} FAIL: {name} never read 0x{want & mask:x} on mask 0x{mask:x} in "
             f"{POLL_READS} reads (last 0x{got:08x})"
         )
+
+    async def _shape_before(self, name: str, addr: int, wv: int, mask: int, hold: int = 0) -> int:
+        """Return a read of ``name`` whose field bits differ from ``wv``.
+
+        When the register already holds ``wv``, the complement (with the ``hold``
+        bits kept 0) is written and polled first, so the graded write of ``wv``
+        must change the register and a dropped write fails its poll.
+        """
+        before = await self._rd(addr)
+        if (before & mask) == (wv & mask):
+            alt = ~wv & mask & ~hold
+            await self._wr(addr, alt)
+            before = await self._poll_eq(name, addr, alt, mask, "CHK-WDT-SHAPE")
+        assert (before & mask) != (wv & mask), (
+            f"CHK-WDT-SHAPE FAIL: {name} reads 0x{before & mask:x} before the write of "
+            f"0x{wv & mask:x}; the write cannot be told from a dropped one"
+        )
+        return before
 
     async def _wait_wdt(self, periods: int) -> None:
         await ClockCycles(cocotb.top.clk_wdt_i, periods)
@@ -674,6 +844,16 @@ class sep_timer_clock_contract_test(sep_base_test):
             await ReadOnly()
             if dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
                 return self.rd(sig_a), self.rd(sig_b)
+
+    async def _wdt_phase_at_ar(self) -> tuple[int, int]:
+        """clk_i periods since the last clk_wdt_i rise, and the clk_i count, at the next AR."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
+                last = self.pins.edges["clk_wdt_i"][-1]
+                return (self._now() - last) // self.sys_ps, self.pins.count["clk_i"]
 
     def _gate(self, on: bool) -> None:
         self._win = on
@@ -1111,11 +1291,89 @@ class sep_timer_clock_contract_test(sep_base_test):
             raise AssertionError(f"CHK-BITE-CLEAR FAIL: {line} failed={','.join(failed)}")
         self.logger.info("CHK-BITE-CLEAR PASS: %s", line)
 
+    async def _rise_counts(self, rise: dict, events: dict) -> None:
+        """For each event, the count tap at the first 0-to-1 edge of its line.
+
+        ``events`` maps a name to (line reader, count reader); both read taps on
+        the same ``clk_i`` edge.
+        """
+        prev = dict.fromkeys(events)
+        while True:
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            for k, (line, count) in events.items():
+                v = line()
+                if prev[k] == 0 and v == 1 and k not in rise:
+                    rise[k] = count()
+                prev[k] = v
+
+    async def _bite_hold_watch(self) -> None:
+        """Sampler of CHK-BITE-HOLD, on every ``clk_i`` rising edge until it is killed.
+
+        Reads ``wdt_timer_rst_req_o``, ``wdt_rst_ni_i`` and ``rst_ni`` in the
+        read-only phase. A span opens at a request sample of 1 after a sample
+        other than 1, with both resets high, and closes at the first sample where
+        either reset reads 0. A request sample other than 1 inside an open span,
+        with both resets high, is a fault; the first fault is kept for the grade.
+        """
+        dut = cocotb.top
+        st = self.bite_hold
+        prev = None
+        clk = 0
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            clk += 1
+            req = _level(dut.wdt_timer_rst_req_o)
+            wdt_low = _level(dut.wdt_rst_ni_i) == 0
+            rst_low = _level(dut.rst_ni) == 0
+            span = st["open"]
+            if span is not None:
+                if wdt_low or rst_low:
+                    span["close"] = clk
+                    span["by"] = "wdt_rst_ni" if wdt_low else "rst_ni"
+                    st["spans"].append(span)
+                    st["open"] = None
+                elif req != 1 and st["fault"] is None:
+                    st["fault"] = (
+                        f"span={len(st['spans'])} rise_clk={span['rise']} clk={clk} "
+                        f"wdt_timer_rst_req_o={'x' if req is None else req}"
+                    )
+            elif req == 1 and prev != 1 and not (wdt_low or rst_low):
+                st["open"] = {"rise": clk}
+            prev = req
+
+    def _grade_bite_hold(self) -> None:
+        """CHK-BITE-HOLD: the bite request holds from each rise to a watchdog or cold reset."""
+        self.bite_hold_task.kill()
+        st = self.bite_hold
+        spans = st["spans"]
+        span_txt = ",".join(f"{x['rise']}-{x['close']}:{x['by']}" for x in spans) or "none"
+        line = (
+            f"seed={self.tcfg.seed} spans={len(spans)} rise_close_reset={span_txt} "
+            f"open_at_end={'none' if st['open'] is None else st['open']['rise']} "
+            f"bite_clears={self.n_bite_clear}"
+        )
+        if st["fault"] is not None:
+            raise AssertionError(f"CHK-BITE-HOLD FAIL: fell before a reset: {st['fault']} {line}")
+        if st["open"] is not None:
+            raise AssertionError(f"CHK-BITE-HOLD FAIL: rise with no reset before the end: {line}")
+        if not spans:
+            raise AssertionError(f"CTRL-MISSING CHK-BITE-HOLD: no bite request rise: {line}")
+        self.logger.info("CHK-BITE-HOLD PASS: %s", line)
+
     async def _wdt_run(self, bx: int, dx: int, c0: int, chk: str) -> dict:
         """One watchdog run (baseline, enable, poll loop). Returns the pass list."""
         dut = cocotb.top
         await self._wdt_baseline(bx, dx, c0)
         await self._tc_order_run(True)
+        rise: dict = {}
+        wdog = lambda: self.rd(dut.wdt_wdog_count_o)  # noqa: E731
+        events = {
+            "bark": (lambda: self.rd(dut.wdt_bark_probe_o), wdog),
+            "bite": (lambda: self.rd(dut.wdt_timer_rst_req_o), wdog),
+        }
+        watch = cocotb.start_soon(self._rise_counts(rise, events))
         await self._wr(WDOG_CTRL, WDOG_EN)
         t_en = self._now()
         passes = []
@@ -1130,8 +1388,19 @@ class sep_timer_clock_contract_test(sep_base_test):
             seen = take_handshake(task)
             assert seen is not None, f"{chk} FAIL: no AR handshake seen for the INTR_STATE read"
             bite, line = seen
+            xing = cocotb.start_soon(self._wdt_phase_at_ar())
             cnt = await self._rd(WDOG_COUNT)
             t_c = self._now()
+            seen_x = take_handshake(xing)
+            if seen_x is not None:
+                phase, ci_ar = seen_x
+                self.logger.info(
+                    "OBS-WDT-XING-LAT run=%s wdt_phase_clk=%d ar_to_r_clk=%d count=0x%x",
+                    chk,
+                    phase,
+                    self.pins.count["clk_i"] - ci_ar,
+                    cnt,
+                )
             passes.append(
                 {
                     "bark": int(bool(st & BARK_BIT)),
@@ -1149,10 +1418,11 @@ class sep_timer_clock_contract_test(sep_base_test):
                     f"{chk} FAIL: bx=0x{bx:x} dx=0x{dx:x} c0=0x{c0:x}: no pass with bark set, "
                     f"bite high and count >= dx within {limit} clk_i cycles (last {passes[-1]})"
                 )
+        watch.kill()
         await self._tc_order_run(False)
         counts = [p["count"] for p in passes]
         d_pass = max([b - a for a, b in zip(counts, counts[1:])] or [0])
-        return {"passes": passes, "t_en": t_en, "d_pass": d_pass}
+        return {"passes": passes, "t_en": t_en, "d_pass": d_pass, "rise": rise}
 
     def _grade_order(self, run: dict, bx: int, dx: int, c0: int, chk: str, tag: str) -> dict:
         passes = run["passes"]
@@ -1209,8 +1479,33 @@ class sep_timer_clock_contract_test(sep_base_test):
         )
         if early or not after or not all(after):
             self._fail(f"{chk} FAIL: bark line: {line_txt}")
-        self.logger.info("%s LINE: %s", chk, line_txt)
+        # The count tap at the first rise of each event is at or above its threshold
+        # (aon_timer README.md: a bark or bite while the count is at or above the
+        # threshold), so an event that fires early fails with no allowance.
+        rise = run["rise"]
+        rise_txt = (
+            f"count_at_bark_rise={rise.get('bark')} count_at_bite_rise={rise.get('bite')} "
+            f"bark_thold={bx} bite_thold={dx}"
+        )
+        if "bark" not in rise or "bite" not in rise or rise["bark"] < bx or rise["bite"] < dx:
+            raise AssertionError(f"{chk} FAIL: run={tag} event rise: {rise_txt}")
+        above = {
+            ev: "none" if rise.get(ev) is None else rise[ev] - thr
+            for ev, thr in (("bark", bx), ("bite", dx))
+        }
+        self.logger.info(
+            "OBS-WDT-BITE-EQ: seed=%d chk=%s run=%s bark_rise_minus_thold=%s "
+            "bite_rise_minus_thold=%s bark_thold=%d bite_thold=%d",
+            self.tcfg.seed,
+            chk,
+            tag,
+            above["bark"],
+            above["bite"],
+            bx,
+            dx,
+        )
         return {
+            "line_txt": f"{line_txt} {rise_txt}",
             "count_at_bark": passes[bark_pass]["count"],
             "count_at_bite": passes[bite_pass]["count"],
             "bark_pass": bark_pass,
@@ -1310,7 +1605,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info(
             "CHK-WDT-ORDER PASS: run=base bark=%d bite=%d allowance=%d count_at_bark=%d "
             "bark_early=0 bite_with_bark_clear=0 bite_early=0 count_at_bite=%d passes=%d "
-            "bark_pass=%d bite_pass=%d late_bound=%d",
+            "bark_pass=%d bite_pass=%d late_bound=%d %s",
             b,
             d,
             COUNT_ALLOW,
@@ -1320,6 +1615,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             rb["bark_pass"],
             rb["bite_pass"],
             rb["late"],
+            rb["line_txt"],
         )
         self.logger.info(
             "CHK-WDT-RATE PASS: %s", self._grade_rate(base, 0, 0, "CHK-WDT-RATE", "base")
@@ -1332,7 +1628,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info(
             "CHK-WDT-ORDER PASS: run=larger bark=%d bite=%d allowance=%d count_at_bark=%d "
             "bark_early=0 bite_with_bark_clear=0 bite_early=0 count_at_bite=%d passes=%d "
-            "bark_pass=%d bite_pass=%d late_bound=%d",
+            "bark_pass=%d bite_pass=%d late_bound=%d %s",
             b2,
             d2,
             COUNT_ALLOW,
@@ -1342,6 +1638,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             rl["bark_pass"],
             rl["bite_pass"],
             rl["late"],
+            rl["line_txt"],
         )
         c1, c2 = rb["count_at_bark"], rl["count_at_bark"]
         line = (
@@ -1365,11 +1662,12 @@ class sep_timer_clock_contract_test(sep_base_test):
         )
         assert min(p["count"] for p in mx["passes"]) >= bm - 32
         self.logger.info(
-            "CHK-WDT-MAX PASS: b=0x%x d=0x%x count_at_bark=0x%x count_at_bite=0x%x early=0",
+            "CHK-WDT-MAX PASS: b=0x%x d=0x%x count_at_bark=0x%x count_at_bite=0x%x early=0 %s",
             bm,
             dm,
             rm["count_at_bark"],
             rm["count_at_bite"],
+            rm["line_txt"],
         )
 
         # Enable control (window closed).
@@ -1415,24 +1713,25 @@ class sep_timer_clock_contract_test(sep_base_test):
 
         watch = cocotb.start_soon(_watch())
         for en in (0, 1):
+            want = WDOG_EN if en else 0
+            tag = "CTRL-WDT-INTRTEST-EN" if en else "CTRL-WDT-INTRTEST-DIS"
             if en:
                 await self._wr(WDOG_CTRL, WDOG_EN)
+            ctl = await self._poll_eq("WDOG_CTRL", WDOG_CTRL, want, WDOG_CTRL_FIELDS, tag)
+            self.logger.info(
+                "%s: WDOG_CTRL=0x%x expect=0x%x field_mask=0x%x",
+                tag,
+                ctl & WDOG_CTRL_FIELDS,
+                want,
+                WDOG_CTRL_FIELDS,
+            )
             await self._wr(INTR_TEST, BARK_BIT)
             await self._poll_eq("INTR_STATE", INTR_STATE, BARK_BIT, BARK_BIT, "CHK-WDT-INTRTEST")
             await self._wr(INTR_STATE, BARK_BIT)
             await self._poll_eq("INTR_STATE", INTR_STATE, 0, BARK_BIT, "CHK-WDT-INTRTEST")
             cnt = await self._rd(WDOG_COUNT)
             assert cnt < bx, f"CHK-WDT-INTRTEST FAIL: count 0x{cnt:x} not far below bx"
-            if watch.done():
-                watch.result()
-                raise AssertionError(
-                    f"CHK-WDT-INTRTEST FAIL: wdt_timer_rst_req_o watcher ended early "
-                    f"(enable={en} samples={samples['n']})"
-                )
-            assert samples["high"] == 0, (
-                f"CHK-WDT-INTRTEST FAIL: wdt_timer_rst_req_o high on {samples['high']} of "
-                f"{samples['n']} clk_i edges (enable={en})"
-            )
+            self._rst_req_quiet(watch, samples, "CHK-WDT-INTRTEST", f"enable={en}")
             self.logger.info(
                 "CHK-WDT-INTRTEST PASS: enable=%d status=1 cleared=1 bite=0 count=0x%x "
                 "rst_req_samples=%d",
@@ -1440,8 +1739,9 @@ class sep_timer_clock_contract_test(sep_base_test):
                 cnt,
                 samples["n"],
             )
+        await self._intrtest_count(watch, samples)
         # The watcher ends only on the stop flag, so a normal join shows that it sampled
-        # every clk_i edge from the first force to the end of the second clear.
+        # every clk_i edge from the first force to the end of the counting writes.
         t_end = self._now()
         stop["v"] = True
         await watch
@@ -1450,6 +1750,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"{samples['n']} clk_i edges, last sample {samples['last']} ps, window end {t_end} ps"
         )
         await self._wr(WDOG_CTRL, 0)
+        await self._bark_rearm()
 
         # pause_in_sleep and ALERT_TEST.
         await self._wr(WDOG_CTRL, WDOG_PAUSE)
@@ -1459,6 +1760,26 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wr(WDOG_CTRL, 0)
         v0 = await self._poll_eq("WDOG_CTRL", WDOG_CTRL, 0, WDOG_CTRL_FIELDS, "CTRL-WDT-PAUSE")
         self.logger.info("CTRL-WDT-PAUSE: write1_read=0x%x write0_read=0x%x", v1, v0)
+        await self._pause_run(bx, dx)
+        src13 = SepBitWatch(
+            cocotb.top.sep_internal_interrupts_probe_o, {"src13": 12}, name="src13"
+        ).start()
+        m13 = src13.mark()
+        seed = self.tcfg.seed
+        alert = SepBitWatch(cocotb.top.wdt_alert_probe_o, name="wdt_alert").start()
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        alert_pre = self.rd(cocotb.top.wdt_alert_probe_o)
+        await RisingEdge(cocotb.top.clk_i)
+        if alert_pre != 0:
+            msg = (
+                f"CTRL-MISSING WDT-ALERT-REACH: seed={seed} wdt_alert=1 before the ALERT_TEST write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        ma = alert.mark()
+        # CHK-WDT-NO-SPURIOUS does not grade the alert from here to the end of leg T.
+        self.nospur_alert_test = self.nospur_alert.mark()
         seq = SepAxiAccessSeq(
             "alert_test",
             op=SepAxiOp.WRITE,
@@ -1470,20 +1791,359 @@ class sep_timer_clock_contract_test(sep_base_test):
         )
         await self.start_seq(seq)
         if seq.timed_out:
-            raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
-        self.logger.info("CHK-WDT-ALERT-ACCESS PASS: response=%d", seq.resp_code)
-        # No spec sentence states the BRESP code of a backed register write, so the
-        # code is logged and not graded.
+            msg = f"CTRL-MISSING WDT-ALERT-RESP: seed={seed} no write response (timed out)"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d write response received", seed)
+        self.logger.info("OBS-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
+        # No line states the shape of PIC source 13 after an ALERT_TEST write.
+        await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
+        alert_rises = alert.rises_since(ma)
+        await alert.stop()
+        if alert_rises == 0:
+            msg = (
+                f"CTRL-MISSING WDT-ALERT-REACH: seed={seed} no rise of wdt_alert in "
+                f"{SRC13_WINDOW} clk_i cycles after the ALERT_TEST write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
-            "OBS-WDT-ALERT-RESP: bresp=%d (%s)",
-            seq.resp_code,
-            {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(seq.resp_code, "?"),
+            "CTRL-WDT-ALERT-REACH seen: seed=%d wdt_alert rises=%d in %d clk_i cycles",
+            seed,
+            alert_rises,
+            SRC13_WINDOW,
         )
+        self.logger.info(
+            "OBS-SRC-SHAPE src=13 kind=wdt_alert_test rises=%d high_clk=%d window_clk=%d",
+            src13.rises_since(m13),
+            src13.high_clocks_since(m13),
+            SRC13_WINDOW,
+        )
+        await src13.stop()
+
+    def _rst_req_quiet(self, watch, samples: dict, chk: str, where: str) -> None:
+        """Fail ``chk`` when the ``wdt_timer_rst_req_o`` watcher of leg T ended or read a 1."""
+        if watch.done():
+            watch.result()
+            raise AssertionError(
+                f"{chk} FAIL: wdt_timer_rst_req_o watcher ended early ({where} "
+                f"samples={samples['n']})"
+            )
+        if samples["high"]:
+            raise AssertionError(
+                f"{chk} FAIL: wdt_timer_rst_req_o high on {samples['high']} of "
+                f"{samples['n']} clk_i edges ({where})"
+            )
+
+    async def _intrtest_count(self, watch, samples: dict) -> None:
+        """CHK-WDT-INTRTEST-COUNT and OBS-WDT-INTRTEST-WKUP-CAUSE.
+
+        "Each timer increases its count as long as its enable signal ... is set"
+        (``<aon>/doc/theory_of_operation.md:4``); an ``INTR_TEST`` field write
+        forces its interrupt (``<aon>/data/aon_timer.hjson:326-341``). With the
+        watchdog enabled under the far thresholds of the forced-bark step and the
+        wakeup timer enabled at prescaler 0 under a threshold of 2^32, the leaf
+        writes ``INTR_TEST`` once per mask of the drawn ``intrtest_order`` (the
+        wakeup bit, the bark bit, both). After each write the two ``INTR_STATE``
+        bits read the mask, and a write of 1 to both bits (rw1c,
+        ``<aon>/doc/registers.md:224-225``) clears them. ``WDOG_COUNT`` and the
+        64-bit wakeup count read after the last write are above their reads
+        before the first write, and ``wdt_timer_rst_req_o`` reads 0 on every
+        ``clk_i`` edge of the step (the watcher of CHK-WDT-INTRTEST).
+
+        No line says whether a forced interrupt sets ``WKUP_CAUSE``:
+        OBS-WDT-INTRTEST-WKUP-CAUSE logs it after each write. Control: it reads 0
+        before the first write. The step ends with ``WKUP_CAUSE`` written 0 and
+        read 0, and the wakeup timer stopped.
+        """
+        cfg = self.tcfg
+        seed = cfg.seed
+        chk = "CHK-WDT-INTRTEST-COUNT"
+        both = BARK_BIT | WKUP_BIT
+        ctl = await self._rd(WDOG_CTRL)
+        if ctl & WDOG_CTRL_FIELDS != WDOG_EN:
+            raise AssertionError(
+                f"CTRL-MISSING {chk}: seed={seed} WDOG_CTRL=0x{ctl:x} expect=0x{WDOG_EN:x}"
+            )
+        await self._wr(WKUP_CTRL, 0)
+        await self._poll_eq("WKUP_CTRL", WKUP_CTRL, 0, WKUP_CTRL_FIELDS, chk)
+        for name, val in (
+            ("WKUP_THOLD_HI", 1),
+            ("WKUP_THOLD_LO", 0),
+            ("WKUP_COUNT_HI", 0),
+            ("WKUP_COUNT_LO", 0),
+        ):
+            await self._wr(AON[name][0], val)
+            await self._poll_eq(name, AON[name][0], val, AON[name][1], chk)
+        await self._wr(INTR_STATE, both)
+        await self._poll_eq("INTR_STATE", INTR_STATE, 0, both, chk)
+        await self._wr(WKUP_CAUSE, 0)
+        cause_pre = await self._poll_eq(
+            "WKUP_CAUSE", WKUP_CAUSE, 0, CAUSE_FIELD, "CTRL-WDT-INTRTEST-WKUP-CAUSE"
+        )
+        self.logger.info(
+            "CTRL-WDT-INTRTEST-WKUP-CAUSE: seed=%d wkup_cause_before=0x%x expect=0x0",
+            seed,
+            cause_pre & CAUSE_FIELD,
+        )
+        await self._wr(WKUP_CTRL, WKUP_EN)
+        await self._poll_eq("WKUP_CTRL", WKUP_CTRL, WKUP_EN, WKUP_CTRL_FIELDS, chk)
+        c0 = await self._rd(WDOG_COUNT)
+        w0, _ = await self._wkup_count()
+        steps = []
+        for mask in cfg.intrtest_order:
+            await self._wr(INTR_TEST, mask)
+            st = await self._poll_eq("INTR_STATE", INTR_STATE, mask, mask, chk)
+            if st & both != mask:
+                raise AssertionError(
+                    f"{chk} FAIL: seed={seed} INTR_TEST mask=0x{mask:x} INTR_STATE=0x{st:x}: "
+                    f"bits 0x{st & both:x}, expect exactly the forced bits 0x{mask:x}"
+                )
+            await self._wr(INTR_STATE, both)
+            cl = await self._poll_eq("INTR_STATE", INTR_STATE, 0, both, chk)
+            cause = await self._rd(WKUP_CAUSE)
+            self.logger.info(
+                "OBS-WDT-INTRTEST-WKUP-CAUSE: seed=%d mask=0x%x wkup_cause=0x%x "
+                "wkup_cause_before=0x%x",
+                seed,
+                mask,
+                cause & CAUSE_FIELD,
+                cause_pre & CAUSE_FIELD,
+            )
+            steps.append(f"0x{mask:x}:0x{st & both:x}->0x{cl & both:x}")
+        c1 = await self._rd(WDOG_COUNT)
+        w1, _ = await self._wkup_count()
+        self._rst_req_quiet(watch, samples, chk, "INTR_TEST writes")
+        line = (
+            f"seed={seed} writes={len(steps)} mask_forced_cleared={','.join(steps)} "
+            f"wdog_count=0x{c0:x}->0x{c1:x} wkup_count=0x{w0:x}->0x{w1:x} rst_req_high=0 "
+            f"rst_req_samples={samples['n']}"
+        )
+        if not (c1 > c0 and w1 > w0):
+            raise AssertionError(f"{chk} FAIL: a count did not advance: {line}")
+        self.logger.info("%s PASS: %s", chk, line)
+        await self._wr(WKUP_CAUSE, 0)
+        await self._poll_eq(
+            "WKUP_CAUSE", WKUP_CAUSE, 0, CAUSE_FIELD, "CTRL-WDT-INTRTEST-WKUP-CAUSE"
+        )
+        await self._wr(WKUP_CTRL, 0)
+        await self._poll_eq("WKUP_CTRL", WKUP_CTRL, 0, WKUP_CTRL_FIELDS, chk)
+
+    async def _bark_rearm(self) -> None:
+        """CHK-WDT-BARK-REARM: a bark threshold raised above the count after a bark re-arms it.
+
+        "there is a "bark" on every AON clock tick when the count is at least
+        WDOG_BARK_THOLD" (``<aon>/README.md:55``), and ``wdog_timer_bark`` is
+        rw1c (``<aon>/doc/registers.md:224``). The watchdog runs from 0 under the
+        bark threshold ``b`` and the far bite threshold until the bark status
+        reads 1. The leaf reads the count ``c``, writes ``WDOG_BARK_THOLD`` =
+        ``c`` + ``rearm_gap`` (the new threshold N) and polls it back (a read back
+        completes the earlier writes, ``<aon>/doc/theory_of_operation.md:27-28``),
+        waits ``A`` periods, the status crossing bound of CHK-WDT-BARK-TIME, so a
+        bark of a tick before the write has reached the status, writes 1 to the
+        bark bit and polls it to 0. From there:
+
+        * the bark line (tap ``wdt_bark_probe_o``) reads 0 on every ``clk_i``
+          edge where the count tap ``wdt_wdog_count_o`` is below N, and the count
+          tap is at or above N at the first rise of the line;
+        * passes of a status read and a count read: a status of 1 comes with a
+          count read at or above N - A, and the count read of the pass before the
+          first status of 1 is below N + A + D_pass.
+
+        Control: the count read after the clear is below N - A, so the
+        re-armed window is not empty (CTRL-MISSING otherwise).
+        """
+        cfg = self.tcfg
+        dut = cocotb.top
+        seed = cfg.seed
+        chk = "CHK-WDT-BARK-REARM"
+        b = cfg.b
+        await self._wdt_baseline(b, WDOG_FAR_BITE, 0)
+        await self._wr(WDOG_CTRL, WDOG_EN)
+        await self._poll_eq("INTR_STATE", INTR_STATE, BARK_BIT, BARK_BIT, chk)
+        c_bark = await self._rd(WDOG_COUNT)
+        new = c_bark + cfg.rearm_gap
+        await self._wr(WDOG_BARK_THOLD, new)
+        await self._poll_eq("WDOG_BARK_THOLD", WDOG_BARK_THOLD, new, AON["WDOG_BARK_THOLD"][1], chk)
+        await self._wait_wdt(COUNT_ALLOW)
+        await self._wr(INTR_STATE, BARK_BIT)
+        await self._poll_eq("INTR_STATE", INTR_STATE, 0, BARK_BIT, chk)
+        mon = {"n": 0, "bad": 0, "first_bad": None, "rise": None, "prev": None}
+        stop = {"v": False}
+
+        async def _line_watch() -> None:
+            while not stop["v"]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                v = self.rd(dut.wdt_bark_probe_o)
+                c = self.rd(dut.wdt_wdog_count_o)
+                mon["n"] += 1
+                if v and c < new:
+                    mon["bad"] += 1
+                    if mon["first_bad"] is None:
+                        mon["first_bad"] = (mon["n"], c)
+                if mon["prev"] == 0 and v == 1 and mon["rise"] is None:
+                    mon["rise"] = c
+                mon["prev"] = v
+
+        lw = cocotb.start_soon(_line_watch())
+        c_clear = await self._rd(WDOG_COUNT)
+        if c_clear >= new - COUNT_ALLOW or c_bark < b - COUNT_ALLOW:
+            raise AssertionError(
+                f"CTRL-MISSING {chk}: seed={seed} b={b} count_at_bark={c_bark} "
+                f"new_thold={new} count_after_clear={c_clear} allowance={COUNT_ALLOW}"
+            )
+        passes = []
+        limit = (new - c_clear + 128) * P_W * 4
+        start = self.pins.count["clk_i"]
+        while True:
+            st = await self._rd(INTR_STATE)
+            cnt = await self._rd(WDOG_COUNT)
+            passes.append((int(bool(st & BARK_BIT)), cnt))
+            if passes[-1][0] and mon["rise"] is not None:
+                break
+            if lw.done():
+                lw.result()
+                raise AssertionError(f"{chk} FAIL: seed={seed} bark line watcher ended early")
+            if self.pins.count["clk_i"] - start > limit:
+                raise AssertionError(
+                    f"{chk} FAIL: seed={seed} new_thold={new}: no pass with the status set "
+                    f"and a line rise within {limit} clk_i cycles (last {passes[-1]}, "
+                    f"line_rise_count={mon['rise']})"
+                )
+        stop["v"] = True
+        await lw
+        await self._wr(WDOG_CTRL, 0)
+        counts = [c_clear] + [c for _, c in passes]
+        d_pass = max(y - x for x, y in zip(counts, counts[1:]))
+        k = next(i for i, (s, _) in enumerate(passes) if s)
+        before = passes[k - 1][1] if k else c_clear
+        early = [(i, c) for i, (s, c) in enumerate(passes) if s and c < new - COUNT_ALLOW]
+        line = (
+            f"seed={seed} b={b} count_at_bark={c_bark} gap={cfg.rearm_gap} new_thold={new} "
+            f"count_after_clear={c_clear} line_samples={mon['n']} "
+            f"line_high_below_thold={mon['bad']} first_bad={mon['first_bad']} "
+            f"count_at_line_rise={mon['rise']} status_pass={k} count_at_status={passes[k][1]} "
+            f"count_before_status={before} early_status={early} allowance={COUNT_ALLOW} "
+            f"d_pass={d_pass}"
+        )
+        clauses = (
+            ("line_low_below_thold", mon["bad"] == 0),
+            ("line_rise_at_thold", mon["rise"] >= new),
+            ("status_not_early", not early),
+            ("status_not_late", before < new + COUNT_ALLOW + d_pass),
+        )
+        failed = [name for name, held in clauses if not held]
+        if failed:
+            raise AssertionError(f"{chk} FAIL: {line} failed={','.join(failed)}")
+        self.logger.info("%s PASS: %s", chk, line)
+
+    async def _grade_no_spurious(self) -> None:
+        """CHK-WDT-NO-SPURIOUS: no watchdog alert or bite request rise without its stimulus.
+
+        The alert is ``fatal_fault``, "triggered when a fatal TL-UL bus integrity
+        fault is detected" (``<aon>/data/aon_timer.hjson:42-46``), and a bite
+        comes only "If the timer is enabled ... when the count is at least
+        WDOG_BITE_THOLD" (``<aon>/README.md:56``). Two watchers started after the
+        bring-up read ``wdt_alert_probe_o`` and ``wdt_timer_rst_req_o`` on every
+        ``clk_i`` edge (read-only phase). The bite request has no rise in the
+        legs of ``NO_BITE_LEGS``, which include the ``wdt_rst_ni_i`` pulses and
+        the cold reset of leg L. The alert has no rise from the bring-up to the
+        end of the leaf, except from the ``ALERT_TEST`` write of leg T to the end
+        of leg T. Controls on the same watchers: the alert rises after the
+        ``ALERT_TEST`` write, and the bite request rises in leg T
+        (CTRL-MISSING otherwise).
+        """
+        seed = self.tcfg.seed
+        rq, al = self.nospur_req, self.nospur_alert
+        win = self.nospur_win
+        legs = list(win)
+        req_rises = {}
+        req_samples = {}
+        for leg in NO_BITE_LEGS:
+            (r0, _), (r1, _) = win[leg]
+            req_samples[leg] = r1.clk - r0.clk
+            if req_samples[leg] <= 0:
+                raise AssertionError(
+                    f"CTRL-MISSING CHK-WDT-NO-SPURIOUS: seed={seed} leg={leg} no clk_i sample"
+                )
+            req_rises[leg] = [c for c in rq.rise_clks_since(r0) if c <= r1.clk]
+        (t_r0, _), (t_r1, t_a1) = win["T"]
+        bite_rises = [c for c in rq.rise_clks_since(t_r0) if c <= t_r1.clk]
+        a_first = win[legs[0]][0][1]
+        a_last = win[legs[-1]][1][1]
+        at0, at1 = self.nospur_alert_test.clk, t_a1.clk
+        al_all = [c for c in al.rise_clks_since(a_first) if c <= a_last.clk]
+        al_test = [c for c in al_all if at0 < c <= at1]
+        al_other = [c for c in al_all if not at0 < c <= at1]
+        await rq.stop()
+        await al.stop()
+        bad_req = {k: v for k, v in req_rises.items() if v}
+        line = (
+            f"seed={seed} legs={','.join(NO_BITE_LEGS)} "
+            f"rst_req_rise_clks={bad_req or 0} "
+            f"rst_req_samples={req_samples} alert_rise_clks={al_other or 0} "
+            f"alert_samples={a_last.clk - a_first.clk - (at1 - at0)} "
+            f"alert_test_window_clks={at0}-{at1} ctrl_alert_test_rises={len(al_test)} "
+            f"ctrl_leg_t_bite_rises={len(bite_rises)}"
+        )
+        if not al_test or not bite_rises:
+            raise AssertionError(f"CTRL-MISSING CHK-WDT-NO-SPURIOUS: {line}")
+        if bad_req or al_other:
+            raise AssertionError(f"CHK-WDT-NO-SPURIOUS FAIL: {line}")
+        self.logger.info("CHK-WDT-NO-SPURIOUS PASS: %s", line)
+
+    async def _pause_run(self, bx: int, dx: int) -> None:
+        """Count window with ``WDOG_CTRL`` enable and ``pause_in_sleep`` set (window closed)."""
+        seed = self.tcfg.seed
+        want = WDOG_EN | WDOG_PAUSE
+        was = await self._ungraded()
+        await self._wdt_baseline(bx, dx, 0)
+        await self._wr(WDOG_CTRL, want)
+        for _ in range(POLL_READS):
+            ctrl = await self._rd(WDOG_CTRL)
+            if ctrl & WDOG_CTRL_FIELDS == want:
+                break
+            await ClockCycles(cocotb.top.clk_i, POLL_GAP)
+        if ctrl & WDOG_CTRL_FIELDS != want:
+            msg = (
+                f"CTRL-MISSING WDT-PAUSE-RUN: seed={seed} wdog_ctrl=0x{ctrl & WDOG_CTRL_FIELDS:x} "
+                f"expect=0x{want:x}"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-WDT-PAUSE-RUN seen: seed=%d wdog_ctrl=0x%x", seed, ctrl)
+        set_open_value_leg_pass("wdt_pause_in_sleep_set", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        c0, s0, e0 = await self._timed_rd(WDOG_COUNT)
+        await self._wait_wdt(WDT_WAIT)
+        c1, s1, e1 = await self._timed_rd(WDOG_COUNT)
+        st = await self._rd(INTR_STATE)
+        await self._wr(WDOG_CTRL, 0)
+        self.logger.info(
+            "OBS-WDT-PAUSE-RUN seed=%d wdog_ctrl=0x%x count0=0x%x count1=0x%x dcount=%d "
+            "clk_wdt_edges_min=%d clk_wdt_edges_max=%d wait_wdt=%d bark=%d",
+            seed,
+            ctrl,
+            c0,
+            c1,
+            c1 - c0,
+            self._edges("clk_wdt_i", e0, s1),
+            self._edges("clk_wdt_i", s0, e1),
+            WDT_WAIT,
+            int(bool(st & BARK_BIT)),
+        )
+        await self._regraded(was)
 
     # -- leg H ------------------------------------------------------------------
 
     async def _leg_h(self) -> None:
-        """Watchdog with ``clk_i`` held low past the bite threshold (OBS only)."""
+        """Watchdog with ``clk_i`` held low past the bite threshold.
+
+        CHK-WDT-CLKSTOP-COUNT grades the count over the hold; OBS-WDT-CLKSTOP logs
+        the bite request.
+        """
         cfg = self.tcfg
         dut = cocotb.top
         hb, hd = cfg.hb, cfg.hd
@@ -1545,6 +2205,17 @@ class sep_timer_clock_contract_test(sep_base_test):
             "none" if t_rise is None else t_rise - t0,
             "none" if t_rise is None else self._edges("clk_wdt_i", t0, t_rise),
         )
+        dcount = c_end - c_start
+        count_line = (
+            f"seed={cfg.seed} count_tap_start=0x{c_start:x} count_tap_end=0x{c_end:x} "
+            f"dcount={dcount} E_wdt={e_wdt} abs_diff={abs(dcount - e_wdt)} bound=1 "
+            f"min_E_wdt={CLKSTOP_MIN_E}"
+        )
+        if e_wdt < CLKSTOP_MIN_E:
+            raise AssertionError(f"CTRL-MISSING CHK-WDT-CLKSTOP-COUNT: {count_line}")
+        if abs(dcount - e_wdt) > 1:
+            raise AssertionError(f"CHK-WDT-CLKSTOP-COUNT FAIL: {count_line}")
+        self.logger.info("CHK-WDT-CLKSTOP-COUNT PASS: %s", count_line)
         # clk_i runs again at its period once the restart delay ends.
         bound_ps = hold_ps + 4 * self.sys_ps
         await with_timeout(RisingEdge(dut.clk_i), bound_ps, "ps")
@@ -1597,6 +2268,10 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._poll_eq(name, addr, val, AON[name][1], "CHK-WKUP-WIDE")
         await self._wr(INTR_STATE, WKUP_BIT)
         st0 = await self._poll_eq("INTR_STATE", INTR_STATE, 0, WKUP_BIT, "CHK-WKUP-WIDE")
+        rise: dict = {}
+        probe = cocotb.top.aon_wkup_probe_o
+        events = {"wkup": (lambda: self.rd(probe, 1 << 32) >> 32, lambda: self.rd(probe, M32))}
+        watch = cocotb.start_soon(self._rise_counts(rise, events))
         await self._wr(WKUP_CTRL, ctrl | WKUP_EN)
         t_en = self._now()
         passes = []
@@ -1618,9 +2293,11 @@ class sep_timer_clock_contract_test(sep_base_test):
                     f"CHK-WKUP-WIDE FAIL: run={tag} p={p} thr=0x{thr:x}: the expired status "
                     f"did not set within {limit} clk_i cycles (last count 0x{cnt:x})"
                 )
+        watch.kill()
         counts = [x["count"] for x in passes]
         d_pass = max([b - a for a, b in zip(counts, counts[1:])] or [0])
         return {
+            "rise": rise,
             "passes": passes,
             "t_en": t_en,
             "status_before": st0 & WKUP_BIT,
@@ -1641,6 +2318,15 @@ class sep_timer_clock_contract_test(sep_base_test):
         # The run stops at the first pass that reads the status set. The count read
         # of the pass before it is below thr + A + D_pass (A: the count copy lag;
         # D_pass: the most the count advances over one pass).
+        # Exact early bound: the wakeup core's count low word at the first rise of
+        # its wakeup output is at or above the threshold low word (aon_timer
+        # README.md: the wakeup fires when the count reaches the threshold).
+        got = run["rise"].get("wkup")
+        if got is None or got < (thr & M32):
+            raise AssertionError(
+                f"CHK-WKUP-WIDE FAIL: run={tag} count low word at the wakeup rise {got} "
+                f"< threshold low word 0x{thr & M32:x}"
+            )
         late = COUNT_ALLOW + run["d_pass"]
         before = passes[-2]["count"] if len(passes) > 1 else pre
         assert before < thr + late, (
@@ -1689,7 +2375,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 self.logger.info(
                     "CHK-WKUP-WIDE PASS: p=%d run=%d class=CROSS32 thr=0x%x_%08x preload=0x%x_%08x "
                     "allowance=%d status_before=0 count_at_expiry=0x%x passes=%d half_order=%s "
-                    "late_bound=%d",
+                    "late_bound=%d count_lo_at_wkup_rise=0x%x",
                     p,
                     k,
                     thr >> 32,
@@ -1701,6 +2387,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                     len(run["passes"]),
                     order,
                     late,
+                    run["rise"]["wkup"],
                 )
                 runs.append(run)
                 await self._wkup_stop()
@@ -1716,6 +2403,13 @@ class sep_timer_clock_contract_test(sep_base_test):
         cause = await self._rd(WKUP_CAUSE)
         assert cause & CAUSE_FIELD, (
             f"CTRL-WKUP-CAUSE FAIL: WKUP_CAUSE=0x{cause:x} after the wakeup expiries"
+        )
+        # The wakeup request and the wakeup interrupt of the timer have no stated
+        # consumer: the internal interrupt vector is logged at the cause read.
+        self.logger.info(
+            "OBS-WKUP-CONSUMER wkup_cause=0x%x sep_internal_interrupts=0x%x",
+            cause & CAUSE_FIELD,
+            self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True),
         )
         t_clear = self._now()
         await self._wr(WKUP_CAUSE, 0)
@@ -1737,7 +2431,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             for name in cfg.walk_order:
                 addr, mask, reset = AON[name]
                 pat = cfg.patterns(name)[pi]
-                wv = pat & ~WKUP_EN if name == "WKUP_CTRL" else pat
+                hold = WKUP_EN if name == "WKUP_CTRL" else 0
+                wv = pat & ~hold
+                before = await self._shape_before(name, addr, wv, mask, hold)
                 await self._wr(addr, wv)
                 got = await self._poll_eq(name, addr, wv, mask, "CHK-WDT-SHAPE")
                 lane = "hi" if addr & 0x4 else "lo"
@@ -1745,13 +2441,19 @@ class sep_timer_clock_contract_test(sep_base_test):
                 lanes.add(lane)
                 n_checks += 1
                 differs[name] |= (got & mask) != (reset & mask)
-                self.logger.info("INFO-WDT-SHAPE LOG: reg=%s lane=%s %s", name, lane, fc.fields())
+                self.logger.info(
+                    "CHK-WDT-SHAPE PASS: reg=%s lane=%s before=0x%x %s",
+                    name,
+                    lane,
+                    before & mask,
+                    fc.fields(),
+                )
             # WKUP_CAUSE (RW0C): a write cannot set it. A write lands no later than twice
             # the measured landing time of the clear plus 16 clk_wdt_i periods, so the
             # cause is read back-to-back from the write response to the end of that
             # window, and every read is graded.
             pat = cfg.patterns("WKUP_CAUSE")[pi]
-            await self._wr(WKUP_CAUSE, pat)
+            await self._wr_logged("WKUP-CAUSE-WRITE", WKUP_CAUSE, pat, "reg=WKUP_CAUSE")
             t_wr = self._now()
             reads = []
             while True:
@@ -1767,7 +2469,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"set_reads={len(bad)}/{len(reads)} window=2x{landing_ps}ps+16 clk_wdt_i"
             )
             self.logger.info(
-                "INFO-WDT-SHAPE LOG: reg=WKUP_CAUSE pattern=0x%08x %s reads=%d "
+                "CHK-WDT-SHAPE PASS: reg=WKUP_CAUSE pattern=0x%08x %s reads=%d "
                 "window=2x%dps+16 clk_wdt_i",
                 pat,
                 fc.fields(),
@@ -1783,19 +2485,31 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._wr(INTR_STATE, M32)
             await self._poll_eq("INTR_STATE", INTR_STATE, 0, INTR_FIELDS, "CHK-WDT-SHAPE")
             await self._wr(INTR_TEST, pat)
-            await self._poll_eq(
+            r_test = await self._poll_eq(
                 "INTR_STATE", INTR_STATE, pat & INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE"
             )
             await self._wr(INTR_TEST, M32)
-            await self._poll_eq("INTR_STATE", INTR_STATE, INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE")
+            r_all = await self._poll_eq(
+                "INTR_STATE", INTR_STATE, INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE"
+            )
             await self._wr(INTR_STATE, pat)
-            await self._poll_eq(
+            r_clr = await self._poll_eq(
                 "INTR_STATE", INTR_STATE, INTR_FIELDS & ~pat, INTR_FIELDS, "CHK-WDT-SHAPE"
             )
             await self._wr(INTR_STATE, M32)
             n_checks += 3
             self.logger.info(
-                "INFO-WDT-SHAPE LOG: reg=INTR_STATE/INTR_TEST pattern=0x%08x exact", pat
+                "CHK-WDT-SHAPE PASS: reg=INTR_STATE/INTR_TEST pattern=0x%08x field_mask=0x%x "
+                "after_test=0x%x expect=0x%x after_test_all=0x%x expect=0x%x "
+                "after_w1c=0x%x expect=0x%x",
+                pat,
+                INTR_FIELDS,
+                r_test & INTR_FIELDS,
+                pat & INTR_FIELDS,
+                r_all & INTR_FIELDS,
+                INTR_FIELDS,
+                r_clr & INTR_FIELDS,
+                INTR_FIELDS & ~pat,
             )
 
         # WDOG_CTRL walk with the thresholds far above the count.
@@ -1805,12 +2519,18 @@ class sep_timer_clock_contract_test(sep_base_test):
         lanes.add("hi")
         for pi in range(4):
             pat = cfg.patterns("WDOG_CTRL")[pi]
+            before = await self._shape_before("WDOG_CTRL", WDOG_CTRL, pat, WDOG_CTRL_FIELDS)
             await self._wr(WDOG_CTRL, pat)
             got = await self._poll_eq(
                 "WDOG_CTRL", WDOG_CTRL, pat, WDOG_CTRL_FIELDS, "CHK-WDT-SHAPE"
             )
             self.logger.info(
-                "INFO-WDT-SHAPE LOG: reg=WDOG_CTRL pattern=0x%08x readback=0x%x", pat, got
+                "CHK-WDT-SHAPE PASS: reg=WDOG_CTRL pattern=0x%08x before=0x%x readback=0x%x "
+                "field_mask=0x%x",
+                pat,
+                before & WDOG_CTRL_FIELDS,
+                got,
+                WDOG_CTRL_FIELDS,
             )
             n_checks += 1
         await self._wr(WDOG_CTRL, 0)
@@ -1862,11 +2582,15 @@ class sep_timer_clock_contract_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, next(gaps) + 1)
             segs[1].append(await self._rd(WDOG_COUNT))
         await self._wr(WDOG_CTRL, 0)
-        inc = 0
+        seg_inc = [0, 0]
         for si, seg in enumerate(segs):
             for a, b in zip(seg, seg[1:]):
                 assert b >= a, f"CHK-WDT-COHERENT FAIL: segment {si} count fell 0x{a:x} -> 0x{b:x}"
-                inc += int(b > a)
+                seg_inc[si] += int(b > a)
+            assert seg_inc[si] >= 1, (
+                f"CHK-WDT-COHERENT FAIL: segment {si} increases={seg_inc[si]}, expected at least 1"
+            )
+        inc = sum(seg_inc)
         for c in ctrl_reads:
             fc = field_compare(c, WDOG_EN, WDOG_CTRL_FIELDS)
             assert fc.ok, f"CHK-WDT-COHERENT FAIL: WDOG_CTRL while counting {fc.fields()}"
@@ -1875,9 +2599,12 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert segs[1][0] >= 0x1000, f"CHK-WDT-COHERENT FAIL: first read 0x{segs[1][0]:x} < 0x1000"
         assert inc >= 3, f"CHK-WDT-COHERENT FAIL: only {inc} increases"
         self.logger.info(
-            "CHK-WDT-COHERENT PASS: reads=%d segments=2 monotone=1 increases=%d ctrl_reads=%d ctrl=1",
+            "CHK-WDT-COHERENT PASS: reads=%d segments=2 monotone=1 increases=%d "
+            "seg0_increases=%d seg1_increases=%d ctrl_reads=%d ctrl=1",
             len(segs[0]) + len(segs[1]),
             inc,
+            seg_inc[0],
+            seg_inc[1],
             len(ctrl_reads),
         )
 
@@ -1962,7 +2689,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             ",".join(preload),
             bark_before,
         )
-        await self._event("WDT_PULSE")
+        await self._event("WDT_PULSE", "CHK-REGWEN-WDTRST")
         for when in ("first", "after_wait"):
             if when == "after_wait":
                 await self._wait_wdt(WDT_WAIT)
@@ -2045,7 +2772,14 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert bark == 0, f"{chk} FAIL: seed={seed} {tag} wdt_bark_probe_o={bark} {after}"
         return st
 
-    async def _event(self, ev: str) -> None:
+    def _event_reached(self, chk: str, ev: str, load: str, low: int) -> None:
+        """Control of ``chk``: the reset load of event ``ev`` read 0 in the pulse."""
+        line = f"seed={self.tcfg.seed} event={ev} load={load} low={low}"
+        if low != 0:
+            raise AssertionError(f"CTRL-MISSING {chk}: {line}")
+        self.logger.info("%s-EVENT: %s", chk.replace("CHK-", "CTRL-", 1), line)
+
+    async def _event(self, ev: str, chk: str = "CHK-REGWEN-HOLD") -> None:
         dut = cocotb.top
         if ev == "WDT_PULSE":
             await RisingEdge(dut.clk_i)
@@ -2055,21 +2789,20 @@ class sep_timer_clock_contract_test(sep_base_test):
             low = self.rd(dut.sep_cpu_reset_n_o)
             await RisingEdge(dut.clk_i)
             dut.wdt_rst_ni_i.value = 1
-            assert low == 0, "sep_cpu_reset_n_o did not fall during the wdt_rst_ni pulse"
+            self._event_reached(chk, ev, "sep_cpu_reset_n_o", low)
             await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         elif ev == "DBG_PULSE":
             # Runs only on the full-CPU build, where dbg_rstb_i resets the EL2 debug
             # module; the debug reset input of the core wrapper (tap dbg_rst_l_probe_o,
             # tied to 1 on the CPU stub build) must read 0 in the pulse.
-            load = dut.dbg_rst_l_probe_o
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 0
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             await ReadOnly()
-            low = self.rd(load)
+            low = self.rd(dut.dbg_rst_l_probe_o)
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 1
-            assert low == 0, "dbg_rst_l_probe_o did not fall during the dbg_rstb_i pulse"
+            self._event_reached(chk, ev, "dbg_rst_l_probe_o", low)
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             self.n_dbg += 1
         elif ev == "SW_RESET":
@@ -2081,7 +2814,8 @@ class sep_timer_clock_contract_test(sep_base_test):
                 await ReadOnly()
                 if not self.rd(hmac):
                     break
-            assert not self.rd(hmac), "ip_rst_n[3] did not fall after the SW_RESET_N write of 0"
+            low = self.rd(hmac)
+            self._event_reached(chk, ev, "hmac_gated_rst_n_probe_o", low)
             await RisingEdge(dut.clk_i)
             await self.swrst.release("hmac")
             await self._wait_high(hmac, "ip_rst_n[3]")
@@ -2094,7 +2828,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             low = self.rd(dut.dbg_sep_reset_n_o)
             await RisingEdge(dut.clk_i)
             dut.jtag_sep_reset_n_ovrd_i.value = 0
-            assert low == 0, "dbg_sep_reset_n_o did not fall under the sep_reset_n override"
+            self._event_reached(chk, ev, "dbg_sep_reset_n_o", low)
             await self._wait_high(dut.dbg_sep_reset_n_o, "dbg_sep_reset_n_o")
         else:
             raise ValueError(ev)
@@ -2115,7 +2849,21 @@ class sep_timer_clock_contract_test(sep_base_test):
         chk = "CHK-REGWEN-LOCK-SCOPE"
         ctrl0 = await self._rd(WDOG_CTRL)
         ctrl_try = (ctrl0 ^ cfg.scope_ctrl_flip) & WDOG_CTRL_FIELDS
-        await self.wdt.write_tolerant(WDOG_CTRL, ctrl_try)
+        # Any response code is accepted (the code of a locked write is not stated);
+        # the B handshake itself shows that the write reached the DUT.
+        wseq = SepAxiAccessSeq(
+            "wdt_ctrl_locked_wr",
+            op=SepAxiOp.WRITE,
+            addr=WDOG_CTRL,
+            wdata=ctrl_try,
+            size=self.wdt._AXI_SIZE,
+            allow_unverified_write_resp=True,
+        )
+        await self.start_seq(wseq)
+        b_line = f"write=0x{ctrl_try:x} timed_out={int(wseq.timed_out)} bresp={wseq.resp_code}"
+        if wseq.timed_out or wseq.resp_code not in (0, 1, 2, 3):
+            raise AssertionError(f"CTRL-MISSING REGWEN-LOCK-WRITE: seed={seed} {b_line}")
+        self.logger.info("CTRL-REGWEN-LOCK-WRITE: seed=%d %s", seed, b_line)
         landed = []
         wk = (
             ("WKUP_CTRL", WKUP_CTRL, cfg.scope_presc_flip, WKUP_CTRL_FIELDS),
@@ -2145,11 +2893,12 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._wr(AON[name][0], val)
             await self._poll_eq(name, AON[name][0], val, AON[name][1], chk)
         self.logger.info(
-            "%s PASS: seed=%d regwen=0 WDOG_CTRL=0x%x write=0x%x unchanged=1 landed=%s",
+            "%s PASS: seed=%d regwen=0 WDOG_CTRL=0x%x write=0x%x bresp=%d unchanged=1 landed=%s",
             chk,
             seed,
             ctrl1 & WDOG_CTRL_FIELDS,
             ctrl_try,
+            wseq.resp_code,
             ",".join(landed),
         )
 
@@ -2163,21 +2912,26 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._poll_eq(name, AON[name][0], val, AON[name][1], "CHK-REGWEN-HOLD")
         await self._wr(WDOG_REGWEN, 0)
         await self._poll_eq("WDOG_REGWEN", WDOG_REGWEN, 0, REGWEN_FIELD, "CHK-REGWEN-STICKY")
-        await self._wr(WDOG_REGWEN, 1)
+        await self._wr_logged(
+            "REGWEN-STICKY-WRITE", WDOG_REGWEN, 1, "reg=WDOG_REGWEN after_clear=1"
+        )
         await self._wait_wdt(WDT_WAIT)
         r1 = await self._rd(WDOG_REGWEN)
         fc = field_compare(r1, 0, REGWEN_FIELD)
         assert fc.ok, f"CHK-REGWEN-STICKY FAIL: write of 1 after the clear {fc.fields()}"
         self.logger.info("CHK-REGWEN-STICKY PASS: before=1 write1_after_clear regwen=0")
-        await self.wdt.write_tolerant(WDOG_BARK_THOLD, cfg.locked_b)
-        await self.wdt.write_tolerant(WDOG_BITE_THOLD, cfg.locked_d)
+        # A completed AXI response is 0 to 3; a write with no response reads -1.
+        rb = await self.wdt.write_tolerant(WDOG_BARK_THOLD, cfg.locked_b)
+        rd = await self.wdt.write_tolerant(WDOG_BITE_THOLD, cfg.locked_d)
         await self._wait_wdt(WDT_WAIT)
         lb = await self._rd(WDOG_BARK_THOLD)
         ld = await self._rd(WDOG_BITE_THOLD)
-        assert lb == cfg.xb and ld == cfg.xd, (
-            f"CTRL-REGWEN-LOCKED FAIL: bark=0x{lb:x} bite=0x{ld:x} after locked writes"
+        values = f"bark=0x{lb:08x} bark_bresp={rb} bite=0x{ld:08x} bite_bresp={rd}"
+        assert lb == cfg.xb and ld == cfg.xd and 0 <= rb <= 3 and 0 <= rd <= 3, (
+            f"CTRL-REGWEN-LOCKED FAIL: {values} after locked writes of bark=0x{cfg.locked_b:x} "
+            f"bite=0x{cfg.locked_d:x} (each write needs a completed response)"
         )
-        self.logger.info("CTRL-REGWEN-LOCKED: bark=0x%08x bite=0x%08x", lb, ld)
+        self.logger.info("CTRL-REGWEN-LOCKED: %s", values)
         await self._lock_scope()
 
         done = []
@@ -2189,13 +2943,20 @@ class sep_timer_clock_contract_test(sep_base_test):
                     n_wdtrst += 1
                     continue
                 await self._event(ev)
-                st = await self._read_lock_state()
-                self._grade_hold(st, ev, "first")
+                st0 = await self._read_lock_state()
+                self._grade_hold(st0, ev, "first")
                 await self._wait_wdt(WDT_WAIT)
                 st = await self._read_lock_state()
                 self._grade_hold(st, ev, "after_wait")
                 done.append(ev)
-                self.logger.info("INFO-REGWEN-HOLD LOG: rep=%d event=%s %s", rep, ev, st)
+                self.logger.info(
+                    "CHK-REGWEN-HOLD PASS: rep=%d event=%s first=%s after_wait=%s expect=%s",
+                    rep,
+                    ev,
+                    _hexmap(st0),
+                    _hexmap(st),
+                    _hexmap(self._locked()),
+                )
         assert n_wdtrst == cfg.repeat, (
             f"CHK-REGWEN-WDTRST FAIL: the wdt_rst_ni event ran {n_wdtrst} times, expected "
             f"{cfg.repeat}"
@@ -2208,7 +2969,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"{cfg.repeat}; the dbg_rstb_i cell was not graded"
             )
             self.logger.info(
-                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d dbg_rst_l_low=1 regwen=0 "
+                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d expect regwen=0 "
                 "bark=0x%08x bite=0x%08x wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
                 self.n_dbg,
                 cfg.xb,
@@ -2217,8 +2978,8 @@ class sep_timer_clock_contract_test(sep_base_test):
                 cfg.xl,
             )
         self.logger.info(
-            "CHK-REGWEN-HOLD PASS: events=%s regwen=0 bark=0x%08x bite=0x%08x wkup_hi=0x%08x "
-            "wkup_lo=0x%08x unchanged",
+            "CHK-REGWEN-HOLD PASS: events=%s expect regwen=0 bark=0x%08x bite=0x%08x "
+            "wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
             ",".join(done),
             cfg.xb,
             cfg.xd,
@@ -2461,10 +3222,130 @@ class sep_timer_clock_contract_test(sep_base_test):
         # clears it (reset_controller.adoc:56-58).
         await self._bite_clear("thold_below")
 
+    async def _pet_after_bark(self) -> None:
+        """CHK-WDT-PET-BITE: a pet after the bark keeps the bite request low."""
+        dut = cocotb.top
+        seed = self.tcfg.seed
+        pb = self.tcfg.pb
+        pd = pb + PET_BITE_GAP
+        a = COUNT_ALLOW
+        await self._wdt_baseline(pb, pd, 0)
+        # Each threshold reads back once it lands in the clk_wdt_i domain.
+        rb = {}
+        for name, addr, want in (
+            ("WDOG_BARK_THOLD", WDOG_BARK_THOLD, pb),
+            ("WDOG_BITE_THOLD", WDOG_BITE_THOLD, pd),
+        ):
+            rb[name] = await self._poll_eq(name, addr, want, AON[name][1], "CTRL-WDT-PET-BITE")
+        self.logger.info(
+            "CTRL-WDT-PET-BITE LOG: seed=%d bark_thold_rb=0x%x bite_thold_rb=0x%x",
+            seed,
+            rb["WDOG_BARK_THOLD"] & AON["WDOG_BARK_THOLD"][1],
+            rb["WDOG_BITE_THOLD"] & AON["WDOG_BITE_THOLD"][1],
+        )
+        req = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
+        await self._wr(WDOG_CTRL, WDOG_EN)
+        await self._poll_eq("WDOG_CTRL", WDOG_CTRL, WDOG_EN, WDOG_CTRL_FIELDS, "CHK-WDT-PET-BITE")
+        t_en_rb = self._now()
+        mr = req.mark()
+        start = self.pins.count["clk_wdt_i"]
+        limit = 4 * pd + 512
+        while True:
+            st = await self._rd(INTR_STATE)
+            cnt = await self._rd(WDOG_COUNT)
+            if st & BARK_BIT:
+                break
+            if self.pins.count["clk_wdt_i"] - start > limit:
+                raise AssertionError(
+                    f"CTRL-MISSING CHK-WDT-PET-BITE: seed={seed} no bark within {limit} "
+                    f"clk_wdt_i periods (last count 0x{cnt:x}, bark threshold {pb})"
+                )
+        if cnt >= pd - a:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-WDT-PET-BITE: seed={seed} count 0x{cnt:x} at the bark read "
+                f"is not below WDOG_BITE_THOLD - A ({pd} - {a})"
+            )
+        await self._wr(WDOG_COUNT, 0)
+        end = pd + a + 1
+        while True:
+            st_end, s_st, _d = await self._timed_rd(INTR_STATE)
+            if self._edges("clk_wdt_i", t_en_rb, s_st) >= end:
+                break
+        rises = req.rises_since(mr)
+        high = req.high_clocks_since(mr)
+        await self._wr(WDOG_CTRL, 0)
+        await self._wr(INTR_STATE, BARK_BIT)
+        st_clr = await self._poll_eq("INTR_STATE", INTR_STATE, 0, BARK_BIT, "CHK-WDT-PET-BITE")
+        await req.stop()
+        bark_end = int(bool(st_end & BARK_BIT))
+        line = (
+            f"seed={seed} bark_thold={pb} bite_thold={pd} "
+            f"bite_thold_rb={rb['WDOG_BITE_THOLD'] & AON['WDOG_BITE_THOLD'][1]} "
+            f"count_at_bark_read=0x{cnt:x} "
+            f"window_periods={end} rst_req_rises={rises} rst_req_high_clk={high} "
+            f"bark_at_window_end={bark_end} bark_after_w1c={int(bool(st_clr & BARK_BIT))}"
+        )
+        if rises or high or not bark_end or st_clr & BARK_BIT:
+            raise AssertionError(f"CHK-WDT-PET-BITE FAIL: {line}")
+        self.logger.info("CHK-WDT-PET-BITE PASS: %s", line)
+
+    async def _bite_first(self) -> None:
+        """OBS-WDT-BITE-FIRST: one run with the bite threshold below the bark threshold.
+
+        ``watchdog.adoc`` and the aon_timer README state two separate
+        thresholds, but ``watchdog.adoc`` also calls the bite the second stage
+        that fires after an unanswered bark, so the bark status when the bite
+        comes first is an open question. The run logs the bark status, the
+        clk_i edges of the bite request and the bark line, and the count tap
+        ``wdt_wdog_count_o`` on the ``clk_i`` edge of the first bite rise ("none"
+        when no rise comes within the bound).
+        """
+        dut = cocotb.top
+        was = await self._ungraded()
+        await self._wdt_baseline(BITE_FIRST_BARK, BITE_FIRST_BITE, 0)
+        watch = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
+        bark = SepBitWatch(dut.wdt_bark_probe_o, name="wdt_bark_probe_o").start()
+        mw, mb = watch.mark(), bark.mark()
+        rise: dict = {}
+        events = {
+            "bite": (
+                lambda: self.rd(dut.wdt_timer_rst_req_o),
+                lambda: self.rd(dut.wdt_wdog_count_o),
+            )
+        }
+        tap = cocotb.start_soon(self._rise_counts(rise, events))
+        await self._wr(WDOG_CTRL, WDOG_EN)
+        bound = (BITE_FIRST_BITE + 64) * P_W * 4
+        for _ in range(bound):
+            await RisingEdge(dut.clk_i)
+            if watch.rises_since(mw):
+                break
+        tap.kill()
+        st = await self._rd(INTR_STATE)
+        bite_cnt = rise.get("bite")
+        self.logger.info(
+            "OBS-WDT-BITE-FIRST bite_thold=0x%x bark_thold=0x%x bite_rise_clk=%s "
+            "bark_rise_clk=%s bark_status=%d count_at_bite_rise=%s",
+            BITE_FIRST_BITE,
+            BITE_FIRST_BARK,
+            watch.rise_clks_since(mw)[:1] or "none",
+            bark.rise_clks_since(mb)[:1] or "none",
+            int(bool(st & BARK_BIT)),
+            "none" if bite_cnt is None else f"0x{bite_cnt:x}",
+        )
+        await watch.stop()
+        await bark.stop()
+        await self._wr(WDOG_CTRL, 0)
+        if self.rd(dut.wdt_timer_rst_req_o):
+            await self._bite_clear("bite_first")
+        await self._regraded(was)
+
     async def _leg_p(self) -> None:
         await self._pet()
+        await self._pet_after_bark()
         await self._thold_zero()
         await self._thold_below()
+        await self._bite_first()
 
     # -- leg K ------------------------------------------------------------------
 
@@ -2722,7 +3603,7 @@ class sep_timer_clock_contract_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         vcs = "vcs" in cocotb.SIM_NAME.lower()
         # The dbg_rstb_i cell of CHK-REGWEN-HOLD runs on VCS on the full-CPU build only,
         # selected from the build the leaf runs on (the stub CPU has no load on the pin).
@@ -2751,29 +3632,36 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.sys_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
         self.tcfg = cfg = _Cfg(seed, self.sys_ps, dbg_cell=self.dbg_cell)
         self.logger.info(
-            "DRAW clocks ratios=%s ref_phase_ps=%s wdt_phase_ps=%d P_w=%d",
+            "INFO-DRAW clocks ratios=%s ref_phase_ps=%s wdt_phase_ps=%d P_w=%d",
             cfg.ratios,
             cfg.ref_phase_ps,
             cfg.wdt_phase_ps,
             P_W,
         )
         self.logger.info(
-            "DRAW leg_r walk_gaps=%s W_lo=0x%016x W_hi=0x%016x reload_order=%s",
+            "INFO-DRAW leg_r walk_gaps=%s W_lo=0x%016x W_hi=0x%016x reload_order=%s",
             cfg.walk_gaps,
             cfg.w_lo,
             cfg.w_hi,
             cfg.reload_order,
         )
         self.logger.info(
-            "DRAW leg_r spaced d=%s pairs=%s",
+            "INFO-DRAW leg_r spaced d=%s pairs=%s",
             cfg.spaced_d,
             [f"0x{a:016x},0x{b:016x}" for a, b in cfg.spaced],
         )
         self.logger.info(
-            "DRAW leg_t b=%d d=%d b2=%d bm=0x%x dm=0x%x", cfg.b, cfg.d, cfg.b2, cfg.bm, cfg.dm
+            "INFO-DRAW leg_t b=%d d=%d b2=%d bm=0x%x dm=0x%x rearm_gap=%d intrtest_order=%s",
+            cfg.b,
+            cfg.d,
+            cfg.b2,
+            cfg.bm,
+            cfg.dm,
+            cfg.rearm_gap,
+            [hex(m) for m in cfg.intrtest_order],
         )
         self.logger.info(
-            "DRAW leg_w presc_order=%s p_m=%d p_m_order=%s Ts=%d g=%d r=%d",
+            "INFO-DRAW leg_w presc_order=%s p_m=%d p_m_order=%s Ts=%d g=%d r=%d",
             cfg.presc,
             cfg.p_m,
             cfg.p_m_order,
@@ -2782,7 +3670,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.r,
         )
         self.logger.info(
-            "DRAW leg_s walk_order=%s walk_one=%s coh_bark=0x%x coh_bite=0x%x read_gaps=%s",
+            "INFO-DRAW leg_s walk_order=%s walk_one=%s coh_bark=0x%x coh_bite=0x%x read_gaps=%s",
             cfg.walk_order,
             {k: hex(v) for k, v in cfg.walk_one.items()},
             cfg.coh_bark,
@@ -2790,7 +3678,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.read_gaps,
         )
         self.logger.info(
-            "DRAW leg_l Xb=0x%x Xd=0x%x Xh=0x%x Xl=0x%x locked=0x%x,0x%x events=%s repeat=%d "
+            "INFO-DRAW leg_l Xb=0x%x Xd=0x%x Xh=0x%x Xl=0x%x locked=0x%x,0x%x events=%s repeat=%d "
             "cold_bark=0x%x",
             cfg.xb,
             cfg.xd,
@@ -2803,7 +3691,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.cold_bark,
         )
         self.logger.info(
-            "DRAW leg_p_k scope_flips=0x%x,0x%x,0x%x,%s pb=%d pet_at=%d below_c=%d "
+            "INFO-DRAW leg_p_k scope_flips=0x%x,0x%x,0x%x,%s pb=%d pet_at=%d below_c=%d "
             "below_off=%d bite_off=%d restart_gap=%d",
             cfg.scope_ctrl_flip,
             cfg.scope_count_flip,
@@ -2816,9 +3704,11 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.bite_off,
             cfg.restart_gap,
         )
-        self.logger.info("DRAW leg_h bark=%d bite=%d clkstop_past=%d", cfg.hb, cfg.hd, CLKSTOP_PAST)
         self.logger.info(
-            "TIMER env: a=%d A=%d P_w=%d rate_wait_ref=%d poll_reads=%d "
+            "INFO-DRAW leg_h bark=%d bite=%d clkstop_past=%d", cfg.hb, cfg.hd, CLKSTOP_PAST
+        )
+        self.logger.info(
+            "INFO-TIMER-ENV: a=%d A=%d P_w=%d rate_wait_ref=%d poll_reads=%d "
             "arm_bound_ref=%d ref_settle=%d wdt_wait=%d reset_bound=%d ovrd_cycles=%d "
             "pulse_cycles=%d bite_fall_wdt=%d bite_stay_clks=%d dbg_event=%s",
             EDGE_ALLOW,
@@ -2850,19 +3740,35 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wait_high(cocotb.top.dbg_sep_reset_n_o, "dbg_sep_reset_n_o")
         self.wdt = SepWdtAon(self)
         self.swrst = SepSwReset(self)
+        self.bite_hold = {"spans": [], "open": None, "fault": None}
+        self.bite_hold_task = cocotb.start_soon(self._bite_hold_watch())
+        self.nospur_req = SepBitWatch(
+            cocotb.top.wdt_timer_rst_req_o, name="wdt_rst_req_nospur"
+        ).start()
+        self.nospur_alert = SepBitWatch(
+            cocotb.top.wdt_alert_probe_o, name="wdt_alert_nospur"
+        ).start()
+        self.nospur_win = {}
 
         self._tc = 0
         self._gate(True)
         try:
-            await self._leg_r()
-            await self._leg_t()
-            await self._leg_h()
-            await self._leg_w()
-            await self._leg_s()
-            await self._leg_l()
-            await self._leg_p()
-            await self._leg_k()
-            await self._leg_carry()
+            for name, leg in (
+                ("R", self._leg_r),
+                ("T", self._leg_t),
+                ("H", self._leg_h),
+                ("W", self._leg_w),
+                ("S", self._leg_s),
+                ("L", self._leg_l),
+                ("P", self._leg_p),
+                ("K", self._leg_k),
+                ("C", self._leg_carry),
+            ):
+                m0 = (self.nospur_req.mark(), self.nospur_alert.mark())
+                await leg()
+                self.nospur_win[name] = (m0, (self.nospur_req.mark(), self.nospur_alert.mark()))
+            await self._grade_no_spurious()
+            self._grade_bite_hold()
         except BaseException:
             # A failing leaf drops every held cell of its owner.
             await RisingEdge(cocotb.top.clk_i)

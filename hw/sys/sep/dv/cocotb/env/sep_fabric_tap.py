@@ -29,7 +29,7 @@ PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
 PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
 PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; graded)
 PR-DMA-RAW ``pr_dma_raw``   aw, ar: prot (raw DMA master request; graded)
-PR-INFLT   ``pr_inflt``     aw, ar: addr (global, out of the inbound filter)
+PR-INFLT   ``pr_inflt``     aw, ar: addr user (global, out of the inbound filter)
 PR-ALIAS   ``pr_alias_in``, aw, ar: addr cache prot (input and output of the
            ``pr_alias_out`` local-master alias remap)
 PR-XEXT    ``xbar_ext_in``  aw, ar: addr (approved probe)
@@ -140,7 +140,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-CPU-LSU": ("pr_cpu_lsu", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
     "PR-CPU-IFU": ("pr_cpu_ifu", {"ar": ("prot",)}, "axi"),
     "PR-DMA-RAW": ("pr_dma_raw", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
-    "PR-INFLT": ("pr_inflt", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
+    "PR-INFLT": ("pr_inflt", {"aw": ("addr", "user"), "ar": ("addr", "user")}, "axi"),
     "PR-ALIAS-IN": (
         "pr_alias_in",
         {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")},
@@ -431,19 +431,30 @@ class SepFabricTap:
         return [b.fields.get("addr") for b in self.since(mark, ch)]
 
 
-def log_axprot(logger, tap: "SepFabricTap", master: str, ch: str, mode: str) -> None:
-    """One log-only line of the AxPROT values that a master drove on a channel."""
+AXPROT_GRADING_CHK = {"lsu": "CHK-CPU-AXPROT", "ifu": "CHK-IFU-AXPROT"}
+
+
+def log_axprot(
+    logger, tap: "SepFabricTap", master: str, ch: str, mode: str, leaf: str | None = None
+) -> None:
+    """One log-only line of the AxPROT values that a master drove on a channel.
+
+    The line names the CHK that grades the master's AxPROT, and ``leaf=<name>``
+    when ``leaf`` is given because another leaf grades it.
+    """
     vals = [b.prot for b in tap.beats if b.ch == ch]
     known = sorted({v for v in vals if v is not None})
     prot = f"0b{known[0]:03b}" if len(known) == 1 else ("none" if not known else "mixed")
     logger.info(
-        "OBS-AXPROT: master=%s ch=%s mode=%s prot=%s count=%d distinct=%s",
+        "INFO-AXPROT: master=%s ch=%s mode=%s prot=%s count=%d distinct=%s chk=%s%s",
         master,
         ch,
         mode,
         prot,
         len(vals),
         "{" + ",".join(f"0b{v:03b}" for v in known) + ("" if None not in vals else ",X") + "}",
+        AXPROT_GRADING_CHK[master],
+        "" if leaf is None else f" leaf={leaf}",
     )
 
 

@@ -28,6 +28,9 @@ import importlib.util
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from env.sep_chk_log import word_digest
+from env.sep_km_img_h import KPV_SLOT_WORDS, KPV_SLOTS, SRAM_REGION_BYTES
+
 WORD = 0xFFFF_FFFF
 
 _KM_REG_PY = (
@@ -52,9 +55,8 @@ def _load_km_reg():
 
 KM = _load_km_reg()
 
-# km_kpv.adoc, "Key and Policy Vault (KM Port)": KEY_ENTRY[64].WORD[16].
-N_SLOTS = 64
-N_WORDS = 16
+N_SLOTS = KPV_SLOTS
+N_WORDS = KPV_SLOT_WORDS
 N_KPV_WORDS = N_SLOTS * N_WORDS
 KPV_BASE = int(KM.KPV_REG_MAP_BASE_ADDR)
 KPV_DATA_END = KPV_BASE + N_KPV_WORDS * 4
@@ -64,9 +66,9 @@ IRQ_STATUS = int(KM.KMCSR_IRQ_STATUS_REG_ADDR)
 HMAC_KEY_CTRL = int(KM.HMAC_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
 SRAM_BASE = int(KM.SRAM_MEM_BASE_ADDR)
 SRAM_SIZE = int(KM.SRAM_MEM_SIZE)
-# SRAM region 0 (0x8000-0x83FF) holds the POKE op buffer and result words; a
-# test SRAM word is drawn from region 1 up.
-SRAM_TEST_BASE = SRAM_BASE + 0x400
+# SRAM region 0 holds the POKE op buffer and result words; a test SRAM word is
+# drawn from region 1 up.
+SRAM_TEST_BASE = SRAM_BASE + SRAM_REGION_BYTES
 
 _WORD_ADDR = tuple(
     tuple(int(getattr(KM, f"KPV_KEY_ENTRY_{s}__WORD_{w}__REG_ADDR")) for w in range(N_WORDS))
@@ -358,7 +360,7 @@ def draw_plan(rng) -> KpvPlan:
     wipe_hold = rng.choice(WIPE_HOLD_CHOICES)
     log("scr_slots", scr_slots)
     log("scr_cells", scr_cells)
-    log("kk", f"0x{kk:08x}")
+    log("kk_sha", word_digest(kk))
     log("lock_timing", "before" if lock_before else "after")
     log("wipe_hold_W", wipe_hold)
 
@@ -367,7 +369,7 @@ def draw_plan(rng) -> KpvPlan:
     sram_words = rng.sample(range((SRAM_TEST_BASE - SRAM_BASE) // 4, SRAM_SIZE // 4), N_SRAM_WORDS)
     sram_addrs = [SRAM_BASE + 4 * w for w in sram_words]
     sram_values = distinct_words(rng, N_SRAM_WORDS)
-    log("kk2", f"0x{kk2:08x}")
+    log("kk2_sha", word_digest(kk2))
     log("wipe_slots_free_sealed_retired", list(wipe_slots))
     log("sram_addrs", [f"0x{a:05x}" for a in sram_addrs])
 
@@ -383,8 +385,8 @@ def draw_plan(rng) -> KpvPlan:
             d1 = nz_word(rng)
             d2 = nz_word(rng, (d1,))
         cipher.append((cell, d1, d2))
-    log("cipher_key", f"0x{cipher_key:08x}")
-    log("cipher_key2", f"0x{cipher_key2:08x}")
+    log("cipher_key_sha", word_digest(cipher_key))
+    log("cipher_key2_sha", word_digest(cipher_key2))
     log("cipher_cells", [c for c, _, _ in cipher])
 
     return KpvPlan(

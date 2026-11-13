@@ -34,8 +34,9 @@ the first TRNG reset release and never stops; each leg changes the patterns.
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the leg order, the partial mask M, the rate N_r (2 to 15), the lane
 noise Z (12 bits with a 0 and a 1) and its polarity, the balanced lanes, the
-divider value D_r (above the reset value, at most 1023) and the order of 0 and
-D_r in the period walk.
+divider value D_r (above the reset value, at most 1023), the order of 0 and
+D_r in the period walk and the strobe (1 or 2 after a FIFO word) at which the
+compressor bypass is set and cleared in ``OBS-COND-BYPASS-MIDGROUP``.
 
 Checkers:
   CHK-COND-MASK        each lane byte == (0xFF if Z[j] else 0x00) AND mask, 16 strobes,
@@ -96,10 +97,37 @@ Checkers:
                        0 -> 8 of a new digest; each run from 8 holds exactly 8 steps
                        and ends at 0, and at least one run completes. In the
                        pass-through window OUTPUT_COUNT is 0 on every clock.
+  CHK-COND-SHA-STATUS-READS  every ``SHA256_STATUS`` bus read polled in the whitened
+                       window after the first quiet clock of the status tap, with no
+                       whitener input word and no FIFO word within ``QUIET_GUARD``
+                       clocks of its bus window, holds the field meanings
+                       (entropy_source.rdl:78, :83, :88; architecture.adoc:142, one
+                       block is 16 words and gives 8 digest words). The count starts
+                       at the first BUSY rise after the quiet clock, where a block of
+                       16 words is complete. With n = 16 plus the input words from
+                       that rise, and k the FIFO words from it: INPUT_COUNT == n mod
+                       16; the INPUT_COUNT the tap reads at the quiet clock equals 16
+                       minus the input words from it to the rise; BUSY == 1 when
+                       8 x (n div 16) > k and 0 when equal; OUTPUT_COUNT == 0 when no
+                       digest word is pending, == the pending words when a digest has
+                       given some but not all of its words, and 0 or 8 when it has
+                       given none. Digest words reach the FIFO with no backpressure
+                       (architecture.adoc:148), so no quiet read falls inside the
+                       output of a digest and no graded read expects a non-zero
+                       OUTPUT_COUNT; the check grades the 0 only, and
+                       CHK-COND-SHA-COUNT grades the count on the status tap. Control:
+                       at least one graded read expects BUSY = 1 and one expects a
+                       non-zero INPUT_COUNT.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
-Logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the 32-bit health test with the
-compressor bypassed has no single stated behaviour) and ``OBS-BLOCKED
-CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW word is not stated).
+Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
+``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
+(entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
+whitened window shows the field non-zero, so a read of 0 does not tell a correct
+field from one that is not connected; the status tap grades the count
+(CHK-COND-SHA-COUNT). Also logged only: ``INFO-BLOCKED CHK-COND-HT-OFF`` (the
+32-bit health test with the compressor bypassed has no single stated behaviour)
+and ``INFO-BLOCKED CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW
+word is not stated).
 ``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
 (the time base of the period is not stated: the register text names sample-clock
 cycles, the architecture text ``clk_i`` cycles). No text states the effect of a
@@ -108,7 +136,16 @@ written while the stream is stopped, or where the downsample count starts when
 the compressor bypass turns on: ``OBS-COND-DS-MIDRUN-UP``,
 ``OBS-COND-DS-MIDRUN-DOWN``, ``OBS-COND-DIV-MIDRUN-UP``,
 ``OBS-COND-DIV-MIDRUN-DOWN``, ``OBS-COND-DS-RESUME`` and ``OBS-COND-DS-BYPASS-ON``
-log the tapped counts and the distance to the next strobe or FIFO word.
+log the tapped counts and the distance to the next strobe or FIFO word. No text
+states the FIFO words when the compressor bypass is set and cleared again
+between two outputs of the compressor: ``OBS-COND-BYPASS-MIDGROUP`` logs the
+FIFO words pushed between the two writes and the next three words.
+No text states which input bytes and coefficients the BIW stage combines into
+one word (architecture.adoc:115 names the grouping and the field only):
+``OBS-ESRC-BIW-MAP`` logs, in the pass-through window, the first FIFO words on
+``esrc_compress_data_o`` with the 12 lane bytes of the last two strobes before
+each word, the clocks from the last strobe, and whether the word is in the BIW
+observe words read after the window.
 """
 
 from __future__ import annotations
@@ -127,7 +164,7 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_esrc_sha_tap import DIGEST_WORDS, SepEsrcShaTap
+from env.sep_esrc_sha_tap import BLOCK_WORDS, DIGEST_WORDS, QUIET_GUARD, SepEsrcShaTap
 from env.sep_fcov_gate import (
     ESRC_CNT_PASS_FIRST_PUSH,
     ESRC_CNT_PASS_FIRST_STROBE,
@@ -189,6 +226,7 @@ SHA_PUSH_MIN = 16
 PASSTHRU_BIW_MIN = 16
 PASSTHRU_FIFO_MIN = 8
 PASSTHRU_MAX_OFFSET = 8
+BIW_MAP_WORDS = 4  # FIFO words paired with their strobe bytes in OBS-ESRC-BIW-MAP
 HT_WAIT_FACTOR = 3
 # Period walk: strobes after a lane enable (the first distance and five gaps).
 PERIOD_STROBES = 6
@@ -282,6 +320,7 @@ class Plan:
     balanced: tuple[Balanced, ...]
     div_r: int
     div_walk: tuple[int, ...]
+    bypass_strobe: int
 
     @property
     def rates(self) -> tuple[int, ...]:
@@ -291,7 +330,8 @@ class Plan:
         return (
             f"legs={','.join(self.legs)} mask=0x{self.mask:02x} n_r={self.n_r} "
             f"z=0x{self.z:03x} rates={list(self.rates)} div_r={self.div_r} "
-            f"div_walk={list(self.div_walk)} {describe(self.balanced)}"
+            f"div_walk={list(self.div_walk)} bypass_strobe={self.bypass_strobe} "
+            f"{describe(self.balanced)}"
         )
 
 
@@ -313,7 +353,8 @@ def draw_plan(seed: int) -> Plan:
     div_r = rng.randrange(RESET_DIV + 1, DIV_DRAW_MAX + 1)
     tail = [0, div_r]
     rng.shuffle(tail)
-    return Plan(seed, tuple(legs), mask, n_r, z, balanced, div_r, (RESET_DIV, *tail))
+    bypass_strobe = rng.choice((1, 2))
+    return Plan(seed, tuple(legs), mask, n_r, z, balanced, div_r, (RESET_DIV, *tail), bypass_strobe)
 
 
 class _EsrcRegs(SepAxiRegDriver):
@@ -330,6 +371,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-DOWNSAMPLE",
         "CHK-COND-SHA",
         "CHK-COND-SHA-COUNT",
+        "CHK-COND-SHA-STATUS-READS",
         "CHK-COND-PASSTHRU",
         "CHK-COND-FIRST-PUSH",
         "CHK-COND-PERIOD-RATIO",
@@ -340,12 +382,12 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
         self.p: int | None = None
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         # The testers and the window counter run from the TRNG reset release, so the
         # balanced noise runs before the first release and never stops.
         self.noise = SepEsrcPatternNoise(logger=self.logger)
@@ -498,7 +540,9 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self.noise.wait_words(SETTLE_STROBES, bound)
         if self._now() - c_change < SETTLE_CLOCKS:
             await ClockCycles(cocotb.top.clk_i, SETTLE_CLOCKS)
-        self.logger.info("SETTLE strobes=%d clocks=%d", SETTLE_STROBES, self._now() - c_change)
+        self.logger.info(
+            "INFO-COND-SETTLE strobes=%d clocks=%d", SETTLE_STROBES, self._now() - c_change
+        )
 
     async def _strobe_bytes(self, count: int, skip: int = 0) -> list[int]:
         """The 12 lane bytes of esrc_decor_bytes_o at each of ``count`` strobes after ``skip``."""
@@ -1046,7 +1090,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
 
     # --- mid-run writes (logged only) -------------------------------------------------
     async def _tap_trace(self, rows: list, run: list) -> None:
-        """One row per clk_i (ReadOnly): (strobe, gated strobe, FIFO word, ds count, div count)."""
+        """One row per clk_i (ReadOnly): (strobe, gated strobe, FIFO word, ds count,
+        div count, FIFO word data)."""
         dut = cocotb.top
         while run[0] and len(rows) < MIDRUN_CAP:
             await RisingEdge(dut.clk_i)
@@ -1058,6 +1103,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                     self.rd(dut.esrc_compress_vld_o),
                     self.rd(dut.esrc_downsample_count_o),
                     self.rd(dut.esrc_decor_div_lane0_o),
+                    self.rd(dut.esrc_compress_data_o),
                 )
             )
         await NextTimeStep()
@@ -1185,6 +1231,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             **self._to_push(rows, i_w + 1),
         )
 
+        await self._bypass_midgroup(rows)
+        await self._wr(
+            ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=plan.n_r)
+        )
+
         # DOWNSAMPLE_RATE with the compressor bypassed: up, down below the count,
         # up, down to at or above the count (right after a word), up.
         def word(r):
@@ -1223,6 +1274,41 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         run[0] = False
         await task
         await self._wr(ESRC_CTRL, _val("CTRL"))
+
+    async def _bypass_midgroup(self, rows: list) -> None:
+        """OBS-COND-BYPASS-MIDGROUP: compressor in use, whitening off; after a FIFO
+        word and ``bypass_strobe`` gated strobes, CTRL.BYPASS_ENTROPY_COMPRESSOR is
+        written 1 and then 0. Logs the FIFO words between the two write responses
+        and the next three FIFO words after the second."""
+        plan = self.plan
+        p = RESET_DIV + 1
+        bound = (plan.n_r + 6) * p * 4
+        await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
+        push = await self._wait_row(rows, len(rows), lambda r: r[2], bound)
+        strobes = []
+        if push:
+            strobes = await self._wait_row(
+                rows, push[0] + 1, lambda r: r[1], bound, count=plan.bypass_strobe
+            )
+        await self._wr(
+            ESRC_CTRL,
+            _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=plan.n_r),
+        )
+        i_on = len(rows) - 1
+        await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
+        i_off = len(rows) - 1
+        nxt = await self._wait_row(rows, i_off + 1, lambda r: r[2], 3 * bound, count=3)
+        between = [rows[j][5] for j in range(i_on + 1, i_off + 1) if rows[j][2]]
+        fields = {
+            "strobe": plan.bypass_strobe,
+            "pushes_between": len(between),
+            "words_between": ",".join(f"0x{w:08x}" for w in between) or "none",
+            "next_words": ",".join(f"0x{rows[j][5]:08x}" for j in nxt) or "none",
+            "next_gaps_clk": ",".join(str(b - a) for a, b in zip(nxt, nxt[1:])) or "none",
+        }
+        if not push or len(strobes) < plan.bypass_strobe or len(nxt) < 3:
+            fields["reason"] = "timeout:push"
+        self.chk.obs("COND-BYPASS-MIDGROUP", **fields)
 
     # --- health-test leg (logged only) ----------------------------------------------
     async def _leg_health(self) -> None:
@@ -1275,14 +1361,13 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         push0 = white.pushes
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         cap = SHA_BIW_MIN * 4 * self._period() * 20
-        ok, biw_seen, _, sha_reads = await self._poll_biw(SHA_BIW_MIN, cap)
+        sha_windows: list[tuple[int, int]] = []
+        ok, biw_seen, _, sha_reads = await self._poll_biw(SHA_BIW_MIN, cap, white, sha_windows)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         pushes = white.pushes - push0
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         await white.stop()
-        self.chk.obs(
-            "COND-SHA-STATUS-READS", reads=len(sha_reads), values=[f"0x{v:x}" for v in sha_reads]
-        )
+        self._grade_sha_status_reads(white, sha_reads, sha_windows)
         biw = _get(await self._rd(ESRC_BIW_OBS_STATUS), "BIW_OBS_STATUS", "LEVEL")
         fifo = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
         intr = await self._rd(ESRC_INTR_STATUS)
@@ -1338,12 +1423,16 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             ESRC_SHA256_STATUS, "SHA256_STATUS", "BUSY", lambda v: v == 0, busy_cap
         )
         pass_tap = SepEsrcShaTap(self.rd).start()
+        biw_map: list[tuple[int, int, int, int]] = []
+        map_task = cocotb.start_soon(self._biw_map_trace(biw_map, cap))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         p_ok, _, _, out_reads = await self._poll_biw(PASSTHRU_BIW_MIN, cap)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         await pass_tap.stop()
+        if not map_task.done():
+            map_task.cancel()
         # The tap task ends in ReadOnly; a gate write needs the next time step.
         await NextTimeStep()
         close_graded_window(self.logger)
@@ -1374,8 +1463,24 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             biw_words=len(biw_words),
             mismatches=0 if offset is not None else "all_offsets",
         )
+        self.chk.obs(
+            "ESRC-BIW-MAP",
+            pairs=len(biw_map),
+            word=[f"0x{p[2]:08x}" for p in biw_map],
+            bytes=[f"0x{p[1]:024x}" for p in biw_map],
+            bytes_prev=[f"0x{p[0]:024x}" for p in biw_map],
+            lag_clk=[p[3] for p in biw_map],
+            in_biw_obs=[p[2] in biw_words for p in biw_map],
+        )
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
-        self.chk.obs("COND-PASSTHRU-OUTCOUNT", reads=len(outs), nonzero=sum(1 for o in outs if o))
+        nonzero = sum(1 for o in outs if o)
+        self.chk.obs(
+            "COND-PASSTHRU-OUTCOUNT",
+            reads=len(outs),
+            nonzero=nonzero,
+            values=",".join(str(v) for v in sorted(set(outs))) or "none",
+            busy_zero=busy_ok,
+        )
 
         walk = white.output_count_walk()
         runs = walk["runs"]
@@ -1406,14 +1511,140 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             bypass_clocks=pass_tap.clocks,
         )
 
-    async def _poll_biw(self, minimum: int, bound: int):
-        """Poll BIW_OBS_STATUS.LEVEL >= minimum; reads SHA256_STATUS after each poll."""
+    def _grade_sha_status_reads(
+        self, tap: SepEsrcShaTap, reads: list[int], windows: list[tuple[int, int]]
+    ) -> None:
+        """CHK-COND-SHA-STATUS-READS: the polled SHA256_STATUS reads of the whitened
+        window against the field meanings, counted from the first block boundary.
+
+        The anchor is the first clock after the first quiet tap clock q0 where BUSY
+        rises: a digest is then in processing (entropy_source.rdl:78), so the 16 words
+        of one block (architecture.adoc:142) are complete and the open input block
+        holds 0 words. The words in the open block at clock c are 16 plus the input
+        words from the anchor to c (negative before the anchor). The INPUT_COUNT that
+        the tap reads at q0 is graded against that count too.
+
+        A read samples the register on a clock of its bus window ``[start - 1, end]``.
+        Only a read with no input or FIFO word within ``QUIET_GUARD`` clocks of that
+        window is graded, so the expected fields hold on every clock it can sample.
+        With no backpressure on the FIFO words (architecture.adoc:148) no graded read
+        falls inside the output of a digest, so each graded read expects
+        OUTPUT_COUNT = 0 (or 0 or 8 before a digest gives its first word). The control
+        logs the graded reads that expect a non-zero OUTPUT_COUNT."""
+        tr = tap.trace
+        quiet = tap.quiet_clocks()
+        graded = busy_graded = in_graded = out_graded = 0
+        errors: list[str] = []
+        q0 = quiet[0] if quiet else None
+        a = None
+        if q0 is not None:
+            a = next((c for c in range(q0 + 1, len(tr)) if tr[c][0] and not tr[c - 1][0]), None)
+        want_q0 = "none"
+        if a is not None:
+            want_q0 = BLOCK_WORDS - (tr[a][3] - tr[q0][3])
+            if tr[q0][2] != want_q0:
+                errors.append(f"q0:in={tr[q0][2]}/{want_q0}")
+        for value, (start, end) in zip(reads, windows):
+            lo, hi = start - 1 - QUIET_GUARD, end + QUIET_GUARD
+            if a is None or lo <= q0 or hi >= len(tr):
+                continue
+            if tr[hi][3] != tr[lo - 1][3] or tr[hi][4] != tr[lo - 1][4]:
+                continue
+            n = BLOCK_WORDS + tr[hi][3] - tr[a][3]
+            pending = DIGEST_WORDS * (n // BLOCK_WORDS) - (tr[hi][4] - tr[a][4])
+            want_in = n % BLOCK_WORDS
+            want_busy = int(pending > 0)
+            if pending <= 0:
+                want_out: tuple[int, ...] = (0,)
+            elif pending % DIGEST_WORDS:
+                want_out = (pending % DIGEST_WORDS,)
+            else:
+                want_out = (0, DIGEST_WORDS)
+            busy = _get(value, "SHA256_STATUS", "BUSY")
+            got_in = _get(value, "SHA256_STATUS", "INPUT_COUNT")
+            got_out = _get(value, "SHA256_STATUS", "OUTPUT_COUNT")
+            graded += 1
+            busy_graded += want_busy
+            in_graded += int(want_in != 0)
+            out_graded += int(0 not in want_out)
+            if (
+                n < 0
+                or pending < 0
+                or busy != want_busy
+                or got_in != want_in
+                or got_out not in want_out
+            ):
+                errors.append(
+                    f"read{graded}=0x{value:x}:busy={busy}/{want_busy},"
+                    f"in={got_in}/{want_in},out={got_out}/{'|'.join(map(str, want_out))},"
+                    f"pending={pending}"
+                )
+        self.chk.ctrl(
+            "COND-SHA-STATUS-READS",
+            busy_graded >= 1 and in_graded >= 1,
+            reads=len(reads),
+            graded=graded,
+            busy_graded=busy_graded,
+            in_nonzero_graded=in_graded,
+            out_nonzero_graded=out_graded,
+            quiet_clock="none" if q0 is None else q0,
+            anchor_clock="none" if a is None else a,
+        )
+        self.chk.ok(
+            "COND-SHA-STATUS-READS",
+            graded > 0 and not errors,
+            reads=len(reads),
+            graded=graded,
+            input_count_q0="none" if q0 is None else tr[q0][2],
+            expected_input_count_q0=want_q0,
+            mismatches=len(errors),
+            first_errors=errors[:4],
+            values=[f"0x{v:x}" for v in reads],
+        )
+
+    async def _biw_map_trace(self, pairs: list, bound: int) -> None:
+        """The first BIW_MAP_WORDS words of ``esrc_compress_vld_o`` with their strobe bytes.
+
+        On every ``clk_i`` (ReadOnly) a strobe of ``esrc_decor_valid_o`` records
+        ``esrc_decor_bytes_o``; a word appends (bytes of the strobe before the last,
+        bytes of the last strobe, ``esrc_compress_data_o``, clocks from the last strobe).
+        A strobe and a word on one clock: the strobe first. Words before the second
+        strobe are not paired.
+        """
+        dut = cocotb.top
+        prev = last = None
+        last_clk = 0
+        for clk in range(bound):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.esrc_decor_valid_o):
+                prev, last, last_clk = last, self.rd(dut.esrc_decor_bytes_o), clk
+            if self.rd(dut.esrc_compress_vld_o) and prev is not None:
+                pairs.append((prev, last, self.rd(dut.esrc_compress_data_o), clk - last_clk))
+                if len(pairs) == BIW_MAP_WORDS:
+                    break
+        await NextTimeStep()
+
+    async def _poll_biw(
+        self,
+        minimum: int,
+        bound: int,
+        tap: SepEsrcShaTap | None = None,
+        windows: list[tuple[int, int]] | None = None,
+    ):
+        """Poll BIW_OBS_STATUS.LEVEL >= minimum; reads SHA256_STATUS after each poll.
+
+        With ``tap`` and ``windows``, each SHA256_STATUS read appends the tap trace
+        lengths before the request and after the response: its bus window."""
         t0 = self._now()
         sha: list[int] = []
         level = 0
         for _ in range(bound + 1):
             level = _get(await self._rd(ESRC_BIW_OBS_STATUS), "BIW_OBS_STATUS", "LEVEL")
+            start = len(tap.trace) if tap is not None else 0
             sha.append(await self._rd(ESRC_SHA256_STATUS))
+            if tap is not None and windows is not None:
+                windows.append((start, len(tap.trace)))
             if level >= minimum:
                 return True, level, self._now() - t0, sha
             if self._now() - t0 > bound:

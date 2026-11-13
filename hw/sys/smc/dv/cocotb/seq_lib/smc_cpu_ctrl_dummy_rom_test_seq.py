@@ -12,7 +12,7 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import cpu_ctrl_u32, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 WORD_BYTES = 8
@@ -21,25 +21,24 @@ NULL_WORDS = 4
 RV_WORDS = 4
 OKAY = 0
 FUSE_SENSE_MAX_CYCLES = 200_000
+NULL_RESET = cpu_ctrl_u32("CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_reset")
 EXPECTED_LINE = (
-    0x0145_0513_0000_0517,
-    0xFFF0_0693_3055_1073,
-    0x1050_0073_3046_B073,
-    0x0000_0000_FFDF_F06F,
-    0,
-    0,
-    0,
-    0,
+    *(
+        cpu_ctrl_u32(f"CPU_CTRL__DUMMY_ROM_{index}__DUMMY_ROM_WORD_{index}_reset")
+        for index in range(ROM_WORDS)
+    ),
+    *(NULL_RESET,) * NULL_WORDS,
 )
-RV_RESET = 0xC004_0000
-RV_MASK = (1 << 56) - 1
-NULL_RESET = 0
+RV_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_VECTOR__VECTOR_reset")
+RV_MASK = cpu_ctrl_u32("CPU_CTRL__RESET_VECTOR__VECTOR_bm")
 FULL_MASK = (1 << 64) - 1
 RV_PATTERNS = (RV_MASK, 0, *(1 << b for b in range(56)))
 NULL_PATTERNS = (FULL_MASK, 0, *(1 << b for b in range(64)))
-CORE_RESET_MASK = 0xF
-UNCORE_RESET = 1 << 8
-DEBUG_RESET = 1 << 24
+CORE_RESET_MASK = sum(
+    cpu_ctrl_u32(f"CPU_CTRL__RESET_CTRL__CORE{core}_RESET_N_N0_SCAN_bm") for core in range(4)
+)
+UNCORE_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bm")
+DEBUG_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bm")
 STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 FENCE_TERMS = {
     "S1": "FUSE-SENSE",
@@ -230,7 +229,8 @@ class smc_cpu_ctrl_dummy_rom_test_seq(SmcCsrSeq):
             "CHK-CPU-RV-RESET",
             f"{RV_WORDS} first reads vector[55:0]=0x{RV_RESET:x} RRESP OKAY: "
             + " ".join(rv_seen)
-            + " ([63:56] logged, not compared: LINKED-ISSUE SF-001)",
+            + " ([63:56] logged, not compared; LINKED-ISSUE: whether reserved register bits read "
+            "0 and ignore writes)",
         )
         self._chk(
             "CHK-CPU-NULL-RESET",
@@ -325,7 +325,8 @@ class smc_cpu_ctrl_dummy_rom_test_seq(SmcCsrSeq):
             f"cores held; {checked} readbacks of RESET_VECTOR[0..3] equal the written [55:0] "
             f"(0x{RV_MASK:x}, 0x0, 1<<b b=0..55) BRESP/RRESP OKAY; [63:56] observed "
             + ",".join(f"0x{u:02x}" for u in sorted(uppers))
-            + " (logged, not compared: LINKED-ISSUE SF-001)",
+            + " (logged, not compared; LINKED-ISSUE: whether reserved register bits read 0 and "
+            "ignore writes)",
         )
 
     async def _null_patterns(self) -> None:

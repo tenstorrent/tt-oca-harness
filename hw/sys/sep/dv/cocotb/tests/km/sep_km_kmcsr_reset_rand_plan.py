@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from env.sep_chk_log import word_digest
+from env.sep_km_img_h import SRAM_LOCK_REGIONS, SRAM_REGION_BYTES
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import CHeaderRegBlock, ip_c_header
 
@@ -66,6 +68,29 @@ A_ENTRY_LOCK = _csr("IRQ_ENTRY_LOCK")
 A_DEBUG = _csr("DEBUG")
 A_OTP_LOCK = _csr("OTP_READ_LOCK")
 A_OTP_LOCK_COLD = _csr("OTP_READ_LOCK_COLD")
+# Reads of the write-only IRQ_SET and of the virtual UART and testbench words, and
+# writes to the read-only registers. A read of a readable register expects OKAY;
+# the IRQ_SET read and the read-only writes log their response.
+OBS_READS = tuple(
+    (reg, _csr(reg))
+    for reg in (
+        "IRQ_SET",
+        "VUART_TX",
+        "VUART_RX",
+        "VUART_STATUS",
+        "TB_RESULT",
+        "TB_SIGNATURE",
+        "TB_ERRCODE",
+        "TB_SUBTEST",
+        "TB_CMD",
+        "TB_CMD_ARG",
+        "TB_CMD_STATUS",
+        "TB_CMD_RESULT",
+    )
+)
+OBS_RO_WRITES = tuple(
+    (reg, _csr(reg)) for reg in ("CTRL", "DEBUG", "OTP_LIFE_CYCLE", "OTP_DEMOTION_STATE")
+)
 A_SMP_DATA = km_addr("DRBG_SAMPLER_DATA_BASE_ADDR")
 A_SMP_CFG = km_addr("DRBG_SAMPLER_CFG_BASE_ADDR")
 A_MBOX_KM_STATUS = km_addr("MAILBOX_KM_KM_STATUS_BASE_ADDR")
@@ -129,6 +154,17 @@ OTP_LOCK_RESET = KM_CSR.reset("OTP_READ_LOCK_REG")
 OTP_COLD_RESET = KM_CSR.reset("OTP_READ_LOCK_COLD_REG")
 CBD_RESET = KM_CSR.reset("BOOT_STATUS_REG") & CBD_BIT
 CFG_RESET = KM_SMP.reset("CFG_REG")
+# Software-written words (sw = rw, hw = r) that no master writes in this leaf: a
+# read returns the RDL reset.
+RESET_READS = {
+    reg: KM_CSR.reset(f"{reg}_REG")
+    for reg in ("VUART_TX", "TB_RESULT", "TB_SIGNATURE", "TB_ERRCODE", "TB_SUBTEST", "TB_CMD_ARG")
+}
+# VUART_STATUS fields (sw = r, hw = w) and their RDL resets, graded field by field.
+VUART_STATUS_FIELDS = tuple(
+    (n, m["bm"], m["bp"], m["reset"])
+    for n, m in sorted(KM_CSR.fields("VUART_STATUS_REG").items(), key=lambda t: t[1]["bp"])
+)
 
 # The register text of km_csr.adoc and km_drbg_sampler.adoc states the same
 # resets as the RDL; a mismatch is a specification conflict, not a leaf result.
@@ -149,18 +185,20 @@ SOFT_RST_CODE = 0x5352_5354
 # least MIN_RESET_CYCLES clocks after its trigger releases; 10 is the stated
 # default and the bound has no upper limit.
 MIN_RESET_CYCLES = 10
-# km_csr.adoc, "SRAM_LOCK": 32 regions of 1 KiB; architecture.adoc,
-# "Parameters": 8192 words of 32 bits.
-SRAM_REGIONS = 32
-REGION_BYTES = SRAM_SIZE // SRAM_REGIONS
+LAST_REGION = SRAM_LOCK_REGIONS - 1
 SRAM_WORDS = SRAM_SIZE // 4
 WORD_ADDR_BITS = SRAM_WORDS.bit_length() - 1
-if REGION_BYTES != 0x400 or SRAM_WORDS != 8192:
-    raise RuntimeError(f"KM SRAM map {SRAM_SIZE:#x} does not give 32 x 1 KiB and 8192 words")
+# km_csr.adoc, "SRAM_LOCK": 32 regions of 1 KiB; architecture.adoc,
+# "Parameters": 8192 words of 32 bits.
+if (SRAM_LOCK_REGIONS, SRAM_REGION_BYTES, SRAM_WORDS) != (32, 0x400, 8192):
+    raise RuntimeError(
+        f"KM SRAM map {SRAM_SIZE:#x} with {SRAM_LOCK_REGIONS} SRAM_LOCK regions "
+        "does not give 32 x 1 KiB and 8192 words"
+    )
 # Region 0 holds the POKE result words and the list buffer: never locked or written.
-FIRST_FREE = SRAM_BASE + REGION_BYTES
+FIRST_FREE = SRAM_BASE + SRAM_REGION_BYTES
 LAST_WORD = SRAM_END - 4
-R31_BASE = SRAM_BASE + 31 * REGION_BYTES
+R31_BASE = SRAM_BASE + LAST_REGION * SRAM_REGION_BYTES
 R31_FIXED = (R31_BASE, R31_BASE + 4, LAST_WORD)
 
 # Witness values of the reset rounds (the test procedure states them).
@@ -178,7 +216,7 @@ LIST_HEADER_MAGIC = 0x50  # POKE list header [31:24]; a stale word avoids it
 
 
 def region_of(addr: int) -> int:
-    return (addr - SRAM_BASE) // REGION_BYTES
+    return (addr - SRAM_BASE) // SRAM_REGION_BYTES
 
 
 def bits_of(mask: int) -> list[int]:
@@ -268,9 +306,9 @@ def _split(rng: SepSeededRng, mask: int) -> tuple[int, int]:
 
 
 def _word_in_region(rng: SepSeededRng, region: int, avoid: set[int]) -> int:
-    base = SRAM_BASE + region * REGION_BYTES
+    base = SRAM_BASE + region * SRAM_REGION_BYTES
     while True:
-        a = base + 4 * rng.randrange(REGION_BYTES // 4)
+        a = base + 4 * rng.randrange(SRAM_REGION_BYTES // 4)
         if a not in avoid:
             return a
 
@@ -286,15 +324,15 @@ def _free_word(rng: SepSeededRng, avoid: set[int], regions: set[int] | None = No
 def _sram_round(rng: SepSeededRng, index: int) -> SramRound:
     fixed = set(R31_FIXED)
     if index in (1, 2):
-        lock = sum(1 << r for r in range(1, SRAM_REGIONS) if r % 2 == index % 2)
-        addrs = [_word_in_region(rng, r, fixed) for r in range(1, SRAM_REGIONS)]
+        lock = sum(1 << r for r in range(1, SRAM_LOCK_REGIONS) if r % 2 == index % 2)
+        addrs = [_word_in_region(rng, r, fixed) for r in range(1, SRAM_LOCK_REGIONS)]
         rng.shuffle(addrs)
     else:
         k = rng.randrange(3, 9)
-        regions = [*rng.sample(range(1, 31), k - 1), 31]
+        regions = [*rng.sample(range(1, LAST_REGION), k - 1), LAST_REGION]
         lock = sum(1 << r for r in regions)
-        locked_low = [r for r in regions if r != 31]
-        unlocked = [r for r in range(1, SRAM_REGIONS) if not (lock >> r) & 1]
+        locked_low = [r for r in regions if r != LAST_REGION]
+        unlocked = [r for r in range(1, SRAM_LOCK_REGIONS) if not (lock >> r) & 1]
         addrs = [
             _word_in_region(rng, rng.choice(locked_low), fixed),
             _word_in_region(rng, rng.choice(unlocked), fixed),
@@ -317,7 +355,8 @@ def _sram_round(rng: SepSeededRng, index: int) -> SramRound:
 
 def _wrong_codes(rng: SepSeededRng) -> list[int]:
     neighbours = [SOFT_RST_CODE ^ (1 << b) for b in range(32)]
-    codes = [0x0000_0000, 0xFFFF_FFFF, rng.choice(neighbours)]
+    # Code 0 follows a non-zero code, so its readback differs from the value before it.
+    codes = [0xFFFF_FFFF, 0x0000_0000, rng.choice(neighbours)]
     while len(codes) < 5:
         v = rng.choice(neighbours) if rng.getrandbits(1) else rng.getrandbits(32)
         if v != SOFT_RST_CODE and v not in codes:
@@ -414,7 +453,7 @@ def draw_plan(seed: int) -> Plan:
         used: set[int] = set()
         sram = []
         for _ in range(8):
-            free = {r for r in range(1, SRAM_REGIONS) if not (locked_regions >> r) & 1}
+            free = {r for r in range(1, SRAM_LOCK_REGIONS) if not (locked_regions >> r) & 1}
             a = _free_word(rng, used, free)
             used.add(a)
             sram.append(a)
@@ -426,7 +465,7 @@ def draw_plan(seed: int) -> Plan:
                     break
             values.append(v)
         held = {region_of(a) for a in sram}
-        cand = [r for r in range(1, SRAM_REGIONS) if r not in held]
+        cand = [r for r in range(1, SRAM_LOCK_REGIONS) if r not in held]
         lock = sum(1 << r for r in rng.sample(cand, rng.randrange(1, 4)))
         plan.rounds.append(
             WitnessRound(
@@ -446,40 +485,42 @@ def draw_plan(seed: int) -> Plan:
 
 
 def plan_draw_lines(p: Plan) -> list[str]:
-    """One ``DRAW`` line per drawn dimension, in draw order."""
+    """One ``INFO-DRAW`` line per drawn dimension, in draw order."""
     h = lambda v: f"0x{v:08x}"  # noqa: E731
     out = [
-        f"DRAW version_wr={h(p.ver_wr)}",
-        "DRAW irq_walk=" + ",".join(f"{i}/{j}" for i, j in p.walk),
-        "DRAW irq_set_masks=" + ",".join(f"0x{m:03x}" for m in p.set_masks),
-        "DRAW en_order=" + ",".join(p.en_order),
-        f"DRAW en_a e=0x{p.en_a.e:03x} s=0x{p.en_a.s:03x}",
-        f"DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
-        "DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
-        f"DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
-        f"DRAW scrambler_key k={h(p.scr_k)} k2={h(p.scr_k2)}",
-        f"DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
+        f"INFO-DRAW version_wr={h(p.ver_wr)}",
+        "INFO-DRAW irq_walk=" + ",".join(f"{i}/{j}" for i, j in p.walk),
+        "INFO-DRAW irq_set_masks=" + ",".join(f"0x{m:03x}" for m in p.set_masks),
+        "INFO-DRAW en_order=" + ",".join(p.en_order),
+        f"INFO-DRAW en_a e=0x{p.en_a.e:03x} s=0x{p.en_a.s:03x}",
+        f"INFO-DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
+        "INFO-DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
+        f"INFO-DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
+        f"INFO-DRAW scrambler_key k_sha={word_digest([p.scr_k])} k2_sha={word_digest([p.scr_k2])}",
+        f"INFO-DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
         f"v2={h(p.entry_v2)}",
-        "DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),
-        "DRAW size_tags=" + ",".join(h(t) for t in p.size_tags),
-        "DRAW park_w=" + ",".join(str(w) for w in p.park_w) + " first=max(fall-delay reference)",
+        "INFO-DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),
+        "INFO-DRAW size_tags=" + ",".join(h(t) for t in p.size_tags),
+        "INFO-DRAW park_w="
+        + ",".join(str(w) for w in p.park_w)
+        + " first=max(fall-delay reference)",
     ]
     for r in p.sram_rounds:
         out.append(
-            f"DRAW sram_round={r.index} lock=0x{r.lock:08x} m=0x{r.m:08x} m2=0x{r.m2:08x} "
+            f"INFO-DRAW sram_round={r.index} lock=0x{r.lock:08x} m=0x{r.m:08x} m2=0x{r.m2:08x} "
             f"rel=0x{r.rel_addr:04x}/{h(r.rel_val)}"
         )
         out.append(
-            f"DRAW sram_round={r.index} stores="
+            f"INFO-DRAW sram_round={r.index} stores="
             + ",".join(f"0x{a:04x}:{h(r.init[a])}>{h(r.store[a])}" for a in r.addrs)
             + " r31="
             + ",".join(f"0x{a:04x}:{h(r.init[a])}>{h(r.store[a])}" for a in R31_FIXED)
         )
-    out.append("DRAW wrong_codes=" + ",".join(h(c) for c in p.wrong_codes))
-    out.append("DRAW reset_order=" + ",".join(w.kind for w in p.rounds))
+    out.append("INFO-DRAW wrong_codes=" + ",".join(h(c) for c in p.wrong_codes))
+    out.append("INFO-DRAW reset_order=" + ",".join(w.kind for w in p.rounds))
     for k, w in enumerate(p.rounds):
         out.append(
-            f"DRAW witness round={k} kind={w.kind} otp_cold_bit={w.otp_cold_bit} "
+            f"INFO-DRAW witness round={k} kind={w.kind} otp_cold_bit={w.otp_cold_bit} "
             f"otp_bit={w.otp_bit} sram_lock=0x{w.sram_lock:08x} mbox={h(w.mbox_word)} sram="
             + ",".join(f"0x{a:04x}:{h(v)}" for a, v in w.sram)
         )

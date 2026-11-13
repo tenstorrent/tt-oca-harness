@@ -89,8 +89,7 @@ MAX_READY_HOLD_CYCLES = 24
 IDLE_CYCLES = 4
 
 # The width of ext_in_awid on the bench top bounds the IDs the port accepts;
-# hw/sys/smu/doc/port_table.adoc names the port type without a width and the integrator chapter
-# gives none.
+# hw/sys/smu/doc/port_table.adoc states an 8-bit ID on smu_axi_in.
 ID_SIGNALS = ("awid", "arid", "bid", "rid")
 
 # hw/sys/smu/doc/index.adoc "AXI Crossbar": an SMC address outside both apertures leaves on
@@ -843,11 +842,15 @@ class smu_axi_in_random_id_stress_test_seq:
             for step, text, body in plan:
                 await self._mark(step, text)
                 await body(sb)
+                if step == "S1":
+                    # smu_outstanding_cg samples the stream and read-back of S2 to S5 only.
+                    self.dut.tb_fcov_gate.value = 1
             await self._mark("S6", "TIMEOUT: bounded waits and last state")
             self._s6(sb)
             await ClockCycles(self.clk, 2)
             self.step_ts["PASS"] = get_sim_time("ns")
         finally:
+            self.dut.tb_fcov_gate.value = 0
             self.trace.stop()
             self.tap.stop()
         order = [*STEPS, "PASS"]

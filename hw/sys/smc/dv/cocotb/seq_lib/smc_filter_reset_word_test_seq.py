@@ -63,15 +63,17 @@ CHK_ORDER = (
 
 
 def _filt(bank: str, reg: str, idx: int) -> int:
-    return smc_indexed_addr(f"{_P}{bank}_FILTER_CTRL_{reg}_BASE_ADDR", idx)
+    return smc_indexed_addr(f"{_P}{bank}_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", idx)
 
 
 def _alias(reg: str, idx: int) -> int:
-    return smc_indexed_addr(f"{_P}ALIAS_REMAP_REGION_REGION_{reg}_BASE_ADDR", idx)
+    return smc_indexed_addr(f"{_P}ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{reg}_BASE_ADDR", idx)
 
 
 def _remap(unit: str, idx: int) -> int:
-    return smc_indexed_addr(f"{_P}{unit}_REMAP_REGION_REGION_ATTRS_BASE_ADDR", idx)
+    return smc_indexed_addr(
+        f"{_P}{unit}_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", idx
+    )
 
 
 class smc_filter_reset_word_test_seq(SmcResetSeqBase, SmcCsrSeq):

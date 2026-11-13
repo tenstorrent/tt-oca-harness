@@ -380,9 +380,11 @@ $(DTCM_HEX): $(ELF)
 	[ -n "$$data_lma" ] || { echo "error: __data_load_start not found in $(ELF)" >&2; exit 1; }; \
 	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(DTCM_ELF_SECTIONS) --change-addresses "-$$data_lma" "$@"
 
-# Keep this phony so recursive make checks BL1 before every repack.
+# Keep this phony so recursive make checks BL1 before every repack. A caller's
+# BUILD_DIR names the ROM's tree, not BL1's: BL1 always builds into build/, where
+# BL1_TEST_BIN looks and which the DV firmware source digest leaves out.
 bl1_test:
-	$(MAKE) -C "$(BL1_TEST_DIR)" GCC_PREFIX=$(GCC_PREFIX)
+	$(MAKE) -C "$(BL1_TEST_DIR)" GCC_PREFIX=$(GCC_PREFIX) BUILD_DIR=build
 
 $(BL1_TEST_BIN):
 	@echo "error: BL1 image is missing; run 'make toolchain-images' first" >&2
@@ -492,4 +494,4 @@ $(DECRYPT_NEG_BINS): $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.yaml bl1_test ensure-pac
 # Remove all build profiles, including those not selected by BUILD_DIR.
 clean:
 	rm -rf "$(BUILD_DIR)" $(PROD_DIR)/build $(PROD_DIR)/build_pio $(PROD_DIR)/build_release
-	$(MAKE) -C "$(BL1_TEST_DIR)" clean 2>/dev/null || true
+	$(MAKE) -C "$(BL1_TEST_DIR)" BUILD_DIR=build clean 2>/dev/null || true

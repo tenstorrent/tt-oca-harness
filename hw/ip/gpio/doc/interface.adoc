@@ -7,7 +7,7 @@
 The GPIO peripheral provides bus interfaces for register access, LSIO
 integration for hardware protocols, and direct GPIO pad connections.
 
-Each `gpio` instance drives one pad. The peripheral comprises 65 pads: 61 bonded and 4
+Each `gpio` instance drives one pad. The peripheral comprises 67 pads: 63 bonded and 4
 unbonded.
 
 ifdef::backend-html5[]

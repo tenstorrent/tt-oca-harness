@@ -73,6 +73,40 @@ Checkers (``r`` is the round, 1 or 2):
                 to the OpenTitan AES documentation, which states the unit only
                 starts if the sideload key is valid ("System Key-Manager
                 Interface"). Last AES operation
+  CHK-REFUSE-KEEP
+                round 1 only, after CHK-OTBN-1 and before the shred: a second key
+                K2 is loaded with DEST_VALID = AES | HMAC, and CMD_KEY_TRANSFER of
+                K2 with mask AES | HMAC | OTBN (OTBN not permitted) returns
+                failure (-1) with no return argument; the KM-BUS key-path tap
+                shows no AW on any of the five ports and no X/Z on the AW
+                handshake; ``km_engine_key_valid_o`` is unchanged; AES, HMAC and
+                OTBN outputs still equal the round-1 goldens. Then the same
+                handle with mask AES | HMAC succeeds, the tap shows AWs on the
+                AES and HMAC ports only, and AES and HMAC outputs equal the K2
+                goldens, so the refusal comes from the OTBN policy and the tap
+                sees those ports live ("If _any_ requested crypto engines are
+                disallowed, the request will result in _failure_ and no
+                requested key transfers will take place.",
+                ``hw/ip/key_manager/doc/firmware.adoc:497-500``; failure = -1,
+                ``:908``)
+  CHK-OTBN-KEY-S1-SHRED
+                each round, right after CHK-OTBN-CLR-r: a key-dump program that
+                reads ``KEY_S1_L`` first runs on the shredded key. ERR_BITS is
+                cleared and reads 0 before EXECUTE, then reads KEY_INVALID only,
+                and INSN_CNT reads 0, so the first instruction faulted and the
+                program returned no key material (hw/sys/sep/doc/otbn.adoc,
+                "reading a share whose key is not valid sets
+                ``ERR_BITS.KEY_INVALID`` and stops the program"; OpenTitan
+                ``otbn.hjson`` INSN_CNT, "Instructions triggering an error do
+                not count"). INSN_CNT is shown live: it reads nonzero after the
+                round's completed key-dump run in CHK-OTBN-r. The S0-first
+                key-dump program is loaded again afterwards
+  OBS-ABR-ZEROIZE-KM-VALID
+                ``km_engine_key_valid_o[7:4]`` (the four Adams Bridge
+                destination KEY_VALID bits) just before and just after each ABR
+                ZEROIZE of the CHK-MLDSA-r, CHK-MLKEM-SEED-r and CHK-MLKEM-MSG-r
+                legs. hw/ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc states
+                no effect of an engine ZEROIZE on these bits, so they are logged
 
 Ordering that the compares rely on:
   * ABR runs the KV leg before its direct-register reference, after a
@@ -86,14 +120,60 @@ Ordering that the compares rely on:
     and Z has eight pairwise-distinct words, so a dword reversal or any other
     word permutation in KM-to-ABR delivery changes the engine input and fails
     the KV-vs-direct compare.
+
+Short-key and long-key legs. After CHK-ROUND one OTBN key shorter than the
+12-word share width, then one longer than it, are each loaded and transferred,
+and the key-dump program runs once after each. Each length comes from its own
+``SepSeededRng`` stream (the run seed XOR a leg salt, so the round draws keep
+their seed mapping). The KM-BUS key-path tap (``km_key_aw_{valid,ready,addr}_o``,
+ports 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge) records every AW handshake
+of the transfer; an X/Z cycle on the AW VALID or READY of any port fails the
+check that reads the tap:
+  CHK-XFER-SHORT-KEY  n drawn in 1..11. ERR_BITS reads 0, share0 ^ share1 words
+                0..n-1 equal the short key, and the OTBN port shows each of
+                the 12 ``KEY_SHARE0`` and 12 ``KEY_SHARE1`` offsets of the OTBN
+                bank written exactly once: "Form one full-width key share from
+                the supplied key, padding short keys with DRBG words. ... The
+                helper writes the destination's share width."
+                (``hw/ip/key_manager/doc/firmware.adoc:1805-1808``;
+                ``KEY_SHARE0[12]``, ``KEY_SHARE1[12] @ 0x030``,
+                ``hw/ip/key_manager/regs/otbn_wrapper_key.rdl:51``, ``:57``).
+                The offsets come from the generated Key Manager register
+                header.
+  CHK-XFER-LONG-KEY   n drawn in 13..128; no word past the first 12 equals any
+                of the first 12, so every slice other than the leading one
+                differs. The key is loaded one word at a time while the inbound
+                FIFO has room. CMD_KEY_TRANSFER returns success; the OTBN port
+                shows each of the 24 share offsets written exactly once and the
+                AES, HMAC, KMAC and Adams Bridge ports show no AW; ERR_BITS
+                reads 0 and share0 ^ share1 equals the 12 leading words ("If
+                the key is longer, it uses only that many leading words; it does
+                not reject the length.", ``firmware.adoc:1810-1811``; selected
+                engines only, ``:1945-1947``). The tap is shown live on all
+                five ports: during the round-1 deliveries every port shows at
+                least one AW and no X/Z, which this check also requires
+  OBS-ABR-CLR-VALID
+                the VALID bit of each failed CHK-ABR-CLR KV read. crypto.adoc,
+                km-key-delivery-summary, says only "Seed read does not complete",
+                and kv_def.rdl says VALID means the flow is done; no text states
+                VALID for a read that ends with KV_READ_FAIL, so it is logged.
+  OBS-XFER-PAD  share0 ^ share1 words n..11 and the positions that are not 0.
+                firmware.adoc, "Crypto Engine Drivers", pads short keys with
+                DRBG words and states no pad position; the pad values are
+                random, so no value is graded.
 """
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_chk_log import diff_words, word_digest
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_open_value_leg_pass
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
@@ -140,9 +220,11 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
-from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
+from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_INPUT_READY, AES_STATUS_OUTPUT_VALID, SepAes
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
+    KM_CMD_KEY_LOAD,
+    KM_CMD_KEY_TRANSFER,
     KM_DEST_ABR_MLDSA_SEED,
     KM_DEST_ABR_MLKEM_MSG,
     KM_DEST_ABR_MLKEM_SEED_D,
@@ -151,7 +233,12 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_DEST_HMAC,
     KM_DEST_KMAC,
     KM_DEST_OTBN,
+    KM_MBOX_WRITE_DATA,
+    KM_MBOX_WRITE_SEPARATOR,
+    KM_RC_FAILURE,
     KM_RC_SUCCESS,
+    KM_RESP_CMD,
+    KM_STATUS_INBOUND_FULL,
     SepKmMailbox,
 )
 from seq_lib.sep_kmac_seq import (
@@ -162,9 +249,20 @@ from seq_lib.sep_kmac_seq import (
     KMAC_INTR_STATE,
     SepKmac,
 )
-from seq_lib.sep_otbn_seq import SepOtbn
+from seq_lib.sep_otbn_seq import (
+    OTBN_ADDR_ERRBIT,
+    OTBN_DMEM_RESULT_LO,
+    OTBN_IMEM_BASE,
+    OTBN_KEYDUMP_PROG,
+    SepOtbn,
+)
 
+TEST = "sep_km_sideload_share_walk_test"
 ROUNDS = 2
+# Leg salts of the short-key, long-key and refusal draws.
+_SHORT_KEY_SALT = 0x5348_4B59
+_LONG_KEY_SALT = 0x4C4F_4E47
+_REFUSE_SALT = 0x5246_5345
 
 # Words per share per destination (hw/sys/sep/doc/crypto.adoc, km-key-delivery-summary).
 DEST_WORDS = {
@@ -202,6 +300,15 @@ MLKEM_SEED_DESTS = KM_DEST_ABR_MLKEM_SEED_D | KM_DEST_ABR_MLKEM_SEED_Z
 KV_SUCCESS = kv_error_code("SUCCESS")
 KV_READ_FAIL = kv_error_code("KV_READ_FAIL")
 OTBN_ERR_KEY_INVALID = OTBN.field_mask("ERR_BITS", "key_invalid")
+OTBN_ADDR_INSN_CNT = OTBN.addr("INSN_CNT")
+OTBN_INSN_CNT_MASK = OTBN.field_mask("INSN_CNT", "insn_cnt")
+# The key-dump program with its first two instructions swapped, so the first
+# key-share read is KEY_S1_L.
+OTBN_KEYDUMP_S1_FIRST_PROG = (OTBN_KEYDUMP_PROG[1], OTBN_KEYDUMP_PROG[0], *OTBN_KEYDUMP_PROG[2:])
+# KM-VALID carries KEY_VALID in DEST_VALID bit order, so a destination mask
+# selects its bits.
+KM_VALID_ABR_MASK = sum(ABR_DESTS)
+KM_VALID_ABR_LSB = (KM_VALID_ABR_MASK & -KM_VALID_ABR_MASK).bit_length() - 1
 
 # The consumer outputs CHK-ROUND compares. The other consumers have goldens.
 ABR_OUTPUTS = ("mldsa", "mlkem_seed", "mlkem_msg")
@@ -211,12 +318,106 @@ HMAC_MSG_WORDS = 8
 KMAC_MSG_WORDS = 8
 
 _POLL_ITERS = 20000
+# SEP_STATUS reads for inbound_full to read 0 before one mailbox word.
+_INBOUND_POLLS = 2_000
+_INBOUND_POLL_GAP = 20
+# CMD_KEY_LOAD word 0 bits 6:0 carry KEY_SIZE, and the key is KEY_SIZE + 1 words
+# (hw/ip/key_manager/doc/firmware.adoc, key-load-command-payload-figure).
+_KEY_WORDS_MAX = 128
 _POLL_GAP = 200
 # Bounded windows for the cleared-state probes, in 20-cycle polls. A healthy
 # engine answers a valid request in far fewer.
 _KV_STATUS_POLLS = 2000
 _KMAC_ERR_POLLS = 200
 _AES_REFUSE_POLLS = 50
+
+
+# OTBN key-path port of the KM-BUS tap and the share-word offsets of its bank,
+# from the generated Key Manager register header.
+_KM_GEN_PY = Path(__file__).resolve().parents[6] / "ip" / "key_manager" / "regs" / "gen" / "py"
+_KM_REG_SPEC = importlib.util.spec_from_file_location(
+    "km_share_walk_key_manager_reg", _KM_GEN_PY / "key_manager_reg.py"
+)
+if _KM_REG_SPEC is None or _KM_REG_SPEC.loader is None:
+    raise FileNotFoundError(_KM_GEN_PY / "key_manager_reg.py")
+_KM_REG = importlib.util.module_from_spec(_KM_REG_SPEC)
+_KM_REG_SPEC.loader.exec_module(_KM_REG)
+# KM-BUS key-path port index of each destination block (docs/SEP_TB_ARCH.adoc,
+# KM-BUS key-path part).
+_KEY_PORT_NAME = ("otbn", "aes", "hmac", "kmac", "abr")
+_OTBN_KEY_PORT = _KEY_PORT_NAME.index("otbn")
+_AES_KEY_PORT = _KEY_PORT_NAME.index("aes")
+_HMAC_KEY_PORT = _KEY_PORT_NAME.index("hmac")
+_BLOCK_SPAN = 0x1000
+_OTBN_KEY_BASE = int(_KM_REG.OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR)
+if _OTBN_KEY_BASE % _BLOCK_SPAN or int(_KM_REG.OTBN_WRAPPER_KEY_REG_MAP_SIZE) > _BLOCK_SPAN:
+    raise AssertionError("OTBN_WRAPPER_KEY: not a 4 KiB-aligned block below 4 KiB")
+OTBN_SHARE_OFFSETS = frozenset(
+    int(getattr(_KM_REG, f"OTBN_WRAPPER_KEY_KEY_SHARE{s}_{i}__REG_ADDR")) - _OTBN_KEY_BASE
+    for s in (0, 1)
+    for i in range(DEST_WORDS[KM_DEST_OTBN])
+)
+if len(OTBN_SHARE_OFFSETS) != 2 * DEST_WORDS[KM_DEST_OTBN]:
+    raise AssertionError("OTBN_WRAPPER_KEY: share offsets are not 2 x 12 distinct words")
+
+
+class _KeyPortWrites:
+    """AW handshakes on the five key-path ports (``KM-BUS``), as (port, block offset).
+
+    ``xz`` counts clocks where a VALID or READY bit is not 0 or 1. Every check
+    that reads this monitor requires it to be 0, so an unknown handshake fails
+    the check instead of reading as no write.
+    """
+
+    def __init__(self, test: sep_base_test) -> None:
+        top = cocotb.top
+        self.test = test
+        self.clk = top.clk_i
+        self.valid = top.km_key_aw_valid_o
+        self.ready = top.km_key_aw_ready_o
+        self.addr = top.km_key_aw_addr_o
+        if len(self.valid) != len(_KEY_PORT_NAME):
+            raise AssertionError(
+                f"km_key_aw_valid_o is {len(self.valid)} bits, expected one per key-path "
+                f"port {_KEY_PORT_NAME}"
+            )
+        self.writes: list[tuple[int, int]] = []
+        self.xz = 0
+        self._on = False
+
+    def start(self) -> None:
+        self.writes = []
+        self.xz = 0
+        self._on = True
+        cocotb.start_soon(self._run())
+
+    async def stop(self) -> list[tuple[int, int]]:
+        self._on = False
+        await ClockCycles(self.clk, 2)
+        return list(self.writes)
+
+    def port_offsets(self, port: int) -> list[int]:
+        return [off for p, off in self.writes if p == port]
+
+    def counts(self) -> list[int]:
+        return [len(self.port_offsets(p)) for p in range(len(_KEY_PORT_NAME))]
+
+    async def _run(self) -> None:
+        while True:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+            if not self._on:
+                return
+            try:
+                hs = self.test.rd(self.valid) & self.test.rd(self.ready)
+            except AssertionError:
+                self.xz += 1
+                continue
+            for p in range(len(_KEY_PORT_NAME)):
+                if (hs >> p) & 1:
+                    lane = 0xFFFF_FFFF << (32 * p)
+                    addr = self.test.rd_known(self.addr, lane) >> (32 * p)
+                    self.writes.append((p, addr % _BLOCK_SPAN))
 
 
 def _distinct_words(rng: SepSeededRng, n: int, avoid: list[int] | None) -> list[int]:
@@ -270,7 +471,7 @@ class SepKmShareWalkCfg:
 
     def summary(self) -> str:
         first = " ".join(
-            f"{DEST_NAME[d]}[0]=0x{self.keys[0][d][0]:08x}/0x{self.keys[1][d][0]:08x}"
+            f"{DEST_NAME[d]}_sha={word_digest(self.keys[0][d])}/{word_digest(self.keys[1][d])}"
             for d in DEST_WORDS
         )
         return f"seed={self.seed} {first} aes_pt[0]=0x{self.aes_pt[0]:08x}"
@@ -300,6 +501,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         "CHK-ROUND",
         "CHK-KMAC-CLR",
         "CHK-AES-CLR",
+        "CHK-XFER-SHORT-KEY",
+        "CHK-XFER-LONG-KEY",
+        "CHK-REFUSE-KEEP",
+        "CHK-OTBN-KEY-S1-SHRED",
     )
 
     # ------------------------------------------------------------------ ABR --
@@ -335,6 +540,40 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             KEM_ST_READY,
             KEM_ST_READY,
             what=f"{what} ML-KEM READY",
+        )
+
+    async def _km_valid(self) -> int:
+        """KM-VALID (``km_engine_key_valid_o``), sampled in the read-only phase."""
+        await ReadOnly()
+        v = self.rd_known(cocotb.top.km_engine_key_valid_o)
+        await RisingEdge(cocotb.top.clk_i)
+        return v
+
+    async def _zeroize_obs(self, zeroize, *, tag: int, site: str) -> None:
+        """One ABR ZEROIZE, with OBS-ABR-ZEROIZE-KM-VALID around it."""
+        before = await self._km_valid()
+        await zeroize(what=site)
+        after = await self._km_valid()
+        self.logger.info(
+            "OBS-ABR-ZEROIZE-KM-VALID r=%d site=%s abr_key_valid_before=0x%x "
+            "abr_key_valid_after=0x%x km_valid_before=0x%02x km_valid_after=0x%02x",
+            tag,
+            site.replace(" ", "_"),
+            (before & KM_VALID_ABR_MASK) >> KM_VALID_ABR_LSB,
+            (after & KM_VALID_ABR_MASK) >> KM_VALID_ABR_LSB,
+            before,
+            after,
+        )
+
+    def _obs_clr_valid(self, tag: int, leg: str, st: int) -> None:
+        """OBS-ABR-CLR-VALID: the VALID bit of a failed KV read on a shredded block."""
+        self.logger.info(
+            "OBS-ABR-CLR-VALID r=%d leg=%s valid=%d error=%d status=0x%08x",
+            tag,
+            leg.replace(" ", "_"),
+            kv_status_field(st, "VALID"),
+            kv_status_field(st, "ERROR"),
+            st,
         )
 
     async def _kv_read(self, ctrl: int, status: int, *, what: str) -> tuple[int, int]:
@@ -431,10 +670,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
     @staticmethod
     def _same(got: list[int], exp: list[int], *, chk: str, what: str) -> None:
         assert len(got) == len(exp), f"{chk} FAIL: {what} is {len(got)} words, expected {len(exp)}"
-        bad = next((i for i, (g, e) in enumerate(zip(got, exp)) if g != e), None)
-        assert bad is None, (
-            f"{chk} FAIL: {what} differs at word {bad} of {len(exp)}: "
-            f"got=0x{got[bad]:08x} exp=0x{exp[bad]:08x}"
+        bad = diff_words(got, exp)
+        assert not bad, (
+            f"{chk} FAIL: {what} differs at words {bad} of {len(exp)}: "
+            f"got_sha={word_digest(got)} exp_sha={word_digest(exp)}"
         )
 
     # ------------------------------------------------------------- rounds --
@@ -451,11 +690,16 @@ class sep_km_sideload_share_walk_test(sep_base_test):
 
     async def _load_all(self, r: int) -> None:
         self.handles[r] = {}
+        bus = _KeyPortWrites(self)
+        bus.start()
         for dest in DEST_WORDS:
             words = self.walk.keys[r][dest]
             handle = await self.km.key_load(key_words=list(words), dest=dest)
             self.handles[r][dest] = handle
             await self._transfer(r, handle, dest)
+        await bus.stop()
+        if r == 0:
+            self.round1_aw = (bus.counts(), bus.xz)
         self.logger.info(
             "STEP round %d: CMD_KEY_LOAD + CMD_KEY_TRANSFER rc=0 for all %d destinations",
             r + 1,
@@ -476,10 +720,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"CHK-AES-{tag} FAIL: ct={[hex(w) for w in ct]} golden={[hex(w) for w in golden]}"
         )
         self.logger.info(
-            "CHK-AES-%d PASS: ct == AES-256(K, PT) golden ct=%s k[0]=0x%08x",
+            "CHK-AES-%d PASS: ct == AES-256(K, PT) golden ct=%s k_sha=%s",
             tag,
             [hex(w) for w in ct],
-            keys[KM_DEST_AES][0],
+            word_digest(keys[KM_DEST_AES]),
         )
         out["aes"] = ct
 
@@ -495,12 +739,12 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         )
         self.logger.info(
             "CHK-HMAC-%d PASS: digest == HMAC-SHA256(K, msg) golden d[0]=0x%08x d[7]=0x%08x "
-            "k[0]=0x%08x sw_key[0]=0x%08x",
+            "k_sha=%s sw_key_sha=%s",
             tag,
             digest[0],
             digest[7],
-            keys[KM_DEST_HMAC][0],
-            self.walk.hmac_sw[r][0],
+            word_digest(keys[KM_DEST_HMAC]),
+            word_digest(self.walk.hmac_sw[r]),
         )
         out["hmac"] = digest
 
@@ -514,12 +758,11 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"golden={[hex(w) for w in golden]}"
         )
         self.logger.info(
-            "CHK-KMAC-%d PASS: digest == KMAC256(K, msg) golden d[0]=0x%08x d[7]=0x%08x "
-            "k[0]=0x%08x",
+            "CHK-KMAC-%d PASS: digest == KMAC256(K, msg) golden d[0]=0x%08x d[7]=0x%08x k_sha=%s",
             tag,
             digest[0],
             digest[7],
-            keys[KM_DEST_KMAC][0],
+            word_digest(keys[KM_DEST_KMAC]),
         )
         out["kmac"] = digest
 
@@ -530,31 +773,34 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         key, s0, s1, pad = await self.otbn.read_keydump_outputs()
         exp = keys[KM_DEST_OTBN]
         assert key == exp, (
-            f"CHK-OTBN-{tag} FAIL: key={[hex(w) for w in key]} exp={[hex(w) for w in exp]}"
+            f"CHK-OTBN-{tag} FAIL: key differs at words {diff_words(key, exp)}: "
+            f"key_sha={word_digest(key)} exp_sha={word_digest(exp)}"
         )
         assert [a ^ b for a, b in zip(s0, s1)] == exp, f"CHK-OTBN-{tag} FAIL: share0^share1 != K"
-        assert all(w == 0 for w in pad), f"CHK-OTBN-{tag} FAIL: pad={[hex(w) for w in pad]}"
+        assert all(w == 0 for w in pad), (
+            f"CHK-OTBN-{tag} FAIL: pad nonzero at words {[i for i, w in enumerate(pad) if w]}"
+        )
         self.logger.info(
             "CHK-OTBN-%d PASS: DMEM key == K (12 words), share0^share1 == K, ERR_BITS=0x%08x "
-            "key[0]=0x%08x key[11]=0x%08x s0[0]=0x%08x s1[0]=0x%08x",
+            "key_sha=%s s0_sha=%s s1_sha=%s",
             tag,
             errbits,
-            key[0],
-            key[11],
-            s0[0],
-            s1[0],
+            word_digest(key),
+            word_digest(s0),
+            word_digest(s1),
         )
         out["otbn"] = key
+        self.insn_live[r] = await self.otbn._rd(OTBN_ADDR_INSN_CNT) & OTBN_INSN_CNT_MASK
 
         # ABR ML-DSA seed: KV leg first, then the direct-seed reference.
         seed = keys[KM_DEST_ABR_MLDSA_SEED]
-        await self._mldsa_zeroize(what=f"CHK-MLDSA-{tag} pre-KV")
+        await self._zeroize_obs(self._mldsa_zeroize, tag=tag, site=f"CHK-MLDSA-{tag} pre-KV")
         st, err = await self._kv_read(
             ABR_MLDSA_KV_RD_SEED_CTRL, ABR_MLDSA_KV_RD_SEED_STATUS, what=f"CHK-MLDSA-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLDSA-{tag}")
         pk_kv = await self._mldsa_keygen(None, what=f"CHK-MLDSA-{tag} KV")
-        await self._mldsa_zeroize(what=f"CHK-MLDSA-{tag} pre-ref")
+        await self._zeroize_obs(self._mldsa_zeroize, tag=tag, site=f"CHK-MLDSA-{tag} pre-ref")
         pk_ref = await self._mldsa_keygen(seed, what=f"CHK-MLDSA-{tag} ref")
         self._same(pk_kv, pk_ref, chk=f"CHK-MLDSA-{tag}", what="the KV-seed public key")
         self.logger.info(
@@ -570,14 +816,14 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         # ABR ML-KEM seed D||Z: KV leg first, then the direct-seed reference.
         d = keys[KM_DEST_ABR_MLKEM_SEED_D]
         z = keys[KM_DEST_ABR_MLKEM_SEED_Z]
-        await self._mlkem_zeroize(what=f"CHK-MLKEM-SEED-{tag} pre-KV")
+        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-SEED-{tag} pre-KV")
         st, err = await self._kv_read(
             MLKEM_KV_SEED_RD_CTRL, MLKEM_KV_SEED_RD_STATUS, what=f"CHK-MLKEM-SEED-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLKEM-SEED-{tag}")
         z_kv = self._seed_z_probe()
         ek_kv = await self._mlkem_keygen(None, None, what=f"CHK-MLKEM-SEED-{tag} KV")
-        await self._mlkem_zeroize(what=f"CHK-MLKEM-SEED-{tag} pre-ref")
+        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-SEED-{tag} pre-ref")
         ek_ref = await self._mlkem_keygen(d, z, what=f"CHK-MLKEM-SEED-{tag} ref")
         self._same(ek_kv, ek_ref, chk=f"CHK-MLKEM-SEED-{tag}", what="the KV-seed encaps key")
         # Word i of the delivered Z must sit at engine index i.
@@ -589,25 +835,24 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         )
         self.logger.info(
             "CHK-MLKEM-SEED-%d PASS: KV seed read status 0x%08x; EK == direct-seed EK "
-            "(%d words, ek[0]=0x%08x); engine Z == delivered Z z[0]=0x%08x z[3]=0x%08x",
+            "(%d words, ek[0]=0x%08x); engine Z == delivered Z z_sha=%s",
             tag,
             st,
             KEM_EK_WORDS,
             ek_kv[0],
-            z_kv[0],
-            z_kv[3],
+            word_digest(z_kv),
         )
         out["mlkem_seed"] = ek_kv
 
         # ABR ML-KEM message: KV leg first, then the direct-message reference.
         msg = keys[KM_DEST_ABR_MLKEM_MSG]
-        await self._mlkem_zeroize(what=f"CHK-MLKEM-MSG-{tag} pre-KV")
+        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-MSG-{tag} pre-KV")
         st, err = await self._kv_read(
             MLKEM_KV_MSG_RD_CTRL, MLKEM_KV_MSG_RD_STATUS, what=f"CHK-MLKEM-MSG-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLKEM-MSG-{tag}")
         ct_kv = await self._mlkem_encaps(ek_ref, None, what=f"CHK-MLKEM-MSG-{tag} KV")
-        await self._mlkem_zeroize(what=f"CHK-MLKEM-MSG-{tag} pre-ref")
+        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-MSG-{tag} pre-ref")
         ct_ref = await self._mlkem_encaps(ek_ref, msg, what=f"CHK-MLKEM-MSG-{tag} ref")
         self._same(ct_kv, ct_ref, chk=f"CHK-MLKEM-MSG-{tag}", what="the KV-message ciphertext")
         self.logger.info(
@@ -661,6 +906,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"KEY_INVALID only (0x{OTBN_ERR_KEY_INVALID:08x})"
         )
         self.logger.info("CHK-OTBN-CLR-%d PASS: ERR_BITS=0x%08x (KEY_INVALID)", tag, errbits)
+        await self._otbn_s1_first(r)
 
         # ABR: every KV read on a shredded block reports a failed read flow.
         legs = (
@@ -697,6 +943,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 name,
                 st,
             )
+            self._obs_clr_valid(tag, name, st)
 
         # D and Z one at a time: deliver one of them again, so the D||Z read
         # can only fail on the other one's KEY_VALID. Then deliver the other one
@@ -722,6 +969,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"the shred, the D||Z KV read reports ERROR={err} (status 0x{st:08x}), "
                 f"expected KV_READ_FAIL={KV_READ_FAIL}: the shred left {other} KEY_VALID set"
             )
+            self._obs_clr_valid(tag, f"only {DEST_NAME[again]}", st)
             await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
             await self._transfer(r, self.handles[r][other_dest], other_dest)
             st_ok, err_ok = await self._kv_read(
@@ -749,6 +997,44 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             )
         # Leave every destination shredded, as the round expects.
         await self._shred(r, MLKEM_SEED_DESTS)
+
+    async def _otbn_s1_first(self, r: int) -> None:
+        """CHK-OTBN-KEY-S1-SHRED: a share-1-first read of the shredded key stops at once."""
+        tag = r + 1
+        live = self.insn_live[r]
+        if live == 0:
+            raise AssertionError(
+                f"CHK-OTBN-KEY-S1-SHRED FAIL: r={tag} INSN_CNT read 0 after the completed "
+                "key-dump run of CHK-OTBN, so INSN_CNT = 0 below would not show a stop"
+            )
+        await self.otbn.load_program(prog=OTBN_KEYDUMP_S1_FIRST_PROG)
+        imem = [await self.otbn._rd(OTBN_IMEM_BASE + i * 4) for i in range(2)]
+        if imem != list(OTBN_KEYDUMP_S1_FIRST_PROG[:2]):
+            raise AssertionError(
+                f"CHK-OTBN-KEY-S1-SHRED FAIL: r={tag} IMEM words 0-1 read "
+                f"[{imem[0]:#010x},{imem[1]:#010x}] after the load, the share-1-first program "
+                f"is [{OTBN_KEYDUMP_S1_FIRST_PROG[0]:#010x},{OTBN_KEYDUMP_S1_FIRST_PROG[1]:#010x}]"
+            )
+        await self.otbn._wr(OTBN_ADDR_ERRBIT, 0)
+        err_pre = await self.otbn.read_errbits()
+        if err_pre != 0:
+            raise AssertionError(
+                f"CHK-OTBN-KEY-S1-SHRED FAIL: r={tag} ERR_BITS reads 0x{err_pre:08x} after "
+                "the clear, so a KEY_INVALID read later would not belong to this run"
+            )
+        await self.otbn.execute()
+        errbits = await self.otbn.read_errbits()
+        insn = await self.otbn._rd(OTBN_ADDR_INSN_CNT) & OTBN_INSN_CNT_MASK
+        line = (
+            f"r={tag} first_read=KEY_S1_L imem01=[{imem[0]:#010x},{imem[1]:#010x}] "
+            f"err_bits_pre=0x{err_pre:x} err_bits=0x{errbits:08x} "
+            f"expect_err_bits=0x{OTBN_ERR_KEY_INVALID:08x} insn_cnt={insn} expect_insn_cnt=0 "
+            f"insn_cnt_after_completed_run={live}"
+        )
+        if errbits != OTBN_ERR_KEY_INVALID or insn != 0:
+            raise AssertionError(f"CHK-OTBN-KEY-S1-SHRED FAIL: {line}")
+        self.logger.info("CHK-OTBN-KEY-S1-SHRED PASS: %s", line)
+        await self.otbn.load_program()
 
     async def _cleared_final(self) -> None:
         # Baseline: kmac_err and ERR_CODE clear after programming and just
@@ -788,22 +1074,277 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self.aes.start_block_no_wait(list(self.walk.aes_pt))
         produced = await self.aes.output_valid_within(_AES_REFUSE_POLLS)
         status = await self.aes._rd(AES_STATUS)
+        input_ready = (status >> AES_STATUS_INPUT_READY) & 1
         assert not produced, (
             "CHK-AES-CLR FAIL: AES produced output with sideload selected and its key "
             f"shredded (STATUS 0x{status:08x})"
         )
+        # INPUT_READY read 1 before the four DATA_IN writes (start_block_no_wait
+        # polls it); it returns to 1 only when the block loads into the cipher.
+        assert input_ready == 0, (
+            f"CHK-AES-CLR FAIL: STATUS 0x{status:08x} input_ready=1 after the four DATA_IN "
+            "writes: the block did not reach the input registers, so the missing output "
+            "does not show a refusal (aes.adoc STATUS.INPUT_READY)"
+        )
         self.logger.info(
             "CHK-AES-CLR PASS: no AES output in %d polls with the key shredded, "
-            "STATUS 0x%08x (output_valid=%d)",
+            "STATUS 0x%08x (output_valid=%d input_ready=%d, input_ready before the "
+            "DATA_IN writes=1)",
             _AES_REFUSE_POLLS,
             status,
             (status >> AES_STATUS_OUTPUT_VALID) & 1,
+            input_ready,
         )
+
+    async def _short_key(self) -> None:
+        """OTBN delivery of a key shorter than the 12-word share width."""
+        n_full = DEST_WORDS[KM_DEST_OTBN]
+        rng = SepSeededRng(self.walk.seed ^ _SHORT_KEY_SALT)
+        n = rng.randrange(1, n_full)
+        key = _distinct_words(rng, n, None)
+        self.logger.info("INFO-XFER-SHORT-KEY n=%d", n)
+        handle = await self.km.key_load(key_words=list(key), dest=KM_DEST_OTBN)
+        bus = _KeyPortWrites(self)
+        bus.start()
+        await self._transfer(ROUNDS, handle, KM_DEST_OTBN)
+        await bus.stop()
+        offsets = bus.port_offsets(_OTBN_KEY_PORT)
+        await self.otbn.execute()
+        errbits = await self.otbn.read_errbits()
+        _, s0, s1, _ = await self.otbn.read_keydump_outputs()
+        got = [a ^ b for a, b in zip(s0, s1)]
+        bad = [i for i in range(n) if got[i] != key[i]]
+        shares = [o for o in offsets if o in OTBN_SHARE_OFFSETS]
+        repeated = sorted({o for o in shares if shares.count(o) > 1})
+        missing = sorted(OTBN_SHARE_OFFSETS - set(shares))
+        line = (
+            f"contract=key_manager/doc/firmware.adoc:1805-1808 n={n} "
+            f"key_match={n - len(bad)}/{n} bad_words={bad} err_bits=0x{errbits:x} "
+            f"share_writes={len(shares)} expect_share_writes={len(OTBN_SHARE_OFFSETS)} "
+            f"repeated={[hex(o) for o in repeated]} missing={[hex(o) for o in missing]} "
+            f"aw_xz_clocks={bus.xz}"
+        )
+        if errbits != 0 or got[:n] != key or repeated or missing or bus.xz:
+            raise AssertionError(f"CHK-XFER-SHORT-KEY FAIL: {line}")
+        self.logger.info("CHK-XFER-SHORT-KEY PASS: %s", line)
+        set_open_value_leg_pass("km_xfer_short_key", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        self.logger.info(
+            "OBS-XFER-PAD n=%d pad_sha=%s nonzero=%s",
+            n,
+            word_digest(got[n:]),
+            [i for i in range(n, n_full) if got[i]],
+        )
+
+    async def _load_flow(self, words: list[int], dest: int) -> int:
+        """CMD_KEY_LOAD, each word written only while ``inbound_full`` reads 0.
+
+        A frame longer than the 16-word inbound FIFO gets SLVERR on overflow
+        (SEP_CTRL.inbound_overflow_resp resets to 0), so the writer waits for room.
+        """
+        seq = self.km.seq_num
+        frame = self.km.build_frame(KM_CMD_KEY_LOAD, seq, [len(words) - 1, dest, *words])
+        for i, word in enumerate(frame):
+            for _ in range(_INBOUND_POLLS):
+                if not (await self.km._status() >> KM_STATUS_INBOUND_FULL) & 1:
+                    break
+                await ClockCycles(cocotb.top.clk_i, _INBOUND_POLL_GAP)
+            else:
+                raise AssertionError(
+                    f"CMD_KEY_LOAD: SEP_STATUS.inbound_full stayed 1 for {_INBOUND_POLLS} "
+                    f"polls at word {i} of {len(frame)}"
+                )
+            if i == len(frame) - 1:
+                await self.km._wr(KM_MBOX_WRITE_SEPARATOR, 1)
+            await self.km._wr(KM_MBOX_WRITE_DATA, word)
+        self.km.seq_num = (self.km.seq_num + 1) & 0xFF
+        rc, arg = await self.km.recv_resp_cmd(KM_CMD_KEY_LOAD, seq)
+        handle = arg & 0xFF
+        if rc != KM_RC_SUCCESS or handle == 0:
+            raise AssertionError(
+                f"precondition FAIL: CMD_KEY_LOAD of {len(words)} words dest=0x{dest:02x} "
+                f"rc={rc} handle=0x{handle:02x}"
+            )
+        await self.km.check_outbound_empty("POST-KEY-LOAD")
+        return handle
+
+    async def _long_key(self) -> None:
+        """OTBN delivery of a key longer than the 12-word share width."""
+        n_full = DEST_WORDS[KM_DEST_OTBN]
+        rng = SepSeededRng(self.walk.seed ^ _LONG_KEY_SALT)
+        n = rng.randrange(n_full + 1, _KEY_WORDS_MAX + 1)
+        head = _distinct_words(rng, n_full, None)
+        tail = []
+        for _ in range(n - n_full):
+            w = rng.getrandbits(32)
+            while w == 0 or w in head:
+                w = rng.getrandbits(32)
+            tail.append(w)
+        key = head + tail
+        self.logger.info("INFO-XFER-LONG-KEY n=%d key_sha=%s", n, word_digest(key))
+        handle = await self._load_flow(key, KM_DEST_OTBN)
+        bus = _KeyPortWrites(self)
+        bus.start()
+        rc, arg = await self.km.key_transfer(handle=handle, dest=KM_DEST_OTBN)
+        await bus.stop()
+        await self.otbn.execute()
+        errbits = await self.otbn.read_errbits()
+        _, s0, s1, _ = await self.otbn.read_keydump_outputs()
+        got = [a ^ b for a, b in zip(s0, s1)]
+        exp = key[:n_full]
+        bad = diff_words(got, exp) if len(got) == len(exp) else list(range(n_full))
+        counts = bus.counts()
+        shares = [o for o in bus.port_offsets(_OTBN_KEY_PORT) if o in OTBN_SHARE_OFFSETS]
+        repeated = sorted({o for o in shares if shares.count(o) > 1})
+        missing = sorted(OTBN_SHARE_OFFSETS - set(shares))
+        others = {
+            _KEY_PORT_NAME[p]: counts[p] for p in range(len(_KEY_PORT_NAME)) if p != _OTBN_KEY_PORT
+        }
+        live_counts, live_xz = self.round1_aw
+        silent = [
+            name
+            for p, name in enumerate(_KEY_PORT_NAME)
+            if p >= len(live_counts) or not live_counts[p]
+        ]
+        line = (
+            f"contract=key_manager/doc/firmware.adoc:1810-1811,1945-1947 n={n} rc={rc} "
+            f"arg=0x{arg:08x} key_match={n_full - len(bad)}/{n_full} bad_words={bad} "
+            f"err_bits=0x{errbits:x} share_writes={len(shares)} "
+            f"expect_share_writes={len(OTBN_SHARE_OFFSETS)} "
+            f"repeated={[hex(o) for o in repeated]} missing={[hex(o) for o in missing]} "
+            f"aw_other_ports={others} aw_xz_clocks={bus.xz} "
+            f"round1_aw_counts={dict(zip(_KEY_PORT_NAME, live_counts))} "
+            f"round1_aw_xz_clocks={live_xz} round1_silent_ports={silent}"
+        )
+        if (
+            rc != KM_RC_SUCCESS
+            or errbits != 0
+            or bad
+            or repeated
+            or missing
+            or any(others.values())
+            or bus.xz
+            or silent
+            or live_xz
+        ):
+            raise AssertionError(f"CHK-XFER-LONG-KEY FAIL: {line}")
+        self.logger.info("CHK-XFER-LONG-KEY PASS: %s", line)
+
+    async def _cmd_raw(self, cmd_id: int, payload: list[int]) -> tuple[int, int | None]:
+        """Send one command; return (code, argument or None when the frame has none)."""
+        seq = await self.km.send_command(cmd_id, payload)
+        words = await self.km.recv_frame()
+        resp_id = (words[0] >> 8) & 0xFF
+        plen = (words[0] >> 16) & 0xFF
+        if resp_id != KM_RESP_CMD or plen < 3:
+            raise AssertionError(
+                f"command 0x{cmd_id:02x}: expected RESP_CMD with 3 or more payload words, "
+                f"got frame {[hex(w) for w in words]}"
+            )
+        if (words[1] & 0xFF) != seq or (words[2] & 0xFF) != cmd_id:
+            raise AssertionError(
+                f"command 0x{cmd_id:02x} seq {seq}: RESP_CMD echoes seq {words[1] & 0xFF} "
+                f"id 0x{words[2] & 0xFF:02x}"
+            )
+        raw = words[3] & 0xFF
+        code = raw - 256 if raw >= 128 else raw
+        arg = words[4] if plen >= 4 else None
+        await self.km.check_outbound_empty(f"POST-CMD-0x{cmd_id:02x}")
+        return code, arg
+
+    async def _aes_sideload_ct(self) -> list[int]:
+        await self.aes.configure_ecb_enc_256(sideload=True)
+        await self.aes.trigger_prng_reseed()
+        return await self.aes.run_ecb_block(list(self.walk.aes_pt))
+
+    async def _refuse_keep(self) -> None:
+        """CHK-REFUSE-KEEP: a transfer that names one disallowed engine writes nothing."""
+        k1 = self.walk.keys[0]
+        rng = SepSeededRng(self.walk.seed ^ _REFUSE_SALT)
+        k2 = []
+        for i in range(DEST_WORDS[KM_DEST_AES]):
+            w = rng.getrandbits(32)
+            while w in (0, k1[KM_DEST_AES][i], k1[KM_DEST_HMAC][i]):
+                w = rng.getrandbits(32)
+            k2.append(w)
+        pt, msg = self.walk.aes_pt, self.walk.hmac_msg
+        aes_k1 = aes256_ecb_encrypt_words(k1[KM_DEST_AES], pt)
+        aes_k2 = aes256_ecb_encrypt_words(k2, pt)
+        hmac_k1 = hmac_sha256_words(k1[KM_DEST_HMAC], msg)
+        hmac_k2 = hmac_sha256_words(k2, msg)
+        assert aes_k1 != aes_k2 and hmac_k1 != hmac_k2, (
+            "test construction error: the K2 goldens equal the K1 goldens"
+        )
+        allowed = KM_DEST_AES | KM_DEST_HMAC
+        mask = allowed | KM_DEST_OTBN
+        handle = await self.km.key_load(key_words=list(k2), dest=allowed)
+
+        valid_pre = await self._km_valid()
+        bus = _KeyPortWrites(self)
+        bus.start()
+        rc, arg = await self._cmd_raw(KM_CMD_KEY_TRANSFER, [handle, mask])
+        await bus.stop()
+        valid_post = await self._km_valid()
+        ct = await self._aes_sideload_ct()
+        digest = await self.hmac.run_keyed_mac(list(msg))
+        await self.otbn.write_dmem(OTBN_DMEM_RESULT_LO, ~k1[KM_DEST_OTBN][0])
+        await self.otbn.execute()
+        errbits = await self.otbn.read_errbits()
+        key, _, _, _ = await self.otbn.read_keydump_outputs()
+        line = (
+            f"contract=key_manager/doc/firmware.adoc:497-500,908 dest_valid=0x{allowed:02x} "
+            f"mask=0x{mask:02x} rc={rc} expect_rc={KM_RC_FAILURE} "
+            f"arg={'none' if arg is None else f'0x{arg:08x}'} expect_arg=none "
+            f"aw_counts={dict(zip(_KEY_PORT_NAME, bus.counts()))} aw_xz_clocks={bus.xz} "
+            f"km_valid_pre=0x{valid_pre:02x} km_valid_post=0x{valid_post:02x} "
+            f"aes_k1={ct == aes_k1} hmac_k1={digest == hmac_k1} otbn_err_bits=0x{errbits:x} "
+            f"otbn_k1={key == k1[KM_DEST_OTBN]}"
+        )
+        if (
+            rc != KM_RC_FAILURE
+            or arg is not None
+            or bus.writes
+            or bus.xz
+            or valid_post != valid_pre
+            or ct != aes_k1
+            or digest != hmac_k1
+            or errbits != 0
+            or key != k1[KM_DEST_OTBN]
+        ):
+            raise AssertionError(f"CHK-REFUSE-KEEP FAIL: refused transfer: {line}")
+
+        # The same handle with only the permitted engines is delivered, so the
+        # refusal above belongs to OTBN and the tap sees the AES and HMAC ports.
+        bus.start()
+        rc2, arg2 = await self._cmd_raw(KM_CMD_KEY_TRANSFER, [handle, allowed])
+        await bus.stop()
+        ct2 = await self._aes_sideload_ct()
+        digest2 = await self.hmac.run_keyed_mac(list(msg))
+        counts = bus.counts()
+        live = (_AES_KEY_PORT, _HMAC_KEY_PORT)
+        line2 = (
+            f"mask=0x{allowed:02x} rc={rc2} arg={'none' if arg2 is None else f'0x{arg2:08x}'} "
+            f"aw_counts={dict(zip(_KEY_PORT_NAME, counts))} aw_xz_clocks={bus.xz} "
+            f"aes_k2={ct2 == aes_k2} hmac_k2={digest2 == hmac_k2}"
+        )
+        if (
+            rc2 != KM_RC_SUCCESS
+            or any(counts[p] == 0 for p in live)
+            or any(c for p, c in enumerate(counts) if p not in live)
+            or bus.xz
+            or ct2 != aes_k2
+            or digest2 != hmac_k2
+        ):
+            raise AssertionError(f"CHK-REFUSE-KEEP FAIL: permitted transfer: {line2}")
+        self.logger.info("CHK-REFUSE-KEEP PASS: refused: %s; permitted: %s", line, line2)
 
     # --------------------------------------------------------------- main --
     async def run_scenario(self) -> None:
         self.walk = SepKmShareWalkCfg(self.random_seed())
         self.handles: list[dict[int, int]] = [{} for _ in range(ROUNDS)]
+        self.insn_live = [0] * ROUNDS
+        self.round1_aw: tuple[list[int], int] = ([], 0)
         self.logger.info("RANDCFG: %s", self.walk.summary())
 
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD
@@ -847,6 +1388,8 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         for r in range(ROUNDS):
             await self._load_all(r)
             outputs.append(await self._consume(r))
+            if r == 0:
+                await self._refuse_keep()
             await self._shred(r)
             await self._cleared(r)
 
@@ -861,6 +1404,11 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"{n}[0]=0x{outputs[0][n][0]:08x}/0x{outputs[1][n][0]:08x}" for n in ABR_OUTPUTS
             ),
         )
+
+        open_graded_window(TEST, self.logger)
+        await self._short_key()
+        await self._long_key()
+        close_graded_window(self.logger)
 
         await self._cleared_final()
 

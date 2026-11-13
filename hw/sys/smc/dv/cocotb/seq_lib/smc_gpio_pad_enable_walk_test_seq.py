@@ -13,16 +13,17 @@ lsio_enable [25] and pad2core [31] are R. DATA_CTRL_ENABLE: use_reg_core2pad
 interface_enable selects the register values to drive the pad.
 
 Every GPIO interface except the pads the bench drives itself (11, 27, 28, 37,
-38, 51, 55, 56, 57) is walked, 56 in all, phase by phase: field readback, TX
+38, 51, 55, 56, 57) is walked, 58 in all, phase by phase: field readback, TX
 output and enable, direction enables, RX capture into pad2core from a bench
 pad drive, interface_enable clear, the use_reg_* overrides, and the restore.
 Interface p drives pad p, observed through `tb_core2pad_o`,
 `tb_core2pad_en_o` and `tb_pad2core_en_o`. A hardware LSIO request outranks
 interface_enable and lsio_disable gates it, so every TX, direction, RX and
-use_reg_* word sets lsio_disable. The RX drive leaves out pads 53 and 61, whose
-inputs feed the isolate request and the cool-reset input (SF-023). With
-interface_enable and every use_reg_* clear the pad values are logged, not
-compared (SF-022 is open).
+use_reg_* word sets lsio_disable. The RX drive leaves out pads 53 and 63, whose
+inputs feed the isolate request and the cool-reset input; which source raises
+each pad's LSIO request is open. With interface_enable and every use_reg_* clear
+the pad values are logged, not compared; what drives the pads while
+interface_enable is clear is open.
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_gpio_vip_utils import drive_gpio_pad
 from .smc_pad_table import gpio_pad_count
@@ -43,21 +44,20 @@ PROBE_BOUND_CYCLES = 64
 #: DATA_CTRL reads a pad2core poll issues before it fails.
 PAD2CORE_BOUND_READS = 8
 
-# gpio_intf.adoc DATA_CTRL.
-CORE2PAD = 1 << 0
-RX_TX_SHIFT = 4
-IF_ENABLE = 1 << 16
-LSIO_SELECT = 1 << 17
-IRQ_ENABLE = 1 << 18
-LSIO_DISABLE = 1 << 19
-IRQ_TYPE = 0b11 << 20
-LSIO_ENABLE = 1 << 25
-PAD2CORE = 1 << 31
-DATA_CTRL_RW = 0x003F_0031
-# gpio_intf.adoc DATA_CTRL_ENABLE.
-USE_REG_CORE2PAD = 1 << 0
-USE_REG_TX = 1 << 4
-USE_REG_RX = 1 << 5
+CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
+RX_TX = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bm")
+RX_TX_SHIFT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
+IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
+LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+IRQ_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bm")
+LSIO_DISABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
+IRQ_TYPE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bm")
+LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
+PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
+DATA_CTRL_RW = CORE2PAD | RX_TX | IF_ENABLE | LSIO_SELECT | IRQ_ENABLE | LSIO_DISABLE | IRQ_TYPE
+USE_REG_CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm")
+USE_REG_TX = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm")
+USE_REG_RX = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bm")
 DATA_CTRL_ENABLE_RW = USE_REG_RX | USE_REG_TX | USE_REG_CORE2PAD
 
 
@@ -67,10 +67,10 @@ def _dir(rx_tx: int) -> int:
 
 #: Pads the bench drives itself under the default plusargs.
 EXCLUDED_PADS = (11, 27, 28, 37, 38, 51, 55, 56, 57)
-WALKED_COUNT = 56
+WALKED_COUNT = 58
 #: Walked pads the RX leg does not drive: isolate request and cool-reset input.
-RX_SKIPPED_PADS = (53, 61)
-RX_COUNT = 54
+RX_SKIPPED_PADS = (53, 63)
+RX_COUNT = 56
 #: S2 words, each written and read back on every walked pad.
 FIELD_WORDS = (
     DATA_CTRL_RW,
@@ -126,15 +126,15 @@ _PROBES = {"out": "tb_core2pad_o", "en": "tb_core2pad_en_o", "ie": "tb_pad2core_
 
 
 def _data_ctrl(pad: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
 
 
 def _data_ctrl_enable(pad: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
 
 
 class smc_gpio_pad_enable_walk_test_seq(SmcCsrSeq):
-    """Walk DATA_CTRL / DATA_CTRL_ENABLE on 56 pads and observe each pad's probes."""
+    """Walk DATA_CTRL / DATA_CTRL_ENABLE on 58 pads and observe each pad's probes."""
 
     def __init__(self, name: str = "smc_gpio_pad_enable_walk_test_seq") -> None:
         super().__init__(name)
@@ -402,7 +402,8 @@ class smc_gpio_pad_enable_walk_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-GPIO-IFACE-CLEAR",
             f"{len(self.walked)} pads from lsio_disable start, not following register {len(self.walked)}/{WALKED_COUNT}, "
-            "values=<logged, LINKED-ISSUE SF-022> out/oe/ie per write (DC=0, DCE=0, "
+            "values=<logged, LINKED-ISSUE: what drives the pads while interface_enable is clear> "
+            "out/oe/ie per write (DC=0, DCE=0, "
             "01c0, 01c1, 01c0, 00c0, 01c0, lsio_disable 1, 0): " + " ".join(logged),
         )
 

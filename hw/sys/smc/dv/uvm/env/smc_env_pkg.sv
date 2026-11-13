@@ -11,7 +11,8 @@
 //
 // Include order is load-bearing: types first (every class reads them), then
 // the cfgs (the env cfg derives from the test cfg), the virtual sequencer,
-// the reference models, the scoreboard, the env last.
+// the SEP_IN reset monitor, the reference models, the scoreboard, the SEP_IN
+// history, the env last.
 
 `timescale 1ns / 1ps
 
@@ -28,6 +29,7 @@ package smc_env_pkg;
   `include "smc_test_cfg.svh"
   `include "smc_env_cfg.svh"
   `include "smc_virtual_sequencer.svh"
+  `include "smc_sep_in_reset_monitor.svh"
   `include "smc_scratch_csr_ref_model.svh"
   `include "smc_default_reg_ref_model.svh"
   `include "smc_lock_csr_ref_model.svh"
@@ -38,6 +40,7 @@ package smc_env_pkg;
   `include "smc_fabric_reg_ref_model.svh"
   `include "smc_mailbox_fifo_ref_model.svh"
   `include "smc_scoreboard.svh"
+  `include "smc_sep_in_history.svh"
   `include "smc_env.svh"
 
 endpackage : smc_env_pkg

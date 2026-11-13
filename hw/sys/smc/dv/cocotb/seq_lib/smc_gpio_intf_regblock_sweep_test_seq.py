@@ -43,16 +43,16 @@ from .smc_addr_map import gpio_intf_u32
 from .smc_regblock_field_sweep_utils import RegInstance, SmcRegblockFieldSweepSeq, reg_instances
 
 _DATA_CTRL_ENABLE = (
-    "gpio_intf/DATA_CTRL_ENABLE",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL_ENABLE",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
 )
 _ACCESS_FILTER = (
-    "gpio_intf/ACCESS_FILTER",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM",
-    "GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/ACCESS_FILTER",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
 )
 
 _WRITE_FILTER_ENABLE = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__WRITE_FILTER_ENABLE_bm")
@@ -270,7 +270,7 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         cocotb.log.info(
             "CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY: %d/%d AWPROT=%d writes DECERR, %d/%d "
             "readbacks == armed word (write_filter_enable still 1, read with ARPROT=%d); "
-            "SF-016 observed: %s accesses between the armed write and the AWPROT=%d write",
+            "observed: %s accesses between the armed write and the AWPROT=%d write",
             self.write_denials,
             instances,
             _PROT_ALL_ONES,

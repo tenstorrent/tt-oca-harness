@@ -13,7 +13,12 @@
  *   CHK-PIC-CLAIM  : the ISR claims the fault source
  *   CHK-PIC-FAULT  : the secure-disable fault bit is set
  *   CHK-PIC-MASK   : after masking, the ISR does not re-enter, and the source
- *                    is still pending at both ends of the quiet window
+ *                    reads pending on every sample of the quiet window
+ *   CHK-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
+ *                    masking it, the ISR enters at least twice in a fixed
+ *                    window, and source 40 is still pending after the window
+ *                    (doc/programmer/src/sep-programming.adoc:235-237 "Stays
+ *                    asserted until reset ... an unmasked handler re-enters")
  */
 
 #include <stdint.h>
@@ -31,17 +36,25 @@
 #define ISR_WAIT_ITERS 200000
 #define STORM_CHECK_ITERS 4096
 #define PRESENT_TRIES 8
+#define REENTRY_CAP 4u
 
 static volatile uint32_t g_isr_count;
 static volatile uint32_t g_claim_id;
 static volatile uint32_t g_fault;
+static volatile uint32_t g_no_mask;
+static volatile uint32_t g_cap_base;
 
 void __attribute__((interrupt("machine"))) token_fault_isr(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
     g_claim_id = (meihap >> 2) & 0xFFu;
     g_fault = READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
-    pic_disable_source(PIC_TOKEN_FAULT);
+    /* The level cannot be cleared, so the handler masks the source after at
+     * most REENTRY_CAP unmasked entries; this keeps a storm from stalling the
+     * CPU. */
+    if (!g_no_mask || g_isr_count - g_cap_base >= REENTRY_CAP) {
+        pic_disable_source(PIC_TOKEN_FAULT);
+    }
     g_isr_count++;
     __asm__ volatile("fence" ::: "memory");
 }
@@ -106,14 +119,13 @@ int main(void) {
         errors++;
     } else {
         uint32_t before = g_isr_count;
-        /* The fault clears only on reset. Sample the pending state at both
-         * ends of the quiet window so a request that drops during it fails. */
-        uint32_t pending_before = pic_source_pending(PIC_TOKEN_FAULT);
+        /* The fault clears only on reset, so every sample of the quiet
+         * window reads the source pending. */
+        uint32_t not_pending = 0u;
         for (i = 0; i < STORM_CHECK_ITERS; i++) {
-            __asm__ volatile("nop");
+            not_pending += pic_source_pending(PIC_TOKEN_FAULT) ^ 1u;
         }
-        uint32_t pending_after = pic_source_pending(PIC_TOKEN_FAULT);
-        if (!pending_before || !pending_after) {
+        if (not_pending != 0u) {
             sep_mbx_puts("FAIL: PIC 40 not requesting across the mask window\n");
             errors++;
         } else if (g_isr_count != before) {
@@ -123,6 +135,28 @@ int main(void) {
             sep_mbx_puts("CHK-PIC-MASK PASS: source 40 still requesting, meie[40] "
                          "mask stopped re-entry\n");
         }
+
+        g_cap_base = g_isr_count;
+        g_no_mask = 1u;
+        __asm__ volatile("fence" ::: "memory");
+        pic_enable_source(PIC_TOKEN_FAULT);
+        for (i = 0; i < STORM_CHECK_ITERS; i++) {
+            __asm__ volatile("nop");
+        }
+        pic_disable_source(PIC_TOKEN_FAULT);
+        uint32_t entries = g_isr_count - g_cap_base;
+        uint32_t pending = pic_source_pending(PIC_TOKEN_FAULT);
+        g_no_mask = 0u;
+        if (entries < 2u || pending != 1u) {
+            sep_mbx_puts("FAIL: CHK-PIC-LEVEL-REENTRY entries=");
+            errors++;
+        } else {
+            sep_mbx_puts("CHK-PIC-LEVEL-REENTRY PASS: entries=");
+        }
+        sep_mbx_puthex(entries);
+        sep_mbx_puts(" min=0x00000002 pending=");
+        sep_mbx_puthex(pending);
+        sep_mbx_puts(" expect_pending=0x00000001\n");
     }
 
     return errors;

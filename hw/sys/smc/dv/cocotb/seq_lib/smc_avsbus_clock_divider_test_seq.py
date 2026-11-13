@@ -10,10 +10,17 @@ keeping the hardware default of 4 by matching the reset value of the resynced
 copy the divider compares against; the field takes a minimum of 2.
 
 This leaf writes a divisor, measures the period of `avs_clk` at the pad, and
-requires the measured period to scale with the divisor. The duty-cycle
+requires the measured period to scale with the divisor. Those writes leave
+the numerator field at its reset 0, which `architecture.adoc` "Clock
+Generation and Management" states "is treated as 1 and gives a high pulse of
+one source-clock cycle", so the high time of each divided clock is required
+to be one `clk_ref_i` cycle. The duty-cycle
 numerator is then changed on its own and the
 high fraction of the period measured, because the divider compares the two
-settings separately and a change to either has to take effect.
+settings separately and a change to either has to take effect. An odd
+divisor with the 50% numerator follows: `interface.adoc` states "a 50% duty
+cycle is only reachable with an even divider", so its high time must be a
+whole number of source cycles on either side of the half period.
 
 `AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS` is set around each change, which is the
 order the register documentation prescribes: gate the clocks entering the mux,
@@ -60,6 +67,8 @@ QUARTER_NUMERATOR = 0x40
 DEFAULT_NUMERATOR = 0x80
 #: The divisor the RDL says is assumed for any written value below it.
 MINIMUM_DIVISOR = 2
+#: An odd divisor, on which the 50% numerator cannot give a half-period high time.
+ODD_DIVISOR = 5
 #: Edges timed per measurement. Several periods average out the one source
 #: cycle the divider may take either way on an odd divisor.
 MEASURE_PERIODS = 8
@@ -112,12 +121,17 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
         assert span > 0, f"{label}: {MEASURE_PERIODS} AVS clock periods measured 0 ns"
         return span / MEASURE_PERIODS, high_ns / span
 
-    async def _program(self, label: str, base: int, divisor: int, numerator: int) -> int:
-        """Write one divider setting the way the register documentation prescribes."""
-        want = base & ~(DIVIDER_BM | NUMERATOR_BM | PREMUX_OFF_BM)
+    async def _program(self, label: str, held: int, divisor: int, numerator: int) -> int:
+        """Write one divider setting the way the register documentation prescribes.
+
+        ``held`` is the AVS_CFG_1 value the register holds on entry, so the
+        gating write changes nothing but the gate bit and only the write in
+        between moves the divider fields.
+        """
+        want = held & ~(DIVIDER_BM | NUMERATOR_BM | PREMUX_OFF_BM)
         want |= (divisor << DIVIDER_BP) & DIVIDER_BM
         want |= (numerator << NUMERATOR_BP) & NUMERATOR_BM
-        await self.csr_write(f"AVS_CFG_1_PREMUX_OFF_{label}", AVS_CFG_1, base | PREMUX_OFF_BM)
+        await self.csr_write(f"AVS_CFG_1_PREMUX_OFF_{label}", AVS_CFG_1, held | PREMUX_OFF_BM)
         await self.csr_write(f"AVS_CFG_1_{label}", AVS_CFG_1, want | PREMUX_OFF_BM)
         await self.csr_write(f"AVS_CFG_1_PREMUX_ON_{label}", AVS_CFG_1, want)
         await self.csr_read(f"AVS_CFG_1_{label}_RB", AVS_CFG_1, expected=want)
@@ -136,6 +150,10 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
             f"between commands and a period measured across the gap would be meaningless"
         )
         numerator = (cfg1 & NUMERATOR_BM) >> NUMERATOR_BP
+        assert numerator == 0, (
+            f"CLK_DIVIDER_DUTY_CYCLE_NUMERATOR reads 0x{numerator:02x} before any write; the "
+            f"divisor-only legs below rely on its reset value of 0"
+        )
 
         # The reset divisor, measured before anything is written, is what the
         # written divisors are judged against.
@@ -146,10 +164,16 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
             100 * base_duty,
         )
 
+        # One source-clock cycle, from the reset divisor's period: the divider
+        # runs on clk_ref_i divided by 4 out of reset (architecture.adoc).
+        source_ns = base_period / DEFAULT_DIVISOR
+
+        held = cfg1
         measured: list[tuple[int, float]] = []
+        high_cycles: list[tuple[int, float]] = []
         for divisor in DIVISORS:
-            await self._program(f"DIV{divisor}", cfg1, divisor, numerator)
-            period, _ = await self._measure(f"DIV{divisor}")
+            held = await self._program(f"DIV{divisor}", held, divisor, numerator)
+            period, duty = await self._measure(f"DIV{divisor}")
             want = base_period * divisor / DEFAULT_DIVISOR
             ratio = period / want
             assert abs(ratio - 1.0) <= RATIO_TOLERANCE, (
@@ -158,6 +182,13 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
                 f"{base_period:.2f} ns predicts {want:.2f} ns (off by {100 * (ratio - 1):.1f}%)"
             )
             measured.append((divisor, period))
+            high = duty * period / source_ns
+            assert abs(high - 1.0) <= RATIO_TOLERANCE, (
+                f"divisor {divisor} written with the numerator at its reset 0: the AVS clock is "
+                f"high for {high:.2f} source cycles ({100 * duty:.1f}% of {period:.2f} ns), not "
+                f"the one source-clock cycle a numerator of 0 gives"
+            )
+            high_cycles.append((divisor, high))
         cocotb.log.info(
             "CHK-AVS-CLKDIV-PERIOD: each written divisor reached the AVS clock at the pad: "
             "%s, against %.2f ns at the reset divisor of %d",
@@ -165,13 +196,19 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
             base_period,
             DEFAULT_DIVISOR,
         )
+        cocotb.log.info(
+            "CHK-AVS-DIVIDER-ALONE-PULSE: CLK_DIVIDER_VALUE written with the numerator left at "
+            "its reset 0 gave a high pulse of one source cycle (%.2f ns) at each divisor: %s",
+            source_ns,
+            ", ".join(f"{d} -> {h:.2f} cycles" for d, h in high_cycles),
+        )
 
         # Only the numerator changes now. The divider holds the previous
         # divisor and compares the two settings separately, so this leg moves
         # the duty cycle without moving the period.
         held_divisor = DIVISORS[-1]
         held_period = measured[-1][1]
-        await self._program("DUTY", cfg1, held_divisor, QUARTER_NUMERATOR)
+        held = await self._program("DUTY", held, held_divisor, QUARTER_NUMERATOR)
         duty_period, duty = await self._measure("DUTY")
         want_duty = QUARTER_NUMERATOR / 256
         assert abs(duty - want_duty) <= RATIO_TOLERANCE, (
@@ -190,10 +227,41 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
             duty_period,
         )
 
+        # An odd divisor with the 50% numerator. Half of five source cycles is
+        # not a whole cycle, so the high time has to land on a whole number of
+        # cycles on one side of it.
+        held = await self._program("ODD", held, ODD_DIVISOR, DEFAULT_NUMERATOR)
+        odd_period, odd_duty = await self._measure("ODD")
+        want_odd = base_period * ODD_DIVISOR / DEFAULT_DIVISOR
+        assert abs(odd_period / want_odd - 1.0) <= RATIO_TOLERANCE, (
+            f"divisor {ODD_DIVISOR}: the AVS clock period measured {odd_period:.2f} ns against "
+            f"{want_odd:.2f} ns predicted from the reset divisor"
+        )
+        odd_high = odd_duty * odd_period / source_ns
+        whole = round(odd_high)
+        assert abs(odd_high - whole) <= RATIO_TOLERANCE and whole in (
+            ODD_DIVISOR // 2,
+            ODD_DIVISOR // 2 + 1,
+        ), (
+            f"divisor {ODD_DIVISOR} with numerator 0x{DEFAULT_NUMERATOR:02x}: the AVS clock is "
+            f"high for {odd_high:.2f} source cycles; a whole {ODD_DIVISOR // 2} or "
+            f"{ODD_DIVISOR // 2 + 1} is the closest fit to a 50% duty cycle"
+        )
+        cocotb.log.info(
+            "CHK-AVS-ODD-DIVIDER-DUTY: divisor %d with numerator 0x%02x gave a %.2f ns period "
+            "with %.2f source cycles high (%.1f%%), a whole number of cycles rather than the "
+            "half period an even divisor reaches",
+            ODD_DIVISOR,
+            DEFAULT_NUMERATOR,
+            odd_period,
+            odd_high,
+            100 * odd_duty,
+        )
+
         # A divisor below the minimum. The RDL says 2 is assumed for anything
         # lower, so writing the field's own reset value of 0 does not return
         # the clock to its reset rate: it halves the source instead.
-        await self._program("CLAMP", cfg1, 0, DEFAULT_NUMERATOR)
+        held = await self._program("CLAMP", held, 0, DEFAULT_NUMERATOR)
         clamped, _ = await self._measure("CLAMP")
         want_clamped = base_period * MINIMUM_DIVISOR / DEFAULT_DIVISOR
         assert abs(clamped / want_clamped - 1.0) <= RATIO_TOLERANCE, (
@@ -213,7 +281,7 @@ class smc_avsbus_clock_divider_test_seq(SmcCsrSeq):
         # Back to the reset rate. It is reached by writing the hardware
         # defaults the RDL names, not by writing the register's reset value:
         # the divider compares what it is given, and 0 is below its minimum.
-        await self._program("RESTORE", cfg1, DEFAULT_DIVISOR, DEFAULT_NUMERATOR)
+        await self._program("RESTORE", held, DEFAULT_DIVISOR, DEFAULT_NUMERATOR)
         restored, restored_duty = await self._measure("RESTORE")
         assert abs(restored / base_period - 1.0) <= RATIO_TOLERANCE, (
             f"the AVS clock did not return to its reset period: {restored:.2f} ns against "

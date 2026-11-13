@@ -259,11 +259,9 @@ boot flow. Addresses are as seen by the SEP CPU.
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
 execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Zeroed at [S15]
 only when `SRAM_SCRUB_BYTES` is nonzero (default 0); the manifest loader zeroes it between SPI
-slot attempts (<<sec:retry>>). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
-the engine re-reads for every beat, and the CPU rewrites that word immediately before each
-fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
-(`SEP_SRAM_USABLE_SIZE`). The ROM fills through a copy, so a fill needs a real source
-address; ROM `.rodata` cannot serve as one, because the engine cannot read the ROM aperture.
+slot attempts (<<sec:retry>>). Every clear is a secure DMA zero fill, which writes zeros
+without reading memory, so all 256 KiB are available to the manifest body, the payload and
+BL1's permitted load span.
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -284,7 +282,7 @@ program.
 |SEP efuse map |`0x10930000` |1 KiB |Fuse shadow registers; see <<tbl:fuse_fields>>.
 |AXI-Lite mailboxes |`0x10A00000` |64 KiB |Inbound/outbound mailbox pairs; not used by BL0
 boot decisions.
-|Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_n`).
+|Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_n`).
 |OpenTitan SPI host |`0x10B00000` |— |Boot-flash transport option A.
 |XIP flash controller |SEP external region `0x20000000` |— |Boot-flash transport option B
 (adopter-defined controller registers).
@@ -715,6 +713,16 @@ length |`DMA_TIMEOUT` (WARN) |the transfer is aborted and returns the DMA error
 hash fails
 |===
 
+A secure-DMA transfer starts only from an idle engine whose DONE and ERROR flags have been
+cleared and read back clear, so a flag left by an earlier transfer cannot be taken for this
+one's outcome. It succeeds only when STATUS shows DONE, not BUSY and not ERROR, and
+`ERROR_CODE` reads zero, on two independent evaluations of one fresh read. A zero fill
+(`sep_dma_zero()`, CONTROL.OPCODE 4) takes whole aligned words inside one of SEP SRAM, SMC
+SRAM or ICCM. It sets the engine's enabled memory range, which bounds every zero-fill write,
+to the whole of that region, and reads back the programmed destination, length, chunk size,
+width, destination increment and range before it starts the engine. The range is left as
+the last fill set it, unlocked, and BL1 inherits it.
+
 The remaining waits are bounded too and fail through their callers' error paths: the OpenTitan
 SPI host polls, including its secure-DMA drain; the HMAC completion wait; the AES, OTBN and
 entropy-source waits; and the MBIST-done wait in `vector.S`. Either way, a stalled block becomes
@@ -750,14 +758,17 @@ with a PLL driver overrides it through `OCAH_FW_OVERLAY_SOURCES_sep`.
 |[S13] peripheral reset |OCAH-specific peripheral/bus reset sequencing.
 |[S14] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
 the NIST reference digest. See requirement below.
-|[S15] SRAM clear |The first `SRAM_SCRUB_BYTES` of SEP SRAM (`0x10000000`, 256 KiB) zeroed.
-The default is 0, so nothing is cleared here; the manifest loader zeroes SRAM between SPI
-slot attempts (<<sec:retry>>).
+|[S15] SRAM clear |The first `SRAM_SCRUB_BYTES` of SEP SRAM (`0x10000000`, 256 KiB) zeroed
+with one secure DMA zero fill, then its first, middle and last words read back as zero; a
+failure halts the boot. `SRAM_SCRUB_BYTES` must be a multiple of 4. The default is 0, so
+nothing is cleared here; the manifest loader zeroes SRAM between SPI slot attempts
+(<<sec:retry>>).
 |[S16] ICCM clear |By default nothing is cleared here. For a BL1 that lands in ICCM, the BL1
 copy writes its words with valid ECC and the ROM zeroes a pad past its end at hand-off; a BL1
 in SRAM leaves ICCM untouched. `ROM_ICCM_CLEAR_FULL=1` zeroes all of ICCM here instead
 (base and size are build-time parameters), clearing power-up residue too;
-`ROM_ICCM_CLEAR_ENABLE=0` skips both.
+`ROM_ICCM_CLEAR_ENABLE=0` skips both. Both clears are secure DMA zero fills; a failed full
+clear halts the boot, and a failed pad stops the hand-off.
 |[S17] ROM self-hash |Embedded hash verified by recompute over the ROM region, then
 enrolled in soft measurement slot 0 (<<sec:boot_measurement>>). Fatal on mismatch (`0xF005`).
 Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
@@ -2941,6 +2952,11 @@ hand-off — those mutate state, the check does not.
 clean state: the staged SRAM region is zeroed (no partially validated bytes survive into the
 next attempt) and the flash transport is re-initialized against the backup bank (XIP:
 backup configuration TLV; OpenTitan: controller re-bring-up).
+
+The zeroing is one secure DMA zero fill over all of SEP SRAM, followed by a read-back of its
+first, middle and last words. If it fails the ROM prints `SRAM_RETRY_CLR_FAIL` and stages no
+further slot: the search ends with `OCA_BOOT_ERR_DMA` through the same failure path as
+exhausting every slot, which reports `MANIFEST_LOAD_FAILED`, and the boot halts.
 
 The one-shot, state-mutating stages (demotion, fuse locks, measurement, hand-off) sit
 strictly *after* the retry loop (ordering invariant 3, <<sec:overview>>): a slot failure can

@@ -232,25 +232,33 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
             f"both patterns, enables held, every response OKAY; readbacks {' '.join(reads)}",
         )
 
-        # S6: reserved bits, printed and not compared.
+        # S6: reserved bits read 0 after a write of ones and the write answers OKAY.
         notes: list[str] = []
         for name, mask in (("23_14", RESERVED_LO_BM), ("63_30", RESERVED_HI_BM)):
             resp = await self._wr(f"RSVD_{name}", BASE | mask, tolerate_error=True)
+            assert resp == OKAY, (
+                f"CHK-CGC-RESERVED-BITS FAIL: ones to bits {name.replace('_', ':')} answered "
+                f"{resp}, want OKAY"
+            )
             got = await self._rd(f"RSVD_{name}_RB")
             assert got & DEFINED_BM == BASE, (
                 f"reserved write {name}: defined fields read 0x{got & DEFINED_BM:016x}, "
                 f"held 0x{BASE:016x}"
             )
+            assert got & _RESERVED_BM == 0, (
+                f"CHK-CGC-RESERVED-BITS FAIL: reserved bits read "
+                f"0x{got & _RESERVED_BM:016x} after ones to bits {name.replace('_', ':')}, want 0"
+            )
             notes.append(
                 f"ones to bits {name.replace('_', ':')} response {resp} "
-                f"readback 0x{got:016x} reserved bits 0x{got & ~DEFINED_BM & (2**64 - 1):016x}"
+                f"readback 0x{got:016x} reserved bits 0x{got & _RESERVED_BM:016x}"
             )
             await self._restore(f"RSVD_{name}")
         self._stamp("S6")
         self._chk(
             "CHK-CGC-RESERVED-BITS",
-            f"defined fields held 0x{BASE:016x} across both writes; {'; '.join(notes)}; "
-            f"reserved value not asserted (not specified, measured)",
+            f"defined fields held 0x{BASE:016x} across both writes, each answered OKAY and the "
+            f"reserved bits read 0; {'; '.join(notes)}",
         )
 
         # S7: narrow accesses, printed and not compared.

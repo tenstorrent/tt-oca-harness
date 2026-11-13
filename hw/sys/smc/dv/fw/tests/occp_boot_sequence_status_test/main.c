@@ -4,7 +4,9 @@
 /*
  * Drains the ROM status ring buffer over OCCP and checks that the required boot status codes
  * are present with the SMC BL0 firmware ID, that no OCCP init failure or unexpected exit was
- * reported, and that SMC BL0 entries read after the drain carry the right message type.
+ * reported, and that SMC BL0 entries read after the drain carry the right message type. With
+ * the STATUS_RPT_DISABLE strap set, every GetStatus must return Unsupported_StatusID instead
+ * and none of the status-word checks run.
  */
 
 #include "occp_test_common.h"
@@ -97,6 +99,16 @@ static bool is_smc_status_message(uint32_t status) {
     uint32_t fw_id, msg_type, msg_value;
     extract_status_message_components(status, &fw_id, &msg_type, &msg_value);
     return (fw_id == SMC_STATUS_FW_ID_SMC_BL0);
+}
+
+// Ends the test at once, since a failed query can leave its response unread on the bus.
+static void require_status_query_ok(int result, const char *query, int iteration) {
+    if (result != OCCP_SUCCESS) {
+        simputs("FAIL: ");
+        simputs(query);
+        simputshex32(" failed at iteration: ", iteration);
+        test_fail(0);
+    }
 }
 
 static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
@@ -193,6 +205,10 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
     simputshex32("Boot status codes found: ", boot_status_found);
     simputshex32("Expected required codes: ", 4);
 
+    if (ctx->occp_ctx->status_reporting_disabled) {
+        simputs("STATUS_RPT_DISABLE strap active; every GET_SMC_STATUS was rejected\n");
+        return true;
+    }
     return (total_messages_read > 0);
 }
 
@@ -263,8 +279,9 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
         uint32_t status;
         int result =
             occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        require_status_query_ok(result, "GET_SMC_STATUS", i);
 
-        if (result == OCCP_SUCCESS && status != 0) {
+        if (status != 0) {
             uint32_t fw_id, msg_type, msg_value;
             extract_status_message_components(status, &fw_id, &msg_type, &msg_value);
 
@@ -343,6 +360,11 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                 }
             }
         }
+    }
+
+    if (ctx->occp_ctx->status_reporting_disabled) {
+        simputs("STATUS_RPT_DISABLE strap active; message format not checked\n");
+        return true;
     }
 
     simputs("\n**FORMAT COMPLIANCE RESULTS**:\n");
@@ -490,17 +512,19 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
     simputs("1. Testing OCCP interface stress scenarios...\n");
     scenarios_tested++;
 
+    int result;
     for (int i = 0; i < 10; i++) {
         uint32_t status;
-        occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        result = occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        require_status_query_ok(result, "GET_STATUS", i);
     }
 
     simputs("2. Testing command validation scenarios...\n");
     scenarios_tested++;
 
     uint8_t dummy_data[1] = {0};
-    int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                         OCCP_TEST_BASE_ADDR, dummy_data, 0);
+    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, OCCP_TEST_BASE_ADDR,
+                                     dummy_data, 0);
     if (result != OCCP_SUCCESS) {
         simputs("Expected: Zero-length command rejected\n");
     }
@@ -523,8 +547,9 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
         uint32_t status;
         result =
             occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        require_status_query_ok(result, "GET_SMC_STATUS", scan);
 
-        if (result == OCCP_SUCCESS && status != 0) {
+        if (status != 0) {
             uint32_t fw_id, msg_type, msg_value;
             extract_status_message_components(status, &fw_id, &msg_type, &msg_value);
 
@@ -543,7 +568,7 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
                     }
                 }
             }
-        } else if (status == 0) {
+        } else {
             break;
         }
     }
@@ -583,10 +608,14 @@ static void run_boot_status_test_suite(boot_status_test_context_t *ctx) {
         return;
     }
 
-    test_boot_sequence_status_coverage(ctx);
+    // Under STATUS_RPT_DISABLE no status word is read, so only the query checks run.
+    bool status_words_read = !ctx->occp_ctx->status_reporting_disabled;
+    if (status_words_read) test_boot_sequence_status_coverage(ctx);
     test_status_message_format_compliance(ctx);
-    test_boot_sequence_timing_verification(ctx);
-    test_specification_compliance(ctx);
+    if (status_words_read) {
+        test_boot_sequence_timing_verification(ctx);
+        test_specification_compliance(ctx);
+    }
     test_active_status_generation(ctx);
 
     simputs("\n=== Boot Status Test Results Summary ===\n");

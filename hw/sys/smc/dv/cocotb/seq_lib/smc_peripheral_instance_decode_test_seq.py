@@ -89,9 +89,9 @@ def _i3c_dynamic_addr_pattern(idx: int) -> int:
     return (_I3C_DEV_ADDR_RESET & ~_I3C_DYNAMIC_ADDR_MASK) | value
 
 
-# --- GPIO: instances 0 and 64 ------------------------------------------------------------------
-GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
-GPIO_STRIDE = smc_addr("SMC_TOP_GPIO_INTF_STRIDE")
+# --- GPIO: instances 0 and 66 ------------------------------------------------------------------
+GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
+GPIO_STRIDE = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE")
 # ACCESS_FILTER's two *PROT_REQUIREMENT fields are plain storage and take
 # effect only while the matching filter-enable bit is set, which stays 0 here.
 # DATA_CTRL is not used: its lsio_enable/pad2core bits are hardware-driven and
@@ -214,8 +214,10 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         )
 
     async def _gpio_instances(self) -> None:
-        first = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
-        last = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1)
+        first = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
+        last = smc_indexed_addr(
+            "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
+        )
         assert last - first == (GPIO_NUM - 1) * GPIO_STRIDE
         await self.rw_coresident(
             [

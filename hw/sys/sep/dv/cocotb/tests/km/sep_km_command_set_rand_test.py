@@ -14,10 +14,14 @@ correct declared length and a correct payload CRC-32C, so a rejection is a
 verdict on the command ID or its arguments, never on framing.
 
 Checkers:
-  CHK0        rom_main boots on real entropy -> RESP_KM_READY
+  CHK-KM-READY rom_main boots on real entropy -> RESP_KM_READY
   CHK-HW-VER  CMD_HW_VER returns rc=0 and RETURN_ARG = KMCSR VERSION 1.0.0
-  CHK-ROM-VER CMD_ROM_VER returns rc=0 with a return argument; the value is
-              logged as OBS-ROM-VER (no spec states it)
+  CHK-ROM-VER CMD_ROM_VER returns rc=0 with a return argument; the version
+              value (bits 23:0) is logged as OBS-ROM-VER (no spec states it)
+  CHK-ROM-VER-RSVD
+              bits 31:24 of the CMD_ROM_VER RETURN_ARG read 0: they are
+              RESERVED and reserved fields read as 0 (firmware.adoc,
+              "Command Message Reference" and "0x01 - CMD_ROM_VER")
   CHK-SRAM-VER
               CMD_SRAM_VER returns RC_FAILURE: this image is ROM-only
   CHK-GEN     CMD_KEY_GENERATE returns rc=0 and a non-null handle, and its
@@ -57,7 +61,13 @@ Checkers:
               echoed) just before the revoke, and the same transfer on the
               REVOKED handle is refused RC_FAILURE: revoke fails closed
   CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused with
-              RC_INVALID_ARG or RC_FAILURE; the code is logged as OBS-NULL
+              RC_INVALID_ARG or RC_FAILURE; which of the two is logged as
+              OBS-NULL (no spec line picks one)
+  CHK-NULL-ARG
+              that refusal carries the RETURN_ARG its code defines:
+              RC_INVALID_ARG with RETURN_ARG 0 (the index of the handle word),
+              or RC_FAILURE with no RETURN_ARG on the wire (firmware.adoc,
+              "0x23 - CMD_KEY_REVOKE", Response)
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
               RC_INVALID_LEN (-5)
@@ -82,8 +92,39 @@ Checkers:
               final CMD_ENGINE_SHRED follows and the same start produces no
               output within a bounded window. The shred is the only change
               between the two starts, so it reached the key rather than merely
-              returning success. Run last, because an engine parked waiting
-              for a key stays that way until its next valid key
+              returning success. Runs after every AES leg, because an engine
+              parked waiting for a key stays that way until its next valid
+              key; the vault and OTP-change legs after it do not use AES
+  CHK-GEN-ARG CMD_KEY_GENERATE with REQ_SIZE 128 returns RC_INVALID_ARG with
+              RETURN_ARG 0, and with a reserved bit in DEST_VALID returns
+              RC_INVALID_ARG with RETURN_ARG 1. Both responses must carry
+              the RETURN_ARG word, so a missing one does not read as 0. The
+              five other reserved-bit and empty-mask frames are logged as
+              OBS-CMD-ARG-EDGE (no spec states their code or argument)
+  CHK-VAULT-FILL
+              with F = KPV_SLOTS minus the slots of the leaf's live keys
+              (each live key is at most 16 words, one slot), F single-slot
+              CMD_KEY_GENERATE commands (seeded REQ_SIZE 0 to 15) each return
+              rc=0 with a new non-null handle: the free-slot search starts at a
+              DRBG-selected slot and wraps once, so it finds a free slot from
+              any start (firmware.adoc, "Key Management", Load; architecture.adoc,
+              "Key and Policy Vault (KPV)": 64 slots)
+  CHK-VAULT-FULL
+              on that full vault one more single-slot CMD_KEY_GENERATE returns
+              RC_FAILURE, and one single-slot CMD_KEY_LOAD returns RC_FAILURE
+              with no RETURN_ARG on the wire (firmware.adoc, "0x22 -
+              CMD_KEY_GENERATE" Response; "0x26 - CMD_KEY_LOAD", Capacity and
+              success). The GENERATE argument is logged. Handles stay below the
+              255 limit, so the failure is the vault, not the handle space
+  CHK-OTP-CHG-DORMANT
+              the shipped ROM leaves the OTP-change source masked: KMCSR
+              IRQ_ENABLE.otp_change_en reads 0 after RESP_KM_READY and before
+              the pulse, and after one HK-IRQSET pulse of OTP_CHANGE,
+              IRQ_STATUS.otp_change reads 1 on every sample of a quiet window
+              of OTP_QUIET_CLKS clocks while the KMCSR ISR entry count stays
+              unchanged (firmware.adoc, "OTP Change Status"). The pulse itself
+              is the control: HK-IRQSET fired and the status bit rose. Runs
+              last, since the bit stays set
   CHK-ALIVE   after every rejection, and once after the undefined-ID walk,
               CMD_STAT succeeds AND reports no latched recoverable error. The
               second half is what gives the refusal checkers their meaning:
@@ -114,23 +155,31 @@ Not covered:
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_crc_golden import crc8_rohc, crc32c
+from env.sep_km_img_h import KPV_SLOT_WORDS, KPV_SLOTS
+from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import (
+    KM_CMD_ENGINE_SHRED,
     KM_CMD_HW_VER,
     KM_CMD_KEY_GENERATE,
+    KM_CMD_KEY_LOAD,
     KM_CMD_KEY_REVOKE,
+    KM_CMD_KEY_TRANSFER,
     KM_CMD_OTP_READ_LOCK_COLD,
     KM_CMD_RECOV_ACK,
     KM_CMD_ROM_VER,
     KM_CMD_SRAM_VER,
     KM_CMD_STAT,
     KM_DEST_ABR_MLDSA_SEED,
+    KM_DEST_ABR_MLKEM_MSG,
     KM_DEST_AES,
     KM_DEST_HMAC,
     KM_DEST_KMAC,
@@ -145,16 +194,17 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RC_INVALID_LEN,
     KM_RC_PAYLOAD_CRC,
     KM_RC_SUCCESS,
+    KM_RESP_CMD,
     KM_RESP_RECOVERABLE_FAULT,
     KM_VALID_CMD_IDS,
     SepKmMailbox,
 )
 
-# Identity lock bit 8 (SsI) and reserved bit 9: firmware.adoc, "0x28 -
-# CMD_OTP_READ_LOCK_COLD", OTP cold-read-lock bit encoding (bits [8:0], [31:9]
-# reserved).
-_OTP_LOCK_IDENTITY = 1 << 8
-_OTP_LOCK_RESERVED = 1 << 9
+# Lowest reserved bit of the KEY_HANDLE and DEST_VALID / DEST_ENGINE payload
+# words (bits [7:0] carry the field), and the first REQ_SIZE above the 7-bit
+# field: firmware.adoc, "0x22 - CMD_KEY_GENERATE" to "0x25 - CMD_ENGINE_SHRED".
+_ARG_RESERVED = 1 << 8
+_REQ_SIZE_OVER = 1 << 7
 
 # Directed ABR ML-DSA seed for the CHK-ABR-DEST transfer cell. Its consume is
 # graded by sep_km_abr_seed_sideload_test, not here.
@@ -212,12 +262,38 @@ DEST_NAME = {
     KM_DEST_OTBN: "otbn",
 }
 
+# KMCSR IRQ_STATUS / IRQ_ENABLE OTP-change masks, from the generated header.
+_KM_CSR = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h"))
+OTP_CHANGE = int(_KM_CSR.fields("IRQ_STATUS_REG")["OTP_CHANGE"]["bm"])
+OTP_CHANGE_EN = int(_KM_CSR.fields("IRQ_ENABLE_REG")["OTP_CHANGE_EN"]["bm"])
+# CMD_OTP_READ_LOCK_COLD masks of the identity lock (SEP_SYS_ID) and of the
+# lowest reserved bit: firmware.adoc, "0x28 - CMD_OTP_READ_LOCK_COLD", OTP
+# cold-read-lock bit encoding.
+_OTP_LOCK_COLD = _KM_CSR.fields("OTP_READ_LOCK_COLD_REG")
+_OTP_LOCK_IDENTITY = int(_OTP_LOCK_COLD["SEP_SYS_ID"]["bm"])
+_OTP_LOCK_RESERVED = 1 << _OTP_LOCK_COLD["RSVD"]["bp"]
+# OTP_READ_LOCK_COLD after the first identity lock: its cold-reset value with the
+# SEP_SYS_ID read-lock bit set.
+_OTP_LOCK_COLD_AFTER_ID = _KM_CSR.reset("OTP_READ_LOCK_COLD_REG") | _OTP_LOCK_IDENTITY
+
+# Quiet window of CHK-OTP-CHG-DORMANT, in clocks. An enabled handler enters
+# and clears the bit within this many clocks (sep_km_otp_change_irq_test
+# grades that bound with the source enabled).
+OTP_QUIET_CLKS = 5000
+
+# Largest single-slot encoded key size: KPV_SLOT_WORDS words.
+_ONE_SLOT_MAX_REQ = KPV_SLOT_WORDS - 1
+
 # Number of undefined command IDs to walk per run.
 N_ILLEGAL_IDS = 7
 
 # Negative window for the shredded-engine probe, in the 20-cycle polls of
 # _poll_status_bit. The window is spent in full on every passing run.
 _SHRED_REFUSE_POLLS = 50
+
+
+def _arg_str(arg: int | None) -> str:
+    return "none" if arg is None else f"0x{arg:08x}"
 
 
 class SepKmCommandSetCfg:
@@ -232,6 +308,8 @@ class SepKmCommandSetCfg:
         others = tuple(d for d in LEGAL_DESTS if (d & self.load_dest) == 0)
         self.bad_dest = rng.choice(others)
         self.illegal_ids = self._pick_illegal(rng)
+        # One REQ_SIZE per vault-fill command, plus one for the full-vault probe.
+        self.fill_sizes = tuple(rng.randrange(_ONE_SLOT_MAX_REQ + 1) for _ in range(KPV_SLOTS + 1))
 
     @staticmethod
     def _pick_illegal(rng) -> tuple[int, ...]:
@@ -265,9 +343,17 @@ class SepKmCommandSetCfg:
 class sep_km_command_set_rand_test(sep_base_test):
     """Produce, move and destroy a key over the KM mailbox; reject the rest."""
 
+    required_evidence = (
+        "CHK-ROM-VER-RSVD",
+        "CHK-NULL-ARG",
+        "CHK-VAULT-FILL",
+        "CHK-VAULT-FULL",
+        "CHK-OTP-CHG-DORMANT",
+    )
+
     async def run_scenario(self) -> None:
         cfg = SepKmCommandSetCfg(self.random_seed())
-        self.logger.info("km command set: %s", cfg.summary())
+        self.logger.info("INFO-CMDSET-CFG %s", cfg.summary())
 
         # --- Boot the real KM firmware on real entropy ------------------------
         # The KM firmware reads OTP at boot, so stage a valid PROD image and
@@ -291,7 +377,8 @@ class sep_km_command_set_rand_test(sep_base_test):
 
         await self.swrst.release("km")
         await self.km.wait_km_ready()
-        self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
+        self.logger.info("CHK-KM-READY PASS: rom_main booted, RESP_KM_READY over the mailbox")
+        otp_en_boot = self.rd_known(cocotb.top.km_csr_irq_enable_o)
 
         # --- CHK-HW-VER / CHK-ROM-VER / CHK-SRAM-VER -------------------------
         rc, arg = await self.km.send_raw_expect_rc(KM_CMD_HW_VER, [])
@@ -302,19 +389,34 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.logger.info("CHK-HW-VER PASS: rc=0 RETURN_ARG=0x%08x (KMCSR 1.0.0)", arg)
 
         # hw/ip/key_manager/doc/firmware.adoc, "0x01 - CMD_ROM_VER": success and a
-        # return argument. No spec states the version value, so it is logged only.
+        # return argument whose bits 31:24 are RESERVED, and "Command Message
+        # Reference": reserved fields read as 0. No spec states the version
+        # value in bits 23:0, so it is logged only.
         seq = await self.km.send_command(KM_CMD_ROM_VER, [])
         rc, arg = await self.km.recv_resp_cmd(KM_CMD_ROM_VER, seq, require_arg=True)
         await self.km.check_outbound_empty("POST-ROM-VER")
         assert rc == KM_RC_SUCCESS, f"CHK-ROM-VER FAIL: rc={rc}, expected rc=0"
         self.logger.info("CHK-ROM-VER PASS: rc=0 with a RETURN_ARG")
-        self.logger.info("OBS-ROM-VER LOG ver=0x%08x", arg)
+        rsvd = arg >> 24
+        assert rsvd == 0, (
+            f"CHK-ROM-VER-RSVD FAIL: RETURN_ARG=0x{arg:08x} bits 31:24 = 0x{rsvd:02x}, "
+            "expected 0x00 (firmware.adoc:36,149)"
+        )
+        self.logger.info(
+            "CHK-ROM-VER-RSVD PASS: contract=key_manager/doc/firmware.adoc:36"
+            "(Command_Message_Reference),:149(0x01_CMD_ROM_VER) arg=0x%08x rsvd=0x%02x "
+            "exp_rsvd=0x00",
+            arg,
+            rsvd,
+        )
+        self.logger.info("OBS-ROM-VER LOG ver=0x%08x", arg & 0x00FF_FFFF)
 
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_SRAM_VER, [])
         assert rc == KM_RC_FAILURE, (
             f"CHK-SRAM-VER FAIL: rc={rc}, expected {KM_RC_FAILURE} -- ROM-only image"
         )
         self.logger.info("CHK-SRAM-VER PASS: ROM-only image returned RC_FAILURE")
+        await self._check_alive("post-sram-ver")
 
         # --- CHK-GEN: the KM produces a key ----------------------------------
         # req_size is the word count minus one, per the command's argument
@@ -547,19 +649,35 @@ class sep_km_command_set_rand_test(sep_base_test):
             rc,
         )
         await self._check_alive("post-revoked-transfer")
+        await self._arg_edge(gen_handle)
 
-        # --- CHK-NULL: the reserved handle is never a target ------------------
+        # --- CHK-NULL / CHK-NULL-ARG: the reserved handle is never a target ---
         # The specification gives two refusal codes, invalid_arg for an invalid
         # argument and failure for an unavailable handle, and does not say which
         # one the null handle gets, so the check accepts either and the code is
-        # logged as OBS-NULL.
-        rc, _ = await self.km.key_revoke(handle=KM_KEY_HANDLE_NULL)
+        # logged as OBS-NULL. Each code defines its RETURN_ARG: invalid_arg
+        # carries the index of the invalid payload word (0, the handle word),
+        # failure carries none. The frame is decoded here so that a missing
+        # RETURN_ARG does not read as 0.
+        rc, null_arg = await self._resp_cmd(KM_CMD_KEY_REVOKE, [KM_KEY_HANDLE_NULL])
         self.logger.info("OBS-NULL LOG rc=%d", rc)
         assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE), (
             f"CHK-NULL FAIL: CMD_KEY_REVOKE of the null handle returned rc={rc}, "
             f"expected {KM_RC_INVALID_ARG} (RC_INVALID_ARG) or {KM_RC_FAILURE} (RC_FAILURE)"
         )
         self.logger.info("CHK-NULL PASS: revoke of the null handle refused with rc=%d", rc)
+        exp_null_arg = 0 if rc == KM_RC_INVALID_ARG else None
+        assert null_arg == exp_null_arg, (
+            f"CHK-NULL-ARG FAIL: rc={rc} RETURN_ARG={_arg_str(null_arg)}, expected "
+            f"{_arg_str(exp_null_arg)} (firmware.adoc:433-439)"
+        )
+        self.logger.info(
+            "CHK-NULL-ARG PASS: contract=key_manager/doc/firmware.adoc:433-439"
+            "(0x23_CMD_KEY_REVOKE_Response) rc=%d arg=%s exp_arg=%s",
+            rc,
+            _arg_str(null_arg),
+            _arg_str(exp_null_arg),
+        )
         await self._check_alive("post-null-revoke")
 
         # --- CHK-ILLEGAL: undefined command IDs -------------------------------
@@ -688,17 +806,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         rc, arg = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_IDENTITY])
         assert rc == KM_RC_SUCCESS, f"CHK-OTP FAIL: lock identity bit rc={rc}"
         # firmware.adoc, "0x28 - CMD_OTP_READ_LOCK_COLD": RETURN_ARG is the
-        # OTP_READ_LOCK_COLD value after the write. The register resets to 0 on
-        # a cold reset (km_csr.rdl) and this is the leaf's first lock, so the
-        # value is exactly the identity bit.
-        assert arg == _OTP_LOCK_IDENTITY, (
-            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x}, expected 0x{_OTP_LOCK_IDENTITY:08x} "
-            "(only the identity bit, from a cold-reset 0)"
+        # OTP_READ_LOCK_COLD value after the write. This is the leaf's first lock,
+        # so the value is the register's cold-reset value with SEP_SYS_ID set.
+        assert arg == _OTP_LOCK_COLD_AFTER_ID, (
+            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x}, expected 0x{_OTP_LOCK_COLD_AFTER_ID:08x} "
+            "(OTP_READ_LOCK_COLD reset value with the SEP_SYS_ID bit set)"
         )
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_RESERVED])
         assert rc == KM_RC_INVALID_ARG, (
             f"CHK-OTP FAIL: reserved lock bit returned rc={rc}, expected {KM_RC_INVALID_ARG}"
         )
+        await self._check_alive("post-otp-reserved-bit")
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [])
         assert rc == KM_RC_INVALID_LEN, (
             f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected {KM_RC_INVALID_LEN}"
@@ -747,7 +865,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
 
         # --- CHK-GONE: a shredded engine will not run -------------------------
-        # Last: the engine is left with no valid key, so it parks
+        # After every AES leg: the engine is left with no valid key, so it parks
         # waiting for one; nothing after this point may need it. This is the
         # direct observation of the shred: the engine key registers are
         # write-only, so refusal to start is the only frontdoor evidence that
@@ -798,13 +916,219 @@ class sep_km_command_set_rand_test(sep_base_test):
             _SHRED_REFUSE_POLLS,
         )
 
+        # --- CHK-VAULT-FILL / CHK-VAULT-FULL: fill the KPV, then exhaust it ---
+        # The live keys hold one slot each (16 words or fewer); the revoked key's
+        # slot is free again (firmware.adoc, "Key Management", Revoke).
+        live = {
+            "gen2": (gen_handle2, GEN_KEY_WORDS[1]),
+            "a": (handle_a, len(KAT_KEY_A)),
+            "abr": (handle_abr, len(_ABR_SEED)),
+            "b": (handle_b, len(KAT_KEY_B)),
+        }
+        assert all(words <= KPV_SLOT_WORDS for _, words in live.values()), (
+            "test construction error: a live key spans more than one KPV slot"
+        )
+        await self._vault_fill(cfg, live, revoked=gen_handle)
+
+        # --- CHK-OTP-CHG-DORMANT: last, the OTP-change bit stays set -----------
+        await self._otp_change_dormant(otp_en_boot)
+
         # --- EOT --------------------------------------------------------------
         await self.km.check_outbound_empty("EOT")
         await self.aes.check_status_clean("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
-        self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
+        self.logger.info("INFO-ENTROPY-CLEAN entropy alerts clear, DRBG scoreboard reports pass")
+
+    async def _resp_cmd(self, cmd: int, payload: list[int]) -> tuple[int, int | None]:
+        """Send one command and decode its RESP_CMD; RETURN_ARG is None when absent.
+
+        ``recv_frame`` checks the header CRC-8, the declared length, the
+        payload CRC-32C and the response sequence. The RESP_CMD payload is
+        [cmd_seq, cmd_id, rc, arg?] (firmware.adoc, "0x00 - RESP_CMD").
+        """
+        seq = await self.km.send_command(cmd, payload)
+        words = await self.km.recv_frame()
+        resp_id = (words[0] >> 8) & 0xFF
+        payload_len = (words[0] >> 16) & 0xFF
+        assert resp_id == KM_RESP_CMD and payload_len >= 3, (
+            f"cmd 0x{cmd:02x}: expected a RESP_CMD with at least 3 payload words, "
+            f"got frame {[hex(w) for w in words]}"
+        )
+        assert (words[1] & 0xFF) == seq and (words[2] & 0xFF) == cmd, (
+            f"cmd 0x{cmd:02x} seq {seq}: RESP_CMD echoes seq {words[1] & 0xFF} "
+            f"cmd 0x{words[2] & 0xFF:02x}"
+        )
+        await self.km.check_outbound_empty(f"POST-RESP-0x{cmd:02x}")
+        rc_raw = words[3] & 0xFF
+        rc = rc_raw - 256 if rc_raw >= 128 else rc_raw
+        return rc, (words[4] if payload_len >= 4 else None)
+
+    async def _vault_fill(self, cfg: SepKmCommandSetCfg, live: dict, *, revoked: int) -> None:
+        """CHK-VAULT-FILL, then CHK-VAULT-FULL on the full vault."""
+        free = KPV_SLOTS - len(live)
+        self.logger.info(
+            "INFO-VAULT-FILL kpv_slots=%d live_keys=%s free_slots=%d req_sizes=%s",
+            KPV_SLOTS,
+            {k: f"0x{h:02x}/{w}w" for k, (h, w) in live.items()},
+            free,
+            list(cfg.fill_sizes[: free + 1]),
+        )
+        seen = {h for h, _ in live.values()} | {revoked}
+        bad: list[str] = []
+        for i in range(free):
+            req = cfg.fill_sizes[i]
+            rc, arg = await self._resp_cmd(KM_CMD_KEY_GENERATE, [req, KM_DEST_AES])
+            handle = (arg or 0) & 0xFF
+            if rc != KM_RC_SUCCESS or arg is None or handle in seen or handle == 0:
+                bad.append(f"#{i}:req={req},rc={rc},arg={_arg_str(arg)}")
+            seen.add(handle)
+        assert not bad, (
+            f"CHK-VAULT-FILL FAIL: {len(bad)} of {free} single-slot CMD_KEY_GENERATE "
+            f"commands did not return rc=0 with a new non-null handle: {bad[:8]}"
+        )
+        self.logger.info(
+            "CHK-VAULT-FILL PASS: contract=key_manager/doc/firmware.adoc:1929-1931"
+            "(Key_Management_Load),:396-397(0x22_CMD_KEY_GENERATE),"
+            "architecture.adoc:414(KPV) generated=%d exp_generated=%d rc=0 all "
+            "new_handles=%d",
+            free - len(bad),
+            free,
+            len(seen) - len(live) - 1,
+        )
+
+        full_req = cfg.fill_sizes[free]
+        gen_rc, gen_arg = await self._resp_cmd(KM_CMD_KEY_GENERATE, [full_req, KM_DEST_AES])
+        load_rc, load_arg = await self._resp_cmd(KM_CMD_KEY_LOAD, [0, KM_DEST_AES, KAT_KEY_A[0]])
+        full_ok = gen_rc == KM_RC_FAILURE and load_rc == KM_RC_FAILURE and load_arg is None
+        assert full_ok, (
+            f"CHK-VAULT-FULL FAIL: on the full vault CMD_KEY_GENERATE rc={gen_rc} "
+            f"arg={_arg_str(gen_arg)} and CMD_KEY_LOAD rc={load_rc} "
+            f"arg={_arg_str(load_arg)}, expected rc={KM_RC_FAILURE} for both and no "
+            "RETURN_ARG for the load"
+        )
+        self.logger.info(
+            "CHK-VAULT-FULL PASS: contract=key_manager/doc/firmware.adoc:395-396"
+            "(0x22_CMD_KEY_GENERATE),:680-682(0x26_CMD_KEY_LOAD) gen_rc=%d gen_req=%d "
+            "load_rc=%d load_arg=%s exp_rc=%d exp_load_arg=none",
+            gen_rc,
+            full_req,
+            load_rc,
+            _arg_str(load_arg),
+            KM_RC_FAILURE,
+        )
+        self.logger.info("OBS-VAULT-FULL-GEN-ARG LOG arg=%s", _arg_str(gen_arg))
+        await self._check_alive("post-vault-full")
+
+    async def _otp_change_dormant(self, en_boot: int) -> None:
+        """CHK-OTP-CHG-DORMANT: one OTP_CHANGE pulse enters no KMCSR ISR."""
+        top = cocotb.top
+        en_pre = self.rd_known(top.km_csr_irq_enable_o)
+        ent0 = self.rd_known(top.km_kmcsr_irq_entry_count_o)
+        try:
+            await RisingEdge(top.clk_i)
+            top.km_irqset_mask_i.value = OTP_CHANGE
+            top.km_irqset_arm_i.value = 1
+            fired = 0
+            for _ in range(8):
+                await RisingEdge(top.clk_i)
+                await ReadOnly()
+                fired = self.rd_known(top.km_irqset_fired_o)
+                if fired == 1:
+                    break
+            await RisingEdge(top.clk_i)
+        finally:
+            top.km_irqset_arm_i.value = 0
+            top.km_irqset_mask_i.value = 0
+        rose = False
+        for _ in range(64):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            if self.rd_known(top.km_csr_irq_status_o) & OTP_CHANGE:
+                rose = True
+                break
+        assert fired == 1 and rose, (
+            f"CHK-OTP-CHG-DORMANT FAIL: the control pulse did not land: fired={fired} "
+            f"status_otp_change={int(rose)}"
+        )
+        low = 0
+        for _ in range(OTP_QUIET_CLKS):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            if not self.rd_known(top.km_csr_irq_status_o) & OTP_CHANGE:
+                low += 1
+        entries = self.rd_known(top.km_kmcsr_irq_entry_count_o) - ent0
+        en_post = self.rd_known(top.km_csr_irq_enable_o)
+        await RisingEdge(top.clk_i)
+        ok = (
+            (en_boot & OTP_CHANGE_EN) == 0
+            and (en_pre & OTP_CHANGE_EN) == 0
+            and (en_post & OTP_CHANGE_EN) == 0
+            and low == 0
+            and entries == 0
+        )
+        fields = (
+            f"en_boot=0x{en_boot:03x} en_pre=0x{en_pre:03x} en_post=0x{en_post:03x} "
+            f"exp_otp_change_en=0 samples={OTP_QUIET_CLKS} samples_low={low} "
+            f"exp_samples_low=0 kmcsr_irq_entries={entries} exp_kmcsr_irq_entries=0 "
+            f"control_fired={fired} control_rose={int(rose)}"
+        )
+        assert ok, f"CHK-OTP-CHG-DORMANT FAIL: {fields}"
+        self.logger.info(
+            "CHK-OTP-CHG-DORMANT PASS: contract=key_manager/doc/firmware.adoc:1624-1626"
+            "(OTP_Change_Status) %s",
+            fields,
+        )
+        await self._check_alive("post-otp-change")
+
+    async def _arg_edge(self, revoked: int) -> None:
+        """Key commands with a reserved argument bit, an empty mask or an
+        out-of-range field. Each targets the revoked handle or the unused ML-KEM
+        message engine, so a command the KM accepts changes no state a later
+        check reads. The two CMD_KEY_GENERATE frames are graded (CHK-GEN-ARG);
+        the others are logged (OBS-CMD-ARG-EDGE)."""
+        cases = (
+            ("revoke_rsvd", KM_CMD_KEY_REVOKE, [revoked | _ARG_RESERVED]),
+            ("transfer_rsvd", KM_CMD_KEY_TRANSFER, [revoked | _ARG_RESERVED, KM_DEST_AES]),
+            ("transfer_mask0", KM_CMD_KEY_TRANSFER, [revoked, 0]),
+            ("shred_rsvd", KM_CMD_ENGINE_SHRED, [KM_DEST_ABR_MLKEM_MSG | _ARG_RESERVED]),
+            ("shred_mask0", KM_CMD_ENGINE_SHRED, [0]),
+            ("generate_size", KM_CMD_KEY_GENERATE, [_REQ_SIZE_OVER, KM_DEST_ABR_MLKEM_MSG]),
+            (
+                "generate_dest",
+                KM_CMD_KEY_GENERATE,
+                [GEN_KEY_WORDS[0] - 1, KM_DEST_ABR_MLKEM_MSG | _ARG_RESERVED],
+            ),
+        )
+        # firmware.adoc "0x22 - CMD_KEY_GENERATE" states RC_INVALID_ARG with the
+        # index of the invalid payload word: 0 for REQ_SIZE, 1 for DEST_VALID.
+        graded_arg = {"generate_size": 0, "generate_dest": 1}
+        for case, cmd, payload in cases:
+            if case in graded_arg:
+                # The graded frames require a RETURN_ARG on the wire: a missing
+                # one would read as 0, which is the golden of generate_size.
+                seq = await self.km.send_command(cmd, payload)
+                rc, arg = await self.km.recv_resp_cmd(cmd, seq, require_arg=True)
+                await self.km.check_outbound_empty(f"POST-RAW-0x{cmd:02x}")
+            else:
+                rc, arg = await self.km.send_raw_expect_rc(cmd, payload)
+            if case not in graded_arg:
+                self.logger.info(
+                    "OBS-CMD-ARG-EDGE LOG cmd=0x%02x case=%s code=%d arg=0x%08x",
+                    cmd,
+                    case,
+                    rc,
+                    arg,
+                )
+                continue
+            exp_arg = graded_arg[case]
+            assert rc == KM_RC_INVALID_ARG and arg == exp_arg, (
+                f"CHK-GEN-ARG FAIL: case={case} code={rc} arg=0x{arg:08x}, expected "
+                f"code={KM_RC_INVALID_ARG} (RC_INVALID_ARG) arg=0x{exp_arg:08x}"
+            )
+            self.logger.info("CHK-GEN-ARG PASS: case=%s code=%d arg=0x%08x", case, rc, arg)
+        await self._check_alive("post-arg-edge")
 
     async def _check_alive(self, tag: str) -> None:
         """CHK-ALIVE: the KM is still in its loop and has not latched a fault.

@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Open-path formal run with smu_axi_xbar as the top. The filelist in [files] is generated into
+# ../../build/ by the runner's filelist stage (hw/common/dv/docs/formal-property-style.adoc); sby
+# copies every [files] entry into the task's src/ directory, so the paths inside the filelist must
+# be absolute.
+# The crossbar runs on the single posedge clock clk_i, so sby's default clock abstraction holds and
+# multiclock stays off: every step is one clk_i cycle and the asynchronous reset is step-synchronous.
+# smu_axi_xbar_sby_env.sv supplies the reset model and the functional-mode DFT input.
+# smu_axi_xbar_axi_fv_bind.sv binds the shared AXI checker on all six crossbar ports: the master
+# rules are assumed on the three initiator ports and the slave rules on the three target ports, so
+# the environment is a legal AXI master and a legal AXI subordinate and the crossbar's side of each
+# port is asserted. smu_axi_xbar_props.sv carries the aperture, response-accounting and routing
+# properties. The xbar triple is xbar_bmc, xbar_cover and xbar_prove; the cover depth must exceed
+# the step at which the deepest cov_ label is reached, and the bmc depth matches it so that every
+# property is checked over the same horizon.
+
+[tasks]
+xbar_bmc    xbar bmc
+xbar_cover  xbar cover
+xbar_prove  xbar prove
+
+[options]
+bmc:   mode bmc
+cover: mode cover
+prove: mode prove
+xbar_bmc:   depth 20
+xbar_cover: depth 20
+
+[engines]
+bmc:   smtbmc yices
+cover: smtbmc yices
+prove: abc pdr
+
+[script]
+plugin -i slang
+xbar: read_slang -D FORMAL --top smu_axi_xbar --single-unit --allow-use-before-declare --timescale=1ns/1ps -f smu.f smu_axi_xbar_props.sv smu_axi_xbar_bind.sv smu_axi_xbar_axi_fv_bind.sv smu_axi_xbar_sby_env.sv
+prep -top smu_axi_xbar
+
+[files]
+../../build/smu.f
+smu_axi_xbar_sby_env.sv
+xbar: ../../props/smu_axi_xbar_props.sv
+xbar: ../../props/smu_axi_xbar_bind.sv
+xbar: ../../props/smu_axi_xbar_axi_fv_bind.sv

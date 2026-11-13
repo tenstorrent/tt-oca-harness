@@ -5,7 +5,11 @@
 no_cpu (``lsu_stub_all_live``) / ``+skip_fuse_sense`` / ``+esrc_noise_force`` /
 ``+km_rom_hex=km_rom_poke.parhex``. RAND-REP: the drawn timeout T, the order of
 the timeout legs, the COUNT_GOOD saturation leg (one seed in three), the
-delay before the idle withdrawal and the TDATA of the partial beat.
+delay before the idle withdrawal and the TDATA of the partial beat; for the
+external-stream legs (a second generator, ``draw_ext_plan``): the timeouts of
+the interrupt-gate and assembly-timeout legs, the TSTRB order and TDATA of the
+packing patterns, the partial-prefetch patterns and their gaps, the gap after
+the dropped beat and the order of the pulse delays.
 
 Vehicle. The POKE KM image (``tests/km_fw/km_rom_poke.S``) runs the KM bus
 operations that the host posts and reports what the DUT returned in KM SRAM
@@ -19,7 +23,13 @@ entropy initialization while a DATA read waits, and live after it. The
 withdrawals of the stream-error leg come from the error inject ``HK-STRM`` at
 the sampler sink (``km_strm_wd_*``); the partial beat and its withdrawal of the
 prefetch-withdrawal leg come from the error inject ``HK-STRM-PAT``
-(``km_strm_pat_*``), both in ``docs/SEP_TB_ARCH.adoc``.
+(``km_strm_pat_*``), both in ``docs/SEP_TB_ARCH.adoc``. Before the entropy
+initialization, the external-stream legs set ``EXT_TRNG_SRC_SEL`` bit 0 (read
+back) and drive stream 0 through the External TRNG streams hook
+(``env/sep_ext_trng_stream.py``); each leg ends with no beat pending, and the
+entropy initialization selects the internal source again (read back). The KM
+CPU interrupt is read on the tap ``km_csr_irq_o``; no KM CPU interrupt line is
+armed.
 
 Specification. ``hw/ip/key_manager/doc/architecture.adoc``, sections "DRBG
 Sampler", "Reads, prefetch and register access", "Errors and reset" and table
@@ -54,7 +64,7 @@ Checkers:
                   held, PREFETCH_DATA reads it three times, DATA returns it
                   without a COUNT_GOOD count, and a handshake refills it;
                   PREFETCH 0 clears PREFETCHED and PREFETCH_DATA
-                  (architecture.adoc:822-826). Controls: a stalled active read
+                  (architecture.adoc:830-834). Controls: a stalled active read
                   at timeout 8 times out; each fed read pair takes a handshake;
                   DRBG_READY reads 1 while the held word blocks the stream.
   CHK-SMP-PRE-WITHDRAW
@@ -64,24 +74,27 @@ Checkers:
                   rises by exactly 1 plus TIMEOUT_ERR after the span, which
                   reads 0 before it (the span includes the DATA read that
                   gives the withdrawal its TREADY-low clock, which can time
-                  out; architecture.adoc:837, 839), DRBG_ERR changes from 0
+                  out; architecture.adoc:845, 847), DRBG_ERR changes from 0
                   before the withdrawal to 1 and PREFETCHED reads 0
                   (PREFETCHED also 0 after the partial beat); the next DATA read returns the first live beat
                   and the next prefetched word (PREFETCH_DATA and DATA) is the
                   second live beat, with no byte of the partial beat
-                  (architecture.adoc:851-855, 816-820, 825; trng.adoc:118 for
-                  the full live beats). Control: the same partial beat with no
+                  (architecture.adoc:859-863, 824-828, 833; trng.adoc:118 for
+                  the full live beats). The check does not show whether the
+                  withdrawal or the start of the DATA read drops the partial
+                  byte; CHK-SMP-PRE-PARTIAL grades PREFETCHED after the same
+                  partial beat with no withdrawal. Control: the same partial beat with no
                   withdrawal (a TVALID drop after a completed handshake) leaves
                   STREAM_ERR 0, COUNT_BAD and DRBG_ERR unchanged.
   CHK-SMP-PRE-ACTIVE
                   with PREFETCH 1, PREFETCHED 0 and a DATA read waiting on the
                   stalled stream (timeout off), the first live beat goes to the
                   read: OKAY, data equal to the first handshaken beat on
-                  KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:881-882, 873-876,
-                  840). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
+                  KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:889-890, 881-884,
+                  848). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
                   PREFETCHED 0 before the read, TREADY is high before the read
-                  and the read start shows one TREADY-low clock before the
-                  entropy initialization starts.
+                  and the read start shows a TREADY-low stretch (length logged,
+                  OBS-SMP-READ-DIP) before the entropy initialization starts.
   CHK-SMP-WR     writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
                   and PREFETCH_DATA unchanged, on the stalled stream and again
                   with a prefetched word held (a known PREFETCH_DATA value).
@@ -98,8 +111,14 @@ Checkers:
   CHK-SMP-STRM    a withdrawal sets STREAM_ERR and DRBG_ERR (0 before the
                   withdrawal, 1 after it) with no read active
                   (COUNT_BAD + 1) and in the first active cycle of a read at
-                  timeout 256, 1 and 2 (SLVERR, data 0, TIMEOUT_ERR 0 before the
-                  read, COUNT_BAD + 1 plus TIMEOUT_ERR after the read);
+                  timeout 256, 1 and 2 (the DATA read completes SLVERR with
+                  data 0, TIMEOUT_ERR 0 before the read, COUNT_BAD + 1 plus
+                  TIMEOUT_ERR after the read): ``ST_STREAM_ERR`` completes with
+                  SLVERR and zero data (``architecture.adoc`` "Errors and
+                  reset" and the state table). These values hold whichever
+                  event ends the read, so the stated priority of a stream error
+                  over a timeout is not graded; ``OBS-SMP-STRM`` logs
+                  TIMEOUT_ERR after the read;
                   a write of 0 keeps STREAM_ERR and a write of 1 clears it.
                   Controls: the stalled timeouts and the first read after the
                   TRNG reset leave STREAM_ERR 0; the sink TREADY is low in the
@@ -107,13 +126,65 @@ Checkers:
                   not a handshake (a case whose pulse meets TREADY high is
                   CTRL-MISSING and is not graded, so no case can drop out of
                   the check unseen).
+  CHK-SMP-IRQ-GATE
+                  after a stalled DATA read times out (drawn T of 1 to 8: SLVERR,
+                  data 0, TIMEOUT_ERR 1, IRQ_STATUS.DRBG_ERR 0 before and 1
+                  after), ``km_csr_irq_o`` reads 0 on every clock of a 64-clock
+                  window with IRQ_ENABLE 0, 1 on every clock of a 16-clock window
+                  after IRQ_ENABLE is written to DRBG_ERR_EN alone, and 0 on every
+                  clock of a 16-clock window after a write of 1 to DRBG_ERR, which
+                  then reads 0 (architecture.adoc, "the logical OR of the masked
+                  status bits"; km_csr.rdl DRBG_ERR, DRBG_ERR_EN). Each IRQ_ENABLE
+                  write is read back. Control: the tap reads 0 before the timeout
+                  with IRQ_ENABLE 0.
+  CHK-SMP-PRE-PARTIAL
+                  with PREFETCH 1, two drawn patterns of 2 to 4 beats with a
+                  non-zero TSTRB that reach four valid bytes only with their last
+                  beat, TVALID low after each handshake and a drawn wait (0, 1, 2
+                  and 5 clocks each seed) before STATUS is read: PREFETCHED reads 0 after each beat but
+                  the last and 1 after the last; PREFETCH_DATA and the next DATA
+                  read (OKAY) return the word packed in beat order; STREAM_ERR
+                  0, COUNT_BAD and COUNT_GOOD unchanged; one handshake per beat.
+                  Also PREFETCHED reads 0 after the single partial beat
+                  (TSTRB 0x1) with no withdrawal of the prefetch-withdrawal leg
+                  (architecture.adoc, "Reads, prefetch and register access":
+                  four valid bytes, partial beats need further handshakes, a
+                  single prefetched word).
+  CHK-SMP-PACK    with PREFETCH 0, every TSTRB 0x1 to 0xF once in drawn order and
+                  two TSTRB 0x0 beats, queued before the reads: each DATA read
+                  (OKAY) returns the TSTRB-selected bytes in beat order, lanes 0
+                  to 3, filling the word from byte 0; bytes past the fourth are
+                  not carried into the next word (a pattern before the last
+                  drops bytes, so a later read shows a carry); a TSTRB 0x0 beat takes one handshake and packs no
+                  byte; the handshakes at the source and on the KM entropy taps
+                  equal the queued beats; STREAM_ERR and TIMEOUT_ERR 0, COUNT_BAD
+                  unchanged, COUNT_GOOD plus the reads (architecture.adoc, "Reads,
+                  prefetch and register access"). The byte position in the word
+                  follows the beat order from byte 0; the raw words are logged.
+  CHK-SMP-TO-ASM  with PREFETCH 0 and a drawn T of 4 to 20, one beat with 1 to 3
+                  valid bytes and then no beat: the DATA read answers SLVERR with
+                  data 0, TIMEOUT_ERR 1 (0 before), STREAM_ERR 0, COUNT_BAD + 1,
+                  IRQ_STATUS.DRBG_ERR 1 (0 before), one handshake
+                  (architecture.adoc, CFG.TIMEOUT and "Errors and reset").
+  CHK-SMP-STRM-CTRL
+                  a full beat taken by the prefetch path and then TVALID low for a
+                  drawn gap, and one-clock TVALID pulses that complete their
+                  handshake in their first clock (queued 0, 1, 2 and a drawn 2 to
+                  6 clocks after the TREADY rise of a waiting DATA read), set no
+                  STREAM_ERR, no COUNT_BAD and no IRQ_STATUS.DRBG_ERR
+                  (architecture.adoc, "A TVALID drop after a completed handshake
+                  is not this violation"). Controls: the prefetch path took the
+                  beat (PREFETCHED 1); each pulse met TREADY high and transferred
+                  with no wait; CHK-SMP-STRM and CHK-SMP-PRE-WITHDRAW show that
+                  a withdrawal sets STREAM_ERR.
   CHK-NONVAC      the idle case and each of the three first-active-cycle cases
                   were graded, and every control of a "no effect" check above
                   was seen.
 
-Blocked (the bench drives no legal beat pattern; ``HK-STRM-PAT`` is an error
-inject only): CHK-SMP-PACK, CHK-SMP-TO-ASM and CHK-SMP-STRM-CTRL log
-``OBS-BLOCKED`` and grade nothing.
+Controls of the external-stream legs: ``CTRL-SMP-EXT-SEL`` (EXT_TRNG_SRC_SEL
+reads back with bit 0 set before each leg) and ``CTRL-SMP-EXT-SEL-INTERNAL``
+(it reads back the written value, bit 0 clear, after each entropy
+initialization).
 
 Log only: ``OBS-SMP-PRE-WITHDRAW-READ`` (the response of the DATA read whose
 start gives the withdrawal its TREADY-low clock: the text does not state
@@ -122,7 +193,8 @@ line also carries the exact COUNT_BAD delta of CHK-SMP-PRE-WITHDRAW),
 ``OBS-SMP-STRM`` (TIMEOUT_ERR and the exact COUNT_BAD delta of a withdrawal in
 the first active cycle), ``OBS-SMP-NEXT-HELD``
 (whether the refilled word differs), ``INFO-SMP-LOOP`` (the read-loop data
-summary).
+summary), ``INFO-SMP-STRM-CTRL-READS`` (the responses and data of the reads of
+CHK-SMP-STRM-CTRL, not graded there).
 """
 
 from __future__ import annotations
@@ -133,17 +205,19 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_chk_log import SepChkLog
+from env.sep_ext_trng_stream import SepExtTrngStream
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
     set_km_pwd_pass,
     set_km_strm_pass,
 )
-from env.sep_reg_meta import EDN, ENTROPY_SOURCE, sym
+from env.sep_reg_meta import EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, sym
 from env.sep_seeded_rng import SepSeededRng
 from km import sep_km_drbg_sampler_rand_plan as pl
 from pyuvm import uvm_sequence
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_esrc_bringup_seq import (
     SepEntropyCfg,
     SepEsrcConfigSeq,
@@ -174,6 +248,16 @@ _KM_BIT = 1 << SW_RESET_N_BIT["km"]
 _TRNG_ISO_ALL = 0b111
 _TRNG_RELEASE_BOUND = 2_000
 _SW_ALL = sum(1 << b for b in SW_RESET_N_BIT.values())
+
+# External stream 0 (EXT_TRNG_SRC_SEL bit 0) feeds the KM sampler. The legs
+# write the register reset value with that bit set.
+_EXT = 0
+_EXT_SEL = SEP_CPU_CTRL.reset("EXT_TRNG_SRC_SEL") | (1 << _EXT)
+_EXT_SENT_BOUND = 256
+_PULSE_TVALID_BOUND = 16
+# km_csr_irq_o sample windows (clocks) of the interrupt-gate leg.
+_IRQ_WINDOW = 16
+_IRQ_LOW_WINDOW = 64
 
 # Stimulus words of the write-refusal leg.
 _DATA_WR_WORD = 0xA5A5_5A5A
@@ -251,8 +335,26 @@ _REQUIRED = (
     "CHK-SMP-WR",
     "CHK-SMP-TRNG",
     "CHK-SMP-STRM",
+    "CHK-SMP-IRQ-GATE",
+    "CHK-SMP-PRE-PARTIAL",
+    "CHK-SMP-PACK",
+    "CHK-SMP-TO-ASM",
+    "CHK-SMP-STRM-CTRL",
     "CHK-NONVAC",
 )
+
+
+class _Ops:
+    """A POKE list whose ops can be found by name."""
+
+    def __init__(self) -> None:
+        self.ops: list[kp.PokeOp] = []
+        self.at: dict[str, int] = {}
+
+    def add(self, name: str | None, *new: kp.PokeOp) -> None:
+        if name is not None:
+            self.at[name] = len(self.ops)
+        self.ops.extend(new)
 
 
 def _h(v: int) -> str:
@@ -362,6 +464,14 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await self.start_seq(
             SepEsrcConfigSeq(f"esrc_config_{what}", cfg=cfg, reset_trng=reset_trng)
         )
+        sel = await self._cpu_ctrl_rd("EXT_TRNG_SRC_SEL")
+        self.chk.ctrl(
+            "SMP-EXT-SEL-INTERNAL",
+            sel == cfg.ext_trng_src_sel and not sel & (1 << _EXT),
+            init=what,
+            sel=_h(sel),
+            want=_h(cfg.ext_trng_src_sel),
+        )
         await self.start_seq(SepEsrcEnableGeneratorsSeq(f"esrc_gens_{what}"))
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
@@ -466,8 +576,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         Before the read the prefetch path requests (TREADY 1). A DATA read that
         starts stops the prefetch path, and the read path enters its request
-        state one clock later (architecture.adoc:873, 881-882), so the read start
-        shows one TREADY-low clock and then TREADY high with the read waiting.
+        state (architecture.adoc:881, 889-890), so the read start shows a
+        TREADY-low stretch and then TREADY high with the read waiting. The text
+        gives no length for the stretch, so its length is logged.
         The entropy initialization starts after that clock. A handshake is a
         clock with ``km_entropy_tvalid_o`` and ``km_entropy_tready_o`` both 1;
         its word is ``km_entropy_tdata_o``.
@@ -476,15 +587,16 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         out["tready_at_start"] = self.rd_known(dut.km_entropy_tready_o)
-        low = False
+        low = 0
         for n in range(_DIP_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             ready = self.rd_known(dut.km_entropy_tready_o)
-            if not low and ready == 0:
-                low = True
-            elif low and ready == 1:
+            if ready == 0:
+                low += 1
+            elif low:
                 out["read_start_clk"] = n
+                out["dip_clks"] = low
                 break
         else:
             raise AssertionError(
@@ -517,6 +629,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.pat_word = self.rng.getrandbits(32)
         for name, value in [*self.plan.draws, ("pat_word", _h(self.pat_word))]:
             self.logger.info("DRAW %s=%s", name, value)
+        self.ext_plan = pl.draw_ext_plan(seed)
+        for name, value in self.ext_plan.draws:
+            self.logger.info("DRAW %s=%s", name, value)
         self.chk = SepChkLog(self, TEST, seed)
         self.rsvd = {"STATUS": 0, "IRQ_STATUS": 0}
         self.controls: dict[str, bool] = {}
@@ -543,6 +658,8 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await self._step_writes()
         await self._step_stalled_prefetch()
         await self._step_bad_counter()
+        await self._step_irq_gate()
+        await self._step_ext_stream()
         await self._step_withdraw_and_active()
         await self._step_trng_reset()
         await self._step_first_read()
@@ -550,10 +667,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await self._step_good_clear()
         await self._step_live_prefetch()
         await self._step_good_saturation()
-        self.chk.blocked("SMP-PACK", "HK-STRM-PAT")
-        self.chk.blocked("SMP-TO-ASM", "HK-STRM-PAT")
         await self._step_stream_errors()
-        self.chk.blocked("SMP-STRM-CTRL", "HK-STRM-PAT")
         await self._step_end()
         self.chk.finish()
 
@@ -831,6 +945,490 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             loop_slv=res[6].slv,
         )
 
+    # After step 6: the KM CPU interrupt gate of a sampler timeout (stalled stream).
+    async def _step_irq_gate(self) -> None:
+        t = self.ext_plan.irq_t
+        L = _Ops()
+        L.add(None, kp.wr(pl.A_IRQ_ENABLE, pl.IRQ_ENABLE_RESET))
+        L.add("en_off", kp.rd(pl.A_IRQ_ENABLE))
+        L.add(None, kp.sync())
+        L.add(None, kp.wr(pl.A_CFG, pl.cfg(t, 0)))
+        L.add("cfg", kp.rd(pl.A_CFG))
+        L.add(None, *_clear_ops())
+        L.add("irq_pre", kp.rd(pl.A_IRQ_STATUS))
+        L.add("data", kp.rd(pl.A_DATA))
+        L.add("st", kp.rd(pl.A_STATUS))
+        L.add("irq", kp.rd(pl.A_IRQ_STATUS))
+        L.add("en_masked", kp.rd(pl.A_IRQ_ENABLE))
+        L.add(None, kp.sync())
+        L.add(None, kp.wr(pl.A_IRQ_ENABLE, pl.IRQ_EN_DRBG_ERR))
+        L.add("en_on", kp.rd(pl.A_IRQ_ENABLE))
+        L.add(None, kp.sync())
+        L.add(None, kp.wr(pl.A_IRQ_STATUS, pl.IRQ_DRBG_ERR))
+        L.add("irq_clr", kp.rd(pl.A_IRQ_STATUS))
+        L.add(None, kp.sync())
+        L.add(None, kp.wr(pl.A_IRQ_ENABLE, pl.IRQ_ENABLE_RESET))
+        L.add("en_end", kp.rd(pl.A_IRQ_ENABLE))
+        L.add(None, *_clear_ops(), kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)))
+        windows = (_IRQ_WINDOW, _IRQ_LOW_WINDOW, _IRQ_WINDOW, _IRQ_WINDOW)
+        ones: list[int] = []
+
+        async def on_sync(k: int) -> None:
+            ones.append(await self._tap_window(cocotb.top.km_csr_irq_o, windows[k]))
+            return None
+
+        res = await self._run(L.ops, on_sync=on_sync, timeout_cycles=_STALLED_LIST_CYCLES)
+        at = L.at
+        en = {n: res[at[n]].value for n in ("en_off", "en_masked", "en_on", "en_end")}
+        drbg = {
+            n: int(bool(self._irq(res[at[n]].value) & pl.IRQ_DRBG_ERR))
+            for n in ("irq_pre", "irq", "irq_clr")
+        }
+        st = self._status(res[at["st"]].value)
+        d = res[at["data"]]
+        acc = self._acc(res, {at["data"]})
+        self.chk.ctrl(
+            "SMP-IRQ-GATE-IDLE",
+            ones[0] == 0 and en["en_off"] == pl.IRQ_ENABLE_RESET,
+            irq_enable=_h(en["en_off"]),
+            irq_high_clks=f"{ones[0]}/{windows[0]}",
+        )
+        self.chk.ok(
+            "SMP-IRQ-GATE",
+            res[at["cfg"]].value == pl.cfg(t, 0)
+            and drbg["irq_pre"] == 0
+            and d.slv == 1
+            and d.dec == 0
+            and d.value == 0
+            and pl.st(st, "TIMEOUT_ERR") == 1
+            and drbg["irq"] == 1
+            and en["en_masked"] == pl.IRQ_ENABLE_RESET
+            and ones[1] == 0
+            and en["en_on"] == pl.IRQ_EN_DRBG_ERR
+            and ones[2] == windows[2]
+            and drbg["irq_clr"] == 0
+            and ones[3] == 0
+            and en["en_end"] == pl.IRQ_ENABLE_RESET
+            and not acc,
+            t=t,
+            cfg_rd=_h(res[at["cfg"]].value),
+            data_slv=d.slv,
+            data=_h(d.value),
+            timeout_err=pl.st(st, "TIMEOUT_ERR"),
+            drbg_err=[drbg["irq_pre"], drbg["irq"], drbg["irq_clr"]],
+            irq_enable=[_h(en[n]) for n in ("en_masked", "en_on", "en_end")],
+            irq_high_masked=f"{ones[1]}/{windows[1]}",
+            irq_high_enabled=f"{ones[2]}/{windows[2]}",
+            irq_high_cleared=f"{ones[3]}/{windows[3]}",
+            bad_responses=",".join(acc) or "none",
+        )
+
+    async def _tap_window(self, sig, clks: int) -> int:
+        """The clocks of a ``clks``-clock window in which ``sig`` reads 1, each
+        sampled after ReadOnly(). An X or Z sample fails the leaf."""
+        clk = cocotb.top.clk_i
+        ones = 0
+        for _ in range(clks):
+            await RisingEdge(clk)
+            await ReadOnly()
+            ones += self.rd_known(sig)
+        await RisingEdge(clk)
+        return ones
+
+    # --- external stream 0 --------------------------------------------------------
+
+    async def _cpu_ctrl_wr(self, reg: str, value: int) -> None:
+        addr = SEP_CPU_CTRL.addr(reg)
+        seq = SepAxiAccessSeq(f"wr_{reg}", op=SepAxiOp.WRITE, addr=addr, wdata=value, size=2)
+        await self.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(f"{reg} write @0x{addr:08x} not OKAY")
+
+    async def _cpu_ctrl_rd(self, reg: str) -> int:
+        addr = SEP_CPU_CTRL.addr(reg)
+        seq = SepAxiAccessSeq(f"rd_{reg}", op=SepAxiOp.READ, addr=addr, size=2)
+        await self.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(f"{reg} read @0x{addr:08x} not OKAY")
+        return seq.rdata & pl.WORD_MASK
+
+    # After the interrupt gate: stream 0 from the External TRNG streams hook. The internal
+    # endpoint is idle (no entropy initialization yet), so the source switch
+    # withdraws no beat. Each leg ends with no beat pending, so the release
+    # of the pins drops no held beat; the entropy initialization of step 6a
+    # selects the internal source again.
+    async def _step_ext_stream(self) -> None:
+        await RisingEdge(cocotb.top.clk_i)
+        self.ext = SepExtTrngStream(cocotb.top, logger=self.logger).start(streams=(_EXT,))
+        for name, leg in (
+            ("pack", self._leg_pack),
+            ("pre_partial", self._leg_pre_partial),
+            ("strm_ctrl", self._leg_strm_ctrl),
+            ("to_asm", self._leg_to_asm),
+        ):
+            await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", _EXT_SEL)
+            sel = await self._cpu_ctrl_rd("EXT_TRNG_SRC_SEL")
+            self.chk.ctrl("SMP-EXT-SEL", sel == _EXT_SEL, leg=name, sel=_h(sel), want=_h(_EXT_SEL))
+            await leg()
+            await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+        await RisingEdge(cocotb.top.clk_i)
+        await self.ext.stop(release=True)
+
+    def _ext_beats(self, mark) -> list[tuple[int, int]]:
+        """(TDATA, TSTRB) of each stream 0 transfer after ``mark``."""
+        return [(b.data, b.strb) for b in self.ext.beats_since(mark, _EXT)]
+
+    async def _leg_pack(self) -> None:
+        """PREFETCH 0: every pattern of beats is queued before the first DATA
+        read; each read assembles one word."""
+        patterns = self.ext_plan.pack_patterns
+        beats = [b for p in patterns for b in p]
+        n = len(patterns)
+        L = _Ops()
+        L.add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)))
+        L.add("cfg", kp.rd(pl.A_CFG))
+        L.add(None, *_clear_ops())
+        L.add("pre", kp.rd(pl.A_STATUS))
+        L.add(None, kp.sync())
+        L.add("reads", kp.rdblk(pl.A_DATA, n, stride=0))
+        L.add("post", kp.rd(pl.A_STATUS))
+        L.add("irq", kp.rd(pl.A_IRQ_STATUS))
+        L.add(None, *_clear_ops())
+        span: dict = {}
+
+        async def on_sync(_k: int) -> None:
+            span["mark"] = self.ext.mark()
+            span["c0"] = self.mon.cycle
+            for data, strb in beats:
+                self.ext.send(_EXT, [data], strb)
+            return None
+
+        res = await self._run(L.ops, on_sync=on_sync)
+        await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+        hs_taps = self._hs_between(span["c0"], self.mon.cycle)
+        got = self._ext_beats(span["mark"])
+        at = L.at
+        rd = res[at["reads"]]
+        words = list(rd.data)
+        want = [pl.pack(p)[0] for p in patterns]
+        pre, post = self._status(res[at["pre"]].value), self._status(res[at["post"]].value)
+        irq = self._irq(res[at["irq"]].value)
+        good_want = min(pl.st(pre, "COUNT_GOOD") + n, pl.COUNT_GOOD_MAX)
+        acc = self._acc(res) + [
+            f"read{i}" for i, f in enumerate(rd.flags) if f.slv or f.dec or not f.clean
+        ]
+        self.chk.ok(
+            "SMP-PACK",
+            res[at["cfg"]].value == pl.cfg(pl.RESET_T, 0)
+            and words == want
+            and got == beats
+            and hs_taps == len(beats)
+            and pl.st(post, "STREAM_ERR") == 0
+            and pl.st(post, "TIMEOUT_ERR") == 0
+            and pl.st(post, "COUNT_BAD") == pl.st(pre, "COUNT_BAD")
+            and pl.st(post, "COUNT_GOOD") == good_want
+            and not irq & pl.IRQ_DRBG_ERR
+            and not acc,
+            words=[_h(w) for w in words],
+            want=[_h(w) for w in want],
+            strb=[",".join(f"{s:x}" for _, s in p) for p in patterns],
+            dropped_bytes=[pl.pack(p)[1] for p in patterns],
+            strb0_beats=sum(1 for _, s in beats if s == 0),
+            beats=len(beats),
+            handshakes_src=len(got),
+            handshakes_taps=hs_taps,
+            count_good_delta=pl.st(post, "COUNT_GOOD") - pl.st(pre, "COUNT_GOOD"),
+            count_good_want=good_want,
+            stream_err=pl.st(post, "STREAM_ERR"),
+            timeout_err=pl.st(post, "TIMEOUT_ERR"),
+            bad_responses=",".join(acc) or "none",
+        )
+
+    async def _leg_pre_partial(self) -> None:
+        """PREFETCH 1: the beats of each pattern arrive one per sync, each followed
+        by its drawn gap; STATUS is read after each beat."""
+        e = self.ext_plan
+        gaps = iter(e.pre_gaps)
+        ok = True
+        f: dict[str, list] = {
+            k: [] for k in ("strb", "gaps", "prefetched", "pdata", "data", "word", "flags")
+        }
+        for pattern in e.pre_patterns:
+            n = len(pattern)
+            pg = [next(gaps) for _ in pattern]
+            L = _Ops()
+            L.add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 1)))
+            L.add("cfg", kp.rd(pl.A_CFG))
+            L.add(None, *_clear_ops())
+            L.add("pre", kp.rd(pl.A_STATUS))
+            for j in range(n):
+                L.add(None, kp.sync())
+                L.add(f"b{j}", kp.rd(pl.A_STATUS))
+            L.add("pdata", kp.rd(pl.A_PDATA))
+            L.add("data", kp.rd(pl.A_DATA))
+            L.add("post", kp.rd(pl.A_STATUS))
+            L.add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)))
+            mark = self.ext.mark()
+
+            async def on_sync(k: int, pattern=pattern, pg=pg) -> None:
+                data, strb = pattern[k]
+                self.ext.send(_EXT, [data], strb)
+                await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+                if pg[k]:
+                    await ClockCycles(cocotb.top.clk_i, pg[k])
+                return None
+
+            res = await self._run(L.ops, on_sync=on_sync)
+            at = L.at
+            got = self._ext_beats(mark)
+            word = pl.pack(pattern)[0]
+            pre, post = self._status(res[at["pre"]].value), self._status(res[at["post"]].value)
+            pf = [pl.st(self._status(res[at[f"b{j}"]].value), "PREFETCHED") for j in range(n)]
+            pf_want = [0] * (n - 1) + [1]
+            d, pdata = res[at["data"]], res[at["pdata"]].value
+            acc = self._acc(res)
+            ok = ok and (
+                res[at["cfg"]].value == pl.cfg(pl.RESET_T, 1)
+                and got == pattern
+                and pl.st(pre, "PREFETCHED") == 0
+                and pf == pf_want
+                and pdata == word
+                and d.slv == 0
+                and d.value == word
+                and pl.st(post, "STREAM_ERR") == 0
+                and pl.st(post, "COUNT_BAD") == pl.st(pre, "COUNT_BAD")
+                and pl.st(post, "COUNT_GOOD") == pl.st(pre, "COUNT_GOOD")
+                and not acc
+            )
+            f["strb"].append(",".join(f"{s:x}" for _, s in pattern))
+            f["gaps"].append(",".join(str(g) for g in pg))
+            f["prefetched"].append("".join(str(v) for v in pf))
+            f["pdata"].append(_h(pdata))
+            f["data"].append(_h(d.value))
+            f["word"].append(_h(word))
+            f["flags"].append(
+                f"slv={d.slv},stream_err={pl.st(post, 'STREAM_ERR')},"
+                f"good_delta={pl.st(post, 'COUNT_GOOD') - pl.st(pre, 'COUNT_GOOD')},"
+                f"beats={len(got)}/{n},bad={','.join(acc) or 'none'}"
+            )
+        self.pre_partial = {"ok": ok, "fields": f}
+
+    async def _leg_strm_ctrl(self) -> None:
+        """A full beat to the prefetch path and then TVALID low for the drawn gap;
+        then one-clock pulses, each queued a drawn number of clocks after the
+        TREADY rise of a waiting DATA read."""
+        e = self.ext_plan
+        word, gap = e.strm_drop
+        pulses = e.strm_pulses
+        L = _Ops()
+        L.add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 1)))
+        L.add("cfg_pf", kp.rd(pl.A_CFG))
+        L.add(None, *_clear_ops())
+        L.add("pre", kp.rd(pl.A_STATUS))
+        L.add(None, kp.sync())
+        L.add("drop", kp.rd(pl.A_STATUS))
+        L.add("drop_irq", kp.rd(pl.A_IRQ_STATUS))
+        L.add("drop_data", kp.rd(pl.A_DATA))
+        L.add(None, kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)))
+        L.add("cfg_rd", kp.rd(pl.A_CFG))
+        for j in range(len(pulses)):
+            L.add(None, kp.sync())
+            L.add(f"p{j}", kp.rd(pl.A_DATA))
+        L.add("post", kp.rd(pl.A_STATUS))
+        L.add("irq", kp.rd(pl.A_IRQ_STATUS))
+        L.add(None, *_clear_ops())
+        marks: list = []
+        recs: list[dict] = []
+        tasks: list = []
+
+        async def on_sync(k: int) -> None:
+            if tasks:
+                await tasks[-1]
+            marks.append(self.ext.mark())
+            if k == 0:
+                self.ext.send(_EXT, [word])
+                await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+                await ClockCycles(cocotb.top.clk_i, gap)
+            else:
+                recs.append({})
+                delay, pword = pulses[k - 1]
+                tasks.append(cocotb.start_soon(self._pulse(delay, pword, recs[-1])))
+            return None
+
+        res = await self._run(L.ops, on_sync=on_sync)
+        if tasks:
+            await tasks[-1]
+        await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+        at = L.at
+        # One record segment per sync: from its mark to the next one.
+        end = self.ext.mark()
+        record = self.ext.beats_since(marks[0], _EXT)
+        cuts = [m.n[_EXT] - marks[0].n[_EXT] for m in [*marks, end]]
+        segs = [record[a:b] for a, b in zip(cuts, cuts[1:])]
+        drop_beats = [(b.data, b.strb) for b in segs[0]]
+        pulse_beats = segs[1:]
+        pre, post = self._status(res[at["pre"]].value), self._status(res[at["post"]].value)
+        drop = self._status(res[at["drop"]].value)
+        drop_irq = self._irq(res[at["drop_irq"]].value)
+        irq = self._irq(res[at["irq"]].value)
+        reads = [res[at[f"p{j}"]] for j in range(len(pulses))]
+        acc = self._acc(res)
+        taken = (
+            res[at["cfg_pf"]].value == pl.cfg(pl.RESET_T, 1)
+            and drop_beats == [(word, pl.STRB_ALL)]
+            and pl.st(drop, "PREFETCHED") == 1
+        )
+        self.chk.ctrl(
+            "SMP-STRM-CTRL-TAKEN",
+            taken,
+            cfg=_h(res[at["cfg_pf"]].value),
+            beats=len(drop_beats),
+            prefetched=pl.st(drop, "PREFETCHED"),
+        )
+        pulse_ok = (
+            res[at["cfg_rd"]].value == pl.cfg(pl.RESET_T, 0)
+            and len(recs) == len(pulse_beats) == len(pulses)
+        ) and all(
+            r.get("tready_before") == 0
+            and r.get("tvalid_clks") is not None
+            and [(b.data, b.strb, b.wait) for b in bs] == [(pw, pl.STRB_ALL, 0)]
+            for r, bs, (_, pw) in zip(recs, pulse_beats, pulses)
+        )
+        self.chk.ctrl(
+            "SMP-STRM-CTRL-PULSE",
+            pulse_ok,
+            cfg=_h(res[at["cfg_rd"]].value),
+            delays=[k for k, _ in pulses],
+            tready_before=[r.get("tready_before") for r in recs],
+            tvalid_clks=[r.get("tvalid_clks") for r in recs],
+            beats=[len(bs) for bs in pulse_beats],
+            wait=[bs[0].wait if bs else -1 for bs in pulse_beats],
+        )
+        self.chk.ok(
+            "SMP-STRM-CTRL",
+            taken
+            and pulse_ok
+            and pl.st(drop, "STREAM_ERR") == 0
+            and pl.st(drop, "COUNT_BAD") == pl.st(pre, "COUNT_BAD")
+            and not drop_irq & pl.IRQ_DRBG_ERR
+            and pl.st(post, "STREAM_ERR") == 0
+            and pl.st(post, "COUNT_BAD") == pl.st(pre, "COUNT_BAD")
+            and not irq & pl.IRQ_DRBG_ERR
+            and not acc,
+            drop_gap=gap,
+            stream_err=[
+                pl.st(pre, "STREAM_ERR"),
+                pl.st(drop, "STREAM_ERR"),
+                pl.st(post, "STREAM_ERR"),
+            ],
+            count_bad=[pl.st(pre, "COUNT_BAD"), pl.st(drop, "COUNT_BAD"), pl.st(post, "COUNT_BAD")],
+            drbg_err=[int(bool(drop_irq & pl.IRQ_DRBG_ERR)), int(bool(irq & pl.IRQ_DRBG_ERR))],
+            pulses=len(pulses),
+            bad_responses=",".join(acc) or "none",
+        )
+        self.chk.info(
+            "SMP-STRM-CTRL-READS",
+            drop_read=f"slv={res[at['drop_data']].slv},data={_h(res[at['drop_data']].value)}",
+            drop_word=_h(word),
+            pulse_slv=[r.slv for r in reads],
+            pulse_data=[_h(r.value) for r in reads],
+            pulse_words=[_h(w) for _, w in pulses],
+        )
+
+    async def _pulse(self, delay: int, word: int, rec: dict) -> None:
+        """Wait (bounded) for the TREADY rise of the next DATA read, queue one full
+        beat ``delay`` clocks after it, and record the clocks until TVALID shows.
+
+        ``send`` only queues the beat; the driver puts it on the pins after the
+        next rising edge, so queueing in the read-only phase writes no signal.
+        """
+        dut = cocotb.top
+        for n in range(_DIP_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            ready = self.rd_known(dut.km_entropy_tready_o)
+            if n == 0:
+                rec["tready_before"] = ready
+            if ready:
+                break
+        else:
+            await RisingEdge(dut.clk_i)
+            return
+        for _ in range(delay):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+        self.ext.send(_EXT, [word])
+        for c in range(1, _PULSE_TVALID_BOUND + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd_known(dut.km_entropy_tvalid_o):
+                rec["tvalid_clks"] = c
+                break
+        await RisingEdge(dut.clk_i)
+
+    async def _leg_to_asm(self) -> None:
+        """PREFETCH 0: one partial beat is queued before a DATA read, then no beat."""
+        t = self.ext_plan.to_asm_t
+        beat = self.ext_plan.to_asm_beat
+        L = _Ops()
+        L.add(None, kp.wr(pl.A_CFG, pl.cfg(t, 0)))
+        L.add("cfg", kp.rd(pl.A_CFG))
+        L.add(None, *_clear_ops())
+        L.add("pre", kp.rd(pl.A_STATUS))
+        L.add("irq_pre", kp.rd(pl.A_IRQ_STATUS))
+        L.add(None, kp.sync())
+        L.add("data", kp.rd(pl.A_DATA))
+        L.add("post", kp.rd(pl.A_STATUS))
+        L.add("irq", kp.rd(pl.A_IRQ_STATUS))
+        L.add(None, *_clear_ops(), kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)))
+        span: dict = {}
+
+        async def on_sync(_k: int) -> None:
+            span["mark"] = self.ext.mark()
+            span["c0"] = self.mon.cycle
+            self.ext.send(_EXT, [beat[0]], beat[1])
+            return None
+
+        res = await self._run(L.ops, on_sync=on_sync)
+        await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+        hs_taps = self._hs_between(span["c0"], self.mon.cycle)
+        at = L.at
+        got = self._ext_beats(span["mark"])
+        pre, post = self._status(res[at["pre"]].value), self._status(res[at["post"]].value)
+        irq_pre, irq = self._irq(res[at["irq_pre"]].value), self._irq(res[at["irq"]].value)
+        d = res[at["data"]]
+        bad_want = min(pl.st(pre, "COUNT_BAD") + 1, pl.COUNT_BAD_MAX)
+        acc = self._acc(res, {at["data"]})
+        self.chk.ok(
+            "SMP-TO-ASM",
+            res[at["cfg"]].value == pl.cfg(t, 0)
+            and got == [beat]
+            and hs_taps == 1
+            and pl.st(pre, "TIMEOUT_ERR") == 0
+            and not irq_pre & pl.IRQ_DRBG_ERR
+            and d.slv == 1
+            and d.dec == 0
+            and d.value == 0
+            and pl.st(post, "TIMEOUT_ERR") == 1
+            and pl.st(post, "STREAM_ERR") == 0
+            and pl.st(post, "COUNT_BAD") == bad_want
+            and irq & pl.IRQ_DRBG_ERR
+            and not acc,
+            t=t,
+            strb=f"0x{beat[1]:x}",
+            beats=len(got),
+            handshakes_taps=hs_taps,
+            slv=d.slv,
+            dec=d.dec,
+            data=_h(d.value),
+            timeout_err=[pl.st(pre, "TIMEOUT_ERR"), pl.st(post, "TIMEOUT_ERR")],
+            stream_err=pl.st(post, "STREAM_ERR"),
+            count_bad=[pl.st(pre, "COUNT_BAD"), pl.st(post, "COUNT_BAD")],
+            count_bad_want=bad_want,
+            drbg_err=[int(bool(irq_pre & pl.IRQ_DRBG_ERR)), int(bool(irq & pl.IRQ_DRBG_ERR))],
+            bad_responses=",".join(acc) or "none",
+        )
+
     # Step 6a: the withdrawal of a partial prefetch word (stalled stream), then
     # the first live beats with a DATA read waiting.
     async def _step_withdraw_and_active(self) -> None:
@@ -919,6 +1517,13 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         # Control: the partial beat alone is a completed handshake, not a withdrawal.
         tw0, tw1 = stv("tw_before"), stv("tw_after")
+        pp = self.pre_partial
+        self.chk.ok(
+            "SMP-PRE-PARTIAL",
+            pp["ok"] and pl.st(tw1, "PREFETCHED") == 0,
+            single_beat_prefetched=pl.st(tw1, "PREFETCHED"),
+            **pp["fields"],
+        )
         tw_irq = self._irq(res[at["tw_irq"]].value)
         twin_ok = (
             hook.get("twin_fired") == 0
@@ -974,6 +1579,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             tready_before_read=rel.get("tready_at_start"),
             read_start_clk=rel.get("read_start_clk", "none"),
         )
+        self.chk.obs("SMP-READ-DIP", dip_clks=rel.get("dip_clks", "none"))
         self.chk.ctrl(
             "SMP-PRE-DISCRIM",
             b1 is not None and b2 is not None and b1 != b2 and partial_word != b2,
@@ -1359,7 +1965,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.rd(pl.A_STATUS),
                 kp.rdloop(pl.A_DATA, pl.GOOD_LOOP_READS, stride=0),
                 kp.rd(pl.A_STATUS),
-                kp.rdloop(pl.A_DATA, pl.EXTRA_READS, stride=0),
+                *[kp.rd(pl.A_DATA) for _ in range(pl.EXTRA_READS)],
                 kp.rd(pl.A_STATUS),
                 kp.wr(pl.A_STATUS, 0),
                 kp.rd(pl.A_STATUS),
@@ -1368,8 +1974,14 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)),
             ]
             res = await self._run(ops, timeout_cycles=_GOOD_LOOP_CYCLES)
-            g = [pl.st(self._status(res[i].value), "COUNT_GOOD") for i in (2, 4, 6, 8, 10)]
+            ne = pl.EXTRA_READS
+            g = [
+                pl.st(self._status(res[i].value), "COUNT_GOOD")
+                for i in (2, 4, 5 + ne, 7 + ne, 9 + ne)
+            ]
+            extra_ok = sum(1 for r in res[5 : 5 + ne] if r.flags_known and (r.slv, r.dec) == (0, 0))
             good = {
+                "extra_reads_ok": extra_ok,
                 "start": g[0],
                 "sat": g[1],
                 "extra": g[2],
@@ -1400,6 +2012,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             good["start"] == 0
             and good["sat"] == pl.COUNT_GOOD_MAX
             and good["extra"] == pl.COUNT_GOOD_MAX
+            and good["extra_reads_ok"] == pl.EXTRA_READS
             and good["zero_write"] == pl.COUNT_GOOD_MAX
             and good["clear"] == 0
             and not good["acc"]
@@ -1412,6 +2025,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             bad_after_extra=f"0x{bd['extra']:x}",
             good_sat=f"0x{good['sat']:x}" if good else "skipped",
             good_after_extra=f"0x{good['extra']:x}" if good else "skipped",
+            good_extra_reads_ok=f"{good['extra_reads_ok']}/{pl.EXTRA_READS}" if good else "skipped",
             zero_write="kept"
             if bd["zero_write"] == pl.COUNT_BAD_MAX
             and gl["zero_write"] == gl["before"]
@@ -1512,16 +2126,28 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 cond = cond and delta == 1
             else:
                 r = res[i_data]
+                cfg_rd = res[1].value
                 bad_want = _withdraw_bad_want(st_pre, st)
                 cond = (
                     cond
+                    and cfg_rd == pl.cfg(t, 0)
+                    and r.slv == 1
+                    and r.dec == 0
                     and r.value == 0
                     and pl.st(st_pre, "TIMEOUT_ERR") == 0
                     and delta == bad_want
                 )
                 fields.update(
+                    contract=(
+                        "key_manager/doc/architecture.adoc:886-887,891-893(Errors_and_reset)"
+                    ),
+                    cfg_rd=_h(cfg_rd),
+                    cfg_want=_h(pl.cfg(t, 0)),
                     slv=r.slv,
+                    dec=r.dec,
+                    exp_resp="SLVERR(slv=1,dec=0)",
                     data=_h(r.value),
+                    exp_data=_h(0),
                     count_bad_delta_want=bad_want,
                     timeout_err=[pl.st(st_pre, "TIMEOUT_ERR"), pl.st(st, "TIMEOUT_ERR")],
                 )

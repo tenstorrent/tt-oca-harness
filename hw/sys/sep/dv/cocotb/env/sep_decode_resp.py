@@ -17,7 +17,7 @@ A response gives the read code, the RDL read data and the write code
 response has no such offset. The RDL notes on a row qualify its responses, and
 this module models none of them.
 
-``rdata`` in ``sep.rdl`` is a 64-bit field (``ocah_resp`` in
+``rdata`` in ``sep_memory_map.rdl`` is a 64-bit field (``ocah_resp`` in
 ``hw/common/regs/regblock_udps.rdl``). A 64-bit RDL rdata states both words:
 the low word for address bit 2 clear and the upper word for address bit 2 set.
 An RDL rdata that carries no upper word (a 32-bit value such as

@@ -7,7 +7,9 @@
  * Verifies how the SMC BL0 ROM handles zero-length OCCP transfers at both
  * ends of the test range and at random addresses: a WRITE completes with
  * success, a READ is rejected, and each one logs a matching overflow error
- * in the SMC status buffer, which is drained once after all transfers.
+ * in the SMC status buffer, which is drained once after all transfers. With
+ * the STATUS_RPT_DISABLE strap set, the drain is replaced by one
+ * GET_SMC_STATUS that must return Unsupported_StatusID.
  */
 
 #include "occp_test_common.h"
@@ -29,6 +31,10 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
             simputs("FAIL: Failed to read SMC status\n");
             ctx->overall_result = false;
             break;
+        }
+        if (ctx->status_reporting_disabled) {
+            simputs("STATUS_RPT_DISABLE strap active; GET_SMC_STATUS rejected as expected\n");
+            return;
         }
 
         if (smc_status == 0) {

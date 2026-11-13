@@ -3,48 +3,56 @@
 """Sequence for sep_address_map_test.
 
 Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bus:
-  * READ_CHECK  — read each register, verify its reset value (decode + reset cov).
-  * READ_ONLY   — read hw-driven / non-deterministic registers (resp-check only).
-  * REF_COUNTER — read both REFERENCE_COUNTER words and log the observed value.
+  * READ_CHECK  — read each register, verify its reset value. A non-zero reset
+                  value also shows decode; a reset value of 0 does not, since an
+                  offset between registers also answers OKAY with data 0.
+  * READ_ONLY   — read hw-driven / non-deterministic registers (resp-check only:
+                  an OKAY answer, not decode);
+                  SEP_TEST_CTRL also gets a write of its complement and a
+                  re-read that must leave its sw=r field bits unchanged.
+  * REF_COUNTER — read both REFERENCE_COUNTER words; the low half must advance.
   * BASE_ADDR_RW — write/read/restore SEP base/size CSRs used by the local remap.
   * WRITE_READBACK — write a pattern to pure-RW scratch/threshold regs, read it
                      back masked to the register's implemented fields, then
                      restore the reset value (write-path coverage).
-  * WRITE_ONLY  — write a benign value to write-only (sw=w) regs (decode + write
-                  path); they cannot be read back.
+  * WRITE_ONLY  — write a benign value to write-only (sw=w) regs; the check is an
+                  OKAY write response, not decode. They cannot be read back.
 
 The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
 ``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
-three words in that span. ``hw/sys/sep/doc/memory_map.adoc`` states the
-contract for an offset inside a unit's allocated extent that owns no register:
-the unit accepts it, reads return zero and writes are discarded, both OKAY. The test grades that,
+three words in that span. ``doc/trm/src/memory_map.adoc`` states the
+contract for an offset between the registers of a generated register block:
+it answers OKAY, a read returns zero and a write has no effect. The test grades that,
 and that the offset does not alias a live register. Then a walk
 of one readable CSR per LSU-reachable block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
 source, Adams Bridge, entropy pool, lifecycle ctrl, KM mailbox, eFuse shadow,
 AXI-lite mailbox, inbound filter, alias-remap, output-remap, and the
-OpenTitan SPI host — confirming every block decodes.
+OpenTitan SPI host. A row that reads a register with a non-zero RDL reset
+shows that its block answers; a row with no such register shows only that the
+address answers OKAY inside SEP (see FABRIC_BLOCKS).
 
 Expected values are SOURCE-DERIVED, never hardcoded. Offsets,
 reset values, and implemented-field masks all come from `env/sep_reg_meta.py`,
 which reads the generated `hw/sys/sep/regs/gen/py/sep_reg.py` export of the
-SystemRDL. Only the write PATTERNS and the fabric-walk block addresses are
-literals here: the patterns are chosen stimulus, and the walk's
-addresses encode a per-block editorial choice of "one safe, readable CSR" that no
-generated symbol expresses. Blocks whose reset value IS exported
-(reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
+SystemRDL. Only the write PATTERNS are literals here: they are chosen
+stimulus. Each fabric-walk row names its register by generated symbol, and a
+row that reads a register with a non-zero RDL reset takes that value from the
+header.
 
 CLOCK_GATE_CTRL has one implemented bit (`pka_cg_enable[0:0]`, reset 0).
-This sequence writes that implemented mask, reads it back, and restores
-reset. Per-block CSR clocks are not gated in this RDL, so every walked
-block is unconditionally clocked.
+This sequence writes that implemented mask, reads it back, restores reset
+after the fabric walk and reads the reset value back; it counts as one
+WRITE_READBACK register. Per-block CSR clocks are not gated in this RDL, so
+every walked block is unconditionally clocked.
 
 Most side-effecting registers are NOT written. The only address-aperture
 exception is the SEP local/global base/size triplet: it is written, read back
 and restored before the fabric walk runs, so the remap CSRs still get write-path
 coverage. SMU base/size remain reset-checked only. woset LOCK regs are never written
 because they would latch permanently. The scoreboard checks the AXI response on
-every access and the value on every checked read.
+every access except the SEP_TEST_CTRL complement write, whose response is
+logged, and the value on every checked read.
 
 SW_RESET_N is reachable on the CPU LSU; this sequence value-checks its reset.
 """
@@ -54,8 +62,13 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_bit_watch import SepBitWatch
+from env.sep_fabric_common import RESP_DECERR
+from env.sep_fabric_tap import SepFabricTap, TapBeat
 from pyuvm import uvm_sequence
 from sep_reg_meta import (
+    AES,
+    AXIL_MAILBOX_OUTBOUND_0,
     CSRNG,
     EDN,
     HMAC,
@@ -63,24 +76,27 @@ from sep_reg_meta import (
     OTBN,
     SEP_CPU_CTRL,
     SEP_RESET_CTRL,
+    SPI_CONTROLLER,
+    WDT_TIMER,
+    RegBlock,
     iter_registers,
     sym,
 )
 
-from seq_lib.sep_abr_keygen_seq import ABR_NAME0
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
+ENTROPY_SRC = RegBlock("ENTROPY_SOURCE")
+SECURE_DMA = RegBlock("SECURE_DMA")
 
-# Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
-# (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
-# up to SEP_SW_DEBUG. The xbar still claims the window, and
-# `hw/sys/sep/doc/memory_map.adoc` says a unit accepts an offset inside its
-# extent that owns no register: reads return zero and writes are discarded,
-# both OKAY.
+# Interior reserved span in sep_cpu_ctrl. The hole starts after the generated
+# width of SEP_FUSE_SENSE_STATUS and runs up to SEP_SW_DEBUG. The xbar still
+# claims the window, and `doc/trm/src/memory_map.adoc` says an offset between
+# the registers of a generated register block answers OKAY: a read returns
+# zero and a write has no effect.
 _FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
 _SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
-_HOLE_LO = _FUSE_OFF + 8
+_HOLE_LO = _FUSE_OFF + sym("SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_WIDTH") // 8
 _HOLE_NAMED = _HOLE_LO + 0x18
 assert _HOLE_LO < _HOLE_NAMED < _SW_DEBUG_OFF, (
     "sep_cpu_ctrl reserved-span arithmetic no longer contains 0x170; "
@@ -119,7 +135,9 @@ READ_CHECK = [
 ]
 
 # (name, why) — value is hw-driven / non-deterministic, so the RDL reset is not
-# what the DUT presents. Check the AXI response (decode reachable) only.
+# what the DUT presents. Check the AXI response only (an OKAY answer, not decode).
+# SEP_TEST_CTRL also gets the complement-write check: its sw=r field bits must
+# read the same after a software write of their complement.
 READ_ONLY = [
     ("REFERENCE_COUNTER", "free-running counter on clk_ref_i"),
     ("SEP_TEST_CTRL", "hw-driven straps (e.g. sep_standalone)"),
@@ -153,7 +171,7 @@ WRITE_READBACK = [
 ]
 
 # (name, value) — write-only (sw=w) registers: reading them returns non-OKAY, so
-# cover decode + write path with a benign value instead. Inert here because
+# write a benign value and check the OKAY write response instead. Inert here because
 # TIMEOUT_ENABLE is restored to its reset (the timeout subsystem is disabled), so
 # TIMEOUT_CLEAR (write-1-to-clear) clears nothing and TIMEOUT_MODE is unused.
 WRITE_ONLY = [
@@ -162,7 +180,11 @@ WRITE_ONLY = [
 ]
 
 # SEP-local fabric walk: one defined, readable CSR per LSU-reachable block.
-# expected=None => accessibility only (OKAY; value hw-driven/state-dependent).
+# A row with a non-zero expected value reads a register whose RDL reset is
+# non-zero and that nothing in this test writes, so a read that lands in a local
+# hole (OKAY, data 0) fails the compare. A row with expected 0 or None is for a
+# block with no such register (every reset is 0, or the read value is
+# hardware-driven); the row proves only that the address answers OKAY inside SEP.
 # Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and OTP-triggering
 # eFuse interface regs (0x1093_04xx+) are NOT probed — they would hang.
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
@@ -170,12 +192,12 @@ WRITE_ONLY = [
 # Blocks whose address AND reset value are exported take both from the header.
 # The ABR NAME0 and entropy-pool STATUS addresses come from their owning seq
 # modules.
-_INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+_INFILT0 = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     (
         info.reset
         for info in iter_registers()
-        if info.block == "INBOUND_FILTER_CTRL_0_" and info.name == "FILTER_CONFIG"
+        if info.block == "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_" and info.name == "FILTER_CONFIG"
     ),
     None,
 )
@@ -183,13 +205,17 @@ if _INFILT0_CFG_RESET is None:
     # Fail at import rather than build a row with no expected value. A bare
     # next() raises StopIteration with no message; name what is missing.
     raise RuntimeError(
-        "INBOUND_FILTER_CTRL_0_.FILTER_CONFIG is not in the generated register "
+        "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_.FILTER_CONFIG is not in the generated register "
         "export, so the inbound-filter address-map row has no reset value to "
         "check; update FABRIC_BLOCKS to the block's name in the export"
     )
 FABRIC_BLOCKS = [
-    ("SECURE_DMA", sym("SECURE_DMA_REG_MAP_BASE_ADDR"), None),
-    ("WDT_TIMER", sym("WDT_TIMER_REG_MAP_BASE_ADDR"), None),
+    (
+        "SECURE_DMA",
+        SECURE_DMA.addr("HANDSHAKE_INTR_ENABLE"),
+        SECURE_DMA.reset32("HANDSHAKE_INTR_ENABLE"),
+    ),
+    ("WDT_TIMER", WDT_TIMER.addr("WDOG_REGWEN"), WDT_TIMER.reset32("WDOG_REGWEN")),
     ("SEP_SCRATCH_COLD", sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
     ("SEP_SCRATCH_WARM", sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
     # SW_RESET_N resets with KM[0]=0 and OTBN/AES/HMAC/KMAC/TRNG/ABR[6:1]=1. An external
@@ -199,43 +225,77 @@ FABRIC_BLOCKS = [
         SEP_RESET_CTRL.addr("SW_RESET_N"),
         SEP_RESET_CTRL.reset32("SW_RESET_N"),
     ),
+    # OTBN STATUS resets non-zero but moves when the initial secure wipe ends;
+    # HMAC CFG has fields with no RDL reset. Both rows read INTR_STATE (reset 0).
     ("OTBN", OTBN.addr("INTR_STATE"), OTBN.reset32("INTR_STATE")),
-    ("AES", sym("AES_REG_MAP_BASE_ADDR"), None),
+    ("AES", AES.addr("CTRL_AUX_REGWEN"), AES.reset32("CTRL_AUX_REGWEN")),
     ("HMAC", HMAC.addr("INTR_STATE"), HMAC.reset32("INTR_STATE")),
-    ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
-    ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), CSRNG.reset("INTR_STATE")),
-    ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), EDN.reset("INTR_STATE")),
-    ("ENTROPY_SRC", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR"), None),
+    ("KMAC", KMAC.addr("CFG_SHADOWED"), KMAC.reset32("CFG_SHADOWED")),
+    ("DRBG_CSRNG", sym("CSRNG_REGWEN_REG_ADDR"), CSRNG.reset("REGWEN")),
+    ("DRBG_EDN", sym("EDN_REGWEN_REG_ADDR"), EDN.reset("REGWEN")),
+    # COMPONENT_ID: every field sw=r with a constant RDL reset.
+    (
+        "ENTROPY_SRC",
+        ENTROPY_SRC.addr("COMPONENT_ID"),
+        ENTROPY_SRC.reset32("COMPONENT_ID"),
+    ),
     # MLDSA_NAME[0]. abr_reg.rdl declares it sw=r with no reset, and no SEP
     # document gives its value, so the row checks accessibility only.
-    ("ADAMS_BRIDGE", ABR_NAME0, None),
+    ("ADAMS_BRIDGE", sym("ABR_MLDSA_NAME_0__REG_ADDR"), None),
     ("ENTROPY_POOL", POOL_STATUS, None),  # status only: DATA pop is destructive
     ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
+    # SEP_STATUS holds hw=w FIFO flags that move once the Key Manager uses the
+    # mailbox after boot, so its RDL reset is not the read value.
     ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
     ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
-    ("AXIL_MAILBOX", sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"), None),
+    # STATUS resets to the empty flag; nothing in this test writes the mailbox.
+    (
+        "AXIL_MAILBOX",
+        AXIL_MAILBOX_OUTBOUND_0.addr("STATUS"),
+        AXIL_MAILBOX_OUTBOUND_0.reset32("STATUS"),
+    ),
     ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),
-    ("ALIAS_REMAP", sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
-    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
-    ("OT_SPI_HOST", sym("SPI_CONTROLLER_INTR_STATE_REG_ADDR"), None),
+    (
+        "ALIAS_REMAP",
+        sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR"),
+        None,
+    ),
+    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR"), None),
+    ("OT_SPI_HOST", SPI_CONTROLLER.addr("CONTROL"), SPI_CONTROLLER.reset32("CONTROL")),
 ]
 
 
 class sep_address_map_seq(uvm_sequence):
-    def __init__(self, name: str = "sep_address_map_seq") -> None:
+    def __init__(self, name: str, out_probe: int) -> None:
         super().__init__(name)
+        # A word that routes to the outbound port, read after the walk inside the
+        # same PR-OUT window.
+        self.out_probe = out_probe
+        self.ref_counter_first_low = 0
         self.ref_counter_low = 0
         self.ref_counter_high = 0
-        self.base_addr_rw_checks = 0
-        self.write_readback_checks = 0
-        self.fabric_walk_checks = 0
+        self.base_addr_rw: list[tuple[str, int, int, int, int]] = []
+        self.reset_reads: list[tuple[str, int, int]] = []
+        # (name, expect, readback, reset, restored) of each
+        # write->readback->restore->readback check, in order.
+        self.write_readback: list[tuple[str, int, int, int, int]] = []
+        # (row name, expected or None, read data, OKAY, resp code) of each
+        # fabric-walk read, in walk order.
+        self.fabric_walk_rows: list[tuple[str, int | None, int, bool, int]] = []
+        # PR-OUT AR beats during the fabric walk, and during the read of out_probe.
+        self.fabric_walk_out_ars: list[TapBeat] = []
+        self.out_probe_ars: list[TapBeat] = []
         # Registers whose only fields are RDL `reserved` fields. They are
         # still fully checked above (real sw=rw storage), but what they prove is
         # storage rather than an implemented-field readback -- noted so the
         # evidence line can say so.
         self.write_readback_storage_only: list[str] = []
+        # SEP_TEST_CTRL: (first read, second read, re-read after the write),
+        # and the write response code.
+        self.test_ctrl_reads: tuple[int, int, int] | None = None
+        self.test_ctrl_wr_resp: int | None = None
 
-    async def _read(self, addr: int, expected: int | None, name: str) -> int:
+    async def _read_item(self, addr: int, expected: int | None, name: str) -> SepAxiItem:
         item = SepAxiItem(f"rd_{name}")
         item.op = SepAxiOp.READ
         item.addr = addr
@@ -243,27 +303,128 @@ class sep_address_map_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
-        return item.rdata
+        return item
 
-    async def _write(self, addr: int, data: int, name: str) -> None:
+    async def _read(self, addr: int, expected: int | None, name: str) -> int:
+        return (await self._read_item(addr, expected, name)).rdata
+
+    async def _write(
+        self, addr: int, data: int, name: str, *, allow_unverified_resp: bool = False
+    ) -> SepAxiItem:
         item = SepAxiItem(f"wr_{name}")
         item.op = SepAxiOp.WRITE
         item.addr = addr
         item.length = 4
         item.wdata = data
+        item.allow_unverified_write_resp = allow_unverified_resp
         await self.start_item(item)
         await self.finish_item(item)
+        return item
+
+    async def _test_ctrl_write_check(self, addr: int, v0: int) -> None:
+        """Write the complement of SEP_TEST_CTRL and require its fields unchanged.
+
+        Every RDL field of SEP_TEST_CTRL is ``sw=r; hw=w``
+        (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl``), so a
+        software write leaves the field bits as they were. The fields are
+        hardware driven, so a second read before the write must agree with
+        the first on those bits; otherwise a hardware change could read as a
+        write effect. Bits outside the fields have no stated value, and no
+        line states the response to a write of an ``sw=r`` register: both are
+        logged, not graded. The write must reach ``sep_cpu_ctrl``: its B
+        response is not DECERR and no AW leaves SEP on PR-OUT or PR-EXT while it
+        is in flight (CTRL-SEP-TEST-CTRL-WRITE-REACH), since a refused write
+        would also leave the fields unchanged. The read after the write must
+        raise the register's read strobe (tap ``sep_test_ctrl_rd_probe_o``,
+        CTRL-SEP-TEST-CTRL-DECODE): every field reads 0 on this bench, so
+        without it an in-extent hole that answers OKAY with data 0 would pass.
+        """
+        mask = SEP_CPU_CTRL.mask32("SEP_TEST_CTRL")
+        v0b = await self._read(addr, expected=None, name="SEP_TEST_CTRL_again")
+        if (v0 ^ v0b) & mask:
+            raise AssertionError(
+                f"CTRL-SEP-TEST-CTRL-STABLE FAIL: field bits changed between two reads "
+                f"with no write (0x{v0:08x} -> 0x{v0b:08x}, mask 0x{mask:08x}), so the "
+                f"write check cannot separate a write effect from a hardware change"
+            )
+        cocotb.log.info(
+            "CTRL-SEP-TEST-CTRL-STABLE fields=0x%08x equal on both reads before the write",
+            v0 & mask,
+        )
+        wdata = ~v0 & 0xFFFF_FFFF
+        out = SepFabricTap("PR-OUT").start()
+        ext = SepFabricTap("PR-EXT").start()
+        out_mark, ext_mark = out.mark(), ext.mark()
+        wr = await self._write(addr, wdata, name="SEP_TEST_CTRL", allow_unverified_resp=True)
+        left = out.since(out_mark, "aw") + ext.since(ext_mark, "aw")
+        out.check_life(out_mark)
+        ext.check_life(ext_mark)
+        await out.stop()
+        await ext.stop()
+        reach = (
+            f"addr=0x{addr:08x} wdata=0x{wdata:08x} resp={wr.resp_code} "
+            f"pr_out_aw={len(out.since(out_mark, 'aw'))} pr_ext_aw={len(ext.since(ext_mark, 'aw'))}"
+        )
+        if wr.resp_code == RESP_DECERR or left:
+            raise AssertionError(f"CTRL-MISSING SEP-TEST-CTRL-WRITE-REACH: {reach}")
+        cocotb.log.info("CTRL-SEP-TEST-CTRL-WRITE-REACH: %s expect resp!=3 aw=0", reach)
+        strb = SepBitWatch(cocotb.top.sep_test_ctrl_rd_probe_o, name="test_ctrl_rd").start()
+        ms = strb.mark()
+        v1 = await self._read(addr, expected=None, name="SEP_TEST_CTRL_after_write")
+        await ClockCycles(cocotb.top.clk_i, 1)
+        strb_clk = strb.high_clocks_since(ms)
+        await strb.stop()
+        if strb_clk == 0:
+            raise AssertionError(
+                f"CTRL-MISSING SEP-TEST-CTRL-DECODE: addr=0x{addr:08x} read returned "
+                f"0x{v1:08x} with no SEP_TEST_CTRL read strobe"
+            )
+        cocotb.log.info(
+            "CTRL-SEP-TEST-CTRL-DECODE: addr=0x%08x read strobe high %d clk", addr, strb_clk
+        )
+        self.test_ctrl_reads = (v0, v0b, v1)
+        self.test_ctrl_wr_resp = wr.resp_code
+        cocotb.log.info(
+            "OBS-SEP-TEST-CTRL-WR wdata=0x%08x resp=%d resp_ok=%d unfielded_before=0x%07x "
+            "unfielded_after=0x%07x",
+            wdata,
+            wr.resp_code,
+            int(wr.resp_ok),
+            v0 & ~mask & 0xFFFF_FFFF,
+            v1 & ~mask & 0xFFFF_FFFF,
+        )
+        changed = (v0 ^ v1) & mask
+        if changed:
+            bits = [b for b in range(32) if (changed >> b) & 1]
+            raise AssertionError(
+                f"CHK-SEP-TEST-CTRL-RO FAIL: a write of 0x{wdata:08x} changed sw=r field "
+                f"bit(s) {bits} (0x{v0:08x} -> 0x{v1:08x}, mask 0x{mask:08x})"
+            )
 
     async def body(self) -> None:
         for name in READ_CHECK:
-            await self._read(
-                BASE + SEP_CPU_CTRL.offset(name),
-                expected=SEP_CPU_CTRL.reset32(name),
-                name=name,
-            )
+            exp = SEP_CPU_CTRL.reset32(name)
+            got = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=exp, name=name)
+            self.reset_reads.append((name, exp, got & 0xFFFF_FFFF))
 
         for name, _why in READ_ONLY:
-            await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
+            addr = BASE + SEP_CPU_CTRL.offset(name)
+            value = await self._read(addr, expected=None, name=name)
+            if name == "SEP_TEST_CTRL":
+                # No spec states the strap values this bench presents, so the
+                # fields are logged.
+                cocotb.log.info(
+                    "OBS-SEP-TEST-CTRL value=0x%08x fast_spi_en=%d fast_iccm_en=%d "
+                    "fast_dccm_en=%d fast_sram_en=%d fast_pka_en=%d sep_standalone=%d",
+                    value,
+                    (value >> 31) & 1,
+                    (value >> 30) & 1,
+                    (value >> 29) & 1,
+                    (value >> 28) & 1,
+                    (value >> 27) & 1,
+                    (value >> 26) & 1,
+                )
+                await self._test_ctrl_write_check(addr, value)
 
         # The 64-bit REFERENCE_COUNTER is frontdoor readable and LIVE: it counts
         # on clk_ref_i, which the testbench drives, so no pinned value can be
@@ -276,6 +437,7 @@ class sep_address_map_seq(uvm_sequence):
         # Every other read in this sweep keeps its pinned expectation.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
         first_low = await self._read(BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo")
+        self.ref_counter_first_low = first_low
         self.ref_counter_high = await self._read(
             BASE + ref_off + 4, expected=None, name="REFERENCE_COUNTER_hi"
         )
@@ -301,10 +463,10 @@ class sep_address_map_seq(uvm_sequence):
             reset = SEP_CPU_CTRL.reset32(name)
             mask = SEP_CPU_CTRL.mask32(name)
             await self._write(addr, pattern, name=name)
-            await self._read(addr, expected=pattern & mask, name=f"{name}_pattern")
+            got = await self._read(addr, expected=pattern & mask, name=f"{name}_pattern")
             await self._write(addr, reset, name=f"{name}_restore")
-            await self._read(addr, expected=reset, name=f"{name}_restored")
-            self.base_addr_rw_checks += 1
+            restored = await self._read(addr, expected=reset, name=f"{name}_restored")
+            self.base_addr_rw.append((name, pattern & mask, got, reset, restored))
 
         for name, pattern in WRITE_READBACK:
             addr = BASE + SEP_CPU_CTRL.offset(name)
@@ -323,11 +485,14 @@ class sep_address_map_seq(uvm_sequence):
                 f"distinguish a stored write from an ignored one. Choose a pattern "
                 f"whose masked value differs from reset."
             )
+            reset = SEP_CPU_CTRL.reset32(name) & store_mask
             await self._write(addr, pattern, name=name)
-            await self._read(addr, expected=expected, name=name)
-            # Restore the generated reset value.
+            got = await self._read(addr, expected=expected, name=name)
             await self._write(addr, SEP_CPU_CTRL.reset32(name), name=f"{name}_restore")
-            self.write_readback_checks += 1
+            restored = await self._read(addr, expected=reset, name=f"{name}_restored")
+            self.write_readback.append(
+                (name, expected, got & 0xFFFF_FFFF, reset, restored & 0xFFFF_FFFF)
+            )
             # Informational only: these have no software-usable fields, so what was
             # proven is storage, not an implemented-field readback.
             if mask == 0:
@@ -336,19 +501,33 @@ class sep_address_map_seq(uvm_sequence):
         for name, value in WRITE_ONLY:
             await self._write(BASE + SEP_CPU_CTRL.offset(name), value, name=name)
 
-        # CLOCK_GATE_CTRL write path: drive every implemented bit, read it back,
-        # restore the reset value. See the module docstring for why this does not
+        # CLOCK_GATE_CTRL write path: drive every implemented bit and read it
+        # back; the restore and its readback follow the fabric walk. See the module docstring for why this does not
         # ungate per-block clocks (those fields do not exist in this RDL).
         cg_addr = BASE + SEP_CPU_CTRL.offset("CLOCK_GATE_CTRL")
         cg_mask = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
         cg_reset = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
         await self._write(cg_addr, cg_mask, name="CLOCK_GATE_CTRL")
-        await self._read(cg_addr, expected=cg_mask, name="CLOCK_GATE_CTRL")
+        cg_got = await self._read(cg_addr, expected=cg_mask, name="CLOCK_GATE_CTRL")
 
-        # Walk the SEP-local fabric: every block must decode on the LSU bus.
+        # Walk the SEP-local fabric: every row must be answered inside SEP, so
+        # no walk read may leave on PR-OUT. The out_probe read after the walk, in
+        # the same tap window, shows that the tap records an outbound read.
+        out = SepFabricTap("PR-OUT").start()
+        out_mark = out.mark()
         for name, addr, expected in FABRIC_BLOCKS:
-            await self._read(addr, expected=expected, name=name)
-            self.fabric_walk_checks += 1
+            item = await self._read_item(addr, expected=expected, name=name)
+            self.fabric_walk_rows.append(
+                (name, expected, item.rdata & 0xFFFF_FFFF, item.resp_ok, item.resp_code)
+            )
+        self.fabric_walk_out_ars = out.since(out_mark, "ar")
+        probe_mark = out.mark()
+        await self._read(self.out_probe, expected=None, name="out_probe")
+        self.out_probe_ars = out.since(probe_mark, "ar")
+        await out.stop()
 
-        # Restore CLOCK_GATE_CTRL to its reset value.
         await self._write(cg_addr, cg_reset, name="CLOCK_GATE_CTRL_restore")
+        cg_restored = await self._read(cg_addr, expected=cg_reset, name="CLOCK_GATE_CTRL_restored")
+        self.write_readback.append(
+            ("CLOCK_GATE_CTRL", cg_mask, cg_got & 0xFFFF_FFFF, cg_reset, cg_restored & 0xFFFF_FFFF)
+        )

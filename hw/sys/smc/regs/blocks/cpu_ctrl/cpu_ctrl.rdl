@@ -13,6 +13,11 @@ addrmap cpu_ctrl {
         accesswidth = 64;
 
         field {
+            desc = "Boot address of core n, one register per core. Core n starts fetching here when
+                    its reset releases, so a write takes effect at that core's next reset release;
+                    bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+                    instead. The register is on the primary reset and keeps its value across a warm
+                    reset.";
             sw=rw;
             hw=r;
         } vector [55:0] = 0xc004_0000;
@@ -180,7 +185,7 @@ addrmap cpu_ctrl {
         field  {
             sw=rw;
             hw=r;
-            desc="Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles";
+            desc="Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles";
         } data [31:0] = 0x4000;
     };
 
@@ -326,7 +331,7 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Word 0 of WFI loop";
+            desc="Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.";
         } dummy_rom_word_0 [63:0] = 0x0145051300000517;
     };
 
@@ -337,7 +342,7 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Word 1 of WFI loop";
+            desc="Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.";
         } dummy_rom_word_1 [63:0] = 0xfff0069330551073;
     };
 
@@ -348,7 +353,7 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Word 2 of WFI loop";
+            desc="Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.";
         } dummy_rom_word_2 [63:0] = 0x105000733046b073;
     };
 
@@ -359,7 +364,7 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Word 3 of WFI loop";
+            desc="Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.";
         } dummy_rom_word_3 [63:0] = 0x00000000ffdff06f;
     };
 
@@ -370,7 +375,7 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom";
+            desc="Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.";
         } dummy_rom_null [63:0] = 0x0;
     };
 

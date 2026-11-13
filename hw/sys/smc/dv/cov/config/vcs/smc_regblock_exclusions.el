@@ -29,82 +29,82 @@ MODULE: avsbus_controller
 Condition 81 "3153649340" "(hwif_out.AVS_CMD.req && hwif_out.AVS_CMD.req_is_wr) 1 -1" (2 "10")
 Condition 82 "2470372776" "(hwif_out.AVS_READBACK.req && ((!hwif_out.AVS_READBACK.req_is_wr))) 1 -1" (2 "10")
 
-CHECKSUM: "3896755233 3909592511"
+CHECKSUM: "2267119575 68031599"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: avsbus_controller_reg
-Condition 71 "553260962" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 75 "1897250593" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 79 "889399730" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 83 "3829027232" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
-Condition 87 "1190442178" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 91 "1602255566" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
-Condition 95 "795222567" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
-Condition 99 "1413304740" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
-Condition 103 "2792596154" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 114 "4205383914" "((field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
-Condition 32 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 141 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 141 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 142 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 143 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 143 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 144 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 70 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 74 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 78 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 82 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 86 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 90 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 94 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 98 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 102 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 37 "4138482005" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 41 "3264178128" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 45 "1652416381" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 49 "3042495299" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 53 "4002694911" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 57 "1615102505" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 61 "1726991987" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 65 "801489908" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 69 "425979425" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 72 "461176737" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
-Condition 72 "461176737" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 73 "552197764" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 76 "1973840873" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
-Condition 76 "1973840873" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
-Condition 77 "1400406907" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 80 "3347314445" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) 1 -1" (1 "01")
-Condition 80 "3347314445" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
-Condition 81 "1708809743" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 84 "3293356170" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) 1 -1" (1 "01")
-Condition 84 "3293356170" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
-Condition 85 "3251533345" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 88 "81179069" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
-Condition 88 "81179069" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
-Condition 89 "3912484749" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 92 "3107786433" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) 1 -1" (1 "01")
-Condition 92 "3107786433" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) 1 -1" (3 "11")
-Condition 93 "2589667571" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 96 "2295563769" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) 1 -1" (1 "01")
-Condition 96 "2295563769" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) 1 -1" (3 "11")
-Condition 97 "309949201" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 100 "544719138" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) 1 -1" (1 "01")
-Condition 100 "544719138" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
-Condition 101 "677528198" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 104 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
-Condition 104 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
-Condition 105 "1844794179" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 112 "569785034" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 115 "2518759583" "(field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
-Condition 120 "3777697814" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
-Condition 126 "286644234" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 98 "553260962" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 102 "1897250593" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 106 "889399730" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 110 "3829027232" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 114 "1190442178" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 118 "1602255566" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
+Condition 122 "795222567" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
+Condition 126 "1413304740" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
+Condition 130 "2792596154" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 141 "4205383914" "((field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 168 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 168 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 169 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 170 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 170 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 171 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 172 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 172 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 97 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 101 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 105 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 109 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 113 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 117 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 121 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 125 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 129 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 64 "4138482005" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 68 "3264178128" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 72 "1652416381" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 76 "3042495299" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 80 "4002694911" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 84 "1615102505" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 88 "1726991987" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 92 "801489908" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 96 "425979425" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 99 "461176737" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 99 "461176737" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 100 "552197764" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 103 "1973840873" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
+Condition 103 "1973840873" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 104 "1400406907" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 107 "3347314445" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) 1 -1" (1 "01")
+Condition 107 "3347314445" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
+Condition 108 "1708809743" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 111 "3293356170" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) 1 -1" (1 "01")
+Condition 111 "3293356170" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 112 "3251533345" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 115 "81179069" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 115 "81179069" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 116 "3912484749" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 119 "3107786433" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) 1 -1" (1 "01")
+Condition 119 "3107786433" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) 1 -1" (3 "11")
+Condition 120 "2589667571" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 123 "2295563769" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) 1 -1" (1 "01")
+Condition 123 "2295563769" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) 1 -1" (3 "11")
+Condition 124 "309949201" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 127 "544719138" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) 1 -1" (1 "01")
+Condition 127 "544719138" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
+Condition 128 "677528198" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 131 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 131 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 132 "1844794179" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 139 "569785034" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 142 "2518759583" "(field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
+Condition 147 "3777697814" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 153 "286644234" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "3896755233 3197487389"
+CHECKSUM: "2267119575 3197487389"
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 MODULE: avsbus_controller_reg
 Branch 24 "2185209041" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -118,61 +118,55 @@ Branch 38 "1961609115" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 40 "1780655356" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 50 "2605094396" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "3619095557 3575510968"
+CHECKSUM: "1853088009 3575510968"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: chip_config_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "2949011289 1776738744"
+CHECKSUM: "2651801466 3369014260"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 MODULE: cpu_ctrl_reg
-Condition 54 "2648555519" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 58 "938649821" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 62 "2710835096" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 66 "196810938" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
-Condition 42 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 126 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 126 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 127 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 128 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 128 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 129 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 130 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 130 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 55 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 55 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 59 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 59 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
-Condition 63 "1096231514" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 63 "1096231514" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
-Condition 67 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
-Condition 67 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 79 "2648555519" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 83 "938649821" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 87 "2710835096" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 91 "196810938" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 67 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 151 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 151 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 152 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 153 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 153 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 154 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 155 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 155 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 80 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 80 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 84 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 84 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 88 "1096231514" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 88 "1096231514" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
+Condition 92 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
+Condition 92 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
 
-CHECKSUM: "2949011289 3052565341"
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "2651801466 3052565341"
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: cpu_ctrl_reg
-Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "3363015095 1591044204"
+CHECKSUM: "3211908749 1591044204"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-B7-DFX-INPUTS-TIED: a property of this bench, not of the design. The SMC passes mem_repair_done, mem_repair_success, mbist_done and mbist_pass straight to the DFX status register's sticky fields, whose load_next is that input, and the testbench ties all four high because the boot sequencer waits on them; a row or path that needs one of them, or its load, low has no stimulus here. Bench ports that drive those inputs retire the class."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: dfx_ctrl_status_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
@@ -186,38 +180,38 @@ Branch 12 "2028782702" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "953917360" "hwif_in.STATUS_SMU.mbist_pass.next" (1) "hwif_in.STATUS_SMU.mbist_pass.next 0"
 Branch 14 "3173993039" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "3705669176 1625737755"
+CHECKSUM: "4223574656 3008384933"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: efuse_interface_ctrl_reg
-Condition 17 "4208065857" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 21 "2625133550" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
-Condition 25 "976473490" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) | (decoded_wr_data[10] & decoded_wr_biten[10])) 1 -1" (3 "10")
-Condition 34 "3341492462" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
-Condition 47 "1725121280" "((field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
-Condition 18 "3682985624" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
-Condition 18 "3682985624" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
-Condition 19 "1417432267" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 22 "3156793088" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) 1 -1" (1 "01")
-Condition 22 "3156793088" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
-Condition 23 "2530975663" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
-Condition 26 "1339574214" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) 1 -1" (1 "01")
-Condition 26 "1339574214" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) 1 -1" (3 "11")
-Condition 27 "2137523323" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
-Condition 30 "1412610213" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
-Condition 31 "3085125358" "(field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
-Condition 32 "2308010589" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
-Condition 35 "900473020" "(field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
-Condition 36 "1922250827" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
-Condition 40 "1529188800" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
-Condition 42 "3783167787" "((field_storage.EFUSE_PROGRAM_CTRL.program_enable.value & ((~decoded_wr_biten[27]))) | (decoded_wr_data[27] & decoded_wr_biten[27])) 1 -1" (3 "10")
-Condition 43 "639315718" "(field_storage.EFUSE_PROGRAM_CTRL.program_enable.value & ((~decoded_wr_biten[27]))) 1 -1" (3 "11")
-Condition 44 "3014319953" "(decoded_wr_data[27] & decoded_wr_biten[27]) 1 -1" (2 "10")
-Condition 48 "1789705183" "(field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
-Condition 49 "1706514420" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
-Condition 53 "4216422870" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
-Condition 58 "3489169323" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
-Condition 63 "2602468110" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
+Condition 32 "4208065857" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 36 "2625133550" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 40 "976473490" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) | (decoded_wr_data[10] & decoded_wr_biten[10])) 1 -1" (3 "10")
+Condition 49 "3341492462" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
+Condition 62 "1725121280" "((field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 33 "3682985624" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 33 "3682985624" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 34 "1417432267" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 37 "3156793088" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) 1 -1" (1 "01")
+Condition 37 "3156793088" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
+Condition 38 "2530975663" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 41 "1339574214" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) 1 -1" (1 "01")
+Condition 41 "1339574214" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) 1 -1" (3 "11")
+Condition 42 "2137523323" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 45 "1412610213" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 46 "3085125358" "(field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 47 "2308010589" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 50 "900473020" "(field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
+Condition 51 "1922250827" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 55 "1529188800" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 57 "3783167787" "((field_storage.EFUSE_PROGRAM_CTRL.program_enable.value & ((~decoded_wr_biten[27]))) | (decoded_wr_data[27] & decoded_wr_biten[27])) 1 -1" (3 "10")
+Condition 58 "639315718" "(field_storage.EFUSE_PROGRAM_CTRL.program_enable.value & ((~decoded_wr_biten[27]))) 1 -1" (3 "11")
+Condition 59 "3014319953" "(decoded_wr_data[27] & decoded_wr_biten[27]) 1 -1" (2 "10")
+Condition 63 "1789705183" "(field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 64 "1706514420" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 68 "4216422870" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
+Condition 73 "3489169323" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
+Condition 78 "2602468110" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 363877172"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
@@ -273,7 +267,7 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "2117159968 4067590397"
+CHECKSUM: "3766731198 4067590397"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: i2c_core
 Condition 21 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
@@ -284,184 +278,180 @@ Condition 42 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr &
 Condition 44 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 46 "1505661065" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
 
-CHECKSUM: "3929405118 2927016927"
+CHECKSUM: "3349051658 3120181549"
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: i2c_ctrl_reg
-Condition 18 "2343056619" "((field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 19 "2241324890" "(field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 20 "3647788607" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 22 "3030868653" "((field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 23 "3333435659" "(field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
-Condition 24 "4098809404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 27 "1824308135" "(field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
-Condition 28 "434978298" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 32 "2343050358" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 36 "3387182562" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 39 "3947382242" "(field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
-Condition 40 "954291887" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 44 "1052023753" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 48 "4141873636" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 51 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
-Condition 52 "1656240774" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 19 "2343056619" "((field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 20 "2241324890" "(field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 21 "3647788607" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 23 "3030868653" "((field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 24 "3333435659" "(field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 25 "4098809404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 28 "1824308135" "(field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 29 "434978298" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 33 "2343050358" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 37 "3387182562" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 40 "3947382242" "(field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 41 "954291887" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 45 "1052023753" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 49 "4141873636" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 52 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 53 "1656240774" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 
-CHECKSUM: "3929405118 3636893582"
+CHECKSUM: "3349051658 3636893582"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: i2c_ctrl_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "3452964890 3380696541"
+CHECKSUM: "4172558230 2059987398"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: i2c_reg
-Condition 237 "4237267917" "((field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
-Condition 245 "835245033" "((field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
-Condition 249 "2997766128" "((field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
-Condition 253 "3556835350" "((field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
-Condition 257 "3453414091" "((field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 261 "2376949819" "((field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
-Condition 277 "345617218" "((field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) | (decoded_wr_data[13] & decoded_wr_biten[13])) 1 -1" (3 "10")
-Condition 281 "2985421867" "((field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) | (decoded_wr_data[14] & decoded_wr_biten[14])) 1 -1" (3 "10")
-Condition 285 "1213544406" "((field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) | (decoded_wr_data[15] & decoded_wr_biten[15])) 1 -1" (3 "10")
-Condition 289 "2147526447" "((field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
-Condition 293 "2318513102" "((field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
-Condition 297 "2207586480" "((field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) | (decoded_wr_data[18] & decoded_wr_biten[18])) 1 -1" (3 "10")
-Condition 301 "2309229649" "((field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) | (decoded_wr_data[19] & decoded_wr_biten[19])) 1 -1" (3 "10")
-Condition 345 "764686767" "((field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 349 "2590629755" "((field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 353 "2238378298" "((field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
-Condition 357 "1195032021" "((field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
-Condition 90 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 485 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 487 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 147 "3785315650" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 151 "2696797505" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 155 "2625372358" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 159 "2776227815" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 163 "3603603160" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 167 "1285879610" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 171 "2813437962" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 175 "2162211868" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 179 "3091713143" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 183 "2075626599" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
-Condition 187 "428222355" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
-Condition 191 "2559467098" "(decoded_wr_data[11] & decoded_wr_biten[11]) 1 -1" (2 "10")
-Condition 195 "1381442540" "(decoded_wr_data[12] & decoded_wr_biten[12]) 1 -1" (2 "10")
-Condition 199 "1006278509" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
-Condition 203 "3999374291" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
-Condition 207 "1934531465" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
-Condition 211 "1190393741" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
-Condition 215 "1863410171" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
-Condition 219 "4192922168" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
-Condition 223 "3490217038" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
-Condition 227 "3910184825" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 231 "703224832" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 235 "2499017469" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 238 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
-Condition 238 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
-Condition 239 "4245925020" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 243 "3223606136" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 246 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (2 "10")
-Condition 246 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (3 "11")
-Condition 247 "2622543276" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 250 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (2 "10")
-Condition 250 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (3 "11")
-Condition 251 "2001046172" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 254 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
-Condition 254 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
-Condition 255 "2517529020" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 258 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 258 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
-Condition 259 "823151926" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 262 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
-Condition 262 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
-Condition 263 "4074769702" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
-Condition 267 "285859240" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
-Condition 271 "2388694010" "(decoded_wr_data[11] & decoded_wr_biten[11]) 1 -1" (2 "10")
-Condition 275 "1626341249" "(decoded_wr_data[12] & decoded_wr_biten[12]) 1 -1" (2 "10")
-Condition 278 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (2 "10")
-Condition 278 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (3 "11")
-Condition 279 "863333718" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
-Condition 282 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (2 "10")
-Condition 282 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (3 "11")
-Condition 283 "4170143347" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
-Condition 286 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (2 "10")
-Condition 286 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (3 "11")
-Condition 287 "723839218" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
-Condition 290 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (2 "10")
-Condition 290 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
-Condition 291 "3153801006" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
-Condition 294 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (2 "10")
-Condition 294 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
-Condition 295 "2451159384" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
-Condition 298 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (2 "10")
-Condition 298 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (3 "11")
-Condition 299 "1429196890" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
-Condition 302 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (2 "10")
-Condition 302 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (3 "11")
-Condition 303 "2093827628" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
-Condition 307 "1960375513" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 311 "3989411191" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 313 "3567974476" "((field_storage.CTRL.ENABLEHOST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 314 "2951450582" "(field_storage.CTRL.ENABLEHOST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 315 "4202464386" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 317 "2117524327" "((field_storage.CTRL.ENABLETARGET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 318 "3981205142" "(field_storage.CTRL.ENABLETARGET.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
-Condition 319 "2242758261" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 323 "2075687442" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 327 "3236358491" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 331 "2596563908" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 335 "3964350561" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 339 "3289087459" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 343 "3622976797" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
-Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 347 "3389759845" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
-Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
-Condition 351 "940755561" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (1 "01")
-Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
-Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
-Condition 355 "2717418453" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
-Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
-Condition 359 "1821251107" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 367 "2647200411" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 371 "925047565" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 375 "2605843858" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 390 "3857346399" "(decoded_wr_data[30] & decoded_wr_biten[30]) 1 -1" (2 "10")
-Condition 394 "2002872070" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
-Condition 404 "1095760109" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
-Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (1 "01")
-Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (2 "10")
-Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (3 "11")
-Condition 411 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
-Condition 416 "756734046" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 304 "4237267917" "((field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 312 "835245033" "((field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
+Condition 316 "2997766128" "((field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
+Condition 320 "3556835350" "((field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
+Condition 324 "3453414091" "((field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 328 "2376949819" "((field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 344 "345617218" "((field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) | (decoded_wr_data[13] & decoded_wr_biten[13])) 1 -1" (3 "10")
+Condition 348 "2985421867" "((field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) | (decoded_wr_data[14] & decoded_wr_biten[14])) 1 -1" (3 "10")
+Condition 352 "1213544406" "((field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) | (decoded_wr_data[15] & decoded_wr_biten[15])) 1 -1" (3 "10")
+Condition 356 "2147526447" "((field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 360 "2318513102" "((field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
+Condition 364 "2207586480" "((field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) | (decoded_wr_data[18] & decoded_wr_biten[18])) 1 -1" (3 "10")
+Condition 368 "2309229649" "((field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) | (decoded_wr_data[19] & decoded_wr_biten[19])) 1 -1" (3 "10")
+Condition 412 "764686767" "((field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 416 "2590629755" "((field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 420 "2238378298" "((field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
+Condition 424 "1195032021" "((field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 476 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
+Condition 157 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 551 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 551 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 552 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 553 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 553 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 554 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 555 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 555 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 214 "3785315650" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 218 "2696797505" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 222 "2625372358" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 226 "2776227815" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 230 "3603603160" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 234 "1285879610" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 238 "2813437962" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 242 "2162211868" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 246 "3091713143" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 250 "2075626599" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 254 "428222355" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 258 "2559467098" "(decoded_wr_data[11] & decoded_wr_biten[11]) 1 -1" (2 "10")
+Condition 262 "1381442540" "(decoded_wr_data[12] & decoded_wr_biten[12]) 1 -1" (2 "10")
+Condition 266 "1006278509" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
+Condition 270 "3999374291" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
+Condition 274 "1934531465" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
+Condition 278 "1190393741" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 282 "1863410171" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 286 "4192922168" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 290 "3490217038" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 294 "3910184825" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 298 "703224832" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 302 "2499017469" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 305 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
+Condition 305 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 306 "4245925020" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 310 "3223606136" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 313 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (2 "10")
+Condition 313 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (3 "11")
+Condition 314 "2622543276" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 317 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (2 "10")
+Condition 317 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (3 "11")
+Condition 318 "2001046172" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 321 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
+Condition 321 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
+Condition 322 "2517529020" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 325 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 325 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 326 "823151926" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 329 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
+Condition 329 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
+Condition 330 "4074769702" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 334 "285859240" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 338 "2388694010" "(decoded_wr_data[11] & decoded_wr_biten[11]) 1 -1" (2 "10")
+Condition 342 "1626341249" "(decoded_wr_data[12] & decoded_wr_biten[12]) 1 -1" (2 "10")
+Condition 345 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (2 "10")
+Condition 345 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (3 "11")
+Condition 346 "863333718" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
+Condition 349 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (2 "10")
+Condition 349 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (3 "11")
+Condition 350 "4170143347" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
+Condition 353 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (2 "10")
+Condition 353 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (3 "11")
+Condition 354 "723839218" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
+Condition 357 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (2 "10")
+Condition 357 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 358 "3153801006" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 361 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (2 "10")
+Condition 361 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
+Condition 362 "2451159384" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 365 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (2 "10")
+Condition 365 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (3 "11")
+Condition 366 "1429196890" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 369 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (2 "10")
+Condition 369 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (3 "11")
+Condition 370 "2093827628" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 374 "1960375513" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 378 "3989411191" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 380 "3567974476" "((field_storage.CTRL.ENABLEHOST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 381 "2951450582" "(field_storage.CTRL.ENABLEHOST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 382 "4202464386" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 384 "2117524327" "((field_storage.CTRL.ENABLETARGET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 385 "3981205142" "(field_storage.CTRL.ENABLETARGET.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 386 "2242758261" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 390 "2075687442" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 394 "3236358491" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 398 "2596563908" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 402 "3964350561" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 406 "3289087459" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 410 "3622976797" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 413 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 413 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 413 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 414 "3389759845" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 417 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
+Condition 417 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 417 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 418 "940755561" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 421 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (1 "01")
+Condition 421 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
+Condition 421 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
+Condition 422 "2717418453" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 425 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 425 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 425 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 426 "1821251107" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 434 "2647200411" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 438 "925047565" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 442 "2605843858" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 457 "3857346399" "(decoded_wr_data[30] & decoded_wr_biten[30]) 1 -1" (2 "10")
+Condition 461 "2002872070" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 471 "1095760109" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 477 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (1 "01")
+Condition 477 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (2 "10")
+Condition 477 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (3 "11")
+Condition 478 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 483 "756734046" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
 
-CHECKSUM: "3452964890 3039478896"
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "4172558230 3039478896"
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: i2c_reg
-Branch 9 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 6 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 6 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 6 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
@@ -485,7 +475,7 @@ Branch 142 "4143980261" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 144 "3094198831" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 206 "163551211" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "2313761690 3938785771"
+CHECKSUM: "515121466 3938785771"
 ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
 MODULE: idma_reg64_2d_reg_top
 Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -537,31 +527,29 @@ Condition 183 "47252534" "(addr_hit[46] & reg_re & ((!reg_error))) 1 -1" (3 "110
 Condition 184 "458639587" "(addr_hit[47] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 185 "1262529806" "(addr_hit[48] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 
-CHECKSUM: "2278098036 84113796"
+CHECKSUM: "3399597473 4031081344"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: log_engine_reg
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 35 "1986721459" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 51 "1009495431" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 55 "2080185959" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
-Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 74 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 78 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 52 "1986721459" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 68 "1009495431" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 72 "2080185959" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 76 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 80 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "2278098036 2965795156"
+CHECKSUM: "3399597473 2965795156"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: log_engine_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
@@ -569,154 +557,140 @@ Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 24 "2508892412" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 26 "134826827" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "346538436 1109502550"
+CHECKSUM: "2524040821 1109502550"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: ndm_reset_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 ANNOTATION: "SMC-REGBLOCK-A9-ADDRESS-FIXED: the integration presents this single-register block only address zero at the bit its cpuif decodes (output_remap_reg is fed {1'b0, addr[2:0]}, and uart_log_engine_ctrl_reg is selected only inside a four-byte window at an eight-byte aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either nonzero cannot occur."
 MODULE: output_remap_reg
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 1795492639"
+CHECKSUM: "3016705974 1795492639"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: output_remap_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1251971546 1345162332"
+CHECKSUM: "1456691585 1796030592"
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: reset_unit_reg
-Condition 70 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 104 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 104 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 105 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 106 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 106 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 107 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 108 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 108 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 83 "3228717886" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 109 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 143 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 143 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 144 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 145 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 145 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 146 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 147 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 147 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 122 "3228717886" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "1251971546 2051533637"
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "1456691585 2051533637"
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: reset_unit_reg
-Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "3502264770 3516621464"
+CHECKSUM: "1744798097 3516621464"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: scratch_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "62697152 504970378"
+CHECKSUM: "667427974 504970378"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: smc_base_config_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1845094762 1901872711"
+CHECKSUM: "4027335339 1901872711"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: straps_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "3416439943 837048839"
+CHECKSUM: "2028992760 1986385662"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: system_timer_octs_reg
-Condition 39 "3493643897" "((field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 36 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 61 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 61 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 62 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 63 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 63 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 64 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 65 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 65 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
-Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 41 "4011720543" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 50 "1941977297" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 58 "3493643897" "((field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 55 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 80 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 80 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 81 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 82 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 82 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 83 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 84 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 84 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 59 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 59 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 59 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 60 "4011720543" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 69 "1941977297" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "3416439943 1324937556"
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "2028992760 1324937556"
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: system_timer_octs_reg
-Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "2231104132 1067758899"
+CHECKSUM: "3382826603 3294589222"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: telemetry_receiver_reg
-Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 35 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 33 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
-Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 50 "3055669046" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 54 "615806284" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 62 "4097857498" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 46 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 50 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 71 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 47 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 47 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 48 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 51 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 51 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 52 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 56 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 65 "3055669046" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 69 "615806284" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 72 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 72 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 73 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 77 "4097857498" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "2231104132 3186388910"
+CHECKSUM: "3382826603 3186388910"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: telemetry_receiver_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
@@ -725,81 +699,77 @@ Branch 6 "2795062027" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 8 "3053296054" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 20 "2793890863" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "902851981 3111610693"
+CHECKSUM: "2793936147 3111610693"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_dl_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "8204497 4290674178"
+CHECKSUM: "1513785052 2190459204"
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 ANNOTATION: "SMC-REGBLOCK-C3-NO-EXTERNAL-WRITE: the block's only external register is read-only, so PeakRDL gives external_wr_ack a constant zero, and a row that needs an external write acknowledged cannot occur."
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: uart_16550_main_reg
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 155 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 157 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 109 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 110 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 111 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 112 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 113 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 114 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 115 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 116 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
-Condition 39 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
-Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
-Condition 43 "1040506279" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 47 "3171620908" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 51 "424183414" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 55 "3912532914" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 59 "3730224115" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 64 "1197122749" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 68 "97625224" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 72 "3738569812" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 76 "2142556074" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 80 "3502364280" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 84 "910478666" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 88 "54033303" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 92 "497594566" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 96 "3269226326" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 100 "809116667" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 104 "2800192357" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 108 "1535505912" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 122 "4259732805" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 126 "2129238222" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 130 "895760360" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 134 "718668624" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 138 "4068082285" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 142 "3234267788" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 176 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 178 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 130 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 131 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 132 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 133 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 134 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 135 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 136 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 137 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 181 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 183 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
+Condition 60 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
+Condition 185 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
+Condition 64 "1040506279" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 68 "3171620908" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 72 "424183414" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 76 "3912532914" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 80 "3730224115" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 85 "1197122749" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 89 "97625224" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 93 "3738569812" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 97 "2142556074" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 101 "3502364280" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 105 "910478666" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 109 "54033303" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 113 "497594566" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 117 "3269226326" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 121 "809116667" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 125 "2800192357" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 129 "1535505912" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 143 "4259732805" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 147 "2129238222" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 151 "895760360" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 155 "718668624" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 159 "4068082285" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 163 "3234267788" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
 
-CHECKSUM: "8204497 2946310052"
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "1513785052 2946310052"
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_main_reg
-Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1638888483 3918030293"
+CHECKSUM: "975146159 3828133299"
 ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
@@ -811,48 +781,46 @@ Condition 9 "1967922282" "(((!axil_arvalid)) || axil_ar_accept) 1 -1" (1 "00")
 Condition 9 "1967922282" "(((!axil_arvalid)) || axil_ar_accept) 1 -1" (2 "01")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
-Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 44 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 34 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 38 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 47 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 49 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 5 "1728812250" "(axil_ar_accept || axil_aw_accept) 1 -1" (3 "10")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (3 "10")
 Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
-Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
-Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
-Condition 25 "663184004" "((field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 26 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
-Condition 26 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 27 "9238850" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
-Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (1 "01")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 37 "3236079998" "((field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
-Condition 38 "3025825830" "(field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) 1 -1" (1 "01")
-Condition 38 "3025825830" "(field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
-Condition 39 "2323973005" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
+Condition 28 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
+Condition 56 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
+Condition 30 "663184004" "((field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 31 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 31 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 32 "9238850" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 36 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (1 "01")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
+Condition 40 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 42 "3236079998" "((field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 43 "3025825830" "(field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) 1 -1" (1 "01")
+Condition 43 "3025825830" "(field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 44 "2323973005" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
 
-CHECKSUM: "1638888483 2953287278"
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "975146159 2953287278"
 ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_main_wo_reg
-Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 2 "4213977320" "(~arst_n)" (1) "(~arst_n) 0,1,-,-,-,-,-,-"
 Branch 2 "4213977320" "(~arst_n)" (3) "(~arst_n) 0,-,1,-,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (0) "(axil_n_in_flight < 2'd2) 1,1,1,-,-,-,-"
@@ -873,35 +841,33 @@ Condition 52 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_i
 Condition 53 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
 Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
 
-CHECKSUM: "2439670790 1423410759"
+CHECKSUM: "3839436778 2498886405"
 ANNOTATION: "SMC-REGBLOCK-A9-ADDRESS-FIXED: the integration presents this single-register block only address zero at the bit its cpuif decodes (output_remap_reg is fed {1'b0, addr[2:0]}, and uart_log_engine_ctrl_reg is selected only inside a four-byte window at an eight-byte aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either nonzero cannot occur."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_log_engine_ctrl_reg
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
-Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
-Condition 19 "3596939294" "((field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
-Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
-Condition 21 "760254986" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 18 "2732164622" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
+Condition 19 "1178777262" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
+Condition 25 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
+Condition 22 "3596939294" "((field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 23 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 23 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 24 "760254986" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "2439670790 510029441"
+CHECKSUM: "3839436778 510029441"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_log_engine_ctrl_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1059230947 2910525901"
+CHECKSUM: "1081315095 2910525901"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: zeroer_ctrl_reg
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
@@ -1091,7 +1057,7 @@ Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1099,9 +1065,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1109,9 +1079,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1119,9 +1093,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1129,9 +1107,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1139,9 +1121,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1149,9 +1135,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1159,9 +1149,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1169,7 +1163,11 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[0].u_outbound_filter_ctrl_reg
@@ -1299,7 +1297,7 @@ Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1307,9 +1305,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1317,9 +1319,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1327,9 +1333,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1337,9 +1347,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1347,9 +1361,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1357,9 +1375,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1367,9 +1389,13 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1675336020 2525155830"
+CHECKSUM: "3016705974 15924970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1377,129 +1403,141 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 18 "838402075" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 19 "4285913093" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 26 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1059230947 1317082537"
+CHECKSUM: "1081315095 1508567950"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 28 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 28 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
 
-CHECKSUM: "3896755233 3909592511"
+CHECKSUM: "2267119575 68031599"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avsbus_controller_reg_inst
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
-Condition 32 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 70 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 74 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 78 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 82 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 86 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 90 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 94 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 98 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 102 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 141 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 141 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 142 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 143 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 143 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 144 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 97 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 101 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 105 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 109 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 113 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 117 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 121 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 125 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 129 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 167 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
+Condition 167 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
+Condition 168 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 168 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 169 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 170 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 170 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 171 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 172 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 172 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
-CHECKSUM: "3452964890 3380696541"
+CHECKSUM: "4172558230 2059987398"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "3525563981" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 28 "854828432" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 30 "3769726109" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 32 "215265729" "(cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 34 "986229292" "(cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 42 "2345721695" "(cpuif_req_masked & (cpuif_addr == 8'h2c) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 44 "1982922699" "(cpuif_req_masked & (cpuif_addr == 8'h30) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 48 "3893448134" "(cpuif_req_masked & (cpuif_addr == 8'h38) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 64 "911859877" "(cpuif_req_masked & (cpuif_addr == 8'h58) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 66 "3364859899" "(cpuif_req_masked & (cpuif_addr == 8'h58) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 68 "1572300240" "(cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 70 "1740187846" "(cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 80 "2016931299" "(cpuif_req_masked & (cpuif_addr == 8'h70) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 88 "1108139977" "(cpuif_req_masked & (cpuif_addr == 8'h80) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 90 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 237 "4237267917" "((field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
-Condition 238 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
-Condition 239 "4245925020" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 245 "835245033" "((field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
-Condition 246 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (2 "10")
-Condition 247 "2622543276" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
-Condition 249 "2997766128" "((field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
-Condition 250 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (2 "10")
-Condition 251 "2001046172" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
-Condition 253 "3556835350" "((field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
-Condition 254 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
-Condition 255 "2517529020" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 257 "3453414091" "((field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 258 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 259 "823151926" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 261 "2376949819" "((field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
-Condition 262 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
-Condition 263 "4074769702" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
-Condition 277 "345617218" "((field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) | (decoded_wr_data[13] & decoded_wr_biten[13])) 1 -1" (3 "10")
-Condition 278 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (2 "10")
-Condition 279 "863333718" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
-Condition 281 "2985421867" "((field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) | (decoded_wr_data[14] & decoded_wr_biten[14])) 1 -1" (3 "10")
-Condition 282 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (2 "10")
-Condition 283 "4170143347" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
-Condition 285 "1213544406" "((field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) | (decoded_wr_data[15] & decoded_wr_biten[15])) 1 -1" (3 "10")
-Condition 286 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (2 "10")
-Condition 287 "723839218" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
-Condition 289 "2147526447" "((field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
-Condition 290 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (2 "10")
-Condition 291 "3153801006" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
-Condition 293 "2318513102" "((field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
-Condition 294 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (2 "10")
-Condition 295 "2451159384" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
-Condition 297 "2207586480" "((field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) | (decoded_wr_data[18] & decoded_wr_biten[18])) 1 -1" (3 "10")
-Condition 298 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (2 "10")
-Condition 299 "1429196890" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
-Condition 301 "2309229649" "((field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) | (decoded_wr_data[19] & decoded_wr_biten[19])) 1 -1" (3 "10")
-Condition 302 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (2 "10")
-Condition 303 "2093827628" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
-Condition 345 "764686767" "((field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 347 "3389759845" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 349 "2590629755" "((field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 351 "940755561" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 353 "2238378298" "((field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
-Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
-Condition 355 "2717418453" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
-Condition 357 "1195032021" "((field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 359 "1821251107" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 405 "1237604905" "(decoded_reg_strb.TARGET_NACK_COUNT && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 406 "3096888878" "(decoded_reg_strb.TARGET_NACK_COUNT && decoded_req_is_wr) 1 -1" (2 "10")
-Condition 406 "3096888878" "(decoded_reg_strb.TARGET_NACK_COUNT && decoded_req_is_wr) 1 -1" (3 "11")
-Condition 407 "3989326225" "(decoded_reg_strb.TARGET_ACK_CTRL && decoded_req_is_wr && hwif_in.TARGET_ACK_CTRL.NBYTES.swwe) 1 -1" (3 "110")
-Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
-Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (2 "10")
-Condition 411 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
-Condition 426 "3179526460" "(field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value & ( ~ (decoded_wr_data[2] & decoded_wr_biten[2]) )) 1 -1" (2 "10")
-Condition 428 "1340228895" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 485 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 487 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 494 "2985070047" "(((|field_storage.CONTROLLER_EVENTS.NACK.value)) || ((|field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value))) 1 -1" (3 "0010")
+Condition 36 "3525563981" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 40 "854828432" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 42 "3769726109" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 46 "215265729" "(cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 48 "986229292" "(cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 64 "2345721695" "(cpuif_req_masked & (cpuif_addr == 8'h2c) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 68 "1982922699" "(cpuif_req_masked & (cpuif_addr == 8'h30) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 76 "3893448134" "(cpuif_req_masked & (cpuif_addr == 8'h38) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 108 "911859877" "(cpuif_req_masked & (cpuif_addr == 8'h58) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 110 "3364859899" "(cpuif_req_masked & (cpuif_addr == 8'h58) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 114 "1572300240" "(cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 116 "1740187846" "(cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 136 "2016931299" "(cpuif_req_masked & (cpuif_addr == 8'h70) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 152 "1108139977" "(cpuif_req_masked & (cpuif_addr == 8'h80) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 156 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 156 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 157 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 304 "4237267917" "((field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 305 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
+Condition 306 "4245925020" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 312 "835245033" "((field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
+Condition 313 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (2 "10")
+Condition 314 "2622543276" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 316 "2997766128" "((field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
+Condition 317 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (2 "10")
+Condition 318 "2001046172" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 320 "3556835350" "((field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
+Condition 321 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
+Condition 322 "2517529020" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 324 "3453414091" "((field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 325 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 326 "823151926" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 328 "2376949819" "((field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 329 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
+Condition 330 "4074769702" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 344 "345617218" "((field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) | (decoded_wr_data[13] & decoded_wr_biten[13])) 1 -1" (3 "10")
+Condition 345 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (2 "10")
+Condition 346 "863333718" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
+Condition 348 "2985421867" "((field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) | (decoded_wr_data[14] & decoded_wr_biten[14])) 1 -1" (3 "10")
+Condition 349 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (2 "10")
+Condition 350 "4170143347" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
+Condition 352 "1213544406" "((field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) | (decoded_wr_data[15] & decoded_wr_biten[15])) 1 -1" (3 "10")
+Condition 353 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (2 "10")
+Condition 354 "723839218" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
+Condition 356 "2147526447" "((field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 357 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (2 "10")
+Condition 358 "3153801006" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 360 "2318513102" "((field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
+Condition 361 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (2 "10")
+Condition 362 "2451159384" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 364 "2207586480" "((field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) | (decoded_wr_data[18] & decoded_wr_biten[18])) 1 -1" (3 "10")
+Condition 365 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (2 "10")
+Condition 366 "1429196890" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 368 "2309229649" "((field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) | (decoded_wr_data[19] & decoded_wr_biten[19])) 1 -1" (3 "10")
+Condition 369 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (2 "10")
+Condition 370 "2093827628" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 412 "764686767" "((field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 413 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 414 "3389759845" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 416 "2590629755" "((field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 417 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 418 "940755561" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 420 "2238378298" "((field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
+Condition 421 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
+Condition 422 "2717418453" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 424 "1195032021" "((field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 425 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 426 "1821251107" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 472 "1237604905" "(decoded_reg_strb.TARGET_NACK_COUNT && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 473 "3096888878" "(decoded_reg_strb.TARGET_NACK_COUNT && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 473 "3096888878" "(decoded_reg_strb.TARGET_NACK_COUNT && decoded_req_is_wr) 1 -1" (3 "11")
+Condition 474 "3989326225" "(decoded_reg_strb.TARGET_ACK_CTRL && decoded_req_is_wr && hwif_in.TARGET_ACK_CTRL.NBYTES.swwe) 1 -1" (3 "110")
+Condition 476 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
+Condition 477 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (2 "10")
+Condition 478 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 493 "3179526460" "(field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value & ( ~ (decoded_wr_data[2] & decoded_wr_biten[2]) )) 1 -1" (2 "10")
+Condition 495 "1340228895" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 551 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 551 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 552 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 553 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 553 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 554 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 555 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 555 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 561 "2985070047" "(((|field_storage.CONTROLLER_EVENTS.NACK.value)) || ((|field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value))) 1 -1" (3 "0010")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface.u_gpio_intf_reg
@@ -1956,121 +1994,133 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2231104132 1067758899"
+CHECKSUM: "3382826603 3294589222"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 33 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 35 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 44 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 44 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 46 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 47 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 48 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 50 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 51 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 52 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 71 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 72 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 73 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "2231104132 1067758899"
+CHECKSUM: "3382826603 3294589222"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 18 "888746651" "(cpuif_req_masked & (cpuif_addr == 8'h04) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 26 "1809936168" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 28 "1859663702" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 33 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 35 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 39 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 20 "888746651" "(cpuif_req_masked & (cpuif_addr == 8'h04) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 36 "1809936168" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 40 "1859663702" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 44 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 44 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 46 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 47 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 48 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 50 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 51 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 52 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 54 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 55 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 56 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 71 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 72 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 73 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "2231104132 1067758899"
+CHECKSUM: "3382826603 3294589222"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 18 "888746651" "(cpuif_req_masked & (cpuif_addr == 8'h04) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 26 "1809936168" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 28 "1859663702" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 33 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 35 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 39 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 20 "888746651" "(cpuif_req_masked & (cpuif_addr == 8'h04) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 36 "1809936168" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 40 "1859663702" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 44 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 44 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 46 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 47 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 48 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 50 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 51 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 52 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 54 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 55 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 56 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 71 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 72 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 73 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "2278098036 84113796"
+CHECKSUM: "3399597473 4031081344"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 74 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 76 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 78 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 80 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "902851981 1889139731"
+CHECKSUM: "2793936147 3899781781"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
 
-CHECKSUM: "8204497 4290674178"
+CHECKSUM: "1513785052 2190459204"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 39 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
-Condition 109 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 110 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 111 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 112 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 113 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 114 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 115 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 116 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 155 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 157 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
-Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 60 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
+Condition 130 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 131 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 132 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 133 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 134 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 135 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 136 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 137 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 176 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 178 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 181 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
+Condition 183 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 185 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
+Condition 186 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1638888483 3918030293"
+CHECKSUM: "975146159 3828133299"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2088,27 +2138,29 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
-Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
-Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 44 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
+Condition 22 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 28 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
+Condition 34 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 36 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 38 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 40 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 47 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 49 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 56 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
 
-CHECKSUM: "2439670790 1423410759"
+CHECKSUM: "3839436778 2498886405"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2117,31 +2169,39 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
-Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
+Condition 18 "2732164622" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
+Condition 19 "1178777262" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 25 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "2278098036 84113796"
+CHECKSUM: "3399597473 4031081344"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 74 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 76 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 78 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 80 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "902851981 1889139731"
+CHECKSUM: "2793936147 3899781781"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
 
-CHECKSUM: "8204497 4290674178"
+CHECKSUM: "1513785052 2190459204"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2150,37 +2210,39 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "3054181944" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 18 "1218320177" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 22 "2900270189" "(cpuif_req_masked & (cpuif_addr == 6'h08) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 39 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
-Condition 109 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 110 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 111 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 112 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 113 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 114 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 115 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 116 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 155 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 157 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
-Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (3 "0010")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (4 "0100")
-Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
-Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
+Condition 26 "2900270189" "(cpuif_req_masked & (cpuif_addr == 6'h08) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 60 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
+Condition 130 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 131 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 132 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 133 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 134 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 135 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 136 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 137 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 176 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 178 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 181 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
+Condition 183 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (3 "0010")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (4 "0100")
+Condition 185 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
+Condition 186 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1638888483 3918030293"
+CHECKSUM: "975146159 3828133299"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2198,27 +2260,29 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
-Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
-Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 44 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
+Condition 22 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 28 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
+Condition 34 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 36 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 38 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 40 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 47 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 49 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 56 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
 
-CHECKSUM: "2439670790 1423410759"
+CHECKSUM: "3839436778 2498886405"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2227,31 +2291,39 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
-Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
+Condition 18 "2732164622" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
+Condition 19 "1178777262" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 25 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "2278098036 84113796"
+CHECKSUM: "3399597473 4031081344"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 74 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 76 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 78 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 80 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "902851981 1889139731"
+CHECKSUM: "2793936147 3899781781"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
 
-CHECKSUM: "8204497 4290674178"
+CHECKSUM: "1513785052 2190459204"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2260,37 +2332,39 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "3054181944" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 18 "1218320177" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 22 "2900270189" "(cpuif_req_masked & (cpuif_addr == 6'h08) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 39 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
-Condition 109 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 110 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 111 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 112 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 113 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 114 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 115 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 116 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 155 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 157 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
-Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (3 "0010")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (4 "0100")
-Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
-Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
+Condition 26 "2900270189" "(cpuif_req_masked & (cpuif_addr == 6'h08) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 60 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
+Condition 130 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 131 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 132 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 133 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 134 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 135 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 136 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 137 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 176 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 178 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 181 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
+Condition 183 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (3 "0010")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (4 "0100")
+Condition 185 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
+Condition 186 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1638888483 3918030293"
+CHECKSUM: "975146159 3828133299"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2308,27 +2382,29 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
-Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
-Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 44 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
+Condition 22 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 28 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
+Condition 34 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 36 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 38 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 40 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 47 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 49 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 56 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
 
-CHECKSUM: "2439670790 1423410759"
+CHECKSUM: "3839436778 2498886405"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2337,31 +2413,39 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
-Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
+Condition 18 "2732164622" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
+Condition 19 "1178777262" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 25 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "2278098036 84113796"
+CHECKSUM: "3399597473 4031081344"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
-Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
-Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 48 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 74 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 75 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 76 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 78 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 79 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 80 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "902851981 1889139731"
+CHECKSUM: "2793936147 3899781781"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
 
-CHECKSUM: "8204497 4290674178"
+CHECKSUM: "1513785052 2190459204"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2370,37 +2454,39 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "3054181944" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 18 "1218320177" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 22 "2900270189" "(cpuif_req_masked & (cpuif_addr == 6'h08) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
-Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 39 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
-Condition 109 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 110 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 111 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 112 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 113 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 114 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 115 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 116 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 155 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 157 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
-Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (3 "0010")
-Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (4 "0100")
-Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
-Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
+Condition 26 "2900270189" "(cpuif_req_masked & (cpuif_addr == 6'h08) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 58 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
+Condition 59 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 60 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
+Condition 130 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 131 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 132 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 133 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 134 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 135 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 136 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 137 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 175 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 176 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 177 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 178 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 179 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 181 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
+Condition 182 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
+Condition 183 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (3 "0010")
+Condition 184 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (4 "0100")
+Condition 185 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
+Condition 186 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1638888483 3918030293"
+CHECKSUM: "975146159 3828133299"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2418,27 +2504,29 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
-Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
-Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
-Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
-Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
-Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
-Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
-Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
-Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
-Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
-Condition 44 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
-Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
+Condition 22 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 26 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
+Condition 27 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 28 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
+Condition 34 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 35 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 36 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 38 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 39 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 40 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 46 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 47 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 48 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 49 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 50 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 56 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
 
-CHECKSUM: "2439670790 1423410759"
+CHECKSUM: "3839436778 2498886405"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2447,14 +2535,20 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
-Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
+Condition 18 "2732164622" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
+Condition 19 "1178777262" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 20 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
+Condition 25 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "1845094762 2497126651"
+CHECKSUM: "4027335339 4066947135"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_straps_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (2 "10")
+Condition 24 "3861521638" "(((~is_valid_addr)) & decoded_req) 1 -1" (3 "11")
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
@@ -2576,42 +2670,42 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -2696,52 +2790,52 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1675336020 4029109273"
+CHECKSUM: "3016705974 2326403475"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1059230947 2284202446"
+CHECKSUM: "1081315095 933950414"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3452964890 903339650"
+CHECKSUM: "4172558230 2746716627"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -2749,7 +2843,7 @@ Block 954 "2554105993" "next_c = ((field_storage.TARGET_NACK_COUNT.TARGET_NACK_C
 Block 958 "3245580573" "next_c = 8'hff;"
 Block 1037 "2602817404" "next_c = '1;"
 
-CHECKSUM: "3929405118 707642691"
+CHECKSUM: "3349051658 984624284"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -3079,37 +3173,37 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2231104132 1355226369"
+CHECKSUM: "3382826603 2635033621"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2231104132 1355226369"
+CHECKSUM: "3382826603 2635033621"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2231104132 1355226369"
+CHECKSUM: "3382826603 2635033621"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2278098036 1267560476"
+CHECKSUM: "3399597473 795266656"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "902851981 3186259801"
+CHECKSUM: "2793936147 3191156307"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "8204497 930279896"
+CHECKSUM: "1513785052 3702295698"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1638888483 2986629353"
+CHECKSUM: "975146159 1900493786"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -3123,28 +3217,28 @@ Block 62 "2571312949" "s_axil_rvalid = '1;"
 Block 63 "480062622" "axil_resp_acked = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2439670790 25316389"
+CHECKSUM: "3839436778 3180026592"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2278098036 1267560476"
+CHECKSUM: "3399597473 795266656"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "902851981 3186259801"
+CHECKSUM: "2793936147 3191156307"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "8204497 930279896"
+CHECKSUM: "1513785052 3702295698"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 
-CHECKSUM: "1638888483 2986629353"
+CHECKSUM: "975146159 1900493786"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -3158,28 +3252,28 @@ Block 62 "2571312949" "s_axil_rvalid = '1;"
 Block 63 "480062622" "axil_resp_acked = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2439670790 25316389"
+CHECKSUM: "3839436778 3180026592"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2278098036 1267560476"
+CHECKSUM: "3399597473 795266656"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "902851981 3186259801"
+CHECKSUM: "2793936147 3191156307"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "8204497 930279896"
+CHECKSUM: "1513785052 3702295698"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 
-CHECKSUM: "1638888483 2986629353"
+CHECKSUM: "975146159 1900493786"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -3193,28 +3287,28 @@ Block 62 "2571312949" "s_axil_rvalid = '1;"
 Block 63 "480062622" "axil_resp_acked = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2439670790 25316389"
+CHECKSUM: "3839436778 3180026592"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2278098036 1267560476"
+CHECKSUM: "3399597473 795266656"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "902851981 3186259801"
+CHECKSUM: "2793936147 3191156307"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "8204497 930279896"
+CHECKSUM: "1513785052 3702295698"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 
-CHECKSUM: "1638888483 2986629353"
+CHECKSUM: "975146159 1900493786"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -3228,12 +3322,12 @@ Block 62 "2571312949" "s_axil_rvalid = '1;"
 Block 63 "480062622" "axil_resp_acked = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2439670790 25316389"
+CHECKSUM: "3839436778 3180026592"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1845094762 2182253585"
+CHECKSUM: "4027335339 1730778634"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_straps_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -3461,7 +3555,7 @@ Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3471,7 +3565,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3481,7 +3575,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3491,7 +3585,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3501,7 +3595,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3511,7 +3605,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3521,7 +3615,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3531,7 +3625,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3684,7 +3778,7 @@ Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3694,7 +3788,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3704,7 +3798,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3714,7 +3808,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3724,7 +3818,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3734,7 +3828,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3744,7 +3838,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3754,7 +3848,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1675336020 3790533153"
+CHECKSUM: "3016705974 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
@@ -3764,7 +3858,7 @@ Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "62697152 4010233410"
+CHECKSUM: "667427974 4010233410"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_base_config_wrap.u_smc_base_config_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[6:0]"
@@ -3776,9 +3870,9 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_out.LOCAL_BASE.base.value "logic hwif_out.LOCAL_BASE.base.value[55:0]"
 Toggle hwif_out.GLOBAL_BASE.base.value [55:40] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
 Toggle hwif_out.GLOBAL_BASE.base.value [34] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
-Toggle hwif_out.GLOBAL_BASE.base.value [28:0] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
+Toggle hwif_out.GLOBAL_BASE.base.value [27:0] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
 
-CHECKSUM: "3363015095 11353493"
+CHECKSUM: "3211908749 11353493"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfx_ctrl_status_wrap.u_dfx_ctrl_status_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[4:0]"
@@ -3790,11 +3884,9 @@ Toggle hwif_in.STATUS_SMU.mbist_done.next "logic hwif_in.STATUS_SMU.mbist_done.n
 Toggle hwif_in.STATUS_SMU.mem_repair_success.next "logic hwif_in.STATUS_SMU.mem_repair_success.next"
 Toggle hwif_in.STATUS_SMU.mem_repair_done.next "logic hwif_in.STATUS_SMU.mem_repair_done.next"
 
-CHECKSUM: "2949011289 1417411540"
+CHECKSUM: "2651801466 1417411540"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.SEMA[0].rd_data._reserved_63_16 "logic hwif_in.SEMA[0].rd_data._reserved_63_16[47:0]"
 Toggle hwif_in.SEMA[1].rd_data.sema [15:4] "logic hwif_in.SEMA[1].rd_data.sema[15:0]"
 Toggle hwif_in.SEMA[1].rd_data._reserved_63_16 "logic hwif_in.SEMA[1].rd_data._reserved_63_16[47:0]"
@@ -3859,8 +3951,7 @@ Toggle hwif_in.WB_PC_CORE3[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[7].pc.n
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [0] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [17] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [11] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
@@ -3911,8 +4002,7 @@ Toggle hwif_in.WB_PC_CORE2[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[7].pc.n
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [0] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [17] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [11] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
@@ -3963,16 +4053,13 @@ Toggle hwif_in.WB_PC_CORE1[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[7].pc.n
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [0] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [17] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [11] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE0[0].pc.next [16:15] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [0] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE0[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE0[1].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE0[1].pc.next [16:15] "logic hwif_in.WB_PC_CORE0[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[1].pc.next [0] "logic hwif_in.WB_PC_CORE0[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE0[1].pc.next [17] "logic hwif_in.WB_PC_CORE0[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE0[2].pc.next[57:0]"
@@ -4006,22 +4093,16 @@ Toggle hwif_in.WB_PC_CORE0[7].pc.next [16:15] "logic hwif_in.WB_PC_CORE0[7].pc.n
 Toggle hwif_in.WB_PC_CORE0[7].pc.next [0] "logic hwif_in.WB_PC_CORE0[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE0[7].pc.next [17] "logic hwif_in.WB_PC_CORE0[7].pc.next[57:0]"
 Toggle hwif_in.TEST_CTRL.data.next "logic hwif_in.TEST_CTRL.data.next[31:0]"
-Toggle hwif_in.REFERENCE_COUNTER.rc.next [30] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
-Toggle hwif_in.REFERENCE_COUNTER.rc.next [28] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
-Toggle hwif_in.REFERENCE_COUNTER.rc.next [22] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
 Toggle hwif_in.RESET_CTRL.rd_data.core0_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core0_reset_pulse_start_n0_scan"
 Toggle hwif_in.RESET_CTRL.rd_data.core1_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core1_reset_pulse_start_n0_scan"
 Toggle hwif_in.RESET_CTRL.rd_data.core2_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core2_reset_pulse_start_n0_scan"
 Toggle hwif_in.RESET_CTRL.rd_data.core3_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core3_reset_pulse_start_n0_scan"
-Toggle hwif_out.REFERENCE_COUNTER.rc.value [30] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
-Toggle hwif_out.REFERENCE_COUNTER.rc.value [28] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
-Toggle hwif_out.REFERENCE_COUNTER.rc.value [22] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
 
-CHECKSUM: "3452964890 1419707144"
+CHECKSUM: "4172558230 1419707144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
+Toggle 1to0 s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.ACQDATA.rd_data._reserved_31_11 "logic hwif_in.ACQDATA.rd_data._reserved_31_11[20:0]"
 Toggle hwif_in.TARGET_FIFO_STATUS.ACQLVL.next [11:6] "logic hwif_in.TARGET_FIFO_STATUS.ACQLVL.next[11:0]"
@@ -4031,12 +4112,12 @@ Toggle hwif_in.HOST_FIFO_STATUS.FMTLVL.next [11:7] "logic hwif_in.HOST_FIFO_STAT
 Toggle hwif_in.RDATA.rd_data._reserved_31_8 "logic hwif_in.RDATA.rd_data._reserved_31_8[23:0]"
 Toggle hwif_out.TARGET_ACK_CTRL.NBYTES.value [8:2] "logic hwif_out.TARGET_ACK_CTRL.NBYTES.value[8:0]"
 
-CHECKSUM: "3452964890 1419707144"
+CHECKSUM: "4172558230 1419707144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
+Toggle 1to0 s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.CONTROLLER_EVENTS.BUS_TIMEOUT.next "logic hwif_in.CONTROLLER_EVENTS.BUS_TIMEOUT.next"
 Toggle hwif_in.ACQDATA.rd_data._reserved_31_11 "logic hwif_in.ACQDATA.rd_data._reserved_31_11[20:0]"
@@ -4045,23 +4126,23 @@ Toggle hwif_in.TARGET_FIFO_STATUS.TXLVL.next [11:7] "logic hwif_in.TARGET_FIFO_S
 Toggle hwif_in.HOST_FIFO_STATUS.RXLVL.next [11:7] "logic hwif_in.HOST_FIFO_STATUS.RXLVL.next[11:0]"
 Toggle hwif_in.HOST_FIFO_STATUS.FMTLVL.next [11:7] "logic hwif_in.HOST_FIFO_STATUS.FMTLVL.next[11:0]"
 Toggle hwif_in.RDATA.rd_data._reserved_31_8 "logic hwif_in.RDATA.rd_data._reserved_31_8[23:0]"
-Toggle hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value "logic hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value"
 
-CHECKSUM: "3929405118 973666922"
+CHECKSUM: "3349051658 973666922"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
+Toggle 1to0 s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
 Toggle s_axil_rdata [31:9] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rdata [7:5] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rdata [3:1] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "3705669176 786261837"
+CHECKSUM: "4223574656 786261837"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_interface_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_apb_paddr [1:0] "net s_apb_paddr[4:0]"
+Toggle s_apb_pslverr "logic s_apb_pslverr"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [26] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [24] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [21] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
@@ -4081,7 +4162,7 @@ Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [12] "logic hwif_in.E
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [10] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [7:5] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
 
-CHECKSUM: "3619095557 4264359562"
+CHECKSUM: "1853088009 4264359562"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_chip_config_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
@@ -4092,7 +4173,7 @@ Toggle s_axil_rdata [3:1] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.CHIP_ID.chip_id.next "logic hwif_in.CHIP_ID.chip_id.next[31:0]"
 
-CHECKSUM: "346538436 3233800566"
+CHECKSUM: "2524040821 3233800566"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_ndm_reset_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
@@ -4101,20 +4182,20 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next "logic hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next[7:0]"
 Toggle hwif_in.NDMRESET_REQUEST.ndmreset_request.next [31:4] "logic hwif_in.NDMRESET_REQUEST.ndmreset_request.next[31:0]"
 
-CHECKSUM: "3502264770 1350281502"
+CHECKSUM: "1744798097 1350281502"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_scratch_reg_cold
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "3502264770 1350281502"
+CHECKSUM: "1744798097 1350281502"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_scratch_reg_cold_warm
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
-CHECKSUM: "1251971546 306831124"
+CHECKSUM: "1456691585 306831124"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
@@ -4122,7 +4203,7 @@ Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.ISOLATE_REQ_SMC_REG.rd_data._reserved_31_1 "logic hwif_in.ISOLATE_REQ_SMC_REG.rd_data._reserved_31_1[30:0]"
 
-CHECKSUM: "3416439943 1716376841"
+CHECKSUM: "2028992760 1716376841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"

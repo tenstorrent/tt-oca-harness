@@ -16,6 +16,8 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_chk_log import word_digest
+from env.sep_km_img_h import KPV_SLOT_WORDS, KPV_SLOTS
 from env.sep_seeded_rng import SepSeededRng
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -28,8 +30,8 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_STATUS_OUTBOUND_EMPTY,
 )
 
-# 64 slots of 16 words: the key-entry file is 1024 logically indexed words.
-KPV_N_WORDS = 1024
+# The key-entry file: every word of every KPV slot, logically indexed.
+KPV_N_WORDS = KPV_SLOTS * KPV_SLOT_WORDS
 # Logical indices the ROM writes under the first key.
 N_TEST_INDICES = 3
 # The plaintext formula the ROM applies, kept here so the host predicts the
@@ -65,6 +67,8 @@ class SepKpvScramblerCfg:
             if cand not in picked:
                 picked.append(cand)
         self.indices = tuple(picked)
+        # Three 10-bit index fields: the mailbox word layout that
+        # km_rom_kpv_scrambler.S reads, a testbench choice.
         self.packed_indices = self.indices[0] | (self.indices[1] << 10) | (self.indices[2] << 20)
 
     @staticmethod
@@ -76,7 +80,8 @@ class SepKpvScramblerCfg:
 
     def summary(self) -> str:
         return (
-            f"seed={self.seed} key_a=0x{self.key_a:08x} key_b=0x{self.key_b:08x} "
+            f"seed={self.seed} key_a_sha={word_digest(self.key_a)} "
+            f"key_b_sha={word_digest(self.key_b)} "
             f"indices={list(self.indices)} packed=0x{self.packed_indices:08x}"
         )
 

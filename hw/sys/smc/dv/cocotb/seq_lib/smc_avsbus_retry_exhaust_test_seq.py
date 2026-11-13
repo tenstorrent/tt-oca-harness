@@ -39,7 +39,7 @@ and Diagnostics" makes SlaveAck 1 and 2 retry codes, counted in
 * budgets of 8 and 10 against SlaveAck 1 on every attempt, and 8 against
   SlaveAck 2, must send exactly ``MAX_RETRIES`` + 1 identical master subframes,
   raise ``TOTAL_RETRIES`` by the budget and set the interrupt; the
-  ``AVS_READBACK`` content after exhaustion is logged only (SF-032),
+  ``AVS_READBACK`` content after exhaustion is logged only,
 * success on retry 1 and retry 7 costs exactly that many retries, raises no
   interrupt and delivers the SlaveAck 0 reply,
 * with two commands back to back and the first retried twice, the reply to the
@@ -132,11 +132,28 @@ READBACK_FIELDS = (
     | avs_field("AVSBUS_CONTROLLER__AVS_READBACK__CMD_DATA_bm")
     | avs_field("AVSBUS_CONTROLLER__AVS_READBACK__CRC_bm")
 )
-CLEAR_ALL = 0x1FF
-MASK_ALL = 0x1FF
-#: interface.adoc "AVSBus Interrupt Sources": bit 5 is MAX_RETRIES_ATTEMPTED_INT.
-MASK_KEEP_MAX_RETRIES = 0x1DF
-CLEAR_MAX_RETRIES_ONLY = 0x20
+INTR_SOURCES = (
+    "AVS_SLAVE_ISSUED_INTERRUPT",
+    "CMD_FIFO_FULL_INT",
+    "READBACK_FIFO_FULL_INT",
+    "READBACK_HAS_DATA_INT",
+    "SLAVE_UNRESPONSIVE_INT",
+    "MAX_RETRIES_ATTEMPTED_INT",
+    "CMD_FIFO_OVERFLOW_INT",
+    "READBACK_UNDERFLOW_INT",
+    "READBACK_OVERFLOW_INT",
+)
+CLEAR_ALL = sum(
+    avs_field(f"AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_{source}_bm")
+    for source in INTR_SOURCES
+)
+MASK_ALL = sum(
+    avs_field(f"AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_{source}_bm")
+    for source in INTR_SOURCES
+)
+MASK_KEEP_MAX_RETRIES = MASK_ALL & ~avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_MAX_RETRIES_ATTEMPTED_INT_bm"
+)
 CRC_CODES = 8
 #: interface.adoc "AVSBus Slave Subframe" acknowledge codes.
 ACK_GOOD, ACK_UNAVAILABLE, ACK_BAD_CRC = 0, 1, 2
@@ -630,7 +647,9 @@ class smc_avsbus_retry_exhaust_test_seq(SmcCsrSeq):
         await self._line_level(f"{label}_UNMASKED", 1)
         await self.csr_write(f"{label}_MASK_ALL", AVS_INTERRUPT_MASK, MASK_ALL)
         await self._line_level(f"{label}_MASKED", 0)
-        await self.csr_write(f"{label}_CLEAR_BIT5", AVS_INTERRUPT_CLEAR, CLEAR_MAX_RETRIES_ONLY)
+        await self.csr_write(
+            f"{label}_CLEAR_BIT5", AVS_INTERRUPT_CLEAR, CLEAR_MAX_RETRIES_ATTEMPTED_BM
+        )
         cleared = await self._poll(
             label,
             "bit5_clear",
@@ -647,7 +666,7 @@ class smc_avsbus_retry_exhaust_test_seq(SmcCsrSeq):
             "CHK-AVS-RETRY-INT-LINE",
             f"with MAX_RETRIES_ATTEMPTED_INT set (AVS_INTERRUPT=0x{intr:08x}) tb_avsbus_irq read 1 "
             f"with AVS_INTERRUPT_MASK=0x{MASK_KEEP_MAX_RETRIES:03x} and 0 with 0x{MASK_ALL:03x}; "
-            f"after AVS_INTERRUPT_CLEAR=0x{CLEAR_MAX_RETRIES_ONLY:02x} AVS_INTERRUPT=0x{cleared:08x} "
+            f"after AVS_INTERRUPT_CLEAR=0x{CLEAR_MAX_RETRIES_ATTEMPTED_BM:02x} AVS_INTERRUPT=0x{cleared:08x} "
             f"(bit 5 = 0) and the line held 0 with mask 0x{MASK_KEEP_MAX_RETRIES:03x}",
         )
 
@@ -680,7 +699,7 @@ class smc_avsbus_retry_exhaust_test_seq(SmcCsrSeq):
                 f"AVS_INTERRUPT=0x{got['intr']:08x}"
             )
             cocotb.log.info(
-                "CHK-AVS-RETRY8-ACK1: AVS_READBACK_M%d=%s (SF-032, measured, not compared; "
+                "CHK-AVS-RETRY8-ACK1: AVS_READBACK_M%d=%s (measured, not compared; "
                 "unused replies left queued=%d)",
                 budget,
                 ",".join(f"0x{w:08x}" for w in got["readback"]) or "empty",

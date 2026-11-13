@@ -45,7 +45,9 @@ def _define(header: str, name: str) -> int:
 
 KM_SRAM_BASE = _define("key_manager_addr.h", "KEY_MANAGER_SRAM_BASE_ADDR")
 KM_SRAM_SIZE = _define("key_manager_addr.h", "KEY_MANAGER_SRAM_SIZE")
-SRAM_REGION_BYTES = 1024  # km_csr.adoc, SRAM_LOCK: one bit per 1 KB region
+# SRAM_LOCK holds one lock bit per equal region of the KM SRAM.
+SRAM_LOCK_REGIONS = _define("km_csr.h", "KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw")
+SRAM_REGION_BYTES = KM_SRAM_SIZE // SRAM_LOCK_REGIONS
 KPV_SLOTS = _define("key_manager_addr.h", "KEY_MANAGER_KPV_CTRL_NUM")
 KPV_SLOT_WORDS = _define("key_manager_addr.h", "KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM")
 AXI_SLVERR = _define("km_csr.h", "KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm")
@@ -57,8 +59,8 @@ LOCK_USE = _define("km_kpv.h", "KM_KPV__CTRL_REG__LOCK_USE_bm")
 FW_WORDS_MAX = 0xFFFF  # the 16-bit field; the load ceiling is lower, not stated
 
 # --- IMG-H report (km_img_h.S header) ----------------------------------------
-LAYOUT_VERSION = 1
-REPORT_WORDS = 263
+LAYOUT_VERSION = 2
+REPORT_WORDS = 264
 MAGIC = 0x4B4D_4948  # "KMIH"
 END_MAGIC = 0x4B4D_4945  # "KMIE"
 LAYOUT = (LAYOUT_VERSION << 16) | REPORT_WORDS
@@ -110,7 +112,8 @@ W_OWN_OLD = 258
 W_OWN_READBACK = 259
 W_OWN_VIOL = 260
 W_OWN_ADDR = 261
-W_END = 262
+W_VIOL_ENTRY = 262
+W_END = 263
 assert W_END + 1 == REPORT_WORDS
 
 
@@ -167,6 +170,7 @@ class ImgHReport:
     own_readback: int
     own_viol: int
     own_addr: int
+    viol_at_entry: int  # SRAM_WRITE_LOCK_VIOLATION before any store to a locked region
 
     @property
     def inbound_empty(self) -> int:
@@ -229,6 +233,7 @@ def decode_report(words: Sequence[int]) -> ImgHReport:
         own_readback=w[W_OWN_READBACK],
         own_viol=w[W_OWN_VIOL],
         own_addr=w[W_OWN_ADDR],
+        viol_at_entry=w[W_VIOL_ENTRY],
     )
 
 

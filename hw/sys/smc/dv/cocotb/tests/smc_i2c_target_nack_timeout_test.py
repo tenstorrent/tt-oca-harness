@@ -4,7 +4,8 @@
 
 TARGET_TIMEOUT_CTRL limits how long the target may stretch within one
 transaction. Past it the target NACKs an incoming byte or releases SDA for an
-outgoing one; both are driven with nothing to release the hold.
+outgoing one; both are driven with nothing to release the hold. The limit is
+cumulative: two released holds that only together pass it end in a NACK.
 """
 
 from __future__ import annotations
@@ -24,9 +25,10 @@ class smc_i2c_target_nack_timeout_test(smc_base_test):
         "CHK-I2C-TGT-NACK-TIMEOUT-RX",
         "CHK-I2C-TGT-NACK-TIMEOUT-TX",
         "CHK-I2C-TGT-RESTART",
+        "CHK-I2C-TGT-TIMEOUT-CUMULATIVE",
         "CHK-I2C-VAL-IDLE",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     auto_protocol_vip = False
 

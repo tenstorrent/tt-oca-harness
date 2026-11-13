@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import cocotb
+from cocotb.triggers import ClockCycles
 
 # The generated register map is not an installed package.
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -64,6 +65,8 @@ SCRATCH_PASS_FAIL = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 SCRATCH_POST_CODE = SMC_CPU_CTRL_SCRATCH_1__REG_ADDR
 
 # Write before releasing the cores; 0 is an LFSR fixed point that pins every random choice.
+# The production ROM clears this register on entry (it is also the SEP's park request), so
+# the seed reaches only images that start without the ROM, such as the controller's.
 SCRATCH_FW_SEED = SMC_CPU_CTRL_SCRATCH_3__REG_ADDR
 
 SCRATCH_BOOTCODE_ADDR = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
@@ -296,3 +299,17 @@ def format_activity(activity, i2c=None) -> str:
     if i2c is not None:
         parts += [f"I2C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in i2c]
     return ", ".join(parts)
+
+
+async def peek_target_scratch(dut, offset: int) -> tuple[int, int]:
+    """Backdoor read of one 64-bit target SRAM word at `offset` from SMC_SRAM_BASE, with its ECC.
+
+    The read bypasses the CPU D-cache and works while the cluster is isolated.
+    """
+    dut.tb_dut_scratch_peek_offset.value = offset
+    # Two clocks for the combinational peek mux to settle before sampling.
+    await ClockCycles(dut.clk_smc_i, 2)
+    return (
+        int(dut.tb_dut_scratch_peek_data.value),
+        int(dut.tb_dut_scratch_peek_ecc.value),
+    )

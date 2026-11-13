@@ -47,6 +47,9 @@ Checkers:
   CHK-ROUTING    each AES beat and each KMAC beat equals the AXIS1 word granted
                  that cycle (dual-sink bit-exact CHK5).
   CHK-MEMBERSHIP each routed word is a CHK4 genbits-golden word (AXIS1 chain).
+  CHK-AES-STATUS-CLEAN  after the contended run, STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
+                 and STATUS.ALERT_FATAL_FAULT of AES read 0 (aes.hjson STATUS). The
+                 line logs the STATUS word and both bits; a set bit fails the leaf.
 
 Four-engine concurrency leg (runs after CHK-MEMBERSHIP, on the same entropy stack):
 three groups per seed -- HMAC+AES+KMAC+OTBN, AES+KMAC+OTBN, and one drawn pair that
@@ -62,7 +65,10 @@ effective start order. In a group
 without an HMAC member, HMAC holds a finished SHA-256 digest (the bystander) and a
 further task reads its DIGEST words while the peers run. The EDN words acked on
 crypto_edn_ack_o[3:0] are counted from the first word of the run against the
-generate budget of the open boot Generate (CTRL-CONC-BUDGET).
+generate budget of the open boot Generate (CTRL-CONC-BUDGET). Before the members
+start, the OTBN DMEM result word reads back the complement of the OTBN golden
+(CTRL-CONC-CFG), so a result the program never stores cannot match; the configure
+readbacks of the other members are logged as INFO-CONC-CFG.
   CHK-CONC-RESULT  each member result under overlap equals its independent golden
                    (SHA-2/HMAC, Keccak, AES, Python operator) and every host access
                    of the member answers OKAY; control: CTRL-CONC-CLEAN of the same
@@ -73,7 +79,7 @@ An HMAC DIGEST readback (member and bystander) equals its golden only when every
 the big-endian read of digest bytes 4n..4n+3 (env/sep_hmac_golden.py SepDigestOrder): at
 digest_swap = 0 DIGEST word n is that read (hmac.hjson:465-469, DIGEST, over the FIPS 180-4
 hash value H0 || H1 || ...). The order the first readback matches is logged as
-OBS-HMAC-DIGEST-ORDER.
+INFO-HMAC-DIGEST-ORDER, which names CHK-CONC-RESULT and CHK-CONC-HOLD as its graders.
 The specification implies the independence of the engines (separate host paths,
 hw/sys/sep/doc/crypto.adoc; per-domain resets, hw/sys/sep/doc/reset_controller.adoc)
 and states no direct rule, so both checks grade the implied contract.
@@ -112,6 +118,8 @@ from seq_lib.sep_aes_seq import (
     AES_KEYLEN_CTRL,
     AES_MODE_CTRL,
     AES_STATUS,
+    AES_STATUS_ALERT_FATAL_FAULT,
+    AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR,
     AES_STATUS_IDLE,
     AES_STATUS_INPUT_READY,
     AES_STATUS_OUTPUT_VALID,
@@ -431,6 +439,10 @@ class OtbnOp:
 
     def golden(self) -> list[int]:
         return [golden_result(self.op, self.a, self.b)]
+
+    def preset(self) -> int:
+        """DMEM result word before the run: the complement of the golden, so a missing store cannot match."""
+        return self.golden()[0] ^ 0xFFFF_FFFF
 
     def count(self) -> int:
         return 0
@@ -799,9 +811,7 @@ class LegOtbn(_LegAccess, SepOtbn, _LegMember):
         await self.load_program(otbn_compute_prog(op.op))
         await self.write_dmem(0, op.a)
         await self.write_dmem(4, op.b)
-        # The result word holds the complement of the golden, so a missing store
-        # cannot match.
-        await self.write_dmem(8, op.golden()[0] ^ 0xFFFF_FFFF)
+        await self.write_dmem(8, op.preset())
         return await self.read_dmem(8)
 
     async def run_op(self, op: OtbnOp, bound: int, on_start, hold=None) -> _TaskResult:
@@ -829,7 +839,7 @@ _STATUS_ADDR = {
 class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
     """Concurrent AES and KMAC each match their golden, and each beat routes the granted word."""
 
-    required_evidence = ("CHK-CONC-RESULT", "CHK-CONC-HOLD")
+    required_evidence = ("CHK-CONC-RESULT", "CHK-CONC-HOLD", "CHK-AES-STATUS-CLEAN")
 
     def _aes_beats(self) -> int:
         """Live count of AES crypto-EDN post-adapter beats (public scoreboard accessor)."""
@@ -1015,7 +1025,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         )
 
         # --- EOT: engine status clean, entropy health, dual-sink CHK5 routing ------
-        await self.aes.check_status_clean("EOT")
+        await self._aes_status_clean("EOT")
         await self.kmac.check_status_clean("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
@@ -1037,6 +1047,38 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         )
 
         await self._concurrency_leg()
+
+    async def _aes_status_clean(self, tag: str) -> None:
+        """CHK-AES-STATUS-CLEAN: both AES alert bits of STATUS read 0.
+
+        The leg's ``SepChkLog`` does not exist yet, so the line goes through the
+        logger in the ``SepChkLog`` record format. ``SepAes.check_status_clean``
+        asserts the two bits; its ``AssertionError`` is logged as the FAIL line and
+        raised again. After it returns, one more STATUS read gives the word and the
+        bits of the PASS line, and a set bit raises.
+        """
+        seed = self.random_seed()
+        try:
+            await self.aes.check_status_clean(tag)
+        except AssertionError as exc:
+            self.logger.error(
+                "CHK-AES-STATUS-CLEAN FAIL: seed=%d tag=%s reason=%s",
+                seed,
+                tag,
+                str(exc).replace(" ", "_"),
+            )
+            raise
+        st = await self.aes._rd(AES_STATUS)
+        recov = (st >> AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR) & 1
+        fatal = (st >> AES_STATUS_ALERT_FATAL_FAULT) & 1
+        line = (
+            f"seed={seed} tag={tag} status=0x{st:08x} "
+            f"alert_recov_ctrl_update_err={recov} alert_fatal_fault={fatal}"
+        )
+        if recov or fatal:
+            self.logger.error("CHK-AES-STATUS-CLEAN FAIL: %s", line)
+            raise AssertionError(f"CHK-AES-STATUS-CLEAN FAIL: {line}")
+        self.logger.info("CHK-AES-STATUS-CLEAN PASS: %s", line)
 
     # --- Four-engine concurrency leg -----------------------------------------
 
@@ -1254,7 +1296,18 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         for eng in _CFG_ORDER:
             if eng in g.members:
                 readback = await drivers[eng].configure_op(ops[eng])
-                chk.info("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
+                if eng == "otbn":
+                    wrote = ops[eng].preset()
+                    chk.ctrl(
+                        "CONC-CFG",
+                        readback == wrote,
+                        group=g.name,
+                        engine=eng,
+                        wrote=f"0x{wrote:08x}",
+                        readback=f"0x{readback:08x}",
+                    )
+                else:
+                    chk.info("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
 
         records: dict[str, list] = {eng: [] for eng in g.members}
         for eng in g.members:
@@ -1440,5 +1493,9 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         close_graded_window(self.logger)
         total = self._edn_words()
         chk.ctrl("CONC-BUDGET", total <= _EDN_BUDGET_WORDS, total=total, budget=_EDN_BUDGET_WORDS)
-        chk.obs("HMAC-DIGEST-ORDER", **self._dorder.fields())
+        chk.info(
+            "HMAC-DIGEST-ORDER",
+            **self._dorder.fields(),
+            graded_by=["CHK-CONC-RESULT", "CHK-CONC-HOLD"],
+        )
         chk.finish()

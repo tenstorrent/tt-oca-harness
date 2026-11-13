@@ -41,6 +41,7 @@ def coverage_comparison_key(
     dut: str,
     tool: str,
     target: str | None,
+    build_fingerprint: str | None,
     scope_fingerprint: str | None,
     policy_fingerprint: str | None,
 ) -> str:
@@ -50,6 +51,7 @@ def coverage_comparison_key(
             "dut": dut,
             "tool": tool,
             "target": target,
+            "build_fingerprint": build_fingerprint,
             "scope_fingerprint": scope_fingerprint,
             "policy_fingerprint": policy_fingerprint,
         },
@@ -136,6 +138,7 @@ class CoverageDetails:
             dut=self.dut,
             tool=self.tool,
             target=self.target,
+            build_fingerprint=self.build_fingerprint,
             scope_fingerprint=self.scope_fingerprint,
             policy_fingerprint=self.policy_fingerprint,
         )
