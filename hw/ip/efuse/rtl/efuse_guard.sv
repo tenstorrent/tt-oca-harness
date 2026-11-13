@@ -84,6 +84,30 @@ module efuse_guard #(
   output logic secure_tm_blocked_o      // High while secure test mode blocks fuse command starts.
 );
 
+  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
+
+  // Bounds every mapped idx for the entry_locked lookups, which skip idx '1.
+  function automatic logic field_map_idx_in_range();
+    logic in_range;
+    in_range = 1'b1;
+    for (int unsigned i = 0; i < EFUSE_FIELDS; i++) begin
+      if ((efuse_field_map_i[i].idx != '1) &&
+          (int'(efuse_field_map_i[i].idx) >= int'(LOCK_VECTOR_BITS / 2))) begin
+        in_range = 1'b0;
+      end
+    end
+    for (int i = 0; i < int'(SUPPLEMENTARY_FIELDS); i++) begin
+      if ((supplementary_field_map_i[i].idx != '1) &&
+          (int'(supplementary_field_map_i[i].idx) >= int'(efuse_pkg::SupplementaryLockBits / 2))) begin
+        in_range = 1'b0;
+      end
+    end
+    return in_range;
+  endfunction
+
+  `OCAH_OT_ASSERT_INIT(EfuseFieldMapIdxInRange_A, field_map_idx_in_range())
+
   logic is_program_locked;
   logic is_read_locked;
   logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] rd_index, wr_index;

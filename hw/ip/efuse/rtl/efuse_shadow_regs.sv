@@ -49,6 +49,8 @@ module efuse_shadow_regs
                                        // leave it idle and count a READ issued elsewhere.
     parameter int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1),  // Hardware lock bits applied to the
                                                                        // field map.
+    parameter int unsigned FIELD_LOCK_BITS = LOCK_VECTOR_BITS,  // Leading lock_vector_o bits the field-map
+                                                                // indices address; at most LOCK_VECTOR_BITS.
     parameter bit EXT_LOCKS = 1'b0,  // Set to take the hardware lock bits from ext_locks_i; clear to
                                      // take them from the leading shadow words.
     parameter string PRELOAD_PLUSARG =  // Plusarg naming the simulation preload file.
@@ -292,11 +294,11 @@ module efuse_shadow_regs
       .EFUSE_FIELDS     (EFUSE_FIELDS),
       .HAS_LC_STATE     (HAS_LC_STATE),
       .efuse_addr_t     (efuse_addr_t),
-      .LOCK_VECTOR_BITS (LOCK_VECTOR_BITS)
+      .LOCK_VECTOR_BITS (FIELD_LOCK_BITS)
   ) u_efuse_shadow_reg_access_control (
       .secure_tm_i        (secure_tm_i),
       .efuse_field_map_i  (efuse_field_map_i),
-      .locks_i            (lock_vector),
+      .locks_i            (lock_vector[FIELD_LOCK_BITS-1:0]),
       .addr_i             (apb_req_paddr_i),
       .write_locked_o     (write_locked),
       .read_locked_o      (read_locked),
@@ -696,6 +698,8 @@ module efuse_shadow_regs
       !HAS_LC_STATE || (LOAD_WORD_OFFSET == 0))
   `OCAH_ASSERT_STATIC(LockWordsWithinShadow_A,
       EXT_LOCKS || (LockWords <= NumShadowWords))
+  `OCAH_ASSERT_STATIC(FieldLockBitsWithinVector_A,
+      (FIELD_LOCK_BITS >= 2) && (FIELD_LOCK_BITS <= LOCK_VECTOR_BITS))
 
   for (genvar i = 0; i < NumShadowWords; i++) begin : gen_secret_word_assert
     if (efuse_pkg::shadow_range_map_contains_word(SECRET_SHADOW_RANGES, i)) begin : gen_masked

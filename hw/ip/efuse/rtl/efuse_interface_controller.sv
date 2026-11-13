@@ -216,6 +216,8 @@ module efuse_interface_controller #(
   localparam int unsigned ShadowLockBits =
       HasSupplementaryFuses ? SUPPLEMENTARY_LOCKS_BIT_OFFSET + SupplementaryLockBits : HarnessLockBits;
 
+  // The HAS_LC_STATE APB decode has no supplementary window.
+  `OCAH_ASSERT_STATIC(SupplementaryFusesWithoutLcState_A, !(HAS_LC_STATE && HasSupplementaryFuses))
   `OCAH_ASSERT_STATIC(SupplementaryLocksAboveHarnessPairs_A,
       !HasSupplementaryFuses || (SUPPLEMENTARY_LOCKS_BIT_OFFSET >= HarnessLockBits))
   `OCAH_ASSERT_STATIC(SupplementaryLocksWordAligned_A,
@@ -765,6 +767,7 @@ module efuse_interface_controller #(
     .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
     .SENSE_WORDS         (TotalSenseWords),
     .LOCK_VECTOR_BITS    (ShadowLockBits),
+    .FIELD_LOCK_BITS     (HarnessLockBits),
 
     .TOKEN_MATCH_CODE    (TokenMatchCode),
 
