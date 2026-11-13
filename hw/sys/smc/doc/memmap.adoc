@@ -186,8 +186,8 @@ follows:
   raises no interrupt.
 * An offset inside the block that no register occupies answers `OKAY`. A read
   returns 0, and a write has no effect.
-* An offset past the end of the block's last register answers `SLVERR` if it
-  reaches the block, including the part of a wider access that runs past that
+* An offset past the end of the block's last register but inside its window
+  answers `SLVERR`, including the part of a wider access that runs past that
   end. The alias remap table and filter controls answer `OKAY` there instead:
   each is an array, and the padding between its entries is a hole.
 * Exclusive access is not supported. The AXI-to-AXI-Lite conversion in front
