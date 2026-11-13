@@ -69,9 +69,12 @@ not attach to this crossbar directly; it enters SEP through the dedicated
 `smn_inbound` port and the inbound traffic filter (block-by-default), then
 through the `sep_system_peripherals` inner crossbar. That inner crossbar
 reaches the *mailboxes* and *system CSRs* directly, and loops everything
-else back into this crossbar's System Interface initiator. The inbound filter
-controls which addresses the external master may reach; it is block-by-default
-after POR and configured by SEP firmware.
+else back into this crossbar's System Interface initiator. That initiator has
+no path to the *CPU TCM*, *Reset controller* or *System Periph* targets, so an
+external master cannot reach the ICCM and DCCM or the SEP software resets, and
+a request to them answers DECERR. The inbound filter controls which addresses
+the external master may reach; it is block-by-default after POR and configured
+by SEP firmware.
 
 [[sep-axi-terms]]
 .SEP AXI4 connectivity terms
@@ -94,7 +97,7 @@ closely coupled memory (ICCM) and data closely coupled memory (DCCM).
 |Entropy pool (`entropy_fifo`) |Read-only aperture for entropy supplied by the entropy distribution
 network (EDN).
 |Extension (`sep_external`) |Outbound AXI4 port for resources outside the local crossbar.
-|eFuse shim (`efuse_shim`) |The eFuse shim CSR window at the base of the external aperture, routed to the eFuse wrapper in the crypto subsystem.
+|eFuse shim (`efuse_shim`) |The eFuse shim CSR window at the base of the external window, routed to the eFuse wrapper in the crypto subsystem.
 |SMN inbound (`ext`) |Filtered inbound path from the System Management Network (SMN).
 |Boot ROM |Read-only boot memory on the dedicated CPU fetch/load path.
 |===
@@ -162,9 +165,9 @@ answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
 each target row is the conversion the target needs: the secure DMA registers
 and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
 controller and entropy pool as AXI-Lite. The `efuse_shim` target takes the
-eFuse shim CSR window at the base of the `0x2000_0000` to `0x3FFF_FFFF`
-aperture to the eFuse wrapper; the `sep_external` target sends every other
-address in the aperture out of SEP on the AXI extension port.
+eFuse shim CSR window at the base of the external window, `0x2000_0000` to
+`0x3FFF_FFFF`, to the eFuse wrapper; the `sep_external` target sends every
+other address in the external window out of SEP on the AXI extension port.
 xref:sep-axi-connectivity[xrefstyle=short] gives the initiator-to-target connections.
 
 [[sep-output-fabric-diagram]]

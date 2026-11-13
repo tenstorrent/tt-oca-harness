@@ -12,7 +12,7 @@
 
 module sep_local_axi_xbar_wrapper #(
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4  // Size in bytes of the eFuse shim CSR window
-                                                // at the base of the external aperture.
+                                                // at the base of the sep_external window.
 ) (
   input  logic                                clk_i,  // System clock.
   input  logic                                rst_ni,  // Active-low reset.
@@ -88,10 +88,10 @@ module sep_local_axi_xbar_wrapper #(
                                                                           // page.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,  // Response from sep_reset_ctrl.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,  // Request for the external aperture
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,  // Request for the sep_external window
                                                                         // 0x2000_0000-0x3FFF_FFFF above
                                                                         // the eFuse shim window, to sep.
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i,  // Response from the external aperture.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i,  // Response from the sep_external window.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     efuse_shim_axi_req_o,  // Request for the eFuse shim CSR
                                                                       // window, to sep_crypto.

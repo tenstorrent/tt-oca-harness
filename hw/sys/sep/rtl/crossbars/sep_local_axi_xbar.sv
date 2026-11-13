@@ -5,9 +5,10 @@
 //
 // The DMA, watchdog, reset controller, SPI controller and scratch rules start at their
 // sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the registers; each of
-// those targets answers every address in its page. The remaining address rules are explicit
-// integration apertures in AddrMap below. The efuse_shim rule takes the EFUSE_SHIM_SIZE bytes
-// at the base of the external aperture, and the sep_external rule the rest.
+// those targets answers every address in its page. The remaining rules are fixed address ranges
+// from the SEP memory map, each decoded further by the target behind it. The efuse_shim rule
+// takes the EFUSE_SHIM_SIZE bytes at the base of the sep_external window, and the sep_external
+// rule the rest.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
 // get DECERR.
@@ -22,7 +23,7 @@ module sep_local_axi_xbar
   import sep_local_axi_xbar_pkg::axi_out_resp_t;
 #(
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4  // Size in bytes of the eFuse shim CSR window
-                                                // at the base of the external aperture.
+                                                // at the base of the sep_external window.
 )
 (
   input  logic clk_i,                         // System clock.
@@ -91,10 +92,10 @@ module sep_local_axi_xbar
                                               // 0x1095_0000-0x1095_FFFF.
   input  axi_out_resp_t entropy_fifo_resp_i,  // Response from the entropy pool.
 
-  output axi_out_req_t  sep_external_req_o,   // Request for the external aperture
+  output axi_out_req_t  sep_external_req_o,   // Request for the sep_external window
                                               // 0x2000_0000-0x3FFF_FFFF above the eFuse shim
                                               // window, to sep.
-  input  axi_out_resp_t sep_external_resp_i,  // Response from the external aperture.
+  input  axi_out_resp_t sep_external_resp_i,  // Response from the sep_external window.
 
   output axi_out_req_t  efuse_shim_req_o,     // Request for the eFuse shim CSR window, to
                                               // sep_crypto.
@@ -205,7 +206,7 @@ module sep_local_axi_xbar
                           + EFUSE_SHIM_SIZE),
           end_addr: 33'h40000000
       },
-      // efuse_shim.main: the EFUSE_SHIM_SIZE bytes at the base of the external aperture
+      // efuse_shim.main: the EFUSE_SHIM_SIZE bytes at the base of the sep_external window
       '{
           idx: 10,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR),
