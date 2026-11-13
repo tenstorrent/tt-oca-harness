@@ -38,7 +38,7 @@ image::log-engine-wrapper.svg[alt="uart_log_engine_wrap: a register demux to the
 
 <<log-engine-wrapper-diagram>> shows the SMC wrapper and its memory-to-UART
 data paths. Parentheses after an instance name give its module or, for a
-block taken from another project, that project: the UART's demux, the mux and
+block taken from another project, that project: the UART core's demux, the mux and
 the `axi_lite_from_mem` converters come from PULP, and `u_uart_core`,
 `u_arbiter_tree` and `u_rdata_fifo` from OpenTitan.
 `uart_log_engine_wrap` runs on one clock, `clk_i`. Its register
@@ -63,8 +63,8 @@ synchronizers, marked by the synchronizer badge on its edge.
 The dashed outline marks the log engine, which exists only when
 `GEN_LOG_ENGINE` is set; without it the log-fetch port is driven to zero,
 `log_engine_irq_o` is low and the log engine's window answers DECERR.
-`u_log_engine_reg`, generated from `log_engine.rdl`, holds the 16 `LOG_CTRL` registers and the interrupt
-registers, and drives `log_engine_irq_o`. `u_arbiter_tree` picks a log entry
+`u_log_engine_reg`, generated from `log_engine.rdl`, holds the 16 `LOG_CTRL`
+registers and the interrupt registers, and drives `log_engine_irq_o`. `u_arbiter_tree` picks a log entry
 whose `LOG_LEN` is non-zero and gives its index and length to the log fetch
 FSM. The fetch FSM reads 64-bit words through the `axi_lite_from_mem`
 converter `u_axil_lite_from_log_fetch_fsm` on the log-fetch port, which has 56-bit address and 64-bit data,
