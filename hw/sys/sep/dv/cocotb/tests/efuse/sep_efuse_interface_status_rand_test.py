@@ -23,8 +23,9 @@ draws the case order, the out-of-range address and every program and read bit.
 
 "Run a program" / "run a read" is a write of the address register, then one control
 write with enable and go, a wait of the full window W (``_W_MULT`` x the sense time
-measured at the first sense, no early exit), then reads of ``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL`` and
-``EFUSE_PROGRAM_CTRL``; both busy bits must read 0.
+measured at the first sense, no early exit), then reads of
+``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL`` and ``EFUSE_PROGRAM_CTRL``; both
+busy bits must read 0.
 
 Checkers:
   CHK-IF-STATUS    the error flags and ``read_status`` of each refusal case and of the
