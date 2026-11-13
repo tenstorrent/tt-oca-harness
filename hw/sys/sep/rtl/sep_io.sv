@@ -6,7 +6,7 @@
 // The 64-bit AXI4 slave is downsized to 32 bits and converted to AXI-Lite. A demux passes the
 // SPI controller's window, the 2^spi_host_reg_pkg::BlockAw bytes from
 // SEP_TOP_SPI_CONTROLLER_BASE_ADDR, to a single-chip-select sep_ot_spi_wrap and answers the
-// rest of the page with DECERR and read data 0xBADCAB1E. Inside that window the SPI controller
+// rest of the page with SLVERR and read data 0xBADCAB1E. Inside that window the SPI controller
 // answers an access past its registers with SLVERR and read data 0xFFFFFFFF.
 // sep_io_spi_req_o / sep_io_spi_rsp_i carry the SPI pad request/response struct, which also
 // holds the SPI interrupt and DMA trigger.
@@ -112,6 +112,7 @@ module sep_io (
     .NUM_RANGES     (1),
     .RANGE_BASE     (SpiWindowBase),
     .RANGE_SIZE     (SpiWindowSize),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
     .MAX_TRANS      (1),
     .aw_chan_t      (sep_io_pkg::axil_aw_chan_t),
     .w_chan_t       (sep_io_pkg::axil_w_chan_t),
