@@ -14,9 +14,9 @@ This address map is from the perspective of the KM CPU (PicoRV32).
 ======
 *Register Arrays:*
 
-* *RMA_SIP_TOKEN_I[8]*: 8 registers, base 0x11500, stride 0x4
-* *RMA_CHIPLET_TOKEN_I[8]*: 8 registers, base 0x11520, stride 0x4
-* *SEC_DISABLE_TOKEN_I[8]*: 8 registers, base 0x11540, stride 0x4
+* *RMA_SIP_TOKEN_I[8]*: 8 registers, base 0x11100, stride 0x4
+* *RMA_CHIPLET_TOKEN_I[8]*: 8 registers, base 0x11120, stride 0x4
+* *SEC_DISABLE_TOKEN_I[8]*: 8 registers, base 0x11140, stride 0x4
 * *KEY_ENTRY[64].WORD[16]*: 1024 registers, base 0x12000 (KEY_ENTRY x64 stride 0x40, WORD x16 stride 0x4)
 * *CTRL[64]*: 64 registers, base 0x13000, stride 0x4
 * *KEY_SHARE0[12]*: 12 registers, base 0x18000, stride 0x4
@@ -48,64 +48,64 @@ This address map is from the perspective of the KM CPU (PicoRV32).
 | 0x10010 | <<reg-{regmap-instance}-key_manager-mailbox_km-KM_IRQ_STATUS,KM_IRQ_STATUS>> | RW a| Interrupt status register
 | 0x10014 | <<reg-{regmap-instance}-key_manager-mailbox_km-KM_IRQ_ENABLE,KM_IRQ_ENABLE>> | RW a| Interrupt enable register for KM CPU
 | 0x10018 | <<reg-{regmap-instance}-key_manager-mailbox_km-KM_CTRL,KM_CTRL>> | RW a| Control register for mailbox behavior configuration
-| 0x11000 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS,LOCKS>> | RW a| -
-| 0x11008 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS_SPARE,LOCKS_SPARE>> | RW a| -
-| 0x1100C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LC_STATE,LC_STATE>> | R a| -
-| 0x11010 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SBOOT_DIS,SBOOT_DIS>> | R a| -
-| 0x11014 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-TRANSIENT_RMA_EN,TRANSIENT_RMA_EN>> | R a| -
-| 0x11018 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_DIS,SIP_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
-| 0x11020 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_DIS,SYS_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
-| 0x11028 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_SIP_TOKEN_DIGEST,RMA_SIP_TOKEN_DIGEST>> | R a| -
-| 0x11048 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_CHIPLET_TOKEN_DIGEST,RMA_CHIPLET_TOKEN_DIGEST>> | R a| -
-| 0x11068 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CLASS_KEY,CLASS_KEY>> | R a| -
-| 0x11088 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_REVOKE,CHIPLET_PUBK_REVOKE>> | R a| -
-| 0x1108C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL1_VERSION,BL1_VERSION>> | R a| -
-| 0x110AC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL2_VERSION,BL2_VERSION>> | R a| -
-| 0x110CC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_UID,CHIPLET_UID>> | R a| -
-| 0x110EC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH0,SIP_PUBK_HASH0>> | R a| -
-| 0x1110C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_UID,SIP_UID>> | R a| -
-| 0x1112C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_HASH,SYS_PUBK_HASH>> | R a| -
-| 0x1114C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_UID,SYS_UID>> | R a| -
-| 0x1116C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-STATUS_RPT,STATUS_RPT>> | R a| -
-| 0x11170 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-ROM_CTL,ROM_CTL>> | R a| -
-| 0x11174 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYSCLK_FREQ_MHZ,SYSCLK_FREQ_MHZ>> | R a| -
-| 0x11178 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH0,CHIPLET_PUBK_HASH0>> | R a| -
-| 0x11198 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH1,CHIPLET_PUBK_HASH1>> | R a| -
-| 0x111B8 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_SIGNERS,REQUIRED_SIGNERS>> | RW a| -
-| 0x111BC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_ALGS,REQUIRED_ALGS>> | RW a| -
-| 0x111C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH0,CHIPLET_PUBK_PQC_HASH0>> | R a| -
-| 0x111E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH1,CHIPLET_PUBK_PQC_HASH1>> | R a| -
-| 0x11200 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH0,SIP_PUBK_PQC_HASH0>> | R a| -
-| 0x11220 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_PQC_HASH,SYS_PUBK_PQC_HASH>> | R a| -
-| 0x11240 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH1,SIP_PUBK_HASH1>> | R a| -
-| 0x11260 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH1,SIP_PUBK_PQC_HASH1>> | R a| -
-| 0x11280 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_CHIPLET_ID,SEP_CHIPLET_ID>> | R a| -
-| 0x112A0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SIP_ID,SEP_SIP_ID>> | R a| -
-| 0x112C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SYS_ID,SEP_SYS_ID>> | R a| -
-| 0x112E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare0,spare0>> | R a| -
-| 0x11300 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare1,spare1>> | R a| -
-| 0x11320 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare2,spare2>> | R a| -
-| 0x11340 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare3,spare3>> | R a| -
-| 0x11360 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare4,spare4>> | R a| -
-| 0x11380 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare5,spare5>> | R a| -
-| 0x113A0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare6,spare6>> | R a| -
-| 0x113C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare7,spare7>> | R a| -
-| 0x113E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare8,spare8>> | R a| -
-| 0x11400 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_INTERFACE_CTRL_STATUS,EFUSE_INTERFACE_CTRL_STATUS>> | RW a| eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
-| 0x11404 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_CTRL,EFUSE_PROGRAM_CTRL>> | RW a| eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
-| 0x11408 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_CTRL,EFUSE_READ_CTRL>> | RW a| eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
-| 0x1140C | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA,EFUSE_PROGRAM_INTERFACE_READ_DATA>> | R a| Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
-| 0x11410 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA,EFUSE_READ_INTERFACE_READ_DATA>> | R a| Read data returned through the eFuse read interface.
-| 0x11414 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT,EFUSE_READ_REQ_TIMEOUT>> | RW a| Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
-| 0x11418 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT,EFUSE_PROGRAM_REQ_TIMEOUT>> | RW a| Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
-| 0x11500 - 0x1151C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-,RMA_SIP_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-| 0x11520 - 0x1153C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-,RMA_CHIPLET_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-| 0x11540 - 0x1155C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-,SEC_DISABLE_TOKEN_I[8]>> | RW a| Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
-| 0x11560 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP,TOKEN_EOP>> | W a| Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
-| 0x11564 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH,RMA_SIP_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-| 0x11568 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH,RMA_CHIPLET_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-| 0x1156C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH,SEC_DISABLE_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-| 0x11570 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT,TOKEN_MATCH_FAULT>> | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
+| 0x11000 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_INTERFACE_CTRL_STATUS,EFUSE_INTERFACE_CTRL_STATUS>> | RW a| eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
+| 0x11004 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_CTRL,EFUSE_PROGRAM_CTRL>> | RW a| eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
+| 0x11008 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_CTRL,EFUSE_READ_CTRL>> | RW a| eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
+| 0x1100C | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA,EFUSE_PROGRAM_INTERFACE_READ_DATA>> | R a| Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
+| 0x11010 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA,EFUSE_READ_INTERFACE_READ_DATA>> | R a| Read data returned through the eFuse read interface.
+| 0x11014 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT,EFUSE_READ_REQ_TIMEOUT>> | RW a| Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
+| 0x11018 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT,EFUSE_PROGRAM_REQ_TIMEOUT>> | RW a| Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
+| 0x11100 - 0x1111C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-,RMA_SIP_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+| 0x11120 - 0x1113C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-,RMA_CHIPLET_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+| 0x11140 - 0x1115C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-,SEC_DISABLE_TOKEN_I[8]>> | RW a| Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
+| 0x11160 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP,TOKEN_EOP>> | W a| Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
+| 0x11164 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH,RMA_SIP_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+| 0x11168 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH,RMA_CHIPLET_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+| 0x1116C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH,SEC_DISABLE_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+| 0x11170 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT,TOKEN_MATCH_FAULT>> | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
+| 0x11400 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS,LOCKS>> | RW a| -
+| 0x11408 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS_SPARE,LOCKS_SPARE>> | RW a| -
+| 0x1140C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LC_STATE,LC_STATE>> | R a| -
+| 0x11410 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SBOOT_DIS,SBOOT_DIS>> | R a| -
+| 0x11414 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-TRANSIENT_RMA_EN,TRANSIENT_RMA_EN>> | R a| -
+| 0x11418 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_DIS,SIP_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+| 0x11420 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_DIS,SYS_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+| 0x11428 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_SIP_TOKEN_DIGEST,RMA_SIP_TOKEN_DIGEST>> | R a| -
+| 0x11448 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_CHIPLET_TOKEN_DIGEST,RMA_CHIPLET_TOKEN_DIGEST>> | R a| -
+| 0x11468 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CLASS_KEY,CLASS_KEY>> | R a| -
+| 0x11488 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_REVOKE,CHIPLET_PUBK_REVOKE>> | R a| -
+| 0x1148C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL1_VERSION,BL1_VERSION>> | R a| -
+| 0x114AC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL2_VERSION,BL2_VERSION>> | R a| -
+| 0x114CC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_UID,CHIPLET_UID>> | R a| -
+| 0x114EC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH0,SIP_PUBK_HASH0>> | R a| -
+| 0x1150C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_UID,SIP_UID>> | R a| -
+| 0x1152C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_HASH,SYS_PUBK_HASH>> | R a| -
+| 0x1154C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_UID,SYS_UID>> | R a| -
+| 0x1156C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-STATUS_RPT,STATUS_RPT>> | R a| -
+| 0x11570 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-ROM_CTL,ROM_CTL>> | R a| -
+| 0x11574 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYSCLK_FREQ_MHZ,SYSCLK_FREQ_MHZ>> | R a| -
+| 0x11578 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH0,CHIPLET_PUBK_HASH0>> | R a| -
+| 0x11598 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH1,CHIPLET_PUBK_HASH1>> | R a| -
+| 0x115B8 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_SIGNERS,REQUIRED_SIGNERS>> | RW a| -
+| 0x115BC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_ALGS,REQUIRED_ALGS>> | RW a| -
+| 0x115C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH0,CHIPLET_PUBK_PQC_HASH0>> | R a| -
+| 0x115E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH1,CHIPLET_PUBK_PQC_HASH1>> | R a| -
+| 0x11600 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH0,SIP_PUBK_PQC_HASH0>> | R a| -
+| 0x11620 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_PQC_HASH,SYS_PUBK_PQC_HASH>> | R a| -
+| 0x11640 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH1,SIP_PUBK_HASH1>> | R a| -
+| 0x11660 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH1,SIP_PUBK_PQC_HASH1>> | R a| -
+| 0x11680 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_CHIPLET_ID,SEP_CHIPLET_ID>> | R a| -
+| 0x116A0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SIP_ID,SEP_SIP_ID>> | R a| -
+| 0x116C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SYS_ID,SEP_SYS_ID>> | R a| -
+| 0x116E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare0,spare0>> | R a| -
+| 0x11700 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare1,spare1>> | R a| -
+| 0x11720 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare2,spare2>> | R a| -
+| 0x11740 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare3,spare3>> | R a| -
+| 0x11760 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare4,spare4>> | R a| -
+| 0x11780 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare5,spare5>> | R a| -
+| 0x117A0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare6,spare6>> | R a| -
+| 0x117C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare7,spare7>> | R a| -
+| 0x117E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare8,spare8>> | R a| -
 | 0x12000 - 0x12FFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-WORD-,KEY_ENTRY[64].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
 | 0x13000 - 0x130FC | <<reg-{regmap-instance}-key_manager-kpv-CTRL-,CTRL[64]>> | RW a| Per-slot control: lock bits (W1S) and the erase trigger
 | 0x13100 | <<reg-{regmap-instance}-key_manager-kpv-KPV_SCRAMBLER_KEY,KPV_SCRAMBLER_KEY>> | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
@@ -408,6 +408,184 @@ PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 | 2 | `flush` | RW | 0x0 a| Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.
 | 1 | `inbound_underflow_resp` | RW | 0x0 a| Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY
 | 0 | `outbound_overflow_resp` | RW | 0x0 a| Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_INTERFACE_CTRL_STATUS]
+=== EFUSE_INTERFACE_CTRL_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10 | `efuse_read_addr_error_clear` | W 1P | 0x0 a| Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
+| 9 | `efuse_program_addr_error_clear` | W 1P | 0x0 a| Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
+| 8 | `efuse_req_error_clear` | W 1P | 0x0 a| Clears the blocked request error bit in efuse_ctrl_status
+| 7 | `Reserved` | - | - a| Reserved
+| 6 | `efuse_read_addr_error` | R | 0x0 a| Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
+| 5 | `efuse_program_addr_error` | R | 0x0 a| Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
+| 4 | `efuse_req_error` | R | 0x0 a| Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `efuse_sense_done` | R | - a| Indicates if the eFuse state machine has completed
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_CTRL]
+=== EFUSE_PROGRAM_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27 | `program_enable` | RW | 0x0 a| When set, enables the program request
+| 26 | `program_status` | R | 0x0 a| 0: No Error.  1: Error
+| 25 | `program_done` | R | 0x0 a| When set, the program has completed, the status of which is in program_status
+| 24 | `program_busy` | R | 0x0 a| When set, the program is in progress
+| 23:19 | `Reserved` | - | - a| Reserved
+| 18 | `efuse_program_read_back` | RW | 0x0 a| When set, trigger a read back after a program
+| 17 | `efuse_program_go` | RW 1P | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
+| 16 | `efuse_data` | RW | 0x0 a| Data to program to eFuse.  If this bit is 0, the program request will be ignored
+| 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to program
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_CTRL]
+=== EFUSE_READ_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28 | `read_enable` | RW | 0x0 a| When set, enables the read request
+| 27 | `Reserved` | - | - a| Reserved
+| 26 | `read_status` | R | 0x0 a| 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
+| 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status
+| 24 | `read_busy` | R | 0x0 a| When set, the read is in progress
+| 23:17 | `Reserved` | - | - a| Reserved
+| 16 | `efuse_read_go` | RW 1P | 0x0 a| When set, triggers a read to efuse.
+| 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to read
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA]
+=== EFUSE_PROGRAM_INTERFACE_READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `dout` | R | 0x0 a| Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA]
+=== EFUSE_READ_INTERFACE_READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `dout` | R | 0x0 a| Read Data from eFuse through READ interface.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT]
+=== EFUSE_READ_REQ_TIMEOUT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28 | `read_req_timout_enable` | RW | 0x0 a| Enable timeout on read interface
+| 27:0 | `read_req_timeout_cycles` | RW | 0x800000 a| Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT]
+=== EFUSE_PROGRAM_REQ_TIMEOUT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28 | `program_req_timeout_enable` | RW | 0x0 a| Enable timeout on program interface.
+| 27:0 | `program_req_timeout_cycles` | RW | 0x800000 a| Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-]
+=== RMA_SIP_TOKEN_I[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-]
+=== RMA_CHIPLET_TOKEN_I[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-]
+=== SEC_DISABLE_TOKEN_I[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `token` | RW | - a| Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP]
+=== TOKEN_EOP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:17 | `Reserved` | - | - a| Reserved
+| 16 | `secure_disable_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+| 15:9 | `Reserved` | - | - a| Reserved
+| 8 | `rma_chiplet_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+| 7:1 | `Reserved` | - | - a| Reserved
+| 0 | `rma_sip_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH]
+=== RMA_SIP_TOKEN_MATCH
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH]
+=== RMA_CHIPLET_TOKEN_MATCH
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH]
+=== SEC_DISABLE_TOKEN_MATCH
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
+|===
+
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT]
+=== TOKEN_MATCH_FAULT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:17 | `Reserved` | - | - a| Reserved
+| 16 | `secure_disable_token_fault` | R | 0x0 a| A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
+| 15:9 | `Reserved` | - | - a| Reserved
+| 8 | `rma_chiplet_token_fault` | R | 0x0 a| A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
+| 7:1 | `Reserved` | - | - a| Reserved
+| 0 | `rma_sip_token_fault` | R | 0x0 a| A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS]
@@ -901,184 +1079,6 @@ PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_INTERFACE_CTRL_STATUS]
-=== EFUSE_INTERFACE_CTRL_STATUS
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:11 | `Reserved` | - | - a| Reserved
-| 10 | `efuse_read_addr_error_clear` | W 1P | 0x0 a| Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
-| 9 | `efuse_program_addr_error_clear` | W 1P | 0x0 a| Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
-| 8 | `efuse_req_error_clear` | W 1P | 0x0 a| Clears the blocked request error bit in efuse_ctrl_status
-| 7 | `Reserved` | - | - a| Reserved
-| 6 | `efuse_read_addr_error` | R | 0x0 a| Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
-| 5 | `efuse_program_addr_error` | R | 0x0 a| Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
-| 4 | `efuse_req_error` | R | 0x0 a| Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
-| 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `efuse_sense_done` | R | - a| Indicates if the eFuse state machine has completed
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_CTRL]
-=== EFUSE_PROGRAM_CTRL
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:28 | `Reserved` | - | - a| Reserved
-| 27 | `program_enable` | RW | 0x0 a| When set, enables the program request
-| 26 | `program_status` | R | 0x0 a| 0: No Error.  1: Error
-| 25 | `program_done` | R | 0x0 a| When set, the program has completed, the status of which is in program_status
-| 24 | `program_busy` | R | 0x0 a| When set, the program is in progress
-| 23:19 | `Reserved` | - | - a| Reserved
-| 18 | `efuse_program_read_back` | RW | 0x0 a| When set, trigger a read back after a program
-| 17 | `efuse_program_go` | RW 1P | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
-| 16 | `efuse_data` | RW | 0x0 a| Data to program to eFuse.  If this bit is 0, the program request will be ignored
-| 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to program
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_CTRL]
-=== EFUSE_READ_CTRL
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:29 | `Reserved` | - | - a| Reserved
-| 28 | `read_enable` | RW | 0x0 a| When set, enables the read request
-| 27 | `Reserved` | - | - a| Reserved
-| 26 | `read_status` | R | 0x0 a| 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
-| 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status
-| 24 | `read_busy` | R | 0x0 a| When set, the read is in progress
-| 23:17 | `Reserved` | - | - a| Reserved
-| 16 | `efuse_read_go` | RW 1P | 0x0 a| When set, triggers a read to efuse.
-| 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to read
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA]
-=== EFUSE_PROGRAM_INTERFACE_READ_DATA
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dout` | R | 0x0 a| Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA]
-=== EFUSE_READ_INTERFACE_READ_DATA
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dout` | R | 0x0 a| Read Data from eFuse through READ interface.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT]
-=== EFUSE_READ_REQ_TIMEOUT
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:29 | `Reserved` | - | - a| Reserved
-| 28 | `read_req_timout_enable` | RW | 0x0 a| Enable timeout on read interface
-| 27:0 | `read_req_timeout_cycles` | RW | 0x800000 a| Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT]
-=== EFUSE_PROGRAM_REQ_TIMEOUT
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:29 | `Reserved` | - | - a| Reserved
-| 28 | `program_req_timeout_enable` | RW | 0x0 a| Enable timeout on program interface.
-| 27:0 | `program_req_timeout_cycles` | RW | 0x800000 a| Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-]
-=== RMA_SIP_TOKEN_I[8]
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-]
-=== RMA_CHIPLET_TOKEN_I[8]
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-]
-=== SEC_DISABLE_TOKEN_I[8]
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `token` | RW | - a| Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP]
-=== TOKEN_EOP
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:17 | `Reserved` | - | - a| Reserved
-| 16 | `secure_disable_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
-| 15:9 | `Reserved` | - | - a| Reserved
-| 8 | `rma_chiplet_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
-| 7:1 | `Reserved` | - | - a| Reserved
-| 0 | `rma_sip_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH]
-=== RMA_SIP_TOKEN_MATCH
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:6 | `Reserved` | - | - a| Reserved
-| 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH]
-=== RMA_CHIPLET_TOKEN_MATCH
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:6 | `Reserved` | - | - a| Reserved
-| 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH]
-=== SEC_DISABLE_TOKEN_MATCH
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:6 | `Reserved` | - | - a| Reserved
-| 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
-|===
-
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT]
-=== TOKEN_MATCH_FAULT
-
-[cols="1,3,1,1,6", options="header"]
-|===
-| Bits | Field | Access | Reset | Description
-| 31:17 | `Reserved` | - | - a| Reserved
-| 16 | `secure_disable_token_fault` | R | 0x0 a| A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
-| 15:9 | `Reserved` | - | - a| Reserved
-| 8 | `rma_chiplet_token_fault` | R | 0x0 a| A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
-| 7:1 | `Reserved` | - | - a| Reserved
-| 0 | `rma_sip_token_fault` | R | 0x0 a| A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
 |===
 
 [#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-WORD-]
