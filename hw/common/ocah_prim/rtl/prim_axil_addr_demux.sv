@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Route an AXI-Lite port to NUM_RANGES address windows and answer every other address with
-// DECERR and read data 0xBADCAB1E, as a crossbar answers an address no rule holds.
+// MISS_RESP and read data 0xBADCAB1E. MISS_RESP is DECERR by default, as a crossbar answers an
+// address no rule holds; a port whose page has a single target sets SLVERR.
 //
 // Window i holds the RANGE_SIZE[i] bytes from RANGE_BASE[i]. Each RANGE_SIZE[i] is a power of
 // two and each RANGE_BASE[i] a multiple of it, so a window is matched on the address bits above
@@ -20,6 +21,8 @@ module prim_axil_addr_demux #(
   parameter logic [AXI_ADDR_WIDTH-1:0] RANGE_SIZE [NUM_RANGES] = '{default: '0},  // Window sizes in
                                                                                   // bytes; each a
                                                                                   // power of two.
+  parameter axi_pkg::resp_t MISS_RESP   = axi_pkg::RESP_DECERR,  // Response to an address no
+                                                                 // window holds.
   parameter int unsigned MAX_TRANS      = 1,  // Outstanding transactions per channel.
   parameter type         aw_chan_t      = logic,  // AXI-Lite AW channel type.
   parameter type         w_chan_t       = logic,  // AXI-Lite W channel type.
@@ -162,7 +165,7 @@ module prim_axil_addr_demux #(
     .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
     .axil_req_t     (axil_req_t),
     .axil_resp_t    (axil_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP           (MISS_RESP),
     .MAX_TRANS      (MAX_TRANS)
   ) u_err_slv (
     .clk_i,
