@@ -83,9 +83,8 @@ module smc_data_accelerator_wrap #(
   localparam int unsigned DmaCtrlErrPort = 1;
   localparam int unsigned MaxWrapBurstBeats = 16;
 
-  `OCAH_ASSERT_STATIC(
-      DmaCtrlBaseAligned_A,
-      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR % (1 << smc_pkg::DmaCtrlAddrW) == 0)
+  `OCAH_ASSERT_STATIC(DmaCtrlBaseAligned_A,
+                      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR % smc_pkg::RegPageSize == 0)
   `OCAH_ASSERT_STATIC(DmaCtrlMapFitsWindow_A,
                       smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE <= (1 << smc_pkg::DmaCtrlAddrW))
   `OCAH_ASSERT_STATIC(DmaCtrlWindowHoldsWrapBurst_A,
@@ -101,36 +100,28 @@ module smc_data_accelerator_wrap #(
 
   typedef logic [$clog2(NumDmaCtrlPorts)-1:0] dma_ctrl_select_t;
 
-  function automatic logic in_dma_window(smc_pkg::smc_axi_local_addr_t addr);
-    return (addr >> smc_pkg::DmaCtrlAddrW) ==
-        smc_pkg::smc_axi_local_addr_t'(
-        smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR >> smc_pkg::DmaCtrlAddrW);
-  endfunction
+  localparam smc_pkg::smc_axi_local_addr_t DmaWindowLast = smc_pkg::smc_axi_local_addr_t'(
+      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR + (1 << smc_pkg::DmaCtrlAddrW) - 1);
 
-  // A WRAP burst stays inside an aligned block no larger than the DMA window, and a FIXED
-  // burst repeats its first address, so only an INCR burst needs its last beat checked.
-  function automatic dma_ctrl_select_t dma_ctrl_select(smc_pkg::smc_axi_local_addr_t addr,
-                                                       axi_pkg::len_t len, axi_pkg::size_t size,
-                                                       axi_pkg::burst_t burst);
-    smc_pkg::smc_axi_local_addr_t last_addr;
-    last_addr = addr;
-    if (burst == axi_pkg::BURST_INCR) begin
-      last_addr = ((addr >> size) << size) + (smc_pkg::smc_axi_local_addr_t'(len) << size);
-    end
-    if (in_dma_window(addr) && in_dma_window(last_addr)) begin
-      return dma_ctrl_select_t'(DmaCtrlDmaPort);
-    end
-    return dma_ctrl_select_t'(DmaCtrlErrPort);
-  endfunction
-
+  smc_pkg::smc_axi_local_addr_t aw_last_addr, ar_last_addr;
   dma_ctrl_select_t aw_select_dma, ar_select_dma;
 
-  assign aw_select_dma = dma_ctrl_select(
-      dma_ctrl_axi_req_i.aw.addr, dma_ctrl_axi_req_i.aw.len, dma_ctrl_axi_req_i.aw.size,
-      dma_ctrl_axi_req_i.aw.burst);
-  assign ar_select_dma = dma_ctrl_select(
-      dma_ctrl_axi_req_i.ar.addr, dma_ctrl_axi_req_i.ar.len, dma_ctrl_axi_req_i.ar.size,
-      dma_ctrl_axi_req_i.ar.burst);
+  // The port carries only the DMA's page and the window starts that page, so no beat lies below
+  // the window. A WRAP burst stays inside an aligned block no larger than the window and a FIXED
+  // burst repeats its first address, so only an INCR burst can end above its first beat.
+  assign aw_last_addr =
+      (dma_ctrl_axi_req_i.aw.burst != axi_pkg::BURST_INCR) ? dma_ctrl_axi_req_i.aw.addr :
+      ((dma_ctrl_axi_req_i.aw.addr >> dma_ctrl_axi_req_i.aw.size) << dma_ctrl_axi_req_i.aw.size) +
+      (smc_pkg::smc_axi_local_addr_t'(dma_ctrl_axi_req_i.aw.len) << dma_ctrl_axi_req_i.aw.size);
+  assign ar_last_addr =
+      (dma_ctrl_axi_req_i.ar.burst != axi_pkg::BURST_INCR) ? dma_ctrl_axi_req_i.ar.addr :
+      ((dma_ctrl_axi_req_i.ar.addr >> dma_ctrl_axi_req_i.ar.size) << dma_ctrl_axi_req_i.ar.size) +
+      (smc_pkg::smc_axi_local_addr_t'(dma_ctrl_axi_req_i.ar.len) << dma_ctrl_axi_req_i.ar.size);
+
+  assign aw_select_dma = dma_ctrl_select_t'(
+      (aw_last_addr > DmaWindowLast) ? DmaCtrlErrPort : DmaCtrlDmaPort);
+  assign ar_select_dma = dma_ctrl_select_t'(
+      (ar_last_addr > DmaWindowLast) ? DmaCtrlErrPort : DmaCtrlDmaPort);
 
   axi_demux #(
     .AxiIdWidth                         (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
