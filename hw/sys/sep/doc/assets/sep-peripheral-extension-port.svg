@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="736" viewBox="0 0 1040 736" role="img" aria-labelledby="title desc">
 <title id="title">SEP peripheral extension port</title>
-<desc id="desc">SEP reaches peripherals two ways. Its only local peripheral is the SPI host: the sep_io target of the SEP local crossbar is downsized to 32 bits, converted to AXI-Lite and demultiplexed to the SPI host u_sep_ot_spi_wrap or a DECERR responder, and the quad SPI signals leave for the SPI pads. The SMC peripherals are reached through the SMC aperture: the route demux in sep_system_peripherals sends it on sep_ext_to_smc_axi_req_o, AXI4 with a 56-bit address and 6-bit ID, without the outbound filter. The SMU wires it directly to the SMC's sep_axi_in port, with no crossbar and no clock-domain crossing. In the SMC input fabric u_sep_region_demux passes addresses inside the SMC local or global window, truncated to 32 bits, and answers every other address with DECERR; the local fabric rebases the address onto the SMC local base and the sep_in initiator of smc_local_xbar reaches every target. The peripheral port is converted to 32-bit AXI-Lite for the peripheral crossbar, which serves the UART, I2C and AVSBus controllers through clock-domain crossings and the I3C, GPIO and the remaining SMC peripheral registers directly.</desc>
+<desc id="desc">SEP reaches peripherals two ways. Its only local peripheral is the SPI host: the sep_io target of the SEP local crossbar is downsized to 32 bits, converted to AXI-Lite and demultiplexed to the SPI host u_sep_ot_spi_wrap or an SLVERR responder, and the quad SPI signals leave for the SPI pads. The SMC peripherals are reached through the SMC aperture: the route demux in sep_system_peripherals sends it on sep_ext_to_smc_axi_req_o, AXI4 with a 56-bit address and 6-bit ID, without the outbound filter. The SMU wires it directly to the SMC's sep_axi_in port, with no crossbar and no clock-domain crossing. In the SMC input fabric u_sep_region_demux passes addresses inside the SMC local or global window, truncated to 32 bits, and answers every other address with DECERR; the local fabric rebases the address onto the SMC local base and the sep_in initiator of smc_local_xbar reaches every target. The peripheral port is converted to 32-bit AXI-Lite for the peripheral crossbar, which serves the UART, I2C and AVSBus controllers through clock-domain crossings and the I3C, GPIO and the remaining SMC peripheral registers directly.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -109,7 +109,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="485" y="120.5" text-anchor="middle">u_sep_ot_spi_wrap</text>
 <path class="axiln" d="M384,138 L400,138"/>
 <rect class="external" x="400" y="130" width="90" height="22" rx="4"/>
-<text class="s" x="445" y="146" text-anchor="middle">DECERR</text>
+<text class="s" x="445" y="146" text-anchor="middle">SLVERR</text>
 <path class="sigo" d="M570,108 L930,108"/>
 <text class="s" x="582" y="102" text-anchor="start">quad SPI</text>
 <rect class="external" x="930" y="86" width="96" height="44" rx="6"/>
@@ -193,7 +193,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="core" x="521.5" y="681" width="36" height="18" rx="4"/>
 <text class="s" x="565.5" y="694.5" text-anchor="start">RTL block</text>
 <rect class="external" x="653.6" y="681" width="36" height="18" rx="4"/>
-<text class="s" x="697.6" y="694.5" text-anchor="start">Pads, DECERR</text>
+<text class="s" x="697.6" y="694.5" text-anchor="start">Pads, error responders</text>
 <text class="s" x="44" y="722.5" text-anchor="start">Subordinate port</text>
 <text class="s" x="210.4" y="722.5" text-anchor="start">Manager port</text>
 <path class="axi" d="M322.20000000000005,718 L364.20000000000005,718"/>

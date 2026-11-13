@@ -6,7 +6,7 @@
 // The 64-bit AXI4 slave is downsized to 32 bits, rebased by subtracting the WDT base
 // address, converted to AXI-Lite, and bridged to the aon_timer TL-UL port. Between the two
 // bridges a demux passes the 2^aon_timer_reg_pkg::BlockAw bytes the timer decodes and answers
-// the rest of the page with DECERR and read data 0xBADCAB1E. Inside that window the timer
+// the rest of the page with SLVERR and read data 0xBADCAB1E. Inside that window the timer
 // answers an access past its registers with SLVERR and read data 0xFFFFFFFF.
 // clk_wdt_i times the bark and bite counters. rst_ni resets the register path; the SEP watchdog
 // reset rst_wdt_ni resets the timer and its alert receivers, and rst_wdt_aon_clk_n is its copy
@@ -156,6 +156,7 @@ module sep_wdt_wrap (
     .NUM_RANGES     (1),
     .RANGE_BASE     (WdtWindowBase),
     .RANGE_SIZE     (WdtWindowSize),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
     .MAX_TRANS      (2),
     .aw_chan_t      (sep_pkg::sep_32_32_axil_aw_chan_t),
     .w_chan_t       (sep_pkg::sep_32_32_axil_w_chan_t),

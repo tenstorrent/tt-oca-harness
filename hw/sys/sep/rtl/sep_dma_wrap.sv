@@ -6,7 +6,7 @@
 // Register path: 64-bit AXI is downsized to 32 bits, rebased by subtracting
 // SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Between the two
 // bridges a demux passes the 2^secure_dma_reg_pkg::BlockAw bytes the DMA decodes and answers
-// the rest of the page with DECERR and read data 0xBADCAB1E. Inside that window the DMA answers
+// the rest of the page with SLVERR and read data 0xBADCAB1E. Inside that window the DMA answers
 // an offset that holds no register with SLVERR and read data 0xFFFFFFFF. Master path:
 // TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0 and AxPROT 3'b001 (privileged,
 // secure, data), upsized to 64 bits, and passed through a window remap that rewrites addresses in
@@ -245,6 +245,7 @@ module sep_dma_wrap #(
     .NUM_RANGES     (1),
     .RANGE_BASE     (RegWindowBase),
     .RANGE_SIZE     (RegWindowSize),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
     .MAX_TRANS      (4),
     .aw_chan_t      (sep_pkg::sep_32_32_axil_aw_chan_t),
     .w_chan_t       (sep_pkg::sep_32_32_axil_w_chan_t),
