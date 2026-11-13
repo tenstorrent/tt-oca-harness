@@ -83,19 +83,19 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 </style>
 </defs>
 <rect width="1140" height="786" fill="#ffffff"/>
-<rect class="smu" x="150" y="8" width="976" height="652" rx="6"/>
+<rect class="smu" x="150" y="20" width="976" height="640" rx="6"/>
 <text class="b" x="164" y="650" text-anchor="start">u_smc_data_accelerator_wrap</text>
 <path class="axi" d="M14,125 L265,125"/>
 <text class="t" x="14" y="85" text-anchor="start">from the local</text>
 <text class="t" x="14" y="103" text-anchor="start">crossbar</text>
 <text class="s" x="14" y="147" text-anchor="start">AXI4, address 32,</text>
 <text class="s" x="14" y="163" text-anchor="start">data 64, ID 8</text>
-<path class="fabric" d="M265,104 L295,70 L295,120 L265,146 Z"/>
-<text class="s" x="290" y="62" text-anchor="end">u_dma_ctrl_demux</text>
-<path class="axi" d="M295,80 L355,80 L355,58"/>
-<rect class="core" x="296" y="18" width="118" height="40" rx="6"/>
-<text class="bs" x="355" y="35" text-anchor="middle">SLVERR</text>
-<text class="s" x="355" y="51" text-anchor="middle">u_dma_ctrl_err_slv</text>
+<path class="fabric" d="M265,108.2 L295,95 L295,155 L265,141.8 Z"/>
+<text class="s" x="280" y="86" text-anchor="middle">u_dma_ctrl_demux</text>
+<path class="axi" d="M295,140 L330,140 L330,180"/>
+<rect class="core" x="271" y="180" width="118" height="40" rx="6"/>
+<text class="bs" x="330" y="197" text-anchor="middle">SLVERR</text>
+<text class="s" x="330" y="213" text-anchor="middle">u_dma_ctrl_err_slv</text>
 <path class="axi" d="M295,110 L325,110"/>
 <rect class="network" x="325" y="92" width="70" height="36" rx="4"/>
 <text class="s" x="360" y="107.5" text-anchor="middle">32 to 9</text>
