@@ -82,7 +82,7 @@ addrmap smc_top #(
 
     filter_ctrl_wrap #(.NUM_ENTRIES(16))      smc_inbound_filter_ctrl_wrap   @BASE_ADDR + 0x001_5000;
     filter_ctrl_wrap #(.NUM_ENTRIES(16))      smc_outbound_filter_ctrl_wrap  @BASE_ADDR + 0x001_6000;
-    dfx_ctrl_status                           dfx_ctrl                       @BASE_ADDR + 0x001_7000; // These CSRs are for ROMs knowledge of dfx status
+    dfx_ctrl_status                           dfx_ctrl                       @BASE_ADDR + 0x001_7000;
 
     axil_mailbox_smc_wrap                     smc_mailbox                    @BASE_ADDR + 0x001_8000;
 
