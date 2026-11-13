@@ -26,9 +26,12 @@
 // neither; the SMC fabric bridge open when its AR, AW and B counters all
 // moved, shut when none moved; the secure DFT SIB open when its select was
 // high, shut when it never was. A shut posture also needs a PTAP
-// TMS edge in the window. The image and pair class read at the rise are
-// counted at the same fall, only when all four paths agree, so a window
-// that walks no path counts no image.
+// TMS edge in the window, so a window with no path activity and no PTAP
+// activity counts no posture and no image. The image and pair class read at the rise are
+// counted at the same fall, only when all four observed postures equal the
+// ones the profile word states; under a word whose four postures are shut,
+// a window with PTAP activity and no path activity counts the image and
+// the four shut postures.
 //
 // The pair inject is counted at the fall of lc_sigint_inject_i[0] when
 // lc_sigint_err_o rose under the inject and the pair the SMC receives had
