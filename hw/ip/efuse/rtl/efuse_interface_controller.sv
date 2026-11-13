@@ -328,19 +328,24 @@ module efuse_interface_controller #(
   // APB slave select logic
   always_comb begin
     if (HAS_LC_STATE) begin
-      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
+      unique if ((apb_mux_req.paddr >= EFUSE_MAP_REG_MAP_BASE_ADDR) &&
+                 (apb_mux_req.paddr <= EfuseMapRegMapEndAddr)) begin
         efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
+      end else if ((apb_mux_req.paddr >= EFUSE_CTRL_REG_MAP_BASE_ADDR) &&
+                   (apb_mux_req.paddr <= EfuseCtrlRegMapEndAddr)) begin
         efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_MMR_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
+      end else if ((apb_mux_req.paddr >= EFUSE_MMR_REG_MAP_BASE_ADDR) &&
+                   (apb_mux_req.paddr <= EfuseMmrRegMapEndAddr)) begin
         efuse_reg_select = efuse_pkg::EFUSE_MMR_REG_MAP;
       end else begin
         efuse_reg_select = efuse_pkg::ERR_DECODE;
       end
     end else begin
-      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
+      unique if ((apb_mux_req.paddr >= EFUSE_MAP_REG_MAP_BASE_ADDR) &&
+                 (apb_mux_req.paddr <= EfuseMapRegMapEndAddr)) begin
         efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
+      end else if ((apb_mux_req.paddr >= EFUSE_CTRL_REG_MAP_BASE_ADDR) &&
+                   (apb_mux_req.paddr <= EfuseCtrlRegMapEndAddr)) begin
         efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
       end else begin
         efuse_reg_select = efuse_pkg::ERR_DECODE;
