@@ -88,21 +88,21 @@ extern const uint8_t __km_fw_load_limit[];
 #define ROM_KM_MAILBOX_FIFO_DEPTH 16
 
 /**
- * @brief OTP/eFuse AXI-Lite window base address (KM CPU view).
+ * @brief OTP/eFuse shadow-map base address (KM CPU view).
  *
- * Crossbar master port 8 decodes this 4 KB window. key_manager.sv replaces
+ * Crossbar master port 8 decodes the 4 KB OTP window at 0x00011000. key_manager.sv replaces
  * addr[31:12] with OTP_EFUSE_REMAP_BASE[31:12] before driving efuse_req_o, so the shared SEP
- * efuse_interface_controller (at OTP_EFUSE_REMAP_BASE) is reached. Only the MAP, CTRL and
- * MMR register maps are forwarded; any other offset in the window answers SLVERR.
+ * efuse_interface_controller (at OTP_EFUSE_REMAP_BASE) is reached. The whole window is
+ * forwarded; the controller answers SLVERR at any offset outside its register maps.
  * Generated key_manager_addr.h also provides per-sub-region constants:
- *   KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR  (0x00011000) — MAP / OTP shadow
- *   KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR (0x00011400) — eFuse Interface CTRL
- *   KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR  (0x00011500) — eFuse MMR
+ *   KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR (0x00011000) — eFuse Interface CTRL
+ *   KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR  (0x00011100) — eFuse MMR
+ *   KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR  (0x00011400) — MAP / OTP shadow
  *
  * Prefer KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR from PeakRDL; define only if absent.
  */
 #ifndef ROM_KM_OTP_BASE
-#define ROM_KM_OTP_BASE 0x00011000
+#define ROM_KM_OTP_BASE 0x00011400
 #endif
 
 /*===========================================================================

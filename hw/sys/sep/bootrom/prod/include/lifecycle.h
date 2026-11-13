@@ -17,10 +17,10 @@
 //   DEMOTE_1   @ 0x10918008 (demote[0] + lock[1])
 //   DEMOTE_2   @ 0x10918010 (demote[0] + lock[1])
 // Efuse:
-//   LC_STATE   @ 0x1093000C (8-bit field; low 4 bits = raw LC state)
-//   SBOOT_DIS  @ 0x10930010 (disable_secure_boot[0] + rsvd[31:1])
-//   SIP_DIS    @ 0x10930018 (64-bit disable vector; CHIPLET_DBG = bit 1)
-//   SYS_DIS    @ 0x10930020 (64-bit disable vector; CHIPLET_DBG = bit 1)
+//   LC_STATE   @ 0x1093040C (8-bit field; low 4 bits = raw LC state)
+//   SBOOT_DIS  @ 0x10930410 (disable_secure_boot[0] + rsvd[31:1])
+//   SIP_DIS    @ 0x10930418 (64-bit disable vector; CHIPLET_DBG = bit 1)
+//   SYS_DIS    @ 0x10930420 (64-bit disable vector; CHIPLET_DBG = bit 1)
 
 #pragma once
 
