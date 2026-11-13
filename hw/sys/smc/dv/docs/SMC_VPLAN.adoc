@@ -54398,8 +54398,10 @@ behind the gate alone, `cp_glitch_len` at the gate's fall after the owner's watc
 seen after the glitch record: the power-good
 owner's window, from after its idle baseline IRQ sample to after its watcher ruling, holds no SEP_IN access, no hook and no reset-source fall the reset group
 counts (its `powergood_i` low disables that group's samples and twins, and after the rise no
-operation is in flight), and no other owner drives the cool pin, the FLR request or `powergood_i`
-under its gate. Drives no `smc_wrapper` port and changes no stimulus.
+operation is in flight), and no other owner drives `powergood_i` under its gate; the reset owner
+`smc_reset_mid_transaction_rand_test` is the only other owner that drives the cool pin or the FLR
+request under its gate, and since each of its windows carries an operation, its falls open no
+de-glitch cell. Drives no `smc_wrapper` port and changes no stimulus.
 |The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`,
 `smc_map_row_fcov` and `smc_efuse_ctrl_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
