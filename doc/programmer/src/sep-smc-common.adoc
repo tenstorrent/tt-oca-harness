@@ -13,10 +13,11 @@ the global apertures to match the chiplet's assigned system address map: SEP
 `REGION_SIZE`. Both region sizes reset to 16 MiB. The apertures of different
 chiplets must not overlap, and the hardware does not derive them from the
 chiplet ID: any chiplet-ID-based assignment is platform policy that firmware
-implements. The chiplet ID and chiplet BAR are available in SMC registers.
-Issue a fence between programming these routing registers and later MMIO
-accesses that depend on them. The surrounding system must use the same
-assignments when it accesses the subsystems.
+implements. The SMC exposes its integration-time chiplet ID in
+`CHIP_CONFIG.CHIP_ID`; firmware programs the assigned SMC global-aperture base
+in `GLOBAL_BASE`. Issue a fence between programming these routing registers and
+later MMIO accesses that depend on them. The surrounding system must use the
+same assignments when it accesses the subsystems.
 
 The SEP has sixteen and the SMC eight alias remap regions, each with an input
 range, an output offset and an AxCACHE value that replaces the transaction's
