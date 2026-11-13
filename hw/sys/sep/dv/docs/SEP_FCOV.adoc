@@ -666,9 +666,9 @@ The outcome is a separate coverpoint rather than a third cross dimension: a
 could fill, and the program-succeeds / lock-refuses contract belongs to the
 test's checker.
 
-Everything is decoded frontdoor from `EFUSE_PROGRAM_CTRL` -- `EFUSE_ADDR` plus
-`PROGRAM_GO` on the write, `PROGRAM_DONE` / `PROGRAM_STATUS` on the readback --
-and the spare index comes from the generated `SEP_EFUSE_MAP_SPARE*` offsets, not
+Everything is decoded frontdoor -- the bit index from the last
+`EFUSE_PROGRAM_ADDR` write, `PROGRAM_GO` from the `EFUSE_PROGRAM_CTRL` write,
+`PROGRAM_DONE` / `PROGRAM_STATUS` from its readback -- and the spare index comes from the generated `SEP_EFUSE_MAP_SPARE*` offsets, not
 a literal. The spare count comes from the generated `LOCKS_SPARE` reserved-field
 shift.
 
@@ -5515,11 +5515,11 @@ Registers Address Map").
 [cols="2,5,3",options="header"]
 |===
 |Coverpoint |Bins |Class
-|`cp_window` |shadow `[0x1093_0000, 0x1093_03FF]`; ctrl_in `[0x1093_0400, 0x1093_041B]`; ctrl_past `[0x1093_041C, 0x1093_04FF]`; tok_in `[0x1093_0500, 0x1093_0573]`; rsvd `[0x1093_0600, 0x1093_FFFF]`. The span `0x1093_0574` to `0x1093_05FF` is not declared: the response differs between two documents |executable
+|`cp_window` |shadow `[0x1093_0000, 0x1093_03FF]`; ctrl_in `[0x1093_0400, 0x1093_0423]`; ctrl_past `[0x1093_0424, 0x1093_04FF]`; tok_in `[0x1093_0500, 0x1093_0573]`; rsvd `[0x1093_0600, 0x1093_FFFF]`. The span `0x1093_0574` to `0x1093_05FF` is not declared: the response differs between two documents |executable
 |`cp_rsvd_zone` |low `[0x1093_0600, 0x1093_0FFF]`; high `[0x1093_1000, 0x1093_FFFF]` |executable
 |`x_win_op_resp` |Window x op x response class {OKAY, not OKAY}, sampled only while `fuse_sense_done_i` is high, because before sense done every access to the shadow window answers SLVERR (`otp_fuse_controller.adoc`, section "Fuse Sensing and Boot Sequencing"). 5 legal cells: (shadow, rd, OKAY); (ctrl_in, rd and wr, OKAY); (tok_in, rd and wr, OKAY). The ctrl_past and rsvd windows have no cell (see Bins not graded): `sep_unmapped_access_policy_test` grades the response past the interface-control extent and the owning test only logs it, and no cited source states the CPU-side response of the reserved span. `illegal_bins`: an in-extent window with a non-OKAY response, except the `ignore_bins`. `ignore_bins`: (shadow, wr); (shadow, rd) while the read-lock bit of the field at the address is set in the LOCKS words of `efuse_shadow_probe_o`, because the response of a blocked read is not stated; (ctrl_in, wr) at `EFUSE_INTERFACE_CTRL_STATUS`, whose read-only fields make the response of a write not stated. The rule for the other registers: an access that the register access type of the register description does not offer is ignored, because the response is not stated. So every write to a register with access R is ignored, which are `EFUSE_PROGRAM_INTERFACE_READ_DATA` at `0xC`, `EFUSE_READ_INTERFACE_READ_DATA` at `0x10`, the three `*_TOKEN_MATCH` registers at `0x64`, `0x68` and `0x6C`, and `TOKEN_MATCH_FAULT` at `0x70`; and the read of the write-only `TOKEN_EOP` at `0x60` is ignored |executable
 |`cp_shadow_field` |9 bins, one per graded narrow register of `sep_efuse_map.adoc` (the ten 32-bit rows except `LOCKS_SPARE`: `LC_STATE`, `SBOOT_DIS`, `TRANSIENT_RMA_EN`, `CHIPLET_PUBK_REVOKE`, `STATUS_RPT`, `ROM_CTL`, `SYSCLK_FREQ_MHZ`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`), decoded by byte offset, on an OKAY 32-bit read of the graded used-bit leg. The word-by-word read of all 43 rows is a control of the owning test and fills no bin; the open owners of that compare keep it |executable
-|`cp_edge_addr` |Last shadow word `0x1093_03FC`; last control register `0x1093_0418`; first past-extent word `0x1093_041C`; first reserved word `0x1093_0600` |executable
+|`cp_edge_addr` |Last shadow word `0x1093_03FC`; last control register `0x1093_0420`; first past-extent word `0x1093_0424`; first reserved word `0x1093_0600` |executable
 |`x_ctrl_reg_op` |10 cells: `EFUSE_INTERFACE_CTRL_STATUS`, `EFUSE_PROGRAM_CTRL`, `EFUSE_READ_CTRL` (read and write each, 6 cells); `EFUSE_READ_REQ_TIMEOUT`, `EFUSE_PROGRAM_REQ_TIMEOUT`, `EFUSE_PROGRAM_INTERFACE_READ_DATA` and `EFUSE_READ_INTERFACE_READ_DATA` (read, 4 cells). Offsets `0x0` to `0x18`. The write cells of the two timeout registers are not declared (see Bins not graded) |executable
 |`x_token_blk_op` |10 cells: three token arrays (read and write, 6); three match registers (read, 3); `TOKEN_EOP` (write, 1). Offsets per `efuse_mmr.adoc`. A write to a read-only register of the block is not a cell. The `TOKEN_MATCH_FAULT` read is not declared (see Bins not graded) |executable
 |`cp_jtag_id_class` |Nonzero, sampled on sense done from the DUT port `jtag_id_i[31:1]`, which the owning test drives with a drawn non-zero ID (the added top-port drive of `jtag_id_i`). 1 bin. The zero value is not declared (see Bins not graded) |executable
@@ -6153,7 +6153,8 @@ specified status flags, and each request that the specification blocks issues
 no command at the shim.
 
 *Basis*: `efuse_interface_ctrl.adoc` (sections "EFUSE_INTERFACE_CTRL_STATUS",
-"EFUSE_PROGRAM_CTRL", "EFUSE_READ_CTRL"); `otp_fuse_controller.adoc` (sections
+"EFUSE_PROGRAM_CTRL", "EFUSE_READ_CTRL", "EFUSE_PROGRAM_ADDR", "EFUSE_READ_ADDR");
+`otp_fuse_controller.adoc` (sections
 "OTP Fuse Controller", "Shadow Register and JTAG Access Control", "Fuse
 Programming and RMA Authorization", "Fuse Fields": the fuse map is exactly
 8192 bits, end address `0x400`); `architecture.adoc` (section "Command-path
@@ -6485,7 +6486,7 @@ not define, is a dead bin. The groups above do not declare these cells.
 |===
 |Cell or scenario |Reason
 |Active level of `sep_fuse_dft_disable_o` and `smc_fuse_dft_disable_o` (the port value enters `x_sep_port` and `x_smc_port` only relative to the all-open cell, and no `cp_port_level` coverpoint is declared) |The specification does not state the polarity of the two ports, so no bin names a level
-|Response past the interface-control extent (`0x1093_041C` to `0x1093_04FF`) in `x_win_op_resp` |`sep_unmapped_access_policy_test` grades that refusal, and `sep_efuse_window_decode_reset_test` logs the response as a control
+|Response past the interface-control extent (`0x1093_0424` to `0x1093_04FF`) in `x_win_op_resp` |`sep_unmapped_access_policy_test` grades that refusal, and `sep_efuse_window_decode_reset_test` logs the response as a control
 |Write cells of `EFUSE_READ_REQ_TIMEOUT` and `EFUSE_PROGRAM_REQ_TIMEOUT` in `x_ctrl_reg_op`, and the `TOKEN_MATCH_FAULT` read in `x_token_blk_op` |`sep_unmapped_access_policy_test` grades the timeout write and readback and the reset value of `TOKEN_MATCH_FAULT`; `sep_efuse_window_decode_reset_test` logs them as controls, and the sticky bits belong to `sep_token_fault_cg`
 |RMA_CHIPLET cell of `cp_gate_bound` (`ignore_bins`) |Every RMA_CHIPLET row of the profile table is T / T / T (`hw/sys/sep/doc/lifecycle_controller.adoc`, Per-LC-state feature control profile), so the OR of its SEC_DIS 0 rows is all ones and the sampler never samples the state
 |Response of the reserved window `0x1093_0600` to `0x1093_FFFF` in `x_win_op_resp` |No cited source states the CPU-side response of that span: `memory_map.adoc` states the inbound AXI port view, and `otp_fuse_controller.adoc` sends the span to the shim bank control registers

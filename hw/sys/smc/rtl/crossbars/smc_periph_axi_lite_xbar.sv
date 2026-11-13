@@ -8,21 +8,31 @@
 // Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions the external
 // window between the eFuse shim and the external target.
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR block carved off the base of the
-// smc_external window and is threaded from smc_peripherals.sv. The shim bytes route to the
-// efuse target, which also serves the SMC eFuse map and the eFuse interface control
+// smc_external window and is threaded from smc_peripherals.sv. The shim bytes, and the
+// SUPPLEMENTARY_FUSE_WORDS-word supplementary fuse window at SUPPLEMENTARY_FUSE_BASE within smc_external, route
+// to the efuse target, which also serves the SMC eFuse map and the eFuse interface control
 // registers. Addresses outside every rule receive DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module smc_periph_axi_lite_xbar
   import smc_periph_axi_lite_xbar_pkg::axi_lite32_req_t;
   import smc_periph_axi_lite_xbar_pkg::axi_lite32_resp_t;
 #(
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
-                                                 // the base of the smc_external window, in
-                                                 // bytes; those addresses route to the
-                                                 // efuse target.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44,  // Vendor eFuse shim CSR block carved off
+                                                  // the base of the smc_external window, in
+                                                  // bytes; those addresses route to the
+                                                  // efuse target.
+  parameter int unsigned SUPPLEMENTARY_FUSE_BASE = 0,  // Byte offset of the supplementary fuse window in
+                                                 // smc_external, at or above EFUSE_SHIM_SIZE.
+  parameter int unsigned SUPPLEMENTARY_FUSE_WORDS = 0,  // Supplementary fuse window size in 32-bit words;
+                                                  // 0 routes no supplementary window.
+  localparam int unsigned SupplementaryStart =  // First supplementary window byte.
+      SUPPLEMENTARY_FUSE_WORDS > 0 ? SUPPLEMENTARY_FUSE_BASE : EFUSE_SHIM_SIZE,
+  localparam int unsigned SupplementaryEnd = SupplementaryStart + 4 * SUPPLEMENTARY_FUSE_WORDS  // Byte after the
+                                                                              // supplementary window.
 )
 (
   input  logic clk_i,                   // SMC core clock.
@@ -84,6 +94,20 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Every address boundary comes from the generated RDL map. EFUSE_SHIM_SIZE
   // partitions the generated external window without duplicating its bounds.
+  // addr_decode rejects an empty rule, so the supplementary window and the gap below it
+  // repeat a neighbouring rule for the same target when they have no bytes.
+  localparam bit HasSupplementaryRule = SUPPLEMENTARY_FUSE_WORDS > 0;
+  localparam bit HasGapRule = SupplementaryStart > EFUSE_SHIM_SIZE;
+
+  // The four external rules tile the window in this order: shim, gap, supplementary, tail.
+  `OCAH_ASSERT_STATIC(SupplementaryWindowAboveShim_A,
+      !HasSupplementaryRule ||
+      (SUPPLEMENTARY_FUSE_BASE >= EFUSE_SHIM_SIZE && SupplementaryEnd <= smc_pkg::SmcExternalWindowSize),
+      "The supplementary fuse window must lie in smc_external at or above EFUSE_SHIM_SIZE")
+  localparam int unsigned SupplementaryRuleStart = HasSupplementaryRule ? SupplementaryStart : 0;
+  localparam int unsigned SupplementaryRuleEnd = HasSupplementaryRule ? SupplementaryEnd : EFUSE_SHIM_SIZE;
+  localparam int unsigned GapRuleStart = HasGapRule ? EFUSE_SHIM_SIZE : SupplementaryEnd;
+  localparam int unsigned GapRuleEnd = HasGapRule ? SupplementaryStart : smc_pkg::SmcExternalWindowSize;
   localparam smc_periph_axi_lite_xbar_pkg::addr_rule_t [smc_periph_axi_lite_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
     '{idx: 0,
@@ -147,7 +171,17 @@ module smc_periph_axi_lite_xbar
                     + EFUSE_SHIM_SIZE)},
     '{idx: 11,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + EFUSE_SHIM_SIZE),
+                    + GapRuleStart),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + GapRuleEnd)},
+    '{idx: 6,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + SupplementaryRuleStart),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + SupplementaryRuleEnd)},
+    '{idx: 11,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + SupplementaryEnd),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + smc_pkg::SmcExternalWindowSize)},
     '{idx: 12,

@@ -15,11 +15,18 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
 
 * S1 drives ``tb_lc_state`` to TEST_DEV and requires ``efuse_sense_done`` 1 with the
   error bits [6:4] 0.
-* S2 writes all RW fields, zero and a walking one to EFUSE_PROGRAM_CTRL (19 RW bits),
-  EFUSE_READ_CTRL (17 RW bits) and both timeout registers (29 RW bits), then the
-  0x0080_0000 reset to the timeouts. Each SEP_IN readback masked to the RW fields equals
-  the written word and the status fields read 0. One JTAG read of each register follows.
-* S3 writes EFUSE_PROGRAM_CTRL full-width 0x1234, with WSTRB 0x1 and data 0x0805_FFA5,
+* S2 writes all RW fields, zero and a walking one to EFUSE_PROGRAM_CTRL (3 RW bits),
+  EFUSE_READ_CTRL (1 RW bit), EFUSE_PROGRAM_ADDR and EFUSE_READ_ADDR (32 RW bits each)
+  and both timeout registers (29 RW bits), then the 0x0080_0000 reset to the timeouts.
+  Each SEP_IN readback masked to the RW fields equals the written word and the status
+  fields read 0. The walked address words include values at or beyond the implemented
+  fuse size; an address error reports an invalid address that a command used
+  (``efuse_interface_ctrl.rdl``, ``efuse_program_addr_error`` / ``efuse_read_addr_error``;
+  ``architecture.adoc``: commands at or above the fuse size set the address error status),
+  so without a GO EFUSE_INTERFACE_CTRL_STATUS, read after the walks, must show no address
+  error (the out-of-range read and program leaves prove that an address error sets and
+  clears). One JTAG read of each register follows.
+* S3 writes EFUSE_PROGRAM_ADDR full-width 0x1234, with WSTRB 0x1 and data 0x0805_FFA5,
   with WSTRB 0x2 and the same data, then full-width 0. Both strobed readbacks and
   responses are logged; the response and stored lanes of a partial-strobe write are
   open.
@@ -38,10 +45,10 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
   the 0b101 and 0b000 reads equal the 0b010 reference read; whether the JTAG eFuse port
   refuses some AxPROT values is open. The register holds the S6 word with
   ``efuse_data`` 0, so no write-back can start a fuse program.
-* S7 writes both control registers 0 and both timeouts 0x0080_0000 and drives
-  ``tb_lc_state`` back to its S1 value.
+* S7 writes both control registers and both address registers 0 and both timeouts
+  0x0080_0000 and drives ``tb_lc_state`` back to its S1 value.
 
-A and A2 are bits of SPARE[2] and SPARE[3], whose write and read locks the default image's
+A and A2 are bits of SPARE[1] and SPARE[2], whose write and read locks the default image's
 LOCKS word leaves clear and whose image words are 0.
 """
 
@@ -57,6 +64,8 @@ from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_word_at
 STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
+PROGRAM_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR")
+READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 PROG_IF_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
 READ_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR")
 READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
@@ -73,8 +82,9 @@ STATUS_ERRORS = (
     | _f("EFUSE_INTERFACE_CTRL_STATUS", "EFUSE_PROGRAM_ADDR_ERROR")
     | _f("EFUSE_INTERFACE_CTRL_STATUS", "EFUSE_READ_ADDR_ERROR")
 )
+ADDR_RW_P = _f("EFUSE_PROGRAM_ADDR", "EFUSE_ADDR")
+ADDR_RW_R = _f("EFUSE_READ_ADDR", "EFUSE_ADDR")
 
-PROG_ADDR = _f("EFUSE_PROGRAM_CTRL", "EFUSE_ADDR")
 PROG_DATA = _f("EFUSE_PROGRAM_CTRL", "EFUSE_DATA")
 PROG_GO = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_GO")
 PROG_RB = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_READ_BACK")
@@ -82,16 +92,15 @@ PROG_BUSY = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_BUSY")
 PROG_DONE = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_DONE")
 PROG_ERR = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_STATUS")
 PROG_EN = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_ENABLE")
-PROG_RW = PROG_ADDR | PROG_DATA | PROG_RB | PROG_EN
+PROG_RW = PROG_DATA | PROG_RB | PROG_EN
 PROG_STATE = PROG_BUSY | PROG_DONE | PROG_ERR
 
-READ_ADDR = _f("EFUSE_READ_CTRL", "EFUSE_ADDR")
 READ_GO = _f("EFUSE_READ_CTRL", "EFUSE_READ_GO")
 READ_BUSY = _f("EFUSE_READ_CTRL", "READ_BUSY")
 READ_DONE = _f("EFUSE_READ_CTRL", "READ_DONE")
 READ_ERR = _f("EFUSE_READ_CTRL", "READ_STATUS")
 READ_EN = _f("EFUSE_READ_CTRL", "READ_ENABLE")
-READ_RW = READ_ADDR | READ_EN
+READ_RW = READ_EN
 READ_STATE = READ_BUSY | READ_DONE | READ_ERR
 
 TMO_RW_R = _f("EFUSE_READ_REQ_TIMEOUT", "READ_REQ_TIMEOUT_CYCLES") | _f(
@@ -108,21 +117,34 @@ TMO_RESET_P = efuse_ifc_u32(
 )
 
 #: Contract S2 words: every RW field set and the documented timeout reset.
-PROG_ALL_RW = 0x0805_FFFF
-READ_ALL_RW = 0x1000_FFFF
+PROG_ALL_RW = 0x0805_0000
+READ_ALL_RW = 0x1000_0000
+ADDR_ALL_RW = 0xFFFF_FFFF
 TMO_ALL_RW = 0x1FFF_FFFF
 TMO_RESET = 0x0080_0000
-#: Contract S3 words.
+#: Contract S3 words, written to EFUSE_PROGRAM_ADDR (32 RW bits).
 PARTIAL_PRE = 0x0000_1234
 PARTIAL_DATA = 0x0805_FFA5
 PARTIAL_STRB = 0x1
 PARTIAL_EXPECT = 0x0000_12A5
 PARTIAL_STRB1 = 0x2
-#: Byte lane 1 of PARTIAL_DATA: efuse_addr[15:8] of the WSTRB 0x2 write.
+#: Byte lane 1 of PARTIAL_DATA: EFUSE_PROGRAM_ADDR bits [15:8] of the WSTRB 0x2 write.
 PARTIAL_LANE1 = PARTIAL_DATA & 0x0000_FF00
 
 #: Documented write counts per register in S2 (all RW, zero, one per RW bit).
-WALK_COUNTS = {"PROGRAM_CTRL": 21, "READ_CTRL": 19, "READ_TO": 31, "PROG_TO": 31}
+WALK_COUNTS = {
+    "PROGRAM_CTRL": 5,
+    "READ_CTRL": 3,
+    "PROGRAM_ADDR": 34,
+    "READ_ADDR": 34,
+    "READ_TO": 31,
+    "PROG_TO": 31,
+}
+#: Directed SEP_IN reads outside the polls: the S1 status read, the S2 walk and timeout
+#: readbacks and the status read after the walks, the four S3 readbacks, the S4
+#: program-interface read, the four dout reads of S4 to S6, the S6 pre-GO read and the six
+#: S7 readbacks.
+DIRECTED_SEP_READS = 1 + sum(WALK_COUNTS.values()) + 2 + 1 + 4 + 1 + 4 + 1 + 6
 
 #: TEST_DEV in the {diff_n, diff_p} encoding of port_table.adoc:64.
 LC_TEST_DEV_PACKED = 0xF0
@@ -152,7 +174,7 @@ def _spare_bit(index: int, offset: int) -> int:
     ) * 8 + (offset)
 
 
-SPARE_A, SPARE_A2 = 2, 3
+SPARE_A, SPARE_A2 = 1, 2
 BIT_A = _spare_bit(SPARE_A, 5)
 BIT_A2 = _spare_bit(SPARE_A2, 9)
 
@@ -257,8 +279,9 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         starts by writing EFUSE_PROGRAM_CTRL to 0.
         """
         await self._jtag_write(f"{label}_PROG_OFF", PROGRAM_CTRL, 0)
-        await self._jtag_write(f"{label}_EN", READ_CTRL, bit | READ_EN)
-        await self._jtag_write(f"{label}_GO", READ_CTRL, bit | READ_EN | READ_GO)
+        await self._jtag_write(f"{label}_ADDR", READ_ADDR, bit)
+        await self._jtag_write(f"{label}_EN", READ_CTRL, READ_EN)
+        await self._jtag_write(f"{label}_GO", READ_CTRL, READ_EN | READ_GO)
         ctrl, samples = await self._poll(
             f"{label}_DONE", READ_CTRL, lambda v: bool(v & READ_DONE) and not v & READ_BUSY
         )
@@ -282,12 +305,15 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
 
     async def _setup(self) -> None:
         dut = cocotb.top
-        locks = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
-        locks |= efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4) << 32
+        locks = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"))
+        locks |= (
+            efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR") + 4)
+            << 32
+        )
         for spare, bit in ((SPARE_A, BIT_A), (SPARE_A2, BIT_A2)):
             lock_mask = smc_efuse_map_u32(
-                f"SMC_EFUSE_MAP__LOCKS__SPARE{spare}_WRITE_LOCK_bm"
-            ) | smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{spare}_READ_LOCK_bm")
+                f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{spare}_WRITE_LOCK_bm"
+            ) | smc_efuse_map_u32(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{spare}_READ_LOCK_bm")
             assert locks & lock_mask == 0, (
                 f"SPARE{spare} is locked by the image LOCKS 0x{locks:016x} (mask 0x{lock_mask:x})"
             )
@@ -346,6 +372,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         plan = (
             ("PROGRAM_CTRL", PROGRAM_CTRL, PROG_RW, PROG_STATE, PROG_ALL_RW),
             ("READ_CTRL", READ_CTRL, READ_RW, READ_STATE, READ_ALL_RW),
+            ("PROGRAM_ADDR", PROGRAM_ADDR, ADDR_RW_P, 0, ADDR_ALL_RW),
+            ("READ_ADDR", READ_ADDR, ADDR_RW_R, 0, ADDR_ALL_RW),
             ("READ_TO", READ_TMO, TMO_RW_R, 0, TMO_ALL_RW),
             ("PROG_TO", PROG_TMO, TMO_RW_P, 0, TMO_ALL_RW),
         )
@@ -368,11 +396,20 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
                 f"S2 {name}: final readback 0x{rb:08x}, expected 0x{TMO_RESET:08x}"
             )
             finals.append(rb)
+        # The address walks wrote words at or beyond the implemented fuse size without a GO;
+        # an address error reports a command's invalid address, so none may have latched.
+        status = await self._sep_read("S2_STATUS_RB", STATUS)
+        assert status & STATUS_ERRORS == 0, (
+            f"S2: EFUSE_INTERFACE_CTRL_STATUS=0x{status:08x} after the address walks without "
+            "GO; bits [6:4] must read 0"
+        )
         jtag_rd = []
         for name, addr in (
             ("STATUS", STATUS),
             ("PROGRAM_CTRL", PROGRAM_CTRL),
             ("READ_CTRL", READ_CTRL),
+            ("PROGRAM_ADDR", PROGRAM_ADDR),
+            ("READ_ADDR", READ_ADDR),
             ("READ_TO", READ_TMO),
             ("PROG_TO", PROG_TMO),
         ):
@@ -381,46 +418,52 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._stamp("WALK")
         self._chk(
             "CHK-EFUSE-JTAG-WALK",
-            "PROGRAM_CTRL %d/%d, READ_CTRL %d/%d, READ_TO %d/%d, PROG_TO %d/%d masked match, "
-            "status idle; final timeouts 0x%08x/0x%08x; JTAG writes OKAY; reserved bits read %s "
-            "(LINKED-ISSUE: whether reserved register bits read 0 and ignore writes); "
-            "JTAG reads logged %s",
+            "PROGRAM_CTRL %d/%d, READ_CTRL %d/%d, PROGRAM_ADDR %d/%d, READ_ADDR %d/%d, READ_TO "
+            "%d/%d, PROG_TO %d/%d masked match, status idle; final timeouts 0x%08x/0x%08x; "
+            "STATUS=0x%08x after the out-of-range address walks without GO (no address error "
+            "latched); JTAG writes OKAY; reserved bits read %s (LINKED-ISSUE: whether reserved "
+            "register bits read 0 and ignore writes); JTAG reads logged %s",
             counts["PROGRAM_CTRL"],
             WALK_COUNTS["PROGRAM_CTRL"],
             counts["READ_CTRL"],
             WALK_COUNTS["READ_CTRL"],
+            counts["PROGRAM_ADDR"],
+            WALK_COUNTS["PROGRAM_ADDR"],
+            counts["READ_ADDR"],
+            WALK_COUNTS["READ_ADDR"],
             counts["READ_TO"],
             WALK_COUNTS["READ_TO"],
             counts["PROG_TO"],
             WALK_COUNTS["PROG_TO"],
             finals[0],
             finals[1],
+            status,
             {k: sorted(f"0x{v:x}" for v in vals) for k, vals in reserved.items()},
             " ".join(jtag_rd),
         )
 
     async def _partial_strobe(self) -> None:
-        await self._jtag_write("S3_PRE", PROGRAM_CTRL, PARTIAL_PRE)
-        pre = await self._sep_read("S3_PRE_RB", PROGRAM_CTRL)
+        await self._jtag_write("S3_PRE", PROGRAM_ADDR, PARTIAL_PRE)
+        pre = await self._sep_read("S3_PRE_RB", PROGRAM_ADDR)
         assert pre == PARTIAL_PRE, f"S3: readback 0x{pre:08x}, expected 0x{PARTIAL_PRE:08x}"
         resp = await self._jtag_write(
-            "S3_STRB", PROGRAM_CTRL, PARTIAL_DATA, strb=PARTIAL_STRB, check=False
+            "S3_STRB", PROGRAM_ADDR, PARTIAL_DATA, strb=PARTIAL_STRB, check=False
         )
-        strobed = await self._sep_read("S3_STRB_RB", PROGRAM_CTRL)
+        strobed = await self._sep_read("S3_STRB_RB", PROGRAM_ADDR)
         resp1 = await self._jtag_write(
-            "S3_STRB1", PROGRAM_CTRL, PARTIAL_DATA, strb=PARTIAL_STRB1, check=False
+            "S3_STRB1", PROGRAM_ADDR, PARTIAL_DATA, strb=PARTIAL_STRB1, check=False
         )
-        strobed1 = await self._sep_read("S3_STRB1_RB", PROGRAM_CTRL)
-        await self._jtag_write("S3_POST", PROGRAM_CTRL, 0)
-        post = await self._sep_read("S3_POST_RB", PROGRAM_CTRL)
+        strobed1 = await self._sep_read("S3_STRB1_RB", PROGRAM_ADDR)
+        await self._jtag_write("S3_POST", PROGRAM_ADDR, 0)
+        post = await self._sep_read("S3_POST_RB", PROGRAM_ADDR)
         assert post == 0, f"S3: readback 0x{post:08x} after the zero write, expected 0x0"
         self._stamp("PARTIAL-STROBE")
         self._chk(
             "CHK-EFUSE-JTAG-PARTIAL-STRB",
-            "pre=0x%08x exact, strobe0 rb=0x%08x resp=%d (logged against 0x%08x, LINKED-ISSUE: "
-            "the response and stored lanes of a partial-strobe write), strobe1 rb=0x%08x "
-            "resp=%d (logged against 0x%08x: lane 1 0x%02x over the strobe0 readback, "
-            "LINKED-ISSUE: the response and stored lanes of a partial-strobe write), "
+            "EFUSE_PROGRAM_ADDR pre=0x%08x exact, strobe0 rb=0x%08x resp=%d (logged against "
+            "0x%08x, LINKED-ISSUE: the response and stored lanes of a partial-strobe write), "
+            "strobe1 rb=0x%08x resp=%d (logged against 0x%08x: lane 1 0x%02x over the strobe0 "
+            "readback, LINKED-ISSUE: the response and stored lanes of a partial-strobe write), "
             "post=0x%08x exact",
             pre,
             strobed,
@@ -436,10 +479,11 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
     async def _program(self) -> int:
         _ctrl, dout_pre, _busy = await self._fuse_read("S4_PRE", BIT_A)
         self.dout_pre_a = dout_pre
-        await self._jtag_write("S4_ARM", PROGRAM_CTRL, BIT_A | PROG_DATA | PROG_EN)
+        await self._jtag_write("S4_ADDR", PROGRAM_ADDR, BIT_A)
+        await self._jtag_write("S4_ARM", PROGRAM_CTRL, PROG_DATA | PROG_EN)
 
         async def _go() -> None:
-            await self._jtag_write("S4_GO", PROGRAM_CTRL, BIT_A | PROG_DATA | PROG_EN | PROG_GO)
+            await self._jtag_write("S4_GO", PROGRAM_CTRL, PROG_DATA | PROG_EN | PROG_GO)
 
         go = cocotb.start_soon(_go())
         ctrl, samples = await self._poll("S4_DONE", PROGRAM_CTRL, lambda v: bool(v & PROG_DONE))
@@ -495,12 +539,13 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
 
     async def _data0(self) -> None:
         _ctrl, pre, _busy = await self._fuse_read("S6_PRE", BIT_A2)
-        await self._jtag_write("S6_ARM", PROGRAM_CTRL, BIT_A2 | PROG_EN)
+        await self._jtag_write("S6_ADDR", PROGRAM_ADDR, BIT_A2)
+        await self._jtag_write("S6_ARM", PROGRAM_CTRL, PROG_EN)
         pre_go = await self._sep_read("S6_PRE_GO", PROGRAM_CTRL)
         done0, status0 = pre_go & PROG_DONE, pre_go & PROG_ERR
 
         async def _go() -> None:
-            await self._jtag_write("S6_GO", PROGRAM_CTRL, BIT_A2 | PROG_EN | PROG_GO)
+            await self._jtag_write("S6_GO", PROGRAM_CTRL, PROG_EN | PROG_GO)
 
         go = cocotb.start_soon(_go())
         samples: list[int] = []
@@ -592,6 +637,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         for name, addr, word in (
             ("PROGRAM_CTRL", PROGRAM_CTRL, 0),
             ("READ_CTRL", READ_CTRL, 0),
+            ("PROGRAM_ADDR", PROGRAM_ADDR, 0),
+            ("READ_ADDR", READ_ADDR, 0),
             ("READ_TO", READ_TMO, TMO_RESET),
             ("PROG_TO", PROG_TMO, TMO_RESET),
         ):

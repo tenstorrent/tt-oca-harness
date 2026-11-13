@@ -437,7 +437,7 @@ hw/sys/smc/dv/
 │                           #   smc_efuse_image_*_test leaf generates into its
 │                           #   run directory at test start; those leaves derive
 │                           #   their expectations from that image
-├── assets/                 # the committed images: the hand-maintained eFuse
+├── assets/                 # the committed images: the generated eFuse
 │                           #   image and shadow-register preload the
 │                           #   single-instance run modes load
 │                           #   (smc_efuse_default.hex,
@@ -489,7 +489,7 @@ hw/sys/smc/dv/
   `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`) and the image
   each `smc_efuse_image_*_test` leaf writes into its run directory and names
   through its own `+smc_efuse_hex`. It does not produce
-  `assets/smc_efuse_default.hex`, which is hand-maintained; the two targets
+  `assets/smc_efuse_default.hex`, which `efuse_preload/generate_efuse_preload.py` produces; the two targets
   sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`) says why.
   Keeping the generators beside the schema is what lets a reviewer read which
   field a configuration sets.

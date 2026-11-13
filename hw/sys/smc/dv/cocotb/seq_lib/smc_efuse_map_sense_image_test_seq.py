@@ -28,6 +28,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_image_pattern_test_seq import (
     _SMC_EFUSE_MAP_H,
     EFUSE_MAP_WORDS,
+    LOCKS_WORDS,
     EfuseImage,
     word_addr,
 )
@@ -56,15 +57,20 @@ _TERMS = {
 def _reset_words() -> tuple[int, ...]:
     """The reset word of every SMC_EFUSE_MAP word, from the generated register map."""
     instances = [
-        ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
-        ("JTAG_PUBLIC_IDENTITY", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")),
-        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
-        (
+        (reg, smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{reg}_BASE_ADDR"))
+        for reg in (
+            "HARNESS_LOCKS",
+            "SUPPLEMENTARY_LOCKS",
+            "JTAG_PUBLIC_IDENTITY",
+            "SMC_CONFIG",
             "OCCP_TRANSPORT_TIMEOUT",
-            smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
-        ),
+        )
     ]
-    for reg, name in (("I2C_I3C_ID", "I2C_I3C_ID"), ("SPARE_256_BITS", "SPARE")):
+    for reg, name in (
+        ("I2C_I3C_ID", "I2C_I3C_ID"),
+        ("SPARE_256_BITS", "SPARE"),
+        ("SPARE_64_BITS", "SPARE_TAIL"),
+    ):
         sym = f"SMC_TOP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
         for k in range(smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{name}_NUM")):
             instances.append((reg, smc_indexed_addr(sym, k)))
@@ -307,7 +313,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             if word not in skipped:
                 await self._rd(f"S3_{word}", word)
         assert 0 not in skipped and EFUSE_MAP_WORDS - 1 not in skipped, (
-            f"word 0 or word 255 is read-locked: {skipped}"
+            f"word 0 or word {EFUSE_MAP_WORDS - 1} is read-locked: {skipped}"
         )
         read = EFUSE_MAP_WORDS - len(skipped)
         read_changed = len([w for w in changed if w not in skipped])
@@ -320,8 +326,9 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
         else:
             locked_note = (
-                f"LOCKS 0x{image.locks:x} (write-lock bits only, no read-lock bit), LOCKS words "
-                f"0x{image.words[0]:08x}/0x{image.words[1]:08x} included, none skipped"
+                f"HARNESS_LOCKS word 0 0x{image.words[0]:08x} (write-lock bits only, no read-lock "
+                f"bit), LOCKS words {LOCKS_WORDS.start}..{LOCKS_WORDS.stop - 1} included, none "
+                "skipped"
             )
         if not unique:
             chk_id = (
@@ -330,7 +337,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             self._chk(
                 chk_id,
                 "image %s (%s, %s): %d SEP_IN reads equal the image words (%d differ from "
-                "the RDL reset word), word 0 0x%08x and word 255 0x%08x included; %s; all %d "
+                "the RDL reset word), word 0 0x%08x and word %d 0x%08x included; %s; all %d "
                 "efuse_shadow_probe_o words equal the image again after the sweep",
                 image.path.name,
                 self.kind,
@@ -338,6 +345,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 read,
                 read_changed,
                 image.words[0],
+                EFUSE_MAP_WORDS - 1,
                 image.words[EFUSE_MAP_WORDS - 1],
                 locked_note,
                 EFUSE_MAP_WORDS,
@@ -352,18 +360,22 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 assert got == image.words[n], (
                     f"S4: probe word {n} is 0x{got:08x}, image word {n} is 0x{image.words[n]:08x}"
                 )
-            last = (probe >> (32 * 255)) & _MASK32
-            assert last == image.words[255], f"S4: probe word 255 0x{last:08x}"
+            last = (probe >> (32 * (EFUSE_MAP_WORDS - 1))) & _MASK32
+            assert last == image.words[EFUSE_MAP_WORDS - 1], (
+                f"S4: probe word {EFUSE_MAP_WORDS - 1} 0x{last:08x}"
+            )
             self._done("S4")
             self._chk(
                 "CHK-EMAP-SENSE-UNIQUE",
-                "image %s: distinct=%d/%d asserted before sensing, LOCKS words 0x%08x/0x%08x "
-                "included; probe word i equals image word i for all 256 i, word 255 0x%08x",
+                "image %s: distinct=%d/%d asserted before sensing, LOCKS words %d..%d included; "
+                "probe word i equals image word i for all %d i, word %d 0x%08x",
                 image.path.name,
                 distinct,
                 EFUSE_MAP_WORDS,
-                image.words[0],
-                image.words[1],
+                LOCKS_WORDS.start,
+                LOCKS_WORDS.stop - 1,
+                EFUSE_MAP_WORDS,
+                EFUSE_MAP_WORDS - 1,
                 last,
             )
 

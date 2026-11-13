@@ -91,7 +91,7 @@ Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
 leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
 CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
 enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-GO (leg B: after each
-refused program, ``efuse_addr``, ``efuse_data`` and ``program_enable`` of
+refused program, ``efuse_data`` and ``program_enable`` of
 ``EFUSE_PROGRAM_CTRL`` read back as the go wrote them), CTRL-RMA-LEGB (with
 ``+sep_rma_require_legb`` only: the plan drew leg B and both refused programs
 issued a go write that returned a response). A failing hook control
@@ -126,6 +126,7 @@ from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     NARROW_USED,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     RIGHT_TOKEN,
     ST_PROD,
@@ -140,7 +141,9 @@ from env.sep_efuse_plan import (
     lc_state_class,
     plan,
     poll_code,
+    program_addr_word,
     program_ctrl_word,
+    require_addr_readback,
     shadow_addr,
     token_go,
     write_token,
@@ -191,10 +194,8 @@ _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
 # The sw=rw request fields of EFUSE_PROGRAM_CTRL read back as written
 # (efuse_interface_ctrl.rdl); efuse_program_go is a single pulse and is not read.
-_PG_REQ = (
-    EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_enable")
+_PG_REQ = EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data") | EFUSE_INTERFACE_CTRL.field_mask(
+    _PG, "program_enable"
 )
 _ST = "EFUSE_INTERFACE_CTRL_STATUS"
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
@@ -451,11 +452,12 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _program(self, bit_addr: int, *, go_by_readback: bool = False) -> dict[str, int]:
         """Program one bit with the full W wait, then read status and the OTP word.
 
-        Two writes: enable and address with data 0 and no go, then the same with
-        data 1 and the go bit. The data bit differs between the two writes, so the
-        request fields read back show the go write landed; the first write has no
-        go and starts no program (``efuse_interface_ctrl.rdl``). The command record
-        runs from the go write to the end of W. ``program_enable`` is
+        Three writes: the address, which is read back and must equal the written value,
+        then enable with data 0 and no go, then the same with data 1 and the go bit. The
+        data bit differs between the two control writes, so the request fields read back
+        show the go write landed; the first control write has no go and starts no
+        program (``efuse_interface_ctrl.rdl``). The command record runs from the go
+        write to the end of W. ``program_enable`` is
         dropped before the direct read, so the read interface reaches the bank. A
         refused program sets the sticky ``efuse_req_error``, which holds off every
         later read and program request until software writes
@@ -467,9 +469,12 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         the leaf and ``go_resp`` is None. A go write that gets no B response
         fails the leaf at the bus timeout of the access.
         """
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=0, go=0))
+        addr = program_addr_word(bit_addr)
+        await self.fd.wr(PROGRAM_ADDR_ADDR, addr)
+        await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, addr)
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=0, go=0))
         mark = self.shim.mark()
-        go_word = program_ctrl_word(bit_addr, go=1)
+        go_word = program_ctrl_word(go=1)
         if go_by_readback:
             go_resp = await self.fd.wr_graded_by_readback(PROGRAM_CTRL_ADDR, go_word)
         else:
@@ -504,7 +509,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         ``efuse_data`` is 0 before the go write and 1 in it, so a lost go write fails.
         """
-        exp = program_ctrl_word(bit_addr, go=0)
+        exp = program_ctrl_word(go=0)
         return self._ctrl(
             "PROG-LC-GO",
             res["pctl"] & _PG_REQ == exp,

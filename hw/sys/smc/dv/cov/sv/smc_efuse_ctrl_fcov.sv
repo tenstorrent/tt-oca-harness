@@ -9,7 +9,7 @@
 //
 // Every group counts only inside its owner's graded window (tb_fcov_gate)
 // and behind a condition its owner drives there: an injection is the rise of
-// a tb_*_state_inject_en hook; a lock cell is a SEP_IN write to LOCKS or a
+// a tb_*_state_inject_en hook; a lock cell is a SEP_IN write to HARNESS_LOCKS or a
 // 4-byte field access of the eFuse map; a lifecycle cell is a completion on
 // the JTAG eFuse port; a timeout cell counts only after a timeout register
 // was written with its enable bit set over SEP_IN under the gate and the
@@ -19,7 +19,7 @@
 // interface's outputs, and a disagreement or an outcome contrary to the
 // stated one samples no cell.
 //
-// Constants: register addresses from smc_top_addrmap_pkg; the LOCKS bit
+// Constants: register addresses from smc_top_addrmap_pkg; the HARNESS_LOCKS bit
 // positions and the control, status and timeout fields of the
 // interface-control registers from smc_reg.svh; the zeroer
 // state encodings of zeroer.adoc (State Machine); the lifecycle encodings
@@ -113,7 +113,7 @@ module smc_efuse_ctrl_fcov #(
   // own registers, not the fuse path).
   input wire shim_resp_valid_i,
 
-  // LOCKS and the shadow register output.
+  // HARNESS_LOCKS and the shadow register output.
   input wire [63:0] locks_i,
   input wire [SHADOW_BITS-1:0] shadow_probe_i,
 
@@ -122,7 +122,7 @@ module smc_efuse_ctrl_fcov #(
 );
 
   import smc_top_addrmap_pkg::*;
-  // The LOCKS bit positions and the eFuse interface-control field masks and
+  // The HARNESS_LOCKS bit positions and the eFuse interface-control field masks and
   // reset words. The header's include guard is cleared before and after, so
   // this module and every other unit that includes the same header each get
   // its contents whatever their order in one compilation unit. The generated
@@ -365,13 +365,14 @@ module smc_efuse_ctrl_fcov #(
 
   // ------------------------------------------------------------------
   // smc_efuse_lock_cg: the slot of an eFuse-map word from the generated
-  // register addresses (the four named fields and the SPARE array, in
-  // address order), the lock bits of a slot from the generated LOCKS field
-  // positions, and the field word of the shadow output at bits 32w+31:32w.
+  // register addresses (the four named fields, the SPARE array and the
+  // SPARE_TAIL elements, which share slot 7, in address order), the lock bits
+  // of a slot from the generated HARNESS_LOCKS field positions, and the field
+  // word of the shadow output at bits 32w+31:32w.
   // ------------------------------------------------------------------
   localparam logic [55:0] MapBase = 56'(SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
   localparam logic [55:0] MapEnd = MapBase + 56'(SMC_TOP_SMC_EFUSE_MAP_SIZE);
-  localparam logic [55:0] LocksAddr = 56'(SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR);
+  localparam logic [55:0] LocksAddr = 56'(SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR);
   localparam logic [55:0] Slot0Base = 56'(SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR);
   localparam logic [55:0] Slot1Base = 56'(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0));
   localparam logic [55:0] Slot2Base = 56'(SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR);
@@ -380,11 +381,17 @@ module smc_efuse_ctrl_fcov #(
   localparam logic [55:0] SpareStride = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(1)) - Spare0Base;
   localparam logic [55:0] SpareNum = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
   localparam logic [55:0] SpareEnd = Spare0Base + SpareNum * SpareStride;
-  localparam int unsigned NumSlots = 32;
+  localparam logic [55:0] TailBase = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0));
+  localparam logic [55:0] TailStride =
+      56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(1)) - TailBase;
+  localparam logic [55:0] TailEnd =
+      TailBase + 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM) * TailStride;
+  localparam int unsigned NumSlots = 8;
   localparam int unsigned NumWords = SHADOW_BITS / 32;
 
   // {valid, slot} of a map byte address.
   function automatic logic [5:0] slot_of(input logic [55:0] a);
+    if ((a >= TailBase) && (a < TailEnd)) return {1'b1, 5'd7};
     if ((a >= Spare0Base) && (a < SpareEnd)) begin
       return {1'b1, 5'(56'd4 + (a - Spare0Base) / SpareStride)};
     end
@@ -399,77 +406,29 @@ module smc_efuse_ctrl_fcov #(
     return 8'((a - MapBase) >> 2);
   endfunction
 
-  // The LOCKS bit of each slot's write lock and read lock, in slot order.
+  // The HARNESS_LOCKS bit of each slot's write lock and read lock, in slot order.
   localparam int unsigned WriteLockBit[NumSlots] = '{
-      SMC_EFUSE_MAP_LOCKS_JTAG_PUBLIC_IDENTITY_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_I2C_I3C_ID_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SMC_CONFIG_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE0_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE1_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE2_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE3_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE4_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE5_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE6_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE7_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE8_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE9_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE10_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE11_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE12_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE13_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE14_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE15_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE16_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE17_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE18_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE19_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE20_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE21_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE22_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE23_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE24_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE25_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE26_WRITE_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE27_WRITE_LOCK_SHIFT
+      SMC_EFUSE_MAP_HARNESS_LOCKS_JTAG_PUBLIC_IDENTITY_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_I2C_I3C_ID_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SMC_CONFIG_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE0_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE1_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE2_WRITE_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE_TAIL_WRITE_LOCK_SHIFT
   };
   localparam int unsigned ReadLockBit[NumSlots] = '{
-      SMC_EFUSE_MAP_LOCKS_JTAG_PUBLIC_IDENTITY_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_I2C_I3C_ID_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SMC_CONFIG_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_OCCP_TRANSPORT_TIMEOUT_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE0_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE1_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE2_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE3_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE4_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE5_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE6_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE7_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE8_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE9_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE10_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE11_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE12_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE13_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE14_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE15_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE16_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE17_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE18_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE19_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE20_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE21_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE22_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE23_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE24_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE25_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE26_READ_LOCK_SHIFT,
-      SMC_EFUSE_MAP_LOCKS_SPARE27_READ_LOCK_SHIFT
+      SMC_EFUSE_MAP_HARNESS_LOCKS_JTAG_PUBLIC_IDENTITY_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_I2C_I3C_ID_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SMC_CONFIG_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_OCCP_TRANSPORT_TIMEOUT_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE0_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE1_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE2_READ_LOCK_SHIFT,
+      SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE_TAIL_READ_LOCK_SHIFT
   };
 
-  // {valid, slot, kind} of a LOCKS bit (kind 0 write lock, 1 read lock).
+  // {valid, slot, kind} of a HARNESS_LOCKS bit (kind 0 write lock, 1 read lock).
   function automatic logic [6:0] slot_kind_of_bit(input int unsigned b);
     for (int unsigned n = 0; n < NumSlots; n++) begin
       if (WriteLockBit[n] == b) return {1'b1, 5'(n), 1'b0};
@@ -478,7 +437,7 @@ module smc_efuse_ctrl_fcov #(
     return 7'd0;
   endfunction
 
-  // A LOCKS write: the whole 64-bit word, or one 32-bit half in its lane.
+  // A HARNESS_LOCKS write: the whole 64-bit word, or one 32-bit half in its lane.
   // Every bit the write sets is a slot-kind cell once the locks output
   // carries it set (the bit the image presets reads 1 at once).
   wire locks_w64 = (sep_wsize_q == SizeEight) && (sep_wstrb_q === 8'hFF)
@@ -840,7 +799,7 @@ module smc_efuse_ctrl_fcov #(
       logic sk, logic rf, logic [4:0] slot, logic kind, logic [1:0] outcome
   );
     option.per_instance = 1;
-    // {graded, slot, lock kind}: 64 cells.
+    // {graded, slot, lock kind}: 16 cells.
     cp_slot_kind: coverpoint {
       sk, slot, kind
     } {
@@ -851,33 +810,9 @@ module smc_efuse_ctrl_fcov #(
       `SMC_ELK_SLOT_BINS(spare0, 5'd4)
       `SMC_ELK_SLOT_BINS(spare1, 5'd5)
       `SMC_ELK_SLOT_BINS(spare2, 5'd6)
-      `SMC_ELK_SLOT_BINS(spare3, 5'd7)
-      `SMC_ELK_SLOT_BINS(spare4, 5'd8)
-      `SMC_ELK_SLOT_BINS(spare5, 5'd9)
-      `SMC_ELK_SLOT_BINS(spare6, 5'd10)
-      `SMC_ELK_SLOT_BINS(spare7, 5'd11)
-      `SMC_ELK_SLOT_BINS(spare8, 5'd12)
-      `SMC_ELK_SLOT_BINS(spare9, 5'd13)
-      `SMC_ELK_SLOT_BINS(spare10, 5'd14)
-      `SMC_ELK_SLOT_BINS(spare11, 5'd15)
-      `SMC_ELK_SLOT_BINS(spare12, 5'd16)
-      `SMC_ELK_SLOT_BINS(spare13, 5'd17)
-      `SMC_ELK_SLOT_BINS(spare14, 5'd18)
-      `SMC_ELK_SLOT_BINS(spare15, 5'd19)
-      `SMC_ELK_SLOT_BINS(spare16, 5'd20)
-      `SMC_ELK_SLOT_BINS(spare17, 5'd21)
-      `SMC_ELK_SLOT_BINS(spare18, 5'd22)
-      `SMC_ELK_SLOT_BINS(spare19, 5'd23)
-      `SMC_ELK_SLOT_BINS(spare20, 5'd24)
-      `SMC_ELK_SLOT_BINS(spare21, 5'd25)
-      `SMC_ELK_SLOT_BINS(spare22, 5'd26)
-      `SMC_ELK_SLOT_BINS(spare23, 5'd27)
-      `SMC_ELK_SLOT_BINS(spare24, 5'd28)
-      `SMC_ELK_SLOT_BINS(spare25, 5'd29)
-      `SMC_ELK_SLOT_BINS(spare26, 5'd30)
-      `SMC_ELK_SLOT_BINS(spare27, 5'd31)
+      `SMC_ELK_SLOT_BINS(spare_tail, 5'd7)
     }
-    // {graded, slot, lock kind and state with its outcome}: 128 cells.
+    // {graded, slot, lock kind and state with its outcome}: 32 cells.
     cp_refusal: coverpoint {
       rf, slot, outcome
     } {
@@ -888,31 +823,7 @@ module smc_efuse_ctrl_fcov #(
       `SMC_ELK_REFUSAL_BINS(spare0, 5'd4)
       `SMC_ELK_REFUSAL_BINS(spare1, 5'd5)
       `SMC_ELK_REFUSAL_BINS(spare2, 5'd6)
-      `SMC_ELK_REFUSAL_BINS(spare3, 5'd7)
-      `SMC_ELK_REFUSAL_BINS(spare4, 5'd8)
-      `SMC_ELK_REFUSAL_BINS(spare5, 5'd9)
-      `SMC_ELK_REFUSAL_BINS(spare6, 5'd10)
-      `SMC_ELK_REFUSAL_BINS(spare7, 5'd11)
-      `SMC_ELK_REFUSAL_BINS(spare8, 5'd12)
-      `SMC_ELK_REFUSAL_BINS(spare9, 5'd13)
-      `SMC_ELK_REFUSAL_BINS(spare10, 5'd14)
-      `SMC_ELK_REFUSAL_BINS(spare11, 5'd15)
-      `SMC_ELK_REFUSAL_BINS(spare12, 5'd16)
-      `SMC_ELK_REFUSAL_BINS(spare13, 5'd17)
-      `SMC_ELK_REFUSAL_BINS(spare14, 5'd18)
-      `SMC_ELK_REFUSAL_BINS(spare15, 5'd19)
-      `SMC_ELK_REFUSAL_BINS(spare16, 5'd20)
-      `SMC_ELK_REFUSAL_BINS(spare17, 5'd21)
-      `SMC_ELK_REFUSAL_BINS(spare18, 5'd22)
-      `SMC_ELK_REFUSAL_BINS(spare19, 5'd23)
-      `SMC_ELK_REFUSAL_BINS(spare20, 5'd24)
-      `SMC_ELK_REFUSAL_BINS(spare21, 5'd25)
-      `SMC_ELK_REFUSAL_BINS(spare22, 5'd26)
-      `SMC_ELK_REFUSAL_BINS(spare23, 5'd27)
-      `SMC_ELK_REFUSAL_BINS(spare24, 5'd28)
-      `SMC_ELK_REFUSAL_BINS(spare25, 5'd29)
-      `SMC_ELK_REFUSAL_BINS(spare26, 5'd30)
-      `SMC_ELK_REFUSAL_BINS(spare27, 5'd31)
+      `SMC_ELK_REFUSAL_BINS(spare_tail, 5'd7)
     }
   endgroup
   `undef SMC_ELK_SLOT_BINS
@@ -987,7 +898,7 @@ module smc_efuse_ctrl_fcov #(
       if (read_rec_e) u_cg_state_inject.sample(BlkNone, 2'd0, PhNone, RecRead);
       if (program_rec_e) u_cg_state_inject.sample(BlkNone, 2'd0, PhNone, RecProgram);
 
-      // Locks: every bit a LOCKS write sets, once the locks output carries
+      // Locks: every bit a HARNESS_LOCKS write sets, once the locks output carries
       // it; the field read that grades a write and the read itself.
       for (int unsigned b = 0; b < 64; b++) begin
         if (lock_pend_hit[b] && bit_slot_kind[b][6]) begin

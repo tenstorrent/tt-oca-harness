@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="790" viewBox="0 0 1000 790" role="img" aria-labelledby="title desc">
   <title id="title">eFuse connections at the smu.sv boundary</title>
-  <desc id="desc">Inside smu.sv, the SMC and the SEP each contain their own eFuse controller. Each controller drives its own bank control AXI-Lite window, command request and command response across the smu.sv boundary, prefixed smc_ or sep_. Below the boundary the adopter places two separate Interface SHIM instances, each fronting its own 8 Kbit eFuse macro. Each eFuse controller also drives its fuse_sense_done output out to the smu.sv boundary as smc_fuse_sense_done_o and sep_fuse_sense_done_o, and holds the sensed values in its shadow registers.</desc>
+  <desc id="desc">Inside smu.sv, the SMC and the SEP each contain their own eFuse controller. Each controller drives its own bank control AXI-Lite window, command request and command response across the smu.sv boundary, prefixed smc_ or sep_. Below the boundary the adopter places two separate Interface SHIM instances, each fronting its own eFuse macro: 2 Kbit for the SMC and 8 Kbit for the SEP. Each eFuse controller also drives its fuse_sense_done output out to the smu.sv boundary as smc_fuse_sense_done_o and sep_fuse_sense_done_o, and holds the sensed values in its shadow registers.</desc>
   <defs>
     <marker id="gray-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L7,3.5 L0,7 z" fill="#374151"/>
@@ -64,7 +64,7 @@
   <text x="56" y="104" class="label">SMC</text>
   <rect x="60" y="115" width="400" height="90" rx="6" class="ctrl"/>
   <text x="260" y="138" text-anchor="middle" class="label">SMC eFuse controller</text>
-  <text x="260" y="155" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
+  <text x="260" y="155" text-anchor="middle" class="small">senses its 2 Kbit bank once per cold boot</text>
   <rect x="150" y="165" width="220" height="32" rx="5" class="block"/>
   <text x="260" y="186" text-anchor="middle" class="small" font-weight="bold">Shadow registers</text>
 
@@ -115,7 +115,7 @@
   <path d="M235 615 V680" class="tech"/>
   <rect x="110" y="680" width="250" height="55" rx="6" class="macro"/>
   <text x="235" y="703" text-anchor="middle" class="label">SMC eFuse macro</text>
-  <text x="235" y="722" text-anchor="middle" class="small">8 Kbit, 256 x 32-bit words</text>
+  <text x="235" y="722" text-anchor="middle" class="small">2 Kbit, 64 x 32-bit words</text>
 
   <!-- SEP SHIM instance -->
   <text x="840" y="524" text-anchor="end" class="label">SEP SHIM</text>

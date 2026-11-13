@@ -11,7 +11,7 @@ The expected value comes from two DV-owned sources and no RTL: the image file
 ``+smc_efuse_hex`` names, which this leaf owns under ``dv/assets``, and the
 generated PeakRDL header ``smc_addr.h``, which gives the map's size and the byte
 offset of every register in it. The fuse word is 4 bytes and ``smc_efuse_map``
-tiles its whole 1024-byte map with no holes, so fuse word ``i`` is map bytes
+tiles its whole 256-byte map with no holes, so fuse word ``i`` is map bytes
 ``4i..4i+3`` and shadow bits ``32i+31..32i``. Every field of every register in
 ``smc_efuse_map.rdl`` resets to ``0x0``, so the map's reset value is zero across
 its full width.
@@ -95,7 +95,11 @@ class smu_smc_efuse_shadow_sense_reset_seq:
         """(name, byte offset, byte length) per register of the map, from smc_addr.h."""
         base = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
         entries = [
-            ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
+            ("HARNESS_LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")),
+            (
+                "SUPPLEMENTARY_LOCKS",
+                smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR"),
+            ),
             (
                 "JTAG_PUBLIC_IDENTITY",
                 smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
@@ -116,6 +120,13 @@ class smu_smc_efuse_shadow_sense_reset_seq:
         for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")):
             entries.append(
                 (f"SPARE[{k}]", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k))
+            )
+        for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")):
+            entries.append(
+                (
+                    f"SPARE_TAIL[{k}]",
+                    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k),
+                )
             )
         entries.sort(key=lambda row: row[1])
         offsets = [addr - base for _, addr in entries]

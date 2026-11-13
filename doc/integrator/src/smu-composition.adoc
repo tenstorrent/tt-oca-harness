@@ -828,6 +828,7 @@ the SEP-to-SMC dedicated AXI connection.
 |`efuse_shim_command_req_o` |output |`fuse_command_req_t` |SMU external port
 |`efuse_shim_command_resp_i` |input |`fuse_command_resp_t` |SMU external port
 |`shadow_regs_o` |output |`efuse_map_t` |SMU external port
+|`supplementary_shadow_regs_o` |output |`logic [N-1:0][31:0]` |SMU external port (`smc_supplementary_shadow_regs_o`)
 |===
 
 === GPIO Data Signals

@@ -1956,132 +1956,69 @@ SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_OFFSET = 0x000
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_ADDR = 0xC0006E7C
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_TYPE = 'LOG_ENGINE_LOG_CTRL'
 SMC_EFUSE_MAP_REG_MAP_BASE_ADDR = 0xC0007000
-SMC_EFUSE_MAP_REG_MAP_SIZE = 0x00000400
-SMC_EFUSE_MAP_LOCKS_REG_OFFSET = 0x00000000
-SMC_EFUSE_MAP_LOCKS_REG_ADDR = 0xC0007000
-SMC_EFUSE_MAP_LOCKS_REG_TYPE = 'SMC_EFUSE_MAP_LOCKS'
-SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET = 0x00000008
-SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR = 0xC0007008
+SMC_EFUSE_MAP_REG_MAP_SIZE = 0x00000100
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_OFFSET = 0x00000000
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR = 0xC0007000
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_TYPE = 'SMC_EFUSE_MAP_HARNESS_LOCKS'
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_OFFSET = 0x00000008
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_ADDR = 0xC0007008
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_TYPE = 'SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS'
+SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET = 0x00000010
+SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR = 0xC0007010
 SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_TYPE = 'SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY'
-SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET = 0x00000028
-SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR = 0xC0007028
+SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET = 0x00000030
+SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR = 0xC0007030
 SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_OFFSET = 0x00000030
-SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR = 0xC0007030
+SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_OFFSET = 0x00000038
+SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR = 0xC0007038
 SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_OFFSET = 0x00000038
-SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_ADDR = 0xC0007038
+SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_OFFSET = 0x00000040
+SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_ADDR = 0xC0007040
 SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_OFFSET = 0x00000040
-SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR = 0xC0007040
+SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_OFFSET = 0x00000048
+SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR = 0xC0007048
 SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_OFFSET = 0x00000048
-SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_ADDR = 0xC0007048
+SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_OFFSET = 0x00000050
+SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_ADDR = 0xC0007050
 SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_OFFSET = 0x00000050
-SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_ADDR = 0xC0007050
+SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_OFFSET = 0x00000058
+SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_ADDR = 0xC0007058
 SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_OFFSET = 0x00000058
-SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR = 0xC0007058
+SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_OFFSET = 0x00000060
+SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR = 0xC0007060
 SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_OFFSET = 0x00000060
-SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR = 0xC0007060
+SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_OFFSET = 0x00000068
+SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR = 0xC0007068
 SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_OFFSET = 0x00000068
-SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_ADDR = 0xC0007068
+SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_OFFSET = 0x00000070
+SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_ADDR = 0xC0007070
 SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_SMC_CONFIG_REG_OFFSET = 0x00000070
-SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR = 0xC0007070
+SMC_EFUSE_MAP_SMC_CONFIG_REG_OFFSET = 0x00000078
+SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR = 0xC0007078
 SMC_EFUSE_MAP_SMC_CONFIG_REG_TYPE = 'SMC_EFUSE_MAP_SMC_CONFIG'
-SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_OFFSET = 0x00000078
-SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR = 0xC0007078
+SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_OFFSET = 0x00000080
+SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR = 0xC0007080
 SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_TYPE = 'SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT'
-SMC_EFUSE_MAP_SPARE_0__REG_OFFSET = 0x00000080
-SMC_EFUSE_MAP_SPARE_0__REG_ADDR = 0xC0007080
+SMC_EFUSE_MAP_SPARE_0__REG_OFFSET = 0x00000088
+SMC_EFUSE_MAP_SPARE_0__REG_ADDR = 0xC0007088
 SMC_EFUSE_MAP_SPARE_0__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_1__REG_OFFSET = 0x000000A0
-SMC_EFUSE_MAP_SPARE_1__REG_ADDR = 0xC00070A0
+SMC_EFUSE_MAP_SPARE_1__REG_OFFSET = 0x000000A8
+SMC_EFUSE_MAP_SPARE_1__REG_ADDR = 0xC00070A8
 SMC_EFUSE_MAP_SPARE_1__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_2__REG_OFFSET = 0x000000C0
-SMC_EFUSE_MAP_SPARE_2__REG_ADDR = 0xC00070C0
+SMC_EFUSE_MAP_SPARE_2__REG_OFFSET = 0x000000C8
+SMC_EFUSE_MAP_SPARE_2__REG_ADDR = 0xC00070C8
 SMC_EFUSE_MAP_SPARE_2__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_3__REG_OFFSET = 0x000000E0
-SMC_EFUSE_MAP_SPARE_3__REG_ADDR = 0xC00070E0
-SMC_EFUSE_MAP_SPARE_3__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_4__REG_OFFSET = 0x00000100
-SMC_EFUSE_MAP_SPARE_4__REG_ADDR = 0xC0007100
-SMC_EFUSE_MAP_SPARE_4__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_5__REG_OFFSET = 0x00000120
-SMC_EFUSE_MAP_SPARE_5__REG_ADDR = 0xC0007120
-SMC_EFUSE_MAP_SPARE_5__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_6__REG_OFFSET = 0x00000140
-SMC_EFUSE_MAP_SPARE_6__REG_ADDR = 0xC0007140
-SMC_EFUSE_MAP_SPARE_6__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_7__REG_OFFSET = 0x00000160
-SMC_EFUSE_MAP_SPARE_7__REG_ADDR = 0xC0007160
-SMC_EFUSE_MAP_SPARE_7__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_8__REG_OFFSET = 0x00000180
-SMC_EFUSE_MAP_SPARE_8__REG_ADDR = 0xC0007180
-SMC_EFUSE_MAP_SPARE_8__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_9__REG_OFFSET = 0x000001A0
-SMC_EFUSE_MAP_SPARE_9__REG_ADDR = 0xC00071A0
-SMC_EFUSE_MAP_SPARE_9__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_10__REG_OFFSET = 0x000001C0
-SMC_EFUSE_MAP_SPARE_10__REG_ADDR = 0xC00071C0
-SMC_EFUSE_MAP_SPARE_10__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_11__REG_OFFSET = 0x000001E0
-SMC_EFUSE_MAP_SPARE_11__REG_ADDR = 0xC00071E0
-SMC_EFUSE_MAP_SPARE_11__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_12__REG_OFFSET = 0x00000200
-SMC_EFUSE_MAP_SPARE_12__REG_ADDR = 0xC0007200
-SMC_EFUSE_MAP_SPARE_12__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_13__REG_OFFSET = 0x00000220
-SMC_EFUSE_MAP_SPARE_13__REG_ADDR = 0xC0007220
-SMC_EFUSE_MAP_SPARE_13__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_14__REG_OFFSET = 0x00000240
-SMC_EFUSE_MAP_SPARE_14__REG_ADDR = 0xC0007240
-SMC_EFUSE_MAP_SPARE_14__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_15__REG_OFFSET = 0x00000260
-SMC_EFUSE_MAP_SPARE_15__REG_ADDR = 0xC0007260
-SMC_EFUSE_MAP_SPARE_15__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_16__REG_OFFSET = 0x00000280
-SMC_EFUSE_MAP_SPARE_16__REG_ADDR = 0xC0007280
-SMC_EFUSE_MAP_SPARE_16__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_17__REG_OFFSET = 0x000002A0
-SMC_EFUSE_MAP_SPARE_17__REG_ADDR = 0xC00072A0
-SMC_EFUSE_MAP_SPARE_17__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_18__REG_OFFSET = 0x000002C0
-SMC_EFUSE_MAP_SPARE_18__REG_ADDR = 0xC00072C0
-SMC_EFUSE_MAP_SPARE_18__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_19__REG_OFFSET = 0x000002E0
-SMC_EFUSE_MAP_SPARE_19__REG_ADDR = 0xC00072E0
-SMC_EFUSE_MAP_SPARE_19__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_20__REG_OFFSET = 0x00000300
-SMC_EFUSE_MAP_SPARE_20__REG_ADDR = 0xC0007300
-SMC_EFUSE_MAP_SPARE_20__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_21__REG_OFFSET = 0x00000320
-SMC_EFUSE_MAP_SPARE_21__REG_ADDR = 0xC0007320
-SMC_EFUSE_MAP_SPARE_21__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_22__REG_OFFSET = 0x00000340
-SMC_EFUSE_MAP_SPARE_22__REG_ADDR = 0xC0007340
-SMC_EFUSE_MAP_SPARE_22__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_23__REG_OFFSET = 0x00000360
-SMC_EFUSE_MAP_SPARE_23__REG_ADDR = 0xC0007360
-SMC_EFUSE_MAP_SPARE_23__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_24__REG_OFFSET = 0x00000380
-SMC_EFUSE_MAP_SPARE_24__REG_ADDR = 0xC0007380
-SMC_EFUSE_MAP_SPARE_24__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_25__REG_OFFSET = 0x000003A0
-SMC_EFUSE_MAP_SPARE_25__REG_ADDR = 0xC00073A0
-SMC_EFUSE_MAP_SPARE_25__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_26__REG_OFFSET = 0x000003C0
-SMC_EFUSE_MAP_SPARE_26__REG_ADDR = 0xC00073C0
-SMC_EFUSE_MAP_SPARE_26__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_27__REG_OFFSET = 0x000003E0
-SMC_EFUSE_MAP_SPARE_27__REG_ADDR = 0xC00073E0
-SMC_EFUSE_MAP_SPARE_27__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_TAIL_0__REG_OFFSET = 0x000000E8
+SMC_EFUSE_MAP_SPARE_TAIL_0__REG_ADDR = 0xC00070E8
+SMC_EFUSE_MAP_SPARE_TAIL_0__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_64_BITS'
+SMC_EFUSE_MAP_SPARE_TAIL_1__REG_OFFSET = 0x000000F0
+SMC_EFUSE_MAP_SPARE_TAIL_1__REG_ADDR = 0xC00070F0
+SMC_EFUSE_MAP_SPARE_TAIL_1__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_64_BITS'
+SMC_EFUSE_MAP_SPARE_TAIL_2__REG_OFFSET = 0x000000F8
+SMC_EFUSE_MAP_SPARE_TAIL_2__REG_ADDR = 0xC00070F8
+SMC_EFUSE_MAP_SPARE_TAIL_2__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_64_BITS'
 EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR = 0xC0008000
-EFUSE_INTERFACE_CTRL_REG_MAP_SIZE = 0x0000001C
+EFUSE_INTERFACE_CTRL_REG_MAP_SIZE = 0x00000024
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET = 0x00000000
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR = 0xC0008000
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS'
@@ -2103,6 +2040,12 @@ EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFU
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET = 0x00000018
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR = 0xC0008018
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT'
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_OFFSET = 0x0000001C
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR = 0xC000801C
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR'
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_OFFSET = 0x00000020
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_ADDR = 0xC0008020
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR'
 SMC_TELEMETRY_RECEIVER_WRAP_REG_MAP_BASE_ADDR = 0xC0009000
 SMC_TELEMETRY_RECEIVER_WRAP_REG_MAP_SIZE = 0x00000300
 SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0xC0009000
@@ -9018,7 +8961,7 @@ SMC_CLA_DST_0__SCRATCHHI_REG_OFFSET = 0x00000FFC
 SMC_CLA_DST_0__SCRATCHHI_REG_ADDR = 0xC0163FFC
 SMC_CLA_DST_0__SCRATCHHI_REG_TYPE = 'DFD_DST_ScratchHi'
 SMC_EXTERNAL_REG_MAP_BASE_ADDR = 0xC0400000
-SMC_EXTERNAL_REG_MAP_SIZE = 0x00006548
+SMC_EXTERNAL_REG_MAP_SIZE = 0x0000B000
 SMC_EXTERNAL_MANDATORY_REG_MAP_BASE_ADDR = 0xC0400000
 SMC_EXTERNAL_MANDATORY_REG_MAP_SIZE = 0x00003008
 SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR = 0xC0400000
@@ -9171,7 +9114,7 @@ SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_OFFSET = 0x00000004
 SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR = 0xC0403004
 SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_TYPE = 'STRAPS_STRAPS_HI'
 SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR = 0xC0404000
-SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE = 0x00002548
+SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE = 0x00007000
 SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR = 0xC0404000
 SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_SIZE = 0x00000390
 SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR = 0xC0405000
@@ -9180,6 +9123,8 @@ SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR = 0xC040500C
 SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE = 0x00000004
 SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR = 0xC0405C00
 SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE = 0x00000948
+SMC_EXTERNAL_SUPPLEMENTARY_FUSE_MEM_BASE_ADDR = 0xC0407000
+SMC_EXTERNAL_SUPPLEMENTARY_FUSE_MEM_SIZE = 0x00004000
 MMODE_REGION_MEM_BASE_ADDR = 0xC1000000
 MMODE_REGION_MEM_SIZE = 0x00800000
 XVISOR_REGION_MEM_BASE_ADDR = 0xC1800000
@@ -15600,8 +15545,8 @@ class LOG_ENGINE_LOG_CTRL_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SMC_EFUSE_MAP_LOCKS_REG_DEFAULT = 0x0000000000000000
-SMC_EFUSE_MAP_LOCKS_REG_FIELD_ACCESS = (
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_DEFAULT = 0x0000000000000000
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_FIELD_ACCESS = (
     ('jtag_public_identity_write_lock', 'rw', 'woset', '', False),
     ('jtag_public_identity_read_lock', 'rw', 'woset', '', False),
     ('i2c_i3c_id_write_lock', 'rw', 'woset', '', False),
@@ -15616,60 +15561,12 @@ SMC_EFUSE_MAP_LOCKS_REG_FIELD_ACCESS = (
     ('spare1_read_lock', 'rw', 'woset', '', False),
     ('spare2_write_lock', 'rw', 'woset', '', False),
     ('spare2_read_lock', 'rw', 'woset', '', False),
-    ('spare3_write_lock', 'rw', 'woset', '', False),
-    ('spare3_read_lock', 'rw', 'woset', '', False),
-    ('spare4_write_lock', 'rw', 'woset', '', False),
-    ('spare4_read_lock', 'rw', 'woset', '', False),
-    ('spare5_write_lock', 'rw', 'woset', '', False),
-    ('spare5_read_lock', 'rw', 'woset', '', False),
-    ('spare6_write_lock', 'rw', 'woset', '', False),
-    ('spare6_read_lock', 'rw', 'woset', '', False),
-    ('spare7_write_lock', 'rw', 'woset', '', False),
-    ('spare7_read_lock', 'rw', 'woset', '', False),
-    ('spare8_write_lock', 'rw', 'woset', '', False),
-    ('spare8_read_lock', 'rw', 'woset', '', False),
-    ('spare9_write_lock', 'rw', 'woset', '', False),
-    ('spare9_read_lock', 'rw', 'woset', '', False),
-    ('spare10_write_lock', 'rw', 'woset', '', False),
-    ('spare10_read_lock', 'rw', 'woset', '', False),
-    ('spare11_write_lock', 'rw', 'woset', '', False),
-    ('spare11_read_lock', 'rw', 'woset', '', False),
-    ('spare12_write_lock', 'rw', 'woset', '', False),
-    ('spare12_read_lock', 'rw', 'woset', '', False),
-    ('spare13_write_lock', 'rw', 'woset', '', False),
-    ('spare13_read_lock', 'rw', 'woset', '', False),
-    ('spare14_write_lock', 'rw', 'woset', '', False),
-    ('spare14_read_lock', 'rw', 'woset', '', False),
-    ('spare15_write_lock', 'rw', 'woset', '', False),
-    ('spare15_read_lock', 'rw', 'woset', '', False),
-    ('spare16_write_lock', 'rw', 'woset', '', False),
-    ('spare16_read_lock', 'rw', 'woset', '', False),
-    ('spare17_write_lock', 'rw', 'woset', '', False),
-    ('spare17_read_lock', 'rw', 'woset', '', False),
-    ('spare18_write_lock', 'rw', 'woset', '', False),
-    ('spare18_read_lock', 'rw', 'woset', '', False),
-    ('spare19_write_lock', 'rw', 'woset', '', False),
-    ('spare19_read_lock', 'rw', 'woset', '', False),
-    ('spare20_write_lock', 'rw', 'woset', '', False),
-    ('spare20_read_lock', 'rw', 'woset', '', False),
-    ('spare21_write_lock', 'rw', 'woset', '', False),
-    ('spare21_read_lock', 'rw', 'woset', '', False),
-    ('spare22_write_lock', 'rw', 'woset', '', False),
-    ('spare22_read_lock', 'rw', 'woset', '', False),
-    ('spare23_write_lock', 'rw', 'woset', '', False),
-    ('spare23_read_lock', 'rw', 'woset', '', False),
-    ('spare24_write_lock', 'rw', 'woset', '', False),
-    ('spare24_read_lock', 'rw', 'woset', '', False),
-    ('spare25_write_lock', 'rw', 'woset', '', False),
-    ('spare25_read_lock', 'rw', 'woset', '', False),
-    ('spare26_write_lock', 'rw', 'woset', '', False),
-    ('spare26_read_lock', 'rw', 'woset', '', False),
-    ('spare27_write_lock', 'rw', 'woset', '', False),
-    ('spare27_read_lock', 'rw', 'woset', '', False),
+    ('spare_tail_write_lock', 'rw', 'woset', '', False),
+    ('spare_tail_read_lock', 'rw', 'woset', '', False),
 )
 
-SMC_EFUSE_MAP_LOCKS_REG_WIDTH = 64
-SMC_EFUSE_MAP_LOCKS_REG_FIELDS = (
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_WIDTH = 64
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_FIELDS = (
     ('jtag_public_identity_write_lock', 0, 0, 'rw', 'r', 'woset', '', False, False, 0),
     ('jtag_public_identity_read_lock', 1, 1, 'rw', 'r', 'woset', '', False, False, 0),
     ('i2c_i3c_id_write_lock', 2, 2, 'rw', 'r', 'woset', '', False, False, 0),
@@ -15684,137 +15581,267 @@ SMC_EFUSE_MAP_LOCKS_REG_FIELDS = (
     ('spare1_read_lock', 11, 11, 'rw', 'r', 'woset', '', False, False, 0),
     ('spare2_write_lock', 12, 12, 'rw', 'r', 'woset', '', False, False, 0),
     ('spare2_read_lock', 13, 13, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare3_write_lock', 14, 14, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare3_read_lock', 15, 15, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare4_write_lock', 16, 16, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare4_read_lock', 17, 17, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare5_write_lock', 18, 18, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare5_read_lock', 19, 19, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare6_write_lock', 20, 20, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare6_read_lock', 21, 21, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare7_write_lock', 22, 22, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare7_read_lock', 23, 23, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare8_write_lock', 24, 24, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare8_read_lock', 25, 25, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare9_write_lock', 26, 26, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare9_read_lock', 27, 27, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare10_write_lock', 28, 28, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare10_read_lock', 29, 29, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare11_write_lock', 30, 30, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare11_read_lock', 31, 31, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare12_write_lock', 32, 32, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare12_read_lock', 33, 33, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare13_write_lock', 34, 34, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare13_read_lock', 35, 35, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare14_write_lock', 36, 36, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare14_read_lock', 37, 37, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare15_write_lock', 38, 38, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare15_read_lock', 39, 39, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare16_write_lock', 40, 40, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare16_read_lock', 41, 41, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare17_write_lock', 42, 42, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare17_read_lock', 43, 43, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare18_write_lock', 44, 44, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare18_read_lock', 45, 45, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare19_write_lock', 46, 46, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare19_read_lock', 47, 47, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare20_write_lock', 48, 48, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare20_read_lock', 49, 49, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare21_write_lock', 50, 50, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare21_read_lock', 51, 51, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare22_write_lock', 52, 52, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare22_read_lock', 53, 53, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare23_write_lock', 54, 54, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare23_read_lock', 55, 55, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare24_write_lock', 56, 56, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare24_read_lock', 57, 57, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare25_write_lock', 58, 58, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare25_read_lock', 59, 59, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare26_write_lock', 60, 60, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare26_read_lock', 61, 61, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare27_write_lock', 62, 62, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare27_read_lock', 63, 63, 'rw', 'r', 'woset', '', False, False, 0),
+    ('spare_tail_write_lock', 14, 14, 'rw', 'r', 'woset', '', False, False, 0),
+    ('spare_tail_read_lock', 15, 15, 'rw', 'r', 'woset', '', False, False, 0),
 )
 
-class SMC_EFUSE_MAP_LOCKS_reg_t(Structure):
+class SMC_EFUSE_MAP_HARNESS_LOCKS_reg_t(Structure):
     _fields_ = [
-        ('jtag_public_identity_write_lock', c_uint64, 1),
-        ('jtag_public_identity_read_lock', c_uint64, 1),
-        ('i2c_i3c_id_write_lock', c_uint64, 1),
-        ('i2c_i3c_id_read_lock', c_uint64, 1),
-        ('smc_config_write_lock', c_uint64, 1),
-        ('smc_config_read_lock', c_uint64, 1),
-        ('occp_transport_timeout_write_lock', c_uint64, 1),
-        ('occp_transport_timeout_read_lock', c_uint64, 1),
-        ('spare0_write_lock', c_uint64, 1),
-        ('spare0_read_lock', c_uint64, 1),
-        ('spare1_write_lock', c_uint64, 1),
-        ('spare1_read_lock', c_uint64, 1),
-        ('spare2_write_lock', c_uint64, 1),
-        ('spare2_read_lock', c_uint64, 1),
-        ('spare3_write_lock', c_uint64, 1),
-        ('spare3_read_lock', c_uint64, 1),
-        ('spare4_write_lock', c_uint64, 1),
-        ('spare4_read_lock', c_uint64, 1),
-        ('spare5_write_lock', c_uint64, 1),
-        ('spare5_read_lock', c_uint64, 1),
-        ('spare6_write_lock', c_uint64, 1),
-        ('spare6_read_lock', c_uint64, 1),
-        ('spare7_write_lock', c_uint64, 1),
-        ('spare7_read_lock', c_uint64, 1),
-        ('spare8_write_lock', c_uint64, 1),
-        ('spare8_read_lock', c_uint64, 1),
-        ('spare9_write_lock', c_uint64, 1),
-        ('spare9_read_lock', c_uint64, 1),
-        ('spare10_write_lock', c_uint64, 1),
-        ('spare10_read_lock', c_uint64, 1),
-        ('spare11_write_lock', c_uint64, 1),
-        ('spare11_read_lock', c_uint64, 1),
-        ('spare12_write_lock', c_uint64, 1),
-        ('spare12_read_lock', c_uint64, 1),
-        ('spare13_write_lock', c_uint64, 1),
-        ('spare13_read_lock', c_uint64, 1),
-        ('spare14_write_lock', c_uint64, 1),
-        ('spare14_read_lock', c_uint64, 1),
-        ('spare15_write_lock', c_uint64, 1),
-        ('spare15_read_lock', c_uint64, 1),
-        ('spare16_write_lock', c_uint64, 1),
-        ('spare16_read_lock', c_uint64, 1),
-        ('spare17_write_lock', c_uint64, 1),
-        ('spare17_read_lock', c_uint64, 1),
-        ('spare18_write_lock', c_uint64, 1),
-        ('spare18_read_lock', c_uint64, 1),
-        ('spare19_write_lock', c_uint64, 1),
-        ('spare19_read_lock', c_uint64, 1),
-        ('spare20_write_lock', c_uint64, 1),
-        ('spare20_read_lock', c_uint64, 1),
-        ('spare21_write_lock', c_uint64, 1),
-        ('spare21_read_lock', c_uint64, 1),
-        ('spare22_write_lock', c_uint64, 1),
-        ('spare22_read_lock', c_uint64, 1),
-        ('spare23_write_lock', c_uint64, 1),
-        ('spare23_read_lock', c_uint64, 1),
-        ('spare24_write_lock', c_uint64, 1),
-        ('spare24_read_lock', c_uint64, 1),
-        ('spare25_write_lock', c_uint64, 1),
-        ('spare25_read_lock', c_uint64, 1),
-        ('spare26_write_lock', c_uint64, 1),
-        ('spare26_read_lock', c_uint64, 1),
-        ('spare27_write_lock', c_uint64, 1),
-        ('spare27_read_lock', c_uint64, 1),
+        ('jtag_public_identity_write_lock', c_uint16, 1),
+        ('jtag_public_identity_read_lock', c_uint16, 1),
+        ('i2c_i3c_id_write_lock', c_uint16, 1),
+        ('i2c_i3c_id_read_lock', c_uint16, 1),
+        ('smc_config_write_lock', c_uint16, 1),
+        ('smc_config_read_lock', c_uint16, 1),
+        ('occp_transport_timeout_write_lock', c_uint16, 1),
+        ('occp_transport_timeout_read_lock', c_uint16, 1),
+        ('spare0_write_lock', c_uint16, 1),
+        ('spare0_read_lock', c_uint16, 1),
+        ('spare1_write_lock', c_uint16, 1),
+        ('spare1_read_lock', c_uint16, 1),
+        ('spare2_write_lock', c_uint16, 1),
+        ('spare2_read_lock', c_uint16, 1),
+        ('spare_tail_write_lock', c_uint16, 1),
+        ('spare_tail_read_lock', c_uint16, 1),
     ]
 
-SMC_EFUSE_MAP_LOCKS_REG_DEFAULT = 0x0000000000000000
+SMC_EFUSE_MAP_HARNESS_LOCKS_REG_DEFAULT = 0x0000000000000000
 
-class SMC_EFUSE_MAP_LOCKS_reg_u(Union):
+class SMC_EFUSE_MAP_HARNESS_LOCKS_reg_u(Union):
     _fields_ = [
         ('val', c_uint64),
-        ('f', SMC_EFUSE_MAP_LOCKS_reg_t),
+        ('f', SMC_EFUSE_MAP_HARNESS_LOCKS_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SMC_EFUSE_MAP_LOCKS_reg_u, self).__init__(*args, **kwargs)
-        self.val = SMC_EFUSE_MAP_LOCKS_REG_DEFAULT
+        super(SMC_EFUSE_MAP_HARNESS_LOCKS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SMC_EFUSE_MAP_HARNESS_LOCKS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_DEFAULT = 0x0000000000000000
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_FIELD_ACCESS = (
+    ('region0_write_lock', 'rw', 'woset', '', False),
+    ('region0_read_lock', 'rw', 'woset', '', False),
+    ('region1_write_lock', 'rw', 'woset', '', False),
+    ('region1_read_lock', 'rw', 'woset', '', False),
+    ('region2_write_lock', 'rw', 'woset', '', False),
+    ('region2_read_lock', 'rw', 'woset', '', False),
+    ('region3_write_lock', 'rw', 'woset', '', False),
+    ('region3_read_lock', 'rw', 'woset', '', False),
+    ('region4_write_lock', 'rw', 'woset', '', False),
+    ('region4_read_lock', 'rw', 'woset', '', False),
+    ('region5_write_lock', 'rw', 'woset', '', False),
+    ('region5_read_lock', 'rw', 'woset', '', False),
+    ('region6_write_lock', 'rw', 'woset', '', False),
+    ('region6_read_lock', 'rw', 'woset', '', False),
+    ('region7_write_lock', 'rw', 'woset', '', False),
+    ('region7_read_lock', 'rw', 'woset', '', False),
+    ('region8_write_lock', 'rw', 'woset', '', False),
+    ('region8_read_lock', 'rw', 'woset', '', False),
+    ('region9_write_lock', 'rw', 'woset', '', False),
+    ('region9_read_lock', 'rw', 'woset', '', False),
+    ('region10_write_lock', 'rw', 'woset', '', False),
+    ('region10_read_lock', 'rw', 'woset', '', False),
+    ('region11_write_lock', 'rw', 'woset', '', False),
+    ('region11_read_lock', 'rw', 'woset', '', False),
+    ('region12_write_lock', 'rw', 'woset', '', False),
+    ('region12_read_lock', 'rw', 'woset', '', False),
+    ('region13_write_lock', 'rw', 'woset', '', False),
+    ('region13_read_lock', 'rw', 'woset', '', False),
+    ('region14_write_lock', 'rw', 'woset', '', False),
+    ('region14_read_lock', 'rw', 'woset', '', False),
+    ('region15_write_lock', 'rw', 'woset', '', False),
+    ('region15_read_lock', 'rw', 'woset', '', False),
+    ('region16_write_lock', 'rw', 'woset', '', False),
+    ('region16_read_lock', 'rw', 'woset', '', False),
+    ('region17_write_lock', 'rw', 'woset', '', False),
+    ('region17_read_lock', 'rw', 'woset', '', False),
+    ('region18_write_lock', 'rw', 'woset', '', False),
+    ('region18_read_lock', 'rw', 'woset', '', False),
+    ('region19_write_lock', 'rw', 'woset', '', False),
+    ('region19_read_lock', 'rw', 'woset', '', False),
+    ('region20_write_lock', 'rw', 'woset', '', False),
+    ('region20_read_lock', 'rw', 'woset', '', False),
+    ('region21_write_lock', 'rw', 'woset', '', False),
+    ('region21_read_lock', 'rw', 'woset', '', False),
+    ('region22_write_lock', 'rw', 'woset', '', False),
+    ('region22_read_lock', 'rw', 'woset', '', False),
+    ('region23_write_lock', 'rw', 'woset', '', False),
+    ('region23_read_lock', 'rw', 'woset', '', False),
+    ('region24_write_lock', 'rw', 'woset', '', False),
+    ('region24_read_lock', 'rw', 'woset', '', False),
+    ('region25_write_lock', 'rw', 'woset', '', False),
+    ('region25_read_lock', 'rw', 'woset', '', False),
+    ('region26_write_lock', 'rw', 'woset', '', False),
+    ('region26_read_lock', 'rw', 'woset', '', False),
+    ('region27_write_lock', 'rw', 'woset', '', False),
+    ('region27_read_lock', 'rw', 'woset', '', False),
+    ('region28_write_lock', 'rw', 'woset', '', False),
+    ('region28_read_lock', 'rw', 'woset', '', False),
+    ('region29_write_lock', 'rw', 'woset', '', False),
+    ('region29_read_lock', 'rw', 'woset', '', False),
+    ('region30_write_lock', 'rw', 'woset', '', False),
+    ('region30_read_lock', 'rw', 'woset', '', False),
+    ('region31_write_lock', 'rw', 'woset', '', False),
+    ('region31_read_lock', 'rw', 'woset', '', False),
+)
+
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_WIDTH = 64
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_FIELDS = (
+    ('region0_write_lock', 0, 0, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region0_read_lock', 1, 1, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region1_write_lock', 2, 2, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region1_read_lock', 3, 3, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region2_write_lock', 4, 4, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region2_read_lock', 5, 5, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region3_write_lock', 6, 6, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region3_read_lock', 7, 7, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region4_write_lock', 8, 8, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region4_read_lock', 9, 9, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region5_write_lock', 10, 10, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region5_read_lock', 11, 11, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region6_write_lock', 12, 12, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region6_read_lock', 13, 13, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region7_write_lock', 14, 14, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region7_read_lock', 15, 15, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region8_write_lock', 16, 16, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region8_read_lock', 17, 17, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region9_write_lock', 18, 18, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region9_read_lock', 19, 19, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region10_write_lock', 20, 20, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region10_read_lock', 21, 21, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region11_write_lock', 22, 22, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region11_read_lock', 23, 23, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region12_write_lock', 24, 24, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region12_read_lock', 25, 25, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region13_write_lock', 26, 26, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region13_read_lock', 27, 27, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region14_write_lock', 28, 28, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region14_read_lock', 29, 29, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region15_write_lock', 30, 30, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region15_read_lock', 31, 31, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region16_write_lock', 32, 32, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region16_read_lock', 33, 33, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region17_write_lock', 34, 34, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region17_read_lock', 35, 35, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region18_write_lock', 36, 36, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region18_read_lock', 37, 37, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region19_write_lock', 38, 38, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region19_read_lock', 39, 39, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region20_write_lock', 40, 40, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region20_read_lock', 41, 41, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region21_write_lock', 42, 42, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region21_read_lock', 43, 43, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region22_write_lock', 44, 44, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region22_read_lock', 45, 45, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region23_write_lock', 46, 46, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region23_read_lock', 47, 47, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region24_write_lock', 48, 48, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region24_read_lock', 49, 49, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region25_write_lock', 50, 50, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region25_read_lock', 51, 51, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region26_write_lock', 52, 52, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region26_read_lock', 53, 53, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region27_write_lock', 54, 54, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region27_read_lock', 55, 55, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region28_write_lock', 56, 56, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region28_read_lock', 57, 57, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region29_write_lock', 58, 58, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region29_read_lock', 59, 59, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region30_write_lock', 60, 60, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region30_read_lock', 61, 61, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region31_write_lock', 62, 62, 'rw', 'r', 'woset', '', False, False, 0),
+    ('region31_read_lock', 63, 63, 'rw', 'r', 'woset', '', False, False, 0),
+)
+
+class SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_reg_t(Structure):
+    _fields_ = [
+        ('region0_write_lock', c_uint64, 1),
+        ('region0_read_lock', c_uint64, 1),
+        ('region1_write_lock', c_uint64, 1),
+        ('region1_read_lock', c_uint64, 1),
+        ('region2_write_lock', c_uint64, 1),
+        ('region2_read_lock', c_uint64, 1),
+        ('region3_write_lock', c_uint64, 1),
+        ('region3_read_lock', c_uint64, 1),
+        ('region4_write_lock', c_uint64, 1),
+        ('region4_read_lock', c_uint64, 1),
+        ('region5_write_lock', c_uint64, 1),
+        ('region5_read_lock', c_uint64, 1),
+        ('region6_write_lock', c_uint64, 1),
+        ('region6_read_lock', c_uint64, 1),
+        ('region7_write_lock', c_uint64, 1),
+        ('region7_read_lock', c_uint64, 1),
+        ('region8_write_lock', c_uint64, 1),
+        ('region8_read_lock', c_uint64, 1),
+        ('region9_write_lock', c_uint64, 1),
+        ('region9_read_lock', c_uint64, 1),
+        ('region10_write_lock', c_uint64, 1),
+        ('region10_read_lock', c_uint64, 1),
+        ('region11_write_lock', c_uint64, 1),
+        ('region11_read_lock', c_uint64, 1),
+        ('region12_write_lock', c_uint64, 1),
+        ('region12_read_lock', c_uint64, 1),
+        ('region13_write_lock', c_uint64, 1),
+        ('region13_read_lock', c_uint64, 1),
+        ('region14_write_lock', c_uint64, 1),
+        ('region14_read_lock', c_uint64, 1),
+        ('region15_write_lock', c_uint64, 1),
+        ('region15_read_lock', c_uint64, 1),
+        ('region16_write_lock', c_uint64, 1),
+        ('region16_read_lock', c_uint64, 1),
+        ('region17_write_lock', c_uint64, 1),
+        ('region17_read_lock', c_uint64, 1),
+        ('region18_write_lock', c_uint64, 1),
+        ('region18_read_lock', c_uint64, 1),
+        ('region19_write_lock', c_uint64, 1),
+        ('region19_read_lock', c_uint64, 1),
+        ('region20_write_lock', c_uint64, 1),
+        ('region20_read_lock', c_uint64, 1),
+        ('region21_write_lock', c_uint64, 1),
+        ('region21_read_lock', c_uint64, 1),
+        ('region22_write_lock', c_uint64, 1),
+        ('region22_read_lock', c_uint64, 1),
+        ('region23_write_lock', c_uint64, 1),
+        ('region23_read_lock', c_uint64, 1),
+        ('region24_write_lock', c_uint64, 1),
+        ('region24_read_lock', c_uint64, 1),
+        ('region25_write_lock', c_uint64, 1),
+        ('region25_read_lock', c_uint64, 1),
+        ('region26_write_lock', c_uint64, 1),
+        ('region26_read_lock', c_uint64, 1),
+        ('region27_write_lock', c_uint64, 1),
+        ('region27_read_lock', c_uint64, 1),
+        ('region28_write_lock', c_uint64, 1),
+        ('region28_read_lock', c_uint64, 1),
+        ('region29_write_lock', c_uint64, 1),
+        ('region29_read_lock', c_uint64, 1),
+        ('region30_write_lock', c_uint64, 1),
+        ('region30_read_lock', c_uint64, 1),
+        ('region31_write_lock', c_uint64, 1),
+        ('region31_read_lock', c_uint64, 1),
+    ]
+
+SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_DEFAULT = 0x0000000000000000
+
+class SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -15973,6 +16000,43 @@ SMC_EFUSE_MAP_SPARE_256_BITS_REG_FIELDS = (
     ('rsvd', 0, 255, 'rw', 'r', '', '', False, False, 0),
 )
 
+SMC_EFUSE_MAP_SPARE_64_BITS_REG_DEFAULT = 0x0000000000000000
+SMC_EFUSE_MAP_SPARE_64_BITS_REG_FIELD_ACCESS = (
+    ('rsvd', 'rw', '', '', False),
+)
+
+SMC_EFUSE_MAP_SPARE_64_BITS_REG_WIDTH = 64
+SMC_EFUSE_MAP_SPARE_64_BITS_REG_FIELDS = (
+    ('rsvd', 0, 63, 'rw', 'r', '', '', False, False, 0),
+)
+
+class SMC_EFUSE_MAP_SPARE_64_BITS_reg_t(Structure):
+    _fields_ = [
+        ('rsvd', c_uint64, 64),
+    ]
+
+SMC_EFUSE_MAP_SPARE_64_BITS_REG_DEFAULT = 0x0000000000000000
+
+class SMC_EFUSE_MAP_SPARE_64_BITS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SMC_EFUSE_MAP_SPARE_64_BITS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SMC_EFUSE_MAP_SPARE_64_BITS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SMC_EFUSE_MAP_SPARE_64_BITS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_FIELD_ACCESS = (
     ('efuse_sense_done', 'r', '', '', False),
@@ -16032,7 +16096,6 @@ class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u(Union):
 
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT = 0x00000000
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELD_ACCESS = (
-    ('efuse_addr', 'rw', '', '', False),
     ('efuse_data', 'rw', '', '', False),
     ('efuse_program_go', 'rw', '', '', True),
     ('efuse_program_read_back', 'rw', '', '', False),
@@ -16044,7 +16107,6 @@ EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELD_ACCESS = (
 
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_WIDTH = 32
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELDS = (
-    ('efuse_addr', 0, 15, 'rw', 'r', '', '', False, False, 0),
     ('efuse_data', 16, 16, 'rw', 'r', '', '', False, False, 0),
     ('efuse_program_go', 17, 17, 'rw', 'r', '', '', True, True, 0),
     ('efuse_program_read_back', 18, 18, 'rw', 'r', '', '', False, False, 0),
@@ -16056,11 +16118,11 @@ EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELDS = (
 
 class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_t(Structure):
     _fields_ = [
-        ('efuse_addr', c_uint32, 16),
+        ('rsvd_0', c_uint32, 16),
         ('efuse_data', c_uint32, 1),
         ('efuse_program_go', c_uint32, 1),
         ('efuse_program_read_back', c_uint32, 1),
-        ('rsvd_0', c_uint32, 5),
+        ('rsvd_1', c_uint32, 5),
         ('program_busy', c_uint32, 1),
         ('program_done', c_uint32, 1),
         ('program_status', c_uint32, 1),
@@ -16091,7 +16153,6 @@ class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_u(Union):
 
 EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT = 0x00000000
 EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELD_ACCESS = (
-    ('efuse_addr', 'rw', '', '', False),
     ('efuse_read_go', 'rw', '', '', True),
     ('read_busy', 'r', '', '', False),
     ('read_done', 'r', '', '', False),
@@ -16101,7 +16162,6 @@ EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELD_ACCESS = (
 
 EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_WIDTH = 32
 EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELDS = (
-    ('efuse_addr', 0, 15, 'rw', 'r', '', '', False, False, 0),
     ('efuse_read_go', 16, 16, 'rw', 'r', '', '', True, True, 0),
     ('read_busy', 24, 24, 'r', 'w', '', '', False, True, 0),
     ('read_done', 25, 25, 'r', 'w', '', '', False, True, 0),
@@ -16111,13 +16171,13 @@ EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELDS = (
 
 class EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_t(Structure):
     _fields_ = [
-        ('efuse_addr', c_uint32, 16),
+        ('rsvd_0', c_uint32, 16),
         ('efuse_read_go', c_uint32, 1),
-        ('rsvd_0', c_uint32, 7),
+        ('rsvd_1', c_uint32, 7),
         ('read_busy', c_uint32, 1),
         ('read_done', c_uint32, 1),
         ('read_status', c_uint32, 1),
-        ('rsvd_1', c_uint32, 1),
+        ('rsvd_2', c_uint32, 1),
         ('read_enable', c_uint32, 1),
     ]
 
@@ -16286,6 +16346,80 @@ class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u, self).__init__(*args, **kwargs)
         self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_FIELD_ACCESS = (
+    ('efuse_addr', 'rw', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_FIELDS = (
+    ('efuse_addr', 0, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_reg_t(Structure):
+    _fields_ = [
+        ('efuse_addr', c_uint32, 32),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_FIELD_ACCESS = (
+    ('efuse_addr', 'rw', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_FIELDS = (
+    ('efuse_addr', 0, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_reg_t(Structure):
+    _fields_ = [
+        ('efuse_addr', c_uint32, 32),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -33394,6 +33528,43 @@ class EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
         self.val = EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_DEFAULT = 0x00000000
+EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_FIELD_ACCESS = (
+    ('data', 'rw', '', '', False),
+)
+
+EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_WIDTH = 32
+EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_FIELDS = (
+    ('data', 0, 31, 'rw', 'rw', '', '', False, True, None),
+)
+
+class EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_DEFAULT = 0x00000000
+
+class EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

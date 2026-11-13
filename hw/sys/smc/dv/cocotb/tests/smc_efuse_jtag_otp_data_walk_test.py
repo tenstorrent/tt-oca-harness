@@ -20,7 +20,10 @@ from cocotb.triggers import ClockCycles
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
-from seq_lib.smc_efuse_jtag_otp_data_walk_test_seq import smc_efuse_jtag_otp_data_walk_test_seq
+from seq_lib.smc_efuse_jtag_otp_data_walk_test_seq import (
+    DIRECTED_SEP_READS,
+    smc_efuse_jtag_otp_data_walk_test_seq,
+)
 from smc_base_test import smc_base_test
 
 
@@ -71,10 +74,8 @@ class smc_efuse_jtag_otp_data_walk_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
-            # Directed SEP_IN reads without the polls: 1 status, 104 walk readbacks,
-            # 4 partial-strobe readbacks, 1 program-interface read, 4 dout reads and
-            # 4 restore readbacks.
-            min_csr_accesses=118,
+            # Directed SEP_IN reads without the polls, counted by the sequence module.
+            min_csr_accesses=DIRECTED_SEP_READS,
             csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
             details=(

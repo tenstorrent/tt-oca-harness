@@ -100,8 +100,8 @@ def efuse_map_read_locked(lock_field_symbol: str) -> bool:
     an observed read.
     """
     mask = _field_mask(_SMC_EFUSE_MAP_H, lock_field_symbol)
-    locks_lo = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
-    locks_hi = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4)
+    locks_lo = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"))
+    locks_hi = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR") + 4)
     locks = (locks_hi << 32) | locks_lo
     return bool(locks & mask)
 

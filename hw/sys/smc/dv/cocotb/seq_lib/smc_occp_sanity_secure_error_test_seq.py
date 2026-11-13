@@ -26,7 +26,8 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
-EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+EFUSE_PROGRAM_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR")
+EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 # Word 0 of the preload asset the bank model $readmemh's at time 0, read from
@@ -62,10 +63,11 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
 
         # Negative: first PROGRAM fails under +smc_efuse_prog_fail_count=1.
         prog_before = int(dut.tb_efuse_programmed_word0.value)
+        await self.csr_write("SECURE_PROGRAM_FAIL_ADDR", EFUSE_PROGRAM_ADDR, 8)
         await self.csr_write(
             "SECURE_PROGRAM_FAIL",
             EFUSE_PROGRAM_CTRL,
-            8 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
         for fail_polls in range(10_000):
             await RisingEdge(clk)
@@ -103,10 +105,11 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         )
 
         # Positive recovery burn (second attempt succeeds).
+        await self.csr_write("SECURE_PROGRAM_OK_ADDR", EFUSE_PROGRAM_ADDR, 0)
         await self.csr_write(
             "SECURE_PROGRAM_OK",
             EFUSE_PROGRAM_CTRL,
-            0 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
         for ok_polls in range(10_000):
             await RisingEdge(clk)

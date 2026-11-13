@@ -69,6 +69,7 @@ _CONTROL_FIELD = "SPARE0"
 _CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
 
 _READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
+_READ_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_ADDR")
 _READ_TIMEOUT = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_REQ_TIMEOUT")
 _GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_read_go")
 _ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable")
@@ -94,6 +95,7 @@ def _place(block, reg: str, field: str, value: int) -> int:
 # sep_efuse_otp_program_seq: the injection aborts the operation in flight, and
 # that sequence raises on the resulting PROGRAM_ERR rather than returning.
 _PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_PROGRAM_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_ADDR")
 _PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
 _PG_ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 _PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
@@ -221,6 +223,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             )
             | _TIMEOUT_EN,
         )
+        await self._csr(SepAxiOp.WRITE, _READ_ADDR, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
         done, busy, err, _ = await self._await_read_done()
         assert (done, busy, err) == (1, 0, 1), (
@@ -271,9 +274,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "guard is not blocking and the refusal below would not be under test"
         )
         addr = _place(
-            EFUSE_INTERFACE_CTRL, "EFUSE_READ_CTRL", "efuse_addr", self._control_word * 32
+            EFUSE_INTERFACE_CTRL, "EFUSE_READ_ADDR", "efuse_addr", self._control_word * 32
         )
-        await self._csr(SepAxiOp.WRITE, _READ_CTRL, addr | _GO | _ENABLE)
+        await self._csr(SepAxiOp.WRITE, _READ_ADDR, addr)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
         done, busy, err, data = await self._await_read_done()
         assert (done, busy, err) == (1, 0, 1), (
             f"CHK-READ-ERR-BLOCKED FAIL: a guard-blocked read reported done={done} "
@@ -326,11 +330,13 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def _kick(self, which: str, bit_addr: int) -> None:
         """Start one frontdoor operation and return without retiring it."""
         if which == "read":
-            addr = _place(EFUSE_INTERFACE_CTRL, "EFUSE_READ_CTRL", "efuse_addr", bit_addr)
-            await self._csr(SepAxiOp.WRITE, _READ_CTRL, addr | _GO | _ENABLE)
+            addr = _place(EFUSE_INTERFACE_CTRL, "EFUSE_READ_ADDR", "efuse_addr", bit_addr)
+            await self._csr(SepAxiOp.WRITE, _READ_ADDR, addr)
+            await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
         else:
-            addr = _place(EFUSE_INTERFACE_CTRL, "EFUSE_PROGRAM_CTRL", "efuse_addr", bit_addr)
-            await self._csr(SepAxiOp.WRITE, _PROGRAM_CTRL, addr | _PG_GO | _PG_ENABLE | _PG_DATA)
+            addr = _place(EFUSE_INTERFACE_CTRL, "EFUSE_PROGRAM_ADDR", "efuse_addr", bit_addr)
+            await self._csr(SepAxiOp.WRITE, _PROGRAM_ADDR, addr)
+            await self._csr(SepAxiOp.WRITE, _PROGRAM_CTRL, _PG_GO | _PG_ENABLE | _PG_DATA)
 
     async def _quiesce(self, which: str) -> None:
         """Drop the enable and clear the sticky request error.

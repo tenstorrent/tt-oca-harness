@@ -54,7 +54,7 @@ from .smc_addr_map import smc_addr, smc_efuse_map_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 #: The LOCKS word the default eFuse image senses into the shadow register.
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
 
@@ -72,24 +72,24 @@ _FIELDS: tuple[tuple[str, int, int, int, int, int], ...] = (
     (
         "SPARE0",
         _spare(0),
-        smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_bm"),
-        smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE0_READ_LOCK_bm"),
+        smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE0_WRITE_LOCK_bm"),
+        smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE0_READ_LOCK_bm"),
         0xA5A5_5A5A_C0DE_0000,
         0x5A5A_A5A5_3F21_FFFF,
     ),
     (
         "SPARE1",
         _spare(1),
-        smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE1_WRITE_LOCK_bm"),
-        smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE1_READ_LOCK_bm"),
+        smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE1_WRITE_LOCK_bm"),
+        smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE1_READ_LOCK_bm"),
         0x1234_5678_C0DE_0001,
         0xEDCB_A987_3F21_FFFE,
     ),
     (
         "OCCP_TRANSPORT_TIMEOUT",
         smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
-        smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_bm"),
-        smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm"),
+        smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_bm"),
+        smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm"),
         0x0F0F_F0F0_C0DE_0002,
         0xF0F0_0F0F_3F21_FFFD,
     ),

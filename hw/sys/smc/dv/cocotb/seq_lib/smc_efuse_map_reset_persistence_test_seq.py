@@ -5,9 +5,9 @@
 The warm reset is driven through the JTAG reset-control override.
 Sources: smu-smc.adoc (eFuse Interface), clk_rst.adoc (rst_warm_n), smc-programming.adoc (LOCKS).
 
-SPARE[3] (map words 56-63) holds P1 under a write lock, SPARE[4] word 0 (map word 64) holds P2
-under a read lock. SPARE[5] word 0 is sensed as a non-zero marker and overwritten before the
-resets. A warm reset keeps both and does not re-sense; a cold reset clears the locks and the
+SPARE[1] (map words 42-49) holds P1 under a write lock, SPARE[2] word 0 (map word 50) holds P2
+under a read lock. SPARE_TAIL[0] word 0 (map word 58) is sensed as a non-zero marker and
+overwritten before the resets. A warm reset keeps both and does not re-sense; a cold reset clears the locks and the
 written patterns and re-senses the marker.
 """
 
@@ -40,7 +40,8 @@ _POST_EDGES = 2000
 _MID_GAP_EDGES = 2
 _DRIVER_BOUND_NS = 50_000
 _P1, _P2, _P3, _P4 = 0xA5C3_1E71, 0x3C69_D2B4, 0x5AE1_7C93, 0xC7D2_0B58
-_LOCKS_SET = 0x0002_4000
+#: SPARE[1] write lock (bit 10, slot 5) and SPARE[2] read lock (bit 13, slot 6).
+_LOCKS_SET = 0x0000_2400
 RESENSE_MARKER = 0x5A5A_1234
 _P5 = 0xE2B4_6D09
 _CHK_STEP = {
@@ -54,9 +55,12 @@ _CHK_STEP = {
 
 
 def marker_spare_value() -> int:
-    """SPARE field value that places ``RESENSE_MARKER`` in the first word of SPARE[5]."""
+    """SPARE block value that places ``RESENSE_MARKER`` in the first word of SPARE_TAIL[0].
+
+    The image generator lays SPARE[0..2] and SPARE_TAIL[0..2] out as one block.
+    """
     reg = {r.name: r for r in REGIONS}
-    return RESENSE_MARKER << (32 * (reg["SPARE5"].first_word - reg["SPARE0"].first_word))
+    return RESENSE_MARKER << (32 * (reg["SPARE_TAIL0"].first_word - reg["SPARE0"].first_word))
 
 
 def _warm_pack(*, ovrd: int, val: int) -> int:
@@ -137,7 +141,7 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def _read_locks(self, label: str) -> tuple[int, int]:
         addr = word_addr(LOCKS_WORDS[0])
         lo = await self._rd(f"{label}_LO", addr, self.locks_model & _WORD_MASK)
-        hi = await self._rd(f"{label}_HI", addr + 4, self.locks_model >> 32)
+        hi = await self._rd(f"{label}_HI", addr + 4, (self.locks_model >> 32) & _WORD_MASK)
         return lo & _WORD_MASK, hi & _WORD_MASK
 
     async def _write_word(self, label: str, word: int, data: int) -> int:
@@ -457,24 +461,25 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{jtag_smc_reset_ctrl_width()}"
         )
         reg = {r.name: r for r in REGIONS}
-        spare3 = range(reg["SPARE3"].first_word, reg["SPARE3"].end_word)
-        spare4_w0 = reg["SPARE4"].first_word
-        spare5_w0 = reg["SPARE5"].first_word
-        assert (spare3.start, len(spare3), spare4_w0) == (56, 8, 64), (
-            f"SPARE[3] words {spare3}, SPARE[4] first word {spare4_w0}"
+        spare1 = range(reg["SPARE1"].first_word, reg["SPARE1"].end_word)
+        spare2_w0 = reg["SPARE2"].first_word
+        tail_w0 = reg["SPARE_TAIL0"].first_word
+        assert (spare1.start, len(spare1), spare2_w0, tail_w0) == (42, 8, 50, 58), (
+            f"SPARE[1] words {spare1}, SPARE[2] first word {spare2_w0}, SPARE_TAIL[0] first "
+            f"word {tail_w0}"
         )
-        wl3, rl4 = reg["SPARE3"].write_lock, reg["SPARE4"].read_lock
-        assert (wl3, rl4) == (1 << 14, 1 << 17), (
-            f"lock masks 0x{wl3:x}/0x{rl4:x} are not LOCKS bits 14/17"
+        wl1, rl2 = reg["SPARE1"].write_lock, reg["SPARE2"].read_lock
+        assert (wl1, rl2) == (1 << 10, 1 << 13), (
+            f"lock masks 0x{wl1:x}/0x{rl2:x} are not HARNESS_LOCKS bits 10/13"
         )
-        assert wl3 | rl4 == _LOCKS_SET
+        assert wl1 | rl2 == _LOCKS_SET
         pats = (_P1, _P2, _P3, _P4)
         assert all(p not in (0, _WORD_MASK) for p in pats)
         assert len({p for p in pats} | {~p & _WORD_MASK for p in pats}) == 8, "patterns collide"
-        assert image.words[spare5_w0] == RESENSE_MARKER, (
-            f"SPARE[5] word 0 of the image is 0x{image.words[spare5_w0]:08x}"
+        assert image.words[tail_w0] == RESENSE_MARKER, (
+            f"SPARE_TAIL[0] word 0 of the image is 0x{image.words[tail_w0]:08x}"
         )
-        assert all(w == 0 for n, w in enumerate(image.words) if n != spare5_w0), (
+        assert all(w == 0 for n, w in enumerate(image.words) if n != tail_w0), (
             "the image has a non-zero word besides the marker"
         )
         self.locks_model = image.locks
@@ -486,17 +491,17 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._done("S1")
 
         # S2: setup
-        for word in spare3:
+        for word in spare1:
             await self._write_word(f"S2_P1_{word}", word, _P1)
-        await self._write_word("S2_P2", spare4_w0, _P2)
-        await self._rd("S2_MARKER_RB", word_addr(spare5_w0), RESENSE_MARKER)
-        await self._write_word("S2_P5", spare5_w0, _P5)
-        await self._rd("S2_P5_RB", word_addr(spare5_w0), _P5)
-        await self._expect_words("S2_RB3", spare3, _P1)
-        await self._expect_words("S2_RB4", range(spare4_w0, spare4_w0 + 1), _P2)
+        await self._write_word("S2_P2", spare2_w0, _P2)
+        await self._rd("S2_MARKER_RB", word_addr(tail_w0), RESENSE_MARKER)
+        await self._write_word("S2_P5", tail_w0, _P5)
+        await self._rd("S2_P5_RB", word_addr(tail_w0), _P5)
+        await self._expect_words("S2_RB3", spare1, _P1)
+        await self._expect_words("S2_RB4", range(spare2_w0, spare2_w0 + 1), _P2)
         self._calls += 1
-        await self.csr_write("S2_LOCKS", word_addr(LOCKS_WORDS[0]), wl3 | rl4, length=8)
-        self.locks_model |= wl3 | rl4
+        await self.csr_write("S2_LOCKS", word_addr(LOCKS_WORDS[0]), wl1 | rl2, length=8)
+        self.locks_model |= wl1 | rl2
         assert self.locks_model == _LOCKS_SET
         lo, hi = await self._read_locks("S2_LOCKS_RB")
         assert (lo, hi) == (_LOCKS_SET, 0)
@@ -512,30 +517,30 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert pre_samples >= _PRE_EDGES, f"{pre_samples} samples before the warm reset"
         low, rise = await self._warm_reset("warm1")
         self._release_sample = self._samples
-        await self._expect_words("S3_WARM_RB3", spare3, _P1)
+        await self._expect_words("S3_WARM_RB3", spare1, _P1)
         self._done("S3")
         self._chk(
             "CHK-EMAP-RST-WARM-VALUES",
             "warm reset through the JTAG reset-control override: tb_rst_warm_smc_clk_n fell "
-            "%d edges after the override and rose %d edges after release; all %d SPARE[3] "
+            "%d edges after the override and rose %d edges after release; all %d SPARE[1] "
             "words read P1=0x%08x",
             low,
             rise,
-            len(spare3),
+            len(spare1),
             _P1,
         )
 
         # S4: locks and denies after the warm reset
-        resp = await self._write_word("S4_P3", spare3[0], _P3)
-        await self._rd("S4_P3_RB", word_addr(spare3[0]), _P1)
-        hidden = await self._expect_hidden("S4_HIDDEN4", spare4_w0, _P2)
+        resp = await self._write_word("S4_P3", spare1[0], _P3)
+        await self._rd("S4_P3_RB", word_addr(spare1[0]), _P1)
+        hidden = await self._expect_hidden("S4_HIDDEN4", spare2_w0, _P2)
         lo, hi = await self._read_locks("S4_LOCKS")
         assert (lo, hi) == (_LOCKS_SET, 0)
         self._done("S4")
         self._chk(
             "CHK-EMAP-RST-WARM-LOCKS",
-            "after the warm reset LOCKS lo=0x%08x hi=0x%08x; the write of P3=0x%08x to SPARE[3] "
-            "word 0 (bresp %s) left P1=0x%08x; SPARE[4] word 0 read 0x%08x, neither P2=0x%08x "
+            "after the warm reset LOCKS lo=0x%08x hi=0x%08x; the write of P3=0x%08x to SPARE[1] "
+            "word 0 (bresp %s) left P1=0x%08x; SPARE[2] word 0 read 0x%08x, neither P2=0x%08x "
             "nor its complement",
             lo,
             hi,
@@ -561,13 +566,13 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"tb_fuse_sense_done dropped {self._drops} time(s) and read 0 on "
             f"{self._low_samples} of {self._samples} samples across the warm reset"
         )
-        await self._expect_words("S5_NORELOAD3", spare3[:1], _P1)
+        await self._expect_words("S5_NORELOAD3", spare1[:1], _P1)
         self._done("S5")
         self._chk(
             "CHK-EMAP-RST-WARM-NORESENSE",
             "tb_fuse_sense_done read 1 on all %d clk_smc_i samples (%d before the warm reset "
             "assertion, %d after the release), %d 1-to-0 transitions, first %d ps, last %d ps; "
-            "SPARE[3] word 0 still reads P1=0x%08x",
+            "SPARE[1] word 0 still reads P1=0x%08x",
             self._samples,
             pre_samples,
             _POST_EDGES,
@@ -615,21 +620,21 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.locks_model = image.locks
         lo, hi = await self._read_locks("S7_LOCKS")
         assert (lo, hi) == (0, 0)
-        await self._expect_words("S7_ZERO3", spare3, 0)
-        await self._rd("S7_RESENSE", word_addr(spare5_w0), RESENSE_MARKER)
-        await self._write_word("S7_P3", spare3[0], _P3)
-        await self._rd("S7_P3_RB", word_addr(spare3[0]), _P3)
-        await self._write_word("S7_P4", spare4_w0, _P4)
-        await self._rd("S7_P4_RB", word_addr(spare4_w0), _P4)
+        await self._expect_words("S7_ZERO3", spare1, 0)
+        await self._rd("S7_RESENSE", word_addr(tail_w0), RESENSE_MARKER)
+        await self._write_word("S7_P3", spare1[0], _P3)
+        await self._rd("S7_P3_RB", word_addr(spare1[0]), _P3)
+        await self._write_word("S7_P4", spare2_w0, _P4)
+        await self._rd("S7_P4_RB", word_addr(spare2_w0), _P4)
         self._done("S7")
         self._chk(
             "CHK-EMAP-RST-COLD-LOCKS",
-            "after the cold reset and sense done LOCKS lo=0x%08x hi=0x%08x, all %d SPARE[3] "
-            "words read 0, SPARE[5] word 0 read the sensed marker 0x%08x; P3=0x%08x landed in "
-            "SPARE[3] word 0 and P4=0x%08x in SPARE[4] word 0",
+            "after the cold reset and sense done LOCKS lo=0x%08x hi=0x%08x, all %d SPARE[1] "
+            "words read 0, SPARE_TAIL[0] word 0 read the sensed marker 0x%08x; P3=0x%08x landed "
+            "in SPARE[1] word 0 and P4=0x%08x in SPARE[2] word 0",
             lo,
             hi,
-            len(spare3),
+            len(spare1),
             RESENSE_MARKER,
             _P3,
             _P4,
@@ -637,10 +642,10 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         # S8: LOCKS reads outstanding while the cold reset reaches the primary domain
         self._calls += 1
-        await self.csr_write("S8_LOCKS", word_addr(LOCKS_WORDS[0]), wl3, length=8)
-        self.locks_model |= wl3
+        await self.csr_write("S8_LOCKS", word_addr(LOCKS_WORDS[0]), wl1, length=8)
+        self.locks_model |= wl1
         lo, hi = await self._read_locks("S8_LOCKS_SET")
-        assert (lo, hi) == (wl3, 0)
+        assert (lo, hi) == (wl1, 0)
         await self._send(SmcResetOp.COLD_RST_LO)
 
         async def cold_action(on_fall) -> None:
@@ -674,11 +679,11 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._done("S8")
         self._chk(
             "CHK-EMAP-RST-COLD-MID",
-            "SPARE[3] write lock set before the reset (LOCKS 0x%08x); COLD_RST_LO then LOCKS "
+            "SPARE[1] write lock set before the reset (LOCKS 0x%08x); COLD_RST_LO then LOCKS "
             "reads re-issued (%d issued): ar@%d fall@%d outstanding=%s resolution=%s flush@%d "
             "(%d edges after the fall) orphan_r=%d live_read@%d locks=0x%x/0x%x; no driver "
             "timeout",
-            wl3,
+            wl1,
             mid["reads"],
             mid["ar"],
             mid["fall"],

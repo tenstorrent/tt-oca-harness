@@ -228,7 +228,7 @@ bank-control and SHIM paths, and the per-field lock contract.
 |Points |Records
 |`c_fuse_sense_done_asserted`, `c_fuse_reset_delayed_16_stages`, `c_repair_triggered_by_fuse_sense_done`, `c_shadow_regs_reflect_sensed_values`, `c_lc_state_test_dev_tie` |Sense completion and what follows it
 |`c_bank_ctrl_write`, `c_bank_ctrl_read`, `c_bank_ctrl_response_returned`, `c_shim_command_issued`, `c_shim_response_consumed`, `c_jtag_otp_write`, `c_jtag_otp_read` |Bank-control AXI-Lite (write address and data may arrive on separate cycles), SHIM command and response, and the JTAG OTP window
-|`c_locks_cleared_access_permitted`, `c_locks_set_access_refused`, `c_write_locked_field_unchanged`, `c_write_unlocked_field_updated`, `c_read_locked_field_masked`, `c_read_unlocked_field_returned` |The lock pair of the field an access targets (`smc_efuse_map.rdl` `LOCKS`: write lock at bit 2n and read lock at bit 2n+1 of slot n). An access to an open field completes; a program to an open field reads back set, and one to a write-locked field reads back clear; a read of a read-locked field returns zero
+|`c_locks_cleared_access_permitted`, `c_locks_set_access_refused`, `c_write_locked_field_unchanged`, `c_write_unlocked_field_updated`, `c_read_locked_field_masked`, `c_read_unlocked_field_returned` |The lock pair of the field an access targets (`smc_efuse_map.rdl` `HARNESS_LOCKS`: write lock at bit 2n and read lock at bit 2n+1 of slot n). An access to an open field completes; a program to an open field reads back set, and one to a write-locked field reads back clear; a read of a read-locked field returns zero
 |===
 
 ==== `smc_dma_fcov`
@@ -478,8 +478,8 @@ eFuse interface takes one encoding idle and the other inside its request window 
 101); the row counts them (its bins exist and read 0 on every run) and the proposed plan
 change, a draw of the injection phase in entry 101 or a recount of the row to its 12
 reached cells, is not applied
-|`smc_efuse_ctrl_fcov::smc_efuse_lock_cg` |`cp_refusal` SPARE[27] write kept, 1 cell |Not
-reached by construction: the image the owner renders presets the SPARE[27] write lock, so
+|`smc_efuse_ctrl_fcov::smc_efuse_lock_cg` |`cp_refusal` SPARE_TAIL write kept, 1 cell |Not
+reached by construction: the image the owner renders presets the SPARE_TAIL write lock, so
 no write to that field is kept (entry 458); the row counts it (its bin reads 0 on every
 run) and the proposed plan change, naming the cell in the Ignore-bins line without a bin
 or an image with every lock clear, is not applied
@@ -1085,13 +1085,13 @@ counted in the row; the plan change is proposed in the left-out table and not ap
 
 *Tool*: Verilator and VCS. *Class*: live (sampler `smc_efuse_ctrl_fcov::smc_efuse_lock_cg`, handle
 `u_cg_efuse_lock`, sampled while the owner `smc_efuse_map_locks_register_test`, an existing Phase 2
-entry, holds `tb_fcov_gate` high from before its S2 sensed-`LOCKS` read to the end of its S6 sweep,
+entry, holds `tb_fcov_gate` high from before its S2 sensed-`HARNESS_LOCKS` read to the end of its S6 sweep,
 with the gate low over its S5R cold reset and over S7 and S8; a slot-kind cell at a SEP_IN write to
-`LOCKS`, the 64-bit word or a 32-bit half, that sets the slot's bit, once `tb_efuse_locks` carries
-it, so the S3 to S5 writes of bits 0, 4, 32 and 33 count their cells as the S6 sweep then counts
+`HARNESS_LOCKS`, the 64-bit word or a 32-bit half, that sets the slot's bit, once `tb_efuse_locks` carries
+it, so the S3 to S5 writes of bits 0, 2, 4 and 11 count their cells as the S6 sweep then counts
 every bit, and the bit the image presets counts at the no-op write that leaves it set; a refusal
 cell at the owner's 4-byte read-back of a field word, against the shadow output; its seeded walk
-reaches every slot-kind cell and 127 of the 128 refusal cells, the kept write of SPARE[27] being
+reaches every slot-kind cell and 31 of the 32 refusal cells, the kept write of SPARE_TAIL being
 one the image's preset write lock never lets the walk produce: a cell not reached by construction,
 counted in the row, the plan change proposed and not applied, the left-out table). Owner's draw:
 "the seed draws
@@ -1101,17 +1101,17 @@ write lock and later its read lock.
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_slot_kind` |slot (32: four named fields, SPARE[0] to SPARE[27]) x lock kind (write lock at bit 2n, read lock at bit 2n+1: 2); 64 cells (`smc_efuse_map.rdl`, `LOCKS`) |`sep_axi_in_req_i` writes to `LOCKS` (`s_axi_awaddr`, `s_axi_awsize`; `s_axi_wdata`, `s_axi_wstrb` at the W-last handshake; OKAY on `s_axi_bresp` at the B handshake), the bits the write sets decoded to slot and kind by the generated `LOCKS` field positions, each counted once `tb_efuse_locks` (`shadow_regs_o`) carries the bit |`smc_efuse_map_locks_register_test` |live
-|`cp_refusal` |lock kind and state with its one stated outcome (write lock not yet set: the write is kept; write lock set: the write is refused and the field keeps its value; read lock not yet set: the read returns the field; read lock set: the read returns neither the value nor its complement: 4), crossed with slot (32); 128 cells; the response code is not a bin (`smc_efuse_map.rdl`, `LOCKS`: when write locked the field is not programmable, when read locked the shadow register is not readable; "neither the value nor its complement" is the owner's compare, entry 458 step 8) |the 4-byte SEP_IN writes to the field words (`s_axi_awaddr`, `s_axi_wdata`, `s_axi_wstrb`; the write lock in `tb_efuse_locks` at the write) and the owner's 4-byte read-backs of the same words (`s_axi_araddr`, `s_axi_rdata`, `s_axi_rresp`), the word's slot from the generated map addresses; `efuse_shadow_probe_o` word `w` at bits `32w+31:32w`: a kept write returns the written value, a refused write the value the probe holds, a read-unlocked read the probe word with OKAY, a read-locked read neither the probe word nor its complement |`smc_efuse_map_locks_register_test` |live
+|`cp_slot_kind` |slot (8: four named fields, SPARE[0] to SPARE[2] and SPARE_TAIL) x lock kind (write lock at bit 2n, read lock at bit 2n+1: 2); 16 cells (`smc_efuse_map.rdl`, `HARNESS_LOCKS`) |`sep_axi_in_req_i` writes to `HARNESS_LOCKS` (`s_axi_awaddr`, `s_axi_awsize`; `s_axi_wdata`, `s_axi_wstrb` at the W-last handshake; OKAY on `s_axi_bresp` at the B handshake), the bits the write sets decoded to slot and kind by the generated `HARNESS_LOCKS` field positions, each counted once `tb_efuse_locks` (`shadow_regs_o`) carries the bit |`smc_efuse_map_locks_register_test` |live
+|`cp_refusal` |lock kind and state with its one stated outcome (write lock not yet set: the write is kept; write lock set: the write is refused and the field keeps its value; read lock not yet set: the read returns the field; read lock set: the read returns neither the value nor its complement: 4), crossed with slot (8); 32 cells; the response code is not a bin (`smc_efuse_map.rdl`, `HARNESS_LOCKS`: when write locked the field is not programmable, when read locked the shadow register is not readable; "neither the value nor its complement" is the owner's compare, entry 458 step 8) |the 4-byte SEP_IN writes to the field words (`s_axi_awaddr`, `s_axi_wdata`, `s_axi_wstrb`; the write lock in `tb_efuse_locks` at the write) and the owner's 4-byte read-backs of the same words (`s_axi_araddr`, `s_axi_rdata`, `s_axi_rresp`), the word's slot from the generated map addresses; `efuse_shadow_probe_o` word `w` at bits `32w+31:32w`: a kept write returns the written value, a refused write the value the probe holds, a read-unlocked read the probe word with OKAY, a read-locked read neither the probe word nor its complement |`smc_efuse_map_locks_register_test` |live
 |===
 
 *Ignore bins*: the four contrary outcomes (a kept write under the write lock, a refused write before
 it, a hidden read before the read lock, a returned read under it: the failing outcomes of the
 owner's step 8 compares); the response codes of rejected writes and hidden reads (the owner's Scope
 limit: not asserted); the `JTAG_PUBLIC_IDENTITY` write under every lock (a directed step, not a slot
-draw); a `LOCKS` write or field access outside the owner's window (the S7 write, the S8 reset and
-the slot 8 and 31 locks of the timeout owner after its window); a read-back disagreeing with the
-shadow output (a sampler fault; counts in no cell). The kept write of SPARE[27] is not reached by
+draw); a `HARNESS_LOCKS` write or field access outside the owner's window (the S7 write, the S8 reset and
+the slot 5 and 6 locks of the timeout owner after its window); a read-back disagreeing with the
+shadow output (a sampler fault; counts in no cell). The kept write of SPARE_TAIL is not reached by
 construction (the image presets its write lock, entry 458) and stays counted in the row; the plan
 change is proposed in the left-out table and not applied.
 

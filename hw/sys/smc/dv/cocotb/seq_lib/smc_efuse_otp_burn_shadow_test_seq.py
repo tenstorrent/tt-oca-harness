@@ -44,12 +44,13 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 
 EFUSE_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
+EFUSE_PROGRAM_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR")
 # Addressed and NAMED by the same generated symbol. At this offset the shadow
 # block serves raw shadow word 0 (`efuse_shadow_regs.sv` returns
 # `shadow_efuse.values[paddr>>2]` for the whole map window) rather than the
 # lock fields the register name implies, so the value read back is fuse content
 # and not the register's 0x0 reset.
-SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 
 # Word 0 of the preload asset the bank model $readmemh's at time 0, derived from
 # the asset at run time so it follows a regenerated asset.
@@ -134,10 +135,11 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         # real miss when the bank model zeroes the write data under
         # +smc_efuse_prog_fail_count.
         _FAIL_BIT = 2
+        await self.csr_write("EFUSE_PROGRAM_ADDR_FAIL", EFUSE_PROGRAM_ADDR, _FAIL_BIT)
         await self.csr_write(
             "EFUSE_PROGRAM_CTRL_FAIL",
             EFUSE_PROGRAM_CTRL,
-            _FAIL_BIT | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
         st_fail = await self._wait_program_done(clk, "PROGRAM_FAIL")
         prog_fail = int(dut.tb_efuse_programmed_word0.value)
@@ -158,10 +160,11 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         )
 
         # Second PROGRAM (bit0 is clear in the preload word): success sticky-OR.
+        await self.csr_write("EFUSE_PROGRAM_ADDR_OK", EFUSE_PROGRAM_ADDR, 0)
         await self.csr_write(
             "EFUSE_PROGRAM_CTRL_OK",
             EFUSE_PROGRAM_CTRL,
-            0 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
         st_ok = await self._wait_program_done(clk, "PROGRAM_OK")
         prog_ok = int(dut.tb_efuse_programmed_word0.value)

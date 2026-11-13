@@ -26,6 +26,7 @@ from pyuvm import uvm_sequence
 from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
 _EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_EFUSE_PROGRAM_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_ADDR")
 _EFUSE_IFACE_STATUS = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
 _EFUSE_REQ_ERROR_BIT = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error"
@@ -43,18 +44,32 @@ _EFUSE_PROGRAM_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL"
 _EFUSE_PROGRAM_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _EFUSE_PROGRAM_ERR_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 
-_EFUSE_ADDR_MASK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
-_EFUSE_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_PROGRAM_CTRL", "efuse_addr")
+_EFUSE_ADDR_MASK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_ADDR", "efuse_addr")
+_EFUSE_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_PROGRAM_ADDR", "efuse_addr")
 
 _POLL_CYCLES = 200
 
 
 def _place_addr(bit_addr: int) -> int:
-    """Place a fuse bit address in EFUSE_PROGRAM_CTRL.efuse_addr."""
+    """Place a fuse bit address in EFUSE_PROGRAM_ADDR.efuse_addr."""
     placed = bit_addr << _EFUSE_ADDR_LSB
     if bit_addr < 0 or placed & ~_EFUSE_ADDR_MASK:
         raise ValueError(f"bit address {bit_addr:#x} does not fit efuse_addr")
     return placed
+
+
+async def _write_program_addr(seq: uvm_sequence, bit_addr: int, addr: int) -> None:
+    """Write EFUSE_PROGRAM_ADDR and require the readback to equal the written value.
+
+    A refused or failed program is graded only at the address the sequence set.
+    """
+    await seq._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_ADDR, data=addr, label="program_addr")
+    got = await seq._access(SepAxiOp.READ, _EFUSE_PROGRAM_ADDR, label="program_addr_rb")
+    if got != addr:
+        raise AssertionError(
+            f"CHK-EFUSE-ADDR-RB FAIL: EFUSE_PROGRAM_ADDR read 0x{got:08x} after write "
+            f"0x{addr:08x} (OTP bit {bit_addr})"
+        )
 
 
 class sep_efuse_otp_program_seq(uvm_sequence):
@@ -80,20 +95,22 @@ class sep_efuse_otp_program_seq(uvm_sequence):
         item.op = op
         item.addr = addr
         item.length = 4
+        item.size = 2
         item.wdata = data
         await self.start_item(item)
         await self.finish_item(item)
         return item.rdata
 
     async def body(self) -> None:
+        addr = _place_addr(self.bit_addr)
         wdata = (
-            _place_addr(self.bit_addr)
-            | _EFUSE_DATA_BIT
+            _EFUSE_DATA_BIT
             | _EFUSE_PROGRAM_GO_BIT
             | _EFUSE_PROGRAM_READ_BACK_BIT
             | _EFUSE_PROGRAM_ENABLE_BIT
         )
         for attempt in range(1, self.max_attempts + 1):
+            await _write_program_addr(self, self.bit_addr, addr)
             await self._access(
                 SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl"
             )
@@ -187,19 +204,21 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
         item.op = op
         item.addr = addr
         item.length = 4
+        item.size = 2
         item.wdata = data
         await self.start_item(item)
         await self.finish_item(item)
         return item.rdata
 
     async def body(self) -> None:
+        addr = _place_addr(self.bit_addr)
         wdata = (
-            _place_addr(self.bit_addr)
-            | _EFUSE_DATA_BIT
+            _EFUSE_DATA_BIT
             | _EFUSE_PROGRAM_GO_BIT
             | (_EFUSE_PROGRAM_READ_BACK_BIT if self.read_back else 0)
             | _EFUSE_PROGRAM_ENABLE_BIT
         )
+        await _write_program_addr(self, self.bit_addr, addr)
         await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl")
         for _ in range(_POLL_CYCLES):
             await ClockCycles(cocotb.top.clk_i, 1)

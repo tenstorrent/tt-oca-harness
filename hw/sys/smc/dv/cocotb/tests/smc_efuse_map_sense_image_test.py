@@ -7,10 +7,13 @@ Sources: smu-smc.adoc (eFuse Interface), port_table.adoc (smc_fuse_sense_done_o,
 The image kind is the bench default asset or one of zero, ones, walking, random and unique. The
 ``+smc_efuse_image`` run argument or a subclass ``KIND`` pins it; otherwise build_phase draws it
 uniformly from the seed. A generated kind is written into the run directory at the relative
-``+smc_efuse_hex`` path during ``build_phase``: words 2..255 carry the pattern and the LOCKS words
-0 and 1 carry write-lock bits only. A drawn default kind copies the asset's bytes to that path.
-The random kind's words and lock bits come from ``random.Random(seed ^ _WORDS_STREAM)``, a stream
-separate from the kind draw.
+``+smc_efuse_hex`` path during ``build_phase``: word 0 (the low HARNESS_LOCKS word) carries
+write-lock bits only, word 1 (the upper HARNESS_LOCKS word, reserved in the register map) is 0,
+and words 2..63 carry the pattern. Words 2 and 3 are the SUPPLEMENTARY_LOCKS words: the shadow
+file stores and returns them like every other word, and the supplementary locks a pattern sets
+there gate only the supplementary window, which this leaf never accesses. A drawn default kind
+copies the asset's bytes to that path. The random kind's words and lock bits come from
+``random.Random(seed ^ _WORDS_STREAM)``, a stream separate from the kind draw.
 """
 
 from __future__ import annotations
@@ -42,19 +45,18 @@ _SENSE_CHK = {
     "default": "CHK-EMAP-SENSE-DEFAULT",
     "unique": "CHK-EMAP-SENSE-UNIQUE",
 }
+#: Schema blocks after LOCKS: (block, field, first map word, word count); LOCKS is words 0..3.
 _FIELDS = (
-    ("JTAG_PUBLIC_IDENTITY", "value", 2, 8),
-    ("I2C_I3C_ID", "interface_id", 10, 18),
-    ("SMC_CONFIG", "smc_config", 28, 2),
-    ("OCCP_TRANSPORT_TIMEOUT", "transport_timeout", 30, 2),
-    ("SPARE", "spare_data", 32, 224),
+    ("JTAG_PUBLIC_IDENTITY", "value", 4, 8),
+    ("I2C_I3C_ID", "interface_id", 12, 18),
+    ("SMC_CONFIG", "smc_config", 30, 2),
+    ("OCCP_TRANSPORT_TIMEOUT", "transport_timeout", 32, 2),
+    ("SPARE", "spare_data", 34, 30),
 )
+_LOCKS_WORDS = _FIELDS[0][2]
 
 
-_WRITE_LOCKS = tuple(region.write_lock for region in REGIONS)
-_WRITE_LOCKS_LO = tuple(bit for bit in _WRITE_LOCKS if bit <= _MASK32)
-_WRITE_LOCKS_HI = tuple(bit >> 32 for bit in _WRITE_LOCKS if bit > _MASK32)
-_READ_LOCKS = sum(region.read_lock for region in REGIONS)
+_WRITE_LOCKS = tuple(sorted({region.write_lock for region in REGIONS}))
 
 
 def _or_bits(bits) -> int:
@@ -64,24 +66,21 @@ def _or_bits(bits) -> int:
     return value
 
 
-def _lock_words(kind: str, rnd: random.Random) -> list[int]:
-    """LOCKS words 0 and 1 of the kind, write-lock bits only."""
-    if kind == "zero":
-        return [min(_WRITE_LOCKS_LO), 0]
-    if kind == "ones":
-        return [_or_bits(_WRITE_LOCKS_LO), _or_bits(_WRITE_LOCKS_HI)]
-    if kind == "unique":
-        return [_or_bits(_WRITE_LOCKS_LO), _or_bits(_WRITE_LOCKS_HI[::2])]
-    if kind == "walking":
-        return [min(_WRITE_LOCKS_LO), min(_WRITE_LOCKS_HI)]
-    return [
-        _or_bits(bit for bit in _WRITE_LOCKS_LO if rnd.getrandbits(1)),
-        _or_bits(bit for bit in _WRITE_LOCKS_HI if rnd.getrandbits(1)),
-    ]
+_READ_LOCKS = _or_bits(region.read_lock for region in REGIONS)
+assert all(bit <= _MASK32 for bit in _WRITE_LOCKS), "a HARNESS_LOCKS write lock is above word 0"
+
+
+def _lock_word(kind: str, rnd: random.Random) -> int:
+    """Word 0 of the kind: HARNESS_LOCKS write-lock bits only."""
+    if kind in ("zero", "walking"):
+        return min(_WRITE_LOCKS)
+    if kind in ("ones", "unique"):
+        return _or_bits(_WRITE_LOCKS)
+    return _or_bits(bit for bit in _WRITE_LOCKS if rnd.getrandbits(1))
 
 
 def _image_words(kind: str, seed: int) -> list[int]:
-    """Words 0..255 of the kind: words 0 and 1 hold LOCKS, words 2..255 carry the pattern."""
+    """Words 0..63 of the kind: word 0 the write locks, word 1 zero, words 2..63 the pattern."""
     rnd = random.Random(seed)
     pattern = {
         "zero": lambda n: 0,
@@ -90,8 +89,7 @@ def _image_words(kind: str, seed: int) -> list[int]:
         "random": lambda n: rnd.getrandbits(32),
         "unique": lambda n: 0x5A5A0000 | (n << 8) | (0xA5 ^ n),
     }[kind]
-    fields = [pattern(n) for n in range(2, EFUSE_MAP_WORDS)]
-    return _lock_words(kind, rnd) + fields
+    return [_lock_word(kind, rnd), 0] + [pattern(n) for n in range(2, EFUSE_MAP_WORDS)]
 
 
 def _config_text(words: list[int]) -> str:
@@ -103,7 +101,7 @@ def _config_text(words: list[int]) -> str:
         '    write_locked = "False"',
         '    read_locked = "False"',
         "    [LOCKS.fields.lock_entries]",
-        f"    value = 0x{words[0] | (words[1] << 32):x}",
+        f"    value = 0x{sum(words[k] << (32 * k) for k in range(_LOCKS_WORDS)):x}",
     ]
     for block, field, first, count in _FIELDS:
         value = sum(words[first + k] << (32 * k) for k in range(count))
@@ -237,16 +235,16 @@ class smc_efuse_map_sense_image_test(smc_base_test):
                 f"{path.name} words differ from the requested {self.kind} pattern at word "
                 f"{next(n for n in range(EFUSE_MAP_WORDS) if self.image.words[n] != words[n])}"
             )
-            assert self.image.words[0] == words[0] and self.image.words[1] == words[1], (
-                f"{path.name} LOCKS words 0x{self.image.words[0]:08x}/"
-                f"0x{self.image.words[1]:08x} differ from the intended "
-                f"0x{words[0]:08x}/0x{words[1]:08x}"
+            assert list(self.image.words[:_LOCKS_WORDS]) == words[:_LOCKS_WORDS], (
+                f"{path.name} LOCKS words {[hex(w) for w in self.image.words[:_LOCKS_WORDS]]} "
+                f"differ from the intended {[hex(w) for w in words[:_LOCKS_WORDS]]}"
             )
             assert self.image.locks & _READ_LOCKS == 0, (
-                f"{path.name} LOCKS 0x{self.image.locks:x} sets a read-lock bit"
+                f"{path.name} LOCKS 0x{self.image.locks:x} sets a HARNESS_LOCKS read-lock bit"
             )
-            assert self.image.locks & ~_or_bits(_WRITE_LOCKS) == 0, (
-                f"{path.name} LOCKS 0x{self.image.locks:x} sets a bit outside the write locks"
+            assert self.image.words[0] & ~_or_bits(_WRITE_LOCKS) == 0, (
+                f"{path.name} word 0 0x{self.image.words[0]:08x} sets a bit outside the "
+                "HARNESS_LOCKS write locks"
             )
             if self.kind == "unique":
                 assert len(set(self.image.words)) == EFUSE_MAP_WORDS, (

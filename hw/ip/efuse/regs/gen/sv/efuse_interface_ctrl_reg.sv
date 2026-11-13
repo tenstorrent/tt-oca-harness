@@ -12,7 +12,7 @@ module efuse_interface_ctrl_reg (
         input wire s_apb_penable,
         input wire s_apb_pwrite,
         input wire [2:0] s_apb_pprot,
-        input wire [4:0] s_apb_paddr,
+        input wire [5:0] s_apb_paddr,
         input wire [31:0] s_apb_pwdata,
         input wire [3:0] s_apb_pstrb,
         output logic s_apb_pready,
@@ -28,7 +28,7 @@ module efuse_interface_ctrl_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [4:0] cpuif_addr;
+    logic [5:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -57,7 +57,7 @@ module efuse_interface_ctrl_reg (
                     is_active <= '1;
                     cpuif_req <= '1;
                     cpuif_req_is_wr <= s_apb_pwrite;
-                    cpuif_addr <= {s_apb_paddr[4:2], 2'b0};
+                    cpuif_addr <= {s_apb_paddr[5:2], 2'b0};
                     cpuif_wr_data <= s_apb_pwdata;
                     for(int i=0; i<4; i++) begin
                         cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
@@ -97,10 +97,12 @@ module efuse_interface_ctrl_reg (
         logic EFUSE_READ_INTERFACE_READ_DATA;
         logic EFUSE_READ_REQ_TIMEOUT;
         logic EFUSE_PROGRAM_REQ_TIMEOUT;
+        logic EFUSE_PROGRAM_ADDR;
+        logic EFUSE_READ_ADDR;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [4:0] decoded_addr;
+    logic [5:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -111,21 +113,25 @@ module efuse_interface_ctrl_reg (
         automatic logic is_valid_rw;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.EFUSE_INTERFACE_CTRL_STATUS = cpuif_req_masked & (cpuif_addr == 5'h0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h0);
-        decoded_reg_strb.EFUSE_PROGRAM_CTRL = cpuif_req_masked & (cpuif_addr == 5'h4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h4);
-        decoded_reg_strb.EFUSE_READ_CTRL = cpuif_req_masked & (cpuif_addr == 5'h8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h8);
-        decoded_reg_strb.EFUSE_PROGRAM_INTERFACE_READ_DATA = cpuif_req_masked & (cpuif_addr == 5'hc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'hc);
-        decoded_reg_strb.EFUSE_READ_INTERFACE_READ_DATA = cpuif_req_masked & (cpuif_addr == 5'h10) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h10);
-        decoded_reg_strb.EFUSE_READ_REQ_TIMEOUT = cpuif_req_masked & (cpuif_addr == 5'h14);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h14);
-        decoded_reg_strb.EFUSE_PROGRAM_REQ_TIMEOUT = cpuif_req_masked & (cpuif_addr == 5'h18);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h18);
-        is_valid_addr = cpuif_addr < 5'h1c;
+        decoded_reg_strb.EFUSE_INTERFACE_CTRL_STATUS = cpuif_req_masked & (cpuif_addr == 6'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h0);
+        decoded_reg_strb.EFUSE_PROGRAM_CTRL = cpuif_req_masked & (cpuif_addr == 6'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h4);
+        decoded_reg_strb.EFUSE_READ_CTRL = cpuif_req_masked & (cpuif_addr == 6'h8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h8);
+        decoded_reg_strb.EFUSE_PROGRAM_INTERFACE_READ_DATA = cpuif_req_masked & (cpuif_addr == 6'hc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'hc);
+        decoded_reg_strb.EFUSE_READ_INTERFACE_READ_DATA = cpuif_req_masked & (cpuif_addr == 6'h10) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h10);
+        decoded_reg_strb.EFUSE_READ_REQ_TIMEOUT = cpuif_req_masked & (cpuif_addr == 6'h14);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h14);
+        decoded_reg_strb.EFUSE_PROGRAM_REQ_TIMEOUT = cpuif_req_masked & (cpuif_addr == 6'h18);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h18);
+        decoded_reg_strb.EFUSE_PROGRAM_ADDR = cpuif_req_masked & (cpuif_addr == 6'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h1c);
+        decoded_reg_strb.EFUSE_READ_ADDR = cpuif_req_masked & (cpuif_addr == 6'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h20);
+        is_valid_addr = cpuif_addr < 6'h24;
         decoded_err = ~is_valid_addr & decoded_req;
     end
 
@@ -156,10 +162,6 @@ module efuse_interface_ctrl_reg (
         } EFUSE_INTERFACE_CTRL_STATUS;
         struct {
             struct {
-                logic [15:0] next;
-                logic load_next;
-            } efuse_addr;
-            struct {
                 logic next;
                 logic load_next;
             } efuse_data;
@@ -177,10 +179,6 @@ module efuse_interface_ctrl_reg (
             } program_enable;
         } EFUSE_PROGRAM_CTRL;
         struct {
-            struct {
-                logic [15:0] next;
-                logic load_next;
-            } efuse_addr;
             struct {
                 logic next;
                 logic load_next;
@@ -210,6 +208,18 @@ module efuse_interface_ctrl_reg (
                 logic load_next;
             } program_req_timeout_enable;
         } EFUSE_PROGRAM_REQ_TIMEOUT;
+        struct {
+            struct {
+                logic [31:0] next;
+                logic load_next;
+            } efuse_addr;
+        } EFUSE_PROGRAM_ADDR;
+        struct {
+            struct {
+                logic [31:0] next;
+                logic load_next;
+            } efuse_addr;
+        } EFUSE_READ_ADDR;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -227,9 +237,6 @@ module efuse_interface_ctrl_reg (
         } EFUSE_INTERFACE_CTRL_STATUS;
         struct {
             struct {
-                logic [15:0] value;
-            } efuse_addr;
-            struct {
                 logic value;
             } efuse_data;
             struct {
@@ -243,9 +250,6 @@ module efuse_interface_ctrl_reg (
             } program_enable;
         } EFUSE_PROGRAM_CTRL;
         struct {
-            struct {
-                logic [15:0] value;
-            } efuse_addr;
             struct {
                 logic value;
             } efuse_read_go;
@@ -269,6 +273,16 @@ module efuse_interface_ctrl_reg (
                 logic value;
             } program_req_timeout_enable;
         } EFUSE_PROGRAM_REQ_TIMEOUT;
+        struct {
+            struct {
+                logic [31:0] value;
+            } efuse_addr;
+        } EFUSE_PROGRAM_ADDR;
+        struct {
+            struct {
+                logic [31:0] value;
+            } efuse_addr;
+        } EFUSE_READ_ADDR;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -350,29 +364,6 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value = field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value;
-    // Field: efuse_interface_ctrl.EFUSE_PROGRAM_CTRL.efuse_addr
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.EFUSE_PROGRAM_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.next = next_c;
-        field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value <= 16'h0;
-        end else begin
-            if(field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.load_next) begin
-                field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value <= field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.next;
-            end
-        end
-    end
-    assign hwif_out.EFUSE_PROGRAM_CTRL.efuse_addr.value = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
     // Field: efuse_interface_ctrl.EFUSE_PROGRAM_CTRL.efuse_data
     always_comb begin
         automatic logic [0:0] next_c;
@@ -468,29 +459,6 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_PROGRAM_CTRL.program_enable.value = field_storage.EFUSE_PROGRAM_CTRL.program_enable.value;
-    // Field: efuse_interface_ctrl.EFUSE_READ_CTRL.efuse_addr
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.EFUSE_READ_CTRL.efuse_addr.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.EFUSE_READ_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.EFUSE_READ_CTRL.efuse_addr.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.EFUSE_READ_CTRL.efuse_addr.next = next_c;
-        field_combo.EFUSE_READ_CTRL.efuse_addr.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.EFUSE_READ_CTRL.efuse_addr.value <= 16'h0;
-        end else begin
-            if(field_combo.EFUSE_READ_CTRL.efuse_addr.load_next) begin
-                field_storage.EFUSE_READ_CTRL.efuse_addr.value <= field_combo.EFUSE_READ_CTRL.efuse_addr.next;
-            end
-        end
-    end
-    assign hwif_out.EFUSE_READ_CTRL.efuse_addr.value = field_storage.EFUSE_READ_CTRL.efuse_addr.value;
     // Field: efuse_interface_ctrl.EFUSE_READ_CTRL.efuse_read_go
     always_comb begin
         automatic logic [0:0] next_c;
@@ -632,6 +600,52 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_enable.value = field_storage.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_enable.value;
+    // Field: efuse_interface_ctrl.EFUSE_PROGRAM_ADDR.efuse_addr
+    always_comb begin
+        automatic logic [31:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.EFUSE_PROGRAM_ADDR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            load_next_c = '1;
+        end
+        field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.next = next_c;
+        field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value <= 32'h0;
+        end else begin
+            if(field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.load_next) begin
+                field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value <= field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.next;
+            end
+        end
+    end
+    assign hwif_out.EFUSE_PROGRAM_ADDR.efuse_addr.value = field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value;
+    // Field: efuse_interface_ctrl.EFUSE_READ_ADDR.efuse_addr
+    always_comb begin
+        automatic logic [31:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.EFUSE_READ_ADDR.efuse_addr.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.EFUSE_READ_ADDR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.EFUSE_READ_ADDR.efuse_addr.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            load_next_c = '1;
+        end
+        field_combo.EFUSE_READ_ADDR.efuse_addr.next = next_c;
+        field_combo.EFUSE_READ_ADDR.efuse_addr.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.EFUSE_READ_ADDR.efuse_addr.value <= 32'h0;
+        end else begin
+            if(field_combo.EFUSE_READ_ADDR.efuse_addr.load_next) begin
+                field_storage.EFUSE_READ_ADDR.efuse_addr.value <= field_combo.EFUSE_READ_ADDR.efuse_addr.next;
+            end
+        end
+    end
+    assign hwif_out.EFUSE_READ_ADDR.efuse_addr.value = field_storage.EFUSE_READ_ADDR.efuse_addr.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -644,7 +658,7 @@ module efuse_interface_ctrl_reg (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [4:0] rd_mux_addr;
+    logic [5:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -653,14 +667,13 @@ module efuse_interface_ctrl_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 5'h0) begin
+        if(rd_mux_addr == 6'h0) begin
             readback_data_var[0] = hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_sense_done.next;
             readback_data_var[4] = hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error.next;
             readback_data_var[5] = hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error.next;
             readback_data_var[6] = hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error.next;
         end
-        if(rd_mux_addr == 5'h4) begin
-            readback_data_var[15:0] = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
+        if(rd_mux_addr == 6'h4) begin
             readback_data_var[16] = field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value;
             readback_data_var[17] = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value;
             readback_data_var[18] = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
@@ -669,27 +682,32 @@ module efuse_interface_ctrl_reg (
             readback_data_var[26] = hwif_in.EFUSE_PROGRAM_CTRL.program_status.next;
             readback_data_var[27] = field_storage.EFUSE_PROGRAM_CTRL.program_enable.value;
         end
-        if(rd_mux_addr == 5'h8) begin
-            readback_data_var[15:0] = field_storage.EFUSE_READ_CTRL.efuse_addr.value;
+        if(rd_mux_addr == 6'h8) begin
             readback_data_var[16] = field_storage.EFUSE_READ_CTRL.efuse_read_go.value;
             readback_data_var[24] = hwif_in.EFUSE_READ_CTRL.read_busy.next;
             readback_data_var[25] = hwif_in.EFUSE_READ_CTRL.read_done.next;
             readback_data_var[26] = hwif_in.EFUSE_READ_CTRL.read_status.next;
             readback_data_var[28] = field_storage.EFUSE_READ_CTRL.read_enable.value;
         end
-        if(rd_mux_addr == 5'hc) begin
+        if(rd_mux_addr == 6'hc) begin
             readback_data_var[31:0] = hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next;
         end
-        if(rd_mux_addr == 5'h10) begin
+        if(rd_mux_addr == 6'h10) begin
             readback_data_var[31:0] = hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next;
         end
-        if(rd_mux_addr == 5'h14) begin
+        if(rd_mux_addr == 6'h14) begin
             readback_data_var[27:0] = field_storage.EFUSE_READ_REQ_TIMEOUT.read_req_timeout_cycles.value;
             readback_data_var[28] = field_storage.EFUSE_READ_REQ_TIMEOUT.read_req_timout_enable.value;
         end
-        if(rd_mux_addr == 5'h18) begin
+        if(rd_mux_addr == 6'h18) begin
             readback_data_var[27:0] = field_storage.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_cycles.value;
             readback_data_var[28] = field_storage.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_enable.value;
+        end
+        if(rd_mux_addr == 6'h1c) begin
+            readback_data_var[31:0] = field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value;
+        end
+        if(rd_mux_addr == 6'h20) begin
+            readback_data_var[31:0] = field_storage.EFUSE_READ_ADDR.efuse_addr.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

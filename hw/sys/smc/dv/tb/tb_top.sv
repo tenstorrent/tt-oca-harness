@@ -2091,7 +2091,7 @@ module smc_uvm_top
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.valid;
     assign tb_efuse_shim_resp_status =
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.status;
-    assign tb_efuse_locks = shadow_regs.locks.locks;
+    assign tb_efuse_locks = shadow_regs.locks.harness_locks;
     `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].u_axi_lite_mailbox
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;

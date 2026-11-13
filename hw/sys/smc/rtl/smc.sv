@@ -25,6 +25,11 @@ module smc #(
                                                   // opaque region, so this is a literal
                                                   // here and is overridden by an
                                                   // integration that models the block.
+  parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region, its
+                                                                  // window at or above
+                                                                  // EFUSE_SHIM_SIZE; '0 omits it.
+  localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS),
 
   parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,  // Boot ROM request
                                                                                       // type, passed to
@@ -170,6 +175,13 @@ module smc #(
                                                     // all zero until fuse sensing
                                                     // completes unless SEP security
                                                     // disable is set.
+  output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary fuse shadow-register
+                                                                            // contents; zero until fuse
+                                                                            // sensing completes unless SEP
+                                                                            // security disable is set, and
+                                                                            // always without the supplementary
+                                                                            // region.
+               supplementary_shadow_regs_o,
 
   output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,  // AXI-L interface for
                                                              // adopter peripheral
@@ -766,8 +778,9 @@ module smc #(
   //////////////////////
 
   smc_peripherals #(
-    .MAX_TRANS       (MAX_TRANS),
-    .EFUSE_SHIM_SIZE (EFUSE_SHIM_SIZE)
+    .MAX_TRANS              (MAX_TRANS),
+    .EFUSE_SHIM_SIZE        (EFUSE_SHIM_SIZE),
+    .SUPPLEMENTARY_FUSE           (SUPPLEMENTARY_FUSE)
   ) u_smc_peripherals (
     .clk_ref_i                             (clk_ref_i),
     .clk_smc_i                             (clk_smc_i),
@@ -870,6 +883,7 @@ module smc #(
 
     // Efuse Shadow Regs
     .shadow_regs_o                         (shadow_regs_o),
+    .supplementary_shadow_regs_o                 (supplementary_shadow_regs_o),
 
     .ndmreset_request_i                    (smc_ndmreset_request_i),
     .ndmreset_process_o                    (smc_ndmreset_process_o),

@@ -17,7 +17,7 @@ import random
 import cocotb
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import _component_row, generated_past_extent_resp, smc_efuse_map_u32
+from .smc_addr_map import _component_row, generated_past_extent_resp, smc_addr, smc_efuse_map_u32
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_image_pattern_test_seq import (
     EFUSE_MAP_BASE,
@@ -56,7 +56,7 @@ _CHK_STEP = {
 
 
 class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
-    """Unlocked writes to JPI, I2C_I3C_ID, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE."""
+    """Unlocked writes to JPI, I2C_I3C_ID, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT, SPARE and SPARE_TAIL."""
 
     def __init__(self, name: str = "smc_efuse_map_sep_write_test_seq") -> None:
         super().__init__(name)
@@ -177,15 +177,29 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         i2c = range(reg["I2C_I3C_ID"].first_word, reg["I2C_I3C_ID"].end_word)
         cfg = reg["SMC_CONFIG"].first_word
         occp = reg["OCCP_TRANSPORT_TIMEOUT"].first_word
-        spare = [range(reg[f"SPARE{k}"].first_word, reg[f"SPARE{k}"].end_word) for k in range(28)]
+        spare_num = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")
+        tail_num = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")
+        spare = [
+            range(reg[f"SPARE{k}"].first_word, reg[f"SPARE{k}"].end_word) for k in range(spare_num)
+        ]
+        tail = [
+            range(reg[f"SPARE_TAIL{k}"].first_word, reg[f"SPARE_TAIL{k}"].end_word)
+            for k in range(tail_num)
+        ]
+        #: Every SPARE element, then every SPARE_TAIL element, in map order.
+        elements = spare + tail
         locks_hi = LOCKS_WORDS[-1]
-        assert len(jpi) == 8 and len(i2c) == 18 and all(len(r) == 8 for r in spare), (
-            f"field sizes jpi={len(jpi)} i2c={len(i2c)} spare={[len(r) for r in spare]}"
+        assert len(jpi) == 8 and len(i2c) == 18, f"field sizes jpi={len(jpi)} i2c={len(i2c)}"
+        assert all(len(r) == 8 for r in spare) and all(len(r) == 2 for r in tail), (
+            f"element sizes spare={[len(r) for r in spare]} tail={[len(r) for r in tail]}"
         )
-        assert word_addr(jpi[0]) - EFUSE_MAP_BASE == 0x08, f"JPI starts at word {jpi[0]}"
-        assert word_addr(i2c[0]) - EFUSE_MAP_BASE == 0x28, f"I2C_I3C_ID starts at word {i2c[0]}"
-        assert word_addr(cfg) - EFUSE_MAP_BASE == 0x70, f"SMC_CONFIG at word {cfg}"
-        assert word_addr(occp) - EFUSE_MAP_BASE == 0x78, f"OCCP at word {occp}"
+        assert word_addr(jpi[0]) - EFUSE_MAP_BASE == 0x10, f"JPI starts at word {jpi[0]}"
+        assert word_addr(i2c[0]) - EFUSE_MAP_BASE == 0x30, f"I2C_I3C_ID starts at word {i2c[0]}"
+        assert word_addr(cfg) - EFUSE_MAP_BASE == 0x78, f"SMC_CONFIG at word {cfg}"
+        assert word_addr(occp) - EFUSE_MAP_BASE == 0x80, f"OCCP at word {occp}"
+        assert word_addr(spare[0][0]) - EFUSE_MAP_BASE == 0x88, f"SPARE[0] at word {spare[0][0]}"
+        assert word_addr(tail[0][0]) - EFUSE_MAP_BASE == 0xE8, f"SPARE_TAIL[0] at word {tail[0][0]}"
+        assert tail[-1][-1] == EFUSE_MAP_WORDS - 1, f"SPARE_TAIL[2] ends at word {tail[-1][-1]}"
         assert all(w == 0 for w in image.words), "the image has a non-zero word"
         assert image.locks == 0, f"image LOCKS 0x{image.locks:x} is not 0"
         self.shadow = list(image.words)
@@ -194,7 +208,7 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         await self._sense_wait("sense1")
         for word in (*LOCKS_WORDS, *jpi, *i2c, cfg, cfg + 1, occp, occp + 1):
             await self._rd(f"S1_{word}", word)
-        for rng in spare:
+        for rng in elements:
             for word in rng:
                 await self._rd(f"S1_{word}", word)
         self._done("S1")
@@ -210,7 +224,7 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         self._done("S2")
         self._chk(
             "CHK-EMAP-WR-JPI",
-            "8 JPI words 0x08-0x24 read back their distinct patterns %s",
+            "8 JPI words 0x10-0x2C read back their distinct patterns %s",
             ",".join(f"0x{v:08x}" for v in sent_jpi),
         )
 
@@ -262,25 +276,26 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
             occp_rb >> 32,
         )
 
-        # S5: SPARE in seeded random element order
+        # S5: SPARE and SPARE_TAIL in seeded random element order
         rnd = random.Random(self.seed)
-        order = list(range(28))
+        last = len(elements) - 1
+        order = list(range(len(elements)))
         rnd.shuffle(order)
-        patterns = {k: rnd.getrandbits(256) for k in range(28)}
+        patterns = {k: rnd.getrandbits(32 * len(elements[k])) for k in range(len(elements))}
         cocotb.log.info("S5 seed=%d element order=%s", self.seed, order)
         past_extent = ""
         for k in order:
-            rng = spare[k]
+            rng = elements[k]
             for n, word in enumerate(rng):
                 await self._wr(f"S5_WR_{k}_{n}", word, (patterns[k] >> (32 * n)) & _WORD_MASK)
             for n, word in enumerate(rng):
                 got = await self._rd(f"S5_RB_{k}_{n}", word)
                 assert got == (patterns[k] >> (32 * n)) & _WORD_MASK, (
-                    f"S5: SPARE[{k}] word {n} reads 0x{got:08x}"
+                    f"S5: element {k} word {n} reads 0x{got:08x}"
                 )
-            below = occp + 1 if k == 0 else spare[k - 1][-1]
-            await self._neighbours(f"S5_{k}", below, spare[k + 1][0] if k < 27 else None)
-            if k == 27:
+            below = occp + 1 if k == 0 else elements[k - 1][-1]
+            await self._neighbours(f"S5_{k}", below, elements[k + 1][0] if k < last else None)
+            if k == last:
                 self._calls += 1
                 rdata = await self.csr_read_err_signature(
                     "S5_PAST_EXTENT", word_addr(EFUSE_MAP_WORDS), resp=_AXI_CODES[_PAST_RRESP]
@@ -293,15 +308,21 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         self._done("S5")
         self._chk(
             "CHK-EMAP-WR-SPARE",
-            "28 SPARE elements, 8 x 32-bit writes each, read back their 256-bit patterns; seed=%d "
-            "order=%s",
+            "%d SPARE elements (8 x 32-bit writes each, 256-bit patterns) and %d SPARE_TAIL "
+            "elements (2 x 32-bit writes each, 64-bit patterns) read back their patterns; seed=%d "
+            "order=%s (elements 0..%d are SPARE, %d..%d SPARE_TAIL)",
+            len(spare),
+            len(tail),
             self.seed,
             order,
+            len(spare) - 1,
+            len(spare),
+            last,
         )
         self._chk(
             "CHK-EMAP-WR-NEIGHBOUR",
             "%d word-below/above reads kept their model values across S2, S3 and S5; word above "
-            "SPARE[27]: %s (response code and data asserted)",
+            "SPARE_TAIL[2]: %s (response code and data asserted)",
             self._neighbour_reads,
             past_extent,
         )
@@ -320,8 +341,8 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         self._done("S6")
         self._chk(
             "CHK-EMAP-WR-HALVES",
-            "32-bit write 0x%08x at 0x78: low 0x%08x, high unchanged 0x%08x; 32-bit write "
-            "0x%08x at 0x7C: high 0x%08x, low unchanged 0x%08x",
+            "32-bit write 0x%08x at 0x80: low 0x%08x, high unchanged 0x%08x; 32-bit write "
+            "0x%08x at 0x84: high 0x%08x, low unchanged 0x%08x",
             _HALF_LO,
             lo1,
             hi1,
@@ -340,10 +361,11 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         self._done("S7")
         self._chk(
             "CHK-EMAP-SHADOW-OUT-WRITE",
-            "shadow_regs port == model (%d words written S2-S6 + 2 LOCKS words compared; "
+            "shadow_regs port == model (%d words written S2-S6 + %d LOCKS words compared; "
             "layout word n at bits [32n+31:32n]); efuse_shadow_probe_o also == model; "
             "tb_efuse_locks=0x%x",
             compared - len(LOCKS_WORDS),
+            len(LOCKS_WORDS),
             locks_port,
         )
         self.access_floor = self._calls

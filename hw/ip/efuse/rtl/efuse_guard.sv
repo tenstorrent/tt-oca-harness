@@ -10,15 +10,23 @@
 // The program and read interfaces sample the lock and secure-TM status when firmware starts a
 // command and refuse a blocked start without issuing it; a command already issued completes.
 //
+// When SUPPLEMENTARY_FIELDS is non-zero, targets at or above SUPPLEMENTARY_BIT_BASE use the supplementary field
+// map, at byte offsets from that base, against supplementary_locks_i; targets below it use the harness
+// field map and locks_i. The full bit address selects the table, so no supplementary target aliases a
+// harness field.
+//
 // - efuse_err_o sets on a lock-refused start and sticks until error_clear_i.
 // - Lock and secure-TM status are exported.
 
 module efuse_guard #(
   parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
   parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
-  parameter type         efuse_map_t      = logic,  // Shadow eFuse map type.
+  parameter int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1),  // Harness lock bits on locks_i.
+  parameter int unsigned SUPPLEMENTARY_FIELDS = 0,  // Supplementary field-map entry count; 0 disables the
+                                              // supplementary lookup.
+  parameter int unsigned SUPPLEMENTARY_BIT_BASE = 0,  // Fuse bit address of the first supplementary fuse.
 
-  parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts field index 0 from locks and gates
+  parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts harness index 0 from locks and gates
                                         // the RMA token bits on token matches; clear for SMC.
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
@@ -31,6 +39,8 @@ module efuse_guard #(
                                                // module.
 
   localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],  // Fuse byte-address type.
+  localparam int unsigned NumSupplementaryRules = SUPPLEMENTARY_FIELDS > 0 ? SUPPLEMENTARY_FIELDS : 1,  // Supplementary field-map
+                                                                                      // port width.
   localparam efuse_addr_t SipTokenBitAddr = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),  // Bit address of the RMA SiP token bit.
   localparam efuse_addr_t ChipletTokenBitAddr = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)  // Bit address of the RMA chiplet token bit.
 ) (
@@ -41,7 +51,11 @@ module efuse_guard #(
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Per-field byte ranges and lock
                                                                  // indices used to find the lock
-                                                                 // bits for a target address.
+                                                                 // bits for a harness target.
+  input efuse_pkg::rule_t [NumSupplementaryRules-1:0] supplementary_field_map_i,  // Per-region byte ranges, from
+                                                                      // SUPPLEMENTARY_BIT_BASE, and lock
+                                                                      // indices for a supplementary target;
+                                                                      // unused when SUPPLEMENTARY_FIELDS is 0.
 
   input logic [5:0] rma_sip_token_match_i,  // RMA SiP token-match status code from token
                                             // processing.
@@ -54,8 +68,10 @@ module efuse_guard #(
   input  logic error_clear_i,           // Clears the sticky error; a same-cycle new error takes
                                         // priority.
 
-  input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
-                                        // lock bits.
+  input logic [LOCK_VECTOR_BITS-1:0] locks_i,  // Harness lock bits: write lock at 2n, read lock
+                                               // at 2n+1 for lock index n.
+  input logic [efuse_pkg::SupplementaryLockBits-1:0] supplementary_locks_i,  // SUPPLEMENTARY_LOCKS, in the same
+                                                                 // layout as locks_i.
   input efuse_addr_t program_target_addr_i,  // Fuse bit address a program start would target.
   input efuse_addr_t read_target_addr_i,  // Fuse bit address a read start would target.
   input logic program_blocked_i,        // One-cycle pulse: a lock refused a program start.
@@ -68,42 +84,73 @@ module efuse_guard #(
   output logic secure_tm_blocked_o      // High while secure test mode blocks fuse command starts.
 );
 
+  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
+
+  // Bounds every mapped idx for the entry_locked lookups, which skip idx '1.
+  function automatic logic field_map_idx_in_range();
+    logic in_range;
+    in_range = 1'b1;
+    for (int unsigned i = 0; i < EFUSE_FIELDS; i++) begin
+      if ((efuse_field_map_i[i].idx != '1) &&
+          (int'(efuse_field_map_i[i].idx) >= int'(LOCK_VECTOR_BITS / 2))) begin
+        in_range = 1'b0;
+      end
+    end
+    for (int i = 0; i < int'(SUPPLEMENTARY_FIELDS); i++) begin
+      if ((supplementary_field_map_i[i].idx != '1) &&
+          (int'(supplementary_field_map_i[i].idx) >= int'(efuse_pkg::SupplementaryLockBits / 2))) begin
+        in_range = 1'b0;
+      end
+    end
+    return in_range;
+  endfunction
+
+  `OCAH_OT_ASSERT_INIT(EfuseFieldMapIdxInRange_A, field_map_idx_in_range())
+
   logic is_program_locked;
   logic is_read_locked;
-  logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] pro_read_intf_rd_index, pro_read_intf_wr_index;
-  logic pro_read_intf_lock_lc_state_write;
-  logic pro_read_intf_rm_lc_state_write_lock;
-  logic pro_read_intf_rm_lc_state_read_lock;
+  logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] rd_index, wr_index;
+  logic rd_is_supplementary, wr_is_supplementary;
+  logic token_write_lock;
+  logic field_write_lock;
+  logic field_read_lock;
 
   // If read or write is from programming interface or read interface
   always_comb begin
-    pro_read_intf_rd_index = find_efuse_field_index(efuse_byte_addr_t'(read_target_addr_i >> 3));     // need to shift since address is a bit address and the shadow registers are byte address
-    pro_read_intf_wr_index = find_efuse_field_index(efuse_byte_addr_t'(program_target_addr_i >> 3));  // need to shift since address is a bit address and the shadow registers are byte address
+    rd_is_supplementary = (SUPPLEMENTARY_FIELDS > 0) && (read_target_addr_i >= efuse_addr_t'(SUPPLEMENTARY_BIT_BASE));
+    wr_is_supplementary = (SUPPLEMENTARY_FIELDS > 0) && (program_target_addr_i >= efuse_addr_t'(SUPPLEMENTARY_BIT_BASE));
 
-    pro_read_intf_rm_lc_state_write_lock = 1'b0; // In SEP, LC_STATE has write/read lock but even if their lock is set, it should not block the pro_read_interface
-    pro_read_intf_rm_lc_state_read_lock = 1'b0;
-    pro_read_intf_lock_lc_state_write = 1'b0;
-    // LC State write lock
+    rd_index = rd_is_supplementary ? find_supplementary_field_index(read_target_addr_i) :
+        find_efuse_field_index(efuse_byte_addr_t'(read_target_addr_i >> 3)); // >> 3 bit addr --> byte addr
+    wr_index = wr_is_supplementary ? find_supplementary_field_index(program_target_addr_i) :
+        find_efuse_field_index(efuse_byte_addr_t'(program_target_addr_i >> 3));
+
+    token_write_lock = 1'b0;
+
+    // RMA token bits are writable only with a token match.
     if (HAS_LC_STATE) begin
+      // If we are trying to program the SiP token bit but we don't have a token match, block it
       if ((program_target_addr_i == SipTokenBitAddr) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) begin
-        pro_read_intf_lock_lc_state_write = 1'b1;
+        token_write_lock = 1'b1;
       end
+      // If we are trying to program the chiplet token bit but we don't have a token match, block it
       else if ((program_target_addr_i == ChipletTokenBitAddr) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
-        pro_read_intf_lock_lc_state_write = 1'b1;
+        token_write_lock = 1'b1;
       end
-    end
-    if (HAS_LC_STATE) begin
-      // SEP
-      pro_read_intf_rm_lc_state_write_lock = (pro_read_intf_wr_index == '0)? 1'b0 : entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock = (pro_read_intf_rd_index == '0)? 1'b0 : entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
-    end else begin
-      // SMC
-      pro_read_intf_rm_lc_state_write_lock = entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock = entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
     end
 
-    is_program_locked = pro_read_intf_rm_lc_state_write_lock || pro_read_intf_lock_lc_state_write;
-    is_read_locked = pro_read_intf_rm_lc_state_read_lock;
+    // SEP's LC_STATE field (harness index 0) is exempt from its own read and write locks, so the
+    // program and read interfaces can always reach it; every other target uses its lock pair.
+    field_write_lock =
+        (HAS_LC_STATE && !wr_is_supplementary && (wr_index == '0)) ? 1'b0 :
+        entry_locked(wr_is_supplementary, wr_index, 1'b0);
+    field_read_lock =
+        (HAS_LC_STATE && !rd_is_supplementary && (rd_index == '0)) ? 1'b0 :
+        entry_locked(rd_is_supplementary, rd_index, 1'b1);
+
+    is_program_locked = field_write_lock || token_write_lock;
+    is_read_locked = field_read_lock;
   end
 
   logic err;
@@ -126,7 +173,7 @@ module efuse_guard #(
 
   assign efuse_err_o = err;
 
-  // Returns '1 (all-ones) for the LOCKS meta-field or any unmapped address;
+  // Returns '1 (all-ones) for the lock meta-field or any unmapped address;
   // both cases are excluded from hardware lock checks.
   function automatic logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] find_efuse_field_index(
       efuse_byte_addr_t address);
@@ -138,20 +185,36 @@ module efuse_guard #(
     return '1;
   endfunction
 
-  // idx '1 (all-ones) is the sentinel for the LOCKS meta-field and unmapped
-  // addresses; hardware lock bits are never applied to either.
-  function automatic logic entry_write_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
-                                              efuse_map_t shadow_regs);
-    if (index != '1) begin
-      return shadow_regs.locks.locks[index*2];
-    end else return 1'b0;
+  // Returns '1 for an unused entry or any address outside the supplementary regions.
+  //
+  // address is a fuse BIT address and the supplementary field map holds BYTE offsets from
+  // SUPPLEMENTARY_BIT_BASE, hence the subtraction and >> 3. For example, with the SMC's
+  // SUPPLEMENTARY_BIT_BASE of 2048 and the reference tops' regions ending at words 64, 96 and 128,
+  // a command to fuse bit 4098:
+  //   bit address                  4098
+  //   minus SUPPLEMENTARY_BIT_BASE       bit offset 2050
+  //   >> 3                         byte offset 256 (0x100)
+  //   rule lookup                  region 1, bytes 0x100-0x17F (sensor trims)
+  // returns idx 1, so SUPPLEMENTARY_LOCKS bits 2 (write) and 3 (read) govern it.
+  function automatic logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] find_supplementary_field_index(
+      efuse_addr_t address);
+    efuse_addr_t offset;
+    offset = efuse_addr_t'((address - efuse_addr_t'(SUPPLEMENTARY_BIT_BASE)) >> 3);
+    for (int i = 0; i < NumSupplementaryRules; i = i + 1) begin
+      if (offset >= efuse_addr_t'(supplementary_field_map_i[i].start_addr) &&
+          offset <= efuse_addr_t'(supplementary_field_map_i[i].end_addr)) begin
+        return supplementary_field_map_i[i].idx;
+      end
+    end
+    return '1;
   endfunction
 
-  function automatic logic entry_read_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
-                                             efuse_map_t shadow_regs);
-    if (index != '1) begin
-      return shadow_regs.locks.locks[index*2+1];
-    end else return 1'b0;
+  // idx '1 means this index does not have a hardware lock.
+  function automatic logic entry_locked(logic supplementary,
+                                        logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
+                                        logic read);
+    if (index == '1) return 1'b0;
+    return supplementary ? supplementary_locks_i[index*2+int'(read)] : locks_i[index*2+int'(read)];
   endfunction
 
 endmodule

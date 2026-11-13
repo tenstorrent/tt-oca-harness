@@ -12,7 +12,7 @@ a command has been issued does not affect that command.
 `tb_efuse_shim_cmd_valid` is the command valid the interface controller presents to the SHIM,
 sampled on every `clk_smc_i` rise; a read that reaches the bank raises it once. The eFuse
 bank is the DV model, whose write response the bench can stall (`tb_efuse_bank_stall_wr`), so a
-program stays in flight long enough for a `LOCKS` write to land during it.
+program stays in flight long enough for a `HARNESS_LOCKS` write to land during it.
 
 `efuse_interface_ctrl.rdl` states `read_status` is set when `read_go` is asserted while the
 read is not enabled or when the read request times out; `read_done` is set when the read has
@@ -36,7 +36,9 @@ from .smc_efuse_read_program_timeout_test_seq import (
     PROG_ERR,
     PROG_GO,
     PROG_RB,
+    PROGRAM_ADDR,
     PROGRAM_CTRL,
+    READ_ADDR,
     READ_BUSY,
     READ_CTRL,
     READ_DATA,
@@ -58,15 +60,15 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 WORD0_BIT = 0
 WORD0 = efuse_preload_word_at(LOCKS_ADDR)
 #: The SPARE field programmed under a late write lock; no other leaf of a run touches it.
-LOCK_FIELD = 10
+LOCK_FIELD = 2
 LOCK_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", LOCK_FIELD)
-LOCK_WRITE = smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{LOCK_FIELD}_WRITE_LOCK_bm")
+LOCK_WRITE = smc_efuse_map_u32(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{LOCK_FIELD}_WRITE_LOCK_bm")
 LOCK_BIT_IN_FLIGHT = 0
 LOCK_BIT_REFUSED = 1
 LOCKS_BYTES = 8
 #: Read timeout for the read issued with both enables set, in cycles.
 READ_TIMEOUT_CYCLES = 64
-#: Bank write stall that keeps a program in flight across a LOCKS write.
+#: Bank write stall that keeps a program in flight across a HARNESS_LOCKS write.
 PROGRAM_STALL_CYCLES = 512
 #: Rises a watch of the SHIM command valid or a busy flag may take.
 WATCH_BOUND = 4 * PROGRAM_STALL_CYCLES
@@ -77,7 +79,7 @@ POLL_BOUND = 4096
 
 
 def _read_cmd(enable: bool) -> int:
-    return WORD0_BIT | READ_GO | (READ_EN if enable else 0)
+    return READ_GO | (READ_EN if enable else 0)
 
 
 class _CmdWatch:
@@ -160,6 +162,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
     async def _control_read(self, label: str, watch: _CmdWatch) -> tuple[int, int]:
         """A read with the path free: one SHIM command, no error, the preload word."""
         mark = watch.mark()
+        await self.csr_write(f"{label}_ADDR", READ_ADDR, WORD0_BIT)
         await self.csr_write(f"{label}_GO", READ_CTRL, _read_cmd(True))
         ctrl, _ = await self._poll(f"{label}_DONE", READ_CTRL, READ_DONE)
         data = await self.csr_read(f"{label}_DATA", READ_DATA)
@@ -177,6 +180,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         await self.csr_read("PROGRAM_ENABLE_ONLY_RB", PROGRAM_CTRL, expected=PROG_EN)
 
         mark = watch.mark()
+        await self.csr_write("EXCL_ADDR", READ_ADDR, WORD0_BIT)
         await self.csr_write("EXCL_GO", READ_CTRL, _read_cmd(False))
         excl = await self.csr_read("EXCL_FIRST", READ_CTRL)
         excl_data = await self.csr_read("EXCL_DATA", READ_DATA)
@@ -194,6 +198,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
 
         await self.csr_write("READ_TMO_SHORT", READ_TMO, TMO_EN_R | READ_TIMEOUT_CYCLES)
         mark = watch.mark()
+        await self.csr_write("BOTH_ADDR", READ_ADDR, WORD0_BIT)
         await self.csr_write("BOTH_GO", READ_CTRL, _read_cmd(True))
         both_first = await self.csr_read("BOTH_FIRST", READ_CTRL)
         both, both_polls = await self._poll("BOTH_DONE", READ_CTRL, READ_DONE)
@@ -214,6 +219,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         await self.csr_write("READ_TMO_RESTORE", READ_TMO, TMO_CYC_RST_R)
 
         mark = watch.mark()
+        await self.csr_write("DEFER_ADDR", READ_ADDR, WORD0_BIT)
         await self.csr_write("DEFER_GO", READ_CTRL, _read_cmd(True))
         defer_first = await self.csr_read("DEFER_FIRST", READ_CTRL)
         await self._watch_until("DEFER_WINDOW", watch, mark, lambda d: d[1] >= DEFERRED_WINDOW)
@@ -249,14 +255,13 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         )
 
     async def _lock_after_issue(self, watch: _CmdWatch) -> None:
-        locks = await self.csr_read("LOCKS_ENTRY", LOCKS_ADDR, length=LOCKS_BYTES)
+        locks = await self.csr_read("HARNESS_LOCKS_ENTRY", LOCKS_ADDR, length=LOCKS_BYTES)
         assert not locks & LOCK_WRITE, f"SPARE{LOCK_FIELD} write lock already set: 0x{locks:016x}"
         bit = _bit_addr(LOCK_WORD_ADDR, LOCK_BIT_IN_FLIGHT)
         self._stall(PROGRAM_STALL_CYCLES)
         mark = watch.mark()
-        await self.csr_write(
-            "INFLIGHT_GO", PROGRAM_CTRL, bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
-        )
+        await self.csr_write("INFLIGHT_ADDR", PROGRAM_ADDR, bit)
+        await self.csr_write("INFLIGHT_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
         busy = await self.csr_read("INFLIGHT_BUSY", PROGRAM_CTRL)
         issued_before_lock = watch.since(mark)[0]
         assert busy & PROG_BUSY and issued_before_lock == 1, (
@@ -267,7 +272,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         locks = await self.csr_read("LOCK_LATE_RB", LOCKS_ADDR, length=LOCKS_BYTES)
         still_busy = await self.csr_read("INFLIGHT_STILL_BUSY", PROGRAM_CTRL)
         assert locks & LOCK_WRITE and still_busy & PROG_BUSY, (
-            f"the lock did not land while the program was in flight: LOCKS=0x{locks:016x}, "
+            f"the lock did not land while the program was in flight: HARNESS_LOCKS=0x{locks:016x}, "
             f"PROGRAM_CTRL=0x{still_busy:08x}"
         )
         done, polls = await self._poll("INFLIGHT_DONE", PROGRAM_CTRL, PROG_DONE)
@@ -280,7 +285,8 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
             f"0x{done:08x} after {polls} polls, STATUS=0x{status:08x}"
         )
         mark = watch.mark()
-        await self.csr_write("BURNT_GO", READ_CTRL, bit | READ_GO | READ_EN)
+        await self.csr_write("BURNT_ADDR", READ_ADDR, bit)
+        await self.csr_write("BURNT_GO", READ_CTRL, READ_GO | READ_EN)
         await self._poll("BURNT_DONE", READ_CTRL, READ_DONE)
         burnt = await self.csr_read("BURNT_DATA", READ_DATA)
         await self.csr_write("BURNT_IDLE", READ_CTRL, 0)
@@ -292,9 +298,8 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
 
         refused_bit = _bit_addr(LOCK_WORD_ADDR, LOCK_BIT_REFUSED)
         mark = watch.mark()
-        await self.csr_write(
-            "REFUSED_GO", PROGRAM_CTRL, refused_bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
-        )
+        await self.csr_write("REFUSED_ADDR", PROGRAM_ADDR, refused_bit)
+        await self.csr_write("REFUSED_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
         refused, _ = await self._poll("REFUSED_DONE", PROGRAM_CTRL, PROG_DONE)
         refused_status = await self.csr_read("REFUSED_STATUS", STATUS)
         await self.csr_write("REFUSED_IDLE", PROGRAM_CTRL, 0)
@@ -309,7 +314,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
             "CHK-EFUSE-LOCK-AFTER-ISSUE",
             f"SPARE{LOCK_FIELD} bit {LOCK_BIT_IN_FLIGHT} read-back program with the bank write "
             f"stalled {PROGRAM_STALL_CYCLES} cycles: busy with its SHIM command issued (PROGRAM_CTRL "
-            f"0x{busy:08x}), LOCKS write lock 0x{LOCK_WRITE:x} landed while busy "
+            f"0x{busy:08x}), HARNESS_LOCKS write lock 0x{LOCK_WRITE:x} landed while busy "
             f"(0x{still_busy:08x}), program completed "
             f"after {polls} polls with PROGRAM_CTRL 0x{done:08x} (status 0), STATUS 0x{status:08x} "
             f"(no req_error), 1 SHIM command, program_busy high on {busy_high} samples, the word "

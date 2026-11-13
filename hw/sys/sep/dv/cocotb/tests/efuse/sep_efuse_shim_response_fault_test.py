@@ -102,6 +102,7 @@ from env.sep_efuse_bank_watch import WORD_MASK, SepShimCmdMonitor
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     DIGEST_FIELDS,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     SECRET_FIELDS,
     STATUS_ADDR,
@@ -110,6 +111,7 @@ from env.sep_efuse_plan import (
     field_n_words,
     field_word,
     plan,
+    program_addr_word,
     program_ctrl_word,
 )
 from env.sep_efuse_test_lib import (
@@ -544,8 +546,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         # Step 6: control program of a, no hold.
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(a["addr"]))
         ctl_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, read_back=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1, read_back=0))
         pg = await self._poll_pg(_M_PG_DONE, poll_bound)
         ctl_clks = self.clk - ctl_go if pg is not None else None
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
@@ -574,8 +577,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         dut.efuse_shim_resp_hold_i.value = 1
         self._open_window()
         set_ef_hold_tag(_TAG_LIFE, self.logger)
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(b["addr"]))
         held_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(b["addr"], data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         busy_seen = None
         start = self.clk
         while self.clk - start < poll_bound:
@@ -682,7 +686,8 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_EN | (t_cyc & _TMO_CYC))
         dut.efuse_shim_resp_hold_i.value = 1
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(c["addr"], data=1))
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(c["addr"]))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         await ClockCycles(dut.clk_i, m * t_cyc)
         v = await self._rd(PROGRAM_CTRL_ADDR)
         dut.efuse_shim_resp_hold_i.value = 0

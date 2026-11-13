@@ -6,16 +6,19 @@ Both subsystems carry an ``efuse_interface_ctrl`` block (``hw/ip/efuse`` registe
 description) whose EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL start one fuse-command
 each on the subsystem's fuse-command port, which leaves the SMU for the eFuse
 shim of the wrapper. The SEP block is on the SEP map; the SMC block is reached
-through the SEP view of the SMC window. A command addresses a fuse bit; an
-address at or beyond the fuse array (the ``*_efuse_map`` size in bits) is
+through the SEP view of the SMC window. A command addresses the fuse bit
+written to EFUSE_READ_ADDR or EFUSE_PROGRAM_ADDR before the go bit; an
+address at or beyond the fuse array (the ``*_efuse_map`` size in bits plus the
+32 x WORDS supplementary bits, 128 words in the reference wrappers) is
 rejected with the sticky address error and never leaves as a command.
 
 S0..S3 are ``smu_dtp_sep_dm_dmi_test``. Then, for the SEP and then the SMC:
-S4: a read at bit address 0, and at the middle of the array with each address
-    bit set in turn, completes with ``read_done`` and no ``read_status`` error.
-    The middle of the array is spare space no lock field in the shadow
-    preloads covers.
-S5: programs of bits of the fuse word at the middle of the array, with and
+S4: a read at bit address 0, and at the spare word with each address bit set
+    in turn (addresses inside the array only), completes with ``read_done``
+    and no ``read_status`` error. The spare word is the middle of the SEP
+    array and the first word of SPARE[1] on the SMC: space no lock field in
+    the shadow preloads covers.
+S5: programs of bits of the fuse word at the spare word, with and
     without read-back, complete without error, and a read of that word returns
     every bit programmed; a program with ``efuse_data`` 0, which the description says is
     ignored, changes nothing. ``program_enable`` is cleared before the read-back:
@@ -32,7 +35,7 @@ S8 (before S6): every bit of one more word is programmed; the word reads back
 
 from __future__ import annotations
 
-from seq_lib.smu_addr_map import c_header_u32
+from seq_lib.smu_addr_map import c_header_u32, smc_addr, smc_indexed_addr
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import smu_dtp_sep_dm_dmi_test_seq
 from seq_lib.smu_sep_sba_fabric_sweep_test_seq import (
     _REPO_ROOT,
@@ -56,7 +59,9 @@ def _off(name: str) -> int:
 
 STATUS = _off("EFUSE_INTERFACE_CTRL_STATUS")
 PROGRAM_CTRL = _off("EFUSE_PROGRAM_CTRL")
+PROGRAM_ADDR = _off("EFUSE_PROGRAM_ADDR")
 READ_CTRL = _off("EFUSE_READ_CTRL")
+READ_ADDR = _off("EFUSE_READ_ADDR")
 READ_DATA = _off("EFUSE_READ_INTERFACE_READ_DATA")
 
 READ_ENABLE = _f("EFUSE_READ_CTRL__READ_ENABLE_bm")
@@ -74,10 +79,22 @@ PROGRAM_ADDR_ERROR = _f("EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_b
 READ_ADDR_ERROR_CLEAR = _f("EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bm")
 PROGRAM_ADDR_ERROR_CLEAR = _f("EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bm")
 
+#: Supplementary fuse words of the reference wrappers (the WORDS parameter of the
+#: example supplementary region); the fuse array is the map plus these words.
+SUPPLEMENTARY_WORDS = 128
 SEP_EFUSE_CTRL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
-SEP_FUSE_BITS = 8 * c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SIZE")
+SEP_MAP_BITS = 8 * c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SIZE")
+SEP_FUSE_BITS = SEP_MAP_BITS + 32 * SUPPLEMENTARY_WORDS
 SMC_EFUSE_CTRL = c_header_u32(_SMC_ADDR_H, "SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
-SMC_FUSE_BITS = 8 * c_header_u32(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP_SIZE")
+SMC_MAP_BITS = 8 * smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
+SMC_FUSE_BITS = SMC_MAP_BITS + 32 * SUPPLEMENTARY_WORDS
+#: The spare fuse word each side programs: the middle of the SEP map, the first
+#: word of SPARE[1] on the SMC (SPARE[0] is the lock-field target of other leaves).
+SEP_SPARE_WORD = SEP_MAP_BITS // 2
+SMC_SPARE_WORD = 8 * (
+    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 1)
+    - smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+)
 
 PROGRAM_BITS = (0, 7, 18, 31)
 WORD_BITS = 32
@@ -110,21 +127,26 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
 
     async def _read(self, jtag, ctrl: int, bit: int) -> tuple[int, int]:
-        status = await self._command(jtag, ctrl, READ_CTRL, READ_ENABLE | READ_GO | bit, READ_DONE)
+        await self._sb_ok(jtag, ctrl + READ_ADDR, 2, bit)
+        status = await self._command(jtag, ctrl, READ_CTRL, READ_ENABLE | READ_GO, READ_DONE)
         return int(bool(status & READ_ERROR)), await self._rd(jtag, ctrl + READ_DATA)
 
     async def _program(self, jtag, ctrl: int, bit: int, *, data: int = 1, read_back: bool = False):
-        value = PROGRAM_ENABLE | PROGRAM_GO | bit | (PROGRAM_DATA if data else 0)
+        await self._sb_ok(jtag, ctrl + PROGRAM_ADDR, 2, bit)
+        value = PROGRAM_ENABLE | PROGRAM_GO | (PROGRAM_DATA if data else 0)
         if read_back:
             value |= PROGRAM_READ_BACK
         status = await self._command(jtag, ctrl, PROGRAM_CTRL, value, PROGRAM_DONE)
         return int(bool(status & PROGRAM_ERROR))
 
-    async def _side(self, jtag, sb, name: str, ctrl: int, fuse_bits: int) -> None:
-        # Every address bit set in turn inside the unlocked spare area at the
-        # middle of the array; the reads at 0 and there clear and set bit 12.
-        word = fuse_bits // 2
-        walk = [0] + [word | (1 << k) for k in range((fuse_bits - 1).bit_length())]
+    async def _side(self, jtag, sb, name: str, ctrl: int, fuse_bits: int, word: int) -> None:
+        # Every address bit set in turn on top of the unlocked spare word, inside
+        # the array; the reads at 0 and there clear and set the spare word's bits.
+        walk = [0] + [
+            word | (1 << k)
+            for k in range((fuse_bits - 1).bit_length())
+            if (word | (1 << k)) < fuse_bits
+        ]
         reads = {bit: (await self._read(jtag, ctrl, bit))[0] for bit in walk}
         self._log(f"CHK-EFUSE-CMD-READ {name} {reads}")
         sb.expect_eq(
@@ -212,5 +234,7 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         sb = self.test.env.scoreboard
         jtag = self.jtag
         self.smc_base = int(self.dut.smc_global_base_o.value)
-        await self._side(jtag, sb, "sep", SEP_EFUSE_CTRL, SEP_FUSE_BITS)
-        await self._side(jtag, sb, "smc", self._smc_view(SMC_EFUSE_CTRL), SMC_FUSE_BITS)
+        await self._side(jtag, sb, "sep", SEP_EFUSE_CTRL, SEP_FUSE_BITS, SEP_SPARE_WORD)
+        await self._side(
+            jtag, sb, "smc", self._smc_view(SMC_EFUSE_CTRL), SMC_FUSE_BITS, SMC_SPARE_WORD
+        )

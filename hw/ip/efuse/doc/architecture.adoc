@@ -56,6 +56,8 @@ verification operations
 access control
 
 |Interface SHIM CSR |Configuration registers for foundry-specific timing adaptation. Implemented by the adopter, but always accessed via the interface controller.
+
+|Supplementary Shadow Registers |SMC only, optional: the sensed supplementary fuse region, exported on `smc_supplementary_shadow_regs_o` (<<efuse-supplementary-fuses>>)
 |=====================================================================================
 
 === Shadow Register Subsystem
@@ -72,7 +74,7 @@ access features.
 .eFuse shadow-register features
 |=====================================================================================
 |Feature |Description
-|Capacity |Configurable (default: 8192 bits / 1KB, 256 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
+|Capacity |Configurable via the `SHADOW_REG_BITS` parameter: 2048 bits (64 × 32-bit words) in the SMC and 8192 bits (256 × 32-bit words) in the SEP
 |Initialization |Automatic boot-time loading via Fuse Sense FSM
 |Access Control |Multi-tier hardware and software lock mechanisms
 |Data Consistency |Maintains synchronization with underlying OTP storage upon each power-on reset
@@ -255,7 +257,8 @@ a command has been issued does not affect that command.
 |=====================================================================================
 |Property |Hardware Lock |Software Lock
 |Source |Permission bits fused into the eFuse array (the field map reflects
-the programmed values) |Runtime writes to the `LOCKS` CSR (write-1-to-set)
+the programmed values) |Runtime writes to the lock registers (write-1-to-set):
+`LOCKS` on SEP, `HARNESS_LOCKS` and `SUPPLEMENTARY_LOCKS` on SMC
 |Persistence |Permanent — backed by one-time-programmable bits and cannot
 be cleared once set |Volatile — retained only until the next system reset
 |Reversibility |Irreversible by any means |Cleared by reset, allowing the
@@ -405,3 +408,114 @@ preventing shadow register modifications.
 For SMC, `secure_tm_i` is tied to logic `0`, meaning Secure Test Mode is not
 active during normal SMC operation. This signal is primarily relevant for SEP
 where sensitive RMA tokens must be protected during manufacturing test flows.
+
+[[efuse-supplementary-fuses]]
+=== Supplementary Fuse Region
+
+The SMC eFuse controller can sense an optional supplementary fuse region of
+32-bit words that the adopter defines for logic elsewhere in its SoC. The
+region is as large as the adopter's `fuse` slot in `smc_external`
+(<<efuse-supplementary-size>>). The name follows the supplementary region of `smc_external`, where its
+window sits: the harness map is required and laid out by OCAH, while this
+region is optional and its contents are the adopter's. The controller senses
+the region with the harness map, holds it in a second shadow register file,
+locks it with `SUPPLEMENTARY_LOCKS` and exports it without interpreting it. The
+SEP has no supplementary fuse region, and the harness spares stay reserved for
+the harness. <<efuse-supplementary-fuses-fig>> shows the region's path through
+the SMC controller.
+
+[[efuse-supplementary-fuses-fig]]
+.SMC supplementary fuse region
+image::efuse_supplementary_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, named fuses and spares, and to the supplementary shadow file of up to 32 lock regions, whose locks come from SUPPLEMENTARY_LOCKS; the fuse sense FSM reads the harness map and the supplementary map in one command; on the adopter side, smc_supplementary_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 2047 and bits from 2048",width=100%,pdfwidth=100%]
+
+==== Configuration
+
+`CFG.SMC_SUPPLEMENTARY_FUSE`, of type
+`smc_efuse_pkg::supplementary_fuse_cfg_t`, describes the region. The harness
+reads only these members, never adopter field names.
+
+[cols="1,4",options="header"]
+|===
+|Member |Meaning
+|`BASE` |Byte offset of the region's software window in `smc_external`, word
+aligned. The window must sit at or above `EFUSE_SHIM_SIZE` and end within
+`smc_external`; the reference wrappers place it in the `fuse` slot of the
+supplementary region. The fabric diverts the window to the eFuse controller
+instead of `smc_external_req_o`.
+|`WORDS` |Region size in 32-bit words, so the window is 4 × `WORDS` bytes. 0,
+the default, removes the region and its logic.
+|`LOCK_REGION_END` |32 word offsets that divide the region into lock regions
+(<<efuse-supplementary-locks>>).
+|===
+
+Static assertions in `smc_peripherals.sv` reject a configuration that breaks
+these rules. `hw/top/smc_supplementary_fuse_map.rdl` shows how an adopter can describe its
+payload for its own headers and documentation; the harness does not read it.
+The reference wrappers enable the example in `smc_supplementary_fuse_example_pkg`:
+128 words in three lock regions.
+
+[[efuse-supplementary-size]]
+==== Region Size
+
+The `fuse` slot in the `smc_external` map sets the largest region, and the
+controller sizes the fuse command's bit address and word count from it; `WORDS`
+may not exceed the slot's word count. The open map reserves a 16 KB slot, 4096
+words or 128 Kbit, at `smc_external` offset `0x7000`. An adopter that needs more
+enlarges the slot in its own `smc_external` map; the slot may sit anywhere in
+`smc_external` that does not overlap another block, and the window itself need
+not sit in the slot. `WORDS` may not exceed 65535, the range of a
+`LOCK_REGION_END` entry. Each word costs 32 shadow flops and lengthens the boot
+sense, so a large region trades area and boot time for fuses.
+
+==== Sensing and Export
+
+The supplementary fuses start at bit 2048, directly after the 2 Kbit harness map, so
+harness fuse addresses do not depend on the region size. At cold reset release
+the controller issues one READ of 64 + `WORDS` words from bit 0. The harness
+shadow file stores the first 64 words and the supplementary shadow file the rest.
+`fuse_sense_done` waits for both, so `smc_fuse_sense_done_o`, the
+`efuse_sense_done` status bit and the fuse-released SMC reset all include the
+supplementary region.
+
+`smc_supplementary_shadow_regs_o` carries the supplementary shadow file as `WORDS` 32-bit
+words, gated like `shadow_regs_o`. With no region it is one word, tied to
+zero.
+
+[[efuse-supplementary-locks]]
+==== Supplementary Locks
+
+The SMC harness map begins with two lock registers: `HARNESS_LOCKS` at `0x000`
+governs the harness fields and `SUPPLEMENTARY_LOCKS` at `0x008` the supplementary region.
+Both are lock meta-fields: they are not lock-checked themselves, their shadow
+copies are write-1-to-set, and they sit in Class 1 storage so scan cannot clear
+them. A burned bit is a permanent lock and a set shadow bit locks until reset
+(<<efuse-hardware-and-software-locks-table>>).
+
+Entry _n_ of `LOCK_REGION_END` is the word offset one past the end of lock
+region _n_. Region _n_ starts where region _n_-1 ends, so the regions tile the
+supplementary map without gaps. Entries after the last region are 0, and the last
+region ends at `WORDS`. `SUPPLEMENTARY_LOCKS` bit 2__n__ write-locks region _n_ and
+bit 2__n__+1 read-locks it; pairs past the last region are unused. The example
+configuration's entries are 64, 96 and 128, so pairs 0-2 lock words 0-63,
+64-95 and 96-127.
+
+The region has no static lock policy: every region is readable and writable in
+the shadow until its `SUPPLEMENTARY_LOCKS` bits are set. Because a lock pair keeps
+its meaning only while its region does, the region may grow only by appending
+regions once parts carry burned `SUPPLEMENTARY_LOCKS` bits.
+
+==== Access Path
+
+The supplementary window shares the harness shadow registers' path: the functional
+and OTP JTAG ports, one AXI-Lite to APB bridge and the APB demux. As a result:
+
+* The SMC JTAG lifecycle filter applies unchanged
+(<<efuse-lifecycle-based-jtag-permissions-table>>).
+* A write to `SUPPLEMENTARY_LOCKS` completes before any later access to the adopter
+window from either port.
+* Until fuse sense completes, accesses to the window receive an error response.
+* An access to a locked region returns `0xBADCAB1E` without an error response
+and raises `locked_field_access_interrupt_o`.
+* `efuse_guard` checks firmware program and read commands at or above bit 2048
+against the `SUPPLEMENTARY_LOCKS` pair of the target's region. Commands at or above
+bit 2048 + 32 × `WORDS` set the address error status and never reach the SHIM.

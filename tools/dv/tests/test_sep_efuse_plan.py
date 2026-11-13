@@ -275,7 +275,11 @@ class ImageRuleTest(unittest.TestCase):
             ]
             self.assertTrue(progs, f"seed {seed}: no denied EFUSE_PROGRAM_CTRL write")
             for a in progs:
-                self.assertEqual(a["data"], P.program_ctrl_word(p.leg["spare_p"]["addr"]))
+                self.assertEqual(a["data"], P.program_ctrl_word())
+            p_addr = P.program_addr_word(p.leg["spare_p"]["addr"])
+            for a in p.leg["denied"]:
+                if a["op"] == "wr" and a.get("reg") == "EFUSE_PROGRAM_ADDR":
+                    self.assertNotEqual(a["data"], p_addr, f"seed {seed}: extra write of p")
 
     def test_field_layout_redraw_is_logged_with_its_class(self) -> None:
         seen = 0
@@ -358,8 +362,11 @@ class TokenGoldenTest(unittest.TestCase):
         self.assertEqual(P.token_go_op(P.CH_CHIPLET)[1], 1 << 8)
 
     def test_control_words(self) -> None:
-        self.assertEqual(P.program_ctrl_word(0x1F01), 0x1F01 | 1 << 16 | 1 << 17 | 1 << 27)
-        self.assertEqual(P.read_ctrl_word(0x20), 0x20 | 1 << 16 | 1 << 28)
+        self.assertEqual(P.program_ctrl_word(), 1 << 16 | 1 << 17 | 1 << 27)
+        self.assertEqual(P.program_ctrl_word(data=0, read_back=1), 1 << 17 | 1 << 18 | 1 << 27)
+        self.assertEqual(P.read_ctrl_word(), 1 << 16 | 1 << 28)
+        self.assertEqual(P.program_addr_word(0x1F01), 0x1F01)
+        self.assertEqual(P.read_addr_word(0x20), 0x20)
 
 
 def _expected_row(state: str, sip: int, sys_: int, d1: int, d2: int, sec: int) -> int:

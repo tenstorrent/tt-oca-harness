@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import cocotb
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_read_program_timeout_test_seq import (
     _BIT,
@@ -42,6 +43,7 @@ from .smc_efuse_read_program_timeout_test_seq import (
     TMO_EN_R,
 )
 
+READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 _POLL = 10_000
 
 
@@ -62,7 +64,8 @@ class smc_efuse_read_timeout_status_test_seq(SmcCsrSeq):
         raise AssertionError(f"{label}: READ_DONE never set, last READ_CTRL=0x{last:x}")
 
     async def _read(self, label: str) -> tuple[int, int]:
-        await self.csr_write(f"{label}_GO", READ_CTRL, _BIT | READ_GO | READ_EN)
+        await self.csr_write(f"{label}_ADDR", READ_ADDR, _BIT)
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
         st = await self._wait_done(f"{label}_DONE")
         data = await self.csr_read(f"{label}_DATA", READ_DATA)
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)

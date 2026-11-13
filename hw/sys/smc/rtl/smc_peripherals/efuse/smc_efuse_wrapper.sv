@@ -9,8 +9,17 @@
 // JTAG AXI-Lite accesses receive an error response with data 0xBADCAB1E when the SEP
 // lifecycle state is PROD or RMA_SiP or fails its integrity check, except reads of
 // JTAG_PUBLIC_IDENTITY outside an integrity error.
+// With SUPPLEMENTARY_FUSE.WORDS non-zero, the controller also serves the supplementary fuse region in its
+// window at SUPPLEMENTARY_FUSE.BASE within smc_external, locked per SUPPLEMENTARY_FUSE.LOCK_REGION_END.
 
-module smc_efuse_wrapper (
+`include "ocah_assert.svh"
+
+module smc_efuse_wrapper #(
+  parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region; '0
+                                                                  // omits it.
+  localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS)
+) (
   input  logic                                       clk_i,  // SMC core clock for the
                                                              // eFuse controller and JTAG
                                                              // access filter.
@@ -87,6 +96,13 @@ module smc_efuse_wrapper (
                                                                      // completes unless
                                                                      // sep_security_disable_i is
                                                                      // set.
+  output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary shadow-register
+                                                                            // contents; zero until fuse
+                                                                            // sensing completes unless
+                                                                            // sep_security_disable_i is set,
+                                                                            // and always without the supplementary
+                                                                            // region.
+                                                     supplementary_shadow_regs_o,
 
   output logic [9:0]                                 efuse_debug_o,  // eFuse controller status,
                                                                      // from bit 0: shadow-register
@@ -192,6 +208,13 @@ module smc_efuse_wrapper (
   // eFuse Interface Controller
   /////////////////////////////////////////////////////////////////////////
 
+  localparam efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] SupplementaryFieldMap =
+      smc_efuse_pkg::build_supplementary_field_map(SUPPLEMENTARY_FUSE.LOCK_REGION_END);
+
+  `OCAH_ASSERT_STATIC(SupplementaryLocksFollowHarnessLocks_A,
+      smc_efuse_pkg::SupplementaryLocksBitOffset == smc_efuse_pkg::HarnessLockFieldBits,
+      "efuse_lock_view_t places SUPPLEMENTARY_LOCKS directly after HARNESS_LOCKS; the RDL map must too")
+
   efuse_interface_controller #(
     .ADDR_WIDTH                  (smc_pkg::SmcLocalAddrWidth),
     .DATA_WIDTH                  (smc_pkg::AxiLite32DataWidth),
@@ -237,6 +260,10 @@ module smc_efuse_wrapper (
     .SECRET_SHADOW_RANGES        ('0),   // SMC has no shadow registers that should be blocked in secure_tm
     .LC_STATE_BIT_POSITION       (0),
 
+    .SUPPLEMENTARY_FUSE_WORDS          (SUPPLEMENTARY_FUSE.WORDS),
+    .SUPPLEMENTARY_REG_MAP_BASE_ADDR   (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SUPPLEMENTARY_FUSE.BASE)),
+    .SUPPLEMENTARY_LOCKS_BIT_OFFSET    (smc_efuse_pkg::SupplementaryLocksBitOffset),
+
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
   ) u_efuse_interface_controller (
     .clk_i                              (clk_i),
@@ -264,11 +291,13 @@ module smc_efuse_wrapper (
     .secure_tm_i                        (1'b0),
     .security_disable_i                 (sep_security_disable_i),
     .efuse_field_map_i                  (smc_efuse_pkg::EfuseFieldMap),
+    .supplementary_field_map_i                (SupplementaryFieldMap),
 
     .reset_n_o                          (reset_n_o),
     .fuse_sense_done_o                  (fuse_sense_done_o),
     .security_disable_o                 (), // SEP only
     .shadow_regs_o                      (shadow_regs_o),
+    .supplementary_shadow_regs_o              (supplementary_shadow_regs_o),
 
     .ext_boot_seq_done_i                (ext_boot_seq_done_i),
 

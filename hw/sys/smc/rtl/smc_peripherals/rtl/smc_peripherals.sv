@@ -20,11 +20,16 @@
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
                                          // GPIO demux and of each GPIO interface.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h4   // Vendor eFuse shim CSR block carved off
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Vendor eFuse shim CSR block carved off
                                                  // the base of the smc_external window;
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral
                                                  // crossbar.
+  parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region, its
+                                                                  // window at or above
+                                                                  // EFUSE_SHIM_SIZE; '0 omits it.
+  localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS)
 ) (
   input  logic clk_ref_i,               // Reference clock for the reset unit, the AVSBus
                                         // controller and the peripheral CDC.
@@ -214,6 +219,13 @@ module smc_peripherals #(
   output smc_efuse_pkg::efuse_map_t shadow_regs_o,  // eFuse shadow-register contents; zero
                                                     // until fuse sensing completes unless
                                                     // sep_security_disable_i is set.
+  output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary fuse shadow-register
+                                                                            // contents; zero until fuse
+                                                                            // sensing completes unless
+                                                                            // sep_security_disable_i is set,
+                                                                            // and always without the supplementary
+                                                                            // region.
+               supplementary_shadow_regs_o,
 
   input  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_i,    // Asynchronous NDM reset
                                                                             // request from each
@@ -542,7 +554,9 @@ module smc_peripherals #(
   ///////////////////
 
   smc_periph_axi_lite_xbar #(
-    .EFUSE_SHIM_SIZE(EFUSE_SHIM_SIZE)
+    .EFUSE_SHIM_SIZE   (EFUSE_SHIM_SIZE),
+    .SUPPLEMENTARY_FUSE_BASE (SUPPLEMENTARY_FUSE.BASE),
+    .SUPPLEMENTARY_FUSE_WORDS(SUPPLEMENTARY_FUSE.WORDS)
   ) u_smc_periph_axi_lite_xbar (
     .clk_i                            (clk_smc_i),
     .rst_ni                           (rst_primary_smc_clk_no),
@@ -1327,7 +1341,25 @@ module smc_peripherals #(
     .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
   );
 
-  smc_efuse_wrapper u_smc_efuse_wrapper (
+  `OCAH_ASSERT_STATIC(
+      SupplementaryFuseWindow_A,
+      SUPPLEMENTARY_FUSE.WORDS == 0 ||
+      (SUPPLEMENTARY_FUSE.BASE % 4 == 0 &&
+       SUPPLEMENTARY_FUSE.BASE >= EFUSE_SHIM_SIZE &&
+       64'(SUPPLEMENTARY_FUSE.BASE) + 4 * SUPPLEMENTARY_FUSE.WORDS <= 64'(smc_pkg::SmcExternalWindowSize)),
+      "SUPPLEMENTARY_FUSE.BASE must be word aligned with the window in smc_external at or above EFUSE_SHIM_SIZE")
+  `OCAH_ASSERT_STATIC(
+      SupplementaryFuseWords_A,
+      SUPPLEMENTARY_FUSE.WORDS <= smc_efuse_pkg::MaxSupplementaryFuseWords,
+      "SUPPLEMENTARY_FUSE.WORDS exceeds the supplementary fuse slot that sizes the fuse command")
+  `OCAH_ASSERT_STATIC(
+      SupplementaryLockRegionEnd_A,
+      smc_efuse_pkg::supplementary_lock_region_end_valid(SUPPLEMENTARY_FUSE),
+      "SUPPLEMENTARY_FUSE.LOCK_REGION_END must strictly increase, then be 0, and end at SUPPLEMENTARY_FUSE.WORDS")
+
+  smc_efuse_wrapper #(
+    .SUPPLEMENTARY_FUSE(SUPPLEMENTARY_FUSE)
+  ) u_smc_efuse_wrapper (
     .clk_i                           (clk_smc_i),
     .rst_ni                          (rst_primary_smc_clk_no),
     .test_en_i                       (test_en_i),
@@ -1357,6 +1389,7 @@ module smc_peripherals #(
     .reset_n_o                       (fuse_reset_n),
     .fuse_sense_done_o               (fuse_sense_done_o),
     .shadow_regs_o                   (shadow_regs_o),
+    .supplementary_shadow_regs_o           (supplementary_shadow_regs_o),
 
     .efuse_debug_o                   (efuse_debug_o),
     .locked_field_access_interrupt_o (locked_field_access_interrupt)
