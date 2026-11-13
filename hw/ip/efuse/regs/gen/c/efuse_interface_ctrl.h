@@ -257,14 +257,14 @@ typedef union {
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_ADDR
 // Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.
-// Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.
+// Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.
+        // Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.
         uint32_t efuse_addr :32;
     } f;
     uint32_t w;
@@ -272,14 +272,14 @@ typedef union {
 
 // reg - efuse_interface_ctrl::EFUSE_READ_ADDR
 // Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.
-// Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.
+// Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.
+        // Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.
         uint32_t efuse_addr :32;
     } f;
     uint32_t w;

@@ -3092,7 +3092,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.</ipxact:description>
+            <ipxact:description>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3110,7 +3110,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.</ipxact:description>
+            <ipxact:description>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

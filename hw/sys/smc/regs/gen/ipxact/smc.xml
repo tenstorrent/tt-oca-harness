@@ -7520,7 +7520,7 @@ RTL is frozen. Each element has its own write/read lock pair in HARNESS_LOCKS.</
           <ipxact:register>
             <ipxact:name>SPARE_TAIL</ipxact:name>
             <ipxact:description>64-bit spare region at the end of the map, reserved for fields assigned after the
-RTL is frozen. All elements share the slot-15 write/read lock pair in
+RTL is frozen. All elements share the slot-7 write/read lock pair in
 HARNESS_LOCKS.</ipxact:description>
             <ipxact:dim>3</ipxact:dim>
             <ipxact:addressOffset>'he8</ipxact:addressOffset>
@@ -7906,7 +7906,7 @@ HARNESS_LOCKS.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>efuse_addr</ipxact:name>
-              <ipxact:description>Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.</ipxact:description>
+              <ipxact:description>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7924,7 +7924,7 @@ HARNESS_LOCKS.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>efuse_addr</ipxact:name>
-              <ipxact:description>Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.</ipxact:description>
+              <ipxact:description>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

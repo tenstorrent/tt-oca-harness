@@ -203,7 +203,7 @@ addrmap efuse_interface_ctrl {
         field {
             sw = rw;
             hw = r;
-            desc = "Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.";
+            desc = "Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.";
         } efuse_addr [31:0] = 0x0;
     };
 
@@ -214,7 +214,7 @@ addrmap efuse_interface_ctrl {
         field {
             sw = rw;
             hw = r;
-            desc = "Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.";
+            desc = "Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.";
         } efuse_addr [31:0] = 0x0;
     };
 
