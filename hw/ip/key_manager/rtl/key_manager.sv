@@ -387,7 +387,7 @@ module key_manager
     .hmac_resp_i     (hmac_resp_i),
     .abr_req_o       (abr_req_o),
     .abr_resp_i      (abr_resp_i),
-    // OTP/eFuse pass-through (index 8); filtered and remapped before efuse_req_o
+    // OTP/eFuse pass-through (index 8); remapped before efuse_req_o
     .otp_req_o       (otp_axil_req),
     .otp_resp_i      (otp_axil_resp)
   );
