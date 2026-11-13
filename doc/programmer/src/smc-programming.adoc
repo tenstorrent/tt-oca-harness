@@ -462,10 +462,10 @@ The current value of the timer is stored in the CLINT's `MTIME` register, at
 to each core of the SMC in the CLINT `MTIMECMP` register array, at
 `CLINT_BASE + 0x4000 + (0x8 * hartid)`. Both registers are 64-bits wide.
 
-A timer interrupt becomes pending for a core once `MTIME` exceeds the core's
-corresponding `MTIMECMP` value. To dismiss the interrupt, the timer interrupt
-handler should set the core's corresponding `MTIMECMP` register to a new value
-in the future.
+A timer interrupt becomes pending for a core once `MTIME` is greater than or
+equal to the core's corresponding `MTIMECMP` value. To dismiss the interrupt,
+the timer interrupt handler should set the core's corresponding `MTIMECMP`
+register to a new value in the future.
 
 [WARNING]
 ====
@@ -473,7 +473,7 @@ There may be a delay between writing `MTIMECMP` and the timer interrupt pending
 bit falling, during which a spurious timer interrupt may occur if interrupts are
 enabled again (for example, by returning from the timer interrupt handler).
 For robustness against spurious timer interrupts, the timer interrupt handler
-should verify the interrupt condition (`MTIMECMP > MTIME`) before calling
+should verify the interrupt condition (`MTIME >= MTIMECMP`) before calling
 periodic functions and re-scheduling.
 ====
 
@@ -538,8 +538,9 @@ void write_clint_mtimecmp(uint64_t value) {
 
 Cores can send interrupts to other cores of the SMC by writing a value of `1`
 to the target core's corresponding `MSIP` register, at
-`CLINT_BASE + (0x4 * hartid)`. This writes directly to the target core's
-`MIE.msip` bit.
+`CLINT_BASE + (0x4 * hartid)`. This drives the target core's `mip.MSIP`
+pending bit; the core takes the interrupt when `mie.MSIE` and `mstatus.MIE`
+are set.
 Upon taking a software interrupt, a core may clear its software interrupt
 pending bit by writing `0` to its corresponding `MSIP` register.
 Neither timer nor software interrupts use a PLIC completion write.
@@ -1097,8 +1098,10 @@ are substituted.
 
 The Log Engine is a DMA-based logging peripheral that can efficiently transfer
 log messages from SMC memory to a UART on the CPU's behalf.
-The UART exposes the `txrdy_o` signal directly to the Log Engine which notifies
-it that more bytes can be accepted into the transmit FIFO.
+The UART exposes its `txrdy_o` signal directly to the Log Engine. In DMA mode 0
+the UART raises `txrdy_o` while its transmit FIFO is empty; the Log Engine
+waits for that level before each byte it writes, so the FIFO is refilled only
+after it drains.
 
 Each Log Engine supports up to 16 log entries, which represent a message to be
 transmitted. The Log Engine uses round-robin scheduling for fairness in
