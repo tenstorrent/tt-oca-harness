@@ -160,22 +160,27 @@ FILE_PLUSARGS: tuple[str, ...] = (
 class SepEsrcNoiseDriver:
     """Raw-noise driver of ``start_esrc_noise_driver`` with a cooperative stop.
 
-    ``stop`` clears the run flag and waits until the loop exits, so no trigger is
-    cancelled while it is pending. The loop exits at the next clock edge, or after
-    the write of the current cycle when ``stop`` comes between the edge and that
-    write.
+    ``stop`` clears the run flag and waits until the loop exits, so no
+    ``NextTimeStep`` trigger is cancelled while it is pending. The loop exits at
+    the next clock edge, or after the write of the current cycle when ``stop``
+    comes between the edge and that write. Before the first clock edge the loop
+    waits only on ``RisingEdge``, so ``stop`` cancels it there: a caller that
+    fails before ``clk_i`` starts would otherwise wait for an edge that never
+    comes.
     """
 
     def __init__(self, noise_mode: str, seed_base: int) -> None:
         self._gen = EntropyNoiseModel()
         self._gen.configure(noise_mode, seed_base=seed_base)
         self._run = True
+        self._seen_edge = False
         self._task = cocotb.start_soon(self._drive())
 
     async def _drive(self) -> None:
         dut = cocotb.top
         while self._run:
             await RisingEdge(dut.clk_i)
+            self._seen_edge = True
             if not self._run:
                 break
             await NextTimeStep()
@@ -183,6 +188,9 @@ class SepEsrcNoiseDriver:
 
     async def stop(self) -> None:
         self._run = False
+        if not self._seen_edge:
+            self._task.cancel()
+            return
         await self._task
 
 
