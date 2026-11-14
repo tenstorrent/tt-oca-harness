@@ -757,6 +757,25 @@ def set_km_pwd_pass(passed: bool, log=None) -> bool:
     return _set_bound("km_pwd_pass", int(bool(passed)), "FCOV-KM-PWD-PASS", log)
 
 
+def set_km_sbox_in(value: int | None, log=None) -> bool:
+    """Write ``u_sep_fcov.km_sbox_in`` (the S-box inputs of one store, or 0 for none).
+
+    ``value`` is ``word_index << 32 | (W ^ Rkey)`` of one KM SRAM scrambled store:
+    the 13-bit plaintext word index and the 32-bit data-path S-box input. The
+    setter writes it with bit 45 set as the valid bit, and 0 for None. The
+    sampler samples ``sep_km_sram_sbox_in_cg`` on each rise of bit 45 inside the
+    window of the scrambler leaf. The leaf writes one store after its checks of
+    the store run pass, holds it for at least one clk_i edge, and writes 0 for
+    at least one edge before the next. Same rules as ``graded_owner``: a no-op
+    that returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    if value is not None and not 0 <= value < 1 << 45:
+        raise ValueError(f"km_sbox_in value {value:#x} is outside 45 bits")
+    v = 0 if value is None else (1 << 45) | value
+    return _set_bound("km_sbox_in", v, "FCOV-KM-SBOX-IN", log)
+
+
 def set_km_efw_tm_pass(passed: bool, log=None) -> bool:
     """Write ``u_sep_fcov.km_efw_tm_pass`` (1 after the check passes, else 0).
 

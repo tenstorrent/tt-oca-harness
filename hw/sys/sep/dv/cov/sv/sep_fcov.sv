@@ -40668,6 +40668,48 @@ module sep_fcov (
   sep_km_vault_wipe_cg         u_sep_km_vault_wipe_cg         = new();
 
   // ---------------------------------------------------------------------
+  // S-box inputs of the KM SRAM scrambler (sep_km_sram_scrambler_key_rand_test).
+  // The leaf writes km_sbox_in through the u_sep_fcov handle, one accepted
+  // scrambled store of its 64-store run at a time, after the checks of that
+  // run pass: bit 45 valid, [44:32] the 13-bit plaintext word index, [31:0]
+  // W ^ Rkey from its plan and the specification round key. The sampler
+  // samples on each rise of bit 45. A data lane is the S-box input of that
+  // nibble (hw/ip/scrambler/doc/architecture.adoc, "Scrambling"). An address
+  // lane is the plaintext lane value; all 64 stores use one key, so every
+  // value of a lane maps to every S-box input value of that lane, whatever
+  // key bits the address path XORs. km_sbox_in is a model value, never a
+  // DUT value, and drives nothing.
+  // ---------------------------------------------------------------------
+  covergroup sep_km_sram_sbox_in_cg with function sample (logic [44:0] s);
+    option.per_instance = 1;
+    option.name = "sep_km_sram_sbox_in_cg";
+    cp_data_lane0: coverpoint s[3:0] {bins val[] = {[0 : 15]};}
+    cp_data_lane1: coverpoint s[7:4] {bins val[] = {[0 : 15]};}
+    cp_data_lane2: coverpoint s[11:8] {bins val[] = {[0 : 15]};}
+    cp_data_lane3: coverpoint s[15:12] {bins val[] = {[0 : 15]};}
+    cp_data_lane4: coverpoint s[19:16] {bins val[] = {[0 : 15]};}
+    cp_data_lane5: coverpoint s[23:20] {bins val[] = {[0 : 15]};}
+    cp_data_lane6: coverpoint s[27:24] {bins val[] = {[0 : 15]};}
+    cp_data_lane7: coverpoint s[31:28] {bins val[] = {[0 : 15]};}
+    // Word index lanes [12:9] (sbox4), [8:6], [5:3], [2:0] (sbox3).
+    cp_addr_lane0: coverpoint s[44:41] {
+      bins val[] = {[0 : 15]};
+    }
+    cp_addr_lane1: coverpoint s[40:38] {bins val[] = {[0 : 7]};}
+    cp_addr_lane2: coverpoint s[37:35] {bins val[] = {[0 : 7]};}
+    cp_addr_lane3: coverpoint s[34:32] {bins val[] = {[0 : 7]};}
+  endgroup
+
+  sep_km_sram_sbox_in_cg u_sep_km_sram_sbox_in_cg = new();
+  logic [45:0] km_sbox_in = '0;
+  logic km_sbox_in_q = 1'b0;
+  always @(posedge clk_i) begin
+    km_sbox_in_q <= (km_sbox_in[45] === 1'b1);
+    if (km_own_scr && (km_sbox_in[45] === 1'b1) && !km_sbox_in_q && !$isunknown(km_sbox_in))
+      u_sep_km_sram_sbox_in_cg.sample(km_sbox_in[44:0]);
+  end
+
+  // ---------------------------------------------------------------------
   // Pass label of sep_km_cpu_protect_rand_test (km_cpu_pass, bits Kcp*).
   // Each cell of that owner in cp_mem_iface_req, the execute-protection
   // points, cp_fr_err_out (except port_equals_pic), cp_km_trap_cause,

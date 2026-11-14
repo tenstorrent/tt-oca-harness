@@ -1075,6 +1075,8 @@ count values, not behaviour.
 |`sep_km_kpv_rand_test` |First slot and prefill words of the erase-warm leg |None: no bin records the leg
 |`sep_km_otp_interface_rand_test` |Lifecycle state of the image |`sep_km_otp_readout_cg.cp_otp_read_through`, seed-dependent
 |`sep_km_otp_interface_rand_test` |Class of the programmed fuse field outside the KM interface |`sep_km_otp_readout_cg.cp_otp_notkm_class`, seed-dependent
+|`sep_km_sram_scrambler_key_rand_test` |The three lane offsets of the sweep (the first 16 of the 64 stores) |`sep_km_sram_sbox_in_cg` (`cp_data_lane0` to `cp_data_lane7`, `cp_addr_lane0` to `cp_addr_lane3`), all 168 bins on every seed: the offsets move the sweep, and every offset gives every lane value
+|`sep_km_sram_scrambler_key_rand_test` |Keys kA and kB, the other word addresses and words |None: they change data and addresses inside a fixed contract that the checkers read back
 |===
 
 [[sep-fcov-owners]]
@@ -1753,6 +1755,7 @@ record that the leaf writes after its check passed, and the record carries the
 owner code. The owner code of an SPI record is the test dimension of
 `sep_spi_lane_data_cg`. `sep_aes_cfb_ofb_gcm_cg` still bins the committed AES
 control and samples only when the record matches it.
+* `sep_km_sram_sbox_in_cg` is also an exception to the next rule: it is model-side and samples no DUT net. It covers the S-box input values that the graded store stream of its owner presents under the DUT key, which the owner reads from SCRAMBLER_KEY at the ready and done messages of the stream, computed from the store words with the round key of the specification. The owner writes one record per store, `km_sbox_in`, through `u_sep_fcov` (setter `set_km_sbox_in`) after its checks pass, and the group samples the record inside the window of the owner (<<sep-fcov-km-sram-sbox-in>>).
 * The gate is not a bin dimension, a checker verdict or a scoreboard count. A bin
 still samples a DUT signal, and the gate only enables the sample.
 * Outcome bounds. Where a row grades a DUT outcome inside a bound that the owner
@@ -1810,7 +1813,7 @@ does not use the `in_reset` gate of Phase 1. The graded window still applies.
 |<<sep-fcov-p2-efuse-lifecycle,eFuse, lifecycle>>
 |`sep_efuse_map_geometry_cg`, `sep_efuse_field_value_cg`, `sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`, `sep_dtp_gating_ladder_cg`, `sep_lc_sigint_failclosed_cg`, `sep_lc_illegal_transition_cg`, `sep_efuse_lock_policy_cg`, `sep_lc_demotion_cg`, `sep_lc_demote_lock_cg`, `sep_token_channel_cg`, `sep_token_fault_cg`, `sep_sec_dis_activation_cg`, `sep_sec_dis_robustness_cg`, `sep_efuse_if_status_cg`, `sep_efuse_secure_tm_cg`, `sep_efuse_jtag_policy_cg`, `sep_lc_port_gate_cg`, `sep_lc_sigint_inject_cg`, `sep_lc_demote_hold_cg`
 |<<sep-fcov-p2-key-manager,Key Manager>>
-|`sep_km_frame_validation_cg`, `sep_km_cmd_reject_cg`, `sep_km_command_cg`, `sep_km_mailbox_fault_cg`, `sep_km_mailbox_transport_cg`, `sep_km_memory_boot_cg`, `sep_km_kpv_slot_cg`, `sep_km_kpv_locked_access_cg`, `sep_km_secret_nonexposure_cg`, `sep_km_kmcsr_status_cg`, `sep_km_otp_readout_cg`, `sep_km_integrity_fault_cg`, `sep_km_exec_protection_cg`, `sep_km_drbg_sampler_cg`, `sep_km_drbg_fault_cg`, `sep_km_fault_report_cg`, `sep_km_reset_domain_cg`, `sep_km_sideload_delivery_cg`, `sep_km_abr_shared_key_cg`, `sep_km_handover_cg`, `sep_km_vault_wipe_cg`, `sep_km_crc_accel_cg`
+|`sep_km_frame_validation_cg`, `sep_km_cmd_reject_cg`, `sep_km_command_cg`, `sep_km_mailbox_fault_cg`, `sep_km_mailbox_transport_cg`, `sep_km_memory_boot_cg`, `sep_km_kpv_slot_cg`, `sep_km_kpv_locked_access_cg`, `sep_km_secret_nonexposure_cg`, `sep_km_kmcsr_status_cg`, `sep_km_otp_readout_cg`, `sep_km_integrity_fault_cg`, `sep_km_exec_protection_cg`, `sep_km_drbg_sampler_cg`, `sep_km_drbg_fault_cg`, `sep_km_fault_report_cg`, `sep_km_reset_domain_cg`, `sep_km_sideload_delivery_cg`, `sep_km_abr_shared_key_cg`, `sep_km_handover_cg`, `sep_km_vault_wipe_cg`, `sep_km_crc_accel_cg`, `sep_km_sram_sbox_in_cg`
 |<<sep-fcov-p2-open-value-legs,Open-value stimulus legs>>
 |`sep_open_value_leg_cg`
 |<<sep-fcov-p2-ras,`sep_ras_o` rise>>
@@ -6532,7 +6535,7 @@ The group names and the owning tests are the contract. The owning tests are the 
 ===== Rules for every point
 
 * A point is a coverpoint or a cross. The tool of every point is VCS.
-* A point samples DUT nets or the DUT bus. It never reads log text or a scoreboard count.
+* A point samples DUT nets or the DUT bus. It never reads log text or a scoreboard count. The one exception is `sep_km_sram_sbox_in_cg`, which is model-side and samples no DUT net: it covers the S-box input values that the graded store stream of its owner presents under the DUT key read at the ready and done messages, computed from the store words with the round key of the specification (<<sep-fcov-km-sram-sbox-in>>).
 * A bin follows the specification or the RDL. A fixed value comes from the text cited with the group.
 * An `illegal_bins` entry is a value that the specification forbids. An `ignore_bins` entry is a cell that the specification makes impossible.
 * A hit of a bin shows that the scenario happened. The test checker shows that the DUT behaved correctly. The two are separate.
@@ -6646,6 +6649,7 @@ The image report words of `sep_km_handover_rand_test` do not carry 0x00 in bits 
 |`sep_km_handover_cg` |VCS |executable in part; parked: `cp_ho_order` (<<sep-fcov-km-checker-gate>>)
 |`sep_km_vault_wipe_cg` |VCS |executable
 |`sep_km_crc_accel_cg` |VCS |executable
+|`sep_km_sram_sbox_in_cg` |VCS |executable
 |===
 
 The window and decode points of the Key Manager memory map are in `sep_km_integrity_fault_cg` (`cp_if_window`, `cp_if_offset_class`, `cp_if_efuse_remap`). No separate decode group exists.
@@ -7115,6 +7119,27 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 |`cp_crc8_result` |A CRC-8/ROHC instruction returns its update with `rd[31:8]` zero. A CRC-8/ROHC instruction whose `rs2[31:8]` is not zero returns the update of `rs2[7:0]` alone. 2 bins. |`km_cpu_pcpi`, `km_cpu_trap` |`sep_km_crc_pcpi_kat_test` |executable
 |===
 
+[[sep-fcov-km-sram-sbox-in]]
+===== `sep_km_sram_sbox_in_cg`
+
+*Description*: The S-box input values that the graded 64-store run of the owner presents to the KM SRAM scrambler under the DUT key: the data-path S-box input of each of the eight nibble lanes, and the value of each of the four lanes of the 13-bit word address. The values are computed from the store words with the round key of the specification under the key that the owner reads from SCRAMBLER_KEY at the ready and done messages of the run. The group is model-side: it samples no DUT net, and a bin hit does not show the S-box input inside the DUT, because the KM SRAM has no cipher golden (<<sep-vplan-phase3-blocked,SEP_VPLAN>>). No other group samples these values.
+
+*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
+
+*Specification*: `hw/ip/scrambler/doc/architecture.adoc`, "Data Scrambling Algorithm" (`:76`, `:115-116`, `:132`, `:136`), "Address Tweaking" (`:183`), "Address Scrambling" (`:192-196`, `:217`), "Byte-Wise Scrambling Mode" (`:222`), "Integration in the Key Manager" (`:247`).
+
+*Sampling*: model-side. The owner writes `km_sbox_in` through `u_sep_fcov` (setter `set_km_sbox_in` in `cocotb/env/sep_fcov_gate.py`): bit 45 valid, [44:32] the 13-bit plaintext word index a, [31:0] `W ^ Rkey` with W the plan word of the store and `Rkey = kA ^ {a, a, a[12:7]}` (`:132`, `:136`, `:183`; `scr_round_key` in `cocotb/env/sep_km_img_param.py`). The group samples on each rise of bit 45 while the graded window of the owner is open (owner code 737 in `tb/sep_fcov_owner_codes.svh`). The values are computed from the plan words with the round key of the specification, not read from a DUT net, and the variable drives nothing. The owner writes one record per store of its 64-store run, and only after CHK-SSCR-ROWS, CHK-SSCR-ALIAS and CTRL-SSCR-SBOX-STORES pass. CTRL-SSCR-SBOX-STORES shows each of the 64 stores as one rise of `km_sram_scr_wr_count_o` and requires SCRAMBLER_KEY (`km_csr_scrambler_key_o`, `KM-CSR`) to read kA at the ready message and at the done message, so each record stands for one scrambled store that the DUT took under the key the record uses, and a leaf whose store run or key read fails fills no bin. The KM SRAM runs in byte-wise mode, whose S-box and round-key XOR stages are those of the word mode (`:222`, `:247`).
+
+[cols="2,6,2,3,2",options="header"]
+|===
+|Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
+|`cp_data_lane0` to `cp_data_lane7` |Data lane j, 0 to 7: the S-box input `(W ^ Rkey)[4j+3:4j]` of one store (`:76`, `:115-116`, `:136`), values 0x0 to 0xF. 16 bins per lane, 128 bins. |`km_sbox_in` (model record) |`sep_km_sram_scrambler_key_rand_test` |executable
+|`cp_addr_lane0` |Word-index bits [12:9], the `sbox4` lane of the 13-bit address (`:217`), values 0x0 to 0xF. 16 bins. The plaintext lane value within the single kA key epoch of the 64 stores. Under one key the XOR with the key bits is one-to-one, so the 16 values are the 16 S-box input values of the lane whatever key bits the address path uses, which the specification does not state (<<sep-vplan-phase3-unstated,SEP_VPLAN>>) |`km_sbox_in` (model record) |`sep_km_sram_scrambler_key_rand_test` |executable
+|`cp_addr_lane1` to `cp_addr_lane3` |Word-index bits [8:6], [5:3] and [2:0], the three `sbox3` lanes (`:217`), values 0 to 7: the plaintext lane values within the single kA key epoch, as for `cp_addr_lane0`. 8 bins per lane, 24 bins. |`km_sbox_in` (model record) |`sep_km_sram_scrambler_key_rand_test` |executable
+|===
+
+168 bins. Not seed-dependent: the plan of the owner makes the first 16 of its 64 stores a sweep. Store i, 0 to 15, puts i in every data nibble of `W ^ Rkey` and in word-index bits [12:9], and steps each 3-bit lane through its 8 values from a drawn offset, so every seed closes all 168 bins by construction. `ScrPlanTest.test_sbox_in_closure` (`tools/dv/tests/test_sep_km_prestage.py`) checks the closure from the plan for seeds 1 to 500 and 0xFFFF_FFFF.
+
 [[sep-fcov-km-unreachable]]
 ===== Bins not graded
 
@@ -7198,7 +7223,7 @@ Each Key Manager test owns at least one point of a Phase 2 group. The Phase 1 gr
 |`sep_km_drbg_sampler_rand_test` |`cp_smp_read_service`, `cp_smp_tvalid_arrival`, `cp_smp_strb`, `cp_smp_freshness`, `cp_smp_prefetch_mode`, `cp_smp_prefetch_mirror`, `cp_smp_count_good`, `cp_smp_count_bad`, `cp_smp_reset_defaults`, `cp_smp_ready`, `cp_df_timeout_value`, `cp_df_entry_state`, `cp_df_timeout_outcome`, `cp_df_stream_violation`, `cp_df_offset_race`, `cp_df_status_clear`, `cp_df_trng_reset`, `cp_smp_prefetch_active_read`, `cp_smp_write_refused`
 |`sep_km_otp_interface_rand_test` |`cp_nx_epoch_secret`, `cp_otp_field`, `cp_otp_word_index`, `cp_otp_read_through`, `cp_otp_change`, `cp_otp_lock_matrix`, `cp_otp_lock_reg`, `cp_otp_secure_tm`, `cp_if_otp_dual_rail`, `cp_otp_notkm_class`
 |`sep_km_key_bank_register_rand_test` |`cp_nx_share_read`, `cp_sd_key_valid_semantics`, `cp_sk_delivery_state`, `cp_sk_write_dir`, `cp_sk_interrupt`, `cp_sd_single_share`; the full entry executes CHK-BANK-SK-SW, while `sep_km_key_bank_register_rand_test_shard2` does not
-|`sep_km_sram_scrambler_key_rand_test` |`cp_mem_iface_req`, `cp_mem_scr_key_access`, `cp_mem_scr_ctrl`, `cp_km_scr_key`
+|`sep_km_sram_scrambler_key_rand_test` |`cp_mem_iface_req`, `cp_mem_scr_key_access`, `cp_mem_scr_ctrl`, `cp_km_scr_key`, `cp_data_lane0` to `cp_data_lane7`, `cp_addr_lane0` to `cp_addr_lane3`
 |`sep_km_drbg_sampler_timeout_reset_test` |`cp_df_warm_cancel`, `cp_df_exact_budget`
 |`sep_km_handover_test` |`cp_ho_inhibit`
 |`sep_km_crc_pcpi_kat_test` |`cp_crc_insn`, `cp_crc_chain`, `cp_crc8_result`

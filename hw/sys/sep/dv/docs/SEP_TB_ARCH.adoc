@@ -455,7 +455,8 @@ Observation probe groups:
    `sep_km_fault_inject_rand_test`, `sep_km_sram_scrambler_key_rand_test`,
    `sep_km_command_protocol_rand_test` (`OTP_READ_LOCK_COLD`, CHK-NOCHG-VAULT),
    `sep_km_drbg_sampler_rand_test` (the interrupt aggregate `km_csr_irq_o`,
-   CHK-SMP-IRQ-GATE).
+   CHK-SMP-IRQ-GATE), `sep_km_command_set_rand_test` (`IRQ_ENABLE`,
+   `IRQ_STATUS`, CHK-OTP-CHG-DORMANT).
 ** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
    `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
    is a select of the tap and drives nothing in the DUT; it is 0 by default.
@@ -483,6 +484,7 @@ Observation probe groups:
    CHK-REFUSE-KEEP),
    `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
    `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO),
+   `sep_km_command_set_rand_test` (CHK-SHRED-FILL),
    `sep_sw_reset_isolation_matrix_test` (`km_key_aw_{valid,ready}_o` in leg C of
    the entry `sep_sw_reset_isolation_matrix_test_km_poke`: an AW valid and not
    ready at the isolate request, logged in INFO-KEY-BEAT-ATTEMPT).
@@ -1110,8 +1112,8 @@ Exceptions (a closed set):
   and no source event sets several bits in one clock. Both inputs are 0 by
   default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the IRQ_SET field storage of the register block) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
   is not forced. Users: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
-  CHK-STATUS-HELD, CHK-CPU-TRAP) and `sep_km_otp_change_irq_test`
-  (CHK-OTP-PULSE).
+  CHK-STATUS-HELD, CHK-CPU-TRAP), `sep_km_otp_change_irq_test`
+  (CHK-OTP-PULSE) and `sep_km_command_set_rand_test` (CHK-OTP-CHG-DORMANT).
 * *Key Manager mailbox flow-error pulse* — at the first falling edge with
   `km_mbox_ovf_inject_i` at 1 the bench forces the KM outbound-overflow
   detect net of the KM mailbox (`u_mailbox.km_outbound_overflow_detected`)
