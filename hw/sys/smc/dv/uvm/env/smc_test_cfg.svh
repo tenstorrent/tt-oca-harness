@@ -42,6 +42,9 @@ class smc_test_cfg extends ocah_test_cfg;
   bit regblock_wide_scoreboard_negative;  // +SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE
   bit regblock_wide_response_negative;  // +SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE
   bit regblock_wide_sequence_negative;  // +SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE
+  bit zeroer_range_scoreboard_negative;  // +SMC_ZEROER_RANGE_SCOREBOARD_NEGATIVE
+  int unsigned zeroer_reset_w_stall;  // +SMC_ZEROER_RESET_W_STALL, 0 selects the seeded draw
+  bit zeroer_reset_sequence_negative;  // +SMC_ZEROER_RESET_SEQUENCE_NEGATIVE
   bit fabric_reg_cg_sequence_negative;  // +SMC_FABRIC_REG_CG_SEQUENCE_NEGATIVE
   bit fabric_reg_scoreboard_negative;  // +SMC_FABRIC_REG_SCOREBOARD_NEGATIVE
   bit wdt_csr_scoreboard_negative;  // +SMC_WDT_CSR_SCOREBOARD_NEGATIVE
@@ -75,6 +78,9 @@ class smc_test_cfg extends ocah_test_cfg;
             ocah_knobs::is_set("SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE");
     regblock_wide_sequence_negative =
             ocah_knobs::is_set("SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE");
+    zeroer_range_scoreboard_negative = ocah_knobs::is_set("SMC_ZEROER_RANGE_SCOREBOARD_NEGATIVE");
+    zeroer_reset_w_stall = ocah_knobs::get_int("SMC_ZEROER_RESET_W_STALL", 0);
+    zeroer_reset_sequence_negative = ocah_knobs::is_set("SMC_ZEROER_RESET_SEQUENCE_NEGATIVE");
     fabric_reg_cg_sequence_negative = ocah_knobs::is_set("SMC_FABRIC_REG_CG_SEQUENCE_NEGATIVE");
     fabric_reg_scoreboard_negative = ocah_knobs::is_set("SMC_FABRIC_REG_SCOREBOARD_NEGATIVE");
     wdt_csr_scoreboard_negative = ocah_knobs::is_set("SMC_WDT_CSR_SCOREBOARD_NEGATIVE");

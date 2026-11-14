@@ -42,6 +42,7 @@ import smc_seq_lib_pkg::*;
 `include "smc_wdt_second_stage_reset_test.svh"
 `include "smc_mailbox_cool_reset_recovery_test.svh"
 `include "smc_external_reg_lane_test.svh"
+`include "smc_zeroer_reset_during_operation_test.svh"
 `include "smc_narrow_access_side_effect_test.svh"
 `include "smc_ingress_reset_inflight_test.svh"
 
