@@ -1151,29 +1151,58 @@ def set_esrc_pa_pass(bits: int, log=None) -> bool:
     return _set_bound("esrc_pa_pass", bits, "FCOV-ESRC-PA-PASS", log)
 
 
-# Bits of ``u_sep_fcov.esrc_cnt_pass``: one per counter check of the
-# conditioning leaf (the CzCnt* localparams of cov/sv/sep_fcov.sv).
+# Bits of ``u_sep_fcov.esrc_cnt_pass``: one per check of the conditioning leaf
+# (the CzCnt* localparams of cov/sv/sep_fcov.sv).
 ESRC_CNT_PASS_PERIOD = 1 << 0  # CHK-COND-PERIOD-RATIO (cp_sample_clk_div)
 ESRC_CNT_PASS_FIRST_STROBE = 1 << 1  # CHK-COND-FIRST-STROBE (cp_first_strobe)
 ESRC_CNT_PASS_FIRST_PUSH = 1 << 2  # CHK-COND-FIRST-PUSH (cp_ds_first_push)
+# CHK-COND-CTRL-CELL (x_path_fifo_off), one bit per
+# (BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE) cell with FIFO_CTRL.ENABLE = 0.
+ESRC_CNT_PASS_CTRL_CELL = {(1, 1): 1 << 3, (1, 0): 1 << 4, (0, 1): 1 << 5, (0, 0): 1 << 6}
+ESRC_CNT_PASS_DECOR_MASK = 1 << 7  # CHK-COND-DECOR-MASK (x_decor_mask_class)
+ESRC_CNT_PASS_LANES_OFF = 1 << 8  # CHK-COND-LANES-OFF (cp_lane_pop no_lane)
+ESRC_CNT_PASS_ONE_LANE = 1 << 9  # CHK-COND-ONE-LANE (cp_lane_pop one_lane)
+ESRC_CNT_PASS_DS_INTERVAL = 1 << 10  # CHK-COND-DS-INTERVAL (cp_ds_interval)
+ESRC_CNT_PASS_BITS = 11
 
 
 def set_esrc_cnt_pass(bits: int, log=None) -> bool:
     """Write ``u_sep_fcov.esrc_cnt_pass`` (the passed check bits ``ESRC_CNT_PASS_*``, or 0).
 
-    The pass label of ``cp_sample_clk_div``, ``cp_first_strobe`` and
-    ``cp_ds_first_push`` of ``sep_esrc_conditioning_cg``, which
-    ``sep_esrc_conditioning_matrix_rand_test`` owns. The sampler reads the
-    class of the stored ``DECORRELATOR_CTRL.SAMPLE_CLK_DIV`` or
-    ``CTRL.DOWNSAMPLE_RATE`` only when a bit rises. The leaf writes the bit
-    after the check passes, while the graded value is still stored, holds it
-    two clocks and writes 0. Same rules as ``graded_owner``: a no-op that
-    returns False on Verilator. On VCS a sampler without the variable is a
-    testbench error.
+    The pass label of ``cp_sample_clk_div``, ``cp_first_strobe``,
+    ``cp_ds_first_push``, ``x_path_fifo_off``, ``x_decor_mask_class``,
+    ``cp_lane_pop`` and ``cp_ds_interval`` of ``sep_esrc_conditioning_cg``,
+    which ``sep_esrc_conditioning_matrix_rand_test`` owns. The sampler reads
+    the class of the stored value that the check graded (``SAMPLE_CLK_DIV``,
+    ``DOWNSAMPLE_RATE``, the ``CTRL`` path with ``FIFO_CTRL.ENABLE``, the
+    ``ENTROPY_BYTE_MASK`` population, ``RING_OSC_ENABLE``) only when a bit
+    rises. The leaf writes the bit after the check passes, while the graded
+    value is still stored, holds it two clocks and writes 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
     """
-    if bits >> 3 or bits < 0:
-        raise ValueError(f"esrc_cnt_pass bits {bits:#x} are not 0 to 0x7")
+    if bits < 0 or bits >> ESRC_CNT_PASS_BITS:
+        raise ValueError(f"esrc_cnt_pass bits {bits:#x} are not 0 to 0x7ff")
     return _set_bound("esrc_cnt_pass", bits, "FCOV-ESRC-CNT-PASS", log)
+
+
+def set_esrc_fifo_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.esrc_fifo_pass`` (the passed check bits, or 0).
+
+    The pass label of ``x_fifo_op_level`` and ``x_churn_level`` of
+    ``sep_esrc_conditioning_cg``, which ``sep_esrc_fifo_flow_rand_test`` owns
+    (the CzFifo* localparams of cov/sv/sep_fcov.sv): bit 0 CHK-FIFO-FILL,
+    bit 1 CHK-FIFO-POP, bit 2 CHK-FIFO-POP-LIVE (one graded window), bit 3
+    CHK-FIFO-CHURN. The sampler holds each cell at its FIFO operation inside
+    the window and samples it only when the bit of the check that grades it
+    rises; every rise drops the other held cells. The leaf writes the bit
+    after the check passes, holds it two clocks and writes 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
+    """
+    if bits < 0 or bits >> 4:
+        raise ValueError(f"esrc_fifo_pass bits {bits:#x} are not 0 to 0xf")
+    return _set_bound("esrc_fifo_pass", bits, "FCOV-ESRC-FIFO-PASS", log)
 
 
 def set_bfault_pass(passed: bool, log=None) -> bool:

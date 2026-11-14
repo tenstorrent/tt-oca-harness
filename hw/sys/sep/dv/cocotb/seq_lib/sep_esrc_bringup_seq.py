@@ -212,6 +212,17 @@ class SepEntropyCfg:
     # DRBG whatever its value. 0 closes the FIFO_RDATA read path, so CHK2 then needs
     # chk2_source="backdoor" (the FIFO input tap) because the FIFO stays empty.
     fifo_enable: int = 1
+    # CTRL.BYPASS_ENTROPY_COMPRESSOR: the twelve decorrelator bytes go to the FIFO
+    # and the seed stream as three words, with no BIW or SHA stage.
+    compressor_bypass: bool = False
+    # CTRL.DOWNSAMPLE_RATE: N selects every (N+1)th decorrelator output while
+    # compressor_bypass is set.
+    downsample_rate: int = 0
+
+    def __post_init__(self) -> None:
+        width = ENTROPY_SOURCE.fields("CTRL")["DOWNSAMPLE_RATE"]["bw"]
+        if not 0 <= self.downsample_rate < (1 << width):
+            raise ValueError(f"downsample_rate {self.downsample_rate} does not fit {width} bits")
 
     @property
     def chk2_backdoor(self) -> bool:
@@ -238,7 +249,12 @@ class SepEntropyCfg:
         decorrelator keeps sampling but the SHA whitener never accepts a word
         and no seed reaches CSRNG.
         """
-        return ENTROPY_SOURCE.value("CTRL", SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0)
+        return ENTROPY_SOURCE.value(
+            "CTRL",
+            SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0,
+            BYPASS_ENTROPY_COMPRESSOR=1 if self.compressor_bypass else 0,
+            DOWNSAMPLE_RATE=self.downsample_rate,
+        )
 
     @property
     def ext_trng_src_sel(self) -> int:
@@ -257,6 +273,8 @@ class SepEntropyCfg:
             sha_whitening=self.sha_whitening,
             glen=self.glen,
             ingress_skip=self.ingress_skip,
+            compressor_bypass=self.compressor_bypass,
+            downsample_rate=self.downsample_rate,
         )
 
 

@@ -28916,6 +28916,18 @@ module sep_fcov (
     logic [1:0] dv;
     logic dv_v;  // SAMPLE_CLK_DIV change, lane 0 on: 0 up, 1 down to >= count, 2 down below count
     logic rs_v;  // DOWNSAMPLE_RATE changed while the gated stream is stopped, then a gated strobe
+    logic [1:0] pf;
+    logic pf_v;  // {BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE} with FIFO_CTRL.ENABLE 0
+    logic [2:0] mc;
+    logic mc_v;  // {BYPASS_ENTROPY_COMPRESSOR, mask class 0 few, 1 half, 2 all}, feedback on
+    logic lp;
+    logic lp_v;  // RING_OSC_ENABLE population: 0 no lane, 1 one lane
+    logic di;
+    logic di_v;  // stored DOWNSAMPLE_RATE at a CHK-COND-DS-INTERVAL pass: 0 rate 1, 1 rate 2 to 15
+    logic [4:0] fop;
+    logic fop_v;  // {op 0 push, 1 pop, 2 push and pop, LEVEL class before the op}
+    logic [2:0] cl;
+    logic cl_v;  // LEVEL class before a push with ENTROPY_CHURN_ENABLE 1
   } cz_cond_t;
 
   covergroup sep_esrc_conditioning_cg with function sample (cz_cond_t s);
@@ -29001,6 +29013,59 @@ module sep_fcov (
       bins decrease_below_count = {2'd2};
     }
     cp_ds_resume: coverpoint s.rs_v iff (s.rs_v) {bins rate_write_while_stopped = {1'b1};}
+    x_path_fifo_off: coverpoint s.pf iff (s.pf_v) {
+      bins bypass_whitened_fifo_off = {2'b11};
+      bins bypass_raw_fifo_off = {2'b10};
+      bins compressor_whitened_fifo_off = {2'b01};
+      bins compressor_raw_fifo_off = {2'b00};
+    }
+    x_decor_mask_class: coverpoint s.mc iff (s.mc_v) {
+      bins compressor_few = {3'b0_00};
+      bins compressor_half = {3'b0_01};
+      bins compressor_all = {3'b0_10};
+      bins bypass_few = {3'b1_00};
+      bins bypass_half = {3'b1_01};
+      bins bypass_all = {3'b1_10};
+    }
+    cp_lane_pop: coverpoint s.lp iff (s.lp_v) {bins no_lane = {1'b0}; bins one_lane = {1'b1};}
+    cp_ds_interval: coverpoint s.di iff (s.di_v) {
+      bins rate_1 = {1'b0}; bins rate_2_to_15 = {1'b1};
+    }
+    // LEVEL classes: 0, 1, mid (2 to 61), 62_63, 64.
+    x_fifo_op_level: coverpoint s.fop iff (s.fop_v) {
+      bins push_level_0 = {5'b00_000};
+      bins push_level_1 = {5'b00_001};
+      bins push_level_mid = {5'b00_010};
+      bins push_level_62_63 = {5'b00_011};
+      bins push_level_64 = {5'b00_100};
+      bins pop_level_1 = {5'b01_001};
+      bins pop_level_mid = {5'b01_010};
+      bins pop_level_62_63 = {5'b01_011};
+      bins pop_level_64 = {5'b01_100};
+      bins push_pop_level_1 = {5'b10_001};
+      bins push_pop_level_mid = {5'b10_010};
+      // A FIFO_RDATA read of an empty FIFO returns undefined data and sets
+      // FIFO_UNDERFLOW (entropy_source.rdl:305); the flags leg grades the flag.
+      ignore_bins pop_level_0 = {5'b01_000};
+      ignore_bins push_pop_level_0 = {5'b10_000};
+      // The stream offers SHA-256 output in 8-word bursts, so a pop window that
+      // starts at 62 or 63 and holds a push can reach a full FIFO and lose a
+      // word; the live pop leg grades no window from 63, grades a window from 62
+      // only when at most two words arrive in it, and aims no push and pop
+      // window at 62.
+      ignore_bins push_pop_level_62_63 = {5'b10_011};
+      // A push and a pop at LEVEL 64 have no stated result: the register text
+      // states only that a write while full is discarded (entropy_source.rdl:129).
+      ignore_bins push_pop_level_64 = {5'b10_100};
+    }
+    x_churn_level: coverpoint s.cl iff (s.cl_v) {
+      bins level_0 = {3'd0};
+      bins level_1 = {3'd1};
+      bins level_mid = {3'd2};
+      bins level_62_63 = {3'd3};
+      // A write while full is discarded (entropy_source.rdl:129): no word is churned.
+      ignore_bins level_64 = {3'd4};
+    }
   endgroup
 
   typedef struct packed {
@@ -29523,6 +29588,31 @@ module sep_fcov (
         e.dv_v = 1'b1;
       end
       22: e.rs_v = 1'b1;
+      23: begin
+        e.pf   = v[1:0];
+        e.pf_v = 1'b1;
+      end
+      24: begin
+        e.mc   = v[2:0];
+        e.mc_v = 1'b1;
+      end
+      25: begin
+        e.lp   = v[0];
+        e.lp_v = 1'b1;
+      end
+      26: begin
+        e.di   = v[0];
+        e.di_v = 1'b1;
+      end
+      // x_fifo_op_level: index 27 push, 28 pop, 29 push and pop; v is the LEVEL class.
+      27, 28, 29: begin
+        e.fop   = {2'(pt - 27), v[2:0]};
+        e.fop_v = 1'b1;
+      end
+      30: begin
+        e.cl   = v[2:0];
+        e.cl_v = 1'b1;
+      end
       // Index 11 (cp_obs_lock); every other index has its own arm above.
       default: e.lk_v = 1'b1;
     endcase
@@ -29859,8 +29949,9 @@ module sep_fcov (
   logic [8:0] cz_pa_q = '0;
   wire  [8:0] cz_pa_rel = 9'(esrc_pa_pass) & ~cz_pa_q;
   always @(posedge clk_i) cz_pa_q <= 9'(esrc_pa_pass);
-  // Pass label of the counter checks of sep_esrc_conditioning_matrix_rand_test
-  // (bits CzCnt*). cp_sample_clk_div, cp_first_strobe and cp_ds_first_push
+  // Pass label of the checks of sep_esrc_conditioning_matrix_rand_test (bits
+  // CzCnt*). cp_sample_clk_div, cp_first_strobe, cp_ds_first_push,
+  // x_path_fifo_off, x_decor_mask_class, cp_lane_pop and cp_ds_interval
   // sample the stored value only when the bit of the check that grades it
   // rises. The leaf writes the bit through the u_sep_fcov handle after that
   // check passes, while the graded value is still stored, holds it two clocks
@@ -29869,9 +29960,33 @@ module sep_fcov (
   localparam int unsigned CzCntPeriod = 0;  // CHK-COND-PERIOD-RATIO
   localparam int unsigned CzCntFirstStrobe = 1;  // CHK-COND-FIRST-STROBE
   localparam int unsigned CzCntFirstPush = 2;  // CHK-COND-FIRST-PUSH
-  logic [2:0] cz_cnt_q = '0;
-  wire  [2:0] cz_cnt_rel = 3'(esrc_cnt_pass) & ~cz_cnt_q;
-  always @(posedge clk_i) cz_cnt_q <= 3'(esrc_cnt_pass);
+  // CHK-COND-CTRL-CELL, one bit per cell {BYPASS_ENTROPY_COMPRESSOR,
+  // SHA256_WHITENING_ENABLE} with FIFO_CTRL.ENABLE 0: bit 3 (1,1), 4 (1,0),
+  // 5 (0,1), 6 (0,0).
+  localparam int unsigned CzCntCtrlCell = 3;
+  localparam int unsigned CzCntDecorMask = 7;  // CHK-COND-DECOR-MASK
+  localparam int unsigned CzCntLanesOff = 8;  // CHK-COND-LANES-OFF
+  localparam int unsigned CzCntOneLane = 9;  // CHK-COND-ONE-LANE
+  localparam int unsigned CzCntDsInterval = 10;  // CHK-COND-DS-INTERVAL
+  logic [10:0] cz_cnt_q = '0;
+  wire  [10:0] cz_cnt_rel = 11'(esrc_cnt_pass) & ~cz_cnt_q;
+  always @(posedge clk_i) cz_cnt_q <= 11'(esrc_cnt_pass);
+  // Pass label of sep_esrc_fifo_flow_rand_test (bits CzFifo*), the release of
+  // x_fifo_op_level and x_churn_level. The sampler holds each cell at its DUT
+  // event inside the window and samples it only when the bit of the check
+  // that grades it rises; every rise then drops all held cells, so a cell is
+  // released only by the check of the leg that drove it. The leaf writes the
+  // bit through the u_sep_fcov handle after that check passes, holds it two
+  // clocks and writes 0. It gates a sample; it is never a DUT value and drives
+  // nothing.
+  int unsigned esrc_fifo_pass = 0;
+  localparam int unsigned CzFifoFill = 0;  // CHK-FIFO-FILL
+  localparam int unsigned CzFifoPop = 1;  // CHK-FIFO-POP
+  localparam int unsigned CzFifoPopLive = 2;  // CHK-FIFO-POP-LIVE, one graded window
+  localparam int unsigned CzFifoChurn = 3;  // CHK-FIFO-CHURN
+  logic [3:0] cz_fifo_q = '0;
+  wire  [3:0] cz_fifo_rel = 4'(esrc_fifo_pass) & ~cz_fifo_q;
+  always @(posedge clk_i) cz_fifo_q <= 4'(esrc_fifo_pass);
   // A hardware set request: the {d, de} pair of a register field, both 1.
   function automatic logic cz_dd(input logic [1:0] p);
     return p === 2'b11;
@@ -31583,6 +31698,128 @@ module sep_fcov (
             esrc_ds_count_i
         )) begin
       cz_rs_pend <= 1'b1;
+    end
+  end
+
+  // x_path_fifo_off, x_decor_mask_class, cp_lane_pop, cp_ds_interval (1.45):
+  // the stored value at the rise of the esrc_cnt_pass bit of the check that
+  // grades it. A stored value other than the graded one samples nothing.
+  // x_decor_mask_class needs the feedback on for every lane
+  // (DECORRELATOR_CTRL.BYPASS 0); its class is few (1 to 3 mask bits set),
+  // half (4) or all (0xFF).
+  localparam logic [1:0] CzCtrlCells[4] = '{2'b11, 2'b10, 2'b01, 2'b00};
+  wire [11:0] cz_dbyp = esrc_reg_out_i.DECORRELATOR_CTRL.BYPASS.value;
+  wire [1:0] cz_path = {
+    esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value,
+    esrc_reg_out_i.CTRL.SHA256_WHITENING_ENABLE.value
+  };
+  wire cz_path_known = !$isunknown(cz_path);
+  wire cz_fen0 = (esrc_reg_out_i.FIFO_CTRL.ENABLE.value === 1'b0);
+
+  always @(posedge clk_i) begin
+    if (cy_own_escond && cz_es_on) begin
+      for (int c = 0; c < 4; c++) begin
+        if (cz_cnt_rel[CzCntCtrlCell+c] && cz_fen0 && cz_path_known && (cz_path == CzCtrlCells[c]))
+          cz_cond(23, {2'b00, CzCtrlCells[c]});
+      end
+      if (cz_cnt_rel[CzCntDecorMask] && (cz_dbyp === 12'h000) && cz_bmask_known &&
+          cz_path_known) begin
+        if (cz_bmask == 8'hFF) cz_cond(24, {1'b0, cz_path[1], 2'd2});
+        else if ($countones(cz_bmask) == 4) cz_cond(24, {1'b0, cz_path[1], 2'd1});
+        else if (($countones(cz_bmask) >= 1) && ($countones(cz_bmask) <= 3)) begin
+          cz_cond(24, {1'b0, cz_path[1], 2'd0});
+        end
+      end
+      if (cz_cnt_rel[CzCntLanesOff] && (cz_roen === 12'h000)) cz_cond(25, 4'd0);
+      if (cz_cnt_rel[CzCntOneLane] && !$isunknown(cz_roen) && ($countones(cz_roen) == 1)) begin
+        cz_cond(25, 4'd1);
+      end
+      if (cz_cnt_rel[CzCntDsInterval] && cz_bypass && !$isunknown(cz_drate)) begin
+        if (cz_drate == 10'd1) cz_cond(26, 4'd0);
+        else if ((cz_drate >= 10'd2) && (cz_drate <= 10'd15)) cz_cond(26, 4'd1);
+      end
+    end
+  end
+
+  // x_fifo_op_level, x_churn_level (1.46): main FIFO operations of owner 146,
+  // each with the class of LEVEL before it (0, 1, mid 2 to 61, 62_63, 64).
+  // A push is a write-pointer step, or a stream word offered with
+  // FIFO_CTRL.ENABLE 1 while LEVEL has read 64 for two clocks (a discarded
+  // write); a pop is a read-pointer step. Each cell is held at its event and
+  // samples on the rise of the esrc_fifo_pass bit of its check: push cells
+  // with churn off on CzFifoFill, pops with ENABLE 0 since the last FIFO_CTRL
+  // write on CzFifoPop, churn pushes since the churn enable on CzFifoChurn.
+  // A pop window runs from one FIFO_STATUS read to the next; a window with
+  // ENABLE 1 and exactly one pop is a pop (no push in it) or a push and pop
+  // cell with the class at its first read, and only the last window before
+  // the rise of CzFifoPopLive samples. Every rise, a window open or a clock
+  // outside the window drops all held cells.
+  function automatic logic [2:0] cz_lvl_cls(input logic [6:0] l);
+    if (l == 7'd0) return 3'd0;
+    if (l == 7'd1) return 3'd1;
+    if (l <= 7'd61) return 3'd2;
+    if (l <= 7'd63) return 3'd3;
+    return 3'd4;
+  endfunction
+  wire cz_fs_rd = rd_ev && (ar_addr_q == ENTROPY_SOURCE_FIFO_STATUS_REG_ADDR);
+  wire cz_fc_wr = cz_w1 && (cz_w1_a == ENTROPY_SOURCE_FIFO_CTRL_REG_ADDR);
+  logic [4:0] cz_fo_push = '0;
+  logic [4:0] cz_fo_pop = '0;
+  logic [4:0] cz_fo_churn = '0;
+  logic [2:0] cz_fo_wcls = '0;  // pop window: LEVEL class at its first read
+  int unsigned cz_fo_wpops = 0;
+  logic cz_fo_wpush = 1'b0;
+  logic cz_fo_wen = 1'b1;  // ENABLE 1 at every pop of the window
+  logic cz_fo_lv = 1'b0;  // last closed pop window: held, op index, class
+  int unsigned cz_fo_lop = 0;
+  logic [2:0] cz_fo_lcls = '0;
+
+  always @(posedge clk_i) begin
+    logic push;
+    logic pop;
+    logic [2:0] cls;
+    push = (cz_fwp != cz_fwp_q);
+    pop  = (cz_frp != cz_frp_q);
+    cls  = cz_lvl_cls(cz_flvl_q);
+    if (cy_own_esfifo && cz_es_on) begin
+      for (int c = 0; c < 5; c++) begin
+        if (cz_fifo_rel[CzFifoFill] && cz_fo_push[c]) cz_cond(27, 4'(c));
+        if (cz_fifo_rel[CzFifoPop] && cz_fo_pop[c]) cz_cond(28, 4'(c));
+        if (cz_fifo_rel[CzFifoChurn] && cz_fo_churn[c]) cz_cond(30, 4'(c));
+      end
+      if (cz_fifo_rel[CzFifoPopLive] && cz_fo_lv) cz_cond(cz_fo_lop, {1'b0, cz_fo_lcls});
+    end
+    if (!cy_own_esfifo || !cz_es_on || cz_win_open || (cz_fifo_rel != 4'h0) ||
+        $isunknown({cz_flvl, cz_flvl_q, cz_fwp, cz_fwp_q, cz_frp, cz_frp_q, cz_fen0})) begin
+      cz_fo_push  <= '0;
+      cz_fo_pop   <= '0;
+      cz_fo_churn <= '0;
+      cz_fo_wpops <= 0;
+      cz_fo_wpush <= 1'b0;
+      cz_fo_wen   <= 1'b1;
+      cz_fo_lv    <= 1'b0;
+    end else begin
+      if (cz_fen && !cz_churn && (push || (cz_cvld && (cz_flvl == 7'd64) &&
+                                           (cz_flvl_q == 7'd64)))) begin
+        cz_fo_push[cls] <= 1'b1;
+      end
+      if (cz_fc_wr) cz_fo_pop <= '0;
+      else if (pop && cz_fen0) cz_fo_pop[cls] <= 1'b1;
+      if (cz_churn && !cz_churn_q) cz_fo_churn <= '0;
+      else if (push && cz_fen && cz_churn) cz_fo_churn[cls] <= 1'b1;
+      if (cz_fs_rd) begin
+        cz_fo_lv    <= (cz_fo_wpops == 1) && cz_fo_wen;
+        cz_fo_lop   <= cz_fo_wpush ? 29 : 28;
+        cz_fo_lcls  <= cz_fo_wcls;
+        cz_fo_wcls  <= cls;
+        cz_fo_wpops <= 0;
+        cz_fo_wpush <= 1'b0;
+        cz_fo_wen   <= 1'b1;
+      end else begin
+        if (pop) cz_fo_wpops <= cz_fo_wpops + 1;
+        if (pop && cz_fen0) cz_fo_wen <= 1'b0;
+        if (push) cz_fo_wpush <= 1'b1;
+      end
     end
   end
 
@@ -33384,6 +33621,11 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   localparam int unsigned CzCwRing = 64;
   localparam int unsigned CzSwRing = 96;
+  // cp_biw_scored, cp_seed_handshake and cp_esrc_sink take their events only
+  // while CTRL.BYPASS_ENTROPY_COMPRESSOR reads 0. The default entry also runs
+  // a compressor bypass flow in the same window; its FIFO words and seeds are
+  // bypass words, not compressor output.
+  wire cz_e2e_compress = (esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value === 1'b0);
   logic [31:0] cz_cw[CzCwRing] = '{default: '0};
   logic [CzCwRing-1:0] cz_cw_v = '0;
   int unsigned cz_cw_wp = 0;
@@ -33440,7 +33682,7 @@ module sep_fcov (
       cz_sd_ok  <= 0;
       cz_sd_bad <= 1'b0;
     end
-    if (cz_own_e2e && !in_reset) begin
+    if (cz_own_e2e && !in_reset && cz_e2e_compress) begin
       if (!cz_fifo_closed && rd_ev && cy_rd_known &&
           (ar_addr_q == ENTROPY_SOURCE_FIFO_RDATA_REG_ADDR) && (cz_ar_flvl != 7'd0)) begin
         logic hit;
@@ -33453,6 +33695,8 @@ module sep_fcov (
         if (cz_seed_words_held(drbg_es_bits_i)) cz_sd_ok <= cz_sd_ok + 1;
         else cz_sd_bad <= 1'b1;
       end
+    end
+    if (cz_own_e2e && !in_reset) begin
       if (drbg_genbits_vld_i === 1'b1) begin
         if (drbg_genbits_fips_i === 1'b1) cz_e2e_hit[2] <= 1'b1;
         else cz_cond(14, 4'd0);
