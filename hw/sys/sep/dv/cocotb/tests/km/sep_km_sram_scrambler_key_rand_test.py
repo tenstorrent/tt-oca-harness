@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM SRAM scrambler: key and address dependence, the one-to-one row map, the lock, resets.
+"""KM SRAM scrambler: key and address dependence, the one-to-one row map, the lock, resets, key 0 and all-ones.
 
 no_cpu / lsu_stub_all_live / +skip_fuse_sense / +km_rom_hex=km_rom_scr.param.parhex.
 Seeded (``SepSeededRng`` in ``env/sep_km_img_param.py``): every draw is logged as
@@ -54,24 +54,45 @@ Checks:
                     ``scrambler_en_i`` is deasserted, addresses and data pass
                     through unmodified."
                     (``hw/ip/scrambler/doc/architecture.adoc:251``)
+  CHK-SSCR-WEAK     after a further cold reset, with SCRAMBLER_CTRL = 0x1: under
+                    SCRAMBLER_KEY 0x00000000 each of the 8 reads at addrs8
+                    returns the epoch word stored there under the same key
+                    (``data_ep[0..7]``), and under 0xFFFFFFFF each returns
+                    ``data_ep[8..15]``; 16 of 16. The store and the read use
+                    the same key, so this grades the round trip under these
+                    keys, not the stored form. SCRAMBLER_KEY is a 32-bit
+                    ``sw = rw`` field with no reserved value
+                    (``hw/ip/key_manager/regs/km_csr.rdl:557-567``), so both
+                    keys are legal (``hw/ip/scrambler/doc/architecture.adoc:132``)
+  CHK-SSCR-RT-KB    the same round trip under kB: each of the 8 reads returns
+                    ``data_ep[16..23]``; 8 of 8
 
 Anchors: the scrambled-write monitor at the SRAM macro port and the array word at
 its kept rows (``KM-SRAM-MON``), the count of accepted SRAM writes
-(``KM-COUNT``), the read-only array tap in stored form (``KM-SRAM``), and the
-frames of the KM mailbox read through ``HOST-MBX`` with an OKAY response, and
-the SCRAMBLER_KEY value and its write count (``KM-CSR``).
+(``KM-COUNT``), the read-only array tap in stored form (``KM-SRAM``), the
+frames of the KM mailbox read through ``HOST-MBX`` with an OKAY response, the
+SCRAMBLER_KEY value and its write count (``KM-CSR``), and the completed KM CPU
+stores to the SCRAMBLER_CTRL address (``KM-FETCH``).
 
 Controls (a missing one fails the leaf): the first kA reads, the array word at
 each kept row, SCRAMBLER_KEY read before the lock, SCRAMBLER_CTRL 0x0 after the
 enable is cleared before the lock, the kB write before the lock that changes the
 stored word and the key write after the lock that reaches SCRAMBLER_KEY
-(``key_wr_reached``), the SCRAMBLER_KEY write count at each kept slot (slots 0
+(``key_wr_reached``), each of the two SCRAMBLER_CTRL writes after the lock (enable
+0, then lock 0) seen as exactly one completed KM CPU store to the SCRAMBLER_CTRL
+address on ``KM-FETCH`` between the message before it and the message after it
+(``CTRL-SSCR-LOCKED-CTRL-WR``), the SCRAMBLER_KEY write count at each kept slot (slots 0
 and 1 under one key, slot 2 one key write later, slot 3 two), the store before
 the lock that does not count, the tap word at the kept rows, the empty mailbox
 before the warm reset, SCRAMBLER_CTRL with the enable at 0 before the enable-0
 stores, and the 64 stores of the 64-store run each seen as one rise of the
 scrambled-write count, with SCRAMBLER_KEY (``KM-CSR``) reading kA at the ready
-and at the done message (``CTRL-SSCR-SBOX-STORES``).
+and at the done message (``CTRL-SSCR-SBOX-STORES``). For each key epoch of
+the last boot (``CTRL-SSCR-EPOCH``): the scrambled-write count (``KM-SRAM-MON``)
+and the accepted SRAM write count (``KM-COUNT``) each rise by 8 between the
+previous message and the epoch message, SCRAMBLER_KEY (``KM-CSR``) holds the
+epoch key at the epoch message, and the message reports SCRAMBLER_CTRL = 0x1 and
+the SCRAMBLER_KEY readback = the epoch key.
 
 Coverage: once CHK-SSCR-ROWS, CHK-SSCR-ALIAS and CTRL-SSCR-SBOX-STORES pass,
 each of those 64 stores samples ``sep_km_sram_sbox_in_cg`` with model-side
@@ -97,7 +118,7 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from env import sep_km_img_param as ip
 from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_km_sbox_in
-from env.sep_km_poke import KM_SRAM_BASE
+from env.sep_km_poke import KM_SRAM_BASE, _km_addr_define
 from sep_base_test import sep_base_test
 from sep_reg_meta import CHeaderRegBlock, ip_c_header
 from seq_lib.sep_km_mailbox_seq import (
@@ -130,11 +151,13 @@ SCR_CTRL_RESET = _KM_CSR.reset("SCRAMBLER_CTRL_REG")
 SCR_CTRL_FIELDS = SCR_ENABLE | SCR_LOCK
 CTRL_LOCKED = SCR_ENABLE | SCR_LOCK
 _MBX_ST = _KM_MBX.fields("STATUS_REG")
+# SCRAMBLER_CTRL as the KM CPU addresses it (KM-FETCH store decode).
+SCR_CTRL_ADDR = _km_addr_define("KEY_MANAGER_KMCSR_SCRAMBLER_CTRL_BASE_ADDR")
 
 # --- image layout (km_rom_scr.S; checked against the image signature) -----------
 SIG_ADDR = 0x40
 SIG_MAGIC = 0x5343_5231  # "SCR1"
-LAYOUT_VERSION = 2
+LAYOUT_VERSION = 3
 PHASE_MAGIC = 0x5048_0000
 MSG_READY = 0x5245_4459
 MSG_ONE = 0x4F4E_4531
@@ -171,6 +194,7 @@ def signature_expect() -> tuple[int, ...]:
         p.OFF_DATA64,
         p.OFF_ADDRS_LOCK,
         p.OFF_DATA_LOCK,
+        p.OFF_DATA_EP,
         p.PAYLOAD_WORDS,
         SCR_ENABLE,
         SCR_LOCK,
@@ -212,6 +236,10 @@ def check_plan(p: ip.ScrPlan) -> None:
         faults.append("the 64 words are not distinct and non-zero")
     if 0 in p.data8 or 0 in p.data_lock:
         faults.append("a drawn word is 0")
+    if len(set(p.data_ep)) != 24 or 0 in p.data_ep:
+        faults.append("the 24 epoch words are not distinct and non-zero")
+    if set(p.data_ep) & set(p.data8 + p.data64 + p.data_lock):
+        faults.append("an epoch word is also a word of another phase")
     if faults:
         raise AssertionError(f"{TEST}: plan rule broken: {'; '.join(faults)}")
 
@@ -236,6 +264,46 @@ class _TransportError(AssertionError):
     pass
 
 
+class _CtrlStoreWatch:
+    """Completed KM CPU stores to SCRAMBLER_CTRL on the KM-FETCH tap.
+
+    Samples every clock after ``ReadOnly``. A store is a clock with
+    ``km_mem_valid_o``, ``km_mem_ready_o`` and a non-zero ``km_mem_wstrb_o``;
+    ``count`` counts those at word address ``SCR_CTRL_ADDR``. ``xz`` counts
+    clocks where VALID or READY, or the strobe or address of a handshake, is
+    not 0 or 1.
+    """
+
+    def __init__(self, test: sep_base_test) -> None:
+        self.test = test
+        self.count = 0
+        self.xz = 0
+        self._on = False
+
+    def start(self) -> None:
+        self._on = True
+        cocotb.start_soon(self._run())
+
+    def stop(self) -> None:
+        self._on = False
+
+    async def _run(self) -> None:
+        top = cocotb.top
+        rd = self.test.rd
+        while self._on:
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            try:
+                hs = rd(top.km_mem_valid_o) & rd(top.km_mem_ready_o)
+                strb = rd(top.km_mem_wstrb_o) if hs else 0
+                addr = rd(top.km_mem_addr_o) & ~0x3 if strb else 0
+            except AssertionError:
+                self.xz += 1
+                continue
+            if strb and addr == SCR_CTRL_ADDR:
+                self.count += 1
+
+
 @pyuvm.test()
 class sep_km_sram_scrambler_key_rand_test(sep_base_test):
     """SRAM scrambler key and address dependence, row map, lock and reset domains."""
@@ -249,6 +317,8 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         "CHK-SSCR-LOCK0",
         "CHK-SSCR-ROWS",
         "CHK-SSCR-EN0",
+        "CHK-SSCR-WEAK",
+        "CHK-SSCR-RT-KB",
     )
 
     # ------------------------------------------------------------------ main
@@ -280,6 +350,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         await self._boot2()
         await self._boot3()
         await self._boot4()
+        await self._boot5()
 
         if not (self.swrst.value >> SW_RESET_N_BIT["km"]) & 1:
             await self.swrst.release("km")
@@ -302,6 +373,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             [hex(a) for a in p.addrs_lock],
             [_h(d) for d in p.data_lock],
         )
+        lg("DRAW data_ep=%s", [_h(d) for d in p.data_ep])
 
     def _check_image(self, seed: int) -> None:
         """The staged image is the template with the block of this seed (HK-IMG-PARAM)."""
@@ -558,6 +630,9 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         for k in range(4):
             g64 += await self._recv(16, f"words64-{k}", "SSCR-ALIAS")
         key_wr: dict = {}
+        ctrl_wr: dict = {}
+        ctrl_watch = _CtrlStoreWatch(self)
+        ctrl_watch.start()
 
         def count_key_wr(name: str):
             async def fn() -> None:
@@ -565,16 +640,43 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
 
             return fn
 
+        def count_ctrl_wr(name: str):
+            async def fn() -> None:
+                ctrl_wr[name] = ctrl_watch.count
+
+            return fn
+
         g_key_unlocked = await self._recv(1, "key-unlocked", "SSCR-LOCK", key_at=(0,))
         g_locked = await self._recv(
             2, "locked", "SSCR-LOCK", key_at=(1,), before=count_key_wr("locked")
         )
-        g_kb_locked = await self._recv(
-            8, "kb-locked", "SSCR-LOCK", before=count_key_wr("kb_locked")
-        )
+
+        async def at_kb_locked() -> None:
+            await count_key_wr("kb_locked")()
+            await count_ctrl_wr("kb_locked")()
+
+        g_kb_locked = await self._recv(8, "kb-locked", "SSCR-LOCK", before=at_kb_locked)
         key_wr_reached = key_wr["kb_locked"] - key_wr["locked"]
-        g_en0_locked = await self._recv(9, "enable0-locked", "SSCR-LOCK")
-        g_lock0_locked = await self._recv(9, "lock0-locked", "SSCR-LOCK")
+        g_en0_locked = await self._recv(
+            9, "enable0-locked", "SSCR-LOCK", before=count_ctrl_wr("enable0_locked")
+        )
+        g_lock0_locked = await self._recv(
+            9, "lock0-locked", "SSCR-LOCK", before=count_ctrl_wr("lock0_locked")
+        )
+        ctrl_watch.stop()
+        # The image drains each message before its next store, so exactly one
+        # SCRAMBLER_CTRL store lies between two message hooks.
+        en0_stores = ctrl_wr["enable0_locked"] - ctrl_wr["kb_locked"]
+        lock0_stores = ctrl_wr["lock0_locked"] - ctrl_wr["enable0_locked"]
+        self.chk.ctrl(
+            "SSCR-LOCKED-CTRL-WR",
+            en0_stores == 1 and lock0_stores == 1 and ctrl_watch.xz == 0,
+            addr=_h(SCR_CTRL_ADDR),
+            enable0_stores=en0_stores,
+            lock0_stores=lock0_stores,
+            expect=1,
+            xz_clocks=ctrl_watch.xz,
+        )
 
         # CHK-SSCR-KEY and CHK-SSCR-STORED: the kept writes.
         cap = self.cap
@@ -916,4 +1018,84 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             writes_c1_c2=w21,
             ctrl_rd_logged=_h(g[0]),
             frames_ok=frames,
+        )
+
+    async def _boot5(self) -> None:
+        """Cold reset, enable 1 / lock 0, then a round trip under each of three keys."""
+        p = self.plan
+        await self._cold_release(5)
+        cnt: dict[str, int] = {}
+        wr: dict[str, int] = {}
+        key: dict[str, int] = {}
+
+        def sample(name: str):
+            async def fn() -> None:
+                cnt[name] = self.rd_known(self.dut.km_sram_scr_wr_count_o)
+                wr[name] = self.rd_known(self.dut.km_sram_write_count_o)
+                key[name] = self.rd_known(self.dut.km_csr_scrambler_key_o)
+
+            return fn
+
+        epochs = (
+            ("ep-zero", 0, "SSCR-WEAK"),
+            ("ep-ones", WORD, "SSCR-WEAK"),
+            ("ep-kb", p.kb, "SSCR-RT-KB"),
+        )
+        ready = await self._recv(1, "ep-ready", "SSCR-WEAK", before=sample("ep-ready"))
+        msgs = []
+        for tag, k, need in epochs:
+            key_at = (1,) if k == p.kb else ()
+            msgs.append(await self._recv(10, tag, need, key_at=key_at, before=sample(tag)))
+        close_graded_window(self.logger)
+
+        def show(v: int, k: int) -> str:
+            return f"sha={word_digest([v])}" if k == p.kb else _h(v)
+
+        prev = "ep-ready"
+        scr_d, wr_d, key_ok, ctrl_rd, key_rd = [], [], [], [], []
+        for (tag, k, _), g in zip(epochs, msgs, strict=True):
+            scr_d.append(cnt[tag] - cnt[prev])
+            wr_d.append(wr[tag] - wr[prev])
+            key_ok.append(key[tag] == k and g[1] == k)
+            ctrl_rd.append(g[0])
+            key_rd.append(show(g[1], k))
+            prev = tag
+        self.chk.ctrl(
+            "SSCR-EPOCH",
+            ready == [MSG_READY]
+            and scr_d == [8, 8, 8]
+            and wr_d == [8, 8, 8]
+            and all(key_ok)
+            and ctrl_rd == [SCR_ENABLE] * 3,
+            epochs=[t for t, _, _ in epochs],
+            scr_writes=scr_d,
+            sram_writes=wr_d,
+            expect_writes=8,
+            key_tap=[show(key[t], k) for t, k, _ in epochs],
+            key_rd=key_rd,
+            exp_key=[show(k, k) for _, k, _ in epochs],
+            key_ok=[int(v) for v in key_ok],
+            ctrl_rd=[_h(v) for v in ctrl_rd],
+            exp_ctrl=_h(SCR_ENABLE),
+            ready=_h(ready[0]),
+        )
+        reads = [g[2:] for g in msgs]
+        want = [p.data_ep[8 * e : 8 * e + 8] for e in range(len(epochs))]
+        eq = [self._count_ok(r, w) for r, w in zip(reads, want, strict=True)]
+        self.chk.ok(
+            "SSCR-WEAK",
+            eq[0] + eq[1] == 16,
+            contract="key_manager/regs/km_csr.rdl:557-567,scrambler/doc/architecture.adoc:132",
+            eq=f"{eq[0] + eq[1]}/16",
+            key0_reads=[_h(v) for v in reads[0]],
+            key0_exp=[_h(v) for v in want[0]],
+            ones_reads=[_h(v) for v in reads[1]],
+            ones_exp=[_h(v) for v in want[1]],
+        )
+        self.chk.ok(
+            "SSCR-RT-KB",
+            eq[2] == 8,
+            eq=f"{eq[2]}/8",
+            kb_reads=[_h(v) for v in reads[2]],
+            kb_exp=[_h(v) for v in want[2]],
         )

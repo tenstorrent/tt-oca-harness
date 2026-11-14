@@ -450,7 +450,10 @@ Observation probe groups:
    aggregate, `RECOVERABLE_ERR`, `BOOT_STATUS.COLD_BOOT_DONE`,
    `SRAM_EXEC_MODE`, `OTP_READ_LOCK`, `OTP_READ_LOCK_COLD`,
    `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
-   writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
+   writes to `SCRAMBLER_KEY` (AW handshakes at the KMCSR port with the
+   `SCRAMBLER_KEY` offset), and the `SCRAMBLER_CTRL` enable and lock values,
+   on every clock. The tap has no count of writes to `SCRAMBLER_CTRL`; a test
+   that counts them uses KM-FETCH. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_boot_reset_rand_test`,
    `sep_km_fault_inject_rand_test`, `sep_km_sram_scrambler_key_rand_test`,
    `sep_km_command_protocol_rand_test` (`OTP_READ_LOCK_COLD`, CHK-NOCHG-VAULT),
@@ -484,7 +487,7 @@ Observation probe groups:
    CHK-REFUSE-KEEP),
    `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
    `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO),
-   `sep_km_command_set_rand_test` (CHK-SHRED-FILL),
+   `sep_km_command_set_rand_test` (CHK-SHRED-FILL, CHK-GEN-DEST),
    `sep_sw_reset_isolation_matrix_test` (`km_key_aw_{valid,ready}_o` in leg C of
    the entry `sep_sw_reset_isolation_matrix_test_km_poke`: an AW valid and not
    ready at the isolate request, logged in INFO-KEY-BEAT-ATTEMPT).
@@ -494,13 +497,17 @@ Observation probe groups:
 ** KM-INFIFO (`km_infifo_head_o[32:0]`): the head word of the inbound FIFO of
    the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
    FIFO is empty. Read-only. Users: `sep_km_cpu_protect_rand_test`
-   (CHK-TRAP-SCOPE), `sep_km_handover_rand_test` (CHK-HO-MBOX).
+   (CHK-TRAP-SCOPE), `sep_km_handover_rand_test` (CHK-HO-MBOX),
+   `sep_km_mailbox_protocol_rand_test` (CHK-OVR-HEAD).
 ** KM-FETCH (`km_mem_{valid,ready,instr}_o`, `km_mem_addr_o[31:0]`,
    `km_mem_wstrb_o[3:0]`): the native memory request of the KM CPU wrapper
    (`u_key_manager_s3c_scan.u_cpu`, nets `mem_valid`, `mem_ready`,
    `mem_instr`, `mem_addr`, `mem_wstrb`), on every clock. A transfer completes
    on a clock with valid and ready high; `instr` high marks an instruction
-   fetch; `wstrb` 0 marks a read. Read-only.
+   fetch; `wstrb` 0 marks a read. Read-only. Users: `sep_km_command_set_rand_test`
+   (CHK-BOOT-SRAM-LOCK-NOWR, CTRL-BOOT-FETCH-DECODE),
+   `sep_km_sram_scrambler_key_rand_test` (CTRL-SSCR-LOCKED-CTRL-WR: completed
+   stores to the `SCRAMBLER_CTRL` address).
 ** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
    for each SRAM write-lock region of 256 words, the count of distinct
    logical word addresses (the KM CPU store address before the scrambler)
@@ -531,7 +538,8 @@ Observation probe groups:
   every clock. Users: `sep_km_boot_reset_rand_test` (all outputs:
   CHK-RST-AXI-VALID, CHK-RST-AXI-NORESP, CTRL-RST-AXI-HANDSHAKE,
   CTRL-RST-AXI-RSP-LIVE, OBS-RST-AXI-EXT-RSP), `sep_km_fault_inject_rand_test` and
-  `sep_km_kmcsr_reset_rand_test` (`km_cpu_rst_n_o` only).
+  `sep_km_kmcsr_reset_rand_test` and `sep_km_command_set_rand_test`
+  (`km_cpu_rst_n_o` only, in CTRL-BOOT-FETCH-DECODE).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list: the KM CPU AXI master and its error

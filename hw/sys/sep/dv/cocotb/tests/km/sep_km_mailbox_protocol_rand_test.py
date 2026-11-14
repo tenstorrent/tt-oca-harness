@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM mailbox STATUS, sticky errors, response modes, IRQ and flush follow the RDL with the KM held.
+"""KM mailbox STATUS, sticky errors, response modes, IRQ, flush and write separator follow the RDL.
 
 no_cpu / +skip_fuse_sense. RANDCFG. KM stays in software reset.
 
@@ -48,7 +48,15 @@ Checkers:
                IRQ_STATUS.inbound_write_space_avail track the golden
   CHK-OVR      a 17th write -> SLVERR, inbound_overflow latches, depth stays 16
   CHK-OVR-RESP SEP_CTRL.inbound_overflow_resp turns the next overrun into
-               OKAY; the sticky bit stays; depth stays 16 (drop)
+               OKAY; the sticky bit stays; depth stays 16
+  CHK-OVR-HEAD the head word of the inbound FIFO (KM-INFIFO tap) is the first
+               fill word, separator 0, after the fill and after each of the two
+               overruns: an overrun that writes into the full FIFO at the read
+               slot, or that moves the read pointer, fails (key_manager
+               architecture.adoc:237, "A write to a full FIFO drops the incoming
+               word without changing queued data")
+  OBS-OVR-QUEUE  the inbound entries behind the head, and the absence of the
+               overflow word among them, have no tap: logged as not observed
   CHK-IRQ      enabling the two error IRQs raises aggregator [14]; clearing
                the enable drops the pin while IRQ_STATUS stays; W1C drops both
   CHK-FLUSH    CTRL.FLUSH empties the full inbound FIFO, self-clears, and
@@ -57,8 +65,27 @@ Checkers:
                empty before and after: with KM held nothing can push into
                it, so this leaf grades only the inbound flush. A non-empty
                outbound flush belongs to sep_km_mailbox_km_side_rand_test
+  CHK-SEP-WSEP SEP_WRITE_SEPARATOR reads its reset value 0 before any write
+               to it. Then 16 SEP_WRITE_DATA words go into the empty inbound
+               FIFO. For each armed word: after a write of SET the register
+               reads 1, and still 1 after a SEP_STATUS read; the data write
+               is OKAY and steps STATUS.inbound_depth by one; the register
+               then reads 0 (km_mailbox_sep.rdl: "Cleared by hardware when
+               that write completes")
+  CTRL-SEP-WSEP-UNARMED  each unarmed SEP_WRITE_DATA word (OKAY, depth +1)
+               leaves SEP_WRITE_SEPARATOR at 0, so a register that a data
+               write sets, or that holds 1 with no arm, fails
+
+Randomization: the run seed selects the 16 inbound fill words and the
+overflow word, which differs from every fill word. A separate salted stream of the same seed selects the armed
+subset of the 16 write-separator words: N armed words in [1, 15] at drawn
+positions, so every seed grades at least one armed and one unarmed word.
 
 Not covered:
+  * Inbound entries 2 to 16 after an overrun. KM-INFIFO shows the head word
+    only, the KM is held so no entry is popped, and the flush discards the
+    entries unread, so only the head word of "without changing queued data"
+    is graded (CHK-OVR-HEAD).
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
     as the peer, so this test does not grade them.
   * STATUS.inbound_separator updates only when the KM pops inbound;
@@ -71,6 +98,8 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_chk_log import word_digest
+from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mailbox_seq import (
@@ -86,6 +115,7 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_MBOX_DEPTH,
     KM_MBOX_IRQ_AGG,
     KM_MBOX_SIZE,
+    KM_MBOX_WRITE_SEPARATOR,
     KM_STATUS_INBOUND_DEPTH_LSB,
     KM_STATUS_INBOUND_DEPTH_MASK,
     KM_STATUS_INBOUND_EMPTY,
@@ -107,6 +137,15 @@ from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 _STICKY_STATUS = (1 << KM_STATUS_INBOUND_OVERFLOW) | (1 << KM_STATUS_OUTBOUND_UNDERFLOW)
 _STICKY_IRQ = (1 << KM_IRQ_INBOUND_OVERFLOW) | (1 << KM_IRQ_OUTBOUND_UNDERFLOW)
 _IRQ_EN_ERR = (1 << KM_IRQ_EN_INBOUND_OVERFLOW) | (1 << KM_IRQ_EN_OUTBOUND_UNDERFLOW)
+
+_KMBX_SEP = CHeaderRegBlock(
+    "KM_MAILBOX_SEP", ip_c_header("key_manager").with_name("km_mailbox_sep.h")
+)
+_WSEP_RESET = _KMBX_SEP.reset("WRITE_SEPARATOR_REG")
+_WSEP_ARMED = _WSEP_RESET | _KMBX_SEP.fields("WRITE_SEPARATOR_REG")["SET"]["bm"]
+# The armed-subset draw uses its own stream; fill_words and overflow_word do
+# not depend on it.
+_WSEP_SALT = 0x5753_4550 << 32
 
 
 def _pack_status(
@@ -150,7 +189,7 @@ def _pack_irq(
 
 
 class SepKmMboxProtoCfg:
-    """Single source of truth: seeded inbound fill words for one run."""
+    """Single source of truth: seeded inbound fill words and armed separator words."""
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
@@ -161,22 +200,45 @@ class SepKmMboxProtoCfg:
             if w not in words:
                 words.append(w)
         self.fill_words = tuple(words)
-        self.overflow_word = rng.getrandbits(32)
+        overflow_word = rng.getrandbits(32)
+        while overflow_word in words:
+            overflow_word = rng.getrandbits(32)
+        self.overflow_word = overflow_word
+        wsep = SepSeededRng(seed ^ _WSEP_SALT)
+        n_armed = wsep.randrange(1, KM_MBOX_DEPTH)
+        self.wsep_armed = frozenset(wsep.sample(range(1, KM_MBOX_DEPTH + 1), n_armed))
 
     def summary(self) -> str:
         return (
             f"seed={self.seed} depth={KM_MBOX_DEPTH} "
-            f"fill0=0x{self.fill_words[0]:08x} overflow=0x{self.overflow_word:08x}"
+            f"fill0=0x{self.fill_words[0]:08x} overflow=0x{self.overflow_word:08x} "
+            f"wsep_armed={sorted(self.wsep_armed)}"
         )
 
 
 @pyuvm.test()
 class sep_km_mailbox_protocol_rand_test(sep_base_test):
-    """KM mailbox STATUS, sticky errors, response modes, IRQ and flush follow the RDL."""
+    """KM mailbox STATUS, sticky errors, response modes, IRQ, flush and separator follow the RDL."""
 
     async def run_scenario(self) -> None:
         cfg = SepKmMboxProtoCfg(self.random_seed())
         self.logger.info("km mailbox protocol: %s", cfg.summary())
+        self.required_evidence = (
+            "CHK-HELD",
+            "CHK-IDLE",
+            "CHK-CTRL",
+            "CHK-CTRL-EP",
+            "CHK-FILL",
+            "CHK-OVR",
+            "CHK-OVR-RESP",
+            "CHK-OVR-HEAD",
+            "CHK-UFL",
+            "CHK-UFL-RESP",
+            "CHK-UFL-W1C",
+            "CHK-IRQ",
+            "CHK-FLUSH",
+            "CHK-SEP-WSEP",
+        )
 
         await self.bring_up_no_cpu()
         self.mb = SepKmMailbox(self)
@@ -195,6 +257,7 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self._chk_overflow(cfg)
         await self._chk_irq()
         await self._chk_flush()
+        await self._chk_wsep(cfg)
 
     def _mbox_wr_err_count(self) -> int:
         return self.rd(cocotb.top.km_mbox_sep_wr_err_count_o)
@@ -349,10 +412,13 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
 
     async def _chk_overflow(self, cfg: SepKmMboxProtoCfg) -> None:
+        # KM-INFIFO {separator, data}; the fill words carry separator 0.
+        head = {"fill": self.rd_known(cocotb.top.km_infifo_head_o)}
         resp = await self.mb.write_data_raw(cfg.overflow_word, expect_error=True)
         assert resp == RESP_SLVERR, f"CHK-OVR FAIL: write-to-full resp={resp}, expected SLVERR"
         await self._expect_status("CHK-OVR", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
         await self._expect_irq("CHK-OVR", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
+        head["slverr"] = self.rd_known(cocotb.top.km_infifo_head_o)
         self.logger.info(
             "CHK-OVR PASS: 17th write -> SLVERR, inbound_overflow latched, depth stays %d",
             KM_MBOX_DEPTH,
@@ -365,11 +431,34 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
         await self._expect_status("CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
         await self._expect_irq("CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
+        head["okay"] = self.rd_known(cocotb.top.km_infifo_head_o)
         self.logger.info(
             "CHK-OVR-RESP PASS: resp-mode=OKAY on the next overrun; depth still %d",
             KM_MBOX_DEPTH,
         )
         await self.mb.write_ctrl(0)
+
+        exp_head = cfg.fill_words[0]
+        got = ", ".join(f"{k}=0x{v:08x}" for k, v in head.items())
+        assert all(v == exp_head for v in head.values()), (
+            f"CHK-OVR-HEAD FAIL: inbound head word {got}, expected 0x{exp_head:08x} "
+            f"(first fill word) at each; overflow word 0x{cfg.overflow_word:08x}"
+        )
+        self.logger.info(
+            "CHK-OVR-HEAD PASS: inbound head word %s, expected 0x%08x (first fill word); "
+            "overflow word 0x%08x not at the head",
+            got,
+            exp_head,
+            cfg.overflow_word,
+        )
+        self.logger.info(
+            "OBS-OVR-QUEUE not observed: inbound entries 2..%d and the absence of the "
+            "overflow word behind the head have no tap (KM held, flush discards unread); "
+            "fill_sha=%s overflow=0x%08x",
+            KM_MBOX_DEPTH,
+            word_digest(cfg.fill_words),
+            cfg.overflow_word,
+        )
 
     async def _chk_irq(self) -> None:
         # Overflow sticky is still set from CHK-OVR. Underflow is clear.
@@ -442,4 +531,81 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
             "CHK-FLUSH PASS: flush emptied the full inbound FIFO, self-cleared, and left "
             "inbound_overflow and outbound_underflow set in STATUS and IRQ_STATUS until "
             "W1C (outbound was empty throughout)"
+        )
+
+    async def _expect_wsep(self, record: str, where: str, exp: int) -> int:
+        got = await self.mb._rd32(KM_MBOX_WRITE_SEPARATOR)
+        assert got == exp, (
+            f"{record} FAIL: {where}: SEP_WRITE_SEPARATOR 0x{got:08x} != golden 0x{exp:08x}"
+        )
+        return got
+
+    async def _chk_wsep(self, cfg: SepKmMboxProtoCfg) -> None:
+        # Pre-state from _chk_flush: inbound empty and stickies clear, so the
+        # 16 words never write to a full FIFO.
+        reset = await self._expect_wsep("CHK-SEP-WSEP", "reset read", _WSEP_RESET)
+        n_armed = len(cfg.wsep_armed)
+        n_unarmed = KM_MBOX_DEPTH - n_armed
+        assert n_armed >= 1 and n_unarmed >= 1, (
+            f"CHK-SEP-WSEP FAIL: armed={n_armed} unarmed={n_unarmed}; each must be >= 1"
+        )
+        seen = {"arm": set(), "status": set(), "armed_after": set(), "unarmed_after": set()}
+        for i, word in enumerate(cfg.fill_words, start=1):
+            armed = i in cfg.wsep_armed
+            if armed:
+                await self.mb._wr32(KM_MBOX_WRITE_SEPARATOR, _WSEP_ARMED)
+                seen["arm"].add(
+                    await self._expect_wsep("CHK-SEP-WSEP", f"word {i} after arm", _WSEP_ARMED)
+                )
+            await self._expect_status("CHK-SEP-WSEP FAIL", inbound_depth=i - 1)
+            if armed:
+                seen["status"].add(
+                    await self._expect_wsep(
+                        "CHK-SEP-WSEP", f"word {i} after a SEP_STATUS read", _WSEP_ARMED
+                    )
+                )
+            resp = await self.mb.write_data_raw(word)
+            assert resp == RESP_OKAY, (
+                f"CHK-SEP-WSEP FAIL: word {i} SEP_WRITE_DATA resp={resp}, expected OKAY"
+            )
+            await self._expect_status("CHK-SEP-WSEP FAIL", inbound_depth=i)
+            if armed:
+                seen["armed_after"].add(
+                    await self._expect_wsep(
+                        "CHK-SEP-WSEP", f"word {i} after the armed data write", _WSEP_RESET
+                    )
+                )
+            else:
+                seen["unarmed_after"].add(
+                    await self._expect_wsep(
+                        "CTRL-SEP-WSEP-UNARMED",
+                        f"word {i} after the unarmed data write",
+                        _WSEP_RESET,
+                    )
+                )
+
+        def _vals(key: str) -> str:
+            return ",".join(f"0x{v:08x}" for v in sorted(seen[key]))
+
+        self.logger.info(
+            "CHK-SEP-WSEP PASS: reset=0x%08x (golden 0x%08x); armed=%d at %s; "
+            "after arm=%s, after SEP_STATUS read=%s (golden 0x%08x); after each OKAY "
+            "data write (depth +1)=%s (golden 0x%08x); final depth=%d",
+            reset,
+            _WSEP_RESET,
+            n_armed,
+            sorted(cfg.wsep_armed),
+            _vals("arm"),
+            _vals("status"),
+            _WSEP_ARMED,
+            _vals("armed_after"),
+            _WSEP_RESET,
+            KM_MBOX_DEPTH,
+        )
+        self.logger.info(
+            "CTRL-SEP-WSEP-UNARMED PASS: unarmed=%d; after each OKAY data write "
+            "(depth +1)=%s (golden 0x%08x)",
+            n_unarmed,
+            _vals("unarmed_after"),
+            _WSEP_RESET,
         )

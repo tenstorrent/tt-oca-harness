@@ -217,7 +217,9 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 name = "sep_km_mailbox_protocol_rand_test"
 module = "km.sep_km_mailbox_protocol_rand_test"
 seed = 1
-# No reseed: the FIFO walk is fixed; the seed selects only the fill words.
+# No reseed: the FIFO walk is fixed; the seed selects the fill words and the
+# armed subset of the write-separator words (1 to 15 of 16), so every seed
+# grades both armed and unarmed words.
 timeout_sec = 900
 tags = ["km", "mailbox", "subsystem"]
 run_modes = ["no_cpu"]
