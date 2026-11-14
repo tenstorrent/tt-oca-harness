@@ -609,8 +609,11 @@ Observation probe groups:
   each clock. Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`.
 * Crypto alert receiver probe (`crypto_alert_pulse_probe_o`): bit i is the
-  alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owner:
-  `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX).
+  alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owners:
+  `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX),
+  `sep_kmac_mode_strength_rand_test` (receivers 5 and 6: CHK-KMAC-ALERT-QUIET,
+  CTRL-KMAC-ALERT-LIVE, OBS-KMAC-ALERT-BIT) and
+  `sep_crypto_per_ip_reset_isolation_test` (OBS-KMAC-ALERT-RST).
 * External stream response monitor (`ext_trng_tready_o`, with the stream as
   the `sep` port sees it: `ext_trng_tvalid_o`, `ext_trng_tdata_o`,
   `ext_trng_tstrb_o`): `ext_trng_axis_rsp_o[i].tready` and
@@ -626,7 +629,10 @@ Observation probe groups:
   detune select of ESRC lane i (`u_generator.detune`). Users: the ESRC tuning
   entry of the crypto and entropy area.
 * OTBN status probe (`otbn_status_probe_o`): `status_q` of the OTBN core on
-  every clock. Users: the OTBN command entry of the crypto and entropy area.
+  every clock. Users: the OTBN command entry of the crypto and entropy area,
+  `sep_crypto_per_ip_reset_isolation_test` (CHK-OTBN-RST-RECOVER: the state at
+  the fall of the OTBN gated reset) and `sep_otbn_fw_control_flow_test`
+  (CHK-OTBN-FW-STATUS).
 * ESRC SHA-256 status tap (`esrc_sha256_status_o`): the next value of the
   `SHA256_STATUS` fields (`reg_in.SHA256_STATUS`) on every clock: bit 0 BUSY,
   bits 4:1 INPUT_COUNT, bits 8:5 OUTPUT_COUNT. Users: the ESRC conditioning

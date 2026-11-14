@@ -117,6 +117,16 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+name = "sep_otbn_fw_control_flow_test"
+module = "otbn.sep_otbn_fw_control_flow_test"
+firmware = "otbn_fw_control_flow_test"
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "cpu", "crypto", "otbn", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # KMAC-family mode x strength breadth (RAND-REP). KMAC masking reseeds from EDN,
 # so entropy bring-up is required. CHK5 scores the KMAC sink only.
 name = "sep_kmac_mode_strength_rand_test"
