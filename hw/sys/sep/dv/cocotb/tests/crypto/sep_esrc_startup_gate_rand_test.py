@@ -920,25 +920,40 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         bound = TRANSIENT_WINDOWS * WINDOW
         done_word: int | None = None
         push_word: int | None = None
+        # Clock at the start of the last read of BOOT_PHASE_DONE 0: the bit rose after
+        # it, so the first stream word must rise after it too.
+        closed_clk = vm.clk
         while push_word is None and self.noise.words_since(m0) <= bound:
+            read_clk = self.vld.clk
             sm = await self._sm()
             w = self.noise.words_since(m0)
-            if done_word is None and sm & SM_BOOT:
-                done_word = w
+            if done_word is None:
+                if sm & SM_BOOT:
+                    done_word = w
+                else:
+                    closed_clk = read_clk
             if self.vld.any_high_since(vm):
                 push_word = w
+        rises = self.vld.rise_clks_since(vm)
+        push_clk = rises[0] if rises else None
         self._bytes_end("transient_boot", base)
         # The failing window ends at or after the first stuck0 strobe, and a whole
         # passing window follows it before the gate opens.
         lower = stuck_first + WINDOW
         self.chk.ok(
             "BOOT-TRANSIENT",
-            done_word is not None and push_word is not None and lower <= done_word <= push_word,
+            done_word is not None
+            and push_word is not None
+            and lower <= done_word <= push_word
+            and push_clk is not None
+            and push_clk > closed_clk,
             half="opens",
             done_strobe=done_word if done_word is not None else "none",
             first_push_strobe=push_word if push_word is not None else "none",
             lower_bound_strobes=lower,
             bound_strobes=bound,
+            last_closed_read_clk=closed_clk,
+            first_push_clk=push_clk if push_clk is not None else "none",
         )
         self.chk.obs(
             "BOOT-CLEAN-COUNT",
