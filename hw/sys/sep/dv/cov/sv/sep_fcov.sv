@@ -28924,8 +28924,8 @@ module sep_fcov (
     logic lp_v;  // RING_OSC_ENABLE population: 0 no lane, 1 one lane
     logic di;
     logic di_v;  // stored DOWNSAMPLE_RATE at a CHK-COND-DS-INTERVAL pass: 0 rate 1, 1 rate 2 to 15
-    logic [4:0] fo;
-    logic fo_v;  // {op 0 push, 1 pop, 2 push and pop, LEVEL class before the op}
+    logic [4:0] fop;
+    logic fop_v;  // {op 0 push, 1 pop, 2 push and pop, LEVEL class before the op}
     logic [2:0] cl;
     logic cl_v;  // LEVEL class before a push with ENTROPY_CHURN_ENABLE 1
   } cz_cond_t;
@@ -29032,7 +29032,7 @@ module sep_fcov (
       bins rate_1 = {1'b0}; bins rate_2_to_15 = {1'b1};
     }
     // LEVEL classes: 0, 1, mid (2 to 61), 62_63, 64.
-    x_fifo_op_level: coverpoint s.fo iff (s.fo_v) {
+    x_fifo_op_level: coverpoint s.fop iff (s.fop_v) {
       bins push_level_0 = {5'b00_000};
       bins push_level_1 = {5'b00_001};
       bins push_level_mid = {5'b00_010};
@@ -29606,8 +29606,8 @@ module sep_fcov (
       end
       // x_fifo_op_level: index 27 push, 28 pop, 29 push and pop; v is the LEVEL class.
       27, 28, 29: begin
-        e.fo   = {2'(pt - 27), v[2:0]};
-        e.fo_v = 1'b1;
+        e.fop   = {2'(pt - 27), v[2:0]};
+        e.fop_v = 1'b1;
       end
       30: begin
         e.cl   = v[2:0];
