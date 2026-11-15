@@ -57011,7 +57011,8 @@ streams at end of test.
 |`CHK-ZEROER-RESET-FILTER` |Filter address and all defined software-writable configuration fields have programming and restore readback evidence
 |`CHK-ZEROER-RESET-DONE` |Recovery reaches idle within a bench polling bound
 |`CHK-ZEROER-RESET-ASSERTED`, `CHK-ZEROER-RESET-RELEASED` |Primary and warm reset reach the requested level within a bound; timeout records include the final levels before termination
-|`CHK-ZEROER-RESET-RESPONDER` |The passive SYS_OUT monitor publishes exactly one completed recovery burst; separate TB guards check responder counts before reset request and across reset
+|`CHK-ZEROER-RECOVERY-BURST` |The passive SYS_OUT item stream carries exactly one completed recovery burst once STATUS reads idle
+|`CHK-ZEROER-RESET-RESPONDER` |TB guard: the responder completes no burst before the reset request or across reset
 |`CHK-ZEROER-RECOVERY-POISON` |TB guard: responder poison and guards are initialized before START
 |`CHK-ZEROER-RECOVERY-DATA` |Recovered bytes are zero and guards remain intact
 |`CHK-ZEROER-RECOVERY-IRQ` |Exactly one interrupt pulse is sampled during recovery
@@ -57068,12 +57069,11 @@ feature summary give three errors. `+SMC_ZEROER_RESET_SEQUENCE_NEGATIVE`
 inverts all 58 sequence DUT-verdict records per pass and the scoreboard's
 burst-shape and out-of-scope summaries once per test: 930 failures for the
 default sixteen passes, with no byte mismatch. The sequence targets are
-FILTER, PRE-CSR, CSR, PHASE-A/B, ASSERTED/RELEASED, RESPONDER, DONE,
-NONVAC, RECOVERY-DATA and RECOVERY-IRQ. Only the one-completed-recovery
-RESPONDER record is a sequence-negative target; its reset-count guards are not.
+FILTER, PRE-CSR, CSR, PHASE-A/B, ASSERTED/RELEASED, RECOVERY-BURST, DONE,
+NONVAC, RECOVERY-DATA and RECOVERY-IRQ.
 Neither knob changes the expectations of TB guards EPOCH, RECOVERY-POISON,
 ACCOUNTING, DECLARED-VS-PREDICTED, SAMPLE-CLOSE, PENDING, EXPECTED-PRESENT,
-PREREQ or the two reset-count RESPONDER guards. The scoreboard negative
+PREREQ or RESPONDER. The scoreboard negative
 nevertheless trips ACCOUNTING through its recovery mismatch delta. Shared
 CSR-response/fuse checks and measurement-window prerequisites are also
 outside the negative targets. Enrolled only in `zeroer_uvm_extended`, on
