@@ -1,30 +1,14 @@
-cla_mmrs, cla_node_eap: describe how the CLA debug interrupt is released
+cla_mmrs: describe how the CLA debug interrupt is released
 
 A debug-interrupt action holds the interrupt while EnableEap is set: the
 node's action-bus idle value feeds the interrupt back every cycle, and the
 top-level latch gives the set priority over the CDbgEapStatus w2c clear.
 A w2c write therefore clears only the status bit. Clearing EnableEap stops
 the hold, and the next w2c write releases the line. This is the intended
-behaviour; CDbgEapStatus and EnableEap now say so, and the cla_node_eap
-comment that claimed a status clear released the interrupt is corrected.
+behaviour, and CDbgEapStatus and EnableEap now say so.
 
 Recorded as a patch so the hand-mirrored upstream/ tree stays
 reproducible from the vendored spec plus patches/ applied in order.
-diff --git a/rtl/cla/cla_node_eap.sv b/rtl/cla/cla_node_eap.sv
-index 0ca7cbad3..995cce9f2 100644
---- a/rtl/cla/cla_node_eap.sv
-+++ b/rtl/cla/cla_node_eap.sv
-@@ -104,7 +104,9 @@ import cla_pkg::*;
-     action_bus_idle_value[ACTION_DEBUG_INTERRUPT] = debug_interrupt;
-    end
- 
-- // Continue to drive interrupts till the eap status is cleared by SW.
-+ // Hold the interrupt while this node is current and enable_eap is set. Clearing
-+ // enable_eap drops it here; core_logic_analyzer keeps its latched copy until the
-+ // next eap status w2c write.
-   always_ff@(posedge clock)
-    begin
-     if(!reset_n)
 diff --git a/rtl/mmr/spec/cla_mmrs.yml b/rtl/mmr/spec/cla_mmrs.yml
 index c6a575f4c..96905d092 100644
 --- a/rtl/mmr/spec/cla_mmrs.yml

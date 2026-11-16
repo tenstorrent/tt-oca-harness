@@ -104,9 +104,7 @@ import cla_pkg::*;
     action_bus_idle_value[ACTION_DEBUG_INTERRUPT] = debug_interrupt;
    end
 
- // Hold the interrupt while this node is current and enable_eap is set. Clearing
- // enable_eap drops it here; core_logic_analyzer keeps its latched copy until the
- // next eap status w2c write.
+ // Continue to drive interrupts till the eap status is cleared by SW.
   always_ff@(posedge clock)
    begin
     if(!reset_n)
