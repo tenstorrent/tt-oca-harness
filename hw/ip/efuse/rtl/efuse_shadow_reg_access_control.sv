@@ -93,8 +93,8 @@ module efuse_shadow_reg_access_control #(
 
   // The lifecycle-state field's locks are applied by efuse_shadow_regs.
   assign lc_state_access_o = HAS_LC_STATE && (field_index == '0);
-  assign hw_write_locked   = !lc_state_access_o && write_locked(field_index);
-  assign hw_read_locked    = !lc_state_access_o && read_locked(field_index);
+  assign hw_write_locked   = !lc_state_access_o && field_locked(field_index, 1'b0);
+  assign hw_read_locked    = !lc_state_access_o && field_locked(field_index, 1'b1);
 
   // sw_lock_bits: [0] read lock, [2:1] 2'b11 write lock / 2'b10 set-only, [3] secure-test lock.
   assign write_locked_o     = hw_write_locked || (sw_lock_bits[2:1] == 2'b11) ||
@@ -131,24 +131,14 @@ module efuse_shadow_reg_access_control #(
     return '0;
   endfunction
 
-  // Check if a field is write locked by hardware locks.
-  // idx '1 (all-ones) is the sentinel for the LOCKS meta-field and unmapped
-  // addresses; both are excluded from hardware lock checks.
-  function automatic logic write_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index);
-    if (index != '1) begin
-      return locks_i[index*2];
-    end else begin
-      return 1'b0;
-    end
-  endfunction
-
-  // Check if a field is read locked by hardware locks.
-  function automatic logic read_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index);
-    if (index != '1) begin
-      return locks_i[index*2+1];
-    end else begin
-      return 1'b0;
-    end
+  // Hardware lock of a field: the write lock at locks_i[2*index], the read lock at [2*index+1].
+  // idx '1 is the LOCKS meta-field or an unmapped address and has no lock. An idx with no lock
+  // pair in locks_i comes from a malformed field map and reads as locked.
+  function automatic logic field_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
+                                        logic read);
+    if (index == '1) return 1'b0;
+    if (int'(index) >= int'(LOCK_VECTOR_BITS / 2)) return 1'b1;
+    return locks_i[index*2+int'(read)];
   endfunction
 
 endmodule : efuse_shadow_reg_access_control

@@ -209,12 +209,19 @@ module efuse_guard #(
     return '1;
   endfunction
 
-  // idx '1 means this index does not have a hardware lock.
+  // Lock of a map entry: the write lock at bit 2*index of its lock vector, the read lock at
+  // 2*index+1. idx '1 has no lock. An idx with no lock pair in its vector comes from a malformed
+  // field map and reads as locked.
   function automatic logic entry_locked(logic supplementary,
                                         logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
                                         logic read);
     if (index == '1) return 1'b0;
-    return supplementary ? supplementary_locks_i[index*2+int'(read)] : locks_i[index*2+int'(read)];
+    if (supplementary) begin
+      if (int'(index) >= int'(efuse_pkg::SupplementaryLockBits / 2)) return 1'b1;
+      return supplementary_locks_i[index*2+int'(read)];
+    end
+    if (int'(index) >= int'(LOCK_VECTOR_BITS / 2)) return 1'b1;
+    return locks_i[index*2+int'(read)];
   endfunction
 
 endmodule

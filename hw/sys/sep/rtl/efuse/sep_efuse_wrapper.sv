@@ -16,6 +16,7 @@
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 `include "ocah_registers.svh"
+`include "ocah_assert.svh"
 
 module sep_efuse_wrapper #(
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
@@ -323,6 +324,15 @@ module sep_efuse_wrapper #(
   /////////////////////////////////////////////////////////////
   // eFuse Interface Controller
   /////////////////////////////////////////////////////////////
+
+  // Every field-map idx other than '1 must have a lock pair in the 2 * (NumEfuseFields - 1) lock
+  // bits the controller gives the map. The lock lookups read an idx outside the vector as locked,
+  // so this check finds the malformed map.
+  for (genvar i = 0; i < sep_efuse_pkg::NumEfuseFields; i++) begin : gen_field_lock_idx
+    `OCAH_ASSERT_STATIC(FieldMapIdxHasLockPair_A,
+        (sep_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
+        (int'(sep_efuse_pkg::EfuseFieldMap[i].idx) < int'(sep_efuse_pkg::NumEfuseFields - 1)))
+  end
 
   efuse_interface_controller #(
     .ADDR_WIDTH                 (sep_efuse_pkg::AddrWidth),

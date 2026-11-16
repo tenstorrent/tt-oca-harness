@@ -215,6 +215,20 @@ module smc_efuse_wrapper #(
       smc_efuse_pkg::SupplementaryLocksBitOffset == smc_efuse_pkg::HarnessLockFieldBits,
       "efuse_lock_view_t places SUPPLEMENTARY_LOCKS directly after HARNESS_LOCKS; the RDL map must too")
 
+  // Every field-map idx other than '1 must have a lock pair: the controller gives the harness map
+  // 2 * (NumEfuseFields - 1) lock bits and the supplementary map SUPPLEMENTARY_LOCKS. The lock
+  // lookups read an idx outside its vector as locked, so this check finds the malformed map.
+  for (genvar i = 0; i < smc_efuse_pkg::NumEfuseFields; i++) begin : gen_field_lock_idx
+    `OCAH_ASSERT_STATIC(FieldMapIdxHasLockPair_A,
+        (smc_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
+        (int'(smc_efuse_pkg::EfuseFieldMap[i].idx) < int'(smc_efuse_pkg::NumEfuseFields - 1)))
+  end
+  for (genvar i = 0; i < efuse_pkg::SupplementaryLockRegions; i++) begin : gen_supplementary_lock_idx
+    `OCAH_ASSERT_STATIC(SupplementaryMapIdxHasLockPair_A,
+        (SupplementaryFieldMap[i].idx == '1) ||
+        (int'(SupplementaryFieldMap[i].idx) < int'(efuse_pkg::SupplementaryLockBits / 2)))
+  end
+
   efuse_interface_controller #(
     .ADDR_WIDTH                  (smc_pkg::SmcLocalAddrWidth),
     .DATA_WIDTH                  (smc_pkg::AxiLite32DataWidth),
