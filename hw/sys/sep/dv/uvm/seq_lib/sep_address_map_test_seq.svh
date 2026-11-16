@@ -492,10 +492,10 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     csr_write(sw_addr, sw_restore, "SEP_SW_DEBUG.restore");
   endtask
 
-  // ext_demux_decode() selects the eFuse-shim port for the shim window and
-  // sends the next word out of SEP to the extension error slave. The value
-  // behind the shim is adopter-owned and is not graded, only which port the
-  // decode selected.
+  // The local crossbar's efuse_shim rule selects the eFuse-shim port for the
+  // shim window and sends the next word out of SEP to the extension error
+  // slave. The value behind the shim is adopter-owned and is not graded, only
+  // which port the decode selected.
   task ext_demux_bound();
     bit [63:0]    base = 64'(SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR);
     bit [63:0]    past = base + 64'(SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE);

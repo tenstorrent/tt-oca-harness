@@ -5222,7 +5222,7 @@ module sep_fcov (
   // control to CPU control) and the mailboxes.
   localparam logic [31:0] FScrBase = FapBaseSepScratchCold;
   localparam logic [31:0] FScrLast = FapLastSepScratchWarm;
-  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemapCtrl;
+  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemapCtrlWrap;
   localparam logic [31:0] FSysLast = FapLastSepCpuCtrl;
   localparam logic [31:0] FMbxBase = FapBaseAxilMailbox;
   localparam logic [31:0] FMbxLast = FapLastAxilMailbox;
@@ -6917,8 +6917,8 @@ module sep_fcov (
       32'(AXIL_MAILBOX_REG_MAP_BASE_ADDR),
       32'(EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR),
       32'(EFUSE_MMR_REG_MAP_BASE_ADDR),
-      FapBaseLocalMasterAliasRemapCtrl,
-      FapBaseOutboundFilterCtrl,
+      FapBaseLocalMasterAliasRemapCtrlWrap,
+      FapBaseOutboundFilterCtrlWrap,
       32'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR),
       32'(SEP_CPU_CTRL_REG_MAP_BASE_ADDR),
       32'(SPI_CONTROLLER_REG_MAP_BASE_ADDR),
@@ -8731,8 +8731,8 @@ module sep_fcov (
             ))
           c_array_tail = 3'd3;
         if ((lq_resp == FRespDecerr) && (lq_dir_w || (fx_lane32 == 32'hBADC_AB1E))) begin
-          if (lq_a == FapLastApOutputRemapCtrl + 32'd1) c_array_tail = 3'd4;
-          if (lq_a == FapLastSteeOutputRemapCtrl + 32'd1) c_array_tail = 3'd5;
+          if (lq_a == FapLastApOutputRemapCtrlWrap + 32'd1) c_array_tail = 3'd4;
+          if (lq_a == FapLastSteeOutputRemapCtrlWrap + 32'd1) c_array_tail = 3'd5;
         end
       end
       // Output-remap pass-through read.
