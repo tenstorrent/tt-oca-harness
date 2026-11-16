@@ -312,15 +312,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -330,15 +330,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -348,15 +348,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -366,15 +366,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -384,15 +384,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -402,15 +402,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -420,15 +420,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -438,15 +438,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -657,15 +657,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -675,15 +675,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -693,15 +693,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -711,15 +711,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -729,15 +729,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -747,15 +747,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -765,15 +765,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
@@ -783,15 +783,15 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
 <tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
 <tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
 <tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
 <tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</td></tr>
 <tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
 <tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>

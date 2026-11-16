@@ -403,15 +403,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -425,15 +425,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -447,15 +447,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -469,15 +469,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -491,15 +491,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -513,15 +513,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -535,15 +535,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -557,15 +557,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -896,15 +896,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -918,15 +918,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -940,15 +940,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -962,15 +962,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -984,15 +984,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -1006,15 +1006,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -1028,15 +1028,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
@@ -1050,15 +1050,15 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:58 | `Action3` | RW | 0x0 a| Select an Action
 | 57:52 | `Action2` | RW | 0x0 a| Select an Action
-| 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
-| 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
+| 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
+| 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
 | 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
-| 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
-| 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
+| 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
+| 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 | 13:8 | `Action1` | RW | 0x0 a| Select an Action
 | 7:2 | `Action0` | RW | 0x0 a| Select an Action
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node

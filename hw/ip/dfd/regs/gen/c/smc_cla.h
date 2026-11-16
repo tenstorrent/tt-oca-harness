@@ -545,17 +545,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_bw 6
@@ -580,12 +580,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bw 8
@@ -608,11 +608,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -622,9 +622,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -651,17 +651,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_bw 6
@@ -686,12 +686,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bw 8
@@ -714,11 +714,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -728,9 +728,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -757,17 +757,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_bw 6
@@ -792,12 +792,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bw 8
@@ -820,11 +820,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -834,9 +834,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -863,17 +863,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_bw 6
@@ -898,12 +898,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bw 8
@@ -926,11 +926,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -940,9 +940,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -969,17 +969,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_bw 6
@@ -1004,12 +1004,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bw 8
@@ -1032,11 +1032,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -1046,9 +1046,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -1075,17 +1075,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_bw 6
@@ -1110,12 +1110,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bw 8
@@ -1138,11 +1138,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -1152,9 +1152,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -1181,17 +1181,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_bw 6
@@ -1216,12 +1216,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bw 8
@@ -1244,11 +1244,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -1258,9 +1258,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -1287,17 +1287,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_bw 6
@@ -1322,12 +1322,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bw 8
@@ -1350,11 +1350,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -1364,9 +1364,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2104,17 +2104,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_bw 6
@@ -2139,12 +2139,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bw 8
@@ -2167,11 +2167,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2181,9 +2181,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2210,17 +2210,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_bw 6
@@ -2245,12 +2245,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bw 8
@@ -2273,11 +2273,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2287,9 +2287,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2316,17 +2316,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_bw 6
@@ -2351,12 +2351,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bw 8
@@ -2379,11 +2379,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2393,9 +2393,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2422,17 +2422,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_bw 6
@@ -2457,12 +2457,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bw 8
@@ -2485,11 +2485,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2499,9 +2499,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2528,17 +2528,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_bw 6
@@ -2563,12 +2563,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bw 8
@@ -2591,11 +2591,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2605,9 +2605,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2634,17 +2634,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_bw 6
@@ -2669,12 +2669,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bw 8
@@ -2697,11 +2697,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2711,9 +2711,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2740,17 +2740,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_bw 6
@@ -2775,12 +2775,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bw 8
@@ -2803,11 +2803,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2817,9 +2817,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
@@ -2846,17 +2846,17 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_reset 0x0
-// Relation to be satisfied among events to activate the actions
+// Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_bw 6
@@ -2881,12 +2881,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_reset 0x0
-// Select a trigger event
+// Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_reset 0x0
-// User Defined Function with event type 0, 1, and 2 as arguments
+// Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bw 8
@@ -2909,11 +2909,11 @@ typedef union {
         uint64_t Action0 :6;
         // Select an Action
         uint64_t Action1 :6;
-        // Relation to be satisfied among events to activate the actions
+        // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType0 :6;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType1 :6;
         // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
@@ -2923,9 +2923,9 @@ typedef union {
         uint64_t CustomAction0Enable :1;
         // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
-        // Select a trigger event
+        // Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
         uint64_t EventType2 :6;
-        // User Defined Function with event type 0, 1, and 2 as arguments
+        // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
         // Select an Action
         uint64_t Action2 :6;
