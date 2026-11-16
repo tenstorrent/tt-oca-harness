@@ -37,7 +37,7 @@ _WORD = 8
 RESP_OKAY = 0
 RESP_DECERR = 3
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
-_SCRATCH_OFFSET = 0x2800
+_SCRATCH_OFFSET = 0xD000
 
 _GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 _LOCAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
@@ -535,7 +535,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"write_hit0={self._sig_bit('tb_inb_write_hit', 0)} (observed)",
         )
 
-        # S3: jtag at LOCAL_BASE+0x2800 and GLOBAL_BASE+0x2800 leaves through output_axi.
+        # S3: jtag at LOCAL_BASE+0xD000 and GLOBAL_BASE+0xD000 leaves through output_axi.
         scratch0_pre = _scratch(0)
         assert scratch0_pre == local_base + _SCRATCH_OFFSET
         seen = []
