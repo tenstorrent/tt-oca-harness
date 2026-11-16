@@ -93,8 +93,7 @@ Custom command interface between controller and SHIM:
 ----
 typedef struct packed {
     addr_t                    address;           // Target address in bits
-    logic                     program_data;      // Data to program (1'b1)
-    access_length_words_t     access_length_words; // Transfer size
+    word_count_t              read_word_count;   // Words to read: 1, the whole bank, or 0 for a program
     command_t                 command;           // Command type
     logic                     valid;             // Request valid
 } fuse_command_req_t;
