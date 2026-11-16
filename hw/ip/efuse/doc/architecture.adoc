@@ -60,7 +60,7 @@ access control
 
 === Shadow Register Subsystem
 
-The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `access_length_words` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
+The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `read_word_count` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
 
 === Features
 
@@ -109,7 +109,7 @@ The fuse command request/response structs exchanged between the
 controller and the SHIM are not declared with fixed types. Instead, they
 are generated from parameterized preprocessor macros defined in
 `efuse_typedef.svh`. This keeps the command interface technology-agnostic:
-each integration supplies its own address, data, access-length, and
+each integration supplies its own address, data, read word-count, and
 command types, while the macros guarantee a consistent struct layout and
 field ordering across all OTP variants.
 
@@ -126,17 +126,16 @@ purpose.
 |=====================================================================================
 
 The request macro is parameterized over the struct name plus four payload
-types (`addr_t`, `data_t`, `access_length_words_t`, `command_t`), allowing
-the controller to size the address space, transfer length, and command
+types (`addr_t`, `data_t`, `word_count_t`, `command_t`), allowing
+the controller to size the address space, read word count, and command
 encoding to match the target OTP technology:
 
 [source,sourceCode,systemverilog]
 ----
-`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)  \
+`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)  \
   typedef struct packed {                                       \
     addr_t                    address;             // Target address       \
-    logic                     program_data;        // Data to program (1'b1) \
-    access_length_words_t     access_length_words; // Transfer size        \
+    word_count_t              read_word_count;     // Words to read        \
     command_t                 command;             // Command type         \
     logic                     valid;               // Request valid        \
   } fuse_command_req_t;
@@ -160,7 +159,7 @@ types:
 
 [source,sourceCode,systemverilog]
 ----
-`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)
+`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)
 `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)
 ----
 
