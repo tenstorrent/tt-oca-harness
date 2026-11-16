@@ -32,10 +32,24 @@ module aou_axi4_cov_bind #(
   parameter int AXI_ID_WD    = 10,
   parameter int AXI_LEN_WD   = 8,
   parameter int AXI_STRB_WD  = AXI_DATA_WD / 8,
-  parameter int S_RD_MO_CNT  = 32,
-  parameter int S_WR_MO_CNT  = 32,
-  parameter int M_RD_MO_CNT  = 32,
-  parameter int M_WR_MO_CNT  = 32
+  // Outstanding limits per RP, as AOU_CORE_TOP takes them: the S port's read and
+  // write limits and the M port's pending-ID table depths.
+  parameter int RP0_S_RD_MO_CNT = 32,
+  parameter int RP0_S_WR_MO_CNT = 32,
+  parameter int RP0_M_RD_MO_CNT = 32,
+  parameter int RP0_M_WR_MO_CNT = 32,
+  parameter int RP1_S_RD_MO_CNT = 32,
+  parameter int RP1_S_WR_MO_CNT = 32,
+  parameter int RP1_M_RD_MO_CNT = 32,
+  parameter int RP1_M_WR_MO_CNT = 32,
+  parameter int RP2_S_RD_MO_CNT = 32,
+  parameter int RP2_S_WR_MO_CNT = 32,
+  parameter int RP2_M_RD_MO_CNT = 32,
+  parameter int RP2_M_WR_MO_CNT = 32,
+  parameter int RP3_S_RD_MO_CNT = 32,
+  parameter int RP3_S_WR_MO_CNT = 32,
+  parameter int RP3_M_RD_MO_CNT = 32,
+  parameter int RP3_M_WR_MO_CNT = 32
 ) (
   input wire                                     I_CLK,
   input wire                                     I_RESETN,
@@ -119,16 +133,25 @@ module aou_axi4_cov_bind #(
   input wire [RP_COUNT-1:0]                      O_AOU_TX_AXI_M_RREADY
 );
 
-  // Sized per the AoU per-direction max-outstanding counts.
-  localparam int S_MAX_OS = (S_RD_MO_CNT > S_WR_MO_CNT) ? S_RD_MO_CNT : S_WR_MO_CNT;
-  localparam int M_MAX_OS = (M_RD_MO_CNT > M_WR_MO_CNT) ? M_RD_MO_CNT : M_WR_MO_CNT;
+  // Each RP's monitors are sized by that RP's larger read or write limit per
+  // direction.
   localparam int RP_DATA_WD[4] = '{RP0_AXI_DATA_WD, RP1_AXI_DATA_WD,
                                    RP2_AXI_DATA_WD, RP3_AXI_DATA_WD};
+  localparam int RP_S_RD_MO[4] = '{RP0_S_RD_MO_CNT, RP1_S_RD_MO_CNT,
+                                   RP2_S_RD_MO_CNT, RP3_S_RD_MO_CNT};
+  localparam int RP_S_WR_MO[4] = '{RP0_S_WR_MO_CNT, RP1_S_WR_MO_CNT,
+                                   RP2_S_WR_MO_CNT, RP3_S_WR_MO_CNT};
+  localparam int RP_M_RD_MO[4] = '{RP0_M_RD_MO_CNT, RP1_M_RD_MO_CNT,
+                                   RP2_M_RD_MO_CNT, RP3_M_RD_MO_CNT};
+  localparam int RP_M_WR_MO[4] = '{RP0_M_WR_MO_CNT, RP1_M_WR_MO_CNT,
+                                   RP2_M_WR_MO_CNT, RP3_M_WR_MO_CNT};
 
   for (genvar g = 0; g < RP_COUNT; g++) begin : g_rp
 
     localparam string RPS = $sformatf("rp%0d", g);
     localparam int    WD  = RP_DATA_WD[g];
+    localparam int    S_MAX_OS = (RP_S_RD_MO[g] > RP_S_WR_MO[g]) ? RP_S_RD_MO[g] : RP_S_WR_MO[g];
+    localparam int    M_MAX_OS = (RP_M_RD_MO[g] > RP_M_WR_MO[g]) ? RP_M_RD_MO[g] : RP_M_WR_MO[g];
 
     aou_axi4_coverage_mod #(
       .INST_NAME       ({"axi_tx_", RPS}),
@@ -184,7 +207,13 @@ module aou_axi4_cov_bind #(
       .ADDR_WIDTH      (AXI_ADDR_WD),
       .DATA_WIDTH      (WD),
       .ID_WIDTH        (AXI_ID_WD),
-      .MAX_OUTSTANDING (M_MAX_OS)
+      .MAX_OUTSTANDING (M_MAX_OS),
+      // A B stall at an M port never ends with the port at its write limit, so
+      // that bin is no target here: the DUT accepts write responses into its own
+      // buffering and drops BREADY only once the port is already below its write
+      // limit. The passing runs reach the write limit and B stalls of every
+      // length on every M port, never both at once.
+      .B_AT_MAX_TARGET (1'b0)
     ) u_cov_rx (
       .clk      (I_CLK),
       .rst_n    (I_RESETN),
@@ -251,9 +280,21 @@ bind AOU_CORE_TOP aou_axi4_cov_bind #(
   .AXI_ID_WD       (AXI_ID_WD),
   .AXI_LEN_WD      (AXI_LEN_WD),
   .AXI_STRB_WD     (RP_AXI_STRB_WD_MAX),
-  .S_RD_MO_CNT     (S_RD_MO_CNT),
-  .S_WR_MO_CNT     (S_WR_MO_CNT),
-  .M_RD_MO_CNT     (M_RD_MO_CNT),
-  .M_WR_MO_CNT     (M_WR_MO_CNT)
+  .RP0_S_RD_MO_CNT (RP0_S_RD_MO_CNT),
+  .RP0_S_WR_MO_CNT (RP0_S_WR_MO_CNT),
+  .RP0_M_RD_MO_CNT (RP0_M_RD_MO_CNT),
+  .RP0_M_WR_MO_CNT (RP0_M_WR_MO_CNT),
+  .RP1_S_RD_MO_CNT (RP1_S_RD_MO_CNT),
+  .RP1_S_WR_MO_CNT (RP1_S_WR_MO_CNT),
+  .RP1_M_RD_MO_CNT (RP1_M_RD_MO_CNT),
+  .RP1_M_WR_MO_CNT (RP1_M_WR_MO_CNT),
+  .RP2_S_RD_MO_CNT (RP2_S_RD_MO_CNT),
+  .RP2_S_WR_MO_CNT (RP2_S_WR_MO_CNT),
+  .RP2_M_RD_MO_CNT (RP2_M_RD_MO_CNT),
+  .RP2_M_WR_MO_CNT (RP2_M_WR_MO_CNT),
+  .RP3_S_RD_MO_CNT (RP3_S_RD_MO_CNT),
+  .RP3_S_WR_MO_CNT (RP3_S_WR_MO_CNT),
+  .RP3_M_RD_MO_CNT (RP3_M_RD_MO_CNT),
+  .RP3_M_WR_MO_CNT (RP3_M_WR_MO_CNT)
 ) u_aou_axi4_cov_bind (.*);
 `endif

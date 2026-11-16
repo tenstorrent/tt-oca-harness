@@ -12,6 +12,9 @@
 //            random stalls on one AXI channel at both ends (W and R per beat),
 //            on all of them, or on the FDI (bursty pl_trdy, gaps and bubbles
 //            in the flits to the DUT); none runs every channel at full rate
+//   +st_stall_max=N                           longest AXI stall, in cycles
+//            (default 300); over 1000 holds a ready or valid low for longer
+//            than the DUT's own pipelines ever wait
 class aou_stress_test extends aou_dp_base_test;
   `uvm_component_utils(aou_stress_test)
 
@@ -27,8 +30,10 @@ class aou_stress_test extends aou_dp_base_test;
     k.n = 96;
   endfunction
 
+  static int unsigned stall_max = 300;
+
   static function void stall(aou_axi_delay d);
-    d.set_bursty(0, 0, 15, 40, 300);
+    d.set_bursty(0, 0, 15, 40, stall_max);
   endfunction
 
   function void configure_test();
@@ -39,6 +44,9 @@ class aou_stress_test extends aou_dp_base_test;
     void'($value$plusargs("st_pol=%s", pol));
     void'($value$plusargs("st_crd=%s", crd));
     void'($value$plusargs("st_bp=%s", bp));
+    void'($value$plusargs("st_stall_max=%d", stall_max));
+    if (stall_max < 40)
+      `uvm_fatal(get_type_name(), $sformatf("+st_stall_max=%0d is below 40", stall_max))
     case (pol)
       "sparse": l3.pol.set_sparse();
       "min":    l3.pol.set_min_density();
@@ -74,7 +82,7 @@ class aou_stress_test extends aou_dp_base_test;
       if (bp inside {"b", "all"})  begin stall(m.b_ready);  stall(s.b_lat);    end
       if (bp inside {"r", "all"})  begin stall(m.r_ready);  stall(s.r_beat); stall(s.r_lat); end
     end
-    if (bp inside {"b", "r", "all"}) cfg.remote_lat_max = 300;
+    if (bp inside {"b", "r", "all"}) cfg.remote_lat_max = stall_max;
     if (bp == "fdi") begin
       foreach (cfg.fdi_cfg[p]) begin
         cfg.fdi_cfg[p].trdy_policy = AOU_TRDY_BURSTY;

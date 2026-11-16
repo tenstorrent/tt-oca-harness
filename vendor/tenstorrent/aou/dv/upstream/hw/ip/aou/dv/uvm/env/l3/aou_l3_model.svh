@@ -17,9 +17,6 @@ class aou_l3_model extends uvm_object;
   aou_unpacker    rx_unp;
   aou_unpacker    tx_unp;
   aou_l3_cov      cov;
-  // The DUT's AOU_CON0.CREDIT_MANAGE (set by the T1 env; null elsewhere). Credit-order
-  // reports end in it, as AOU_FDI_CHECKER's do, so an expected-fail entry can tell the modes.
-  uvm_reg_field   credit_manage;
 
   uvm_event       work_ev;
   int unsigned    work_gen;
@@ -40,9 +37,10 @@ class aou_l3_model extends uvm_object;
   int unsigned    dut_wr_out[AOU_RP_MAX];
   int unsigned    dut_rd_out[AOU_RP_MAX];
   // Of those, the ones received once our DeactivateReq was queued and before
-  // the DUT's: with CREDIT_MANAGE=0 a request the DUT accepted earlier can
-  // still cross our DeactivateReq on the link (BUGS/032). Responses come off
-  // these first, so they never include a request we had before that point.
+  // the DUT's: the DUT may still send requests then (8.4), and must wait for
+  // their answers before its DeactivateReq. Counted apart so an AOU-R33
+  // report says which kind it was. Responses come off these first, so they
+  // never include a request we had before that point.
   int unsigned    dut_wr_late[AOU_RP_MAX];
   int unsigned    dut_rd_late[AOU_RP_MAX];
 
@@ -51,8 +49,18 @@ class aou_l3_model extends uvm_object;
   int unsigned    rx_msgs;
   int unsigned    tx_msgs;
   int             grant_epoch = -1;  // lnk.epoch of the DUT's last CrdtGrant
-  // The flit being received carries the DUT's DeactivateAck (peer_adv_ok).
+  // The flit being received carries the DUT's DeactivateAck (peer_adv_ok) or
+  // its DeactivateReq (T1-C45).
   bit             dut_dack_flit;
+  bit             dut_dreq_flit;
+  // T1-C45: the DUT's DeactivateReq / DeactivateAck of this deactivation came
+  // in an earlier flit, and whether that DeactivateReq was the one a
+  // DEACTIVATE_FORCE write sends. Held past DISABLED (the DUT may still be in
+  // DEACTIVATE, lnk.peer_late) until the DUT's next ActivateReq or ActivateAck,
+  // or a reset.
+  bit             dut_dreq_done;
+  bit             dut_dack_done;
+  bit             dut_dreq_forced;
   string          name_tag = "remote";
 
   function new(string name = "aou_l3_model");
@@ -102,7 +110,10 @@ class aou_l3_model extends uvm_object;
   // ---- API -------------------------------------------------------------
   function void send(aou_msg m);
     aou_msg_act a;
-    if ($cast(a, m)) a.spec_rev = cfg.spec_rev;
+    if ($cast(a, m)) begin
+      a.spec_rev = cfg.spec_rev;
+      if (a.op == AOU_ACT_REQ && !a.profile_fixed) lnk.fill_profile(a);
+    end
     pk.push(m);
     kick();
   endfunction
@@ -150,6 +161,7 @@ class aou_l3_model extends uvm_object;
       dut_rd_late[r] = 0;
     end
     foreach (crd.rx_occupancy[r, c]) crd.rx_occupancy[r][c] = 0;
+    clear_deact_window();
     lnk.recover();
     rx_unp.reset();
     tx_unp.reset();
@@ -162,12 +174,6 @@ class aou_l3_model extends uvm_object;
     return n;
   endfunction
 
-  function int unsigned dut_requests_open();
-    int unsigned n = 0;
-    foreach (dut_wr_out[r]) n += dut_wr_out[r] + dut_rd_out[r];
-    return n;
-  endfunction
-
   // Our DeactivateReq is queued or sent and the DUT's has not arrived.
   function bit deact_committed();
     return (lnk.dreq_sent || lnk.queued(AOU_DEACT_REQ)) && !lnk.dreq_rcvd;
@@ -175,8 +181,7 @@ class aou_l3_model extends uvm_object;
 
   function void maybe_release_deact();
     if (lnk.want_deact &&
-        (cfg.deact_own_open ? pk.queued_msgs() == 0 : our_requests_outstanding() == 0) &&
-        !(cfg.cm0_deact && dut_requests_open() != 0)) begin
+        (cfg.deact_own_open ? pk.queued_msgs() == 0 : our_requests_outstanding() == 0)) begin
       lnk.release_deact();
       kick();
     end
@@ -204,11 +209,15 @@ class aou_l3_model extends uvm_object;
       // Each Req we send is a request the DUT must answer (checked at the end).
       if ($cast(a, m) && a.op == AOU_ACT_REQ) ledger_chk("AOU-R28");
       if ($cast(a, m) && a.op == AOU_DEACT_REQ) ledger_chk("AOU-R36");
+      if (a != null)
+        `uvm_info("aou_l3_model", $sformatf("sent %s %s", aou_msg_act::op_name(a.op),
+                                            a.fields2string()), UVM_HIGH)
       tx_msgs++;
       tx_sent_q.push_back(m);
       track_tx(m);
       if (cov != null) begin
         cov.sample_msg(m);
+        if ($cast(a, m)) cov.sample_act_profile(a, cfg.rp_count);
         cov.sample_tx_write(m);
         if (m.cred_class() != AOU_CC_NONE)
           cov.sample_credit(aou_l3_cov::EV_CONSUME, m.cred_class(), AOU_L3_TX);
@@ -305,6 +314,28 @@ class aou_l3_model extends uvm_object;
     for (int unsigned c = 0; c < AOU_CC_NUM; c++) begin
       if (hn[c] != 0) cov.sample_credit(aou_l3_cov::EV_HDR_GRANT, aou_cred_class_e'(c), dir);
     end
+    if (dir == AOU_L3_TX && late_adv_flit(f)) begin
+      for (int unsigned c = 0; c < AOU_CC_NUM; c++) begin
+        bit any = hn[c] != 0;
+        foreach (f.msgs[i]) begin
+          if ($cast(cg, f.msgs[i])) begin
+            for (int unsigned r = 0; r < AOU_RP_MAX; r++) if (cg.enc[r][c] != 0) any = 1'b1;
+          end
+        end
+        if (any) cov.sample_credit(aou_l3_cov::EV_LATE_ADV, aou_cred_class_e'(c), dir);
+      end
+    end
+  endfunction
+
+  // A flit of ours that may reach the DUT after it is DISABLED: both our
+  // DeactivateReq and our DeactivateAck went out in earlier flits and the
+  // DUT's DeactivateAck, which it may already have sent, has not arrived.
+  function bit late_adv_flit(aou_flit f);
+    aou_msg_act a;
+    if (lnk.state != AOU_LS_DEACTIVATE || !lnk.dreq_sent || !lnk.dack_sent || lnk.dack_rcvd)
+      return 1'b0;
+    foreach (f.msgs[i]) if ($cast(a, f.msgs[i])) return 1'b0;
+    return 1'b1;
   endfunction
 
   // ---- RX --------------------------------------------------------------
@@ -319,6 +350,7 @@ class aou_l3_model extends uvm_object;
 
     // 1. Activation messages: at G0, so before everything else in the flit.
     dut_dack_flit = 1'b0;
+    dut_dreq_flit = 1'b0;
     foreach (rx_unp.done[i]) begin
       if ($cast(a, rx_unp.done[i])) rx_act(a);
     end
@@ -335,6 +367,8 @@ class aou_l3_model extends uvm_object;
       cov.sample_flit(f, misc_in_half(f, 0), misc_in_half(f, 1));
       sample_grants(f, AOU_L3_RX);
     end
+    dut_dreq_done |= dut_dreq_flit;
+    dut_dack_done |= dut_dack_flit;
     void'(crd.tick());
     lnk.tick_dack_hold();
     maybe_release_deact();
@@ -344,7 +378,11 @@ class aou_l3_model extends uvm_object;
   function void rx_act(aou_msg_act a);
     if (a.op > 4'd3) return;
     ledger_chk("AOU-R40");
-    if (a.op == AOU_DEACT_REQ && cfg.chk_deact_quiesce) begin
+    // The DeactivateReq DEACTIVATE_FORCE sends skips this condition by design
+    // (MAS software-operation 7.1); it is recognised by the RTL's PropertyReq
+    // mark inside the force window.
+    if (a.op == AOU_DEACT_REQ && cfg.chk_deact_quiesce &&
+        !(a.forced_deact_mark() && cfg.force_deact_window())) begin
       ledger_chk("AOU-R33");
       for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
         if (dut_wr_out[r] != 0 || dut_rd_out[r] != 0) begin
@@ -363,43 +401,88 @@ class aou_l3_model extends uvm_object;
         dut_rd_late[r] = 0;
       end
     end
-    if (!lnk.on_rcvd(a))
+    // The DUT's next activation ends the deactivation T1-C45 tracks.
+    if (a.op inside {AOU_ACT_REQ, AOU_ACT_ACK}) clear_deact_window();
+    if (!lnk.on_rcvd(a)) begin
       viol("AOU-R40", $sformatf("DUT %s while %s", a.kind(), lnk.state.name()));
-    else if (a.op == AOU_DEACT_ACK)
+    end else if (a.op == AOU_DEACT_ACK) begin
       dut_dack_flit = 1'b1;
+    end else if (a.op == AOU_DEACT_REQ) begin
+      dut_dreq_flit = 1'b1;
+      dut_dreq_forced = a.forced_deact_mark() && cfg.force_deact_window();
+    end
   endfunction
 
-  // Credits may come from the DUT after its ActivateAck (8.4) and never in
-  // DISABLED (8.4). After its DeactivateAck, v0.8 8.4 permits request credits;
-  // WriteData counts as a request class here (interim: 8.4 does not say). The
-  // flit carrying that Ack is after it, so it may carry them even when the Ack
-  // completes the teardown. Response credits after the Ack: v0.8 is silent;
-  // v0.7 forbade them, the MAS allows them with CREDIT_MANAGE=1.
+  function void clear_deact_window();
+    {dut_dreq_flit, dut_dreq_done, dut_dack_done, dut_dreq_forced} = '0;
+  endfunction
+
+  // T1-C45, the DUT's side of MAS 7.3.1 (stricter than v0.8 8.4, which also
+  // lets request credits follow a die's DeactivateAck and says nothing on
+  // response credits):
+  // - request credits (WriteReq, ReadReq, WriteData) are advertised until our
+  //   DeactivateReq reaches the DUT; one already committed may go out with its
+  //   DeactivateAck, so none in a flit after the one carrying that Ack. When
+  //   our DeactivateReq arrived is not visible on the wire, so credits before
+  //   the DUT's DeactivateAck are not judged (interim);
+  // - response credits (ReadData, WriteResp) are advertised until the DUT's
+  //   own DeactivateReq, so none in a flit after the one carrying it, and no
+  //   CrdtGrant behind it in that flit. The flit's header MsgCredit is not
+  //   ordered among its messages (MAS 7.3.1 "Header credits"), so it may
+  //   carry them. Not judged after the DeactivateReq a DEACTIVATE_FORCE write
+  //   sends: the DUT's requests may still be open then, and the MAS defines no
+  //   credit rule for that escape hatch.
+  // hdr: the credit came in the flit header's MsgCredit, not in a CrdtGrant.
+  // Returns why the credit is out of its window, or "" when it is not.
+  function string dut_deact_crd_why(aou_cred_class_e c, bit hdr);
+    if (!cfg.chk_deact_crd_window) return "";
+    if (lnk.state == AOU_LS_DEACTIVATE || lnk.peer_late || dut_dreq_done || dut_dack_done)
+      ledger_chk("T1-C45");
+    if (req_class(c)) return dut_dack_done ? "in a flit after its DeactivateAck" : "";
+    if (dut_dreq_forced) return "";
+    if (dut_dreq_done) return "in a flit after its DeactivateReq";
+    if (dut_dreq_flit && !hdr) return "behind its DeactivateReq";
+    return "";
+  endfunction
+
+  function void chk_deact_crd(aou_cred_class_e c, bit hdr, string what);
+    string why = dut_deact_crd_why(c, hdr);
+    if (why != "")
+      viol("T1-C45", $sformatf("DUT %s %s %s (MAS 7.3.1)", what, aou_cc_name(c), why));
+  endfunction
+
+  // Credits may come from the DUT after its ActivateAck and until DISABLED
+  // (8.4), of every class: request credits after its DeactivateAck (8.4), and
+  // response credits too, which fund the answers to the DUT's own open
+  // requests (MAS 7.3.1; v0.8 is silent on them). WriteData counts as a
+  // request class (interim: 8.4 does not say). A flit's credits are consumed
+  // with the flit (MAS 7.3.1), so the flit carrying the DeactivateAck that
+  // completes the teardown may still carry them; they are discarded. When our
+  // DeactivateAck completed the teardown, the DUT stays in DEACTIVATE until it
+  // arrives (8.2) and may still advertise: its credits are tolerated, and fund
+  // nothing, until its next Activation message (lnk.peer_late), since nothing
+  // the DUT sends in between shows whether it had our Ack yet.
   static function bit req_class(aou_cred_class_e c);
     return c inside {AOU_CC_WREQ, AOU_CC_RREQ, AOU_CC_WDATA};
   endfunction
 
   function bit peer_adv_ok(aou_cred_class_e c, output string why);
     why = "";
+    if (lnk.peer_late) return 1'b1;
     if (lnk.state == AOU_LS_DISABLED) begin
-      if (!(req_class(c) && dut_dack_flit)) why = "in DISABLED";
+      if (!dut_dack_flit) why = "in DISABLED";
     end else if (!lnk.ack_rcvd) why = "before its ActivateAck";
-    else if (lnk.dack_rcvd && !req_class(c) &&
-             !(c inside {AOU_CC_RDATA, AOU_CC_WRESP} && cfg.resp_credits_after_deact_ack))
-      why = "after its DeactivateAck";
     return why == "";
   endfunction
 
   // A permitted credit that funds our counters: request credits after the
-  // DUT's DeactivateAck are useless to us (our DeactivateReq preceded it) and
-  // DISABLED resets the counters anyway.
+  // DUT's DeactivateAck are useless to us (our DeactivateReq preceded it).
+  // None funds in DISABLED: the flit whose DeactivateAck completed the
+  // teardown is handled after the counters were reset, and its credits would
+  // otherwise carry into the next activation.
   function bit peer_adv_funds(aou_cred_class_e c);
+    if (lnk.state == AOU_LS_DISABLED || lnk.peer_late) return 1'b0;
     return !(req_class(c) && (lnk.dack_rcvd || dut_dack_flit));
-  endfunction
-
-  function string cm_sfx();
-    if (credit_manage == null) return "";
-    return $sformatf(" CREDIT_MANAGE=%0d", credit_manage.get_mirrored_value());
   endfunction
 
   function void rx_hdr_credit(bit [15:0] mc);
@@ -414,10 +497,11 @@ class aou_l3_model extends uvm_object;
         ledger_chk("AOU-R29");
         if (!peer_adv_ok(aou_cred_class_e'(c), why)) begin
           viol(why == "before its ActivateAck" ? "AOU-R29" : "AOU-R26",
-               $sformatf("DUT MsgCredit %s RP%0d=%0d %s%s", aou_cc_name(aou_cred_class_e'(c)), r,
-                         n[c], why, cm_sfx()));
-        end else if (peer_adv_funds(aou_cred_class_e'(c))) begin
-          rx_tx_grant(r, aou_cred_class_e'(c), n[c]);
+               $sformatf("DUT MsgCredit %s RP%0d=%0d %s", aou_cc_name(aou_cred_class_e'(c)), r,
+                         n[c], why));
+        end else begin
+          chk_deact_crd(aou_cred_class_e'(c), 1'b1, $sformatf("MsgCredit RP%0d=%0d", r, n[c]));
+          if (peer_adv_funds(aou_cred_class_e'(c))) rx_tx_grant(r, aou_cred_class_e'(c), n[c]);
         end
       end
     end
@@ -439,12 +523,14 @@ class aou_l3_model extends uvm_object;
           viol("AOU-R24", $sformatf("DUT initial CrdtGrant has no %s credit for RP%0d",
                                     aou_cc_name(aou_cred_class_e'(c)), r));
         if (n != 0) begin
-          if (!peer_adv_ok(aou_cred_class_e'(c), why))
+          if (!peer_adv_ok(aou_cred_class_e'(c), why)) begin
             viol(why == "before its ActivateAck" ? "AOU-R29" : "AOU-R26",
-                 $sformatf("DUT CrdtGrant %s RP%0d=%0d %s%s", aou_cc_name(aou_cred_class_e'(c)),
-                           r, n, why, cm_sfx()));
-          else if (peer_adv_funds(aou_cred_class_e'(c)))
-            rx_tx_grant(r, aou_cred_class_e'(c), n);
+                 $sformatf("DUT CrdtGrant %s RP%0d=%0d %s", aou_cc_name(aou_cred_class_e'(c)),
+                           r, n, why));
+          end else begin
+            chk_deact_crd(aou_cred_class_e'(c), 1'b0, $sformatf("CrdtGrant RP%0d=%0d", r, n));
+            if (peer_adv_funds(aou_cred_class_e'(c))) rx_tx_grant(r, aou_cred_class_e'(c), n);
+          end
         end
       end
     end
@@ -483,6 +569,13 @@ class aou_l3_model extends uvm_object;
     end else if (c inside {AOU_CC_WREQ, AOU_CC_RREQ} && lnk.dreq_rcvd) begin
       viol("AOU-R34", $sformatf("DUT %s at flit#%0d G%0d after its DeactivateReq",
                                 aou_cc_name(c), f.seq, pos));
+    end else if (c == AOU_CC_WDATA && cfg.chk_deact_crd_window && lnk.dreq_rcvd) begin
+      // T1-C45: WriteData is a request-related message (MAS 7.3.1) and stops
+      // at the DUT's DeactivateReq too, except after a forced one.
+      ledger_chk("T1-C45");
+      if (!dut_dreq_forced)
+        viol("T1-C45", $sformatf("DUT WriteData at flit#%0d G%0d after its DeactivateReq (%s)",
+                                 f.seq, pos, "MAS 7.3.1"));
     end
     // A DUT message within a few flits of the grant that ended its zero
     // credit: the DUT was waiting for that credit.
@@ -504,8 +597,15 @@ class aou_l3_model extends uvm_object;
 
   function void rx_deliver(aou_msg m);
     aou_msg_rdata rd;
+    aou_msg_act a;
     rx_msgs++;
-    if (cov != null) cov.sample_msg(m);
+    if ($cast(a, m))
+      `uvm_info("aou_l3_model", $sformatf("received %s %s", aou_msg_act::op_name(a.op),
+                                          a.fields2string()), UVM_HIGH)
+    if (cov != null) begin
+      cov.sample_msg(m);
+      if (a != null) cov.sample_act_profile(a, cfg.peer_count());
+    end
     begin
       case (m.msg_type)
         AOU_MT_WREQ: begin
@@ -545,6 +645,17 @@ class aou_l3_model extends uvm_object;
   function bit cred_return_ready();
     return cfg.chk_cred_return && lnk.state == AOU_LS_ENABLED &&
            our_requests_outstanding() == 0 && rx_q.size() == 0;
+  endfunction
+
+  // Classes the DUT has not yet advertised in full since entering DISABLED
+  // (T1-C40). After an activation the DUT sends its credit over many flits,
+  // more slowly while the Adapter holds pl_trdy low.
+  function int unsigned adv_short();
+    int unsigned n = 0;
+    for (int unsigned r = 0; r < cfg.rp_count; r++)
+      for (int unsigned c = 0; c < AOU_CC_NUM; c++)
+        if (crd.tx_full[r][c] < cfg.dut_max_cred[r][c]) n++;
+    return n;
   endfunction
 
   function void check_cred_return(int unsigned waited);

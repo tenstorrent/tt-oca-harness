@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // Credited messages waiting as the DUT sends an Activation message
-// (aou_act_flit_vseq, AoU v0.8 4.4).
+// (aou_act_flit_vseq, AoU 4.4 as the v0.9 draft words it).
 class aou_act_flit_test extends aou_base_test;
   `uvm_component_utils(aou_act_flit_test)
 

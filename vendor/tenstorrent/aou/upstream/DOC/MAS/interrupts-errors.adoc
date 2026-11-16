@@ -36,11 +36,11 @@ endif::[]
 
 * *INT_ACTIVATE_START*
 
-An interrupt that occurs when activation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_ACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-73-activation-deactivation-flow[Activation & Deactivation Flow].
+An interrupt that occurs when activation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_ACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-activation-deactivation-flow[Activation & Deactivation Flow].
 
 * *INT_DEACTIVATE_START*
 
-An interrupt that occurs when deactivation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_DEACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-73-activation-deactivation-flow[Activation & Deactivation Flow].
+An interrupt that occurs when deactivation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_DEACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-activation-deactivation-flow[Activation & Deactivation Flow].
 
 * *INT_SI0_ID_MISMATCH*
 

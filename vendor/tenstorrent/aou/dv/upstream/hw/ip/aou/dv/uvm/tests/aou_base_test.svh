@@ -23,17 +23,35 @@
 // +remote_wreq=awsize|upsize|dut_like how the remote die sizes its WriteReqs
 // (aou_t1_remote_mgr_driver; default awsize);
 // +remote_rp_count=N the remote die's RP count (default: the DUT's);
+// +rp_map_pct=N the share of seeds that enable the asymmetric RP mapping
+// (default 50), +rp_map=<hex> the ASYMMETRIC_RP_PROC_CON value to program
+// (aou_t1_env_cfg::rp_map);
 // +sw_hold_on_deact=0 software keeps issuing requests after DEACTIVATE_START
 // (MAS 7.3.5 broken on purpose); +l3_deact_ack_hold=N the remote die holds its
 // DeactivateAck, and its own deactivation, for N received flits after the
 // DUT's DeactivateReq, still granting request credit meanwhile (with both, a
 // DUT that sends requests after its own DeactivateReq gets the credit to do so);
-// +v0p8 holds the DUT to the expectations only AoU v0.8 adds (aou_t1_env_cfg::v0p8;
-// today AOU-R6/AOU-R7, the 4.4 Misc placement);
+// +l3_ack_first=1 the remote die answers a DUT ActivateReq with its Ack before
+// its own Req (the test's own setting wins where it has one);
+// +l3_late_adv=0 the remote die stops request credits at its own DeactivateAck
+// instead of advertising them until it is DISABLED (aou_l3_cfg::late_adv);
+// +l3_late_adv_hold=N it holds N granules of each request class per RP back
+// from every activation's advertisement and sends them behind its
+// DeactivateReq, where they can cross the DUT's final DeactivateAck and reach
+// a DUT already DISABLED (keep N below the remote die's RX depth);
+// +v0p9draft holds the DUT to the expectations added after AoU v0.7.1, pegged
+// to the v0.9 draft (aou_t1_env_cfg::v0p9draft; today AOU-R6/AOU-R7, the 4.4
+// Misc placement);
 // +rx_fifo_slack=N messages aou_t1_rx_fifo_chk allows past an RX FIFO;
 // +wdata_first_pct=N, +wdata_first_beats=N the share of the remote die's writes
 // that send WriteData ahead of their WriteReq, and how much of it
-// (aou_packer_policy; default 5% and 1 to the whole burst), over what the test sets.
+// (aou_packer_policy; default 5% and 1 to the whole burst), over what the test sets;
+// +act_share_pct=N the share of the remote die's Activation flits that carry the
+// company 4.4 permits (aou_packer_policy::act_share_pct; default 50);
+// +wresp_batch=N, +wresp_batch_wait=C the remote die returns its WriteResps in
+// batches of up to N (16-48), holding them at most C cycles
+// (aou_packer_policy::wresp_batch; 0 turns it off; default: an eighth of the
+// seeds), over what the test sets.
 class aou_base_test extends ocah_test;
   `uvm_component_utils(aou_base_test)
 
@@ -70,23 +88,28 @@ class aou_base_test extends ocah_test;
 
   function void build_phase(uvm_phase phase);
     string rb;
-    string v0p8;
+    string v0p9draft;
     super.build_phase(phase);
     cfg = aou_t1_env_cfg::type_id::create("cfg");
     cfg.randomize_knobs();
     void'($value$plusargs("T1_TXN=%d", num_txns));
     void'($value$plusargs("T1_VSEQ=%s", vseq_type));
     void'($value$plusargs("sw_drain=%d", cfg.sw_drain_before_deact));
-    void'($value$plusargs("l3_cm0_deact=%d", cfg.l3_cm0_deact));
     void'($value$plusargs("remote_rp_count=%d", cfg.remote_rp_count));
+    void'($value$plusargs("rp_map_pct=%d", cfg.rp_map_pct));
+    void'($value$plusargs("rp_map=%h", cfg.rp_map));
     void'($value$plusargs("rx_fifo_slack=%d", cfg.rx_fifo_slack));
     void'($value$plusargs("sysrst_on_linkdown=%d", cfg.sysrst_on_linkdown));
     void'($value$plusargs("sw_hold_on_deact=%d", cfg.sw_hold_on_deact));
-    if ($value$plusargs("v0p8%s", v0p8)) cfg.v0p8 = (v0p8 != "=0");  // +v0p8 or +v0p8=0|1
-    cfg.l3_cfg.v0p8 = cfg.v0p8;
-    `uvm_info(get_type_name(), cfg.v0p8 ? "DUT rules: AoU v0.8 (+v0p8)" :
+    // +v0p9draft or +v0p9draft=0|1
+    if ($value$plusargs("v0p9draft%s", v0p9draft)) cfg.v0p9draft = (v0p9draft != "=0");
+    cfg.l3_cfg.v0p9draft = cfg.v0p9draft;
+    `uvm_info(get_type_name(), cfg.v0p9draft ? "DUT rules: AoU v0.9 draft (+v0p9draft)" :
               "DUT rules: AoU v0.7.1 Misc placement", UVM_LOW)
     void'($value$plusargs("l3_deact_ack_hold=%d", cfg.l3_cfg.deact_ack_hold));
+    void'($value$plusargs("l3_ack_first=%d", cfg.l3_cfg.ack_first));
+    void'($value$plusargs("l3_late_adv=%d", cfg.l3_cfg.late_adv));
+    void'($value$plusargs("l3_late_adv_hold=%d", cfg.l3_cfg.late_adv_hold));
     if ($value$plusargs("remote_bytes=%s", rb)) cfg.set_remote_bytes(rb);
     void'($value$plusargs("remote_max_burst_rand=%d", cfg.remote_max_burst_rand));
     if ($value$plusargs("remote_wreq=%s", rb)) begin
@@ -110,11 +133,26 @@ class aou_base_test extends ocah_test;
       void'($value$plusargs("active_phy=%d", cfg.lsm_cfg.active_phy));
     end
     configure();
+    // AXI USER the local agents drive, which the DUT sends as FLEX (AoU v0.8
+    // 5.2 / 11.1); the plusarg wins over the test's configure().
+    if ($value$plusargs("user_mode=%s", rb) && !aou_axi_cfg::parse_user_mode(rb, cfg.user_mode))
+      `uvm_fatal(get_type_name(), {"+user_mode: zero, const_per_txn or per_beat, not ", rb})
+    // expected_fail.yaml scopes entries to a mode with when_re on this line.
+    `uvm_info(get_type_name(), {"user_mode=", aou_axi_cfg::user_mode_name(cfg.user_mode)}, UVM_LOW)
     void'($value$plusargs("wdata_first_pct=%d", cfg.l3_cfg.pol.wdata_first_pct));
     void'($value$plusargs("wdata_first_beats=%d", cfg.l3_cfg.pol.wdata_first_beats));
-    `uvm_info(get_type_name(), $sformatf("remote wdata_first=%0d%% beats=%0d",
+    void'($value$plusargs("act_share_pct=%d", cfg.l3_cfg.pol.act_share_pct));
+    void'($value$plusargs("l3_bulk_last=%d", cfg.l3_cfg.pol.bulk_last));
+    void'($value$plusargs("wresp_batch=%d", cfg.l3_cfg.pol.wresp_batch));
+    void'($value$plusargs("wresp_batch_wait=%d", cfg.l3_cfg.pol.wresp_batch_wait));
+    `uvm_info(get_type_name(), $sformatf({"remote wdata_first=%0d%% beats=%0d act_share=%0d%% ",
+                                          "bulk_last=%0d wresp_batch=%0d/%0d cycles"},
                                          cfg.l3_cfg.pol.wdata_first_pct,
-                                         cfg.l3_cfg.pol.wdata_first_beats), UVM_LOW)
+                                         cfg.l3_cfg.pol.wdata_first_beats,
+                                         cfg.l3_cfg.pol.act_share_pct,
+                                         cfg.l3_cfg.pol.bulk_last,
+                                         cfg.l3_cfg.pol.wresp_batch,
+                                         cfg.l3_cfg.pol.wresp_batch_wait), UVM_LOW)
     trdy_knobs();
     env = aou_t1_env::type_id::create("env", this);
     env.cfg = cfg;
@@ -158,13 +196,15 @@ class aou_base_test extends ocah_test;
   endtask
 
   // AOU-R31 (credits are sent in ENABLED): with nothing outstanding anywhere,
-  // every credit the DUT advertised must come back.
+  // every credit the DUT advertised must come back, and (T1-C40) it must have
+  // advertised all its RX FIFO allows; both get cred_return_cycles.
   task check_cred_return();
     string why;
     int unsigned n = 0;
     aou_l3_model m = env.l3.model;
     if (!m.cred_return_ready() || env.outstanding(why) != 0) return;
-    while (n < cfg.l3_cfg.cred_return_cycles && m.crd.tx_short(why) != 0) begin
+    while (n < cfg.l3_cfg.cred_return_cycles &&
+           (m.crd.tx_short(why) != 0 || m.adv_short() != 0)) begin
       @(env.lsm_vif.mon_cb);
       n++;
     end

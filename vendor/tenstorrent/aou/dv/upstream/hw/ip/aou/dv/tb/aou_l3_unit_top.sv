@@ -91,6 +91,8 @@ module aou_l3_unit_top;
     .dir_flit_seq  (cif.dir_flit_seq)
   );
 
+  assign cif.late_adv = u_chk.w_late_adv_seen;
+
   initial begin
     uvm_config_db#(virtual aou_l3_unit_if)::set(null, "*", "l3_unit", uif);
     uvm_config_db#(virtual aou_fdi_checker_if)::set(null, "*", "fdi_chk", cif);

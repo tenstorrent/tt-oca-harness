@@ -72,6 +72,33 @@
 //                   queues behind the flood's, the pop completes first and the
 //                   read returns the entry the pop removed, sampled when the
 //                   read became active.
+//   +read_after_pop=1  with +take_overlap: once the pop has completed, a
+//                   second debug read with another ID, issued while the first
+//                   still waits behind the take_flood read's data. It was
+//                   issued after the pop, so it returns the entry behind the
+//                   popped one and tells the checker the head, although the
+//                   first read, which the pop overlapped, is still in flight.
+//                   A section before the pairs pushes a B and an R error
+//                   together and a third error well after them, then takes
+//                   all three: the second read of the first take shows which
+//                   of the pair is left, and that of the second take must not
+//                   return the entry its pop removed.
+//   +take_pair=1    two takes at once wherever the fifo part takes two or
+//                   more entries in a row: two debug reads one cycle apart
+//                   (both return the head; the second request is accepted
+//                   while the first burst is still being returned), then two
+//                   pops one cycle apart (the second's address and data
+//                   arrive while the first pop's response may still wait).
+//                   +take_wflood=N issues N single-beat OKAY writes on the
+//                   RP just ahead of each group; with few WriteResp credits
+//                   (+wresp_crd, +crd_delay) their responses back up behind
+//                   the credit, so the first pop's response waits at the
+//                   window while the second pop's address and data arrive.
+//                   +take_group=N (2 to 4, default 2) takes up to N at once
+//                   the same way, each read and pop a cycle after the one
+//                   before. Behind a held response the window accepts the
+//                   second pop whole and then holds the third pop's address
+//                   until the second pop has completed.
 //   +pop_lead=G +wresp_crd=N  each take is an OKAY write on the RP, then the
 //                   debug pop and, G cycles after it, the debug read, then a
 //                   second debug read once both have completed. The remote
@@ -92,6 +119,10 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
   int          take_overlap = -1; // fifo part: cycles from debug read to pop (-1: after the data)
   int          take_flood = -1;   // fifo part: AxLEN of an OKAY read before a debug read (-1: none)
   int          pop_lead = -1;     // fifo part: cycles from debug pop to read (-1: read first)
+  bit          read_after_pop;    // fifo part: a second debug read once the pop has completed
+  bit          take_pair;         // fifo part: two takes at once where two or more are due
+  int unsigned take_group = 2;    // fifo part: with take_pair, up to this many takes at once
+  int unsigned take_wflood = 0;   // fifo part: OKAY writes ahead of each take_pair group
   int unsigned err_len = 0;       // fifo part: AxLEN of the failing transactions
   bit [3:0]    err_cache = 4'd0;  // fifo part: their AxCACHE
   bit [63:0]   err_off = 64'd0;   // fifo part: added to their addresses
@@ -178,6 +209,14 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
     take_overlap = arg_int("take_overlap", -1);
     take_flood = arg_int("take_flood", -1);
     pop_lead = arg_int("pop_lead", -1);
+    read_after_pop = arg_int("read_after_pop", 0) != 0;
+    take_pair = arg_int("take_pair", 0) != 0;
+    take_group = arg_int("take_group", 2);
+    if (take_group < 2 || take_group > 4)
+      `uvm_fatal(get_type_name(), $sformatf("+take_group=%0d: 2 to 4", take_group))
+    take_wflood = arg_int("take_wflood", 0);
+    if (take_wflood > 16)
+      `uvm_fatal(get_type_name(), $sformatf("+take_wflood=%0d: 0 to 16", take_wflood))
     if (pair_writes < 1 || pair_writes > 8)
       `uvm_fatal(get_type_name(), $sformatf("+pair_writes=%0d: 1 to 8", pair_writes))
     flood_len = arg_int("flood_len", 15);
@@ -188,6 +227,7 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
     end
     program_feat();
     link_up();
+    check_crd_knobs();
     if (arg_int("rdata_crd", -1) >= 0 || arg_int("wresp_crd", -1) >= 0) begin
       if (arg_int("rdata_crd", -1) >= 0) begin
         cfg.l3_cfg.rx_depth[AOU_CC_RDATA] = arg_int("rdata_crd", 0);
@@ -216,6 +256,30 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
     sw_deactivate();
   endtask
 
+  // +rdata_crd and +wresp_crd size the remote die's receive buffer, so each
+  // must hold at least one whole message of its kind. Credits are consumed in
+  // full at a message's start (AoU v0.8 flow control), so with fewer the DUT
+  // can never send one and every read or write on the RP hangs. A ReadData
+  // message is as wide as the remote die's beat on that RP: 8, 14 or 27
+  // granules for 256, 512 or 1024 bits; a WriteResp is one granule.
+  function void check_crd_knobs();
+    int rd = arg_int("rdata_crd", -1);
+    int wr = arg_int("wresp_crd", -1);
+    for (int unsigned r = 0; r < cfg.n_rp; r++) begin
+      int unsigned bb = cfg.remote_bytes_of(r);
+      bit [1:0] dl = (bb <= 32) ? 2'd0 : (bb == 64) ? 2'd1 : 2'd2;
+      int unsigned need = aou_data_len(AOU_MT_RDATA, dl);
+      if (rd >= 0 && rd < int'(need))
+        `uvm_fatal(get_type_name(), $sformatf(
+            {"+rdata_crd=%0d is less than one ReadData message on RP%0d (%0d granules ",
+             "for a %0d-byte remote beat): the DUT could never send read data"},
+            rd, r, need, bb))
+    end
+    if (wr == 0)
+      `uvm_fatal(get_type_name(),
+                 "+wresp_crd=0 grants no WriteResp credit: the DUT could never send a B")
+  endfunction
+
   // ---------------------------------------------------------------------
   // A failing remote transaction of the fifo part (err_len, err_cache, err_off).
   function aou_axi_txn err(int unsigned rp, aou_axi_dir_e dir, bit [9:0] id, bit [63:0] addr);
@@ -238,9 +302,19 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
                       b + (dec ? 64'h100 : 64'h0) + (64'(i) * 64'h40) % 64'hC0));
     end
     for (int unsigned i = 0; i < 6; i++) run_one(1'b1, rp, e[i]);
-    for (int unsigned i = 0; i < 4; i++) fifo_take(rp);
+    fifo_takes(rp, 4);
     run_one(1'b1, rp, e[6]);
     fifo_take(rp);
+    if (read_after_pop) begin
+      // Two errors together (either may enter first), a third well after.
+      fork
+        run_one(1'b1, rp, err(rp, AOU_AXI_WR, 10'h0A0, b + 64'h40));
+        run_one(1'b1, rp, err(rp, AOU_AXI_RD, 10'h0A1, b + 64'h140));
+      join
+      wait_cycles(64);
+      run_one(1'b1, rp, err(rp, AOU_AXI_WR, 10'h0A2, b + 64'h80));
+      for (int unsigned i = 0; i < 3; i++) fifo_take(rp);
+    end
     // B and R errors close together (behind a flood of read data, if asked).
     for (int unsigned d = 0; d < n_pairs; d++) begin
       if (flood != 0) begin
@@ -265,15 +339,66 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
         end
       join
       wait fork;  // the flood, before the debug reads queue behind its data
-      for (int unsigned w = 0; w <= pair_writes; w++) fifo_take(rp);
+      fifo_takes(rp, pair_writes + 1);
     end
+  endtask
+
+  // n takes in a row; with take_pair up to take_group at a time.
+  task fifo_takes(int unsigned rp, int unsigned n);
+    while (n != 0) begin
+      if (take_pair && n >= 2) begin
+        int unsigned k = n < take_group ? n : take_group;
+        fifo_take_group(rp, k);
+        n -= k;
+      end else begin
+        fifo_take(rp);
+        n--;
+      end
+    end
+  endtask
+
+  // k reads of the head one cycle apart, then k pops one cycle apart, all
+  // without waiting for the earlier ones' responses (legal AXI: different IDs,
+  // 3F0/3D0/3B0/390 for the reads and 3F8/3D8/3B8/398 for the pops, plus the RP).
+  task fifo_take_group(int unsigned rp, int unsigned k);
+    int unsigned n_rd = 0;
+    if (take_wflood != 0) begin
+      aou_txn_list_seq fl = aou_txn_list_seq::type_id::create("take_wflood");
+      for (int unsigned i = 0; i < take_wflood; i++)
+        fl.items.push_back(mk(1'b1, rp, AOU_AXI_WR, 10'h340 + 10'(i),
+                              err_base(1'b0, rp) + 64'h4_0000 + 64'(i) * 64'h40));
+      fork
+        run(fl, 1'b1, rp);
+      join_none
+      wait_cycles(16);
+    end
+    for (int unsigned i = 0; i < k; i++)
+      fork
+        automatic int unsigned ii = i;
+        begin
+          wait_cycles(ii);
+          fifo_read(rp, 10'h3F0 - 10'(ii) * 10'h20);
+          n_rd++;
+        end
+      join_none
+    wait (n_rd == k);
+    for (int unsigned i = 0; i < k; i++)
+      fork
+        automatic int unsigned ii = i;
+        begin
+          wait_cycles(ii);
+          fifo_pop(rp, 10'h3F8 - 10'(ii) * 10'h20);
+        end
+      join_none
+    wait fork;  // the pops and the write flood
   endtask
 
   // With take_overlap at or above 0 the pop is issued that many cycles after
   // the debug read without waiting for the read's data: the window has
   // sampled the head for the read by then. A take_flood read just ahead
   // holds the debug read's data back behind its own while the pop's B flows,
-  // so the pop completes first.
+  // so the pop completes first. With read_after_pop a second debug read
+  // follows the pop's B while the first may still be in flight.
   virtual task fifo_take(int unsigned rp);
     if (pop_lead >= 0) begin
       pop_then_read(rp);
@@ -297,6 +422,7 @@ class aou_axi_err_resp_vseq extends aou_err_base_vseq;
       begin
         wait_cycles(take_overlap);
         fifo_pop(rp);
+        if (read_after_pop) fifo_read(rp, 10'h3D0);
       end
     join
     wait fork;

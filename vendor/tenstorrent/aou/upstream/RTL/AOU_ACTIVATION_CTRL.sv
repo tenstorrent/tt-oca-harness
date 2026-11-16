@@ -37,6 +37,12 @@ module AOU_ACTIVATION_CTRL
     input   [3:0]   I_ACTMSG_ACTIVATION_OP          ,
     input           I_ACTMSG_PROPERTYREQ            ,
     input           I_ACTMSG_VALID                  ,
+    // ProfileID/Rev/Opt per RP of the received ActivateReq (AoU v0.8), and the
+    // strobe that stores them in the SFR (PROFILE_RMT_RPn): an ActivateReq this
+    // FSM accepts, i.e. the same one it answers with an ActivateAck.
+    input   [3:0][25:0] I_ACTMSG_PROFILE            ,
+    output  [3:0][25:0] O_PROFILE_RMT               ,
+    output          O_PROFILE_RMT_WE                ,
     
     //output Activation message
     output  [3:0]   O_ACTMSG_ACTIVATION_OP          ,
@@ -51,17 +57,13 @@ module AOU_ACTIVATION_CTRL
     input           I_TX_PENDING                    ,//and check tx fifo count and ring buffer valid
     input           I_TX_AXI_TR_PENDING             ,
 
-    input           I_MST_BUS_CLEANY_COMPLETE       ,//from bus cleany
-    input           I_SLV_BUS_CLEANY_COMPLETE       ,
-    input           I_AOU_RX_NEW_TR_HS              ,
+    input           I_SLV_BUS_CLEANY_COMPLETE       ,//from bus cleany
     input           I_AOU_RX_FIFO_PENDING           ,        
     
     input           I_CRDTGRANT_VALID               ,
 
     input   [2:0]   I_ACK_TIME_OUT_VALUE            ,
     input   [2:0]   I_MSGCREDIT_TIME_OUT_VALUE      ,
-
-    input           I_CREDIT_MANAGE_TYPE            ,//0: based on v0.5 / 1: manage request-related message and response-related message separately
 
     output          O_ACT_ACK_ERR                   ,
     output          O_DEACT_ACK_ERR                 ,
@@ -111,9 +113,6 @@ logic       w_deactivate_start_rising_edge_detect;
 logic       r_deactivate_force_1d;
 logic       w_deactivate_force_rising_edge_detect;
 
-logic       r_axi_mst_rsp_completed_1d;
-logic       w_axi_mst_rsp_completed_falling_edge_detect;
-
 logic       r_tx_deactivate_req;
 logic       r_tx_deactivate_ack;
 logic       r_rx_deactivate_req;
@@ -144,38 +143,47 @@ logic [11:0]r_time_out;
 logic       w_time_out_done;
 
 logic [11:0]w_time_out_value;
-logic       w_axi_rsp_completed_safe_base;
-logic       w_axi_rsp_completed_safe;
-logic       r_deactivate_block;
 
 logic       w_activate_en;
 logic       w_deactivate_en;
 
 logic       w_lp_linkerror_start;
+logic       r_lp_linkerror_pending;
 
 logic       r_ucie_init_done_1d;
 logic       w_fdi_link_fell;
 logic       w_act_req_pending;
 logic       w_fdi_link_lost;
 logic       w_fsm_abort;
+logic       w_deact_done;
+logic       w_act_req_invalid_st;
 
-assign      w_activate_en   = ((r_cur_st == DISABLED) | (r_cur_st == ACTIVATE  )) & ~(r_tx_activate_req | ((O_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & O_ACTMSG_VALID));
+assign      w_activate_en   = ((r_cur_st == DISABLED) | (r_cur_st == ACTIVATE  )) & ~(r_tx_activate_req | ((O_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & O_ACTMSG_VALID))
+                            & ~(r_lp_linkerror_pending | w_lp_linkerror_start);
 assign      w_deactivate_en = ((r_cur_st == ENABLED)  | (r_cur_st == DEACTIVATE)) & ~(r_tx_deactivate_req | ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID));
 
-
 //-------------------------------------------------------------
+//After a LinkReset request no new activation starts until software resets
+//AOU_CORE (MAS 7.2.3, 7.3.6). The LinkReset condition is a one-cycle pulse that
+//returns the FSM to DISABLED and clears the outstanding-request flag; with
+//ACTIVATE_START still set, the start edge detector would otherwise see the
+//enable return and send a second ActivateReq. This flag holds the activation
+//enable (the start edge and INT_ACTIVATE_START) and the entry into ACTIVATE
+//until the core reset, in the direction of the AoU v0.8 ERROR state (8.3.3,
+//8.4). The enable also drops in the cycle of the condition itself: the
+//invalid-message pulse is combinational from the received message, so a start
+//edge in that cycle would otherwise queue an ActivateReq that nothing clears.
+//Every LinkReset source is a detected partner error (time-out or invalid
+//activation message), so a compliant partner never sets it.
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     if(~I_RESETN) begin
-        r_deactivate_block <= 1'b0;
-    end else if (I_MST_BUS_CLEANY_COMPLETE && I_AOU_RX_NEW_TR_HS) begin
-        r_deactivate_block <= 1'b1;
-    end else if (w_axi_mst_rsp_completed_falling_edge_detect) begin
-        r_deactivate_block <= 1'b0;
+        r_lp_linkerror_pending <= 1'b0;
+    end else if (w_lp_linkerror_start) begin
+        r_lp_linkerror_pending <= 1'b1;
     end
 end
-//-------------------------------------------------------------
-assign w_axi_rsp_completed_safe_base = I_MST_BUS_CLEANY_COMPLETE;
-assign w_axi_rsp_completed_safe = w_axi_rsp_completed_safe_base & ~r_deactivate_block;
+
+
 //-------------------------------------------------------------
 always_comb begin
     case(I_DEACTIVATE_TIME_OUT_VALUE)
@@ -204,15 +212,14 @@ assign  w_activate_start_rising_edge_detect  =   ~r_activate_start_1d & (I_ACTIV
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     if(~I_RESETN)begin
         r_deactivate_start_1d <= 1'b0;
-    end else if (I_CREDIT_MANAGE_TYPE) begin
-        r_deactivate_start_1d <= I_DEACTIVATE_START & w_time_out_done & w_deactivate_en & I_SLV_BUS_CLEANY_COMPLETE;        
     end else begin
-        r_deactivate_start_1d <= I_DEACTIVATE_START & w_axi_rsp_completed_safe & w_time_out_done & w_deactivate_en & ((~r_rx_deactivate_req & I_SLV_BUS_CLEANY_COMPLETE) | (r_rx_deactivate_req));
+        r_deactivate_start_1d <= I_DEACTIVATE_START & w_time_out_done & w_deactivate_en & I_SLV_BUS_CLEANY_COMPLETE;        
     end
 end
 
-assign  w_deactivate_start_rising_edge_detect   = I_CREDIT_MANAGE_TYPE ? ~r_deactivate_start_1d & (I_DEACTIVATE_START & w_time_out_done & w_deactivate_en & I_SLV_BUS_CLEANY_COMPLETE) :
-                                                  ~r_deactivate_start_1d & (I_DEACTIVATE_START & w_axi_rsp_completed_safe & w_time_out_done & w_deactivate_en & ((~r_rx_deactivate_req & I_SLV_BUS_CLEANY_COMPLETE) | (r_rx_deactivate_req)));
+// AoU v0.8 8.4: DeactivateReq only once this die's own requests have completed.
+// Responses this die still owes may follow it, so they do not hold it back.
+assign  w_deactivate_start_rising_edge_detect   = ~r_deactivate_start_1d & (I_DEACTIVATE_START & w_time_out_done & w_deactivate_en & I_SLV_BUS_CLEANY_COMPLETE);
 
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     if(~I_RESETN) begin
@@ -224,16 +231,6 @@ end
 
 assign w_deactivate_force_rising_edge_detect = ~r_deactivate_force_1d & (I_DEACTIVATE_FORCE & w_deactivate_en);
 
-
-always_ff @ (posedge I_CLK or negedge I_RESETN) begin
-    if(~I_RESETN)begin
-        r_axi_mst_rsp_completed_1d <= 1'b0;
-    end else begin
-        r_axi_mst_rsp_completed_1d <= I_MST_BUS_CLEANY_COMPLETE;
-    end
-end
-
-assign  w_axi_mst_rsp_completed_falling_edge_detect  = r_axi_mst_rsp_completed_1d & ~I_MST_BUS_CLEANY_COMPLETE;
 
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     if (~I_RESETN) begin
@@ -258,6 +255,16 @@ assign w_act_req_pending   = r_tx_activate_req | r_rx_activate_req
                            | ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID);
 assign w_fdi_link_lost     = w_fdi_link_fell & ((r_cur_st != DISABLED) | w_act_req_pending);
 assign w_fsm_abort         = w_lp_linkerror_start | w_fdi_link_fell;
+
+// The deactivation handshake is complete (the DEACTIVATE -> DISABLED condition
+// below) but the state register has not moved yet. The peer is DISABLED as soon
+// as it has sent its DeactivateAck and may put an ActivateReq in the very next
+// flit (AoU v0.8 8.4); at the 256 B FDI width that flit arrives one cycle after
+// the Ack, while r_cur_st still reads DEACTIVATE. Such an ActivateReq is valid,
+// so for the ActivateReq checks this cycle counts as DISABLED.
+assign w_deact_done         = (r_cur_st == DEACTIVATE) & r_tx_deactivate_req & r_rx_deactivate_req
+                            & r_tx_deactivate_ack & r_rx_deactivate_ack;
+assign w_act_req_invalid_st = (r_cur_st == ENABLED) | ((r_cur_st == DEACTIVATE) & ~w_deact_done);
 assign O_INT_FDI_LINK_DOWN = w_fdi_link_lost;
 
 //-------------------------------------------------------------
@@ -348,7 +355,8 @@ end
 //handshake (a request) or complete the next one early (an Ack). The one-cycle
 //abort comes with a LinkReset request or a lost link, so software resets the
 //core before the next session; a message accepted in that cycle is lost.
-//An ActivateReq in ENABLED or DEACTIVATE is the invalid message that requests
+//An ActivateReq in ENABLED or DEACTIVATE (handshake not yet complete,
+//w_act_req_invalid_st) is the invalid message that requests
 //LinkReset (w_activate_related1 sends it no Ack); it must not be remembered
 //either, or the FSM, DISABLED by that error, would re-enter ACTIVATE on it.
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
@@ -357,7 +365,7 @@ always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     end else if (w_fsm_abort) begin
         r_rx_activate_req <= 1'b0;
     end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID
-                 & ~((r_cur_st == ENABLED) | (r_cur_st == DEACTIVATE))) begin
+                 & ~w_act_req_invalid_st) begin
         r_rx_activate_req <= 1'b1;
     end else if (w_activate_reg_clear) begin
         r_rx_activate_req <= 1'b0;
@@ -405,12 +413,13 @@ end
 //the handshake registers are cleared by it (and not set in that cycle), so
 //the state must not advance on them. In DISABLED it cancels a pending entry
 //to ACTIVATE: the request that asked for it is cleared in the same cycle.
+//After a LinkReset request the FSM stays in DISABLED until the core reset.
 always_comb begin
     case(r_cur_st)
         DISABLED:begin
             if (w_fsm_abort) begin
                 w_nxt_st = DISABLED;
-            end else if(r_tx_activate_req | r_rx_activate_req)  begin
+            end else if((r_tx_activate_req | r_rx_activate_req) & ~r_lp_linkerror_pending)  begin
                 w_nxt_st = ACTIVATE;
             end else begin
                 w_nxt_st = DISABLED;
@@ -456,8 +465,14 @@ assign  w_deactivate_related0    = w_deactivate_start_rising_edge_detect | w_dea
 //An ActivateReq in ENABLED or DEACTIVATE is an invalid activation message (ERROR in
 //AoU v0.8 8.3.3, nothing transmitted, 8.4): no ActivateAck, only the LinkReset request
 assign  w_activate_related1      = (I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID
-                                 & ~((r_cur_st == ENABLED) | (r_cur_st == DEACTIVATE));
+                                 & ~w_act_req_invalid_st;
 assign  w_deactivate_related1    = (I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID;
+
+// The peer's announced profile travels to the SFR with the accepted ActivateReq;
+// an ActivateReq rejected above (ENABLED, mid-DEACTIVATE) leaves the stored
+// values alone.
+assign  O_PROFILE_RMT            = I_ACTMSG_PROFILE;
+assign  O_PROFILE_RMT_WE         = w_activate_related1;
 
 //svalid 0 is for ACTIVATE_REQ & DEACTIVATE_REQ
 //svalid 1 is for ACTIVATE_ACK & DEACTIVATE_ACK
@@ -500,12 +515,15 @@ assign O_TX_REQ_CREDITED_MESSAGE_EN = ((r_cur_st == ACTIVATE) & (r_tx_activate_r
                                   | ((r_cur_st == DEACTIVATE) & (~(r_tx_deactivate_req | ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY))));
 
 //Read Data, Write response message
-assign O_RSP_CRD_ADVERTISE_EN       = I_CREDIT_MANAGE_TYPE ? ((r_cur_st == ACTIVATE) & (r_rx_activate_ack | (((O_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & O_ACTMSG_VALID & I_ACTMSG_READY))))
-                                  | (((r_cur_st == DEACTIVATE) | (r_cur_st == ENABLED)) & ~(r_tx_deactivate_req)) : O_REQ_CRD_ADVERTISE_EN;
+//AoU v0.8 8.4: responses are still sent after this die's DeactivateReq, and
+//their credits are still advertised after its DeactivateAck while its own
+//requests are outstanding; both stop once no further response can be owed.
+assign O_RSP_CRD_ADVERTISE_EN       = ((r_cur_st == ACTIVATE) & (r_rx_activate_ack | (((O_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & O_ACTMSG_VALID & I_ACTMSG_READY))))
+                                  | (((r_cur_st == DEACTIVATE) | (r_cur_st == ENABLED)) & ~(r_tx_deactivate_req));
 
-assign O_TX_RSP_CREDITED_MESSAGE_EN = I_CREDIT_MANAGE_TYPE ? ((r_cur_st == ACTIVATE) & (r_tx_activate_req & r_rx_activate_ack & r_rx_activate_req & (((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID)|r_tx_activate_ack)))
+assign O_TX_RSP_CREDITED_MESSAGE_EN = ((r_cur_st == ACTIVATE) & (r_tx_activate_req & r_rx_activate_ack & r_rx_activate_req & (((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID)|r_tx_activate_ack)))
                                   | ((r_cur_st == ENABLED) & (~(r_rx_deactivate_req | ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID))))
-                                  | ((r_cur_st == DEACTIVATE) & (~(r_rx_deactivate_req | ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID)))) : O_TX_REQ_CREDITED_MESSAGE_EN;                                  
+                                  | ((r_cur_st == DEACTIVATE) & (~(r_rx_deactivate_req | ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID))));
 
 assign O_STATUS_DISABLED        = (r_cur_st == DISABLED);
 assign O_STATUS_ENABLED         = (r_cur_st == ENABLED);
@@ -643,7 +661,7 @@ always_comb begin
             end
         end
         DEACTIVATE : begin
-            if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID) begin
+            if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID & ~w_deact_done) begin
                 w_invalid_msgtype = 1'b1;
             end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID) begin
                 w_invalid_msgtype = 1'b1;

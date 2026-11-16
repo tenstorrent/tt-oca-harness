@@ -30,7 +30,7 @@ Trieu and Quang Le (VNCHIPLabs); see [Acknowledgements](#acknowledgements).
 | --- | --- | --- |
 | Python 3.9 or later | every script | `tomllib` (3.11) is used when present; a subset TOML reader covers older interpreters; `scripts/bugs/*` also need PyYAML (`pip install -r requirements.txt` at the repository root) |
 | GNU Make, Git, a C++ compiler | the standalone flow | |
-| Verilator 5.052 | `SIM=verilator` | What CI builds (`.github/workflows/uvm-smoke.yml`); `--timing` and `randomize()` through z3 |
+| Verilator 5.052 or later | `SIM=verilator` | CI builds the version pinned in `.github/tool-versions.env` (`VERILATOR_VERSION`, `.github/workflows/uvm-smoke.yml`); `--timing` and `randomize()` through z3 |
 | Verible (`verible-verilog-lint`) | `make lint` | The version CI pins in `.github/tool-versions.env` (`VERIBLE_VERSION`) |
 | VCS | `SIM=vcs` | The default when `vcs` is on `PATH`; the full regressions and coverage run here |
 | LSF (`bsub`) | builds and runs at scale | Optional: `LSF=0` runs on the current host; site options in the git-ignored `site/site.mk` |
@@ -57,6 +57,97 @@ make lint                                    # check-config, Verible and Verilat
 `err_int`, `lifecycle`, `matrix`, `perf`, `assertions`, and `functional`,
 `all`); `--tb reg` selects the register bench and its testlist. `make help`
 lists every make target and variable.
+
+### Run everything
+
+`scripts/regress.py` is the full regression: it builds every bench the testlists need
+and runs every scenario on it, then prints one summary. `python3 scripts/regress.py --help`
+lists every option and what each step does; `make regress` is a shorthand that passes
+make variables to it (table below). It needs the
+[prerequisites](#prerequisites) for the simulator you pick, `make setup`, and
+preferably LSF. Without `bsub` (or with `LSF=0`) the builds go one after another on
+the current host and each list runs as many runs at once as it has CPUs, so use a
+machine of your own, never a shared login host.
+
+```sh
+python3 scripts/regress.py --help                       # every option, every step
+python3 scripts/regress.py --sim vcs --rid full1        # every CONFIG, every bench, every testlist
+python3 scripts/regress.py --sim verilator --rid full1v # the same on Verilator
+python3 scripts/regress.py --sim vcs --rid pr1 --configs "1x512-sp64 2x512-tp32_64" --items "smoke ci assertions"
+python3 scripts/regress.py --sim vcs --rid nop1 --lists all,-perf  # every testlist but perf
+python3 scripts/regress.py --sim vcs --rid full1 --dry-run   # the plan and the run counts only
+make regress SIM=vcs RID=full1                          # the same as the second line
+```
+
+What it does, in steps (`STEPS=build,run,summary`, plus `cov` with `COV=1`):
+
+1. **build**: `make build` of the T1 bench (`TB=t1`) and the register bench (`TB=reg`)
+   for every configuration (`make configs`), the `RTL_ASSERT=1` build of every
+   configuration with a `<CONFIG>-assert` target, and the two model unit benches
+   (`TB=l3_unit`, `TB=axi_selftest`): 27 builds.
+2. **run**: one `scripts/run_list.py` per build, with `--per-list`: T1 runs every
+   testlist `all.toml` includes except `assertions.toml`, which runs on the `-assert`
+   builds; the register bench runs `registers.toml` and the unit benches their own
+   lists. That is about 5,300 runs on VCS (5,040 T1, 210 register, 37 assertion, 13 unit).
+3. **cov** (`COV=1` only): `make cov_report` per configuration for this RID's
+   passing runs, the register bench's folded in, then the union over the
+   configurations in `out/regress/<RID>/union/`: code coverage (`urg -map AOU_CORE_TOP`
+   on VCS, `verilator_coverage` on Verilator) and functional coverage (`fc_report.py`).
+   The unit benches have no DUT and the `-assert` builds are left out of coverage.
+   The configurations differ in DUT parameters, so on VCS a module merges across them
+   only where its shape matches (urg warns `UCAPI-MAP-SHAPEMISMATCH` for the rest);
+   read the union's instance rows, not its module-definition table, which holds the
+   first configuration's modules only.
+4. **summary**: a table per bench (T1, reg, assert, l3_unit, axi_selftest) of runs, PASS,
+   XFAIL, FAIL and XPASS from the results CSVs, every FAIL and XPASS run with its run
+   directory and the `make run ... WAVES=1` line that repeats it, and an overall
+   result. The exit status is 1 when any run is FAIL or XPASS, or a build has no results.
+
+Under LSF every build starts at once, then every `run_list.py`, each with `RUN_JOBS`
+runs in flight (default 8; the CPU count with `LSF=0`), steerable live through its
+control file `out/<build>/<RID>.ctl` ([Regressions](#regressions)). On VCS the whole
+regression is about 14 CPU hours: each build takes about a minute, and the runs take
+well under an hour of wall time when LSF grants the slots (up to about 200 at once). A
+Verilator run costs about twice the CPU of a VCS run, and a Verilator T1 build takes
+several minutes (four or more); `COV=1` costs about three and a half times the CPU of
+a plain VCS run. `build/metrics.jsonl` records every job, so your own numbers are there.
+
+Logs (one per build and per `run_list.py`), the exact commands (`commands.sh`) and
+`summary.md` go to `out/regress/<RID>/`; the run directories and the results CSVs
+(`results_<list>.rid.<RID>.csv`) are where `make run` and `run_list.py` always put
+them, in `out/<build>/`.
+
+`make regress` takes these variables; each is the script option of the same name in lower case
+(`RUN_JOBS` is `-j`, `RERUN_FAILED` is `--rerun-failed`, `DRY_RUN=1` is `--dry-run`).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SIM` | `vcs` if on `PATH`, else `verilator` | Simulator |
+| `RID` | `r<yymmdd>-<hhmm>` | Regression ID; repeat it to resume |
+| `CONFIGS` | every configuration | Configurations, space separated |
+| `BENCHES` | `t1 reg assert l3_unit axi_selftest` | Benches to build and run |
+| `ITEMS` | everything | Groups or scenarios, run on every bench whose testlist defines them (`ITEMS="smoke ci assertions"` is the quick check) |
+| `COV` | 0 | 1: coverage builds and runs, then the `cov` step |
+| `RTL_PATCH` | none | Absolute path of a candidate RTL fix ([below](#building-against-a-candidate-rtl-fix)) |
+| `RUN_JOBS` | 8 (LSF), CPU count | Runs in flight per `run_list.py` |
+| `STEPS` | `build,run,summary` (`,cov`) | The steps to do, in their fixed order |
+| `LISTS` | every testlist | Testlists by name, comma separated: `all` is every list and `-name` drops one (`all,-perf`) |
+| `RERUN_FAILED` | none | An earlier RID: run only its scenarios with a FAIL or XPASS run |
+| `COV_MEM` | `16GB` | LSF memory of each coverage job, always with a unit |
+| `DRY_RUN` | 0 | 1: print the plan, build and run nothing |
+
+Anything else on the `make regress` command line (`LSF=0`, `LSF_EXTRA_OPTS`, `AXI4PC=0`,
+...) reaches the `make build` and `make run` calls the regression makes; with the script,
+set them in the environment (`LSF_EXTRA_OPTS=... python3 scripts/regress.py ...`).
+
+To **resume** an interrupted regression, repeat it with the same `RID`, leaving out the
+steps already done: `make regress RID=full1 STEPS=run,summary`. A build that already has
+results for that RID is skipped, so only the unfinished lists run again (from their
+start). `STEPS=summary` reprints the summary. To **rerun the failures**, give a new RID:
+`make regress RID=full1b RERUN_FAILED=full1` rebuilds only the builds that had a FAIL or
+XPASS and runs every seed of each failing scenario; a single run is repeated with the
+`make run` line the summary prints for it. `python3 scripts/test_regress.py` tests the
+script with a fake `make`.
 
 ### Through tt-oca-harness (not yet validated)
 
@@ -92,12 +183,10 @@ re-vendored without harness-side work beyond the pin.
 
 | Document | What it covers |
 | --- | --- |
-| [docs/AOU_TB_ARCH.adoc](docs/AOU_TB_ARCH.adoc) | Testbench hierarchy, model ownership, environment components, clock and reset, stimulus, checking and coverage strategies, the SV-UVM realization and its differences from the harness pattern, adding a scenario |
-| [docs/AOU_VPLAN.adoc](docs/AOU_VPLAN.adoc) | Verification strategy, naming rules, scope, the requirement-to-test matrix, the scenario summary and test procedures (generated from the testlists and class headers), regression groups, known limitations |
-| [docs/AOU_FCOV.adoc](docs/AOU_FCOV.adoc) | Functional coverage goals, the covergroup inventory, closure policy, VPLAN-to-FCOV traceability |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | The stream contracts and API names the layers were built against |
+| [docs/AOU_TB_ARCH.adoc](docs/AOU_TB_ARCH.adoc) | Testbench hierarchy, model ownership, environment components, clock and reset, stimulus, checking and coverage strategies, the SV-UVM realization and its differences from the harness pattern, adding and naming a scenario, and the layer APIs (config_db names, inter-layer APIs, the transaction contract, scoreboard rule, test layer API) |
+| [docs/AOU_VPLAN.adoc](docs/AOU_VPLAN.adoc) | The verification plan: summary and road-map, scope and references, how the bench verifies, the 13 feature areas with their plan items, known limitations, and the generated scenario summary, test procedures and regression groups |
+| [docs/AOU_FCOV.adoc](docs/AOU_FCOV.adoc) | Functional coverage: summary and real holes, every group in plain terms with its report name, gaps against the spec, plan traceability, goals and closure policy |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Decision records |
-| [docs/COVERAGE_CLOSURE.md](docs/COVERAGE_CLOSURE.md) | Coverage closure plan, hole analysis, owner decisions |
 | [docs/WAVE_DEBUG.md](docs/WAVE_DEBUG.md), [docs/AXI_OUTSTANDING.md](docs/AXI_OUTSTANDING.md) | Debugging a failure from waves; the outstanding-transaction histogram |
 | [docs/PERF_JSON.md](docs/PERF_JSON.md) | The performance record each `aou_perf_test` run writes |
 | [docs/checker_inventory.md](docs/checker_inventory.md) | Generated: every rule, its checker and the evidence from the runs |
@@ -119,7 +208,7 @@ into one book with Asciidoctor.
 | `cov/` | `sv/`: the coverage service, the AXI4 coverage monitors and binds; `config/vcs/`: coverage scope, exclusion and FSM reset filter files |
 | `testlists/` | TOML testlists (`all.toml` and the per-area lists, `registers.toml`, `l3_unit.toml`, `axi_selftest.toml`), `plan_ids.yaml` |
 | `docs/` | The documents above; `gen/` is generated |
-| `scripts/` | `run_list.py`, `check_run.py`, `sim_cfg.py`, `testlist.py`, the lint and report scripts, the harness-leg scripts; `bugs/`: the bug-report template and the tools that validate staged drafts, file them as GitHub issues and rewrite the bench's citations |
+| `scripts/` | `regress.py` (`make regress`), `run_list.py`, `check_run.py`, `sim_cfg.py`, `testlist.py`, the lint and report scripts, the harness-leg scripts; `bugs/`: the bug-report template and the tools that validate staged drafts, file them as GitHub issues and rewrite the bench's citations |
 | `aou_sim_cfg.toml`, `aou_reg_sim_cfg.toml`, `aou_l3_unit_sim_cfg.toml`, `aou_axi_selftest_sim_cfg.toml` | One sim config per top: sources, include directories, `[targets.<CONFIG>]` defines, run modes, testlist |
 | `expected_fail.yaml` | Known DUT-bug failures the grader accepts as XFAIL, each tied to its GitHub issue (`tenstorrent/tt-oca-harness-aou#<n>`; `BUGS/<NNN>` for a draft staged but not yet filed) |
 | `site/` | Git-ignored site settings (`site.mk`, `env.sh`, `public_patterns.txt`) |
@@ -135,15 +224,20 @@ output directories are named after it (`build/vcs-t1-1x512-sp64`,
 | CONFIG | RPs | RP widths (bits) | FDI_CONFIG | PHYs | For |
 |---|---|---|---|---|---|
 | `1x512-sp64` (default) | 1 | 512 | FDI_CFG_SP_64B | 1 | The default: one RP, the usual data path |
-| `4x512-sp64` | 4 | 512 each | FDI_CFG_SP_64B | 1 | Multi-RP behaviour (plan 2.12) at one width |
+| `4x512-sp64` | 4 | 512 each | FDI_CFG_SP_64B | 1 | Multi-RP behaviour (plan items 12.x) at one width |
 | `3x512-sp64` | 3 | 512 each | FDI_CFG_SP_64B | 1 | An RP count that is not a power of two |
-| `4xmix4211-sp128` | 4 | 1024, 512, 256, 256 | FDI_CFG_SP_128B | 1 | Mixed widths, every local width (2.14), 128-byte FDI |
+| `4xmix4211-sp128` | 4 | 1024, 512, 256, 256 | FDI_CFG_SP_128B | 1 | Mixed widths, every local width (plan items 14.x), 128-byte FDI |
 | `4xmix2144-sp64` | 4 | 512, 256, 1024, 1024 | FDI_CFG_SP_64B | 1 | Mixed widths with RP2 and RP3 at 1024 bits; with `4xmix4211-sp128`, every RP at every local width |
+| `2xmix41-sp128` | 2 | 1024, 256 | FDI_CFG_SP_128B | 1 | A 1024-bit and a 256-bit RP sharing one 128-byte FDI (a common product case) |
 | `1x256-sp32` | 1 | 256 | FDI_CFG_SP_32B | 1 | Narrowest RP and FDI (the RTL's default FDI_CONFIG) |
 | `2xmix-tp64_128` | 2 | 512, 1024 | FDI_CFG_TP_64B_128B | 2 | Two-PHY FDI, two RPs, mixed widths |
 | `2x512-tp32_64` | 2 | 512 each | FDI_CFG_TP_32B_64B | 2 | Two-PHY FDI with a 32-byte PHY0, two RPs at one width |
 | `1x512-sp64-nxt` | 1 | 512 | FDI_CFG_SP_64B | 1 | `TX_NXT_PACKING_EN` 1: the registered TX packer output stage |
 | `2xmix-sp64-rxf` | 2 | 1024, 256 | FDI_CFG_SP_64B | 1 | Non-default RX FIFO depth per RP and class, RX FIFO register slices off (plan 3.25) |
+| `1x1024-sp128` | 1 | 1024 | FDI_CFG_SP_128B | 1 | One 1024-bit RP on a 128-byte FDI: the zero-load latency reference (MAS 8.1 Table 8, `aou_perf_test +perf_mode=rxlat`) |
+| `1x1024-sp256` | 1 | 1024 | FDI_CFG_SP_256B | 1 | 256-byte FDI: one flit per cycle, one-step TX packer, 48 granules decoded per cycle, whole-flit cancel |
+| `4xmix-sp256` | 4 | 1024, 512, 256, 512 | FDI_CFG_SP_256B | 1 | Mixed widths, every local width, 256-byte FDI |
+| `4xmix-sp256-rxf` | 4 | 1024, 512, 256, 512 | FDI_CFG_SP_256B | 1 | `4xmix-sp256` with non-default RX FIFO depths (`AOU_RX_FIFO_ALT`) |
 
 Reading a name:
 
@@ -157,8 +251,11 @@ Reading a name:
 - `-nxt`: `TX_NXT_PACKING_EN` 1 (`AOU_TX_NXT_PACKING=1`): the TX flit packer
   computes each chunk from its look-ahead state and registers it before the FDI
   output; the default (0) drives the chunk combinationally from the granule ring.
-- `-rxf`: non-default RX FIFO depths (`AOU_T1_RX_DEPTH` in `uvm/env/aou_t1_env_pkg.sv`) and
-  `RX_*_FIFO_RS_EN=0`, passed to `AOU_TOP` under the `AOU_RX_FIFO_ALT` define.
+- `-rxf`: non-default RX FIFO depths (`AOU_T1_RX_DEPTH` in `uvm/env/aou_t1_env_pkg.sv`,
+  W and R in granules), passed to `AOU_TOP` under the `AOU_RX_FIFO_ALT` define.
+- `sp256`: `FDI_CFG_SP_256B`, a 2048-bit FDI carrying one flit per cycle. The
+  `AOU_FDI_CHECKER` supports 32/64/128-byte beats only, so these builds have no
+  checker (`aou_t1_env_cfg.fdi_chk_en` is off).
 
 The set is pairwise rather than a cross product (DECISIONS.md D9). Testlist
 scenarios without `target` run on every configuration; scenarios that need
@@ -215,12 +312,15 @@ write comes from the test itself, a random number of cycles after
 asynchronous (integration guide 8.5.3), so the testlists try slow (40000),
 fast (600) and near-equal (1013) PCLK:CLK ratios (plan 11.17).
 
-`+v0p8` holds the DUT to expectations that only AoU v0.8 adds; the DUT implements
-v0.7.1. Today that is the 4.4 Misc placement on the DUT's flits: AOU-R6 (an Activation
-message alone in its flit) and AOU-R7 (at most 2 other Misc per half-flit). Without it
-the DUT is held to v0.7.1's rule (at most one Activation message per flit, at G0). The
-remote die's own flits follow v0.8 either way. Further v0.8-only DUT checks belong
-behind the same switch.
+`+v0p9draft` holds the DUT to expectations that AoU adds after v0.7.1, as the v0.9
+draft words them (a placeholder until v0.9 is accepted); the DUT implements v0.7.1.
+Today that is the 4.4 Misc placement on the DUT's flits: AOU-R6 (an Activation message
+shares its flit only with one CrdtGrant after an ActivateReq/Ack or with responses after
+a DeactivateReq; nothing follows a DeactivateAck) and AOU-R7 (at most 2 other Misc per
+half-flit). Without it the DUT is held to v0.7.1's rule (at most one Activation message
+per flit, at G0). The remote die's own flits follow the draft either way; the share of
+its Activation flits that carry the permitted company is `act_share_pct` (default 50).
+Further post-v0.7.1 DUT checks belong behind the same switch.
 
 Traffic and remote-die knobs (run time, any T1 test):
 - `+small_size_pct=N`: N% of requests are small, register-like accesses
@@ -235,11 +335,20 @@ Traffic and remote-die knobs (run time, any T1 test):
   WriteReqs and WriteData; all three are legal.
 - `+remote_max_burst=2^n`: the remote splitter's longest burst (default 256).
   `+remote_max_burst_rand=1` re-picks it whenever the remote is idle.
+- `+wresp_batch=N` (16-48), `+wresp_batch_wait=C`: the remote die returns its
+  WriteResps in batches, holding them until N are queued or C cycles have passed,
+  so they leave up to 48 in one flit. An eighth of the seeds do this by default
+  (`aou_t1_env_cfg::randomize_knobs`); `+wresp_batch=0` turns it off. The
+  performance, watchdog and back-to-back packing tests keep it off.
 
-FDI corner knobs (run time, `testlists/fdi.toml`): `+fdi_trdy=always|random|holes|bursty`,
+FDI corner knobs (run time, `testlists/fdi.toml`; without them a seed takes HOLES
+mostly, sometimes RANDOM or BURSTY, and sometimes random stalls, see
+`aou_t1_env_cfg::fdi_knobs`): `+fdi_trdy=always|random|holes|bursty`,
 `+fdi_stall_pct=N` stand-alone stalls, `+fdi_stall_mid_pct=N` the share raised
 inside a DUT TX flit, `+fdi_stall_trdy_free=1` lets `pl_trdy` drop between
-`pl_stallreq` and `lp_stallack` (UCIe r1.1 8.3.2 rule 7), `+l1_cancel_pct=N` and
+`pl_stallreq` and `lp_stallack` (UCIe r1.1 8.3.2 rule 7), `+fdi_stall_hold_min=N` and
+`+fdi_stall_hold_max=N` the cycles `pl_stallreq` stays high after `lp_stallack` (default
+1..8; 0 drops it as soon as the ack is seen), `+l1_cancel_pct=N` and
 `+l1_cancel_mix=1` (second-half, both-halves and repeated flit cancels),
 `+le_mid_flit_pct=N` (Adapter LinkErrors entered mid-flit, 8.3.3.7),
 `+fdi_rx_early=N` (on every Active entry from Reset the Adapter forwards RX flits for N
@@ -309,7 +418,8 @@ are tuned from.
 
 ## Regressions
 
-`scripts/run_list.py` runs every scenario and seed of a testlist
+`make regress` ([Run everything](#run-everything)) builds and runs the whole
+regression through the script described here. `scripts/run_list.py` runs every scenario and seed of a testlist
 (`testlists/*.toml`; default: the bench's aggregate, `testlists/all.toml` for
 T1) through `make run`, at most `-j` at a time, and writes
 `out/<build>/results_rid.<rid>.csv` (one `results_<list>.rid.<rid>.csv` per
@@ -464,6 +574,9 @@ buffer; integration guide 8.7), listed with their reasons in `cov/config/vcs/cov
 and passed to `-cm_hier` with the bench's own scope file, so the exclusion takes
 effect on the next `COV=1` build. For databases built before an entry was added,
 `make cov_report COV_EXCLUDE_PREVIEW=1` applies the same list with `urg -hier`.
+Dead code (single lines and branches no stimulus can reach) is excluded at report
+time instead: `cov/config/vcs/cov_exclude.el`, each item with its reason, goes to
+`urg -elfile` (`COV_EL=` leaves it out; DECISIONS.md D10).
 
 | SIM | Metrics | Report |
 |---|---|---|
@@ -503,7 +616,8 @@ count is the number; the simulators' covergroup scores are not used.
 With `COV=1` each run writes `<run>/fc.json`: every group, coverpoint and
 cross, every declared bin with its hit count (zero-hit bins included, so holes
 show), the samples that fell outside every bin, and `spec` and `plan_ids`
-fields. A bin's `spec` names the AoU revision it needs (`v0.8`) and an illegal
+fields. A bin's `spec` is a tag: the spec revision it needs (`v0.8`, or
+`v0.9draft` for a draft rule) or a stimulus note (`rare`). An illegal
 bin carries `"illegal": true`; ignored bins are not written; `plan_ids` is
 empty for now. Without
 `COV=1` nothing is written: the AXI4 monitors exist only in COV builds, so a
@@ -516,13 +630,17 @@ groups `axi4.<interface>.<covergroup>`) into `out/<build>/merged/fc/`:
 bin no passing run hit), `index.html` (the same, self-contained) and
 `fc_merged.json`. It prints the merged/excluded run counts like `cov_report`.
 A group's percentage is its hit bins over all its bins, crosses included.
-Bins tagged `v0.8` stay in every count; the summary adds a column and a total
-for them, and `holes.txt` marks them `[v0.8]`. Illegal bins are not counted,
-and any that a passing run hit are listed.
-The closure target is 100% and there are no waivers: an unreachable bin stays
-a hole until the user agrees to waive it. Closure is measured on the union of
-every configuration; the plan, its status and the owner's decisions are in
-[docs/COVERAGE_CLOSURE.md](docs/COVERAGE_CLOSURE.md).
+Bins tagged with a spec revision (`v0.8`, `v0.9draft`) are left out of every
+total and percentage until the DUT targets that revision; the summary gives
+them their own column and total, and `holes.txt` marks them (`[v0.8]`).
+`rare` bins stay in the totals and get a column too. Illegal bins are not
+counted, and any that a passing run hit are listed.
+The closure target is 100% of the headline bins. A bin that turns out to be
+unreachable stays a hole until it is reviewed; it then becomes an ignored bin
+with its reason in the bins table, never a silent waiver. Closure is measured
+on the union of every configuration; the owner's decisions are in
+[docs/DECISIONS.md](docs/DECISIONS.md) D10, and the open coverage work in the
+verification plan's road-map.
 
 ### Reset transitions and X-propagation
 
@@ -596,9 +714,14 @@ a checkout. Simulations never need it; they read the committed table.
   the d2d-compare commit it came from. It also regenerates
   `uvm/env/perf/aou_perf_windows.svh`, the windows each CONFIG runs. Commit both
   with the change that caused them. The model is fed the traffic as it
-  crosses the link: whole bursts (the DUT's split is off at reset; a run with
-  it on echoes `split_en` and its own model splits), narrow AxSIZE where a
-  burst would exceed 4 KB (d2d-compare's `Txn.beat`).
+  crosses the link: whole bursts (the DUT's transaction splitter divides the
+  requests it receives, at its manager port, and never changes what crosses
+  the link), narrow AxSIZE where a burst would exceed 4 KB (d2d-compare's
+  `Txn.beat`). d2d_model packs the link as if the AXI ports could feed it
+  without limit; `perf_model.py` caps that at what the ports can move, one
+  data beat per cycle on each RP's write and read channels at both dies, so a
+  window that loads only narrow RPs (S5 `pl_w0` on 2xmix41-sp128, all on a
+  256-bit RP) expects the ports' rate, not the link's.
 - `uvm/env/perf/perf_overrides.yaml` widens the tolerance of single targets, each
   with a measured structural reason. It is empty by default.
 - `make perf_check` judges every `out/**/perf.json` (docs/PERF_JSON.md) against
@@ -609,6 +732,21 @@ a checkout. Simulations never need it; they read the committed table.
 
 `D2D_COMPARE=<checkout> python3 scripts/test_perf_model.py` tests the adapter,
 including the MAS Table 9 limits and the model's own AoU specification check.
+
+Latency is measured per message rather than per window by
+`aou_perf_test +perf_mode=rxlat` (`matrix.toml`: six configurations plus
+`perf_l3_one_msg-1` on `1x1024-sp128`): idle, streaming, loaded and mixed
+windows in each direction. `aou_rx_lat_mon` times every message the remote die
+sends from its FDI beat (first and last granule) to the DUT's AXI handshake and
+the credit return; `aou_tx_lat_mon` times every message the DUT sends from the
+AXI handshake to the FDI beat carrying its first granule. Both write
+`rxlat.<window>.<kind>.{n,min,avg,max}`, `rxlat_first`, `rxcrd`, `rxrate`,
+`txlat`, `txlat_flit`, `rxsg`/`txsg` (start granule) lines to `perf.txt`.
+`+perf_l3_one_msg=1` makes the remote die send one message per flit at G0
+(a WriteReq with its first WriteData in one flit) and `+perf_w_before_aw=1`
+drives AW and W in the same cycle: that run's idle windows are MAS 8.1
+Table 8. `scripts/rx_lat_compare.py --base <perf.txt|dir> --new <perf.txt|dir>`
+tabulates two runs side by side (`--markdown`, `--metric avg|min|max`).
 
 ## Checker inventory
 
@@ -642,8 +780,8 @@ directory, and `run_list.py --target <CONFIG>-assert` runs on it. A firing asser
 `$finish` before the UVM report, which `check_run.py` judges FAIL.
 `testlists/assertions.toml` is the representative regression (plan 11.18);
 its entries pass `+rtl_asserts=1`, which is fatal on a build without the
-assertions, so they cannot pass on an ordinary build. The assertions use SVA
-ranges (`##[0:500]`), so the build is VCS-only for now.
+assertions, so they cannot pass on an ordinary build. Both simulators build them
+(Verilator from 5.052, which handles their SVA ranges such as `##[0:500]`).
 
 ## Building against a candidate RTL fix
 

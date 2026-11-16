@@ -20,10 +20,17 @@ class aou_l3_cov extends uvm_object;
   localparam int EV_DUT_ZERO_STALL = 7;
   localparam int EV_DUT_SATURATE   = 8;
   localparam int EV_INJ_OVERFLOW   = 9;
+  // We advertised credit with both our DeactivateReq and DeactivateAck sent
+  // and the DUT's DeactivateAck not yet received: it may reach a DUT that is
+  // already DISABLED (late_adv).
+  localparam int EV_LATE_ADV       = 10;
 
   // Sampled values; each covergroup samples the members it names.
   int unsigned s_prev, s_cur, s_op, s_dir, s_kind, s_rp, s_start, s_size, s_nmsgs;
   int unsigned s_misc0, s_misc1, s_carry, s_ev, s_cls, s_nwresp, s_wf_ahead, s_wf_others;
+  int unsigned s_act_layout, s_flex;
+  int unsigned s_pid;
+  bit s_prev_nz, s_popt_nz, s_present;
   bit          s_legal, s_span, s_credit_only, s_wf_whole;
   // cg_wr_order, from the messages the model sends: per RP, the WriteData
   // messages sent and the ones the sent WriteReqs account for.
@@ -129,6 +136,22 @@ class aou_l3_cov extends uvm_object;
     x_nwresp_dir: cross cp_nwresp, cp_dir;
   endgroup
 
+  // A flit that starts an Activation message, by what shares it and by
+  // direction: which side packed the initial CrdtGrant beside its ActivateAck
+  // (or its ActivateReq, when that follows its Ack) or responses beside its
+  // DeactivateReq (4.4, v0.9 draft), and which sent the Activation alone.
+  // Stimulus quality (aou_packer_policy::act_share_pct) on our side; on the
+  // DUT's, which layouts its TX produces.
+  covergroup cg_act_flit;
+    cp_layout: coverpoint s_act_layout {
+      `AOU_L3_FC_ACT_FLIT(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    x_layout_dir: cross cp_layout, cp_dir;
+  endgroup
+
   covergroup cg_credit;
     cp_ev: coverpoint s_ev {
       `AOU_L3_FC_CREDIT_EV(AOU_FC_CG)
@@ -163,6 +186,50 @@ class aou_l3_cov extends uvm_object;
     x_ahead_rp: cross cp_ahead, cp_rp;
   endgroup
 
+  // FLEX of each AXI message, by message kind and direction: rx is the DUT
+  // forwarding the AXI USER its port got (aou_t1_attr_chk DP-R08 checks the
+  // value), tx the model's FLEX to the DUT: the remote AXI agents' USER
+  // (aou_t1_attr_chk DP-R12 checks the DUT presents it) or, on messages
+  // without one, the packer's random low 12 bits.
+  covergroup cg_flex;
+    cp_flex: coverpoint s_flex {
+      `AOU_L3_FC_FLEX(AOU_FC_CG)
+    }
+    cp_kind: coverpoint s_kind {
+      `AOU_L3_FC_FLEX_KIND(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    x_flex_kind_dir: cross cp_flex, cp_kind, cp_dir;
+  endgroup
+
+  // The profile each ActivateReq announces per RP (v0.8 Ch. 11): on rx the
+  // DUT's, always the Basic Profile (PROFILE_CFG_RPn read-only 0/0/0), on tx
+  // the model's configuration; an RP the sender does not have carries 0.
+  covergroup cg_act_profile;
+    cp_rp: coverpoint s_rp {
+      `AOU_L3_FC_RP(AOU_FC_CG)
+    }
+    cp_id: coverpoint s_pid {
+      `AOU_L3_FC_PROFILE_ID(AOU_FC_CG)
+    }
+    cp_rev: coverpoint s_prev_nz {
+      `AOU_L3_FC_PROFILE_NZ(AOU_FC_CG)
+    }
+    cp_opt: coverpoint s_popt_nz {
+      `AOU_L3_FC_PROFILE_NZ(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    cp_present: coverpoint s_present {
+      `AOU_L3_FC_PRESENT(AOU_FC_CG)
+    }
+    x_profile: cross cp_rp, cp_id, cp_rev, cp_opt, cp_present;
+    x_dir_present: cross cp_dir, cp_present;
+  endgroup
+
   // The service's copies of the covergroups above.
   aou_fc_group fc_act_fsm;
   aou_fc_group fc_act_op;
@@ -171,8 +238,11 @@ class aou_l3_cov extends uvm_object;
   aou_fc_group fc_span;
   aou_fc_group fc_flit_occ;
   aou_fc_group fc_wresp_flit;
+  aou_fc_group fc_act_flit;
   aou_fc_group fc_credit;
   aou_fc_group fc_wr_order;
+  aou_fc_group fc_flex;
+  aou_fc_group fc_act_profile;
 
   function new(string name = "aou_l3_cov");
     super.new(name);
@@ -183,8 +253,11 @@ class aou_l3_cov extends uvm_object;
     cg_span = new();
     cg_flit_occ = new();
     cg_wresp_flit = new();
+    cg_act_flit = new();
     cg_credit = new();
     cg_wr_order = new();
+    cg_flex = new();
+    cg_act_profile = new();
     fc_declare();
   endfunction
 
@@ -195,6 +268,8 @@ class aou_l3_cov extends uvm_object;
     fc_act_fsm = db.group("l3.cg_act_fsm", fresh);
     if (fresh) begin
       p = fc_act_fsm.cp("cp_trans"); `AOU_L3_FC_ACT_TRANS(AOU_FC_REG)
+      fc_act_fsm.plan("1.1", "cp_trans", "disabled_activate|activate_enabled");
+      fc_act_fsm.plan("2.1", "cp_trans", "enabled_deactivate|deactivate_disabled");
     end
     fc_act_op = db.group("l3.cg_act_op", fresh);
     if (fresh) begin
@@ -203,6 +278,12 @@ class aou_l3_cov extends uvm_object;
       p = fc_act_op.cp("cp_legal"); `AOU_L3_FC_LEGAL(AOU_FC_REG)
       p = fc_act_op.add_cross("x_op_dir_legal", "cp_op cp_dir cp_legal");
       `AOU_L3_FC_X_ACT_OP(AOU_FC_REG)
+      fc_act_op.plan("1.1", "cp_op", "op[0]|op[1]");
+      fc_act_op.plan("2.1", "cp_op", "op[2]|op[3]");
+      fc_act_op.plan("1.1", "x_op_dir_legal", "op[0]|op[1],*,legal");
+      fc_act_op.plan("2.1", "x_op_dir_legal", "op[2]|op[3],*,legal");
+      fc_act_op.plan("1.9", "x_op_dir_legal", "op[0],tx,illegal");
+      fc_act_op.plan("1.8", "x_op_dir_legal", "op[2],tx,illegal");
     end
     fc_msg = db.group("l3.cg_msg", fresh);
     if (fresh) begin
@@ -211,6 +292,26 @@ class aou_l3_cov extends uvm_object;
       p = fc_msg.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       p = fc_msg.add_cross("x_kind_rp_dir", "cp_kind cp_rp cp_dir");
       `AOU_L3_FC_X_KIND_RP(AOU_FC_REG)
+      fc_msg.plan("11.6", "cp_kind", "wreq|rreq");
+      fc_msg.plan("4.1", "cp_kind", "w256|w512|w1024|wf256|wf512|wf1024");
+      fc_msg.plan("4.29", "cp_kind", "wf256|wf512|wf1024");
+      fc_msg.plan("5.1", "cp_kind", "r256|r512|r1024");
+      fc_msg.plan("7.1", "cp_kind", "w256|wf256|r256");
+      fc_msg.plan("7.2", "cp_kind", "w512|wf512|r512");
+      fc_msg.plan("7.3", "cp_kind", "w1024|wf1024|r1024");
+      fc_msg.plan("6.20", "cp_kind", "act");
+      fc_msg.plan("11.5", "cp_kind", "crdt");
+      fc_msg.plan("12.1", "cp_rp", "rp[0]");
+      fc_msg.plan("12.2", "cp_rp", "rp[1]");
+      fc_msg.plan("12.3", "cp_rp", "rp[2]");
+      fc_msg.plan("12.4", "cp_rp", "rp[3]");
+      fc_msg.plan("4.1", "x_kind_rp_dir", "w256|w512|w1024|wf256|wf512|wf1024,*,*");
+      fc_msg.plan("4.29", "x_kind_rp_dir", "wf256|wf512|wf1024,*,*");
+      fc_msg.plan("5.1", "x_kind_rp_dir", "r256|r512|r1024,*,*");
+      fc_msg.plan("12.1", "x_kind_rp_dir", "*,rp[0],*");
+      fc_msg.plan("12.2", "x_kind_rp_dir", "*,rp[1],*");
+      fc_msg.plan("12.3", "x_kind_rp_dir", "*,rp[2],*");
+      fc_msg.plan("12.4", "x_kind_rp_dir", "*,rp[3],*");
     end
     fc_flit_layout = db.group("l3.cg_flit_layout", fresh);
     if (fresh) begin
@@ -222,12 +323,20 @@ class aou_l3_cov extends uvm_object;
       `AOU_L3_FC_X_START_SIZE(AOU_FC_REG)
       p = fc_flit_layout.add_cross("x_size_span", "cp_size cp_span");
       `AOU_L3_FC_X_SIZE_SPAN(AOU_FC_REG)
+      fc_flit_layout.plan("6.10", "cp_start");
+      fc_flit_layout.plan("6.10", "x_start_size");
+      fc_flit_layout.plan("11.5", "cp_size", "g2");
+      fc_flit_layout.plan("11.6", "cp_size", "g3");
+      fc_flit_layout.plan("6.4", "cp_span", "multi_flit");
+      fc_flit_layout.plan("6.4", "x_size_span", "*,multi_flit");
     end
     fc_span = db.group("l3.cg_span", fresh);
     if (fresh) begin
       p = fc_span.cp("cp_kind"); `AOU_L3_FC_SPAN_KIND(AOU_FC_REG)
       p = fc_span.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       void'(fc_span.add_cross("x_kind_dir", "cp_kind cp_dir"));
+      fc_span.plan("6.4", "cp_kind", "w256|w512|w1024|wf256|wf512|wf1024|r256|r512|r1024");
+      fc_span.plan("6.4", "x_kind_dir", "w256|w512|w1024|wf256|wf512|wf1024|r256|r512|r1024,*");
     end
     fc_flit_occ = db.group("l3.cg_flit_occ", fresh);
     if (fresh) begin
@@ -238,12 +347,34 @@ class aou_l3_cov extends uvm_object;
       p = fc_flit_occ.cp("cp_credit_only"); `AOU_L3_FC_CREDIT_ONLY(AOU_FC_REG)
       p = fc_flit_occ.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       void'(fc_flit_occ.add_cross("x_nmsgs_dir", "cp_nmsgs cp_dir"));
+      fc_flit_occ.plan("6.1 6.14", "cp_nmsgs", "one");
+      fc_flit_occ.plan("6.15", "cp_nmsgs", "few|many|dense");
+      fc_flit_occ.plan("6.1 6.14", "x_nmsgs_dir", "one,*");
+      fc_flit_occ.plan("6.15", "x_nmsgs_dir", "few|many|dense,*");
+      fc_flit_occ.plan("6.21", "cp_misc_half0", "n[1]|n[2]");
+      fc_flit_occ.plan("6.21", "cp_misc_half1", "n[1]|n[2]");
+      fc_flit_occ.plan("6.4", "cp_carry", "short_carry|long_carry");
     end
     fc_wresp_flit = db.group("l3.cg_wresp_flit", fresh);
     if (fresh) begin
       p = fc_wresp_flit.cp("cp_nwresp"); `AOU_L3_FC_NWRESP(AOU_FC_REG)
       p = fc_wresp_flit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
-      void'(fc_wresp_flit.add_cross("x_nwresp_dir", "cp_nwresp cp_dir"));
+      p = fc_wresp_flit.add_cross("x_nwresp_dir", "cp_nwresp cp_dir");
+      `AOU_L3_FC_X_NWRESP(AOU_FC_REG)
+      fc_wresp_flit.plan("6.2", "cp_nwresp", "two|few|many|dense|full");
+      fc_wresp_flit.plan("6.2", "x_nwresp_dir", "two|few|many|dense|full,*");
+      fc_wresp_flit.plan("6.18 11.9", "cp_nwresp", "full");
+      fc_wresp_flit.plan("6.18 11.9", "x_nwresp_dir", "full,*");
+    end
+    fc_act_flit = db.group("l3.cg_act_flit", fresh);
+    if (fresh) begin
+      p = fc_act_flit.cp("cp_layout"); `AOU_L3_FC_ACT_FLIT(AOU_FC_REG)
+      p = fc_act_flit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      p = fc_act_flit.add_cross("x_layout_dir", "cp_layout cp_dir");
+      `AOU_L3_FC_X_ACT_FLIT(AOU_FC_REG)
+      fc_act_flit.plan("6.20");
+      fc_act_flit.plan("2.9", "cp_layout", "dreq_rsp");
+      fc_act_flit.plan("2.9", "x_layout_dir", "dreq_rsp,*");
     end
     fc_credit = db.group("l3.cg_credit", fresh);
     if (fresh) begin
@@ -252,6 +383,18 @@ class aou_l3_cov extends uvm_object;
       p = fc_credit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       p = fc_credit.add_cross("x_ev_cls_dir", "cp_ev cp_cls cp_dir");
       `AOU_L3_FC_X_CREDIT(AOU_FC_REG)
+      fc_credit.plan("3.2", "cp_ev", "hdr_grant");
+      fc_credit.plan("3.1", "cp_ev", "crdt_grant");
+      fc_credit.plan("3.21", "cp_ev", "both");
+      fc_credit.plan("3.8", "cp_ev", "dut_zero_stall");
+      fc_credit.plan("3.22", "cp_ev", "dut_saturate");
+      fc_credit.plan("2.11", "cp_ev", "late_adv");
+      fc_credit.plan("3.2", "x_ev_cls_dir", "hdr_grant,*,*");
+      fc_credit.plan("3.1", "x_ev_cls_dir", "crdt_grant,*,*");
+      fc_credit.plan("3.21", "x_ev_cls_dir", "both,*,*");
+      fc_credit.plan("3.8", "x_ev_cls_dir", "dut_zero_stall,*,*");
+      fc_credit.plan("3.22", "x_ev_cls_dir", "dut_saturate,*,*");
+      fc_credit.plan("2.11", "x_ev_cls_dir", "late_adv,*,*");
     end
     fc_wr_order = db.group("l3.cg_wr_order", fresh);
     if (fresh) begin
@@ -262,6 +405,27 @@ class aou_l3_cov extends uvm_object;
       p = fc_wr_order.add_cross("x_ahead_whole_others", "cp_ahead cp_whole cp_others");
       `AOU_L3_FC_X_WF(AOU_FC_REG)
       void'(fc_wr_order.add_cross("x_ahead_rp", "cp_ahead cp_rp"));
+      fc_wr_order.plan("4.32");
+    end
+    fc_flex = db.group("l3.cg_flex", fresh);
+    if (fresh) begin
+      p = fc_flex.cp("cp_flex"); `AOU_L3_FC_FLEX(AOU_FC_REG)
+      p = fc_flex.cp("cp_kind"); `AOU_L3_FC_FLEX_KIND(AOU_FC_REG)
+      p = fc_flex.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      p = fc_flex.add_cross("x_flex_kind_dir", "cp_flex cp_kind cp_dir");
+      `AOU_L3_FC_X_FLEX(AOU_FC_REG)
+    end
+    fc_act_profile = db.group("l3.cg_act_profile", fresh);
+    if (fresh) begin
+      p = fc_act_profile.cp("cp_rp"); `AOU_L3_FC_RP(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_id"); `AOU_L3_FC_PROFILE_ID(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_rev"); `AOU_L3_FC_PROFILE_NZ(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_opt"); `AOU_L3_FC_PROFILE_NZ(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_present"); `AOU_L3_FC_PRESENT(AOU_FC_REG)
+      p = fc_act_profile.add_cross("x_profile", "cp_rp cp_id cp_rev cp_opt cp_present");
+      `AOU_L3_FC_X_PROFILE(AOU_FC_REG)
+      void'(fc_act_profile.add_cross("x_dir_present", "cp_dir cp_present"));
     end
   endfunction
 
@@ -285,6 +449,31 @@ class aou_l3_cov extends uvm_object;
     endcase
   endfunction
 
+  // Layout of a flit whose G0 starts an Activation message, from the
+  // granules (cg_act_flit): 0 ActivateReq alone, 1 ActivateReq with one
+  // CrdtGrant, 2 ActivateAck alone, 3 ActivateAck with one CrdtGrant,
+  // 4 DeactivateReq alone, 5 DeactivateReq with WriteResp/ReadData only,
+  // 6 DeactivateAck alone, 7 any other company (4.4 forbids it); -1 when no
+  // Activation message starts at G0.
+  static function int act_layout(aou_flit f);
+    int unsigned others = 0, grants = 0, rsps = 0;
+    if (!f.msg_start[0] || f.g[0][39:36] != AOU_MT_MISC || f.g[0][35:33] != AOU_MISCOP_ACT)
+      return -1;
+    for (int unsigned p = 1; p < AOU_GRANULES; p++) begin
+      if (!f.msg_start[p]) continue;
+      others++;
+      if (f.g[p][39:36] == AOU_MT_MISC && f.g[p][35:33] == AOU_MISCOP_CRDT) grants++;
+      else if (f.g[p][39:36] inside {AOU_MT_WRESP, AOU_MT_RDATA}) rsps++;
+    end
+    case (f.g[0][32:29])
+      AOU_ACT_REQ:   return (others == 0) ? 0 : ((others == 1 && grants == 1) ? 1 : 7);
+      AOU_ACT_ACK:   return (others == 0) ? 2 : ((others == 1 && grants == 1) ? 3 : 7);
+      AOU_DEACT_REQ: return (others == 0) ? 4 : ((rsps == others) ? 5 : 7);
+      AOU_DEACT_ACK: return (others == 0) ? 6 : 7;
+      default:       return 7;
+    endcase
+  endfunction
+
   // lost: the link was lost under the model (LinkReset, link down).
   function void sample_fsm(aou_link_state_e prev, aou_link_state_e cur, bit lost = 1'b0);
     s_prev = int'(prev) + (lost ? 8 : 0);
@@ -301,12 +490,34 @@ class aou_l3_cov extends uvm_object;
     fc_act_op.sample(int'(s_op), int'(s_dir), int'(s_legal));
   endfunction
 
+  // A v0.8 ActivateReq: its profile fields for each RP. rp_count: the RPs the
+  // sender has (the others' fields are reserved).
+  function void sample_act_profile(aou_msg_act a, int unsigned rp_count);
+    if (!a.v08_req()) return;
+    s_dir = int'(a.dir);
+    for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
+      s_rp = r;
+      s_pid = int'(a.profile_id[r]);
+      s_prev_nz = a.profile_rev[r] != 0;
+      s_popt_nz = a.profile_opt[r] != 0;
+      s_present = r < rp_count;
+      cg_act_profile.sample();
+      fc_act_profile.sample(int'(s_rp), int'(s_pid), int'(s_prev_nz), int'(s_popt_nz),
+                            int'(s_dir), int'(s_present));
+    end
+  endfunction
+
   function void sample_msg(aou_msg m);
     s_kind = msg_kind(m);
     s_rp = (s_kind >= 12) ? 0 : int'(m.rp);
     s_dir = int'(m.dir);
     cg_msg.sample();
     fc_msg.sample(int'(s_kind), int'(s_rp), int'(s_dir));
+    if (s_kind <= 11) begin
+      s_flex = (m.flex == 16'h0) ? 0 : ((m.flex == 16'hFFFF) ? 2 : 1);
+      cg_flex.sample();
+      fc_flex.sample(int'(s_flex), int'(s_kind), int'(s_dir));
+    end
     if (m.start_granule >= 0) begin
       s_start = m.start_granule;
       s_size = m.num_granules();
@@ -336,6 +547,11 @@ class aou_l3_cov extends uvm_object;
     if (s_nwresp != 0) begin
       cg_wresp_flit.sample();
       fc_wresp_flit.sample(int'(s_nwresp), int'(s_dir));
+    end
+    if (act_layout(f) >= 0) begin
+      s_act_layout = act_layout(f);
+      cg_act_flit.sample();
+      fc_act_flit.sample(int'(s_act_layout), int'(s_dir));
     end
   endfunction
 

@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // M-port outstanding limit, always on (MAS software-operation 7.2.2 and 3.6.2;
-// integration guide M_RD_MO_CNT/M_WR_MO_CNT, default 32 and not overridden by
-// the bench). The pending-ID tables hold one entry per remote request, from
+// integration guide M_RD_MO_CNT/M_WR_MO_CNT, which the top builds AOU_TOP with
+// from AOU_T1_M_MO_CNT, 32 by default). The pending-ID tables hold one entry per remote request, from
 // the first sub-burst's AR/AW handshake until the last sub-burst's RLAST or B,
 // so the limit is on requests in service, not on M-port bursts: a request the
 // splitter divides (MAX_AxBURSTLEN) puts up to ceil(beats / (MAX + 1)) bursts
@@ -41,8 +41,8 @@ class aou_t1_mo_chk extends uvm_component;
 
   aou_axi_vif_t vif[];
   aou_l3_cfg    l3_cfg;    // dest_rp: the remote die's plane -> the DUT's RP, for the responses
-  int unsigned  rd_mo = 32;
-  int unsigned  wr_mo = 32;
+  int unsigned  rd_mo = AOU_T1_M_MO_CNT;
+  int unsigned  wr_mo = AOU_T1_M_MO_CNT;
 
   typedef struct {
     int unsigned     seq;
@@ -95,11 +95,14 @@ class aou_t1_mo_chk extends uvm_component;
     aou_fc_db db = aou_fc_db::get();
     aou_fc_point p;
     bit fresh;
-    fc_mo = db.group("t1.mo_cg", fresh);
+    fc_mo = db.group("env.cg_mo", fresh);
     if (fresh) begin
       p = fc_mo.cp("cp_dir"); `AOU_T1_MO_FC_DIR(AOU_FC_REG)
       p = fc_mo.cp("cp_occ"); `AOU_T1_MO_FC_OCC(AOU_FC_REG)
       void'(fc_mo.add_cross("x_mo", "cp_dir cp_occ"));
+      fc_mo.plan("8.1");
+      fc_mo.plan("9.20", "cp_occ", "full");
+      fc_mo.plan("9.20", "x_mo", "*,full");
     end
   endfunction
 

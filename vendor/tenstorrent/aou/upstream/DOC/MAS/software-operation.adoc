@@ -33,7 +33,7 @@ The SFR block decodes [.monospaced]#++PADDR[15:0]++# only: the offsets in xref:t
 |`IP_VERSION` |0x0000 | | | |0x00010000
 | | |`MAJOR_VERSION` |[31:16] |RO |0x0001
 | | |`MINOR_VERSION` |[15:0] |RO |0x0000
-|`AOU_CON0` |0x0004 | | | |0x00004008
+|`AOU_CON0` |0x0004 | | | |0x00004000
 | | |Rsvd |[31:28] |RO |0x0
 | | |`RP3_ERROR_INFO_ACCESS_EN` |[27] |RW |0x0
 | | |`RP2_ERROR_INFO_ACCESS_EN` |[26] |RW |0x0
@@ -47,9 +47,7 @@ The SFR block decodes [.monospaced]#++PADDR[15:0]++# only: the offsets in xref:t
 | | |`TX_LP_MODE` |[11] |RW |0x0
 | | |Rsvd |[10:5] |RO |0x0
 | | |`AOU_SW_RESET` |[4] |WO |0x0
-| | |`CREDIT_MANAGE` |[3] |RW |0x1
-| | |`AXI_SPLIT_TR_EN` |[2] |RW |0x0
-| | |Rsvd |[1] |RO |0x0
+| | |Rsvd |[3:1] |RO |0x0
 | | |`DEACTIVATE_FORCE` |[0] |WO |0x0
 |`AOU_INIT` |0x0008 | | | |0x00000608
 | | |Rsvd |[31:13] |RO |0x0
@@ -242,6 +240,57 @@ The SFR block decodes [.monospaced]#++PADDR[15:0]++# only: the offsets in xref:t
 | | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
 |`WRITE_EARLY_RESPONSE_WDT_CTL` |0x0080 | | | |0x000C3500
 | | |`WDT_THRESHOLD` |[31:0] |RW |0x000C3500
+|`ASYMMETRIC_RP_PROC_CON` |0x0084 | | | |0x000001C8
+| | |Rsvd |[31:9] |RO |0x0
+| | |`RP3_TX_RP_SEL` |[8:7] |RW |0x3
+| | |`RP2_TX_RP_SEL` |[6:5] |RW |0x2
+| | |`RP1_TX_RP_SEL` |[4:3] |RW |0x1
+| | |`RP0_TX_RP_SEL` |[2:1] |RW |0x0
+| | |`ASYMMETRIC_RP_EN` |[0] |RW |0x0
+|`PROFILE_CFG_RP0` |0x0100 | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_CFG_RP1` |0x0104 | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_CFG_RP2` |0x0108 | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_CFG_RP3` |0x010C | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_RMT_RP0` |0x0110 | | | |0x00000000
+| | |`RCVD` |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_RMT_RP1` |0x0114 | | | |0x00000000
+| | |`RCVD` |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_RMT_RP2` |0x0118 | | | |0x00000000
+| | |`RCVD` |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
+|`PROFILE_RMT_RP3` |0x011C | | | |0x00000000
+| | |`RCVD` |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |`PROFILE_OPT` |[25:10] |RO |0x0000
+| | |`PROFILE_REV` |[9:5] |RO |0x00
+| | |`PROFILE_ID` |[4:0] |RO |0x00
 |==========================================================================
 
 _Table 7. Register Map_
@@ -262,7 +311,7 @@ For details on the ACTIVATE and DEACTIVATE SFRs, please refer to xref:aou-activa
 
 * AOU_CORE must exchange both DeactivateReq and DeactivateAck messages before the UCIe Core transitions to the Link Down state.
 * The DEACTIVATE_START field in AOU_INIT initiates deactivation. A DeactivateReq is issued only after both conditions below are satisfied:
-1.  All outstanding responses to remote die requests have been completed.
+1.  Every request the local die has sent to the remote die has received its response (SLV_TR_COMPLETE = 1). Responses the local die still owes the remote die do not hold the DeactivateReq back; they are sent after it (AoU v0.8 section 8.4, xref:aou-deactivation-credit-rules[Credits and credited messages during deactivation]).
 2.  The TX path has had nothing to transmit for a window of *2^(DEACTIVATE_TIME_OUT_VALUE + 3)* core clock cycles.
 * *AOU_INIT.DEACTIVATE_TIME_OUT_VALUE* [6:4] is the length of that window. The field is 3 bits wide. A value v encodes *2^(v + 3)* cycles: 8, 16, 32, 64, 128, 256, 512 or 1024. The reset value 0 selects 8 cycles.
 * The window runs while the activation FSM is ENABLED or DEACTIVATE, and it restarts from zero whenever the TX path has a message to send: a message waiting in a TX FIFO, a flit granule still being packed, or an AXI beat accepted into the TX path. The counter is held at zero while the FSM is DISABLED or ACTIVATE, so the window starts when the FSM enters ENABLED. The window is already running before software writes DEACTIVATE_START, and it may already have elapsed. When the TX path has been quiet for the whole window, this condition is already satisfied and the DeactivateReq follows the write at once, still subject to condition 1. A message still in the TX path, or one accepted after the write, holds the DeactivateReq until that traffic has been gone for the full window.
@@ -278,6 +327,7 @@ For details on the ACTIVATE and DEACTIVATE SFRs, please refer to xref:aou-activa
 * The *MAX_AWBURSTLEN* and *MAX_ARBURSTLEN* register fields define the maximum burst length that the splitter may issue to the local bus.
 * The splitter inside *AOU_CORE* issues AXI transfers with burst lengths less than or equal to the configured values (*MAX_AWBURSTLEN*, *MAX_ARBURSTLEN*).
 * If *AOU_CORE* receives a larger burst length from the remote die, the splitter divides it into smaller bursts based on MAX_AxBURSTLEN.
+* The splitter has no enable bit and is always active; MAX_AxBURSTLEN is its only control. A burst no longer than MAX_AxBURSTLEN + 1 beats passes through whole.
 * Since the splitter only supports maximum burst lengths of the form 2^n - 1, the field must be configured with one of the following: 0, 1, 3, 7, 15, 31, 63, 127 or 255. The SFR stores 15 if any other value is written; read the field back to confirm the accepted value.
 * A transaction addressed to the R/B response error debug address (xref:aou-rb-response-error-debug-fifo[R/B Response Error Debug FIFO]) is never split, whatever MAX_AxBURSTLEN holds: it reaches the debug FIFO whole.
 
@@ -308,6 +358,20 @@ The DISABLED signal is asserted to indicate that deactivation has been completed
 * WDT_TRANS_TIMEOUT_ERR: set when the watchdog of this RP expires; source of the INT_EARLY_WDT_ERR interrupt. Writing 1 clears it.
 * WRITE_RESP_DONE: It indicates that there are no pending write requests and all write responses have been received from the remote die.
 * WRITE_RESP_ERR: It indicated that although the early response feature was enabled and an early response has already been delivered to the local die, an error occurred later in the write response received from the remote die. The BRESP value of the error is stored in WRITE_RESP_ERR_TYPE_INFO, and the BID of the transaction that caused the error is stored in WRITE_RESP_ERR_ID_INFO SFR. When an error occurs, an interrupt is generated. Afterward, writing 1 to the WRITE_RESP_ERR SFR clears ERR_TYPE_INFO, ERR_ID_INFO, and RESP_ERR.
+
+*DEST_RP and ASYMMETRIC_RP_PROC_CON (RP mapping)*
+
+* The two registers together decide which remote RP each local subordinate port's requests go to (xref:{aou-architecture-xref}#aou-rp-remapping[RP Remapping]). ASYMMETRIC_RP_PROC_CON maps each port to a local TX lane; DEST_RP.RPn_DEST names the remote RP that lane n sends to. With ASYMMETRIC_RP_EN = 0 (reset) port n is lane n and the RPn_TX_RP_SEL fields are ignored. With ASYMMETRIC_RP_EN = 1 port n sends on lane RPn_TX_RP_SEL; ports that select the same lane are merged onto it and share that lane's remote RP, credits and arbitration slot, with their AXI IDs remapped so that each response returns to the port that issued the request. The remote die sees one RP per lane in use and needs no configuration for the merge. On an RP_COUNT = 1 build ASYMMETRIC_RP_PROC_CON has no effect.
+* Example: a local die with RP_COUNT = 2 and a remote die with one RP. ASYMMETRIC_RP_PROC_CON = 0x0000_0001 (ASYMMETRIC_RP_EN = 1, RP0_TX_RP_SEL = 0, RP1_TX_RP_SEL = 0) merges both local ports onto lane 0; DEST_RP.RP0_DEST = 0 sends lane 0 to the remote RP 0. The remote die's DEST_RP.RP0_DEST = 0 returns its own requests to local RP 0, the lane in use.
+* A RPn_TX_RP_SEL value of RP_COUNT or above with ASYMMETRIC_RP_EN = 1 (possible on RP_COUNT = 2 and 3 builds) is invalid: no request is accepted on any subordinate port until the register is corrected. No status bit reports it (xref:{aou-architecture-xref}#aou-misconfiguration-behavior[Misconfiguration Behavior]).
+* Both registers are static configuration. Program them while the activation FSM is DISABLED (ACTIVATE_STATE_DISABLED = 1) and no AXI transaction is outstanding on the subordinate ports: before AOU_INIT.ACTIVATE_START, or after a deactivation has completed. Do not change them while the link is activating, ENABLED or deactivating, or while a request or response is in flight: the remaining beats or the response of a transaction then take the wrong route. Program the matching PRIOR_RP_AXI and PRIOR_TIMER values in the same window; a merged lane arbitrates its ports with them (xref:{aou-architecture-xref}#aou-tx_core-qos-scheme[TX_CORE QoS Scheme]).
+* Reset behaviour: like every configuration register, ASYMMETRIC_RP_PROC_CON and DEST_RP return to their reset values (one-to-one, mapping disabled) on I_RESETN and on AOU_CON0.AOU_SW_RESET, so the LinkReset recovery of xref:aou-pm-entry--linkreset--linkdisabled-sequence[PM entry / LinkReset / LinkDisabled sequence] reprograms them before ACTIVATE_START. A deactivation, a LinkReset request or an FDI link down does not touch them: the mapping programmed before the first activation is still in effect at the next ACTIVATE_START, and software that wants a different mapping for the next activation rewrites the registers while DISABLED.
+* The write early response controller and the subordinate ID checker (AXI_SLV_ID_MISMATCH_ERR_RPn) of a port act on the port's own traffic and original IDs, in front of the mapping; their registers stay per port. ERROR_INFO_RPn and the debug FIFO are per manager port (RX side), which the mapping does not touch.
+*PROFILE_CFG_RPn / PROFILE_RMT_RPn (AoU v0.8 profile exchange)*
+
+* AoU v0.8 chapter 11 makes the ActivateReq four granules long: after ACTIVATIONOP it carries, for each of RP0 to RP3, a ProfileID (5 bits), ProfileRev (5 bits) and ProfileOpt (16 bits). The fields are informational. Hardware does not act on them and no negotiation takes place; firmware on each die reads what it configured and what it received and decides what to do (see xref:aou-activation-start[Activation start]). ProfileID 0 with ProfileRev 0 and ProfileOpt 0 is the Basic Profile, the only profile AOU_CORE implements.
+* PROFILE_CFG_RPn is what AOU_CORE announces for RPn in the ActivateReq it sends. Since AOU_CORE implements the Basic Profile only, the registers are read-only and read 0/0/0; a write is ignored. Every ActivateReq AOU_CORE sends therefore announces the Basic Profile for each RP the build has, and zeros for an RP it does not have (index RP_COUNT or above), as the specification reserves those fields. The registers exist so that firmware reads this die's profile the way the specification asks (chapter 11) and so that a profile-capable version of AOU_CORE can make them writable without a register-map change. The eight profile registers form a block at 0x0100 to 0x011C; offsets 0x0088 to 0x00FC are unmapped (they read 0 and ignore writes) and are left free for later control and status registers.
+* PROFILE_RMT_RPn holds the fields the remote die announced for its RPn in the last ActivateReq AOU_CORE accepted, i.e. one it answered with an ActivateAck. An ActivateReq rejected as an invalid activation message (received while ENABLED or during a deactivation, xref:aou-linkreset-error-reporting[LinkReset Error Reporting]) leaves the registers unchanged. RCVD, shared by the four registers, reads 1 once at least one ActivateReq has been accepted since reset; before that every field reads 0. The values are kept through a deactivation and a link down until the next accepted ActivateReq or a reset, including AOU_SW_RESET, which clears PROFILE_RMT_RPn. A remote die that sends zeros in the profile fields reads as the Basic Profile.
 
 *Low Power mode*
 
@@ -351,9 +415,9 @@ Setting a mask bit to 1 masks (disables) the corresponding interrupt.
 
 AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interfaces. A mismatch occurs when a B or R response arrives with an AXI ID that does not correspond to any outstanding request.
 
-*Manager side.* The split/aggregator path ([.monospaced]#++AOU_AXI_SPLIT_TR++# / [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#) maintains pending-ID tables for both read and write transactions ([.monospaced]#++AOU_SPLIT_RD_PENDING_INFO++# and [.monospaced]#++AOU_SPLIT_WR_PENDING_INFO++#). When a B response arrives with an ID that does not match any pending write entry, [.monospaced]#++SPLIT_BID_MISMATCH_ERR++# is asserted and the offending ID is captured in [.monospaced]#++SPLIT_BID_MISMATCH_INFO++#. The same logic applies to R responses via [.monospaced]#++SPLIT_RID_MISMATCH_ERR++# and [.monospaced]#++SPLIT_RID_MISMATCH_INFO++#. These fields are in the per-RP [.monospaced]#++ERROR_INFO_RPn++# register (RP0 at 0x0024, RP1 at 0x003C, RP2 at 0x0054, RP3 at 0x006C). SW clears each error by writing 1 to the corresponding W1C bit. The aggregate interrupt is [.monospaced]#++INT_MI0_ID_MISMATCH++#.
+*Manager side.* The split/aggregator path ([.monospaced]#++AOU_AXI_SPLIT_TR++# / [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#) maintains pending-ID tables for both read and write transactions ([.monospaced]#++AOU_SPLIT_RD_PENDING_INFO++# and [.monospaced]#++AOU_SPLIT_WR_PENDING_INFO++#). When a B response arrives with an ID that does not match any pending write entry, [.monospaced]#++SPLIT_BID_MISMATCH_ERR++# is asserted and the offending ID is captured in [.monospaced]#++SPLIT_BID_MISMATCH_INFO++#. The same logic applies to R responses via [.monospaced]#++SPLIT_RID_MISMATCH_ERR++# and [.monospaced]#++SPLIT_RID_MISMATCH_INFO++#. The INFO field holds the ID of the latest mismatch: a further mismatch while the error bit is still set overwrites it. The W1C of the error bit clears the INFO field with it. These fields are in the per-RP [.monospaced]#++ERROR_INFO_RPn++# register (RP0 at 0x0024, RP1 at 0x003C, RP2 at 0x0054, RP3 at 0x006C). SW clears each error by writing 1 to the corresponding W1C bit. The aggregate interrupt is [.monospaced]#++INT_MI0_ID_MISMATCH++#.
 
-*Table depth and backpressure.* Each pending-ID table is sized by [.monospaced]#++M_RD_MO_CNT++# / [.monospaced]#++M_WR_MO_CNT++# (default 32): the number of remote requests the RP keeps in service at its manager port. An entry is allocated on the handshake of the first split-AR or split-AW issued for a request and freed when the R (with RLAST) or B response of its last sub-burst completes; the entry counts the sub-bursts still to complete. A request the splitter divides therefore holds one entry for all of its sub-bursts, and the manager port may carry more AXI bursts than the table depth: up to [.monospaced]#++M_RD_MO_CNT++# (or [.monospaced]#++M_WR_MO_CNT++#) times the sub-bursts per request (xref:{aou-architecture-xref}#aou-burst-splitting[Burst Splitting]). When all entries are occupied, the [.monospaced]#++O_AR_Slot_Available_Flag++# / [.monospaced]#++O_AW_Slot_Available_Flag++# signal goes low, which suppresses the first sub-burst of any new request and effectively deasserts ARREADY / AWREADY toward the upstream path; the remaining sub-bursts of requests already in the table continue to issue. This is backpressure, not an error \-- no entries are overwritten or dropped, and the table cannot overflow during correct operation.
+*Table depth and backpressure.* Each pending-ID table is sized by the RP's [.monospaced]#++RPn_M_RD_MO_CNT++# / [.monospaced]#++RPn_M_WR_MO_CNT++# parameter (default 32): the number of remote requests the RP keeps in service at its manager port. An entry is allocated on the handshake of the first split-AR or split-AW issued for a request and freed when the R (with RLAST) or B response of its last sub-burst completes; the entry counts the sub-bursts still to complete. A request the splitter divides therefore holds one entry for all of its sub-bursts, and the manager port may carry more AXI bursts than the table depth: up to [.monospaced]#++RPn_M_RD_MO_CNT++# (or [.monospaced]#++RPn_M_WR_MO_CNT++#) times the sub-bursts per request (xref:{aou-architecture-xref}#aou-burst-splitting[Burst Splitting]). When all entries are occupied, the [.monospaced]#++O_AR_Slot_Available_Flag++# / [.monospaced]#++O_AW_Slot_Available_Flag++# signal goes low, which suppresses the first sub-burst of any new request and effectively deasserts ARREADY / AWREADY toward the upstream path; the remaining sub-bursts of requests already in the table continue to issue. This is backpressure, not an error \-- no entries are overwritten or dropped, and the table cannot overflow during correct operation.
 
 *No disable mechanism on the manager side.* There is no RTL parameter or SFR to disable the manager pending-ID tables or the mismatch check. The interrupt can be masked via [.monospaced]#++AOU_INTERRUPT_MASK.INT_MI0_ID_MISMATCH_MASK++# [3], but this only suppresses the interrupt signal. The tables continue to operate, backpressure still applies when full, and the sticky error bits in [.monospaced]#++ERROR_INFO_RPn++# are still set on a mismatch.
 
@@ -361,20 +425,20 @@ AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interf
 
 With the enable clear, the checker sees no AXI handshakes on that port. The error bits stay 0, and this RP does not contribute to [.monospaced]#++INT_SI0_ID_MISMATCH++#.
 
-With the enable set, a B or R whose ID matches no outstanding request on that subordinate port sets [.monospaced]#++AXI_SLV_BID_MISMATCH_ERR++# or [.monospaced]#++AXI_SLV_RID_MISMATCH_ERR++#, captures the ID, and raises [.monospaced]#++INT_SI0_ID_MISMATCH++# unless [.monospaced]#++AOU_INTERRUPT_MASK.INT_SI0_ID_MISMATCH_MASK++# is set. Software clears each error by writing 1 to the W1C bit. While the checker is enabled it holds a new AW, W or AR on that port once the outstanding requests on that channel reach [.monospaced]#++S_WR_MO_CNT++# or [.monospaced]#++S_RD_MO_CNT++# (default 32).
+With the enable set, a B or R whose ID matches no outstanding request on that subordinate port sets [.monospaced]#++AXI_SLV_BID_MISMATCH_ERR++# or [.monospaced]#++AXI_SLV_RID_MISMATCH_ERR++#, captures the ID (the latest mismatch; a further one overwrites it), and raises [.monospaced]#++INT_SI0_ID_MISMATCH++# unless [.monospaced]#++AOU_INTERRUPT_MASK.INT_SI0_ID_MISMATCH_MASK++# is set. Software clears each error by writing 1 to the W1C bit, which clears the captured ID too. While the checker is enabled it holds a new AW, W or AR on that port once the outstanding requests on that channel reach the RP's [.monospaced]#++RPn_S_WR_MO_CNT++# or [.monospaced]#++RPn_S_RD_MO_CNT++# (default 32 on AOU_TOP, 64 on AOU_CORE_TOP). The checker sits in front of the asymmetric RP mapping and sees the port's original IDs; the same [.monospaced]#++RPn_S_*_MO_CNT++# values size the ID remap tables of a port on a merged route (xref:{aou-architecture-xref}#aou-axi-id-handling-on-merged-routes[AXI ID Handling on Merged Routes]).
 
 [.monospaced]#++AXI_SLV_ID_MISMATCH_EN++# is static configuration. Program it only while the activation FSM is DISABLED ([.monospaced]#++ACTIVATE_STATE_DISABLED++# = 1) and no AXI traffic is outstanding on that RP: before [.monospaced]#++AOU_INIT.ACTIVATE_START++#, or after a deactivation has completed. Do not change it while AXI transactions are in flight. The checker records handshakes only while the enable is set, so a change during traffic leaves its pending-ID tables inconsistent with the transactions still on the bus.
 
 [[aou-linkreset-error-reporting]]
 ==== LinkReset Error Reporting
 
-When AOU_CORE detects a protocol-level error during activation or deactivation, it asserts [.monospaced]#++O_AOU_REQ_LINKRESET++# (to FDI) and [.monospaced]#++INT_REQ_LINKRESET++# (to SW). Both signals share the same net and are the logical OR of the four sub-conditions below, each gated by its mask bit in [.monospaced]#++AOU_INTERRUPT_MASK++#: a masked cause raises neither the interrupt nor the request to the D2D adapter. The request is a level, held while the sticky status bit is set. The bringup controller acts on it while the link is Active or in Retrain; a request raised while the link is in L1, or exiting it, is deferred until the link is next Active, so SW that meets [.monospaced]#++ACT_ACK_ERR++# after an [.monospaced]#++ACTIVATE_START++# written in L1 (xref:aou-activation-start[Activation start]) exits L1 on the UCIe controller first and clears the status only after the D2D adapter has reported LinkError; clearing it earlier (W1C or [.monospaced]#++AOU_SW_RESET++#) withdraws the request and leaves the link in L1 with AOU_CORE [.monospaced]#++DISABLED++#, which SW then recovers by re-activating. After handling the interrupt, SW must perform a LinkReset sequence.
+When AOU_CORE detects a protocol-level error during activation or deactivation, it asserts [.monospaced]#++O_AOU_REQ_LINKRESET++# (to FDI) and [.monospaced]#++INT_REQ_LINKRESET++# (to SW). Both signals share the same net and are the logical OR of the four sub-conditions below, each gated by its mask bit in [.monospaced]#++AOU_INTERRUPT_MASK++#: a masked cause raises neither the interrupt nor the request to the D2D adapter. The request is a level, held while the sticky status bit is set. The bringup controller acts on it while the link is Active or in Retrain; a request raised while the link is in L1, or exiting it, is deferred until the link is next Active, so SW that meets [.monospaced]#++ACT_ACK_ERR++# after an [.monospaced]#++ACTIVATE_START++# written in L1 (xref:aou-activation-start[Activation start]) exits L1 on the UCIe controller first and clears the status only after the D2D adapter has reported LinkError; clearing it earlier (W1C or [.monospaced]#++AOU_SW_RESET++#) withdraws the request and leaves the link in L1 with AOU_CORE [.monospaced]#++DISABLED++#, which SW then recovers with [.monospaced]#++AOU_SW_RESET++# followed by a new activation (a W1C alone does not release the activation hold described in xref:aou-activation-start[Activation start]). After handling the interrupt, SW must perform a LinkReset sequence.
 
 All LinkReset-related SFR fields reside in [.monospaced]#++LP_LINKRESET++# (0x0010).
 
 *Activate/Deactivate Ack Timeout.* After sending an ActivateReq or DeactivateReq message, a counter begins. If the remote die does not return an Acknowledge within 2^([.monospaced]#++ACK_TIME_OUT_VALUE++# + 18) core clock cycles, the timeout fires. [.monospaced]#++ACK_TIME_OUT_VALUE++# [13:11] is 3 bits wide with a default of 4, giving a default timeout of 2^22 = ~4M cycles. The sticky error bits are [.monospaced]#++ACT_ACK_ERR++# [7] and [.monospaced]#++DEACT_ACK_ERR++# [6], both W1C.
 
-*Invalid ACTMSG.* The activation FSM ([.monospaced]#++AOU_ACTIVATION_CTRL++#) checks each received activation opcode against the current state. An opcode that is not permitted sets [.monospaced]#++INVALID_ACTMSG_ERR++# [1] and captures the offending 4-bit opcode in [.monospaced]#++INVALID_ACTMSG_INFO++# [5:2]. Clear via W1C.
+*Invalid ACTMSG.* The activation FSM ([.monospaced]#++AOU_ACTIVATION_CTRL++#) checks each received activation opcode against the current state. An opcode that is not permitted sets [.monospaced]#++INVALID_ACTMSG_ERR++# [1] and captures the offending 4-bit opcode in [.monospaced]#++INVALID_ACTMSG_INFO++# [5:2]; a further invalid opcode while the error bit is set overwrites the INFO field, which therefore reports the latest one. Clear via W1C, which clears the INFO field too.
 
 [cols="1,2",options="header"]
 |===
@@ -382,6 +446,8 @@ All LinkReset-related SFR fields reside in [.monospaced]#++LP_LINKRESET++# (0x00
 |DISABLED, ACTIVATE |ActivateReq and ActivateAck. DeactivateReq and DeactivateAck are invalid.
 |ENABLED, DEACTIVATE |DeactivateReq and DeactivateAck. ActivateReq and ActivateAck are invalid.
 |===
+
+The check uses the state the handshake has reached, not only the state register: once both DeactivateReq and both DeactivateAck have been exchanged, the FSM is DISABLED for the purpose of this check even in the cycles before the register moves. The peer is DISABLED as soon as it has sent its DeactivateAck and may place an ActivateReq in the very next flit (AoU v0.8 section 8.4); at the 256 B FDI width that flit arrives one cycle after the Ack, and the ActivateReq is accepted rather than reported as invalid.
 
 An ActivateReq or ActivateAck received after the activate handshake has completed ([.monospaced]#++ENABLED++#), or while deactivation is in progress ([.monospaced]#++DEACTIVATE++#), means the remote die no longer agrees on link state: a bug, a local reset, or a similar loss of state. A late ActivateReq is not a new activation. Neither message is answered: the out-of-step Req/Ack is an error (AoU specification v0.8 section 8.3.3), and an interface in error transmits nothing (section 8.4), so the local die sends no ActivateAck. In either case, the local die requests LinkReset. Software resets AOU_CORE ([.monospaced]#++AOU_CON0.AOU_SW_RESET++#) and both dies run activation again, as described in xref:aou-pm-entry--linkreset--linkdisabled-sequence[PM entry / LinkReset / LinkDisabled sequence].
 
@@ -434,19 +500,9 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
 [[aou-write-early-response-error]]
 ==== Write Early Response Error
 
-When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
+When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# ([.monospaced]#++WRITE_RESP_ERR_ID_INFO++#, [.monospaced]#++WRITE_RESP_ERR_TYPE_INFO++#); a further error while [.monospaced]#++WRITE_RESP_ERR++# is still set overwrites them, so they report the latest error. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C), which clears both INFO fields.
 
-+For a detailed description of the early response error flow, see
-+ifdef::backend-pdf[]
-+xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
-+and
-+xref:{aou-architecture-xref}#aou-write-early-response-controller-sfr-fields[SFR Fields].
-+endif::backend-pdf[]
-+ifdef::backend-html5[]
-+xref:ocah-docs:ROOT:aou-architecture.adoc#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
-+and
-+xref:ocah-docs:ROOT:aou-architecture.adoc#aou-write-early-response-controller-sfr-fields[SFR Fields].
-+endif::backend-html5[]
+For a detailed description of the early response error flow, see xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case] and xref:{aou-architecture-xref}#aou-write-early-response-controller-sfr-fields[SFR Fields].
 
 [[aou-write-transaction-watchdog]]
 ==== Write Transaction Watchdog
@@ -480,23 +536,18 @@ image::image23.png[Figure 24. Independent Activation Flow]
 
 A die sends an ActivateAck in response to an ActivateReq from the other die while its own activation FSM is [.monospaced]#++DISABLED++# or [.monospaced]#++ACTIVATE++#. If the local activation FSM is [.monospaced]#++ENABLED++#, or is in [.monospaced]#++DEACTIVATE++#, that ActivateReq is [.monospaced]#++INVALID_ACTMSG++# (see xref:aou-linkreset-error-reporting[LinkReset Error Reporting]) and is not answered: AoU specification v0.8 treats it as an inconsistent Req/Ack that moves the interface to its error state, in which nothing is transmitted (sections 8.3.3 and 8.4). It means the remote die has lost the activation state, for example because of a bug or a local reset. The local die requests LinkReset. Software resets AOU_CORE and both dies run activation again so they share one state.
 
-[[aou-credit-management-type]]
-==== Credit Management Type
+[[aou-deactivation-credit-rules]]
+==== Credits and credited messages during deactivation
 
-There are two types of Credit Management Type. Since current AOU_SPEC cannot resolve pending AXI response without Activate again. When Credit Management type is set to 1, During Deactivate state, AOU_CORE can resolve pending AXI response itself. It can be configured through AOU_CON0.CREDIT_MANAGE, and the default value is 1.
+AOU_CORE follows the DEACTIVATE rules of AoU specification v0.8 section 8.4. It manages request-related messages (WriteReq, ReadReq, WriteData) and response-related messages (ReadData, WriteResp) separately, so a deactivating link still drains the responses it owes and no re-activation is needed to complete them:
 
-* 0 Based on AoU v0.5
-** After deactivation, if a new request is received from the remote die, no response message can be sent.
-** To deliver the corresponding response, the system must go through activation again after deactivation.
-** Credit management and transmission availability for both Request-related messages and Response-related message are controlled together.
-** Credited messages must not be sent, after the DeactivateReq message is sent.
-** Credits must not be sent after the DeactivateAck message is sent.
-** The Activate Interrupt and Deactivate Interrupt that occur in the process of resuming the exchange of response messages impose mandatory requirement to set Activate and Deactivate SFR.
-* 1 (default) Proposal by BOS.
-** When the AoU Activity state is DEACTIVATE, manage Request-related messages(WERQ, RREQ, WDATA) and Response-related messages(RDATA, WRESP) separately.
-** RDATA, WRESP Credited messages can be sent, after the DeactivateReq message is sent.
-** Credits for RDATA, WRESP messages must be sent after the DeactivateAck message is sent.
-** The Deactivate interrupt only provides a hint indicating that the remote die has started activate/deactivate.
+* Request messages are not sent after the local DeactivateReq. A request a local manager issues after it stays in AOU_CORE; once the FSM is DISABLED it raises INT_ACTIVATE_START (xref:aou-activationdeactivation-interrupt[Activation/Deactivation Interrupt]) and is sent after the next activation.
+* ReadData and WriteResp are still sent after the local DeactivateReq, including the responses to requests the remote die sends after it, until the remote die's DeactivateReq arrives. The remote die sends its DeactivateReq only once every request it issued has been answered.
+* Request credits (WriteReq, ReadReq, WriteData) are advertised until the remote die's DeactivateReq arrives, so the remote die can keep issuing requests after the local DeactivateReq. A request credit already committed to the TX path when that DeactivateReq arrives may still be sent with the DeactivateAck; AoU v0.8 permits request credits after DeactivateAck.
+* ReadData and WriteResp credits are advertised until the local DeactivateReq is sent, also after the local DeactivateAck: the local die's own requests may still be open then, and their responses need credit. After the local DeactivateReq no local request is open, so none are needed.
+* In DISABLED both dies discard the credits they hold; the next activation advertises the full RX FIFO depth again (xref:aou-deactivation-sequence-flow[Deactivation Sequence Flow]).
+
+*Header credits.* The MsgCredit field of a flit header is not a message, and its byte position does not order it among the flit's messages. Its credits are consumed when the flit, or the half flit that carries the header, is consumed: once it has passed the D2D adapter's flit-cancel window ([.monospaced]#++pl_flit_cancel++#) without being cancelled. A cancelled flit carries no credit. Header credits in the flit that carries a DeactivateAck are permitted by the rules above. When that DeactivateAck completes the deactivation, its flit's header credits are consumed as the interface reaches DISABLED and are discarded with the other credits; they are not an error.
 
 [[aou-activation-start]]
 ==== Activation start
@@ -506,8 +557,11 @@ Activation can be initiated by setting ACTIVATE_START SFR: In the current implem
 Activation START(via SFR AOU_INIT.ACTIVATE_START SFR)
 
 * Activation can be triggered by setting ACTIVATE_START.
+* The RP mapping (DEST_RP and ASYMMETRIC_RP_PROC_CON, xref:aou-sfr-setting[SFR setting]) and the arbitration registers must be programmed before ACTIVATE_START is set, and the two dies' mappings must agree on the remote RPs in use. The mapping is not renegotiated by the activation handshake and is not changed by a deactivation; it is cleared, with the other configuration registers, by AOU_CON0.AOU_SW_RESET only.
 * Activation does not proceed until I_INT_FSM_IN_ACTIVE is asserted (link established), since no flits can be transmitted beforehand. Therefore, it is allowed to set the ACTIVATE_START SFR before I_INT_FSM_IN_ACTIVE is asserted. If it is set before the assertion, the activation process will automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted. I_INT_FSM_IN_ACTIVE stays asserted through Retrain and L1, so an ACTIVATE_START written then starts the handshake at once; the ActivateReq waits in the TX path until the D2D adapter accepts flits again, and the Ack timer (2^(18 + ACK_TIME_OUT_VALUE) cycles, xref:aou-linkreset-error-reporting[LinkReset Error Reporting]) runs from the write, not from the adapter's acceptance, so an L1 that outlasts it ends in ACT_ACK_ERR. That is intended: the time-out is an error host SW understands and handles like any other ACT_ACK_ERR (xref:aou-linkreset-error-reporting[LinkReset Error Reporting]); no link-state qualifier delays the timer. The write does not wake a link in L1: the bringup controller wakes it on the D2D adapter's pl_clk_req, on I_SW_ACTIVATE_START, or on INT_ACTIVATE_START (a pending local AXI transaction or a received ActivateReq while ACTIVATE_START is 0), so SW that activates from L1 exits L1 on the UCIe controller as in xref:aou-pm-entry--linkreset--linkdisabled-sequence[PM entry / LinkReset / LinkDisabled sequence].
 * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
+* Profile exchange (AoU v0.8 chapter 11). The ActivateReq AOU_CORE sends announces the Basic Profile (ProfileID, ProfileRev and ProfileOpt 0/0/0) for each RP, the only profile it implements; PROFILE_CFG_RP0 to RP3 read those values and are read-only, so there is nothing to program before ACTIVATE_START. The ActivateReq AOU_CORE accepts from the remote die leaves the remote die's values in PROFILE_RMT_RP0 to RP3 with RCVD set. Once ENABLED (or when an activation fails), SW reads PROFILE_RMT_RPn and checks that the remote die announced the Basic Profile too; the hardware neither compares nor negotiates, so a mismatch is for SW to handle (for example by deactivating). See xref:aou-sfr-setting[SFR setting].
+* After the local die requests LinkReset (xref:aou-linkreset-error-reporting[LinkReset Error Reporting]), activation does not start again, and INT_ACTIVATE_START is not raised, until software resets AOU_CORE with AOU_CON0.AOU_SW_RESET: an ACTIVATE_START that is still set, or is written again, sends no ActivateReq, and a received ActivateReq does not move the FSM out of DISABLED. The reset is part of the recovery in xref:aou-pm-entry--linkreset--linkdisabled-sequence[PM entry / LinkReset / LinkDisabled sequence].
 
 [[aou-deactivation-start]]
 ==== Deactivation start
@@ -531,34 +585,28 @@ image::image24.png[Figure 25. Deactivation sequence with DEACTIVATE_START]
 [[aou-deactivation-sequence-flow]]
 ==== Deactivation Sequence Flow
 
-Once the local die issues a DeactivateReq, it can no longer provide responses to transactions initiated by the remote die. If the remote die continues to send requests or waits for responses without being notified, it may enter a hang state. To manage this safely, the remote die must take explicit action upon receiving a DeactivateReq: 1. Immediately generate an interrupt to the CPU to inform the system software that a DeactivateReq has been received and that it must set the DEACTIVATE_START SFR.
+Each die deactivates on its own: it sends its DeactivateReq once its own requests have completed, and it answers the other die's DeactivateReq with a DeactivateAck. The interface reaches DISABLED when both DeactivateAcks have been exchanged (AoU specification v0.8 section 8.4). Between the two DeactivateReqs the die that deactivated first still answers the other die's requests, and the other die keeps granting the response credits those answers need (xref:aou-deactivation-credit-rules[Credits and credited messages during deactivation]). Nothing has to be re-activated to complete them.
 
-Although deactivation of the local die and the remote die operate independently, it is essential at the system level to communicate the deactivation & activation state through interrupts. This ensures that system software is explicitly informed of deactivation events and prevents the remote die from continuing to expect response that will never arrive, thereby avoiding hang conditions. This approach guarantees that once deactivation is initiated, both dies can coordinate the transition into safe and consistent DISABLED state.
+A DeactivateReq received from the remote die raises INT_DEACTIVATE_START. It is a hint: local managers may keep issuing requests. Software sets DEACTIVATE_START once the local managers have stopped, and the DeactivateReq follows when the requests already issued have completed (xref:aou-sfr-setting[SFR setting]). Software that never sets DEACTIVATE_START leaves the remote die in DEACTIVATE, unable to issue requests again.
 
-If the software on both dies can explicitly coordinate to guarantee that all outstanding transactions have been completed and that no new transactions will be issued, then such an complicated implementation would not be necessary.
-
-xref:figure-25[Figure 25] illustrates the current activate/deactivate implementation of AOU_CORE.
+xref:figure-25[] shows the activation controller's signals during a deactivation. xref:figure-26[] and xref:figure-27[] show the message exchange when the local die deactivates first and when the remote die does.
 
 [caption=""]
-.Figure 26. CREDIT_MANAGE 1 Deactivate sequence flow
+.Figure 26. Deactivation started by the local die
 [[figure-26]]
-image::image25.png[Figure 26. CREDIT_MANAGE 1 Deactivate sequence flow]
+image::deactivate-local-first.svg[Figure 26. Deactivation started by the local die]
 
 [caption=""]
-.Figure 27. CREDIT_MANAGE 0 Deactivate sequence flow
+.Figure 27. Deactivation started by the remote die
 [[figure-27]]
-image::image26.png[Figure 27. CREDIT_MANAGE 0 Deactivate sequence flow]
+image::deactivate-remote-first.svg[Figure 27. Deactivation started by the remote die]
 
 This system provides a bus cleany mechanism, tracked inside AOU_CORE and reported in AOU_INIT:
 
 * SLV_TR_COMPLETE (subordinate bus cleanly) indicates whether the local die has received all responses to the requests it sent to the remote die. Writes that received an early B response count until their actual B response arrives (WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_DONE = 1 on every RP), so deactivation waits for them.
 * MST_TR_COMPLETE (manager bus cleanly) indicates whether the remote die has received all responses to the requests it sent to the local die.
 
-After the local die sends a DeactivateReq, if the remote die issues a new request and expects a response, the system must re-enter the activation sequence before any response can be provided.
-
-Before sending a new ActivateReq, the Rx FIFO must be completely emptied - that is, all messages must be popped. After deactivation, the credit count is reset, and during the subsequent activation process, credits are advertised based on the RX FIFO depth. Therefore, before sending an ActivateReq, the local die must confirm, as described in the local diepass:[']s sequence 10.1, that all messages in the RX FIFO have been popped.
-
-To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpressure must occur on the local diepass:[']s MI AW/AR/W channels.
+Before sending a new ActivateReq, the Rx FIFO must be completely emptied - that is, all messages must be popped. After deactivation, the credit count is reset, and during the subsequent activation process, credits are advertised based on the RX FIFO depth. Therefore, before sending an ActivateReq, the local die must confirm that all messages in the RX FIFO have been popped. To satisfy that condition, no backpressure must occur on the local diepass:[']s MI AW/AR/W channels.
 
 [[aou-activationdeactivation-interrupt]]
 ==== Activation/Deactivation Interrupt
@@ -568,17 +616,13 @@ To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpr
 * When this interrupt is detected, AOU_INIT.ACTIVATE_START SFR must be set to 1.
 * When AOU_INIT.ACTIVATE_STATE_ENABLED becomes 1, write 1 to clear the AOU_INIT.INT_ACTIVATE_START W1C SFR.
 * An interrupt occurs when AOU_INIT.ACTIVATE_START SFR is not set and any of the following conditions are met:
-1.  There is a message to send
-** When AOU_CON0.CREDIT_MANAGE = 0, if a new request arrives from the remote die after the local die has sent a DeactivateReq, this interrupt is asserted because the local die must return a response.
-** When AOU_CON0.CREDIT_MANAGE = 1, this interrupt can also be asserted if a new request arrives after the remote die has sent a DeactivateReq.
+1.  There is a message to send: a local manager issued a request after the local DeactivateReq (xref:aou-deactivation-credit-rules[Credits and credited messages during deactivation]).
 2.  There is a response to be received: the local die has sent requests to the remote die whose responses have not yet arrived (AOU_INIT.SLV_TR_COMPLETE == 0)
-** When AOU_CON0.CREDIT_MANAGE = 0, this interrupt can be asserted if the local die issues new AXI requests after the remote die has sent a DeactivateReq.
 3.  An ActivateReq message is received from the remote die, and the activation handshake has not yet completed (the FSM is DISABLED or ACTIVATE). An ActivateReq received while ENABLED is [.monospaced]#++INVALID_ACTMSG++# and requests LinkReset (xref:aou-linkreset-error-reporting[LinkReset Error Reporting]), not this interrupt.
 
 *INT_DEACTIVATE_START*
 
-* When AOU_CON0.CREDIT_MANAGE = 0: if the interrupt is detected, the manager IP must stop sending new request messages and AOU_INIT.DEACTIVATE_START SFR must be set to 1.
-* When AOU_CON0.CREDIT_MANAGE = 1: if the interrupt is detected, this serves only as a hint that the remote die intends to deactivate. The local die can continue sending request messages. Once all messages have been sent, AOU_INIT.DEACTIVATE_START SFR must be set. Otherwise, the remote die may end up in a state where it can never send requests again.
+* The interrupt is a hint that the remote die intends to deactivate. The local die can continue sending request messages. Once all messages have been sent, AOU_INIT.DEACTIVATE_START SFR must be set. Otherwise, the remote die may end up in a state where it can never send requests again.
 * When AOU_INIT.ACTIVATE_STATE_DISABLED becomes 1, write 1 to clear the AOU_INIT.INT_DEACTIVATE_START W1C SFR.
 * An interrupt is asserted when AOU_INIT.DEACTIVATE_START SFR is not set and the local die receives a DeactivateReq message from the remote die.
 
@@ -587,34 +631,28 @@ To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpr
 
 For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE check AOU_CORE state and try to change state. For this sequence, resolving pending AXI transactions is necessary.
 
-Since current AOU SPEC has no way to send AXI response after sending DeactiveReq. CREDIT_MANAGE = 0 (Type 0) is matched with current AOU_SPEC. For this case, SW need to check whether there is pending AXI transaction.
+Responses owed in either direction are delivered during the deactivation itself (xref:aou-deactivation-credit-rules[Credits and credited messages during deactivation]). An AXI transaction can still be pending once AOU_CORE is DISABLED only when a local manager issued a request after the local DeactivateReq; AOU_CORE then raises INT_ACTIVATE_START, and SW activates again to complete it.
 
 * *PM entry SW sequence*
 
-. Write AOU_INIT.DEACTIVATE_START to 1.
+. Stop the local managers from issuing requests, then write AOU_INIT.DEACTIVATE_START to 1.
 . Polling AOU_INIT.ACTIVATE_STATE_DISABLED and AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
-.. Although AOU_CORE state becomes DISABLED, there may have pending AXI transaction.
-.. AOU_CORE issue Interrupt for resolving pending AXI transactions.
-.. Activate AOU_CORE and resolve pending AXI transactions.
-.. Deactivate AOU_CORE
+.. If INT_ACTIVATE_START is raised, an AXI transaction is still pending: activate AOU_CORE, let it complete, and deactivate AOU_CORE again.
 . Polling AOU_INIT.ACTIVATE_STATE_DISABLED and AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
 . Do PM Entry Sequence on UCIE_CORE.
 
 [caption=""]
 .Figure 28. PM Entry Sequence
 [[figure-28]]
-image::image27.png[Figure 28. PM Entry Sequence]
+image::pm-entry-sequence.svg[Figure 28. PM Entry Sequence]
 
 * *LinkDisable SW sequence*
 
 Same as PM entry, before doing UCIE state transition, AOU_CORE need to Disabled properly.
 
-. Write AOU_INIT.DEACTIVATE_START to 1.
+. Stop the local managers from issuing requests, then write AOU_INIT.DEACTIVATE_START to 1.
 . Polling AOU_INIT.ACTIVATE_STATE_DISABLED and AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
-.. Although AOU_CORE state becomes DISABLED, there may have pending AXI transaction.
-.. AOU_CORE issue Interrupt for resolving pending AXI transactions.
-.. Activate AOU_CORE and resolve pending AXI transactions.
-.. Deactivate AOU_CORE
+.. If INT_ACTIVATE_START is raised, an AXI transaction is still pending: activate AOU_CORE, let it complete, and deactivate AOU_CORE again.
 . Polling AOU_INIT.ACTIVATE_STATE_DISABLED and AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
 . Do LinkReset/LinkDisabled Sequence on UCIE_CORE.
 
@@ -623,7 +661,7 @@ Same as PM entry, before doing UCIE state transition, AOU_CORE need to Disabled 
 If AOU_CORE faces uncorrectable error (ex. AOU SPEC violation), AOU_CORE sends LinkReset to CPU and D2D adapter. LinkReset indicates that an error has occurred which requires the Link to go down.
 
 While handling LinkReset, SW needs to do AOU_CORE SW reset by setting AOU_CON0.AOU_SW_RESET.
-*What the software reset does.* Writing 1 to [.monospaced]#++AOU_SW_RESET++# resets AOU_CORE the way [.monospaced]#++I_RESETN++# does: the protocol engine, the activation state (the FSM returns to [.monospaced]#++DISABLED++#), the AXI port logic of every RP, the RX FIFOs of every RP (nothing received before the reset is kept, and the activation that follows advertises the full FIFO depth as credit) and every configuration register, [.monospaced]#++AOU_SW_RESET++# itself included. The bit is therefore write-only and self-clearing: the reset lasts one [.monospaced]#++I_CLK++# cycle and the bit reads 0. SW reprograms the configuration registers afterwards (xref:{aou-integration-xref}#aou-ig-reset-domains[Reset domains]).
+*What the software reset does.* Writing 1 to [.monospaced]#++AOU_SW_RESET++# resets AOU_CORE the way [.monospaced]#++I_RESETN++# does: the protocol engine, the activation state (the FSM returns to [.monospaced]#++DISABLED++#), the AXI port logic of every RP, the RX FIFOs of every RP (nothing received before the reset is kept, and the activation that follows advertises the full FIFO depth as credit) and every configuration register, [.monospaced]#++AOU_SW_RESET++# itself included; the RP mapping ([.monospaced]#++DEST_RP++#, [.monospaced]#++ASYMMETRIC_RP_PROC_CON++#) returns to one-to-one with the asymmetric mapping disabled, and the ID remap tables of merged routes are emptied with the transactions they tracked. The bit is therefore write-only and self-clearing: the reset lasts one [.monospaced]#++I_CLK++# cycle and the bit reads 0. SW reprograms the configuration registers afterwards (xref:{aou-integration-xref}#aou-ig-reset-domains[Reset domains]).
 *AXI transactions across the reset.* [.monospaced]#++AOU_SW_RESET++# resets the AXI port logic of every RP with the rest of AOU_CORE, at once and without a quiesce, a drain or an error completion; [.monospaced]#++I_RESETN++# does the same. Every AXI transaction in flight or queued in AOU_CORE at that moment is lost, on the S ports and the M ports alike: a request accepted but not yet sent, a burst in progress on either port, a response owed to the local manager (a read or write already sent to the remote die included), a response the local subordinate has presented to an M port, and a write already acknowledged with an early write response (xref:aou-write-early-response-error[Write Early Response Error]) whose data has not reached the remote die. Across the reset the ports do not keep the AXI protocol: VALID can drop without a handshake, a burst can end before its last beat, a response presented to an M port is never accepted and a response owed on an S port never comes. The AXI managers and subordinates attached to the AoU ports must therefore be reset together with AOU_CORE, or have a recovery mechanism of their own that abandons the transactions outstanding towards AOU_CORE, withdraws what it presents and ignores a late response; the system restarts the lost traffic once AOU_CORE is activated again (xref:{aou-integration-xref}#aou-ig-reset-domains[Reset domains]). The PM entry and LinkDisable sequences above drain the AXI traffic before the link goes down, so a reset applied after them finds the ports idle; the LinkReset sequence cannot drain, since with the link down nothing AOU_CORE holds could complete, and loses what is pending.
 If the link is in L1 when AOU_CORE raises the request (an Ack time-out on an [.monospaced]#++ACTIVATE_START++# written in L1), the request is held until the link is Active again (xref:aou-linkreset-error-reporting[LinkReset Error Reporting]): SW exits L1 on the UCIe controller first, waits for the D2D adapter to report LinkError, and only then applies [.monospaced]#++AOU_SW_RESET++#.
 SW learns that the link went down (LinkReset, Disabled, or a LinkError the D2D adapter entered on its own) from [.monospaced]#++INT_FDI_LINK_DOWN++# (status [.monospaced]#++AOU_INIT.INT_FDI_LINK_DOWN++#, raised when [.monospaced]#++I_INT_FSM_IN_ACTIVE++# falls with the activation FSM in ACTIVATE, ENABLED or DEACTIVATE, or in DISABLED with an ActivateReq outstanding), or from the UCIe controller. The activation FSM is already [.monospaced]#++DISABLED++# when the handler runs; the sequence itself is unchanged: read [.monospaced]#++AOU_INIT++#, [.monospaced]#++AOU_SW_RESET++#, restart the link on the UCIe controller, reprogram the configuration registers, [.monospaced]#++ACTIVATE_START++#. The status bit is cleared with the other registers by [.monospaced]#++AOU_SW_RESET++# (write 1 clears it when the core is not reset; as for the other W1C bits of [.monospaced]#++AOU_INIT++#, the write also lands on the register's RW fields, so SW writes back the [.monospaced]#++ACTIVATE_START++#, [.monospaced]#++DEACTIVATE_START++# and [.monospaced]#++DEACTIVATE_TIME_OUT_VALUE++# values it wants to keep) and is not set again by the restart. A link lost with local AXI transactions pending also raises [.monospaced]#++INT_ACTIVATE_START++# in the same cycle, since the forced [.monospaced]#++DISABLED++# meets pending traffic; the handler above answers both. The sequences of xref:aou-fdi-link-lifecycle-sequences[FDI link lifecycle sequences] show each case.

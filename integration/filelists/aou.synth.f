@@ -31,8 +31,7 @@ vendor/pulp-platform/obi/upstream/src/obi_pkg.sv
 vendor/tenstorrent/aou/upstream/RTL/packet_def_pkg.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_RX_CORE.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_ACTIVATION_CTRL.sv
-vendor/tenstorrent/aou/upstream/RTL/AOU_DATA_W_FIFO_NS1M_TPSRAM.sv
-vendor/tenstorrent/aou/upstream/RTL/AOU_DATA_R_FIFO_NS1M_TPSRAM.sv
+vendor/tenstorrent/aou/upstream/RTL/AOU_RX_GRANULE_STORE.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_AXI_WLAST_GEN.v
 vendor/tenstorrent/aou/upstream/RTL/AOU_CORE_TOP.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_CRD_CTRL.sv
@@ -70,6 +69,10 @@ vendor/tenstorrent/aou/upstream/RTL/AOU_RX_CORE_IN_MUX.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_FDI_BRINGUP_CTRL.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_WRITE_TRANS_WDT.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_TOP.sv
+vendor/tenstorrent/aou/upstream/RTL/AOU_ASYMMETRIC_RP_PROC.sv
+vendor/tenstorrent/aou/upstream/RTL/AOU_ID_REMAPPER.sv
+vendor/tenstorrent/aou/upstream/RTL/AOU_AXIMUX_NX1.sv
+vendor/tenstorrent/aou/upstream/RTL/AOU_ASYMMETRIC_RP_QOS_ARBITER.sv
 vendor/tenstorrent/aou/upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_TOP.v
 vendor/tenstorrent/aou/upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_256.v
 vendor/tenstorrent/aou/upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_512.v

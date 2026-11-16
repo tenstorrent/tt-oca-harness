@@ -28,6 +28,7 @@ class aou_l3_crossflit_test extends aou_l3_unit_base_test;
     aou_l3_model m;
     c.cov_en = 1'b1;
     c.pol.credit_only_flits = 1'b0;
+    c.pol.bulk_last = 1'b0;   // the WriteResp follows the message under test
     m = mk_model(name, c);
     m.lnk.state = AOU_LS_ENABLED;
     foreach (m.crd.tx_cred[r, cc]) m.crd.tx_cred[r][cc] = 1000;

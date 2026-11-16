@@ -28,7 +28,8 @@ EXPECTED = os.path.join(UVM_ROOT, "expected_fail.yaml")
 REPO = "tenstorrent/tt-oca-harness-aou"
 ISSUE_RE = re.compile(r"^%s#[1-9][0-9]*$" % re.escape(REPO))
 STAGED_RE = re.compile(r"^BUGS/[0-9]{3}$")
-FIELD_RE = re.compile(r"^\s*-?\s*(bug|requires):\s*(.*?)\s*(?:#.*)?$")
+# A YAML comment starts at a '#' after whitespace; the '#' of OWNER/NAME#<n> has none before it.
+FIELD_RE = re.compile(r"^\s*-?\s*(bug|requires):\s*(.*?)\s*(?:\s#.*)?$")
 
 
 def scan(path):

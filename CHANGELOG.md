@@ -10,6 +10,17 @@ minor release it updates.
 
 ## [Unreleased]
 
+### Changed
+
+- AoU moves to upstream 01ffe22, which carries the documentation and `AOU_TOP`
+  comments this tree patched in. The RTL adds the asymmetric RP mapping, the
+  256 B FDI (`FDI_CFG_SP_256B`), AXI USER signals carried as the AoU FLEX field,
+  and granule stores for the RX W and R data. `AOU_TOP` gains ten 16-bit
+  `*USER` ports; `S_RD_MO_CNT`, `S_WR_MO_CNT`, `M_RD_MO_CNT` and `M_WR_MO_CNT`
+  become per-RP `RPn_*_MO_CNT`; `RX_W_FIFO_RS_EN` and `RX_R_FIFO_RS_EN` are
+  removed; the RX W and R FIFO depths count granules (600 by default, 960 with
+  the 256 B FDI). Nothing in this tree instantiates it (#3861).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added

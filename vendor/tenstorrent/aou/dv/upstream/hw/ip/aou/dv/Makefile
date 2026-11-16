@@ -76,6 +76,9 @@ COV_HIER = $(UVM_ROOT)/cov/config/vcs/cov_$(TB).hier+$(UVM_ROOT)/cov/config/vcs/
 # COV_EXCLUDE_PREVIEW=1 applies cov/config/vcs/cov_exclude.hier in cov_report too (urg -hier). Preview
 # only, for databases built before an exclusion was added; a fresh COV=1 build needs none.
 COV_EXCLUDE_PREVIEW ?= 0
+# Line and branch items no stimulus can reach (dead code), each with its reason, excluded at report
+# time (urg -elfile; DECISIONS.md D10). COV_EL= reports without them.
+COV_EL ?= $(UVM_ROOT)/cov/config/vcs/cov_exclude.el
 # VCS FSM coverage leaves out transitions that only an asynchronous reset makes
 # (cov/config/vcs/cov_fsm_reset.filter, DECISIONS.md D10); reset correctness is checked with
 # XPROP instead. COV_FSM_RESET=1 keeps them, in a -fsmrst build.
@@ -192,7 +195,7 @@ RAL_PKG := $(UVM_ROOT)/uvm/env/gen/aou_core_csr_uvm_pkg.sv
 # The sim config's include directories and ordered sources, the top last. Not
 # resolved for the goals that need no build: the source lists refer to the
 # dependencies make setup fetches, so a fresh clone must get that far.
-NO_BUILD_GOALS := help configs setup ral docs check-config check-public clean clean-out
+NO_BUILD_GOALS := help configs setup ral docs check-config check-public clean clean-out regress lsf-bsub
 ifneq ($(filter-out $(NO_BUILD_GOALS),$(or $(MAKECMDGOALS),build)),)
 TB_FLIST := $(shell $(SIM_CFG) filelist)
 ifeq ($(TB_FLIST),)
@@ -318,7 +321,7 @@ RUN_CMD = $(SIMV) +UVM_TESTNAME=$(TEST) +ntb_random_seed=$(SEED) -covg_cont_on_e
 define COV_REPORT_CMD
 $(PASSING) --names --prefix $(COV_DIR)/simv.vdb/ > $(REPORT_DIR)/tests.txt
 $(if $(COV_WITH_OUT),$(PASSING_WITH) --names --prefix $(COV_WITH_VDB)/ >> $(REPORT_DIR)/tests.txt)
-urg -full64 -dir $(COV_DIR)/simv.vdb $(if $(COV_WITH_OUT),$(COV_WITH_VDB) -map $(COV_MAP_MODULE)) -tests $(REPORT_DIR)/tests.txt $(if $(filter 1,$(COV_EXCLUDE_PREVIEW)),-hier $(UVM_ROOT)/cov/config/vcs/cov_exclude.hier) -format both -report $(REPORT_DIR)/urg -log $(REPORT_DIR)/urg.log
+urg -full64 -dir $(COV_DIR)/simv.vdb $(if $(COV_WITH_OUT),$(COV_WITH_VDB) -map $(COV_MAP_MODULE)) -tests $(REPORT_DIR)/tests.txt $(if $(filter 1,$(COV_EXCLUDE_PREVIEW)),-hier $(UVM_ROOT)/cov/config/vcs/cov_exclude.hier) $(addprefix -elfile ,$(COV_EL)) -format both -report $(REPORT_DIR)/urg -log $(REPORT_DIR)/urg.log
 sed -n '/^Total Module Definition Coverage Summary/,/^---/p' $(REPORT_DIR)/urg/dashboard.txt | tee $(REPORT_DIR)/summary.txt
 endef
 endif
@@ -406,7 +409,7 @@ STALE_CMD = python3 -I $(UVM_ROOT)/scripts/stale_build.py --build-dir $(BUILD_DI
 TB_SOURCES = $(shell find $(UVM_ROOT) -path $(UVM_ROOT)/.deps -prune -o -path $(UVM_ROOT)/build -prune -o -path $(UVM_ROOT)/out -prune \
                -o -path $(UVM_ROOT)/uvm/env/gen -prune -o -type f \( -name '*.sv' -o -name '*.svh' \) -print | sort)
 
-.PHONY: help configs setup ral docs build run test cov_report fc_report check-config lint clean clean-out check-public plan_status compare rule_inventory perf_report perf_targets perf_check job-hooks stale-check build-name
+.PHONY: help configs setup ral docs build run test cov_report fc_report check-config lint clean clean-out check-public plan_status compare rule_inventory perf_report perf_targets perf_check job-hooks stale-check build-name regress lsf-bsub
 help:
 	@printf '%s\n' \
 	  'make setup                 Fetch the pinned UVM-core, OCAH library, z3, PeakRDL, pywellen' \
@@ -422,6 +425,9 @@ help:
 	  '                           $(TEST_DEFAULT_reg) (reg), $(TEST_DEFAULT_axi_selftest)' \
 	  '                           (axi_selftest), $(TEST_DEFAULT_l3_unit) (l3_unit)' \
 	  'make test                  Build, then run' \
+	  'make regress [SIM=..]      Build and run everything: every bench, CONFIG and testlist,' \
+	  '           [RID=..] [COV=1]  then one PASS/XFAIL/FAIL/XPASS summary (out/regress/<RID>/);' \
+	  '                           CONFIGS, BENCHES, ITEMS, LISTS, RTL_PATCH, RUN_JOBS, STEPS, RERUN_FAILED, DRY_RUN=1' \
 	  'TB=t1|reg [CONFIG=<name>]  T1 / register bench build configuration, a [targets.<name>]' \
 	  '                           of aou_sim_cfg.toml (default $(shell $(SIM_CFG) default-target))' \
 	  'make configs               List the build configurations (CONFIG names and parameters)' \
@@ -436,7 +442,7 @@ help:
 	  'make perf_targets          Regenerate uvm/env/perf/aou_perf_targets.svh (needs D2D_COMPARE)' \
 	  'make perf_check            Judge out/**/perf.json against the targets (out/perf_check.md)' \
 	  'make stale-check           Warn if the build is older than its sources or defines' \
-	  'make check-config          Sim configs, testlists, rules, bug citations, RAL, plan items and docs freshness (no simulator)' \
+	  'make check-config          Sim configs, testlists, rules, bug citations, RAL, plan items, coverage plan IDs and docs freshness (no simulator)' \
 	  'make lint                  check-config, then Verible and Verilator lint of the testbench' \
 	  'make check-public          List internal references before a public push' \
 	  'make clean / clean-out     Remove build/ / remove run results in out/' \
@@ -495,6 +501,30 @@ run:
 	@set -o pipefail; python3 $(UVM_ROOT)/scripts/check_run.py --test $(TEST) --expected $(UVM_ROOT)/expected_fail.yaml $(RUN_LOG) \
 	  | tee $(RUN_DIR)/verdict.txt
 
+# The whole regression (scripts/regress.py, README "Run everything"). Every make variable
+# given here reaches the builds and runs it starts; RID defaults to a new r<date>-<time>.
+CONFIGS ?=
+BENCHES ?=
+ITEMS ?=
+LISTS ?=
+RUN_JOBS ?=
+STEPS ?=
+RERUN_FAILED ?=
+COV_MEM ?= 16GB
+DRY_RUN ?= 0
+regress:
+	python3 -I $(UVM_ROOT)/scripts/regress.py --sim $(SIM) --lsf $(LSF) --cov $(COV) \
+	  $(if $(filter-out default file,$(origin RID)),--rid '$(RID)') $(if $(RTL_PATCH),--rtl-patch '$(RTL_PATCH)') \
+	  $(if $(CONFIGS),--configs '$(CONFIGS)') $(if $(BENCHES),--benches '$(BENCHES)') \
+	  $(if $(ITEMS),--items '$(ITEMS)') $(if $(LISTS),--lists='$(LISTS)') $(if $(RUN_JOBS),-j $(RUN_JOBS)) $(if $(STEPS),--steps '$(STEPS)') \
+	  $(if $(RERUN_FAILED),--rerun-failed '$(RERUN_FAILED)') --cov-mem $(COV_MEM) --cov-el '$(COV_EL)' \
+	  $(if $(filter 1,$(DRY_RUN)),--dry-run)
+
+# For scripts/regress.py: the bsub line of the jobs make does not submit itself (coverage).
+lsf-bsub:
+	$(info $(LSF_BSUB))
+	@:
+
 # Warn (stderr) when the build is older than its sources or its defines changed; never fails.
 build-name:
 	@echo $(BUILD_NAME)
@@ -524,6 +554,7 @@ check-config:
 	python3 -I $(UVM_ROOT)/scripts/check_rules.py
 	python3 -I $(UVM_ROOT)/scripts/check_testlists.py
 	python3 -I $(UVM_ROOT)/scripts/check_bug_refs.py
+	python3 -I $(UVM_ROOT)/scripts/fc_report.py --check-plan-ids
 
 # The T1 top is linted twice: with the DUT's parameter defaults and with
 # AOU_TX_NXT_PACKING=1 (TX_NXT_PACKING_EN, the -nxt target), so both generate

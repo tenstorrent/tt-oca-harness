@@ -109,37 +109,52 @@ class ModelTest(unittest.TestCase):
                     {"init": "r2l", "kind": "W", "rp": 0, "bytes": 1024, "beat_bytes": 64,
                      "offset_mod_4k": 0, "full_strb": True, "count": 32}]}]}
         loc, rem = pm.run_sides(perf["build"], perf["windows"][0])
-        self.assertEqual(loc, [("W", 1024, 0, 64, 64, False, 32)])
-        self.assertEqual(sorted(rem), [("W", 1024, 0, 64, 64, False, 16),
-                                       ("W", 1024, 0, 64, 64, True, 16)])
+        self.assertEqual(loc, [("W", 1024, 0, 64, 64, False, 32, 0, 64)])
+        self.assertEqual(sorted(rem), [("W", 1024, 0, 64, 64, False, 16, 0, 64),
+                                       ("W", 1024, 0, 64, 64, True, 16, 0, 64)])
         r = pm.model_run(perf)["bw_wr"]
         self.assertEqual(r["r2l"]["msgs"]["WriteData512"], r["r2l"]["msgs"]["WriteDataFull512"])
 
-    def test_dut_split_rate(self):
-        """With split enabled, 32-beat local writes go out as two 16-beat WriteReqs; the
-        remote's are not split. Both sides keep their byte rate (one period, common gcd)."""
-        loc = pm.dut_split(("W", 2048, 0, 64, 64, False, 1), 16)
-        self.assertEqual(loc, [("W", 1024, 0, 64, 64, False, 2)])
-        rem = [("W", 2048, 0, 64, 64, False, 1)]
-        r = pm.model_window(64, loc, rem)
-        self.assertEqual(r["l2r"]["msgs"], {"WriteReq": 2, "WriteDataFull512": 32, "WriteResp": 1})
-        self.assertAlmostEqual(r["l2r"]["bpc"], r["r2l"]["bpc"], delta=0.6)
+    def test_local_bursts_whole(self):
+        """A 32-beat local write crosses the link as one WriteReq whatever the DUT's
+        AXI_SPLIT_TR_RPn holds: the splitter acts on received requests, at the manager
+        port, not on what the subordinate port sends."""
+        loc = [("W", 2048, 0, 64, 64, False, 1)]
+        r = pm.model_window(64, loc, [])
+        self.assertEqual(r["l2r"]["msgs"], {"WriteReq": 1, "WriteDataFull512": 32})
         b = {"beat_bytes": 64, "rp_bytes": [64], "remote_bytes": [64], "max_awlen": [15],
              "max_arlen": [15]}
         w = {"txn_hist": [{"init": "l2r", "kind": "W", "rp": 0, "bytes": 2048, "beat_bytes": 64,
                            "offset_mod_4k": 0, "full_strb": True, "count": 4}]}
-        self.assertEqual(pm.run_sides(b, w)[0], [("W", 2048, 0, 64, 64, False, 4)])
-        b["split_en"] = True
-        self.assertEqual(pm.run_sides(b, w)[0], [("W", 1024, 0, 64, 64, False, 8)])
+        self.assertEqual(pm.run_sides(b, w)[0], [("W", 2048, 0, 64, 64, False, 4, 0, 64)])
 
     def test_narrow_axsize(self):
         """256 beats within 4 KB on a 64 B bus: 16 B AxSIZE, one 256-bit message per beat,
         with strobes (the message is wider than the beat)."""
         w = {"window": "bl_256", "traffic_dir": "l2r", "wr_pct": "100", "beats": "256"}
         loc, _ = pm.window_sides(w, {"rp_bytes": [64], "phy_bytes": [64]})
-        self.assertEqual(loc, [("W", 4096, 0, 64, 16, False, 1)])
+        self.assertEqual(loc, [("W", 4096, 0, 64, 16, False, 1, 0, 64)])
         r = pm.model_window(64, loc, [])
         self.assertEqual(r["l2r"]["msgs"], {"WriteReq": 1, "WriteData256": 256})
+
+    def test_port_limit(self):
+        """All traffic on one 256-bit RP of a 128 B FDI (2xmix41-sp128 pl_w0): an AXI data
+        channel moves 32 B a cycle, so each link carries at most the 32 B/cycle of local
+        writes plus the 32 B/cycle of answers to the remote's reads, not what the link
+        could pack. Where the link is the bottleneck, nothing changes."""
+        w = {"window": "pl_w0", "traffic_dir": "both", "wr_pct": "50", "beats": "16",
+             "widest_pct": "0"}
+        conf = {"rp_bytes": [128, 32], "phy_bytes": [128]}
+        r = pm.model_window(128, *pm.window_sides(w, conf))
+        self.assertAlmostEqual(r["l2r"]["bpc"], 64.0, places=6)
+        self.assertAlmostEqual(r["r2l"]["bpc"], 64.0, places=6)
+        self.assertLess(r["l2r"]["duty"], 1.0)
+        # one 512-bit RP on a 64 B FDI: the link, not the 64 B/cycle port, sets the rate
+        r = pm.model_window(64, side("W", 16, 64), [])
+        self.assertAlmostEqual(r["l2r"]["duty"], 1.0)
+        # a 1024-bit read that a 256-bit port on the other die serves: 2048 B / 32 B
+        loc = [("R", 2048, 0, 128, 128, False, 1, 0, 32)]
+        self.assertEqual(pm.port_limit(loc, [], 1), 64)
 
     def test_committed_table_current(self):
         """uvm/env/perf/aou_perf_targets.svh matches the live model (make perf_check drift)."""
@@ -160,6 +175,7 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(c["1x512-sp64"], {"rp_bytes": [64], "phy_bytes": [64]})
         self.assertEqual(c["4xmix4211-sp128"]["rp_bytes"], [128, 64, 32, 32])
         self.assertEqual(c["2xmix-tp64_128"]["phy_bytes"], [64, 128])
+        self.assertEqual(c["2xmix41-sp128"], {"rp_bytes": [128, 32], "phy_bytes": [128]})
 
     def test_scenario_file(self):
         wins = pm.load_scenarios()
@@ -185,7 +201,13 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual([(e[1], e[3], e[6]) for e in loc],
                          [(2048, 128, 3), (512, 32, 1), (1024, 64, 1), (512, 32, 1)])
         self.assertEqual(pm.rp_weights(w, self.CONFS["4xmix"]), [3, 1, 1, 1])
+        # the remote die runs each RP at that RP's own width unless the window says otherwise
+        self.assertEqual([(e[1], e[3], e[6]) for e in rem],
+                         [(2048, 128, 3), (512, 32, 1), (1024, 64, 1), (512, 32, 1)])
+        w["remote_bytes"] = "64"
+        _, rem = pm.window_sides(w, self.CONFS["4xmix"])
         self.assertEqual({e[3] for e in rem}, {64})
+        del w["remote_bytes"]
         w["widest_pct"] = "0"
         loc, _ = pm.window_sides(w, self.CONFS["4xmix"])
         self.assertEqual([e[3] for e in loc], [32, 64, 32])
@@ -194,7 +216,8 @@ class ScenarioTest(unittest.TestCase):
         w = {"window": "x", "traffic_dir": "r2l", "wr_pct": "50", "beats": "1", "strb": "partial"}
         loc, rem = pm.window_sides(w, self.CONFS["1x512"])
         self.assertEqual(loc, [])
-        self.assertEqual(sorted(rem), [("R", 64, 0, 64, 64, False, 1), ("W", 64, 0, 64, 64, True, 1)])
+        self.assertEqual(sorted(rem), [("R", 64, 0, 64, 64, False, 1, 0, 64),
+                                       ("W", 64, 0, 64, 64, True, 1, 0, 64)])
         self.assertEqual(pm.rp_weights(w, self.CONFS["1x512"]), [2])
 
 

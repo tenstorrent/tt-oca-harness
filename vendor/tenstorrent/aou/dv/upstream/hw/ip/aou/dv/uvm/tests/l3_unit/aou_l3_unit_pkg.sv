@@ -22,5 +22,6 @@ package aou_l3_unit_pkg;
   `include "aou_l3_unit_env_test.svh"
   `include "aou_l3_loopback_test.svh"
   `include "aou_l3_inject_test.svh"
+  `include "aou_l3_late_adv_test.svh"
   `include "aou_l3_dest_rp_test.svh"
 endpackage

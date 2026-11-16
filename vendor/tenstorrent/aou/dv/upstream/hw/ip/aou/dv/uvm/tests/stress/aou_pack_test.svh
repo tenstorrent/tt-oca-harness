@@ -14,9 +14,19 @@
 //   wresp48    remote reads of nothing but WriteResp backlog: 48 in one flit
 //   rp         multi-RP builds: messages of several RPs in one flit
 //   act        activation cycles with traffic, two zero CrdtGrants per half
-//   crdt       credits only through CrdtGrant messages, plus zero grants
+//   crdt       credits only through CrdtGrant messages, plus zero grants; in
+//              a quarter of the flits the grant starts at G47 and ends in G0
+//              of the next flit
 //   b2b        no idle cycles on FDI either way (trdy always, no gaps)
 //   prof       random PROF (FLEX[11:0]) in AXI messages to the DUT
+//   edge       the first message of every flit to the DUT starts at granule
+//              +pk_start (default 23, the last granule of the first half; 47,
+//              the last of the flit): data messages straddle the half-flit
+//              boundary at every width (fdi-rx-plan 8: tagger carry, store
+//              writes split across halves)
+//   wreq8      remote writes only, WriteReqs held back in windows and then
+//              released as a backlog: halves holding the spec maximum of 8
+//              WriteReq starts (fdi-rx-plan 8: request lanes per half flit)
 class aou_pack_test extends aou_dp_base_test;
   `uvm_component_utils(aou_pack_test)
 
@@ -68,11 +78,19 @@ class aou_pack_test extends aou_dp_base_test;
       "rp", "act", "crdt", "prof": begin
         k.lens = '{0, 1, 3};
         k.n = 48;
-        // No response credits after DeactivateAck (BUGS/009 covers the other setting).
-        if (pk == "act") begin
-          k.feat = aou_t1_feature_cfg::type_id::create("feat");
-          k.feat.credit_manage = 0;
-        end
+      end
+      "edge": begin
+        k.sizes = '{5, 6, 7};
+        k.lens = '{0, 1, 3};
+        k.n = 128;
+      end
+      "wreq8": begin
+        k.dir = AOU_T1_R2L;
+        k.wr_pct = 100;
+        k.sizes = '{5, 6};
+        k.lens = '{0, 1};
+        k.num_slots = 32;
+        k.n = 256;
       end
       default: `uvm_fatal(get_type_name(), {"bad +pk=", pk})
     endcase
@@ -98,21 +116,36 @@ class aou_pack_test extends aou_dp_base_test;
       "crdt": begin
         pol.cred_method = AOU_CRM_GRANT;
         pol.zero_grants = 1;
+        pol.grant_span_pct = 25;
       end
       "b2b": begin
-        foreach (cfg.fdi_cfg[p]) cfg.fdi_cfg[p].trdy_policy = AOU_TRDY_ALWAYS;
+        foreach (cfg.fdi_cfg[p]) begin
+          cfg.fdi_cfg[p].trdy_policy = AOU_TRDY_ALWAYS;
+          cfg.fdi_cfg[p].stall_pct = 0;
+        end
         cfg.l1_cancel_pct = 0;
         cfg.l1_gap_pct = 0;
         cfg.l1_bubble_pct = 0;
         cfg.remote_lat_max = 0;
+        pol.wresp_batch = 0;
         foreach (cfg.s_mgr_cfg[r]) begin
           cfg.s_mgr_cfg[r].timing.apply(AOU_AXI_TIMING_ZERO);
           cfg.m_sub_cfg[r].timing.apply(AOU_AXI_TIMING_ZERO);
         end
       end
       "prof": pol.prof_pct = 50;
+      "edge": begin
+        int unsigned g = 23;
+        void'($value$plusargs("pk_start=%d", g));
+        if (g >= AOU_GRANULES) `uvm_fatal(get_type_name(), $sformatf("+pk_start=%0d: 0..47", g))
+        pol.start_granule = int'(g);
+        pol.wdata_first_pct = 0;
+      end
+      "wreq8": pol.wdata_first_pct = 0;
       default: ;
     endcase
+    if (pk == "wreq8")
+      foreach (cfg.m_sub_cfg[r]) cfg.m_sub_cfg[r].timing.apply(AOU_AXI_TIMING_ZERO);
     if (pk == "wresp48")
       foreach (cfg.m_sub_cfg[r]) cfg.m_sub_cfg[r].timing.apply(AOU_AXI_TIMING_ZERO);
     if (pk == "rp" && cfg.n_rp < 2) `uvm_fatal(get_type_name(), "+pk=rp needs a multi-RP CONFIG")
@@ -156,6 +189,12 @@ class aou_pack_test extends aou_dp_base_test;
       "crdt":    stats.req = '{"RX:crdt>=20", "TX:crdt"};
       "b2b":     stats.req = '{"RX:b2b_run>=8", "TX:b2b_run>=8"};
       "prof":    stats.req = '{"RX:prof>=20"};
+      "edge": begin
+        int unsigned g = 23;
+        void'($value$plusargs("pk_start=%d", g));
+        stats.req = '{$sformatf("RX:data_start_g%0d>=16", g)};
+      end
+      "wreq8":   stats.req = '{"RX:wreq_half_max>=8"};
       default: ;
     endcase
   endfunction

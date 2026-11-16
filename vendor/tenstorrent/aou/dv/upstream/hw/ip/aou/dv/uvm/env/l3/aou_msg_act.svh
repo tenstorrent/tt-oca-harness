@@ -15,6 +15,9 @@ class aou_msg_act extends aou_msg;
   bit [4:0]  profile_rev[AOU_RP_MAX];
   bit [15:0] profile_opt[AOU_RP_MAX];
   bit [13:0] rsvd_rp[AOU_RP_MAX];   // entry 0 unused
+  // The profile fields above were set by the test: the model sends them as
+  // they are instead of its configured profile (aou_link_ctrl::fill_profile).
+  bit        profile_fixed;
 
   function new(string name = "aou_msg_act");
     super.new(name);
@@ -72,13 +75,38 @@ class aou_msg_act extends aou_msg;
     return "";
   endfunction
 
-  // Basic Profile: every ProfileID/Rev/Opt is zero (v0.8 11.1).
-  function bit profile_nonzero();
-    if (!v08_req()) return 1'b0;
+  // A DeactivateReq whose only non-zero reserved bit is v0.7's PropertyReq
+  // position (v0.8 makes it the top RsvdZero bit). Taken from the RTL: the DUT
+  // marks the DeactivateReq that AOU_CON0.DEACTIVATE_FORCE sends this way and
+  // no other (MAS software-operation 7.1).
+  function bit forced_deact_mark();
+    if (op != AOU_DEACT_REQ) return 1'b0;
+    if (spec_rev == AOU_SPEC_V08) return rsvd == 29'h1000_0000;
+    return property_req && rsvd == 0;
+  endfunction
+
+  // The first RP whose ProfileID/Rev/Opt differ from the expected ones (v0.8
+  // Ch. 11: the sender's configured profile per RP it has, 0 for an RP it has
+  // not), as "RPn id/rev/opt, expected id/rev/opt"; "" when all match or this
+  // is not a v0.8 ActivateReq.
+  function string profile_mismatch(bit [4:0] exp_id[AOU_RP_MAX], bit [4:0] exp_rev[AOU_RP_MAX],
+                                   bit [15:0] exp_opt[AOU_RP_MAX], int unsigned rp_count);
+    if (!v08_req()) return "";
     for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
-      if (profile_id[r] != 0 || profile_rev[r] != 0 || profile_opt[r] != 0) return 1'b1;
+      bit [4:0]  id  = (r < rp_count) ? exp_id[r]  : '0;
+      bit [4:0]  rev = (r < rp_count) ? exp_rev[r] : '0;
+      bit [15:0] opt = (r < rp_count) ? exp_opt[r] : '0;
+      if (profile_id[r] != id || profile_rev[r] != rev || profile_opt[r] != opt)
+        return $sformatf("RP%0d %0d/%0d/0x%04h, expected %0d/%0d/0x%04h%s", r, profile_id[r],
+                         profile_rev[r], profile_opt[r], id, rev, opt,
+                         (r < rp_count) ? "" : " (RP not present)");
     end
-    return 1'b0;
+    return "";
+  endfunction
+
+  // "id/rev/opt" of RP r.
+  function string profile_str(int unsigned r);
+    return $sformatf("%0d/%0d/0x%04h", profile_id[r], profile_rev[r], profile_opt[r]);
   endfunction
 
   static function string op_name(bit [3:0] o);
@@ -96,6 +124,9 @@ class aou_msg_act extends aou_msg;
   endfunction
 
   virtual function string fields2string();
+    if (v08_req())
+      return $sformatf("profile=%s,%s,%s,%s", profile_str(0), profile_str(1), profile_str(2),
+                       profile_str(3));
     return $sformatf("prop=%0d", property_req);
   endfunction
 
@@ -110,5 +141,6 @@ class aou_msg_act extends aou_msg;
     profile_rev = r.profile_rev;
     profile_opt = r.profile_opt;
     rsvd_rp = r.rsvd_rp;
+    profile_fixed = r.profile_fixed;
   endfunction
 endclass

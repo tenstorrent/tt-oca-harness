@@ -4,7 +4,6 @@
 # OCAH. Source order mirrors upstream/RTL/filelist.f (and the nested
 # AXI4MUX_3X1/ and LIB/ filelist.f's it -f includes). Do not edit upstream/
 # files directly; use patches/ if this package needs a local delta.
-# patches/0009 documents AOU_TOP. Drop it once that text is upstream.
 
 package:
   name: aou
@@ -18,8 +17,7 @@ sources:
       - upstream/RTL/packet_def_pkg.sv
       - upstream/RTL/AOU_RX_CORE.sv
       - upstream/RTL/AOU_ACTIVATION_CTRL.sv
-      - upstream/RTL/AOU_DATA_W_FIFO_NS1M_TPSRAM.sv
-      - upstream/RTL/AOU_DATA_R_FIFO_NS1M_TPSRAM.sv
+      - upstream/RTL/AOU_RX_GRANULE_STORE.sv
       - upstream/RTL/AOU_AXI_WLAST_GEN.v
       - upstream/RTL/AOU_CORE_TOP.sv
       - upstream/RTL/AOU_CRD_CTRL.sv
@@ -57,6 +55,10 @@ sources:
       - upstream/RTL/AOU_FDI_BRINGUP_CTRL.sv
       - upstream/RTL/AOU_WRITE_TRANS_WDT.sv
       - upstream/RTL/AOU_TOP.sv
+      - upstream/RTL/AOU_ASYMMETRIC_RP_PROC.sv
+      - upstream/RTL/AOU_ID_REMAPPER.sv
+      - upstream/RTL/AOU_AXIMUX_NX1.sv
+      - upstream/RTL/AOU_ASYMMETRIC_RP_QOS_ARBITER.sv
       # RTL/AXI4MUX_3X1/filelist.f
       - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_TOP.v
       - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_256.v

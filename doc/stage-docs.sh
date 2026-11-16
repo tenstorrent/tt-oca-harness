@@ -187,11 +187,9 @@ trm)
   for page in overview architecture interrupts-errors ppa-appendices; do
     # The page attributes name the specification's own files, which the TRM
     # publishes under other names, so those links become anchor links.
-    sed -E 's/xref:\{aou-(overview|architecture|errors)-xref\}#/xref:/g; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+    sed -E 's/xref:\{aou-(overview|architecture|errors|ppa)-xref\}#/xref:/g' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/$page.adoc"
-    # The PDF inherits book numbering instead of the standalone specification's numbers.
-    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /; s/xref:\{aou-(overview|architecture|errors)-xref\}#/xref:/g; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
-      >"$MOD/aou/partials/pdf/$page.adoc"
+    cp "$MOD/aou/partials/$page.adoc" "$MOD/aou/partials/pdf/$page.adoc"
   done
   # The web appendices have separate pages; the PDF keeps the complete section.
   sed '/^ifndef::release\[\]/,$d' "$AOU_DOC/ppa-appendices.adoc" \
@@ -217,17 +215,13 @@ trm)
     done
   ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices,records-of-changes,referenced-documents}.adoc
   # The software operation section is published by the Programmer's Guide.
-  # The upstream activation links name a numbered heading ID that the
-  # section does not define.
   aou_pg_links() {
     local id
     for id in $(sed -nE 's/^\[\[([^],]+)\]\]$/\1/p' "$AOU_DOC/software-operation.adoc"); do
-      printf 's@xref:(#|ocah-docs:ROOT:aou-software-operation\\.adoc#|\\{aou-software-xref\\}#)%s\\[@%s#%s[@g\n' \
+      printf 's@xref:\\{aou-software-xref\\}#%s\\[@%s#%s[@g\n' \
         "$id" "$1" "$id"
     done
   }
-  sed -i -E 's/#aou-73-activation-deactivation-flow\[/#aou-activation-deactivation-flow[/g' \
-    "$MOD"/aou/partials/interrupts-errors.adoc "$MOD"/aou/partials/pdf/interrupts-errors.adoc
   sed -i -E -f <(aou_pg_links 'xref:ocah-programmer-guide::index.adoc') "$MOD"/aou/partials/*.adoc
   sed -i -E -f <(aou_pg_links 'https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html') \
     "$MOD"/aou/partials/pdf/*.adoc

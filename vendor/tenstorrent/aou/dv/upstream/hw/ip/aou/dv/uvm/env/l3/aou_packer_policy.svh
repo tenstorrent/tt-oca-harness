@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // How the packer lays messages into flits. The default is DUT-like: messages
-// in submission order, packed back to back from the first free granule,
+// in submission order, except that requests and responses go ahead of bulk
+// data (bulk_last), packed back to back from the first free granule,
 // spanning freely into the next flit, credits returned through the header,
 // except that a few writes send WriteData ahead of their WriteReq
 // (wdata_first_pct). Every other setting is still legal unless a field says
@@ -12,6 +13,13 @@ class aou_packer_policy extends uvm_object;
 
   // Messages started per flit; 0 is no limit (1 gives minimum density).
   int unsigned      max_msgs_per_flit;
+  // With max_msgs_per_flit, the same RP's WriteData placed right after a
+  // WriteReq does not count: the pair shares the flit (max_msgs_per_flit 1
+  // then gives one request, or one WriteReq with its first WriteData, per
+  // flit). With bulk_last the pick prefers queued requests over data, so a
+  // second RP's WriteReq can take the data's place; the perf windows that use
+  // this (+perf_l3_one_msg=1) run one transaction at a time.
+  bit               wreq_wdata_pair = 1'b0;
   // Percent chance of leaving 1..max_hole empty granules before a message.
   int unsigned      hole_pct;
   int unsigned      max_hole = 4;
@@ -24,22 +32,41 @@ class aou_packer_policy extends uvm_object;
   // Pick randomly among the eligible queue heads instead of oldest first:
   // reorders across RPs and credit classes, never within one.
   bit               random_order;
+  // Requests, write responses and Misc go ahead of queued ReadData and
+  // WriteData, oldest first among themselves, as a die with a separate lane
+  // per message class sends them (the DUT does). Without it every message
+  // waits behind all data queued before it: a ReadReq or WriteResp queued
+  // behind 32 bursts of read data waits hundreds of cycles, and the other
+  // die's link idles for want of requests. 0 is the plain oldest-first order,
+  // still legal. random_order ignores it.
+  bit               bulk_last = 1'b1;
   // Send a flit that only returns credits when nothing else is ready.
   bit               credit_only_flits = 1'b1;
   // Percent chance that a flit with work pending goes out empty instead.
   int unsigned      empty_flit_pct;
   aou_cred_method_e cred_method = AOU_CRM_DUT_LIKE;
   // Non-Activation Misc messages per half-flit (v0.8 4.4 allows 2, so only
-  // 1 and 2 are legal). An Activation message always travels alone in its
-  // flit (v0.8 4.4); there is no knob for the v0.7 layout, which v0.8 forbids
-  // and whose receiver reaction it does not define.
+  // 1 and 2 are legal). There is no knob for the v0.7 layout (anything beside
+  // an Activation message), which v0.8 forbids and whose receiver reaction it
+  // does not define.
   int unsigned      misc_per_half_max = 2;
+  // Percent of our Activation flits that carry what 4.4 (v0.9 draft) lets
+  // share them: the initial CrdtGrant beside our ActivateAck (or beside our
+  // ActivateReq when that follows our Ack and the grant is still due), and
+  // the WriteResp/ReadData we still owe beside our DeactivateReq. The rest,
+  // and every DeactivateAck flit, carry the Activation alone. The DUT's RX
+  // has to take both layouts.
+  int unsigned      act_share_pct = 50;
   // Hold every credited message back (Misc still goes) until cleared, so a
   // batch queues up and leaves in densely packed flits; the caller kicks the
   // model when it clears the hold.
   bit               hold_credited;
-  // Percent chance that an AXI message gets a random PROF (FLEX[11:0]);
-  // PROFEXTLEN (FLEX[15:12]) stays 0, the only length the TB models.
+  // Percent chance that an AXI message to the DUT without a fixed FLEX gets
+  // a random one. v0.8 makes FLEX the AXI USER[15:0] (5.2 / 11.1): the DUT
+  // presents what it receives on its ports' USER outputs (aou_t1_attr_chk
+  // DP-R12), so a message whose FLEX the remote AXI agent chose (flex_fixed)
+  // keeps all 16 bits; only the others get FLEX[11:0] randomised here, with
+  // FLEX[15:12] 0 (v0.7's PROF / PROFEXTLEN; the name predates v0.8).
   int unsigned      prof_pct;
   // A message that would not end in this flit is swapped for the largest
   // eligible queue head that does (reorders across queues only), so flits
@@ -48,6 +75,11 @@ class aou_packer_policy extends uvm_object;
   // Zero-credit CrdtGrant messages added to a flit, up to misc_per_half_max
   // per half (legal Misc no DUT sends).
   int unsigned      zero_grants;
+  // Percent of flits whose CrdtGrant (when credit is due) starts at G47 and
+  // ends in G0 of the next flit, after empty granules, instead of going early
+  // in the flit. 4.4 lets any message continue in G0 of the next flit; no DUT
+  // layout puts a Misc message there.
+  int unsigned      grant_span_pct;
   // Percent of WriteReqs held back until wdata_first_beats of their own
   // WriteData messages have gone first. AoU v0.8 5.7 does not order a
   // WriteReq against its WriteData, and another die may send the data first;
@@ -59,6 +91,23 @@ class aou_packer_policy extends uvm_object;
   // WriteData messages sent ahead of the held WriteReq: 0 picks 1 to the
   // whole burst per write; N sends N, or the whole burst when shorter.
   int unsigned      wdata_first_beats;
+  // Stimulus: no WriteReq goes on these RPs (bit r: RP field r), as if the
+  // model had no WREQ credit there, while their WriteData still goes on WDATA
+  // credit. The data of several writes then waits at the receiver ahead of
+  // every WriteReq, up to the WDATA credit it advertised. The caller clears
+  // the mask and kicks the model to let the WriteReqs go.
+  bit [AOU_RP_MAX-1:0] hold_wreq_rps;
+  // Stimulus timing rather than layout, so the set_*() presets leave it: with
+  // wresp_batch non-zero the env holds our WriteResps back in windows
+  // (hold_wresp, aou_t1_env) until wresp_batch of them are queued or
+  // wresp_batch_wait cycles have passed, as a subordinate that returns its
+  // write responses in batches would. They then leave together, up to 48 in
+  // one flit (a WriteResp is one granule, v0.8 4.4). The hold applies only
+  // while the link is ENABLED and we have not asked to deactivate. 0 sends each
+  // WriteResp as soon as it has credit.
+  int unsigned      wresp_batch = 0;
+  int unsigned      wresp_batch_wait = 300;
+  bit               hold_wresp;
 
   function new(string name = "aou_packer_policy");
     super.new(name);
@@ -71,14 +120,17 @@ class aou_packer_policy extends uvm_object;
     split_at = -1;
     allow_span = 1'b1;
     random_order = 1'b0;
+    bulk_last = 1'b1;
     empty_flit_pct = 0;
     cred_method = AOU_CRM_DUT_LIKE;
     hold_credited = 1'b0;
     prof_pct = 0;
     zero_grants = 0;
+    grant_span_pct = 0;
     best_fit = 1'b0;
     wdata_first_pct = 5;
     wdata_first_beats = 0;
+    hold_wreq_rps = '0;
   endfunction
 
   function void set_sparse();
@@ -106,6 +158,7 @@ class aou_packer_policy extends uvm_object;
     max_msgs_per_flit = $urandom_range(0, 3) == 0 ? $urandom_range(1, 4) : 0;
     allow_span = 1'($urandom_range(0, 3) != 0);
     random_order = 1'($urandom_range(0, 1));
+    bulk_last = 1'($urandom_range(0, 1));
     empty_flit_pct = $urandom_range(0, 1) * 5;
     cred_method = aou_cred_method_e'($urandom_range(0, 3));
     wdata_first_pct = $urandom_range(0, 2) * 25;
@@ -113,12 +166,14 @@ class aou_packer_policy extends uvm_object;
   endfunction
 
   virtual function string convert2string();
-    return $sformatf({"max_msgs=%0d hole=%0d%%/%0d start=%0d split=%0d span=%0d rand=%0d ",
+    return $sformatf({"max_msgs=%0d/pair=%0d hole=%0d%%/%0d start=%0d split=%0d span=%0d rand=%0d ",
                       "cred_only=%0d empty=%0d%% cred=%0d misc_half=%0d hold=%0d ",
-                      "prof=%0d%% zero_grants=%0d best_fit=%0d wdata_first=%0d%%/%0d"},
-                     max_msgs_per_flit, hole_pct, max_hole, start_granule, split_at,
-                     allow_span, random_order, credit_only_flits, empty_flit_pct,
+                      "prof=%0d%% zero_grants=%0d grant_span=%0d%% best_fit=%0d ",
+                      "wdata_first=%0d%%/%0d hold_wreq=%b bulk_last=%0d wresp_batch=%0d/%0d"},
+                     max_msgs_per_flit, wreq_wdata_pair, hole_pct, max_hole, start_granule,
+                     split_at, allow_span, random_order, credit_only_flits, empty_flit_pct,
                      cred_method, misc_per_half_max, hold_credited, prof_pct,
-                     zero_grants, best_fit, wdata_first_pct, wdata_first_beats);
+                     zero_grants, grant_span_pct, best_fit, wdata_first_pct, wdata_first_beats,
+                     hold_wreq_rps, bulk_last, wresp_batch, wresp_batch_wait);
   endfunction
 endclass

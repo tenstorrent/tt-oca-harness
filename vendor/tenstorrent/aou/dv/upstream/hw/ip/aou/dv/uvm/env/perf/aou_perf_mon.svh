@@ -585,7 +585,7 @@ class aou_perf_mon extends uvm_component;
     json_win.push_back(j);
     if (n_txn[0] + n_txn[1] == 0)
       `uvm_error(get_type_name(), {"T1-P01: no transaction completed in window ", win})
-    else if (!(win_scenario inside {"lat", "drain"}))
+    else if (!(win_scenario inside {"lat", "drain", "rxlat"}))
       res_ap.write(res);
     win = "";
   endfunction
@@ -629,17 +629,6 @@ class aou_perf_mon extends uvm_component;
     return int'(rg.get_field_by_name(field).get_mirrored_value());
   endfunction
 
-  // AOU_CON0.AXI_SPLIT_TR_EN from the RAL mirror: whether the DUT splits S-port bursts.
-  function bit split_en();
-    uvm_reg rg;
-    uvm_reg_field f;
-    if (regs == null) return 1'b0;
-    rg = regs.get_reg_by_name("aou_con0");
-    if (rg == null) return 1'b0;
-    f = rg.get_field_by_name("axi_split_tr_en");
-    return (f != null) && (f.get_mirrored_value() != 0);
-  endfunction
-
   function string int_list(int unsigned v[$]);
     string s = "[";
     foreach (v[i]) s = {s, (i > 0) ? ", " : "", $sformatf("%0d", v[i])};
@@ -677,11 +666,10 @@ class aou_perf_mon extends uvm_component;
                    "\"perf_mode\": \"%s\", \"active_phy\": %0d, \"n_phy\": %0d, ",
                    "\"beat_bytes\": %0d, \"rp_count\": %0d, \"rp_bytes\": %s, ",
                    "\"remote_bytes\": %s, \"max_awlen\": %s, \"max_arlen\": %s, ",
-                   "\"split_en\": %s, ",
                    "\"writefull\": %s, \"remote_full_pct\": %0d, \"l3_rx_depth\": {"},
                   config_name, sim_name(), test, seed, perf_mode, cfg.lsm_cfg.active_phy,
                   cfg.lsm_cfg.n_phy, beat_bytes, cfg.n_rp, int_list(rb), int_list(rr),
-                  int_list(aw), int_list(ar), split_en() ? "true" : "false",
+                  int_list(aw), int_list(ar),
                   writefull ? "true" : "false", remote_full_pct);
     foreach (ccn[c])
       s = {s, (c > 0) ? ", " : "", $sformatf("\"%s\": %0d", ccn[c], cfg.l3_cfg.rx_depth[c])};
@@ -704,7 +692,7 @@ class aou_perf_mon extends uvm_component;
       `uvm_error(get_type_name(), {"T1-P01: cannot write ", json_name})
       return;
     end
-    $fdisplay(fd, "{\"schema\": 1,\n \"build\": %s,\n \"windows\": [", b);
+    $fdisplay(fd, "{\"schema\": 2,\n \"build\": %s,\n \"windows\": [", b);
     foreach (json_win[i])
       $fdisplay(fd, "  %s%s", json_win[i], (i + 1 < json_win.size()) ? "," : "");
     $fdisplay(fd, " ]}");

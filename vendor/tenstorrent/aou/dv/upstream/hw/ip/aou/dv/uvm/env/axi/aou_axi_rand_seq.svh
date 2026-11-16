@@ -2,9 +2,10 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // Random legal AXI4 traffic. Each in-flight transaction owns a distinct 4KB
-// slot (num_slots pages picked at random in [addr_lo, addr_hi]), so in-flight
-// transactions never overlap and the golden memory is unambiguous; a slot is
-// reused once its transaction completes.
+// slot (num_slots pages picked at random in [addr_lo, addr_hi]; a window with
+// fewer pages is a fatal error), so in-flight transactions never overlap and
+// the golden memory is unambiguous; a slot is reused once its transaction
+// completes.
 //
 // Sizes: an ordinary request is 32 bytes up to the bus (AxSIZE 5 or more),
 // so small requests stay infrequent and absent unless asked for. Small
@@ -27,6 +28,8 @@ class aou_axi_rand_seq extends aou_axi_base_seq;
   int unsigned wrap_pct  = 15;
   bit [9:0]    max_id    = 10'd7;
   bit [7:0]    max_len   = 8'd255;
+  // Ordinary requests are at least min_len+1 beats (at most max_len+1 wins).
+  bit [7:0]    min_len   = 8'd0;
   aou_axi_strb_e strb_mode = AOU_AXI_STRB_MIXED;
   int unsigned small_size_pct  = 0;
   int unsigned small_size_wt[5] = '{2, 4, 45, 45, 4};
@@ -97,20 +100,36 @@ class aou_axi_rand_seq extends aou_axi_base_seq;
     return 1'b1;
   endfunction
 
+  // num_slots distinct pages, in random order, from the window's pages: a
+  // shuffle of the page indices, of which the first num_slots are kept. Only
+  // the positions the shuffle touches are stored (perm), so a wide window
+  // costs no more than a narrow one, and the loop runs exactly num_slots
+  // times. A window with fewer pages than num_slots stops the test.
   protected function void pick_slots();
-    bit [63:0] page;
-    bit [63:0] span = (addr_hi >> 12) - (addr_lo >> 12);
-    bit dup;
+    bit [63:0] lo_pg = addr_lo >> 12;
+    bit [63:0] n_sl  = 64'(num_slots);
+    bit [63:0] n_pg;
+    bit [63:0] perm[bit [63:0]];   // shuffled index at position i (i if absent)
+    bit [63:0] j;
+    bit [63:0] pi;
+    bit [63:0] pj;
+    if (addr_hi < addr_lo)
+      `uvm_fatal(get_type_name(), $sformatf("empty address window [0x%0h, 0x%0h]",
+                                            addr_lo, addr_hi))
+    n_pg = (addr_hi >> 12) - lo_pg + 64'd1;   // at most 2^52: never wraps to 0
+    if (n_sl > n_pg)
+      `uvm_fatal(get_type_name(), $sformatf(
+        "num_slots %0d exceeds the %0d 4KB pages in [0x%0h, 0x%0h]",
+        num_slots, n_pg, addr_lo, addr_hi))
     slot_base.delete();
     slot_busy.delete();
-    while (slot_base.size() < num_slots) begin
-      page = (addr_lo >> 12) + ({$urandom(), $urandom()} % (span + 64'd1));
-      dup = 1'b0;
-      foreach (slot_base[k]) if (slot_base[k] == page << 12) dup = 1'b1;
-      if (!dup) begin
-        slot_base.push_back(page << 12);
-        slot_busy.push_back(1'b0);
-      end
+    for (bit [63:0] i = 0; i < n_sl; i++) begin
+      j  = i + ({$urandom(), $urandom()} % (n_pg - i));
+      pi = perm.exists(i) ? perm[i] : i;
+      pj = perm.exists(j) ? perm[j] : j;
+      perm[j] = pi;
+      slot_base.push_back((lo_pg + pj) << 12);
+      slot_busy.push_back(1'b0);
     end
     slot_sem = new(num_slots);
   endfunction
@@ -147,7 +166,7 @@ class aou_axi_rand_seq extends aou_axi_base_seq;
     bit          is_small;
     bit [2:0]    mn;
     wr = ($urandom_range(99) < wr_pct);
-    l  = ($urandom_range(99) < lock_pct);
+    l  = ($urandom_range(99) < lock_pct) && p_sequencer.cfg.lock_en;
     b  = AOU_AXI_INCR;
     randcase
       fixed_pct:                   b = AOU_AXI_FIXED;
@@ -170,10 +189,15 @@ class aou_axi_rand_seq extends aou_axi_base_seq;
       endcase
       lmax = lmin;
     end
+    if (b != AOU_AXI_WRAP && lmin < min_len) lmin = min_len;
+    if (lmax < lmin) lmax = lmin;
+    // A FIXED burst is at most 16 beats (AXI4 A3.4.1), whatever min_len asks.
     if (b == AOU_AXI_FIXED && lmax > 15) lmax = 15;
     if (lmax > max_len) lmax = max_len;
     if (lmin > lmax) lmin = lmax;
     full_size = ($urandom_range(1) == 1);
+    // A long burst at the full bus width may not fit in 4 KB (AXI4 A3.4.1).
+    if (((int'(lmin) + 1) << msz) > 4096) full_size = 1'b0;
     is_small = pick_small(ssz, sln) && !l;
     mn = (msz < 3'd5) ? msz : 3'd5;   // a bus under 32 bytes has no ordinary size
     if (is_small) begin
