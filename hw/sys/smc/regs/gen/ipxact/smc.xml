@@ -45521,7 +45521,7 @@ reaches termination value.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>Signal0Select</ipxact:name>
-              <ipxact:description>Define which signal to select for edge detection.</ipxact:description>
+              <ipxact:description>Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45545,7 +45545,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Signal1Select</ipxact:name>
-              <ipxact:description>Define which signal to select for edge detection.</ipxact:description>
+              <ipxact:description>Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45779,6 +45779,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45791,6 +45792,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>33</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45803,6 +45805,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>34</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45815,6 +45818,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>35</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45827,6 +45831,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>36</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45839,6 +45844,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>37</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45851,6 +45857,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45863,6 +45870,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>39</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45875,6 +45883,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>40</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45887,6 +45896,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>41</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45899,6 +45909,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>42</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45911,6 +45922,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>43</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45923,6 +45935,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45935,6 +45948,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>45</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45947,6 +45961,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>46</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45959,6 +45974,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>47</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49795,7 +49811,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdsttimestampconfig</ipxact:name>
-              <ipxact:description>DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.</ipxact:description>
+              <ipxact:description>DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.</ipxact:description>
               <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

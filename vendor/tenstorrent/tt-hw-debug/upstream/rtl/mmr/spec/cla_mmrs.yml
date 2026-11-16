@@ -3175,7 +3175,7 @@ c_dbg_signal_edge_detect_cfg:
     FIELDS_RANGE: '14:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Define which signal to select for edge detection.
+    DESCRIPTION: "Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3196,7 +3196,7 @@ c_dbg_signal_edge_detect_cfg:
     FIELDS_RANGE: '6:0'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Define which signal to select for edge detection.
+    DESCRIPTION: "Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3221,7 +3221,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '47:47'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3231,7 +3231,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '46:46'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3241,7 +3241,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '45:45'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3251,7 +3251,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '44:44'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3261,7 +3261,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '43:43'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3271,7 +3271,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '42:42'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3281,7 +3281,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '41:41'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3291,7 +3291,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '40:40'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3301,7 +3301,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '39:39'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3311,7 +3311,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '38:38'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3321,7 +3321,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '37:37'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3331,7 +3331,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '36:36'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3341,7 +3341,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '35:35'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3351,7 +3351,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '34:34'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3361,7 +3361,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '33:33'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3371,7 +3371,7 @@ c_dbg_eap_status:
     FIELDS_RANGE: '32:32'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R

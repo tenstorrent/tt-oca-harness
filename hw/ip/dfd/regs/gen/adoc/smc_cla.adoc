@@ -615,9 +615,9 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63:16 | `Reserved` | - | - a| Reserved
 | 15 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
-| 14:8 | `Signal1Select` | RW | 0x0 a| Define which signal to select for edge detection.
+| 14:8 | `Signal1Select` | RW | 0x0 a| Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.
 | 7 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
-| 6:0 | `Signal0Select` | RW | 0x0 a| Define which signal to select for edge detection.
+| 6:0 | `Signal0Select` | RW | 0x0 a| Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.
 |===
 
 [#reg-{regmap-instance}-smc_cla-cla-CDbgEapStatus]
@@ -627,22 +627,22 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 |===
 | Bits | Field | Access | Reset | Description
 | 63:48 | `Reserved` | - | - a| Reserved
-| 47 | `Node3Eap3W2C` | RW | 0x0 a| -
-| 46 | `Node3Eap2W2C` | RW | 0x0 a| -
-| 45 | `Node3Eap1W2C` | RW | 0x0 a| -
-| 44 | `Node3Eap0W2C` | RW | 0x0 a| -
-| 43 | `Node2Eap3W2C` | RW | 0x0 a| -
-| 42 | `Node2Eap2W2C` | RW | 0x0 a| -
-| 41 | `Node2Eap1W2C` | RW | 0x0 a| -
-| 40 | `Node2Eap0W2C` | RW | 0x0 a| -
-| 39 | `Node1Eap3W2C` | RW | 0x0 a| -
-| 38 | `Node1Eap2W2C` | RW | 0x0 a| -
-| 37 | `Node1Eap1W2C` | RW | 0x0 a| -
-| 36 | `Node1Eap0W2C` | RW | 0x0 a| -
-| 35 | `Node0Eap3W2C` | RW | 0x0 a| -
-| 34 | `Node0Eap2W2C` | RW | 0x0 a| -
-| 33 | `Node0Eap1W2C` | RW | 0x0 a| -
-| 32 | `Node0Eap0W2C` | RW | 0x0 a| -
+| 47 | `Node3Eap3W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 46 | `Node3Eap2W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 45 | `Node3Eap1W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 44 | `Node3Eap0W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 43 | `Node2Eap3W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 42 | `Node2Eap2W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 41 | `Node2Eap1W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 40 | `Node2Eap0W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 39 | `Node1Eap3W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 38 | `Node1Eap2W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 37 | `Node1Eap1W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 36 | `Node1Eap0W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 35 | `Node0Eap3W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 34 | `Node0Eap2W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 33 | `Node0Eap1W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
+| 32 | `Node0Eap0W2C` | RW | 0x0 a| Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 | 31:16 | `Rsvd3116` | R | 0x0 a| -
 | 15 | `Node3Eap3` | R | 0x0 a| -
 | 14 | `Node3Eap2` | R | 0x0 a| -
@@ -1707,7 +1707,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `Trdsttimestampconfig` | RW | 0x0 a| DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
+| 31 | `Trdsttimestampconfig` | RW | 0x0 a| DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.
 | 30:28 | `Trdstvendorstreamlength` | RW | 0x4 a| Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
 | 27:24 | `Trdstvendorframelength` | RW | 0x1 a| Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes; Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries at the power of two given by the highest set bit of its frame length. Program the sink's trDstRamVendorFrameLength with the same value.
 | 23:20 | `Trdstprotocolminor` | R | 0x0 a| -
