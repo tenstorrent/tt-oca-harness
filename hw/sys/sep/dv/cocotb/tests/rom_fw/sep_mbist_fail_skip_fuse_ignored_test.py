@@ -135,6 +135,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
         ):
             if not os.path.isfile(src):
                 raise FileNotFoundError(f"ROM image not found: {src}")
+            self.log_image_identity(dst, src)
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
 
         async def _load_tcm() -> None:

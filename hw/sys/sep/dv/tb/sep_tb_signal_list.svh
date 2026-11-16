@@ -388,6 +388,13 @@
 `SEP_TB_IN(logic, rom_flip_i)
 `SEP_TB_IN(logic [12:0], rom_flip_index_i)
 `SEP_TB_IN(logic [63:0], rom_flip_mask_i)
+// Runtime warm-handler deposit (docs/SEP_TB_ARCH.adoc). A rising edge of
+// runtime_cold_scratch7_we_i writes runtime_cold_scratch7_wdata_i into COLD
+// Scratch 7; runtime_cold_scratch7_ack_o rises after the write and falls when
+// the request drops. Default 0: the slot is not written.
+`SEP_TB_IN(logic, runtime_cold_scratch7_we_i)
+`SEP_TB_IN(logic [31:0], runtime_cold_scratch7_wdata_i)
+`SEP_TB_OUT(logic, runtime_cold_scratch7_ack_o)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)

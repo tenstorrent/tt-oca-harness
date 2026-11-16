@@ -21,7 +21,7 @@
 |Register sources |`hw/sys/sep/regs/` (SystemRDL) and the generated export `hw/sys/sep/regs/gen/`
 |Testbench architecture |<<sep-dv-testbench-architecture,SEP_TB_ARCH>>, Boot ROM Firmware Builds (<<_boot_rom_firmware_builds>>)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep --items rom_fw`)
-|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 191 tests
+|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 211 tests
 |===
 
 This plan is the technical contract for the Boot ROM firmware tests. It states
@@ -66,13 +66,25 @@ never the ROM itself.
   `env/sep_smc_mem.py` preloads the SMC scratch words, the DFX status word, the
   strap words and the SMC-SRAM manifest image (`+sep_smc_mem_hex`,
   `+sep_dft_status`, `+sep_straps_lo`, `+sep_straps_hi`, `+sep_smc_scratch8`).
+  `preload_sep_status_ring()` publishes a SEP status ring in SMC SRAM and its
+  offset in `scratch[11]` before reset. A test that needs another image in SMC
+  SRAM writes it through the model at run time.
 * *eFuse.* The bench senses a real OTP image: either the `SepEfuseImage`
   builder (`env/sep_efuse_image.py`) or a committed preload from
   `tb/efuse_preloads/efuse_configurations/` (`+sep_efuse_preload`). No test uses
   `+skip_fuse_sense`, because the ROM lifecycle policy needs the `LC_STATE` that
-  only the real fuse sense writes.
-* *Warm reset.* `+sep_cold_scratch7` seeds the warm-handler slot and
-  `+sep_iccm_word` plants the handler instruction.
+  only the real fuse sense writes. `sep_boot_stall_efuse_shadow_override_test`
+  also writes one shadow word through the JTAG AXI-Lite port
+  (`axil_sep_otp_jtag_req_i`) while `ext_boot_seq_done_i` holds the boot stall.
+  The JTAG TAP, the DTP and the JTAG2AXI bridge are outside that scope.
+* *Warm reset.* Two forms. In the initial form, `+sep_cold_scratch7` seeds the
+  warm-handler slot before the first reset and `+sep_iccm_word` plants the
+  handler instruction. In the runtime form, the testbench inputs
+  `runtime_cold_scratch7_we_i` and `runtime_cold_scratch7_wdata_i` write the slot
+  while the ROM runs, `runtime_cold_scratch7_ack_o` acknowledges the write, and
+  a `wdt_rst_ni_i` pulse resets the CPU alone, so the ROM enters `_start` again
+  with `rst_ni` and `sep_reset_n` released. `+runtime_warm_case` selects the
+  slot value.
 * *Fault injection.* `+sep_otbn_cmd_drop` makes OTBN ignore its commands and
   `+sep_dma_host_stall` wedges the secure DMA host port.
 * *Entropy.* `+esrc_noise_force` with `env/sep_esrc_noise.py` drives the ESRC
@@ -134,6 +146,16 @@ Every test runs on `seed = 1`, except `sep_key_revocation_bitmap_random_test`
 (`seed = 17`). `sep_key_revocation_bitmap_random_test` and
 `sep_firmware_payload_exceeds_slot_window_random_test` each draw one value from
 their seed per regression.
+
+`sep_secondary_secure_boot_rand_test` runs from `seed = 1` with `reseed = 24`.
+Each seed draws one cell of lifecycle {PROD, PROD_END} x image {signed,
+unsigned, corrupt_signature} and, only after its evidence passes, writes that
+cell to a per-seed JSON artifact. Closure is the union of the artifacts:
+`env/sep_rom_functional_coverage.py merge <run-dir> --feature
+SEP-ROM-SECONDARY-SECURE` writes `functional-coverage-merge-SEP-ROM-SECONDARY-SECURE.json`
+into the run directory and exits non-zero when a cell is missing. A regression
+in which every seed passes but a cell is missing does not close the feature;
+rerun it with `--reseed 48`.
 
 === Naming Rules
 
@@ -222,7 +244,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |===
 |Group |Role
 |`rom_fw_smoke` |Bring-up of the four boot paths and the hand-off magic: `sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` (`expected_count = 5`)
-|`rom_fw` |The credit denominator of this plan: 191 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
+|`rom_fw` |The credit denominator of this plan: 211 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
 |`all`, `cpu`, `cpu_stub` |Not members. They belong to <<sep-dv-verification-plan>>
 |===
 
@@ -257,14 +279,15 @@ those tests.
 [cols="2,4,3,1",options="header"]
 |===
 |Requirement |Summary |Groups |Tests
-|`SEP-ROM-CPU-070` |Any trap is fatal: report, FAIL, hang |<<sep-rom-vplan-warm-reset>> |1
-|`SEP-ROM-CPU-110` |Warm-handler slot read before any DCCM access |<<sep-rom-vplan-warm-reset>> |2
-|`SEP-ROM-CPU-120` |Warm handler accepted only within ICCM or SEP SRAM |<<sep-rom-vplan-warm-reset>> |4
-|`SEP-ROM-CPU-130` |Poison warm scratch before jump |<<sep-rom-vplan-warm-reset>> |1
-|`SEP-ROM-CPU-140` |Invalid warm handler hangs, never cold-boots |<<sep-rom-vplan-warm-reset>> |2
+|`SEP-ROM-CPU-070` |Any trap is fatal: report, FAIL, hang |<<sep-rom-vplan-warm-reset>>, <<sep-rom-vplan-runtime-warm-reset>> |2
+|`SEP-ROM-CPU-110` |Warm-handler slot read before any DCCM access |<<sep-rom-vplan-warm-reset>>, <<sep-rom-vplan-runtime-warm-reset>> |4
+|`SEP-ROM-CPU-120` |Warm handler accepted only within ICCM or SEP SRAM |<<sep-rom-vplan-warm-reset>>, <<sep-rom-vplan-runtime-warm-reset>> |8
+|`SEP-ROM-CPU-130` |Poison warm scratch before jump |<<sep-rom-vplan-warm-reset>>, <<sep-rom-vplan-runtime-warm-reset>> |3
+|`SEP-ROM-CPU-140` |Invalid warm handler hangs, never cold-boots |<<sep-rom-vplan-warm-reset>>, <<sep-rom-vplan-runtime-warm-reset>> |4
+|`SEP-ROM-FUSE-010` |No fuse shadow value consumed before fuse sense completes |<<sep-rom-vplan-efuse-override>> |1
 |`SEP-ROM-FUSE-020` |Invalid LC => SMC reset + fatal |<<sep-rom-vplan-fuse-integrity>> |4
 |`SEP-ROM-SMC-010` |SMC SRAM values exchanged as offsets |<<sep-rom-vplan-secondary-chiplet>> |2
-|`SEP-ROM-SMC-030` |Memory-repair gate (strap-bypassable) |<<sep-rom-vplan-dft-gate>> |4
+|`SEP-ROM-SMC-030` |Memory-repair and MBIST gate (each strap-bypassable) |<<sep-rom-vplan-dft-gate>>, <<sep-rom-vplan-gate-bypass>> |9
 |`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. Only the invalid-offset clause is mapped; no test maps the SMC SRAM bounds clause |<<sep-rom-vplan-secondary-chiplet>> |1
 |`SEP-ROM-STRAP-010` |Exactly one boot mode, recorded + reported |<<sep-rom-vplan-secondary-chiplet>> |2
 |`SEP-ROM-SPI-010` |All flash access via the transport shim |<<sep-rom-vplan-ot-spi-boot>> |2
@@ -276,7 +299,7 @@ those tests.
 |`SEP-ROM-MAN-050` |Launch BLSTAGE1 image at its TOC `load_addr`/`entry_point` |<<sep-rom-vplan-smc-sram-boot>>, <<sep-rom-vplan-ot-spi-boot>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-toc-order>> |7
 |`SEP-ROM-MAN-060` |Placement validated against a permitted execution region (ICCM always; SRAM per `BL1_SRAM_EXEC_ENABLE`, default on), entry < length; copy after validation only |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-bl1-image>> |3
 |`SEP-ROM-MAN-070` |Manifest and resolved payload storage sources are 8-byte aligned before their first reads |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-primary-fail-backup>> |2
-|`SEP-ROM-SB-010` |PROD/PROD_END enforce secure boot |<<sep-rom-vplan-backup-manifest-fail>> |2
+|`SEP-ROM-SB-010` |PROD/PROD_END enforce secure boot |<<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-secondary-secure>> |3
 |`SEP-ROM-SB-020` |TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either trigger enables |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-dbg-lock>>, <<sep-rom-vplan-fuse-lock>> |4
 |`SEP-ROM-SB-025` |TEST_DEV or RMA_SiP with CHIPLET_DBG disabled or its vector read-locked enforces secure boot |<<sep-rom-vplan-dbg-lock>> |7
 |`SEP-ROM-SB-040` |SBOOT_DIS disables unless signed secure_boot_control asks |<<sep-rom-vplan-dbg-lock>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-fuse-lock>>, <<sep-rom-vplan-demotion-decision>>, <<sep-rom-vplan-demotion-prod>> |10
@@ -285,7 +308,7 @@ those tests.
 |`SEP-ROM-SB-050` |Key digest must match an authorized slot |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>> |13
 |`SEP-ROM-SB-060` |Revocation = manifest or device, before RSA |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-rom-key-revoked-backup>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>> |19
 |`SEP-ROM-SB-070` |Security-version superset, before and again after signature |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>> |3
-|`SEP-ROM-SB-090` |RSA-3072-PKCS1v15-SHA256 only; ECDSA rejected |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>> |11
+|`SEP-ROM-SB-090` |RSA-3072-PKCS1v15-SHA256 only; ECDSA rejected |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-secondary-secure>> |12
 |`SEP-ROM-SB-120` |No verified verdict unless OTBN is confirmed to have executed |<<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-otbn-bypass>> |2
 |`SEP-ROM-ENT-010` |Entropy chain brought up lazily, once, before first use |<<sep-rom-vplan-secure-boot>> |1
 |`SEP-ROM-DEM-010` |Demotion only from a validated manifest |<<sep-rom-vplan-demotion-decision>> |1
@@ -304,7 +327,7 @@ those tests.
 |`SEP-ROM-ATT-040` |Soft enrollment in bl0_state; BL1 registers into PCRV; legacy after |<<sep-rom-vplan-secure-boot>> |1
 |`SEP-ROM-ATT-060` |Self-hash verified by recompute before enrollment |<<sep-rom-vplan-smc-sram-boot>>, <<sep-rom-vplan-stall-timeout>> |2
 |`SEP-ROM-HOFF-030` |Fuse-secret locks set and independently re-verified |<<sep-rom-vplan-fuse-lock>> |4
-|`SEP-ROM-RETRY-010` |Two slots, rotate-aware order; one attempt for SMC paths |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>> |37
+|`SEP-ROM-RETRY-010` |Two slots, rotate-aware order; one attempt for SMC paths |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-secondary-secure>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>> |38
 |`SEP-ROM-RETRY-030` |Retry unit = entire validation chain, BL1 loadability included |<<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>>, <<sep-rom-vplan-primary-length>>, <<sep-rom-vplan-backup-length>>, <<sep-rom-vplan-device-id>>, <<sep-rom-vplan-no-payload-images>>, <<sep-rom-vplan-primary-toc>>, <<sep-rom-vplan-decrypt-input>>, <<sep-rom-vplan-bl1-image>> |44
 |`SEP-ROM-RETRY-040` |Clean state between attempts |<<sep-rom-vplan-spi-slot-detect>> |1
 |`SEP-ROM-RETRY-050` |All failures converge in rom_err_fail |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-fuse-integrity>>, <<sep-rom-vplan-dbg-lock>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>>, <<sep-rom-vplan-backup-length>>, <<sep-rom-vplan-rom-key-revoked-backup>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>>, <<sep-rom-vplan-stall-timeout>> |71
@@ -340,6 +363,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rsa_verify_redundant_compare_test` |<<sep-rom-vplan-secure-boot>> |One RSA_EXEC, RSA_CMP1 and RSA_CMP2 once each, in order RSA_EXEC, RSA_CMP1, RSA_CMP2, RSA_VERIFY_OK, MANIFEST_OK, PAYLOAD_OK on the primary only; boots.
 |`sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test` |<<sep-rom-vplan-secure-boot>> |Primary accepted in order OCA_BODY= .. BL1_JUMP=; one SPI read is exactly the body, no read falls outside body or payload, backup never read; boots BL1.
 |`sep_firmware_secondary_chiplet_bootcode_test` |<<sep-rom-vplan-secondary-chiplet>> |one attempt at 0x40061000 accepted: OCA_BODY=, MFST_VER=, MANIFEST_OK, PAYLOAD_OK, SBOOT_OFF, BL1_COPIED, BL1_JUMP=, BL1 FUSE_CHK in order; cold_scratch[0] PASS; no PUBK_\*/RSA_EXEC/MANIFEST_ERR=.
+|`sep_secondary_secure_boot_rand_test` |<<sep-rom-vplan-secondary-secure>> |one seeded {PROD, PROD_END} x {signed, unsigned, corrupt_signature} cell from SMC SRAM 0x40061000: signed boots BL1 after RSA_VERIFY_OK; unsigned refused OCA_FAIL_SIGNATURE_CLASS_CONTROL before key selection; corrupt signature refused RSA_PKCS1_FAIL and OCA_FAIL_SIGNATURE; one attempt, no SPI.
 |`sep_firmware_secondary_manifest_offset_misaligned_test` |<<sep-rom-vplan-secondary-chiplet>> |complete valid SMC image at 0x40061004 refused before OCA_BODY= with MANIFEST_ALIGN_FAIL and OCA_BOOT_ERR_MANIFEST_ALIGNMENT (0x00030108); one attempt, FAIL verdict, halt.
 |`sep_firmware_secondary_manifest_offset_invalid_test` |<<sep-rom-vplan-secondary-chiplet>> |READY with scratch[8]=0xFFFFFFFF refused before any slot with MANIFEST_OFFSET_INVALID and OCA_BOOT_ERR_MANIFEST_OFFSET_INVALID (0x00030109); no MANIFEST_SRC=, FAIL verdict, halt.
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |<<sep-rom-vplan-secondary-chiplet>> |one attempt at 0x40065000 refused MANIFEST_ERR=0x00030002, then MANIFEST_ALL_FAILED and MANIFEST_BOOT_FAIL=0x00030002; cold_scratch[1] ERROR word; FAIL verdict; halt.
@@ -353,12 +377,24 @@ holds the stimulus, the checkers and the requirements.
 |`sep_firmware_mbist_fail_test` |<<sep-rom-vplan-dft-gate>> |terminal ROM_ERR_DFT_GATE_BLOCKED: cold_scratch[1] WARN 0x08010219 then 0x0F01D001, SMC scratch[10]=0xFFFFFFFD, silent console, PC spin <=64 B.
 |`sep_scratch_7_test` |<<sep-rom-vplan-warm-reset>> |warm jump: cold_scratch[1]=0x01010068 (WARM_RESET_JUMP), cold_scratch[7] 0xC0000100->0x0, instruction retired at 0xC0000100, no console.
 |`sep_firmware_mbist_only_fail_test` |<<sep-rom-vplan-dft-gate>> |scratch[10]=0x00000012; cold_scratch[1] 0x08010219 then 0x0F01D001 (ROM_ERR_DFT_GATE_BLOCKED); silent console; PC spins; no boot.
-|`sep_firmware_mbist_pass_test` |<<sep-rom-vplan-dft-gate>> |boots; cold_scratch[1] shows PRESTART_DONE 0x80010056 and never WARN 0x08010219 or ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001; SMC scratch[10] stays 0; SMC_MEM_CHK and CHIP_ID= printed.
+|`sep_firmware_mbist_pass_test` |<<sep-rom-vplan-gate-bypass>> |boots; cold_scratch[1] shows PRESTART_DONE 0x80010056 and never WARN 0x08010219 or ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001; SMC scratch[10] stays 0; SMC_MEM_CHK and CHIP_ID= printed.
+|`sep_firmware_repair_bypass_test` |<<sep-rom-vplan-gate-bypass>> |boots with mem_repair_success clear because STRAPS_LO[13] is strapped: PRESTART_DONE, SMC_MEM_CHK, CHIP_ID= and BL1 PASS; no 0x08010219 or 0x0F01D001; SMC scratch[10] stays 0.
+|`sep_firmware_mbist_bypass_test` |<<sep-rom-vplan-gate-bypass>> |boots with mbist_abort set because STRAPS_HI[22] is strapped: PRESTART_DONE, SMC_MEM_CHK, CHIP_ID= and BL1 PASS; no 0x08010219 or 0x0F01D001; SMC scratch[10] stays 0.
+|`sep_firmware_repair_fail_test` |<<sep-rom-vplan-dft-gate>> |terminal ROM_ERR_DFT_GATE_BLOCKED on the repair arm: one DFX_CTRL_STATUS_SMU read, SMC scratch[10]=0x00000110, cold_scratch[1] 0x08010219 then 0x0F01D001, silent console, PC spin <=64 B, both bypass straps clear.
+|`sep_firmware_mbist_abort_test` |<<sep-rom-vplan-dft-gate>> |terminal ROM_ERR_DFT_GATE_BLOCKED on the abort exit: two DFX_CTRL_STATUS_SMU reads, SMC scratch[10]=0x00001002, cold_scratch[1] 0x08010219 then 0x0F01D001, silent console, PC spin <=64 B, both bypass straps clear.
+|`sep_firmware_mbist_timeout_test` |<<sep-rom-vplan-dft-gate>> |terminal ROM_ERR_DFT_GATE_BLOCKED after the bounded MBIST poll: 1 + MBIST_DONE_WAIT_ITERS DFX_CTRL_STATUS_SMU reads, SMC scratch[10]=0x00000002, cold_scratch[1] 0x08010219 then 0x0F01D001, silent console, PC spin <=64 B, both bypass straps clear.
+|`sep_status_reporting_disabled_test` |<<sep-rom-vplan-gate-bypass>> |STATUS_RPT_DISABLED printed and 0x80010076 in cold_scratch[1], no ENABLED/READY word, later cold_scratch[1] updates continue, the preloaded ring is byte-identical after the boot, BL1 PASS.
 |`sep_mbist_fail_skip_fuse_ignored_test` |<<sep-rom-vplan-dft-gate>> |STATUS_RPT bit 2 blown, still terminal ROM_ERR_DFT_GATE_BLOCKED: cold_scratch[1] WARN 0x08010219 then 0x0F01D001 and no later change, SMC scratch[10]=0xFFFFFFFD, PC only in the halt spin, no C-runtime console marker.
 |`sep_warm_reset_invalid_hang_test` |<<sep-rom-vplan-warm-reset>> |terminal hang: cold_scratch[1]=0x0F010069 (WARM_RESET_HANG), no 0x01010068, no cold-boot words or poison, silent console, PC spin <=64 B.
 |`sep_warm_reset_below_range_hang_test` |<<sep-rom-vplan-warm-reset>> |cold_scratch[1]=0x0F010069 (WARM_RESET_HANG); no 0x01010068 jump, no BOOTROM_START/PRESTART_DONE, no 0xFFFFFFFF poison, silent console; PC spins within 64 B.
 |`sep_warm_reset_unarmed_cold_boot_test` |<<sep-rom-vplan-warm-reset>> |cold_scratch[7] 0 -> 0xFFFFFFFF; cold_scratch[1] shows 0x80010044 then 0x80010056; no WARM_RESET_JUMP or WARM_RESET_HANG.
 |`sep_warm_reset_bad_target_exception_test` |<<sep-rom-vplan-warm-reset>> |0x01010068 (WARM_RESET_JUMP) then 0x0F010028 (GENERAL_EXCEPTION); mepc 0xC0000200 and mcause 2 in later cold_scratch[1] words; cold_scratch[0]=0xDEADBEEF; no BOOTROM_START, no poison.
+|`sep_runtime_warm_reset_valid_test` |<<sep-rom-vplan-runtime-warm-reset>> |runtime warm reset jumps: 0x01010068, cold_scratch[7] 0xC0000100 -> 0, only the handler retires, no DCCM access.
+|`sep_runtime_warm_reset_zero_test` |<<sep-rom-vplan-runtime-warm-reset>> |runtime warm reset with slot 0 cold boots: cold_scratch[7] 0 -> 0xFFFFFFFF, 0x80010044 then 0x80010056, no warm decision.
+|`sep_runtime_warm_reset_below_range_test` |<<sep-rom-vplan-runtime-warm-reset>> |runtime warm reset with 0xBFFFFFFC hangs: 0x0F010069, PC spin inside warm_reset_hang, no cold boot, no DCCM access.
+|`sep_runtime_warm_reset_upper_bound_test` |<<sep-rom-vplan-runtime-warm-reset>> |runtime warm reset with 0xC0040000 hangs: 0x0F010069, PC spin inside warm_reset_hang, no cold boot, no DCCM access.
+|`sep_runtime_warm_reset_bad_instruction_test` |<<sep-rom-vplan-runtime-warm-reset>> |runtime warm reset jumps to an all-zero ICCM word: 0x01010068 then 0x0F010028 with mcause 2 and mepc 0xC0000200, cold_scratch[0]=0xDEADBEEF, no cold boot.
+|`sep_runtime_warm_reset_one_shot_rearm_test` |<<sep-rom-vplan-runtime-warm-reset>> |first runtime warm reset jumps and clears the slot; the next one cold boots on the cleared slot; after a re-arm the third jumps to 0xC0000100 again.
 |===
 
 ==== Fuses, lifecycle and secure-boot decision
@@ -370,6 +406,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_firmware_sboot_dis_rsvd_terminal_test` |<<sep-rom-vplan-fuse-integrity>> |terminal ROM_ERR_SBOOT_DIS_RSVD_SET: SBOOT_DIS_RSVD=0x00000002, cold_scratch[1] 0x0F010227 then 0x0F01F008, FAIL verdict, halt.
 |`sep_firmware_enforced_secure_boot_flow_test` |<<sep-rom-vplan-enforcing-posture>> |boots: LC=PROD, PUBK_AUTHORIZED, RSA_EXEC, RSA_VERIFY_OK present; SBOOT_OFF and FUSE: SBOOT_DIS: 1 absent.
 |`sep_firmware_sboot_flag_cleared_signed_refuse_test` |<<sep-rom-vplan-enforcing-posture>> |Both slots refused with OCA_FAIL_SECURE_BOOT_INVARIANT (0x00030006), MANIFEST_ALL_FAILED, cold_scratch[1]=0x0F01008D, FAIL verdict and halt; no PUBK_SEL=/RSA_EXEC/MANIFEST_OK.
+|`sep_boot_stall_efuse_shadow_override_test` |<<sep-rom-vplan-efuse-override>> |control boot PASS; the SEP_SIP_ID word written during the stall reads back, and the ROM refuses both slots with MANIFEST_ERR=0x00030008, holds 0x0F010022 in cold_scratch[1] and ends with a FAIL verdict; a re-sense restores the OTP value.
 |`sep_lifecycle_invalid_smc_reset_test` |<<sep-rom-vplan-fuse-integrity>> |terminal ROM_ERR_LIFECYCLE_INVALID: 0x0F010001 then 0x0F01A002, RESET_CTRL=0x00000100, SMC_RESET_ON_INVALID_LC value with [3:0]=0, no SMC address violations, PC spin <=64 B.
 |`sep_firmware_fuse_lock_secure_test_dev_test` |<<sep-rom-vplan-fuse-lock>> |Boots BL1 through PUBK_AUTHORIZED, RSA_EXEC, RSA_VERIFY_OK with FUSE_SECRETS_LOCKED and all six LOCKS read-lock bits set; SBOOT_OFF absent.
 |`sep_firmware_fuse_lock_secure_prod_test` |<<sep-rom-vplan-fuse-lock>> |Boots BL1 through the RSA chain with LC=PROD, FUSE_SECRETS_LOCKED and all six read-lock bits set; SBOOT_OFF absent.
@@ -785,6 +822,58 @@ PASS record of its own.
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |`CHK-INVALID-PUBLISHED-MANIFEST` |One attempt at the published address refused BAD_MAGIC with no body or downstream markers, MANIFEST_ERR= once, ordered src < err < ALL_FAILED < BOOT_FAIL, mapped ERROR word in cold_scratch[1], FAIL verdict.
 |===
 
+[[sep-rom-vplan-secondary-secure]]
+===== Secondary-chiplet secure boot
+
+*Tests:* 1.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_secondary_secure_boot_rand_test.py`, on `sep_secondary_chiplet_base.py`.
+
+*Objective:* On a secondary chiplet in PROD or PROD_END, the ROM enforces secure boot on the image that the SMC publishes in SMC SRAM. It boots a ROM-key-signed image only after key authorization and an RSA verify, refuses an unsigned image before key selection, and refuses a corrupt signature in the verifier, each in one attempt.
+
+*Procedure:*
+
+. Draw the lifecycle {prod, prod_end} and the image scenario {signed, unsigned, corrupt_signature} from the seed.
+. Write a PROD or PROD_END eFuse image with SBOOT_DIS, CHIPLET_PUBK_REVOKE, BL1_VERSION, SIP_DIS and SYS_DIS clear.
+. Build the image from oca_secure_boot.bin (ROM key slot 0, manifest at 0x1000, payload at 0x2000): the shipped signed form, the packer's unsigned form, or the signed form with one seeded signature bit flipped such that the signature integer stays below the modulus. Check the signature validity of the result against the drawn scenario.
+. Write the image into SMC SRAM at 0x40060000 through the model, so the default published offset 0x1000 names its manifest; no +sep_smc_mem_hex, all straps 0.
+. Start the ESRC noise driver (+esrc_noise_force), the console capture and an AR watcher on the SEP->SMC AXI port.
+. Run the <<sep-rom-vplan-secondary-chiplet>> procedure to the verdict.
+. Judge the drawn cell, and write its coverage artifact only after every check and the evidence gate passed.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-SECONDARY-SECURE-STIMULUS` |The ROM printed exactly one LC= line, the one for the drawn lifecycle.
+|`CHK-SECONDARY-SECURE-SOURCE` |One slot attempt at 0x40061000; an SMC-port read covers the manifest; a read covers the payload when the cell boots and none reaches it when the cell is refused; no read reaches the backup slot.
+|`CHK-SINGLE-ATTEMPT` |Inherited: MANIFEST_PRIMARY and MANIFEST_SRC= each appear once.
+|`CHK-SECONDARY-NO-SPI` |BOOT_SECONDARY appears once, and no SPI, recovery, backup, rotate or SPI-init marker appears.
+|===
+
+*Anti-vacuity:* The image builder proves the shipped signature verifies against its anchored key, that the unsigned form matches the packer's unsigned manifest except its description and hash, and that the flipped signature no longer verifies. FUSE: SBOOT_DIS: 0 is required, and SBOOT_OFF is forbidden.
+
+*Observation:* ROM console markers and order, cold_scratch[0] verdict, cold_scratch[1] status sequence, SEP->SMC AXI read addresses, per-seed coverage artifact.
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_secondary_secure_boot_rand_test` |One seeded cell per run (seed = 1, reseed = 24). DV shortcut: +esrc_noise_force; the image is written into the SMC responder model at run time. |signed: OCA_BODY=, MFST_VER=, PUBK_SEL=0x00000000, PUBK_AUTHORIZED, PUBK_REVOKE=0x00000000, FUSE_VER=, RSA_EXEC, RSA_CMP1, RSA_CMP2, RSA_VERIFY_OK, MANIFEST_OK, PAYLOAD_OK, BL1_COPIED, BL1_JUMP=, PRE_JUMP, FUSE_CHK in order and BL1 PASS. unsigned: MANIFEST_ERR=OCA_FAIL_SIGNATURE_CLASS_CONTROL after MFST_VER= with no key-selection marker. corrupt_signature: the key chain and verifier markers, then RSA_PKCS1_FAIL and MANIFEST_ERR=OCA_FAIL_SIGNATURE. A refused cell then prints MANIFEST_ALL_FAILED and MANIFEST_BOOT_FAIL=, holds the slot's ERROR word and then SEP_MSG_MANIFEST_LOAD_FAILED in cold_scratch[1], and ends with a FAIL verdict. |`CHK-SECONDARY-SECURE-SIGNED`, `CHK-SECONDARY-SECURE-UNSIGNED`, `CHK-SECONDARY-SECURE-CORRUPT-SIGNATURE` (the drawn cell's) |`SEP-ROM-SB-010`, `SEP-ROM-SB-090`, `SEP-ROM-RETRY-010`
+|===
+
+*Added checker contracts:*
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|`sep_secondary_secure_boot_rand_test` |`CHK-SECONDARY-SECURE-SIGNED` |The attempt is accepted with the signed markers in order and none of MANIFEST_ERR=, RSA_PKCS1_FAIL, SBOOT_OFF, an OTBN fault or a key refusal; PUBK_SEL=, RSA_EXEC and RSA_VERIFY_OK appear once each; BL1 PASS.
+|`sep_secondary_secure_boot_rand_test` |`CHK-SECONDARY-SECURE-UNSIGNED` |The attempt is refused at the manifest stage with OCA_FAIL_SIGNATURE_CLASS_CONTROL, MANIFEST_ERR= once, no key-selection, RSA or boot-progress marker, the order MANIFEST_ERR= < MANIFEST_ALL_FAILED < MANIFEST_BOOT_FAIL=, the slot's ERROR word before SEP_MSG_MANIFEST_LOAD_FAILED in cold_scratch[1], and a FAIL verdict.
+|`sep_secondary_secure_boot_rand_test` |`CHK-SECONDARY-SECURE-CORRUPT-SIGNATURE` |The attempt runs the key chain and the verifier once and is refused with RSA_PKCS1_FAIL and OCA_FAIL_SIGNATURE, with no RSA_VERIFY_OK, OTBN fault, key refusal or boot-progress marker, the same order, status words and FAIL verdict as the unsigned cell.
+|===
+
 [[sep-rom-vplan-spi-slot-detect]]
 ===== SPI slot detection and address failover
 
@@ -939,21 +1028,82 @@ PASS record of its own.
 |`sep_warm_reset_bad_target_exception_test` |`CHK-VERDICT-FAIL` |cold_scratch[0] takes 0xDEADBEEF.
 |`sep_warm_reset_bad_target_exception_test` |`CHK-NO-COLD-FALLTHROUGH` |No BOOTROM_START status and no 0xFFFFFFFF poison.
 |===
+[[sep-rom-vplan-runtime-warm-reset]]
+===== Runtime warm reset
+
+*Tests:* 6.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_runtime_warm_dispatch_test.py`, on `sep_warm_dispatch_base.py`. All six members run this module; `+runtime_warm_case` selects the member.
+
+*Objective:* A CPU-only warm reset taken while the production ROM runs re-enters `_start` and takes the vector.S dispatch leg that the cold_scratch[7] value written at run time selects: a jump for an in-range handler, a cold boot for 0, a hang for an out-of-range value, and a fatal trap when the accepted target holds no valid instruction. One jump consumes the slot.
+
+*Procedure:*
+
+. Write a zero eFuse image stamped TEST_DEV and leave cold_scratch[7] at its reset value 0 (no +sep_cold_scratch7). For `valid` and `one_shot_rearm`, stage ROM .itcm/.dtcm and the +sep_iccm_word `j .` handler at 0xC0000100 through tcm_load_i; the other members leave ICCM at its zero fill.
+. Release the core and record, for each reset epoch, every change of cold_scratch[0], [1] and [7], the retired PCs, the first DCCM access and the reset edges.
+. Wait for the vector.S DCCM scrub store of the cold boot, which follows the last MMIO access of vector.S, or for the handler's `j .`, so no CPU LSU AXI transaction is outstanding at the reset.
+. Write the member's slot value through runtime_cold_scratch7_we_i and runtime_cold_scratch7_wdata_i and wait for runtime_cold_scratch7_ack_o.
+. Pulse wdt_rst_ni_i low until 4 clk_i cycles after sep_cpu_reset_n falls, with rst_ni and sep_reset_n held high.
+. Judge the epoch after the reset with the member's checker. `one_shot_rearm` takes two more warm resets: one with the consumed slot and one after a re-arm.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-STIMULUS-HANDLER` |Inherited: no +sep_cold_scratch7, so the first start reads the reset value 0.
+|`CHK-RUNTIME-WARM-FIRST-START` |The first start begins at `_start`, changes cold_scratch[7] 0 -> 0xFFFFFFFF, writes 0x80010044 then 0x80010056 to cold_scratch[1] and enters the DCCM scrub; dbg_dccm_active_o rises in the scrub and not before the cold_scratch[7] write.
+|`CHK-RUNTIME-WARM-DEPOSIT` |cold_scratch[7] changes to the member's value, the ack follows the request by one clk_i cycle and drops with it, and the slot reads back the written value.
+|`CHK-RUNTIME-WARM-EDGE` |The wdt_rst_ni_i pulse drops and releases sep_cpu_reset_n while rst_ni and sep_reset_n stay high, no instruction retires while it is low, the last PC before it is at the planned quiet point and the first PC after it is `_start`.
+|`CHK-HANG` |Inherited, on the hang members: cold_scratch[1] holds 0x0F010069 and the PC spans at most 64 bytes for 2000 cycles.
+|===
+
+*Anti-vacuity:* The first start must poison the slot and reach the scrub, and the deposit must read back, so the warm decision is attributable to the runtime write. Each member judges the whole cold_scratch[1] and cold_scratch[7] sequence of the warm epoch, the retired PCs and the console.
+
+*Observation:* cold_scratch[0], [1] and [7] per reset epoch, retired PC trace, dbg_dccm_active_o, sep_cpu_reset_n, rst_ni and sep_reset_n, ROM console.
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_runtime_warm_reset_valid_test` |+runtime_warm_case=valid writes 0xC0000100; +sep_iccm_word=C0000100:0000006f. DV shortcut: runtime cold_scratch[7] write through the testbench port; +sep_iccm_word ICCM poke with ECC and tcm_load_i ROM staging. |0x01010068 first, cold_scratch[7] 0xC0000100 -> 0, only the handler retires afterwards, no cold-boot status, no verdict, no DCCM access, empty console. |`CHK-RUNTIME-WARM-VALID` |`SEP-ROM-CPU-110`, `SEP-ROM-CPU-120`, `SEP-ROM-CPU-130`
+|`sep_runtime_warm_reset_zero_test` |+runtime_warm_case=zero writes 0. DV shortcut: runtime cold_scratch[7] write through the testbench port. |cold boot: cold_scratch[7] 0 -> 0xFFFFFFFF, 0x80010044 then 0x80010056, no 0x01010068 or 0x0F010069. |`CHK-RUNTIME-WARM-ZERO` |`SEP-ROM-CPU-110`
+|`sep_runtime_warm_reset_below_range_test` |+runtime_warm_case=below writes 0xBFFFFFFC, the largest address below ICCM, which is also above the SEP SRAM window. DV shortcut: runtime cold_scratch[7] write through the testbench port. |0x0F010069 first, PC spin inside warm_reset_hang, no 0x01010068, no cold-boot status or poison, no verdict, no DCCM access, empty console. |`CHK-RUNTIME-WARM-BELOW`, `CHK-HANG` |`SEP-ROM-CPU-120`, `SEP-ROM-CPU-140`
+|`sep_runtime_warm_reset_upper_bound_test` |+runtime_warm_case=upper writes 0xC0040000, the ICCM end. DV shortcut: runtime cold_scratch[7] write through the testbench port. |0x0F010069 first, PC spin inside warm_reset_hang, no 0x01010068, no cold-boot status or poison, no verdict, no DCCM access, empty console. |`CHK-RUNTIME-WARM-UPPER`, `CHK-HANG` |`SEP-ROM-CPU-120`, `SEP-ROM-CPU-140`
+|`sep_runtime_warm_reset_bad_instruction_test` |+runtime_warm_case=bad_instruction writes 0xC0000200 with ICCM left at its zero fill. DV shortcut: runtime cold_scratch[7] write through the testbench port. |0x01010068 first, then 0x0F010028 with mcause 2 and mepc 0xC0000200 in later cold_scratch[1] words; cold_scratch[7] -> 0; cold_scratch[0] 0 -> 0xDEADBEEF; spin inside trap_vector_early; no cold boot, no DCCM access. |`CHK-RUNTIME-WARM-BAD-INSTRUCTION` |`SEP-ROM-CPU-120`, `SEP-ROM-CPU-070`
+|`sep_runtime_warm_reset_one_shot_rearm_test` |+runtime_warm_case=one_shot_rearm writes 0xC0000100, resets, resets again from the handler without a write, then writes 0xC0000100 again and resets. DV shortcut: as `sep_runtime_warm_reset_valid_test`. |first reset jumps and leaves cold_scratch[7] at 0; the second cold boots without retiring the handler; the third jumps to 0xC0000100 again. |`CHK-RUNTIME-WARM-ONE-SHOT-REARM` |`SEP-ROM-CPU-130`
+|===
+
+*Added checker contracts:*
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|`sep_runtime_warm_reset_valid_test` |`CHK-RUNTIME-WARM-VALID` |After the reset cold_scratch[1] takes 0x01010068 first and never 0x0F010069, BOOTROM_START, PRESTART_DONE or 0x0F010028; cold_scratch[7] changes once, to 0; the handler retires and is the only PC afterwards; no DCCM access, verdict or console line.
+|`sep_runtime_warm_reset_zero_test` |`CHK-RUNTIME-WARM-ZERO` |After the reset the ROM cold boots to the DCCM scrub as in `CHK-RUNTIME-WARM-FIRST-START`, with no warm decision.
+|`sep_runtime_warm_reset_below_range_test` |`CHK-RUNTIME-WARM-BELOW` |After the reset cold_scratch[1] takes 0x0F010069 first and never 0x01010068, BOOTROM_START or PRESTART_DONE; cold_scratch[7] never takes 0xFFFFFFFF; the spin PCs are inside warm_reset_hang; no DCCM access, verdict or console line.
+|`sep_runtime_warm_reset_upper_bound_test` |`CHK-RUNTIME-WARM-UPPER` |As `CHK-RUNTIME-WARM-BELOW`, for 0xC0040000.
+|`sep_runtime_warm_reset_bad_instruction_test` |`CHK-RUNTIME-WARM-BAD-INSTRUCTION` |After the reset cold_scratch[1] takes 0x01010068 first, then 0x0F010028 followed by mcause 2 and mepc 0xC0000200, and never 0x0F010069, BOOTROM_START or PRESTART_DONE; cold_scratch[7] changes once, to 0; cold_scratch[0] changes once, 0 -> 0xDEADBEEF; the spin PCs are inside trap_vector_early; no DCCM access or console line.
+|`sep_runtime_warm_reset_one_shot_rearm_test` |`CHK-RUNTIME-WARM-ONE-SHOT-REARM` |The first reset passes the `CHK-RUNTIME-WARM-VALID` checks and leaves cold_scratch[7] at 0; the second cold boots to the DCCM scrub and the handler does not retire; the third, after a re-arm, passes the `CHK-RUNTIME-WARM-VALID` checks again.
+|===
+
 [[sep-rom-vplan-dft-gate]]
 ===== Memory-repair and MBIST gate
 
-*Tests:* 4.
+*Tests:* 6.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_mbist_fail_test.py`.
 
-*Objective:* Proves that the pre-C DFT gate in vector.S blocks boot on an injected memory-repair or MBIST failure: it publishes the raw status to SMC scratch[10], emits MBIST_FAIL WARN, writes ROM_ERR_DFT_GATE_BLOCKED and spins. It lets a status with mem_repair_success, mbist_done and mbist_pass set boot, and still halts when reserved STATUS_RPT bit 2 is blown, because no eFuse lets a failed check continue.
+*Objective:* Proves that the pre-C DFT gate in vector.S blocks boot on an injected memory-repair or MBIST failure: it publishes the raw status to SMC scratch[10], emits MBIST_FAIL WARN, writes ROM_ERR_DFT_GATE_BLOCKED and spins. The repair check halts on mem_repair_success clear. The MBIST check halts on mbist_abort, on a finished run without mbist_pass, and when mbist_done stays clear for the whole poll bound. The gate still halts when reserved STATUS_RPT bit 2 is blown, because no eFuse lets a failed check continue. <<sep-rom-vplan-gate-bypass>> holds the passing and the bypassed cases.
 
 *Procedure:*
 
 . Assert +sep_dft_status is set and equals dft_status_injected, then run the member's stimulus-shape check.
 . Write a zero eFuse image stamped TEST_DEV (reserved STATUS_RPT bit 2 unblown; `sep_mbist_fail_skip_fuse_ignored_test` blows it).
 . Stage ROM .itcm/.dtcm through tcm_load_i and release the core at the Boot ROM base.
-. Sample cold_scratch[1] and SMC scratch[10] each cycle until 0x0F01D001 or 400k cycles.
+. Count DFX_CTRL_STATUS_SMU reads on the SMC AXI port for the whole run.
+. Sample cold_scratch[1] and SMC scratch[10] each cycle until 0x0F01D001 or max_run_cycles (400k; 4M for `sep_firmware_mbist_timeout_test`, whose poll makes one SMC round trip per iteration).
 . Watch 2000 more cycles, recording retired PCs and any change of cold_scratch[1].
 . Judge scratch[10], the WARN and terminal status words, console silence, and the PC spin span.
 
@@ -964,7 +1114,8 @@ PASS record of its own.
 |Checker |Contract
 |`CHK-DFT-READ` |SMC scratch[10] held the injected DFT status word.
 |`CHK-DFT-DETECT` |cold_scratch[1] held 0x08010219 (WARN + SEP_MSG_MBIST_FAIL).
-|`CHK-DFT-PRE-C` |None of SMC_MEM_CHK, LC=, DFT_STATUS=, CHIP_ID= appears on the console.
+|`CHK-DFT-ARM` |When the member names a read count, the SMC port saw exactly that many DFX_CTRL_STATUS_SMU reads, which locates the arm that failed.
+|`CHK-DFT-PRE-C` |The console decoder is still running, and none of SMC_MEM_CHK, LC=, DFT_STATUS=, CHIP_ID= appears on the console.
 |`CHK-DFT-PUBLISH` |Repeats the CHK-DFT-READ assertion on scratch[10].
 |`CHK-DFT-NO-BYPASS` |The testbench eFuse image has STATUS_RPT bit 2 clear.
 |`CHK-DFT-TERMINAL` |cold_scratch[1] reached 0x0F01D001, did not move for 2000 cycles, and the retired PC spanned at most 64 bytes.
@@ -982,7 +1133,9 @@ PASS record of its own.
 |Test |Stimulus |Expected |Checkers it adds |Requirements
 |`sep_firmware_mbist_fail_test` |+sep_dft_status=FFFFFFFD (SMC DFX_CTRL_STATUS with only bit 1 mem_repair_success clear); STATUS_RPT bit 2 unblown; TEST_DEV. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex into ICCM/DCCM before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED: cold_scratch[1] WARN 0x08010219 then 0x0F01D001, SMC scratch[10]=0xFFFFFFFD, silent console, PC spin <=64 B. |`CHK-DFT-READ`, `CHK-DFT-DETECT`, `CHK-DFT-PRE-C`, `CHK-DFT-PUBLISH`, `CHK-DFT-NO-BYPASS`, `CHK-DFT-TERMINAL`, `CHK-DFT-NO-PROGRESS` |`SEP-ROM-SMC-030`
 |`sep_firmware_mbist_only_fail_test` |+sep_dft_status=00000012 (mem_repair_success bit 1 set, mbist_done bit 4 set, mbist_pass bit 8 clear). DV shortcut: +sep_dft_status injects DFX_CTRL_STATUS through the SMC responder model; tcm_load_i backdoor stages ROM .itcm/.dtcm hex with valid ECC before reset |scratch[10]=0x00000012; cold_scratch[1] 0x08010219 then 0x0F01D001 (ROM_ERR_DFT_GATE_BLOCKED); silent console; PC spins; no boot. |None beyond the group |`SEP-ROM-SMC-030`
-|`sep_firmware_mbist_pass_test` |Runs the base procedure of <<sep-rom-vplan-ot-spi-boot>>. +sep_dft_status=00000112 (bits 1, 4, 8 only; repair_done and abort bits clear) into the SMC responder's DFX_CTRL_STATUS_SMU word. DV shortcut: SMC responder is a flat-memory model; +sep_dft_status sets the DFX_CTRL_STATUS_SMU word it serves. |boots; cold_scratch[1] shows PRESTART_DONE 0x80010056 and never WARN 0x08010219 or ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001; SMC scratch[10] stays 0; SMC_MEM_CHK and CHIP_ID= printed. |`CHK-DFT-PASS-STIMULUS`, `CHK-DFT-INJECTED`, `CHK-DFT-REACHED`, `CHK-DFT-NO-WARN`, `CHK-DFT-NO-PUBLISH` |`SEP-ROM-SMC-030`
+|`sep_firmware_repair_fail_test` |+sep_dft_status=00000110 (mbist_done and mbist_pass set, mem_repair_success clear: the word `sep_firmware_repair_bypass_test` boots on); no strap plusarg. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex into ICCM/DCCM before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED after one DFX_CTRL_STATUS_SMU read: SMC scratch[10]=0x00000110, cold_scratch[1] 0x08010219 then 0x0F01D001, silent console, PC spin <=64 B. |`CHK-DFT-REPAIR-FAIL-STIMULUS`, `CHK-DFT-ARM` |`SEP-ROM-SMC-030`
+|`sep_firmware_mbist_abort_test` |+sep_dft_status=00001002 (mem_repair_success and mbist_abort set, mbist_done and mbist_pass clear); no strap plusarg. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex into ICCM/DCCM before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED after two DFX_CTRL_STATUS_SMU reads: SMC scratch[10]=0x00001002, cold_scratch[1] 0x08010219 then 0x0F01D001, silent console, PC spin <=64 B. |`CHK-DFT-MBIST-ABORT-STIMULUS`, `CHK-DFT-ARM` |`SEP-ROM-SMC-030`
+|`sep_firmware_mbist_timeout_test` |+sep_dft_status=00000002 (mem_repair_success alone, so mbist_done never sets); no strap plusarg. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex into ICCM/DCCM before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED after the bounded MBIST poll: SMC scratch[10]=0x00000002, cold_scratch[1] 0x08010219 then 0x0F01D001, silent console, PC spin <=64 B. The SMC port saw 1 + MBIST_DONE_WAIT_ITERS DFX_CTRL_STATUS_SMU reads; no time is graded. |`CHK-DFT-MBIST-TIMEOUT-STIMULUS`, `CHK-DFT-ARM` |`SEP-ROM-SMC-030`
 |`sep_mbist_fail_skip_fuse_ignored_test` |+sep_dft_status=FFFFFFFD (only bit 1 mem_repair_success clear) plus OTP STATUS_RPT bit 2 blown on a TEST_DEV image. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED as in `sep_firmware_mbist_fail_test`: cold_scratch[1] WARN 0x08010219 then 0x0F01D001 with no later change, SMC scratch[10]=0xFFFFFFFD, PC only in the halt spin, no C-runtime console marker. |`CHK-SKIP-FUSE-BLOWN`, `CHK-DFT-STATUS-STABLE`, `CHK-DFT-HALT-SPIN`; it keeps `CHK-DFT-PUBLISH` and `CHK-DFT-DETECT`, redefines `CHK-DFT-TERMINAL` and `CHK-DFT-NO-PROGRESS` (which absorbs `CHK-DFT-PRE-C`), and does not run `CHK-DFT-READ` or `CHK-DFT-NO-BYPASS` |`SEP-ROM-SMC-030`
 |===
 
@@ -998,16 +1151,80 @@ PASS record of its own.
 |`sep_firmware_mbist_fail_test` |`CHK-DFT-NO-BYPASS` |STATUS_RPT bit 2 is unblown in the OTP image.
 |`sep_firmware_mbist_fail_test` |`CHK-DFT-TERMINAL` |0x0F01D001 is reached, and the status stays unchanged and the PC span stays <=64 B for 2000 cycles.
 |`sep_firmware_mbist_fail_test` |`CHK-DFT-NO-PROGRESS` |MANIFEST_OK, BL1_COPIED and PRE_JUMP are absent.
-|`sep_firmware_mbist_pass_test` |`CHK-DFT-PASS-STIMULUS` |The plusarg equals 0x112 and sets exactly the three gate bits.
-|`sep_firmware_mbist_pass_test` |`CHK-DFT-INJECTED` |The SMC model's DFX word only ever held 0 or 0x112 and ended at 0x112.
-|`sep_firmware_mbist_pass_test` |`CHK-DFT-REACHED` |cold_scratch[1] held PRESTART_DONE 0x80010056, so execution reached the gate.
-|`sep_firmware_mbist_pass_test` |`CHK-DFT-NO-WARN` |Neither the MBIST WARN word nor the gate-blocked ERROR word ever reached cold_scratch[1].
-|`sep_firmware_mbist_pass_test` |`CHK-DFT-NO-PUBLISH` |SMC scratch[10] stayed 0 for the whole run.
+|`sep_firmware_repair_fail_test` |`CHK-DFT-REPAIR-FAIL-STIMULUS` |The word clears mem_repair_success, sets mbist_done and mbist_pass and clears mbist_abort, so only the repair arm can fail; no strap plusarg is set, and both bypass bits read 0 in the SMC strap words after the run.
+|`sep_firmware_repair_fail_test` |`CHK-DFT-ARM` |One DFX_CTRL_STATUS_SMU read: the gate read, and no MBIST wait read.
+|`sep_firmware_mbist_abort_test` |`CHK-DFT-MBIST-ABORT-STIMULUS` |The word sets mem_repair_success and mbist_abort with mbist_done and mbist_pass clear, no strap plusarg is set, and both bypass bits read 0 in the SMC strap words after the run.
+|`sep_firmware_mbist_abort_test` |`CHK-DFT-ARM` |Two DFX_CTRL_STATUS_SMU reads: the gate read and the first wait read, which sees mbist_abort.
+|`sep_firmware_mbist_timeout_test` |`CHK-DFT-MBIST-TIMEOUT-STIMULUS` |The word is mem_repair_success alone, no strap plusarg is set, and both bypass bits read 0 in the SMC strap words after the run.
+|`sep_firmware_mbist_timeout_test` |`CHK-DFT-ARM` |1 + MBIST_DONE_WAIT_ITERS DFX_CTRL_STATUS_SMU reads: the gate read and every wait read up to the bound, taken from vector.S of the ROM under test.
 |`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-SKIP-FUSE-BLOWN` |The generated OTP image has STATUS_RPT bit 2 set.
 |`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-TERMINAL` |cold_scratch[1] reached 0x0F01D001 within 400k cycles, after the WARN word.
 |`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-STATUS-STABLE` |cold_scratch[1] did not change for 2000 cycles after 0x0F01D001.
 |`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-HALT-SPIN` |Every PC retired in those 2000 cycles is the `wfi` or the `j` of the `mem_repair_fail_hang` spin, read from `boot_rom.dis` of the ROM under test.
 |`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-NO-PROGRESS` |None of SMC_MEM_CHK, LC=, DFT_STATUS=, CHIP_ID=, MANIFEST_OK, BL1_COPIED or PRE_JUMP appears on the console.
+|===
+
+[[sep-rom-vplan-gate-bypass]]
+===== Gate bypass and status-reporting straps
+
+*Tests:* 4.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_dft_gate_base.py`, on `sep_rom_ot_dma_boot_test`.
+
+*Objective:* A DFX status word that passes the pre-C gate, or that fails only a check whose bypass strap is set, lets the ROM leave the gate and boot BL1 over the OpenTitan SPI path. The status-reporting disable strap stops only the SMC SRAM status ring, and `cold_scratch[1]` keeps reporting.
+
+*Procedure:*
+
+. Assert +sep_dft_status equals the member's word, and that each strap plusarg is present exactly when the member needs a bit in that word; run the member's stimulus-shape check.
+. Start a monitor that records every change of cold_scratch[1], SMC scratch[10], DFX_CTRL_STATUS_SMU, STRAPS_LO and STRAPS_HI from before CPU release.
+. Run the <<sep-rom-vplan-ot-spi-boot>> procedure on the default image with SMC_MEM_CHK and CHIP_ID= added to the required markers, and poll for the BL1 PASS verdict.
+. Judge the recorded sequences and the console with the member's checkers.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-VERDICT` |Inherited: BL1 completes with PASS through cold_scratch[0].
+|`CHK-ROM-PATH` |Inherited: every required marker, SMC_MEM_CHK and CHIP_ID= included, is observed and no forbidden marker is printed.
+|===
+
+*Anti-vacuity:* The DFX word and the strap words are graded at the SMC model, where the ROM reads them, not on the command line. Each word holds only 0 and its final value, the bypass bits are exactly the member's, and the ROM's STRAPS_LO=/STRAPS_HI= echo equals the SMC word. SMC_MEM_CHK and CHIP_ID= are printed only after the gate.
+
+*Observation:* cold_scratch[1] and SMC scratch[10] sequences, DFX_CTRL_STATUS_SMU and strap words at the SMC model, ROM console, cold_scratch[0] verdict, SEP status ring bytes in SMC SRAM.
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_firmware_mbist_pass_test` |+sep_dft_status=00000112 (bits 1, 4, 8 only; repair_done and abort bits clear) into the SMC responder's DFX_CTRL_STATUS_SMU word. DV shortcut: SMC responder is a flat-memory model; +sep_dft_status sets the DFX_CTRL_STATUS_SMU word it serves. |boots; cold_scratch[1] shows PRESTART_DONE 0x80010056 and never WARN 0x08010219 or ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001; SMC scratch[10] stays 0; SMC_MEM_CHK and CHIP_ID= printed. |`CHK-DFT-PASS-STIMULUS`, `CHK-DFT-INJECTED`, `CHK-DFT-REACHED`, `CHK-DFT-NO-WARN`, `CHK-DFT-NO-PUBLISH` |`SEP-ROM-SMC-030`
+|`sep_firmware_repair_bypass_test` |+sep_dft_status=00000110 (mbist_done and mbist_pass set, mem_repair_success clear) with +sep_straps_lo=00002000 (mem_repair_bypass, STRAPS_LO[13]). DV shortcut: the SMC responder model serves the DFX and strap words. |boots: PRESTART_DONE, SMC_MEM_CHK, CHIP_ID= and BL1 PASS; no 0x08010219 or 0x0F01D001 in cold_scratch[1]; SMC scratch[10] stays 0. `sep_firmware_repair_fail_test` halts on the same word without the strap. |`CHK-DFT-REPAIR-BYPASS-STIMULUS`, `CHK-DFT-REPAIR-BYPASS-CONTINUE`, `CHK-DFT-REPAIR-BYPASS-NO-FAIL` |`SEP-ROM-SMC-030`
+|`sep_firmware_mbist_bypass_test` |+sep_dft_status=00001002 (mem_repair_success and mbist_abort set, mbist_done and mbist_pass clear) with +sep_straps_hi=00400000 (mbist_bypass, STRAPS_HI[22]). DV shortcut: the SMC responder model serves the DFX and strap words. |boots: PRESTART_DONE, SMC_MEM_CHK, CHIP_ID= and BL1 PASS; no 0x08010219 or 0x0F01D001 in cold_scratch[1]; SMC scratch[10] stays 0. `sep_firmware_mbist_abort_test` halts on the same word without the strap. |`CHK-DFT-MBIST-BYPASS-STIMULUS`, `CHK-DFT-MBIST-BYPASS-CONTINUE`, `CHK-DFT-MBIST-BYPASS-NO-FAIL` |`SEP-ROM-SMC-030`
+|`sep_status_reporting_disabled_test` |+sep_dft_status=00000112 with +sep_straps_lo=00200000 (status_report_disable, STRAPS_LO[21]). Before reset, a valid non-full status ring (head 1, tail 0, 8 entries) is written at SMC SRAM 0x40062000, scratch[11] points at it and scratch[9] reports it ready. DV shortcut: the ring, scratch words and strap word are written into the SMC responder model. |STATUS_RPT_DISABLED printed and 0x80010076 in cold_scratch[1]; 0x80010077, 0x80010078 and the ring-address line absent; cold_scratch[1] keeps changing after 0x80010076; the ring is byte-identical after the boot; BL1 PASS, the outcome of `sep_firmware_mbist_pass_test`. |`CHK-STATUS-DISABLE-STIMULUS`, `CHK-STATUS-DISABLE-ANNOUNCE`, `CHK-STATUS-DISABLE-SCRATCH`, `CHK-STATUS-DISABLE-RING-QUIET`, `CHK-STATUS-DISABLE-BOOT` |None. `rom.adoc` Primary / Secondary Strap Handling defines `status_report_disable` without a requirement ID
+|===
+
+*Added checker contracts:*
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|`sep_firmware_mbist_pass_test` |`CHK-DFT-PASS-STIMULUS` |The plusarg equals 0x112 and sets exactly the three gate bits.
+|`sep_firmware_mbist_pass_test` |`CHK-DFT-INJECTED` |The SMC model's DFX word only ever held 0 or 0x112 and ended at 0x112.
+|`sep_firmware_mbist_pass_test` |`CHK-DFT-REACHED` |cold_scratch[1] held PRESTART_DONE 0x80010056, so execution reached the gate.
+|`sep_firmware_mbist_pass_test` |`CHK-DFT-NO-WARN` |Neither the MBIST WARN word nor the gate-blocked ERROR word ever reached cold_scratch[1].
+|`sep_firmware_mbist_pass_test` |`CHK-DFT-NO-PUBLISH` |SMC scratch[10] stayed 0 for the whole run.
+|`sep_firmware_repair_bypass_test` |`CHK-DFT-REPAIR-BYPASS-STIMULUS` |The plusarg word has mem_repair_success clear and mbist_done and mbist_pass set; DFX_CTRL_STATUS_SMU held only 0 and 0x110; STRAPS_LO at the SMC has bit 13 set, STRAPS_HI has bit 22 clear, and the ROM echoed both words.
+|`sep_firmware_repair_bypass_test` |`CHK-DFT-REPAIR-BYPASS-CONTINUE` |cold_scratch[1] held PRESTART_DONE 0x80010056, and the run printed SMC_MEM_CHK and CHIP_ID= and reached BL1 PASS.
+|`sep_firmware_repair_bypass_test` |`CHK-DFT-REPAIR-BYPASS-NO-FAIL` |Neither 0x08010219 nor 0x0F01D001 reached cold_scratch[1], and SMC scratch[10] stayed 0.
+|`sep_firmware_mbist_bypass_test` |`CHK-DFT-MBIST-BYPASS-STIMULUS` |The plusarg word has mem_repair_success and mbist_abort set and mbist_done and mbist_pass clear; DFX_CTRL_STATUS_SMU held only 0 and 0x1002; STRAPS_HI at the SMC has bit 22 set, STRAPS_LO has bit 13 clear, and the ROM echoed both words.
+|`sep_firmware_mbist_bypass_test` |`CHK-DFT-MBIST-BYPASS-CONTINUE` |cold_scratch[1] held PRESTART_DONE 0x80010056, and the run printed SMC_MEM_CHK and CHIP_ID= and reached BL1 PASS.
+|`sep_firmware_mbist_bypass_test` |`CHK-DFT-MBIST-BYPASS-NO-FAIL` |Neither 0x08010219 nor 0x0F01D001 reached cold_scratch[1], and SMC scratch[10] stayed 0.
+|`sep_status_reporting_disabled_test` |`CHK-STATUS-DISABLE-STIMULUS` |DFX_CTRL_STATUS_SMU held only 0 and 0x112; STRAPS_LO at the SMC has bit 21 set and both bypass bits clear, and the ROM echoed both strap words.
+|`sep_status_reporting_disabled_test` |`CHK-STATUS-DISABLE-ANNOUNCE` |cold_scratch[1] held STATUS_REPORTING_DISABLED 0x80010076 and never 0x80010077 or 0x80010078; STATUS_RPT_DISABLED was printed and STATUS_RPT_ENABLED and the ring-address line were not.
+|`sep_status_reporting_disabled_test` |`CHK-STATUS-DISABLE-SCRATCH` |cold_scratch[1] changed at least once after 0x80010076.
+|`sep_status_reporting_disabled_test` |`CHK-STATUS-DISABLE-RING-QUIET` |The ring header (head, tail, num_entries) and all 8 entries read back byte-identical after the boot.
+|`sep_status_reporting_disabled_test` |`CHK-STATUS-DISABLE-BOOT` |PRESTART_DONE reached, BL1 PASS, no failure-gate word in cold_scratch[1], SMC scratch[10] stayed 0.
 |===
 
 ==== Fuses, lifecycle and secure-boot decision
@@ -1292,6 +1509,49 @@ PASS record of its own.
 |`sep_firmware_fuse_lock_secure_prod_test` |sep_efuse_lc_prod.toml (LC raw 0x1, SBOOT_DIS=0, LOCKS=0) with the signed image, lifecycle constraint PROD only. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim) |Boots BL1 through the RSA chain with LC=PROD, FUSE_SECRETS_LOCKED and all six read-lock bits set; SBOOT_OFF absent. |None beyond the group |`SEP-ROM-HOFF-030`
 |`sep_firmware_fuse_lock_non_secure_test_dev_test` |sep_efuse_lc_test_dev_sboot_dis.toml (LC raw 0x0, SBOOT_DIS=1, LOCKS=0) with the unsigned image, lifecycle constraint TEST_DEV only. |Boots BL1 with SBOOT_OFF after PAYLOAD_OK, no PUBK_AUTHORIZED, PUBK_SEL=, PUBK_REVOKE=, RSA_EXEC, RSA_VERIFY_OK, FUSE_VER= or ENTROPY_OK, FUSE_SECRETS_LOCKED and all six read-lock bits set. |None beyond the group |`SEP-ROM-HOFF-030`
 |`sep_firmware_fuse_lock_non_secure_prod_test` |sep_efuse_lc_prod_sboot_dis.toml (LC raw 0x1, SBOOT_DIS=1, LOCKS=0) with the unsigned image, lifecycle constraint PROD only. |Boots BL1 with LC=PROD and SBOOT_OFF, no secure-only markers, FUSE_SECRETS_LOCKED and all six read-lock bits set. |None beyond the group |`SEP-ROM-HOFF-030`, `SEP-ROM-SB-040`
+|===
+
+[[sep-rom-vplan-efuse-override]]
+===== eFuse shadow override during the boot stall
+
+*Tests:* 1.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_boot_stall_efuse_shadow_override_test.py`, on `sep_base_test`.
+
+*Objective:* A shadow value written through the JTAG-facing AXI-Lite port after fuse sense, while the boot stall holds the CPU, is the value the production ROM consumes, and the write does not reach the OTP.
+
+*Procedure:*
+
+. Stage one TEST_DEV OTP image with SEP_SIP_ID = A (bytes 0x11 to 0x30), and bind both slots of oca_secure_boot.bin to A through the package-identity constraint with all 32 bytes selected, re-signing each slot.
+. Start the ESRC noise driver (+esrc_noise_force) and the console capture, preload OcahSpiFlash and boot from SPI.
+. Control boot: cold reset, sense and release; require BL1 PASS.
+. Override boot: cold reset with ext_boot_seq_done_i held low. Issue a JTAG AXI-Lite read before fuse sense completes and expect SLVERR. After sense, write word 0 of the SEP_SIP_ID shadow (0x109302A0) to A0 ^ 1, read it back, and release the stall.
+. Require both slots refused with OCA_FAIL_PACKAGE_ID and a terminal halt.
+. Re-sense: cold reset again and compare the whole shadow with the staged OTP image.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-EFUSE-OVERRIDE-CONTROL` |The control boot sensed A, accepted the primary in the order OCA_BODY=, MFST_VER=, PUBK_AUTHORIZED, RSA_VERIFY_OK, MANIFEST_OK, PAYLOAD_OK, BL1_COPIED, BL1_JUMP=, PRE_JUMP, and reached BL1 PASS.
+|`CHK-EFUSE-OVERRIDE-SENSED` |The pre-sense JTAG read returned SLVERR, and smc_fuse_sense_done was 1 before and after the override write.
+|`CHK-EFUSE-OVERRIDE-WRITE` |The write at 0x109302A0 and its read-back both returned OKAY, and the read-back equals A0 ^ 1.
+|`CHK-EFUSE-OVERRIDE-HELD` |While ext_boot_seq_done_i was low, sep_reset_n and sep_cpu_reset_n stayed low, no instruction retired and cold scratch stayed 0; in the control boot sep_reset_n rose after ext_boot_seq_done_i and the core retired.
+|`CHK-EFUSE-OVERRIDE-ROM-USED` |The override boot started at the Boot ROM base, refused primary and backup with MANIFEST_ERR=0x00030008 (OCA_FAIL_PACKAGE_ID) after OCA_BODY= and MFST_VER= and before PUBK_SEL=, PUBK_AUTHORIZED, PUBK_REVOKE=, FUSE_VER= or RSA_EXEC, printed MANIFEST_ALL_FAILED, held 0x0F010022 in cold_scratch[1] and ended with a FAIL verdict.
+|`CHK-EFUSE-OVERRIDE-NO-OTP-BURN` |After the re-sense, SEP_SIP_ID word 0 reads A0 again and the whole shadow equals the staged OTP image.
+|===
+
+*Anti-vacuity:* The control boot proves the identity-bound image boots on the sensed value, so the override boot's refusal is attributable to the written word. The read-back proves the write landed, and the re-sense proves it stayed in the shadow.
+
+*Observation:* JTAG AXI-Lite responses and read data, efuse shadow probe, sep_reset_n, sep_cpu_reset_n and retirement during the stall, ROM console, cold_scratch[0] and cold_scratch[1].
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_boot_stall_efuse_shadow_override_test` |Three cold resets on one TEST_DEV OTP image and one identity-bound signed SPI image; one JTAG AXI-Lite write during the boot stall. DV shortcut: +esrc_noise_force; AXI-Lite transactions driven on axil_sep_otp_jtag_req_i without the JTAG TAP, DTP or JTAG2AXI bridge. |control boot PASS; the override boot refuses both slots with OCA_FAIL_PACKAGE_ID and halts with a FAIL verdict; the re-sense restores A. |None beyond the group |`SEP-ROM-FUSE-010`
 |===
 
 ==== Manifest validation and slot retry
@@ -2662,7 +2922,7 @@ PASS record of its own.
 |===
 |Group |Tests |Purpose
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Bring-up of the SMC-SRAM, OpenTitan SPI DMA and PIO, and signed boot paths, and of the hand-off magic. Run it first after a ROM or toolchain change
-|`rom_fw` |All 191 tests of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
+|`rom_fw` |All 211 tests of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
 |===
 
 [source,bash]
@@ -2691,8 +2951,14 @@ reset. Test timeouts are 1 to 6 hours of wall time.
 |===
 |Limitation |Impact
 |No CI tier runs `rom_fw` |Boot ROM evidence comes from a local run on a host with the toolchain
-|Cold-path value of `cold_scratch[7]` |`rom.adoc` (Cold Boot Environment Setup, step 1, and Warm-Reset Resume Path, step 2) says the ROM clears the slot on a cold boot. `bl1-handoff.adoc` (Warm-reset return) says the ROM poisons it with `-1`, and `vector.S` writes `0xFFFFFFFF`. `sep_warm_reset_unarmed_cold_boot_test` expects `0xFFFFFFFF`. The two specification chapters disagree, and the ROM owner decides which value is correct
-|Memory-repair gate |`SEP-ROM-SMC-030` names the `mem_repair_bypass` strap (`STRAPS_LO[13]`) as the only escape. `vector.S` also gates on the MBIST result, which `SEP-ROM-SMC-030` does not name; `sep_firmware_mbist_only_fail_test` follows `vector.S` for this behaviour
+|Cold-path value of `cold_scratch[7]` |`rom.adoc` (Cold Boot Environment Setup, step 1, and Warm-Reset Resume Path, step 2) says the ROM clears the slot on a cold boot. `bl1-handoff.adoc` (Warm-reset return) says the ROM poisons it with `-1`, and `vector.S` writes `0xFFFFFFFF`. `sep_warm_reset_unarmed_cold_boot_test` and the runtime warm-reset tests expect `0xFFFFFFFF`. The two specification chapters disagree, and the ROM owner decides which value is correct
+|Six `rom_fw` tests are not in this plan |`sep_iccm_pad_sram_top_intact_test`, `sep_rom_clear_variant_test`, `sep_rom_zero_fill_fault_pad_test`, `sep_rom_zero_fill_fault_retry_test`, `sep_rom_zero_fill_fault_scrub_test` and `sep_rom_zero_fill_fault_iccm_clear_test` are members of `rom_fw` with no summary row or procedure group. Their runs earn no requirement credit here until the plan documents them
+|Strap capture |The gate-bypass and status-disable tests drive the captured strap words in the SMC model. The physical GPIO-to-strap capture is not modelled in `rom_boot`, and the SMC side of `status_report_disable` is a separate SMC ROM contract
+|MBIST poll bound |`sep_firmware_mbist_timeout_test` grades that the MBIST poll makes 1 + `MBIST_DONE_WAIT_ITERS` status reads and fails closed. It takes the bound from vector.S of the ROM under test, so it does not grade the value of the bound or any product time
+|Runtime warm-reset scope |The reset source is the `wdt_rst_ni_i` input, not a watchdog bite, and the interrupted code is the ROM's own cold boot, not a BL1 image. The slot write uses a testbench port, not a CPU store
+|eFuse override path |`sep_boot_stall_efuse_shadow_override_test` drives `axil_sep_otp_jtag_req_i` directly. The JTAG TAP, the DTP and the JTAG2AXI bridge are not exercised
+|Secondary secure-boot trust anchor |The signed cell verifies against ROM key slot 0, embedded in the ROM, not an OTP key. The ROM does not check that a signature is below the modulus, so the corrupt-signature cell draws only flips that stay below it
+|PLL |The open ROM links the weak `sep_pll_lock_and_select()`, which touches no hardware. No `rom_fw` test verifies a real PLL driver
 |===
 
 [[sep-rom-vplan-formal]]
@@ -2706,7 +2972,8 @@ The Boot ROM has no formal flow.
 [cols="4,1,4",options="header"]
 |===
 |Item |State |Note
-|Every test in the summary has a procedure group |Yes |191 tests in 33 groups
+|Every test in the summary has a procedure group |Yes |205 tests in 37 groups
+|Every member of `rom_fw` is in the summary |No |205 of 211. The six tests in <<sep-rom-vplan-known-limitations>> have no summary row or procedure group
 |Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load
