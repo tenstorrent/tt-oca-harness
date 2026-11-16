@@ -74,7 +74,7 @@ access features.
 .eFuse shadow-register features
 |=====================================================================================
 |Feature |Description
-|Capacity |Configurable via the `SHADOW_REG_BITS` parameter: 2048 bits (64 × 32-bit words) in the SMC and 8192 bits (256 × 32-bit words) in the SEP
+|Capacity |Set by the `SHADOW_REG_BITS` parameter (default 8192): 2048 bits (64 × 32-bit words) in the SMC and 8192 bits (256 × 32-bit words) in the SEP. The SMC can add a second shadow register file of `SUPPLEMENTARY_FUSE_WORDS` words for the optional supplementary fuse region (<<efuse-supplementary-fuses>>)
 |Initialization |Automatic boot-time loading via Fuse Sense FSM
 |Access Control |Multi-tier hardware and software lock mechanisms
 |Data Consistency |Maintains synchronization with underlying OTP storage upon each power-on reset
@@ -413,11 +413,11 @@ where sensitive RMA tokens must be protected during manufacturing test flows.
 === Supplementary Fuse Region
 
 The SMC eFuse controller can sense an optional supplementary fuse region of
-32-bit words that the adopter defines for logic elsewhere in its SoC. The
-region is as large as the adopter's `fuse` slot in `smc_external`
-(<<efuse-supplementary-size>>). The name follows the supplementary region of `smc_external`, where its
-window sits: the harness map is required and laid out by OCAH, while this
-region is optional and its contents are the adopter's. The controller senses
+32-bit words that the adopter defines for logic elsewhere in its SoC, such as
+memory repair or sensor trim. The harness map is required and its layout is
+fixed by OCAH; the supplementary region is optional, and the adopter defines
+its size and contents. Its size is set by `WORDS`, up to the size of the
+`fuse` slot in `smc_external` (<<efuse-supplementary-size>>). The controller senses
 the region with the harness map, holds it in a second shadow register file,
 locks it with `SUPPLEMENTARY_LOCKS` and exports it without interpreting it. The
 SEP has no supplementary fuse region, and the harness spares stay reserved for
@@ -517,5 +517,11 @@ window from either port.
 * An access to a locked region returns `0xBADCAB1E` without an error response
 and raises `locked_field_access_interrupt_o`.
 * `efuse_guard` checks firmware program and read commands at or above bit 2048
-against the `SUPPLEMENTARY_LOCKS` pair of the target's region. Commands at or above
-bit 2048 + 32 × `WORDS` set the address error status and never reach the SHIM.
+against the `SUPPLEMENTARY_LOCKS` pair of the target's region. A refused command
+completes with its `done` and status bits set and latches `efuse_req_error` in
+`EFUSE_INTERFACE_CTRL_STATUS`.
+* Commands at or above bit 2048 + 32 × `WORDS` are out of bounds. They never
+reach the SHIM: they complete with their `done` and status bits set and latch
+`efuse_program_addr_error` or `efuse_read_addr_error` in
+`EFUSE_INTERFACE_CTRL_STATUS`. With no region, every address at or above bit
+2048 is out of bounds.

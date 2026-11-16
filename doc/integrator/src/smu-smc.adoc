@@ -298,8 +298,8 @@ select for that pad
 temperature sensors
 |Supplementary fuse slot |Optional. A slot that holds the window of the SMC
 supplementary fuse region and sets its largest size: 16 KB at
-`BASE + 0x040_7000` in the open map, and resizable; see
-<<smc-supplementary-fuses>>
+`BASE + 0x040_7000` in the open map. An adopter can enlarge it in its own
+`smc_external` map; see <<smc-supplementary-fuses>>
 |=======================================================================
 
 The fabric diverts the supplementary fuse window, 4 × `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS`
@@ -338,7 +338,7 @@ The SMC and the SEP each contain their own eFuse controller, so the `smu.sv`
 boundary carries two independent copies of the interface, one with an `smc_`
 prefix and one with a `sep_` prefix. The adopter places *two separate SHIM and
 macro instances*, one per controller, each fronting its own bank: 2 Kbit for
-the SMC and 8 Kbit for the SEP. The
+the SMC, plus any supplementary fuse region, and 8 Kbit for the SEP. The
 banks are never shared. Each controller also drives its own sense-done output
 to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
 and holds the sensed bank in its own shadow registers.
@@ -533,12 +533,11 @@ the _Supplementary Fuse Region_ section of the Technical Reference Manual
 endif::backend-pdf[]
 for the configuration rules and the lock model. To add a region:
 
-* *Size the slot.* The fuse map can be as large as the adopter needs, as long
-as it stays inside `smc_external`. The `fuse` slot of the supplementary region
-sets the limit: the open map reserves 16 KB, 4096 words or 128 Kbit, at
-`BASE + 0x040_7000`. For a larger map, enlarge the slot in the adopter's
-`smc_external` map, anywhere it does not overlap another block, and regenerate
-the register collateral. `WORDS` may not exceed 65535.
+* *Size the slot.* The region can be up to the size of the `fuse` slot of the
+supplementary region in `smc_external`: the open map reserves 16 KB, 4096 words
+or 128 Kbit, at `BASE + 0x040_7000`. For a larger region, enlarge the slot in
+the adopter's `smc_external` map, anywhere it does not overlap another block,
+and regenerate the register collateral. `WORDS` may not exceed 65535.
 * *Configure it.* Set `CFG.SMC_SUPPLEMENTARY_FUSE`: the window offset `BASE`
 in `smc_external`, at or above `CFG.SMC_EFUSE_SHIM_SIZE` and usually in the
 slot, the size `WORDS` and the lock region ends
@@ -549,9 +548,10 @@ off with `SUPPLEMENTARY_FUSE_EXAMPLE = 0`.
 * *Provide the fuses.* The SMC bank grows to 2048 + 32 × `WORDS` bits, with the
 supplementary fuses at bit 2048 onward. They may sit in further macros behind the
 same SMC SHIM.
-* *Size the SHIM for the slot.* `address` and `access_length_words` are
-sized for 64 harness words plus a region that fills the slot. With the
-16 KB open slot they are 18 and 13 bits wide in every SMC configuration.
+* *Size the SHIM for the slot.* The request's `address` and word count are
+sized for 64 harness words plus a region that fills the slot, whatever `WORDS`
+is. With the 16 KB open slot they are 18 and 13 bits wide; a larger slot
+widens them.
 * *Return the boot READ in linear order.* Fuse sensing is still one READ of
 64 + `WORDS` words from bit 0. When the bank spans several macros, the SHIM
 must cross each macro boundary inside that one command and return every word

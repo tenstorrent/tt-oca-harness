@@ -1598,6 +1598,11 @@ integrator chooses, and its fuses start at bit 2048 for the control interface.
 lock region: bit 2__n__ write-locks region _n_ and bit 2__n__+1 read-locks it.
 The integration defines the regions and their contents.
 
+The control interface accepts bit addresses below 2048 + 32 × `WORDS`, where
+`WORDS` is the size of the supplementary region in 32-bit words. With no
+supplementary region it accepts addresses below 2048. A command at a higher
+address is out of bounds (<<smc-efuse-errors>>).
+
 The assignment of data fields and words within the eFuse data region can be
 found in the
 ifdef::backend-html5[]
@@ -1617,7 +1622,7 @@ the OTP bank, and `EFUSE_PROGRAM_CTRL.program_enable` owns it whenever it is set
 a read issued while `program_enable` is high does not reach the bank. Firmware
 must therefore assert `program_enable` and `EFUSE_READ_CTRL.read_enable`
 exclusively, never together. Treat each enable as a mode-ownership bit rather
-than sticky configuration: after `PROGRAM_DONE`, deassert `program_enable`
+than sticky configuration: after `program_done` is set, deassert `program_enable`
 before any later read, and deassert `read_enable` before starting a program.
 The address registers, data and the other program fields can be left as they
 are.
@@ -1637,6 +1642,37 @@ Read --> Idle : clear read_enable
 @enduml
 ----
 
+[[smc-efuse-errors]]
+===== Errors
+
+A program or read that fails completes with its `done` bit and its status bit
+(`program_status` or `read_status`) set. A command that the controller refuses
+before it reaches the OTP bank also latches an error bit in
+`EFUSE_INTERFACE_CTRL_STATUS`:
+
+[cols="2,3,2",options="header"]
+|===
+|Status bit |Cause |Clear by writing 1 to
+|`efuse_req_error` (bit 4) |A program or read lock on the target field refused
+the command |`efuse_req_error_clear` (bit 8)
+|`efuse_program_addr_error` (bit 5) |A program address is out of bounds
+|`efuse_program_addr_error_clear` (bit 9)
+|`efuse_read_addr_error` (bit 6) |A read address is out of bounds
+|`efuse_read_addr_error_clear` (bit 10)
+|===
+
+These bits stay set until firmware clears them. While `efuse_req_error` is set,
+the controller treats `program_enable` and `read_enable` as 0, so every later
+program or read completes at once with its status bit set and does not reach
+the bank. After a failed command, read `EFUSE_INTERFACE_CTRL_STATUS` to find
+the cause and clear the bit before the next command.
+
+A failure that reaches the bank, such as an error from the eFuse macro or, when
+`EFUSE_PROGRAM_REQ_TIMEOUT` or `EFUSE_READ_REQ_TIMEOUT` is enabled, a command
+that exceeds its timeout, sets only the command's status bit. A program or read
+issued while its enable is 0, or a program with `efuse_data` 0, also sets only
+the status bit.
+
 [[smc-efuse-program-sequence]]
 ===== Program Sequence
 
@@ -1648,7 +1684,8 @@ Read --> Idle : clear read_enable
 . Set `efuse_program_go`.
 . Poll until `program_busy` clears and `program_done` is set.
 . Read `program_status`: 0 is success and 1 is an error. The one-bit field does
-  not distinguish failure causes.
+  not distinguish failure causes; on an error, read `EFUSE_INTERFACE_CTRL_STATUS`
+  and clear any latched error bit (<<smc-efuse-errors>>).
 . Clear `program_enable`, returning the command path so a later read can
   proceed.
 
@@ -1664,9 +1701,9 @@ word and advance the bit address by 32 each time.
 . In `EFUSE_READ_CTRL`, set `read_enable`.
 . Set `efuse_read_go`.
 . Poll until `read_busy` clears and `read_done` is set.
-. Check `read_status` before consuming data. A read that reaches the
-  `EFUSE_READ_REQ_TIMEOUT` bound completes with `read_done` and `read_status`
-  both set.
+. Check `read_status` before consuming data: 0 is success and 1 is an error.
+  On an error, read `EFUSE_INTERFACE_CTRL_STATUS` and clear any latched error
+  bit (<<smc-efuse-errors>>).
 . Read the word from `EFUSE_READ_INTERFACE_READ_DATA`.
 . After the last word, clear `read_enable` so a later program can own the
   command path.

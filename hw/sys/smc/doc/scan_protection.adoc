@@ -141,7 +141,10 @@ the RDL alone does not confer scan protection.
 
 == Verification
 
-`smc_efuse_shadow_lock_matrix_test` exercises reads and writes across the
-`HARNESS_LOCKS` matrix and therefore covers the relocated words functionally,
-confirming that moving the lock words into the Class 1 array does not change
-access-control behaviour.
+The SMC eFuse lock tests read and write the lock words from the Class 1 array
+and check that they still control access: `smc_efuse_map_locks_register_test`
+covers `HARNESS_LOCKS` itself and its slot assignment,
+`smc_efuse_map_lock_field_enforce_test` checks software lock enforcement on
+each field of the map, and `smc_efuse_lock_guard_test` checks that a software
+lock set through the `HARNESS_LOCKS` shadow refuses shadow reads and writes of
+the locked field.
