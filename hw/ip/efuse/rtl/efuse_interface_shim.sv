@@ -316,6 +316,10 @@ module efuse_interface_shim #(
       write_readback_phase_en,
       write_readback_phase_en_flopped; // 1'b1 when we are in the write readback phase, 1'b0 when we are in the write phase
 
+  // PSLVERR of the write phase, held until the read-back completes so that it is reported in the
+  // program response status together with the read-back result.
+  logic write_pslverr_d, write_pslverr_q;
+
 
 
   ///////////////////////
@@ -346,6 +350,7 @@ module efuse_interface_shim #(
     apb_fuse_bank_req_write_readback = EfuseApbReqDefault;
 
     write_readback_phase_en = write_readback_phase_en_flopped;
+    write_pslverr_d = write_pslverr_q;
 
     unique case (efuse_write_state_q)
 
@@ -353,6 +358,7 @@ module efuse_interface_shim #(
         if (fuse_command_req_i.valid && fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) begin
           fuse_bank_init_cycles_count_set_en_w = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_w = 1'b1;
+          write_pslverr_d = 1'b0;
           efuse_write_state_d = ST_WRITE_INIT;
         end
       end
@@ -395,6 +401,10 @@ module efuse_interface_shim #(
           apb_fuse_bank_req_write.psel = 1'b0;
           apb_fuse_bank_req_write.penable = 1'b0;
 
+          // Keep the write error for the response; the read-back alone cannot see it when the
+          // bit already reads 1.
+          write_pslverr_d = apb_fuse_bank_resp_w.pslverr;
+
           // Always read back to verify the programmed bit.
           write_readback_phase_en = 1'b1;
           efuse_write_state_d = ST_WRITE_READ_BACK_SETUP;
@@ -436,8 +446,10 @@ module efuse_interface_shim #(
 
           fuse_command_resp_w.data = apb_fuse_bank_resp_w_readback.prdata;
 
-          // Return an error if the read back data doesn't have the bit set or if there is a pslverr
-          if (apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) begin
+          // Return an error if the write or the read back answered PSLVERR, or if the read back
+          // data does not have the bit set.
+          if (write_pslverr_q || apb_fuse_bank_resp_w_readback.pslverr ||
+              ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) begin
             fuse_command_resp_w.status = 1'b1;
           end else begin
             fuse_command_resp_w.status = 1'b0;
@@ -478,6 +490,7 @@ module efuse_interface_shim #(
   `OCAH_FF(apb_fuse_bank_req_write_readback_flopped, apb_fuse_bank_req_write_readback,
            EfuseApbReqDefault, clk_i, rst_ni)
   `OCAH_FF(write_readback_phase_en_flopped, write_readback_phase_en, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(write_pslverr_q, write_pslverr_d, 1'b0, clk_i, rst_ni)
 
   ///////////////////////////////////////////////////////////////
   // Demux between read and write generated macro requests

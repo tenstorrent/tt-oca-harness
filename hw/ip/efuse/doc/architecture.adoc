@@ -197,9 +197,9 @@ The SHIM decodes two command types from the controller:
 It implements these with dedicated read and program FSMs that sequence the
 macro-side transactions and return a `fuse_command_resp_t` to the controller.
 The reference SHIM (`efuse_interface_shim.sv`) always reads back the programmed
-word after the write and returns it in `data`, setting `status` when the bit did
-not stick. A real integration replaces the program FSM with the foundry's own
-sequence.
+word after the write and returns it in `data`. It sets `status` when the write or
+the read-back answers PSLVERR, or when the bit did not stick. A real integration
+replaces the program FSM with the foundry's own sequence.
 Foundry-specific timing and configuration (for example, program pulse widths)
 are exposed through the SHIM Control CSRs, accessed over the
 `fuse_bank_ctrl` AXI4-Lite interface.
