@@ -38,10 +38,8 @@
 // FDI_IF_WD0 and FDI_IF_WD1 localparams are derived from FDI_CONFIG only to size this
 // wrapper's own FDI ports and the FIFO-depth defaults, and are not forwarded.
 //
-// The RX W and R FIFO depths default to 140 when either FDI data path is 1024 bits (128B)
-// wide, and to 88 otherwise. This matches the legacy +define+FDI_128B configuration,
-// which applied to both the single-PHY (FDI_IF_WD0 == 1024) and the two-PHY
-// (FDI_IF_WD1 == 1024) cases.
+// The RX W and R granule-store depths are given in granules. They default to 960 with the
+// 256B FDI (FDI_IF_WD0 == 2048) and to 600 otherwise.
 //
 // The ports fall into these groups:
 //
@@ -56,7 +54,6 @@
 // - FDI bringup control (I_PL_*, O_LP_*), connected to AOU_FDI_BRINGUP_CTRL.
 // - FDI bringup software control (I_SW_*) and status (O_FDI_FSM_STATE, O_FDI_LINK_UP).
 // - Interrupt outputs (INT_*).
-// - Bus quiescence inputs from external transaction monitors.
 // - DFT.
 
 `timescale 1ns/1ps
@@ -74,44 +71,43 @@ import packet_def_pkg::*;
                                 (FDI_CONFIG == FDI_CFG_SP_64B     ) ? 512  :
                                 (FDI_CONFIG == FDI_CFG_SP_128B    ) ? 1024 :
                                 (FDI_CONFIG == FDI_CFG_TP_32B_64B ) ? 256  :
-                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 512  : 256,
+                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 512  :
+                                (FDI_CONFIG == FDI_CFG_SP_256B    ) ? 2048 : 256,
     localparam int FDI_IF_WD1 = (FDI_CONFIG == FDI_CFG_SP_32B     ) ? 512  :  // PHY1 FDI data bus width, in bits. Local only.
                                 (FDI_CONFIG == FDI_CFG_SP_64B     ) ? 512  :
                                 (FDI_CONFIG == FDI_CFG_SP_128B    ) ? 1024 :
                                 (FDI_CONFIG == FDI_CFG_TP_32B_64B ) ? 512  :
-                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 1024 : 512,
+                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 1024 :
+                                (FDI_CONFIG == FDI_CFG_SP_256B    ) ? 2048 : 512,
 
     parameter   RP0_RX_AW_FIFO_DEPTH        = 44,  // RP0 RX write-address FIFO depth.
     parameter   RP0_RX_AR_FIFO_DEPTH        = 44,  // RP0 RX read-address FIFO depth.
-    parameter   RP0_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP0 RX write-data FIFO depth.
-    parameter   RP0_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP0 RX read-data FIFO depth.
+    parameter   RP0_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP0 RX write-data granule-store depth, in granules.
+    parameter   RP0_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP0 RX read-data granule-store depth, in granules.
     parameter   RP0_RX_B_FIFO_DEPTH         = 44,  // RP0 RX write-response FIFO depth.
 
     parameter   RP1_RX_AW_FIFO_DEPTH        = 44,  // RP1 RX write-address FIFO depth.
     parameter   RP1_RX_AR_FIFO_DEPTH        = 44,  // RP1 RX read-address FIFO depth.
-    parameter   RP1_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP1 RX write-data FIFO depth.
-    parameter   RP1_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP1 RX read-data FIFO depth.
+    parameter   RP1_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP1 RX write-data granule-store depth, in granules.
+    parameter   RP1_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP1 RX read-data granule-store depth, in granules.
     parameter   RP1_RX_B_FIFO_DEPTH         = 44,  // RP1 RX write-response FIFO depth.
 
     parameter   RP2_RX_AW_FIFO_DEPTH        = 44,  // RP2 RX write-address FIFO depth.
     parameter   RP2_RX_AR_FIFO_DEPTH        = 44,  // RP2 RX read-address FIFO depth.
-    parameter   RP2_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP2 RX write-data FIFO depth.
-    parameter   RP2_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP2 RX read-data FIFO depth.
+    parameter   RP2_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP2 RX write-data granule-store depth, in granules.
+    parameter   RP2_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP2 RX read-data granule-store depth, in granules.
     parameter   RP2_RX_B_FIFO_DEPTH         = 44,  // RP2 RX write-response FIFO depth.
 
     parameter   RP3_RX_AW_FIFO_DEPTH        = 44,  // RP3 RX write-address FIFO depth.
     parameter   RP3_RX_AR_FIFO_DEPTH        = 44,  // RP3 RX read-address FIFO depth.
-    parameter   RP3_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP3 RX write-data FIFO depth.
-    parameter   RP3_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP3 RX read-data FIFO depth.
+    parameter   RP3_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP3 RX write-data granule-store depth, in granules.
+    parameter   RP3_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,  // RP3 RX read-data granule-store depth, in granules.
     parameter   RP3_RX_B_FIFO_DEPTH         = 44,  // RP3 RX write-response FIFO depth.
 
     parameter   RX_AW_FIFO_RS_EN            = 1,  // Register slice on the RX write-address FIFO
                                                   // output.
     parameter   RX_AR_FIFO_RS_EN            = 1,  // Register slice on the RX read-address FIFO
                                                   // output.
-    parameter   RX_W_FIFO_RS_EN             = 1,  // Register slice on the RX write-data FIFO
-                                                  // output.
-    parameter   RX_R_FIFO_RS_EN             = 1,  // Register slice on the RX read-data FIFO output.
     parameter   RX_B_FIFO_RS_EN             = 1,  // Register slice on the RX write-response FIFO
                                                   // output.
 
@@ -128,16 +124,29 @@ import packet_def_pkg::*;
     parameter   APB_ADDR_WD                 = 32,  // APB address width.
     parameter   APB_DATA_WD                 = 32,  // APB data width.
 
-    parameter   S_RD_MO_CNT                 = 32,  // Outstanding reads on the AXI slave interface.
-    parameter   S_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI slave interface.
+    parameter   RP0_S_RD_MO_CNT             = 32,  // RP0 outstanding reads on the AXI slave interface.
+    parameter   RP0_S_WR_MO_CNT             = 32,  // RP0 outstanding writes on the AXI slave interface.
+    parameter   RP0_M_RD_MO_CNT             = 32,  // RP0 outstanding reads on the AXI master interface.
+    parameter   RP0_M_WR_MO_CNT             = 32,  // RP0 outstanding writes on the AXI master interface.
+
+    parameter   RP1_S_RD_MO_CNT             = 32,  // RP1 outstanding reads on the AXI slave interface.
+    parameter   RP1_S_WR_MO_CNT             = 32,  // RP1 outstanding writes on the AXI slave interface.
+    parameter   RP1_M_RD_MO_CNT             = 32,  // RP1 outstanding reads on the AXI master interface.
+    parameter   RP1_M_WR_MO_CNT             = 32,  // RP1 outstanding writes on the AXI master interface.
+
+    parameter   RP2_S_RD_MO_CNT             = 32,  // RP2 outstanding reads on the AXI slave interface.
+    parameter   RP2_S_WR_MO_CNT             = 32,  // RP2 outstanding writes on the AXI slave interface.
+    parameter   RP2_M_RD_MO_CNT             = 32,  // RP2 outstanding reads on the AXI master interface.
+    parameter   RP2_M_WR_MO_CNT             = 32,  // RP2 outstanding writes on the AXI master interface.
+
+    parameter   RP3_S_RD_MO_CNT             = 32,  // RP3 outstanding reads on the AXI slave interface.
+    parameter   RP3_S_WR_MO_CNT             = 32,  // RP3 outstanding writes on the AXI slave interface.
+    parameter   RP3_M_RD_MO_CNT             = 32,  // RP3 outstanding reads on the AXI master interface.
+    parameter   RP3_M_WR_MO_CNT             = 32,  // RP3 outstanding writes on the AXI master interface.
 
     parameter   TX_NXT_PACKING_EN           = 0,  // TX flit packer output stage: 0 combinational
                                                   // from the current state, 1 registered from the
                                                   // look-ahead state.
-
-    parameter   M_RD_MO_CNT                 = 32,  // Outstanding reads on the AXI master interface.
-    parameter   M_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI master
-                                                   // interface.
 
     localparam  RP_AXI_DATA_WD_MAX          = max4(RP0_AXI_DATA_WD, RP1_AXI_DATA_WD, RP2_AXI_DATA_WD, RP3_AXI_DATA_WD),  // Widest RPn AXI data width; sizes the AXI data ports.
     localparam  RP_AXI_STRB_WD_MAX          = RP_AXI_DATA_WD_MAX / 8,  // AXI write-strobe width for that data width.
@@ -172,12 +181,14 @@ import packet_def_pkg::*;
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARCACHE,  // AXI master read cache attributes.
     output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_ARPROT,  // AXI master read protection.
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARQOS,  // AXI master read QoS.
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_M_ARUSER,  // AXI master read-address user: the ReadReq FLEX field.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_ARVALID,  // AXI master read-address valid.
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_ARREADY,  // AXI master read-address ready.
 
     input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_M_RID,  // AXI master read-data ID.
     input  logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] I_AOU_TX_AXI_M_RDATA,  // AXI master read data.
     input  logic [RP_COUNT-1:0][1:0]                    I_AOU_TX_AXI_M_RRESP,  // AXI master read response.
+    input  logic [RP_COUNT-1:0][15:0]                   I_AOU_TX_AXI_M_RUSER,  // AXI master read-data user, sent as the ReadData FLEX field.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_RLAST,  // AXI master last read beat.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_RVALID,  // AXI master read-data valid.
     output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_M_RREADY,  // AXI master read-data ready.
@@ -191,17 +202,20 @@ import packet_def_pkg::*;
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWCACHE,  // AXI master write cache attributes.
     output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_AWPROT,  // AXI master write protection.
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWQOS,  // AXI master write QoS.
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_M_AWUSER,  // AXI master write-address user: the WriteReq FLEX field.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_AWVALID,  // AXI master write-address valid.
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_AWREADY,  // AXI master write-address ready.
 
     output logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] O_AOU_RX_AXI_M_WDATA,  // AXI master write data.
     output logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0] O_AOU_RX_AXI_M_WSTRB,  // AXI master write strobes.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WLAST,  // AXI master last write beat.
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_M_WUSER,  // AXI master write-data user: the WriteData FLEX field.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WVALID,  // AXI master write-data valid.
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_WREADY,  // AXI master write-data ready.
 
     input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_M_BID,  // AXI master write-response ID.
     input  logic [RP_COUNT-1:0][1:0]                    I_AOU_TX_AXI_M_BRESP,  // AXI master write response.
+    input  logic [RP_COUNT-1:0][15:0]                   I_AOU_TX_AXI_M_BUSER,  // AXI master write-response user, sent as the WriteResp FLEX field.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_BVALID,  // AXI master write-response valid.
     output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_M_BREADY,  // AXI master write-response ready.
 
@@ -214,6 +228,7 @@ import packet_def_pkg::*;
     input  logic [RP_COUNT-1:0][3:0]                    I_AOU_TX_AXI_S_ARCACHE,  // AXI slave read cache attributes.
     input  logic [RP_COUNT-1:0][2:0]                    I_AOU_TX_AXI_S_ARPROT,  // AXI slave read protection.
     input  logic [RP_COUNT-1:0][3:0]                    I_AOU_TX_AXI_S_ARQOS,  // AXI slave read QoS.
+    input  logic [RP_COUNT-1:0][15:0]                   I_AOU_TX_AXI_S_ARUSER,  // AXI slave read-address user, sent as the ReadReq FLEX field.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_S_ARVALID,  // AXI slave read-address valid.
     output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_S_ARREADY,  // AXI slave read-address ready.
 
@@ -221,6 +236,7 @@ import packet_def_pkg::*;
     output logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] O_AOU_RX_AXI_S_RDATA,  // AXI slave read data.
     output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_S_RRESP,  // AXI slave read response.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_S_RLAST,  // AXI slave last read beat.
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_S_RUSER,  // AXI slave read-data user: the ReadData FLEX field.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_S_RVALID,  // AXI slave read-data valid.
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_S_RREADY,  // AXI slave read-data ready.
 
@@ -233,17 +249,20 @@ import packet_def_pkg::*;
     input  logic [RP_COUNT-1:0][3:0]                    I_AOU_TX_AXI_S_AWCACHE,  // AXI slave write cache attributes.
     input  logic [RP_COUNT-1:0][2:0]                    I_AOU_TX_AXI_S_AWPROT,  // AXI slave write protection.
     input  logic [RP_COUNT-1:0][3:0]                    I_AOU_TX_AXI_S_AWQOS,  // AXI slave write QoS.
+    input  logic [RP_COUNT-1:0][15:0]                   I_AOU_TX_AXI_S_AWUSER,  // AXI slave write-address user, sent as the WriteReq FLEX field.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_S_AWVALID,  // AXI slave write-address valid.
     output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_S_AWREADY,  // AXI slave write-address ready.
 
     input  logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] I_AOU_TX_AXI_S_WDATA,  // AXI slave write data.
     input  logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0] I_AOU_TX_AXI_S_WSTRB,  // AXI slave write strobes.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_S_WLAST,  // AXI slave last write beat.
+    input  logic [RP_COUNT-1:0][15:0]                   I_AOU_TX_AXI_S_WUSER,  // AXI slave write-data user, sent as the WriteData FLEX field.
     input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_S_WVALID,  // AXI slave write-data valid.
     output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_S_WREADY,  // AXI slave write-data ready.
 
     output logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          O_AOU_RX_AXI_S_BID,  // AXI slave write-response ID.
     output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_S_BRESP,  // AXI slave write response.
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_S_BUSER,  // AXI slave write-response user: the WriteResp FLEX field, 0 for an early response.
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_S_BVALID,  // AXI slave write-response valid.
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_S_BREADY,  // AXI slave write-response ready.
 
@@ -407,8 +426,6 @@ import packet_def_pkg::*;
 
         .RX_AW_FIFO_RS_EN          ( RX_AW_FIFO_RS_EN             ),
         .RX_AR_FIFO_RS_EN          ( RX_AR_FIFO_RS_EN             ),
-        .RX_W_FIFO_RS_EN           ( RX_W_FIFO_RS_EN              ),
-        .RX_R_FIFO_RS_EN           ( RX_R_FIFO_RS_EN              ),
         .RX_B_FIFO_RS_EN           ( RX_B_FIFO_RS_EN              ),
 
         .RP0_AXI_DATA_WD           ( RP0_AXI_DATA_WD              ),
@@ -419,13 +436,28 @@ import packet_def_pkg::*;
         .APB_ADDR_WD               ( APB_ADDR_WD                  ),
         .APB_DATA_WD               ( APB_DATA_WD                  ),
 
-        .S_RD_MO_CNT               ( S_RD_MO_CNT                  ),
-        .S_WR_MO_CNT               ( S_WR_MO_CNT                  ),
+        .RP0_S_RD_MO_CNT           ( RP0_S_RD_MO_CNT              ),
+        .RP0_S_WR_MO_CNT           ( RP0_S_WR_MO_CNT              ),
+        .RP0_M_RD_MO_CNT           ( RP0_M_RD_MO_CNT              ),
+        .RP0_M_WR_MO_CNT           ( RP0_M_WR_MO_CNT              ),
 
-        .TX_NXT_PACKING_EN         ( TX_NXT_PACKING_EN            ),
+        .RP1_S_RD_MO_CNT           ( RP1_S_RD_MO_CNT              ),
+        .RP1_S_WR_MO_CNT           ( RP1_S_WR_MO_CNT              ),
+        .RP1_M_RD_MO_CNT           ( RP1_M_RD_MO_CNT              ),
+        .RP1_M_WR_MO_CNT           ( RP1_M_WR_MO_CNT              ),
 
-        .M_RD_MO_CNT               ( M_RD_MO_CNT                  ),
-        .M_WR_MO_CNT               ( M_WR_MO_CNT                  )
+        .RP2_S_RD_MO_CNT           ( RP2_S_RD_MO_CNT              ),
+        .RP2_S_WR_MO_CNT           ( RP2_S_WR_MO_CNT              ),
+        .RP2_M_RD_MO_CNT           ( RP2_M_RD_MO_CNT              ),
+        .RP2_M_WR_MO_CNT           ( RP2_M_WR_MO_CNT              ),
+
+        .RP3_S_RD_MO_CNT           ( RP3_S_RD_MO_CNT              ),
+        .RP3_S_WR_MO_CNT           ( RP3_S_WR_MO_CNT              ),
+        .RP3_M_RD_MO_CNT           ( RP3_M_RD_MO_CNT              ),
+        .RP3_M_WR_MO_CNT           ( RP3_M_WR_MO_CNT              ),
+
+        .TX_NXT_PACKING_EN         ( TX_NXT_PACKING_EN            )
+
     ) u_aou_core_top (
         .I_CLK                      ( I_CLK                         ),
         .I_RESETN                   ( I_RESETN                      ),
@@ -452,12 +484,14 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_M_ARCACHE     ( O_AOU_RX_AXI_M_ARCACHE        ),
         .O_AOU_RX_AXI_M_ARPROT      ( O_AOU_RX_AXI_M_ARPROT         ),
         .O_AOU_RX_AXI_M_ARQOS       ( O_AOU_RX_AXI_M_ARQOS          ),
+        .O_AOU_RX_AXI_M_ARUSER      ( O_AOU_RX_AXI_M_ARUSER         ),
         .O_AOU_RX_AXI_M_ARVALID     ( O_AOU_RX_AXI_M_ARVALID        ),
         .I_AOU_RX_AXI_M_ARREADY     ( I_AOU_RX_AXI_M_ARREADY        ),
 
         .I_AOU_TX_AXI_M_RID         ( I_AOU_TX_AXI_M_RID            ),
         .I_AOU_TX_AXI_M_RDATA       ( I_AOU_TX_AXI_M_RDATA          ),
         .I_AOU_TX_AXI_M_RRESP       ( I_AOU_TX_AXI_M_RRESP          ),
+        .I_AOU_TX_AXI_M_RUSER       ( I_AOU_TX_AXI_M_RUSER          ),
         .I_AOU_TX_AXI_M_RLAST       ( I_AOU_TX_AXI_M_RLAST          ),
         .I_AOU_TX_AXI_M_RVALID      ( I_AOU_TX_AXI_M_RVALID         ),
         .O_AOU_TX_AXI_M_RREADY      ( O_AOU_TX_AXI_M_RREADY         ),
@@ -471,17 +505,20 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_M_AWCACHE     ( O_AOU_RX_AXI_M_AWCACHE        ),
         .O_AOU_RX_AXI_M_AWPROT      ( O_AOU_RX_AXI_M_AWPROT         ),
         .O_AOU_RX_AXI_M_AWQOS       ( O_AOU_RX_AXI_M_AWQOS          ),
+        .O_AOU_RX_AXI_M_AWUSER      ( O_AOU_RX_AXI_M_AWUSER         ),
         .O_AOU_RX_AXI_M_AWVALID     ( O_AOU_RX_AXI_M_AWVALID        ),
         .I_AOU_RX_AXI_M_AWREADY     ( I_AOU_RX_AXI_M_AWREADY        ),
 
         .O_AOU_RX_AXI_M_WDATA       ( O_AOU_RX_AXI_M_WDATA          ),
         .O_AOU_RX_AXI_M_WSTRB       ( O_AOU_RX_AXI_M_WSTRB          ),
         .O_AOU_RX_AXI_M_WLAST       ( O_AOU_RX_AXI_M_WLAST          ),
+        .O_AOU_RX_AXI_M_WUSER       ( O_AOU_RX_AXI_M_WUSER          ),
         .O_AOU_RX_AXI_M_WVALID      ( O_AOU_RX_AXI_M_WVALID         ),
         .I_AOU_RX_AXI_M_WREADY      ( I_AOU_RX_AXI_M_WREADY         ),
 
         .I_AOU_TX_AXI_M_BID         ( I_AOU_TX_AXI_M_BID            ),
         .I_AOU_TX_AXI_M_BRESP       ( I_AOU_TX_AXI_M_BRESP          ),
+        .I_AOU_TX_AXI_M_BUSER       ( I_AOU_TX_AXI_M_BUSER          ),
         .I_AOU_TX_AXI_M_BVALID      ( I_AOU_TX_AXI_M_BVALID         ),
         .O_AOU_TX_AXI_M_BREADY      ( O_AOU_TX_AXI_M_BREADY         ),
 
@@ -494,6 +531,7 @@ import packet_def_pkg::*;
         .I_AOU_TX_AXI_S_ARCACHE     ( I_AOU_TX_AXI_S_ARCACHE        ),
         .I_AOU_TX_AXI_S_ARPROT      ( I_AOU_TX_AXI_S_ARPROT         ),
         .I_AOU_TX_AXI_S_ARQOS       ( I_AOU_TX_AXI_S_ARQOS          ),
+        .I_AOU_TX_AXI_S_ARUSER      ( I_AOU_TX_AXI_S_ARUSER         ),
         .I_AOU_TX_AXI_S_ARVALID     ( I_AOU_TX_AXI_S_ARVALID        ),
         .O_AOU_TX_AXI_S_ARREADY     ( O_AOU_TX_AXI_S_ARREADY        ),
 
@@ -501,6 +539,7 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_S_RDATA       ( O_AOU_RX_AXI_S_RDATA          ),
         .O_AOU_RX_AXI_S_RRESP       ( O_AOU_RX_AXI_S_RRESP          ),
         .O_AOU_RX_AXI_S_RLAST       ( O_AOU_RX_AXI_S_RLAST          ),
+        .O_AOU_RX_AXI_S_RUSER       ( O_AOU_RX_AXI_S_RUSER          ),
         .O_AOU_RX_AXI_S_RVALID      ( O_AOU_RX_AXI_S_RVALID         ),
         .I_AOU_RX_AXI_S_RREADY      ( I_AOU_RX_AXI_S_RREADY         ),
 
@@ -513,17 +552,20 @@ import packet_def_pkg::*;
         .I_AOU_TX_AXI_S_AWCACHE     ( I_AOU_TX_AXI_S_AWCACHE        ),
         .I_AOU_TX_AXI_S_AWPROT      ( I_AOU_TX_AXI_S_AWPROT         ),
         .I_AOU_TX_AXI_S_AWQOS       ( I_AOU_TX_AXI_S_AWQOS          ),
+        .I_AOU_TX_AXI_S_AWUSER      ( I_AOU_TX_AXI_S_AWUSER         ),
         .I_AOU_TX_AXI_S_AWVALID     ( I_AOU_TX_AXI_S_AWVALID        ),
         .O_AOU_TX_AXI_S_AWREADY     ( O_AOU_TX_AXI_S_AWREADY        ),
 
         .I_AOU_TX_AXI_S_WDATA       ( I_AOU_TX_AXI_S_WDATA          ),
         .I_AOU_TX_AXI_S_WSTRB       ( I_AOU_TX_AXI_S_WSTRB          ),
         .I_AOU_TX_AXI_S_WLAST       ( I_AOU_TX_AXI_S_WLAST          ),
+        .I_AOU_TX_AXI_S_WUSER       ( I_AOU_TX_AXI_S_WUSER          ),
         .I_AOU_TX_AXI_S_WVALID      ( I_AOU_TX_AXI_S_WVALID         ),
         .O_AOU_TX_AXI_S_WREADY      ( O_AOU_TX_AXI_S_WREADY         ),
 
         .O_AOU_RX_AXI_S_BID         ( O_AOU_RX_AXI_S_BID            ),
         .O_AOU_RX_AXI_S_BRESP       ( O_AOU_RX_AXI_S_BRESP          ),
+        .O_AOU_RX_AXI_S_BUSER       ( O_AOU_RX_AXI_S_BUSER          ),
         .O_AOU_RX_AXI_S_BVALID      ( O_AOU_RX_AXI_S_BVALID         ),
         .I_AOU_RX_AXI_S_BREADY      ( I_AOU_RX_AXI_S_BREADY         ),
 

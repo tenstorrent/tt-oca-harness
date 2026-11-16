@@ -5,7 +5,7 @@ class aou_fdi_cfg extends uvm_object;
   `uvm_object_utils(aou_fdi_cfg)
 
   int unsigned   phy = 0;
-  int unsigned   beat_bytes = 64;     // 32, 64 or 128 (FDI width of this PHY)
+  int unsigned   beat_bytes = 64;     // 32, 64, 128 or 256 (FDI width of this PHY)
   bit            is_active = 1'b1;    // 0: monitor only
 
   // TX responder
@@ -14,7 +14,11 @@ class aou_fdi_cfg extends uvm_object;
   int unsigned   hole_pct = 20;       // HOLES: chance of a hole before a mid-flit beat
   int unsigned   burst_max = 8;       // BURSTY: longest high or low run
   int unsigned   stall_pct = 0;       // chance of a stand-alone stall at a flit boundary
-  int unsigned   stall_hold_max = 8;  // cycles stallreq stays high after stallack
+  // Cycles pl_stallreq stays high after lp_stallack, from stall_hold_min to
+  // stall_hold_max. 0 drops it as soon as the ack is seen (UCIe r1.1 8.3.2 sets
+  // no minimum), the shortest stall the DUT can see.
+  int unsigned   stall_hold_min = 1;
+  int unsigned   stall_hold_max = 8;
   // Stall corners (UCIe r1.1 8.3.2): the share of stand-alone stalls raised
   // mid-flit instead of at a boundary, and pl_trdy keeping its policy (lows
   // included; rule 7 does not require consecutive pl_trdy) between pl_stallreq
@@ -54,7 +58,8 @@ class aou_fdi_cfg extends uvm_object;
 
   function string convert2string();
     return $sformatf({"phy=%0d beat_bytes=%0d active=%0b trdy=%s stall_pct=%0d mid=%0d ",
-                      "trdy_free=%0b hold=%0b"}, phy, beat_bytes, is_active, trdy_policy.name(),
-                     stall_pct, stall_mid_pct, stall_trdy_free, tx_hold);
+                      "stall_hold=%0d..%0d trdy_free=%0b hold=%0b"}, phy, beat_bytes, is_active,
+                     trdy_policy.name(), stall_pct, stall_mid_pct, stall_hold_min,
+                     stall_hold_max, stall_trdy_free, tx_hold);
   endfunction
 endclass

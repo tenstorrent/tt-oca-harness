@@ -35,8 +35,10 @@ violate; [`../README.md`](../README.md) carries the user-facing summary.
 ## Overview
 
 A synthesizable AXI-over-UCIe protocol checker for one single-PHY UCIe FDI
-link: the AoU v0.7 wire format the design implements, judged by the v0.8
-activation and credit-ordering rules (v0.8 decides where the two differ).
+link: the AoU v0.7 wire format the design implements, with v0.8's Activation
+messages (the four-granule ActivateReq carrying a profile per plane, Ch. 11),
+judged by the v0.8 activation and credit-ordering rules (v0.8 decides where
+the two differ).
 Section numbers here are v0.8's unless marked v0.7; the wire-format package
 cites v0.7's. It observes either or both directions -- the LP stream the die
 under observation drives, the PL stream its peer drives -- reconstructs 256-byte
@@ -237,7 +239,7 @@ for a number nobody read.
 | 7 | `VIOL_MSG_ORDER` | Credited message outside its window: before the sender's ActivateAck is received (9.2), a request after its own DeactivateReq, any after DISABLED (8.4). |
 | 8 | `VIOL_CRD_UNDERFLOW` | Shadow credit would go negative (6). |
 | 9 | `VIOL_MISC_PLACEMENT` | Activation message not at granule 0, including a second Activation message in the same flit (4.4). |
-| 10 | `VIOL_ADV_ORDER` | Credits advertised before the advertiser's ActivateAck, response credits after its DeactivateAck, or any in DISABLED (8.4). |
+| 10 | `VIOL_ADV_ORDER` | Credits advertised before the advertiser's ActivateAck or in DISABLED (8.4). |
 | 11 | `VIOL_RP_RANGE` | Plane field naming a plane the link lacks (5.2.2, 6.2, 6.4). |
 | 12 | `VIOL_FDID` | Flit whose FDId is not the bridge this instance watches (4.3.1, 6.4). |
 | 13 | `VIOL_CRD_OVERFLOW` | Advertisement took a shadow counter past `CRD_CAPACITY`. |
@@ -297,9 +299,9 @@ the other's findings, not about who may clear them.
 
 A checker that silently mis-parses a configuration it was not written for is
 worse than none, so each of these is a compile error: `FDI_IF_BYTES` in
-{32, 64, 128} and `TWO_PHY` undefined (the two-PHY split is not supported; the
-three widths give 8, 4 and 2 beats, so a 128B half is always whole beats and
-needs no guard of its own); `RP_COUNT` 1..4 and `FDID` 0..3 (both two-bit fields on
+{32, 64, 128} (the three widths give 8, 4 and 2 beats, so a 128B half is always
+whole beats and needs no guard of its own; a two-PHY bench instantiates one
+checker per PHY, at that PHY's width); `RP_COUNT` 1..4 and `FDID` 0..3 (both two-bit fields on
 the wire); positive counter widths; `CRD_CAPACITY` at least 1; `CHK_PROFILE` a
 posture the package names (an unknown one would otherwise fall through to the
 full set and elaborate more than was asked); every enable 0 or 1 ("2" would
@@ -505,9 +507,14 @@ an illegal MSGTYPE breaks one rule rather than four. Legal values are
 `aou_fdi_wire_pkg`'s from Tables 1, 15, 27 and 5.4, and deliberately not
 `AOU_ACTIVATION_CTRL`'s.
 
-**Reserved fields.** The activation message's RsvdZero (stream bits 12-39,
-Figure 19) and PROPERTYREQ on any opcode but ActivateReq ("must be 0b0 for
-other messages", v0.7 Table 26); the credit grant's 17-bit RsvdZero tail, which lies
+**Reserved fields.** The Activation messages' RsvdZero as v0.8 lays them out
+(8.3.4, Ch. 11): on the ActivateReq, stream bits 11-13 of the first granule and
+0-13 of each of its three others, plus the profile fields (14-39) of a granule
+whose plane this die does not have (RP_COUNT; judged on the die's own stream
+only, the peer's plane count not being a parameter); on ActivateAck,
+DeactivateReq and DeactivateAck, bits 11-39, which take in v0.7's PROPERTYREQ.
+Each ActivateReq granule is reported by itself, the one whose bits are set;
+the credit grant's 17-bit RsvdZero tail, which lies
 in its second granule -- the granule the report names, since the first would
 show none of the offending bits; and the RsvdZero in the first granule of the
 credited messages that have one -- stream bit 6 on WriteReq and ReadReq, bits
@@ -569,7 +576,10 @@ A multi-bridge bench needs one instance per FDId.
 
 The counts are `aou_fdi_wire_pkg`'s, one per Table 2-13, 19 and 26; every
 message has the fixed length of its type under the Base Profile (v0.7 5.8),
-which ignores PROFEXTLEN; v0.8 has no PROFEXTLEN. `MAX_MSG_G` (30) sizes the overrun carry and must not exceed
+which ignores PROFEXTLEN; v0.8 has no PROFEXTLEN. The ActivateReq is the one
+Activation message of four granules (v0.8 Ch. 11, a profile per plane); the
+other three opcodes are one, so the Activation length is read from
+ACTIVATIONOP. `MAX_MSG_G` (30) sizes the overrun carry and must not exceed
 the flit.
 
 ## Message-start consistency
@@ -621,10 +631,17 @@ says the specification's condition: ENABLED once both a request and an
 acknowledge have been sent and received (the request terms are implied by the
 answer rule and written anyway), ACTIVATE from the first activation message
 until then, DEACTIVATE once any deactivation message of the exchange has been
-seen, DISABLED before and after. There is one state, not one per die: 8.2's
-conditions name the same four events from either side, so two per-die states
-could only ever be equal, and an earlier revision that held two was carrying a
-distinction the wire cannot make. A completed teardown clears the events,
+seen, DISABLED before and after. There is one state, the link's as the
+observation point sees it: 8.2's conditions name the same four events from
+either side, and this point sees each event as it crosses, so it is each die's
+state *as of the messages that have crossed here*. It is not each die's own
+state. A die that receives a message beyond this point reaches the new state
+later, and in one case only does that let it send something the link-wide
+state would judge wrongly: the die that receives the final DeactivateAck is still in
+DEACTIVATE until it arrives, while the die that sent it is DISABLED at once
+(see "Late advertisements" under [Credit accounting](#credit-accounting)). An
+earlier revision of this text said two per-die states could only ever be equal;
+that was wrong for exactly this case. A completed teardown clears the events,
 computed from the events *after* the flit so the completing flit is judged
 against the link it tore down; reset and teardown are the only ways back to
 DISABLED.
@@ -662,35 +679,35 @@ that runs into the next flit; Misc is not credited.
 
 Boundary messages on the same stream affect the remainder of their own flit:
 an Activation message is first (4.4), so later messages in that flit are after
-it. The advertising window therefore opens and closes with the die's own
-acknowledge flits, and the request part of the consume window closes with its
-own DeactivateReq flit. Its opening boundary is a received ActivateAck on the
+it. The advertising window therefore opens with the die's own ActivateAck
+flit and closes after the flit that completes the teardown (for the die that
+receives that flit's DeactivateAck, later: see "Late advertisements"), and the
+request part of the consume window closes with its own DeactivateReq flit. Its opening boundary is a received ActivateAck on the
 opposite stream, so credited traffic is enabled once that ActivateAck is
 received: when its flit is consumed, or earlier when it lies in a committed
 first half (see "First halves fund early").
 
-The windows are v0.8 8.4's, which made them depend on the class (v0.7 gated
-every class alike):
+The windows are v0.8 8.4's, which made the consume window depend on the class
+(v0.7 gated every class alike):
 
 - **Advertising**: from the die's own ActivateAck ("after ActivateAck is sent,
   it is permitted ... to send credits" -- the header can share the flit, and a
   CrdtGrant may follow the Activation message at granule 0 under v0.7) until the
-  link reaches DISABLED, where 8.4 forbids every credit. Response credits
-  (ReadData, WriteResp) stop earlier, at the die's own DeactivateAck: credits in
-  the DeactivateAck's own flit are already after it. v0.8 is silent on them, and
-  the checker keeps v0.7's rule as the interim. Request credits (WriteReq,
-  ReadReq and, as an interim reading, WriteData) are permitted after it (v0.8
-  8.4 allows, without requiring, request credits after one's own DeactivateAck),
-  so they may share the flit of an Ack that completes the teardown; whether
-  "Request" covers WriteData is an open spec question. Header and grant are
-  judged by whether they carry any response credit; a grant at granule 47 has
-  its body in the next flit and is held to the response window. Outside the
-  window: `VIOL_ADV_ORDER`. Before the advertiser's ActivateAck and in DISABLED
-  the advertisement funds nothing. After its own DeactivateAck every credit
-  still funds the counters until DISABLED, the response credits that are
-  reported included: the peer may spend them (v0.8 is silent), and leaving them
-  unfunded turned one report into a stream of underflows once responses became
-  legal after the DeactivateReq.
+  link reaches DISABLED, where 8.4 forbids every credit. The window is the same
+  for every class. After the die's own DeactivateAck, v0.8 8.4 permits request
+  credits (WriteReq, ReadReq and, as an interim reading, WriteData; whether
+  "Request" covers WriteData is an open spec question). v0.8 is silent on
+  response credits (ReadData, WriteResp) there; MAS 7.3.1 sends them, since the
+  die's own requests may still be open, and the checker follows it. A flit's
+  credits -- header MsgCredit and grants alike -- are consumed with the flit or
+  half flit that carries them, once it passes the cancel window (MAS 7.3.1), not
+  ordered by byte position among its messages. So the flit carrying the
+  DeactivateAck that completes the teardown is judged against the link it tore
+  down, and its credits are legal (they are discarded with the rest at
+  DISABLED). Outside the window, other than the late advertisements below:
+  `VIOL_ADV_ORDER`. Before the advertiser's
+  ActivateAck and in DISABLED the advertisement funds nothing; inside it, every
+  credit funds the counters.
 - **Sending credited messages**: from the die having sent an ActivateReq and
   received the ActivateAck answering it. Requests (WriteReq, ReadReq, WriteData)
   stop at its own DeactivateReq (8.4). Pending ReadData and WriteResp must still
@@ -726,9 +743,54 @@ advertising flit's consume. Without this the checker funded credit one half late
 and reported an underflow against a die that spent a first-half grant before the
 second half arrived.
 
-The peer keeps advertising response credits until its own DeactivateAck and
-the response counters keep being spent until DISABLED, so the windows are all
-teardown needs and nothing is suspended.
+**Late advertisements.** Both dies may advertise until DISABLED and the
+response counters keep being spent until DISABLED, but DISABLED is a die's own
+condition (8.2): a die is DISABLED once it has sent and received a
+DeactivateAck. The die sending the last DeactivateAck is DISABLED at once; the
+die receiving it stays in DEACTIVATE until it arrives, and 8.4 lets it keep
+advertising there (request credits explicitly, response credits by MAS 7.3.1).
+Its flits built before the Ack reached it cross the observation point after the
+link-wide state went DISABLED. Reporting them would report legal traffic; a
+first half carrying a grant that committed before the teardown and completed
+after it would even be funded and then reported. So from the teardown the
+checker tolerates the receiving die's advertisements (`r_late_adv`, one flop
+per die): they are neither reported nor funded -- the die they are for is
+DISABLED and holds no credits (8.4) -- until the flit carrying that die's next
+Activation message, which closes the window with the flit since the message is
+first in it (4.4), or an FDI reset. Nor are they judged against `CRD_CAPACITY`:
+that rule guards the shadow counter's tracking (see "Capacity" below), and an
+advertisement that funds nothing leaves nothing untracked.
+
+That is the strictest rule that never reports legal traffic, and its limits are
+what the observation point cannot know:
+
+- **Flight time is unknown here.** Nothing bounds how long the Ack takes to
+  reach the far die, or how long the far die takes to act on it, so no cycle
+  count can close the window.
+- **A die in DISABLED sends nothing that shows it received the Ack** until its
+  next Activation message (DISABLED permits only ActivateReq, 8.4). Every
+  flit in between could have been built before the Ack arrived.
+- **So a receiving die that keeps advertising after the Ack reached it is not
+  reported**, and its credits are dropped rather than counted. The die that
+  sent the last Ack is held to DISABLED from that flit on, every die is held to
+  it before its first activation and after its next Activation message, and an
+  advertisement before the advertiser's own ActivateAck in the next activation
+  is still `VIOL_ADV_ORDER`.
+- **Only advertisements are tolerated.** No credited message is legal after
+  both DeactivateReqs have crossed -- each waits until its sender's requests are
+  complete, so no response is owed either way -- and none is tolerated.
+- **Both dies are treated alike.** The observed die can be the late one: on a
+  narrow FDI its own flit can be under way when the peer's Ack completes, and
+  a pipeline inside the die can hold a flit built before. When both last Acks
+  complete on one edge, each die sent its Ack before it could have received the
+  other's, and both windows open.
+
+The die the late credits are for has discarded every credit on entering
+DISABLED (8.2) and, in DISABLED, holds none (8.4); credits may be received
+again only after an ActivateAck (8.4 ACTIVATE). So a die that carried late
+credits into the next activation spends more than it was advertised there, and
+the shadow counter, which never counted them, reports the underflow. That is
+the behaviour the far-side model's late advertising stimulus exercises.
 
 **Planes.** A counter is per die, per local plane, per class. The plane field
 means two things: a credited message carries the **destination** plane, already
@@ -935,6 +997,10 @@ not tried again.
   DeactivateAck. v0.8 8.4 requires pending ReadData and WriteResp after the
   DeactivateReq and permits request credits after the DeactivateAck, so both
   windows now depend on the class (2026-10-20).
+- **Response credits closing at the advertiser's own DeactivateAck**, v0.7's
+  rule kept as the interim while v0.8 was silent, with a grant at G47 held to
+  it. The MAS sends them until DISABLED (7.3.1, 2026-10-26), so the
+  advertising window is one for every class again.
 - **The consume window opening only when the ActivateAck's flit completes.**
   A committed first half is received (UCIe 3.0 10.2), as the early funding
   already assumed; see [Credit accounting](#credit-accounting).
@@ -952,7 +1018,13 @@ not tried again.
   consume window closed with the DeactivateReq's. Both boundary messages are
   first in their flit, so both windows now close with the flit.
 - **One activation state per die**, two arrays always equal to each other; see
-  [Activation handshake model](#activation-handshake-model).
+  [Activation handshake model](#activation-handshake-model). The one way the
+  dies' own states do differ, the receiver of the final DeactivateAck, is
+  carried as a late-advertisement window instead.
+- **Holding the far-side model to advertising windows narrower than v0.8's** so
+  that its credits could never cross the final DeactivateAck. It hid the
+  checker's link-wide DISABLED and left the DUT's handling of credits that
+  arrive after it is DISABLED unexercised; see "Late advertisements".
 - **Judging the adapter's NOP flits** on the inbound stream; see
   [Flit reconstruction](#flit-reconstruction).
 - **Indexing the peer's credit counters through `I_CFG_RP_DEST_RP`**, which

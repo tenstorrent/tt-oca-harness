@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // Adapter-initiated FDI link events while AoU is ENABLED and traffic runs.
-// AoU's reaction is unspecified (BUGS/015); the interim expectations are:
+// The expectations follow MAS 7.3.6 and 7.3.7:
 //   retrain, clk_wake  transparent: AoU stays ENABLED, no interrupt, every
 //                      transaction completes with correct data;
 //   l1                 software deactivates first (MAS §7.3.6), the adapter
@@ -31,13 +31,20 @@
 //   retrain_act        software deactivates and writes ACTIVATE_START while
 //                      the Adapter holds the link in Retrain: the handshake
 //                      completes once the link is Active again (T1-L50).
+//   l1_traffic         software deactivates (ACTIVATE_START clear), the
+//                      adapter enters L1, and local AXI traffic arrives: its
+//                      INT_ACTIVATE_START is an activation request in L1, so
+//                      the DUT wakes the link itself (lp_wake_req; UCIe r1.1
+//                      8.2.9, integrator guide 6.6), the Adapter answers with
+//                      Retrain and Active, and the activation runs on the
+//                      interrupt; the traffic then completes.
 // A link loss with AoU in use (linkerror, link_reset, inband_drop, disabled)
 // raises INT_FDI_LINK_DOWN once and the DUT disables itself (T1-L48/L49,
 // aou_base_test_seq); with +link_down_mask=1 the pin stays low and the
 // sticky bit is checked instead.
 // Knobs: +event=retrain|clk_wake|l1|linkerror|link_reset|inband_drop|disabled|
-// sw_disable|l1_act|retrain_act|rand (rand never picks disabled, sw_disable,
-// l1_act or retrain_act) +link_down_mask +loops +T1_TXN.
+// sw_disable|l1_act|retrain_act|l1_traffic|rand (rand never picks disabled,
+// sw_disable, l1_act, retrain_act or l1_traffic) +link_down_mask +loops +T1_TXN.
 class aou_link_event_vseq extends aou_link_base_vseq;
   `uvm_object_utils(aou_link_event_vseq)
 
@@ -72,6 +79,7 @@ class aou_link_event_vseq extends aou_link_base_vseq;
         "sw_disable": sw_disable();
         "l1_act": l1_act();
         "retrain_act": retrain_act();
+        "l1_traffic": l1_traffic();
         default: `uvm_fatal(get_type_name(), {"unknown link event ", ev})
       endcase
     end
@@ -86,7 +94,7 @@ class aou_link_event_vseq extends aou_link_base_vseq;
     wait_traffic();
     drain();
     check_field(p_sequencer.regs.aou_init.activate_state_enabled, 1, "T1-L19",
-                {ev.name(), " is transparent to AoU (BUGS/015 interim)"});
+                {ev.name(), " is transparent to AoU (MAS 7.3.7)"});
   endtask
 
   task l1_cycle();
@@ -175,11 +183,31 @@ class aou_link_event_vseq extends aou_link_base_vseq;
     wait_enabled("in Retrain");
   endtask
 
+  task l1_traffic();
+    check_traffic(num_txns);
+    sw_deactivate(AOU_T1_BY_APB);
+    link_event(LSM_EV_L1_ENTRY);
+    wait_cycles($urandom_range(400, 20));
+    `uvm_info(get_type_name(), "local traffic with the link in L1", UVM_LOW)
+    traffic_nb(AOU_T1_L2R, num_txns);
+    fork
+      wait_l3(AOU_LS_ENABLED, cfg.act_timeout);
+      env.status.wait_act_state(1'b1, cfg.act_timeout);
+    join
+    if (!l3_ok || !env.status.act_ok)
+      `uvm_error(get_type_name(), "T1-L50: not ENABLED after local traffic in L1")
+    if (!link_is_up())
+      `uvm_error(get_type_name(), "T1-L50: FDI link not Active after local traffic in L1")
+    wait_traffic();
+    drain();
+  endtask
+
   task link_down(aou_lsm_ev_e ev, bit inband_drop);
     n_down++;
     expect_event("INT_REQ_LINKRESET", 0, n_down);
-    // The DUT can lose track of local M-port transactions when the link
-    // drops under them (BUGS/015 interim). Software clears the error
+    // The reset after a link loss drops the local M ports' transactions
+    // (MAS 7.3.6), so a beat the subordinate still presents answers no
+    // request and reads as an ID mismatch (MAS 7.2.2). Software clears the error
     // each time (aou_t1_sw_isr, MAS 7.2.2), so every orphan beat left on an M
     // port can raise it again: no upper bound.
     expect_event("INT_MI0_ID_MISMATCH", 0, 0);

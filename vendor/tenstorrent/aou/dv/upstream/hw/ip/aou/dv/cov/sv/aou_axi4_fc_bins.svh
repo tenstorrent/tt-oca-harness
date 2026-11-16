@@ -30,7 +30,65 @@
   localparam string OS_BINS[5]    = '{"os_1","os_few","os_mid","os_hi","os_max"};
   localparam string STALL_BINS[5] = '{"cyc_1","cyc_2_10","cyc_11_100","cyc_101_1k","cyc_gt_1k"};
   localparam string ADDR_BINS[2]  = '{"low","high"};
+  localparam string ATMAX_BINS[2] = '{"below_max","at_max"};
+  // Stall-length coverpoints of cg_bp, indexed by channel (CH_AW .. CH_B).
+  localparam string STALL_CPS[N_CH] = '{"cp_aw_stall_len","cp_w_stall_len","cp_ar_stall_len",
+                                        "cp_r_stall_len","cp_b_stall_len"};
   localparam string B4K_BINS[2]   = '{"within_page","ends_at_4k"};
+
+  // ---- test-plan items each bin is evidence for ----
+  // "<cg> <cp> <bins> <IDs>": the bins of <cg>|<cp> matching <bins> serve the plan
+  // items <IDs> (docs/test_plan_items.yaml, written as text). <bins> is an
+  // aou_fc_point::mark pattern over the names fc_report.py gives them (a cross
+  // bin "A,B"); <cp> "*" is every point of <cg>. Every port has the same items.
+  // check-config checks every ID.
+  localparam int N_PLAN = 44;
+  localparam string FC_PLAN[N_PLAN] = '{
+    "cg_aw cp_aw_size * 4.1",
+    "cg_aw cp_aw_len beat_1 11.13",
+    "cg_aw cp_aw_len beat_2|beat_4|beat_8|beat_16|beat_32|beat_64|beat_128|beat_256 4.9",
+    "cg_aw cx_size_x_len *,beat_1 4.1",
+    "cg_aw cx_size_x_len *,beat_2|beat_4|beat_8|beat_16|beat_32|beat_64|beat_128|beat_256 4.9",
+    "cg_aw cp_aw_cache * 4.26",
+    "cg_aw cp_aw_prot * 4.27",
+    "cg_aw cp_aw_qos * 4.28",
+    "cg_aw cp_aw_lock exclusive 4.25",
+    "cg_aw cp_aw_id * 8.15",
+    "cg_aw cp_aw_addr_align bus_aligned|size_aligned 7.10",
+    "cg_aw cp_aw_addr_align unaligned 7.11",
+    "cg_aw cx_size_x_align *,bus_aligned|size_aligned 7.10",
+    "cg_aw cx_size_x_align *,unaligned 7.11",
+    "cg_aw cp_aw_4k_boundary ends_at_4k 7.12",
+    "cg_ar cp_ar_size * 5.1",
+    "cg_ar cp_ar_len beat_1 11.13",
+    "cg_ar cp_ar_len beat_2|beat_4|beat_8|beat_16|beat_32|beat_64|beat_128|beat_256 5.9",
+    "cg_ar cx_size_x_len *,beat_1 5.1",
+    "cg_ar cx_size_x_len *,beat_2|beat_4|beat_8|beat_16|beat_32|beat_64|beat_128|beat_256 5.9",
+    "cg_ar cp_ar_cache * 5.24",
+    "cg_ar cp_ar_prot * 5.25",
+    "cg_ar cp_ar_qos * 5.26",
+    "cg_ar cp_ar_lock exclusive 5.23",
+    "cg_ar cp_ar_id * 8.15",
+    "cg_ar cp_ar_addr_align bus_aligned|size_aligned 7.10",
+    "cg_ar cp_ar_addr_align unaligned 7.11",
+    "cg_ar cx_size_x_align *,bus_aligned|size_aligned 7.10",
+    "cg_ar cx_size_x_align *,unaligned 7.11",
+    "cg_ar cp_ar_4k_boundary ends_at_4k 7.12",
+    "cg_w cp_w_strb_pattern all_set 4.18",
+    "cg_w cp_w_strb_pattern none_set 4.19",
+    "cg_w cp_w_strb_pattern partial 4.20",
+    "cg_r cp_r_resp okay 5.20",
+    "cg_r cp_r_resp slverr 5.21",
+    "cg_r cp_r_resp decerr 5.22",
+    "cg_r cp_r_last * 5.19",
+    "cg_b cp_b_resp okay 4.22",
+    "cg_b cp_b_resp slverr 4.23",
+    "cg_b cp_b_resp decerr 4.24",
+    "cg_r cp_r_resp exokay 5.23",
+    "cg_b cp_b_resp exokay 4.25",
+    "cg_os * * 8.1",
+    "cg_bp * * 10.15"
+  };
 
   // ---- value -> bin-name classifiers ("" => value falls in no counted bin) ----
   function automatic string fc_sz_name(input logic [2:0] s);
@@ -47,6 +105,14 @@
   // AoU: only INCR is a counted bin (FIXED/WRAP unsupported, RSVD illegal).
   function automatic string fc_burst_name(input logic [1:0] b);
     return (b == 2'b01) ? "incr" : "";
+  endfunction
+  // AxCACHE: AXI4 A4.4 (Table A4-5) allows an allocate bit (AxCACHE[3:2]) only on a
+  // modifiable transaction (AxCACHE[1]), so 4, 5, 8, 9, 12 and 13 are never legal.
+  function automatic bit fc_cache_legal(input int c);
+    return (c[3:2] == 2'b00) || c[1];
+  endfunction
+  function automatic string fc_cache_name(input logic [3:0] c);
+    return fc_cache_legal(c) ? $sformatf("val_%0d", c) : "";
   endfunction
   function automatic string fc_lock_name(input logic l);  return l ? "exclusive" : "normal"; endfunction
   function automatic string fc_last_name(input logic l);  return l ? "last" : "not_last"; endfunction
@@ -123,7 +189,8 @@
     for (int s = 0; s <= MAX_SIZE_CODE; s++) fc_reg($sformatf("%s|%ssize|bytes_%0d", cg, cpp, s));
     foreach (LEN_BINS[i])   fc_reg($sformatf("%s|%slen|%s",        cg, cpp, LEN_BINS[i]));
     fc_reg($sformatf("%s|%sburst|incr", cg, cpp));
-    for (int c = 0; c < 16; c++) fc_reg($sformatf("%s|%scache|val_%0d", cg, cpp, c));
+    for (int c = 0; c < 16; c++)
+      if (fc_cache_legal(c)) fc_reg($sformatf("%s|%scache|val_%0d", cg, cpp, c));
     for (int p = 0; p < 8;  p++) fc_reg($sformatf("%s|%sprot|prot_%0d", cg, cpp, p));
     for (int q = 0; q < 16; q++) fc_reg($sformatf("%s|%sqos|val_%0d",   cg, cpp, q));
     foreach (LOCK_BINS[i])  fc_reg($sformatf("%s|%slock|%s",        cg, cpp, LOCK_BINS[i]));
@@ -154,10 +221,12 @@
     fc_reg("cg_cmd|cp_cmd_write|issued");
     foreach (OS_BINS[i])    fc_reg($sformatf("cg_os|cp_rd_outstanding|%s", OS_BINS[i]));
     foreach (OS_BINS[i])    fc_reg($sformatf("cg_os|cp_wr_outstanding|%s", OS_BINS[i]));
-    foreach (STALL_BINS[i]) fc_reg($sformatf("cg_bp|cp_r_stall_len|%s",    STALL_BINS[i]));
-    foreach (STALL_BINS[i]) fc_reg($sformatf("cg_bp|cp_b_stall_len|%s",    STALL_BINS[i]));
-    fc_reg("cg_bp|cp_r_stall_at_max_os|hit");
-    fc_reg("cg_bp|cp_b_stall_at_max_os|hit");
+    foreach (STALL_CPS[c]) foreach (STALL_BINS[i])
+      fc_reg($sformatf("cg_bp|%s|%s", STALL_CPS[c], STALL_BINS[i]));
+    foreach (ATMAX_BINS[i]) fc_reg($sformatf("cg_bp|cp_r_stall_at_max_os|%s", ATMAX_BINS[i]));
+    foreach (ATMAX_BINS[i])
+      if (B_AT_MAX_TARGET || ATMAX_BINS[i] != "at_max")
+        fc_reg($sformatf("cg_bp|cp_b_stall_at_max_os|%s", ATMAX_BINS[i]));
   end
 
   // Per-cycle counting (same timing/guards as the covergroups).
@@ -169,7 +238,7 @@
       fc_bump($sformatf("cg_aw|cp_aw_size|%s",        sb));
       fc_bump($sformatf("cg_aw|cp_aw_len|%s",         lb));
       fc_bump($sformatf("cg_aw|cp_aw_burst|%s",       bb));
-      fc_bump($sformatf("cg_aw|cp_aw_cache|val_%0d",  aw_cache_r));
+      fc_bump($sformatf("cg_aw|cp_aw_cache|%s",       fc_cache_name(aw_cache_r)));
       fc_bump($sformatf("cg_aw|cp_aw_prot|prot_%0d",  aw_prot_r));
       fc_bump($sformatf("cg_aw|cp_aw_qos|val_%0d",    aw_qos_r));
       fc_bump($sformatf("cg_aw|cp_aw_lock|%s",        fc_lock_name(aw_lock_r)));
@@ -188,7 +257,7 @@
       fc_bump($sformatf("cg_ar|cp_ar_size|%s",        sb));
       fc_bump($sformatf("cg_ar|cp_ar_len|%s",         lb));
       fc_bump($sformatf("cg_ar|cp_ar_burst|%s",       bb));
-      fc_bump($sformatf("cg_ar|cp_ar_cache|val_%0d",  ar_cache_r));
+      fc_bump($sformatf("cg_ar|cp_ar_cache|%s",       fc_cache_name(ar_cache_r)));
       fc_bump($sformatf("cg_ar|cp_ar_prot|prot_%0d",  ar_prot_r));
       fc_bump($sformatf("cg_ar|cp_ar_qos|val_%0d",    ar_qos_r));
       fc_bump($sformatf("cg_ar|cp_ar_lock|%s",        fc_lock_name(ar_lock_r)));
@@ -215,14 +284,12 @@
     if (rd_cmd_r) fc_bump("cg_cmd|cp_cmd_read|issued");
     if (rd_os_chg) fc_bump($sformatf("cg_os|cp_rd_outstanding|%s", fc_os_name(rd_os_cnt)));
     if (wr_os_chg) fc_bump($sformatf("cg_os|cp_wr_outstanding|%s", fc_os_name(wr_os_cnt)));
-    if (r_stall_done) begin
-      fc_bump($sformatf("cg_bp|cp_r_stall_len|%s", fc_stall_name(r_stall_len_r)));
-      if (rd_os_cnt == MAX_OUTSTANDING) fc_bump("cg_bp|cp_r_stall_at_max_os|hit");
-    end
-    if (b_stall_done) begin
-      fc_bump($sformatf("cg_bp|cp_b_stall_len|%s", fc_stall_name(b_stall_len_r)));
-      if (wr_os_cnt == MAX_OUTSTANDING) fc_bump("cg_bp|cp_b_stall_at_max_os|hit");
-    end
+    for (int c = 0; c < N_CH; c++)
+      if (stall_done[c]) fc_bump($sformatf("cg_bp|%s|%s", STALL_CPS[c], fc_stall_name(stall_len_r[c])));
+    if (stall_done[CH_R])
+      fc_bump($sformatf("cg_bp|cp_r_stall_at_max_os|%s", ATMAX_BINS[r_stall_at_max_r]));
+    if (stall_done[CH_B] && (B_AT_MAX_TARGET || !b_stall_at_max_r))
+      fc_bump($sformatf("cg_bp|cp_b_stall_at_max_os|%s", ATMAX_BINS[b_stall_at_max_r]));
   end
 
   // Build the machine-readable bin-data section consumed by the union-merge step.
@@ -234,6 +301,7 @@
     s = {s, $sformatf("#STAT total_wr=%0d total_rd=%0d max_wr_os=%0d max_rd_os=%0d\n",
                       total_wr_cmds, total_rd_cmds, max_wr_os_seen, max_rd_os_seen)};
     foreach (cov_hit[k]) s = {s, $sformatf("BIN %s %0d\n", k, cov_hit[k])};
+    foreach (FC_PLAN[i]) s = {s, "PLAN ", FC_PLAN[i], "\n"};
     s = {s, "#ENDIFACE\n"};
     return s;
   endfunction

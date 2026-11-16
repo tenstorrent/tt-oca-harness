@@ -11,7 +11,7 @@ endif::[]
 
 1.  AXI over UCIe (AoU) Protocol Specification, v0.7
 (https://cdn.sanity.io/files/jpb4ed5r/production/728b2f8cfc09023466cf350db53764890b4f2343.pdf)
-2.  AXI over UCIe (AoU) Protocol Specification, v0.5
+2.  AXI over UCIe (AoU) Protocol Specification, v0.8
 3.  Universal Chiplet Interconnect Express (UCIe) Specification,
 Revision 3.0 (https://www.uciexpress.org/)
 4.  Arm AMBA AXI and ACE Protocol Specification (AXI4)
@@ -103,13 +103,13 @@ v0.7.
 
 To achieve low latency, AOU_CORE directly handles signals related to the
 UCIe FDI interface data flow control and processes data in FDI-width
-chunks (32, 64, or 128 bytes, as selected by the [.monospaced]#++FDI_CONFIG++# parameter)
-in a cut-through manner, without converting them to 256-byte flit data.
-It receives AXI messages from its own AXI slave interface, packs them
-into FDI-width chunks, and transmits these chunks to the remote AoU
-device via UCIe. The remote AoU receives these FDI-width chunks from the
-UCIe FDI interface, unpacks them into AXI messages, and delivers the
-data through its AXI master interface. It supports flow control for all
+beats (32, 64, 128 or 256 bytes, as selected by the [.monospaced]#++FDI_CONFIG++# parameter)
+in a cut-through manner, without assembling a whole 256-byte flit first
+(the RX side works on half flits of 128 bytes). It receives AXI messages
+from its own AXI slave interface, packs them into flits transmitted as
+FDI-width beats, and sends them to the remote AoU device via UCIe. The
+remote AoU receives these beats from the UCIe FDI interface, unpacks the
+messages, and delivers the data through its AXI master interface. It supports flow control for all
 exceptional cases defined in the UCIe standard. First, it handles the
 chunk valid/cancel signal, including the alternative implementation
 method described in the UCIe specification. Second, it handles the stall
@@ -139,30 +139,37 @@ write data, read data and write response busses
 core. It has a 32bit APB interface for programming. It configures all
 the blocks in the core.
 ** AOU_TX_CORE This block packs the arbitrated AXI channels, credits,
-and activation messages into FDI-width chunks (32, 64, or 128 bytes per
-[.monospaced]#++FDI_CONFIG++#). It follows AOU specifications to pack the messages into
-256 byte flit data. It then passes it onto UCIe controller over the FDI
-interface for transmission.
+and activation messages into 256 byte flits following the AoU
+specification, and emits them in FDI-width beats (32, 64, 128 or 256
+bytes per [.monospaced]#++FDI_CONFIG++#) to AOU_TX_FDI_IF for transmission.
+AXI USER inputs are carried as the FLEX field of the messages.
 ** AOU_CRD_CTRL This block manages credits available for TX. It gets
 remote credits available from AOU_RX_CORE, and used credits from
 AOU_TX_CORE and creates final credits that can be used for TX.
-** AOU_RX_CORE This block processes FDI-width chunks (32, 64, or 128
-bytes per [.monospaced]#++FDI_CONFIG++#) received by UCIe controller and passed to the
-core over the FDI interface. It decodes different message types which
-encapsulate different AXI channel transactions. These messages are
-buffered and then passed onto AOU_CORE_RP for presenting the transaction
-to its corresponding AXI interface.
-** AOU_TX_FDI_IF This block receives FDI-width data chunks from
-AOU_TX_CORE and buffers them. It does handshake with UCIe controller FDI
-RX interface and passes the data chunks downstream to be sent to remote
-chiplet.
+** AOU_RX_CORE This block receives the FDI-width beats (32, 64, 128 or
+256 bytes per [.monospaced]#++FDI_CONFIG++#) passed by the UCIe controller over the FDI
+interface, assembles them into half flits (AOU_RX_FDI_IF, which also
+applies the UCIe flit cancel), and decodes one half flit (24 granules,
+or a whole flit of 48 at 256 B) per cycle. Requests, write responses and
+activation messages are decoded here; WriteData and ReadData granules
+are only tagged with their RP, class and message start and handed to the
+granule stores of AOU_FIFO_RP. Received credits go to AOU_CRD_CTRL.
+** AOU_TX_FDI_IF This block takes the FDI-width beats from AOU_TX_CORE,
+handshakes with the UCIe controller's FDI interface (pl_trdy, lp_valid,
+lp_irdy) and acknowledges a stall request only on a flit boundary, so
+the beats of one flit are sent together to the remote chiplet.
 ** AOU_ACT_CTRL This block manages activation and deactivation control
 of the AOU bridge. It initiates activate and deactivate messages to
 remote AOU bridge when configured via APB.
-* AOU_FIFO_RP This block buffers decoded messages from AOU_RX_CORE. It
-separates the messages based on resource plane (RP) indicator and writes
-them into dedicated FIFOs. These FIFOs feed the corresponding
-AOU_CORE_RP which manage a single AXI interface. The FIFOs are on the
+* AOU_FIFO_RP One instance per RP holds that RP's received messages
+until AOU_CORE_RP presents them on its AXI interface: register FIFOs for
+the decoded AW, AR and B messages, and one AOU_RX_GRANULE_STORE each for
+WriteData and ReadData. A granule store keeps the raw 40-bit granules
+AOU_RX_CORE tagged for it in AOU_TPSRAM banks and decodes a message into
+its AXI fields when it is popped; its depth
+([.monospaced]#++RPn_RX_W_FIFO_DEPTH++# / [.monospaced]#++RPn_RX_R_FIFO_DEPTH++#) is in granules and is
+the credit advertised for the class (xref:aou-ig-parameter-list[],
+xref:aou-ig-library-cell-replacement[]). The FIFOs and stores are on the
 core reset together with AOU_CORE (I_RESETN and AOU_CON0.AOU_SW_RESET,
 xref:aou-ig-reset-domains[]).
 * ASYNC_APB_BRIDGE This block synchronizes APB transactions to the local
@@ -182,18 +189,23 @@ xref:aou-ig-ucie-external-control-and-status[].
 ** Supports variable data widths and burst length requests. Configurable
 FIFO Depth
 * UCIe 256B latency-optimized flit(Format 6) support only
-* Message packing and unpacking are handled in variable-sized units of
-32, 64, or 128 bytes, corresponding to the FDI data width selected by
-[.monospaced]#++FDI_CONFIG++#.
+* Messages are packed into 256 B flits sent as FDI-width beats of 32,
+64, 128 or 256 bytes, corresponding to the FDI data width selected by
+[.monospaced]#++FDI_CONFIG++#; the receiver unpacks one half flit (or a whole flit at
+256 B) per cycle.
 * Selectable Early response by setting SFR8
-* Selectable 32B / 64B / 128B single-PHY and 32B+64B / 64B+128B two-PHY
+* Selectable 32B / 64B / 128B / 256B single-PHY and 32B+64B / 64B+128B two-PHY
 FDI configurations via the [.monospaced]#++FDI_CONFIG++# parameter (see
 xref:aou-ig-parameter-list[]). Two-PHY variants additionally
 require the [.monospaced]#pass:c[+define+TWO_PHY]# build flag so the second-PHY ports
 physically exist.
 * Parameterized number of Resource Plane and each RP’s AXI data width
-* RP Remapping
-* QoS scheme between RPs on the AW and AR channels
+* RP Remapping: programmable remote RP per lane (DEST_RP) and asymmetric
+RP mapping (ASYMMETRIC_RP_PROC_CON, 0x0084) that merges several local
+slave ports onto one remote RP, for a link partner with fewer RPs
+(RP Remapping in [.monospaced]#++DOC/MAS/architecture.adoc++#)
+* QoS scheme between RPs on the AW and AR channels, applied a second time
+among the slave ports merged onto one lane
 * Interoperability with different data width remote die
 * Handling of flit cancel and stall request as specified in the UCIe
 specification
@@ -222,12 +234,17 @@ sends a message until the credit is received back from the remote die.
 
 |RP0_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP0.
 
-|RP0_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP0.
-Default is 140 when [.monospaced]#++FDI_CONFIG++# selects a 1024b interface
-([.monospaced]#++FDI_CFG_SP_128B++# / [.monospaced]#++FDI_CFG_TP_64B_128B++#); 88 otherwise.
+|RP0_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store
+depth for RP0, in *granules*; it is also the WDATA credit advertised to
+the remote die (one credit per granule). Default is 960 when
+[.monospaced]#++FDI_CONFIG++# selects the 2048b interface ([.monospaced]#++FDI_CFG_SP_256B++#); 600
+otherwise. Earlier releases gave this parameter in 256-bit slices
+(88 / 140); the equivalent granule depth is the credit those slices
+advertised, 22 x 27 = 594 and 35 x 27 = 945 (Credit Controller in [.monospaced]#++DOC/MAS/architecture.adoc++#).
 
-|RP0_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP0. Same
-FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
+|RP0_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store
+depth for RP0, in granules (the RDATA credit advertised). Same FDI-aware
+default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP0_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP0.
 
@@ -235,11 +252,9 @@ FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP1_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP1.
 
-|RP1_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP1
-(FDI-aware default; see RP0).
+|RP1_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store depth for RP1, in granules (see RP0).
 
-|RP1_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP1
-(FDI-aware default; see RP0).
+|RP1_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store depth for RP1, in granules (see RP0).
 
 |RP1_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP1.
 
@@ -247,11 +262,9 @@ FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP2_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP2.
 
-|RP2_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP2
-(FDI-aware default; see RP0).
+|RP2_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store depth for RP2, in granules (see RP0).
 
-|RP2_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP2
-(FDI-aware default; see RP0).
+|RP2_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store depth for RP2, in granules (see RP0).
 
 |RP2_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP2.
 
@@ -259,11 +272,9 @@ FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP3_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP3.
 
-|RP3_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP3
-(FDI-aware default; see RP0).
+|RP3_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store depth for RP3, in granules (see RP0).
 
-|RP3_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP3
-(FDI-aware default; see RP0).
+|RP3_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store depth for RP3, in granules (see RP0).
 
 |RP3_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP3.
 
@@ -274,14 +285,9 @@ for timing closure.
 |RX_AR_FIFO_RS_EN |parameter |1 |RX AR FIFO output register-slice enable
 (see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
 
-|RX_W_FIFO_RS_EN |parameter |1 |RX W FIFO output register-slice enable
-(see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
-
-|RX_R_FIFO_RS_EN |parameter |1 |RX R FIFO output register-slice enable
-(see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
-
 |RX_B_FIFO_RS_EN |parameter |1 |RX B FIFO output register-slice enable
-(see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
+(see [.monospaced]#++RX_AW_FIFO_RS_EN++#). The W and R paths have no such parameter:
+the granule stores register their own input and output.
 
 |RP0_AXI_DATA_WD |parameter |512 |AXI data width for RP0 (bits).
 
@@ -301,9 +307,21 @@ message width from any remote die.
 
 |APB_DATA_WD |parameter |32 |APB data width.
 
-|S_RD_MO_CNT |parameter |32 |Slave read outstanding count.
+|RP0_S_RD_MO_CNT ... RP3_S_RD_MO_CNT |parameter |32 ([.monospaced]#++AOU_TOP++#) /
+64 ([.monospaced]#++AOU_CORE_TOP++#) |Slave read outstanding count of the RP: the
+number of reads the slave port keeps outstanding before the subordinate ID
+checker holds AR (when enabled), and the number of entries of the RP's AR ID
+remap table when the asymmetric RP mapping merges the RP onto a shared lane
+(distinct IDs outstanding, and requests per ID;
+AXI ID Handling on Merged Routes in [.monospaced]#++DOC/MAS/architecture.adoc++#).
+One parameter per RP; the ones of RPs the build does not have are unused.
 
-|S_WR_MO_CNT |parameter |32 |Slave write outstanding count.
+|RP0_S_WR_MO_CNT ... RP3_S_WR_MO_CNT |parameter |32 ([.monospaced]#++AOU_TOP++#) /
+64 ([.monospaced]#++AOU_CORE_TOP++#) |Slave write outstanding count of the RP: depth of
+the early write response table
+(Write-Outstanding Queue Backpressure in [.monospaced]#++DOC/MAS/architecture.adoc++#),
+limit of the subordinate ID checker on AW/W, and entries of the RP's AW ID
+remap table on a merged route.
 
 |TX_NXT_PACKING_EN |parameter |0 |TX flit packer output stage in
 [.monospaced]#++AOU_TX_CORE++#. 0: each FDI chunk is driven combinationally from the
@@ -311,21 +329,21 @@ granule ring and the current packing state. 1: the chunk is computed from the
 look-ahead (next) packing state and ring contents and registered before the
 FDI output mux, so the FDI TX data leaves a register.
 
-|M_RD_MO_CNT |parameter |32 |Number of remote read requests an RP keeps in
+|RP0_M_RD_MO_CNT ... RP3_M_RD_MO_CNT |parameter |32 |Number of remote read requests the RP keeps in
 service at its AXI manager port (one pending-ID table entry per request, from
 the first AR it issues for the request until the last R beat). A request the
 splitter cuts into sub-bursts ([.monospaced]#++AOU_SPLIT_TR_RPn.MAX_ARBURSTLEN++#,
 AXI Transaction Splitter in [.monospaced]#++DOC/MAS/architecture.adoc++#)
 holds one entry for all of them, so the manager port may have up to
-[.monospaced]#++M_RD_MO_CNT x ceil(beats / (MAX_ARBURSTLEN + 1))++# read bursts
+[.monospaced]#++RPn_M_RD_MO_CNT x ceil(beats / (MAX_ARBURSTLEN + 1))++# read bursts
 outstanding, where [.monospaced]#++beats++# is the request's length at the
 manager port's data width. The local interconnect may back-pressure AR as usual.
 
-|M_WR_MO_CNT |parameter |32 |Number of remote write requests an RP keeps in
+|RP0_M_WR_MO_CNT ... RP3_M_WR_MO_CNT |parameter |32 |Number of remote write requests the RP keeps in
 service at its AXI manager port (one pending-ID table entry per request, from
 the first AW it issues for the request until the last B). As for reads, a split
 request holds one entry for all of its sub-bursts, so the manager port may have
-up to [.monospaced]#++M_WR_MO_CNT x ceil(beats / (MAX_AWBURSTLEN + 1))++# write
+up to [.monospaced]#++RPn_M_WR_MO_CNT x ceil(beats / (MAX_AWBURSTLEN + 1))++# write
 bursts outstanding.
 
 |RP0_AGG_WCH_FIFO_DEPTH ... RP3_AGG_WCH_FIFO_DEPTH |localparam in
@@ -356,6 +374,8 @@ and should be used at the instantiation site:
 
 |[.monospaced]#++FDI_CFG_SP_128B++# |1024 |1024 (internal decode) |Single PHY |none
 
+|[.monospaced]#++FDI_CFG_SP_256B++# |2048 |2048 (internal decode) |Single PHY |none
+
 |[.monospaced]#++FDI_CFG_TP_32B_64B++# |256 |512 |Two PHY |[.monospaced]#pass:c[+define+TWO_PHY]#
 
 |[.monospaced]#++FDI_CFG_TP_64B_128B++# |512 |1024 |Two PHY |[.monospaced]#pass:c[+define+TWO_PHY]#
@@ -376,6 +396,13 @@ consistency at elaboration time.
 * The [.monospaced]#++FDI_CFG_TP_32B_128B++# (256b + 1024b) combination is *not*
 supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
 [.monospaced]#++FDI_IF_WD0 == FDI_IF_WD1 / 2++# for two-PHY accumulation.
+* [.monospaced]#++FDI_CFG_SP_256B++# moves one whole 256 B flit per cycle in each
+direction. The RX side decodes the whole flit (48 granules) per cycle
+and the TX side packs a flit in one step. The D2D adapter's cancel
+contract is the one UCIe defines for a 2048-bit FDI: [.monospaced]#++pl_flit_cancel++#
+asserted in the cycle after a flit's single beat cancels that flit, and
+may coincide with the first beat of the replay. There is no 256 B
+two-PHY value.
 
 [[aou-ig-build-flags]]
 === Build flags
@@ -489,7 +516,7 @@ both resets have been released.
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 *Note:* AOU_CORE_SFR decodes [.monospaced]#++PADDR[15:0]++# only; bits
 [.monospaced]#++[APB_ADDR_WD-1:16]++# are ignored, so the register map
-(offsets 0x0000 to 0x0080) repeats at every 64 KiB within the APB window.
+(offsets 0x0000 to 0x011C) repeats at every 64 KiB within the APB window.
 Size the APB window for 64 KiB and let the interconnect decode the upper
 address bits. Within the window, an offset that is not a defined register
 (including a non-word-aligned address) reads as 0x00000000 and ignores
@@ -510,6 +537,28 @@ rules (no burst crossing a 4 KB boundary, no burst exceeding
 Max_Transaction_Bytes). The system integrator must ensure that the remote
 die issues only AXI4-compliant requests; see Assumptions in the MAS
 ([.monospaced]#++DOC/MAS/overview.adoc++#).
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+*Note:* AXI USER signals and the AoU FLEX field. Every AXI-equivalent AoU
+message carries a 16-bit FLEX field, which in the Basic Profile is the
+USER signal of the matching AXI channel (AoU v0.8 Sections 5.2 and 11.1,
+Table 31). In the transmit direction the five USER inputs on the ports
+that feed the link ([.monospaced]#++I_AOU_TX_AXI_S_AWUSER++#,
+[.monospaced]#++I_AOU_TX_AXI_S_ARUSER++#, [.monospaced]#++I_AOU_TX_AXI_S_WUSER++#,
+[.monospaced]#++I_AOU_TX_AXI_M_BUSER++#, [.monospaced]#++I_AOU_TX_AXI_M_RUSER++#) are sent as the FLEX field of the WriteReq, ReadReq,
+WriteData, WriteResp and ReadData messages. In the receive direction the
+FLEX field of every received message leaves on the USER output of the
+matching channel: [.monospaced]#++O_AOU_RX_AXI_M_AWUSER++#, [.monospaced]#++O_AOU_RX_AXI_M_ARUSER++#
+and [.monospaced]#++O_AOU_RX_AXI_M_WUSER++# (per W beat) on the manager ports,
+[.monospaced]#++O_AOU_RX_AXI_S_BUSER++# and [.monospaced]#++O_AOU_RX_AXI_S_RUSER++#
+(per R beat) on the subordinate ports. Where the
+design merges or splits transfers (the width converter, the splitter,
+the early write response, which carries BUSER 0), the FLEX value is
+defined in
+USER signals and the FLEX field in [.monospaced]#++DOC/MAS/architecture.adoc++#.
+An integrator without USER signals ties the five inputs to 0 and leaves
+the five outputs unconnected; the messages then carry FLEX = 0.
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [cols="<,<,<,<",options="header",]
@@ -536,6 +585,9 @@ length.
 
 |O_AOU_RX_AXI_M_ARQOS |output |[RP_COUNT-1:0][3:0] |QoS.
 
+|O_AOU_RX_AXI_M_ARUSER |output |[RP_COUNT-1:0][15:0] |Read address USER:
+the received ReadReq's FLEX field (Basic Profile: FLEX = USER[15:0]).
+
 |O_AOU_RX_AXI_M_ARVALID |output |[RP_COUNT-1:0] |AR valid.
 
 |I_AOU_RX_AXI_M_ARREADY |input |[RP_COUNT-1:0] |AR ready.
@@ -553,6 +605,14 @@ length.
 |Read data.
 
 |I_AOU_TX_AXI_M_RRESP |input |[RP_COUNT-1:0][1:0] |Read response.
+
+|I_AOU_TX_AXI_M_RUSER |input |[RP_COUNT-1:0][15:0] |Read data USER, per
+beat. Sent as the AoU FLEX field of the ReadData message built from the
+beat (AoU v0.8 Basic Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and
+11.1, Table 31). When the downsizer merges several R beats into one
+ReadData, FLEX is the RUSER of the transaction's first R beat
+(USER signals and the FLEX field in [.monospaced]#++DOC/MAS/architecture.adoc++#).
+Tie to 0 when unused.
 
 |I_AOU_TX_AXI_M_RLAST |input |[RP_COUNT-1:0] |Read last.
 
@@ -588,6 +648,9 @@ length.
 
 |O_AOU_RX_AXI_M_AWQOS |output |[RP_COUNT-1:0][3:0] |QoS.
 
+|O_AOU_RX_AXI_M_AWUSER |output |[RP_COUNT-1:0][15:0] |Write address USER:
+the received WriteReq's FLEX field.
+
 |O_AOU_RX_AXI_M_AWVALID |output |[RP_COUNT-1:0] |AW valid.
 
 |I_AOU_RX_AXI_M_AWREADY |input |[RP_COUNT-1:0] |AW ready.
@@ -607,6 +670,11 @@ length.
 
 |O_AOU_RX_AXI_M_WLAST |output |[RP_COUNT-1:0] |Write last.
 
+|O_AOU_RX_AXI_M_WUSER |output |[RP_COUNT-1:0][15:0] |Write data USER, per
+beat: the FLEX field of the WriteData message the beat comes from
+(repeated on every beat when the width converter splits one message
+into several narrower beats).
+
 |O_AOU_RX_AXI_M_WVALID |output |[RP_COUNT-1:0] |W valid.
 
 |I_AOU_RX_AXI_M_WREADY |input |[RP_COUNT-1:0] |W ready.
@@ -615,6 +683,14 @@ length.
 response ID.
 
 |I_AOU_TX_AXI_M_BRESP |input |[RP_COUNT-1:0][1:0] |Write response.
+
+|I_AOU_TX_AXI_M_BUSER |input |[RP_COUNT-1:0][15:0] |Write response USER.
+Sent as the AoU FLEX field of the WriteResp message (AoU v0.8 Basic
+Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31). When
+the transaction splitter merges the B responses of several sub-bursts into
+one WriteResp, FLEX is the BUSER of the first sub-burst's B
+(USER signals and the FLEX field in [.monospaced]#++DOC/MAS/architecture.adoc++#).
+Tie to 0 when unused.
 
 |I_AOU_TX_AXI_M_BVALID |input |[RP_COUNT-1:0] |B valid.
 
@@ -648,6 +724,11 @@ length.
 
 |I_AOU_TX_AXI_S_ARQOS |input |[RP_COUNT-1:0][3:0] |QoS.
 
+|I_AOU_TX_AXI_S_ARUSER |input |[RP_COUNT-1:0][15:0] |Read address USER.
+Sent unmodified as the AoU FLEX field of the ReadReq message (AoU v0.8
+Basic Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31).
+Tie to 0 when unused.
+
 |I_AOU_TX_AXI_S_ARVALID |input |[RP_COUNT-1:0] |AR valid.
 
 |O_AOU_TX_AXI_S_ARREADY |output |[RP_COUNT-1:0] |AR ready.
@@ -668,6 +749,9 @@ ID.
 |O_AOU_RX_AXI_S_RRESP |output |[RP_COUNT-1:0][1:0] |Read response.
 
 |O_AOU_RX_AXI_S_RLAST |output |[RP_COUNT-1:0] |Read last.
+
+|O_AOU_RX_AXI_S_RUSER |output |[RP_COUNT-1:0][15:0] |Read data USER, per
+beat: the FLEX field of the ReadData message the beat comes from.
 
 |O_AOU_RX_AXI_S_RVALID |output |[RP_COUNT-1:0] |R valid.
 
@@ -701,17 +785,29 @@ length.
 
 |I_AOU_TX_AXI_S_AWQOS |input |[RP_COUNT-1:0][3:0] |QoS.
 
+|I_AOU_TX_AXI_S_AWUSER |input |[RP_COUNT-1:0][15:0] |Write address USER.
+Sent unmodified as the AoU FLEX field of the WriteReq message (AoU v0.8
+Basic Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31).
+Tie to 0 when unused.
+
 |I_AOU_TX_AXI_S_AWVALID |input |[RP_COUNT-1:0] |AW valid.
 
 |O_AOU_TX_AXI_S_AWREADY |output |[RP_COUNT-1:0] |AW ready.
 
 |I_AOU_TX_AXI_S_WDATA |input |[RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0]
-|Write data.
+|Write data. Each RP drives its own [.monospaced]#++RPn_AXI_DATA_WD++# bits; a beat is
+sent to the remote die as a WriteData message of that width, also when the
+asymmetric RP mapping sends it on a lane whose own port is wider or narrower.
 
 |I_AOU_TX_AXI_S_WSTRB |input |[RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0]
 |Write strobe.
 
 |I_AOU_TX_AXI_S_WLAST |input |[RP_COUNT-1:0] |Write last.
+
+|I_AOU_TX_AXI_S_WUSER |input |[RP_COUNT-1:0][15:0] |Write data USER, per
+beat. Sent unmodified as the AoU FLEX field of the WriteData or
+WriteDataFull message built from the beat (AoU v0.8 Basic Profile: FLEX =
+USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31). Tie to 0 when unused.
 
 |I_AOU_TX_AXI_S_WVALID |input |[RP_COUNT-1:0] |W valid.
 
@@ -721,6 +817,11 @@ length.
 response ID.
 
 |O_AOU_RX_AXI_S_BRESP |output |[RP_COUNT-1:0][1:0] |Write response.
+
+|O_AOU_RX_AXI_S_BUSER |output |[RP_COUNT-1:0][15:0] |Write response USER:
+the received WriteResp's FLEX field; 0 for an early write response
+(Write Early Response Controller in
+[.monospaced]#++DOC/MAS/architecture.adoc++#), which is sent before any WriteResp arrives.
 
 |O_AOU_RX_AXI_S_BVALID |output |[RP_COUNT-1:0] |B valid.
 
@@ -744,6 +845,8 @@ xref:aou-ig-fdi_config-values[]).
 |[.monospaced]#++FDI_CFG_SP_64B++# |512 |512 (internal decode) |no
 
 |[.monospaced]#++FDI_CFG_SP_128B++# |1024 |1024 (internal decode) |no
+
+|[.monospaced]#++FDI_CFG_SP_256B++# |2048 |2048 (internal decode) |no
 
 |[.monospaced]#++FDI_CFG_TP_32B_64B++# |256 |512 |yes ([.monospaced]#pass:c[+define+TWO_PHY]#)
 
@@ -913,8 +1016,8 @@ instance of [.monospaced]#++AOU_SOC_GFMUX_LVT++#) that selects the reset source 
   (functional SW reset)  |   GFMUX     |---> w_DFTED_sw_resetn ---> AOU_CORE.I_RESETN,
                          |             |                            AOU_FIFO_RP.I_RESETN
                          |  I_B        |
-  AOU_SOC_BUF(1'b0)      |             |
-  (scan bypass: low)     +-------------+
+  AOU_SOC_BUF(1'b1)      |             |
+  (scan bypass: high)    +-------------+
 ....
 
 * *Functional mode* ([.monospaced]#++TIEL_DFT_MODESCAN++# = 0): The mux selects [.monospaced]#++I_A++#,
@@ -922,14 +1025,18 @@ the functional software-controlled reset path
 ([.monospaced]#++~r_sw_reset & I_RESETN++#). This allows the CSR-writable SW reset to
 combine with the hardware reset.
 * *Scan mode* ([.monospaced]#++TIEL_DFT_MODESCAN++# = 1): The mux selects [.monospaced]#++I_B++#, a
-constant [.monospaced]#++1'b0++# driven through [.monospaced]#++AOU_SOC_BUF++#
+constant [.monospaced]#++1'b1++# driven through [.monospaced]#++AOU_SOC_BUF++#
 ([.monospaced]#++dft_persistent_buf_scan_resetn_sw++#). This value de-asserts the
 active-low SW reset, neutralizing it so that scan chains can shift
 freely without the software reset logic interfering with controllability
-or observability.
+or observability. [.monospaced]#++AOU_CORE++# and [.monospaced]#++AOU_FIFO_RP++# stay out of
+reset for as long as [.monospaced]#++TIEL_DFT_MODESCAN++# is high, in shift and in capture. A
+write to [.monospaced]#++AOU_SW_RESET++# in scan mode does not reset them: the bit stays set
+and [.monospaced]#++O_SW_RESET++# stays high until [.monospaced]#++TIEL_DFT_MODESCAN++# falls,
+and the software reset then takes effect.
 
 The [.monospaced]#++AOU_SOC_BUF++# instance exists solely to prevent the synthesis tool
-from optimizing away the tied-low constant; it must be preserved as a
+from optimizing away the tied-high constant; it must be preserved as a
 persistent buffer (see xref:aou-ig-library-cell-replacement[]).
 
 The SDC file ([.monospaced]#++INTEG/constraints/aou_core_top.sdc++#) constrains this pin
@@ -1220,40 +1327,32 @@ lost the activation state, for example because of a bug or a local
 reset. The local die requests LinkReset at once. Software resets
 AOU_CORE and both dies run activation again so they share one state.
 
-[[aou-ig-credit-management-type]]
-=== Credit Management Type
+[[aou-ig-deactivation-credit-rules]]
+=== Credits and Credited Messages During Deactivation
 
-There are two types of Credit Management Type. Since current AOU_SPEC
-cannot resolve pending AXI response without Activate again. When Credit
-Management type is set to 1, during Deactivated state, AOU_CORE can
-resolve pending AXI response itself.
+AOU_CORE follows the DEACTIVATE rules of AoU specification v0.8 section
+8.4. Request-related messages (WriteReq, ReadReq, WriteData) and
+response-related messages (ReadData, WriteResp) are managed separately,
+so a deactivating link still drains the responses it owes and no
+re-activation is needed to complete them. There is no configuration
+for this behaviour.
 
-It can be configured through AOU_CON0.CREDIT_MANAGE, and the default
-value is 1.
+* Request messages are not sent after the local DeactivateReq. A request
+a local manager issues after it stays in AOU_CORE and raises
+INT_ACTIVATE_START once the activation FSM is DISABLED.
+* ReadData and WriteResp are still sent after the local DeactivateReq,
+including the responses to requests the remote die sends after it.
+* Request credits are advertised until the remote die's DeactivateReq
+arrives. ReadData and WriteResp credits are advertised until the local
+DeactivateReq is sent, which may be after the local DeactivateAck, so
+the responses to the local die's own open requests can still arrive.
+* A flit's header (MsgCredit) credits are sent with the flit: they are
+consumed when the flit, or the half flit that carries the header, passes
+the D2D adapter's flit-cancel window without being cancelled.
+* In DISABLED both dies discard the credits they hold.
 
-[width="100%",cols="34%,^33%,33%",options="header",]
-|=======================================================================
-|Credit Management Type |Specification |Description
-|0 |Based on AoU v0.5 |After deactivation, if a new request is received
-from the remote die, no response message can be sent. To deliver the
-corresponding response, the system must go through activation again
-after deactivation. Credit management and transmission availability for
-both Request-related messages and Response-related messages are
-controlled together. Credited messages must not be sent, after the
-DeactivateReq message is sent. Credits must not be sent after the
-DeactivateAck message is sent. The Activate Interrupt and Deactivate
-Interrupt that occur in the process of resuming the exchange of response
-messages impose mandatory requirements to set Activate and Deactivate
-SFR.
-
-|1 (default) |Proposal by BOS |When the AoU Activity state is
-DEACTIVATE, manage Request-related messages (WREQ, RREQ,WDATA) and
-Response-related messages (RDATA, WRESP) separately. RDATA, WRESP
-Credited messages can be sent, after the DeactivateReq message is sent.
-Credits for RDATA, WRESP messages must be sent after the DeactivateAck
-message is sent. The Deactivate interrupt only provides a hint
-indicating that the remote die has started to activate / deactivate.
-|=======================================================================
+The full rules are in
+Credits and credited messages during deactivation in [.monospaced]#++DOC/MAS/software-operation.adoc++#.
 
 [[aou-ig-activation-start]]
 === Activation Start
@@ -1266,6 +1365,14 @@ popped before sending the ActivateReq message.
 Activation START (via SFR AOU_INIT.ACTIVATE_START SFR)
 
 * Activation can be triggered by setting ACTIVATE_START.
+* Program the RP mapping (DEST_RP and ASYMMETRIC_RP_PROC_CON) and the
+arbitration registers (PRIOR_RP_AXI, PRIOR_TIMER) before ACTIVATE_START,
+with no AXI traffic outstanding on the slave ports, and keep them until the
+next deactivation has completed. The two dies' mappings must agree on the
+remote RPs in use. The mapping is not changed by a deactivation or a
+LinkReset request; AOU_CON0.AOU_SW_RESET returns it, with the other
+configuration registers, to one-to-one with the asymmetric mapping disabled
+(SFR setting in [.monospaced]#++DOC/MAS/software-operation.adoc++#).
 * Activation does not proceed until I_INT_FSM_IN_ACTIVE is asserted,
 since no flits can be transmitted beforehand. Therefore, it is allowed
 to set the ACTIVATE_START SFR before I_INT_FSM_IN_ACTIVE is asserted. If
@@ -1273,6 +1380,16 @@ it is set before the assertion, the activation process will
 automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted.
 * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the
 activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
+* Profile exchange (AoU v0.8 chapter 11). The four-granule ActivateReq
+AOU_CORE sends announces the Basic Profile (ProfileID, ProfileRev,
+ProfileOpt 0/0/0) for every RP, the only profile it implements;
+PROFILE_CFG_RP0..3 (0x0100 to 0x010C) read those values and are read-only,
+so nothing is programmed before ACTIVATE_START. The remote die's values,
+from the last ActivateReq AOU_CORE accepted, are read from
+PROFILE_RMT_RP0..3 (0x0110 to 0x011C; RCVD set once one has been accepted;
+a remote die sending zeros reads as the Basic Profile). Hardware does not
+compare or negotiate: software reads PROFILE_RMT_RPn once ENABLED and
+decides. AOU_SW_RESET clears PROFILE_RMT_RP0..3.
 
 [[aou-ig-deactivation-start]]
 === Deactivation Start
@@ -1310,33 +1427,17 @@ The ACTIVATION_OP field encodes deactivation messages as follows:
 [[aou-ig-deactivation-sequence-flow]]
 ==== Deactivation Sequence Flow
 
-Once the local die issues a DeactivateReq, it can no longer provide
-responses to transactions initiated by the remote die. If the remote die
-continues to send requests or waits for responses without being
-notified, it may enter a hang state.
-
-To manage this safely, the remote die must take explicit action upon
-receiving a DeactivateReq:
-
-1.  Immediately generate an interrupt to the CPU to inform the system
-software that a DeactivateReq has been received and that it must set the
-DEACTIVATE_START SFR. Although deactivation of the local die and the
-remote die operate independently, it is essential at the system level to
-communicate the deactivation & activation state through interrupts. This
-ensures that system software is explicitly informed of deactivation
-events and prevents the remote die from continuing to expect a response
-that will never arrive, thereby avoiding hang conditions.
-2.  This approach guarantees that once deactivation is initiated, both
-dies can coordinate the transition into safe and consistent DISABLED
-state.
-3.  If the software on both dies can explicitly coordinate to guarantee
-that all outstanding transactions have been completed and that no new
-transactions will be issued, then such a complicated implementation
-would not be necessary.
-
-image::deactivate_seq0.png[Figure 2 - CREDIT_MANAGE 0 Deactivate Sequence Flow]
-
-image::deactivate_seq1.png[Figure 3 - CREDIT_MANAGE 1 Deactivate Sequence Flow]
+Each die sends its DeactivateReq once its own requests have completed
+and answers the other die's DeactivateReq with a DeactivateAck; the
+interface reaches DISABLED when both DeactivateAcks have been exchanged.
+Between the two DeactivateReqs the die that deactivated first still
+answers the other die's requests, and the other die keeps granting the
+response credits those answers need (section 6.1). A remote
+DeactivateReq raises INT_DEACTIVATE_START as a hint: software sets
+DEACTIVATE_START once the local managers have stopped issuing requests.
+Deactivation Sequence Flow in [.monospaced]#++DOC/MAS/software-operation.adoc++#
+shows the exchange when either die deactivates
+first.
 
 This system provides a bus cleanly-completion mechanism:
 
@@ -1345,21 +1446,11 @@ responses to the requests it sent to the remote die.
 * Master bus cleanly indicates whether the remote die has received all
 responses to the requests it sent to the local die.
 
-After the local die sends a DeactivateReq, if the remote die issues a
-new request and expects a response, the system must re-enter the
-activation sequence before any response can be provided. Before sending
-a new ActivateReq, the Rx FIFO must be completely emptied – that is, all
-messages must be popped.
-
 After deactivation, the credit count is reset, and during the subsequent
 activation process, credits are advertised based on the RX FIFO depth.
-
-Therefore, before sending an ActivateReq, the local die must confirm, as
-described in the local die’s sequence 10.1, that all messages in the RX
-FIFO have been popped.
-
-To meet satisfy the condition in the local die’s sequence 10.1, no
-backpressure must occur on the local die’s MI AW/AR/W channels.
+Therefore, before sending an ActivateReq, the local die must confirm that
+all messages in the RX FIFO have been popped. To satisfy that condition,
+no backpressure must occur on the local die's MI AW/AR/W channels.
 
 [[aou-ig-activationdeactivation-interrupt]]
 === Activation/Deactivation Interrupt
@@ -1372,26 +1463,16 @@ AOU_INIT.ACTIVATE_START SFR must be set to 1. When
 AOU_INIT.ACTIVATE_STATE_ENABLED becomes 1, you must write 1 to the
 AOU_INIT.INT_ACTIVATE_START W1C SFR must be set to 1. An interrupt
 occurs when the following conditions are met while both
-AOU_INIT.ACTIVATE_START SFR is not set. There is a message to send When
-AOU_CON0.CREDIT_MANAGE is set to 0, if a new request arrives from the
-remote die after the local die has sent a DeactivateReq, this interrupt
-is asserted because the local die is required to return a response to
-the remote die. When AOU_CON0.CREDIT_MANAGE is set to 1, this interrupt
-can also be asserted if a new request after the remote die has sent a
-DeactivateReq. There is a response to be received
-(AOU_INIT.SLV_TR_COMPLETE == 0) When AOU_CON0.CREDIT_MANAGE is set to
-0, this interrupt can be asserted if the local die issues new AXI
-requests after the remote die has sent a DeactivateReq. An ActivateReq
+AOU_INIT.ACTIVATE_START SFR is not set. There is a message to send: a
+local manager issued a request after the local DeactivateReq. There is
+a response to be received (AOU_INIT.SLV_TR_COMPLETE == 0). An ActivateReq
 message is received from the remote die while the activation handshake
 has not yet completed (DISABLED or ACTIVATE). An ActivateReq received
 while ENABLED is an invalid activation message and requests LinkReset,
 not this interrupt. See LinkReset Error Reporting in
 [.monospaced]#++DOC/MAS/software-operation.adoc++#.
 
-|INT_DEACTIVATE_START |When AOU_CON0.CREDIT_MANAGE is set to 0, if the
-interrupt is detected, the master IP must stop sending new request
-messages and the AOU_INIT.DEACTIVATE_START SFR must be set to 1. When
-AOU_CON0.CREDIT_MANAGE is set to 1, if the interrupt is detected, this
+|INT_DEACTIVATE_START |This
 interrupt serves only as a hint that the remote die intends to
 deactivate. The local die can continue sending request messages. Once
 all messages have been sent, the AOU_INIT.DEACTIVATE_START SFR must be
@@ -1412,26 +1493,27 @@ For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE should
 check AOU_CORE state and try to change state. For this sequence,
 resolving pending AXI transactions is necessary.
 
-Since current AOU SPEC has no way to send AXI responses after sending
-DeactiveReq. CREDIT_MANAGE = 0 (Type 0) is matched with current
-AOU_SPEC. For this case, SW needs to check whether there is pending AXI
-transaction.
+Responses owed in either direction are delivered during the
+deactivation itself (section 6.1). An AXI transaction can still be
+pending once AOU_CORE is DISABLED only when a local manager issued a
+request after the local DeactivateReq; AOU_CORE then raises
+INT_ACTIVATE_START, and SW activates again to complete it.
 
 [[aou-ig-pm-entry-sw-sequence]]
 ==== PM Entry SW Sequence
 
-1.  Write AOU_INIT.DEACTIVATE_START to 1.
+1.  Stop the local managers from issuing requests, then write
+AOU_INIT.DEACTIVATE_START to 1.
 2.  Polling AOU_INIT.ACTIVATE_STATE_DISABLED and
-AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE. 2.1 Although
-AOU_CORE state becomes DISABLED, there may be pending AXI transactions.
-2.2 AOU_CORE issues Interrupt for resolving pending AXI transactions.
-2.3 Activate AOU_CORE and resolve pending AXI transactions. 2.4
-Deactivate AOU_CORE
+AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE. 2.1 If
+INT_ACTIVATE_START is raised, an AXI transaction is still pending:
+activate AOU_CORE, let it complete, and deactivate AOU_CORE again.
 3.  Polling AOU_INIT.ACTIVATE_STATE_DISABLED and
 AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
 4.  Do PM Entry Sequence on UCIE_CORE.
 
-image::pm_entry.png[Figure 4 - PM Entry Sequence]
+PM entry / LinkReset / LinkDisabled sequence in [.monospaced]#++DOC/MAS/software-operation.adoc++#
+shows the sequence.
 
 [[aou-ig-link-disable-sw-sequence]]
 ==== Link Disable SW Sequence
@@ -1439,13 +1521,12 @@ image::pm_entry.png[Figure 4 - PM Entry Sequence]
 Same as PM entry, before doing UCIe state transition, AOU_CORE needs to
 be Disabled properly.
 
-1.  Write AOU_INIT.DEACTIVATE_START to 1.
+1.  Stop the local managers from issuing requests, then write
+AOU_INIT.DEACTIVATE_START to 1.
 2.  Polling AOU_INIT.ACTIVATE_STATE_DISABLED and
-AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE. 2.1 Although
-AOU_CORE state becomes DISABLED, there may be pending AXI transactions.
-2.2 AOU_CORE issues Interrupt for resolving pending AXI transactions.
-2.3 Activate AOU_CORE and resolve pending AXI transactions. 2.4
-Deactivate AOU_CORE
+AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE. 2.1 If
+INT_ACTIVATE_START is raised, an AXI transaction is still pending:
+activate AOU_CORE, let it complete, and deactivate AOU_CORE again.
 3.  Polling AOU_INIT.ACTIVATE_STATE_DISABLED and
 AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
 4.  Do LinkReset / LinkDisable Sequence on UCIE_CORE.
@@ -1634,6 +1715,40 @@ leaves for Reset on its own (software on the UCIe controller).
 There is no transition out of ACTIVE on an AOU deactivation, and no
 state requests Active except REQ_ACTIVE, ACTIVE and the Retrain exit.
 Nothing in LINKERROR, LINKDOWN or RESET reacts to an activation request.
+
+*Outputs in each state.* The FDI outputs of the bringup FSM in each state
+are:
+
+[width="100%",cols="<20%,<20%,<15%,<25%,<20%",options="header",]
+|=======================================================================
+|State |[.monospaced]#++lp_state_req++# |[.monospaced]#++lp_wake_req++# |[.monospaced]#++lp_rx_active_sts++# may rise |[.monospaced]#++lp_linkerror++#
+|RESET |NOP |0 |No |0
+|WAIT_PRESENCE |NOP |0 |Yes |0
+|WAKE_ASSERT |NOP |1 |Yes |0
+|WAKE_WAIT_ACK |NOP |1 |Yes |0
+|REQ_ACTIVE |Active |1 |Yes |0
+|ACTIVE |Active |1 |Yes |0
+|RETRAIN |NOP in its first cycle, then Active |1 |Yes |0
+|L1 |L1 |0 |Yes |0
+|L1_CLK_WAKE |L1 |0 |Yes |0
+|LINKERROR |NOP |0 |No |1 on the LPpass:[']s own request, from entry until the PL reports LinkError; otherwise 0
+|LINKDOWN |NOP |0 |Yes |0
+|=======================================================================
+
+*Output timing.* The FSM takes a transition on the first
+[.monospaced]#++I_CLK++# edge at which its trigger is present, and the outputs of the
+new state are driven from that same edge: each output follows the input
+that caused the transition by one [.monospaced]#++I_CLK++# cycle, with no further delay.
+WAKE_ASSERT and L1_CLK_WAKE last one cycle, so [.monospaced]#++lp_wake_req++# rises one
+cycle after the activation request (or, from L1, two cycles after
+[.monospaced]#++pl_clk_req++#) and [.monospaced]#++pl_wake_ack++# is looked at from the following
+cycle. [.monospaced]#++lp_clk_ack++# copies [.monospaced]#++pl_clk_req++# one cycle later in every state,
+including RESET, LINKERROR and LINKDOWN. [.monospaced]#++lp_rx_active_sts++# rises one cycle
+after [.monospaced]#++pl_rx_active_req++# when the FSM is in, or entering, a state where
+the table allows it, and falls one cycle after [.monospaced]#++pl_rx_active_req++# falls,
+in every state (UCIe r1.1 8.2.7: the status follows the request); a
+request still high when the FSM enters RESET or LINKERROR keeps the
+status until the PL withdraws it.
 
 *LinkError recovery.* A LinkError may take the Adapter out of ACTIVE in
 the middle of a flit in either direction. AOU_CORE's FDI data paths keep
@@ -2081,9 +2196,13 @@ appropriate isolation and retention strategies.
 
 The [.monospaced]#++RTL/LIB/++# directory contains three behavioral reference models that
 are used by the design for reset infrastructure and clock-domain
-crossing. These models are functionally correct for simulation but *must
-be replaced* with process-appropriate implementations before synthesis
-or tapeout.
+crossing. These models are functionally correct for simulation but
+*must be replaced* with process-appropriate implementations before
+synthesis or tapeout. [.monospaced]#++RTL/AOU_TPSRAM.sv++# is the behavioral two-port
+SRAM the RX granule stores are built from; it is listed here because an
+integrator *may* replace it with a compiled SRAM, not because it must be:
+synthesized as written it becomes flip-flops, which is a valid
+implementation (xref:aou-ig-tpsram-replacement[]).
 
 [width="100%",cols="13%,8%,16%,9%,27%,27%",options="header",]
 |=======================================================================
@@ -2104,6 +2223,19 @@ as [.monospaced]#++u_sw_reset_mux++# (SW reset selection)
 [.monospaced]#++O_Y[DW-1:0]++# |Non-inverting buffer (identity: [.monospaced]#++O_Y = I_A++#)
 |[.monospaced]#++AOU_CORE_TOP++# as [.monospaced]#++dft_persistent_buf_scan_resetn_sw++# (DFT persistent
 buffer on scan reset)
+
+|[.monospaced]#++AOU_TPSRAM++# |[.monospaced]#++RTL/AOU_TPSRAM.sv++# |[.monospaced]#++RAM_DATA_WIDTH++#,
+[.monospaced]#++RAM_ADDR_WIDTH++# |Read port [.monospaced]#++CLKA++#, [.monospaced]#++CENA++# (active low), [.monospaced]#++AA++# ->
+[.monospaced]#++QA++# (one cycle later); write port [.monospaced]#++CLKB++#, [.monospaced]#++CENB++# (active low),
+[.monospaced]#++AB++#, [.monospaced]#++DB++# |Two-port (1R1W) synchronous SRAM, read data registered,
+whole-word writes, no reset. Flip-flops or a compiled macro; the
+behaviour the design relies on is in
+xref:aou-ig-tpsram-replacement[] |[.monospaced]#++AOU_RX_GRANULE_STORE++#, one
+instance per bank: per RP, two stores (W and R) of [.monospaced]#++NBANK++# banks of
+[.monospaced]#++ROWS++# words x 320 bits ([.monospaced]#++WG++# = 8 granules of 40 bits). With the
+default depths: 5 banks x 16 words at the 32/64/128 B FDI widths
+(600 granules), 7 banks x 18 words at 256 B (960 granules); both clocks
+are [.monospaced]#++clk_core++#.
 |=======================================================================
 
 *Replacement approaches:*
@@ -2130,6 +2262,9 @@ switching.
 * [.monospaced]#++AOU_SOC_BUF++# is on the DFT scan-reset path. Replace with a buffer
 cell that will be preserved through synthesis optimisation (typically
 via a [.monospaced]#++dont_touch++# or equivalent attribute).
+* [.monospaced]#++AOU_TPSRAM++# needs no replacement. If a compiled SRAM is used
+instead, it must have the read and write behaviour of
+xref:aou-ig-tpsram-replacement[].
 * The behavioral models can serve as a golden reference for verifying
 functional equivalence of the replacements.
 
@@ -2183,7 +2318,7 @@ classified as a test-mode signal, not a scannable data input.
 
 *[.monospaced]#++AOU_SOC_BUF++# -- Optimization protection*
 
-This buffer drives the tied-low scan-reset bypass value into
+This buffer drives the tied-high scan-reset bypass value into
 [.monospaced]#++u_sw_reset_mux++#. Without protection, the synthesis tool will optimize
 it away (replacing it with a direct tie-off), which may cause the
 downstream reset mux to be optimized or restructured in ways that break
@@ -2196,3 +2331,83 @@ ensure it survives all optimization passes, including:
 * Logic optimization and constant propagation
 * Incremental optimization during place-and-route
 * Post-route optimization
+
+[[aou-ig-tpsram-replacement]]
+==== AOU_TPSRAM: Flip-Flops or a Compiled SRAM
+
+[.monospaced]#++AOU_TPSRAM++# is a behavioral two-port RAM, one read port and one write
+port, written so that it can be synthesized as it is or swapped for a
+compiled SRAM. Either is a valid implementation; the choice is the
+integrator's, on area and power. Synthesized as written it becomes
+[.monospaced]#++2^RAM_ADDR_WIDTH x RAM_DATA_WIDTH++# flip-flops with a read mux and a
+registered output. A compiled SRAM must give [.monospaced]#++AOU_RX_GRANULE_STORE++#, the
+only user, the behaviour below; it is what the behavioral model does and
+all the design relies on. Anything the model does beyond this list (for
+example holding [.monospaced]#++QA++# while [.monospaced]#++CENA++# is high) is not required.
+
+*Ports and clock.*
+
+* Read port: [.monospaced]#++CLKA++#, [.monospaced]#++CENA++# (active low), [.monospaced]#++AA++# in, [.monospaced]#++QA++# out.
+Write port: [.monospaced]#++CLKB++#, [.monospaced]#++CENB++# (active low), [.monospaced]#++AB++#, [.monospaced]#++DB++# in.
+There is no reset, no byte or bit write enable, and no output enable.
+* Both clocks are [.monospaced]#++clk_core++# ([.monospaced]#++I_CLK++# of the store). A single-clock 1R1W
+macro, or a dual-clock one with both clock pins on [.monospaced]#++clk_core++#, fits.
+* Each bank may be read and written in the same cycle; the read and the
+write may be to the same or to different addresses. At most one read and
+one write per bank per cycle. A read or a write may be issued in every
+cycle.
+
+*Write.* On a rising edge with [.monospaced]#++CENB = 0++#, the whole word at [.monospaced]#++AB++# takes
+[.monospaced]#++DB++#. The store always writes complete words: when the granules received
+in a cycle end part-way through a word, the rest of the word is written as
+zeros, and the whole word is rewritten, with the granules it already holds
+repeated from flops, once later granules extend it.
+
+*Read.* On a rising edge with [.monospaced]#++CENA = 0++#, the word at [.monospaced]#++AA++# is read and
+[.monospaced]#++QA++# presents it from that edge until the next (one cycle of latency,
+registered output). The store uses [.monospaced]#++QA++# only in that one cycle: it goes
+through the message alignment and field decode combinationally and is
+registered into the store's output buffer at the next edge, after which it
+is not looked at again. Therefore:
+
+* The macro's clock-to-Q plus the alignment and decode logic is a
+single-cycle path in [.monospaced]#++clk_core++#.
+* What [.monospaced]#++QA++# shows while [.monospaced]#++CENA++# is high, or in any cycle without a read
+the cycle before, does not matter (the model holds the last value; a
+macro may hold, go to zero or float to an undefined level).
+* [.monospaced]#++QA++# needs no reset value, and the memory contents need no
+initialization: the store reads a word only to extract granules it has
+already written, and discards the rest of the word.
+
+*Read during write.* The store may read a word in the cycle it rewrites
+it: the last word of a complete message is read while later granules are
+appended to it. The bits being read are the same in the old and the new
+word, because a rewrite only changes the granule positions after the ones
+already stored. So either read-during-write ordering is acceptable, old
+data (the model's behaviour) or write-through, provided the macro returns
+a defined word built from the old and new contents. A macro whose read
+data is undefined on a same-cycle read and write of the same address, or
+whose simulation model returns unknowns in that case, does not meet this
+requirement without extra logic around it.
+
+*Size.* Each store has [.monospaced]#++NBANK++# banks, each a separate [.monospaced]#++AOU_TPSRAM++#
+instance of [.monospaced]#++ROWS++# words of [.monospaced]#++WG x 40++# bits (320 bits with the default
+[.monospaced]#++WG = 8++#). [.monospaced]#++NBANK++# is 5 at the 32, 64 and 128 B FDI widths and 7 at
+256 B. The word count follows the store's depth in granules
+([.monospaced]#++RPn_RX_W_FIFO_DEPTH++# / [.monospaced]#++RPn_RX_R_FIFO_DEPTH++#, xref:aou-ig-parameter-list[]):
+[.monospaced]#++WORDS = (DEPTH_G + 2 (WG - 1)) / WG++# rounded down, and
+[.monospaced]#++ROWS = WORDS / NBANK++# rounded up. With the defaults that is 16 rows per
+bank for a depth of 600 granules and 18 rows for 960. [.monospaced]#++RAM_ADDR_WIDTH++#
+is the width of a row address ([.monospaced]#++ceil(log2(ROWS))++#, at least 1), so the
+model allocates [.monospaced]#++2^RAM_ADDR_WIDTH++# words of which only the first [.monospaced]#++ROWS++#
+are addressed; a compiled macro needs [.monospaced]#++ROWS++# words or more. Per RP that is
+two stores (WriteData and ReadData), so with the defaults a four-RP
+instance holds 40 banks of 320 x 16 bits, or 56 banks of 320 x 18 bits at
+the 256 B width.
+
+*Verification.* The behavioral model is the reference: a replacement
+that holds the properties above in a formal check or an equivalence run
+against it needs no bench change. The open-source bench treats
+[.monospaced]#++AOU_TPSRAM++# as a memory macro for coverage whichever way it is implemented:
+it is excluded from code coverage, and the store's control logic around it
+stays in.

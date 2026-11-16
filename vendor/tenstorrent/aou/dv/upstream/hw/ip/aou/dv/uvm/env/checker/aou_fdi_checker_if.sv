@@ -26,11 +26,15 @@ interface aou_fdi_checker_if (input logic clk);
   // the classes seen since the last clear and the flit of the first one.
   logic [1:0][VIOL_CLASS_CNT-1:0] dir_violation;
   logic [1:0][31:0]               dir_flit_seq;
+  // Per direction, driven by the top from the checker: a flit whose credits
+  // came from the die that had not yet received the final DeactivateAck, after
+  // the teardown, and were let pass (DESIGN.md "Late advertisements").
+  logic [1:0]                     late_adv;
 
   clocking mon_cb @(posedge clk);
     input rst_n, violation, trigger, viol_cnt, capture_valid, capture_code, capture_dir,
           capture_flit_seq, capture_granule_idx, capture_granule, check_enabled,
-          lp_flit_seq, pl_flit_seq, xchk_violation, dir_violation, dir_flit_seq;
+          lp_flit_seq, pl_flit_seq, xchk_violation, dir_violation, dir_flit_seq, late_adv;
   endclocking
 
   clocking drv_cb @(posedge clk);

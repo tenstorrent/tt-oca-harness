@@ -2,8 +2,15 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // Performance (plan 2.10): aou_perf_vseq's windows (+perf_scn=S1..S5, or
-// +perf_mode=lat|bw|drain) measured by aou_perf_mon into perf.txt and
-// perf.json (docs/PERF_JSON.md) in the run directory. aou_perf_chk gates every
+// +perf_mode=lat|bw|drain|rxlat) measured by aou_perf_mon into perf.txt and
+// perf.json (docs/PERF_JSON.md) in the run directory. +perf_mode=rxlat adds
+// aou_rx_lat_mon: per-message RX latency from the FDI pins to the AXI
+// handshake (fdi-rx-plan 13) and aou_tx_lat_mon: per-message TX latency from the AXI
+// handshake to the FDI beat carrying the message's first granule, report only, rxlat.*
+// and txlat.* lines in perf.txt.
+// +perf_l3_one_msg=1 makes the remote die pack one message per flit, at G0 (a WriteReq
+// with its first WriteData), so the idle RX windows time a lone message from the
+// flit's first beat. aou_perf_chk gates every
 // bandwidth window against the committed d2d_model targets (T1-P02..P04); the
 // latency and drain windows are report only. The scoreboard still checks every
 // byte. aou_perf_seq replaces the random traffic with each window's exact
@@ -13,8 +20,13 @@
 // +perf_r_interleave=0|1 (local subordinates interleave R beats across IDs,
 // default 0), +perf_w_before_aw=0|1 (default 1), +perf_resp_fork=0|1 (remote
 // responder serves requests concurrently, default 0).
+// The remote die's bus on each RP is as wide as the DUT's (+remote_bytes
+// overrides), so neither side's bursts are resized on the way: a pairing of
+// different widths is a correctness scenario, not a bandwidth one.
 // The remote die sends every full-strobe write beat as WriteDataFull
-// (+perf_remote_full_pct=<pct>, default 100), as the DUT does.
+// (+perf_remote_full_pct=<pct>, default 100), as the DUT does, and every
+// WriteReq ahead of its WriteData (+wdata_first_pct=0 unless given): the
+// windows measure the ordinary order, the same on every seed.
 // Managers keep +perf_slots outstanding (default 32): with the drivers'
 // default 16 the remote die's reads could not cover their round trip when
 // both sides read, and the bench, not the DUT, set the rate.
@@ -26,6 +38,8 @@ class aou_perf_test extends aou_dp_base_test;
 
   aou_perf_mon mon;
   aou_perf_chk chk;
+  aou_rx_lat_mon rx_lat;
+  aou_tx_lat_mon tx_lat;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -46,14 +60,29 @@ class aou_perf_test extends aou_dp_base_test;
       if (mode == "l2r") min_r2l = 0;
       if (mode == "r2l") min_l2r = 0;
     end
+    // The bandwidth model has one arbitration stage and one lane per port: no
+    // asymmetric RP mapping that merges ports.
+    cfg.rp_map_pct = 0;
     // Steady state only: no L1 cancels, bubbles or gaps on the flits to the DUT.
     cfg.l1_cancel_pct = 0;
     cfg.l1_bubble_pct = 0;
     cfg.l1_gap_pct = 0;
-    foreach (cfg.fdi_cfg[p]) cfg.fdi_cfg[p].trdy_policy = AOU_TRDY_ALWAYS;
+    foreach (cfg.fdi_cfg[p]) begin
+      cfg.fdi_cfg[p].trdy_policy = AOU_TRDY_ALWAYS;
+      cfg.fdi_cfg[p].stall_pct = 0;
+    end
     // Long windows (768 KB per link at the slowest link) must not trip the
     // traffic watchdog.
     cfg.drain_timeout = 2000000;
+    cfg.l3_cfg.pol.wdata_first_pct = 0;
+    cfg.l3_cfg.pol.wresp_batch = 0;
+    if ($value$plusargs("perf_l3_one_msg=%s", mode) && mode == "1") begin
+      cfg.l3_cfg.pol.set_min_density();   // one message per flit, at G0
+      cfg.l3_cfg.pol.wreq_wdata_pair = 1'b1; // a WriteReq's WriteData shares its flit
+      cfg.l3_cfg.pol.wdata_first_pct = 0;
+    end
+    if (!$value$plusargs("remote_bytes=%s", mode))
+      foreach (cfg.rp_remote_bytes[r]) cfg.rp_remote_bytes[r] = cfg.rp_bytes[r];
     pin_knobs();
     outstanding();
     deep_credits();
@@ -104,6 +133,18 @@ class aou_perf_test extends aou_dp_base_test;
     mon.cfg = cfg;
     void'($value$plusargs("perf_mode=%s", mon.perf_mode));
     uvm_config_db#(aou_perf_mon)::set(null, "*", "perf_mon", mon);
+    if (mon.perf_mode == "rxlat") begin
+      rx_lat = aou_rx_lat_mon::type_id::create("rx_lat", this);
+      rx_lat.perf = mon;
+      rx_lat.beat_bytes = mon.beat_bytes;
+      rx_lat.n_rp = cfg.n_rp;
+      uvm_config_db#(aou_rx_lat_mon)::set(null, "*", "rx_lat_mon", rx_lat);
+      tx_lat = aou_tx_lat_mon::type_id::create("tx_lat", this);
+      tx_lat.perf = mon;
+      tx_lat.beat_bytes = mon.beat_bytes;
+      tx_lat.n_rp = cfg.n_rp;
+      uvm_config_db#(aou_tx_lat_mon)::set(null, "*", "tx_lat_mon", tx_lat);
+    end
   endfunction
 
   function void connect_phase(uvm_phase phase);
@@ -118,5 +159,21 @@ class aou_perf_test extends aou_dp_base_test;
     env.l3.ap_rx_msg.connect(mon.dut_fifo.analysis_export);
     env.l3.ap_tx_msg.connect(mon.tb_fifo.analysis_export);
     mon.res_ap.connect(chk.imp);
+    if (rx_lat != null) begin
+      rx_lat.l3 = env.l3;
+      rx_lat.vif = env.lsm_vif;
+      rx_lat.clk_ns = mon.clk_ns;
+      env.l3.ap_tx_flit.connect(rx_lat.l3_flit_imp);
+      env.fdi[cfg.lsm_cfg.active_phy].mon.ap_rx.connect(rx_lat.rx_flit_imp);
+      foreach (env.m_sub[r]) env.m_sub[r].ap.connect(rx_lat.m_txn_imp);
+      foreach (env.s_mgr[r]) env.s_mgr[r].ap.connect(rx_lat.s_txn_imp);
+    end
+    if (tx_lat != null) begin
+      tx_lat.clk_ns = mon.clk_ns;
+      env.fdi[cfg.lsm_cfg.active_phy].mon.ap_tx.connect(tx_lat.tx_flit_imp);
+      env.l3.ap_rx_msg.connect(tx_lat.dut_msg_imp);
+      foreach (env.m_sub[r]) env.m_sub[r].ap.connect(tx_lat.m_txn_imp);
+      foreach (env.s_mgr[r]) env.s_mgr[r].ap.connect(tx_lat.s_txn_imp);
+    end
   endfunction
 endclass

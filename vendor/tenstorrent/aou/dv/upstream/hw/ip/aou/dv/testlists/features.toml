@@ -3,7 +3,7 @@
 
 schema_version = 1
 
-# Features (stream F).
+# Features.
 #
 # Feature tests: aggregator, early BRESP, splitting, QoS modes, DEST_RP, TX LP
 # mode and the rest. TB=t1. Width bypass (14.8) runs as an aou_dp_size_test entry.
@@ -322,6 +322,18 @@ tags = ["features"]
 run_modes = ["features"]
 args = ["+split_aw=sweep", "+split_ar=sweep", "+dp_len=15,31,63"]
 
+# Long narrow remote bursts (AxSIZE 0-4, 32 to 256 beats) with MAX_AxBURSTLEN 255,
+# so they reach every M port unsplit; high IDs and every RP's window below 4GB.
+[[tests]]
+name = "aou_split_test.split_aw-255.split_ar-255.dp_full_size-0.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.dp_ids-high.4x512-sp64"
+module = { uvm = "aou_split_test" }
+target = "4x512-sp64"
+seed = 1
+reseed = 2
+tags = ["features"]
+run_modes = ["features"]
+args = ["+split_aw=255", "+split_ar=255", "+dp_full_size=0", "+dp_size=0,1,2,3,4", "+dp_len=31,63,127,255", "+dp_profile=low", "+dp_ids=high"]
+
 # 17.13: RPn_AXI_AGGREGATOR_EN on a random subset of the RPs (at least one on and
 # one off), each RP judged by its own setting.
 [[tests]]
@@ -473,7 +485,7 @@ args = ["+wdt_case=multi_rp"]
 
 [[groups]]
 name = "features"
-expected_count = 45
+expected_count = 46
 tests = [
   "aou_split_test.split_aw-15.split_ar-15.dp_len-0_1_3_7_15",
   "aou_split_test.split_aw-7.split_ar-7.dp_len-15_31",
@@ -507,6 +519,7 @@ tests = [
   "aou_split_test.split_aw-per_rp.split_ar-per_rp.dp_len-7_15_31.dp_batch-1",
   "aou_split_test.split_aw-15.split_ar-15.dp_len-7_15_31_63",
   "aou_split_test.split_aw-sweep.split_ar-sweep.dp_len-15_31_63",
+  "aou_split_test.split_aw-255.split_ar-255.dp_full_size-0.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.dp_ids-high.4x512-sp64",
   "aou_aggregator_test.agg_en-per_rp.4x512-sp64",
   "aou_aggregator_test.agg_en-per_rp.4xmix4211-sp128",
   "aou_early_bresp_test.early_en-1.early_toggle-1.dp_buf_pct-50",

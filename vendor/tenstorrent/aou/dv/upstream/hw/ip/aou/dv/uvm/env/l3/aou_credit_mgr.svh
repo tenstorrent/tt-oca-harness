@@ -27,6 +27,8 @@ class aou_credit_mgr extends uvm_object;
   int unsigned rx_occupancy[AOU_RP_MAX][AOU_CC_NUM];
   int unsigned rx_pending[AOU_RP_MAX][AOU_CC_NUM];
   int unsigned rx_withheld[AOU_RP_MAX][AOU_CC_NUM];
+  // Request credit held back until our DeactivateReq (cfg.late_adv_hold).
+  int unsigned rx_late_held[AOU_RP_MAX][AOU_CC_NUM];
   int unsigned rx_returned[AOU_RP_MAX][AOU_CC_NUM];
   int unsigned rx_overflows;
   // Coverage of the DUT side: exhausted when the DUT used up what we granted,
@@ -62,6 +64,12 @@ class aou_credit_mgr extends uvm_object;
         rx_exhausted[r][c] = 1'b0;
         rx_starved[r][c] = 1'b0;
         rx_pending[r][c] = (d > rx_occupancy[r][c]) ? d - rx_occupancy[r][c] : 0;
+        rx_late_held[r][c] = 0;
+        if (c != AOU_CC_RDATA && c != AOU_CC_WRESP) begin
+          rx_late_held[r][c] = (cfg.late_adv_hold < rx_pending[r][c]) ? cfg.late_adv_hold
+                                                                      : rx_pending[r][c];
+          rx_pending[r][c] -= rx_late_held[r][c];
+        end
       end
     end
     dly_due.delete();
@@ -153,6 +161,13 @@ class aou_credit_mgr extends uvm_object;
     foreach (rx_withheld[r, c]) begin
       rx_pending[r][c] += rx_withheld[r][c];
       rx_withheld[r][c] = 0;
+    end
+  endfunction
+
+  function void release_late_held();
+    foreach (rx_late_held[r, c]) begin
+      rx_pending[r][c] += rx_late_held[r][c];
+      rx_late_held[r][c] = 0;
     end
   endfunction
 

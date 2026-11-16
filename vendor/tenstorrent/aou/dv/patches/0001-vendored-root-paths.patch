@@ -125,7 +125,7 @@ index 32032c7..c7e4777 100644
 +work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_l3_unit/default"
  defines = []
 diff --git a/hw/ip/aou/dv/aou_reg_sim_cfg.toml b/hw/ip/aou/dv/aou_reg_sim_cfg.toml
-index 56dd428..7edfc02 100644
+index 59b7edd..63645a7 100644
 --- a/hw/ip/aou/dv/aou_reg_sim_cfg.toml
 +++ b/hw/ip/aou/dv/aou_reg_sim_cfg.toml
 @@ -31,27 +31,27 @@ timeout_sec = 1800
@@ -169,7 +169,7 @@ index 56dd428..7edfc02 100644
  ]
  
  
-@@ -85,104 +85,104 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512"]
+@@ -85,146 +85,146 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512"]
  # time. Standalone builds use the Makefile's build/<sim>-<tb>-<target> instead.
  [targets.1x512-sp64]
  description = "Default: one RP, the usual data path"
@@ -181,7 +181,7 @@ index 56dd428..7edfc02 100644
             "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1"]
  
  [targets.4x512-sp64]
- description = "Multi-RP behaviour (2.12) at one width"
+ description = "Multi-RP behaviour (plan items 12.x) at one width"
 -build_dir = "hw/ip/aou/dv/build/uvm_reg/4x512-sp64"
 -work_dir = "hw/ip/aou/dv/build/uvm_reg/4x512-sp64"
 +build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4x512-sp64"
@@ -199,7 +199,7 @@ index 56dd428..7edfc02 100644
             "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1"]
  
  [targets.4xmix4211-sp128]
- description = "Mixed widths, every local width (2.14), 128-byte FDI"
+ description = "Mixed widths, every local width (plan items 14.x), 128-byte FDI"
 -build_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128"
 -work_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128"
 +build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128"
@@ -215,6 +215,15 @@ index 56dd428..7edfc02 100644
 +work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix2144-sp64"
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=256",
             "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=1"]
+ 
+ [targets.2xmix41-sp128]
+ description = "Two RPs, 1024 and 256 bits, on one 128-byte FDI (single PHY)"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/2xmix41-sp128"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/2xmix41-sp128"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/2xmix41-sp128"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/2xmix41-sp128"
+ defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=256",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=2"]
  
  [targets.1x256-sp32]
  description = "Narrowest RP and FDI (the RTL default FDI_CONFIG)"
@@ -260,6 +269,42 @@ index 56dd428..7edfc02 100644
  defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=256",
             "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=1", "AOU_RX_FIFO_ALT"]
  
+ [targets.1x1024-sp128]
+ description = "One 1024-bit RP on a 128-byte FDI (RX latency reference, fdi-rx-plan 13)"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/1x1024-sp128"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/1x1024-sp128"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x1024-sp128"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x1024-sp128"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=1024",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=2"]
+ 
+ [targets.1x1024-sp256]
+ description = "One 1024-bit RP on a 256-byte FDI (one flit per cycle)"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/1x1024-sp256"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/1x1024-sp256"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x1024-sp256"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x1024-sp256"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=1024",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=5"]
+ 
+ [targets.4xmix-sp256]
+ description = "Mixed widths, every local width, 256-byte FDI"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix-sp256"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix-sp256"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix-sp256"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix-sp256"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=5"]
+ 
+ [targets.4xmix-sp256-rxf]
+ description = "4xmix-sp256 with non-default RX FIFO depths (AOU_RX_FIFO_ALT)"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix-sp256-rxf"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/4xmix-sp256-rxf"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix-sp256-rxf"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix-sp256-rxf"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=5", "AOU_RX_FIFO_ALT"]
+ 
  [targets.1x256-sp32-assert]
  description = "1x256-sp32 with the RTL's ASSERTION_ON checks"
 -build_dir = "hw/ip/aou/dv/build/uvm_reg/1x256-sp32-assert"
@@ -304,8 +349,17 @@ index 56dd428..7edfc02 100644
 +work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/4xmix4211-sp128-assert"
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
             "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "ASSERTION_ON"]
+ 
+ [targets.1x1024-sp256-assert]
+ description = "1x1024-sp256 with the RTL's ASSERTION_ON checks"
+-build_dir = "hw/ip/aou/dv/build/uvm_reg/1x1024-sp256-assert"
+-work_dir = "hw/ip/aou/dv/build/uvm_reg/1x1024-sp256-assert"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x1024-sp256-assert"
++work_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm_reg/1x1024-sp256-assert"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=1024",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=5", "ASSERTION_ON"]
 diff --git a/hw/ip/aou/dv/aou_sim_cfg.toml b/hw/ip/aou/dv/aou_sim_cfg.toml
-index e5a13c6..620a409 100644
+index 9cac506..133b933 100644
 --- a/hw/ip/aou/dv/aou_sim_cfg.toml
 +++ b/hw/ip/aou/dv/aou_sim_cfg.toml
 @@ -6,14 +6,14 @@ schema_version = 1
@@ -374,7 +428,7 @@ index e5a13c6..620a409 100644
  ]
  # Compile order is load-bearing (each package imports the ones before it):
  # the generated register model (make ral) -> the rule ledger -> functional
-@@ -72,35 +72,35 @@ incdirs = [
+@@ -72,37 +72,37 @@ incdirs = [
  # checkers, aou_base_test_seq) -> the sequence library -> the FDI bring-up
  # tests -> tb_top.sv, which `include`s uvm/tests/aou_tests.sv under UVM.
  sources = [
@@ -392,6 +446,7 @@ index e5a13c6..620a409 100644
 -  "hw/ip/aou/dv/uvm/env/checker/AOU_FDI_CHECKER.sv",
 -  "hw/ip/aou/dv/uvm/env/checker/aou_fdi_checker_if.sv",
 -  "hw/ip/aou/dv/uvm/env/checker/aou_fdi_chk_dir_tap.sv",
+-  "hw/ip/aou/dv/uvm/env/checker/aou_fdi_chk_phy.sv",
 -  "hw/ip/aou/dv/uvm/env/l3/aou_l3_pkg.sv",
 -  "hw/ip/aou/dv/uvm/env/apb/aou_apb_if.sv",
 -  "hw/ip/aou/dv/uvm/env/apb/aou_apb_pkg.sv",
@@ -400,6 +455,7 @@ index e5a13c6..620a409 100644
 -  "hw/ip/aou/dv/tb/aou_irq_if.sv",
 -  "hw/ip/aou/dv/tb/aou_rst_if.sv",
 -  "hw/ip/aou/dv/tb/aou_wdt_if.sv",
+-  "hw/ip/aou/dv/tb/aou_rx_gs_if.sv",
 -  "hw/ip/aou/dv/tb/aou_axi4pc_ctl_if.sv",
 -  "hw/ip/aou/dv/tb/aou_axi4pc_gate.sv",
 -  "hw/ip/aou/dv/uvm/env/axi4pc/aou_axi4pc_pkg.sv",
@@ -421,6 +477,7 @@ index e5a13c6..620a409 100644
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/checker/AOU_FDI_CHECKER.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/checker/aou_fdi_checker_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/checker/aou_fdi_chk_dir_tap.sv",
++  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/checker/aou_fdi_chk_phy.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/l3/aou_l3_pkg.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/apb/aou_apb_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/apb/aou_apb_pkg.sv",
@@ -429,6 +486,7 @@ index e5a13c6..620a409 100644
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_irq_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_rst_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_wdt_if.sv",
++  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_rx_gs_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_axi4pc_ctl_if.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/tb/aou_axi4pc_gate.sv",
 +  "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/uvm/env/axi4pc/aou_axi4pc_pkg.sv",
@@ -439,7 +497,7 @@ index e5a13c6..620a409 100644
  ]
  
  
-@@ -229,60 +229,60 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512", "AOU_T1_AXI_AGENTS"]
+@@ -231,66 +231,66 @@ defines = ["AOU_AXI_DATA_BYTES=64", "AOU_FDI_DATA_W=512", "AOU_T1_AXI_AGENTS"]
  # their models coexist. Standalone builds use build/<sim>-<tb>-<target> instead.
  [targets.1x512-sp64]
  description = "Default: one RP, the usual data path"
@@ -449,7 +507,7 @@ index e5a13c6..620a409 100644
             "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1"]
  
  [targets.4x512-sp64]
- description = "Multi-RP behaviour (2.12) at one width"
+ description = "Multi-RP behaviour (plan items 12.x) at one width"
 -build_dir = "hw/ip/aou/dv/build/uvm"
 +build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=512",
@@ -463,7 +521,7 @@ index e5a13c6..620a409 100644
             "AOU_RP2_DATA_W=512", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=1"]
  
  [targets.4xmix4211-sp128]
- description = "Mixed widths, every local width (2.14), 128-byte FDI"
+ description = "Mixed widths, every local width (plan items 14.x), 128-byte FDI"
 -build_dir = "hw/ip/aou/dv/build/uvm"
 +build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
@@ -475,6 +533,13 @@ index e5a13c6..620a409 100644
 +build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=512", "AOU_RP0_DATA_W=512", "AOU_RP1_DATA_W=256",
             "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=1"]
+ 
+ [targets.2xmix41-sp128]
+ description = "Two RPs, 1024 and 256 bits, on one 128-byte FDI (single PHY)"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=256",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=2"]
  
  [targets.1x256-sp32]
  description = "Narrowest RP and FDI (the RTL default FDI_CONFIG)"
@@ -510,7 +575,39 @@ index e5a13c6..620a409 100644
  defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=256",
             "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=1", "AOU_RX_FIFO_ALT"]
  
-@@ -290,30 +290,30 @@ defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_R
+@@ -298,7 +298,7 @@ defines = ["AOU_RP_COUNT=2", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_R
+ # docs/fdi-rx-plan.md 13.2 (4xmix4211-sp128 mixes RP widths).
+ [targets.1x1024-sp128]
+ description = "One 1024-bit RP on a 128-byte FDI (RX latency reference, fdi-rx-plan 13)"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=1024",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=2"]
+ 
+@@ -307,19 +307,19 @@ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_R
+ # (docs/fdi-rx-plan.md 7). No AOU_FDI_CHECKER (32/64/128 B only).
+ [targets.1x1024-sp256]
+ description = "One 1024-bit RP on a 256-byte FDI (one flit per cycle)"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=1024",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=5"]
+ 
+ [targets.4xmix-sp256]
+ description = "Mixed widths, every local width, 256-byte FDI"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=5"]
+ 
+ [targets.4xmix-sp256-rxf]
+ description = "4xmix-sp256 with non-default RX FIFO depths (AOU_RX_FIFO_ALT)"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
+            "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=512", "AOU_FDI_CONFIG=5", "AOU_RX_FIFO_ALT"]
+ 
+@@ -327,36 +327,36 @@ defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_R
  # ASSERTION_ON regression covers).
  [targets.1x256-sp32-assert]
  description = "1x256-sp32 with the RTL's ASSERTION_ON checks"
@@ -546,3 +643,10 @@ index e5a13c6..620a409 100644
 +build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
  defines = ["AOU_RP_COUNT=4", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=512",
             "AOU_RP2_DATA_W=256", "AOU_RP3_DATA_W=256", "AOU_FDI_CONFIG=2", "ASSERTION_ON"]
+ 
+ [targets.1x1024-sp256-assert]
+ description = "1x1024-sp256 with the RTL's ASSERTION_ON checks"
+-build_dir = "hw/ip/aou/dv/build/uvm"
++build_dir = "vendor/tenstorrent/aou/dv/upstream/hw/ip/aou/dv/build/uvm"
+ defines = ["AOU_RP_COUNT=1", "AOU_RP_DATA_W=1024", "AOU_RP0_DATA_W=1024", "AOU_RP1_DATA_W=1024",
+            "AOU_RP2_DATA_W=1024", "AOU_RP3_DATA_W=1024", "AOU_FDI_CONFIG=5", "ASSERTION_ON"]

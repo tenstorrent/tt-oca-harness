@@ -95,7 +95,7 @@ AT A GLANCE
 !Feature !Description
 !AXI interface (per RP) !512-bit data (reference; 256 or 1024 selectable); 64-bit address; 10-bit ID
 !Outstanding transactions !32 reads and 32 writes per manager/subordinate path
-!FDI !Single-PHY 32 B / 256-bit data (reference); up to 128 B / 1024-bit data
+!FDI !Single-PHY 32 B / 256-bit data (reference); up to 256 B / 2048-bit data
 !APB CSR / IP version !32-bit address and data / major 1, minor 0
 !===
 
@@ -163,10 +163,10 @@ INTERFACES AND CONFIGURATION
 
 [.datasheet-small]
 `FDI_CONFIG` selects the single-PHY width or two-PHY width pair using one of
-five values: `FDI_CFG_SP_32B`, `FDI_CFG_SP_64B`, `FDI_CFG_SP_128B`,
-`FDI_CFG_TP_32B_64B`, `FDI_CFG_TP_64B_128B`). Two-PHY builds require
-`+define+TWO_PHY`; selecting a `FDI_CFG_TP_*` value without this define
-(or vice versa) is the integrator's responsibility to prevent.
+six values: `FDI_CFG_SP_32B`, `FDI_CFG_SP_64B`, `FDI_CFG_SP_128B`,
+`FDI_CFG_SP_256B`, `FDI_CFG_TP_32B_64B`, `FDI_CFG_TP_64B_128B`. Two-PHY
+builds require `+define+TWO_PHY`; selecting a `FDI_CFG_TP_*` value without
+this define (or vice versa) is the integrator's responsibility to prevent.
 
 a|
 // datasheet-section: integration-dependencies

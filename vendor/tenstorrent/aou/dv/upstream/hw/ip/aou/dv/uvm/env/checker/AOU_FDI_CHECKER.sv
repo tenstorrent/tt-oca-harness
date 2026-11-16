@@ -17,8 +17,8 @@
 // *****************************************************************************
 //
 //  Module     : AOU_FDI_CHECKER
-//  Version    : 1.13
-//  Date       : 26-10-20
+//  Version    : 1.14
+//  Date       : 26-10-28
 //
 // *****************************************************************************
 //
@@ -198,10 +198,6 @@ if ((FDI_IF_BYTES != 32) && (FDI_IF_BYTES != 64) &&
     (FDI_IF_BYTES != 128)) begin : gen_unsupported_fdi_if_bytes
     $fatal(1, "AOU_FDI_CHECKER: unsupported FDI_IF_BYTES=%0d (32, 64 or 128)", FDI_IF_BYTES);
 end
-
-`ifdef TWO_PHY
-$fatal(1, "AOU_FDI_CHECKER: TWO_PHY is not supported (observes one single-PHY link)");
-`endif
 
 if ((RP_COUNT < 1) || (RP_COUNT > 4)) begin : gen_rp_count_out_of_range
     $fatal(1, "AOU_FDI_CHECKER: RP_COUNT=%0d; the protocol's plane field is two bits, so 1..4",
@@ -497,11 +493,17 @@ logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_starts_data;
 logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_starts_credited;
 
 // Reserved-field contents, evaluated for every granule and qualified
-// afterwards. PROPERTYREQ is only meaningful on ActivateReq and "must be 0b0
-// for other messages" (v0.7 Table 26), so it reads as reserved elsewhere. The
-// credited messages' RsvdZero is judged in their first granule only (Tables
-// 2, 3, 10-13); WriteData carries none there.
+// afterwards. The ActivateReq (v0.8 Ch. 11) has RsvdZero at stream bits
+// 11-13 of its first granule and 0-13 of its three others, and the profile
+// fields of an RP the sender does not have are reserved too; the checker knows
+// its own die's planes (RP_COUNT) and holds that stream to it. The other
+// Activation opcodes have RsvdZero at 11-39, which takes in v0.7's PROPERTYREQ
+// (v0.8 reserves it). The credited messages' RsvdZero is judged in their first
+// granule only (Tables 2, 3, 10-13); WriteData carries none there.
 logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_act_rsvd_nonzero;
+// Granules 1-3 of an ActivateReq at G0 (4.4 puts an Activation message there).
+logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_act_req_body;
+logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_act_req_body_rsvd_nonzero;
 logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_crdtgrant_rsvd_nonzero;
 logic [DIR_CNT-1:0][GRANULE_CNT-1:0]    w_msg_rsvd_nonzero;
 
@@ -540,9 +542,20 @@ always_comb begin
                                       (w_chk_msgtype[d][g] != MSG_MISC);
 
             w_act_rsvd_nonzero[d][g] =
-                (|(w_chk_granule[d][g] & ACT_RSVD_MASK)) |
-                (w_chk_granule[d][g][PROPREQ_BIT] &
-                 (w_chk_actop[d][g] != ACTOP_ACTIVATE_REQ));
+                (w_chk_actop[d][g] == ACTOP_ACTIVATE_REQ) ?
+                    (|(w_chk_granule[d][g] & ACT_REQ_RSVD_G0_MASK)) :
+                    (|(w_chk_granule[d][g] & ACT_RSVD_MASK));
+
+            // The body of an ActivateReq at G0: RsvdZero at stream bits 0-13,
+            // and the whole profile group of a plane this die does not have
+            // (its own stream only; the peer's plane count is not a parameter).
+            w_act_req_body[d][g] = (g >= 1) && (g < MISC_ACT_REQ_G) &&
+                                   w_starts_activation[d][0] &&
+                                   (w_chk_actop[d][0] == ACTOP_ACTIVATE_REQ);
+            w_act_req_body_rsvd_nonzero[d][g] =
+                (|(w_chk_granule[d][g] & ACT_REQ_RSVD_BODY_MASK)) |
+                ((d == DIR_LP) && (g >= RP_COUNT) &&
+                 (|(w_chk_granule[d][g] & ACT_REQ_PROFILE_MASK)));
 
             w_crdtgrant_rsvd_nonzero[d][g] = |(w_chk_granule[d][g] & CG_RSVD_G1_MASK);
 
@@ -593,7 +606,8 @@ always_comb begin
                 MSG_MISC: begin
                     case (w_chk_miscop[d][g])
                         MISCOP_ACTIVATION:
-                            w_msg_len[d][g] = MSG_G_WD'(MISC_ACT_G);
+                            w_msg_len[d][g] = (w_chk_actop[d][g] == ACTOP_ACTIVATE_REQ) ?
+                                              MSG_G_WD'(MISC_ACT_REQ_G) : MSG_G_WD'(MISC_ACT_G);
                         MISCOP_CRDTGRANT:
                             w_msg_len[d][g] = MSG_G_WD'(MISC_CG_G);
                         default:
@@ -777,12 +791,17 @@ logic [DIR_CNT-1:0]                     r_deact_ack;
 // same way a consumed ActivateAck flit does, nothing else.
 logic [DIR_CNT-1:0]                     r_act_ack_half;
 
-// ONE STATE FOR THE LINK, NOT ONE PER DIE. 8.2's conditions -- ENABLED once an
-// ActivateAck has been sent and received, DISABLED once a DeactivateAck has
-// -- name the same four events from either die's side, so the two dies' states
-// cannot differ on the wire and are held once, combinationally off the events.
-// ENABLED is written with the request terms, which the answer rule already
-// implies, so that it says the specification's condition.
+// ONE STATE FOR THE LINK AS THE OBSERVATION POINT SEES IT. 8.2's conditions --
+// ENABLED once an ActivateAck has been sent and received, DISABLED once a
+// DeactivateAck has -- name the same four events from either die's side, and
+// this point sees every event as it crosses, so one state held combinationally
+// off the events is what both dies' states are at this point. A die receiving a
+// message beyond this point reaches the new state later, though: the die that
+// receives the final DeactivateAck is still in DEACTIVATE until it arrives, and
+// what it sends meanwhile arrives here after this state is DISABLED. That one
+// difference is carried apart, in r_late_adv below. ENABLED is written with the
+// request terms, which the answer rule already implies, so that it says the
+// specification's condition.
 logic                                   w_link_activated;
 logic                                   w_link_activating;
 logic                                   w_link_tearing_down;
@@ -911,10 +930,11 @@ logic [DIR_CNT-1:0]                     w_act_ack_nxt;
 logic [DIR_CNT-1:0]                     w_deact_req_nxt;
 logic [DIR_CNT-1:0]                     w_deact_ack_nxt;
 
-// A completed teardown returns both dies to DISABLED (8.4). Computed from the
-// events AFTER this flit, so the flit completing the exchange is judged against
-// the link it tore down. Gated with the model so that an instance holding no
-// activation state has no teardown to complete.
+// A completed teardown returns the link to DISABLED as this point sees it (8.4;
+// the receiver of the last DeactivateAck follows when it arrives, r_late_adv).
+// Computed from the events AFTER this flit, so the flit completing the exchange
+// is judged against the link it tore down. Gated with the model so that an
+// instance holding no activation state has no teardown to complete.
 logic                                   w_teardown_done;
 
 always_comb begin
@@ -956,6 +976,49 @@ always_ff @(posedge I_CLK or negedge I_RESETN) begin
     end
 end
 
+// LATE ADVERTISEMENTS FROM THE DIE THAT RECEIVES THE FINAL DEACTIVATEACK. 8.2
+// makes DISABLED a die's own condition: the die sending the last DeactivateAck
+// is DISABLED at once, the die receiving it only once it arrives, and until
+// then it is in DEACTIVATE, where 8.4 lets it keep advertising (request credits
+// explicitly; response credits by MAS 7.3.1). Its flits built before the Ack
+// reached it arrive here after the teardown. The flight time is unknown at this
+// point, and a die in DISABLED sends nothing that would show it received the
+// Ack until its next Activation message, so its advertisements are tolerated --
+// neither reported nor counted -- from the teardown until the flit carrying its
+// next Activation message, which closes the window with the flit (it is first
+// in it, 4.4). An FDI reset closes it too. Nothing else is suspended: no
+// credited message is legal after both DeactivateReqs (each waits until its
+// sender's requests are complete), and the die that sent the last Ack is held to
+// DISABLED from that flit on. Both dies are treated alike: on a narrow FDI the
+// observed die's own flit can be under way when the peer's Ack completes. When
+// both final Acks complete on one edge, each die sent its Ack before it could
+// have received the other's, so both windows open.
+logic [DIR_CNT-1:0]                     r_late_adv;
+logic [DIR_CNT-1:0]                     w_late_adv_en;
+logic [DIR_CNT-1:0]                     w_late_adv_open;
+// A consumed flit whose advertisements the window let pass. Read by nothing
+// here; a bench taps it to see that the window was reached.
+logic [DIR_CNT-1:0]                     w_late_adv_seen;
+
+always_comb begin
+    for (int unsigned d = 0; d < DIR_CNT; d++) begin
+        // Die d is the receiver of a DeactivateAck that completes the teardown.
+        w_late_adv_open[d] = w_teardown_done & ~r_deact_ack[1-d] &
+                             w_chk_go[1-d] & w_flit_deact_ack[1-d];
+        w_late_adv_en[d]   = r_late_adv[d] & ~(w_chk_go[d] & (|w_act_msg[d]));
+    end
+end
+
+always_ff @(posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_late_adv <= '0;
+    end else if (I_LINK_RESET) begin
+        r_late_adv <= '0;
+    end else if (w_act_model_en) begin
+        r_late_adv <= w_late_adv_open | w_late_adv_en;
+    end
+end
+
 // -----------------------------------------------------------------------------
 // Credit accounting.
 //
@@ -987,11 +1050,12 @@ logic [DIR_CNT-1:0][RP_COUNT-1:0][CRD_CLS_CNT-1:0][CRD_WD-1:0]  r_crd;
 
 // The windows v0.8 8.4 and 9.2 open and close for die d. Advertising is legal
 // from the flit that carries its own ActivateAck ("after ActivateAck is sent,
-// it is permitted ... to send credits"). Response credits stop with the flit
-// that carries its own DeactivateAck (v0.7's rule; v0.8 is silent on them).
-// Request credits -- WriteReq, ReadReq and, as an interim reading, WriteData --
-// are permitted after the die's own DeactivateAck (v0.8 8.4) until the link
-// reaches DISABLED, where no credit may be sent (8.4 DISABLED). Sending
+// it is permitted ... to send credits") until the link reaches DISABLED, where
+// no credit may be sent (8.4 DISABLED). That includes every class after the
+// die's own DeactivateAck: request credits -- WriteReq, ReadReq and, as an
+// interim reading, WriteData -- by v0.8 8.4, response credits by MAS 7.3.1
+// (v0.8 is silent on them). A flit's credits are consumed with the flit, so
+// the flit completing the teardown is still judged before DISABLED. Sending
 // credited messages is legal once it has sent an ActivateReq and received the
 // ActivateAck answering it (9.2) -- the lenient of the two readings, since
 // 8.4's ENABLED additionally waits for the die's own acknowledge; an
@@ -999,17 +1063,19 @@ logic [DIR_CNT-1:0][RP_COUNT-1:0][CRD_CLS_CNT-1:0][CRD_WD-1:0]  r_crd;
 // its own DeactivateReq; pending ReadData and WriteResp must still be sent
 // after it (v0.8 8.4) and stay legal until DISABLED. Each closing message is
 // the first in its flit (4.4), so the rest of that flit is after it and the
-// windows close with the flit rather than after it.
+// windows close with the flit rather than after it. "Until DISABLED" is the
+// observation point's DISABLED; the receiver of the final DeactivateAck gets
+// there later, and its advertisements in between are r_late_adv's: not
+// reported, and funding nothing, since the die they are for is already
+// DISABLED, where it holds no credits (8.4).
 logic [DIR_CNT-1:0]                                 w_adv_en;
-logic [DIR_CNT-1:0]                                 w_adv_req_en;
 logic [DIR_CNT-1:0]                                 w_consume_en;
 logic [DIR_CNT-1:0]                                 w_consume_rsp_en;
 logic [DIR_CNT-1:0][CRD_CLS_CNT-1:0]                w_consume_cls_en;
 
 always_comb begin
     for (int unsigned d = 0; d < DIR_CNT; d++) begin
-        w_adv_req_en[d]     = r_act_ack[d] | w_flit_act_ack[d];
-        w_adv_en[d]         = w_adv_req_en[d] & ~w_deact_ack_nxt[d];
+        w_adv_en[d]         = r_act_ack[d] | w_flit_act_ack[d];
         w_consume_rsp_en[d] = r_act_req[d] & (r_act_ack[1-d] | r_act_ack_half[1-d]);
         w_consume_en[d]     = w_consume_rsp_en[d] & ~w_deact_req_nxt[d];
         for (int unsigned c = 0; c < CRD_CLS_CNT; c++) begin
@@ -1075,12 +1141,6 @@ logic [DIR_CNT-1:0][GRANT_POS_CNT-1:0]
 logic [DIR_CNT-1:0][RP_WIRE_CNT-1:0][CRD_CLS_CNT-1:0][CRD_ENC_WD-1:0] w_grant_span_enc;
 logic [DIR_CNT-1:0][RP_WIRE_CNT-1:0][CRD_CLS_CNT-1:0][CRD_ENC_WD-1:0] w_hdr_enc;
 logic [DIR_CNT-1:0]                                         w_hdr_adv;
-// Advertisements carrying response (ReadData, WriteResp) credits, whose window
-// closes earlier than the request classes' (see w_adv_req_en). A grant at G47
-// has its body in the next flit, so its classes are unknown when it is judged
-// and it is held to the response window.
-logic [DIR_CNT-1:0]                                         w_hdr_adv_rsp;
-logic [DIR_CNT-1:0][GRANULE_CNT-1:0]                        w_grant_adv_rsp;
 logic [DIR_CNT-1:0][RP_WD-1:0]                              w_hdr_rp;
 // Advertisements naming a plane the advertising die does not have (6.4.2), a
 // grant's attributed to its first granule and a spanning grant's to G0.
@@ -1167,16 +1227,6 @@ always_comb begin
 
         // A header advertising nothing names no plane.
         w_hdr_adv[d]    = |w_chk_msg_credit[d][MC_WREQ_LSB +: MC_RP_LSB];
-        w_hdr_adv_rsp[d] = (|w_chk_msg_credit[d][MC_RDATA_LSB +: CRD_ENC_WD]) |
-                           (|w_chk_msg_credit[d][MC_WRESP_LSB +: CRD_ENC_B_WD]);
-        w_grant_adv_rsp[d] = '1;
-        for (int unsigned g = 0; g < GRANT_POS_CNT; g++) begin
-            w_grant_adv_rsp[d][g] = 1'b0;
-            for (int unsigned q = 0; q < RP_WIRE_CNT; q++) begin
-                w_grant_adv_rsp[d][g] |= (|w_grant_enc[d][g][q][CRD_R]) |
-                                         (|w_grant_enc[d][g][q][CRD_B]);
-            end
-        end
         w_hdr_rp_bad[d] = w_hdr_adv[d] & ~w_adv_rp_ok[d][w_hdr_rp[d]];
 
         w_grant_rp_bad[d] = '0;
@@ -1240,10 +1290,8 @@ logic [DIR_CNT-1:0]                                                   r_early_cl
 always_comb begin
     for (int unsigned d = 0; d < DIR_CNT; d++) begin
         w_early_go[d]     = w_half0_commit[d] & ~w_flit_nop[d];
-        // Funds every advertisement until DISABLED, including the response
-        // credits reported after the advertiser's own DeactivateAck (v0.8 is
-        // silent on them): the peer may spend them, and leaving them unfunded
-        // turned one report into a stream of underflows.
+        // Funds every advertisement until DISABLED, the same window as
+        // w_adv_en; the ActivateAck at G0 opens it within the first half.
         w_early_adv_en[d] =
             r_act_ack[d] | (w_act_believed[d][0] & (w_chk_actop[d][0] == ACTOP_ACTIVATE_ACK));
 
@@ -1365,7 +1413,7 @@ always_comb begin
                 // Advertisements crossing the other way in this same cycle are
                 // counted before this cycle's spending.
                 w_crd_avail[d][p][c] = CRD_SUM_WD'(r_crd[d][p][c]) +
-                    ((w_chk_go[1-d] & w_adv_req_en[1-d]) ? w_late_for[1-d][p][c] : '0) +
+                    ((w_chk_go[1-d] & w_adv_en[1-d]) ? w_late_for[1-d][p][c] : '0) +
                     w_early_for[1-d][p][c];
 
                 w_crd_uf[d][p][c]   = w_crd_avail[d][p][c] < CRD_SUM_WD'(w_spent[d][p][c]);
@@ -1440,6 +1488,13 @@ always_ff @(posedge I_CLK or negedge I_RESETN) begin
     end
 end
 
+always_comb begin
+    for (int unsigned d = 0; d < DIR_CNT; d++) begin
+        w_late_adv_seen[d] = w_chk_go[d] & w_late_adv_en[d] & ~w_adv_en[d] &
+                             ((|w_starts_crdtgrant[d]) | w_hdr_adv[d]);
+    end
+end
+
 // -----------------------------------------------------------------------------
 // Per-granule violation matrix. One bit per granule per violation class, and
 // the class index is the code reported. Every rule drives its own row.
@@ -1473,10 +1528,12 @@ always_comb begin
                 w_starts_data[d][g] & (w_chk_dlength[d][g] == DLENGTH_RESERVED);
 
             // Attributed to the granule whose bits are non-zero, which for the
-            // credit grant is its second granule.
+            // credit grant is its second granule and for the ActivateReq any
+            // of its four.
             w_granule_viol[d][g][VIOL_RSVD_NONZERO] =
                 w_chk_class_en[VIOL_RSVD_NONZERO] &
                 ((w_starts_activation[d][g] & w_act_rsvd_nonzero[d][g]) |
+                 (w_act_req_body[d][g]      & w_act_req_body_rsvd_nonzero[d][g]) |
                  (w_grant_body[d][g]        & w_crdtgrant_rsvd_nonzero[d][g]) |
                  (w_chk_msg_start[d][g]     & w_msg_rsvd_nonzero[d][g]));
 
@@ -1508,14 +1565,11 @@ always_comb begin
 
             // A grant is attributed to its own granule; the protocol header has
             // none, so a header finding names granule 0.
-            // Request credits only need w_adv_req_en; response credits need
-            // w_adv_en, which closes earlier.
+            // A late advertisement from the die that has not yet received
+            // the final DeactivateAck is not one (r_late_adv).
             w_granule_viol[d][g][VIOL_ADV_ORDER] =
-                w_chk_class_en[VIOL_ADV_ORDER] &
-                ((w_starts_crdtgrant[d][g] &
-                  (~w_adv_req_en[d] | (w_grant_adv_rsp[d][g] & ~w_adv_en[d]))) |
-                 ((g == 0) & w_hdr_adv[d] &
-                  (~w_adv_req_en[d] | (w_hdr_adv_rsp[d] & ~w_adv_en[d]))));
+                w_chk_class_en[VIOL_ADV_ORDER] & ~w_adv_en[d] & ~w_late_adv_en[d] &
+                (w_starts_crdtgrant[d][g] | ((g == 0) & w_hdr_adv[d]));
 
             w_granule_viol[d][g][VIOL_RP_RANGE] =
                 w_chk_class_en[VIOL_RP_RANGE] &

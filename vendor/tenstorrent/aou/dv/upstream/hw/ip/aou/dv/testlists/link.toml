@@ -3,7 +3,7 @@
 
 schema_version = 1
 
-# Credits and link (stream G).
+# Credits and link.
 #
 # Credits/link tests (TB=t1). One entry per run-list line: the test, its
 # plusargs, how many seeds and the test-plan IDs it covers
@@ -31,45 +31,71 @@ run_modes = ["link"]
 args = ["+who=both", "+order=simul", "+deact_who=both", "+busy=0"]
 
 [[tests]]
-name = "aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1"
+name = "aou_link_act_deact_test.who-remote.deact_who-remote.busy-1"
 module = { uvm = "aou_link_act_deact_test" }
 seed = 1
 reseed = 2
 tags = ["link"]
 run_modes = ["link"]
-args = ["+who=remote", "+deact_who=remote", "+credit_manage=1", "+busy=1"]
+args = ["+who=remote", "+deact_who=remote", "+busy=1"]
 
 [[tests]]
-name = "aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1"
+name = "aou_link_act_deact_test.who-apb.deact_who-apb.busy-1"
 module = { uvm = "aou_link_act_deact_test" }
 seed = 1
 reseed = 2
 tags = ["link"]
 run_modes = ["link"]
-args = ["+who=apb", "+deact_who=apb", "+credit_manage=0", "+busy=1"]
+args = ["+who=apb", "+deact_who=apb", "+busy=1"]
 
-# 2.13 with CREDIT_MANAGE=0: both dies deactivate with requests in flight while the FDI
-# throttles the DUT's TX, so a request the DUT accepted before the remote DeactivateReq can
-# still be queued when that DeactivateReq arrives (AOU-R33).
+# The remote die acks a DUT ActivateReq before it sends its own Req, so its
+# ActivateReq can carry its initial CrdtGrant (4.4, v0.9 draft) when the Ack
+# did not; the DUT's RX takes a CrdtGrant beside an ActivateReq.
 [[tests]]
-name = "aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64"
+name = "aou_link_act_deact_test.who-apb.l3_ack_first-1"
+module = { uvm = "aou_link_act_deact_test" }
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+who=apb", "+l3_ack_first=1"]
+
+# 2.13: both dies deactivate with requests in flight while the FDI throttles the DUT's TX,
+# so the DUT's own requests can still be open when the remote DeactivateReq arrives; its
+# DeactivateReq waits for their answers (AOU-R33).
+[[tests]]
+name = "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64"
 module = { uvm = "aou_link_act_deact_test" }
 target = "4x512-sp64"
 seed = 1
 reseed = 13
 tags = ["link"]
 run_modes = ["link"]
-args = ["+who=both", "+order=simul", "+deact_who=both", "+credit_manage=0", "+busy=1", "+fdi_trdy=random"]
+args = ["+who=both", "+order=simul", "+deact_who=both", "+busy=1", "+fdi_trdy=random"]
+
+# The DUT deactivates and the remote die sends request credit it held back
+# behind its own DeactivateReq (v0.8 8.4 permits request credits until it is
+# DISABLED), so some reaches the DUT after the DUT sent the final
+# DeactivateAck and is DISABLED. The DUT must drop it (8.2, 8.4): the next
+# activation's traffic may not spend more than the fresh advertisement, which
+# holding back 60 of the 64 request-class granules makes small enough that a
+# DUT which kept the late credits would overrun it (AOU-R16).
+[[tests]]
+name = "aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60"
+module = { uvm = "aou_link_act_deact_test" }
+seed = 1
+reseed = 4
+tags = ["link"]
+run_modes = ["link"]
+args = ["+who=apb", "+deact_who=apb", "+busy=0", "+l3_late_adv_hold=60"]
 
 [[tests]]
 name = "aou_link_force_deact_test"
 module = { uvm = "aou_link_force_deact_test" }
 seed = 1
-reseed = 2
+reseed = 4
 tags = ["link"]
 run_modes = ["link"]
-expect_fail = "BUGS/010 (expected_fail.yaml)"
-expect_fail_match = "DeactivateReq: PropertyReq on a non-ActivateReq opcode"
 
 [[tests]]
 name = "aou_act_after_deact_test"
@@ -80,13 +106,13 @@ tags = ["link"]
 run_modes = ["link"]
 
 [[tests]]
-name = "aou_act_after_deact_test.credit_manage-1.busy-1"
+name = "aou_act_after_deact_test.busy-1"
 module = { uvm = "aou_act_after_deact_test" }
 seed = 1
 reseed = 2
 tags = ["link"]
 run_modes = ["link"]
-args = ["+credit_manage=1", "+busy=1"]
+args = ["+busy=1"]
 
 [[tests]]
 name = "aou_credit_return_test.method-grant"
@@ -285,6 +311,80 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+credit=rreq", "+limit=12"]
 
+# 3.10/3.13: WDATA credit for k WriteData messages of the widest RP, none returned
+# until released, every write longer than k beats: each RP's committed write runs
+# out of WDATA credit with its data still owed.
+[[tests]]
+name = "aou_zero_credit_test.credit-wdata.limit-2"
+module = { uvm = "aou_zero_credit_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+args = ["+credit=wdata", "+limit=2"]
+
+[[tests]]
+name = "aou_zero_credit_test.credit-wdata.limit-6"
+module = { uvm = "aou_zero_credit_test" }
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+credit=wdata", "+limit=6"]
+
+# 4.32: the remote die holds its WriteReqs on one RP while their WriteData goes, so
+# the data of several writes waits in the DUT's RX W FIFO ahead of every WriteReq.
+[[tests]]
+name = "aou_zero_credit_test.hold_wreq_rp-0"
+module = { uvm = "aou_zero_credit_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+args = ["+hold_wreq_rp=0"]
+
+[[tests]]
+name = "aou_zero_credit_test.hold_wreq_rp-2.hold_max_len-31.4x512-sp64"
+module = { uvm = "aou_zero_credit_test" }
+target = "4x512-sp64"
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+hold_wreq_rp=2", "+hold_max_len=31"]
+
+# 12.21: DUT TX write fairness, single-beat writes on one RP against bursts of
+# AWLEN 31-63 on another, both managers saturating (aou_t1_crd_flow_chk T1-C43).
+[[tests]]
+name = "aou_zero_credit_test.fair-1.4x512-sp64"
+module = { uvm = "aou_zero_credit_test" }
+target = "4x512-sp64"
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+args = ["+fair=1"]
+
+[[tests]]
+name = "aou_zero_credit_test.fair-1.4xmix4211-sp128"
+module = { uvm = "aou_zero_credit_test" }
+target = "4xmix4211-sp128"
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+fair=1"]
+
+[[tests]]
+name = "aou_zero_credit_test.fair-1.fair_short-3.fair_long-0.4xmix4211-sp128"
+module = { uvm = "aou_zero_credit_test" }
+target = "4xmix4211-sp128"
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+fair=1", "+fair_short=3", "+fair_long=0"]
+
 # 1.11: ACTIVATE_START written while the FDI link is down; activation starts on link-up.
 [[tests]]
 name = "aou_link_act_deact_test.early_act-1"
@@ -325,7 +425,17 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+loops=3"]
 
-# 2.5: DEACTIVATE_START while traffic waits for credit (AOU-R33/AOU-R34, T1-L47, scoreboard).
+[[tests]]
+name = "aou_rx_credit_test.loops-3.4xmix-sp256-rxf"
+module = { uvm = "aou_rx_credit_test" }
+target = "4xmix-sp256-rxf"
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+args = ["+loops=3"]
+
+# 2.5: DEACTIVATE_START while traffic waits for credit (AOU-R33/AOU-R34, scoreboard).
 [[tests]]
 name = "aou_zero_credit_test.credit-wreq.deact-1"
 module = { uvm = "aou_zero_credit_test" }
@@ -414,40 +524,43 @@ reseed = 3
 tags = ["link"]
 run_modes = ["link"]
 
-# v0.8 4.4: credited messages waiting as the DUT sends an Activation message
-# (AOU-R6): requests held across an activation the DUT acks last, and responses
-# arriving at its DeactivateReq. The DUT implements v0.7.1, so these run with
-# +v0p8 (expected failures until it follows v0.8).
+# 4.4 (v0.9 draft): credited messages waiting as the DUT sends an Activation
+# message (AOU-R6): requests held across an activation the DUT acks last (an
+# expected failure: the DUT implements v0.7.1 and lets them share the Ack's
+# flit), and responses arriving at its DeactivateReq (permitted). Both run
+# with +v0p9draft.
 [[tests]]
-name = "aou_act_flit_test.mode-act_req.v0p8"
+name = "aou_act_flit_test.mode-act_req.v0p9draft"
 module = { uvm = "aou_act_flit_test" }
 seed = 1
 reseed = 3
 tags = ["link"]
 run_modes = ["link"]
-args = ["+mode=act_req", "+v0p8"]
+args = ["+mode=act_req", "+v0p9draft"]
 
 [[tests]]
-name = "aou_act_flit_test.mode-deact_rsp.v0p8"
+name = "aou_act_flit_test.mode-deact_rsp.v0p9draft"
 module = { uvm = "aou_act_flit_test" }
 seed = 1
 reseed = 3
 tags = ["link"]
 run_modes = ["link"]
-args = ["+mode=deact_rsp", "+v0p8"]
+args = ["+mode=deact_rsp", "+v0p9draft"]
 
 [[groups]]
 name = "link"
-expected_count = 43
+expected_count = 55
 tests = [
   "aou_link_act_deact_test",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0",
-  "aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1",
-  "aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1",
-  "aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64",
+  "aou_link_act_deact_test.who-remote.deact_who-remote.busy-1",
+  "aou_link_act_deact_test.who-apb.deact_who-apb.busy-1",
+  "aou_link_act_deact_test.who-apb.l3_ack_first-1",
+  "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64",
+  "aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60",
   "aou_link_force_deact_test",
   "aou_act_after_deact_test",
-  "aou_act_after_deact_test.credit_manage-1.busy-1",
+  "aou_act_after_deact_test.busy-1",
   "aou_credit_return_test.method-grant",
   "aou_credit_return_test.method-hdr",
   "aou_credit_return_test.method-mixed.ret-withheld",
@@ -469,6 +582,13 @@ tests = [
   "aou_zero_credit_test.credit-wreq.limit-12",
   "aou_zero_credit_test.credit-rreq.limit-4",
   "aou_zero_credit_test.credit-rreq.limit-12",
+  "aou_zero_credit_test.credit-wdata.limit-2",
+  "aou_zero_credit_test.credit-wdata.limit-6",
+  "aou_zero_credit_test.hold_wreq_rp-0",
+  "aou_zero_credit_test.hold_wreq_rp-2.hold_max_len-31.4x512-sp64",
+  "aou_zero_credit_test.fair-1.4x512-sp64",
+  "aou_zero_credit_test.fair-1.4xmix4211-sp128",
+  "aou_zero_credit_test.fair-1.fair_short-3.fair_long-0.4xmix4211-sp128",
   "aou_link_act_deact_test.early_act-1",
   "aou_act_rx_drain_test",
   "aou_rx_credit_test",
@@ -481,6 +601,26 @@ tests = [
   "aou_deact_ctrl_test.mode-tov",
   "aou_deact_ctrl_test.mode-property",
   "aou_remote_react_test",
-  "aou_act_flit_test.mode-act_req.v0p8",
-  "aou_act_flit_test.mode-deact_rsp.v0p8",
+  "aou_act_flit_test.mode-act_req.v0p9draft",
+  "aou_act_flit_test.mode-deact_rsp.v0p9draft",
+  "aou_rx_credit_test.loops-3.4xmix-sp256-rxf",
+  "aou_act_profile_test",
+  "aou_act_profile_test.loops-3.skip_reset-1",
 ]
+
+[[tests]]
+name = "aou_act_profile_test"
+module = { uvm = "aou_act_profile_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+
+[[tests]]
+name = "aou_act_profile_test.loops-3.skip_reset-1"
+module = { uvm = "aou_act_profile_test" }
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+loops=3", "+skip_reset=1"]

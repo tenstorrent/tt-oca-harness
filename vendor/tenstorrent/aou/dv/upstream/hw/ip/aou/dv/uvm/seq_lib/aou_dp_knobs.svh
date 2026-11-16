@@ -66,6 +66,7 @@ class aou_dp_knobs extends uvm_object;
   // +dp_size=0,2,7 +dp_len=0,15 +dp_align=aligned|unaligned|any
   // +dp_strb=full|random|mixed|partial|sparse|zero +dp_ids=random|same|unique|high
   // +dp_batch=N +dp_loopback=0|1 +dp_buf_pct=N +dp_qos=0,5,10,15 +dp_attr_sweep=0|1
+  // +dp_full_size=0|1 (0 lets a test that defaults to bus-wide transfers take +dp_size)
   function void apply_plusargs();
     string s;
     int unsigned v;
@@ -100,6 +101,7 @@ class aou_dp_knobs extends uvm_object;
         default: `uvm_fatal(get_type_name(), {"bad +dp_ids=", s})
       endcase
     end
+    if ($value$plusargs("dp_full_size=%d", v)) full_size = (v != 0);
     if ($value$plusargs("dp_batch=%d", v)) batch = v;
     if ($value$plusargs("dp_loopback=%d", v)) loopback = (v != 0);
     if ($value$plusargs("dp_buf_pct=%d", v)) bufferable_pct = v;

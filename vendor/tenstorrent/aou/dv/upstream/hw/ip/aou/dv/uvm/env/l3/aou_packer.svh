@@ -3,12 +3,16 @@
 
 // Messages -> flits for the model's TX direction (spec 4.4, 6). Per flit:
 //   1. the continuation of a message that spans from the previous flit, at G0;
-//   2. an Activation message, only at G0 and at most one per flit;
+//   2. an Activation message, only at G0 and at most one per flit, sharing
+//      the flit only with what 4.4 (v0.9 draft) permits and the policy's
+//      act_share_pct asks for: the initial CrdtGrant after an ActivateAck (or
+//      an ActivateReq that follows our Ack), responses after a DeactivateReq;
 //   3. returned credits: the initial CrdtGrant after our ActivateAck, then
 //      header MsgCredit and/or CrdtGrant per the policy;
 //   4. credited messages whose class has credit for every granule (consumed
-//      at the start) and whose class the link state allows, oldest first or
-//      in random order across (RP, class) queues, never reordered within one;
+//      at the start) and whose class the link state allows, oldest first
+//      with requests and responses ahead of ReadData/WriteData (bulk_last),
+//      or in random order across (RP, class) queues, never reordered within one;
 //      a WriteReq the policy picked for wdata_first waits while its own
 //      WriteData goes ahead of it (held()).
 // The policy object shapes the layout; injection fields corrupt one flit.
@@ -38,6 +42,9 @@ class aou_packer extends uvm_object;
   aou_msg        carry_msg;
   int unsigned   flit_cnt;
   int unsigned   credit_stalls;
+  // While building a DeactivateReq's flit that shares (pol.act_share_pct):
+  // pick() and pick_fit() offer WriteResp and ReadData only.
+  bit            rsp_only;
 
   // One-shot injections applied to the next flit built.
   int            inj_flip_start = -1;   // invert MsgStart[k]
@@ -85,15 +92,28 @@ class aou_packer extends uvm_object;
   // now. Once that data can't go (no WDATA credit, nothing queued) the
   // WriteReq goes, so the order never waits on credit the DUT returns only
   // after the WriteReq has arrived (its RX W FIFO holds the early data).
+  // A WriteReq on an RP of pol.hold_wreq_rps is held whatever its data does,
+  // and WriteResps while the env batches them (pol.hold_wresp, ENABLED only).
   function bit held(int i);
     int unsigned rp;
     int unsigned d;
     int unsigned own;
-    if (wf_tgt[i].size() == 0 || wf_tgt[i][0] == 0) return 1'b0;
     rp = i / AOU_CC_NUM;
+    if (i % AOU_CC_NUM == int'(AOU_CC_WREQ) && cfg.pol.hold_wreq_rps[rp]) return 1'b1;
+    if (i % AOU_CC_NUM == int'(AOU_CC_WRESP) && cfg.pol.hold_wresp &&
+        lnk.state == AOU_LS_ENABLED && !lnk.want_deact)
+      return 1'b1;
+    if (wf_tgt[i].size() == 0 || wf_tgt[i][0] == 0) return 1'b0;
     d = rp * AOU_CC_NUM + int'(AOU_CC_WDATA);
     own = (wd_placed[rp] > wd_owed[rp]) ? wd_placed[rp] - wd_owed[rp] : 0;
     return own < wf_tgt[i][0] && q[d].size() > 0 && eligible(q[d][0]);
+  endfunction
+
+  function int unsigned queued_wresps();
+    int unsigned n = 0;
+    for (int unsigned r = 0; r < AOU_RP_MAX; r++)
+      n += q[r * AOU_CC_NUM + int'(AOU_CC_WRESP)].size();
+    return n;
   endfunction
 
   function int unsigned queued_msgs();
@@ -140,7 +160,7 @@ class aou_packer extends uvm_object;
     if (cfg.pol.credit_only_flits &&
         crd.rx_has_pending(lnk.can_advertise(1'b0), lnk.can_advertise(1'b1))) return 1'b1;
     if (misc_q.size() > 0 && eligible(misc_q[0])) return 1'b1;
-    foreach (q[i]) if (q[i].size() > 0 && eligible(q[i][0])) return 1'b1;
+    foreach (q[i]) if (q[i].size() > 0 && eligible(q[i][0]) && !held(i)) return 1'b1;
     return 1'b0;
   endfunction
 
@@ -150,16 +170,21 @@ class aou_packer extends uvm_object;
     int best = -1;
     int unsigned best_len;
     foreach (q[i]) begin
-      if (q[i].size() > 0 && eligible(q[i][0]) && !held(i) && q[i][0].num_granules() <= room &&
-          (best < 0 || q[i][0].num_granules() > best_len)) begin
+      if (q[i].size() > 0 && eligible(q[i][0]) && !held(i) && offered(q[i][0]) &&
+          q[i][0].num_granules() <= room && (best < 0 || q[i][0].num_granules() > best_len)) begin
         best = i;
         best_len = q[i][0].num_granules();
       end
     end
-    if (misc_q.size() > 0 && eligible(misc_q[0]) && misc_half_cnt < cfg.pol.misc_per_half_max &&
+    if (!rsp_only && misc_q.size() > 0 && eligible(misc_q[0]) &&
+        misc_half_cnt < cfg.pol.misc_per_half_max &&
         misc_q[0].num_granules() <= room && (best < 0 || misc_q[0].num_granules() > best_len))
       best = NQ;
     return best;
+  endfunction
+
+  function bit offered(aou_msg m);
+    return !rsp_only || m.cred_class() inside {AOU_CC_WRESP, AOU_CC_RDATA};
   endfunction
 
   // Index of the next message to place: a q[] index, NQ for misc_q, or -1.
@@ -170,14 +195,20 @@ class aou_packer extends uvm_object;
     foreach (q[i]) begin
       if (q[i].size() > 0) begin
         if (eligible(q[i][0])) begin
-          if (!held(i)) cand.push_back(i);
+          if (!held(i) && offered(q[i][0])) cand.push_back(i);
         end else if (lnk.can_send(q[i][0].cred_class()) && !cfg.pol.hold_credited) credit_stalls++;
       end
     end
-    if (misc_q.size() > 0 && eligible(misc_q[0]) && misc_half_cnt < cfg.pol.misc_per_half_max)
+    if (!rsp_only && misc_q.size() > 0 && eligible(misc_q[0]) &&
+        misc_half_cnt < cfg.pol.misc_per_half_max)
       cand.push_back(NQ);
     if (cand.size() == 0) return -1;
     if (cfg.pol.random_order) return cand[$urandom_range(0, cand.size() - 1)];
+    if (cfg.pol.bulk_last) begin
+      int ctl[$] = cand.find(c) with (c == NQ || !(c % AOU_CC_NUM inside
+                                       {int'(AOU_CC_WDATA), int'(AOU_CC_RDATA)}));
+      if (ctl.size() > 0) cand = ctl;
+    end
     foreach (cand[k]) begin
       int unsigned s = (cand[k] == NQ) ? misc_s[0] : qs[cand[k]][0];
       if (best < 0 || s < best_s) begin
@@ -193,7 +224,12 @@ class aou_packer extends uvm_object;
     aou_granule_t g[$];
     aou_cred_class_e c = m.cred_class();
     m.dir = AOU_L3_TX;
-    if (c != AOU_CC_NONE && cfg.pol.prof_pct != 0 && $urandom_range(99) < cfg.pol.prof_pct)
+    // Random FLEX to the DUT (aou_packer_policy::prof_pct): the low 12 bits,
+    // FLEX[15:12] 0 for a v0.7 receiver. Not on a message whose sender chose
+    // the FLEX (flex_fixed: the remote AXI agents' USER, checked at the DUT's
+    // AXI ports by aou_t1_attr_chk).
+    if (c != AOU_CC_NONE && !m.flex_fixed && cfg.pol.prof_pct != 0 &&
+        $urandom_range(99) < cfg.pol.prof_pct)
       m.flex[11:0] = 12'($urandom());
     m.to_granules(g);
     f.msg_start[gp] = 1'b1;
@@ -227,8 +263,12 @@ class aou_packer extends uvm_object;
     int unsigned gp;
     int unsigned nmsgs;
     int unsigned misc_half[2];
-    bit alone;
+    bit alone;          // an Activation message at G0: nothing else unless shared below
+    bit share_grant;    // ... except the initial CrdtGrant (after our ActivateAck)
+    bit share_rsp;      // ... except WriteResp/ReadData (after our DeactivateReq)
     bit first_new = 1'b1;
+    int last_wreq_rp = -1;   // RP of a WriteReq just placed, else -1
+    bit span_grant;     // this flit's CrdtGrant goes at G47 (pol.grant_span_pct)
     aou_cred_method_e meth = cfg.pol.cred_method;
     f.seq = flit_cnt++;
     f.dir = AOU_L3_TX;
@@ -257,11 +297,21 @@ class aou_packer extends uvm_object;
       lnk.on_sent(a);
       gp = a.num_granules();
       nmsgs++;
-      alone = 1'b1;   // v0.8 4.4: nothing else in an Activation's flit
+      alone = 1'b1;   // 4.4: nothing else in an Activation's flit, except:
+      if (!a.ignore_state && cfg.pol.act_share_pct != 0 &&
+          $urandom_range(0, 99) < int'(cfg.pol.act_share_pct)) begin
+        // The initial CrdtGrant: on_sent() has just set grant_due after our Ack;
+        // after our Req it is still due only when our Ack went first (ack_first)
+        // without it, and adv_any() below keeps it behind our Ack (AOU-R29).
+        share_grant = a.op inside {AOU_ACT_ACK, AOU_ACT_REQ};
+        share_rsp = a.op == AOU_DEACT_REQ;     // responses still go after it (8.4)
+      end
     end
 
     if (meth == AOU_CRM_MIXED) meth = aou_cred_method_e'($urandom_range(0, 2));
-    if (adv_any() && !alone && lnk.grant_due && gp + 2 <= AOU_GRANULES) begin
+    span_grant = cfg.pol.grant_span_pct != 0 && !alone &&
+                 $urandom_range(0, 99) < int'(cfg.pol.grant_span_pct);
+    if (adv_any() && (!alone || share_grant) && lnk.grant_due && gp + 2 <= AOU_GRANULES) begin
       aou_msg_crdtgrant g = mk_grant();
       lnk.grant_due = 1'b0;
       if (g != null) begin
@@ -278,7 +328,7 @@ class aou_packer extends uvm_object;
         f.msg_credit = mc;
       if ((meth == AOU_CRM_GRANT || (cfg.pol.cred_method == AOU_CRM_MIXED &&
                                      $urandom_range(0, 3) == 0)) &&
-          !alone && carry_g.size() == 0 && gp < AOU_GRANULES &&
+          !alone && !span_grant && carry_g.size() == 0 && gp < AOU_GRANULES &&
           misc_half[gp / AOU_HALF_G] < cfg.pol.misc_per_half_max) begin
         aou_msg_crdtgrant g = mk_grant();
         if (g != null) begin
@@ -290,12 +340,15 @@ class aou_packer extends uvm_object;
       end
     end
 
-    while (!alone && gp < AOU_GRANULES && carry_g.size() == 0) begin
+    rsp_only = share_rsp;
+    while ((!alone || share_rsp) && gp < AOU_GRANULES && carry_g.size() == 0) begin
       int idx;
       aou_msg m;
       int unsigned len;
       int unsigned sg = gp;
-      if (cfg.pol.max_msgs_per_flit != 0 && nmsgs >= cfg.pol.max_msgs_per_flit) break;
+      bit at_max = cfg.pol.max_msgs_per_flit != 0 && nmsgs >= cfg.pol.max_msgs_per_flit;
+      // At the limit, only the WriteData of a WriteReq just placed may still go.
+      if (at_max && !(cfg.pol.wreq_wdata_pair && last_wreq_rp >= 0)) break;
       if (cfg.pol.hole_pct != 0 && $urandom_range(0, 99) < cfg.pol.hole_pct)
         sg += $urandom_range(1, cfg.pol.max_hole);
       if (first_new && cfg.pol.start_granule >= 0 && sg <= cfg.pol.start_granule)
@@ -304,6 +357,8 @@ class aou_packer extends uvm_object;
       idx = pick(misc_half[sg / AOU_HALF_G]);
       if (idx < 0) break;
       m = (idx == NQ) ? misc_q[0] : q[idx][0];
+      // Its RP's next WriteData (the model sends an RP's write data in order).
+      if (at_max && (m.cred_class() != AOU_CC_WDATA || int'(m.rp) != last_wreq_rp)) break;
       len = m.num_granules();
       if (cfg.pol.best_fit && sg + len > AOU_GRANULES) begin
         int alt = pick_fit(misc_half[sg / AOU_HALF_G], AOU_GRANULES - sg);
@@ -330,6 +385,19 @@ class aou_packer extends uvm_object;
       gp = sg + len;
       nmsgs++;
       first_new = 1'b0;
+      last_wreq_rp = (m.msg_type == AOU_MT_WREQ) ? int'(m.rp) : -1;
+    end
+    rsp_only = 1'b0;
+    // The flit's CrdtGrant at G47, continuing in G0 of the next flit.
+    if (span_grant && adv_any() && !lnk.grant_due && carry_g.size() == 0 &&
+        gp < AOU_GRANULES && misc_half[1] < cfg.pol.misc_per_half_max) begin
+      aou_msg_crdtgrant g = mk_grant();
+      if (g != null) begin
+        misc_half[1]++;
+        place(f, g, AOU_GRANULES - 1);
+        gp = AOU_GRANULES;
+        nmsgs++;
+      end
     end
     for (int unsigned z = 0; z < cfg.pol.zero_grants; z++) begin
       aou_msg_crdtgrant zg;

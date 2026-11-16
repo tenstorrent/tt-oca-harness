@@ -11,7 +11,8 @@
 // was accepted once an entry was freed.
 `define AOU_T1_EARLY_FC_EV(B) `B``_BIN(full_stall, 0, 0) `B``_BIN(stall_resumed, 1, 1)
 // aou_t1_crd_rr_chk: RPs owed credit when a test opened a round-robin window.
-`define AOU_T1_RR_FC_OWED(B) `B``_BIN(under_two, 0, 1) `B``_VALS(rps, 2, 4)
+// With fewer than two there is nothing to order, so that is no target.
+`define AOU_T1_RR_FC_OWED(B) `B``_IGN(under_two, 0, 1) `B``_VALS(rps, 2, 4)
 // aou_t1_wdt_chk: write-watchdog expiries (early response off/on, the
 // threshold's class, masked, per RP, again after a software or hard reset),
 // an AW restarting the count just before the threshold (aw_restart_edge: in
@@ -25,3 +26,9 @@
   `B``_BIN(w1c_while_hung, 8, 8) `B``_BIN(unmask_while_set, 9, 9) \
   `B``_BIN(multi_rp_set, 10, 10) `B``_BIN(re_expiry_after_sw, 11, 11) \
   `B``_BIN(re_expiry_after_hard, 12, 12) `B``_VALS(expiry_rp, 13, 16)
+// aou_t1_status: an injected DeactivateAck in ENABLED, which no compliant peer
+// sends, reached one of the accepted endings: ignored (0), flagged as an error
+// on arrival while still ENABLED (1), or an error at the next deactivation (2).
+// The endings are alternatives and one DUT shows one or two of them, so the
+// target is that one was reached; the log names which.
+`define AOU_T1_STRAY_FC_OUTCOME(B) `B``_BIN(accepted_ending, 0, 2)

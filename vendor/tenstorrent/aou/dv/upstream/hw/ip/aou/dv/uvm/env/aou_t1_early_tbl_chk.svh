@@ -25,8 +25,9 @@ class aou_t1_early_tbl_chk extends uvm_component;
 
   aou_t1_env_cfg cfg;
   aou_core       rm;
+  aou_t1_rp_map_chk rp_map;   // the port a WriteResp is for; null: the RP it names
   aou_axi_vif_t  vif[];
-  int unsigned   wr_mo_cnt = 32;
+  int unsigned   wr_mo_cnt = AOU_T1_S_MO_CNT;   // S_WR_MO_CNT
   int unsigned   free_bound = 1000;
   bit            over_chk = 1'b0;
 
@@ -58,6 +59,8 @@ class aou_t1_early_tbl_chk extends uvm_component;
     fc_early_tbl = db.group("env.cg_early_tbl", fresh);
     if (fresh) begin
       p = fc_early_tbl.cp("cp_ev"); `AOU_T1_EARLY_FC_EV(AOU_FC_REG)
+      fc_early_tbl.plan("16.11", "cp_ev", "full_stall");
+      fc_early_tbl.plan("16.12", "cp_ev", "stall_resumed");
     end
   endfunction
 
@@ -73,8 +76,34 @@ class aou_t1_early_tbl_chk extends uvm_component;
     return rg != null && rg.get_field_by_name("early_bresp_en").get_mirrored_value() != 0;
   endfunction
 
+  // WRITE_EARLY_RESPONSE_RPr.EARLY_ALWAYS_EN (register mirror): every
+  // non-exclusive write is answered early, bufferable or not.
+  function bit always_en(int unsigned r);
+    uvm_reg rg;
+    if (rm == null) return 1'b0;
+    rg = rm.get_reg_by_name($sformatf("write_early_response_rp%0d", r));
+    return rg != null && rg.get_field_by_name("early_always_en").get_mirrored_value() != 0;
+  endfunction
+
+  // Entries RP r's early table holds (a lower bound, see the header); 0 while
+  // EARLY_BRESP_EN is clear, when the table is a pass-through (MAS 3.7.5).
+  function int unsigned held(int unsigned r);
+    if (r >= AOU_RP_MAX || !early_en(r)) return 0;
+    return (wlast[r] > freed[r]) ? wlast[r] - freed[r] : 0;
+  endfunction
+
+  // Both counts are indexed by the DUT's own RP. WLAST is counted at that RP's
+  // S port; a WriteResp names the DUT's TX lane the write went on, since the
+  // remote die sends responses through its own DEST_RP, the symmetric inverse
+  // of the DUT's (MAS 3.10.1), so a remapped DEST_RP needs no translation. On a
+  // lane the asymmetric RP mapping merges, the ID's source tag names the port
+  // (MAS 3.10.5).
   function void write(aou_msg m);
-    if (m.msg_type == AOU_MT_WRESP && int'(m.rp) < AOU_RP_MAX) freed[m.rp]++;
+    aou_msg_wresp b;
+    int x;
+    if (m.msg_type != AOU_MT_WRESP || !$cast(b, m) || int'(m.rp) >= AOU_RP_MAX) return;
+    x = (rp_map == null) ? int'(m.rp) : rp_map.rsp_port(int'(m.rp), b.id);
+    if (x >= 0) freed[x]++;
   endfunction
 
   // Reset contract: the table empties with the core.

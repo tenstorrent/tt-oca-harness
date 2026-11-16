@@ -15,7 +15,24 @@ class aou_t1_env_cfg extends uvm_object;
   aou_t1_rwreq_e remote_wreq = AOU_RWREQ_AWSIZE;  // remote WriteReq sizing (remote_mgr_driver)
   int unsigned   remote_max_burst = 256;   // remote splitter's longest burst (2^n beats)
   bit            remote_max_burst_rand = 1'b0;  // re-pick it while the remote is idle
-  aou_spec_rev_e spec_rev = AOU_SPEC_V07;
+  // Activation message format the DUT and the remote die use. v0.8: the
+  // ActivateReq is 4 granules and carries the profile of each RP (Ch. 11,
+  // PROFILE_CFG_RPn / PROFILE_RMT_RPn); the other Activation messages are
+  // unchanged but for PropertyReq, which v0.8 reserves.
+  aou_spec_rev_e spec_rev = AOU_SPEC_V08;
+  // v0.8 8.3.3 ERROR state in the remote model on an out-of-sequence Req/Ack.
+  // Off: the DUT does not implement ERROR (it answers a late ActivateReq, MAS
+  // 7.2.3), so the model keeps the v0.7 reaction and the tests their
+  // expectations.
+  bit            error_state_en = 1'b0;
+  // Asymmetric RP mapping (ASYMMETRIC_RP_PROC_CON, MAS 3.10.4): the register
+  // value the base sequence programs while the DUT is DISABLED, before the
+  // first activation and again after any reset that cleared it. -2: drawn in
+  // finalize(); -1: left at its reset value. rp_map_pct is the share of seeds
+  // that enable the mapping (+rp_map_pct); +rp_map=<hex> sets the value. The
+  // checkers follow the register mirror, never this field.
+  int            rp_map = -2;
+  int unsigned   rp_map_pct = 50;
 
   // Agent configs
   aou_fdi_cfg    fdi_cfg[AOU_T1_N_PHY];
@@ -31,6 +48,12 @@ class aou_t1_env_cfg extends uvm_object;
   // Timing profiles applied at build (local agents; remote model latency)
   aou_axi_timing_e local_timing = AOU_AXI_TIMING_RANDOM;
   int unsigned     remote_lat_max = 20;
+
+  // AXI USER on the DUT's local ports (S-port AWUSER/ARUSER/WUSER from the
+  // managers, M-port BUSER/RUSER from the subordinates), which the DUT sends
+  // as FLEX (AoU v0.8 5.2 / 11.1). finalize() pushes it into every local
+  // agent; +user_mode=zero|const_per_txn|per_beat sets it (aou_base_test).
+  aou_axi_user_mode_e user_mode = AOU_AXI_USER_CONST;
 
   // L1 stimulus of the flits L3 sends to the DUT
   int unsigned   l1_cancel_pct = 10;
@@ -54,8 +77,9 @@ class aou_t1_env_cfg extends uvm_object;
   bit            sb_en = 1'b1;
   // aou_t1_attr_chk: request attributes, exclusive responses and FLEX across the link.
   bit            attr_chk_en = 1'b1;
-  // The top instantiates AOU_FDI_CHECKER in single-PHY builds only.
-  bit            fdi_chk_en = (AOU_T1_N_PHY == 1);
+  // AOU_FDI_CHECKER on the PHY the test selects (tb_top). The checker supports
+  // 32/64/128 B beats only, so a 256 B build (FDI_CONFIG 5) has none.
+  bit            fdi_chk_en = AOU_T1_BEAT0 <= 128;
   bit            status_en = 1'b1;
   // Local software answers INT_ACTIVATE_START / INT_DEACTIVATE_START.
   bit            sw_isr_en = 1'b1;
@@ -63,15 +87,14 @@ class aou_t1_env_cfg extends uvm_object;
   // 0 only in a negative test that declares what follows. Drain: it also
   // waits for every response first.
   bit            sw_hold_on_deact = 1'b1;
-  // +v0p8: hold the DUT to expectations that only AoU v0.8 adds (the DUT
-  // implements v0.7.1). Today: the 4.4 Misc placement, AOU-R6 (an Activation
-  // message alone in its flit) and AOU-R7 (at most 2 other Misc per
-  // half-flit). Further v0.8-only DUT checks belong behind the same switch.
-  bit            v0p8;
+  // +v0p9draft: hold the DUT to expectations added after v0.7.1, which the
+  // DUT implements; the peg is the v0.9 draft until that revision is
+  // accepted. Today: the 4.4 Misc placement, AOU-R6 (an Activation message
+  // shares its flit only with one CrdtGrant after an ActivateReq/Ack or with
+  // responses after a DeactivateReq) and AOU-R7 (at most 2 other Misc per
+  // half-flit). Further post-v0.7.1 DUT checks belong behind the same switch.
+  bit            v0p9draft;
   bit            sw_drain_before_deact = 1'b0;
-  // With CREDIT_MANAGE=0 the remote die (L3) deactivates as a MAS partner
-  // would (aou_l3_cfg::cm0_deact); 0 restores the AoU-only remote die.
-  bit            l3_cm0_deact = 1'b1;
   // aou_t1_rx_fifo_chk (T1-C41, T1-L40, T1-L46) and the messages per RP and
   // class it allows past the RX FIFO (register slice, splitter, width converter).
   bit            rx_fifo_chk_en = 1'b1;
@@ -83,6 +106,14 @@ class aou_t1_env_cfg extends uvm_object;
   // all (T1-C02). +crd_block_cycles / +crd_idle_cycles override them.
   int unsigned   crd_block_cycles = 256;
   int unsigned   crd_idle_cycles = 4096;
+  // The per-RP wait of a class (T1-C43): cycles the Adapter takes a beat and
+  // no AXI port holds the DUT back, in which an RP holds credit and work for
+  // the class and is next in its order, without a message of the class on
+  // that RP. The longest wait seen over the stress, link and datapath lists on
+  // every config, with extra seeds of the long-burst and backpressure
+  // scenarios, was about 250 cycles (a WriteResp); most classes stay under 50.
+  // +crd_starve_cycles overrides it.
+  int unsigned   crd_starve_cycles = 500;
 
   // Time-outs in core clock cycles
   int unsigned   link_timeout = 20000;
@@ -93,13 +124,9 @@ class aou_t1_env_cfg extends uvm_object;
     super.new(name);
     lsm_cfg = aou_lsm_cfg::type_id::create("lsm_cfg");
     lsm_cfg.n_phy = AOU_T1_N_PHY;
-    // T1 tests answer the DUT's LinkReset request themselves (recover():
-    // an Adapter LinkError, which still waits for lp_linkerror to fall,
-    // FDI-R49). The Adapter's own reaction to lp_linkerror is run by
-    // errors.toml with +react_linkerror=1. Turning it on for every T1 test
-    // changes when the link goes down in all of them and has not been
-    // measured.
-    lsm_cfg.react_linkerror_en = 1'b0;
+    // The Adapter answers the DUT's lp_linkerror by itself, as a UCIe Adapter
+    // does (react_linkerror_en, on by default in aou_lsm_cfg); +react_linkerror=0
+    // leaves it to the test's recover().
     foreach (fdi_cfg[p]) begin
       fdi_cfg[p] = aou_fdi_cfg::type_id::create($sformatf("fdi_cfg%0d", p));
       fdi_cfg[p].phy = p;
@@ -112,14 +139,15 @@ class aou_t1_env_cfg extends uvm_object;
     // complete. A real remote die streams W beats; model that buffer as
     // returning WDATA credits on receipt.
     l3_cfg.ret_policy[AOU_CC_WDATA] = AOU_RET_IMMEDIATE;
-    // AOU_CON0.CREDIT_MANAGE resets to 1: response credits continue after
-    // DeactivateAck (MAS 7.3.1; BUGS/009).
-    l3_cfg.resp_credits_after_deact_ack = 1'b1;
     apb_cfg = aou_apb_cfg::type_id::create("apb_cfg");
     local_mem = aou_mem::type_id::create("local_mem");
     remote_cfg = aou_axi_cfg::type_id::create("remote_cfg");
     remote_cfg.vif_key = "s_axi0";
     remote_cfg.mem = aou_mem::type_id::create("remote_mem");
+    // A tenth of each memory's pages has no exclusive monitor, so exclusive
+    // reads also see the OKAY of a subordinate without exclusive support.
+    local_mem.no_excl_pct = 10;
+    remote_cfg.mem.no_excl_pct = 10;
     set_rp_count(n_rp);
   endfunction
 
@@ -160,6 +188,11 @@ class aou_t1_env_cfg extends uvm_object;
     foreach (rp_remote_bytes[r])
       if (rp_remote_bytes[r] > AOU_T1_PEER_MAX_BYTES) rp_remote_bytes[r] = AOU_T1_PEER_MAX_BYTES;
     l3_cfg.spec_rev = spec_rev;
+    l3_cfg.error_state_en = error_state_en;
+    if (rp_map == -2) draw_rp_map();
+    // MAS overview 2.2: exclusive accesses are not issued on a merged route (its read
+    // and write may reach the remote die under different IDs, 3.10.5).
+    for (int unsigned r = 0; r < n_rp; r++) s_mgr_cfg[r].lock_en = !rp_map_merged(r);
     l3_cfg.rp_count = (remote_rp_count != 0) ? remote_rp_count : n_rp;
     l3_cfg.peer_rp_count = n_rp;
     // The credit the DUT may advertise (MAS 3.9) on the RPs both dies have.
@@ -170,10 +203,67 @@ class aou_t1_env_cfg extends uvm_object;
     remote_cfg.timing.r_lat.set_range(0, remote_lat_max);
     for (int unsigned r = 0; r < n_rp; r++) begin
       s_mgr_cfg[r].data_bytes = rp_bytes[r];
+      s_mgr_cfg[r].user_mode = user_mode;
       m_sub_cfg[r].data_bytes = rp_bytes[r];
       m_sub_cfg[r].mem = local_mem;
+      m_sub_cfg[r].user_mode = user_mode;
       r_mgr_cfg[r].data_bytes = remote_bytes_of(r);
     end
+  endfunction
+
+  // A legal mapping for this seed. Half of the seeds that leave it disabled
+  // still write random lane selects, which the DUT must ignore (MAS 3.10.4).
+  // An enabled mapping picks each port's lane below the RP count both dies
+  // have, since DEST_RP (identity unless a test sets it) sends lane n to the
+  // remote die's RP n: every port of a 4-RP DUT facing a 1-RP die lands on
+  // lane 0 (MAS 3.10.1). One seed in five enables the identity mapping. Every
+  // partition of the ports is legal (one merge group on 2 or 3 RPs, at most
+  // two on 4). The selects of RPs the build lacks are left at reset or drawn
+  // at random: the RTL ignores them, the RDL and MAS 3.10.3 can be read as
+  // requiring them below RP_COUNT (taken from the RTL).
+  // The regression's seeds are small and shared by every scenario, and every
+  // test reaches this draw at the same point of its random stream, so the
+  // draw also hashes the test's name: each test and seed gets its own mapping,
+  // and a rerun of the same test and seed the same one.
+  protected int unsigned rp_map_rng;
+  protected function int unsigned rp_map_rand(int unsigned n);
+    rp_map_rng ^= rp_map_rng << 13;
+    rp_map_rng ^= rp_map_rng >> 17;
+    rp_map_rng ^= rp_map_rng << 5;
+    return rp_map_rng % n;
+  endfunction
+
+  function void draw_rp_map();
+    int unsigned eff = (remote_rp_count != 0 && remote_rp_count < n_rp) ? remote_rp_count : n_rp;
+    bit [8:0] v = 9'h1C8;
+    string test = "";
+    rp_map = -1;
+    if (n_rp < 2) return;
+    void'($value$plusargs("UVM_TESTNAME=%s", test));
+    rp_map_rng = $urandom | 32'd1;
+    foreach (test[i]) rp_map_rng = (rp_map_rng * 32'd31 + int'(test[i])) | 32'd1;
+    if (rp_map_rand(100) >= rp_map_pct) begin
+      if (rp_map_rand(2) == 0) return;
+      for (int unsigned r = 0; r < 4; r++) v[1 + 2 * r +: 2] = 2'(rp_map_rand(4));
+      v[0] = 1'b0;
+    end else begin
+      bit ident = rp_map_rand(5) == 0 && eff == n_rp;
+      v[0] = 1'b1;
+      for (int unsigned r = 0; r < n_rp; r++)
+        v[1 + 2 * r +: 2] = ident ? 2'(r) : 2'(rp_map_rand(eff));
+      if (rp_map_rand(2) == 0)
+        for (int unsigned r = n_rp; r < 4; r++) v[1 + 2 * r +: 2] = 2'(rp_map_rand(4));
+    end
+    rp_map = int'(v);
+  endfunction
+
+  // Port r shares its lane with another port under the drawn mapping.
+  function bit rp_map_merged(int unsigned r);
+    bit [8:0] v = 9'(rp_map);
+    if (rp_map < 0 || !v[0] || r >= n_rp) return 1'b0;
+    for (int unsigned q = 0; q < n_rp; q++)
+      if (q != r && v[1 + 2 * q +: 2] == v[1 + 2 * r +: 2]) return 1'b1;
+    return 1'b0;
   endfunction
 
   // The remote die's AXI data bytes on RP r.
@@ -201,8 +291,8 @@ class aou_t1_env_cfg extends uvm_object;
 
   // L1 corner knobs from the command line (stall and flit-cancel corners, plan
   // 18.22/18.24): +fdi_trdy=always|random|holes|bursty, +fdi_stall_pct,
-  // +fdi_stall_mid_pct, +fdi_stall_trdy_free=0|1 (every PHY), +l1_cancel_pct,
-  // +l1_cancel_mix=0|1.
+  // +fdi_stall_mid_pct, +fdi_stall_trdy_free=0|1, +fdi_stall_hold_min,
+  // +fdi_stall_hold_max (every PHY), +l1_cancel_pct, +l1_cancel_mix=0|1.
   function void l1_plusargs();
     string s;
     int unsigned v;
@@ -222,11 +312,24 @@ class aou_t1_env_cfg extends uvm_object;
       foreach (fdi_cfg[p]) fdi_cfg[p].stall_mid_pct = v;
     if ($value$plusargs("fdi_stall_trdy_free=%d", v))
       foreach (fdi_cfg[p]) fdi_cfg[p].stall_trdy_free = v != 0;
+    if ($value$plusargs("fdi_stall_hold_min=%d", v))
+      foreach (fdi_cfg[p]) fdi_cfg[p].stall_hold_min = v;
+    if ($value$plusargs("fdi_stall_hold_max=%d", v))
+      foreach (fdi_cfg[p]) fdi_cfg[p].stall_hold_max = v;
+    foreach (fdi_cfg[p])
+      if (fdi_cfg[p].stall_hold_min > fdi_cfg[p].stall_hold_max)
+        `uvm_fatal(get_type_name(), $sformatf(
+                   "+fdi_stall_hold_min=%0d is above +fdi_stall_hold_max=%0d",
+                   fdi_cfg[p].stall_hold_min, fdi_cfg[p].stall_hold_max))
     void'($value$plusargs("l1_cancel_pct=%d", l1_cancel_pct));
     if ($value$plusargs("l1_cancel_mix=%d", v)) l1_cancel_mix = v != 0;
   endfunction
 
-  // Random choices a test usually wants per seed.
+  // Random choices a test usually wants per seed. On a tenth of the S ports
+  // each, the local manager holds BREADY or RREADY low while the port fills
+  // to its outstanding limit (aou_axi_timing b_fill_hold, r_fill_hold), and
+  // may then keep as many requests in flight as the port accepts; applying a
+  // timing profile turns the holds off again.
   function void randomize_knobs();
     local_timing = aou_axi_timing_e'($urandom_range(4));
     for (int unsigned r = 0; r < n_rp; r++) begin
@@ -234,20 +337,64 @@ class aou_t1_env_cfg extends uvm_object;
       m_sub_cfg[r].timing.apply(local_timing);
       s_mgr_cfg[r].w_before_aw_en = 1'($urandom_range(1));
       m_sub_cfg[r].r_interleave_en = 1'($urandom_range(1));
+      s_mgr_cfg[r].timing.b_fill_hold = ($urandom_range(9) == 0);
+      s_mgr_cfg[r].timing.r_fill_hold = ($urandom_range(9) == 0);
+      if (s_mgr_cfg[r].timing.b_fill_hold) s_mgr_cfg[r].max_wr_outstanding = AOU_T1_S_MO_CNT;
+      if (s_mgr_cfg[r].timing.r_fill_hold) s_mgr_cfg[r].max_rd_outstanding = AOU_T1_S_MO_CNT;
     end
     l3_cfg.resp_fork = 1'($urandom_range(1));
     remote_lat_max = $urandom_range(30);
+    // An eighth of the seeds return the remote die's WriteResps in batches of
+    // 16 to 48 (aou_packer_policy::wresp_batch), so its densest WriteResp
+    // packing meets every test's traffic, not only the packing test's. A test
+    // that measures performance or depends on response timing turns it off.
+    if ($urandom_range(7) == 0) begin
+      l3_cfg.pol.wresp_batch = $urandom_range(48, 16);
+      l3_cfg.pol.wresp_batch_wait = $urandom_range(400, 100);
+    end
+    fdi_knobs();
+  endfunction
+
+  // The Adapter's pl_trdy policy and stand-alone stalls (UCIe r1.1 8.3.2), per
+  // seed on every PHY. HOLES without stalls stays the common case; a fifth of
+  // the seeds take RANDOM or BURSTY pl_trdy (so pl_trdy can also be low at a
+  // flit boundary), and a fifth add stand-alone stalls at a boundary or
+  // mid-flit, with pl_trdy held high or left to its policy during the
+  // handshake. +fdi_trdy and the +fdi_stall_* plusargs override this; a test
+  // that measures performance or depends on the timing sets its own.
+  function void fdi_knobs();
+    aou_fdi_trdy_e pol = AOU_TRDY_HOLES;
+    bit            stalls = ($urandom_range(4) == 0);
+    int unsigned   pct = $urandom_range(5, 1);
+    int unsigned   mid = $urandom_range(90);
+    bit            free = 1'($urandom_range(1));
+    int unsigned   hmin = $urandom_range(1);
+    if ($urandom_range(4) == 0) pol = ($urandom_range(1) == 0) ? AOU_TRDY_RANDOM : AOU_TRDY_BURSTY;
+    foreach (fdi_cfg[p]) begin
+      fdi_cfg[p].trdy_policy = pol;
+      if (!stalls) continue;
+      fdi_cfg[p].stall_pct = pct;
+      fdi_cfg[p].stall_mid_pct = mid;
+      fdi_cfg[p].stall_trdy_free = free;
+      fdi_cfg[p].stall_hold_min = hmin;
+    end
   endfunction
 
   function string convert2string();
+    bit [3:0] bh = '0;
+    bit [3:0] rh = '0;
+    foreach (s_mgr_cfg[r]) begin
+      bh[r] = s_mgr_cfg[r].timing.b_fill_hold;
+      rh[r] = s_mgr_cfg[r].timing.r_fill_hold;
+    end
     return $sformatf({"n_rp=%0d remote_rp_count=%0d rp_bytes=%p remote_bytes=%0d ",
-                      "rp_remote_bytes=%p phy=%0d/%0d ",
+                      "rp_remote_bytes=%p phy=%0d/%0d fdi_beat_bytes=%0d ",
                       "spec=%s timing=%s remote_lat<=%0d resp_fork=%0b ",
-                      "l1 cancel/bubble=%0d/%0d"},
+                      "l1 cancel/bubble=%0d/%0d fill_hold b/r=%4b/%4b rp_map=%0h"},
                      n_rp, remote_rp_count, rp_bytes, remote_bytes, rp_remote_bytes,
                      lsm_cfg.active_phy,
-                     lsm_cfg.n_phy, spec_rev.name(),
+                     lsm_cfg.n_phy, fdi_cfg[lsm_cfg.active_phy].beat_bytes, spec_rev.name(),
                      local_timing.name(), remote_lat_max, l3_cfg.resp_fork, l1_cancel_pct,
-                     l1_bubble_pct);
+                     l1_bubble_pct, bh, rh, rp_map);
   endfunction
 endclass

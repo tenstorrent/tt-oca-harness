@@ -3,7 +3,9 @@
 
 // Connects two L3 agents the way L1 would: pulls each one's next flit,
 // drives it as four 64-byte beats (A on LP, B on PL), then delivers it to
-// the other agent.
+// the other agent, after `latency` more cycles of flight time. AOU_FDI_CHECKER
+// sees each flit as it is driven, so with a latency it sits between the two
+// dies, each die's flits seen before the other receives them.
 class aou_l3_unit_link extends uvm_component;
   `uvm_component_utils(aou_l3_unit_link)
 
@@ -11,6 +13,7 @@ class aou_l3_unit_link extends uvm_component;
   aou_l3_agent           a;
   aou_l3_agent           b;
   int unsigned           max_gap = 2;
+  int unsigned           latency = 0;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -51,7 +54,18 @@ class aou_l3_unit_link extends uvm_component;
       @(vif.drv_cb);
       if (pl) vif.drv_cb.pl_valid <= 1'b0;
       else vif.drv_cb.lp_valid <= 1'b0;
-      dst.write(it);
+      // Every flit is delayed alike, so they arrive in order.
+      if (latency == 0) begin
+        dst.write(it);
+      end else begin
+        fork
+          begin
+            aou_l3_flit_item d = it;
+            repeat (latency) @(vif.drv_cb);
+            dst.write(d);
+          end
+        join_none
+      end
       repeat ($urandom_range(0, max_gap)) @(vif.drv_cb);
     end
   endtask

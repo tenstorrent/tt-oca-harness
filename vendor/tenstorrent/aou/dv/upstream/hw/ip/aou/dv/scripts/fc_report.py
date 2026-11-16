@@ -20,9 +20,25 @@ crosses included; a covergroup's own percentage weights each coverpoint and
 cross equally instead, so the two differ.
 
 Ignored bins never reach fc.json. Illegal bins (marked "illegal") are not
-counted; a hit on one is listed. Bins tagged with a spec revision ("spec":
-"v0.8") stay in every count and are also totalled apart, so the holes only a
-v0.8 partner or DUT can close are visible as such.
+counted; a hit on one is listed. A bin's "spec" tag is a spec revision the RTL
+doesn't implement yet ("v0.8", "v0.9draft": the tag starts with "v" and a
+digit), "rtl-limit" (a legal case this RTL never produces by design, such as a
+packing density its TX path can't reach) or a stimulus note ("rare"). Revision-
+and rtl-limit-tagged bins are left out of every total and percentage and
+totalled apart, so the headline figure counts only what this RTL can reach;
+they join it when the DUT targets that revision, or when the RTL changes and
+the tag is removed (a hit on an rtl-limit bin shows in its line). Other tags
+stay in the totals and are also totalled apart.
+
+A bin's plan_ids are the test-plan items (docs/test_plan_items.yaml) it is
+evidence for, set where the bins are declared: aou_fc_group::plan() calls for
+the bench's groups, the FC_PLAN table of cov/sv/aou_axi4_fc_bins.svh for the
+AXI4 monitors (the PLAN lines of their report). scripts/plan_status.py --fc
+lists the bins behind each item. --check-plan-ids (make check-config) checks
+that every ID those declarations name is an item of the plan, neither merged
+nor dropped:
+
+  fc_report.py --check-plan-ids
 """
 
 import argparse
@@ -31,6 +47,7 @@ import html
 import io
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -81,15 +98,34 @@ def merge_fc_json(db, path):
 
 
 def merge_axi4_txt(db, path):
-    """aou_axi4_fc.<run>.txt BIN lines "cg|cp|bin" per interface, as groups axi4.<if>.<cg>."""
-    counts, stats, names = {}, {}, []
-    merge_axi4_fc.parse_file(path, counts, _Stats(stats), names)
+    """aou_axi4_fc.<run>.txt BIN lines "cg|cp|bin" per interface, as groups axi4.<if>.<cg>,
+    with the plan items its PLAN lines give the bins."""
+    counts, stats, names, plans = {}, {}, [], {}
+    merge_axi4_fc.parse_file(path, counts, _Stats(stats), names, plans)
     for iface in sorted(counts):
         for key in sorted(counts[iface]):
             cg, cp, b = key.split("|", 2)
             _, pt = point_of(db, f"axi4.{iface}.{cg}", cp, "cross" if cp.startswith("cx_")
                              else "coverpoint")
             add_bin(pt, b.replace("_X_", ","), counts[iface][key])
+        for cg, cp, pat, ids in sorted(plans.get(iface, ())):
+            grp = db["groups"].get(f"axi4.{iface}.{cg}", {"points": {}})
+            bins = [b for pn, p in grp["points"].items() if cp in ("*", pn)
+                    for bn, b in p["bins"].items() if match_bin(pat, bn)]
+            if not bins:
+                print(f"fc_report: {path}: PLAN {cg} {cp} {pat} matches no bin", file=sys.stderr)
+            for b in bins:
+                b["plan_ids"] += [i for i in ids.split() if i not in b["plan_ids"]]
+
+
+def match_bin(pat, name):
+    """The coverage service's bin pattern (aou_fc_point::match_bin): one glob per
+    coverpoint of a cross, comma-separated, each with '|'-separated alternatives in
+    which only '*' is special."""
+    pf, nf = pat.split(","), name.split(",")
+    return len(pf) == len(nf) and all(
+        any(re.fullmatch(".*".join(map(re.escape, alt.split("*"))), f) for alt in p.split("|"))
+        for p, f in zip(pf, nf))
 
 
 class _Stats(dict):
@@ -100,16 +136,40 @@ class _Stats(dict):
         return self[key]
 
 
+REVISION_RE = re.compile(r"^v\d")
+RTL_LIMIT = "rtl-limit"
+
+
+def is_apart(tag):
+    """A tag whose bins stay out of the headline: a spec revision the RTL doesn't
+    implement yet (v0.8, v0.9draft), or a case this RTL never produces (rtl-limit)."""
+    return bool(tag and (REVISION_RE.match(tag) or tag == RTL_LIMIT))
+
+
 def counted(p):
     """The bins of a point that count: every bin but the illegal ones."""
     return {n: b for n, b in p["bins"].items() if not b.get("illegal")}
 
 
+def headline(p):
+    """The bins of a point the headline counts: counted, and no apart tag."""
+    return {n: b for n, b in counted(p).items() if not is_apart(b.get("spec"))}
+
+
 def tally(points, spec=None):
-    """(hit, total) over the counted bins; with spec, only bins tagged with it."""
+    """(hit, total) over the counted bins. Without spec, the headline: every counted bin
+    but the apart-tagged ones. With spec, only the bins tagged with it."""
     bins = [b for p in points.values() for b in counted(p).values()
-            if spec is None or b.get("spec") == spec]
+            if (not is_apart(b.get("spec")) if spec is None else b.get("spec") == spec)]
     return sum(1 for b in bins if b["hits"]), len(bins)
+
+
+def tag_line(tag, hit, total, th, tt):
+    """One summary line for a tag's bins: apart from the total, or inside it."""
+    if is_apart(tag):
+        return f"{tag}-tagged bins: {hit}/{total} hit; not in the total above"
+    return (f"{tag}-tagged bins: {hit}/{total} hit, counted in the total; without them "
+            f"{th - hit}/{tt - total} ({pct(th - hit, tt - total):.2f}%)")
 
 
 def specs(db):
@@ -175,9 +235,7 @@ def write_summary(fh, db, counts, build):
     w("%-36s %5d/%-6d %7.2f%%%s\n" % ("TOTAL", th, tt, pct(th, tt),
                                      "".join(" %12s" % f"{st[t][0]}/{st[t][1]}" for t in tags)))
     for t in tags:
-        oh, ot = th - st[t][0], tt - st[t][1]
-        w(f"{t}-tagged bins: {st[t][0]}/{st[t][1]} hit; without them {oh}/{ot} "
-          f"({pct(oh, ot):.2f}%)\n")
+        w(tag_line(t, st[t][0], st[t][1], th, tt) + "\n")
     for g, pn, bn, n in illegal_hits(db):
         w(f"ILLEGAL BIN HIT: {g}.{pn} {bn} ({n} hits)\n")
     w("\n")
@@ -186,7 +244,7 @@ def write_summary(fh, db, counts, build):
         hit, total = tally(g["points"])
         w(f"{name}  {hit}/{total} ({pct(hit, total):.2f}%), {g['samples']} samples\n")
         for pname, p in g["points"].items():
-            cb = counted(p)
+            cb = headline(p)
             ph = sum(1 for b in cb.values() if b["hits"])
             out = f", {p['outside']} outside every bin" if p["outside"] else ""
             w("    %-26s %-10s %4d/%-4d %7.2f%%%s\n" % (pname, p["kind"], ph, len(cb),
@@ -258,9 +316,7 @@ def write_html(fh, db, counts, build):
     out.append(f"<p class=meta>Total {th}/{tt} bins ({pct(th, tt):.2f}%)</p>")
     for t in specs(db):
         sh, stt = (sum(x) for x in zip(*(tally(g["points"], t) for g in db["groups"].values())))
-        out.append(f"<p class=meta>{e(t)}-tagged bins (counted above, holes marked "
-                   f"[{e(t)}]): {sh}/{stt} hit; without them {th - sh}/{tt - stt} "
-                   f"({pct(th - sh, tt - stt):.2f}%)</p>")
+        out.append(f"<p class=meta>{e(tag_line(t, sh, stt, th, tt))} (holes marked [{e(t)}])</p>")
     for g, pn, bn, n in illegal_hits(db):
         out.append(f"<p class=meta>Illegal bin hit: {e(g)}.{e(pn)} {e(bn)} ({n})</p>")
     out.append("<div class=wrap><table><tr><th>Group</th><th>Bins hit</th><th>%</th><th></th>"
@@ -272,10 +328,10 @@ def write_html(fh, db, counts, build):
                    f"({pct(hit, total):.2f}%)</summary><div class=wrap><table><tr><th>Point</th>"
                    f"<th>Kind</th><th>Bins hit</th><th>%</th><th>Outside</th><th>Holes</th></tr>")
         for pn, p in g["points"].items():
-            cb = counted(p)
+            cb = headline(p)
             ph = sum(1 for b in cb.values() if b["hits"])
             holes = " ".join(bn + (f" [{b['spec']}]" if b.get("spec") else "")
-                             for bn, b in cb.items() if not b["hits"])
+                             for bn, b in counted(p).items() if not b["hits"])
             out.append(f"<tr><td>{e(pn)}</td><td>{p['kind']}</td><td class=n>{ph}/"
                        f"{len(cb)}</td><td class=n>{pct(ph, len(cb)):.1f}%</td>"
                        f"<td class=n>{p['outside']}</td><td class=holes>{e(holes)}</td></tr>")
@@ -284,13 +340,66 @@ def write_html(fh, db, counts, build):
     fh.write("\n".join(out))
 
 
+UVM_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# A plan-ID list as the coverage declarations write it: "4.1 5.1", or an AXI4
+# FC_PLAN entry "<cg> <cp> <bins> 4.1 5.1".
+PLAN_LITERAL = re.compile(r'"(?:cg_\w+ \S+ \S+ )?(\d+\.\d+(?: \d+\.\d+)*)"')
+
+
+def declared_plan_ids(root=UVM_ROOT):
+    """{id: [file, ...]} for every plan ID in the coverage declarations: the string
+    literals of the SV files that call plan() or hold the AXI4 FC_PLAN table."""
+    out = {}
+    for d in ("cov", "uvm"):
+        for path in sorted(glob.glob(os.path.join(root, d, "**", "*.sv*"), recursive=True)):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+            if ".plan(" not in text and "FC_PLAN" not in text:
+                continue
+            for m in PLAN_LITERAL.finditer(text):
+                for pid in m.group(1).split():
+                    out.setdefault(pid, []).append(os.path.relpath(path, root))
+    return out
+
+
+def check_plan_ids(items_path, root=UVM_ROOT):
+    """Problems with the declared plan IDs: unknown, merged or dropped items."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import listyaml
+    items = {i["id"]: i for i in listyaml.load(items_path)}
+    problems = []
+    for pid, files in sorted(declared_plan_ids(root).items()):
+        where = ", ".join(sorted(set(files)))
+        it = items.get(pid)
+        if it is None:
+            problems.append(f"{where}: plan ID {pid} is not an item of {os.path.basename(items_path)}")
+        elif it.get("merged_into"):
+            problems.append(f"{where}: plan ID {pid} is merged into {it['merged_into']}; name that")
+        elif it.get("dropped"):
+            problems.append(f"{where}: plan ID {pid} is dropped ({it['dropped']})")
+    return problems
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("out_dir", help="out/<build>, holding the run directories")
-    ap.add_argument("-o", "--report-dir", required=True)
+    ap.add_argument("out_dir", nargs="?", help="out/<build>, holding the run directories")
+    ap.add_argument("-o", "--report-dir")
     ap.add_argument("--rid", help="only the runs of this RID (default: every run)")
+    ap.add_argument("--check-plan-ids", action="store_true",
+                    help="check the plan IDs of the coverage declarations against the plan items, then exit")
+    ap.add_argument("--items", default=os.path.join(UVM_ROOT, "docs", "test_plan_items.yaml"),
+                    help="the plan items for --check-plan-ids (default docs/test_plan_items.yaml)")
     args = ap.parse_args()
+    if args.check_plan_ids:
+        problems = check_plan_ids(args.items)
+        for p in problems:
+            print(f"fc_report: {p}", file=sys.stderr)
+        print(f"fc_report: {len(declared_plan_ids())} plan IDs in the coverage declarations, "
+              f"{len(problems)} problem(s)")
+        sys.exit(1 if problems else 0)
+    if not args.out_dir or not args.report_dir:
+        ap.error("out_dir and -o/--report-dir are required")
 
     build = os.path.basename(os.path.normpath(args.out_dir))
     db, counts = merge(args.out_dir, args.rid)
