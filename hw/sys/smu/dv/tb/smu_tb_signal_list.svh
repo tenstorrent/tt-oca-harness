@@ -195,7 +195,7 @@
 `SMU_TB_OUT(logic [31:0], sep_ap_reg0_aw_count_o)  // reaches region 0's register block
 `SMU_TB_OUT(logic [31:0], sep_csr_aw_count_o)  // reaches sep_system_csr at all
 `SMU_TB_OUT(logic [55:0], sep_csr_last_aw_addr_o)  // ...and with what address
-`SMU_TB_OUT(logic [31:0], sep_csr_errslv_aw_count_o)  // ...or was classified ERR_SLV
+`SMU_TB_OUT(logic [31:0], sep_csr_errslv_aw_count_o)  // ...or missed every window
 `SMU_TB_OUT(logic [31:0], smu_axi_out_write_count_o)
 `SMU_TB_OUT(logic [31:0], smu_axi_out_read_count_o)
 // $bits of the ID and user fields of the smu AXI boundary ports, one byte per

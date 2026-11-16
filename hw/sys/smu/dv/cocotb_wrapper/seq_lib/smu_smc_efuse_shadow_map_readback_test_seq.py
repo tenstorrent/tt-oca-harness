@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse shim response stream against the SMC eFuse map read back over JTAG2AXI.
 
-Spec: smc.rdl smc_efuse_map at 0xC0007000 and efuse_interface_ctrl at 0xC0008000;
+Spec: smc.rdl smc_efuse_map at 0xC0007400 and efuse_interface_ctrl at 0xC0007000;
 smc_efuse_map.rdl Address Map; smu-smc.adoc 256 32-bit words per instance; interface.adoc
 fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_done bit 0.
 

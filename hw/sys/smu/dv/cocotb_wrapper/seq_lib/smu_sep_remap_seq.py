@@ -122,7 +122,7 @@ class SmuSepRemapSeq:
             self.log.info("%s", line)
         self.log.info(
             "AP CSR path: AW into sep_system_csr=%d (last addr 0x%x), "
-            "classified ERR_SLV=%d, reaching AP_OUTPUT_REMAP=%d, "
+            "missed every window=%d, reaching AP_OUTPUT_REMAP=%d, "
             "reaching region 0 register block=%d",
             self._rd(self.dut.sep_csr_aw_count_o, "csr_in"),
             self._rd(self.dut.sep_csr_last_aw_addr_o, "csr_addr"),

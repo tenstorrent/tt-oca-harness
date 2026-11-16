@@ -1231,7 +1231,7 @@ module smu_wrapper_uvm_top
                     .sep_system_csr_axil_req_i.aw.addr);
       end
       if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
-                    .sep_system_csr_axil_reqs[sep_pkg::ERR_SLV].aw_valid) begin
+                    .u_system_csr_addr_demux.u_err_slv.axil_req_i.aw_valid) begin
         sep_csr_errslv_aw_count_o <= sep_csr_errslv_aw_count_o + 32'd1;
       end
     end
