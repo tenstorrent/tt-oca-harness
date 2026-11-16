@@ -1349,9 +1349,11 @@ Exceptions (a closed set):
   `+sep_cold_scratch7` initial deposit; `runtime_cold_scratch7_ack_o` rises
   after the write and falls when the request drops. The CPU owns the
   system-CSR frontdoor while the ROM runs, so the testbench has no independent
-  master for a write after the ROM has started. The ROM's own reads and writes
-  of the slot, the status words and the trace port the checkers read are not
-  forced. Owner: `sep_runtime_warm_dispatch_test`.
+  master for a write after the ROM has started. On VCS the force holds the
+  field for one `clk_i` cycle, so a ROM write to the slot in that cycle does
+  not land. Outside that cycle the ROM's own reads and writes of the slot, the
+  status words and the trace port the checkers read are not forced. Owner:
+  `sep_runtime_warm_dispatch_test`.
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
