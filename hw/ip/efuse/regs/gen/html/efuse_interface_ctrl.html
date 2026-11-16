@@ -12,12 +12,14 @@
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
-<tr><td>0x4</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</td></tr>
-<tr><td>0x8</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</td></tr>
+<tr><td>0x4</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR (optionally with read-back), and reports program progress and completion status.</td></tr>
+<tr><td>0x8</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</td></tr>
 <tr><td>0xC</td><td><a href="#EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</td></tr>
 <tr><td>0x10</td><td><a href="#EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data returned through the eFuse read interface.</td></tr>
 <tr><td>0x14</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
 <tr><td>0x18</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
+<tr><td>0x1C</td><td><a href="#EFUSE_PROGRAM_ADDR">EFUSE_PROGRAM_ADDR</a></td><td>RW</td><td>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</td></tr>
+<tr><td>0x20</td><td><a href="#EFUSE_READ_ADDR">EFUSE_READ_ADDR</a></td><td>RW</td><td>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
@@ -46,7 +48,7 @@
 <tr><td>18</td><td>efuse_program_read_back</td><td>RW</td><td>0x0</td><td>When set, trigger a read back after a program</td></tr>
 <tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
 <tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
-<tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program</td></tr>
+<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
 <table>
@@ -59,7 +61,7 @@
 <tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
 <tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
-<tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to read</td></tr>
+<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
 <table>
@@ -84,5 +86,15 @@
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>28</td><td>program_req_timeout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on program interface.</td></tr>
 <tr><td>27:0</td><td>program_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_ADDR">EFUSE_PROGRAM_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</td></tr>
+</table>
+<h3 id="EFUSE_READ_ADDR">EFUSE_READ_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</td></tr>
 </table>
 </div>
