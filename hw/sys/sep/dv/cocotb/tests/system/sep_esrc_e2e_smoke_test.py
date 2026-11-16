@@ -21,6 +21,10 @@ This is a positive-evidence alive smoke (no vacuous pass): the force is proven t
 have taken (lane-0 DUT noise_i tracks the driven bit), a seed is accumulated, the
 CSRNG CTR_DRBG produces genbits, the KM consumes a word (post-mux tvalid && tready
 handshake) and lands it in KM SRAM, and CSRNG/EDN err_code + recov_alert are zero.
+CHK-KM-SRAM grades the stored value in both modes: KM SRAM word0 equals the first
+word the KM took on the EDN->KM AXIS endpoint (the DRBG-sampler DATA read returns
+the stream word, hw/ip/key_manager/doc/architecture.adoc), and km_rom_entropy.S
+stores that word to SRAM word0. A FAIL closes the window as the other checks do.
 On top of the alive checks, the CHK1..CHK5 golden-vs-probe scoreboard
 (sep_drbg_scoreboard + sep_entropy_golden) runs bit-exact and strict: decorrelator
 SR -> BIW+SHA whitener -> 384b seed -> CTR_DRBG genbits -> EDN/KM beats, each stage
@@ -48,6 +52,22 @@ path while words reach the DRBG seed port:
   read back at the value stored before the lock, and LEVEL is still 0 after
   more seed-port words cross. The response code of that write is logged as
   OBS-FIFO-ENABLE-LOCKED-RESP: no specification states it.
+* CHK-SEED-PACK-COUNT: the seed packer collects twelve words into each 384-bit
+  CSRNG seed (hw/sys/sep/doc/trng.adoc). A seed push is a rise of the DRBG
+  seed-queue valid, or a seed handshake followed by the valid still high on the
+  next clock. A word is accepted on a clock with the conditioner valid and the
+  packer ready. Ingress has no backpressure and the producer must not supply
+  words faster than the packer takes them (hw/ip/drbg/doc/architecture.adoc,
+  Entropy ingress and Seed Assembly), so a word offered while the packer is not
+  ready is outside the stated contract: it is not counted and is logged in
+  OBS-SEED-PACK-DROP. Every window from one push
+  to the clock before the next push is graded: it holds exactly 12 accepted words,
+  so no push comes before the 12th accepted word. A clock without the conditioner
+  valid counts no word. The check also needs at least one graded window and no X
+  or Z on a sampled port. The window from the tap start to the first push is not
+  bounded by two pushes and is not graded. OBS-SEED-PACK-DROP logs the accepted
+  and dropped words of each closed window, and a summary with the graded window
+  count and the dropped-word total.
 
 FCOV owner window: the leaf opens its window before the entropy bring-up and
 closes it at the end. The sampler holds each conditioner-to-seed and read-path
@@ -104,6 +124,13 @@ SW_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
 SW_CMD_POLLS = 400
 
 
+def _known_bit(sig) -> int | None:
+    """The bit value of a 1-bit port, or None for X or Z."""
+    value = sig.value
+    bits = str(getattr(value, "binstr", value)).strip()
+    return int(bits) if bits in ("0", "1") else None
+
+
 class _SeedPortTap:
     """Count the words ESRC offers on the DRBG seed port and the seeds they make.
 
@@ -112,6 +139,13 @@ class _SeedPortTap:
     the DRBG seed-queue valid: the queue holds one seed, so each rise is a new
     384-bit seed packed from seed-port words. ``accepted`` counts rising edges
     of the CSRNG seed handshake, the event CHK3 scores.
+
+    Per seed-push window (CHK-SEED-PACK-COUNT): a clock with the conditioner
+    valid counts as accepted when the packer is ready and as dropped otherwise.
+    ``windows`` holds each closed window as ``(index, accepted, dropped)``;
+    window 1 opens when the tap starts, a push closes the open window and the
+    push clock opens the next. ``xz`` counts clocks with an X or Z on a port the
+    window rule reads.
     """
 
     def __init__(self, dut) -> None:
@@ -119,6 +153,9 @@ class _SeedPortTap:
         self.words = 0
         self.assembled = 0
         self.accepted = 0
+        self.windows: list[tuple[int, int, int]] = []
+        self.xz = 0
+        self._win = [1, 0, 0]
         self._task = cocotb.start_soon(self._run())
 
     async def _run(self) -> None:
@@ -128,14 +165,25 @@ class _SeedPortTap:
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if sep_base_test.rd(dut.esrc_compress_vld_o, allow_unknown=True):
+            vld = _known_bit(dut.esrc_compress_vld_o)
+            ready = _known_bit(dut.drbg_seed_word_ready_o) if vld else 0
+            raw_valid = _known_bit(dut.drbg_seed_valid_o)
+            raw_ack = _known_bit(dut.drbg_es_ack_o) if raw_valid else 0
+            if None in (vld, ready, raw_valid, raw_ack):
+                self.xz += 1
+            if vld:
                 self.words += 1
-            valid = sep_base_test.rd(dut.drbg_seed_valid_o, allow_unknown=True)
-            hs = valid and sep_base_test.rd(dut.drbg_es_ack_o, allow_unknown=True)
+            valid = raw_valid or 0
+            hs = valid and (raw_ack or 0)
             if valid and not prev_valid:
                 self.assembled += 1
             if hs and not prev_hs:
                 self.accepted += 1
+            if valid and (not prev_valid or prev_hs):
+                self.windows.append(tuple(self._win))
+                self._win = [self._win[0] + 1, 0, 0]
+            if vld:
+                self._win[1 if ready else 2] += 1
             prev_valid = valid
             prev_hs = hs
 
@@ -234,11 +282,13 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
                 "CHK-E2E-SCOREBOARD",
                 "CHK-FIFO-CLOSED",
                 "CHK-FIFO-ENABLE-LOCKED",
+                "CHK-KM-SRAM",
+                "CHK-SEED-PACK-COUNT",
                 "CHK-SEED-SW",
             )
         else:
             cfg = SepEntropyCfg()
-            self.required_evidence = ("CHK-ALERTS-ZERO", "CHK-E2E-SCOREBOARD")
+            self.required_evidence = ("CHK-ALERTS-ZERO", "CHK-E2E-SCOREBOARD", "CHK-KM-SRAM")
         self.logger.info(
             "entropy cfg: fifo_enable=%d fifo_ctrl=0x%08x chk2_source=%s",
             cfg.fifo_enable,
@@ -333,6 +383,13 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
             "KM consumed a word but never stored it to KM SRAM word0",
         )
         self.logger.info("KM landed the consumed entropy word in SRAM word0")
+        try:
+            self.check_km_sram_word_matches_consumed()
+        except AssertionError as e:
+            text = str(e)
+            if "FAIL" not in text:
+                text = f"CHK-KM-SRAM FAIL: {text}"
+            await self._grade(False, text)
 
         await self.check_entropy_alerts_zero()
         self.logger.info("ESRC->DRBG->CSRNG->EDN->KM alive; KM consumed entropy; alerts clean")
@@ -340,6 +397,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         if closed:
             await self._close_read_path_window(tap, window)
             await self._check_fifo_enable_locked(cfg, tap)
+            await self._check_seed_pack_count(tap)
         else:
             await self._sw_instantiate_seed()
             await self.stop_fifo_drain()
@@ -497,6 +555,24 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
             intr.rdata,
             clr.rdata,
         )
+
+    async def _check_seed_pack_count(self, tap: _SeedPortTap) -> None:
+        """CHK-SEED-PACK-COUNT over the push-to-push windows; OBS-SEED-PACK-DROP per window."""
+        windows = list(tap.windows)
+        xz = tap.xz
+        for k, acc, drop in windows:
+            self.logger.info("OBS-SEED-PACK-DROP window=%d accepted=%d dropped=%d", k, acc, drop)
+        graded = [(k, acc) for k, acc, _ in windows if k > 1]
+        dropped = sum(drop for _, _, drop in windows)
+        self.logger.info("OBS-SEED-PACK-DROP graded=%d dropped=%d", len(graded), dropped)
+        bad = [f"{k}:{acc}" for k, acc in graded if acc != SEED_WORDS]
+        listing = ",".join(f"{k}:{acc}" for k, acc in graded)
+        line = f"graded={len(graded)} xz={xz} words_per_seed={SEED_WORDS} windows=[{listing}]"
+        await self._grade(
+            bool(graded) and not bad and xz == 0,
+            f"CHK-SEED-PACK-COUNT FAIL: {line} mismatched={bad}",
+        )
+        self.logger.info("CHK-SEED-PACK-COUNT PASS: %s", line)
 
     async def _check_fifo_enable_locked(self, cfg: SepEntropyCfg, tap: _SeedPortTap) -> None:
         """Under the lock, a write of both FIFO_CTRL fields is refused and the FIFO stays empty.

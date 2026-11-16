@@ -34,6 +34,18 @@ monitor's exempt AR and exempt beat tallies are not exactly that count, so an
 exemption that covered any undeclared beat is caught. On VCS every DCT bit reads
 X, so the two DCT passes agree on zero bits and CHK-I3C-DCT-TABLE-READ grades
 only the RRESP of each read there.
+
+**Window aliases.** `memmap.adoc` states that only 16 entries of each table
+are implemented, that index decoding keeps four bits so higher window slots
+alias lower entries (DAT slot 16 at 0x480 aliases slot 0 at 0x400, DCT slot 16
+at 0x900 aliases slot 0 at 0x800), and `oca_i3c_wrap.rdl` adds that DCT writes
+are dropped. On every instance the leaf writes DAT entry 0 and reads it back
+through slot 16, writes slot 16 and reads entry 0, and clears both; a window
+slot with storage of its own, or one that does not reach entry 0, fails it.
+It then writes the first word of DCT entry 0 and of DCT slot 16 and reads both
+raw: each must still agree with the pre-write pass on every bit known in both,
+and neither may hold the written word, so a write that lands in either slot
+fails it.
 """
 
 from __future__ import annotations
@@ -71,6 +83,13 @@ DAT_MASK, DAT_BITS = _structure("DAT_structure")
 _DCT_MASK, DCT_BITS = _structure("DCT_structure")
 DAT_WORDS = DAT_BITS // 32
 DCT_WORDS = DCT_BITS // 32
+#: The first window slot past the 16 implemented entries (memmap.adoc: DAT slot
+#: 16 at 0x480 aliases slot 0 at 0x400, DCT slot 16 at 0x900 aliases slot 0 at 0x800).
+ALIAS_SLOT = 16
+DAT_ALIAS_OFFSET = ALIAS_SLOT * (DAT_BITS // 8)
+DCT_ALIAS_OFFSET = ALIAS_SLOT * (DCT_BITS // 8)
+assert (DAT_ALIAS_OFFSET, DCT_ALIAS_OFFSET) == (0x80, 0x100)
+DCT_WRITE_WORD = 0xA5C3_1E7B
 NUM_I3C = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DAT_NUM")
 assert NUM_I3C == smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DCT_NUM")
 
@@ -83,10 +102,28 @@ def dct_word(instance: int, word: int) -> int:
     return smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_DCT_BASE_ADDR", instance) + 4 * word
 
 
+def dat_alias_word(instance: int, word: int) -> int:
+    return dat_word(instance, word) + DAT_ALIAS_OFFSET
+
+
+def dct_alias_word(instance: int, word: int) -> int:
+    return dct_word(instance, word) + DCT_ALIAS_OFFSET
+
+
 def dat_pattern(instance: int) -> int:
     """A DAT entry value over the declared fields, different for every instance."""
     raw = 0x5A3C_96F0_A5C3_690F ^ (0x0101_0101_0101_0101 * (instance + 1))
     return raw & DAT_MASK
+
+
+def dat_alias_pattern(instance: int) -> int:
+    """A second DAT entry value per instance, written through the aliasing slot."""
+    return (~dat_pattern(instance) ^ (0x1010_1010_1010_1010 * (instance + 1))) & DAT_MASK
+
+
+def _word0(bits: str) -> str:
+    """The lowest 32 bits of an entry read MSB first."""
+    return bits[-32:]
 
 
 class _RawReadTap:
@@ -145,6 +182,9 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
         self.dct_checked = 0
         self.dct_known_bits = 0
         self.declared_reads = 0
+        self.dat_aliased = 0
+        self.dct_dropped = 0
+        self.dct_after_known_bits = 0
 
     async def _entry(self, tag: str, addr_of, instance: int, words: int) -> int:
         value = 0
@@ -176,13 +216,59 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
             words.append(tap.word(addr))
         return "".join(reversed(words))
 
-    async def _write_dat(self, tag: str, instance: int, value: int) -> None:
+    async def _write_dat(self, tag: str, instance: int, value: int, addr_of=dat_word) -> None:
         for word in range(DAT_WORDS):
             await self.csr_write(
                 f"{tag}{instance}_W{word}",
-                dat_word(instance, word),
+                addr_of(instance, word),
                 (value >> (32 * word)) & 0xFFFF_FFFF,
             )
+
+    async def _dat_alias(self, i: int) -> None:
+        pattern, alias = dat_pattern(i), dat_alias_pattern(i)
+        assert pattern != alias and alias & DAT_MASK, f"I3C{i}: the alias pattern is not distinct"
+        await self._write_dat("DAT_ALIAS_SRC_I", i, pattern)
+        via_alias = await self._entry("DAT_ALIAS_RD16_I", dat_alias_word, i, DAT_WORDS)
+        assert via_alias & DAT_MASK == pattern, (
+            f"I3C{i} DAT slot {ALIAS_SLOT} (+0x{DAT_ALIAS_OFFSET:x}) reads 0x{via_alias:016x} "
+            f"after entry 0 took 0x{pattern:016x}; memmap.adoc states slot {ALIAS_SLOT} aliases "
+            f"slot 0"
+        )
+        await self._write_dat("DAT_ALIAS_WR16_I", i, alias, dat_alias_word)
+        via_entry = await self._entry("DAT_ALIAS_RD0_I", dat_word, i, DAT_WORDS)
+        assert via_entry & DAT_MASK == alias, (
+            f"I3C{i} DAT entry 0 reads 0x{via_entry:016x} after slot {ALIAS_SLOT} took "
+            f"0x{alias:016x}; a write through the aliasing slot lands in entry 0"
+        )
+        await self._write_dat("DAT_ALIAS_CLEAR_I", i, 0)
+        for tag, addr_of in (("DAT_ALIAS_CLR0_I", dat_word), ("DAT_ALIAS_CLR16_I", dat_alias_word)):
+            cleared = await self._entry(tag, addr_of, i, DAT_WORDS)
+            assert cleared & DAT_MASK == 0, (
+                f"I3C{i} {tag}: reads 0x{cleared:016x} after entry 0 was cleared"
+            )
+        self.dat_aliased += 1
+
+    async def _dct_write_dropped(self, tap: _RawReadTap, i: int, before: str) -> None:
+        for tag, addr_of in (("DCT_WR0_I", dct_word), ("DCT_WR16_I", dct_alias_word)):
+            await self.csr_write(f"{tag}{i}", addr_of(i, 0), DCT_WRITE_WORD)
+        for tag, addr_of in (("DCT_AFTER0_I", dct_word), ("DCT_AFTER16_I", dct_alias_word)):
+            after = await self._raw_entry(tap, tag, addr_of, i, DCT_WORDS)
+            agree, known = _agree(before, after)
+            assert agree, (
+                f"I3C{i} {tag}: DCT read {after} (MSB first) after the writes, which differs on "
+                f"a bit known in both from the pre-write read {before}; DCT writes are dropped"
+            )
+            assert _word0(after) != f"{DCT_WRITE_WORD:032b}", (
+                f"I3C{i} {tag}: DCT word 0 holds the written 0x{DCT_WRITE_WORD:08x}; DCT writes "
+                f"are dropped"
+            )
+            self.dct_after_known_bits += known
+        dat0 = await self._entry("DCT_DAT0_AFTER_I", dat_word, i, DAT_WORDS)
+        assert dat0 & DAT_MASK == 0, (
+            f"I3C{i} DAT entry 0 reads 0x{dat0:016x} after the DCT writes; it was cleared "
+            f"before them and a dropped DCT write lands nowhere"
+        )
+        self.dct_dropped += 1
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -213,6 +299,8 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
                 assert cleared & DAT_MASK == 0, (
                     f"I3C{i} DAT entry 0 reads 0x{cleared:016x} after being cleared"
                 )
+            for i in instances:
+                await self._dat_alias(i)
 
             for i in instances:
                 first = await self._raw_entry(tap, "DCT_READ_A_I", dct_word, i, DCT_WORDS)
@@ -225,7 +313,30 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
                 )
                 self.dct_known_bits += known
                 self.dct_checked += 1
+                await self._dct_write_dropped(tap, i, second)
 
+        cocotb.log.info(
+            "CHK-I3C-DAT-ALIAS-16: on each of the %d I3C instances DAT entry 0 written at its "
+            "own offset read back through slot %d (+0x%x) and a write through slot %d read back "
+            "at entry 0, after which both read 0 once entry 0 was cleared",
+            self.dat_aliased,
+            ALIAS_SLOT,
+            DAT_ALIAS_OFFSET,
+            ALIAS_SLOT,
+        )
+        cocotb.log.info(
+            "CHK-I3C-DCT-WRITE-DROPPED: on each of the %d I3C instances a write of 0x%08x to the "
+            "first word of DCT entry 0 and of DCT slot %d (+0x%x) completed, both slots read "
+            "back agreeing with the pre-write pass on every bit known in both (%d bits known "
+            "in both over all post-write reads, of %d read) with neither holding the written "
+            "word, and the cleared DAT entry 0 still read 0",
+            self.dct_dropped,
+            DCT_WRITE_WORD,
+            ALIAS_SLOT,
+            DCT_ALIAS_OFFSET,
+            self.dct_after_known_bits,
+            self.dct_dropped * 2 * DCT_BITS,
+        )
         cocotb.log.info(
             "CHK-I3C-DAT-TABLE-RW: DAT entry 0 of each of the %d I3C instances took its own "
             "%d-bit pattern over the fields DAT_structure.rdl declares (mask 0x%016x), all "

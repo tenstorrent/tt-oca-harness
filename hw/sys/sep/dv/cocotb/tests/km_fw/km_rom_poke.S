@@ -103,6 +103,10 @@
 # CRC encodings funct3 0-2 (rd x12, rs1 x10, rs2 x11); 14-21 words of the
 # major opcodes custom-1, custom-2, custom-3, OP-FP, OP-V, LOAD-FP, STORE-FP
 # and AMO.
+# ENTRY_ROM_HI 0x2000 is the first word of the ROM upper half: a JUMP target
+# that stores x10 at address x11, sets x12 = x10 and returns through x1. The
+# word ROM_HI_TAG follows it. Every word between the code and ENTRY_ROM_HI is
+# 0x00000013.
 #
 # Build (output committed as ../km_rom_poke.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_poke.parhex
@@ -192,6 +196,8 @@
     .equ ENTRY_SPIN,   0x20
     .equ ENTRY_RESUME, 0x40
     .equ SIG_ADDR,     0x80
+    .equ ENTRY_ROM_HI, 0x2000
+    .equ ROM_HI_TAG,   0x504F4B48   // "POKH"
     .equ EXEC_BASE,    0x100
     .equ EXEC_COUNT,   22
     .equ N_OPS,        18
@@ -883,3 +889,14 @@ irq_handler:
     getq  1, 2
     getq  2, 3
     retirq
+
+    // 0x00000013 is the word the bench loads into a KM ROM word that no image
+    // line sets, so the fill leaves every word below ENTRY_ROM_HI as it reads
+    // without the stub. The .org fails the build if the code reaches it.
+    .fill (ENTRY_ROM_HI - (. - _start)) / 4, 4, 0x00000013
+    .org ENTRY_ROM_HI
+rom_hi_stub:
+    sw    x10, 0(x11)
+    mv    x12, x10
+    jalr  x0, 0(x1)
+    .word ROM_HI_TAG

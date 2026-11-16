@@ -901,8 +901,9 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             f"ext_in max AW wait={max((e['wait'] for e in self.ext.since(mk, 'aw')), default=0)} "
             f"AR wait={max((e['wait'] for e in self.ext.since(mk, 'ar')), default=0)} clk_smu_i; "
             f"ext_in DECERR completed during the stall={last_decerr < last_dma_b} "
-            f"(last DECERR cycle {last_decerr}, last ext_out B cycle {last_dma_b}); waits on SF-022, "
-            f"never compared"
+            f"(last DECERR cycle {last_decerr}, last ext_out B cycle {last_dma_b}); waits on an "
+            f"open spec question (the crossbar arbitration and bounded progress under a stalled "
+            f"ext_out), never compared"
         )
         for e in self.ext.since(mk, "r"):
             self.decerr_beats.append(
@@ -913,7 +914,9 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         self._raw(
             f"OBS-G4-ATOP-SMC: smc_out AWs at the crossbar port in S2={len(x_aw)} with "
             f"AWATOP={sorted({_hx(e['awatop']) for e in x_aw})} "
-            f"AWBURST={sorted({_hx(e['awburst']) for e in x_aw})}; waits on SF-017, never compared"
+            f"AWBURST={sorted({_hx(e['awburst']) for e in x_aw})}; waits on an open spec question "
+            f"(whether the fabric carries ATOP and how an atomic request is answered), never "
+            f"compared"
         )
         self.s2_ext_out = (len(dma_aw), len(dma_ar))
         self._mark("STALLED_EXT_OUT", len(dma_aw) + len(dma_ar) + 2 + len(reqs), 2 + 2 + len(reqs))
@@ -932,7 +935,8 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             f"OBS-G4-IWC: ext_in ID width={width} smc_out ID width={self.xbar.link.idw} "
             f"ext_out ID width={len(dut.u_axi_out_if.arid)} iDMA ARIDs at smc_out="
             f"{[_hx(i) for i in self.xbar_dma_arids]} at ext_out={[_hx(i) for i in self.dma_arids]}; "
-            f"the converter outputs have no observation point; waits on SF-011, never compared"
+            f"the converter outputs have no observation point; waits on an open spec question "
+            f"(where the ID-width converters sit and how they handle ID exhaustion), never compared"
         )
         mem.write(EXT_S3_DST, bytes(S3_DMA_LEN))
         mem.set_response_delay(iter(lambda: self.rng.randint(*RESP_DELAY), None))
@@ -1317,14 +1321,17 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         )
         self._raw(
             f"OBS-G4-USER: {users}; smc_in AxUSER and the SMC port smc_in drives have no "
-            f"bench-top observation point; waits on SF-026, SF-014, never compared"
+            f"bench-top observation point; waits on open spec questions (whether the crossbar "
+            f"forwards every USER field unchanged; whether the crossbar smc_in drives the SMC "
+            f"sys_axi_in), never compared"
         )
         self._raw(
             f"OBS-G4-ADDR: SEP aperture base=0x0 size=0x{SEP_WIDE_SIZE:x} SEP SRAM global="
             f"0x{SEP_SRAM:x}..0x{SEP_SRAM + SEP_FILL_BYTES:x} (SEP-local 0x{SRAM_LOCAL:x}); SMC "
             f"scratchpad global=0x{SPM:x} (local 0x{SPM_LOCAL:x}); inbound filter entry 0 "
             f"[0x0, 0x{PASS_ALL_END:x}] config=0x{PASS_RW_CONFIG:x}; outbound entry 0 pass-all; "
-            f"waits on SF-023, never compared"
+            f"waits on an open spec question (which addresses and filter entries reach the SEP "
+            f"SRAM and SMC scratchpad), never compared"
         )
         self._mark("ROUTE_FWD", n_req, 16)
 
@@ -1393,7 +1400,8 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             self.decerr_beats.append(f"S5 bid=0x{e['bid']:x} buser={_hx(e['buser'])}")
         self._raw(
             f"OBS-G4-DECERR-CONTENT: {self.decerr_beats}; a data-known fire on a DECERR beat is "
-            f"checker-side; waits on SF-015, SF-021, never compared"
+            f"checker-side; waits on open spec questions (the data, user and per-beat codes of a "
+            f"crossbar DECERR; whether RDATA must be resolved on error beats), never compared"
         )
         self._mark("DECERR_CELLS", 4, 4)
 
@@ -1497,7 +1505,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         self._raw(
             "INFO-CELL-NOT-DRIVABLE: APERTURE_OVERLAP hw/sys/smu/doc/index.adoc states the SEP and SMC "
             "ranges must not overlap and the crossbar asserts that rule, so an overlapping "
-            "configuration is not programmed; which aperture wins stays with SF-024"
+            "configuration is not programmed; which aperture wins stays an open spec question"
         )
         # reprogram with a read in flight: the R is held while SEP_REGION_SIZE returns to reset
         inflight_addr = SIZE32_BASE + SRAM_LOCAL
@@ -1565,7 +1573,10 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         want = {name: w for name, _, w in rows}
         bad = [name for name in got if got[name] != want[name]]
         self._info(f"G4-APERTURE rows={got}")
-        self._raw(f"OBS-G4-APERTURE: {self.ap_obs}; waits on SF-024, never compared")
+        self._raw(
+            f"OBS-G4-APERTURE: {self.ap_obs}; waits on an open spec question (the aperture reset "
+            f"values and which aperture wins an overlap), never compared"
+        )
         sb.expect_eq("CHK-G4-APERTURE", got, want, evidence="CHK-G4-APERTURE")
         edges = len([r for r in rows if r[0][:4] in ("SEP+", "SMC+", "carr", "size")])
         self._raw(f"CHK-G4-APERTURE: edges={edges}/13 misdecoded={len(bad)}")

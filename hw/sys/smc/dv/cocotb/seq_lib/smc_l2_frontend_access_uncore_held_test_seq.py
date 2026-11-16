@@ -12,11 +12,14 @@ to set. While it is set, scratchpad and boot-ROM requests presented on the three
 no response for a counted window; the blocked reads of episodes A and B complete after the
 release. Episode C presents blocked writes; on one AXI4 interface W beats follow AW order, so
 a blocked write can hold the SEP_IN RESET_CTRL write that releases the uncore. Whether that
-release completes is an observation (SF-026); when it does not, the reset agent's cold reset
+release completes is an observation; when it does not, the reset agent's cold reset
 recovers the bench and the setup runs again before the fresh bursts. The VALIDs at the
 cluster side of the two isolation blocks are sampled on every clk_smc_i edge of the hold and
 recorded. Every graded request is checked from a passive per-port handshake sampler; the
-values the specification leaves open (SF-016, SF-017, SF-018, SF-019, SF-026) are OBS lines,
+values the specification leaves open (whether the isolation block holds READY low while
+isolated, the release timing and completion bound of a blocked request, whether scratchpad
+contents survive a software uncore reset, whether the isolation block drives VALID low while
+isolated, and whether a blocked L2-frontend request stalls CPU-control accesses) are OBS lines,
 each printed inside its ``CHK-OBS-*`` line where the contract names one and on its own
 ``EVIDENCE:`` line, never compared.
 """
@@ -824,7 +827,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             self._obs(
                 f"OBS-ISO-BLOCK-READY: port={req.port} kind={'wr' if req.write else 'rd'} "
                 f"episode={tag} {addr_chan}ready={edge_of(acc)}"
-                f"{f' wready={edge_of(w)}' if req.write else ''} sf=SF-016"
+                f"{f' wready={edge_of(w)}' if req.write else ''}"
             )
             self.counts["blocked"] += 1
         if ctrl_read:
@@ -837,7 +840,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
             self._obs(
                 f"OBS-FRONTPORT-WHILE-BLOCKED: completed={'y' if done else 'n'} edge={edge} "
-                f"issued_edge={CTRL_ISSUE_EDGE} window={CTRL_WINDOW} sf=SF-026",
+                f"issued_edge={CTRL_ISSUE_EDGE} window={CTRL_WINDOW}",
                 "CHK-OBS-FRONTPORT-WHILE-BLOCKED",
             )
         return ctrl
@@ -861,7 +864,8 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def _complete_blocked(self, reqs: list[_Req], tag: str, release_ps: int) -> None:
         """Episodes A and B: each blocked read completes with one R beat, OKAY, after the release
         B; a boot-ROM read returns the word the S1 read of the same address returned. The
-        scratchpad word W0 a blocked read returns is recorded only (SF-018)."""
+        scratchpad word W0 a blocked read returns is recorded only; whether scratchpad contents
+        survive a software uncore reset is open."""
         period_ps = self.period_ps
         for req in reqs:
             await self._wait(req, RELEASE_BOUND, "release")
@@ -884,7 +888,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                     )
             self._obs(
                 f"OBS-ISO-RECONNECT: port={req.port} latency={latency} rdata={_hx(data)} "
-                f"request={req.label} sf=SF-017,SF-018",
+                f"request={req.label}",
                 "CHK-OBS-ISO-RECONNECT",
             )
             self.counts["reconnect"] += 1
@@ -1071,7 +1075,8 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._report()
 
     async def _episode_c(self) -> None:
-        """S8: blocked writes, then the release attempt under them, observed (SF-026)."""
+        """S8: blocked writes, then the release attempt under them, observed; whether a blocked
+        L2-frontend request stalls CPU-control accesses is open."""
         assert self.sampler is not None and self.idle_ctrl is not None
         await self._hold("C")
         reqs = [
@@ -1095,7 +1100,8 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         bresp = "none" if not b_rel else _rname(b_rel[0].resp)
         if not done:
             self._classify(
-                "observation-wait-expired (SF-026 hazard, recorded, not graded)",
+                "observation-wait-expired (whether a blocked L2-frontend request stalls "
+                "CPU-control accesses is open; recorded, not graded)",
                 rel,
                 "SEP_IN",
                 OBS_RELEASE_BOUND,
@@ -1110,8 +1116,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 latency = "none" if not b else str((b[0].time_ps - release_ps) // self.period_ps)
                 self._obs(
                     f"OBS-ISO-RECONNECT: port={req.port} latency={latency} rdata=n/a "
-                    f"bresp={'none' if not b else _rname(b[0].resp)} request={req.label} "
-                    "sf=SF-017,SF-026",
+                    f"bresp={'none' if not b else _rname(b[0].resp)} request={req.label}",
                     "CHK-OBS-ISO-RECONNECT",
                 )
         written = [r for r in reqs if self.sampler.since(r.port, r.t0, "b", r.ident)]
@@ -1121,7 +1126,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._obs(
             f"OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE: release_completed={'y' if done else 'n'} "
             f"edge={edge} bresp={bresp} blocked_writes_completed={len(written)}/{len(reqs)} "
-            f"recovery={self.recovery} bound={OBS_RELEASE_BOUND} sf=SF-026"
+            f"recovery={self.recovery} bound={OBS_RELEASE_BOUND}"
         )
         if self.valids is not None:
             self.valids.armed = False
@@ -1133,7 +1138,8 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 r = self.sampler.since(port, req.t0, "r", req.ident) if ok else []
                 cocotb.log.info(
                     "INFO-C-READBACK: %s 0x%x read %s, the blocked write carried %s "
-                    "(recorded, not graded: SF-026)",
+                    "(recorded, not graded; whether a blocked L2-frontend request stalls "
+                    "CPU-control accesses is open)",
                     port,
                     addr,
                     _hx(r[0].data) if r else "none",
@@ -1148,7 +1154,8 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 continue
             cocotb.log.info(
                 "INFO-CELL-NOT-DRIVABLE: %s (episode-C completion; the uncore release did not "
-                "complete under the blocked writes, cold recovery follows; SF-026)",
+                "complete under the blocked writes, cold recovery follows; whether a blocked "
+                "L2-frontend request stalls CPU-control accesses is open)",
                 cell,
             )
         self._mark("RECOVERY", await self._cold_recovery())
@@ -1196,12 +1203,12 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         return 4
 
     async def _read_w(self, when: str) -> None:
-        """OBS-ISO-RECONNECT: W0..W3 as SEP_IN reads them now (SF-018, never compared)."""
+        """OBS-ISO-RECONNECT: W0..W3 as SEP_IN reads them now (whether scratchpad contents
+        survive a software uncore reset, never compared)."""
         words = [await self._do("SEP_IN", f"W{i}_{when}", a) for i, a in enumerate(W_ADDR)]
         self._obs(
             f"OBS-ISO-RECONNECT: port=SEP_IN latency=n/a rdata=n/a when={when} "
-            f"w0..w3={','.join(_hx(w) for w in words)} seeded={','.join(_hx(w) for w in W_REF)} "
-            "sf=SF-018",
+            f"w0..w3={','.join(_hx(w) for w in words)} seeded={','.join(_hx(w) for w in W_REF)}",
             "CHK-OBS-ISO-RECONNECT",
         )
 
@@ -1244,7 +1251,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._mark("FRESH", n)
 
     def _report_valids(self) -> None:
-        """S9: both VALID groups recorded over every sampled hold edge (SF-019, SF-003)."""
+        """S9: both VALID groups recorded over every sampled hold edge."""
         v = self.valids
         assert v is not None
         if v.edges == 0:
@@ -1257,13 +1264,13 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._obs(
             f"OBS-ISO-VALIDS-CLUSTER: edges={v.edges} holds={len(v.hold_edges)} high={high} "
             f"xz={v.cluster_xz_n}{f':{v.cluster_xz}' if v.cluster_xz else ''} "
-            f"hold_edges={v.hold_edges} sf=SF-019",
+            f"hold_edges={v.hold_edges}",
             "CHK-OBS-ISO-VALIDS-CLUSTER",
         )
         highs = {k: (f"{len(t)}@{t[0]}ps" if t else "none") for k, t in v.isolate_high.items()}
         self._obs(
             f"OBS-ISO-VALIDS-ISOLATE: edges={v.edges} holds={v.hold_edges} high_edges={highs} "
-            f"xz={v.isolate_xz} sf=SF-019",
+            f"xz={v.isolate_xz}",
             "CHK-OBS-ISO-VALIDS-ISOLATE",
         )
 
@@ -1359,8 +1366,9 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"(last AR/AW/W/R/B, rst_primary_smc_clk_no, isolate and drain probes) and fails "
             f"the leaf; {'; '.join(self.wait_log) or 'no expiry'}; observation waits "
             f"{self.obs_waits} counted apart, {self.obs_expired} expired (episode-C release "
-            f"under blocked writes, SF-026: recorded on OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE, not "
-            f"graded): {'; '.join(self.obs_wait_log) or 'none'}"
+            f"under blocked writes, whether a blocked L2-frontend request stalls CPU-control "
+            f"accesses: recorded on OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE, not graded): "
+            f"{'; '.join(self.obs_wait_log) or 'none'}"
         )
         if self.expired:
             cocotb.log.info("INFO-TIMEOUT-PATHS: %s", text)

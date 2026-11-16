@@ -156,8 +156,8 @@ class OtpIfacePlanTest(unittest.TestCase):
             self.assertIn(pl.lc_raw, (LC_TEST_DEV, LC_PROD))
             lcs.add(pl.lc_raw)
             self.assertEqual(_field_words(pl.words, "LC_STATE"), [lc_encode(pl.lc_raw)])
-            self.assertTrue(1 <= bin(pl.lock_mask_a).count("1") <= 8)
-            self.assertEqual(pl.lock_mask_a & ~F.OTP_LOCK_ALL, 0)
+            self.assertTrue(1 <= bin(pl.lock_mask_a).count("1") < F.OTP_LOCK_FIELDS)
+            self.assertEqual(pl.lock_mask_a >> F.OTP_LOCK_FIELDS, 0)
             for name in ("LOCKS", "LOCKS_SPARE", "SIP_DIS", "SYS_DIS") + F.OTP_SHADOW_WRITE_FIELDS:
                 self.assertEqual(set(_field_words(pl.words, name)), {0}, (seed, name))
         self.assertEqual(lcs, {LC_TEST_DEV, LC_PROD})

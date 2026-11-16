@@ -312,7 +312,14 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
                     await tap.stop()
                 log_axprot(self.logger, cpu_lsu, "lsu", "ar", "M")
                 log_axprot(self.logger, cpu_lsu, "lsu", "aw", "M")
-                log_axprot(self.logger, cpu_ifu, "ifu", "ar", "M")
+                log_axprot(
+                    self.logger,
+                    cpu_ifu,
+                    "ifu",
+                    "ar",
+                    "M",
+                    leaf="sep_cpu_ifu_lsu_alias_remap_matrix_test",
+                )
 
             # CHK-CPU-AXPROT: every LSU read and write carries the stated AxPROT.
             for ch in ("ar", "aw"):

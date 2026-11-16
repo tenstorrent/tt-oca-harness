@@ -22,8 +22,10 @@ read-only ``READ_DATA``, ``STATUS``, ``ERROR_FLAGS`` and ``IRQP`` answer
 low data word 0xFEEDDEAD and sets the read-error flag and ``IRQS[2]``, and an
 ``ERROR_FLAGS`` read returns and clears the flags; back-to-back and pipelined
 empty reads, and an ``ERROR_FLAGS`` read pipelined behind an empty read, close
-the sequence. Values the document does not state (SF-030, SF-032, SF-033) are
-printed without a compare.
+the sequence. Values the document does not state are printed without a compare:
+whether a read-only mailbox register write sets ``ERROR_FLAGS`` or ``IRQS``, the
+upper word of a 64-bit empty ``READ_DATA`` read, and which ``ERROR_FLAGS`` read
+event retains a same-cycle error.
 """
 
 from __future__ import annotations
@@ -502,7 +504,8 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         flags_seen = ",".join(f"0x{v:x}" for v in sorted(set(flags_after.values())))
         cocotb.log.info(
             "CHK-MBX-RO-WRITE-FLAGS: %d apertures, %d/%d BRESP=SLVERR, IRQP 0x0->0x0 x%d, "
-            "ERROR_FLAGS after=%s (measured, LINKED-ISSUE SF-030)",
+            "ERROR_FLAGS after=%s (measured, LINKED-ISSUE: whether a read-only mailbox "
+            "register write sets ERROR_FLAGS or IRQS)",
             n,
             2 * n,
             2 * n,
@@ -514,7 +517,8 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         clear = ",".join(f"0x{v:x}" for v in sorted(set(flags_clear.values())))
         cocotb.log.info(
             "CHK-MBX-RO-WRITE-EFFECT: %d apertures, ERROR_FLAGS=0x%x IRQS=0x%x (uniform), "
-            "second ERROR_FLAGS read=%s, LINKED-ISSUE SF-030",
+            "second ERROR_FLAGS read=%s, LINKED-ISSUE: whether a read-only mailbox register "
+            "write sets ERROR_FLAGS or IRQS",
             n,
             flags,
             irqs,
@@ -657,7 +661,7 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
             self.global_stamps["SAME-WINDOW"].append(self._now())
         cocotb.log.info(
             "CHK-MBX-ERRFLAGS-RETAIN: %d apertures, flag seen in %s, third read 0x0 "
-            "(LINKED-ISSUE SF-033)",
+            "(LINKED-ISSUE: which ERROR_FLAGS read event retains a same-cycle error)",
             len(_SAME_WINDOW_APERTURES),
             "; ".join(seen),
         )

@@ -65,7 +65,8 @@ Checkers:
                    with ENABLE bit 0 cleared while REPETITION_TEST_COUNT reads
                    at least 100, the count reads below 100 and below its value
                    before the write after one window (the run state is cleared).
-                   The exact cleared value is not stated: OBS-BLOCKED.
+                   The exact cleared value is not stated: OBS-HT-REPCOUNT-AFTER
+                   logs it.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
                    clears them. The write runs with every tester disabled, so no
                    window end can latch a bit between the write and the read;
@@ -79,7 +80,7 @@ Checkers:
                    esrc_compress_vld_o. Control: at least 16 input and 8 output
                    words in the span. Whether the whitener input continues after
                    the 32-bit test fails after boot is not stated: a push timeout
-                   logs OBS-BLOCKED and the check has no evidence.
+                   logs INFO-BLOCKED and the check has no evidence.
   CHK-HT-LIMIT     each limit trial (repetition L-3, Markov high W/2-3, Markov
                    low W/L+3, W = 1024) sets exactly the bit of its tester in all
                    12 generators.

@@ -91,6 +91,7 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_km_img_h import KPV_SLOTS
 from env.sep_ras_map import check_tap_width, ras_bit
 from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_shard import sep_shard
@@ -665,7 +666,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         gen = await self._cmd(pl.CMD_KEY_GENERATE, (4, pl.DEST_AES), "twin CMD_KEY_GENERATE")
         ctrl, _ = await self._vault()
         lock_write = int(
-            any((ctrl >> (_KPV_CTRL_STRIDE * s + _KPV_LOCK_WRITE_BP)) & 1 for s in range(64))
+            any((ctrl >> (_KPV_CTRL_STRIDE * s + _KPV_LOCK_WRITE_BP)) & 1 for s in range(KPV_SLOTS))
         )
         self.logger.info(
             "LOG twin cmd=0x22 code=%d arg=%s ctrl=0x%064x control=1", gen.code, _a(gen.arg), ctrl

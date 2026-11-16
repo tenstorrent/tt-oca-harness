@@ -87,6 +87,7 @@ class RasChkLines:
     ``CHK-<name> FAIL: seed=<n> <fields>`` and keeps each FAIL line in ``fails``,
     so the leaf can report every half and raise once at its end.
     ``obs(name, **fields)`` logs ``OBS-<name> seed=<n> <fields>`` and grades nothing.
+    ``info(name, **fields)`` logs ``INFO-<name> seed=<n> <fields>`` and grades nothing.
     """
 
     def __init__(self, logger: Any, seed: int) -> None:
@@ -111,3 +112,6 @@ class RasChkLines:
 
     def obs(self, name: str, **fields: Any) -> None:
         self._log.info(self._line(f"OBS-{name}", fields))
+
+    def info(self, name: str, **fields: Any) -> None:
+        self._log.info(self._line(f"INFO-{name}", fields))

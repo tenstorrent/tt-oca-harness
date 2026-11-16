@@ -48,12 +48,29 @@ CHK-RANDCFG counts those windows.
 HMAC, KMAC and OTBN contribute INTR_ENABLE only -- the generated interrupt
 shim, so those rows are block decode/storage evidence, not evidence about
 the engine.
+
+AES IV_0..3 and DATA_OUT_0..3 leave the CHK-RESET compare. The RDL declares a
+reset of 0, but aes.hjson:550,563,607,620 and programmers_guide.md:8-11 state
+that the reset also clears these registers with pseudo-random data shortly
+afterwards, so no exact reset read value is stated. Each of the eight rows is
+read and logged as ``OBS-RESET-AES-SCRUB`` with its RDL reset; only its OKAY
+response is graded (CHK-RESET).
+CHK-RANDCFG counts them as their own walk.
+
+CHK-HMAC-STATUS-POR: after ``bring_up_no_cpu()`` and before any HMAC access or
+HMAC ``SW_RESET_N`` change, HMAC STATUS reads ``hmac_idle`` = 1 and
+``fifo_empty`` = 1 (hmac.hjson:384-393; the RDL reset of those fields).
+``fifo_full``, ``fifo_depth`` and the other bits have no stated reset and are
+logged in the same line, not graded.
 """
 
 from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
+from sep_reg_meta import HMAC
+from seq_lib.sep_aes_seq import AES_DATA_OUT, AES_IV
+from seq_lib.sep_hmac_seq import HMAC_STATUS, SepHmac
 from seq_lib.sep_reg_bit_bash_seq import (
     SepRegBitBash,
     SepRegBitBashCfg,
@@ -61,10 +78,17 @@ from seq_lib.sep_reg_bit_bash_seq import (
     write_mask,
 )
 
+# AES registers whose reset is followed by a pseudo-random clear: logged, not graded.
+AES_SCRUB_ADDRS = frozenset(AES_IV + AES_DATA_OUT)
+# HMAC STATUS fields with a stated reset value.
+HMAC_POR_FIELDS = ("hmac_idle", "fifo_empty")
+
 
 @pyuvm.test()
 class sep_reg_bit_bash_rand_test(sep_base_test):
     """Reset + write-bash + masked storage touch of the SEP register export."""
+
+    required_evidence = ("CHK-HMAC-STATUS-POR",)
 
     async def run_scenario(self) -> None:
         cfg = SepRegBitBashCfg(self.random_seed())
@@ -80,13 +104,38 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             self.cfg.wdt_clk_period_ns,
         )
         await self.bring_up_no_cpu()
+        await self._chk_hmac_status_por()
         bash = SepRegBitBash(self, cfg.gen_enable)
 
         reset_fails: list[str] = []
+        n_scrub = 0
         for info in cfg.reset_regs:
+            if info.addr in AES_SCRUB_ADDRS:
+                bash._mark(info)
+                resp, got = await bash._rd(info.addr, name=f"{info.block}_{info.name}")
+                n_scrub += 1
+                self.logger.info(
+                    "OBS-RESET-AES-SCRUB %s.%s @0x%08x resp=%d read=0x%08x rdl_reset=0x%08x",
+                    info.block,
+                    info.name,
+                    info.addr,
+                    resp,
+                    got,
+                    info.reset,
+                )
+                if resp != 0:
+                    reset_fails.append(
+                        f"CHK-RESET FAIL: {info.block}.{info.name} @0x{info.addr:08x} "
+                        f"resp={resp}, expected OKAY"
+                    )
+                continue
             miss = await bash.check_reset(info)
             if miss is not None:
                 reset_fails.append(miss)
+        # Construction guard: the walk holds each AES scrub register exactly once.
+        assert n_scrub == len(AES_SCRUB_ADDRS), (
+            f"OBS-RESET-AES-SCRUB matched {n_scrub} walk rows, want {len(AES_SCRUB_ADDRS)}"
+        )
         if reset_fails:
             for line in reset_fails:
                 self.logger.error(line)
@@ -96,9 +145,11 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             )
         self.logger.info(
             "CHK-RESET PASS: %d register(s) matched the exported reset; %d of them "
-            "under a mask that drops fields with no RDL reset",
+            "under a mask that drops fields with no RDL reset; %d AES IV/DATA_OUT "
+            "row(s) logged as OBS-RESET-AES-SCRUB",
             bash.reset_ok,
             bash.reset_masked,
+            n_scrub,
         )
 
         write_fails: list[str] = []
@@ -194,7 +245,8 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
         # the walk was skipped. The walk sizes are printed with it so a shrunken
         # inventory is visible in the log rather than inferred from a PASS.
         walked = (
-            ("reset", bash.reset_ok, len(cfg.reset_regs)),
+            ("reset", bash.reset_ok, len(cfg.reset_regs) - len(AES_SCRUB_ADDRS)),
+            ("reset_obs", n_scrub, len(AES_SCRUB_ADDRS)),
             ("write", bash.write_ok, len(cfg.write_regs)),
             ("touch", bash.touch_ok, len(cfg.touch_regs)),
             (
@@ -211,14 +263,39 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             )
         self.logger.info(
             "CHK-RANDCFG PASS: export=%d inventory=%d nometa=%d "
-            "reset=%d write=%d touch=%d gen_off=%d ones_first=%d seed=%d",
+            "reset=%d reset_obs=%d write=%d touch=%d gen_off=%d ones_first=%d seed=%d",
             cfg.export,
             cfg.inventory,
             cfg.nometa,
-            len(cfg.reset_regs),
+            len(cfg.reset_regs) - len(AES_SCRUB_ADDRS),
+            n_scrub,
             len(cfg.write_regs),
             len(cfg.touch_regs),
             bash.gen_off_windows,
             int(cfg.ones_first),
             cfg.seed,
         )
+
+    async def _chk_hmac_status_por(self) -> None:
+        """HMAC STATUS power-on value on the fields with a stated reset."""
+        mask = 0
+        want = 0
+        for name in HMAC_POR_FIELDS:
+            mask |= HMAC.field_mask("STATUS", name)
+            want |= HMAC.field_reset("STATUS", name) << HMAC.field_lsb("STATUS", name)
+        # Construction guard: both graded fields reset to 1.
+        assert want == mask, f"HMAC STATUS reset 0x{want:08x} != field mask 0x{mask:08x}"
+        st = await SepHmac(self)._rd(HMAC_STATUS)
+        logged = {
+            name: (st & HMAC.field_mask("STATUS", name)) >> HMAC.field_lsb("STATUS", name)
+            for name in ("fifo_full", "fifo_depth")
+        }
+        other = st & ~HMAC.mask32("STATUS") & 0xFFFF_FFFF
+        fields = (
+            f"status=0x{st:08x} graded_mask=0x{mask:08x} want=0x{want:08x} "
+            f"fifo_full={logged['fifo_full']} fifo_depth={logged['fifo_depth']} "
+            f"other_bits=0x{other:08x} (fifo_full, fifo_depth and other bits logged, not graded)"
+        )
+        if (st & mask) != want:
+            raise AssertionError(f"CHK-HMAC-STATUS-POR FAIL: {fields}")
+        self.logger.info("CHK-HMAC-STATUS-POR PASS: %s", fields)

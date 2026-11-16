@@ -18,6 +18,11 @@ single source of truth. Stays at sep_debug=0 the whole time and proves
 the per-entry allow-by-rule vs block-by-default policy, not the global
 sep_debug skip gate (sep_lcc_uvm_inbound_filter_gating_test).
 
+CTRL-FILTER-ACTIVE (bench precondition at bring-up): the FEAT_CTRL readback
+equals ``feat_ctrl_expected`` for the PROD image, with SEC_DIS from
+``lcc_security_disable_probe_o``, and SEP_DBG reads 0, so the inbound filter
+is active. A mismatch fails the leaf before any check runs.
+
 CHK-OWNERSHIP grades the CPU-vs-external asymmetry at the CSRs that
 reposition the inbound remap or program a filter: inbound CFG, outbound
 CFG[0], alias/AP/STEE remap bases, SEP_GLOBAL_BASE_ADDR, and
@@ -967,11 +972,21 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
-        assert ctl.sep_debug == 0, (
-            f"sep_debug must be 0 (filter active) in PROD, got {ctl.sep_debug} "
-            f"(FEAT_CTRL=0x{ctl.feat_ctrl:016x})"
+        state = lc_state_name(image.lc_raw())
+        if ctl.feat_ctrl != feat or ctl.sep_debug != 0:
+            msg = (
+                f"CTRL-FILTER-ACTIVE FAIL: feat_ctrl=0x{ctl.feat_ctrl:016x} golden=0x{feat:016x} "
+                f"sep_debug={ctl.sep_debug} sec_dis={sec_dis} lc={state}"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-FILTER-ACTIVE PASS: feat_ctrl=0x%016x golden=0x%016x sep_debug=0 sec_dis=%d lc=%s",
+            ctl.feat_ctrl,
+            feat,
+            sec_dis,
+            state,
         )
-        self.logger.info("INFO-FILTER-ACTIVE %s sep_debug=0", lc_state_name(image.lc_raw()))
 
     async def run_scenario(self) -> None:
         mcfg = SepInboundFilterMatrixCfg.from_seed(self.random_seed())

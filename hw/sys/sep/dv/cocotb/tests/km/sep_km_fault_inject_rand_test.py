@@ -377,7 +377,6 @@ AES_POLL_GAP = 20
 DRBG_REQ_WORDS = 128  # CMD_KEY_GENERATE size of the DRBG stall point
 EXT_KM = 0  # external stream and EXT_TRNG_SRC_SEL bit of the KM path
 EXT_DRAIN_BOUND = 20_000  # clocks for the last offered external beat to transfer
-KPV_INDEX_MAX = pl.SLOT_WORDS * 64
 
 # Fixed witness stimulus. The second message differs from the first, so a
 # stale digest cannot match the golden of the run after the report.
@@ -605,8 +604,8 @@ class _FatalWatch:
             if depth == 0:
                 self.seen_zero = True
             elif self.seen_zero and self.first is None:
-                words_nz, words_unk = _word_counts(_bitstr(top.km_kpv_words_o), 1024, 32)
-                ctrl_nz, ctrl_unk = _word_counts(_bitstr(top.km_kpv_ctrl_o), 64, 4)
+                words_nz, words_unk = _word_counts(_bitstr(top.km_kpv_words_o), pl.KPV_WORDS, 32)
+                ctrl_nz, ctrl_unk = _word_counts(_bitstr(top.km_kpv_ctrl_o), pl.SLOTS, 4)
                 self.first = {
                     "cyc": self.cyc,
                     "keyvalid": t.rd(top.km_engine_key_valid_o, allow_unknown=True),
@@ -866,13 +865,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     def _kpv(self) -> tuple[int, int, int]:
         """KM-KPV: (non-zero words, unknown words, non-zero or unknown CTRL)."""
         top = cocotb.top
-        nz, unk = _word_counts(_bitstr(top.km_kpv_words_o), 1024, 32)
-        cnz, cunk = _word_counts(_bitstr(top.km_kpv_ctrl_o), 64, 4)
+        nz, unk = _word_counts(_bitstr(top.km_kpv_words_o), pl.KPV_WORDS, 32)
+        cnz, cunk = _word_counts(_bitstr(top.km_kpv_ctrl_o), pl.SLOTS, 4)
         return nz, unk, cnz + cunk
 
     def _ctrl_slots(self) -> list[int]:
         v = self.rd_known(cocotb.top.km_kpv_ctrl_o)
-        return [(v >> (4 * s)) & 0xF for s in range(64)]
+        return [(v >> (4 * s)) & 0xF for s in range(pl.SLOTS)]
 
     async def _graded(self, on: bool) -> None:
         # The gate is a signal write, which cocotb refuses in the ReadOnly phase.
@@ -1923,7 +1922,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         top = cocotb.top
         await RisingEdge(top.clk_i)
         if en:
-            if not 0 <= index < KPV_INDEX_MAX:
+            if not 0 <= index < pl.KPV_WORDS:
                 raise AssertionError(f"HK-KPV index {index} outside the KPV")
             top.km_kpv_flip_index_i.value = index
             top.km_kpv_flip_bit_i.value = bit
@@ -1931,7 +1930,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await ClockCycles(top.clk_i, 2)
 
     def _run_of(self, before: list[int], after: list[int], words: int, what: str) -> list[int]:
-        run = [s for s in range(64) if before[s] != after[s]]
+        run = [s for s in range(pl.SLOTS) if before[s] != after[s]]
         want = pl.slots_of(words)
         if not run or run != list(range(run[0], run[0] + want)):
             raise AssertionError(

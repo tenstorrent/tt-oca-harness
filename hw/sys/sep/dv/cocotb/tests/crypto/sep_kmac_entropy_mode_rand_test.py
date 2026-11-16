@@ -76,7 +76,7 @@ Checkers:
                            requests a seed and is reset).
   CHK-KMAC-AUTORESEED-OFF  threshold 0, M hashes -> no acknowledge, counter == M.
 
-Log-only (``OBS-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
+Log-only (``INFO-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
 absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg.
 ``kmac.hjson`` ``CFG_SHADOWED.entropy_mode`` sw_mode (:549-551) says the module
 waits for six ``ENTROPY_SEED`` writes and "Only after that, the module can

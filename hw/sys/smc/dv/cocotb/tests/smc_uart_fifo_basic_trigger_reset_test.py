@@ -7,7 +7,9 @@ from __future__ import annotations
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_uart_fifo_basic_trigger_reset_test_seq import (
+    _INTR_ID_CHAR_TIMEOUT,
     _INTR_ID_RDR,
+    TRIGGER_CELLS,
     smc_uart_fifo_basic_trigger_reset_test_seq,
 )
 from smc_base_test import smc_base_test
@@ -18,14 +20,17 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
     """UART0 loopback FIFO trigger levels + RX/TX FIFO reset."""
 
     required_evidence = (
+        "CHK-UART-FCR-UNDER-DLAB",
         "CHK-UART-FIFO-RST-RX",
         "CHK-UART-FIFO-RST-TX",
+        "CHK-UART-FIFO-TRIG-14B",
         "CHK-UART-FIFO-TRIG-1B",
         "CHK-UART-FIFO-TRIG-32B",
         "CHK-UART-FIFO-TRIG-4B",
+        "CHK-UART-FIFO-TRIG-8B",
         "CHK-UART-FIFO-TRIG-ABOVE-DEPTH",
     )
-    min_evidence = 6
+    min_evidence = 9
 
     auto_protocol_vip = False
 
@@ -34,12 +39,14 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.reset_ok, "RX/TX FIFO reset phase did not complete"
         assert seq.above_depth_ok, "above-depth RX FIFO trigger checks did not complete"
+        assert seq.fcr_under_dlab_ok, "the FCR-under-DLAB leg did not complete"
         # Gate on the MEASURED interrupt ids of each trigger cell: below the
         # programmed level the RCVR-data-available id must be absent, at the
         # level it must be present, and after popping back below it must be gone
         # again. Both cells run the same three legs against different levels, so
-        # a tied-off FCR.RCVR_TRIGGER fails one of them.
-        for label in ("1B", "4B", "32B"):
+        # a tied-off FCR.RCVR_TRIGGER fails one of them. The five cells are the
+        # five levels the FIFO can reach: 1, 4, 8, 14 and 32 characters.
+        for label, _ in TRIGGER_CELLS:
             ids = seq.trigger_ids.get(label)
             assert ids is not None, f"trigger cell {label} produced no samples"
             pre_id, trig_id, below_id = ids
@@ -52,9 +59,10 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
                 f"{label}: IIR id 0x{trig_id:x} at the programmed trigger level, "
                 f"expected RECEIVED_DATA_READY (0x{_INTR_ID_RDR:x})"
             )
-            assert below_id != _INTR_ID_RDR, (
+            assert below_id not in (_INTR_ID_RDR, _INTR_ID_CHAR_TIMEOUT), (
                 f"{label}: IIR id 0x{below_id:x} after popping back below the "
-                f"trigger level, expected RECEIVED_DATA_READY to have cleared"
+                f"trigger level, expected RECEIVED_DATA_READY to have cleared and not "
+                f"the Reception Timeout (0x{_INTR_ID_CHAR_TIMEOUT:x}) in its place"
             )
         # OBSERVED count from the scoreboard's per-bus tally, not the sequence's
         # own counter; the floor is an independent literal.
@@ -68,10 +76,12 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
             csr_accesses=measured_csr,
             proxy=False,
             details=(
-                f"FIFO trigger-level ids {seq.trigger_ids}; threshold 32 stayed "
+                f"FIFO trigger-level ids {seq.trigger_ids} (levels 1, 4, 8, 14, 32); "
+                f"threshold 32 stayed "
                 f"inactive at depth 31 and fired at 32, while thresholds 64 "
                 f"through 4096 stayed inactive on a full 32-entry FIFO that "
                 f"fired at the 32-character encoding before and after; "
-                f"RX/TX FIFO reset before/after LSR contrast"
+                f"RX/TX FIFO reset before/after LSR contrast; FCR written and IIR/LSR read "
+                f"with LCR.DLAB set"
             ),
         )

@@ -36,13 +36,13 @@ read back.
 
 Before any write, `RESET_CTRL` must read `debug_reset_n` 0, `uncore_reset_n` 1,
 every core level reset 1 and every pulse start 0, and `RESET_VECTOR[1..3]` must
-read 0xC0040000 in bits 55:0; bits 63:56 are logged (SF-011). After the core-1
+read 0xC0040000 in bits 55:0; bits 63:56 are logged. After the core-1
 legs, cores 0, 2 and 3 are each pulsed with `CORE_RESET_PULSE_COUNT` at its
 reset (pre 0x8, post 0x10) and `RESET_TIMEOUT` in force mode with value 0x40:
 the core's `core_resets_done` bit must fall and return while the others read 1,
 and its bit of `tb_cpu_core_resets_n` must read low for one run of 17 cycles
 while the other cores stay out of reset. The delay from the write response to
-the first low sample is logged (SF-012). Cores 2 and 3 are then held in level
+the first low sample is logged. Cores 2 and 3 are then held in level
 reset and released, with the core's cluster reset following each write and
 `reset_applied` reading 0 throughout. `debug_reset_n` is released and
 re-asserted with readback, and bit 17 of each of `RESET_VECTOR[1..3]` is set
@@ -518,7 +518,7 @@ class smc_cpu_reset_pulse_test_seq(SmcCsrSeq):
         self._stamp("RESET-VALUES", 1 + len(vectors))
         cocotb.log.info(
             "CHK-CPU-RST-VECTOR-RESET: vec1/2/3[55:0] = 0x%x/0x%x/0x%x (reset 0x%x); "
-            "bits 63:56 measured (SF-011) = 0x%x/0x%x/0x%x",
+            "bits 63:56 measured = 0x%x/0x%x/0x%x",
             *(w & VECTOR_FIELD for w in vectors),
             VECTOR_RESET,
             *(w >> 56 for w in vectors),
@@ -541,7 +541,7 @@ class smc_cpu_reset_pulse_test_seq(SmcCsrSeq):
             "CHK-CPU-RST-PULSE-CORES: core0/2/3 each done 1->0->1 with the other done bits 1 on "
             "every poll; cluster reset low runs %s (post_reset_count 0x%x -> %d cycles), other "
             "cores held out of reset; pre-reset delay from write response to first low sample "
-            "measured (SF-012) = %s clk_smc_i cycles",
+            "measured = %s clk_smc_i cycles",
             {c: r for c, (r, _d) in self.pulse_cores.items()},
             PULSE_POST_RESET,
             PULSE_POST_RESET + 1,

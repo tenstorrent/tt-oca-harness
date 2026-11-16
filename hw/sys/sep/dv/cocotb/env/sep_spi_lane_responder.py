@@ -61,9 +61,46 @@ of a frame is the DUT side (``SepSpiScoreboard.expect_frame``).
 
 ``run_lane_frame`` issues one raw frame through ``SepSpiHostOps``. Each TX
 segment gets its own TXDATA words and each RX segment starts word-aligned in
-RXDATA (OpenTitan "Command Length and Alignment in DATA"); the byte order is
-``ByteOrder = 1`` (first byte on the wire is TXDATA[7:0], first byte received
-lands in RXDATA[7:0]).
+RXDATA (OpenTitan "Command Length and Alignment in DATA"). The TXDATA words
+are ``pack_tx_words`` (``ByteOrder = 1`` packing). Without ``order`` the RX
+bytes are ``unpack_rx_words`` (``ByteOrder = 1``: the first byte received is
+RXDATA[7:0]); with ``order`` they come from ``order.bytes_of``.
+
+In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering" and
+"Command Length and Alignment in DATA"): ``lsb_first`` is ``ByteOrder = 1``
+(first wire byte in bits 7:0), ``msb_first`` is ``ByteOrder = 0`` (first wire
+byte in bits 31:24). ``word_image(words, order)`` is the wire-order bytes of
+whole words. In both orders the data of a partial last RX word comes first in
+its image and the zero pad last, so one ``[:n]`` cut serves both. A TX image
+is built from ``pack_tx_words``, so the ``msb_first`` image of a 1- or 2-byte
+last TX word holds only zero pad.
+
+``SepSpiByteOrder`` holds one order for every data word of a leaf. Build one
+per leaf and pass it to every compare, to ``run_lane_frame`` and to each
+``SepSpiScoreboard``. Each word is graded on its own:
+
+* a word that only one order matches fixes the order when none is fixed,
+  and counts as decisive when it matches the fixed order;
+* a word that both orders match (a byte palindrome, e.g. all zero) passes on
+  its bytes and fixes nothing;
+* a TX word whose image in the only order it matches is only zero pad fixes
+  nothing: it passes, as ambiguous, only when that order is already fixed,
+  and fails otherwise;
+* a word that matches neither order, or only the order not fixed, fails.
+
+``bytes_of(words, n, expect=..., where=...)`` (RX, and any word image a
+leaf reads from memory) and ``tx_bytes(data, wire, where=...)`` (TX, used by
+the scoreboard) return a value that equals the caller's own golden (``expect``
+or the wire) exactly when every word passes, so the caller's check keeps its
+name and fails on its own compare. The golden is always the expected byte
+stream (flash-model, queued or seeded bytes), never DUT data. A leaf whose
+words are all byte palindromes ends ``undecided``. ``log_obs`` prints the one
+``OBS-SPI-BYTEORDER`` line of the leaf::
+
+    OBS-SPI-BYTEORDER seed=<n> order=<lsb_first|msb_first|undecided>
+        fixed_at=<where|-> decisive_words=<d> ambiguous_words=<a>
+        other_order_words=<o> unmatched_words=<u> compares=<c>
+        status_byteorder=<0|1|->
 
 ``spi_lane_fcov`` writes one graded record into the ``spi_ln_*`` variables of
 the FCOV sampler (``cov/sv/sep_fcov.sv``, docs/SEP_FCOV.adoc). Call it only
@@ -84,12 +121,15 @@ from seq_lib.sep_spi_host_ops import DIR_BIDIR, DIR_DUMMY, DIR_RX, DIR_TX, comma
 from env.sep_fcov_gate import fcov_present, owner_code
 
 __all__ = [
+    "SPI_WORD_ORDERS",
+    "SepSpiByteOrder",
     "SepSpiLaneResponder",
     "late_sample_edge_bytes",
     "pack_tx_words",
     "run_lane_frame",
     "spi_lane_fcov",
     "unpack_rx_words",
+    "word_image",
 ]
 
 SPEED = {1: 0, 2: 1, 4: 2}
@@ -340,7 +380,138 @@ def late_sample_edge_bytes(data: bytes, lanes: int) -> bytes:
 
 def unpack_rx_words(words: Sequence[int], n: int) -> bytes:
     """The ``n`` bytes of one RX segment from its RXDATA words (ByteOrder 1)."""
-    return b"".join((int(w) & 0xFFFF_FFFF).to_bytes(4, "little") for w in words)[:n]
+    return word_image(words, "lsb_first")[:n]
+
+
+SPI_WORD_ORDERS = ("lsb_first", "msb_first")
+_ENDIAN = {"lsb_first": "little", "msb_first": "big"}
+
+
+def word_image(words: Sequence[int], order: str) -> bytes:
+    """Wire-order bytes of whole TXDATA/RXDATA words, each word read in ``order``."""
+    if order not in _ENDIAN:
+        raise ValueError(f"order={order!r}: one of {SPI_WORD_ORDERS}")
+    return b"".join((int(w) & 0xFFFF_FFFF).to_bytes(4, _ENDIAN[order]) for w in words)
+
+
+class SepSpiByteOrder:
+    """One in-word byte order for every SPI data word of a leaf (see the module text)."""
+
+    def __init__(self) -> None:
+        self.order: str | None = None
+        self.fixed_at = "-"
+        self.compares = 0
+        self.decisive = 0
+        self.ambiguous = 0
+        self.other_order = 0
+        self.unmatched = 0
+        self._logged = False
+
+    def _grade(
+        self,
+        images: dict[str, bytes],
+        target: bytes,
+        where: str,
+        pad_only: dict[str, int] | None = None,
+    ) -> str:
+        """Grade ``target`` word by word against the image of each order; return the leaf order.
+
+        ``pad_only`` maps an order to the position of the one word whose image
+        in that order is only zero pad. The returned order is the fixed one, or
+        ``lsb_first`` while none is fixed.
+        """
+        self.compares += 1
+        pad_only = pad_only or {}
+        size = max(len(target), *(len(img) for img in images.values()))
+        for pos in range(0, size, 4):
+            want = target[pos : pos + 4]
+            hits = [o for o in SPI_WORD_ORDERS if images[o][pos : pos + 4] == want]
+            if len(hits) == 1 and pad_only.get(hits[0]) == pos:
+                if hits[0] == self.order:
+                    self.ambiguous += 1
+                    continue
+                hits = []
+            if len(hits) == 2:
+                self.ambiguous += 1
+            elif not hits:
+                self.unmatched += 1
+            elif self.order is None:
+                self.order, self.fixed_at = hits[0], where
+                self.decisive += 1
+            elif hits[0] == self.order:
+                self.decisive += 1
+            else:
+                self.other_order += 1
+        return self.order or SPI_WORD_ORDERS[0]
+
+    def bytes_of(
+        self, words: Sequence[int], n: int, *, expect: bytes, where: str, pad: bool = False
+    ) -> bytes:
+        """The ``n`` bytes that ``words`` carry, read in the leaf order.
+
+        ``expect`` is the ``n``-byte golden. The result equals ``expect``
+        exactly when every word carries it in the leaf order. With ``pad`` the
+        bytes after ``n`` in the last word must be 0 too; when they are not,
+        the result is the whole-word image, so it differs from ``expect``.
+        """
+        expect = bytes(expect)
+        if len(expect) != n:
+            raise ValueError(f"{where}: expect has {len(expect)} bytes, n={n}")
+        images = {o: word_image(words, o) for o in SPI_WORD_ORDERS}
+        if pad:
+            target = expect + b"\0" * max(0, 4 * len(words) - n)
+        else:
+            images = {o: img[:n] for o, img in images.items()}
+            target = expect
+        image = images[self._grade(images, target, where)]
+        return image[:n] if image == target else image
+
+    def tx_bytes(self, data: bytes, wire: bytes, *, where: str) -> bytes:
+        """Expected wire bytes of a TX segment whose TXDATA words were ``pack_tx_words(data)``.
+
+        ``wire`` (the monitor decode) chooses the order only; the result is
+        built from ``data`` and equals ``wire`` exactly when every word was
+        sent in the leaf order.
+        """
+        data = bytes(data)
+        words = pack_tx_words(data)
+        images = {o: word_image(words, o)[: len(data)] for o in SPI_WORD_ORDERS}
+        tail = len(data) % 4
+        pad_only = {"msb_first": len(data) - tail} if tail in (1, 2) else None
+        return images[self._grade(images, bytes(wire), where, pad_only)]
+
+    def adopt(self, order: str, *, where: str) -> bool:
+        """Take an order that another grader fixed (e.g. a firmware console line).
+
+        Returns False when it differs from the order already fixed; the caller
+        fails its check then.
+        """
+        if order not in SPI_WORD_ORDERS:
+            raise ValueError(f"order={order!r}: one of {SPI_WORD_ORDERS}")
+        self.compares += 1
+        if self.order is None:
+            self.order, self.fixed_at = order, where
+        return order == self.order
+
+    def fields(self) -> dict[str, object]:
+        return {
+            "order": self.order or "undecided",
+            "fixed_at": self.fixed_at,
+            "decisive_words": self.decisive,
+            "ambiguous_words": self.ambiguous,
+            "other_order_words": self.other_order,
+            "unmatched_words": self.unmatched,
+            "compares": self.compares,
+        }
+
+    def log_obs(self, logger: Any, seed: int, *, status_byteorder: int | None = None) -> None:
+        """Print the leaf's one ``OBS-SPI-BYTEORDER`` line, after its last compare."""
+        if self._logged:
+            raise RuntimeError("OBS-SPI-BYTEORDER is logged once per leaf")
+        self._logged = True
+        text = " ".join(f"{k}={v}" for k, v in self.fields().items())
+        sbo = "-" if status_byteorder is None else str(status_byteorder & 1)
+        logger.info("OBS-SPI-BYTEORDER seed=%d %s status_byteorder=%s", seed, text, sbo)
 
 
 async def run_lane_frame(
@@ -349,6 +520,7 @@ async def run_lane_frame(
     *,
     responder: SepSpiLaneResponder | None = None,
     bound: int = 20_000,
+    order: SepSpiByteOrder | None = None,
 ) -> bytes:
     """Issue one raw frame and return the RX bytes the DUT delivered.
 
@@ -358,12 +530,14 @@ async def run_lane_frame(
     before the call and grades the frame with ``expect_frame`` after it.
     The RX bytes of the segments before the last must fit the RX FIFO.
     The return value is the RX bytes of every RX segment in order, each
-    segment cut from its own word-aligned RXDATA words. A frame that leaves
-    an RXDATA word after the last expected one raises ``AssertionError``.
+    segment cut from its own word-aligned RXDATA words. With ``order`` each
+    RX segment is ``order.bytes_of`` of its words against the segment's bytes
+    in ``segments``. A frame that leaves an RXDATA word after the last
+    expected one raises ``AssertionError``.
     """
     if responder is not None:
         responder.load(segments)
-    rx_lens: list[int] = []
+    rx_segs: list[tuple[int, bytes]] = []
     for i, (lanes, kind, value) in enumerate(segments):
         n = _seg_len(kind, value)
         if n < 1:
@@ -376,7 +550,8 @@ async def run_lane_frame(
             for word in pack_tx_words(value):
                 await ops.push_tx(word)
         if kind == "rx":
-            rx_lens.append(n)
+            rx_segs.append((i, bytes(value)))
+    rx_lens = [len(value) for _, value in rx_segs]
     need = sum((n + 3) // 4 for n in rx_lens)
     words: list[int] = []
     for _ in range(bound):
@@ -397,9 +572,14 @@ async def run_lane_frame(
         )
     delivered = bytearray()
     pos = 0
-    for n in rx_lens:
+    for i, value in rx_segs:
+        n = len(value)
         count = (n + 3) // 4
-        delivered += unpack_rx_words(words[pos : pos + count], n)
+        seg = words[pos : pos + count]
+        if order is None:
+            delivered += unpack_rx_words(seg, n)
+        else:
+            delivered += order.bytes_of(seg, n, expect=value, where=f"lane-frame seg{i}")
         pos += count
     return bytes(delivered)
 

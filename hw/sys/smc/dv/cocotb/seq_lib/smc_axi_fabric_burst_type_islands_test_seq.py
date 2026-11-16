@@ -15,7 +15,8 @@ handshakes, because the bench item carries one merged response code. Registers o
 burst footprint (IHI 0022: FIXED AxADDR only, WRAP the aligned window, INCR the incrementing
 range) are compared with reference values the leaf wrote or read before the burst. An INCR
 write that answers OKAY must land each beat on the registers of its footprint. Response
-codes and in-footprint landings the pinned sources leave open are OBS lines naming their SF or issue.
+codes and in-footprint landings the pinned sources leave open are OBS lines, never compared,
+naming an issue where one applies.
 """
 
 from __future__ import annotations
@@ -280,7 +281,6 @@ class Fam:
     key: str
     chk: str
     obs: str
-    sfs: str
     planned: tuple[tuple[str, str], ...]
     cells: dict[tuple[str, str], int] = field(default_factory=dict)
     findings: list[str] = field(default_factory=list)
@@ -798,28 +798,26 @@ def _fams() -> dict[str, Fam]:
             ("S5", f"{port}/misc-cold_warm"),
         ]
     fams = (
-        Fam("ISLAND64", "CHK-BT-ISLAND64", "OBS-BT-ISLAND64", "SF-007", tuple(island_cells(i64))),
+        Fam("ISLAND64", "CHK-BT-ISLAND64", "OBS-BT-ISLAND64", tuple(island_cells(i64))),
         Fam(
             "ISLAND32",
             "CHK-BT-ISLAND32",
             "OBS-BT-ISLAND32",
-            "SF-007,SF-010",
             tuple(island_cells(i32)),
         ),
-        Fam("STRB", "CHK-BT-STRB-UPPER", "OBS-BT-STRB-UPPER", "SF-010,SF-011", tuple(strb)),
-        Fam("GPIO", "CHK-BT-GPIO", "OBS-BT-GPIO", "SF-007,SF-024", tuple(gpio)),
-        Fam("SPM", "CHK-BT-SPM", "OBS-BT-SPM", "SF-022", tuple(spm)),
-        Fam("SLOTEDGE", "CHK-BT-SLOTEDGE", "OBS-BT-SLOTEDGE", "SF-007,SF-008", tuple(slot)),
-        Fam("EXTENTEDGE", "CHK-BT-EXTENTEDGE", "OBS-BT-EXTENTEDGE", "SF-005,SF-008", tuple(ext)),
-        Fam("RULEEDGE", "CHK-BT-RULEEDGE", "OBS-BT-RULEEDGE", "SF-005", tuple(rule)),
+        Fam("STRB", "CHK-BT-STRB-UPPER", "OBS-BT-STRB-UPPER", tuple(strb)),
+        Fam("GPIO", "CHK-BT-GPIO", "OBS-BT-GPIO", tuple(gpio)),
+        Fam("SPM", "CHK-BT-SPM", "OBS-BT-SPM", tuple(spm)),
+        Fam("SLOTEDGE", "CHK-BT-SLOTEDGE", "OBS-BT-SLOTEDGE", tuple(slot)),
+        Fam("EXTENTEDGE", "CHK-BT-EXTENTEDGE", "OBS-BT-EXTENTEDGE", tuple(ext)),
+        Fam("RULEEDGE", "CHK-BT-RULEEDGE", "OBS-BT-RULEEDGE", tuple(rule)),
         Fam(
             "REGIONEDGE",
             "CHK-BT-REGIONEDGE",
             "OBS-BT-REGIONEDGE",
-            "SF-005,SF-008,SF-025",
             tuple(region),
         ),
-        Fam("SETUP", "", "", "", ()),
+        Fam("SETUP", "", "", ()),
     )
     return {f.key: f for f in fams}
 
@@ -1113,9 +1111,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         return {"stated_bresp": _rname(stated)}
 
     def _obs(self, fam: Fam, **kv: str) -> None:
-        cocotb.log.info(
-            "%s: %s sf=%s", fam.obs, " ".join(f"{k}={v}" for k, v in kv.items()), fam.sfs
-        )
+        cocotb.log.info("%s: %s", fam.obs, " ".join(f"{k}={v}" for k, v in kv.items()))
 
     @staticmethod
     def _codes(r: list[_Hs]) -> str:
@@ -1239,8 +1235,9 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         the response of those writes, and a write to a register answers OKAY. Whether a
         multi-beat FIXED or WRAP burst reaches that split behind the 64-to-32-bit downsizer is
         not stated (issue #3598), so such a burst into a 32-bit island gets ``None``. A beat that
-        touches a byte no named register holds has a code SF-007 and SF-010 leave open, so that
-        burst gets ``None`` too.
+        touches a byte no named register holds has a code left open by how the AXI-Lite conversion
+        treats FIXED, WRAP and INCR bursts and by the answer of a 64-bit access through the 32-bit
+        converter, so that burst gets ``None`` too.
         """
         if isl.downsized and burst != INCR and beats > 1:
             return None
@@ -1349,14 +1346,13 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     )
                     cocotb.log.info(
                         "OBS-BT-WRAP-LANDING: port=%s island=%s start=0x%x beat_addrs=%s "
-                        "landing=%s all_at_start=%s sf=%s issue=#3598",
+                        "landing=%s all_at_start=%s issue=#3598",
                         port,
                         isl.key,
                         start,
                         ",".join(hex(w) for w in order),
                         ";".join(f"{reg.name}:{lab}" for reg, lab in landing),
                         "y" if at_start else "n",
-                        fam.sfs,
                     )
             else:
                 item, hs = await self._issue(
@@ -2334,7 +2330,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     f"{tag} inbound entry 0 {name} reads {_hx(got)}, want 0x{value:x}"
                 )
         item, hs = await self._issue("SYS_IN", f"{tag}_ADMIT", LOCAL_BASE_REG, write=False)
-        admit = Fam("ADMIT", "", "", "", ())
+        admit = Fam("ADMIT", "", "", ())
         r = self._check_read(admit, f"CTRL-M4-ADMIT {tag}", "SYS_IN", item, hs, OKAY)
         assert not admit.findings and r and r[0].data == LOCAL_BASE_RESET, (
             f"SYS_IN read of LOCAL_BASE through inbound entry 0 answered "

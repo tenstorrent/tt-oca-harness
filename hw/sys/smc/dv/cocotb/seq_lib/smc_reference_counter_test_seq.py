@@ -25,9 +25,11 @@ is a full-strobe 64-bit write and every poll a 64-bit read answering OKAY. A pol
 has converged when the readback has crossed the load: at or above the written value
 for a load above the previous readback, below the previous readback for a load
 under it, so a readback that only kept counting from the old value never converges.
-The convergence bound is a TB poll count; no spec bound exists (SF-019), so the
-poll count and time are logged, and so is the post-load excess (SF-020). A lower
-value loads rather than being ignored (SF-022, waived by proxy on that reading).
+The convergence bound is a TB poll count; no spec bound exists, so the poll count
+and time are logged, and so is the post-load excess (open: the largest permitted
+excess of the converged readback). A lower value loads rather than being ignored
+(open: whether a lower reference counter value always loads; waived by proxy on that
+reading).
 V7 and V8 have the Gray images all ones and all zeros, so every bit of the
 Gray-coded count crossing sees both edges; that is a stimulus purpose, not an
 expected value.
@@ -245,7 +247,8 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
         total += 1 + n1
         assert r1 >= V1, f"V1 converged readback 0x{r1:016x} is below V1=0x{V1:016x}"
         cocotb.log.info(
-            "CHK-REFCNT-LOAD: V1=0x%016x R=0x%016x polls=%d t=%dns, all OKAY, LINKED-ISSUE SF-019",
+            "CHK-REFCNT-LOAD: V1=0x%016x R=0x%016x polls=%d t=%dns, all OKAY, LINKED-ISSUE: "
+            "the bound from a reference counter write to convergence",
             V1,
             r1,
             n1,
@@ -263,7 +266,7 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
         excess = [r - V1 for r in post]
         cocotb.log.info(
             "CHK-REFCNT-MONOTONIC: %d reads non-decreasing, min excess=%d max excess=%d, "
-            "LINKED-ISSUE SF-020 (reads: %s)",
+            "LINKED-ISSUE: the largest permitted excess of the converged readback (reads: %s)",
             POST_LOAD_READS,
             min(excess),
             max(excess),
@@ -308,7 +311,8 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
         self._term("LOAD-V8", 1)
 
         cocotb.log.info(
-            "upper-half converged readbacks (LINKED-ISSUE SF-019): %s",
+            "upper-half converged readbacks (LINKED-ISSUE: the bound from a reference counter "
+            "write to convergence): %s",
             ", ".join(f"{lbl} R=0x{r:016x} polls={n} t={t}ns" for lbl, _, r, n, t in upper),
         )
         cocotb.log.info(
@@ -319,7 +323,8 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
             t7,
         )
         cocotb.log.info(
-            "reload previous readbacks (LINKED-ISSUE SF-019): V5 prev=0x%016x, V8 prev R7=0x%016x",
+            "reload previous readbacks (LINKED-ISSUE: the bound from a reference counter write "
+            "to convergence): V5 prev=0x%016x, V8 prev R7=0x%016x",
             prev,
             r7,
         )

@@ -12,6 +12,15 @@ tags = ["ci", "fabric", "i3c"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Each I3C instance's forced PIO interrupt on its own peripheral-interrupt bit, 12 to 17.
+name = "smc_i3c_irq_route_test"
+module = "smc_i3c_irq_route_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "i3c"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_i3c_to_fabric_test"
 module = "smc_i3c_to_fabric_test"
 seed = 1

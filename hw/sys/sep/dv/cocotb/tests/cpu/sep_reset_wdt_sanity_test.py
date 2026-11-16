@@ -69,13 +69,13 @@ below logs its own PASS or FAIL line, and the leaf fails once at its end if any 
   CHK-RAS-WDT_BITE-IDLE   0 on every clock from the CPU release to the clock
                           ``wdt_timer_rst_req_o`` reads 1, after ``CHK-WDT-REBARK PASS``.
   CHK-RAS-WDT_BITE-RISE   high within ``_BITE_POLL_CYCLES`` of ``wdt_timer_rst_req_o``
-                          reading 1.
+                          reading 1; no rise, or a first rise later than that, fails.
   CHK-RAS-WDT_BITE-SHAPE  no fall for ``_RAS_BITE_HOLD`` clocks after the rise.
 Log only: ``OBS-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write to each
 rise), ``OBS-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the fall),
 ``OBS-RAS-WDT_BARK-BARK2`` (the field after the second bark, whose clear the leaf does not
 grade: the watchdog stays enabled toward the bite), ``OBS-RAS-WDT_BITE-DELAY`` (clocks from
-``wdt_timer_rst_req_o`` to the rise) and ``OBS-RAS-WDT_BITE-CLEAR`` (the leaf drives no
+``wdt_timer_rst_req_o`` to the rise) and ``INFO-RAS-WDT_BITE-CLEAR`` (the leaf drives no
 ``wdt_rst_ni``, so the field is held to the end of the window). The leaf opens its FCOV
 graded window from the CPU release to the end of the bite hold.
 
@@ -543,7 +543,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         self._ras(
             fld,
             "RISE",
-            bool(rises),
+            bool(rises) and rises[0] - req.clk <= _BITE_POLL_CYCLES,
             rise_clk=rises[0] if rises else "none",
             wdt_timer_rst_req_o_clk=req.clk,
             bound=_BITE_POLL_CYCLES,
@@ -569,11 +569,12 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             falls=falls[:4] or "none",
             exp_hold=_RAS_BITE_HOLD,
         )
-        self.ras_chk.obs(
+        self.ras_chk.info(
             "RAS-WDT_BITE-CLEAR",
             wdt_rst_ni="not_driven",
             level=self.ras.level(fld),
             clk=self.ras.clk,
+            chk="CHK-RAS-WDT_BITE-SHAPE",
         )
 
     @staticmethod

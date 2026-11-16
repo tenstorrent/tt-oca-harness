@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The I2C bus monitor's idle-with-SCL-high state, on every instance."""
+"""The I2C bus monitor's idle-with-SCL-high state and its initial Bus Busy state, on every instance."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ class smc_i2c_bus_monitor_idle_test(smc_base_test):
     """Drive the bus monitor into and out of its idling state on every instance."""
 
     required_evidence = (
+        "CHK-I2C-BUSMON-INIT-BUSY",
         "CHK-I2C0-BUSMON-IDLE-TIMEOUT",
         "CHK-I2C0-BUSMON-MULTI-ENABLE",
         "CHK-I2C0-BUSMON-RESUME",
@@ -25,7 +26,7 @@ class smc_i2c_bus_monitor_idle_test(smc_base_test):
         "CHK-I2C2-BUSMON-MULTI-ENABLE",
         "CHK-I2C2-BUSMON-RESUME",
     )
-    min_evidence = 9
+    min_evidence = 10
 
     auto_protocol_vip = False
 

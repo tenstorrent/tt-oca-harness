@@ -1496,7 +1496,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the stub store and load "
             "to ext_out each complete a fresh write and read: one response with the issued ID "
             "within the bound, OKAY, and the read returns what was written; the JTAG2AXI read "
-            "after the hold is observed only (SF-003)",
+            "after the hold is observed only",
         ),
         (
             "CHK-G2B-SEP2SMC",
@@ -2859,8 +2859,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMC-SW-UNCORE",
             "idle over ext_in reset_applied 1 then 0; in the held mode-0 trial over ext_in the "
             "smc_in port reports undrained=1 at the uncore request with no unresolved R level "
-            "(held value unobservable, SF-009); after RREADY is released the answered train reads "
-            "are OBS only (SF-009) and RESET_TIMEOUT shows reset_applied 1 within the poll bound; after the release write RESET_CTRL "
+            "(held value unobservable); after RREADY is released the answered train reads "
+            "are OBS only and RESET_TIMEOUT shows reset_applied 1 within the poll bound; after the release write RESET_CTRL "
             "reads back as written and reset_applied 0; CORE0 CTRL 0x0, CMP 0x1000, COUNT 0x0 "
             "after the idle uncore reset",
         ),
@@ -5215,7 +5215,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-RDATA-SINGLE-OBS",
             "CHK-RDATA-SINGLE-OBS",
             "the RDATA of the A55 DECERR beat was captured and logged as OBS-DECERR-RDATA-SINGLE "
-            "without a verdict (SF-003)",
+            "without a verdict",
         ),
         (
             "CHK-RD-BURST",
@@ -5234,7 +5234,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-RDATA-BURST-OBS",
             "CHK-RDATA-BURST-OBS",
             "one RDATA capture and one OBS-DECERR-RDATA-BURST line per counted DECERR beat of S3 "
-            "and S4 (SF-003)",
+            "and S4",
         ),
         (
             "CHK-WR-W-FIRST",
@@ -5267,7 +5267,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "32 reads at M under ARIDs 0x00..0x1F with RREADY low on every cycle of a hold of at "
             "least 2000 cycles and RVALID high from its first assertion to the release all "
             "complete within 4000 cycles of the release, each one DECERR beat with RLAST and "
-            "every RID once; the accepted count is OBS only (SF-011)",
+            "every RID once; the accepted count is OBS only",
         ),
         (
             "CHK-NONVAC",
@@ -5295,19 +5295,19 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-NOALIGN",
             "SEP_REGION_SIZE and sep_xbar_region_size_o read 0x1000_0840, the edges route as "
             "[B, B+size), and the word written at base+0x1000_0000 is at SEP-local SRAM "
-            "0x1000_0000; OBS-SEP-NOALIGN-LEGAL logged (SF-029)",
+            "0x1000_0000; OBS-SEP-NOALIGN-LEGAL logged",
         ),
         (
             "CHK-SEP-PAST-END",
             "CHK-SEP-PAST-END",
             "INCR read and write of 8 beats from E-16: one AR / AW at sep_in, 8 beats with RLAST "
-            "last, 8 W and one B, IDs echoed, no other counter; OBS-PAST-END-SEP-RESP (SF-005)",
+            "last, 8 W and one B, IDs echoed, no other counter; OBS-PAST-END-SEP-RESP",
         ),
         (
             "CHK-WRAP-FIXED",
             "CHK-WRAP-FIXED",
             "WRAP ARLEN 15 and FIXED ARLEN/AWLEN 3 at the SEP end: one AR / AW at sep_in, ARLEN+1 "
-            "beats with RLAST last, one B; OBS-WRAP-FIXED-RESP (SF-005)",
+            "beats with RLAST last, one B; OBS-WRAP-FIXED-RESP",
         ),
         (
             "CHK-CARRY-BURST",
@@ -5319,7 +5319,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-WIDE-SEP",
             "CHK-WIDE-SEP",
             "a SEP aperture of 0x8000_0000 routes B+0x4000_0008 and B+0x4000_0000 to sep_in and "
-            "the SEP answers DECERR with the ID echoed; OBS-WIDE-SEP-RDATA (SF-007, SF-008)",
+            "the SEP answers DECERR with the ID echoed; OBS-WIDE-SEP-RDATA",
         ),
         (
             "CHK-ADJACENT-SINGLES",
@@ -5338,8 +5338,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMC-PAST-END",
             "CHK-SMC-PAST-END",
             "INCR read and write of 8 beats from 0x4000_07F0 past the SMC end: one AR / AW at "
-            "smc_in, 8 beats with RLAST last, 8 W and one B, IDs echoed; OBS-PAST-END-SMC-RESP "
-            "(SF-005, SF-006)",
+            "smc_in, 8 beats with RLAST last, 8 W and one B, IDs echoed; OBS-PAST-END-SMC-RESP",
         ),
         (
             "CHK-NONVAC",
@@ -5370,14 +5369,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-ORPHAN-OBS",
             "hold A: the sep_in AR tap and sep_xbar_in_aw_count_o each moved by 1 and exactly 4 "
             "R and 4 W beats were handshaken before sep_reset_n fell; the orphan's fate is OBS "
-            "only (SF-013)",
+            "only",
         ),
         (
             "CHK-SAMEID-NO-OVERTAKE",
             "CHK-SAMEID-NO-OVERTAKE",
             "hold B: the S10 ARID 0x11 AR is handshaken on ext_in while the orphan has no RLAST, "
             "and the later ARID 0x11 VERSION_LO beat is never handshaken before the orphaned "
-            "read's RLAST (IHI0022 A5.3); OBS-SAMEID-HELD logged (SF-012)",
+            "read's RLAST (IHI0022 A5.3); OBS-SAMEID-HELD logged",
         ),
         (
             "CHK-DIFFID-LIVE",
@@ -5390,32 +5389,32 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-FRESH-OBS",
             "CHK-FRESH-OBS",
             "hold A: OBS-FRESH-DURING and OBS-FRESH-AFTER logged with sep_reset_n 0 for the "
-            "during-access and 1 for the after-access (SF-013)",
+            "during-access and 1 for the after-access",
         ),
         (
             "CHK-ACCEPT-PER-ID-OBS",
             "CHK-ACCEPT-PER-ID-OBS",
             "hold C: OBS-ACCEPT-SAME-ID, the ARID 0x41 AR handshakes accepted before ARREADY "
-            "stayed low for 4096 cycles, issued during the hold with nothing queued ahead (SF-011)",
+            "stayed low for 4096 cycles, issued during the hold with nothing queued ahead",
         ),
         (
             "CHK-ACCEPT-SEP-OBS",
             "CHK-ACCEPT-SEP-OBS",
             "hold D: OBS-ACCEPT-SEP-SUB, the distinct-ID AR handshakes toward sep_in accepted "
-            "before ARREADY stayed low for 4096 cycles, nothing queued ahead (SF-011)",
+            "before ARREADY stayed low for 4096 cycles, nothing queued ahead",
         ),
         (
             "CHK-IDW-SEP-LIMIT-OBS",
             "CHK-IDW-SEP-LIMIT-OBS",
             "OBS-IDW-SEP-PER-ID (hold C) and OBS-IDW-SEP-UNIQUE (hold D): the sep_in AR tap "
-            "counts beside the ext_in counts (SF-023)",
+            "counts beside the ext_in counts",
         ),
         (
             "CHK-OTHER-INIT-OBS",
             "CHK-OTHER-INIT-OBS",
             "hold B: OBS-OTHER-INITIATOR, the JTAG2AXI smc_out read issued while the S10 same-ID "
             "read is held (its R not yet returned), its status, the smu_axi_out_read_count_o "
-            "delta and the ext_in ARVALID / ARREADY levels at issue (SF-011)",
+            "delta and the ext_in ARVALID / ARREADY levels at issue",
         ),
         (
             "CHK-CLEAR",

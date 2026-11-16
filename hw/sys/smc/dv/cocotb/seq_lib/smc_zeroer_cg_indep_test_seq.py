@@ -267,7 +267,8 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
                     return
 
         mon = cocotb.start_soon(_mon())
-        # SF-004: any AXI4-Lite access to Zeroer register block.
+        # Assumed answer to how register activity is defined for the zeroer clock gates: any
+        # AXI4-Lite access to Zeroer register block.
         _ = await self.csr_read("ZEROER_DEST_ADDR_ACT", ZEROER_CTRL_DEST_ADDR, length=8)
         for _ in range(BUSY_TIMEOUT_SMC * 8):
             if state["done"]:

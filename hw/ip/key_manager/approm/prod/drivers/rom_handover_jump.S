@@ -31,11 +31,14 @@
  *      - Hardware silently drops writes to write-locked regions (firmware image
  *        and rom_persist), so only unlocked data (ROM stack, .data, .bss,
  *        message buffers, etc.) is actually overwritten.
- *      - The write-lock for SRAM_WRITE_LOCK_ERR is disabled by the C caller,
- *        preventing spurious unrecoverable faults from the locked-region writes.
+ *      - The dropped writes still set IRQ_STATUS.sram_write_lock_err and
+ *        SRAM_WRITE_LOCK_VIOLATION regardless of IRQ_ENABLE.  The C caller has
+ *        disabled every IRQ, so they raise no fault.
  *   2. fence — ensure all stores complete before register clear.
- *   3. Clear all general-purpose registers (x1-x15 in RV32E).
- *   4. Jump to SRAM base (0x8000).
+ *   3. Clear IRQ_STATUS.sram_write_lock_err and SRAM_WRITE_LOCK_VIOLATION so
+ *      mutable firmware starts with neither pending.
+ *   4. Clear all general-purpose registers (x1-x15 in RV32E).
+ *   5. Jump to SRAM base (0x8000).
  *
  * Note on step ordering: locking (SRAM regions, OTP, persist) and IRQ disable
  * are performed in C (rom_handover_finish) before this routine.  This is
@@ -81,6 +84,15 @@ rom_handover_jump:
 .Lscramble_done:
     /* Ensure all SRAM stores complete before we destroy the register file. */
     fence
+
+    /* The scramble's stores to write-locked regions set these sticky bits
+     * regardless of IRQ_ENABLE.  x6 and x14 are zeroed below. */
+    li   x6,  KEY_MANAGER_KMCSR_IRQ_STATUS_BASE_ADDR
+    li   x14, ROM_KM_IRQ_STATUS_SRAM_WRITE_LOCK_ERR_MASK
+    sw   x14, 0(x6)
+    li   x6,  KEY_MANAGER_KMCSR_SRAM_WRITE_LOCK_VIOLATION_BASE_ADDR
+    li   x14, -1
+    sw   x14, 0(x6)
 
     /* Load jump target into t0 (x5) BEFORE clearing all other registers. */
     li   x5,  ROM_KM_SRAM_BASE      /* t0 = mutable firmware entry */

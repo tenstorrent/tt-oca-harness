@@ -37,6 +37,15 @@ CHK-ORDER-STIM: the ordering each cell presented on the bus, read off the AW/W
 valid assertions, matches the ordering it requested, and all three orderings
 were presented.
 
+CTRL-BRIDGE-ID-PRIME, CTRL-BRIDGE-ID-DEPTH, CHK-BRIDGE-ID-ORDER: before the
+walk, same-ID reads and then same-ID writes on one non-zero ID, held in flight
+together through the system-CSR AXI-to-AXI-Lite bridge to distinct primed
+SEP_SCRATCH_COLD registers. Each R beat on the pins returns the leg ID and the
+primed value of the register named by the AR of the same rank; each B returns
+the leg ID after the AW and W of that rank; each register then holds the value
+written to it. The depth control requires three requests accepted by the first
+response. The leg raises on its first miss, and the walk does not run.
+
 CHK-COVERAGE: the cell tally is logged, including every cell that could not run
 and why. A dropped cell is named rather than absorbed, so partial coverage
 never reads as a full sweep.
@@ -75,6 +84,7 @@ class sep_axi_order_sweep_test(sep_base_test):
         await self.bring_up_no_cpu()
         await self.open_sweep_path(cfg)
         sweep = SepAxiOrderSweep(self, bus=self.SWEEP_BUS)
+        await sweep.run_same_id_leg(cfg.id_leg)
 
         fails: list[str] = []
         for cell in cfg.cells:

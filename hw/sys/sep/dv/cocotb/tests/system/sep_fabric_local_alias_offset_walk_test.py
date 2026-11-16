@@ -17,6 +17,14 @@ disabled). For each of the N_REGIONS alias regions:
     starts at the source page and ends there (END = source page, valid set,
     offset ~O) does not translate either, so the END compare decides a beat.
   * Valid clear. The hit bounds with valid=0 do not translate either.
+  * Inverted. A valid region whose END is below its START does not translate
+    (``hw/ip/axi_alias_remap/regs/alias_remap.rdl:32``: "A region whose end is
+    at or below its start contains no address and never remaps"). Two forms
+    per region, each placed so that a wrap-around compare would admit the
+    source page: START at the source page with END drawn below the programmed
+    banks, and START drawn above the source page with END drawn between the
+    source page and START. The offset is ~O, whose target the outbound entry
+    still admits, so a translated beat returns the responder's data.
 
 So every offset bit takes a 0->1 and a 1->0 step and decides where the beat
 lands. START and END are graded at the drawn bounds only: START at the source
@@ -53,6 +61,9 @@ Checkers:
                            OKAY with the staged value.
   CHK-ALIAS-WALK-VALID     valid=0 leaves the beat untranslated: OKAY with the
                            staged value.
+  CHK-ALIAS-WALK-INVERTED  a valid region with END below START, in both forms,
+                           leaves the beat untranslated: OKAY with the staged
+                           value.
   CHK-ALIAS-CARRY          the carry read answers DECERR with 0xBADCAB1E and no
                            AR leaves on PR-OUT.
 """
@@ -116,6 +127,12 @@ if (OUTFILT_BASE & ~(PAGE - 1)) == SRC_PAGE:
     raise RuntimeError("the outbound filter bank shares the source page")
 if max(ALIAS_BASE, OUTFILT_BASE) & ~(PAGE - 1) >= SRC_PAGE:
     raise RuntimeError("a programmed bank sits at or above the source page")
+# Lowest page of the programmed banks: an inverted region at the source page
+# ends below it, so a wrap-around compare that admits every page below END
+# cannot move a bank write and the miss shows on the source beat itself.
+BANK_PG = min(ALIAS_BASE, OUTFILT_BASE) >> IDX_START
+if BANK_PG < 2:
+    raise RuntimeError("no page below the programmed banks for an inverted END")
 _ = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
 
 
@@ -204,6 +221,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         "CHK-ALIAS-WALK-HIT",
         "CHK-ALIAS-WALK-MISS",
         "CHK-ALIAS-WALK-VALID",
+        "CHK-ALIAS-WALK-INVERTED",
         "CHK-ALIAS-CARRY",
     )
 
@@ -271,7 +289,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         await alias._wr(SRC_ADDR, staged)
         got = await alias._rd(SRC_ADDR)
         assert got == staged, f"staged 0x{SRC_ADDR:08x}=0x{got:08x} != 0x{staged:08x}"
-        counts = dict.fromkeys(("HIT", "MISS", "END_MISS", "VALID"), 0)
+        counts = dict.fromkeys(("HIT", "MISS", "END_MISS", "VALID", "INV_LOW", "INV_HIGH"), 0)
         self.tap_out = SepFabricTap("PR-OUT").start()
 
         for p in plans:
@@ -306,6 +324,28 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
                 await alias.program(r, s, end, p.o2, True)
                 await self._untranslated("CHK-ALIAS-WALK-MISS", p, staged)
                 counts["MISS"] += 1
+
+            # Inverted: END below START, valid set. The outbound entry still
+            # admits T2, so a beat translated by ~O returns the responder's data.
+            inv_end = p.rng.randrange(1, BANK_PG) << IDX_START
+            inv_hi_start_pg = p.rng.randrange(SRC_PG + 2, PG_MASK + 1)
+            inv_hi_end = p.rng.randrange(SRC_PG + 1, inv_hi_start_pg) << IDX_START
+            for key, s, end in (
+                ("INV_LOW", p.hit_start, inv_end),
+                ("INV_HIGH", inv_hi_start_pg << IDX_START, inv_hi_end),
+            ):
+                assert end < s
+                self.logger.info(
+                    "INFO-ALIAS-INVERTED r%d form=%s start=0x%014x end=0x%014x src=0x%08x",
+                    r,
+                    key,
+                    s,
+                    end,
+                    SRC_ADDR,
+                )
+                await alias.program(r, s, end, p.o2, True)
+                await self._untranslated("CHK-ALIAS-WALK-INVERTED", p, staged)
+                counts[key] += 1
 
             await alias.program(r, 0, ALIAS_END_RESET, 0, False)
             await outf.restore(e)
@@ -359,4 +399,18 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         self.logger.info(
             "CHK-ALIAS-WALK-VALID PASS: %d regions with valid clear left the beat untranslated",
             counts["VALID"],
+        )
+        if counts["INV_LOW"] == 0 or counts["INV_HIGH"] == 0:
+            msg = (
+                f"CHK-ALIAS-WALK-INVERTED FAIL: inv_low={counts['INV_LOW']} "
+                f"inv_high={counts['INV_HIGH']}, want both > 0"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CHK-ALIAS-WALK-INVERTED PASS: inv_low=%d inv_high=%d valid regions with END below "
+            "START left the beat untranslated (staged 0x%08x)",
+            counts["INV_LOW"],
+            counts["INV_HIGH"],
+            staged,
         )
