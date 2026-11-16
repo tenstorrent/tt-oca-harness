@@ -670,10 +670,10 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | Bits | Field | Access | Reset | Description
 | 63 | `ClaLock` | RW | 0x0 a| If this bit is set, then CLA is locked and the enable_cla is latched forever
 | 62:16 | `Rsvd6216` | RW | 0x0 a| reserved fields
-| 15 | `DisableLocalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to local clocks
-| 14 | `DisableGlobalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to global clocks
+| 15 | `DisableLocalClockHalt` | RW | 0x0 a| If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset
+| 14 | `DisableGlobalClockHalt` | RW | 0x0 a| If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset
 | 13:7 | `ClaChainLoopDelay` | RW | 0x36 a| Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.
-| 6 | `EnableCla` | RW | 0x0 a| Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
+| 6 | `EnableCla` | RW | 0x0 a| Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it
 | 5 | `EnableEap` | RW | 0x0 a| Set Enable EAP to 1 after EAP programming is complete
 | 4:2 | `Reserved` | - | - a| Reserved
 | 1:0 | `CurrentNode` | R | 0x0 a| Read the current node.

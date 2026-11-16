@@ -2086,6 +2086,10 @@ are live read/write state: software writes take priority over a simultaneous
 hardware update, and later hardware updates can advance or clear them. Account
 for this when programming or testing them.
 
+A CLA clock stop is released only by an SMC primary reset. Its interrupt, PLIC
+source 321, pulses once when the request rises and needs no acknowledge at the
+CLA.
+
 [[smc-system-timer]]
 ==== OCTS System Timer
 

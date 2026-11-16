@@ -1659,7 +1659,7 @@ typedef union {
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bp 5
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_reset 0x0
-// Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
+// Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bm 0x40
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bp 6
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bw 1
@@ -1669,12 +1669,12 @@ typedef union {
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_bp 7
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_bw 7
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_reset 0x36
-// If this bit is set, clock halt action is not applied to global clocks
+// If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_bm 0x4000
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_bp 14
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_reset 0x0
-// If this bit is set, clock halt action is not applied to local clocks
+// If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bm 0x8000
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bp 15
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bw 1
@@ -1696,13 +1696,13 @@ typedef union {
         uint64_t :3;
         // Set Enable EAP to 1 after EAP programming is complete
         uint64_t EnableEap :1;
-        // Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
+        // Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it
         uint64_t EnableCla :1;
         // Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.
         uint64_t ClaChainLoopDelay :7;
-        // If this bit is set, clock halt action is not applied to global clocks
+        // If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset
         uint64_t DisableGlobalClockHalt :1;
-        // If this bit is set, clock halt action is not applied to local clocks
+        // If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset
         uint64_t DisableLocalClockHalt :1;
         // reserved fields
         uint64_t Rsvd6216 :47;

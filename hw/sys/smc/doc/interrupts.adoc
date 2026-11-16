@@ -167,7 +167,7 @@ The vector layout is:
 cpu_interrupts_o[NumExtInterrupts-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
 cpu_interrupts_o[NumExtInterrupts+:32]        = peripheral_interrupts_i;
 cpu_interrupts_o[(NumExtInterrupts+32)+:32]   = mailbox_interrupts;
-cpu_interrupts_o[(NumExtInterrupts+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
+cpu_interrupts_o[(NumExtInterrupts+64)]       = cla_clocks_stopped_rise; // rising edge of tdr_dbg_ctrl_clocks_stopped_by_cla_o
 cpu_interrupts_o[(NumExtInterrupts+64)+1]     = cla_interrupt;
 cpu_interrupts_o[(NumExtInterrupts+64)+2]     = dma_intp;
 cpu_interrupts_o[(NumExtInterrupts+64)+3]     = zeroer_intp;
@@ -422,10 +422,12 @@ overwritten in `smc_peripherals.sv`.
 
 |`320`
 |CLA Clock Stop
-|DFD CLA clock-stop status interrupt
-|`smc_base.sv` drives this bit from
+|One-cycle pulse when the CLA clock-stop output rises
+|`smc_base.sv` drives this bit with a rising-edge pulse of
 `tdr_dbg_ctrl_clocks_stopped_by_cla_o`, sourced through
-`u_smc_dfd_wrap` in `smc_internal_regs.sv`.
+`u_smc_dfd_wrap` in `smc_internal_regs.sv`. The output is held until
+the SMC primary reset, so the source fires once per rise and needs no
+acknowledge at the CLA.
 
 |`321`
 |CLA Interrupt
