@@ -46,7 +46,9 @@ module smc_dfd_wrap #(
                                                // complete with PSLVERR while it is stopped.
 
   output logic                                             external_action_debug_interrupt_o,  // Debug interrupt raised by a CLA
-                                                                                               // external action.
+                                                                                               // external action; held until
+                                                                                               // EnableEap is cleared and the
+                                                                                               // EAP status W2C is then written.
   output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,  // Custom CLA external-action
                                                                                       // outputs, one bit per custom
                                                                                       // action.

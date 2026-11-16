@@ -434,7 +434,8 @@ acknowledge at the CLA.
 |DFD CLA interrupt
 |`smc_base.sv` drives this bit from `cla_interrupt`, sourced from
 `external_action_debug_interrupt_o` on `u_smc_dfd_wrap` in
-`smc_internal_regs.sv`.
+`smc_internal_regs.sv`. Level, held until `EnableEap` is cleared and the
+EAP's `CDbgEapStatus` W2C bit is then written.
 
 |`322`
 |DMA transfer complete
