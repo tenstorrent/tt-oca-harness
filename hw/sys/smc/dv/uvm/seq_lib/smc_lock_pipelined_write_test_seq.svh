@@ -16,6 +16,7 @@ class smc_lock_pipelined_write_test_seq extends smc_wdt_base_test_seq;
   localparam string ChkPrekey = "CHK-PLOCK-WDT-PREKEY";
   localparam string ChkFeedkey = "CHK-PLOCK-WDT-FEEDKEY";
   localparam string ChkState = "CHK-PLOCK-WDT-STATE";
+  localparam string ChkBhold = "CHK-PLOCK-BHOLD";
   localparam string ChkConfig = "CHK-PLOCK-SSCFG";
   localparam string ChkFinal = "CHK-PLOCK-SSCFG-FINAL";
   localparam string ChkScoreboard = "CHK-PLOCK-SCOREBOARD";
@@ -70,7 +71,8 @@ class smc_lock_pipelined_write_test_seq extends smc_wdt_base_test_seq;
         ChkIneffective,
         ChkPrekey,
         ChkFeedkey,
-        ChkState
+        ChkState,
+        ChkBhold
     };
     if (final_pass) begin
       required.push_back(ChkConfig);
@@ -145,6 +147,14 @@ class smc_lock_pipelined_write_test_seq extends smc_wdt_base_test_seq;
         if (op.complete) completed_legs++;
         check_evidence(ChkNonvac, {op.label, " decisive pair overlap"}, 64'(op.overlap), 1);
         if (op.complete && op.overlap) overlapped_legs++;
+        if (k inside {P1, P5}) begin
+          int unsigned gap = op.b_gap.size() > 0 ? op.b_gap[0] : 0;
+          check_evidence(ChkBhold, k == P5 ?
+                         $sformatf("%s first B held >= %0d cycles (gap=%0d)", op.label,
+                                   HoldCycles, gap) :
+                         $sformatf("%s first B not held (gap=%0d)", op.label, gap),
+                         64'(gap >= HoldCycles), 64'(k == P5));
+        end
         csr_read(smc_wdt_addr(core, WDT_COUNT), observed, "WDT count after pipeline");
         `uvm_info(
             "PLOCK-PIPELINE", $sformatf(
@@ -225,8 +235,8 @@ class smc_lock_pipelined_write_test_seq extends smc_wdt_base_test_seq;
           ChkFinal, ConfigAddr,
           (initial_config & lock_mask) | (32'(RESET_UNIT_SS_CONFIG_REG_DEFAULT) & ~lock_mask),
           "SS_CONFIG final state");
-      csr_write(LockAddr, 0, "SS_CONFIG zero lock write");
-      csr_read_check(ChkFinal, LockAddr, lock_mask, "SS_CONFIG final lock");
+      csr_write(LockAddr, FreeConfigBit, "SS_CONFIG lock write of a free bit");
+      csr_read_check(ChkFinal, LockAddr, lock_mask | FreeConfigBit, "SS_CONFIG final lock");
       for (int unsigned cycle = 0; cycle < LockComparisonBound; cycle++) begin
         if (scoreboard.compare_count(SmcFeatureLockCsr) >= compares_before + LockReads) break;
         wait_smc_cycles(1);

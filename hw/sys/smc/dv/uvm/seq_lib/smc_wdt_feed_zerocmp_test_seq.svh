@@ -14,6 +14,8 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
   localparam string ChkScaled = "CHK-WDT-FEED-SCALED";
   localparam string ChkZeroCmp = "CHK-WDT-FEED-ZEROCMP";
   localparam string ChkIp = "CHK-WDT-FEED-IP";
+  localparam string ChkCtrlLanded = "CHK-WDT-FEED-CTRL-LANDED";
+  localparam string ChkFeedLanded = "CHK-WDT-FEED-LANDED";
   localparam string ChkWindow = "CHK-WDT-FEED-WINDOW";
   localparam string ChkNonvac = "CHK-NONVAC";
   localparam int unsigned RateWindowCycles = 1024;
@@ -22,10 +24,11 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
   localparam int unsigned ZeroCmpReads = 8;
   localparam int unsigned IpCompare = 2048;
   localparam int unsigned IpMargin = 256;
+  localparam bit [31:0] FeedSeedCount = ZeroCmpCompare / 2;
   localparam int unsigned IpPollIntervalCycles = 64;
   localparam int unsigned IpWaitSlackCycles = 1024;
   // Keyed writes each contribute two accesses; compare polling adds variable reads.
-  localparam int unsigned FixedAccesses = 85;
+  localparam int unsigned FixedAccesses = 91;
   localparam int unsigned FeedCases = 2;
   localparam bit [31:0] CountStart = 32'h0100_0000;
   localparam bit [31:0] ScaledStart = 32'h0001_0000;
@@ -65,11 +68,12 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
     csr_read(smc_wdt_addr(core, WDT_CMP), value, "WDT.CMP readback");
   endtask
 
-  protected task key_read(bit unlocked);
+  protected task key_read(bit unlocked,
+                          string label = "FEED requires the expected unlock state");
     bit [31:0] value;
     csr_read(smc_wdt_addr(core, WDT_KEY), value, "WDT.KEY readback");
     if (value != 32'(unlocked)) begin
-      `uvm_fatal(get_type_name(), "FEED requires the expected unlock state")
+      `uvm_fatal(get_type_name(), label)
     end
   endtask
 
@@ -88,7 +92,7 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
 
   task body();
     bit [31:0] c0, c1, ctrl, scaled, values[$];
-    real t0, t1, rate, key_at, total_span, first_at, last_at, deadline;
+    real t0, t1, rate, seed_at, key_at, total_span, first_at, last_at, deadline;
     bit predicate, rollover, bounded;
     string samples;
     int unsigned poll_reads = 0;
@@ -97,7 +101,8 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkRate, ChkClear, ChkReject, ChkScaled, ChkZeroCmp,
-                    ChkIp, ChkWindow, ChkNonvac, ChkSbMinAct, ChkScoreboard});
+                    ChkIp, ChkCtrlLanded, ChkFeedLanded, ChkWindow, ChkNonvac, ChkSbMinAct,
+                    ChkScoreboard});
     check_min_activity(SmcFeatureWdtCsr, FixedAccesses);
     compare_before = scoreboard.compare_count(SmcFeatureWdtCsr);
     mismatch_before = scoreboard.mismatch_count(SmcFeatureWdtCsr);
@@ -185,7 +190,21 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
     predicate = negative ? !bounded : bounded && rollover;
     check_evidence(ChkZeroCmp, "sampled compare rollover", 64'(predicate), 64'h1, samples);
 
+    seed_at = smc_cycle_time();
+    wdt_write(WDT_COUNT, FeedSeedCount);
+    read_count(c0, t0);
+    predicate = c0 >= FeedSeedCount &&
+                real'(c0) <= real'(FeedSeedCount) + rate * (t0 - seed_at) + 1.0;
+    check_evidence(ChkFeedLanded, "COUNT seed landed before FEED", 64'(predicate), 64'h1,
+                   $sformatf("seed_count=%0d count=%0d rate=%0f span=%0f", FeedSeedCount, c0,
+                             rate, t0 - seed_at));
+    key_at = smc_cycle_time();
     wdt_write(WDT_FEED, SmcWdtFeedMagic);
+    read_count(c1, t1);
+    predicate = c1 < FeedSeedCount && real'(c1) <= rate * (t1 - key_at) + 1.0;
+    check_evidence(ChkFeedLanded, "FEED restarts COUNT below its seed", 64'(predicate), 64'h1,
+                   $sformatf("seed_count=%0d count=%0d rate=%0f span=%0f", FeedSeedCount, c1, rate,
+                             t1 - key_at));
     ctrl_read(AlwaysMask | ZeroCmpMask, ctrl, 1'b1);
     ip_check(ctrl, 1'b1, negative);
     wdt_write(WDT_CMP, IpCompare);
@@ -214,7 +233,11 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
     ip_check(ctrl, 1'b1);
 
     count_side(1'b1, c0);
-    wdt_write(WDT_CTRL, AlwaysMask);
+    csr_write(smc_wdt_addr(core, WDT_KEY), SmcWdtMagicKey, "WDT.KEY");
+    key_read(1'b1, "CTRL rewrite requires the unlocked state");
+    csr_write(smc_wdt_addr(core, WDT_CTRL), AlwaysMask, "WDT write");
+    csr_read_check(ChkCtrlLanded, smc_wdt_addr(core, WDT_KEY), 0,
+                   "WDT.KEY relocked by CTRL write");
     ctrl_read(AlwaysMask, ctrl, 1'b1);
     count_side(1'b1, c1);
     ip_check(ctrl, 1'b1, negative);

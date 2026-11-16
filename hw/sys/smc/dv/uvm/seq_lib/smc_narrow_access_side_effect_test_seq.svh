@@ -29,10 +29,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   localparam int unsigned PageBytes = 4096;
   localparam int unsigned CleanupPollBound = 4096;
   localparam int unsigned ComparisonBound = 64;
-  localparam int unsigned ComparisonsPerPass = 3;
-  // Reads: 4 baseline, 3 MUTEX, 8 upper polls, 4 SIZE/DEST readbacks,
-  // 5 pop/push, 2 empty, 4 ERROR, 5 EIRQ, 3 STATUS and one per reverse entry.
-  localparam int unsigned FixedReads = 38 + SmcMailboxDepth;
+  localparam int unsigned ComparisonsPerPass = 5;
+  // Reads: 4 baseline, 5 MUTEX, 8 upper polls, 4 SIZE/DEST readbacks,
+  // 2 SIZE/DEST armed readbacks, 5 pop/push, 2 empty, 4 ERROR, 5 EIRQ,
+  // 3 STATUS and one per reverse entry.
+  localparam int unsigned FixedReads = 42 + SmcMailboxDepth;
   // Writes: 3 MUTEX, 4 SIZE/DEST poison, 4 SIZE/DEST cleanup, 5 pushes,
   // 3 EIRQ, 2 null-strobe, 2 full-FIFO attempts and one per reverse entry.
   localparam int unsigned FixedWrites = 23 + SmcMailboxDepth;
@@ -89,6 +90,15 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     p_sequencer.m_sys_out_slave_seq.write_bytes(destination - SmcMemBytes, bytes_to_write);
     mem_write(SmcZeroerDestAddr, destination, "Zeroer destination");
     mem_write(SmcZeroerSizeAddr, WindowBytes, "Zeroer size");
+  endtask
+
+  protected task verify_armed_command();
+    bit [63:0] size_value, dest_value;
+    mem_read(SmcZeroerSizeAddr, size_value, "Zeroer size armed");
+    mem_read(SmcZeroerDestAddr, dest_value, "Zeroer destination armed");
+    prerequisite(ChkSetup, size_value == WindowBytes && dest_value == destination,
+                 "Zeroer command armed", $sformatf("size=%h destination=%h", size_value,
+                 dest_value));
   endtask
 
   protected task inspect_window(output bit unchanged, output int unsigned zero_words,
@@ -206,7 +216,7 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     bit [63:0] saved_start, saved_end, saved_config, programmed_config;
     bit [63:0] queue_data[$];
     bit [31:0] upper, lower, value, value_lo, value_zf, pattern;
-    bit unchanged, guards_intact, poll_idle, null_entry_ok;
+    bit unchanged, guards_intact, poll_idle, null_entry_ok, mutex_fresh;
     logic [31:0] busy_before, busy_after;
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMemResp, ChkAcquire, ChkRelease, ChkPoll, ChkPop,
@@ -284,20 +294,33 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "mailbox clean errors");
     prerequisite(ChkSetup, errors == 0, "mailbox error baseline clear");
 
-    // MUTEX reads acquire, so release cannot be verified by a passive readback.
-    csr_write(smc_mutex_addr(mutex_index), 0, "mutex initial release");
+    // A MUTEX read acquires, so a passive readback cannot show a release. A mutex not used since
+    // reset is free by its reset value, so only the first SmcMutexCount passes grade the upper
+    // read.
+    mutex_fresh = loop_index < SmcMutexCount;
+    csr_read(smc_mutex_addr(mutex_index) + SmcCsrBytes, upper, "mutex upper acquire");
+    csr_read(smc_mutex_addr(mutex_index), lower, "mutex acquired readback");
+    if (mutex_fresh)
+      grade(ChkAcquire, "upper read of a free mutex returns zero and acquires",
+            upper == 0 && (lower & SmcMutexMask) == SmcMutexTaken, $sformatf(
+            "upper=%h lower=%h", upper, lower));
+    else
+      `uvm_info(get_type_name(), $sformatf(
+                "NARROW-MUTEX-ACQUIRE upper_read_not_graded mutex_used_before upper=%h lower=%h %s",
+                upper, lower, access_context()), UVM_LOW)
+    csr_write(smc_mutex_addr(mutex_index), 0, "mutex upper-acquire release");
+    csr_read(smc_mutex_addr(mutex_index), lower, "mutex pre-release acquire");
+    csr_read(smc_mutex_addr(mutex_index), lower, "mutex pre-release held");
+    grade(ChkAcquire, "lower read after an acquiring read returns taken",
+          (lower & SmcMutexMask) == SmcMutexTaken, $sformatf("lower=%h", lower));
+    csr_write(smc_mutex_addr(mutex_index), 0, "mutex release before free control");
     csr_read(smc_mutex_addr(mutex_index), lower, "mutex free control");
     grade(ChkRelease, "release admits next acquire", (lower & SmcMutexMask) == SmcMutexFree,
           $sformatf("lower=%h", lower));
-    csr_write(smc_mutex_addr(mutex_index), 0, "mutex release before upper read");
-    csr_read(smc_mutex_addr(mutex_index) + SmcCsrBytes, upper, "mutex upper acquire");
-    csr_read(smc_mutex_addr(mutex_index), lower, "mutex acquired readback");
-    grade(ChkAcquire, "upper read returns zero and acquires",
-          upper == 0 && (lower & SmcMutexMask) == SmcMutexTaken, $sformatf(
-          "upper=%h lower=%h", upper, lower));
     csr_write(smc_mutex_addr(mutex_index), 0, "mutex cleanup");
 
     poison_window();
+    verify_armed_command();
     busy_before = tb_vif.zeroer_busy_sample_count;
     poll_idle = 1;
     repeat (PollReads) begin
@@ -359,9 +382,6 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
                  "reverse FIFO is full", $sformatf("status=%h depth=%0d", status, SmcMailboxDepth));
     strobed_write(smc_mailbox_addr(mailbox, 1, MBX_WRITE_DATA), ~word0, '1,
                   "full FIFO write-error control", 1);
-    mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "write-error control");
-    prerequisite(ChkErrorControl, (errors & AXIL_MAILBOX_ERROR_WRITE_ERROR_MASK) != 0,
-                 "write-error flag is live", $sformatf("errors=%h", errors));
     mem_write(smc_mailbox_addr(mailbox, 1, MBX_IRQS), AXIL_MAILBOX_IRQS_EIRQ_MASK,
               "EIRQ clear before repeated full write");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed,
@@ -369,7 +389,12 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     prerequisite(ChkErrorControl, (observed & AXIL_MAILBOX_IRQS_EIRQ_MASK) == 0,
                  "EIRQ clear before repeated full write is effective", $sformatf("IRQS=%h", observed
                  ));
-    // Reading ERROR clears its flags, so recreate write_error before the upper read.
+    // The first ERROR read follows the IRQS acknowledge, so a live write_error flag shows that the
+    // acknowledge leaves the ERROR flags set; reading ERROR clears them. Each repeated fault is
+    // proven by EIRQ going from 0 to 1.
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "write-error control");
+    prerequisite(ChkErrorControl, (errors & AXIL_MAILBOX_ERROR_WRITE_ERROR_MASK) != 0,
+                 "write-error flag is live", $sformatf("errors=%h", errors));
     strobed_write(smc_mailbox_addr(mailbox, 1, MBX_WRITE_DATA), ~word1, '1,
                   "full FIFO write-error recreation", 1);
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed, "repeated full write error");
