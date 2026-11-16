@@ -668,7 +668,7 @@ class sep_runtime_warm_dispatch_test(sep_warm_dispatch_base):
         await self._cold_boot_to_scrub(cold.index)
         assert _HANDLER not in cold.pcs, (
             f"the handler 0x{_HANDLER:08x} retired after an unarmed warm reset; the ROM "
-            f"re-used a consumed pointer"
+            f"reused a consumed pointer"
         )
         self.logger.info("one-shot: warm reset 2 without a re-arm cold booted")
 
