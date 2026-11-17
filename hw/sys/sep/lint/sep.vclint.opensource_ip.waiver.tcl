@@ -44,6 +44,8 @@
 # W575: Logical NOT operator used on a multibit value
 # W481a: Possibly unsynthesizable loop - step variable not used in condition
 # PortTypeMismatch-ML: Port type differs from the type of the connected signal
+# W121: Name is not unique and may shadow another name
+# PortWithoutDirection-ML: Port is declared without a direction
 #=======================================================================================================================
 
 # iDMA
@@ -607,3 +609,12 @@ waive_violation -add {SEP_W224_picorv32_nonzero_tests} -comment {Multi-bit value
 
 # DetectNonStaticCaseLabels-ML: reverse-case one-hot selects in the VeeR JTAG TAP.
 waive_violation -add {SEP_DetectNonStaticCaseLabels_rvjtag_tap_case1} -comment {case(1) with signal labels is the reverse-case one-hot idiom: it takes the first option that is high. Third-party VeeR IP shouldn't be modified. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}rvjtag_tap") AND (VariableName == "1")}] -app { lint } -tag { DetectNonStaticCaseLabels-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
+
+# W121: VeeR names reused in a nested scope (generate branch labels, loop variables, a function argument).
+waive_violation -add {SEP_W121_veer_generate_labels} -comment {The same block label is used on both branches of a generate if/else. Only one branch is ever built, so the names never clash. Third-party VeeR IP shouldn't be modified. Created by gchang on 17-Nov-2026} -filter [apply_prefix {((Module == "${PREFIX}rvdffe") AND (NodeName == "genblock")) OR (((Module == "${PREFIX}el2_ifu_aln_ctl") OR (Module == "${PREFIX}el2_ifu_bp_ctl")) AND (NodeName == "btbfold"))}] -app { lint } -tag { W121 } -user { gchang } -timestamp { 17-11-2026 12:00:00 }
+waive_violation -add {SEP_W121_veer_loop_vars} -comment {A for loop declares its own loop variable with the same name as a genvar or integer in the module. The loop variable is local to the loop and is the one its body uses. Third-party VeeR IP shouldn't be modified. Created by gchang on 17-Nov-2026} -filter [apply_prefix {((Module == "${PREFIX}el2_ifu_bp_ctl") AND (NodeName == "j")) OR (((Module == "${PREFIX}el2_exu_alu_ctl") OR (Module == "${PREFIX}el2_pic_ctrl")) AND (NodeName == "i"))}] -app { lint } -tag { W121 } -user { gchang } -timestamp { 17-11-2026 12:00:00 }
+waive_violation -add {SEP_W121_el2_pmp_any_region_enabled} -comment {A function argument has the same name as a module signal, and the call passes that signal in. The argument is local to the function, so nothing is shadowed outside it. Third-party VeeR IP shouldn't be modified. Created by gchang on 17-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}el2_pmp") AND (NodeName == "any_region_enabled")}] -app { lint } -tag { W121 } -user { gchang } -timestamp { 17-11-2026 12:00:00 }
+
+# PortWithoutDirection-ML: ports declared in a comma list, taking the direction of the port before them.
+waive_violation -add {SEP_PortWithoutDirection_veer_lsu_port_lists} -comment {Ports listed after a comma, as in input logic a, b, take the direction and type of the first name. Legal SystemVerilog, and the direction is the intended one. Third-party VeeR IP shouldn't be modified. Created by gchang on 17-Nov-2026} -filter [apply_prefix {((Module == "${PREFIX}el2_lsu_dccm_ctl") OR (Module == "${PREFIX}el2_lsu_stbuf") OR (Module == "${PREFIX}el2_lsu_bus_intf") OR (Module == "${PREFIX}el2_lsu_bus_buffer")) AND ((DestPortName == "addr_in_dccm_r") OR (DestPortName == "lsu_raw_fwd_hi_r") OR (DestPortName == "ldst_dual_m") OR (DestPortName == "ldst_dual_r") OR (DestPortName == "ld_byte_hit_buf_hi") OR (DestPortName == "ld_fwddata_buf_hi"))}] -app { lint } -tag { PortWithoutDirection-ML } -user { gchang } -timestamp { 17-11-2026 12:00:00 }
+waive_violation -add {SEP_PortWithoutDirection_kmac_msgfifo_err_o} -comment {err_o has no direction keyword, so it takes output from the port before it. Legal SystemVerilog, and output is the intended direction. Third-party OpenTitan IP shouldn't be modified. Created by gchang on 17-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}kmac_msgfifo") AND (DestPortName == "err_o")}] -app { lint } -tag { PortWithoutDirection-ML } -user { gchang } -timestamp { 17-11-2026 12:00:00 }

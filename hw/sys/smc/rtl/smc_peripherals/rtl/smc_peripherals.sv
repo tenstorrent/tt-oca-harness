@@ -1318,13 +1318,13 @@ module smc_peripherals #(
   /////////////////////
 
   logic fuse_reset_n;
-  logic ext_boot_seq_done_qual;
+  logic ext_boot_seq_done_qualified;
 
   ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
     .clk_i                    (clk_smc_i),
     .rst_ni                   (rst_cold_stable_smc_clk_n),
     .ext_boot_seq_done_i      (ext_boot_seq_done_i),
-    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
+    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qualified)
   );
 
   smc_efuse_wrapper u_smc_efuse_wrapper (
@@ -1352,7 +1352,7 @@ module smc_peripherals #(
     .efuse_shim_command_resp_i       (efuse_shim_command_resp_i),
 
     .sep_security_disable_i          (sep_security_disable_i),
-    .ext_boot_seq_done_i             (ext_boot_seq_done_qual),
+    .ext_boot_seq_done_i             (ext_boot_seq_done_qualified),
 
     .reset_n_o                       (fuse_reset_n),
     .fuse_sense_done_o               (fuse_sense_done_o),
@@ -1608,7 +1608,7 @@ module smc_peripherals #(
     .scan_rst_ni                (scan_rst_ni)
   );
 
-  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_qual;
+  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_qualified;
 
   assign powergood_stable_o = powergood_stable;
 
