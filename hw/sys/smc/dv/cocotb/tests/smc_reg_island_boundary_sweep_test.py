@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Boundary sweep of the 24 SMC register islands that declare a past-extent response.
+"""Boundary sweep of the 23 SMC register islands that declare a past-extent response.
 
 Sources: smc.rdl (ocah_past_extent_resp), regs/gen/adoc/memory_map.adoc, regs/gen/py memory map.
 """
@@ -23,8 +23,8 @@ class smc_reg_island_boundary_sweep_test(smc_base_test):
         "CHK-ISL-FIRST-WORD-WRITE-OKAY",
         "CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY",
         "CHK-ISL-PASTEXT-NOCHANGE",
-        "CHK-ISL-PASTEXT-READ-DECERR",
-        "CHK-ISL-PASTEXT-WRITE-DECERR-CLASS",
+        "CHK-ISL-PASTEXT-READ-RESP",
+        "CHK-ISL-PASTEXT-WRITE-RESP",
         "CHK-ISL-SETUP-GOLDENS",
         "CHK-ISL-TABLE",
         "CHK-NONVAC",
@@ -42,5 +42,5 @@ class smc_reg_island_boundary_sweep_test(smc_base_test):
             min_csr_accesses=seq.access_floor,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="24-island first, last decoded, past-extent and aperture-end probe sweep",
+            details="23-island first, last decoded, past-extent and aperture-end probe sweep",
         )

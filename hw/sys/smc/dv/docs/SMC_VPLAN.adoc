@@ -934,7 +934,7 @@ feature rows.
 |`smc_register_boundary_depth_test` |3, planned upgrade |Run a compact safe register-boundary sweep.
 |`smc_register_boundary_depth_test` |3 |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |1 |Run the SMC OSS register-sanity scenario.
-|`smc_reg_island_boundary_sweep_test` |3 |Each of 24 register islands answers OKAY inside its decoded
+|`smc_reg_island_boundary_sweep_test` |3 |Each of 23 register islands answers OKAY inside its decoded
 extent and its declared error response past it.
 |===
 
@@ -2510,19 +2510,19 @@ this card's Pass Criteria.
 
 *BFM / Model*: SEP_IN AXI driver (`SmcDecodeProbeSeq` / `SmcSysAxiItem` 4-byte reads and writes with
 errors allowed, 64-bit reads of `REGION_SIZE` and `CLOCK_GATE_CONTROL`) at the local aperture base
-(`LOCAL_BASE` reset) plus the island offsets, for the 24 register islands that declare a past-extent
-response: `C0_WDT` to `C3_WDT`, `DFX`, `MAILBOX`, `DMA`, `ZEROER`, `CPUCTRL`, `RESET`, `MISC`,
+(`LOCAL_BASE` reset) plus the island offsets, for the 23 register islands that declare a past-extent
+response: `C0_WDT` to `C3_WDT`, `DFX`, `DMA`, `ZEROER`, `CPUCTRL`, `RESET`, `MISC`,
 `GPIO`, `AVS`, `I2C`, `EFUSE_MAP`, `EFUSE_IF`, `TELEM`, `OCTS`, `BASECFG`, `ALIAS`, `MREMAP_OUT`,
 `XREMAP_OUT`, `INFLT` and `OUTFLT`; the four setup registers `REGION_SIZE`, `LOCAL_BASE`,
 `GLOBAL_BASE` (`smc_base_config`) and `CLOCK_GATE_CONTROL`; window, decoded extent and past-extent
-response of each island from the generated memory map; the sys-AXI monitor is told that the 48
-past-extent and aperture-end addresses expect DECERR; a CSR protocol-VIP record is booked against
+response of each island from the generated memory map; the sys-AXI monitor is told that the
+past-extent and aperture-end addresses of the DECERR islands expect DECERR; a CSR protocol-VIP record is booked against
 the access floor; no probe is sampled
 
 *Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1, `reseed` 1; tool Verilator (cocotb).
 
-*Randomization*: RAND-REP; the seed draws, for each of the 24 islands, one interior word (strictly
+*Randomization*: RAND-REP; the seed draws, for each of the 23 islands, one interior word (strictly
 between the first and the last decoded word, from the words the generated register module
 `regs/gen/py/smc_reg.py` declares with every field software-readable and without a read side effect,
 so the side-effect words of the walk's read-only rule are not drawn) and the AxSIZE of that read (1,
@@ -2543,7 +2543,7 @@ compares, every write stays a 4-byte write and every island is walked in every r
 regression (`reseed = 1`), because the leaf walks the whole set and the seed selects only the
 interior word, its size and the pattern.
 
-*Objective*: Each of 24 register islands answers OKAY inside its decoded
+*Objective*: Each of 23 register islands answers OKAY inside its decoded
 extent and its declared error response past it.
 
 *Test Coverage*:
@@ -2552,34 +2552,42 @@ extent and its declared error response past it.
   peripheral clock-gate enable clear) read OKAY and equal their reset values in
   `smc_base_config.rdl`, so the probe table is exercised at the aperture and gate state it assumes;
   the probe table built from the generated memory map must equal the sweep's own table of first,
-  last decoded, past-extent and aperture-end offsets and of each island's declared past-extent write
+  last decoded, past-extent and aperture-end offsets (for `MISC` and `I2C` the last decoded word is
+  the last register of the last sub-block, 4 bytes below the end of its 0x10 window; the word
+  between them is not probed by this leaf) and of each island's declared past-extent write
   response (`smc.rdl` `ocah_past_extent_resp`).
 * First word of each island: reads answer OKAY, a declared hole (`RESET` first word) reads 0; every
   first word that is read-write or a hole takes a write of the value just read with an OKAY write
   response and reads it back unchanged, the eligible scratch first word (`MISC`, `SCRATCH_COLD[0]`)
   taking a drawn pattern first, read back masked to its software-writable bits, then the value read;
-  read-only first words (`DFX`, `MAILBOX`, `AVS`, `I2C`, `EFUSE_MAP`, `EFUSE_IF`, `TELEM`, `OCTS`,
+  read-only first words (`DFX`, `AVS`, `I2C`, `EFUSE_MAP`, `EFUSE_IF`, `TELEM`, `OCTS`,
   `INFLT`, `OUTFLT`) are read only.
 * Last decoded word of each island (last word of the last instance for arrays): reads answer OKAY,
   declared holes (`GPIO`, `ALIAS`, `INFLT`, `OUTFLT`) read 0, and read-write or hole words take the
-  identity write and read back unchanged; read-only or side-effect words (`MAILBOX`, `ZEROER`,
+  identity write and read back unchanged; read-only or side-effect words (`ZEROER`,
   `MISC`, `I2C`, `TELEM`) are read only; the watchdog state after the write is printed.
-* First past-extent word and aperture-end word of every island: reads answer DECERR with data
-  0xBADCAB1E, 48 of 48 words (`smc.rdl`, `memmap.adoc` decode response codes).
+* First past-extent word and aperture-end word of every island: reads answer the island's RDL
+  past-extent response, 46 of 46 words (`smc.rdl` `ocah_past_extent_resp`,
+  `doc/trm/src/memory_map.adoc` Address Ownership): DECERR with data 0xBADCAB1E for the watchdogs,
+  `MISC`, `GPIO`, `I2C`, the eFuse islands, `TELEM`, the remaps and the filters; SLVERR with data 0
+  for the generated blocks that own their page (`DFX`, `ZEROER`, `CPUCTRL`, `RESET`, `AVS`, `OCTS`,
+  `BASECFG`); SLVERR with data 0xBADCAB1E for `DMA`. `MAILBOX` fills its aperture and has no
+  past-extent word.
 * One drawn interior word per island, read at a drawn AxSIZE: a 4-byte read answers OKAY with its
   data printed; a 1-, 2- or 8-byte read is printed.
-* The same words written: every island's RDL declares a DECERR write response, so all 48 words
-  answer DECERR; any other response fails.
+* The same words written: each of the 46 words answers the write response its island's RDL
+  declares (SLVERR or DECERR, as above); any other response fails.
 * A refused write takes no effect: after all writes every past-extent and aperture-end word still
-  reads DECERR with 0xBADCAB1E and every read-write last decoded word equals its earlier value.
+  reads its island's response and data and every read-write last decoded word equals its earlier value.
 
 *Test Procedure*:
 
 [arabic]
 . Wait for fuse sense done; read the four setup registers requiring OKAY and their reset values;
-  require `LOCAL_BASE` to equal the sweep base; derive the 24-island table from the generated memory
-  map, require it to equal the sweep's table and require every island to declare a DECERR write
-  response; register the past-extent and aperture-end addresses as expecting DECERR; stamp S1 and
+  require `LOCAL_BASE` to equal the sweep base; derive the 23-island table from the generated memory
+  map, require it to equal the sweep's table, response class included, and require every island to
+  declare SLVERR or DECERR; register the past-extent and aperture-end addresses of the DECERR
+  islands as expecting DECERR; stamp S1 and
   print the setup line.
 . Read the first word of each island requiring OKAY and 0 from declared holes; stamp S2.
 . Write the value read back to each read-write or hole first word, requiring OKAY, and read back
@@ -2588,16 +2596,16 @@ extent and its declared error response past it.
 . Write the value read back to each read-write or hole last decoded word, requiring OKAY, and read
   back requiring the same value; stamp S5 and print the last-word line.
 . Error injection. Point: the first past-extent word and the aperture-end word of every island over
-  SEP_IN AXI. Kind: a past-extent read of each of the 48 words. Expected response: DECERR with data
-  0xBADCAB1E on every word. Stamp S6.
+  SEP_IN AXI. Kind: a past-extent read of each of the 46 words. Expected response: the island's RDL
+  response and data, as listed under Test Coverage. Stamp S6.
 . Error injection. Point: the first past-extent word and the aperture-end word of every island.
-  Kind: a write of the value read to each of the 48 words. Expected response: DECERR on each. Stamp
-  S7.
-. Read every past-extent and aperture-end word again requiring DECERR and 0xBADCAB1E, and every
+  Kind: a write of the value read to each of the 46 words. Expected response: the island's RDL
+  write response on each. Stamp S7.
+. Read every past-extent and aperture-end word again requiring its island's response and data, and every
   read-write last decoded word again requiring OKAY and its earlier value; stamp S8.
-. Read the drawn interior word of each island at its drawn AxSIZE, then print the 24-row table of
+. Read the drawn interior word of each island at its drawn AxSIZE, then print the 23-row table of
   first, last, past-extent, aperture-end and interior responses and data with each island's declared
-  class and match or mismatch; require 24 rows with every probe word measured;
+  class and match or mismatch; require 23 rows with every probe word measured;
   stamp S9, then S10, and require the access count to equal the floor of the table, the checker
   lines in order and the stamps strictly increasing.
 
@@ -2607,34 +2615,35 @@ extent and its declared error response past it.
 |===
 |Checker |Description
 |`CHK-ISL-SETUP-GOLDENS` |`REGION_SIZE`, `LOCAL_BASE`, `GLOBAL_BASE` and `CLOCK_GATE_CONTROL` read
-OKAY and equal their RDL reset values, the 24-island probe table equals the generated memory map,
-and every island declares a DECERR write response.
-|`CHK-ISL-FIRST-WORD-WRITE-OKAY` |The first word of all 24 islands answers OKAY (the `RESET` hole reads 0),
+OKAY and equal their RDL reset values, the 23-island probe table equals the generated memory map,
+past-extent response class included, and every island declares SLVERR or DECERR.
+|`CHK-ISL-FIRST-WORD-WRITE-OKAY` |The first word of all 23 islands answers OKAY (the `RESET` hole reads 0),
 and every read-write or hole first word takes a write with an OKAY write response and reads back
 the value read (the drawn pattern at the eligible scratch word, read back masked to its
 software-writable bits and then restored; the identity write elsewhere); read-only words are
 listed as read-only, with a reason column that reads not specified for some islands.
-|`CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY` |The last decoded word of all 24 islands answers OKAY (declared
+|`CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY` |The last decoded word of all 23 islands answers OKAY (declared
 holes read 0), and every read-write or hole word takes the identity write with an OKAY write
 response and reads back the value read; read-only words are listed as read-only, with a reason
 column that reads not specified for some islands, and the
 watchdog state is printed without a compare.
-|`CHK-ISL-PASTEXT-READ-DECERR` |The first past-extent word and the aperture-end word of all 24
-islands read DECERR with data 0xBADCAB1E, 48 of 48 words.
-|`CHK-ISL-PASTEXT-WRITE-DECERR-CLASS` |The first past-extent word and the aperture-end word of the
-24 islands answer a write with DECERR, 48 of 48 words.
+|`CHK-ISL-PASTEXT-READ-RESP` |The first past-extent word and the aperture-end word of all 23
+islands read the island's RDL response and data (SLVERR with 0 for the generated page owners,
+SLVERR with 0xBADCAB1E for `DMA`, DECERR with 0xBADCAB1E for the rest), 46 of 46 words.
+|`CHK-ISL-PASTEXT-WRITE-RESP` |The first past-extent word and the aperture-end word of the
+23 islands answer a write with the island's RDL write response, 46 of 46 words.
 |`CHK-ISL-PASTEXT-NOCHANGE` |After the refused writes every past-extent and aperture-end word still
-reads DECERR with 0xBADCAB1E and every read-write last decoded word equals its earlier value.
-|`CHK-ISL-TABLE` |The per-island table has 24 rows, each with its four probe words and its drawn
+reads its island's response and data and every read-write last decoded word equals its earlier value.
+|`CHK-ISL-TABLE` |The per-island table has 23 rows, each with its four probe words and its drawn
 interior word measured (a 4-byte interior read answered OKAY, the other sizes reported), and each
-row is counted as match or mismatch so that the two counts sum to 24.
+row is counted as match or mismatch so that the two counts sum to 23.
 |`CHK-NONVAC` |The access count equals the floor derived from the table, the checker lines print in
 order each after its step, every checker line covers at least one access, and the stamps S1 to S10
 are strictly increasing.
 |===
 
 *Pass Criteria*: `CHK-ISL-SETUP-GOLDENS`, `CHK-ISL-FIRST-WORD-WRITE-OKAY`, `CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY`,
-`CHK-ISL-PASTEXT-READ-DECERR`, `CHK-ISL-PASTEXT-WRITE-DECERR-CLASS`, `CHK-ISL-PASTEXT-NOCHANGE` and
+`CHK-ISL-PASTEXT-READ-RESP`, `CHK-ISL-PASTEXT-WRITE-RESP`, `CHK-ISL-PASTEXT-NOCHANGE` and
 `CHK-ISL-TABLE` hold after their compares; `CHK-NONVAC` is printed at the end. Enrolled in: `all`; also listed
 in `register.toml`.
 
