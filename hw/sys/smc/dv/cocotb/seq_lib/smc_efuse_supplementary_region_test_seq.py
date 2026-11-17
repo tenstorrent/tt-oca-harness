@@ -588,9 +588,11 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             # guard: every write lock and read locks 0..region are set
             gword = first + GUARD_OFFSET
             await self._guard_cmd(f"S5_GRL_{region}", "read", supp_bit(gword), refused=True)
+            # the region's last word is still in it, the next region's first word is not
+            await self._guard_cmd(f"S5_GRE_{region}", "read", supp_bit(last), refused=True)
             if region + 1 < len(REGION_WORDS):
-                nword = REGION_WORDS[region + 1][0] + GUARD_OFFSET
-                await self._guard_cmd(f"S5_GRN_{region}", "read", supp_bit(nword), refused=False)
+                nfirst = REGION_WORDS[region + 1][0]
+                await self._guard_cmd(f"S5_GRN_{region}", "read", supp_bit(nfirst), refused=False)
             if region + 1 < len(REGION_WORDS):
                 nxt = REGION_WORDS[region + 1][0]
                 await self._rd(f"S5_NB_RD_{nxt}", supp_addr(nxt), self.shadow[nxt])
@@ -628,8 +630,8 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         await self._guard_cmd("S6_READ", "read", supp_bit(PROG_WORD), refused=True)
         refused = [g for g in self._guard if g[3] == "refused"]
         accepted = [g for g in self._guard if g[3] == "accepted"]
-        assert len(refused) == 8 and len(accepted) == 8, (
-            f"guard commands: {len(refused)} refused, {len(accepted)} accepted, expected 8 and 8"
+        assert len(refused) == 11 and len(accepted) == 8, (
+            f"guard commands: {len(refused)} refused, {len(accepted)} accepted, expected 11 and 8"
         )
         self._done("S6")
         self._chk(

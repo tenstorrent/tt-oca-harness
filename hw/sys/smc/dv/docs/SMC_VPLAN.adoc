@@ -33116,14 +33116,14 @@ bounded as the eFuse architecture states.
   `efuse_req_error` alone, cleared), a read of that word is issued with status 0, and a program
   of bit 7 of the next region's third word is issued with status 0. Then set the read locks
   region by region: the first and last word of each region read `0xBADCAB1E` with OKAY and raise
-  the interrupt, the next region's first word still reads its value, a read of the region's
-  third word through `EFUSE_READ_ADDR` is refused and a read of the next region's third word is
-  issued with status 0.
+  the interrupt, the next region's first word still reads its value, reads of the region's
+  third and last word through `EFUSE_READ_ADDR` are refused and a read of the next region's first
+  word (the `LOCK_REGION_END` boundary) is issued with status 0.
 . Error injection. Point: the program and read interfaces, with all three regions write- and
   read-locked. Kind: a program at bit 2048 + 32 x 70 + 6 and a read at bit 2048 + 32 x 70 while
   the interface's request valid is counted. Expected response: each completes with done and
   status, `efuse_req_error` alone and 0 command cycles; the clear bit returns the status to 0.
-  Eight refused and eight issued guard commands in all.
+  Eleven refused and eight issued guard commands in all.
 . Error injection. Point: the program and read interfaces. Kind: a program and a read at bit
   2048 + 32 x 128 while the interface's request valid is counted. Expected response: done and
   status set, `efuse_program_addr_error` and `efuse_read_addr_error` set and no
@@ -33157,9 +33157,10 @@ read `0xBADCAB1E` with OKAY while the next region's first word still reads its v
 read, 0 before and after each access.
 |`CHK-SUPP-GUARD` |The guard decides each firmware command by its own region's lock pair: a
 program in a write-locked region and a read in a read-locked region complete with done and
-status, set `efuse_req_error` alone and issue no fuse command (eight, cleared after each), while a
-read under a write lock only, a program or read in the next unlocked region and a read of the
-last supplementary word are issued with status 0 (eight).
+status, set `efuse_req_error` alone and issue no fuse command (eleven, cleared after each, the
+read-locked ones including each region's last word), while a read under a write lock only, a
+program or read in the next unlocked region (the read at its first word) and a read of the last
+supplementary word are issued with status 0 (eight).
 |`CHK-SUPP-ADDR-ERROR` |A program and a read at bit 2048 + 32 x WORDS complete with done and
 status and set the address errors, no request error, with no fuse command issued; the clears
 return the status to 0.
@@ -33175,7 +33176,9 @@ supplementary bit, each lock pair rejects writes and hides reads of its region a
 interrupt, and the guard and the region end refuse commands without a fuse command. Enrolled in:
 `all`, `hosted`.
 
-*Scope limit*: The `supplementary_shadow_regs_o` port is not connected on the bench and is not observed. The
+*Scope limit*: `SUPPLEMENTARY_LOCKS` bits are set-only and the walk sets every write lock before
+any read lock, so a guard whose program check also consulted the read lock is not distinguished.
+The `supplementary_shadow_regs_o` port is not connected on the bench and is not observed. The
 error response of the window before the sense completes and the re-sense of a programmed bit into
 the shadow are not exercised.
 
