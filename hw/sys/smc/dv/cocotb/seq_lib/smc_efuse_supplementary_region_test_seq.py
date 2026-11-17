@@ -43,7 +43,7 @@ MAP_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4
 #: "at bit 2048, directly after the 2 Kbit harness map" (Sensing and Export).
 SUPP_WORDS = 128
 REGION_END = (64, 96, 128)
-SUPP_BIT_BASE = 32 * MAP_WORDS
+SUPP_BIT_BASE = 2048
 IMAGE_WORDS = MAP_WORDS + SUPP_WORDS
 
 SUPP_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR")
@@ -84,6 +84,12 @@ READ_STATUS = _f("EFUSE_READ_CTRL", "READ_STATUS")
 #: command is issued to the SHIM, never for a start the guard or the address bound refuses.
 PROGRAM_PROBE = "tb_efuse_program_req_valid"
 READ_PROBE = "tb_efuse_read_req_valid"
+#: Read-address valid of smc_external_req_o (tb_top.sv): a window read the shadow does not
+#: serve leaves the SMC here.
+EXTERNAL_AR_PROBE = "tb_axil_external_arvalid"
+#: Word of each lock region the guard commands target (two past the region's first word).
+GUARD_OFFSET = 2
+GUARD_BIT = 7
 #: Supplementary word and bit the leaf programs (region 1); the testcase clears that bit in the
 #: image so the program is a 0-to-1 transition.
 PROG_WORD = 70
@@ -130,6 +136,8 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._stamps: list[tuple[str, int]] = []
         self._waits: list[tuple[str, int, str]] = []
         self._used: set[int] = set()
+        #: (label, kind, bit, outcome) of every guard command the leaf issued.
+        self._guard: list[tuple[str, str, int, str]] = []
         #: Pattern draws; seeded apart from the image so a written pattern is never an image word.
         self._rnd = random.Random(1)
         self._last_result = None
@@ -192,6 +200,29 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         )
         self._last_result = result
         return edges
+
+    async def _count_rises_during(self, probe: str, coro) -> int:
+        """Rising edges of ``probe`` sampled on clk_smc_i during ``coro``."""
+        pin = self._sig(probe)
+        clk = cocotb.top.clk_smc_i
+        rises = 0
+        prev = 0
+
+        async def _watch() -> None:
+            nonlocal rises, prev
+            while True:
+                await RisingEdge(clk)
+                cur = int(pin.value) if pin.value.is_resolvable else 0
+                if cur and not prev:
+                    rises += 1
+                prev = cur
+
+        task = cocotb.start_soon(_watch())
+        try:
+            self._last_result = await coro
+        finally:
+            task.kill()
+        return rises
 
     async def _count_command_cycles_during(self, probe: str, coro) -> int:
         """clk_smc_i cycles with ``probe`` (a fuse-command request valid) high during ``coro``."""
@@ -290,13 +321,15 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         await self._wr(f"{label}_OFF", PROGRAM_CTRL, 0)
         return ctrl
 
-    async def _program_start(self, label: str, bit: int) -> int:
-        """Start a program of ``bit`` and return EFUSE_INTERFACE_CTRL_STATUS after it settled."""
+    async def _program_start(self, label: str, bit: int) -> tuple[int, int]:
+        """Start a program of ``bit``: (EFUSE_INTERFACE_CTRL_STATUS, PROGRAM_CTRL at done)."""
         await self._wr(f"{label}_ADDR", PROGRAM_ADDR, bit)
         await self._wr(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
-        await self._poll(f"{label}_IDLE", PROGRAM_CTRL, lambda v: not v & PROG_BUSY)
+        ctrl = await self._poll(
+            f"{label}_DONE", PROGRAM_CTRL, lambda v: bool(v & PROG_DONE) and not v & PROG_BUSY
+        )
         await self._wr(f"{label}_OFF", PROGRAM_CTRL, 0)
-        return await self._rd_ok(f"{label}_STATUS", STATUS)
+        return await self._rd_ok(f"{label}_STATUS", STATUS), ctrl
 
     async def _fuse_read(self, label: str, bit: int) -> tuple[int, int]:
         """Read the fuse word at ``bit`` through the read interface: (READ_CTRL at done, data)."""
@@ -311,15 +344,50 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         await self._wr(f"{label}_OFF", READ_CTRL, 0)
         return ctrl, data
 
-    async def _read_start(self, label: str, bit: int) -> int:
-        """Start a read of ``bit`` and return EFUSE_INTERFACE_CTRL_STATUS after it settled."""
+    async def _read_start(self, label: str, bit: int) -> tuple[int, int]:
+        """Start a read of ``bit``: (EFUSE_INTERFACE_CTRL_STATUS, READ_CTRL at done)."""
         await self._wr(f"{label}_PROG_OFF", PROGRAM_CTRL, 0)
         await self._wr(f"{label}_ADDR", READ_ADDR, bit)
         await self._wr(f"{label}_EN", READ_CTRL, READ_EN)
         await self._wr(f"{label}_GO", READ_CTRL, READ_EN | READ_GO)
-        await self._poll(f"{label}_IDLE", READ_CTRL, lambda v: not v & READ_BUSY)
+        ctrl = await self._poll(
+            f"{label}_DONE", READ_CTRL, lambda v: bool(v & READ_DONE) and not v & READ_BUSY
+        )
         await self._wr(f"{label}_OFF", READ_CTRL, 0)
-        return await self._rd_ok(f"{label}_STATUS", STATUS)
+        return await self._rd_ok(f"{label}_STATUS", STATUS), ctrl
+
+    async def _guard_cmd(self, label: str, kind: str, bit: int, refused: bool) -> None:
+        """Issue a ``kind`` ("program" or "read") at ``bit`` and grade the guard's decision.
+
+        Refused: no fuse-command cycle, done and status set, efuse_req_error latched and no
+        address error; the error is then cleared (it gates both enables while set). Accepted:
+        at least one fuse-command cycle, done with status 0 and no error bit.
+        """
+        if kind == "program":
+            probe, start, done, stat = PROGRAM_PROBE, self._program_start, PROG_DONE, PROG_STATUS
+        else:
+            probe, start, done, stat = READ_PROBE, self._read_start, READ_DONE, READ_STATUS
+        hits = await self._count_command_cycles_during(probe, start(label, bit))
+        status, ctrl = self._last_result
+        if refused:
+            assert hits == 0, f"{label}: the refused {kind} at bit {bit} issued {hits} cycles"
+            assert ctrl & (done | stat) == done | stat, (
+                f"{label}: refused {kind} at bit {bit}: CTRL 0x{ctrl:08x} lacks done and status"
+            )
+            assert status & ERRORS == REQ_ERROR, (
+                f"{label}: refused {kind} at bit {bit}: status 0x{status:08x}, expected "
+                f"efuse_req_error alone"
+            )
+            await self._clear_errors(f"{label}_CLEAR")
+        else:
+            assert hits > 0, f"{label}: the accepted {kind} at bit {bit} issued no fuse command"
+            assert ctrl & (done | stat) == done, (
+                f"{label}: accepted {kind} at bit {bit}: CTRL 0x{ctrl:08x}, expected done, status 0"
+            )
+            assert status & ERRORS == 0, (
+                f"{label}: accepted {kind} at bit {bit}: status 0x{status:08x} reports an error"
+            )
+        self._guard.append((label, kind, bit, "refused" if refused else "accepted"))
 
     async def _clear_errors(self, label: str) -> int:
         await self._wr(
@@ -338,6 +406,10 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._rnd = random.Random(self.seed ^ 0x5A5A_0001)
         self.shadow = list(image[MAP_WORDS:])
         self.locks_model = 0
+        assert SUPP_BIT_BASE == 32 * MAP_WORDS, (
+            f"the architecture's supplementary base, bit {SUPP_BIT_BASE}, is not the end of the "
+            f"{MAP_WORDS}-word harness map"
+        )
         assert SUPP_WINDOW + 4 * SUPP_WORDS <= SUPP_WINDOW + smc_addr(
             "SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_SIZE"
         ), "the window does not fit the fuse slot"
@@ -363,6 +435,13 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         # S2: the first word past the window is not served by the shadow (the testcase registers
         # the address with the AXI monitor: the reference integration's terminator answers DECERR)
         past = supp_addr(SUPP_WORDS)
+        ar_in = await self._count_rises_during(
+            EXTERNAL_AR_PROBE, self._rd("S2_IN", supp_addr(SUPP_WORDS - 1), self.shadow[-1])
+        )
+        assert ar_in == 0, (
+            f"S2: the in-window read of word {SUPP_WORDS - 1} raised {EXTERNAL_AR_PROBE} "
+            f"{ar_in} times; the shadow serves it"
+        )
         item = SmcSysAxiItem("rd_S2_PAST")
         item.op = SmcSysAxiOp.READ
         item.addr = past
@@ -370,10 +449,18 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         item.allow_error = True
         item.expect_error = True
         item.expected_resp = _RESP_DECERR
-        await self.start_item(item)
-        await self.finish_item(item)
+
+        async def _past() -> None:
+            await self.start_item(item)
+            await self.finish_item(item)
+
+        ar_past = await self._count_rises_during(EXTERNAL_AR_PROBE, _past())
         self.accesses += 1
         self._calls += 1
+        assert ar_past >= 1, (
+            f"S2: the read of 0x{past:08x} never raised {EXTERNAL_AR_PROBE}; it did not leave "
+            "on smc_external_req_o"
+        )
         assert item.resp_code == _RESP_DECERR, (
             f"S2: 0x{past:08x} answered resp={item.resp_code}, expected DECERR from the terminator"
         )
@@ -382,9 +469,13 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-SUPP-WINDOW-END",
             "the first word past the %d-byte window, 0x%08x, is not served by the shadow: it "
-            "answers DECERR (rdata 0x%08x) from the external terminator",
+            "raised %s %d time(s), where the window's last word raised it %d times, and answers "
+            "DECERR (rdata 0x%08x) from the external terminator",
             4 * SUPP_WORDS,
             past,
+            EXTERNAL_AR_PROBE,
+            ar_past,
+            ar_in,
             past_data & _WORD_MASK,
         )
 
@@ -424,6 +515,8 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         )
         status = await self._rd_ok("S4_STATUS", STATUS)
         assert status & ERRORS == 0, f"S4: status 0x{status:08x} reports an error"
+        # the last supplementary word is inside the bound: a read of it is issued, no error
+        await self._guard_cmd("S4_LAST_READ", "read", supp_bit(SUPP_WORDS - 1), refused=False)
         window = await self._rd_ok("S4_WINDOW", supp_addr(PROG_WORD))
         self._done("S4")
         self._chk(
@@ -453,9 +546,24 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
                     self._wr_any(f"S5_WLOCKED_{word}", supp_addr(word), self._fresh()),
                 )
                 assert edges >= 1, f"S5: no locked-access interrupt on the write to word {word}"
+                assert self._last_result == _RESP_OKAY, (
+                    f"S5: the write to write-locked word {word} answered resp="
+                    f"{self._last_result}, expected OKAY"
+                )
                 irq_edges += edges
                 await self._rd(f"S5_HELD_{word}", supp_addr(word), self.shadow[word])
                 rejected += 1
+            # guard: only write locks 0..region are set
+            gword = first + GUARD_OFFSET
+            await self._guard_cmd(
+                f"S5_GP_{region}", "program", supp_bit(gword, GUARD_BIT), refused=True
+            )
+            await self._guard_cmd(f"S5_GR_{region}", "read", supp_bit(gword), refused=False)
+            if region + 1 < len(REGION_WORDS):
+                nword = REGION_WORDS[region + 1][0] + GUARD_OFFSET
+                await self._guard_cmd(
+                    f"S5_GPN_{region}", "program", supp_bit(nword, GUARD_BIT), refused=False
+                )
             if region + 1 < len(REGION_WORDS):
                 nxt = REGION_WORDS[region + 1][0]
                 value = self._fresh()
@@ -477,6 +585,12 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
                 )
                 irq_edges += edges
                 hidden += 1
+            # guard: every write lock and read locks 0..region are set
+            gword = first + GUARD_OFFSET
+            await self._guard_cmd(f"S5_GRL_{region}", "read", supp_bit(gword), refused=True)
+            if region + 1 < len(REGION_WORDS):
+                nword = REGION_WORDS[region + 1][0] + GUARD_OFFSET
+                await self._guard_cmd(f"S5_GRN_{region}", "read", supp_bit(nword), refused=False)
             if region + 1 < len(REGION_WORDS):
                 nxt = REGION_WORDS[region + 1][0]
                 await self._rd(f"S5_NB_RD_{nxt}", supp_addr(nxt), self.shadow[nxt])
@@ -508,34 +622,23 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             hidden,
         )
 
-        # S6: the guard refuses a program and a read in a locked region without a fuse command
+        # S6: with every region write- and read-locked, the guard refuses a program and a read
         await self._clear_errors("S6_CLEAR0")
-        hits_p = await self._count_command_cycles_during(
-            PROGRAM_PROBE, self._program_start("S6_PROG", supp_bit(PROG_WORD, PROG_BIT + 1))
+        await self._guard_cmd("S6_PROG", "program", supp_bit(PROG_WORD, PROG_BIT + 1), refused=True)
+        await self._guard_cmd("S6_READ", "read", supp_bit(PROG_WORD), refused=True)
+        refused = [g for g in self._guard if g[3] == "refused"]
+        accepted = [g for g in self._guard if g[3] == "accepted"]
+        assert len(refused) == 8 and len(accepted) == 8, (
+            f"guard commands: {len(refused)} refused, {len(accepted)} accepted, expected 8 and 8"
         )
-        status_p = self._last_result
-        assert status_p & REQ_ERROR, (
-            f"S6: program in a write-locked region: status 0x{status_p:08x}"
-        )
-        assert hits_p == 0, f"S6: the refused program issued a fuse command for {hits_p} cycles"
-        await self._clear_errors("S6_CLEAR1")
-        hits_r = await self._count_command_cycles_during(
-            READ_PROBE, self._read_start("S6_READ", supp_bit(PROG_WORD))
-        )
-        status_r = self._last_result
-        assert status_r & REQ_ERROR, f"S6: read in a read-locked region: status 0x{status_r:08x}"
-        assert hits_r == 0, f"S6: the refused read issued a fuse command for {hits_r} cycles"
-        await self._clear_errors("S6_CLEAR2")
         self._done("S6")
         self._chk(
             "CHK-SUPP-GUARD",
-            "a program at bit %d and a read at bit %d (region 1, write and read locked) set "
-            "efuse_req_error (status 0x%08x, 0x%08x) with 0 fuse-command cycles each; the clears "
-            "returned the status to 0",
-            supp_bit(PROG_WORD, PROG_BIT + 1),
-            supp_bit(PROG_WORD),
-            status_p,
-            status_r,
+            "the guard decided each command by its own region's SUPPLEMENTARY_LOCKS pair: "
+            "refused (0 fuse-command cycles, done and status set, efuse_req_error alone, cleared "
+            "after) %s; accepted (fuse command issued, done with status 0, no error) %s",
+            " ".join(f"{label}:{kind}@{bit}" for label, kind, bit, _o in refused),
+            " ".join(f"{label}:{kind}@{bit}" for label, kind, bit, _o in accepted),
         )
 
         # S7: commands at the first bit past the region set the address errors, no fuse command
@@ -543,9 +646,13 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         hits_p = await self._count_command_cycles_during(
             PROGRAM_PROBE, self._program_start("S7_PROG", end_bit)
         )
-        status_p = self._last_result
-        assert status_p & PROGRAM_ADDR_ERROR, (
-            f"S7: program at bit {end_bit}: status 0x{status_p:08x}"
+        status_p, ctrl_p = self._last_result
+        assert status_p & ERRORS == PROGRAM_ADDR_ERROR, (
+            f"S7: program at bit {end_bit}: status 0x{status_p:08x}, expected "
+            "efuse_program_addr_error alone"
+        )
+        assert ctrl_p & (PROG_DONE | PROG_STATUS) == PROG_DONE | PROG_STATUS, (
+            f"S7: program at bit {end_bit}: PROGRAM_CTRL 0x{ctrl_p:08x} lacks done and status"
         )
         assert hits_p == 0, (
             f"S7: the out-of-range program issued a fuse command for {hits_p} cycles"
@@ -553,16 +660,23 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         hits_r = await self._count_command_cycles_during(
             READ_PROBE, self._read_start("S7_READ", end_bit)
         )
-        status_r = self._last_result
-        assert status_r & READ_ADDR_ERROR, f"S7: read at bit {end_bit}: status 0x{status_r:08x}"
+        status_r, ctrl_r = self._last_result
+        assert status_r & ERRORS == PROGRAM_ADDR_ERROR | READ_ADDR_ERROR, (
+            f"S7: read at bit {end_bit}: status 0x{status_r:08x}, expected the read address "
+            "error next to the program one and no request error"
+        )
+        assert ctrl_r & (READ_DONE | READ_STATUS) == READ_DONE | READ_STATUS, (
+            f"S7: read at bit {end_bit}: READ_CTRL 0x{ctrl_r:08x} lacks done and status"
+        )
         assert hits_r == 0, f"S7: the out-of-range read issued a fuse command for {hits_r} cycles"
         await self._clear_errors("S7_CLEAR")
         self._done("S7")
         self._chk(
             "CHK-SUPP-ADDR-ERROR",
-            "EFUSE_PROGRAM_ADDR=%d and EFUSE_READ_ADDR=%d (2048 + 32 x %d) set "
-            "efuse_program_addr_error (status 0x%08x) and efuse_read_addr_error (status 0x%08x) "
-            "with 0 fuse-command cycles each; the clears returned the status to 0",
+            "EFUSE_PROGRAM_ADDR=%d and EFUSE_READ_ADDR=%d (2048 + 32 x %d) completed with done "
+            "and status set and latched efuse_program_addr_error (status 0x%08x) and "
+            "efuse_read_addr_error (status 0x%08x), no efuse_req_error, with 0 fuse-command "
+            "cycles each; the clears returned the status to 0",
             end_bit,
             end_bit,
             SUPP_WORDS,

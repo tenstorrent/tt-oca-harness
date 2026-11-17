@@ -62,7 +62,7 @@ def _site(bound: int) -> dict:
 
 
 class smu_smc_efuse_supplementary_shadow_test_seq:
-    """The 128 supplementary window words over JTAG2AXI against the stream and the image."""
+    """35 sampled supplementary window words over JTAG2AXI against the stream and the image."""
 
     def __init__(self, test) -> None:
         self.test = test
