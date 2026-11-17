@@ -20,17 +20,21 @@ assumed, and the pair is quiesced and its status cleared between values so each
 observation stands alone.
 
 ``EventType0`` and ``EventType1`` are swept with the pair's relation left at
-its RDL reset. The RDL names ``EventType2`` only as an argument of ``Udf``
-("User Defined Function with event type 0, 1, and 2 as arguments",
-``dfd_cla.rdl``), and neither ``LogicalOp`` nor ``Udf`` has an encoding in the
-RDL, so the relation for the ``EventType2`` sweep is measured: with the other
-two selectors on an index the first two sweeps saw idle, ``LogicalOp`` and
-``Udf`` are walked over their RDL field ranges until pair 0 activates with
-``EventType2`` on an index seen live and stays idle with it on the idle index.
-Each candidate is probed from the pair's reset word, and the live index is
-probed again written over the idle one, as the sweep writes it, so an
-activation that depends on the pair's previous programming is not taken as the
-relation. The ``EventType2`` sweep then runs under that relation.
+its RDL reset. The RDL ``LogicalOp`` description says ``EventType2`` takes
+part only under ``LogicalOp`` 2, "the Udf truth table over events 0, 1 and
+2", and the ``Udf`` description says bit ``{event2, event1, event0}`` is the
+result for that combination of event statuses (``dfd_cla.rdl``). The relation
+for the ``EventType2`` sweep is still measured, not taken from that text: with
+the other two selectors on an index the first two sweeps saw idle,
+``LogicalOp`` and ``Udf`` are walked over their RDL field ranges until pair 0
+activates with ``EventType2`` on an index seen live and stays idle with it on
+the idle index. Each candidate is probed from the pair's reset word, and the
+live index is probed again written over the idle one, as the sweep writes it,
+so an activation that depends on the pair's previous programming is not taken
+as the relation. The measured relation is then held to the RDL encoding: it
+has to be ``LogicalOp`` 2 with ``Udf`` bit 4 (``{1, 0, 0}``, event 2 alone)
+set and bit 0 (no event) clear, so a decode that disagrees with the RDL
+description fails. The ``EventType2`` sweep then runs under that relation.
 
 A node's pairs can only set their status while that node is current, so the
 sweep walks the nodes in order: once a node's selectors are done, one of its
@@ -62,6 +66,12 @@ _UDF_SELECTOR = "EventType2"
 _SELECTORS = (*_DIRECT_SELECTORS, _UDF_SELECTOR)
 
 _SETTLE_CYCLES = 8
+
+# dfd_cla.rdl LogicalOp: "2 the Udf truth table over events 0, 1 and 2"; Udf:
+# "bit {event2, event1, event0} of Udf ... is the result for that combination".
+_RDL_UDF_OP = 2
+_RDL_UDF_EVENT2_ALONE_BIT = 0b100
+_RDL_UDF_NO_EVENT_BIT = 0b000
 
 # Bounded poll of the hardware-driven CurrentNode field after a
 # destination-node change.
@@ -225,6 +235,7 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
                 and await self._activates(node, 0, hot_fields, f"{label}_hot_over_idle")
             ):
                 await self._write(reg, reg.reset_word, f"{label}_quiet")
+                self._check_rdl_relation(node, o, u, hot, idle)
                 self.relations[node] = relation
                 return relation
         await self._write(reg, reg.reset_word, "rel_quiet")
@@ -234,6 +245,20 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
             f"(seen idle), with {' and '.join(_DIRECT_SELECTORS)} both on {idle}; nothing "
             f"shows {_UDF_SELECTOR} reaching the pair's relation"
         )
+
+    def _check_rdl_relation(self, node: int, op: int, udf: int, hot: int, idle: int) -> None:
+        """The measured EventType2 relation has to be the one the RDL encoding gives."""
+        alone = (udf >> _RDL_UDF_EVENT2_ALONE_BIT) & 1
+        none = (udf >> _RDL_UDF_NO_EVENT_BIT) & 1
+        assert op == _RDL_UDF_OP and alone == 1 and none == 0, (
+            f"node {node}'s pair 0 activated on {_UDF_SELECTOR} = {hot} alone and stayed idle "
+            f"on {idle} under LogicalOp = {op}, Udf = 0x{udf:02x}; the dfd_cla.rdl encoding "
+            f"says {_UDF_SELECTOR} takes part only under LogicalOp = {_RDL_UDF_OP}, with Udf "
+            f"bit {_RDL_UDF_EVENT2_ALONE_BIT} (event 2 alone) the result to set and bit "
+            f"{_RDL_UDF_NO_EVENT_BIT} (no event) the result to clear, so the decode and the "
+            f"register description disagree"
+        )
+        self.value_checks += 1
 
     async def _sweep_node(self, node: int) -> None:
         for selector in _DIRECT_SELECTORS:
@@ -331,7 +356,8 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-CLA-EVENT-SELECT-LIVE: on every node each of the %d selectors set a "
             "pair-activation bit for at least one event index and left at least one index "
-            "idle; the live indices were %s, with %s swept under the measured relation %s "
+            "idle; the live indices were %s, with %s swept under the measured relation %s, "
+            "LogicalOp %d with Udf bit %d set and bit %d clear as the RDL encoding gives, "
             "and the others under the RDL reset relation, so each selector picks a live "
             "event bus rather than storing a value nothing reads; each activation was "
             "cleared through the pair's own W2C bit before the next index was programmed",
@@ -339,6 +365,9 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
             seen,
             _UDF_SELECTOR,
             self.relations,
+            _RDL_UDF_OP,
+            _RDL_UDF_EVENT2_ALONE_BIT,
+            _RDL_UDF_NO_EVENT_BIT,
         )
 
         await self._quiesce_all("restore")

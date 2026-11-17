@@ -27667,7 +27667,7 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 *Test Coverage*:
 
 * `EventType0`, `EventType1` and `EventType2` of each of the four `CDbgNode<n>Eap<m>` pairs of each of the four nodes, each selector driven over all 64 values of its six-bit field: 3072 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
-* `EventType0` and `EventType1` are swept with the pair's relation at its RDL reset. The RDL names `EventType2` only as an argument of `Udf` and gives no encoding for `LogicalOp` or `Udf`, so before the `EventType2` sweep the relation is measured: with the other two selectors on an index seen idle, `LogicalOp` and `Udf` are walked over their field ranges until pair 0 activates with `EventType2` on an index seen live and stays idle with it on the idle index. `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
+* `EventType0` and `EventType1` are swept with the pair's relation at its RDL reset. The RDL says `EventType2` takes part only under `LogicalOp` 2, the `Udf` truth table, where bit `{event2, event1, event0}` of `Udf` is the result for that combination of event statuses. Before the `EventType2` sweep the relation is still measured, not taken from that text: with the other two selectors on an index seen idle, `LogicalOp` and `Udf` are walked over their field ranges until pair 0 activates with `EventType2` on an index seen live and stays idle with it on the idle index. The measured relation is then held to the RDL encoding: `LogicalOp` 2 with `Udf` bit 4 (event 2 alone) set and bit 0 (no event) clear. `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
 * A node's pairs can only set their status while that node is current, so after each node's sweep one of its pairs is re-programmed with an event index seen live and `DestNode` naming the next node, and `CurrentNode` is polled until the DUT reports the move.
 
 *Test Procedure*:
@@ -27681,7 +27681,7 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 |===
 |Checker |Description
 |`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs of all four nodes took every one of the 64 values their field offers and read back exactly, with `CurrentNode` reporting each node in turn; a value the register does not accept, or a node the walk never reaches, fails it
-|`CHK-CLA-EVENT-SELECT-LIVE` |On every node each of `EventType0`, `EventType1` and `EventType2` set a pair-activation bit for at least one event index and left at least one index idle, `EventType2` under a `LogicalOp`/`Udf` relation measured to make it alone decide activation; a selector that never activates on a node, one that activates on every index, or an `EventType2` for which no relation makes it decide activation fails it
+|`CHK-CLA-EVENT-SELECT-LIVE` |On every node each of `EventType0`, `EventType1` and `EventType2` set a pair-activation bit for at least one event index and left at least one index idle, `EventType2` under a `LogicalOp`/`Udf` relation measured to make it alone decide activation and found to be the RDL encoding (`LogicalOp` 2, `Udf` bit 4 set, bit 0 clear); a selector that never activates on a node, one that activates on every index, an `EventType2` for which no relation makes it decide activation, or a measured relation other than the RDL encoding fails it
 |===
 
 
