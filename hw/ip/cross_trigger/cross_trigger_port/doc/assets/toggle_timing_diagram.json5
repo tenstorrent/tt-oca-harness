@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+{
+  signal: [
+    { name: 'clk_i', wave: 'p.................' },
+    { name: 'Sender ct_src_i', wave: '010.10...10.......', node: '.A..B....C........' },
+    { name: 'Sender hold', wave: '0.1....0..1....0..', node: '....J.............' },
+    { name: 'Sender CT_Req_out', wave: '0..1.......0......', node: '...D.......E......' },
+    {},
+    { name: 'Receiver CT_Req_in synchronized', wave: '0....1......0.....', node: '.....F......G.....' },
+    { name: 'Receiver ct_dst_o', wave: '0.....10.....10...', node: '......H......I....' },
+  ],
+  edge: [
+    'A~>D accepted',
+    'B-J discarded',
+    'C~>E accepted',
+    'D~>F wire and synchronizer',
+    'F~>H',
+    'E~>G wire and synchronizer',
+    'G~>I',
+  ],
+  config: { hscale: 1, marks: false },
+}
