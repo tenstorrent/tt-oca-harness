@@ -7,8 +7,8 @@ debug interrupt; `interrupts.adoc` places them on raw vector bits 320 and 321
 and maps raw bits 0 to 327 onto PLIC IDs 1 to 328, so the clock stop is PLIC
 source 321 and the debug interrupt PLIC source 322. `dfd.adoc` Actions and
 Cross-Triggering makes the debug interrupt "an ordinary maskable PLIC source".
-The bench ties `tdr_dbg_ctrl_clock_stop_en_i` low, so source 321 can only ever
-read 0 here.
+The bench holds `tdr_dbg_ctrl_clock_stop_en_i` (`tb_cla_clock_stop_en`) at 0 in
+this leaf, so source 321 can only ever read 0 here.
 
 The debug-interrupt action code is measured as `smc_dfd_cla_action_seq_utils`
 measures it: `Action0` of node 0 pair 0 is walked under an activating relation
@@ -92,7 +92,7 @@ class smc_dfd_cla_irq_plic_source_test_seq(SmcDfdClaActionSeq):
         )
         assert not any(p321), (
             f"{CHK} FAIL: tb_plic_pending_321 set at sample {p321.index(1)} of {len(p321)} with "
-            f"tdr_dbg_ctrl_clock_stop_en_i tied low; the debug interrupt is source 322"
+            f"tb_cla_clock_stop_en held at 0; the debug interrupt is source 322"
         )
         cocotb.log.info(
             "%s: Action0 %d of node 0 pair 0 raised tb_cla_interrupt at sample %d of %d; "

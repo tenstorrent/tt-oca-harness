@@ -3,9 +3,8 @@
 """The CLA global clock-halt request is held until primary reset; the mask gates it.
 
 `dfd.adoc` says a halt-clock action sets a request that is held until the SMC
-primary reset: `CDbgEapStatus`, `EnableEap`, `EnableCla` and
-`DisableGlobalClockHalt` do not release it, and the mask gates the output
-without clearing it. `dfd_cla.rdl` says setting `DisableGlobalClockHalt` does
+primary reset: `CDbgEapStatus`, `EnableEap` and `DisableGlobalClockHalt` do
+not release it, and the mask gates the output without clearing it. `dfd_cla.rdl` says setting `DisableGlobalClockHalt` does
 not release a request already set. Held to that, `halt_clock_global_or_o` stays
 1 once the pair that fired the clock-halt action is quiet, its status is
 cleared by the W2C, `EnableEap` is 0 and `DisableGlobalClockHalt` is 1; it
@@ -46,6 +45,8 @@ class smc_dfd_cla_clock_halt_release_test_seq(SmcDfdClaActionSeq):
         )
         cocotb.log.info(line)
         self.samples.append(line)
+        clock_stop = self._pin("tb_cla_clock_stop")
+        assert clock_stop == 0, f"tb_cla_clock_stop={clock_stop} at {phase} with the enable at 0"
         return status, stopped
 
     def _held(self, phase: str, stopped: int, step: str) -> None:

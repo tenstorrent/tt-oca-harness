@@ -9,8 +9,9 @@ CLA. `dfd.adoc` says the mask and `tdr_dbg_ctrl_clock_stop_en_i` gate the
 output without clearing the held request. Held to that, with the enable and
 `DEBUG_CTRL.xtrig_clk_halt_mask` bit 0 set, the halt-clock action raises
 `tb_cla_clock_stop` and bit 320 of `tb_cpu_interrupts` is 1 on exactly one
-`clk_smc_i` sample; source 321 pends, is claimed and completed, and stays clear
-while the output stays 1. Dropping the enable drops the output with no pulse;
+`clk_smc_i` sample. The pair is then quieted, its status cleared by the W2C
+and `EnableEap` cleared, so only the held request keeps the output up; source
+321 pends, is claimed and completed, and stays clear while the output stays 1. Dropping the enable drops the output with no pulse;
 raising it again gives exactly one more pulse and one more pending source 321.
 
 Source 321 is enabled on context 0 at priority 1 with threshold 0 for the
@@ -160,9 +161,15 @@ class smc_dfd_cla_clock_stop_irq_pulse_test_seq(SmcDfdClaActionSeq):
         )
 
         start = sampler.mark()
-        action, activating, _ = await self._discover("tb_cla_clock_stop", "stop")
+        action, activating, quiet = await self._discover("tb_cla_clock_stop", "stop")
         await self._hold()
         first = self._grade_one_pulse(CHK_PULSE, "fire", start, sampler)
+        await self._quiet(action, quiet, "quiet")
+        await self._w2c("once")
+        assert await self._status_bit("after_w2c") == 0, (
+            f"CDbgEapStatus.Node0Eap0 still 1 after the W2C with the pair quiet (op {quiet})"
+        )
+        await self._write_ctrl(1, 0, 0, "eap_off")
         cocotb.log.info(
             "%s: halt-clock action %d on LogicalOp %d; %s", CHK_PULSE, action, activating, first
         )

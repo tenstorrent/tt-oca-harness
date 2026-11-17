@@ -1364,6 +1364,8 @@ class smc_base_test(uvm_test):
             dut.tb_ndmreset_request.value = 0
         if hasattr(dut, "tb_cfg_flr_pf_active"):
             dut.tb_cfg_flr_pf_active.value = 0
+        if hasattr(dut, "tb_cla_clock_stop_en"):
+            dut.tb_cla_clock_stop_en.value = 0
         if hasattr(dut, "tb_temp_interrupt_i"):
             dut.tb_temp_interrupt_i.value = 0
         if hasattr(dut, "tb_ext_interrupt_0_i"):

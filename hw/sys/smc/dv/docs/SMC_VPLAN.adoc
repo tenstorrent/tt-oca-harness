@@ -55921,6 +55921,7 @@ draws nothing from the seed.
 
 * Source 321 is enabled on context 0 at priority 1 with threshold 0, the halt mask bit 0 is set and `tb_cla_clock_stop_en` is driven 1; bit 320, the output and source 321 must be 0 before the fire.
 * `Action0` of node 0 pair 0 is walked until `tb_cla_clock_stop` rises; bit 320 must be 1 on exactly one sample, at the rise or the sample after it.
+* The pair is quieted, its status cleared by its W2C and `EnableEap` cleared, so only the held request keeps the output up.
 * Source 321 is claimed and completed; for 80 `clk_smc_i` cycles after the complete the output stays 1, bit 320 stays 0, source 321 does not pend and a claim reads 0.
 * `tb_cla_clock_stop_en` is dropped (output 0, no pulse) and raised again: exactly one more pulse, and one more claim with no re-pend after it.
 * The enable, the mask, the PLIC enable, threshold and priority are restored at the end.
