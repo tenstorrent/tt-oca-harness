@@ -828,7 +828,8 @@ has no canonical scenario
 |`smc_ecc_dfd_dbs_sanity_test`, `smc_dfd_cla_event_type_sweep_test`,
 `smc_dfd_cla_snapshot_capture_test`, `smc_dfd_trace_sink_readout_test`,
 `smc_dfd_trace_writeout_phase_test`, `smc_remap_cla_test`, `smc_dfd_clock_gate_access_test`,
-`smc_dfd_cla_match_event_rules_test`, `smc_dfd_cla_irq_plic_source_test`
+`smc_dfd_cla_match_event_rules_test`, `smc_dfd_cla_irq_plic_source_test`,
+`smc_dfd_cla_clock_halt_release_test`, `smc_dfd_cla_clock_stop_irq_pulse_test`
 |`smc_map_fcov` (`c_cla_decode`, `c_cla_region`, `c_cla_base_decodes`, `c_dfx_status_decode`);
 `smc_cpu_fcov` (`c_custom_action_output_driven`); no trace, trigger or debug-bus point
 |`YES`: `smc_ecc_dfd_dbs_sanity_test`; trace, trigger and debug bus are `DECODE-ONLY`
@@ -1521,10 +1522,11 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_dfd_dbm_mode_lock_test` |3 |Every debug-bus mux mode programmed on every mux, then the CLA lock latched and held.
 |`smc_dfd_cla_snapshot_capture_test` |3 |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
 |`smc_dfd_cla_irq_w2c_release_test` |2, held out |The single `CDbgEapStatus` W2C write must drop `cla_interrupt` with the status (#3389).
-|`smc_dfd_cla_clock_halt_release_test` |2, held out |`halt_clock_global_or_o` must deassert once the clock-halt action drops and `DisableGlobalClockHalt` is set (#3390).
 |`smc_dfd_clock_gate_access_test` |3 |CLA and DST register accesses under the DFD clock gate, the CLA evaluating with the clock unforced, and `EnableCla` gating the CLA before and after `ClaLock`.
 |`smc_dfd_cla_match_event_rules_test` |3 |The positive and negative match codes graded against the two measured bus states, `Muxselseg4` to `Muxselseg7` left without effect, the time match dead under every match value, and the GPIO-toggle action driving no pad.
 |`smc_dfd_cla_irq_plic_source_test` |3 |The CLA debug interrupt raising PLIC pending source 322 with the clock-stop source 321 idle.
+|`smc_dfd_cla_clock_halt_release_test` |2 |The CLA global clock-halt request held through the W2C, `EnableEap` and `DisableGlobalClockHalt`, gated by the halt mask (#3390).
+|`smc_dfd_cla_clock_stop_irq_pulse_test` |3 |Raw bit 320 pulsing once per rise of the held clock-stop output, PLIC source 321 claimed once without re-pending, and one more pulse after an enable 0 -> 1.
 |`smc_dfd_trace_sink_concurrent_test` |3 |The trace sink read out through its MMR port while the trace is still writing it.
 |`smc_dfd_sanity_test` |1 |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |3 |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
@@ -52824,6 +52826,14 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_clock_halt_release_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_clock_stop_irq_pulse_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_dfd_csr_field_access_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
@@ -54810,7 +54820,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |Issue |Leaf |Kind |Reason
 |#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes. Its `+smc_misc_warm_in_reset_assertoff` holds the leg's own-domain AXI-Lite checker off on the warm-reset cycles where the AR it presents on purpose would fire `OCAH_AXI_AR_VALID_RESET_LOW`; every other cycle and every other leaf keep the rule
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
-|#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
 |to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
 |to follow |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold (the issue number follows once filed)
@@ -55839,7 +55848,100 @@ Drive `smc_dfd_cla_irq_plic_source_test_seq`. Each checker below is a named comp
 
 *Pass Criteria*: `CHK-CLA-IRQ-PLIC-322` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The release of the line after the W2C write is the subject of `smc_dfd_cla_irq_w2c_release_test` and is not graded here. Source 321 can only read 0 on this bench, which ties `tdr_dbg_ctrl_clock_stop_en_i` low.
+*Scope limit*: The release of the line after the W2C write is the subject of `smc_dfd_cla_irq_w2c_release_test` and is not graded here. Source 321 can only read 0 here: the bench holds `tdr_dbg_ctrl_clock_stop_en_i` (`tb_cla_clock_stop_en`) low in this leaf; the clock-stop pulse is the subject of `smc_dfd_cla_clock_stop_irq_pulse_test`.
+'''''
+
+[[sec-609-smc_dfd_cla_clock_halt_release_test]]
+===== 609 `smc_dfd_cla_clock_halt_release_test`
+
+*Phase*: 2
+
+*Area*: JTAG
+
+*Source Module*: `smc_dfd_cla_clock_halt_release_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte accesses to the CLA registers and `DEBUG_CTRL`; bench probes
+`tb_cla_halt_clock_global` (`halt_clock_global_or_o` of `u_smc_dfd_wrap`) and `tb_cla_clock_stop`, with
+`tb_cla_clock_stop_en` held 0; bench signal `tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The CLA global clock-halt request is held until the SMC primary reset: `dfd.adoc` says `CDbgEapStatus`, `EnableEap`, `EnableCla` and `DisableGlobalClockHalt` do not release it and the mask gates the output without clearing it, and `dfd_cla.rdl` says setting `DisableGlobalClockHalt` does not release a request already set (#3390).
+
+*Test Coverage*:
+
+* With `DEBUG_CTRL.xtrig_clk_halt_mask` bit 0 set the CLA is armed, the request reads 0, and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_halt_clock_global` rises with the status 1.
+* The pair is quieted, the status is cleared by its W2C, `EnableEap` is cleared and `DisableGlobalClockHalt` is set; the request is sampled after each step.
+* The mask bit is cleared and set back; the request is sampled after each, then the mask is cleared again.
+
+*Test Procedure*:
+
+Drive `smc_dfd_cla_clock_halt_release_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLA-CLOCK-HALT-HELD` |`tb_cla_halt_clock_global` reads 1 after the action dropped, after the W2C (with the status 0), after `EnableEap` was cleared and after `DisableGlobalClockHalt` was set; 0 with the mask bit cleared; and 1 again once the mask bit is set back; a request released by any of those steps, a mask that does not gate it, or a mask that clears it fails it
+|===
+
+*Pass Criteria*: `CHK-CLA-CLOCK-HALT-HELD` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The release at the SMC primary reset is not driven; `EnableCla` and `DisableLocalClockHalt` are not graded. The request is read on the wrapper term, not on `tdr_dbg_ctrl_clocks_stopped_by_cla_o`, since the enable is held 0 here.
+'''''
+
+[[sec-610-smc_dfd_cla_clock_stop_irq_pulse_test]]
+===== 610 `smc_dfd_cla_clock_stop_irq_pulse_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_dfd_cla_clock_stop_irq_pulse_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, accesses to the CLA registers, `DEBUG_CTRL` and the PLIC
+priority, threshold, enable and claim/complete registers of context 0; bench input `tb_cla_clock_stop_en`
+(`tdr_dbg_ctrl_clock_stop_en_i`) driven by the sequence; bench probes bit 320 of `tb_cpu_interrupts`,
+`tb_cla_clock_stop` and `tb_plic_pending_321` sampled on every `clk_smc_i` rise; bench signal `tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `interrupts.adoc` gives raw bit 320 as a one-cycle pulse when the CLA clock-stop output rises, with the output held until the SMC primary reset, so PLIC source 321 fires once per rise and needs no acknowledge at the CLA; `dfd.adoc` says the enable gates the output without clearing the request.
+
+*Test Coverage*:
+
+* Source 321 is enabled on context 0 at priority 1 with threshold 0, the halt mask bit 0 is set and `tb_cla_clock_stop_en` is driven 1; bit 320, the output and source 321 must be 0 before the fire.
+* `Action0` of node 0 pair 0 is walked until `tb_cla_clock_stop` rises; bit 320 must be 1 on exactly one sample, at the rise or the sample after it.
+* Source 321 is claimed and completed; for 80 `clk_smc_i` cycles after the complete the output stays 1, bit 320 stays 0, source 321 does not pend and a claim reads 0.
+* `tb_cla_clock_stop_en` is dropped (output 0, no pulse) and raised again: exactly one more pulse, and one more claim with no re-pend after it.
+* The enable, the mask, the PLIC enable, threshold and priority are restored at the end.
+
+*Test Procedure*:
+
+Drive `smc_dfd_cla_clock_stop_irq_pulse_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLA-CLKSTOP-IRQ-PULSE` |The halt-clock action raises `tb_cla_clock_stop` once and it stays 1, and bit 320 of `tb_cpu_interrupts` is 1 on exactly one `clk_smc_i` sample, at or one after the rise; a level, a missing pulse or a second pulse fails it
+|`CHK-CLA-CLKSTOP-IRQ-NO-REPEND` |Source 321 is pending after the pulse, the context 0 claim returns 321, and after the complete the output stays 1 while bit 320, the pending bit and a second claim stay 0; a source that pends again behind the held output fails it
+|`CHK-CLA-CLKSTOP-IRQ-REARM` |The enable 1 -> 0 drops the output with no pulse, the enable 0 -> 1 raises it with exactly one more pulse, and source 321 is claimed once more without pending again
+|===
+
+*Pass Criteria*: every checker above holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The halt mask as a gate of the pulse, the release at the SMC primary reset and a CPU taking the interrupt are not graded. The enable is driven from the bench, not through the DTP debug-control register.
 '''''
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
@@ -57931,8 +58033,7 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
-`smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test`,
+`smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test`,
 `smc_flr_hold_edge_requeue_test` and `smc_clock_gate_inflight_completes_test` (issues to
 follow).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits

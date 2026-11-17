@@ -677,3 +677,19 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_clock_halt_release_test"
+module = "smc_dfd_cla_clock_halt_release_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_clock_stop_irq_pulse_test"
+module = "smc_dfd_cla_clock_stop_irq_pulse_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

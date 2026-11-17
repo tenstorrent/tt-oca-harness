@@ -695,7 +695,9 @@
 `SMC_TB_OUT(logic, tb_sep_wdt_irq_sync)
 `SMC_TB_OUT(logic, tb_cla_interrupt)
 // The CLA clock-stop status and the term behind it. The status output is
-// ANDed with tdr_dbg_ctrl_clock_stop_en_i, which this tb ties low.
+// ANDed with tdr_dbg_ctrl_clock_stop_en_i, driven by tb_cla_clock_stop_en
+// (idle 0; only smc_dfd_cla_clock_stop_irq_pulse_test raises it).
+`SMC_TB_IN(logic, tb_cla_clock_stop_en)
 `SMC_TB_OUT(logic, tb_cla_clock_stop)
 `SMC_TB_OUT(logic, tb_cla_halt_clock_global)
 `SMC_TB_OUT(logic, tb_dma_intp)
@@ -723,7 +725,7 @@
 `SMC_TB_OUT(logic, tb_plic_pending_329)
 `SMC_TB_OUT(logic, tb_plic_pending_330)
 `SMC_TB_OUT(logic, tb_plic_pending_332)
-// Sources 321 and 322 are the CLA clock-stop status (cpu_interrupts[320])
+// Sources 321 and 322 are the CLA clock-stop pulse (cpu_interrupts[320])
 // and the CLA debug interrupt (cpu_interrupts[321]) at the PLIC.
 `SMC_TB_OUT(logic, tb_plic_pending_321)
 `SMC_TB_OUT(logic, tb_plic_pending_322)

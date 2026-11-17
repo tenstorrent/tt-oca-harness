@@ -1459,7 +1459,7 @@ module smc_uvm_top
         .cla_ext_action_custom_o    (cla_ext_action_custom),
         .xtrigger_ss_o              (),
         .xtrigger_ss_i              ('0),
-        .tdr_dbg_ctrl_clock_stop_en_i (1'b0),
+        .tdr_dbg_ctrl_clock_stop_en_i (tb_cla_clock_stop_en),
         .tdr_dbg_ctrl_clocks_stopped_by_cla_o (),
         .ext_debug_bus_i            ('0),
         // DFT scan controls: cocotb drives tb_test_en_i (default 0 in bring-up).
@@ -6162,6 +6162,7 @@ module smc_uvm_top
     assign tb_boot_stall_jtag_val_i  = 1'b0;
     assign tb_sep_wdt_reset_n        = 1'b1;
     assign tb_cfg_flr_pf_active      = 1'b0;
+    assign tb_cla_clock_stop_en      = 1'b0;
     assign tb_ndmreset_request       = '0;
     assign tb_temp_interrupt_i       = 1'b0;
     assign tb_ext_interrupt_0_i      = 1'b0;
