@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=1, no Force).
+"""SMC OTP JTAG2AXI series NO_INCR R/W + eFuse map hole SLVERR (SEP=1, no Force).
 
 S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
     J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC word
@@ -9,15 +9,15 @@ S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
 S2: Series NO_INCR write PATTERN_A to MAP SPARE[0], then series NO_INCR readback
     OKAY + data match.
 S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A;
-    then, in the drawn order, a SINGLE_OP read of each drawn hole word (below
-    CTRL) returns SLVERR + ``0xbadcab1e`` and a SINGLE_OP re-read of SPARE[0]
+    then, in the drawn order, a SINGLE_OP read of each drawn hole word (past the
+    map, below the end of the eFuse page) returns SLVERR + ``0xbadcab1e`` and a SINGLE_OP re-read of SPARE[0]
     after it still returns SUCCESS + PATTERN_A.
 
 SPARE[0] from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
 The hole set holds the gap's first word, ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR +
 SMC_TOP_SMC_EFUSE_MAP_SIZE``, in every run; the seed draws zero to two further
-distinct 4-byte-aligned words from the rest of the gap, up to
-``SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR``, and the order they are read in.
+distinct 4-byte-aligned words from the rest of the gap, up to the end of the 4 KiB
+eFuse page (interface ctrl, then map, in ``smc.rdl``), and the order they are read in.
 
 Not claimed: Force-closed gate; SEP OTP; INCR across MAP fields; SHIM-unmapped
 DECERR at 0xC000D000 (needs a real eFuse SHIM or TB err_slv).
@@ -48,20 +48,21 @@ SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
 CTRL_BASE = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
+PAGE_END = (CTRL_BASE & ~0xFFF) + 0x1000
 HOLE_START = MAP_BASE + MAP_SIZE
-if not (MAP_BASE < HOLE_START < CTRL_BASE):
+if not (CTRL_BASE < MAP_BASE < HOLE_START < PAGE_END):
     raise RuntimeError(
-        f"MAP-CTRL hole 0x{HOLE_START:08x} not strictly between MAP 0x{MAP_BASE:08x} "
-        f"and CTRL 0x{CTRL_BASE:08x}"
+        f"map hole 0x{HOLE_START:08x} not strictly between MAP 0x{MAP_BASE:08x} "
+        f"and the end of the eFuse page 0x{PAGE_END:08x} (CTRL 0x{CTRL_BASE:08x})"
     )
-HOLE_REST = range(HOLE_START + 4, CTRL_BASE, 4)
+HOLE_REST = range(HOLE_START + 4, PAGE_END, 4)
 HOLE_EXTRA_DRAWS = (0, 2)
 PATTERN_A = 0xA5A5_5A5A
 OTP_POLL = 128
 
 
 class smu_dtp_otp_smc_series_error_test_seq:
-    """OTP J2A series NO_INCR allow-path + MAP-CTRL hole SLVERR; no Force."""
+    """OTP J2A series NO_INCR allow-path + eFuse map hole SLVERR; no Force."""
 
     def __init__(self, test) -> None:
         self.test = test

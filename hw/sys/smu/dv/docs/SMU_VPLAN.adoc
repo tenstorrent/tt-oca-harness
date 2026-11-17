@@ -4719,17 +4719,17 @@ against a vacuous pass.
 
 *Randomization*: RAND-REP: the seed draws the hole set (the gap's first word, `SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + SMC_TOP_SMC_EFUSE_MAP_SIZE`, pinned into every set, and zero to two further distinct 4-byte-aligned words drawn from the rest of the gap up to `SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR`, the gap below CTRL) and the order of the S3 single operations after the first SPARE[0] read of `CHK-OTP-SMC-SINGLE-OP-ALLOW`: each drawn hole word is read in the drawn order, the response being the SLVERR with `0xBADCAB1E` that `CHK-OTP-SMC-DECODE-SLVERR` grades (the APB decode answers any address in the span outside the register windows with SLVERR, `hw/sys/sep/doc/otp_fuse_controller.adoc`, introduction), and each hole read is followed by a SPARE[0] re-read, which `CHK-OTP-SMC-SPARE-STABLE` compares with PATTERN_A (the S2 series write and read-back of `CHK-OTP-SMC-SERIES-RW` come first); the PASS lines of both checkers carry the drawn hole; no in-span word is drawn, because the SMC map tiles its bank without a gap (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`), and the PROD cells of `smu_otp_prod_error_resp_test` keep their own entry and image; the series depth, `pl_depth` and marker cells stay out of scope here (the Blocked legs rows of <<smu-vplan-phase3-blocked-legs>> carry them); 3 seeds per regression (`reseed = 3`).
 
-*Objective*: OTP J2A series NO_INCR + MAP-CTRL hole SLVERR; gate open on the SEP=1 wrapper.
+*Objective*: OTP J2A series NO_INCR + eFuse map hole SLVERR; gate open on the SEP=1 wrapper.
 
 *Test Coverage*:
 
-* SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=1, no Force).
+* SMC OTP JTAG2AXI series NO_INCR R/W + eFuse map hole SLVERR (SEP=1, no Force).
 * S1: After TCK sync, `tb_otp_jtag2axi_security_disable` reads 0 -- the OTP JTAG2AXI gate is open in this configuration.
 * `lc_state_o` equals the no-LCC word of `seq_lib/smu_lifecycle_table.py`, so the eFuse JTAG demux is not err_slv.
 * S2: Series NO_INCR write PATTERN_A to MAP SPARE[0], then series NO_INCR readback OKAY + data match.
-* S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A; then, in the seed-drawn order, a SINGLE_OP read of each hole word of the set (the gap's first word and zero to two seed-drawn words, below CTRL) returns SLVERR + `0xbadcab1e` and a SINGLE_OP re-read of SPARE[0] after it still returns SUCCESS + PATTERN_A.
+* S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A; then, in the seed-drawn order, a SINGLE_OP read of each hole word of the set (the gap's first word and zero to two seed-drawn words, past the map and below the end of the eFuse page) returns SLVERR + `0xbadcab1e` and a SINGLE_OP re-read of SPARE[0] after it still returns SUCCESS + PATTERN_A.
 * SPARE[0] from `smc_addr.h` `SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)`.
-* The gap's first word `SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + SMC_TOP_SMC_EFUSE_MAP_SIZE` is in every hole set; the further hole words are drawn from the rest of the gap up to `SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR`.
+* The gap's first word `SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + SMC_TOP_SMC_EFUSE_MAP_SIZE` is in every hole set; the further hole words are drawn from the rest of the gap up to the end of the 4 KiB eFuse page, which holds `SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR` first and the map after it.
 * Not claimed: Force-closed gate; SEP OTP; INCR across MAP fields; SHIM-unmapped DECERR at 0xC000D000 (needs a real eFuse SHIM or TB err_slv).
 
 *Test Procedure*:

@@ -13,7 +13,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_otp_smc_series_error_test(smu_base_test):
-    """OTP J2A series NO_INCR + MAP-CTRL hole SLVERR; gate open on the SEP=1 wrapper."""
+    """OTP J2A series NO_INCR + eFuse map hole SLVERR; gate open on the SEP=1 wrapper."""
 
     use_shared_env = True
 

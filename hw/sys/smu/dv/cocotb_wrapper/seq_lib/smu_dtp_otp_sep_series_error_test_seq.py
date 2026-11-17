@@ -74,11 +74,12 @@ if not HOLE_ADDR < EFUSE_MMR_BASE:
 PATTERN_A = 0x1357_9BDF
 PATTERN_B = 0x2468_ACE0
 
-# hw/sys/smc/doc/memmap.adoc: LOCAL_BASE is 0xC000_0000 and a read from BASE + 0x001_7000 is an
-# address between unit apertures that answers DECERR. hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL
-# SCRATCH[13], 8-byte stride from 0xC0039080.
+# hw/sys/smc/doc/memmap.adoc: LOCAL_BASE is 0xC000_0000 and a read from BASE + 0x000_E000 is an
+# address between unit apertures that answers DECERR (BASE + 0x001_7000 now holds
+# dfx_ctrl_status). hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL SCRATCH[13], 8-byte stride from
+# 0xC0039080.
 LOCAL_BASE = 0xC000_0000
-FABRIC_GAP_ADDR = LOCAL_BASE + 0x001_7000
+FABRIC_GAP_ADDR = LOCAL_BASE + 0x000_E000
 FABRIC_SCRATCH_ADDR = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 13)
 
 # hw/ip/jtag/jtag_intf_unit/doc/interface.adoc, Instruction Encodings: SEP_OTP 0x21..0x26.
