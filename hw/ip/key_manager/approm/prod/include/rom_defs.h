@@ -96,13 +96,13 @@ extern const uint8_t __km_fw_load_limit[];
  * forwarded; the controller answers SLVERR at any offset outside its register maps.
  * Generated key_manager_addr.h also provides per-sub-region constants:
  *   KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR (0x00011000) — eFuse Interface CTRL
- *   KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR  (0x00011100) — eFuse MMR
- *   KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR  (0x00011400) — MAP / OTP shadow
+ *   KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR  (0x00011400) — eFuse MMR
+ *   KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR  (0x00011800) — MAP / OTP shadow
  *
  * Prefer KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR from PeakRDL; define only if absent.
  */
 #ifndef ROM_KM_OTP_BASE
-#define ROM_KM_OTP_BASE 0x00011400
+#define ROM_KM_OTP_BASE 0x00011800
 #endif
 
 /*===========================================================================

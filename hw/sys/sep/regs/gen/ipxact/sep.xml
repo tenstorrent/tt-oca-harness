@@ -8454,7 +8454,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
         <ipxact:name>efuse_mmr</ipxact:name>
         <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
         <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
-        <ipxact:baseAddress>'h10930100</ipxact:baseAddress>
+        <ipxact:baseAddress>'h10930400</ipxact:baseAddress>
         <ipxact:range>'h74</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
@@ -8655,7 +8655,7 @@ read-lock registers. The access properties of each field state the
 software access to its shadow register when the field's locks are clear;
 a set write lock, a set read lock or secure test mode further restricts
 it as the LOCKS register describes.</ipxact:description>
-        <ipxact:baseAddress>'h10930400</ipxact:baseAddress>
+        <ipxact:baseAddress>'h10930800</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:register>

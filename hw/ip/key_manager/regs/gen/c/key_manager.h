@@ -2451,11 +2451,11 @@ typedef struct __attribute__ ((__packed__)) {
     km_mailbox_km_t mailbox_km;
     uint8_t RESERVED_1001c_10fff[0xfe4];
     efuse_interface_ctrl_t otp_efuse_ctrl;
-    uint8_t RESERVED_1101c_110ff[0xe4];
+    uint8_t RESERVED_1101c_113ff[0x3e4];
     efuse_mmr_t otp_efuse_mmr;
-    uint8_t RESERVED_11174_113ff[0x28c];
+    uint8_t RESERVED_11474_117ff[0x38c];
     sep_efuse_map_t otp_efuse_map;
-    uint8_t RESERVED_11800_11fff[0x800];
+    uint8_t RESERVED_11c00_11fff[0x400];
     km_kpv_t kpv;
     uint8_t RESERVED_13108_13fff[0xef8];
     km_csr_t kmcsr;

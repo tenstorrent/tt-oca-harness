@@ -89,7 +89,7 @@ localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGIN
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'hC0007000;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
 
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR = 64'hC0007400;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR = 64'hC0007800;
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SIZE = 64'h400;
 
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR = 64'hC0009000;
@@ -897,16 +897,16 @@ localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'hC0007010;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'hC0007014;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'hC0007018;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC0007400;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007408;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC0007800;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007808;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(input int unsigned I2C_I3C_ID_idx);
-    return 64'hC0007428 + (I2C_I3C_ID_idx * 64'h8);
+    return 64'hC0007828 + (I2C_I3C_ID_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM = 64'h9;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007470;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007478;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007870;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007878;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(input int unsigned SPARE_idx);
-    return 64'hC0007480 + (SPARE_idx * 64'h20);
+    return 64'hC0007880 + (SPARE_idx * 64'h20);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM = 64'h1C;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(input int unsigned telemetry_receiver_idx);

@@ -924,7 +924,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         <ipxact:name>otp_efuse_mmr</ipxact:name>
         <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
         <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
-        <ipxact:baseAddress>'h11100</ipxact:baseAddress>
+        <ipxact:baseAddress>'h11400</ipxact:baseAddress>
         <ipxact:range>'h74</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
@@ -1125,7 +1125,7 @@ read-lock registers. The access properties of each field state the
 software access to its shadow register when the field's locks are clear;
 a set write lock, a set read lock or secure test mode further restricts
 it as the LOCKS register describes.</ipxact:description>
-        <ipxact:baseAddress>'h11400</ipxact:baseAddress>
+        <ipxact:baseAddress>'h11800</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:register>

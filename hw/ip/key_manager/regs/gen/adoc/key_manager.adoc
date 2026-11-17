@@ -14,9 +14,9 @@ This address map is from the perspective of the KM CPU (PicoRV32).
 ======
 *Register Arrays:*
 
-* *RMA_SIP_TOKEN_I[8]*: 8 registers, base 0x11100, stride 0x4
-* *RMA_CHIPLET_TOKEN_I[8]*: 8 registers, base 0x11120, stride 0x4
-* *SEC_DISABLE_TOKEN_I[8]*: 8 registers, base 0x11140, stride 0x4
+* *RMA_SIP_TOKEN_I[8]*: 8 registers, base 0x11400, stride 0x4
+* *RMA_CHIPLET_TOKEN_I[8]*: 8 registers, base 0x11420, stride 0x4
+* *SEC_DISABLE_TOKEN_I[8]*: 8 registers, base 0x11440, stride 0x4
 * *KEY_ENTRY[64].WORD[16]*: 1024 registers, base 0x12000 (KEY_ENTRY x64 stride 0x40, WORD x16 stride 0x4)
 * *CTRL[64]*: 64 registers, base 0x13000, stride 0x4
 * *KEY_SHARE0[12]*: 12 registers, base 0x18000, stride 0x4
@@ -55,57 +55,57 @@ This address map is from the perspective of the KM CPU (PicoRV32).
 | 0x11010 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA,EFUSE_READ_INTERFACE_READ_DATA>> | R a| Read data returned through the eFuse read interface.
 | 0x11014 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT,EFUSE_READ_REQ_TIMEOUT>> | RW a| Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
 | 0x11018 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT,EFUSE_PROGRAM_REQ_TIMEOUT>> | RW a| Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
-| 0x11100 - 0x1111C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-,RMA_SIP_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-| 0x11120 - 0x1113C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-,RMA_CHIPLET_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-| 0x11140 - 0x1115C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-,SEC_DISABLE_TOKEN_I[8]>> | RW a| Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
-| 0x11160 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP,TOKEN_EOP>> | W a| Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
-| 0x11164 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH,RMA_SIP_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-| 0x11168 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH,RMA_CHIPLET_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-| 0x1116C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH,SEC_DISABLE_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-| 0x11170 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT,TOKEN_MATCH_FAULT>> | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
-| 0x11400 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS,LOCKS>> | RW a| -
-| 0x11408 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS_SPARE,LOCKS_SPARE>> | RW a| -
-| 0x1140C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LC_STATE,LC_STATE>> | RW a| -
-| 0x11410 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SBOOT_DIS,SBOOT_DIS>> | RW a| -
-| 0x11414 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-TRANSIENT_RMA_EN,TRANSIENT_RMA_EN>> | RW a| -
-| 0x11418 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_DIS,SIP_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
-| 0x11420 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_DIS,SYS_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
-| 0x11428 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_SIP_TOKEN_DIGEST,RMA_SIP_TOKEN_DIGEST>> | RW a| -
-| 0x11448 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_CHIPLET_TOKEN_DIGEST,RMA_CHIPLET_TOKEN_DIGEST>> | RW a| -
-| 0x11468 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CLASS_KEY,CLASS_KEY>> | RW a| -
-| 0x11488 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_REVOKE,CHIPLET_PUBK_REVOKE>> | RW a| -
-| 0x1148C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL1_VERSION,BL1_VERSION>> | RW a| -
-| 0x114AC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL2_VERSION,BL2_VERSION>> | RW a| -
-| 0x114CC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_UID,CHIPLET_UID>> | RW a| -
-| 0x114EC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH0,SIP_PUBK_HASH0>> | RW a| -
-| 0x1150C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_UID,SIP_UID>> | RW a| -
-| 0x1152C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_HASH,SYS_PUBK_HASH>> | RW a| -
-| 0x1154C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_UID,SYS_UID>> | RW a| -
-| 0x1156C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-STATUS_RPT,STATUS_RPT>> | RW a| -
-| 0x11570 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-ROM_CTL,ROM_CTL>> | RW a| -
-| 0x11574 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYSCLK_FREQ_MHZ,SYSCLK_FREQ_MHZ>> | RW a| -
-| 0x11578 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH0,CHIPLET_PUBK_HASH0>> | RW a| -
-| 0x11598 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH1,CHIPLET_PUBK_HASH1>> | RW a| -
-| 0x115B8 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_SIGNERS,REQUIRED_SIGNERS>> | RW a| -
-| 0x115BC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_ALGS,REQUIRED_ALGS>> | RW a| -
-| 0x115C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH0,CHIPLET_PUBK_PQC_HASH0>> | RW a| -
-| 0x115E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH1,CHIPLET_PUBK_PQC_HASH1>> | RW a| -
-| 0x11600 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH0,SIP_PUBK_PQC_HASH0>> | RW a| -
-| 0x11620 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_PQC_HASH,SYS_PUBK_PQC_HASH>> | RW a| -
-| 0x11640 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH1,SIP_PUBK_HASH1>> | RW a| -
-| 0x11660 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH1,SIP_PUBK_PQC_HASH1>> | RW a| -
-| 0x11680 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_CHIPLET_ID,SEP_CHIPLET_ID>> | RW a| -
-| 0x116A0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SIP_ID,SEP_SIP_ID>> | RW a| -
-| 0x116C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SYS_ID,SEP_SYS_ID>> | RW a| -
-| 0x116E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare0,spare0>> | RW a| -
-| 0x11700 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare1,spare1>> | RW a| -
-| 0x11720 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare2,spare2>> | RW a| -
-| 0x11740 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare3,spare3>> | RW a| -
-| 0x11760 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare4,spare4>> | RW a| -
-| 0x11780 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare5,spare5>> | RW a| -
-| 0x117A0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare6,spare6>> | RW a| -
-| 0x117C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare7,spare7>> | RW a| -
-| 0x117E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare8,spare8>> | RW a| -
+| 0x11400 - 0x1141C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-,RMA_SIP_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+| 0x11420 - 0x1143C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-,RMA_CHIPLET_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+| 0x11440 - 0x1145C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-,SEC_DISABLE_TOKEN_I[8]>> | RW a| Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
+| 0x11460 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP,TOKEN_EOP>> | W a| Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
+| 0x11464 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH,RMA_SIP_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+| 0x11468 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH,RMA_CHIPLET_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+| 0x1146C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH,SEC_DISABLE_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+| 0x11470 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT,TOKEN_MATCH_FAULT>> | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
+| 0x11800 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS,LOCKS>> | RW a| -
+| 0x11808 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS_SPARE,LOCKS_SPARE>> | RW a| -
+| 0x1180C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-LC_STATE,LC_STATE>> | RW a| -
+| 0x11810 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SBOOT_DIS,SBOOT_DIS>> | RW a| -
+| 0x11814 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-TRANSIENT_RMA_EN,TRANSIENT_RMA_EN>> | RW a| -
+| 0x11818 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_DIS,SIP_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+| 0x11820 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_DIS,SYS_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+| 0x11828 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_SIP_TOKEN_DIGEST,RMA_SIP_TOKEN_DIGEST>> | RW a| -
+| 0x11848 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_CHIPLET_TOKEN_DIGEST,RMA_CHIPLET_TOKEN_DIGEST>> | RW a| -
+| 0x11868 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CLASS_KEY,CLASS_KEY>> | RW a| -
+| 0x11888 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_REVOKE,CHIPLET_PUBK_REVOKE>> | RW a| -
+| 0x1188C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL1_VERSION,BL1_VERSION>> | RW a| -
+| 0x118AC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-BL2_VERSION,BL2_VERSION>> | RW a| -
+| 0x118CC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_UID,CHIPLET_UID>> | RW a| -
+| 0x118EC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH0,SIP_PUBK_HASH0>> | RW a| -
+| 0x1190C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_UID,SIP_UID>> | RW a| -
+| 0x1192C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_HASH,SYS_PUBK_HASH>> | RW a| -
+| 0x1194C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_UID,SYS_UID>> | RW a| -
+| 0x1196C | <<reg-{regmap-instance}-key_manager-otp_efuse_map-STATUS_RPT,STATUS_RPT>> | RW a| -
+| 0x11970 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-ROM_CTL,ROM_CTL>> | RW a| -
+| 0x11974 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYSCLK_FREQ_MHZ,SYSCLK_FREQ_MHZ>> | RW a| -
+| 0x11978 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH0,CHIPLET_PUBK_HASH0>> | RW a| -
+| 0x11998 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_HASH1,CHIPLET_PUBK_HASH1>> | RW a| -
+| 0x119B8 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_SIGNERS,REQUIRED_SIGNERS>> | RW a| -
+| 0x119BC | <<reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_ALGS,REQUIRED_ALGS>> | RW a| -
+| 0x119C0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH0,CHIPLET_PUBK_PQC_HASH0>> | RW a| -
+| 0x119E0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH1,CHIPLET_PUBK_PQC_HASH1>> | RW a| -
+| 0x11A00 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH0,SIP_PUBK_PQC_HASH0>> | RW a| -
+| 0x11A20 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_PUBK_PQC_HASH,SYS_PUBK_PQC_HASH>> | RW a| -
+| 0x11A40 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_HASH1,SIP_PUBK_HASH1>> | RW a| -
+| 0x11A60 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SIP_PUBK_PQC_HASH1,SIP_PUBK_PQC_HASH1>> | RW a| -
+| 0x11A80 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_CHIPLET_ID,SEP_CHIPLET_ID>> | RW a| -
+| 0x11AA0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SIP_ID,SEP_SIP_ID>> | RW a| -
+| 0x11AC0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-SEP_SYS_ID,SEP_SYS_ID>> | RW a| -
+| 0x11AE0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare0,spare0>> | RW a| -
+| 0x11B00 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare1,spare1>> | RW a| -
+| 0x11B20 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare2,spare2>> | RW a| -
+| 0x11B40 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare3,spare3>> | RW a| -
+| 0x11B60 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare4,spare4>> | RW a| -
+| 0x11B80 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare5,spare5>> | RW a| -
+| 0x11BA0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare6,spare6>> | RW a| -
+| 0x11BC0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare7,spare7>> | RW a| -
+| 0x11BE0 | <<reg-{regmap-instance}-key_manager-otp_efuse_map-spare8,spare8>> | RW a| -
 | 0x12000 - 0x12FFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-WORD-,KEY_ENTRY[64].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
 | 0x13000 - 0x130FC | <<reg-{regmap-instance}-key_manager-kpv-CTRL-,CTRL[64]>> | RW a| Per-slot control: lock bits (W1S) and the erase trigger
 | 0x13100 | <<reg-{regmap-instance}-key_manager-kpv-KPV_SCRAMBLER_KEY,KPV_SCRAMBLER_KEY>> | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.

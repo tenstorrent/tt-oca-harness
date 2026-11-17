@@ -6509,7 +6509,7 @@ a log entry. The log entries go through round robin arbitration.</ipxact:descrip
         <ipxact:name>smc_efuse_map</ipxact:name>
         <ipxact:displayName>Efuse address map of physical efuse macro</ipxact:displayName>
         <ipxact:description>Address map for efuse shadow registers providing access to various chip configuration and ID fields</ipxact:description>
-        <ipxact:baseAddress>'hc0007400</ipxact:baseAddress>
+        <ipxact:baseAddress>'hc0007800</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:register>
