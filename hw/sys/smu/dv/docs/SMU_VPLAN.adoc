@@ -11930,7 +11930,7 @@ grade.
 
 [arabic]
 . S1: open the SMC aperture local alias and SMC inbound filter entry 0 over JTAG2AXI, then the SEP aperture to [0x0400_0000, 0x1500_0000) over the system bus; a write then read of one SEP SRAM word and one scratchpad word is the OKAY reference.
-. S2: INCR AxLEN 0, 1, 15 and 255 inside one 4 KiB page to both targets, single-beat FIXED and INCR, two-beat writes with W after, with and before AW, and four reads under distinct IDs in flight together; the AW and AR at both crossbar target ports and both converter outputs are sampled.
+. S2: INCR AxLEN 0, 1, 15 and 255 inside one 4 KiB page to both targets, single-beat FIXED and INCR, two-beat writes with W after, with and before AW, and four reads under distinct IDs in flight together (RREADY held low until the fourth AR is accepted, and every AR accepted before the first R handshake); the AW and AR at both crossbar target ports and both converter outputs are sampled.
 . S3: INCR writes at AxSIZE 0, 1 and 2 with an unaligned first beat and partial strobes, and one full-width write whose unstrobed lanes carry X; each read back against the bytes the leaf wrote.
 . S4: full-width FIXED AxLEN 1, 3, 15 and WRAP AxLEN 1, 3, 7, 15 from an aligned start into the SEP SRAM, each written and read, and the addressed words read back with single-beat INCR reads.
 . S5 to S7: the SEP SRAM and scratchpad words the illegal requests address are written first; then a read and a write with WRAP AxLEN 0, with AxBURST 2'b11 and as a 4 KiB-crossing INCR toward the SEP aperture, the SMC aperture and neither aperture, one at a time, each observed for 1024 `clk_smu_i` edges; the AW or AR at the crossbar target port and the converter output of the target is sampled in that window.

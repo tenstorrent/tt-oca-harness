@@ -30,7 +30,7 @@ S1 SETUP: SMC alias and inbound filter, debug module, SEP aperture; CTRL-G11-OKA
    to one SEP SRAM word and one SPM word.
 S2 LEGAL INCR: INCR AxLEN 0, 1, 15, 255 to both targets; single-beat FIXED and
    INCR; W after, with and before its AW; four reads under distinct IDs in
-   flight together.
+   flight together (RREADY low until the fourth AR is accepted).
 S3 NARROW AND STROBES: AxSIZE 0..2 with an unaligned first beat and partial
    strobes, and one write whose unstrobed lanes carry X.
 S4 FIXED AND WRAP to SEP SRAM: FIXED AxLEN 1, 3, 15 and WRAP AxLEN 1, 3, 7, 15.
@@ -753,17 +753,30 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
                 n += 2
                 if not good:
                     bad.append((target, order, resp_name(w["bresp"]), got.hex()))
-        # four reads under distinct IDs, all in flight before the first response
+        # four reads under distinct IDs, all in flight before the first response:
+        # RREADY stays low until the fourth AR is accepted, so the overlap does
+        # not depend on the target's latency, and the handshake order is graded.
         start = len(self.ev)
         ids = []
+        self._pin("rready").value = 0
         for k in range(4):
             ids.append(await self._rd_issue(SEP_INCR + 0x40 * k, 3, label=f"multi_id_{k}"))
+        self._pin("rready").value = 1
+        good_reads = 0
         for k, arid in enumerate(ids):
             rb = await self._rd_collect(arid, start, f"multi_id_{k}")
             got = b"".join(self._beat_bytes(x) or b"" for x in rb)
             want = self._pattern(255, 256 * 8)[0x40 * k : 0x40 * k + 32]
-            res["multi_id"] += int(got == want and all(x[3] == RESP_OKAY for x in rb))
+            good_reads += int(got == want and all(x[3] == RESP_OKAY for x in rb))
             n += 1
+        ar_t = [e[1] for e in self.ev[start:] if e[0] == "ar" and e[2] in ids]
+        first_r = min((e[1] for e in self.ev[start:] if e[0] == "r"), default=None)
+        in_flight = len(ar_t) == 4 and first_r is not None and max(ar_t) < first_r
+        self._info(
+            f"INFO-G11-MULTI-ID: ar_accept_ns={ar_t} first_r_ns={first_r} "
+            f"in_flight_together={in_flight} good_reads={good_reads}/4"
+        )
+        res["multi_id"] = good_reads if in_flight else 0
         res["accesses"] = n
         res["bad"] = bad
         self._info(f"INFO-G11-LEGAL: {res}")
