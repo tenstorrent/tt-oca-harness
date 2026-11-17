@@ -22,14 +22,16 @@ armed CLA:
 
 * **The edge-detect configuration.** ``CDbgSignalEdgeDetectCfg`` carries
   ``Signal0Select`` and ``Signal1Select``, each seven bits, which the RDL
-  describes as choosing which signal to watch for an edge, and
-  ``PosEdgeSignal0`` / ``PosEdgeSignal1``, which it describes as choosing
-  between a rising and a falling edge. Every value of both select fields and
-  both polarities is written and read back exactly. That is a claim
-  about the configuration surface: which debug-bus signal each select value
-  names is not in the register contract, so this sequence does not claim that
-  an edge was detected, only that the selector took every value the field
-  offers while the CLA was armed and the debug bus was moving.
+  describes as the index of the debug-signal bit to edge-detect (0-63 in the
+  SMC; a larger value selects no signal and the edge-detect event never
+  fires), and ``PosEdgeSignal0`` / ``PosEdgeSignal1``, which it describes as
+  choosing between a rising and a falling edge. Every value of both select
+  fields and both polarities is written and read back exactly. That is a
+  claim about the configuration surface: this sequence drives no chosen
+  debug-signal bit through the selector (``smc_dfd_cla_live_bus_test`` does)
+  and does not claim that an edge was detected, or that a value of 64-127
+  never fires, only that the selector took every value the field offers
+  while the CLA was armed and the debug bus was moving.
 """
 
 from __future__ import annotations
@@ -239,9 +241,9 @@ class smc_dfd_cla_counter_edge_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-CLA-EDGE-SELECT-SWEEP: both %d-bit edge-detect select fields took every one "
             "of their %d values and both polarity bits took both of theirs, each read back "
-            "exactly, with the CLA armed and the debug bus in normal debug mode; which "
-            "debug-bus signal a select value names is not in the register contract, so this "
-            "is a claim about the configuration surface and not about a detected edge",
+            "exactly, with the CLA armed and the debug bus in normal debug mode; this leaf "
+            "drove no chosen debug-signal bit through the selector, so this is a claim about the "
+            "configuration surface and not about a detected edge",
             select0.width,
             span,
         )

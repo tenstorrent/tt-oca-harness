@@ -27444,13 +27444,13 @@ Drive `smc_dfd_cla_counter_edge_test_seq`. Each checker below is a named compare
 |`CHK-CLA-COUNTER-RESET` |All four counters read 0 in their hardware-driven counter fields before the CLA was armed; a counter already non-zero fails it and makes the counts below unattributable
 |`CHK-CLA-COUNTER-COUNTS` |Every one of the four counters was read non-zero while `Action0` was driven over its whole range, so the action bus reaches each counter; a counter that never moves fails it
 |`CHK-CLA-COUNTER-CLEARS` |Every counter seen counting was later read back at zero, so the counters are cleared by the action bus rather than left running; one that never returns to zero fails it
-|`CHK-CLA-EDGE-SELECT-SWEEP` |Both edge-detect select fields took all 128 of their values and both polarity bits both of theirs, each read back exactly. This is a claim about the configuration surface: which debug-bus signal a select value names is not in the register contract, so no detected edge is claimed
+|`CHK-CLA-EDGE-SELECT-SWEEP` |Both edge-detect select fields took all 128 of their values and both polarity bits both of theirs, each read back exactly. This is a claim about the configuration surface: this leaf drives no chosen debug-signal bit through the selector, so no detected edge is claimed, nor that a select of 64-127 never fires
 |===
 
 
 *Pass Criteria*: `CHK-CLA-COUNTER-CLEARS`, `CHK-CLA-COUNTER-COUNTS`, `CHK-CLA-COUNTER-RESET`, `CHK-CLA-EDGE-SELECT-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Which action code increments or clears a counter is published by no RDL, generated header or MMR specification, so the sweep names none. Which debug-bus signal an edge-detect select value names is not in the register contract, so no detected edge is claimed; the select sweep is a claim about the configuration surface only.
+*Scope limit*: Which action code increments or clears a counter is published by no RDL, generated header or MMR specification, so the sweep names none. This leaf drives no chosen debug-signal bit through the edge-detect selector, so no detected edge is claimed, nor that a select of 64-127 never fires; the select sweep is a claim about the configuration surface only.
 '''''
 
 [[sec-214-smc_dfd_trace_format_sweep_test]]
@@ -53799,7 +53799,7 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |`smc_dfd_trace_accumulator_fill_test` logs the write pointer after the sink enable is cleared and does not hold it to a value.
 |<<smc-vplan-area-jtag,JTAG>>
 |The CLA edge-detect select.
-|Which debug-bus signal each `CDbgSignalEdgeDetectCfg` select value names. Source: `integration/rdl/smc/dfd_cla.rdl` (`CDbgSignalEdgeDetectCfg`).
+|No longer an open question: the RDL now states that the select is a debug-signal bit index, valid 0-63 in the SMC, and that a larger value selects no signal. The leg left is a check not yet written: a detected edge on the selected bit, and no event for a select of 64-127; `smc_dfd_cla_live_bus_test` points both selects at a bit it toggles but grades neither. Source: `integration/rdl/smc/dfd_cla.rdl` (`CDbgSignalEdgeDetectCfg`).
 |`smc_dfd_cla_counter_edge_test` grades the configuration surface only; no detected edge is claimed.
 |<<smc-vplan-area-efuse,EFUSE>>
 |A CSR read of a read-locked shadow register.
