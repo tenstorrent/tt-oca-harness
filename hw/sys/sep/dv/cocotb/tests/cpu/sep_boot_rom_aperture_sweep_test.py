@@ -167,12 +167,14 @@ assumes that ``ROM_CTL`` leaves the stub fetch path unchanged.
   CTRL-ROM-CTL-BE  : the ``ROM_CTL`` read holds ``rom_endianness_ctrl`` = 1 and
                      ``rom_swap_ctrl`` = 0 on its RDL field bits, else the leaf
                      fails before any load is graded (set-up failure).
-  CHK-ROM-CTL-BE   : every probe load differs from the little-endian value of
-                     the image at its address and size (sep_efuse_map.rdl
-                     ``ROM_CTL.rom_endianness_ctrl``: 1 selects big-endian ROM
-                     data out). The word bytes are distinct, so a big-endian
-                     read differs from the little-endian read at any swap
-                     granularity. Records out of the planned order fail.
+  CHK-ROM-CTL-BE   : the ten probe loads of each probed word match one
+                     big-endian byte order of the image word, a byte reversal
+                     in each 32-bit half or a byte reversal of the 64-bit word
+                     (sep_efuse_map.rdl ``ROM_CTL.rom_endianness_ctrl``: 1
+                     selects big-endian ROM data out). The RDL does not state
+                     the granularity, so either order passes; the word bytes
+                     are distinct, so the little-endian read and any other
+                     value fail. Records out of the planned order fail.
 
 Logged only (OBS-ROM-CTL-BE-ORDER): for each probed word, the image bytes, the
 bytes and words the loads returned, and whether they match the little-endian
@@ -354,6 +356,7 @@ BYTE_ORDERS = {
     "swap32": (3, 2, 1, 0, 7, 6, 5, 4),
     "swap64": (7, 6, 5, 4, 3, 2, 1, 0),
 }
+BE_ORDERS = ("swap32", "swap64")
 
 CRT0 = Path(__file__).resolve().parents[3] / "fw" / "startup" / "crt0.s"
 
@@ -1174,9 +1177,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         le_equal = []
         for a, s, v in got:
             le = p.img.read(a, s)
-            # A big-endian read of 8 distinct bytes differs from the little-endian read.
             if v == le:
                 le_equal.append(f"0x{a:08x}/{s} value=0x{v:x} le=0x{le:x}")
+        not_be = []
         orders: Counter = Counter()
         n = len(BE_LOADS)
         for k, w in enumerate(p.be_words):
@@ -1194,6 +1197,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             ]
             order = match[0] if match else "none"
             orders[order] += 1
+            if order not in BE_ORDERS:
+                not_be.append(f"word={w} order={order}")
             self.logger.info(
                 "OBS-ROM-CTL-BE-ORDER word=%d image_bytes=%s load_bytes=%s load_w0=%s load_w4=%s "
                 "order=%s",
@@ -1208,12 +1213,13 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             )
         self._grade(
             "CHK-ROM-CTL-BE",
-            not bad and not le_equal,
-            f"words={len(p.be_words)} loads={len(got)}/{len(plan)} sizes=4,1 "
-            f"le_equal_loads={len(le_equal)} "
+            not bad and not not_be,
+            f"words={len(p.be_words)} be_words={len(p.be_words) - len(not_be)}/{len(p.be_words)} "
+            f"loads={len(got)}/{len(plan)} sizes=4,1 le_equal_loads={len(le_equal)} "
             f"orders={','.join(f'{o}:{orders[o]}' for o in (*BYTE_ORDERS, 'none'))}"
             + ("" if not bad else " " + "; ".join(bad))
-            + ("" if not le_equal else " first=" + "; ".join(le_equal[:4])),
+            + ("" if not not_be else " not_be=" + "; ".join(not_be[:4]))
+            + ("" if not le_equal else " first_le=" + "; ".join(le_equal[:4])),
         )
 
     def _grade_port(self) -> None:
