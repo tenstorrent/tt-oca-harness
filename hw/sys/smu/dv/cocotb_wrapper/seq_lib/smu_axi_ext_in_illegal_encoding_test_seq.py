@@ -1177,6 +1177,7 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
         forwarded = 0
         wrong = []
         neither_down = 0
+        stray = 0
         for ident, info in self.ill_ids.items():
             recs = [r for r in self.down if info["t0"] <= r[2] <= info["window_end"]]
             if info["target"] == "neither":
@@ -1192,7 +1193,18 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
                     forwarded += 1
                 else:
                     wrong.append((hex(ident), link, ch, want, hits))
-        return {"forwarded": forwarded, "neither_downstream": neither_down, "wrong": wrong}
+            # nothing else reaches any link in the window: no copy on the other
+            # target's links and no request on the other channel
+            for r in recs:
+                if r[0] not in TARGET_LINKS[info["target"]] or r[1] != ch:
+                    stray += 1
+                    wrong.append((hex(ident), "stray", r))
+        return {
+            "forwarded": forwarded,
+            "neither_downstream": neither_down,
+            "stray": stray,
+            "wrong": wrong,
+        }
 
     def _burst_legal(self) -> tuple[int, list]:
         """Legality of every downstream AW/AR outside the illegal request windows."""
@@ -1488,16 +1500,17 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
         for w in fwd["wrong"]:
             self._info(f"INFO-CLASSIFY: kind=not-forwarded-unchanged class=design-side {w}")
         sb.expect_eq(
-            "CHK-G11-FORWARD forwarded neither_downstream",
-            (fwd["forwarded"], fwd["neither_downstream"]),
-            (24, 0),
+            "CHK-G11-FORWARD forwarded neither_downstream stray",
+            (fwd["forwarded"], fwd["neither_downstream"], fwd["stray"]),
+            (24, 0, 0),
             evidence="CHK-G11-FORWARD",
         )
         self._info(
             f"CHK-G11-FORWARD: forwarded={fwd['forwarded']}/24 (12 illegal requests toward an "
             f"aperture, each once on its crossbar target port and once on its converter output "
             f"with AxADDR, AxLEN, AxSIZE and AxBURST equal to ext_in) "
-            f"neither_downstream={fwd['neither_downstream']}"
+            f"neither_downstream={fwd['neither_downstream']} stray={fwd['stray']} (no other "
+            f"AW or AR on any sampled link inside an illegal request window)"
         )
         windows = self._windows()
         n_down, illegal = self._burst_legal()

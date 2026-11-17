@@ -3,7 +3,7 @@
 """smu_axi_ext_in_illegal_encoding_test - illegal encodings and legal bursts on ext_in.
 
 DV-TESTCASE-CONTRACT: TC_G11 ANCHOR: smu_axi_ext_in_illegal_encoding_test
-DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 6fde6f11901fc35b47af506e24cb27c8cd4cf3523b8d67498e004ff969c82f45
+DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 5fa0ba9d86d17fb3a0c786960f0ac12a30bcb5ed9895024c390827bbf027255d
 DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 10 ENV: cocotb
 
 A raw-channel driver on the ext_in pins presents legal INCR, FIXED and WRAP
@@ -13,8 +13,8 @@ toward the SEP aperture, the SMC aperture and neither aperture, each followed
 by a fresh legal access. The SMU forwards each illegal request unchanged to
 the link its start address selects and the target answers it as the boundary
 contract states; +smu_axi_illegal_inject presents those three encodings to
-every bench checker as legal, and the leaf grades the forwarded fields on the
-target links itself. VCS only; the bench checkers print their CHK-AXI-SVA and
+the checkers on that path as legal, and the leaf grades the forwarded fields
+on the target links itself. VCS only; the bench checkers print their CHK-AXI-SVA and
 CHK-AXI-STALL lines at final.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\

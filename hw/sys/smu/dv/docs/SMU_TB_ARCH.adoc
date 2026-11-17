@@ -230,17 +230,20 @@ handshake. Protocol, not data.
 * *Illegal-encoding inject* -- `+smu_axi_illegal_inject` lets the external
   inbound master drive a WRAP burst with AxLEN = 0, the reserved burst
   encoding 2'b11, or an INCR burst that crosses a 4 KiB boundary, none of
-  which AXI4 allows. Every AXI4 checker instance of the bench sees
-  AxBURST = INCR on the first two and the 4 KiB-page start address on the
-  third, so it tracks each such request as a legal single-beat or
-  page-aligned burst and grades every other rule on it. The plusarg
-  therefore masks `AW_LEN_WRAP_LEGAL`, `AR_LEN_WRAP_LEGAL`,
-  `AW_BURST_LEGAL`, `AR_BURST_LEGAL`, `AW_4KB_BOUNDARY` and
-  `AR_4KB_BOUNDARY` on every instance. The DUT receives the illegal request
-  unchanged and forwards it unchanged to its target (the integrator guide's
-  AXI boundary contract), so the substitution covers the request on every
-  link it crosses; the leaf that arms the plusarg grades the forwarded
-  fields on the target links itself.
+  which AXI4 allows. The checkers on the path such a request takes,
+  `u_smu_in_axi_sva`, `u_incut_axi_sva`, `u_xbar_ext_in_axi_sva`, the
+  crossbar SEP and SMC target ports, both converter outputs and the
+  SEP-reset instance of the SEP target port, see AxBURST = INCR on the
+  first two and the 4 KiB-page start address on the third, so they track
+  each such request as a legal single-beat or page-aligned burst and grade
+  every other rule on it. On those instances the plusarg therefore masks
+  `AW_LEN_WRAP_LEGAL`, `AR_LEN_WRAP_LEGAL`, `AW_BURST_LEGAL`,
+  `AR_BURST_LEGAL`, `AW_4KB_BOUNDARY` and `AR_4KB_BOUNDARY`. The DUT
+  receives the illegal request unchanged and forwards it unchanged to its
+  target (the integrator guide's AXI boundary contract); the leaf that arms
+  the plusarg grades the forwarded fields on the target links itself. The
+  instances on the links the SMU or another initiator originates are not
+  masked.
 
 [[sep-processor-state-monitor]]
 === SEP Processor-State Monitoring (wrapper)
