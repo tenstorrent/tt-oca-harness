@@ -210,6 +210,7 @@ class smc_dfd_cla_clock_stop_irq_pulse_test_seq(SmcDfdClaActionSeq):
 
         sampler.stop = True
         await task
+        await RisingEdge(top.clk_smc_i)
         top.tb_cla_clock_stop_en.value = 0
         await self._write(debug_ctrl, {"force_clk_en": 1}, "halt_unmask")
         await self.csr_write("ENABLE0_W10_RESTORE", ENABLE0, saved_enable)
