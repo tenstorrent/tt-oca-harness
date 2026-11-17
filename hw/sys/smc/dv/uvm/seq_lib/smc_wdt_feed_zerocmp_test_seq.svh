@@ -201,6 +201,10 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
     key_at = smc_cycle_time();
     wdt_write(WDT_FEED, SmcWdtFeedMagic);
     read_count(c1, t1);
+    // Without a zerocmp rollover since the seed, only the FEED can bring COUNT below its seed.
+    require_window(real'(FeedSeedCount) + rate * (t1 - seed_at) + 1.0 < real'(ZeroCmpCompare),
+                   "no zerocmp rollover since the COUNT seed", $sformatf(
+                   "seed_count=%0d rate=%0f seed_span=%0f", FeedSeedCount, rate, t1 - seed_at));
     predicate = c1 < FeedSeedCount && real'(c1) <= rate * (t1 - key_at) + 1.0;
     check_evidence(ChkFeedLanded, "FEED restarts COUNT below its seed", 64'(predicate), 64'h1,
                    $sformatf("seed_count=%0d count=%0d rate=%0f span=%0f", FeedSeedCount, c1, rate,

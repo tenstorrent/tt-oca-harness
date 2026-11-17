@@ -34,9 +34,9 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   // 2 SIZE/DEST armed readbacks, 5 pop/push, 2 empty, 4 ERROR, 5 EIRQ,
   // 3 STATUS and one per reverse entry.
   localparam int unsigned FixedReads = 42 + SmcMailboxDepth;
-  // Writes: 3 MUTEX, 4 SIZE/DEST poison, 4 SIZE/DEST cleanup, 5 pushes,
+  // Writes: 4 MUTEX, 4 SIZE/DEST poison, 4 SIZE/DEST cleanup, 5 pushes,
   // 3 EIRQ, 2 null-strobe, 2 full-FIFO attempts and one per reverse entry.
-  localparam int unsigned FixedWrites = 23 + SmcMailboxDepth;
+  localparam int unsigned FixedWrites = 24 + SmcMailboxDepth;
   // Base of the SYS_OUT-backed memory pages reserved for this scenario.
   localparam bit [63:0] OutputBase = 64'h0200_0000;
   localparam bit [7:0] Poison = 8'hD3;
@@ -216,7 +216,7 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     bit [63:0] saved_start, saved_end, saved_config, programmed_config;
     bit [63:0] queue_data[$];
     bit [31:0] upper, lower, value, value_lo, value_zf, pattern;
-    bit unchanged, guards_intact, poll_idle, null_entry_ok, mutex_fresh;
+    bit unchanged, guards_intact, poll_idle, null_entry_ok;
     logic [31:0] busy_before, busy_after;
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMemResp, ChkAcquire, ChkRelease, ChkPoll, ChkPop,
@@ -294,20 +294,15 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "mailbox clean errors");
     prerequisite(ChkSetup, errors == 0, "mailbox error baseline clear");
 
-    // A MUTEX read acquires, so a passive readback cannot show a release. A mutex not used since
-    // reset is free by its reset value, so only the first SmcMutexCount passes grade the upper
-    // read.
-    mutex_fresh = loop_index < SmcMutexCount;
+    // A MUTEX read acquires, so a passive readback cannot show a release. Every pass releases the
+    // mutex and grades the upper read that follows; the upper word reads zero in every state, so
+    // the lower readback shows whether the upper read acquired. ChkRelease grades the release.
+    csr_write(smc_mutex_addr(mutex_index), 0, "mutex release before upper read");
     csr_read(smc_mutex_addr(mutex_index) + SmcCsrBytes, upper, "mutex upper acquire");
     csr_read(smc_mutex_addr(mutex_index), lower, "mutex acquired readback");
-    if (mutex_fresh)
-      grade(ChkAcquire, "upper read of a free mutex returns zero and acquires",
-            upper == 0 && (lower & SmcMutexMask) == SmcMutexTaken, $sformatf(
-            "upper=%h lower=%h", upper, lower));
-    else
-      `uvm_info(get_type_name(), $sformatf(
-                "NARROW-MUTEX-ACQUIRE upper_read_not_graded mutex_used_before upper=%h lower=%h %s",
-                upper, lower, access_context()), UVM_LOW)
+    grade(ChkAcquire, "upper read of a released mutex returns zero and acquires",
+          upper == 0 && (lower & SmcMutexMask) == SmcMutexTaken, $sformatf(
+          "upper=%h lower=%h reset_free=%b", upper, lower, loop_index < SmcMutexCount));
     csr_write(smc_mutex_addr(mutex_index), 0, "mutex upper-acquire release");
     csr_read(smc_mutex_addr(mutex_index), lower, "mutex pre-release acquire");
     csr_read(smc_mutex_addr(mutex_index), lower, "mutex pre-release held");

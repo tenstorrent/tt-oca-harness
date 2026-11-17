@@ -56194,9 +56194,9 @@ access and comparison counts with no new mismatch.
 |`CHK-WDT-FEED-SCALED` |Scaled count lies between shifted surrounding COUNT readings
 |`CHK-WDT-FEED-ZEROCMP` |All samples are at or below CMP and an observed sample decreases
 |`CHK-WDT-FEED-IP` |Interrupt observations match the compare condition, remain set after FEED and match the software-clear phases
-|`CHK-WDT-FEED-LANDED` |With zerocmp enabled and COUNT seeded to half of CMP, a COUNT readback after the seed is at or above the seed and within the count the elapsed time allows, and a FEED restarts COUNT below the seed and within the measured time bound, so a dropped FEED write fails, and a dropped seed fails unless the running count already lies inside that window
-|`CHK-WDT-FEED-CTRL-LANDED` |In the clear-while-elapsed leg, after an unlock write whose KEY readback of 1 is a prerequisite that stops the run, KEY reads 0 after the CTRL write that keeps the configuration and clears IP while the elapsed condition sets it again: an effective write to a register other than KEY relocks the watchdog, so a dropped write (OKAY, no effect) fails
-|`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid
+|`CHK-WDT-FEED-LANDED` |With zerocmp enabled and COUNT seeded to half of CMP, a COUNT readback after the seed is at or above the seed and within the count the elapsed time allows, and a FEED restarts COUNT below the seed and within the measured time bound, so a dropped FEED write fails (`CHK-WDT-FEED-WINDOW` stops the run unless the seed plus the count the time since the seed allows stays below CMP, so no zerocmp rollover can stand in for the FEED), and a dropped seed fails unless the running count already lies inside that window
+|`CHK-WDT-FEED-CTRL-LANDED` |In the clear-while-elapsed leg, after an unlock write whose KEY readback of 1 is a prerequisite that stops the run, KEY reads 0 after the CTRL write that rewrites the configuration CTRL already holds: an effective write to a register other than KEY relocks the watchdog, so a dropped write (OKAY, no effect) fails. Only the relock is graded: the written CTRL data equals the value already held and the elapsed condition sets IP again at once, so neither the CTRL data nor the IP clear of this write is observed, and a DUT that relocks but drops the CTRL data passes
+|`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid, and no zerocmp rollover fits between the COUNT seed and the FEED readback
 |`CHK-SB-WDT-CSR` |In-scope watchdog accesses return OKAY; CTRL (IP masked), KEY and CMP reads match the passive model
 |`CHK-WDT-CSR-SCOREBOARD` |Each pass completes exactly the predicted comparisons with no new mismatch
 |`CHK-SB-MIN-ACTIVITY` |Completed passes reach the minimum feature comparison count
@@ -56907,7 +56907,7 @@ symbols.
 
 *Test Coverage*: The default sixteen passes exercise mailboxes 0-15 and
 rotate all four mutexes; the first four passes each use a mutex that no read has acquired since
-reset. Four distinct 32-bit payload halves distinguish
+reset, and later passes reuse a mutex that an earlier pass released. Four distinct 32-bit payload halves distinguish
 pop order and lane selection.
 The null mailbox write carries all ones, distinguishing zero-fill from raw
 write data. Each pass has a valid Zeroer job and read- and write-error flags as
@@ -56918,9 +56918,8 @@ back a pass-all 4-KiB page containing a 64-byte payload and one guard word on
 each side. Poison and run a valid Zeroer job; require zero payload and intact
 guards and an increase in known busy samples. Clear and read back SIZE/DEST
 before the counted window. Require idle Zeroer, empty mailbox queues and clear
-ERROR. Read the pass's mutex upper word first, then its lower word: on each of the first four passes
-the mutex is free by its reset value, so require the upper read zero and the lower read taken; a
-later pass logs the leg as not graded. Release it, acquire it with a lower read and require the
+ERROR. Release the pass's mutex, read its upper word, then its lower word: on every pass require
+the upper read zero and the lower read taken. Release it, acquire it with a lower read and require the
 next lower read taken; release it and require a free read as a control, then release it in
 cleanup. Poison
 the window, configure SIZE/DEST and read both back to require the armed values, then poll CTRL_STATUS's upper word eight times;
@@ -56948,7 +56947,7 @@ filter outside the counted window.
 [cols="1,2",options="header"]
 |===
 |Checker |Claim
-|`CHK-NARROW-MUTEX-ACQUIRE` |A lower read after an acquiring read returns taken; on each of the first four passes, whose mutex is free by its reset value, the upper read returns zero and the lower readback is taken, so the upper read acquired the mutex. Later passes log `NARROW-MUTEX-ACQUIRE upper_read_not_graded`
+|`CHK-NARROW-MUTEX-ACQUIRE` |After a release, the upper read returns zero and the lower readback is taken, so the upper read acquired the mutex (discriminating while the release works, which `CHK-NARROW-MUTEX-RELEASE` grades); a lower read after an acquiring read returns taken
 |`CHK-NARROW-MUTEX-RELEASE` |Release of a held mutex permits the next lower read to acquire
 |`CHK-NARROW-ZEROER-POLL` |Upper reads preserve idle and the poisoned window without accumulating busy samples
 |`CHK-NARROW-MBX-POP` |Two narrow reads pop separate whole entries on the requested lanes
@@ -56963,7 +56962,7 @@ filter outside the counted window.
 |`CHK-NARROW-CLEANUP` |SIZE/DEST and EIRQ cleanup readbacks match and mailbox drain completes within its bound; full writes preserve reverse FIFO data and the reverse FIFO drains empty; failures terminate
 |`CHK-NARROW-RESTORE` |Saved filter START/END/CONFIG are restored under RDL masks
 |`CHK-NARROW-SCOREBOARD`, `CHK-SB-MUTEX-SEMA` |No new mutex mismatch and no unpaired prediction remain
-|`CHK-NONVAC` |25 writes, 44+k+2m reads (for mailbox depth 2) and five mutex comparisons per pass in the counted window; k is observed completion polls and m is drained null-write entries
+|`CHK-NONVAC` |26 writes, 44+k+2m reads (for mailbox depth 2) and five mutex comparisons per pass in the counted window; k is observed completion polls and m is drained null-write entries
 |`CHK-SB-MIN-ACTIVITY` |Prior passes meet the passive comparison floor
 |`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and checked accesses complete with OKAY; empty reads and full writes have their own SLVERR checks
 |===
@@ -56983,9 +56982,11 @@ and byte ERROR_FLAGS reads, and an error arriving in the same cycle as the
 clearing read, are not exercised. The SYS_OUT backing store is not checked for
 retention across passes. Poll and compare bounds are bench limits, not DUT
 latency promises. The release before the free-control read has a same-pass free-read control.
-The upper-read acquire is graded only on the first four passes: a mutex is known free
-without a read only until its first acquire, and a later pass cannot grade the upper read
-without trusting an earlier release. The releases that end the upper-read leg and the pass have no
+The upper-read acquire is graded on every pass after a release that has no readback of its own.
+The upper word reads zero in every state, so the lower readback carries the grade: a broken upper
+acquire fails it whenever the release works, and on the first four passes the mutex is also free by
+its reset value. A broken release fails `CHK-NARROW-MUTEX-RELEASE` and leaves the upper-read grade
+nondiscriminating on a pass whose mutex an earlier pass left taken. The releases that end the upper-read leg and the pass have no
 passive readback because every read acquires. Restore values
 equal to the programmed filter values are logged as nondiscriminating. Neither
 the Zeroer completion polling nor a completed control job proves an exact
@@ -56996,9 +56997,9 @@ push checks grade lane placement. NULL-MAILBOX checks all-ones data with no
 strobes.
 
 *Pass Criteria*: All checks pass. Used alone,
-`+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses eleven records per pass:
-ACQUIRE once, RELEASE, POLL, POP, PUSH, ZERO-FILL, EMPTY twice, ERROR, NULL-ZEROER and
-NULL-MAILBOX, and a twelfth ACQUIRE record on each of the first four passes; 180 failures
+`+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses twelve records per pass:
+ACQUIRE twice, RELEASE, POLL, POP, PUSH, ZERO-FILL, EMPTY twice, ERROR, NULL-ZEROER and
+NULL-MAILBOX; 192 failures
 for sixteen passes, no fatal or mutex mismatch.
 `+SMC_MUTEX_SCOREBOARD_NEGATIVE` corrupts all five predictions per pass:
 80 mismatches, 16 scenario scoreboard failures and one final feature
