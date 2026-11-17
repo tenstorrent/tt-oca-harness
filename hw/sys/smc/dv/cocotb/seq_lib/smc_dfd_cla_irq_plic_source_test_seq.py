@@ -6,7 +6,8 @@
 debug interrupt; `interrupts.adoc` places them on raw vector bits 320 and 321
 and maps raw bits 0 to 327 onto PLIC IDs 1 to 328, so the clock stop is PLIC
 source 321 and the debug interrupt PLIC source 322. `dfd.adoc` Actions and
-Cross-Triggering makes the debug interrupt "an ordinary maskable PLIC source".
+Cross-Triggering makes the debug interrupt a level PLIC source held until
+software releases it.
 The bench ties `tdr_dbg_ctrl_clock_stop_en_i` low, so source 321 can only ever
 read 0 here.
 
