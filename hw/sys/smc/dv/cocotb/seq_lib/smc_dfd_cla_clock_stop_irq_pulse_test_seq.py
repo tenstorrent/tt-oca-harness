@@ -14,7 +14,8 @@ and `EnableEap` cleared, so only the held request keeps the output up; source
 321 pends, is claimed and completed, and stays clear while the output stays 1. Dropping the enable drops the output with no pulse;
 raising it again gives exactly one more pulse and one more pending source 321.
 
-Source 321 is enabled on context 0 at priority 1 with threshold 0 for the
+`REGION_SIZE` is opened to 256M so the system port reaches the PLIC, and source
+321 is enabled on context 0 at priority 1 with threshold 0 for the
 claims; the enable, the priority, the mask and the bench enable are put back
 at the end.
 """
@@ -24,7 +25,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import REGION_SIZE_RESET, smc_addr, smc_indexed_addr
 from .smc_dfd_cla_action_seq_utils import SAMPLE_CYCLES, SmcDfdClaActionSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import dfd_register
 
@@ -37,6 +38,9 @@ SOURCE = RAW_BIT + 1
 WORD = SOURCE // 32
 WORD_BIT = 1 << (SOURCE % 32)
 PLIC = "SMC_TOP_SMC_CLUSTER_PLIC_"
+REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
+# The PLIC sits past the reset REGION_SIZE window of the system port.
+REGION_SIZE_256M = 0x1000_0000
 THRESHOLD0 = smc_addr(PLIC + "CORE0_MEIP_THRESHOLD_BASE_ADDR")
 CLAIM0 = smc_addr(PLIC + "CORE0_MEIP_CLAIM_COMPLETE_BASE_ADDR")
 ENABLE0 = smc_indexed_addr(PLIC + "CORE0_MEIP_ENABLE_BASE_ADDR", WORD)
@@ -140,6 +144,8 @@ class smc_dfd_cla_clock_stop_irq_pulse_test_seq(SmcDfdClaActionSeq):
         top = cocotb.top
         await self.wait_fuse_sense_done()
         debug_ctrl = dfd_register("dfx_ctrl/DEBUG_CTRL")
+        await self.csr_write("REGION_SIZE_256M", REGION_SIZE, REGION_SIZE_256M)
+        await self.csr_read("REGION_SIZE_256M_RB", REGION_SIZE, expected=REGION_SIZE_256M)
         saved_prio = await self.csr_read("PRIORITY321_SAVE", PRIORITY)
         saved_threshold = await self.csr_read("THRESHOLD0_SAVE", THRESHOLD0)
         saved_enable = await self.csr_read("ENABLE0_W10_SAVE", ENABLE0)
@@ -209,3 +215,4 @@ class smc_dfd_cla_clock_stop_irq_pulse_test_seq(SmcDfdClaActionSeq):
         await self.csr_write("ENABLE0_W10_RESTORE", ENABLE0, saved_enable)
         await self.csr_write("THRESHOLD0_RESTORE", THRESHOLD0, saved_threshold)
         await self.csr_write("PRIORITY321_RESTORE", PRIORITY, saved_prio)
+        await self.csr_write("REGION_SIZE_RESTORE", REGION_SIZE, REGION_SIZE_RESET)
