@@ -5,10 +5,12 @@
 // MISS_RESP and read data 0xBADCAB1E. MISS_RESP is DECERR by default, as a crossbar answers an
 // address no rule holds; a port whose page has a single target sets SLVERR.
 //
-// Window i holds the RANGE_SIZE[i] bytes from RANGE_BASE[i]. Each RANGE_SIZE[i] is a power of
-// two and each RANGE_BASE[i] a multiple of it, so a window is matched on the address bits above
-// its low $clog2(RANGE_SIZE[i]) bits, which are the offset into the window. An access to window
-// i leaves on mst_reqs_o[i] with its address unchanged. Windows must not overlap.
+// Window i holds the RANGE_SIZE[i] bytes from RANGE_BASE[i]. With POW2_RANGES set, each
+// RANGE_SIZE[i] is a power of two and each RANGE_BASE[i] a multiple of it, so a window is matched
+// on the address bits above its low $clog2(RANGE_SIZE[i]) bits, which are the offset into the
+// window. With POW2_RANGES clear, a window may have any size and base, and is matched by
+// comparing the address with its first and last byte. An access to window i leaves on
+// mst_reqs_o[i] with its address unchanged. Windows must not overlap.
 module prim_axil_addr_demux #(
   parameter int unsigned AXI_ADDR_WIDTH = 32,  // AXI-Lite address width.
   parameter int unsigned AXI_DATA_WIDTH = 32,  // AXI-Lite data width; a power of two of at
@@ -16,11 +18,17 @@ module prim_axil_addr_demux #(
   parameter int unsigned NUM_RANGES     = 1,   // Number of windows; at least 1.
   parameter logic [AXI_ADDR_WIDTH-1:0] RANGE_BASE [NUM_RANGES] = '{default: '0},  // First address
                                                                                   // of each window;
-                                                                                  // a multiple of
-                                                                                  // its size.
+                                                                                  // with
+                                                                                  // POW2_RANGES, a
+                                                                                  // multiple of its
+                                                                                  // size.
   parameter logic [AXI_ADDR_WIDTH-1:0] RANGE_SIZE [NUM_RANGES] = '{default: '0},  // Window sizes in
-                                                                                  // bytes; each a
+                                                                                  // bytes; nonzero,
+                                                                                  // and with
+                                                                                  // POW2_RANGES a
                                                                                   // power of two.
+  parameter bit          POW2_RANGES    = 1'b1,  // Windows are aligned powers of two; clear to
+                                                 // allow any size and base.
   parameter axi_pkg::resp_t MISS_RESP   = axi_pkg::RESP_DECERR,  // Response to an address no
                                                                  // window holds.
   parameter int unsigned MAX_TRANS      = 1,  // Outstanding transactions per channel.
@@ -54,6 +62,17 @@ module prim_axil_addr_demux #(
     addr_t       base;
     addr_t       mask;
   } rule_t;
+  typedef addr_t range_addr_t[NUM_RANGES];
+
+  function automatic range_addr_t range_last();
+    range_addr_t last;
+    for (int unsigned i = 0; i < NUM_RANGES; i++) begin
+      last[i] = RANGE_BASE[i] + RANGE_SIZE[i] - 1;
+    end
+    return last;
+  endfunction
+
+  localparam range_addr_t RangeLast = range_last();
 
   ////////////////
   // Assertions //
@@ -62,13 +81,14 @@ module prim_axil_addr_demux #(
   `OCAH_ASSERT_STATIC(NumRangesValid_A, NUM_RANGES >= 1)
 
   for (genvar i = 0; i < NUM_RANGES; i++) begin : gen_range_checks
-    `OCAH_ASSERT_STATIC(RangeSizePow2_A,
-                        RANGE_SIZE[i] != '0 && (RANGE_SIZE[i] & (RANGE_SIZE[i] - 1)) == '0)
-    `OCAH_ASSERT_STATIC(RangeBaseAligned_A, (RANGE_BASE[i] & (RANGE_SIZE[i] - 1)) == '0)
+    `OCAH_ASSERT_STATIC(RangeSizeNonZero_A, RANGE_SIZE[i] != '0)
+    if (POW2_RANGES) begin : gen_pow2_checks
+      `OCAH_ASSERT_STATIC(RangeSizePow2_A, (RANGE_SIZE[i] & (RANGE_SIZE[i] - 1)) == '0)
+      `OCAH_ASSERT_STATIC(RangeBaseAligned_A, (RANGE_BASE[i] & (RANGE_SIZE[i] - 1)) == '0)
+    end
     for (genvar j = i + 1; j < NUM_RANGES; j++) begin : gen_disjoint
       `OCAH_ASSERT_STATIC(RangesDisjoint_A,
-                          (RANGE_BASE[j] & ~(RANGE_SIZE[i] - 1)) != RANGE_BASE[i] &&
-                          (RANGE_BASE[i] & ~(RANGE_SIZE[j] - 1)) != RANGE_BASE[j])
+                          RangeLast[i] < RANGE_BASE[j] || RangeLast[j] < RANGE_BASE[i])
     end
   end
 
@@ -76,47 +96,62 @@ module prim_axil_addr_demux #(
   // Address Decode //
   ////////////////////
 
-  rule_t [NUM_RANGES-1:0] addr_map;
-
-  for (genvar i = 0; i < NUM_RANGES; i++) begin : gen_rules
-    assign addr_map[i].idx  = i;
-    assign addr_map[i].base = RANGE_BASE[i];
-    assign addr_map[i].mask = ~(RANGE_SIZE[i] - 1);
-  end
-
   select_t aw_select, ar_select;
 
-  addr_decode_napot #(
-    .NoIndices (NumPorts),
-    .NoRules   (NUM_RANGES),
-    .addr_t    (addr_t),
-    .rule_t    (rule_t),
-    .idx_t     (select_t)
-  ) u_aw_decode (
-    .addr_i           (slv_req_i.aw.addr),
-    .addr_map_i       (addr_map),
-    .idx_o            (aw_select),
-    .dec_valid_o      (),
-    .dec_error_o      (),
-    .en_default_idx_i (1'b1),
-    .default_idx_i    (select_t'(ErrPort))
-  );
+  if (POW2_RANGES) begin : gen_pow2_decode
+    rule_t [NUM_RANGES-1:0] addr_map;
 
-  addr_decode_napot #(
-    .NoIndices (NumPorts),
-    .NoRules   (NUM_RANGES),
-    .addr_t    (addr_t),
-    .rule_t    (rule_t),
-    .idx_t     (select_t)
-  ) u_ar_decode (
-    .addr_i           (slv_req_i.ar.addr),
-    .addr_map_i       (addr_map),
-    .idx_o            (ar_select),
-    .dec_valid_o      (),
-    .dec_error_o      (),
-    .en_default_idx_i (1'b1),
-    .default_idx_i    (select_t'(ErrPort))
-  );
+    for (genvar i = 0; i < NUM_RANGES; i++) begin : gen_rules
+      assign addr_map[i].idx  = i;
+      assign addr_map[i].base = RANGE_BASE[i];
+      assign addr_map[i].mask = ~(RANGE_SIZE[i] - 1);
+    end
+
+    addr_decode_napot #(
+      .NoIndices (NumPorts),
+      .NoRules   (NUM_RANGES),
+      .addr_t    (addr_t),
+      .rule_t    (rule_t),
+      .idx_t     (select_t)
+    ) u_aw_decode (
+      .addr_i           (slv_req_i.aw.addr),
+      .addr_map_i       (addr_map),
+      .idx_o            (aw_select),
+      .dec_valid_o      (),
+      .dec_error_o      (),
+      .en_default_idx_i (1'b1),
+      .default_idx_i    (select_t'(ErrPort))
+    );
+
+    addr_decode_napot #(
+      .NoIndices (NumPorts),
+      .NoRules   (NUM_RANGES),
+      .addr_t    (addr_t),
+      .rule_t    (rule_t),
+      .idx_t     (select_t)
+    ) u_ar_decode (
+      .addr_i           (slv_req_i.ar.addr),
+      .addr_map_i       (addr_map),
+      .idx_o            (ar_select),
+      .dec_valid_o      (),
+      .dec_error_o      (),
+      .en_default_idx_i (1'b1),
+      .default_idx_i    (select_t'(ErrPort))
+    );
+  end else begin : gen_range_decode
+    always_comb begin
+      aw_select = select_t'(ErrPort);
+      ar_select = select_t'(ErrPort);
+      for (int unsigned i = 0; i < NUM_RANGES; i++) begin
+        if ((slv_req_i.aw.addr >= RANGE_BASE[i]) && (slv_req_i.aw.addr <= RangeLast[i])) begin
+          aw_select = select_t'(i);
+        end
+        if ((slv_req_i.ar.addr >= RANGE_BASE[i]) && (slv_req_i.ar.addr <= RangeLast[i])) begin
+          ar_select = select_t'(i);
+        end
+      end
+    end
+  end
 
   ///////////
   // Demux //

@@ -12,17 +12,17 @@ reads, so neither channel's decode can pass on the address the other channel las
 from __future__ import annotations
 
 import cocotb
-from addr_demux_base_test import RANGES, WINDOW_BASE, WINDOW_SIZE, AddrDemuxTb
+from addr_demux_base_test import WINDOW_BASE, WINDOW_SIZE, AddrDemuxTb
 
 
 @cocotb.test()
 async def addr_demux_smoke_test(dut) -> None:
     tb = AddrDemuxTb(dut)
     await tb.start()
-    addrs = [WINDOW_BASE + offset for offset, _ in RANGES]
-    addrs += [WINDOW_BASE + offset + size - 4 for offset, size in RANGES]
-    addrs += [WINDOW_BASE + offset - 4 for offset, _ in RANGES]
-    addrs += [WINDOW_BASE + offset + size for offset, size in RANGES]
+    addrs = [WINDOW_BASE + offset for offset, _ in tb.ranges]
+    addrs += [WINDOW_BASE + offset + size - 4 for offset, size in tb.ranges]
+    addrs += [WINDOW_BASE + offset - 4 for offset, _ in tb.ranges]
+    addrs += [WINDOW_BASE + offset + size for offset, size in tb.ranges]
     addrs.append(WINDOW_BASE + WINDOW_SIZE - 4)
     for addr in addrs:
         await tb.check_write(addr, addr ^ 0xFFFF_FFFF)

@@ -3,10 +3,13 @@
 //
 // prim_axil_addr_demux IP-level testbench top for the cocotb flow.
 //
-// One demux holds five ranges in the 4 KiB page at WindowBase, each an aligned power of two:
-// two adjacent ranges, one twice their size, one small and one past a gap. Each range is
-// answered by a prim_axi_lite_err_slv set to OKAY whose read data is RangeTag | range index,
-// so a read names the range that answered.
+// One demux holds five ranges from the 4 KiB page at WindowBase, each an aligned power of two:
+// two adjacent ranges, one twice their size, one small and one past a gap. With
+// ADDR_DEMUX_ANY_SIZE_RANGES defined, the demux clears POW2_RANGES and the ranges have other
+// sizes and bases: two adjacent ranges, the second on an unaligned base, one a word past a
+// power of two, one small past a gap and one that runs into the next page. pow2_ranges reports
+// which set the build holds. Each range is answered by a prim_axi_lite_err_slv set to OKAY whose
+// read data is RangeTag | range index, so a read names the range that answered.
 // range_aw_count[i] counts the write addresses range i accepts, so a test can tell which
 // range a write reached. The demux's AXI-Lite slave port is exposed flattened (axil_*) for
 // the shared AXI VIP's master. Clock and reset are driven from cocotb.
@@ -45,12 +48,25 @@ module prim_axil_addr_demux_tb_top #(
   output wire [31:0] axil_rdata,
   output wire [1:0]  axil_rresp,
 
+  output logic                      pow2_ranges,
   output logic [NumRanges-1:0][7:0] range_aw_count
 );
 
   localparam logic [31:0] WindowBase = 32'hC000_C000;
   localparam logic [31:0] RangeTag = 32'h5107_0000;
 
+`ifdef ADDR_DEMUX_ANY_SIZE_RANGES
+  localparam bit Pow2Ranges = 1'b0;
+  localparam logic [31:0] RangeBase[NumRanges] = '{
+      WindowBase + 32'h000,
+      WindowBase + 32'h08C,
+      WindowBase + 32'h100,
+      WindowBase + 32'h20C,
+      WindowBase + 32'hC00
+  };
+  localparam logic [31:0] RangeSize[NumRanges] = '{32'h8C, 32'h74, 32'h104, 32'hC, 32'h418};
+`else
+  localparam bit Pow2Ranges = 1'b1;
   localparam logic [31:0] RangeBase[NumRanges] = '{
       WindowBase + 32'h000,
       WindowBase + 32'h080,
@@ -59,6 +75,9 @@ module prim_axil_addr_demux_tb_top #(
       WindowBase + 32'h800
   };
   localparam logic [31:0] RangeSize[NumRanges] = '{32'h80, 32'h80, 32'h100, 32'h10, 32'h200};
+`endif
+
+  assign pow2_ranges = Pow2Ranges;
 
   typedef logic [31:0] addr_t;
   typedef logic [31:0] data_t;
@@ -100,6 +119,7 @@ module prim_axil_addr_demux_tb_top #(
     .NUM_RANGES     (NumRanges),
     .RANGE_BASE     (RangeBase),
     .RANGE_SIZE     (RangeSize),
+    .POW2_RANGES    (Pow2Ranges),
     .MAX_TRANS      (2),
     .aw_chan_t      (axil_aw_chan_t),
     .w_chan_t       (axil_w_chan_t),

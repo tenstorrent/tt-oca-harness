@@ -8,6 +8,7 @@ schema_version = 1
 [[tests]]
 name = "addr_demux_smoke_test"
 module = { cocotb = "addr_demux_smoke_test" }
+target = ["default", "any_size"]
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci"]
@@ -16,6 +17,7 @@ run_modes = ["smoke"]
 [[tests]]
 name = "addr_demux_sweep_test"
 module = { cocotb = "addr_demux_sweep_test" }
+target = ["default", "any_size"]
 seed = 1
 reseed = 3
 timeout_sec = 900

@@ -63,3 +63,16 @@ flags = [
   "-Werror-USERERROR",
   "+define+VERILATOR",
 ]
+
+[targets.any_size]
+description = "AXI-Lite address demux target with ranges of any size and base"
+build_dir = "hw/common/ocah_prim/dv/build/any_size/cocotb"
+defines = ["ADDR_DEMUX_ANY_SIZE_RANGES"]
+pinned_only = true
+
+[targets.any_size.tools.verilator]
+flags = [
+  "-Wno-TIMESCALEMOD",
+  "-Werror-USERERROR",
+  "+define+VERILATOR",
+]

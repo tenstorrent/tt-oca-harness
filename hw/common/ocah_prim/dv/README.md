@@ -33,8 +33,21 @@ Layout
 
   Each range is an aligned power of two. Ranges 0 and 1 are back to back,
   range 2 is twice their size, range 3 is small and range 4 sits past a gap.
-  Every other address must reach the demux's own responder: DECERR, read data
-  `0xBADCAB1E`, and no range counts the write.
+  The `any_size` target defines `ADDR_DEMUX_ANY_SIZE_RANGES`, which clears the
+  demux's `POW2_RANGES` and moves the ranges to sizes and bases that are not
+  aligned powers of two:
+
+  | Range | Offset | Size    |
+  |-------|--------|---------|
+  | 0     | 0x000  | 0x8C    |
+  | 1     | 0x08C  | 0x74    |
+  | 2     | 0x100  | 0x104   |
+  | 3     | 0x20C  | 0xC     |
+  | 4     | 0xC00  | 0x418   |
+
+  Range 4 runs into the next page. The top's `pow2_ranges` output tells the
+  tests which set the build holds. Every other address must reach the demux's
+  own responder: DECERR, read data `0xBADCAB1E`, and no range counts the write.
 * `cocotb/tests/` — test modules; `addr_demux_base_test.py` carries the range
   table, the expected response and range for any address, and the clock,
   reset and VIP bring-up.
@@ -60,7 +73,8 @@ directories under `build/runs/<run>/<test>@default/seed_<seed>/attempt_<n>/`.
 Tests
 -----
 
-Every write is checked for its response and for the range that counted it.
+Each test runs on the `default` and `any_size` targets. Every write is
+checked for its response and for the range that counted it.
 Each test issues all its writes to a set of addresses before reading them
 back, so neither channel's decode can pass on the address the other channel
 last carried.

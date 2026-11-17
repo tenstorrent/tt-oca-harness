@@ -2,11 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bench for the prim_axil_addr_demux IP-level cocotb tests.
 
-``prim_axil_addr_demux_tb_top`` places the ranges in ``RANGES`` inside the 4 KiB page at
-``WINDOW_BASE``. Each range is answered by a responder that returns OKAY with read data
-``RANGE_TAG | i`` for range ``i``, so a read names the range that answered, and the top's
-``range_aw_count`` counts the write addresses each range accepts. Every other address must
-reach the demux's own responder, which answers DECERR with read data ``MISS_DATA``.
+``prim_axil_addr_demux_tb_top`` places the ranges from the 4 KiB page at ``WINDOW_BASE``:
+``POW2_RANGES``, or ``ANY_SIZE_RANGES`` when the build defines ``ADDR_DEMUX_ANY_SIZE_RANGES``,
+as the top's ``pow2_ranges`` output reports. Each range is answered by a responder that
+returns OKAY with read data ``RANGE_TAG | i`` for range ``i``, so a read names the range that
+answered, and the top's ``range_aw_count`` counts the write addresses each range accepts.
+Every other address must reach the demux's own responder, which answers DECERR with read data
+``MISS_DATA``.
 """
 
 from __future__ import annotations
@@ -23,24 +25,9 @@ WINDOW_BASE = 0xC000_C000
 WINDOW_SIZE = 0x1000
 RANGE_TAG = 0x5107_0000
 MISS_DATA = 0xBADC_AB1E
-# (offset in the page, size in bytes) per range, as tb/tb_top.sv places them.
-RANGES = ((0x000, 0x80), (0x080, 0x80), (0x100, 0x100), (0x200, 0x10), (0x800, 0x200))
-
-
-def range_index(addr: int) -> int | None:
-    """Index of the range holding ``addr``, or None when no range holds it."""
-    for index, (offset, size) in enumerate(RANGES):
-        if WINDOW_BASE + offset <= addr < WINDOW_BASE + offset + size:
-            return index
-    return None
-
-
-def expected(addr: int) -> tuple[int, int]:
-    """Response code and read data the demux must give at ``addr``."""
-    index = range_index(addr)
-    if index is None:
-        return RESP_DECERR, MISS_DATA
-    return RESP_OKAY, RANGE_TAG | index
+# (offset from the page, size in bytes) per range, as tb/tb_top.sv places them.
+POW2_RANGES = ((0x000, 0x80), (0x080, 0x80), (0x100, 0x100), (0x200, 0x10), (0x800, 0x200))
+ANY_SIZE_RANGES = ((0x000, 0x8C), (0x08C, 0x74), (0x100, 0x104), (0x20C, 0xC), (0xC00, 0x418))
 
 
 def random_seed() -> int:
@@ -54,6 +41,7 @@ class AddrDemuxTb:
     def __init__(self, dut) -> None:
         self.dut = dut
         self.seq = None
+        self.ranges = POW2_RANGES
 
     async def start(self) -> None:
         dut = self.dut
@@ -73,13 +61,28 @@ class AddrDemuxTb:
         await ClockCycles(dut.clk, 10)
         dut.rst_n.value = 1
         await ClockCycles(dut.clk, 10)
+        self.ranges = POW2_RANGES if int(dut.pow2_ranges.value) else ANY_SIZE_RANGES
+
+    def range_index(self, addr: int) -> int | None:
+        """Index of the range holding ``addr``, or None when no range holds it."""
+        for index, (offset, size) in enumerate(self.ranges):
+            if WINDOW_BASE + offset <= addr < WINDOW_BASE + offset + size:
+                return index
+        return None
+
+    def expected(self, addr: int) -> tuple[int, int]:
+        """Response code and read data the demux must give at ``addr``."""
+        index = self.range_index(addr)
+        if index is None:
+            return RESP_DECERR, MISS_DATA
+        return RESP_OKAY, RANGE_TAG | index
 
     def aw_counts(self) -> list[int]:
         value = int(self.dut.range_aw_count.value)
-        return [(value >> (8 * i)) & 0xFF for i in range(len(RANGES))]
+        return [(value >> (8 * i)) & 0xFF for i in range(len(self.ranges))]
 
     async def check_read(self, addr: int) -> None:
-        want_resp, want_data = expected(addr)
+        want_resp, want_data = self.expected(addr)
         got = await self.seq.read_result(addr, check_response=False)
         assert (got.resp, got.data) == (want_resp, want_data), (
             f"read 0x{addr:08x}: expected resp {want_resp} data 0x{want_data:08x}, "
@@ -88,13 +91,13 @@ class AddrDemuxTb:
 
     async def check_write(self, addr: int, value: int) -> None:
         """Write ``addr`` and check the response and which ranges accepted the address."""
-        want_resp, _ = expected(addr)
-        index = range_index(addr)
+        want_resp, _ = self.expected(addr)
+        index = self.range_index(addr)
         want_ranges = [] if index is None else [index]
         before = self.aw_counts()
         got = await self.seq.write_result(addr, value, check_response=False)
         after = self.aw_counts()
-        ranges = [i for i in range(len(RANGES)) for _ in range((after[i] - before[i]) % 256)]
+        ranges = [i for i in range(len(self.ranges)) for _ in range((after[i] - before[i]) % 256)]
         assert (got.resp, ranges) == (want_resp, want_ranges), (
             f"write 0x{addr:08x}: expected resp {want_resp} reaching ranges {want_ranges}, "
             f"observed resp {got.resp} reaching ranges {ranges}"
