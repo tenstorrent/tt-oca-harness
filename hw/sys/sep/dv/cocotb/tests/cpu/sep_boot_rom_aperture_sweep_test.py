@@ -887,8 +887,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             raise AssertionError("; ".join(self.failures))
         self.result_pass(TEST, self.random_seed(), self.n_checks)
 
-    async def _check_mrac(self) -> None:
-        mrac = await self.mbx.wait(OFF_MRAC, ROMCTL_BOUND, what="mrac record")
+    async def _check_mrac(self, what: str = "mrac record") -> None:
+        mrac = await self.mbx.wait(OFF_MRAC, ROMCTL_BOUND, what=what)
         line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
         if mrac.val != MRAC_SEP:
             self.logger.error("CTRL-ROM-MRAC FAIL: %s", line)
@@ -898,7 +898,10 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     async def _legs_be(self) -> None:
         """Big-endian entry: CTRL-ROM-CTL-BE, then the probe loads; no graded window."""
         await self._calibrate()
-        await self._check_mrac()
+        await self._check_mrac(
+            what="mrac record (the boot stub executes from the ROM with ROM_CTL = 0x1; "
+            "the entry assumes that ROM_CTL leaves the instruction fetch unchanged)"
+        )
         ctl = await self.mbx.wait(OFF_ROMCTL, ROMCTL_BOUND, what="ROM_CTL record")
         fc = field_compare(ctl.val, ROM_CTL_BE, ROM_CTL_MASK)
         line = f"rom_ctl_{fc.fields().replace(' ', ' rom_ctl_')}"
