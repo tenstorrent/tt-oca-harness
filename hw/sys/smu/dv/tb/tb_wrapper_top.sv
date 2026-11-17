@@ -2395,16 +2395,17 @@ module smu_wrapper_uvm_top
   // of that port are zero.
   //
   // Illegal-encoding inject (+smu_axi_illegal_inject; error inject,
-  // docs/SMU_TB_ARCH.adoc). With the plusarg, the checkers on the external
-  // inbound path (u_smu_in_axi_sva, u_incut_axi_sva, u_xbar_ext_in_axi_sva)
-  // see AxBURST = INCR on an AW or AR that carries a WRAP burst with
-  // AxLEN = 0 or the reserved burst encoding, and see the 4 KiB-page start
-  // address on an INCR burst that crosses a 4 KiB boundary. They track such a
-  // request as a legal single-beat or page-aligned burst and grade every
-  // other rule on it, so AW/AR_LEN_WRAP_LEGAL, AW/AR_BURST_LEGAL and
-  // AW/AR_4KB_BOUNDARY cannot fire on those three instances while the
-  // plusarg is set. The DUT receives the illegal request unchanged, and no
-  // other instance sees the substitution.
+  // docs/SMU_TB_ARCH.adoc). With the plusarg, every AXI4 checker instance
+  // of this bench sees AxBURST = INCR on an AW or AR that carries a WRAP
+  // burst with AxLEN = 0 or the reserved burst encoding, and sees the
+  // 4 KiB-page start address on an INCR burst that crosses a 4 KiB boundary.
+  // The instance tracks such a request as a legal single-beat or page-aligned
+  // burst and grades every other rule on it, so AW/AR_LEN_WRAP_LEGAL,
+  // AW/AR_BURST_LEGAL and AW/AR_4KB_BOUNDARY cannot fire while the plusarg
+  // is set. The DUT receives the illegal request unchanged and forwards it
+  // unchanged to its target (integrator guide, AXI boundary contract), so the
+  // same substitution covers the request on every link it crosses; a leaf
+  // that arms the plusarg grades the forwarded fields itself.
   //
   // This checks PROTOCOL, not data: a read that returns wrong data breaks no
   // rule here.
@@ -2439,10 +2440,10 @@ module smu_wrapper_uvm_top
     .aclk    (clk_smu_i),                                                   \
     .aresetn (rst_primary_smc_clk_n_o),                                     \
     .awid    (REQ.aw.id),                                                   \
-    .awaddr  (REQ.aw.addr),                                                 \
+    .awaddr  (sva_addr(REQ.aw.addr, REQ.aw.len, REQ.aw.size, REQ.aw.burst)),   \
     .awlen   (REQ.aw.len),                                                  \
     .awsize  (REQ.aw.size),                                                 \
-    .awburst (REQ.aw.burst),                                                \
+    .awburst (sva_burst(REQ.aw.burst, REQ.aw.len)),                         \
     .awlock  (REQ.aw.lock),                                                 \
     .awprot  (REQ.aw.prot),                                                 \
     .awvalid (REQ.aw_valid),                                                \
@@ -2457,10 +2458,10 @@ module smu_wrapper_uvm_top
     .bvalid  (RSP.b_valid),                                                 \
     .bready  (REQ.b_ready),                                                 \
     .arid    (REQ.ar.id),                                                   \
-    .araddr  (REQ.ar.addr),                                                 \
+    .araddr  (sva_addr(REQ.ar.addr, REQ.ar.len, REQ.ar.size, REQ.ar.burst)),   \
     .arlen   (REQ.ar.len),                                                  \
     .arsize  (REQ.ar.size),                                                 \
-    .arburst (REQ.ar.burst),                                                \
+    .arburst (sva_burst(REQ.ar.burst, REQ.ar.len)),                         \
     .arlock  (REQ.ar.lock),                                                 \
     .arprot  (REQ.ar.prot),                                                 \
     .arvalid (REQ.ar_valid),                                                \
@@ -2506,10 +2507,10 @@ module smu_wrapper_uvm_top
     .aclk    (clk_smu_i),                                                   \
     .aresetn (RST),                                                         \
     .awid    (REQ.aw.id),                                                   \
-    .awaddr  (REQ.aw.addr),                                                 \
+    .awaddr  (sva_addr(REQ.aw.addr, REQ.aw.len, REQ.aw.size, REQ.aw.burst)),   \
     .awlen   (REQ.aw.len),                                                  \
     .awsize  (REQ.aw.size),                                                 \
-    .awburst (REQ.aw.burst),                                                \
+    .awburst (sva_burst(REQ.aw.burst, REQ.aw.len)),                         \
     .awlock  (REQ.aw.lock),                                                 \
     .awprot  (REQ.aw.prot),                                                 \
     .awvalid (REQ.aw_valid),                                                \
@@ -2524,10 +2525,10 @@ module smu_wrapper_uvm_top
     .bvalid  (RSP.b_valid),                                                 \
     .bready  (REQ.b_ready),                                                 \
     .arid    (REQ.ar.id),                                                   \
-    .araddr  (REQ.ar.addr),                                                 \
+    .araddr  (sva_addr(REQ.ar.addr, REQ.ar.len, REQ.ar.size, REQ.ar.burst)),   \
     .arlen   (REQ.ar.len),                                                  \
     .arsize  (REQ.ar.size),                                                 \
-    .arburst (REQ.ar.burst),                                                \
+    .arburst (sva_burst(REQ.ar.burst, REQ.ar.len)),                         \
     .arlock  (REQ.ar.lock),                                                 \
     .arprot  (REQ.ar.prot),                                                 \
     .arvalid (REQ.ar_valid),                                                \
@@ -2589,44 +2590,7 @@ module smu_wrapper_uvm_top
     (`SMU_AXI_SVA_ON && !$isunknown(sep_reset_n) && !$isunknown(REQ.aw_valid) \
      && !$isunknown(REQ.ar_valid))
 
-`define SMU_AXI_SVA_INJ_PORTS(REQ, RSP)                                     \
-    .aclk    (clk_smu_i),                                                   \
-    .aresetn (rst_primary_smc_clk_n_o),                                     \
-    .awid    (REQ.aw.id),                                                   \
-    .awaddr  (sva_addr(REQ.aw.addr, REQ.aw.len, REQ.aw.size, REQ.aw.burst)),   \
-    .awlen   (REQ.aw.len),                                                  \
-    .awsize  (REQ.aw.size),                                                 \
-    .awburst (sva_burst(REQ.aw.burst, REQ.aw.len)),                         \
-    .awlock  (REQ.aw.lock),                                                 \
-    .awprot  (REQ.aw.prot),                                                 \
-    .awvalid (REQ.aw_valid),                                                \
-    .awready (RSP.aw_ready),                                                \
-    .wdata   (REQ.w.data),                                                  \
-    .wstrb   (REQ.w.strb),                                                  \
-    .wlast   (REQ.w.last),                                                  \
-    .wvalid  (REQ.w_valid),                                                 \
-    .wready  (RSP.w_ready),                                                 \
-    .bid     (RSP.b.id),                                                    \
-    .bresp   (RSP.b.resp),                                                  \
-    .bvalid  (RSP.b_valid),                                                 \
-    .bready  (REQ.b_ready),                                                 \
-    .arid    (REQ.ar.id),                                                   \
-    .araddr  (sva_addr(REQ.ar.addr, REQ.ar.len, REQ.ar.size, REQ.ar.burst)),   \
-    .arlen   (REQ.ar.len),                                                  \
-    .arsize  (REQ.ar.size),                                                 \
-    .arburst (sva_burst(REQ.ar.burst, REQ.ar.len)),                         \
-    .arlock  (REQ.ar.lock),                                                 \
-    .arprot  (REQ.ar.prot),                                                 \
-    .arvalid (REQ.ar_valid),                                                \
-    .arready (RSP.ar_ready),                                                \
-    .rid     (RSP.r.id),                                                    \
-    .rdata   (RSP.r.data),                                                  \
-    .rresp   (RSP.r.resp),                                                  \
-    .rlast   (RSP.r.last),                                                  \
-    .rvalid  (RSP.r_valid),                                                 \
-    .rready  (REQ.r_ready)
-
-  // AxBURST and the start address the external-inbound checkers see under
+  // AxBURST and the start address every checker instance sees under
   // +smu_axi_illegal_inject: INCR for a WRAP burst with AxLEN = 0 or the
   // reserved burst encoding, and the 4 KiB-page start for an INCR burst whose
   // size-aligned span crosses a 4 KiB boundary; the request otherwise.
@@ -2650,8 +2614,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (8)
   ) u_smu_in_axi_sva (                // SMU inbound boundary, bench master into the SMU
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_INJ_PORTS(smu_axi_in_req,
-                           smu_axi_in_resp)
+    `SMU_AXI_SVA_PORTS(smu_axi_in_req,
+                       smu_axi_in_resp)
   );
 
   ocah_axi_sva #(
@@ -2695,8 +2659,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (8)
   ) u_xbar_ext_in_axi_sva (           // crossbar initiator port: external inbound
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_INJ_PORTS(`SMU_AXI_XBAR.ext_in_req_i,
-                           `SMU_AXI_XBAR.ext_in_resp_o)
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.ext_in_req_i,
+                       `SMU_AXI_XBAR.ext_in_resp_o)
   );
 
   ocah_axi_sva #(
@@ -2954,8 +2918,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (8)
   ) u_incut_axi_sva (                 // SMU inbound boundary cut output into the crossbar
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_INJ_PORTS(u_dut.u_smu.smu_axi_in_cut_req,
-                           u_dut.u_smu.smu_axi_in_cut_resp)
+    `SMU_AXI_SVA_PORTS(u_dut.u_smu.smu_axi_in_cut_req,
+                       u_dut.u_smu.smu_axi_in_cut_resp)
   );
 
   ocah_axi_sva #(
@@ -3327,7 +3291,6 @@ module smu_wrapper_uvm_top
   end
 `endif
 
-`undef SMU_AXI_SVA_INJ_PORTS
 `undef SMU_AXI_SEP_RST_ON
 `undef SMU_AXI_DATA_PORTS
 `undef SMU_AXIL_SVA_PORTS

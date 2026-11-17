@@ -37,7 +37,12 @@ S4 FIXED AND WRAP to SEP SRAM: FIXED AxLEN 1, 3, 15 and WRAP AxLEN 1, 3, 7, 15.
 S5 WRAP AxLEN=0, S6 AxBURST=2'b11, S7 4 KiB crossing: a read and a write toward
    the SEP aperture, the SMC aperture and neither aperture, one at a time,
    with +smu_axi_illegal_inject armed on the bench; the SEP SRAM and SPM words
-   they address are written first.
+   they address are written first. The SMU forwards each request unchanged to
+   its target link, an address in neither aperture answers the crossbar's own
+   DECERR, the SMC scratchpad answers OKAY, and the SEP SRAM answers OKAY to
+   the single-beat WRAP and the INCR and SLVERR to the two-beat reserved burst
+   (integrator guide, AXI boundary contract; SMC memmap). What the illegal
+   burst reads or writes is not defined and is measured only.
 S8 FRESH ACCESS after each illegal request.
 S9 DECODE AND RULE FAMILIES.
 S10 TIMEOUT: every wait is a bounded count of clk_smu_i edges.
@@ -51,7 +56,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from cocotb.types import LogicArray
 from cocotb.utils import get_sim_time
-from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, resp_name
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY, RESP_SLVERR, resp_name
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr
@@ -129,6 +134,24 @@ SVA_INSTANCES = (
     "u_iwc_smc_axi_sva",
 )
 HOOK_INSTANCES = ("u_smu_in_axi_sva", "u_incut_axi_sva", "u_xbar_ext_in_axi_sva")
+# Stated answer to each illegal request (integrator guide, AXI boundary contract; SMC
+# memmap): the crossbar routes by start address and forwards the request unchanged, an
+# address in neither aperture answers the crossbar's own DECERR, the SMC scratchpad
+# answers OKAY, and the SEP SRAM serves a single-beat burst of any type and an INCR burst
+# but refuses a multi-beat burst that is not INCR.
+ILL_RESP = {
+    ("WRAP0", "sep"): RESP_OKAY,
+    ("WRAP0", "smc"): RESP_OKAY,
+    ("WRAP0", "neither"): RESP_DECERR,
+    ("RSVD", "sep"): RESP_SLVERR,
+    ("RSVD", "smc"): RESP_OKAY,
+    ("RSVD", "neither"): RESP_DECERR,
+    ("CROSS_4K", "sep"): RESP_OKAY,
+    ("CROSS_4K", "smc"): RESP_OKAY,
+    ("CROSS_4K", "neither"): RESP_DECERR,
+}
+# Links an illegal request crosses after the crossbar, in order.
+TARGET_LINKS = {"sep": ("xbar_sep_in", "iwc_sep"), "smc": ("xbar_smc_in", "iwc_smc")}
 XBAR = "u_dut.u_smu.gen_sep.u_smu_axi_xbar"
 DOWN_LINKS = (
     ("xbar_sep_in", f"{XBAR}.sep_in_req_o", f"{XBAR}.sep_in_resp_i"),
@@ -631,9 +654,8 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             f"[0x{smc_base:x},+0x{smc_size:x}) sep_s1=0x{SEP_S1:x} smc_s1=0x{self.smc_s1:x} "
             f"neither=0x{NEITHER:x} smc_inbound_filter0=[0x0,0x{PASS_ALL_END:x}] "
             f"cfg=0x{PASS_RW_CONFIG:x}(jtag2axi) smc_aperture=local_alias sep_filter=debug-open(TEST_DEV) membership={inside}; "
-            f"waits on open spec questions (which addresses and filter entries reach the SEP SRAM "
-            f"and SMC scratchpad; how an illegal burst encoding on smu_axi_in is answered), never "
-            f"compared"
+            f"waits on an open spec question (which addresses and filter entries reach the SEP "
+            f"SRAM and SMC scratchpad), never compared"
         )
         if not neither or not all(i[1] != i[2] for i in inside):
             raise AssertionError(
@@ -948,6 +970,21 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
                 f"{label} event={e[:5]} last={self._last_state()}"
             )
         t_resp = resp[0][1] - t0 if resp else None
+        window_end = _now()
+        want = ILL_RESP[(family, target)]
+        if kind == "write":
+            resp_ok = len(resp) == 1 and resp[0][3] == want
+        else:
+            resp_ok = (
+                len(resp) == length + 1
+                and all(e[3] == want for e in resp)
+                and [e[4] for e in resp] == [0] * length + [1]
+            )
+        if not resp_ok:
+            self._info(
+                f"INFO-CLASSIFY: kind=illegal-response class=design-side id=0x{ident:x} {label} "
+                f"want={resp_name(want)} x{length + 1} got={desc} last={self._last_state()}"
+            )
         changed = None
         if target != "neither":
             after, _ = await self._read_bytes(snap_addr, snap_n, f"{label}_after")
@@ -956,9 +993,14 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             "family": family,
             "target": target,
             "kind": kind,
+            "addr": addr,
+            "len": length,
+            "burst": burst,
             "seqs": seqs,
             "ids_ok": ids_ok,
-            "window_end": _now(),
+            "resp_ok": resp_ok,
+            "t0": t0,
+            "window_end": window_end,
         }
         obs = {
             "WRAP0": "OBS-G11-WRAP0-RESP",
@@ -972,11 +1014,11 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             )
         self._info(
             f"{obs[family]}: link=smu_in target={target} {kind} id=0x{ident:x} addr=0x{addr:x} "
-            f"burst={burst} len={length} {desc} other_id_responses={len(stray)} "
-            f"memory_changed={changed} "
-            f"response_time_ns={t_resp}; waits on open spec questions (how an illegal burst "
-            f"encoding on smu_axi_in is answered; the READY-wait bound on each SMU link), never "
-            f"compared"
+            f"burst={burst} len={length} {desc} stated={resp_name(want)} "
+            f"other_id_responses={len(stray)} memory_changed={changed} "
+            f"response_time_ns={t_resp}; the bytes an illegal burst reads or writes are not "
+            f"defined and the READY-wait bound on each SMU link is unstated, so the memory "
+            f"effect and the response time are measured, never compared"
         )
         # fresh legal write and read to the S1 word of the request's target
         s1_target = "smc" if target == "smc" else "sep"
@@ -1002,7 +1044,13 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             f"bid=0x{w['bid']:x} rresp={resp_name(rb[0][3])} other_id_responses={len(f_stray)} "
             f"ok={fresh_ok}"
         )
-        return {"seqs": seqs, "ids_ok": ids_ok, "fresh_ok": fresh_ok, "id": ident}
+        return {
+            "seqs": seqs,
+            "ids_ok": ids_ok,
+            "fresh_ok": fresh_ok,
+            "resp_ok": resp_ok,
+            "id": ident,
+        }
 
     async def _illegal_family(self, family: str) -> dict:
         targets = {
@@ -1028,11 +1076,13 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
         multi = sum(1 for o in out if o["seqs"] > 1)
         idbad = sum(1 for o in out if not o["ids_ok"])
         fresh = sum(1 for o in out if o["fresh_ok"])
+        resp_ok = sum(1 for o in out if o["resp_ok"])
         return {
             "requests": len(out),
             "multi": multi,
             "idbad": idbad,
             "fresh": fresh,
+            "resp_ok": resp_ok,
             "ids": [o["id"] for o in out],
         }
 
@@ -1106,10 +1156,41 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             "strb_outside": strb_out,
         }
 
+    def _windows(self) -> list[tuple[int, int]]:
+        return [(i["t0"], i["window_end"]) for i in self.ill_ids.values()]
+
+    def _forward(self) -> dict:
+        """Downstream AW/AR inside each illegal request's window against the request presented."""
+        forwarded = 0
+        wrong = []
+        neither_down = 0
+        for ident, info in self.ill_ids.items():
+            recs = [r for r in self.down if info["t0"] <= r[2] <= info["window_end"]]
+            if info["target"] == "neither":
+                neither_down += len(recs)
+                for r in recs:
+                    wrong.append((hex(ident), "neither", r))
+                continue
+            ch = "aw" if info["kind"] == "write" else "ar"
+            want = (info["addr"], info["len"], 3, info["burst"])
+            for link in TARGET_LINKS[info["target"]]:
+                hits = [r[4:8] for r in recs if r[0] == link and r[1] == ch]
+                if hits == [want]:
+                    forwarded += 1
+                else:
+                    wrong.append((hex(ident), link, ch, want, hits))
+        return {"forwarded": forwarded, "neither_downstream": neither_down, "wrong": wrong}
+
     def _burst_legal(self) -> tuple[int, list]:
+        """Legality of every downstream AW/AR outside the illegal request windows."""
+        windows = self._windows()
+        graded = 0
         illegal = []
         for rec in self.down:
             name, ch, t, ident, addr, length, size, burst = rec
+            if any(a <= t <= b for a, b in windows):
+                continue
+            graded += 1
             ok = burst in (BURST_FIXED, BURST_INCR, BURST_WRAP) and size <= 3
             if burst == BURST_FIXED:
                 ok = ok and length <= 15
@@ -1119,7 +1200,7 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
                 ok = ok and not _crosses_4k(addr, length, size)
             if not ok:
                 illegal.append(rec)
-        return len(self.down), illegal
+        return graded, illegal
 
     def _rules_live(self) -> dict:
         defines = {}
@@ -1238,8 +1319,8 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
         self._info(
             f"OBS-G11-ATOP-FIELD: smu_axi_in request type carries aw.atop (6 bits, field present) "
             f"bench_tie=assign smu_axi_in_req.aw.atop='0 sampled_at_aw={sorted(self.atop)}; "
-            f"waits on an open spec question (whether the fabric carries ATOP and how an atomic "
-            f"request is answered), never compared"
+            f"AWATOP is 0 by the smu_axi_in boundary contract (integrator guide, AXI boundary "
+            f"contract: the SMU neither refuses nor answers an atomic); measured, never compared"
         )
         live = self._rules_live()
         self._mark("DECODE_RULES", live["families"] + len(live["sim_instances"]), 16)
@@ -1257,14 +1338,14 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             f = fams[fam]
             fam_late = sum(1 for i in f["ids"] if late.get(i, 0) > 1)
             sb.expect_eq(
-                f"{tag} requests multi_response id_mismatch fresh_ok",
-                (f["requests"], f["multi"] + fam_late, f["idbad"], f["fresh"]),
-                (6, 0, 0, 6),
+                f"{tag} requests multi_response id_mismatch fresh_ok resp_ok",
+                (f["requests"], f["multi"] + fam_late, f["idbad"], f["fresh"], f["resp_ok"]),
+                (6, 0, 0, 6, 6),
                 evidence=tag,
             )
             self._info(
                 f"{tag}: requests={f['requests']} multi_response={f['multi'] + fam_late} "
-                f"id_mismatch={f['idbad']} fresh_ok={f['fresh']}/6"
+                f"id_mismatch={f['idbad']} fresh_ok={f['fresh']}/6 resp_ok={f['resp_ok']}/6"
             )
         sb.expect_eq(
             "CHK-G11-SEPSRAM fixwrap_wr fixwrap_rd readback incr single",
@@ -1390,10 +1471,27 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             f"CHK-TIMEOUT-PATHS: {len(self.waits)} bounded waits, bound and last state per wait, 0 expired"
         )
         # Graded last, so a failure here leaves every other checker's line in the log.
+        fwd = self._forward()
+        for w in fwd["wrong"]:
+            self._info(f"INFO-CLASSIFY: kind=not-forwarded-unchanged class=design-side {w}")
+        sb.expect_eq(
+            "CHK-G11-FORWARD forwarded neither_downstream",
+            (fwd["forwarded"], fwd["neither_downstream"]),
+            (24, 0),
+            evidence="CHK-G11-FORWARD",
+        )
+        self._info(
+            f"CHK-G11-FORWARD: forwarded={fwd['forwarded']}/24 (12 illegal requests toward an "
+            f"aperture, each once on its crossbar target port and once on its converter output "
+            f"with AxADDR, AxLEN, AxSIZE and AxBURST equal to ext_in) "
+            f"neither_downstream={fwd['neither_downstream']}"
+        )
+        windows = self._windows()
         n_down, illegal = self._burst_legal()
         per_link = defaultdict(int)
         for rec in self.down:
-            per_link[rec[0]] += 1
+            if not any(a <= rec[2] <= b for a, b in windows):
+                per_link[rec[0]] += 1
         for rec in illegal:
             self._info(f"INFO-CLASSIFY: kind=illegal-downstream class=design-side request={rec}")
         sb.expect_true(
@@ -1402,6 +1500,7 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             evidence="CHK-G11-BURSTLEGAL",
         )
         self._info(
-            f"CHK-G11-BURSTLEGAL: downstream_aw_ar={n_down} illegal=0 per_link={dict(per_link)}"
+            f"CHK-G11-BURSTLEGAL: downstream_aw_ar={n_down} illegal=0 per_link={dict(per_link)} "
+            f"(every AW/AR outside the {len(windows)} illegal request windows)"
         )
         self.done = True

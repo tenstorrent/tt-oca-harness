@@ -361,7 +361,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |===
 |Test |Leaf |Phase |Scenario
 |`smu_axi_alias_remap_manager_scope_test` |fabric |2 |SMU Tier A alias-remap (S3 LIVE)
-|`smu_axi_atomic_operation_test` |fabric |2 |non-ATOP SMN read completes (RID==ARID); ATOP not drivable, TB ties aw.atop low
+|`smu_axi_atomic_operation_test` |fabric |2 |non-ATOP SMN read completes (RID==ARID); ATOP is out by the `smu_axi_in` boundary contract, TB ties aw.atop low
 |`smu_axi_crossbar_error_handling_test` |fabric |2 |SMU_ALL_008 Option-B PWRGOOD-only
 |`smu_axi_filter_allow_ns_test` |fabric |2 |SMU Tier A allow_ns (SEP=1 J2A + s_axi)
 |`smu_axi_filter_in_instance_matrix_test` |fabric |2 |SMU Tier A inbound instance matrix
@@ -654,13 +654,13 @@ row's EXPECT sentence is worth, read the check.
 
 *Randomization*: RAND-REP. `random.Random(seed)` draws the ARID of the non-ATOP read from 1 to 0xFF; the stated outcome of every point is RID equal to ARID with OKAY.
 
-*Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is not drivable here.
+*Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is out by the `smu_axi_in` boundary contract.
 
 *Test Coverage*:
 
 * smu_axi_atomic_operation_test - non-ATOP SMN read path on the wrapper.
-* `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
-* This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
+* `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the flat `ext_in` port list carries no ATOP pin, so no atomic reaches the DUT.
+* The `smu_axi_in` boundary contract (integrator guide, AXI boundary contract) requires `AWATOP` = 0 and the SMU neither refuses nor answers an atomic, so the leaf claims nothing about one.
 * What it proves: with the SMC aperture and an INBOUND0 window programmed over JTAG, a plain 32-bit read of `VERSION_LO` on the SMN path is answered OKAY with the register's reset value, and the RID sampled off the live R channel mirrors the ARID issued.
 * DECERR / err_slv poison deny semantics stay OUT for this leaf: the `smu_axi_in` boundary contract requires `AWATOP` = 0 and the SMU neither refuses nor answers an atomic, so no deny path exists to provoke.
 
@@ -1265,8 +1265,6 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 *BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins; `ocah_jtag_vip` to open the INBOUND0 window; `elaboration` firmware mode
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `fabric`, `no_sep`, `smn`, `tier_c`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`.
-
-*Known limitation*: on VCS the leaf is RED on `OCAH_AXI_W_STRB_IN_LANES` from the AXI protocol checkers of `tb/tb_wrapper_top.sv`: the cocotb AXI master drives the write strobes of its narrow FIXED bursts on rotating byte lanes. The defect is in the bench master, not in the SMU; pull request #3448 fixes the master, and the leaf is GREEN with it. The leaf is not masked.
 
 *Randomization*: RAND-REP: the seed draws the ID set of the read train (sixty-four distinct ARIDs from the 8-bit ID width, with the all-zero and all-ones IDs, the minimum and maximum of the width, pinned into every drawn set), the write train running twice, once under each of the two pinned IDs as its one AWID and graded by `CHK-AXIIN-DEPTH-ORDER` each time, so both reach the inbound AWID; the burst shapes (the register-target INCR read and the INCR write each at AxLEN 1 or 3, two or four 32-bit beats, the lengths a WRAP burst admits inside the four CHIP_CONFIG registers and the first four SCRATCH_COLD words, the WRAP read at VERSION_LO and the FIXED write at SCRATCH_COLD each at the address, length and size of its INCR control), graded by `CHK-AXIIN-BURST` and `CHK-AXIIN-BURST-FIXED`; and the position of the unsupported-burst step on the inbound port (before the read train, between the trains or after the write trains), the read train returning the VERSION_LO reset value under every drawn ID and each write train leaving its last word as `CHK-AXIIN-DEPTH` and `CHK-AXIIN-DEPTH-ORDER` compare them. The eight-beat INCR burst into the SPM and the SPM size and address-walk cells keep their shapes; the outbound responder delays stay with `smu_axi_out_outstanding_test`. Every drawn cell is logged at the draw and in the PASS line of the checker that grades it; 3 seeds per regression (`reseed = 3`).
 
@@ -8006,8 +8004,6 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `fabric`, `no_sep`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
 
-*Known limitation*: on VCS the leaf is RED on `OCAH_AXI_W_STRB_IN_LANES` from the AXI protocol checkers of `tb/tb_wrapper_top.sv`: the cocotb AXI master drives the write strobes of its narrow FIXED bursts on rotating byte lanes. The defect is in the bench master, not in the SMU; pull request #3448 fixes the master, and the leaf is GREEN with it. The leaf is not masked.
-
 *Randomization*: RAND-NONE: directed, the leaf walks its whole cell set (all eight AxPROT encodings, both values of AxREGION, AxQOS, AxCACHE and AxLOCK, AxSIZE `0`..`3`, the three AxLEN values and the three burst types) in every run and the seed selects nothing.
 
 *Objective*: Every AW/AR attribute the inbound SMN port carries is answered as the traffic-filter specification assigns, and one SMC write leaves the chiplet on `smu_axi_out`.
@@ -11921,14 +11917,14 @@ grade.
 
 *Randomization*: RAND-NONE: directed; the request set, the IDs and the addresses are fixed, and the seed draws only the bench bring-up timing.
 
-*Objective*: The SMU external inbound port answers each illegal encoding (WRAP with AxLEN 0, the reserved burst encoding, an INCR that crosses a 4 KiB boundary) with at most one response sequence carrying the request's ID and stays usable afterwards, toward the SEP aperture, the SMC aperture and neither aperture; the SEP SRAM refuses multi-beat FIXED and WRAP bursts from ext_in and serves INCR; and nothing illegal reaches the crossbar targets.
+*Objective*: The SMU forwards each illegal encoding on its external inbound port (WRAP with AxLEN 0, the reserved burst encoding, an INCR that crosses a 4 KiB boundary) unchanged to the link its start address selects and answers it as the boundary contract states: the crossbar's own DECERR for an address in neither aperture, OKAY from the SMC scratchpad, and from the SEP SRAM OKAY for the single-beat WRAP and the INCR and SLVERR for the two-beat reserved burst, one response sequence carrying the request's ID, and the port stays usable afterwards; the SEP SRAM refuses multi-beat FIXED and WRAP bursts from ext_in and serves INCR; and every other request the SMU issues at the crossbar targets is a legal burst.
 
 *Test Coverage*:
 
 * The SMC aperture local alias and SMC inbound filter entry 0 are opened over JTAG2AXI and the SEP aperture over the SEP debug module's system bus, so ext_in reaches the SEP SRAM through `sep_in` and the SMC scratchpad through `smc_in`, and an address in neither aperture returns the crossbar's own DECERR (`hw/sys/smu/doc/index.adoc`, routing table).
 * The SEP SRAM serves INCR bursts of every length and single-beat bursts of every type, and refuses a multi-beat FIXED or WRAP burst: the write is SLVERR and leaves SRAM unchanged, and every read beat is SLVERR (`hw/sys/sep/doc/fabric.adoc`, "SRAM").
-* With `+smu_axi_illegal_inject` the checkers on `smu_in`, the inbound cut and the crossbar ext_in port see the three illegal encodings as legal for the whole run, keyed on the encoding and not on the request ID, and every other rule of those instances still grades the request; the crossbar target and converter checkers are not masked, so what the SMU forwards is graded as it is.
-* What each illegal request is answered with, whether target memory changed, the hook's inputs per request, the WRAP strobes, the RDATA of SLVERR beats, the `aw.atop` field of the inbound request type and the admitting addresses are measured, not compared.
+* With `+smu_axi_illegal_inject` every checker instance of the bench sees the three illegal encodings as legal for the whole run, keyed on the encoding and not on the request ID, and every other rule of every instance still grades the request; the SMU forwards the request unchanged (the integrator guide's AXI boundary contract), so the leaf grades the forwarded AxADDR, AxLEN, AxSIZE and AxBURST at the crossbar target port and the converter output of its target itself.
+* Whether an illegal request changed target memory (the bytes it reads or writes are not defined), its response time, the hook's inputs per request, the WRAP strobes, the RDATA of SLVERR beats, the `aw.atop` field of the inbound request type and the admitting addresses are measured, not compared.
 
 *Test Procedure*:
 
@@ -11937,7 +11933,7 @@ grade.
 . S2: INCR AxLEN 0, 1, 15 and 255 inside one 4 KiB page to both targets, single-beat FIXED and INCR, two-beat writes with W after, with and before AW, and four reads under distinct IDs in flight together; the AW and AR at both crossbar target ports and both converter outputs are sampled.
 . S3: INCR writes at AxSIZE 0, 1 and 2 with an unaligned first beat and partial strobes, and one full-width write whose unstrobed lanes carry X; each read back against the bytes the leaf wrote.
 . S4: full-width FIXED AxLEN 1, 3, 15 and WRAP AxLEN 1, 3, 7, 15 from an aligned start into the SEP SRAM, each written and read, and the addressed words read back with single-beat INCR reads.
-. S5 to S7: the SEP SRAM and scratchpad words the illegal requests address are written first; then a read and a write with WRAP AxLEN 0, with AxBURST 2'b11 and as a 4 KiB-crossing INCR toward the SEP aperture, the SMC aperture and neither aperture, one at a time, each observed for 1024 `clk_smu_i` edges.
+. S5 to S7: the SEP SRAM and scratchpad words the illegal requests address are written first; then a read and a write with WRAP AxLEN 0, with AxBURST 2'b11 and as a 4 KiB-crossing INCR toward the SEP aperture, the SMC aperture and neither aperture, one at a time, each observed for 1024 `clk_smu_i` edges; the AW or AR at the crossbar target port and the converter output of the target is sampled in that window.
 . S8: after each illegal request a fresh single-beat write and read to the S1 word of its target.
 . S9: the hook inputs per illegal request, the `aw.atop` field, and the rule families live in the run.
 . S10: every handshake and response wait is bounded in `clk_smu_i` edges and raises with the last handshake sample and `rst_primary_smc_clk_n_o`.
@@ -11947,12 +11943,13 @@ grade.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-G11-WRAP0` |the WRAP AxLEN 0 read and write toward each aperture and neither get at most one response sequence each, and no B or R with any other ID arrives in the observation window; the fresh write and read after each are OKAY with one response each, no response with another ID, and the word written
-|`CHK-G11-RSVD` |the same for AxBURST 2'b11
-|`CHK-G11-4K` |the same for the 4 KiB-crossing INCR
+|`CHK-G11-WRAP0` |the WRAP AxLEN 0 read and write toward each aperture and neither get at most one response sequence each, and no B or R with any other ID arrives in the observation window; the fresh write and read after each are OKAY with one response each, no response with another ID, and the word written; the response code is the stated one (the SEP SRAM and the SMC scratchpad answer OKAY and neither aperture answers DECERR), one B per write and AxLEN+1 beats with RLAST on the last per read
+|`CHK-G11-RSVD` |the same for AxBURST 2'b11; the response code is the stated one (the SEP SRAM answers SLVERR, the SMC scratchpad OKAY and neither aperture DECERR), one B per write and AxLEN+1 beats with RLAST on the last per read
+|`CHK-G11-4K` |the same for the 4 KiB-crossing INCR; the response code is the stated one (the SEP SRAM and the SMC scratchpad answer OKAY and neither aperture answers DECERR), one B per write and AxLEN+1 beats with RLAST on the last per read
 |`CHK-G11-SEPSRAM` |each multi-beat FIXED or WRAP write to the SEP SRAM is SLVERR and the addressed bytes keep their prior values; each such read returns AxLEN+1 SLVERR beats with RLAST on the last; INCR AxLEN 0, 1, 15, 255 and single-beat FIXED and INCR are OKAY on every beat and B and read back the data written
 |`CHK-G11-BEAT` |on ext_in every legal read's RLAST is on beat ARLEN+1; the WLAST and WSTRB of the bench's own W stream are printed as `INFO-G11-DRIVER`, not graded
-|`CHK-G11-BURSTLEGAL` |every AW and AR at `xbar_sep_in`, `xbar_smc_in` and both converter outputs has a legal burst, AxSIZE at most 3, FIXED AxLEN at most 15, WRAP AxLEN in {1, 3, 7, 15} with an aligned address, and no INCR crossing 4 KiB, including while the illegal requests are presented
+|`CHK-G11-FORWARD` |each of the 12 illegal requests toward the SEP or SMC aperture appears exactly once at the crossbar target port and once at the converter output of its target inside its observation window with AxADDR, AxLEN, AxSIZE and AxBURST equal to what ext_in presented (24 forwarded samples), and no AW or AR reaches any of the four links inside the window of a request toward neither aperture
+|`CHK-G11-BURSTLEGAL` |every AW and AR at `xbar_sep_in`, `xbar_smc_in` and both converter outputs outside the 18 illegal request windows has a legal burst, AxSIZE at most 3, FIXED AxLEN at most 15, WRAP AxLEN in {1, 3, 7, 15} with an aligned address, and no INCR crossing 4 KiB, with every link sampled
 |`CHK-G11-WKNOWN` |the write with X only in unstrobed lanes carries known strobed lanes on every sampled link and changes only the strobed bytes
 |`CHK-G11-RULES-LIVE` |the run is four-state VCS with `OCAH_INC_ASSERT` and `SIMULATION` live on the seven checker instances the leaf names, so every rule family of the checker header compiles live
 |`CHK-NONVAC` |ordered fence SETUP < LEGAL_INCR < NARROW_STROBES < FIXED_WRAP < WRAP0 < RSVD < CROSS_4K < FRESH_ACCESS < DECODE_RULES, each term with its sim time and a count at or above the plan
@@ -11960,11 +11957,11 @@ grade.
 |`CHK-AXI-SVA-<PORT>` (bench, at final) |for `SMU-IN`, `XBAR-EXT-IN`, `INCUT`, `XBAR-SEP-IN`, `IWC-SEP`, `XBAR-SMC-IN` and `IWC-SMC`: a nonzero handshake count under `+axi_sva_need_<port>`, and no rule of the instance fires
 |===
 
-*Observations* (measured, never compared): `OBS-G11-WRAP0-RESP`, `OBS-G11-RSVD-RESP` and `OBS-G11-4K-RESP` (how an illegal burst encoding on smu_axi_in is answered; the READY-wait bound of AW, W and AR on each link), `OBS-G11-HOOK` (which checker provides the illegal-request injection hook), `OBS-G11-ATOP-FIELD` (whether inbound requests carry ATOP and how an atomic is answered), `OBS-G11-WRAP-STRB` (whether a write-strobe lane rule applies to WRAP bursts), `OBS-G11-SLVERR-RDATA` (whether RDATA must be resolved on every RVALID beat, errors included), `OBS-G11-ADDR` (which global addresses select the SEP SRAM and SMC scratchpad; how an illegal burst encoding on smu_axi_in is answered).
+*Observations* (measured, never compared): `OBS-G11-WRAP0-RESP`, `OBS-G11-RSVD-RESP` and `OBS-G11-4K-RESP` (whether target memory changed, since the bytes an illegal burst reads or writes are not defined; the READY-wait bound of AW, W and AR on each link), `OBS-G11-HOOK` (which checker provides the illegal-request injection hook), `OBS-G11-ATOP-FIELD` (the `aw.atop` field and its bench tie; `AWATOP` is 0 by the boundary contract), `OBS-G11-WRAP-STRB` (whether a write-strobe lane rule applies to WRAP bursts), `OBS-G11-SLVERR-RDATA` (whether RDATA must be resolved on every RVALID beat, errors included), `OBS-G11-ADDR` (which global addresses select the SEP SRAM and SMC scratchpad).
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is red on `CHK-G11-BURSTLEGAL` and on the target-side checker reports it provokes until issue #3573 states what the SMU does with an illegal encoding on `smu_axi_in`; it is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
 
-*Scope limit*: the response code, beat count and memory effect of each illegal request are measured only, and the illegal requests run only under the bench hook, which masks the three encodings on the three external-inbound checker instances (`u_smu_in_axi_sva`, `u_incut_axi_sva`, `u_xbar_ext_in_axi_sva`) for the whole run and nothing else; no verdict reads `BURST_LEGAL`, `LEN_WRAP_LEGAL` or `4KB_BOUNDARY` on those instances.
+*Scope limit*: the memory effect of each illegal request is measured only, and the illegal requests run only under the bench hook, which masks the three encodings on every checker instance for the whole run and nothing else; no verdict reads `BURST_LEGAL`, `LEN_WRAP_LEGAL` or `4KB_BOUNDARY`, and the forwarded fields are graded by `CHK-G11-FORWARD` on the bench taps instead.
 
 '''''
 
@@ -14048,7 +14045,6 @@ covered above. SEP=1 3×3 xbar receives no release credit.
 [[smu-known-limitations]]
 === Known Limitations
 
-* *Illegal AXI encodings pass through the crossbar.* `smu_axi_ext_in_illegal_encoding_test` shows WRAP with AxLEN 0, the reserved burst encoding and a 4 KiB-crossing INCR forwarded unchanged from `smu_axi_in` to the SEP and SMC target ports, where the bound `ocah_axi_sva` instances fire and some writes land with OKAY; no document states the response. The leaf is red on `CHK-G11-BURSTLEGAL` until issue #3573 is answered, and runs only where `all` or `axi_sva` is selected on VCS.
 * *`all` is not a scheduled group.* `.github/workflows/regress.yml` runs
   `hosted` nightly and weekly: the rest of `all` is the SEP firmware set,
   whose `c_build` stages need the RISC-V toolchain container, which the
