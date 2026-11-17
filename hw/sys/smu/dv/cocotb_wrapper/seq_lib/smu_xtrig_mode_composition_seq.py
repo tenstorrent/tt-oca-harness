@@ -6,8 +6,8 @@ The per-internal-CT mode vector the SMU presents to the DTP is
 CFG.XTRIG_INT_CT_MODE in the SMU-exposed lanes above the SMC-reserved
 pulse-sync lanes. `doc/integrator/src/smu.adoc` ("Cross Trigger Parameters"
 and "Debug & Test Ports (DTP) Integration") states the lane counts: 8 exposed
-internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC with their
-mode bits at zero. Those counts are the golden of the tokened S1 mask compare
+internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC in wire-OR
+mode. Those counts are the golden of the tokened S1 mask compare
 and the set of lanes the live leg walks.
 
 Reading the vector back at the DTP against the +xtrig_int_ct_mode the bench
@@ -28,11 +28,13 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.smu_compose_helpers import (
+    CTP_INT_CFG_BITS,
     DTP_NUM_INT_CT,
     XTRIG_NUM_INT_CT,
     XTRIG_SMC_INT_CT_LANES,
     bit_width,
     hier,
+    int_ct_p2p_mask,
     parse_plusarg_int,
     sample,
 )
@@ -63,24 +65,25 @@ class smu_xtrig_mode_composition_seq:
         smu_vec = hier(smu, "DtpXtrigIntCtMode")
         dtp_vec = hier(smu, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
-            "mode vector width at the DTP is the specified internal CT count",
+            "mode vector at the DTP holds one lane configuration per specified internal CT",
             bit_width(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE"),
-            DTP_NUM_INT_CT,
+            DTP_NUM_INT_CT * CTP_INT_CFG_BITS,
         )
-        dtp_mode = sample(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE")
+        dtp_cfg = sample(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
-            "DTP receives the vector the SMU concatenates",
-            dtp_mode,
-            sample(smu_vec, "DtpXtrigIntCtMode"),
+            "DTP receives the low lanes of the vector the SMU concatenates",
+            dtp_cfg,
+            sample(smu_vec, "DtpXtrigIntCtMode") & ((1 << (DTP_NUM_INT_CT * CTP_INT_CFG_BITS)) - 1),
         )
+        dtp_mode = int_ct_p2p_mask(dtp_cfg, DTP_NUM_INT_CT)
         sb.expect_eq(
-            "mode bits in the SMC reservation presented to DTP are zero (pulse-sync)",
+            "no lane in the SMC reservation presented to DTP is point-to-point",
             dtp_mode & ((1 << XTRIG_SMC_INT_CT_LANES) - 1),
             0,
             evidence="CHK-SMU-XTRIG-MODE-S1",
         )
         sb.expect_eq(
-            "mode bits above the SMC reservation presented to DTP are +xtrig_int_ct_mode",
+            "point-to-point lanes above the SMC reservation presented to DTP are +xtrig_int_ct_mode",
             dtp_mode >> XTRIG_SMC_INT_CT_LANES,
             mode_contract & ((1 << XTRIG_NUM_INT_CT) - 1),
         )

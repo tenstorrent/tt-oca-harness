@@ -104,7 +104,7 @@ from seq_lib.smu_boundary_regs import (
     cross_trigger_network_u32,
     cross_trigger_u32,
 )
-from seq_lib.smu_compose_helpers import bit_width, hier, sample
+from seq_lib.smu_compose_helpers import bit_width, hier, int_ct_p2p_mask, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -857,7 +857,9 @@ class smu_xtrig_ctp_pad_seq:
         dtp_int_ct = NUM_CT_SRC - NUM_CTP
         reserved = dtp_int_ct - SMU_INT_CT_EXPOSED
         # A handshake lane (mode bit set) holds its request until acknowledged.
-        mode = sample(hier(smu_scope(dut), DTP_INT_CT_MODE_PATH), DTP_INT_CT_MODE_PATH)
+        mode = int_ct_p2p_mask(
+            sample(hier(smu_scope(dut), DTP_INT_CT_MODE_PATH), DTP_INT_CT_MODE_PATH), dtp_int_ct
+        )
         await self._set_mode(P2P_LANE, P2P)
         observed, want = {}, {}
         for lane in range(dtp_int_ct):
