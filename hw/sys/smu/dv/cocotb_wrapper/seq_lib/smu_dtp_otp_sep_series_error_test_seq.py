@@ -58,7 +58,7 @@ from seq_lib.smu_lifecycle_table import LC_STATE_PRESENSE
 _SEP_ADDR_H = Path(__file__).resolve().parents[6] / "hw/sys/sep/regs/gen/c/sep_addr.h"
 
 # hw/sys/sep/regs/gen/c/sep_addr.h: SPARE0 is a 256-bit register of the SEP shadow map; its first
-# two 32-bit words sit at 0x109306E0 and 0x109306E4.
+# two 32-bit words sit at 0x10930AE0 and 0x10930AE4.
 SPARE0_W0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
 SPARE0_W1 = SPARE0_W0 + 4
 # hw/sys/sep/regs/gen/c/sep_addr.h: the EFUSE_INTERFACE_CTRL window ends at BASE + SIZE, below

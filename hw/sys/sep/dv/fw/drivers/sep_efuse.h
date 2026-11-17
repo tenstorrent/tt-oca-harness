@@ -5,8 +5,8 @@
 //
 // The EL2 host reaches the eFuse host block through the SEP local crossbar and
 // the u_km_efuse_axi_lite_mux (slave port 0). After fuse-sense, the sensed
-// shadow registers (MAP block @ 0x1093_0400) are readable; the MMR block
-// (@ 0x1093_0100) holds plain RW scratch MMRs the KM owns. (Addresses are SEP
+// shadow registers (MAP block @ 0x1093_0800) are readable; the MMR block
+// (@ 0x1093_0400) holds plain RW scratch MMRs the KM owns. (Addresses are SEP
 // fabric facts; hw/ip/efuse/regs/efuse_interface_ctrl.rdl, efuse_mmr.rdl;
 // hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl.)
 
