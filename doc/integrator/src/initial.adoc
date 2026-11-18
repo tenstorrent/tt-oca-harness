@@ -116,6 +116,12 @@ required:
   implemented with the `prim_rom` module. These ROMs are: the boot rom
   (in `u_sep_boot_rom`) and a key manager ROM (in `u_km_rom`).
 
+* *Ring oscillators*
+  The SEP's entropy source samples ring oscillators built from `prim_clock_nand2`,
+  `prim_buf` and `prim_stdmux2` stages in `entropy_rosc_array`. A build can keep
+  them, replace that module with a hard macro of the same ports, or select the
+  loop-free stub with the Bender target `entropy_rosc_stub`.
+
 * *SRAM implementations*
   The SRAM implementations expected by the SEP can be split by the components
   using them as follows:

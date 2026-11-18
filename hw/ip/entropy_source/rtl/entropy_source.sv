@@ -10,6 +10,9 @@
 //
 // Interfaces:
 //
+// - The ring oscillators live outside this module, in entropy_rosc_array: rosc_ctrl_o
+//   drives them, held off while test_en_i is high, and rosc_noise_i and rosc_shared_clk_i
+//   return their asynchronous outputs.
 // - The AXI-Lite slave carries register-based configuration and data access.
 // - signal_monitor_o observes intermediate signals.
 // - irq_o aggregates sticky fault and health status for the SEP host.
@@ -28,7 +31,8 @@ module entropy_source
 (
     input       logic        clk_i,     // System clock.
     input       logic        rst_ni,    // Active-low asynchronous reset.
-    input       logic        test_en_i, // DFT test mode; forces the health-test clock gate open.
+    input       logic        test_en_i, // DFT test mode; forces the health-test clock gate open
+                                           // and holds the rings off.
 
     input       logic        s_axil_awvalid_i,  // AXI-Lite write-address valid.
     output      logic        s_axil_awready_o,  // AXI-Lite write-address ready.
@@ -60,6 +64,11 @@ module entropy_source
                                                 // DEBUG_CTRL.
     input       logic        rosc_sample_clk_i,  // External ring-oscillator sample clock,
                                                  // asynchronous to clk_i.
+    output      entropy_source_pkg::rosc_ctrl_t rosc_ctrl_o,  // Ring-oscillator enables and
+                                                              // detunes.
+    input       logic [NRings-1:0] rosc_noise_i,  // Noise ring outputs, asynchronous.
+    input       logic        rosc_shared_clk_i,  // Shared sample-clock ring output,
+                                                 // asynchronous.
 
     output      logic [31:0] entropy_stream_data_o,  // Word offered to the main entropy FIFO:
                                                      // whitener output, which is the extracted
@@ -85,6 +94,7 @@ module entropy_source
     logic                   entropy_stream_valid_gated;
     logic [NRings-1:0]      noise_bit_monitor;
     logic [NRings-1:0]      sample_clk_monitor;
+    entropy_source_pkg::rosc_ctrl_t rosc_ctrl;
     logic [7:0]             health_status;
     logic                   window_wrap_pulse;
 
@@ -253,6 +263,15 @@ module entropy_source
     // Combinational
     /////////////////
 
+    // DFT test mode keeps the rings off whatever the scanned registers hold.
+    always_comb begin
+        rosc_ctrl_o = rosc_ctrl;
+        if (test_en_i) begin
+            rosc_ctrl_o.noise_enable  = '0;
+            rosc_ctrl_o.shared_enable = 1'b0;
+        end
+    end
+
     // Expose each word pushed into the main FIFO for external monitoring
     assign entropy_stream_data_o = fifo_wdata;
     assign entropy_stream_vld_o  = fifo_push;
@@ -270,6 +289,9 @@ module entropy_source
         .clk_i,
         .rst_ni                                 (rst_ni),
         .sample_clk_i                           (rosc_sample_clk_i),
+        .rosc_ctrl_o                            (rosc_ctrl),
+        .rosc_noise_i,
+        .rosc_shared_clk_i,
         .entropy_stream_o                       (entropy_stream),
         .entropy_stream_uncompressed_o          (entropy_stream_uncompressed),
         .entropy_stream_valid_o                 (entropy_stream_valid),

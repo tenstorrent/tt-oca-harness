@@ -52,7 +52,9 @@ for this block.
 == Entropy Generation
 
 The internal ESRC samples ring oscillators, decorrelates/extracts their output
-and conditions it with SHA-256. Its gating health test observes the extracted
+and conditions it with SHA-256. The oscillators sit in `entropy_rosc_array`
+beside the ESRC, the one TRNG module a build may replace with a hard macro or a
+loop-free stub. Its gating health test observes the extracted
 32-bit stream before SHA-256; per-generator health results provide additional
 monitoring. The health tests include repetition, adaptive-proportion and Markov
 checks. This is not a test of each DRBG output word.
