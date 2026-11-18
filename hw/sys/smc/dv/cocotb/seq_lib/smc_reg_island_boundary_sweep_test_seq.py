@@ -142,11 +142,19 @@ ISLANDS = (
         _D,
     ),
     Island(
-        "EFUSE_MAP", "smc_efuse_map", 0x7000, 0x73FC, 0x7400, 0x7FFC, "ro(woset lock bits)", RW, _D
+        "EFUSE_MAP",
+        "smc_efuse_wrap.smc_efuse_map",
+        0x7000,
+        0x73FC,
+        0x7400,
+        0x7FFC,
+        "ro(woset lock bits)",
+        RW,
+        _D,
     ),
     Island(
         "EFUSE_IF",
-        "efuse_interface_ctrl",
+        "smc_efuse_wrap.efuse_interface_ctrl",
         0x8000,
         0x8018,
         0x801C,

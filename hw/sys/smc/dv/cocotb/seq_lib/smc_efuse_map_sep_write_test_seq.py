@@ -39,8 +39,8 @@ _CFG_RSVD = (
     | smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_bm")
 )
 _AXI_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
-_PAST_RRESP = generated_past_extent_resp("smc_efuse_map")[0]
-_PAST_DATA = _component_row("smc_efuse_map")["past_response"]["rdata"]
+_PAST_RRESP = generated_past_extent_resp("smc_efuse_wrap.smc_efuse_map")[0]
+_PAST_DATA = _component_row("smc_efuse_wrap.smc_efuse_map")["past_response"]["rdata"]
 _HALF_LO = 0x1234_5678
 _HALF_HI = 0x9ABC_DEF0
 _CHK_STEP = {

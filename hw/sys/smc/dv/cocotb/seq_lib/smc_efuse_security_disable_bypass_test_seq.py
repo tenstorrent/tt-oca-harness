@@ -42,11 +42,11 @@ REG64_WORDS = tuple(
     (addr - EFUSE_MAP_BASE) // 4
     for addr in (
         *(
-            smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", k)
-            for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM"))
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", k)
+            for k in range(smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM"))
         ),
-        smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"),
-        smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"),
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
     )
 )
 LOCKS_LOW_WORD = LOCKS_WORDS[0]

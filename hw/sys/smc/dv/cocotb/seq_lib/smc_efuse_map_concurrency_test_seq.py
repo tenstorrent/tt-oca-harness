@@ -6,7 +6,7 @@ Sources: smc_efuse_map.rdl (LOCKS), port_table.adoc axil_smc_otp_jtag, architect
 
 The SEP_IN master is the s_axi port through ``sys_axi_agent``. The JTAG master is the ej_axi
 AXI-Lite master of ``axil_smc_otp_jtag_req_i``; it presents the full SMC-local address
-(``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR`` + 4 * word). A bus monitor samples both ports one
+(``SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR`` + 4 * word). A bus monitor samples both ports one
 half-clock before each capturing edge and supplies the handshake times, the request order and
 the response order.
 """
@@ -208,17 +208,17 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
         assert image is not None, "the testcase module sets the image before starting"
         dut = cocotb.top
         words = image.words
-        base = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+        base = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
 
         def spare(k: int) -> int:
-            return smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k)
+            return smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k)
 
         spare0, spare1 = spare(0), spare(1)
         w0, w1 = (spare0 - base) // 4, (spare1 - base) // 4
         assert (w0, w1) == (32, 40), f"SPARE[0]/SPARE[1] first words are {w0}/{w1}"
         outstanding = [spare(k) for k in range(2, 2 + _SPARE_WORDS)]
         owords = [(a - base) // 4 for a in outstanding]
-        locks_addr = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+        locks_addr = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
         wlock = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_bm")
         assert wlock == 1 << 8, f"SPARE0_WRITE_LOCK mask 0x{wlock:x}"
 

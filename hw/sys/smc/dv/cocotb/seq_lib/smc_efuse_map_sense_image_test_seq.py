@@ -56,17 +56,20 @@ _TERMS = {
 def _reset_words() -> tuple[int, ...]:
     """The reset word of every SMC_EFUSE_MAP word, from the generated register map."""
     instances = [
-        ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
-        ("JTAG_PUBLIC_IDENTITY", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")),
-        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
+        ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
+        (
+            "JTAG_PUBLIC_IDENTITY",
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
+        ),
+        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
         (
             "OCCP_TRANSPORT_TIMEOUT",
-            smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
         ),
     ]
     for reg, name in (("I2C_I3C_ID", "I2C_I3C_ID"), ("SPARE_256_BITS", "SPARE")):
-        sym = f"SMC_TOP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
-        for k in range(smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{name}_NUM")):
+        sym = f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
+        for k in range(smc_addr(f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_NUM")):
             instances.append((reg, smc_indexed_addr(sym, k)))
     instances.sort(key=lambda entry: entry[1])
     assert instances[0][1] == EFUSE_MAP_BASE, f"first register at 0x{instances[0][1]:x}"

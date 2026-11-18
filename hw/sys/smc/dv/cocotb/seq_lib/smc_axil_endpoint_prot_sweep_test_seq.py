@@ -198,8 +198,15 @@ def check_set() -> tuple[Endpoint, ...]:
         ),
         _probe("octs", "periph-ctrl", "smc_system_timer_octs/TIMER_PRESET_LO", seed=RW),
         _probe("i3c", "periph-ctrl", "oca_i3c_wrap/i3c_csr[0]/I3CBase/DEV_CTX_BASE_LO", seed=RW),
-        _probe("efuse_map", "efuse", "smc_efuse_map/I2C_I3C_ID[0]", efuse=True, seed=RW),
-        _probe("efuse_intf", "efuse", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", efuse=True),
+        _probe(
+            "efuse_map", "efuse", "smc_efuse_wrap/smc_efuse_map/I2C_I3C_ID[0]", efuse=True, seed=RW
+        ),
+        _probe(
+            "efuse_intf",
+            "efuse",
+            "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT",
+            efuse=True,
+        ),
         _probe("gpio", "internal-regs", "gpio_intf_wrap/gpio_intf[0]/ACCESS_FILTER"),
         _probe("dfx", "internal-regs", "dfx_ctrl/DEBUG_BUS_MUX", seed=0xFF00),
         _probe(

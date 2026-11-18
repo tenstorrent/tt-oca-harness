@@ -100,11 +100,15 @@ FUSE_WAITS = 3
 # (unit, tag, live register read before and after each write)
 _RESET_UNIT = ("smc_reset_unit", "RST", smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR"))
 _EFUSE_UNITS = (
-    ("smc_efuse_map", "EFMAP", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
     (
-        "efuse_interface_ctrl",
+        "smc_efuse_wrap.smc_efuse_map",
+        "EFMAP",
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"),
+    ),
+    (
+        "smc_efuse_wrap.efuse_interface_ctrl",
         "EFCTL",
-        smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR"),
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR"),
     ),
 )
 _TIMER_UNIT = (
@@ -242,7 +246,7 @@ LOG_WRITE_ADDR_VALUE = 0x1357_9BDF
 EFUSE_CTRL_PAST_OFF = 0x8800
 EFUSE_CTRL_STATUS_OFF = 0x8000
 EFUSE_SHADOW_PAST_OFF = 0x7800
-EFUSE_SHADOW_FIRST_OFF = generated_window("smc_efuse_map")[0]
+EFUSE_SHADOW_FIRST_OFF = generated_window("smc_efuse_wrap.smc_efuse_map")[0]
 # I3C window offset and the unimplemented offset inside it.
 I3C_WINDOW_OFF = 0x3_A000
 I3C_HOLE_OFF = 0x3F0
@@ -961,19 +965,21 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         return uart, logeng
 
     async def _err_efuse(self) -> str:
-        past = self._past_extent("efuse_interface_ctrl", EFUSE_CTRL_PAST_OFF)
+        past = self._past_extent("smc_efuse_wrap.efuse_interface_ctrl", EFUSE_CTRL_PAST_OFF)
         rd_ctrl = await self._read_past("EFUSE_CTRL_PAST", past)
         await self._wr_exact(None, "EFUSE_CTRL_PAST", past, AXI_RESP_DECERR)
-        status_addr = self._in_window("efuse_interface_ctrl", EFUSE_CTRL_STATUS_OFF)
+        status_addr = self._in_window("smc_efuse_wrap.efuse_interface_ctrl", EFUSE_CTRL_STATUS_OFF)
         assert status_addr == smc_addr(
-            "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+            "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
         ), f"EFUSE_INTERFACE_CTRL_STATUS at 0x{status_addr:08x}"
         status = await self._rd_code(None, "EFUSE_INTERFACE_CTRL_STATUS", status_addr)
-        past = self._past_extent("smc_efuse_map", EFUSE_SHADOW_PAST_OFF)
+        past = self._past_extent("smc_efuse_wrap.smc_efuse_map", EFUSE_SHADOW_PAST_OFF)
         rd_shadow = await self._read_past("EFUSE_SHADOW_PAST", past)
         await self._wr_exact(None, "EFUSE_SHADOW_PAST", past, AXI_RESP_DECERR)
         first = await self._rd_code(
-            None, "EFUSE_SHADOW_FIRST", self._in_window("smc_efuse_map", EFUSE_SHADOW_FIRST_OFF)
+            None,
+            "EFUSE_SHADOW_FIRST",
+            self._in_window("smc_efuse_wrap.smc_efuse_map", EFUSE_SHADOW_FIRST_OFF),
         )
         cocotb.log.info(
             "EFUSE: EFUSE_INTERFACE_CTRL_STATUS=0x%08x shadow +0x0=0x%08x (data recorded; "

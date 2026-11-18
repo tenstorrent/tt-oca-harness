@@ -41,12 +41,14 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_words
 from .smc_reset_seq_base import SmcResetSeqBase
 
-_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+_STATUS = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
 _SENSE_DONE_BM = _field_mask(
     _REPO / "hw" / "ip" / "efuse" / "regs" / "gen" / "c" / "efuse_interface_ctrl.h",
     "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm",
 )
-_MAP_PREFIX = "SMC_TOP_SMC_EFUSE_MAP_"
+_MAP_PREFIX = "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_"
 _AXI_OKAY = 0
 _STEPS = ("REFERENCE-READ", "S1", "S2", "PRESENSE-READ", "S3", "S4", "S5", "S6", "POSTSENSE-READ")
 _NUM_WORDS = 256

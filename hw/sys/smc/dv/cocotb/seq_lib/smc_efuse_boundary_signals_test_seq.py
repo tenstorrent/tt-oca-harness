@@ -38,9 +38,11 @@ from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
-PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
+PROG_IF_RD = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR"
+)
 PROG_IF_RD_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset"
 )
@@ -49,7 +51,9 @@ PROG_IF_RD_RESET = efuse_ifc_u32(
 # a dead or unmapped register; the module docstring gives the provenance.
 # Block liveness is proven on the writable sibling EFUSE_READ_REQ_TIMEOUT @0x14
 # (`sw=rw`, non-zero reset) ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-READ_REQ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
+READ_REQ_TMO = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR"
+)
 READ_REQ_TMO_CYCLES_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset"
 )

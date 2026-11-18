@@ -142,7 +142,9 @@ UART_LAST_LSR = smc_indexed_addr(
 )
 
 # --- security / timing / DFT ------------------------------------------------------------------
-EFUSE_READ_REQ_TIMEOUT = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
+EFUSE_READ_REQ_TIMEOUT = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR"
+)
 TELEMETRY0_STATUS = smc_indexed_addr(
     "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR", 0
 )

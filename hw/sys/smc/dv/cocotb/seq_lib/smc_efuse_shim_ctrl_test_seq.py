@@ -15,7 +15,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WINDOW
 
 EFUSE_INTERFACE_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
 )
 # Same window smc_efuse_vip_utils.prove_efuse_bank_axil_activity() and
 # smc_probe_positive_control read strictly, so it is imported rather than
