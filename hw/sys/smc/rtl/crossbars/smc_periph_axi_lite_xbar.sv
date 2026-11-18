@@ -118,11 +118,11 @@ module smc_periph_axi_lite_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR),
       end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR,
                                             smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE))},
-    // efuse: RDL — smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_{BASE_ADDR,SIZE}
+    // efuse: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_{BASE_ADDR,SIZE}
     '{idx: 6,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE))},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE))},
     // telemetry: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_{BASE_ADDR,SIZE}
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR),

@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_EFUSE_WRAP_RDL
+`define SMC_EFUSE_WRAP_RDL
+
+`include "efuse_interface_ctrl.rdl"
+`include "smc_efuse_map.rdl"
+
+
+addrmap smc_efuse_wrap {
+    name = "SMC eFuse Wrapper Address Map";
+    desc = "Places the SMC eFuse controller and its shadow registers in one 4 KiB page.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    efuse_interface_ctrl    efuse_interface_ctrl    @0x000_0000;
+    smc_efuse_map           smc_efuse_map           @0x000_0800;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    efuse_interface_ctrl->ocah_aperture_size = 0x800;
+    efuse_interface_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    efuse_interface_ctrl->desc = "eFuse command and status registers.";
+    smc_efuse_map->ocah_aperture_size = 0x800;
+    smc_efuse_map->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

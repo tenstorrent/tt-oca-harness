@@ -66,7 +66,7 @@ VIEWS = {
         "title": "SMC eFuse Placement",
         "rows": (
             {
-                "key": "smc:efuse_interface_ctrl",
+                "key": "smc:smc_efuse_wrap.efuse_interface_ctrl",
                 "kind": "node",
                 "label": "eFuse Control CSR",
                 "base": 0xC0007000,
@@ -81,7 +81,7 @@ VIEWS = {
                 "past_note": "",
             },
             {
-                "key": "smc:smc_efuse_map",
+                "key": "smc:smc_efuse_wrap.smc_efuse_map",
                 "kind": "node",
                 "label": "Shadow Registers",
                 "base": 0xC0007800,

@@ -32,6 +32,22 @@ state (`HAS_LC_STATE=1`).
 
 === Detailed Register Map
 
+==== SMC eFuse Page
+
+In the SMC, the eFuse control registers and the shadow registers share one
+4 KiB page, placed by the wrapper below. The sections that follow define each
+register and its fields.
+
+ifdef::backend-html5[]
+++++
+include::smc:partial$smc/regs/gen/html/blocks/smc_efuse_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_wrap.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
 ==== Shadow Registers
 
 The shadow registers provide cached read access to eFuse contents, loaded

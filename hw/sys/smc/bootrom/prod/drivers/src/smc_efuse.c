@@ -20,15 +20,15 @@ int smc_efuse_init(void) {
     /* Clear the configuration structure */
     g_smc_efuse = (smc_efuse_config_t){0};
 
-    g_smc_efuse.i3c_id_0 = read64_reg(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0));
-    g_smc_efuse.i3c_id_1 = read64_reg(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(1));
-    g_smc_efuse.i3c_id_3 = read64_reg(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(3));
-    g_smc_efuse.i2c_id_0 = read64_reg(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(6));
-    g_smc_efuse.i2c_id_1 = read64_reg(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(7));
+    g_smc_efuse.i3c_id_0 = read64_reg(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0));
+    g_smc_efuse.i3c_id_1 = read64_reg(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(1));
+    g_smc_efuse.i3c_id_3 = read64_reg(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(3));
+    g_smc_efuse.i2c_id_0 = read64_reg(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(6));
+    g_smc_efuse.i2c_id_1 = read64_reg(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(7));
 
     /* Timeout occupies the low word of OCCP_TRANSPORT_TIMEOUT; the high word is reserved. */
     g_smc_efuse.transport_timeout =
-        (uint32_t)read64_reg(SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR);
+        (uint32_t)read64_reg(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR);
 
     /* Mark as initialized */
     g_efuse_initialized = 1;
