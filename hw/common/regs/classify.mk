@@ -8,7 +8,7 @@
 # C header omits bitfield structs (peakrdl can't represent >64-bit registers);
 # address/mask defines only.
 OCAH_REG_NO_BITFIELDS ?= key_manager oca_i3c_wrap smc smc_efuse_map sep_efuse_map \
-  smc_efuse_wrap
+  smc_efuse_wrap sep_efuse_wrap
 
 # The Python header has its own list because the reason above is a peakrdl
 # c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
@@ -57,8 +57,9 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # vendored OpenTitan PWM map, whose register RTL is upstream's, with its
 # pwm_ctrl regblock leaf.
 OCAH_REG_WRAPPER_BLOCKS ?= \
-  misc_wrap smc_cluster_wdt_wrap smc_efuse_wrap pwm_wrap \
-  gpio_intf_wrap alias_remap_wrap output_remap_wrap filter_ctrl_wrap
+  misc_wrap smc_cluster_wdt_wrap smc_efuse_wrap sep_scratch_wrap sep_efuse_wrap \
+  sep_remap_wrap pwm_wrap gpio_intf_wrap alias_remap_wrap output_remap_wrap \
+  filter_ctrl_wrap
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_WRAPPER_BLOCKS)
 
 # UVM RAL models are opt-in: only a DV environment that drives registers through

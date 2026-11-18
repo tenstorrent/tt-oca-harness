@@ -25,17 +25,17 @@ columns = ["base", "end", "size", "occupied_size", "label", "description"]
 
 [[views.rows]]
 source = "sep"
-selector = "sep_efuse_map"
+selector = "sep_efuse_wrap.sep_efuse_map"
 label = "Shadow Registers"
 
 [[views.rows]]
 source = "sep"
-selector = "efuse_interface_ctrl"
+selector = "sep_efuse_wrap.efuse_interface_ctrl"
 label = "eFuse Control CSR"
 
 [[views.rows]]
 source = "sep"
-selector = "efuse_mmr"
+selector = "sep_efuse_wrap.efuse_mmr"
 label = "MMR Registers"
 
 [[views]]

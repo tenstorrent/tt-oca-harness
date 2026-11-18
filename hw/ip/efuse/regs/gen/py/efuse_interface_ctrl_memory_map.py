@@ -16,7 +16,7 @@ VIEWS = {
         "title": "SEP eFuse Placement",
         "rows": (
             {
-                "key": "sep:efuse_interface_ctrl",
+                "key": "sep:sep_efuse_wrap.efuse_interface_ctrl",
                 "kind": "node",
                 "label": "eFuse Control CSR",
                 "base": 0x10930000,
@@ -31,7 +31,7 @@ VIEWS = {
                 "past_note": "",
             },
             {
-                "key": "sep:efuse_mmr",
+                "key": "sep:sep_efuse_wrap.efuse_mmr",
                 "kind": "node",
                 "label": "MMR Registers",
                 "base": 0x10930400,
@@ -46,7 +46,7 @@ VIEWS = {
                 "past_note": "",
             },
             {
-                "key": "sep:sep_efuse_map",
+                "key": "sep:sep_efuse_wrap.sep_efuse_map",
                 "kind": "node",
                 "label": "Shadow Registers",
                 "base": 0x10930800,

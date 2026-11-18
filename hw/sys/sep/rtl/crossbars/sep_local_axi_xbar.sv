@@ -157,9 +157,9 @@ module sep_local_axi_xbar
       // addresses outside the cold and warm scratch windows.
       '{
           idx: 6,
-          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE))
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE))
       },
       // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a50000
       '{

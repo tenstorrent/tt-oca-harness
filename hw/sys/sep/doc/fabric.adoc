@@ -378,4 +378,16 @@ endif::backend-pdf[]
 
 === Detailed Register Map
 
-See the owning register references linked above.
+See the owning register references linked above for the filters. The
+local-master alias remap and the AP and STEE output remap registers share one
+4 KiB page, placed by the wrapper below.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_remap_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_remap_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]

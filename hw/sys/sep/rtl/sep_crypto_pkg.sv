@@ -50,8 +50,11 @@ package sep_crypto_pkg;
   // The eFuse page: interface control, MMR and map.
   parameter axi_pkg::xbar_rule_32_t FUSE_RULE = '{
       idx: 4,
-      start_addr: sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
-      end_addr: sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR + sep_pkg::RegPageSize
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
+      end_addr:
+      sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR
+      +
+      sep_pkg::RegPageSize
   };
 
   // The lifecycle controller page, all of which its register block decodes.

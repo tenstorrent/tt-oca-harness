@@ -41,9 +41,7 @@
 |0x10050000 |0x107FFFFF |7872 KiB |7872 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10800000 |0x10800FFF |4 KiB |336 B |DMA Controller |Secure DMA control and status registers. |SLVERR, 0xFFFFFFFF / SLVERR^<<sep-components-note-1,[1]>>^ |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-2,[2]>>^
 |0x10801000 |0x10801FFF |4 KiB |56 B |Always-On Timer |Wakeup and watchdog timers running on a low-power, always-on clock |- |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-3,[3]>>^
-|0x10802000 |0x1080207F |128 B |64 B |SEP Scratch Address Map |Cold-reset scratch register bank. |- |SLVERR, 0x0 / SLVERR
-|0x10802080 |0x108020FF |128 B |64 B |SEP Scratch Address Map |Warm-reset scratch register bank. |- |SLVERR, 0x0 / SLVERR
-|0x10802100 |0x10802FFF |3840 B |3840 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10802000 |0x10802FFF |4 KiB |256 B |SEP Scratch Wrapper Address Map |Places the cold-reset and warm-reset scratch register banks in one 4 KiB page. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |0x10803000 |0x10803FFF |4 KiB |8 B |SEP Reset Control Address Map |Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge. |- |SLVERR, 0x0 / SLVERR
 |0x10804000 |0x108FFFFF |1008 KiB |1008 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10900000 |0x1090BFFF |48 KiB |48 KiB |OpenTitan Big Number Accelerator |Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures |SLVERR, 0xFFFFFFFF / SLVERR |-
@@ -62,9 +60,7 @@
 |0x10919000 |0x1091FFFF |28 KiB |28 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10920000 |0x10920FFF |4 KiB |28 B |Key Manager Mailbox SEP Side |Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO) |- |SLVERR, 0x0 / SLVERR
 |0x10921000 |0x1092FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10930000 |0x109303FF |1 KiB |28 B |eFuse Interface Control Address Map |eFuse command and status registers. |- |SLVERR, 0xBADCAB1E / SLVERR
-|0x10930400 |0x109307FF |1 KiB |116 B |eFuse Token Registers Address Map |eFuse security-token registers. |- |SLVERR, 0xBADCAB1E / SLVERR
-|0x10930800 |0x10930FFF |2 KiB |1 KiB |SEP eFuse Map Address Map |Cached eFuse shadow registers. |- |SLVERR, 0xBADCAB1E / SLVERR
+|0x10930000 |0x10930FFF |4 KiB |4 KiB |SEP eFuse Wrapper Address Map |Places the SEP eFuse controller, its security-token registers and its shadow registers in one 4 KiB page. |SLVERR, 0xBADCAB1E / SLVERR |-
 |0x10931000 |0x1093FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10940000 |0x1094CFFF |52 KiB |49176 B |abr |Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM. |OKAY, 0x0 / OKAY |SLVERR, 0xBADCAB1E / SLVERR
 |0x1094D000 |0x1094FFFF |12 KiB |12 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
@@ -72,11 +68,8 @@
 |0x10951000 |0x109FFFFF |700 KiB |700 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10A00000 |0x10A07FFF |32 KiB |32 KiB |SEP AXI-Lite Mailbox Wrapper Address Map |Eight bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |-
 |0x10A08000 |0x10A0FFFF |32 KiB |32 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A10000 |0x10A101FF |512 B |512 B |AXI Alias Remap Wrapper Address Map |Wrapper address map instantiating one alias remap register block per remap region. |OKAY, 0x0 / OKAY |-
-|0x10A10200 |0x10A1027F |128 B |128 B |Output Remap Wrapper Address Map |Wrapper address map instantiating one output remap register block per remap region. |- |-
-|0x10A10280 |0x10A102FF |128 B |128 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A10300 |0x10A1037F |128 B |128 B |Output Remap Wrapper Address Map |Wrapper address map instantiating one output remap register block per remap region. |- |-
-|0x10A10380 |0x10A1FFFF |64640 B |64640 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10A10000 |0x10A10FFF |4 KiB |896 B |SEP Remap Wrapper Address Map |Places the local-master alias remap and the AP and STEE output remap registers in one 4 KiB page. |between sub-blocks: DECERR, 0xBADCAB1E / DECERR; between instances: OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x10A11000 |0x10A1FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10A20000 |0x10A20FFF |4 KiB |1 KiB |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |0x10A21000 |0x10A21FFF |4 KiB |512 B |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |0x10A22000 |0x10A2FFFF |56 KiB |56 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-

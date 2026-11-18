@@ -45,7 +45,7 @@
 #include "rom_virt_console.h"
 #include "status_ring.h"
 
-#define STATUS_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1), (code))
+#define STATUS_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1), (code))
 
 // ── Terminal error codes: rom_err_fail() ──
 //
@@ -87,7 +87,7 @@ __attribute__((noreturn)) void rom_err_fail_ext(uint32_t error_code);
 #define TEST_PASS_CODE 0xACAFACA1u
 #define TEST_FAIL_CODE 0xDEADBEEFu
 
-#define VERDICT_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (code))
+#define VERDICT_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (code))
 
 // The ROM only ever reports FAIL. A successful boot ends in BL1, which reports
 // PASS itself.

@@ -153,14 +153,14 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   localparam longint unsigned AliasRemapWindowSize =
-      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_NUM
-      * sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE;
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_STRIDE;
   localparam longint unsigned ApOutputRemapWindowSize =
-      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_NUM
-      * sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE;
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE;
   localparam longint unsigned SteeOutputRemapWindowSize =
-      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_NUM
-      * sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE;
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE;
   localparam longint unsigned OutboundFilterWindowSize =
       sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM
       * sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE;
@@ -175,13 +175,13 @@ module sep_system_csr (
 
   `OCAH_ASSERT_STATIC(
       AliasRemapMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_SIZE <= AliasRemapWindowSize)
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_SIZE <= AliasRemapWindowSize)
   `OCAH_ASSERT_STATIC(
       ApOutputRemapMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_SIZE <= ApOutputRemapWindowSize)
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_SIZE <= ApOutputRemapWindowSize)
   `OCAH_ASSERT_STATIC(
       SteeOutputRemapMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE <= SteeOutputRemapWindowSize)
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_SIZE <= SteeOutputRemapWindowSize)
   `OCAH_ASSERT_STATIC(
       OutboundFilterMapFitsWindow_A,
       sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE <= OutboundFilterWindowSize)
@@ -190,23 +190,25 @@ module sep_system_csr (
       sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE <= InboundFilterWindowSize)
   `OCAH_ASSERT_STATIC(CpuCtrlMapFitsWindow_A,
                       sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE <= CpuCtrlWindowSize)
-  `OCAH_ASSERT_STATIC(ScratchColdMapFitsWindow_A,
-                      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_SIZE <= ScratchWindowSize)
-  `OCAH_ASSERT_STATIC(ScratchWarmMapFitsWindow_A,
-                      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE <= ScratchWindowSize)
+  `OCAH_ASSERT_STATIC(
+      ScratchColdMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SIZE <= ScratchWindowSize)
+  `OCAH_ASSERT_STATIC(
+      ScratchWarmMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE <= ScratchWindowSize)
 
   localparam int unsigned AddrW = sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH;
 
   // Entries follow sep_pkg::system_csr_demux_select_e.
   localparam logic [AddrW-1:0] SystemCsrWindowBase[sep_pkg::SystemCsrDemuxPorts] = '{
-      AddrW'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR),
-      AddrW'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
-      AddrW'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_BASE_ADDR),
       AddrW'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
       AddrW'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
       AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR),
-      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
-      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR)
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR)
   };
   localparam logic [AddrW-1:0] SystemCsrWindowSize[sep_pkg::SystemCsrDemuxPorts] = '{
       AddrW'(AliasRemapWindowSize),
@@ -248,7 +250,7 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   localparam int unsigned AliasRemapSelStartIdx = $clog2(
-      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_SIZE
   );
   localparam int unsigned AliasRemapSelEndIdx = AliasRemapSelStartIdx + sep_pkg::ALIAS_REMAP_SEL_W - 1;
 
@@ -317,7 +319,7 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   localparam int unsigned ApRemapSelStartIdx = $clog2(
-      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_SIZE
   );
   localparam int unsigned ApRemapSelEndIdx = ApRemapSelStartIdx + sep_pkg::AP_REMAP_SEL_W - 1;
 
@@ -384,7 +386,7 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   localparam int unsigned SteeRemapSelStartIdx = $clog2(
-      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE
+      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_SIZE
   );
   localparam int unsigned SteeRemapSelEndIdx = SteeRemapSelStartIdx + sep_pkg::STEE_REMAP_SEL_W - 1;
 

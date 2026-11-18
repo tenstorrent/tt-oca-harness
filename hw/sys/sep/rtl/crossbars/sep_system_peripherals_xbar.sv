@@ -68,8 +68,8 @@ module sep_system_peripherals_xbar
     // smn_inbound_from_xbar.region_1: from the end of the scratch page to 0x10a00000
     '{
       idx: 0,
-      start_addr: 56'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR,
-                                            sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE)),
+      start_addr: 56'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
+                                            sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE)),
       end_addr: 57'h10a00000
     },
     // smn_inbound_from_xbar.region_2: 0x10a50000 - 0x40000000
@@ -86,10 +86,10 @@ module sep_system_peripherals_xbar
     // alias, AP and STEE remap windows.
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR),
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_BASE_ADDR),
       end_addr: 57'(sep_pkg::reg_page_end(
-          sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE))
+          sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_SIZE))
     },
     // system_csr.outbound_filter_ctrl: the outbound filter page; sep_system_csr answers the
     // addresses outside the outbound filter window.
@@ -120,9 +120,9 @@ module sep_system_peripherals_xbar
     // cold and warm scratch windows.
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR,
-                                          sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE))
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
+      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
+                                          sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE))
     }
   };
 
