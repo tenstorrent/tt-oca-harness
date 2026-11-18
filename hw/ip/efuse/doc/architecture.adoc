@@ -520,8 +520,9 @@ and OTP JTAG ports, one AXI-Lite to APB bridge and the APB demux. As a result:
 * A write to `SUPPLEMENTARY_LOCKS` completes before any later access to the adopter
 window from either port.
 * Until fuse sense completes, accesses to the window receive an error response.
-* An access to a locked region returns `0xBADCAB1E` without an error response
-and raises `locked_field_access_interrupt_o`.
+* An access to a locked region completes with SLVERR and returns `0xBADCAB1E`,
+leaves the shadow word unchanged and raises `locked_field_access_interrupt_o`,
+as for a locked harness field.
 * `efuse_guard` checks firmware program and read commands at or above bit 2048
 against the `SUPPLEMENTARY_LOCKS` pair of the target's region. A refused command
 completes with its `done` and status bits set and latches `efuse_req_error` in
