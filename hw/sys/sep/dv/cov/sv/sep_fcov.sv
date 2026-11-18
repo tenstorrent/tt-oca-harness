@@ -6903,9 +6903,9 @@ module sep_fcov (
       32'h1080_4000,
       32'h1091_4000,
       32'h1092_1000,
-      32'h1093_0600,
-      32'h1096_0000,
-      32'h10C0_0000,
+      32'h1093_1000,
+      32'h1095_1000,
+      32'h10B0_1000,
       32'h1200_0000,
       32'h1080_2040,
       32'h1080_20C0,
@@ -6929,16 +6929,16 @@ module sep_fcov (
       32'h1080_0FFF,
       32'h1080_1FFF,
       32'h1080_3FFF,
-      32'h1090_FFFF,
+      32'h1090_BFFF,
       32'h1091_0FFF,
       32'h1091_2FFF,
       32'h1091_3FFF,
-      32'h1091_57FF,
-      32'h1091_5FFF,
+      32'h1091_505F,
+      32'h1091_5847,
       32'h1091_6FFF,
-      32'h1091_FFFF,
+      32'h1091_8FFF,
       32'h1092_0FFF,
-      32'h1094_FFFF,
+      32'h1094_CFFF,
       32'h107F_FFFF,
       32'h108F_FFFF,
       32'h1091_4FFF,
@@ -6955,13 +6955,13 @@ module sep_fcov (
       32'h10A2_FFFF,
       32'h10AF_FFFF,
       32'h10A0_FFFF,
-      32'h1093_04FF,
-      32'h1093_05FF,
+      32'h1093_03FF,
+      32'h1093_07FF,
       32'h10A1_01FF,
       32'h10A2_03FF,
       32'h10A2_11FF,
       32'h10A3_1FFF,
-      32'h10BF_FFFF,
+      32'h10B0_0FFF,
       32'h0000_0000,
       32'h1091_7FFF
   };
@@ -7145,9 +7145,9 @@ module sep_fcov (
       bins rsvd_10804000 = {8'd56};
       bins rsvd_10914000 = {8'd60};
       bins rsvd_10921000 = {8'd64};
-      bins rsvd_10930600 = {8'd68};
-      bins rsvd_10960000 = {8'd72};
-      bins rsvd_10c00000 = {8'd76};
+      bins rsvd_10931000 = {8'd68};
+      bins rsvd_10951000 = {8'd72};
+      bins rsvd_10b01000 = {8'd76};
       bins rsvd_12000000 = {8'd80};
       bins hole_otbn = {8'd13};
       bins hole_hmac = {8'd21};
@@ -7204,9 +7204,9 @@ module sep_fcov (
       `SEP_FCOV_ROW_SI(rsvd_10804000, 8'd56)
       `SEP_FCOV_ROW_SI(rsvd_10914000, 8'd60)
       `SEP_FCOV_ROW_SI(rsvd_10921000, 8'd64)
-      `SEP_FCOV_ROW_SI(rsvd_10930600, 8'd68)
-      `SEP_FCOV_ROW_SI(rsvd_10960000, 8'd72)
-      `SEP_FCOV_ROW_SI(rsvd_10c00000, 8'd76)
+      `SEP_FCOV_ROW_SI(rsvd_10931000, 8'd68)
+      `SEP_FCOV_ROW_SI(rsvd_10951000, 8'd72)
+      `SEP_FCOV_ROW_SI(rsvd_10b01000, 8'd76)
       `SEP_FCOV_ROW_SI(rsvd_12000000, 8'd80)
       `SEP_FCOV_ROW_SI(hole_otbn, 8'd13)
       `SEP_FCOV_ROW_SI(hole_hmac, 8'd21)
@@ -28228,7 +28228,7 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   localparam logic [31:0] CxAbrBase = ABR_REG_MAP_BASE_ADDR;
   localparam logic [31:0] CxAbrExtEnd = ABR_REG_MAP_BASE_ADDR + ABR_REG_MAP_SIZE;
-  localparam logic [31:0] CxAbrApEnd = ABR_REG_MAP_BASE_ADDR + 32'h0001_0000;
+  localparam logic [31:0] CxAbrApEnd = FapLastAbr + 32'd1;
   function automatic logic cxb_in_abr(input logic [31:0] a);
     return (a >= CxAbrBase) && (a < CxAbrApEnd);
   endfunction

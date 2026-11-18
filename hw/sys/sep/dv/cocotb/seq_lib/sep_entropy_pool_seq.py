@@ -73,8 +73,8 @@ _ALIAS_UNMAPPED = (
     0x28,  # -> irq     0x08 if [4:0] only
     0x30,  # -> pop     0x10 if [4:0] only
     0x100,  # -> status  0x00 if [7:0] only
-    0x1000,  # -> status  0x00 if [11:0] only
-    0x8000,  # -> status  0x00 if [14:0] only
+    0x400,  # -> status  0x00 if [9:0] only
+    0x800,  # -> status  0x00 if [10:0] only
 )
 # Upper 32-bit word of each live register.
 # hw/sys/sep/regs/blocks/sep_entropy_pool/sep_entropy_pool.rdl declares every register

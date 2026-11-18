@@ -71,9 +71,9 @@ RESERVED_BASES = (
     0x1080_4000,
     0x1091_4000,
     0x1092_1000,
-    0x1093_0600,
-    0x1096_0000,
-    0x10C0_0000,
+    0x1093_1000,
+    0x1095_1000,
+    0x10B0_1000,
     0x1200_0000,
 )
 # Rows whose past-extent cells this leaf grades from SI.

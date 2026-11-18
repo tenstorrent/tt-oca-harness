@@ -181,8 +181,9 @@ if ABR_MAP_END != sep_map_row(ABR_BASE).extent:
         f"abr_reg.rdl map ends at +0x{ABR_MAP_END:x}; the SEP memory map's ABR extent is "
         f"0x{sep_map_row(ABR_BASE).extent:x}"
     )
-# A decode that drops this offset bit folds the upper quarter onto the populated
-# map, so every graded register at or above 0x8000 has a mirror past the end.
+# A decode that drops this offset bit folds the window above 0xC000 onto the
+# populated map, so a graded register at or above 0x8000 can have a mirror past
+# the end.
 _MIRROR_BIT = 0x4000
 
 
@@ -190,7 +191,13 @@ def _dead_words() -> tuple[int, ...]:
     """Directed unpopulated word addresses past the map end, every seed."""
     ends = (ABR_MAP_END, ABR_MAP_END + 4, ABR_WINDOW_SIZE - 4)
     graded = [w.addr - ABR_BASE for w in (*RW_WORDS, *IDENTITY_WORDS)]
-    mirrors = sorted({off | _MIRROR_BIT for off in graded if (off | _MIRROR_BIT) >= ABR_MAP_END})
+    mirrors = sorted(
+        {
+            off | _MIRROR_BIT
+            for off in graded
+            if ABR_MAP_END <= (off | _MIRROR_BIT) < ABR_WINDOW_SIZE
+        }
+    )
     return tuple(ABR_BASE + off for off in (*ends, *mirrors))
 
 

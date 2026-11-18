@@ -26,7 +26,23 @@ from __future__ import annotations
 GRADED_PINS: tuple[tuple[str, str], ...] = (
     ("u_dut.u_sep.u_boot_rom_axi_mux.test_i", "axi_cell"),
     ("u_dut.u_sep.u_entropy_fifo.u_axi_to_axi_lite.test_i", "axi_cell"),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_addr_demux.u_err_slv.u_axi_err_slv.test_i",
+        "axi_cell",
+    ),
     ("u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_xbar.u_axi_lite_xbar.test_i", "axi_cell"),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_addr_demux.u_err_slv.u_axi_err_slv.test_i",
+        "axi_cell",
+    ),
     (
         "u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_axi_to_axi_lite.test_i",
         "axi_cell",

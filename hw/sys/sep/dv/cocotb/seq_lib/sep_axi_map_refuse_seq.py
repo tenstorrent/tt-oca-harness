@@ -113,7 +113,7 @@ _ANCHORS: tuple[tuple[int, str], ...] = (
     (0x1091_4000, "r"),  # KMAC/DRBG gap
     (0x1092_1000, "r"),  # above the Key Manager window
     (OTP_ONE_PAST, "r"),  # above the last OTP register block
-    (0x1096_0000, "r"),  # above the entropy pool
+    (0x1095_1000, "r"),  # above the entropy pool
     (0x10A4_0000, "r"),  # above the system-bus window
     (0x1200_0000, "r"),  # above the STEE remap region
     (0x10FF_0000, "r"),  # inside the span no detailed SEP-local row describes
