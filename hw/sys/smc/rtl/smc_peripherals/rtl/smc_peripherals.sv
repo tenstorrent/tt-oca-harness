@@ -25,8 +25,8 @@ module smc_peripherals #(
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral
                                                  // crossbar.
-  parameter int unsigned CHIP_ID = 0  // Chip type reported in CHIP_CONFIG.CHIP_ID, passed to
-                                      // smc_misc_wrap.
+  parameter int unsigned CHIPLET_TYPE = 0  // Chiplet type reported in CHIP_CONFIG.CHIPLET_TYPE,
+                                           // passed to smc_misc_wrap.
 ) (
   input  logic clk_ref_i,               // Reference clock for the reset unit, the AVSBus
                                         // controller and the peripheral CDC.
@@ -1544,7 +1544,7 @@ module smc_peripherals #(
   ///////////////////
 
   smc_misc_wrap #(
-    .CHIP_ID                    (CHIP_ID),
+    .CHIPLET_TYPE               (CHIPLET_TYPE),
     .LC_STATE_WIDTH             (2 * smc_pkg::LcStateWidth)
   ) u_smc_misc_wrap (
     .clk_i                      (clk_smc_i),

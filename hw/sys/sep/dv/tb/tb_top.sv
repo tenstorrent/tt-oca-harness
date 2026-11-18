@@ -772,7 +772,7 @@ module sep_uvm_top
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
-        // SMC_MISC_WRAP_CHIP_CONFIG: CHIP_ID, LC_STATE
+        // SMC_MISC_WRAP_CHIP_CONFIG: CHIPLET_TYPE, LC_STATE
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
             SmcSepViewBase),
         // SMC_EFUSE_MAP: chiplet/package ID

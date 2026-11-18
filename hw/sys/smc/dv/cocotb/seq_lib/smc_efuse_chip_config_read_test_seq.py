@@ -9,7 +9,7 @@ from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
-# VERSION_LO, VERSION_HI and CHIP_ID carry their chip_config.rdl reset constants
+# VERSION_LO, VERSION_HI and CHIPLET_TYPE carry their chip_config.rdl reset constants
 # (from the generated header) as exact expectations, identical on Verilator and
 # VCS. LC_STATE is left decode-only (expected=None): Verilator's efuse model
 # presents 0xF0 while VCS reads 0x0, so no single value assertion holds on both.
@@ -24,7 +24,7 @@ CHIP_CONFIG_EFUSE_READS = [
         misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"),
     ),
     ("VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR"), 0),
-    ("CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"), 0x0),
+    ("CHIPLET_TYPE", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR"), 0x0),
     ("LC_STATE", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR"), None),
 ]
 

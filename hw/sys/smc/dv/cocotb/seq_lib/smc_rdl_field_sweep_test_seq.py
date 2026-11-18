@@ -49,7 +49,7 @@ WSTRB enables no lane:
 * CHIP_CONFIG (chip_config.adoc, every register `R`): each register reads its
   pre-write value after an all-ones write and after each of the four single-lane
   writes; VERSION_LO / VERSION_HI also read their documented 0x000100A0 /
-  0x00000000. CHIP_ID and LC_STATE are logged against their documented resets
+  0x00000000. CHIPLET_TYPE and LC_STATE are logged against their documented resets
   and every BRESP is logged, not compared.
 * NDMRESET_PROCESS (ndm_reset.adoc, `RW` 31:0): stores all ones and 0, and a
   0xA5 written in lane b alone changes only byte b.
@@ -137,7 +137,7 @@ _SPECIAL: tuple[str, ...] = (
 _STROBE_LEGS: tuple[str, ...] = (
     "smc_misc_wrap/chip_config/VERSION_LO",
     "smc_misc_wrap/chip_config/VERSION_HI",
-    "smc_misc_wrap/chip_config/CHIP_ID",
+    "smc_misc_wrap/chip_config/CHIPLET_TYPE",
     "smc_misc_wrap/chip_config/LC_STATE",
     "smc_misc_wrap/ndm_reset/NDMRESET_REQUEST",
     "smc_misc_wrap/ndm_reset/NDMRESET_PROCESS",
@@ -226,9 +226,9 @@ _STRAPS_WRITE_PATTERN = 0xFFFF_FFFF
 _REF_COUNTER_LOAD_POLLS = 16
 
 # VERSION_LO / VERSION_HI are `R` and read their RDL reset; the documented
-# resets of CHIP_ID / LC_STATE are logged only.
+# resets of CHIPLET_TYPE / LC_STATE are logged only.
 _VERSION_REGS = ("VERSION_LO", "VERSION_HI")
-_CHIPCFG_RESET_DOC = {"CHIP_ID": 0x0, "LC_STATE": 0xF}
+_CHIPCFG_RESET_DOC = {"CHIPLET_TYPE": 0x0, "LC_STATE": 0xF}
 
 _LANES = 4
 _LANE_ONES = 0xFF
@@ -611,7 +611,7 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
     async def _chip_config_legs(self) -> None:
         regs = [
             rdl_register(f"smc_misc_wrap/chip_config/{n}")
-            for n in ("VERSION_LO", "VERSION_HI", "CHIP_ID", "LC_STATE")
+            for n in ("VERSION_LO", "VERSION_HI", "CHIPLET_TYPE", "LC_STATE")
         ]
         pre: dict[str, int] = {}
         bresp: list[int] = []
@@ -630,14 +630,14 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
             self.strobe_compares += 1
         self._mark("CHIPCFG-ALLONES", self.strobe_compares - start)
         cocotb.log.info(
-            "CHK-RDL-CHIPCFG-ALLONES: VERSION_LO=0x%08X VERSION_HI=0x%X CHIP_ID=pre(0x%X) "
-            "LC_STATE=pre(0x%X) after 0xFFFFFFFF WSTRB 0xF; CHIP_ID doc reset 0x%X, LC_STATE "
+            "CHK-RDL-CHIPCFG-ALLONES: VERSION_LO=0x%08X VERSION_HI=0x%X CHIPLET_TYPE=pre(0x%X) "
+            "LC_STATE=pre(0x%X) after 0xFFFFFFFF WSTRB 0xF; CHIPLET_TYPE doc reset 0x%X, LC_STATE "
             "doc reset 0x%X (logged); BRESP logged %s",
             pre["VERSION_LO"],
             pre["VERSION_HI"],
-            pre["CHIP_ID"],
+            pre["CHIPLET_TYPE"],
             pre["LC_STATE"],
-            _CHIPCFG_RESET_DOC["CHIP_ID"],
+            _CHIPCFG_RESET_DOC["CHIPLET_TYPE"],
             _CHIPCFG_RESET_DOC["LC_STATE"],
             self._resp_list(bresp),
         )

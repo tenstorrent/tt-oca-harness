@@ -12,7 +12,7 @@
 #include "smc_status.h"
 #include "smc_occp_error_codes.h"
 
-static inline uint8_t make_chip_id(void);
+static inline uint8_t make_addr_sel(void);
 static inline void smc_strap_post_code_update(void);
 
 /* Global strap configuration structure */
@@ -36,8 +36,7 @@ void smc_strap_init(void) {
 
     g_smc_straps.bl0_pllclk = (g_smc_straps.straps_lo_raw & SMC_STRAP_BL0_PLLCLK_MASK) ? 1 : 0;
 
-    // Extract chip ID from both LO and HI registers
-    g_smc_straps.chip_id = make_chip_id();
+    g_smc_straps.addr_sel = make_addr_sel();
 
     g_smc_straps.bypass_sram_repair =
         (g_smc_straps.straps_lo_raw & SMC_STRAP_MEM_REPAIR_BYPASS_MASK) ? 1 : 0;
@@ -79,12 +78,12 @@ inline uint8_t smc_strap_is_sram_auto_zero_disabled(void) {
 }
 
 /**
- * Returns the value of the chip ID [3:0] bits from straps.
+ * Returns the value of the ADDR_SEL[3:0] straps.
  *
- * @return Chip ID [3:0]
+ * @return ADDR_SEL[3:0]
  */
-uint8_t smc_strap_get_chip_id(void) {
-    return g_smc_straps.chip_id;
+uint8_t smc_strap_get_addr_sel(void) {
+    return g_smc_straps.addr_sel;
 }
 
 /**
@@ -115,15 +114,15 @@ inline uint32_t smc_strap_get_raw_hi(void) {
     return g_smc_straps.straps_hi_raw;
 }
 
-static inline uint8_t make_chip_id(void) {
-    uint8_t chip_id = 0;
-    // All CHIP_ID straps now live in STRAPS_LO (CHIP_ID_3=11, _2=12, _1=15, _0=23).
-    chip_id |= (g_smc_straps.straps_lo_raw & SMC_STRAP_CHIP_ID_3_MASK) ? 1 << 3 : 0;
-    chip_id |= (g_smc_straps.straps_lo_raw & SMC_STRAP_CHIP_ID_2_MASK) ? 1 << 2 : 0;
-    chip_id |= (g_smc_straps.straps_lo_raw & SMC_STRAP_CHIP_ID_1_MASK) ? 1 << 1 : 0;
-    chip_id |= (g_smc_straps.straps_lo_raw & SMC_STRAP_CHIP_ID_0_MASK) ? 1 : 0;
+static inline uint8_t make_addr_sel(void) {
+    uint8_t addr_sel = 0;
+    // All ADDR_SEL straps live in STRAPS_LO (ADDR_SEL_3=11, _2=12, _1=15, _0=23).
+    addr_sel |= (g_smc_straps.straps_lo_raw & SMC_STRAP_ADDR_SEL_3_MASK) ? 1 << 3 : 0;
+    addr_sel |= (g_smc_straps.straps_lo_raw & SMC_STRAP_ADDR_SEL_2_MASK) ? 1 << 2 : 0;
+    addr_sel |= (g_smc_straps.straps_lo_raw & SMC_STRAP_ADDR_SEL_1_MASK) ? 1 << 1 : 0;
+    addr_sel |= (g_smc_straps.straps_lo_raw & SMC_STRAP_ADDR_SEL_0_MASK) ? 1 : 0;
 
-    return chip_id;
+    return addr_sel;
 }
 
 static inline void smc_strap_post_code_update(void) {

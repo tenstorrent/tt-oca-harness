@@ -23,7 +23,7 @@ Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 | 0x80 - 0x9C | <<reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-,scratch_cold_warm.SCRATCH[8]>> | RW a| -
 | 0x100 | <<reg-{regmap-instance}-misc_wrap-chip_config-VERSION_LO,VERSION_LO>> | R a| -
 | 0x104 | <<reg-{regmap-instance}-misc_wrap-chip_config-VERSION_HI,VERSION_HI>> | R a| -
-| 0x108 | <<reg-{regmap-instance}-misc_wrap-chip_config-CHIP_ID,CHIP_ID>> | R a| -
+| 0x108 | <<reg-{regmap-instance}-misc_wrap-chip_config-CHIPLET_TYPE,CHIPLET_TYPE>> | R a| -
 | 0x10C | <<reg-{regmap-instance}-misc_wrap-chip_config-LC_STATE,LC_STATE>> | R a| -
 | 0x200 | <<reg-{regmap-instance}-misc_wrap-ndm_reset-NDMRESET_REQUEST,NDMRESET_REQUEST>> | R a| -
 | 0x204 | <<reg-{regmap-instance}-misc_wrap-ndm_reset-NDMRESET_PROCESS,NDMRESET_PROCESS>> | RW a| -
@@ -66,13 +66,13 @@ Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 | 31:0 | `version_hi` | R | 0x0 a| SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 |===
 
-[#reg-{regmap-instance}-misc_wrap-chip_config-CHIP_ID]
-=== CHIP_ID
+[#reg-{regmap-instance}-misc_wrap-chip_config-CHIPLET_TYPE]
+=== CHIPLET_TYPE
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `chip_id` | R | 0x0 a| Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.
+| 31:0 | `chiplet_type` | R | 0x0 a| Kind of chiplet the SMC is integrated in, a constant fixed when the SMC is integrated, not read from fuses: 0 = MEMORY, 1 = CPU, 2 = AI_COMPUTE, 3 = ETHERNET; values 4 and above are reserved. Bits 1:0 are the upper two bits of the boot ROM's fallback I2C and I3C address, so two chiplet types that share a bus must report different values. The register has no storage: a read returns that constant, and the reset value is the default constant.
 |===
 
 [#reg-{regmap-instance}-misc_wrap-chip_config-LC_STATE]

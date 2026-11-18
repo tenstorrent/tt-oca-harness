@@ -44,13 +44,13 @@ def misc_wrap_reset(symbol: str) -> int:
 _SCRATCH_DATA_RESET = misc_wrap_reset("SCRATCH__SCRATCH__DATA_reset")
 _VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 _VERSION_HI_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
-# chip_config.CHIP_ID is `hw = w`: smc_misc_wrap drives it from its ``CHIP_ID``
+# chip_config.CHIPLET_TYPE is `hw = w`: smc_misc_wrap drives it from its ``CHIPLET_TYPE``
 # module parameter, so the read-back is a per-variant integration constant
 # rather than a register default that the RDL reset value alone guarantees. The
 # OSS TB leaves the parameter at its default, which is the generated map's reset
 # constant, so the compare is exact and fails on a variant that drives a
-# different CHIP_ID than the map declares.
-_CHIP_ID_RESET = misc_wrap_reset("CHIP_CONFIG__CHIP_ID__CHIP_ID_reset")
+# different CHIPLET_TYPE than the map declares.
+_CHIPLET_TYPE_RESET = misc_wrap_reset("CHIP_CONFIG__CHIPLET_TYPE__CHIPLET_TYPE_reset")
 
 
 class SmcCsrAccessKind(Enum):
@@ -116,11 +116,11 @@ CSR_FIELD_CATALOG = {
         SmcCsrAccessKind.RO_STATIC,
         _VERSION_HI_RESET,
     ),
-    "CHIP_CONFIG_CHIP_ID": SmcCsrField(
-        "CHIP_CONFIG_CHIP_ID",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"),
+    "CHIP_CONFIG_CHIPLET_TYPE": SmcCsrField(
+        "CHIP_CONFIG_CHIPLET_TYPE",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR"),
         SmcCsrAccessKind.RO_STATIC,
-        _CHIP_ID_RESET,
+        _CHIPLET_TYPE_RESET,
     ),
     # The entry carries the name of the symbol that addresses it, so the logged
     # register identity cannot drift from the address accessed.

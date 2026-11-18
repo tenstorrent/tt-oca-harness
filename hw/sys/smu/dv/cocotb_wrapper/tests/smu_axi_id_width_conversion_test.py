@@ -31,7 +31,7 @@ from cocotb.triggers import ClockCycles
 from ocah_axi_vip import RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 from seq_lib.smu_addr_map import (
-    SMC_CHIP_CONFIG_CHIP_ID,
+    SMC_CHIP_CONFIG_CHIPLET_TYPE,
     SMC_CHIP_CONFIG_VERSION_LO,
     SMC_CHIP_CONFIG_VERSION_LO_RESET,
 )
@@ -47,7 +47,7 @@ from smu_base_test import smu_base_test
 # Three probes on one register page, so a single INBOUND0 window admits them.
 PROBE_ADDRS = (
     SMC_CHIP_CONFIG_VERSION_LO,
-    SMC_CHIP_CONFIG_CHIP_ID,
+    SMC_CHIP_CONFIG_CHIPLET_TYPE,
     SMC_CHIP_CONFIG_VERSION_LO + 8,
 )
 WINDOW_START = min(PROBE_ADDRS)

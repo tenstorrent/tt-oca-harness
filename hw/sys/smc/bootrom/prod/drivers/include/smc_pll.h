@@ -41,7 +41,7 @@ smc_pll_result_t smc_pll_init(void);
 /**
  * Get chiplet type (for clock configuration purposes)
  *
- * @return Chiplet ID from RESET_UNIT_CHIP_ID register
+ * @return Chiplet type from CHIP_CONFIG.CHIPLET_TYPE
  */
 uint8_t smc_pll_get_chiplet_type(void);
 

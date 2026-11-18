@@ -46,7 +46,7 @@ class smc_efuse_otp_clock_config_depth_test(smc_base_test):
             min_csr_accesses=10,
             csr_accesses=seq.accesses,
             proxy=False,
-            # The CHIP_CONFIG CHIP_ID / LC_STATE reads are observed-only; the
+            # The CHIP_CONFIG CHIPLET_TYPE / LC_STATE reads are observed-only; the
             # checked items are the clock-gate RW depth
             # (write/masked-readback/restore) and the eFuse-bank idle claim with
             # its same-run positive control.

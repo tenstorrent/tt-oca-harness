@@ -242,7 +242,7 @@ class SmcDualHarness:
         self.fuse_i2c_ids: dict[int, int] = {}
         self.boot_i2c = False
         self.straps: dict[str, int] = {"dut": 0, "bfm": 0}
-        self.chip_id = 0
+        self.addr_sel = 0
         self.sys_out_mem: dict[str, OcahAxiSlaveSequence] = {}
 
     def _attach_cpu_symbols(self) -> None:
@@ -467,7 +467,7 @@ class SmcDualHarness:
             STRAP_BITS,
             STRAP_BOOT_I2C,
             STRAP_PRIMARY_CHIPLET,
-            chip_id_straps,
+            addr_sel_straps,
         )
 
         force_i3c = cocotb.plusargs.get("BOOT_I3C") is not None
@@ -503,9 +503,9 @@ class SmcDualHarness:
             if name not in named:
                 target |= random.choice([0, 1]) << STRAP_BITS[name]
 
-        self.chip_id = random.randint(0, 0xF)
-        target |= chip_id_straps(self.chip_id)
-        self.log.info("CHIP_ID straps: %#x", self.chip_id)
+        self.addr_sel = random.randint(0, 0xF)
+        target |= addr_sel_straps(self.addr_sel)
+        self.log.info("ADDR_SEL straps: %#x", self.addr_sel)
 
         if force_i2c:
             self.boot_i2c = True
@@ -569,8 +569,8 @@ class SmcDualHarness:
             for byte, slot in enumerate(sorted(self.fuse_i2c_ids)):
                 packed |= (self.fuse_i2c_ids[slot] & 0x7F) << (8 * byte)
         else:
-            # Unprogrammed slots: the target's ROM falls back to the CHIP_ID-derived address.
-            derived = occp_i2c_address(self.chip_id)
+            # Unprogrammed slots: the target's ROM falls back to the ADDR_SEL-derived address.
+            derived = occp_i2c_address(self.addr_sel)
             packed = derived | (derived << 8)
         await csr.write("I2C_TARGET_IDS", SCRATCH_I2C_TARGET_IDS, packed, length=8)
         self.log.info(
@@ -580,7 +580,7 @@ class SmcDualHarness:
             (
                 ", ".join(f"slot{s}={self.fuse_i2c_ids[s]:#04x}" for s in sorted(self.fuse_i2c_ids))
                 if self.fuse_i2c_ids
-                else f"from CHIP_ID straps {self.chip_id:#x}, slots unprogrammed"
+                else f"from ADDR_SEL straps {self.addr_sel:#x}, slots unprogrammed"
             ),
         )
 

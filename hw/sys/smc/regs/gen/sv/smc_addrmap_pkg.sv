@@ -660,7 +660,7 @@ endfunction
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_NUM = 64'h8;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR = 64'hC0002900;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR = 64'hC0002904;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR = 64'hC0002908;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR = 64'hC0002908;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR = 64'hC000290C;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC0002A04;
@@ -3000,6 +3000,13 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_PLIC_ENABLE_BASE_ADDR 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_ACCRUED_ENABLE_BASE_ADDR = 64'hC8013020;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_LOCAL_ENABLE_BASE_ADDR = 64'hC8013028;
 
+
+typedef enum logic [31:0] {
+    MEMORY = 32'd0,
+    CPU = 32'd1,
+    AI_COMPUTE = 32'd2,
+    ETHERNET = 32'd3
+} chiplet_type_e_e;
 
 typedef enum logic [2:0] {
     NO_ERROR = 3'd0,

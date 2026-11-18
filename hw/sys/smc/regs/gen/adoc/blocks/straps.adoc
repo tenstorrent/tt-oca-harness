@@ -25,17 +25,17 @@ Configuration strap values. How they are captured is adopter-defined.
 Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
 consumes them.
 Strap assignments in this range:
-* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
-* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
+* bit 11: ADDR_SEL[3], strap pin CHIP_ID[3] - Selects the I2C/I3C fallback static address of identical chiplets
+* bit 12: ADDR_SEL[2], strap pin CHIP_ID[2] - Selects the I2C/I3C fallback static address of identical chiplets
 * bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
 * bit 14: TEST_EN - Enable DFT test mode
-* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
+* bit 15: ADDR_SEL[1], strap pin CHIP_ID[1] - Selects the I2C/I3C fallback static address of identical chiplets
 * bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
 * bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
 * bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
 * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
 * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
-* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
+* bit 23: ADDR_SEL[0], strap pin CHIP_ID[0] - Selects the I2C/I3C fallback static address of identical chiplets
 * bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
 * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted
 |===
