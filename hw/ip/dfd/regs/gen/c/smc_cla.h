@@ -1474,7 +1474,7 @@ typedef union {
 } dfd_cla__CDbgSignalEdgeDetectCfg_t;
 
 // reg - dfd_cla::CDbgEapStatus
-// Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)
+// Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bm 0x1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bp 0
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bw 1
@@ -1686,7 +1686,7 @@ typedef union {
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_bp 0
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_bw 2
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_reset 0x0
-// Set Enable EAP to 1 after EAP programming is complete
+// Set Enable EAP to 1 after EAP programming is complete. Clearing it disables every EAP, and is required before the CDbgEapStatus w2c write that releases a debug interrupt; set it again to re-arm the EAPs
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bm 0x20
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bp 5
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bw 1
@@ -1726,7 +1726,7 @@ typedef union {
         // Read the current node.
         uint64_t CurrentNode :2;
         uint64_t :3;
-        // Set Enable EAP to 1 after EAP programming is complete
+        // Set Enable EAP to 1 after EAP programming is complete. Clearing it disables every EAP, and is required before the CDbgEapStatus w2c write that releases a debug interrupt; set it again to re-arm the EAPs
         uint64_t EnableEap :1;
         // Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it
         uint64_t EnableCla :1;

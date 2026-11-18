@@ -828,7 +828,8 @@ has no canonical scenario
 |`smc_ecc_dfd_dbs_sanity_test`, `smc_dfd_cla_event_type_sweep_test`,
 `smc_dfd_cla_snapshot_capture_test`, `smc_dfd_trace_sink_readout_test`,
 `smc_dfd_trace_writeout_phase_test`, `smc_remap_cla_test`, `smc_dfd_clock_gate_access_test`,
-`smc_dfd_cla_match_event_rules_test`, `smc_dfd_cla_irq_plic_source_test`
+`smc_dfd_cla_match_event_rules_test`, `smc_dfd_cla_irq_plic_source_test`,
+`smc_dfd_cla_irq_w2c_release_test`
 |`smc_map_fcov` (`c_cla_decode`, `c_cla_region`, `c_cla_base_decodes`, `c_dfx_status_decode`);
 `smc_cpu_fcov` (`c_custom_action_output_driven`); no trace, trigger or debug-bus point
 |`YES`: `smc_ecc_dfd_dbs_sanity_test`; trace, trigger and debug bus are `DECODE-ONLY`
@@ -1520,7 +1521,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_dfd_trace_writeout_phase_test` |3 |Sink-mode and stop writes walked a cycle at a time across the memory-arm flush and the single memory write-out, after a stream parked under each supported frame length with the DST and sink lengths equal.
 |`smc_dfd_dbm_mode_lock_test` |3 |Every debug-bus mux mode programmed on every mux, then the CLA lock latched and held.
 |`smc_dfd_cla_snapshot_capture_test` |3 |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
-|`smc_dfd_cla_irq_w2c_release_test` |2, held out |The single `CDbgEapStatus` W2C write must drop `cla_interrupt` with the status (#3389).
+|`smc_dfd_cla_irq_w2c_release_test` |3 |The CLA debug interrupt held through a `CDbgEapStatus` W2C write with `EnableEap` set, and released by clearing `EnableEap` then writing the W2C bit (#3389).
 |`smc_dfd_cla_clock_halt_release_test` |2, held out |`halt_clock_global_or_o` must deassert once the clock-halt action drops and `DisableGlobalClockHalt` is set (#3390).
 |`smc_dfd_clock_gate_access_test` |3 |CLA and DST register accesses under the DFD clock gate, the CLA evaluating with the clock unforced, and `EnableCla` gating the CLA before and after `ClaLock`.
 |`smc_dfd_cla_match_event_rules_test` |3 |The positive and negative match codes graded against the two measured bus states, `Muxselseg4` to `Muxselseg7` left without effect, the time match dead under every match value, and the GPIO-toggle action driving no pad.
@@ -52840,6 +52841,10 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_irq_w2c_release_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_dfd_csr_field_access_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
@@ -54817,7 +54822,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |===
 |Issue |Leaf |Kind |Reason
 |#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes. Its `+smc_misc_warm_in_reset_assertoff` holds the leg's own-domain AXI-Lite checker off on the warm-reset cycles where the AR it presents on purpose would fire `OCAH_AXI_AR_VALID_RESET_LOW`; every other cycle and every other leaf keep the rule
-|#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
 |to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
@@ -55847,7 +55851,52 @@ Drive `smc_dfd_cla_irq_plic_source_test_seq`. Each checker below is a named comp
 
 *Pass Criteria*: `CHK-CLA-IRQ-PLIC-322` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The release of the line after the W2C write is the subject of `smc_dfd_cla_irq_w2c_release_test` and is not graded here. Source 321 can only read 0 on this bench, which ties `tdr_dbg_ctrl_clock_stop_en_i` low.
+*Scope limit*: The hold and release of the line around the W2C write are the subject of `smc_dfd_cla_irq_w2c_release_test` (<<sec-609-smc_dfd_cla_irq_w2c_release_test>>) and are not graded here. Source 321 can only read 0 on this bench, which ties `tdr_dbg_ctrl_clock_stop_en_i` low.
+'''''
+
+[[sec-609-smc_dfd_cla_irq_w2c_release_test]]
+===== 609 `smc_dfd_cla_irq_w2c_release_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_dfd_cla_irq_w2c_release_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte accesses to the CLA registers; bench probe
+`tb_cla_interrupt`; bench signal `tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The CLA debug interrupt is a level held until software releases it (#3389): `dfd_cla.rdl` `CDbgEapStatus` states that a W2C write while `EnableEap` is set clears only the status bit, and that clearing `EnableEap` and then writing the W2C bit releases the interrupt; `EnableEap` states that setting it again re-arms the EAPs. `dfd.adoc` and `interrupts.adoc` describe the same sequence.
+
+*Test Coverage*:
+
+* The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises (`smc_dfd_cla_action_seq_utils`); the pair is then held on a relation that did not fire, with the action still selected.
+* After each step the `CDbgEapStatus.Node0Eap0` bit and `tb_cla_interrupt` are sampled and logged as `OBS-CLA-IRQ` lines: fired, quiet, two W2C writes with `EnableEap` 1, `EnableEap` 0, a W2C, `EnableEap` 1 again, the activating relation driven again.
+
+*Test Procedure*:
+
+Drive `smc_dfd_cla_irq_w2c_release_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLA-IRQ-W2C-HOLD` |With the pair quiet and `EnableEap` 1, a W2C write leaves the status bit 0 and `tb_cla_interrupt` 1, and a second W2C write leaves the same; a status still set or a line that drops after either fails it
+|`CHK-CLA-IRQ-EAP-RELEASE` |Clearing `EnableEap` alone leaves the status bit 0 and `tb_cla_interrupt` 1; the W2C write that follows reads both 0; setting `EnableEap` again with the pair quiet leaves both 0; the activating relation driven after that re-arm reads both 1. A line dropped by `EnableEap` alone, a line still held after the W2C, a line or status set by the re-arm itself, or a pair that does not fire after the re-arm fails it
+|===
+
+
+*Pass Criteria*: `CHK-CLA-IRQ-EAP-RELEASE` and `CHK-CLA-IRQ-W2C-HOLD` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The PLIC side of the line is graded by `smc_dfd_cla_irq_plic_source_test`; the PLIC claim and complete steps of the service sequence are not driven. Only node 0 pair 0 is fired.
 '''''
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
@@ -57939,7 +57988,7 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
-`smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390),
+`smc_dfd_cla_clock_halt_release_test` (#3390),
 `smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test`,
 `smc_flr_hold_edge_requeue_test` and `smc_clock_gate_inflight_completes_test` (issues to
 follow).

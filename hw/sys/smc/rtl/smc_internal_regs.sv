@@ -189,7 +189,10 @@ module smc_internal_regs #(
                                                   // interrupt, for HANG_DET_DATA_ACCEL_CTRL.irq.
 
   output logic                                             cla_interrupt_o,  // Debug interrupt raised by
-                                                                             // a CLA external action.
+                                                                             // a CLA external action; held
+                                                                             // until EnableEap is cleared
+                                                                             // and the EAP status W2C is
+                                                                             // then written.
   output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,  // Custom CLA
                                                                                      // external-action
                                                                                      // outputs, one bit per

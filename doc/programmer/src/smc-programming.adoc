@@ -2089,6 +2089,15 @@ of the Technical Reference Manual. To set up a capture:
 . Program the event/action pairs (EAPs), then enable them together, so that a
   partially programmed pair never triggers.
 
+The CLA debug interrupt is a level held until software releases it; a W2C
+write alone clears the status bit but not the interrupt. To service it:
+
+. Read `CDbgEapStatus` to find which EAP fired.
+. Clear `EnableEap`. This disables every EAP, not only the one that fired.
+. Write the W2C bit of each EAP to acknowledge.
+. Complete the interrupt at the PLIC.
+. Set `EnableEap` again to re-arm the EAPs.
+
 The CLA counter values, the timestamp fields and the sink's `trDstRamWPHigh`
 are live read/write state: software writes take priority over a simultaneous
 hardware update, and later hardware updates can advance or clear them. Account
