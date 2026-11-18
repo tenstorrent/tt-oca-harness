@@ -25,6 +25,8 @@ module smc #(
                                                   // opaque region, so this is a literal
                                                   // here and is overridden by an
                                                   // integration that models the block.
+  parameter int unsigned CHIP_ID = 0,  // Chip type reported in CHIP_CONFIG.CHIP_ID, passed to
+                                       // smc_peripherals.
 
   parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,  // Boot ROM request
                                                                                       // type, passed to
@@ -767,7 +769,8 @@ module smc #(
 
   smc_peripherals #(
     .MAX_TRANS       (MAX_TRANS),
-    .EFUSE_SHIM_SIZE (EFUSE_SHIM_SIZE)
+    .EFUSE_SHIM_SIZE (EFUSE_SHIM_SIZE),
+    .CHIP_ID         (CHIP_ID)
   ) u_smc_peripherals (
     .clk_ref_i                             (clk_ref_i),
     .clk_smc_i                             (clk_smc_i),

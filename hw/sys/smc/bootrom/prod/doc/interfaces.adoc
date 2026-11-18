@@ -23,6 +23,7 @@ I2C controllers 0 and 1 take the low seven bits of slots 6 and 7.
 An I2C value outside `0x08` through `0x77` is replaced with `0x55`.
 
 If a selected eFuse slot is zero, the ROM forms a fallback identifier by ORing the four-bit chip ID from straps with `CHIP_CONFIG.CHIP_ID << 5`.
+`CHIP_CONFIG.CHIP_ID` is the chip type the SMU is built with, its `CFG.SMC_CHIP_ID`.
 The same fallback function is used for I2C and I3C slots.
 
 I3C channels are started in subordinate mode.

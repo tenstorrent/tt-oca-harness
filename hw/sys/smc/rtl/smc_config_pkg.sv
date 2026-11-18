@@ -5,8 +5,8 @@
 //
 // Sets how many I3C, I2C, UART, telemetry, and AVSBus instances the SMC builds.
 // FIFO and delay parameters here size those peripheral wrappers. Also sets the CPU
-// cluster count for NDM reset requests, the chip ID reported in chip_config, and whether
-// the output fabric omits the M-mode and Xvisor remap.
+// cluster count for NDM reset requests and whether the output fabric omits the M-mode and
+// Xvisor remap.
 
 `ifndef SMC_CONFIG_PACKAGE_DEFINED
 `define SMC_CONFIG_PACKAGE_DEFINED
@@ -69,12 +69,6 @@ package smc_config_pkg;
   ////////////////////////////
 
   localparam logic [7:0] CpuClusterCount = 4;       // number of CPU clusters in the system for NDM request.
-
-  /////////////////////
-  // Misc Parameters //
-  /////////////////////
-
-  localparam int unsigned ChipId = 0;        // 32 bit value for you to assign a register to, this val can be read by SW as an chip indiciator.
 
   /////////////////////////////
   // Output Remap Parameters //
