@@ -322,6 +322,17 @@ module smc_uvm_top
     output logic        bfm_cpu_trace_exc /*verilator public_flat_rw*/,
     output logic [63:0] bfm_cpu_trace_cause /*verilator public_flat_rw*/,
     output logic [57:0] bfm_cpu_trace_tval /*verilator public_flat_rw*/,
+    // Target harts 1-3 retirement records, each masked while its core is in
+    // reset, so a test can see which harts execute which ROM code.
+    output logic        dut_hart1_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart1_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart1_trace_pc /*verilator public_flat_rw*/,
+    output logic        dut_hart2_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart2_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart2_trace_pc /*verilator public_flat_rw*/,
+    output logic        dut_hart3_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart3_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart3_trace_pc /*verilator public_flat_rw*/,
 
     // ------------------------------------------------------------------
     // Read-only peek into the TARGET's scratch SRAM.
@@ -5659,6 +5670,24 @@ module smc_uvm_top
     assign bfm_cpu_trace_tval   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_tval : '0;
     `undef SMC_DUT_HART0_CSR
     `undef SMC_BFM_HART0_CSR
+
+    `define SMC_DUT_CPU u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper
+    `define SMC_DUT_HART1_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART2_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART3_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr
+    assign dut_hart1_trace_valid = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart1_trace_exc   = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart1_trace_pc    = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_iaddr : '0;
+    assign dut_hart2_trace_valid = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart2_trace_exc   = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart2_trace_pc    = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_iaddr : '0;
+    assign dut_hart3_trace_valid = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart3_trace_exc   = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart3_trace_pc    = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_iaddr : '0;
+    `undef SMC_DUT_HART1_CSR
+    `undef SMC_DUT_HART2_CSR
+    `undef SMC_DUT_HART3_CSR
+    `undef SMC_DUT_CPU
 
     // ------------------------------------------------------------------
     // Controller I3C TX-port snoop (see the port comment). Passive: it only
