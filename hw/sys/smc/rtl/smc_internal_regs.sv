@@ -203,9 +203,10 @@ module smc_internal_regs #(
 
   input  wire logic tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
                                                    // action as a clock stop.
-  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while an enabled CLA
-                                                           // halt-clock action requests a
-                                                           // clock stop.
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // CLA clock-halt request, set
+                                                           // by a halt-clock action and
+                                                           // held until primary reset;
+                                                           // gated by its enables.
 
   input  logic [1023:0] debug_bus_i,    // Debug bus observed by the CLA, 64 lanes of 16 bits whose
                                         // upper 32 lanes carry adopter signals; not synchronized to

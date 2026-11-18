@@ -46046,7 +46046,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EnableCla</ipxact:name>
-              <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</ipxact:description>
+              <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46070,7 +46070,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DisableGlobalClockHalt</ipxact:name>
-              <ipxact:description>If this bit is set, clock halt action is not applied to global clocks</ipxact:description>
+              <ipxact:description>If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46082,7 +46082,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DisableLocalClockHalt</ipxact:name>
-              <ipxact:description>If this bit is set, clock halt action is not applied to local clocks</ipxact:description>
+              <ipxact:description>If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset</ipxact:description>
               <ipxact:bitOffset>15</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
