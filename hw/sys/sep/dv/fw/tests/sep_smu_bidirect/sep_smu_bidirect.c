@@ -51,7 +51,7 @@ static inline void program_sep_smu_aperture(void) {
 }
 
 static inline void open_sep_outbound_xbar_window(void) {
-    uintptr_t base = (uintptr_t)SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0);
+    uintptr_t base = (uintptr_t)SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, XBAR_FILTER_START_ADDR);
     WRITE_REG64(base + FILTER_END_OFFSET, XBAR_FILTER_END_ADDR);
@@ -60,7 +60,7 @@ static inline void open_sep_outbound_xbar_window(void) {
 }
 
 static inline void open_sep_inbound_sram_window(void) {
-    uintptr_t base = (uintptr_t)SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
+    uintptr_t base = (uintptr_t)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, SEP_INBOUND_SHARED_START_ADDR);
     WRITE_REG64(base + FILTER_END_OFFSET, SEP_INBOUND_SHARED_END_ADDR);

@@ -60,8 +60,25 @@ Checkers:
                     command request stays valid while the response is withheld, so the tap
                     shows one command.
 
+  CHK-SENSE-STATUS-CTRLWORD  a last sense with the status bit on the response of a
+                    control word, drawn from shadow words 0 to 9 whose staged value
+                    differs from the RDL reset value: that word reads its RDL reset value
+                    at ``efuse_shadow_probe_o`` and ``sep_fuse_sense_done_o`` reads 1
+                    (same sensing-sequence source as CHK-SENSE-STATUS).
+  CHK-SENSE-STATUS-CTRLWORD-FEAT  the same last sense, every drawn word (255 included):
+                    ``lcc_feat_ctrl_probe_o`` equals the profile row of the sensed
+                    ``LC_STATE``, ``SIP_DIS`` and ``SYS_DIS`` shadows, with the drawn word
+                    at its RDL reset value (``hw/sys/sep/doc/lifecycle_controller.adoc``,
+                    Debug and Functional Feature Control and Per-LC-state Feature
+                    Control Profile; an unwritten ``LC_STATE`` word decodes as INVALID,
+                    which disables every feature). Word 255 is no profile input.
+
 Log-only: ``OBS-PROG-TIMEOUT`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
+``OBS-SENSE-STATUS-CTRLWORD`` (the same last sense when the drawn word is 255: that
+shadow word, ``sep_fuse_sense_done_o`` and ``lcc_feat_ctrl_probe_o``; the sensing
+sequence says both that a strobe with its status bit set leaves its word unwritten and
+that the strobe at counter 255 stores the last word).
 
 FCOV: the graded window is open over the second injected sense and the held program,
 each to its own grade. The control sense and the first injected sense are graded
@@ -80,13 +97,18 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_bank_watch import WORD_MASK, SepShimCmdMonitor
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
+    DIGEST_FIELDS,
     PROGRAM_CTRL_ADDR,
+    SECRET_FIELDS,
     STATUS_ADDR,
     T_SHIM_FAULT,
+    feat_ctrl_profile,
+    field_n_words,
+    field_word,
     plan,
     program_ctrl_word,
 )
@@ -105,7 +127,7 @@ from env.sep_fcov_gate import (
     set_ef_hold_tag,
 )
 from sep_base_test import sep_base_test
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym, word_reset
 
 TEST = T_SHIM_FAULT
 
@@ -137,6 +159,10 @@ _HOLD_READS = 4  # frontdoor reads of EFUSE_PROGRAM_CTRL inside the held window
 _POLL_BOUND_MULT = 4  # bound of a program_done or busy poll, in sense times
 _REL_SETTLE = 128  # clocks after the release done (over the 64-clock sampler window)
 _RST_HOLD = 20
+# Shadow words of the secret and token-digest fields: a log prints them only as a digest.
+_HIDDEN_WORDS = frozenset(
+    field_word(f) + k for f in SECRET_FIELDS + DIGEST_FIELDS for k in range(field_n_words(f))
+)
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
 # Hold tags of the graded steps (set_ef_hold_tag).
 _TAG_SENSE, _TAG_LIFE = 1, 2
@@ -144,6 +170,11 @@ _TAG_SENSE, _TAG_LIFE = 1, 2
 
 def _b(v: int, m: int) -> int:
     return int(bool(v & m))
+
+
+def _wfmt(word: int, v: int, spec: str = "08x") -> str:
+    """Shadow word ``word`` with value ``v`` in hex; a non-zero hidden word as ``sha:<word_digest>``."""
+    return f"sha:{word_digest([v])}" if v and word in _HIDDEN_WORDS else f"0x{v:{spec}}"
 
 
 class _SenseRec:
@@ -214,7 +245,7 @@ class _SenseRec:
 class sep_efuse_shim_response_fault_test(sep_base_test):
     """Sense status bit on one word; program lifecycle with a withheld shim response."""
 
-    required_evidence = ("CHK-SENSE-STATUS", "CHK-PROG-LIFE")
+    required_evidence = ("CHK-SENSE-STATUS", "CHK-PROG-LIFE", "CHK-SENSE-STATUS-CTRLWORD-FEAT")
 
     async def _rd(self, addr: int) -> int:
         return await self.fd.rd(addr)
@@ -373,34 +404,36 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         status = await self._rd(STATUS_ADDR)
         dut.efuse_sense_status_inject_i.value = 0
         others = [i for i in range(_N_WORDS) if i != w and probe[i] != staged[i]]
+        rst_w = word_reset(SHADOW_BASE + 4 * w)
         ok = self._grade(
             "SENSE-STATUS",
             n is not None
             and ctl_ok
             and resp_ok
             and shape["ok"]
-            and probe[w] == 0
-            and got_w == 0
+            and probe[w] == rst_w
+            and got_w == rst_w
             and got_w1 == staged[w + 1]
             and not others
             and _b(status, _M_SENSE_DONE) == 1,
             sense=label,
             word=w,
             word_class=p.leg["word_class"],
-            got_probe=f"0x{probe[w]:x}",
-            got_read=f"0x{got_w:x}",
-            staged=f"0x{staged[w]:08x}",
-            next_read=f"0x{got_w1:08x}",
+            got_probe=_wfmt(w, probe[w], "x"),
+            got_read=_wfmt(w, got_w, "x"),
+            reset=f"0x{rst_w:x}",
+            staged=_wfmt(w, staged[w]),
+            next_read=_wfmt(w + 1, got_w1),
             others_equal=int(not others),
             others_bad=",".join(str(i) for i in others[:8]) or "none",
             sense_done=int(n is not None),
             t_sense_inj="none" if n is None else n,
             status_sense_done=_b(status, _M_SENSE_DONE),
-            ctl_word=f"0x{ctl_w:08x}",
+            ctl_word=_wfmt(w, ctl_w),
             resp_strobes=len(resp),
             resp_status_words=",".join(str(k) for k in err_idx[:8]) or "none",
             resp_w_status="none" if resp_w is None else resp_w[0],
-            resp_w_data="none" if resp_w is None else f"0x{resp_w[1]:08x}",
+            resp_w_data="none" if resp_w is None else _wfmt(w, resp_w[1]),
             read_cmds=shape["read_cmds"],
             cmds=shape["cmds"],
             fsm_strobes=shape["fsm_strobes"],
@@ -471,7 +504,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         poll_bound = _POLL_BOUND_MULT * t_sense
         hold_win = _HOLD_MULT * t_sense
         self.logger.info(
-            "SHIM PARAM seed=%d t_sense=%d sense_bound=%d hold_win=%d hold_reads=%d "
+            "INFO-SHIM-PARAM seed=%d t_sense=%d sense_bound=%d hold_win=%d hold_reads=%d "
             "poll_bound=%d rel_settle=%d",
             seed,
             t_sense,
@@ -489,9 +522,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             "SENSE-STATUS",
             ctl_ok,
             word=w,
-            ctl_word=f"0x{ctl_w:08x}",
-            ctl_next=f"0x{ctl_w1:08x}",
-            staged=f"0x{staged[w]:08x}",
+            ctl_word=_wfmt(w, ctl_w),
+            ctl_next=_wfmt(w + 1, ctl_w1),
+            staged=_wfmt(w, staged[w]),
             probe_equal=sum(int(x == y) for x, y in zip(ctl_probe, staged)),
         )
         self._grade(
@@ -502,9 +535,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         )
 
         # Steps 4-5: injected sense at word w, twice. The first instance runs with the
-        # graded window closed; the second runs inside it only when every check and
-        # control so far has passed, so a sense-time FCOV sample is taken only after
-        # the same check has passed on an identical sense.
+        # graded window closed. The second always runs; the window is open for it only
+        # when no check or control so far failed, so a sense-time FCOV sample is taken
+        # only after the same check has passed on an identical sense.
         await self._injected_sense(w, staged, sense_bound, ctl_ok, ctl_w, "injected", False)
         await self._injected_sense(w, staged, sense_bound, ctl_ok, ctl_w, "injected_binned", True)
 
@@ -665,4 +698,60 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         )
         await ClockCycles(dut.clk_i, 64)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
+
+        # Step 11: status bit on the sense response of one control word.
+        cw = int(p.leg["ctrl_word"])
+        dut.efuse_sense_status_word_i.value = cw
+        dut.efuse_sense_status_inject_i.value = 1
+        await rst_pulse(self, hold=_RST_HOLD)
+        n = await clocks_to_sense(self, sense_bound, started=True)
+        await ClockCycles(dut.clk_i, 20)
+        await ReadOnly()
+        shadow = self._probe_words()[cw]
+        done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        feat = self.rd_known(dut.lcc_feat_ctrl_probe_o)
+        await RisingEdge(dut.clk_i)
+        want = word_reset(SHADOW_BASE + 4 * cw)
+        sensed = list(staged)
+        sensed[cw] = want
+        sip_w, sys_w = field_word("SIP_DIS"), field_word("SYS_DIS")
+        row = feat_ctrl_profile(
+            sensed[field_word("LC_STATE")] & 0xF,
+            sensed[sip_w] | sensed[sip_w + 1] << 32,
+            sensed[sys_w] | sensed[sys_w + 1] << 32,
+        )
+        self._grade(
+            "SENSE-STATUS-CTRLWORD-FEAT",
+            done_o == 1 and feat == row.value,
+            word=cw,
+            feat=f"0x{feat:016x}",
+            exp=f"0x{row.value:016x}",
+            state=row.state,
+            row=row.row,
+            sense_done=done_o,
+        )
+        if cw == _N_WORDS - 1:
+            self.logger.info(
+                "OBS-SENSE-STATUS-CTRLWORD LOG seed=%d word=%d shadow=0x%08x staged=0x%08x "
+                "sense_done=%d t_sense=%s feat=0x%016x",
+                seed,
+                cw,
+                shadow,
+                staged[cw],
+                done_o,
+                "none" if n is None else n,
+                feat,
+            )
+        else:
+            self._grade(
+                "SENSE-STATUS-CTRLWORD",
+                n is not None and done_o == 1 and staged[cw] != want and shadow == want,
+                word=cw,
+                shadow=f"0x{shadow:08x}",
+                want=f"0x{want:08x}",
+                staged=f"0x{staged[cw]:08x}",
+                sense_done=done_o,
+                t_sense="none" if n is None else n,
+            )
+        dut.efuse_sense_status_inject_i.value = 0
         self.chk.finish()

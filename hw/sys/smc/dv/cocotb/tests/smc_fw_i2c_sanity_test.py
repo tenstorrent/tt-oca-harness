@@ -12,8 +12,9 @@ pending bit, and CONTROLLER_HALT provoked by a NACK at an unanswered address.
 Bench observation: the transfer has to cross the pads. A passive decoder on
 tb_i2c0_scl/sda records every START, address byte, direction, acknowledge,
 data byte and STOP, and after the PASS word the sequence requires
-an acknowledged write frame to 0x10 carrying at least the 3 data bytes, and an
-address frame to 0x55 that no target acknowledged.
+an acknowledged write frame to 0x10 carrying at least the 3 data bytes and
+closed by a STOP on the wire, and an address frame to 0x55 that no target
+acknowledged.
 The firmware's FIFO-level and byte-compare checks stay the firmware's; the
 wire is what the bench vouches for.
 
@@ -57,7 +58,11 @@ class smc_fw_i2c_sanity_test(smc_base_test):
             # 5 ns clk_smc_i); 16_000 is ~10x that.
             poll_iterations=16_000,
             floors=(
-                WireFloor(TARGET_ADDR, read=False, min_frames=1, min_data_bytes=3),
+                # The write's STOP-flagged FDATA entry has to close the frame
+                # with a STOP on the bus, not a repeated START.
+                WireFloor(
+                    TARGET_ADDR, read=False, min_frames=1, min_data_bytes=3, stop_closed=True
+                ),
                 # S6 provokes CONTROLLER_HALT against an address no target
                 # answers, so its address byte must be NACKed on the wire.
                 WireFloor(UNUSED_ADDR, read=None, min_frames=1, addr_acked=False),

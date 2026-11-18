@@ -38,6 +38,6 @@ def sep_shard(test, evidence: dict[int, tuple[str, ...]]) -> int | None:
         raise AssertionError(f"shard map leaves {missing} in no shard")
     test.required_evidence = evidence[shard]
     test.logger.info(
-        "SHARD %d of %s: required=%s", shard, sorted(evidence), ",".join(evidence[shard])
+        "INFO-SHARD %d of %s: required=%s", shard, sorted(evidence), ",".join(evidence[shard])
     )
     return shard

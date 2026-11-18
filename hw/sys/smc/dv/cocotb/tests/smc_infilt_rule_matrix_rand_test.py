@@ -20,10 +20,11 @@ class smc_infilt_rule_matrix_rand_test(smc_base_test):
         "CHK-IFM-RESET",
         "CHK-IFM-RESTORE",
         "CHK-IFM-SRC-ID",
+        "CHK-INB-SRCID-UPPER-BITS-IGNORED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     auto_protocol_vip = False
 

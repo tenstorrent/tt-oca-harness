@@ -65,10 +65,11 @@ as do the internal CSR and peripheral crossbars. Its targets, in port order, are
 the CPU cluster front port, the data accelerator control port, the internal CSR
 crossbar, the peripheral crossbar and the CLA register window of the DFD block,
 which is reached over APB. The converters in front of the last three belong to
-`smc_local_xbar`. In the peripheral island, the AVSBus, I2C, UART and I3C
+`smc_local_xbar`. In the peripheral island, the AVSBus, I2C, UART, I3C and PWM
 register ports cross to the peripheral clock, the DTP CSR window is rebased to
 zero, and the eFuse registers have a second AXI-Lite port for JTAG access. The
-last peripheral crossbar target leaves the SMC as the AXI-Lite extension port.
+PWM register window is the last peripheral crossbar target. The one before it
+leaves the SMC as the AXI-Lite extension port.
 
 [[smc-output-fabric-diagram]]
 .SMC output fabric and remapping paths

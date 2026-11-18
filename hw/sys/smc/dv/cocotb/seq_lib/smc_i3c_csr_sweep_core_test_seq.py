@@ -685,7 +685,8 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         return (
             f"wstrb=0x{_UPPER_STROBE:02X} BRESP OKAY, R_lo unchanged=0x{got_lo:08x}, "
             f"R_hi observed=0x{observed_hi:08x} (written 0x{written_hi:08x}), restore at reset "
-            f"{' '.join(restored)}; R_hi not compared (measured, LINKED-ISSUE SF-019 / SF-024); "
+            f"{' '.join(restored)}; R_hi not compared (measured, LINKED-ISSUE: what an "
+            f"upper-lane-only 64-bit write leaves in the upper register); "
             f"data=0x{data:016x}"
         )
 

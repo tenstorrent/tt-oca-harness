@@ -86,14 +86,15 @@ The cold path scrubs `DCCM_SCRUB_BYTES`, then copies `.data` from its ROM load
 address and clears `.bss`. The default is the full 128 KiB DCCM, including the
 reserved `bl0_state` area, so each word receives valid ECC before C uses it.
 
-The C path can clear part or all of SEP SRAM according to `SRAM_SCRUB_BYTES`.
+The C path can clear part or all of SEP SRAM, with the secure DMA's zero fill,
+according to `SRAM_SCRUB_BYTES`.
 The open build defaults this value to zero because the programmed simulation
 flow may preload data in that memory. The manifest load overwrites its staging
 region, but this simulation choice does not define a production sanitization
 policy.
 
-ICCM is initialized through the secure DMA because the CPU load/store path
-cannot write it. `ROM_ICCM_CLEAR_ENABLE` defaults to one. With
+ICCM is initialized with the secure DMA's zero fill because the CPU load/store
+path cannot write it. `ROM_ICCM_CLEAR_ENABLE` defaults to one. With
 `ROM_ICCM_CLEAR_FULL=0`, the BL1 copy establishes ECC for the image and the
 handoff clears a bounded pad beyond it so adjacent instruction fetches are
 valid. Setting `ROM_ICCM_CLEAR_FULL=1` clears the entire ICCM before handoff.

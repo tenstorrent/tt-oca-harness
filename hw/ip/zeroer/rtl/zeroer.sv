@@ -364,10 +364,10 @@ module zeroer #(
       ST_ISSUE_DATA: begin
         mst_wvalid = 1'b1;
         mst_wstrb  = cur_strb;
+        mst_wlast  = (cur_beats_to_transfer == 0);
 
         if (mst_axi_resp_i.w_ready) begin
           if (cur_beats_to_transfer == 0) begin
-            mst_wlast = 1'b1;
             nxt_beats_to_transfer = axi_pkg::len_t'(0);
             nxt_strb = {AxiStrbWidth{1'b0}};
             // after current chunk of data is transferred, anymore chunks?

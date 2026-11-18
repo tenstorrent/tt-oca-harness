@@ -49,8 +49,8 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_tb_pins import smc_primary_reset
 
-DATA_CTRL_SYM = "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR"
-LANES = smc_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_NUM")
+DATA_CTRL_SYM = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR"
+LANES = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM")
 
 
 def _field(name: str) -> int:

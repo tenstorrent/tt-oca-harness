@@ -169,7 +169,7 @@ class SepDigestOrder:
 
     ``match`` is true only when a readback equals its golden in ``DSWAP_ORDER[0]``. The
     order of the first readback that equals its golden in either order is kept for
-    ``chk.obs("HMAC-DIGEST-ORDER", **order.fields())``, and ``other_order_reads`` counts
+    ``chk.info("HMAC-DIGEST-ORDER", **order.fields())``, and ``other_order_reads`` counts
     readbacks that equal their golden only in the little-endian order.
     """
 

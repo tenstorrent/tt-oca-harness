@@ -74,6 +74,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 WORD_MASK = 0xFFFF_FFFF
+# The word the bench loads into a KM ROM word that no image line sets
+# (hw/sys/sep/dv/tb/tb_top.sv).
+ROM_UNSET_WORD = 0x0000_0013
 
 IMAGE_NAME = "km_rom_poke"
 IMAGE_PATH = Path(__file__).resolve().parents[1] / "tests" / f"{IMAGE_NAME}.parhex"
@@ -84,6 +87,9 @@ SIG_ADDR = 0x80
 SIG_MAGIC = 0x504F_4B45  # "POKE"
 ENTRY_SPIN = 0x20  # ROM spin loop: IRQ_STATUS -> SPIN on every pass
 ENTRY_RESUME = 0x40  # continue the list after a jump target returns
+ENTRY_ROM_HI = 0x2000  # ROM upper-half jump target: stores a0 at a1, result a0
+ROM_HI_TAG = 0x504F_4B48  # "POKH", the word at ENTRY_ROM_HI + ROM_HI_TAG_OFFSET
+ROM_HI_TAG_OFFSET = 12
 EXEC_BASE = 0x100
 EXEC_ENTRY_BYTES = 8
 EXEC_COUNT = 22
@@ -156,8 +162,9 @@ LIST_MAGIC = 0x50
 F_RAW = 1 << 8
 F_OPT = 1 << 9
 
+ERR_HDR = 1  # km_rom_poke.S ERR_HDR
 ERR_NAMES = {
-    1: "list header [31:24] is not 0x50",
+    ERR_HDR: "list header [31:24] is not 0x50",
     2: "list longer than BUF_WORDS",
     3: "unknown opcode",
     4: "more than N_SLOTS result slots",
@@ -443,15 +450,31 @@ class PokeResult:
         f = self.flags[0] if self.flags else None
         if f is None:
             raise AssertionError(f"op {self.index} ({self.op.name}) does not report slv/dec")
+        if not self.flags_known:
+            raise AssertionError(
+                f"op {self.index} ({self.op.name}): the slv/dec result word held an unknown bit"
+            )
+        return f
+
+    def _graded_flags(self) -> SlotFlags:
+        f = self._first_flags()
+        if not f.clean:
+            raise AssertionError(
+                f"op {self.index} ({self.op.name}): IRQ_STATUS read after the slot's clear "
+                f"showed slv={f.pre_slv} dec={f.pre_dec}, so the access's own slv/dec is "
+                "not separable from an earlier one"
+            )
         return f
 
     @property
     def slv(self) -> int:
-        return self._first_flags().slv
+        """SLVERR of this access; raises when the clear before it did not take."""
+        return self._graded_flags().slv
 
     @property
     def dec(self) -> int:
-        return self._first_flags().dec
+        """DECERR of this access; raises when the clear before it did not take."""
+        return self._graded_flags().dec
 
     @property
     def clean(self) -> bool:
@@ -553,17 +576,19 @@ def read_parhex(path: str | Path = IMAGE_PATH) -> dict[int, int]:
 
 
 def rom_word(addr: int, path: str | Path = IMAGE_PATH) -> int:
-    """The image word at ROM byte address ``addr`` (0 outside the image).
+    """The word a ROM data read at byte address ``addr`` returns.
 
-    This is the stimulus file, the golden of a ROM data read.
+    Inside the image this is the stimulus file word; the bench loads
+    ``ROM_UNSET_WORD`` into every KM ROM word the image does not set.
     """
     if addr % 4:
         raise ValueError(f"ROM address 0x{addr:x} is not word aligned")
-    return read_parhex(path).get(addr, 0)
+    return read_parhex(path).get(addr, ROM_UNSET_WORD)
 
 
 def check_image(path: str | Path = IMAGE_PATH) -> None:
-    """Raise if the image signature does not match the layout of this module."""
+    """Raise if the image signature or the ROM upper-half stub tag does not match
+    the layout of this module."""
     words = read_parhex(path)
     expect = (
         SIG_MAGIC,
@@ -584,4 +609,10 @@ def check_image(path: str | Path = IMAGE_PATH) -> None:
         raise AssertionError(
             f"{path}: POKE signature {[hex(w) for w in got]} does not match the host "
             f"layout {[hex(w) for w in expect]}; rebuild the image or update sep_km_poke.py"
+        )
+    tag = words.get(ENTRY_ROM_HI + ROM_HI_TAG_OFFSET, 0)
+    if tag != ROM_HI_TAG:
+        raise AssertionError(
+            f"{path}: ROM word 0x{ENTRY_ROM_HI + ROM_HI_TAG_OFFSET:x} is 0x{tag:08x}, not the "
+            f"ROM upper-half stub tag 0x{ROM_HI_TAG:08x}; rebuild the image or update sep_km_poke.py"
         )

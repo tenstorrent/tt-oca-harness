@@ -40,6 +40,8 @@
 #   9   SCRAMBLER_CTRL after a write of enable 1 / lock 0, 8 words
 # Phase 2 (after a warm reset): 9   SCRAMBLER_CTRL, the 8 words, no key write
 # Phase 3 (after a cold reset): 2   SCRAMBLER_CTRL, SCRAMBLER_KEY after kB
+#                               8   the 8 words after the 8 stores to addrs8
+#                                   with the enable at 0
 # Phase 4 (after a cold reset): 1   MSG_READY; kA, store 1 with the lock clear
 #                               1   MSG_ONE;   lock 1 / enable 0, store 2
 #                               2   SCRAMBLER_CTRL, MSG_DONE
@@ -94,7 +96,7 @@
 
     .equ SIG_ADDR,        0x40
     .equ SIG_MAGIC,       0x53435231   // "SCR1"
-    .equ LAYOUT_VERSION,  1
+    .equ LAYOUT_VERSION,  2
 
     // Registers:
     //   x1  link (calls from the phase code)   x2  KM mailbox base
@@ -326,6 +328,19 @@ phase3:
     sw    x6, 0(x4)                 // SCRAMBLER_KEY = kB
     lw    x14, 0(x4)
     put_last x14
+
+    // The 8 words to addrs8[0..7] with the enable at its reset value 0, then
+    // the 8 reads.
+    mv    x10, x3
+    addi  x11, x0, 8
+5:  lw    x7, (OFF_ADDRS8 * 4)(x10)
+    lw    x8, (OFF_DATA8 * 4)(x10)
+    sw    x8, 0(x7)
+    addi  x10, x10, 4
+    addi  x11, x11, -1
+    bnez  x11, 5b
+    jal   x1, rd8
+    jal   x1, emit8
     j     halt
 
     // ------------------------------------------------------------- phase 4

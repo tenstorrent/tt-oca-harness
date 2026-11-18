@@ -39,7 +39,7 @@ WINDOW_START = VERSION_LO
 WINDOW_END = SMC_CHIP_CONFIG_CHIP_ID
 # Mapped CSRs outside the VERSION_LO page.
 BELOW_CSR = WDT_CTRL_ADDR
-ABOVE_CSR = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+ABOVE_CSR = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 # Second window: the page starting at ABOVE_CSR, one page above the first window.
 ADJ_WINDOW_START = ABOVE_CSR
 ADJ_WINDOW_END = ABOVE_CSR

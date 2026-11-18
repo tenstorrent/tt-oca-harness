@@ -16,10 +16,12 @@ error, vector bit 34) rises after an ``error_intr_trig_r`` write and falls
 after the ``error_internal_intr_r`` write-one-to-clear; PIC source 36 (ABR
 notification, vector bit 35) rises once after the keyGen command and falls
 after the ``notif_internal_intr_r`` write-one-to-clear. A per-clock watcher of
-the whole vector grades that at each rise of bit 34 or 35 every other vector
-bit keeps its value of one clock before. The ``cp_src_exclusive_other`` rise
-of each source is held and samples only after its CHK-SRC35-EXCL or
-CHK-SRC36-EXCL passed (``exo_pass``, ``env/sep_fcov_gate.set_exo_pass``).
+the whole vector grades that bit 34 and bit 35 each rise exactly once in the
+window (CHK-SRC35-RISE, CHK-SRC36-RISE) and logs the other bits that moved in
+the clock of each rise (OBS-SRC35-COINCIDENT, OBS-SRC36-COINCIDENT); no
+document states that no other source moves. The ``cp_src_exclusive_other``
+rise of each source is held and samples only after its CHK-SRC35-RISE or
+CHK-SRC36-RISE passed (``exo_pass``, ``env/sep_fcov_gate.set_exo_pass``).
 Each ``cp_abr_pic`` edge is held and samples only after the check of that
 edge passed (``abr_pic_pass``, ``env/sep_fcov_gate.set_abr_pic_pass``):
 CHK-PIC-ERROR-RISE and CHK-PIC-NOTIF-RISE with their exactly-one-rise term,
@@ -105,10 +107,11 @@ _LABEL_CLK = 3
 _SRC_CRYPTO_ALERT = pic("Crypto alert")
 _SRC_ABR_ERROR = pic("Adams Bridge error")
 _SRC_ABR_NOTIF = pic("Adams Bridge notification")
-# Vector bits that may change in the clock of an own-bit rise: the crypto alert
-# and the other Adams Bridge line. The cp_src_exclusive_other sampler exempts
-# the same bits (cov/sv/sep_fcov.sv, exo_same), so a sample is a rise this
-# check passes.
+# Vector bits left out of the ``moved`` field of OBS-SRC35/36-COINCIDENT: the
+# crypto alert and the other Adams Bridge line. The cp_src_exclusive_other
+# sampler exempts the same bits (cov/sv/sep_fcov.sv, exo_same), so a rise with
+# coincident=0 is a rise the sampler counts as exclusive. The before and after
+# fields show every bit.
 _SAME_CLK_ERROR = vec_mask([_SRC_CRYPTO_ALERT, _SRC_ABR_NOTIF])
 _SAME_CLK_NOTIF = vec_mask([_SRC_CRYPTO_ALERT, _SRC_ABR_ERROR])
 # Fields of the two status registers (integration/rdl/sep/abr_reg.rdl:515-544,
@@ -177,22 +180,38 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         assert (st & ST_ERROR) == 0, f"{what}: VALID with ERROR (0x{st:08x})"
         return await abr.read_words(ABR_PUBKEY, PK_WORDS)
 
-    def _grade_exclusive(
-        self, name: str, vec: SepVecWatch, mark: VecMark, key: str, same_clock: int, want: int
+    def _grade_rise(
+        self, src: int, vec: SepVecWatch, mark: VecMark, key: str, same_clock: int, want: int
     ) -> None:
-        """Every rise of ``key`` since ``mark`` leaves the other graded vector bits as they were."""
+        """CHK-SRC<src>-RISE: ``key`` rises ``want`` times since ``mark``.
+
+        OBS-SRC<src>-COINCIDENT logs the other vector bits that moved in the
+        clock of each rise, ``same_clock`` bits left out of ``moved``; it
+        grades nothing.
+        """
         rises = vec.rises_since(mark, key)
-        # smears_since raises when the own bit did not rise; the count term
-        # below grades that case as a FAIL line instead.
-        smeared = vec.smears_since(mark, key, same_clock=same_clock) if rises else []
+        bit = vec.own[key]
+        # smears_since raises when the own bit did not rise; that case reaches
+        # the FAIL line of the RISE check instead.
+        if rises:
+            moved = vec.smears_since(mark, key, same_clock=same_clock)
+            self.logger.info(
+                "OBS-SRC%d-COINCIDENT: bit=%d rises=%d coincident=%d same_clock=0x%011x "
+                "ignored=0x%011x before=%s after=%s moved=%s",
+                src,
+                bit,
+                len(rises),
+                len(moved),
+                same_clock,
+                vec.ignore_mask,
+                [f"0x{r.before:011x}" for r in rises],
+                [f"0x{r.after:011x}" for r in rises],
+                [f"{c}:0x{m:011x}" for c, m in moved],
+            )
         self._grade(
-            name,
-            len(rises) == want and not smeared,
-            f"bit={vec.own[key]} rises={len(rises)} want={want} same_clock=0x{same_clock:011x} "
-            f"ignored=0x{vec.ignore_mask:011x} rise_clk={[r.clk for r in rises]} "
-            f"before={[f'0x{r.before:011x}' for r in rises]} "
-            f"after={[f'0x{r.after:011x}' for r in rises]} "
-            f"moved={[f'{c}:0x{m:011x}' for c, m in smeared]}",
+            f"SRC{src}-RISE",
+            len(rises) == want,
+            f"bit={bit} rises={len(rises)} want={want} rise_clk={[r.clk for r in rises]}",
         )
 
     async def _error_leg(self, abr: SepAbr, vec: SepVecWatch) -> None:
@@ -318,20 +337,23 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
 
         await self._notif_w1c_leg(abr)
 
-        # hw/sys/sep/doc/interrupts.adoc:22-23 (bit i is source i + 1) and :33-34
-        # (slots 1-43 individually assigned): a source raises its own bit only.
-        # The held cp_src_exclusive_other rise of each source samples only
-        # after its EXCL check passed: the bit of the source joins exo_pass.
-        self._grade_exclusive("SRC35-EXCL", vec, mark_open, "abr_error", _SAME_CLK_ERROR, want=1)
+        # hw/sys/sep/doc/interrupts.adoc:22-23 (bit i is source i + 1), :194-196
+        # and :198-200: each source drives its own bit. One trigger write and one
+        # keyGen command lie in the window, and each status is sticky until its
+        # W1C (integration/rdl/sep/abr_reg.rdl:517-518, :533-534), so each bit
+        # rises once. The held cp_src_exclusive_other rise of each source
+        # samples only after its RISE check passed: the bit of the source joins
+        # exo_pass.
+        self._grade_rise(_SRC_ABR_ERROR, vec, mark_open, "abr_error", _SAME_CLK_ERROR, want=1)
         await self._release_exo(exo_pass_bit(_SRC_ABR_ERROR))
-        self._grade_exclusive("SRC36-EXCL", vec, mark_open, "abr_notif", _SAME_CLK_NOTIF, want=1)
+        self._grade_rise(_SRC_ABR_NOTIF, vec, mark_open, "abr_notif", _SAME_CLK_NOTIF, want=1)
         await self._release_exo(exo_pass_bit(_SRC_ABR_ERROR) | exo_pass_bit(_SRC_ABR_NOTIF))
         set_exo_pass(0, self.logger)
         set_abr_pic_pass(0, self.logger)
         return pk
 
     async def _release_exo(self, mask: int) -> None:
-        """Write the exo_pass bits of the EXCL checks that passed and hold them _LABEL_CLK clocks."""
+        """Write the exo_pass bits of the RISE checks that passed and hold them _LABEL_CLK clocks."""
         set_exo_pass(mask, self.logger)
         await ClockCycles(cocotb.top.clk_i, _LABEL_CLK)
 
@@ -349,8 +371,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         ver0 = await abr.rd32(ABR_VERSION0)
         ver1 = await abr.rd32(ABR_VERSION1)
         self.logger.info(
-            "ABR ML-DSA identity words (information only): NAME0=0x%08x NAME1=0x%08x "
-            "VERSION0=0x%08x VERSION1=0x%08x",
+            "OBS-ABR-MLDSA-ID: NAME0=0x%08x NAME1=0x%08x VERSION0=0x%08x VERSION1=0x%08x",
             name0,
             name1,
             ver0,

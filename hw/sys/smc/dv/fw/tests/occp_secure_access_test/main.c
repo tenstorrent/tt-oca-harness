@@ -4,6 +4,8 @@
 /*
  * Checks that the ROM rejects OCCP READ/WRITE outside the allowed window with Invalid_address,
  * logs one access-denied status record per rejection, and still serves the window itself.
+ * With the STATUS_RPT_DISABLE strap set, the status-buffer check is replaced by one GET_SMC_STATUS
+ * that must return Unsupported_StatusID.
  */
 
 #include "occp_test_common.h"
@@ -21,7 +23,13 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
                                                          uint32_t exp_write_denied) {
     simputs("=== Validating SMC Status Buffer for Secure Access Violations ===\n");
     if (ctx->status_reporting_disabled) {
-        simputs("STATUS_RPT_DISABLE strap active; skipping SMC status buffer validation\n");
+        uint32_t rejected_status;
+        simputs("STATUS_RPT_DISABLE strap active; expecting GET_SMC_STATUS to be rejected\n");
+        if (occp_send_get_smc_status_command(ctx, ctx->slave_addr, &rejected_status) !=
+            OCCP_SUCCESS) {
+            simputs("FAIL: GET_SMC_STATUS not rejected with OCCP_UNSUPPORTED_STATUS\n");
+            ctx->overall_result = false;
+        }
         return;
     }
 

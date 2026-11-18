@@ -1609,6 +1609,7 @@ hw/top/smu_wrapper.sv
 hw/common/dv/shims/analog/ocah_open_drain_bus.sv
 hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv
 hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv
+hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv
 vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv
 vendor/pulp-platform/common_cells/upstream/src/spill_register.sv
 vendor/pulp-platform/axi/upstream/src/axi_cut.sv

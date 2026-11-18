@@ -7,7 +7,7 @@ SMC-LOGENG.S1, SMC-EXTWIN-MAND.S4 and SMC-PVT.S1 (periphs.adoc: SMC
 Peripheral Summary, SMC Peripheral Parameter Overrides; memmap.adoc: SMC
 Component Address Map, AXI-Lite External Window - Mandatory Region): every
 peripheral block reads a register with a non-zero generated reset, the six I3C
-windows, the 65 GPIO interfaces, the 32 mailbox pairs and the four log engines
+windows, the 67 GPIO interfaces, the 32 mailbox pairs and the four log engines
 are proven at their first and last instance by distinct co-resident
 write/readback patterns, and the PVT wrapper is proven at the adopter external
 AXI-Lite port. The DTP control window (idle response in this bench) and the

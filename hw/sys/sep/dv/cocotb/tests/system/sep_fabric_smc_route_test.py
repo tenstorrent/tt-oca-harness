@@ -20,9 +20,19 @@ Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", output fabric, and
 
 The seed draws configuration A (base ``0x4000_0000``) or configuration B (base
 ``0x9000_0000``, inside the reset SMU window), both with size ``0x0100_0000``.
-The leaf drives the aperture through the BH-SMC hook before reset release; the
-specification states no behaviour for an aperture change after reset, so a seed
-runs one configuration.
+The leaf drives the aperture through the BH-SMC hook before reset release, and
+the checks below run on that configuration.
+
+The last leg changes the aperture after reset. The SMU datasheet allows an
+aperture change once outstanding transactions have completed, but the SMU
+address map programs apertures before any cross-subsystem traffic, and no
+document states which transaction sees the new decode. With no LSU access in
+flight, the leaf drives the other configuration on the BH-SMC hook and reads
+one word inside the new aperture only and one word inside the old aperture
+only. CTRL-SMC-APERTURE-CHANGE: the DUT aperture inputs hold the new base and
+size on every clock of both reads. OBS-SMC-APERTURE-CHANGE logs, per word, the
+response, the read data and the PR-SMC and PR-OUT AR counts; it grades
+nothing.
 
 Checks:
 
@@ -66,12 +76,17 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bh_smc import drive_bh_smc
 from env.sep_fabric_common import RESP_DECERR, RESP_NAME, RESP_OKAY, SRC_ID_MASK
 from env.sep_fabric_tap import start_taps, stop_taps
-from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    fcov_present,
+    open_graded_window,
+    set_open_value_leg_pass,
+)
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LCC_FEAT_CTRL
 from env.sep_rebase_model import XBAR_LIMIT
@@ -429,6 +444,55 @@ class sep_fabric_smc_route_test(sep_base_test):
         for idx in (0, 1):
             await self.outf.set_enabled(idx, False)
 
+    async def _aperture_inputs(self, seen: set) -> None:
+        """Add the DUT SMC aperture inputs of every clock to ``seen`` until cancelled."""
+        top = cocotb.top
+        while True:
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            b, z = top.smc_base_probe_o.value, top.smc_size_probe_o.value
+            seen.add((int(b) if b.is_resolvable else None, int(z) if z.is_resolvable else None))
+
+    async def _aperture_change(self, cfg: str) -> None:
+        """Change the SMC aperture after reset with no traffic in flight; log the decode."""
+        old = CFG[cfg]
+        new = CFG["B" if cfg == "A" else "A"]
+        # The hook stays enabled; its inputs reach the DUT combinationally.
+        cocotb.top.bh_smc_base_i.value = new
+        await ClockCycles(cocotb.top.clk_i, 2)
+        seen: set = set()
+        sampler = cocotb.start_soon(self._aperture_inputs(seen))
+        probes = []
+        for role, addr in (("new_only", new), ("old_only", old)):
+            m = self._mark()
+            rd = await self._lsu(SepAxiOp.READ, addr, ungraded=True)
+            probes.append((role, addr, rd.resp_code, rd.rdata & 0xFFFF_FFFF, self._counts(m)))
+        await RisingEdge(cocotb.top.clk_i)
+        sampler.cancel()
+        line = (
+            f"old_base=0x{old:08x} new_base=0x{new:08x} size=0x{SMC_SIZE:08x} "
+            f"inputs_seen={sorted((_hx(b), _hx(z)) for b, z in seen)}"
+        )
+        assert seen == {(new, SMC_SIZE)}, (
+            f"CTRL-SMC-APERTURE-CHANGE FAIL: {line}; expected only the new base and size "
+            "on every clock of the probe reads"
+        )
+        self.logger.info("CTRL-SMC-APERTURE-CHANGE LOG: %s", line)
+        set_open_value_leg_pass("smc_aperture_change_quiet", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        for role, addr, resp, rdata, c in probes:
+            self.logger.info(
+                "OBS-SMC-APERTURE-CHANGE word=%s addr=0x%08x resp=%s rdata=0x%08x "
+                "smc_ar=%d out_ar=%d",
+                role,
+                addr,
+                RESP_NAME.get(resp, resp),
+                rdata,
+                c["smc_ar"],
+                c["out_ar"],
+            )
+
     def _ctl_attr(self) -> None:
         """Control of CHK-SMC-ATTR: both AxPROT[1] values and two source IDs per direction."""
         parts = []
@@ -494,8 +558,8 @@ class sep_fabric_smc_route_test(sep_base_test):
         else:
             await self._config_b(base)
         self._ctl_attr()
-
         close_graded_window(self.logger)
+        await self._aperture_change(cfg)
         await stop_taps(self.taps)
 
 

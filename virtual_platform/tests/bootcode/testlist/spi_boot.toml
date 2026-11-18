@@ -175,5 +175,5 @@ markers = [
   "Not covered: flash device detection; the ROM issues no probe, so a blank primary address stands for an absent one.",
   "primary_rest exact 0 is the discriminating device assertion: the ROM abandons the primary at the 20-byte peek and never fetches its body or payload.",
   "OCA_BODY=0x00001000 counted once shows only the backup passed the magic peek.",
-  "clear_sram_region() and boot_flash_reinit() run on the failover path but print nothing.",
+  "rom_clear_sram_for_retry() and boot_flash_reinit() run on the failover path but print nothing when they succeed.",
 ]

@@ -20,11 +20,13 @@ window backs. A hole cell is an 8-byte word whose two halves are both holes.
 A stable register has an RDL reset on every field, no ``volatile`` field (no
 field that hardware updates), no ``readAction`` (no read side effect, so no
 RMOD and no FIFO pop) and is not write-only. The live word of a row is the
-highest-offset stable register of the extent; for the entropy source and ABR,
-whose holes answer OKAY with 0, it is the highest-offset stable register with a
-non-zero reset value. ABR has none (``live_word`` returns None for it), so the
-leaf grades the ABR live word at the value that its hole-write control leaves
-in the hole neighbour, which is non-zero.
+highest-offset stable register of the extent with a non-zero reset value, so a
+read decoded onto another word that reads 0 fails; a row with no such register
+takes its highest-offset stable register. For the entropy source and ABR, whose
+holes answer OKAY with 0, a non-zero reset value is required (``NONZERO_LIVE``).
+ABR has none (``live_word`` returns None for it), so the leaf grades the ABR
+live word at the value that its hole-write control leaves in the hole
+neighbour, which is non-zero.
 """
 
 from __future__ import annotations
@@ -131,8 +133,9 @@ _HMAC_SWAP_FIELDS = tuple(
     HMAC.field_mask("CFG", f) for f in ("endian_swap", "digest_swap", "key_swap")
 )
 # The None encodings are the RDL resets of the two fields; the legal one-hot
-# encodings are the SHA2_256/384/512 and Key_128..Key_1024 enums of hmac.hjson
-# (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson, CFG).
+# encodings are the SHA2_256/384/512 and Key_128..Key_1024 enums of CFG
+# (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/registers.md, CFG . key_length
+# and CFG . digest_size).
 _HMAC_DS_NONE = HMAC.field_reset("CFG", "digest_size")
 _HMAC_KL_NONE = HMAC.field_reset("CFG", "key_length")
 _HMAC_DS_LEGAL = (0x1, 0x2, 0x4)
@@ -315,8 +318,9 @@ def live_word(key: str) -> Reg | None:
     if key == "reset_ctrl":
         return reg_by_word()[SW_RESET_N]
     cands = [r for r in row_regs(key) if r.stable]
-    if key in NONZERO_LIVE:
-        cands = [r for r in cands if r.reset & r.word_mask(r.addr)]
+    nonzero = [r for r in cands if r.reset & r.word_mask(r.addr)]
+    if nonzero or key in NONZERO_LIVE:
+        cands = nonzero
     return max(cands, key=lambda r: r.addr) if cands else None
 
 

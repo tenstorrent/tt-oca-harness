@@ -16,8 +16,23 @@ compared; absolute values are printed as measured.
 * Set A: the Fast-mode-plus minimums of UM10204 Table 11 converted to whole cycles upward.
 * Set B: set A with THIGH, TLOW, TSU_DAT and THD_DAT scaled by 4.
 * Set C: set A with the same four fields scaled by `SCALE_C`.
-* Set A2: set A with T_R and T_F raised. Set A3: set A with TSU_STA, THD_STA and TSU_STO
-  raised. Set A4: set A with only T_BUF raised.
+* Set A2: set A with T_R and T_F raised by different amounts. Set A3: set A with TSU_STA,
+  THD_STA and TSU_STO raised. Set A4: set A with only T_BUF raised.
+
+UM10204 Figure 38 and Table 11 measure t_HIGH, t_SU;STA and t_SU;STO from the rising edge
+that opens them and t_LOW, t_HD;DAT and t_HD;STA from the falling edge that opens them, with
+the rise time t_r or fall time t_f spent before each; a controller counting whole clock cycles
+adds T_R to every interval it opens on a rise and T_F to every interval it opens on a fall. Set
+A2 raises the two fields by different amounts, so each measured phase has to move by the raise
+of the field its opening edge carries, and the SCL period by their sum.
+
+The controller's data setup on the wire equals TLOW - THD_DAT and does not move with TSU_DAT
+(printed as OBS-I2C-WIRE-CTRL-DATA-SETUP; whether the field's description should say so is a
+question for the specification). The field is graded where its effect is observable: I2C0 is
+re-enabled as a target, the bench controller reads one byte from an empty transmit FIFO so the
+target stretches, the byte is written while it stretches, and the time from the target's SDA
+edge to the SCL rise it releases is measured under two TSU_DAT values; the difference equals the
+programmed difference.
 
 Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 4, every other field 1)
 is a liveness run of transfer Y at the smallest setting the leaf grades: i2c.rdl states THIGH and
@@ -39,6 +54,7 @@ from cocotb.utils import get_sim_time
 
 from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_i2c_field_masks import I2C_WRAP_CTRL_TARGET
 from .smc_i2c_master_target_test_seq import (
     CLOCK_GATE_CONTROL,
     I2C0_CONTROLLER_EVENTS,
@@ -72,11 +88,20 @@ from .smc_i2c_master_target_test_seq import (
     _pack_timing3,
     _pack_timing4,
 )
-from .smc_i2c_protocol_vip import SmcI2cEepromSlave
+from .smc_i2c_protocol_vip import SmcI2cEepromSlave, SmcI2cMasterVip
+from .smc_i2c_target_smbus_test_seq import _pack_target_id
 
 I2C0_INTR_STATE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0)
 I2C0_HOST_FIFO_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR", 0)
+I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0)
+I2C0_TXDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR", 0)
 INTR_CMD_COMPLETE = _i2c_u32("I2C__INTR_STATE__CMD_COMPLETE_bm")
+INTR_TX_STRETCH = _i2c_u32("I2C__INTR_STATE__TX_STRETCH_bm")
+RDATA_DATA = _i2c_u32("I2C__RDATA__DATA_bm")
+CTRL_ENABLETARGET = _i2c_u32("I2C__CTRL__ENABLETARGET_bm")
+FIFO_CTRL_TXRST_ACQRST = _i2c_u32("I2C__FIFO_CTRL__TXRST_bm") | _i2c_u32(
+    "I2C__FIFO_CTRL__ACQRST_bm"
+)
 
 EEPROM_ADDR = 0x50
 POINTER_BYTE = 0xA5
@@ -106,8 +131,22 @@ RDL_MIN_THIGH = 2
 RDL_MIN_TLOW = 2
 FAST_RATIO = 4
 SCALE_C = 10
-RISE_FALL_RAISE = 6
-START_STOP_RAISE = 8
+T_R_RAISE = 6
+T_F_RAISE = 9
+TSU_STA_RAISE = 8
+THD_STA_RAISE = 12
+TSU_STO_RAISE = 16
+T_BUF_RAISE = 8
+#: TSU_DAT values of the target-side setup legs, in cycles; both exceed the bench controller's
+#: half bit so the target's release of SCL, not the bench, ends the setup.
+TARGET_TSU_DAT = (200, 500)
+TARGET_ADDR = 0x2C
+#: The byte the target returns; its MSB is 0, so the first bit is an SDA fall the bench can time.
+TARGET_BYTE = 0x55
+TARGET_VIP_SPEED = 2_000_000
+TX_STRETCH_POLLS = 400
+TX_STRETCH_POLL_CYCLES = 50
+TARGET_READ_POLLS = 2000
 SCALED_FIELDS = ("thigh", "tlow", "tsu_dat", "thd_dat")
 FIELDS = (
     "thigh",
@@ -146,20 +185,21 @@ FIELD_REWRITE_XOR = 0x0155
 LOW_HALF_LANES = 0b0011
 HIGH_HALF_LANES = 0b1100
 
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
+STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
 CHK_BY_STEP = {
     "CHK-I2C-WIRE-TIMING-FIELDS": "S1",
     "CHK-I2C-WIRE-SCL-HIGH-DELTA": "S4",
     "CHK-I2C-WIRE-SCL-LOW-DELTA": "S4",
     "CHK-I2C-WIRE-SCL-PERIOD-DELTA": "S4",
+    "CHK-I2C-WIRE-TRTF-DELTA": "S5",
     "CHK-I2C-WIRE-MEASURED-ONLY": "S6",
-    "CHK-I2C-WIRE-DATA-SETUP-MEASURED": "S4",
+    "CHK-I2C-WIRE-DATA-SETUP-DELTA": "S7",
     "CHK-I2C-WIRE-DATA-HOLD-DELTA": "S4",
     "CHK-I2C-WIRE-NACK-HOLD-DELTA": "S4",
     "CHK-I2C-WIRE-RSTART-DELTA": "S6",
     "CHK-I2C-WIRE-STOP-SETUP-DELTA": "S6",
     "CHK-I2C-WIRE-BUS-FREE-DELTA": "S6",
-    "CHK-I2C-WIRE-MIN-SET-RUN": "S7",
+    "CHK-I2C-WIRE-MIN-SET-RUN": "S8",
 }
 FENCE_TERMS = {
     "S1": "TIMING_FIELDS_PROGRAMMED",
@@ -168,8 +208,21 @@ FENCE_TERMS = {
     "S4": "SET_C_MEASURED",
     "S5": "SET_A2_MEASURED",
     "S6": "SET_A3_A4_MEASURED",
-    "S7": "MIN_SET_RUN",
+    "S7": "TARGET_SETUP_MEASURED",
+    "S8": "MIN_SET_RUN",
 }
+#: Phases of set A2 against set A: an interval opened by a rise moves with T_R, one opened by
+#: a fall with T_F.
+TRTF_PHASES = (
+    ("high", "t_r", True),
+    ("low", "t_f", True),
+    ("hold", "t_f", True),
+    ("nack_hold", "t_f", False),
+    ("rs_setup", "t_r", False),
+    ("rs_hold", "t_f", False),
+    ("stop_setup", "t_r", False),
+    ("first_hold", "t_f", False),
+)
 
 EDGE_POLL_CYCLES = 64
 BOUND_PER_SPAN = 120
@@ -294,6 +347,8 @@ def parse_edges(label: str, events: list[tuple[int, str, int]], with_x: bool) ->
     )
     out["y_start_hold"] = y_fall[0] - y_start
     out["y_stop_setup"] = y_stop - y_rise[-1]
+    out["y_high"] = sorted({y_fall[n + 1] - y_rise[n] for n in range(Y_RISES - 1)})
+    out["y_low"] = sorted({y_rise[n] - y_fall[n] for n in range(Y_RISES)})
     if not with_x:
         return out
     rise = {n: rises[n - 1] for n in range(1, X_RISES + 1)}
@@ -349,6 +404,7 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         self._field_lines: list[str] = []
         self.sets: dict[str, dict[str, int]] = {}
         self.meas: dict[str, dict] = {}
+        self.target_setup: dict[int, int] = {}
 
     def _step_done(self, step: str) -> None:
         self._events.append(("step", step, int(get_sim_time("ps"))))
@@ -393,12 +449,14 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
             "A": a,
             "B": scaled(FAST_RATIO),
             "C": scaled(SCALE_C),
-            "A2": {k: v + RISE_FALL_RAISE if k in ("t_r", "t_f") else v for k, v in a.items()},
+            "A2": {**a, "t_r": a["t_r"] + T_R_RAISE, "t_f": a["t_f"] + T_F_RAISE},
             "A3": {
-                k: v + START_STOP_RAISE if k in ("tsu_sta", "thd_sta", "tsu_sto") else v
-                for k, v in a.items()
+                **a,
+                "tsu_sta": a["tsu_sta"] + TSU_STA_RAISE,
+                "thd_sta": a["thd_sta"] + THD_STA_RAISE,
+                "tsu_sto": a["tsu_sto"] + TSU_STO_RAISE,
             },
-            "A4": {k: v + START_STOP_RAISE if k == "t_buf" else v for k, v in a.items()},
+            "A4": {**a, "t_buf": a["t_buf"] + T_BUF_RAISE},
             "MIN": {**dict.fromkeys(FIELDS, 1), "thigh": MIN_THIGH, "tlow": MIN_TLOW},
             "RDL_MIN": {**dict.fromkeys(FIELDS, 1), "thigh": RDL_MIN_THIGH, "tlow": RDL_MIN_TLOW},
         }
@@ -445,13 +503,15 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         self._last_state = f"{await self._status(label)} monitor: {rec.state()}"
         raise AssertionError(f"{label}: HOSTIDLE never set; {self._last_state}")
 
-    async def _program(self, label: str, prog: dict[str, int]) -> None:
+    async def _program(self, label: str, prog: dict[str, int]) -> list[int]:
         regs = (I2C0_TIMING0, I2C0_TIMING1, I2C0_TIMING2, I2C0_TIMING3, I2C0_TIMING4)
         for i, (addr, word) in enumerate(zip(regs, _timing_words(prog))):
             await self.csr_write(f"{label}_TIMING{i}", addr, word)
             await ClockCycles(cocotb.top.clk_smc_i, 2)
-        for i, (addr, word) in enumerate(zip(regs, _timing_words(prog))):
+        return [
             await self.csr_read(f"{label}_TIMING{i}_RB", addr, expected=word)
+            for i, (addr, word) in enumerate(zip(regs, _timing_words(prog)))
+        ]
 
     async def _queue(self, label: str, with_x: bool) -> None:
         clk = cocotb.top.clk_smc_i
@@ -490,20 +550,21 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
             lo_word = _i2c_field(name, lo, lo_val)
             hi_word = _i2c_field(name, hi, hi_val)
             await self.csr_write(f"{name}_FIELDS", addr, lo_word | hi_word)
-            await self.csr_read(f"{name}_FIELDS_RB", addr, expected=lo_word | hi_word)
+            rb_full = await self.csr_read(f"{name}_FIELDS_RB", addr, expected=lo_word | hi_word)
             lo_new = _i2c_field(name, lo, lo_val ^ FIELD_REWRITE_XOR)
             hi_new = _i2c_field(name, hi, hi_val ^ FIELD_REWRITE_XOR)
             await self.csr_write_strobed(
                 f"{name}_LOW_REWRITE", addr, lo_new | hi_new, wstrb=LOW_HALF_LANES
             )
-            await self.csr_read(f"{name}_LOW_REWRITE_RB", addr, expected=lo_new | hi_word)
+            rb_low = await self.csr_read(f"{name}_LOW_REWRITE_RB", addr, expected=lo_new | hi_word)
             await self.csr_write_strobed(
                 f"{name}_HIGH_REWRITE", addr, lo_word | hi_new, wstrb=HIGH_HALF_LANES
             )
-            await self.csr_read(f"{name}_HIGH_REWRITE_RB", addr, expected=lo_new | hi_new)
+            rb_high = await self.csr_read(f"{name}_HIGH_REWRITE_RB", addr, expected=lo_new | hi_new)
             self._field_lines.append(
-                f"{lo}=0x{lo_val:x}->0x{lo_val ^ FIELD_REWRITE_XOR:x} "
-                f"{hi}=0x{hi_val:x}->0x{hi_val ^ FIELD_REWRITE_XOR:x}"
+                f"{name} {lo}=0x{lo_val:x}->0x{lo_val ^ FIELD_REWRITE_XOR:x} "
+                f"{hi}=0x{hi_val:x}->0x{hi_val ^ FIELD_REWRITE_XOR:x} read back "
+                f"0x{rb_full:08x}, 0x{rb_low:08x}, 0x{rb_high:08x}"
             )
 
     async def _run_set(self, tag: str) -> None:
@@ -520,8 +581,8 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         await self._wait_hostidle(tag, rec)
         rec.stop()
         got = await self.csr_read(f"{tag}_RDATA", I2C0_RDATA)
-        assert got & 0xFF == READ_BYTE, (
-            f"{tag}: read byte 0x{got & 0xFF:02x}, not 0x{READ_BYTE:02x}"
+        assert got & RDATA_DATA == READ_BYTE, (
+            f"{tag}: read byte 0x{got & RDATA_DATA:02x}, not 0x{READ_BYTE:02x}"
         )
         seen = (
             self.slave.starts - base[0],
@@ -554,7 +615,7 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
     async def _min_run(self) -> str:
         prog = self.sets["MIN"]
         assert self.slave is not None
-        await self._program("MIN", prog)
+        words = await self._program("MIN", prog)
         await self.csr_write("MIN_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
         before = await self.csr_read("MIN_INTR_BEFORE", I2C0_INTR_STATE)
         assert before & INTR_CMD_COMPLETE == 0, f"CMD_COMPLETE set before the run (0x{before:08x})"
@@ -578,13 +639,15 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         assert seen == (1, 1, 1), f"MIN: target counted starts/stops/acks {seen}, expected 1/1/1"
         assert intr & INTR_CMD_COMPLETE, f"MIN: CMD_COMPLETE not set (INTR_STATE=0x{intr:08x})"
         assert status & I2C_STATUS_HOSTIDLE, f"MIN: HOSTIDLE not set (STATUS=0x{status:08x})"
-        parse_edges("MIN", rec.events, False)
+        m = parse_edges("MIN", rec.events, False)
         return (
             f"THIGH={MIN_THIGH} TLOW={MIN_TLOW} and every other field 1 (legal under i2c.rdl "
-            f"TIMING0, which states >= 2): START, address write acknowledged "
-            f"(target acks={seen[2]}), exactly {rec.stops} STOP on the pads, STATUS=0x{status:08x} "
-            f"HOSTIDLE set, INTR_STATE=0x{intr:08x} CMD_COMPLETE set again after being "
-            f"0x{before:08x}"
+            f"TIMING0, which states >= 2; TIMING0-4 read back "
+            + ",".join(f"0x{w:08x}" for w in words)
+            + f"): START, address write acknowledged (target acks={seen[2]}), exactly "
+            f"{rec.stops} STOP on the pads, measured SCL high={m['y_high']} low={m['y_low']} "
+            f"cycles, STATUS=0x{status:08x} HOSTIDLE set, INTR_STATE=0x{intr:08x} CMD_COMPLETE "
+            f"set again after being 0x{before:08x}"
         )
 
     async def _rdl_min_observe(self) -> None:
@@ -634,6 +697,85 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
             intr,
             status,
         )
+
+    async def _target_setup_leg(self, tsu_dat: int) -> None:
+        """I2C0 as a target: the SDA-to-SCL-rise setup of the bit that releases a stretch."""
+        tag = f"TGT{tsu_dat}"
+        prog = {**self.sets["A"], "tsu_dat": tsu_dat}
+        await self.csr_write(f"{tag}_CTRL_OFF", I2C0_CTRL, 0)
+        await self.csr_write(f"{tag}_WRAP_TARGET", I2C0_WRAP_CTRL, I2C_WRAP_CTRL_TARGET)
+        await self._program(tag, prog)
+        await self.csr_write(f"{tag}_FIFO_RST", I2C0_FIFO_CTRL, FIFO_CTRL_TXRST_ACQRST)
+        await self.csr_write(
+            f"{tag}_TARGET_ID", I2C0_TARGET_ID, _pack_target_id(TARGET_ADDR, 0x7F, 0, 0)
+        )
+        await self.csr_write(f"{tag}_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
+        await self.csr_write(f"{tag}_ENABLETARGET", I2C0_CTRL, CTRL_ENABLETARGET)
+        master = SmcI2cMasterVip(speed=TARGET_VIP_SPEED, name=f"smc_i2c0_wire_timing_{tag}")
+        rec = WireRecorder()
+        rec.start()
+        data = bytearray()
+
+        async def run() -> None:
+            data.extend(await master.read(TARGET_ADDR, 1))
+
+        task = cocotb.start_soon(run())
+        intr = 0
+        for _ in range(TX_STRETCH_POLLS):
+            intr = await self.csr_read(f"{tag}_INTR_STRETCH", I2C0_INTR_STATE)
+            if intr & INTR_TX_STRETCH:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, TX_STRETCH_POLL_CYCLES)
+        assert intr & INTR_TX_STRETCH, (
+            f"{tag}: INTR_STATE.TX_STRETCH never set while the bench read from the empty "
+            f"transmit FIFO (INTR_STATE=0x{intr:08x}); {rec.state()}"
+        )
+        await self.csr_write(f"{tag}_TXDATA", I2C0_TXDATA, TARGET_BYTE)
+        for _ in range(TARGET_READ_POLLS):
+            if task.done():
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, TX_STRETCH_POLL_CYCLES)
+        assert task.done(), f"{tag}: the bench read never finished; {rec.state()}"
+        task.result()
+        rec.stop()
+        assert bytes(data) == bytes((TARGET_BYTE,)), (
+            f"{tag}: the bench read {bytes(data).hex()}, not {TARGET_BYTE:02x}"
+        )
+        falls = [t for t, line, level in rec.events if line == "scl" and level == 0]
+        rises = [t for t, line, level in rec.events if line == "scl" and level == 1]
+        lows = [
+            (r - f, f, r)
+            for f, r in zip(falls, rises[1:] if rises and rises[0] < falls[0] else rises)
+        ]
+        assert lows, f"{tag}: no SCL low phase recorded; {rec.state()}"
+        stretch, fall, rise = max(lows)
+        sda_falls = [
+            t for t, line, level in rec.events if line == "sda" and level == 0 and fall < t < rise
+        ]
+        assert len(sda_falls) == 1, (
+            f"{tag}: {len(sda_falls)} SDA falls inside the stretched SCL low phase "
+            f"({stretch} cycles from {fall} to {rise}); the released first data bit is one fall"
+        )
+        self.target_setup[tsu_dat] = rise - sda_falls[0]
+        cocotb.log.info(
+            "MEAS %s (clk_i cycles, measured): stretched SCL low=%d, target SDA fall to the SCL "
+            "rise it released=%d with T_R=%d TSU_DAT=%d",
+            tag,
+            stretch,
+            self.target_setup[tsu_dat],
+            prog["t_r"],
+            tsu_dat,
+        )
+        await self.csr_write(f"{tag}_CTRL_OFF_END", I2C0_CTRL, 0)
+        await self.csr_write(f"{tag}_FIFO_RST_END", I2C0_FIFO_CTRL, FIFO_CTRL_TXRST_ACQRST)
+
+    async def _restore_controller(self) -> None:
+        await self.csr_write("TGT_WRAP_HOST", I2C0_WRAP_CTRL, I2C_WRAP_ENABLE_CONTROLLER)
+        await self.csr_write("TGT_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
+        await self.csr_write("TGT_EVENTS_CLR", I2C0_CONTROLLER_EVENTS, I2C_CONTROLLER_EVENTS_ALL)
+        await self.csr_write("TGT_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
+        await self.csr_write("TGT_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
+        await ClockCycles(cocotb.top.clk_smc_i, 20)
 
     def _delta(self, metric: str, tag: str, key: int | None = None) -> int:
         def pick(t: str) -> int:
@@ -698,13 +840,17 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         await self._run_set("A3")
         await self._run_set("A4")
         self._step_done("S6")
+        for tsu_dat in TARGET_TSU_DAT:
+            await self._target_setup_leg(tsu_dat)
+        await self._restore_controller()
+        self._step_done("S7")
         min_text = await self._min_run()
         await ClockCycles(cocotb.top.clk_smc_i, 2)
-        self._step_done("S7")
+        self._step_done("S8")
         await self._rdl_min_observe()
 
         s = self.sets
-        d = {t: {f: s[t][f] - s["A"][f] for f in FIELDS} for t in ("B", "C", "A3", "A4")}
+        d = {t: {f: s[t][f] - s["A"][f] for f in FIELDS} for t in ("B", "C", "A2", "A3", "A4")}
         bc = ("B", "C")
 
         self._chk(
@@ -760,11 +906,31 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         )
 
         a, a2, a3 = self.meas["A"], self.meas["A2"], self.meas["A3"]
-        period_a2 = sorted({a2["period"][n] - a["period"][n] for n in LOW_PHASES})
+        trtf_parts = []
+        for metric, field, keyed in TRTF_PHASES:
+            note = self._compare(
+                "CHK-I2C-WIRE-TRTF-DELTA", metric, {"A2": d["A2"][field]}, ("A2",), keyed=keyed
+            )
+            trtf_parts.append(f"{metric}: delta {d['A2'][field]} = delta({field.upper()}), {note}")
+        period_a2 = self._compare(
+            "CHK-I2C-WIRE-TRTF-DELTA",
+            "period",
+            {"A2": d["A2"]["t_r"] + d["A2"]["t_f"]},
+            ("A2",),
+        )
+        self._chk(
+            "CHK-I2C-WIRE-TRTF-DELTA",
+            f"with T_R raised by {T_R_RAISE} and T_F by {T_F_RAISE} (A2 minus A) every interval "
+            f"opened by a rise moved by the T_R raise and every one opened by a fall by the T_F "
+            f"raise: " + "; ".join(trtf_parts) + f"; period: delta "
+            f"{d['A2']['t_r'] + d['A2']['t_f']} = delta(T_R)+delta(T_F), {period_a2}; absolutes "
+            f"measured A high={sorted(set(a['high'].values()))} A2 high="
+            f"{sorted(set(a2['high'].values()))} A low={sorted(set(a['low'].values()))} A2 low="
+            f"{sorted(set(a2['low'].values()))}",
+        )
         self._chk(
             "CHK-I2C-WIRE-MEASURED-ONLY",
-            f"measured only, nothing compared: SCL period change with T_R and T_F raised by "
-            f"{RISE_FALL_RAISE} (A2 minus A) = {period_a2} cycles per pulse; first-START hold "
+            f"measured only, nothing compared: first-START hold "
             f"(SDA fall to next SCL fall) A={a['first_hold']} A3={a3['first_hold']} with "
             f"THD_STA {s['A']['thd_sta']}->{s['A3']['thd_sta']}, TSU_STA "
             f"{s['A']['tsu_sta']}->{s['A3']['tsu_sta']}, T_BUF {s['A']['t_buf']}->"
@@ -781,10 +947,26 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
                 f"{len(seen)} bits, programmed TSU_DAT={s[tag]['tsu_dat']} "
                 f"TLOW-THD_DAT={s[tag]['tlow'] - s[tag]['thd_dat']}"
             )
+        cocotb.log.info(
+            "OBS-I2C-WIRE-CTRL-DATA-SETUP: measured only, nothing compared: the controller's SDA "
+            "setup before the SCL rising edge of a transmitted data bit in cycles, %s; "
+            "the controller's setup equals TLOW - THD_DAT and does not move with TSU_DAT; the "
+            "field is graded on the target",
+            "; ".join(setup_parts),
+        )
+        lo, hi = TARGET_TSU_DAT
+        got = self.target_setup[hi] - self.target_setup[lo]
+        assert got == hi - lo, (
+            f"CHK-I2C-WIRE-DATA-SETUP-DELTA: the target's SDA-to-SCL-rise setup moved by {got} "
+            f"cycles (TSU_DAT {lo}: {self.target_setup[lo]}, {hi}: {self.target_setup[hi]}) for a "
+            f"TSU_DAT change of {hi - lo}"
+        )
         self._chk(
-            "CHK-I2C-WIRE-DATA-SETUP-MEASURED",
-            "measured only, nothing compared: SDA setup before the SCL rising edge of a "
-            "transmitted data bit in cycles, " + "; ".join(setup_parts),
+            "CHK-I2C-WIRE-DATA-SETUP-DELTA",
+            f"I2C0 as a target releasing a transmit stretch: delta(SDA fall to the SCL rise the "
+            f"target released) {got} equals delta(TSU_DAT) {hi - lo} (TSU_DAT {lo}: "
+            f"{self.target_setup[lo]} cycles, {hi}: {self.target_setup[hi]} cycles, T_R "
+            f"{s['A']['t_r']} in both)",
         )
 
         hold_note = self._compare(

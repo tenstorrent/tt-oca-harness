@@ -426,9 +426,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         through the hwif path passes identically to a working flag -- a constant
         is simultaneously "not busy", "not completed" and "field absent". A
         field that changes level while a zeroing is in flight and changes back
-        when it completes is the only observation that separates those. Which
-        level means busy is not asserted; the idle level is whatever S4
-        recorded.
+        when it completes is the only observation that separates those.
+        `smc_zeroer_busy_outstanding_test` grades which level means busy; here
+        the idle level is whatever S4 recorded.
         """
         # Sampled here rather than inherited from the caller's earlier read, so
         # the idle leg is observed at the point the lifecycle claims it.

@@ -4,11 +4,14 @@
 
 Spec: clk_rst.adoc (Power-Good and Cold Reset), port_table.adoc (SMC Port Declaration).
 
-The ``+smc_cell`` run argument selects the reference period (ref10 or ref4); the SMC clock is
-1.25 ns and the peripheral clock 5 ns in both cells.
+The cell is the reference period (ref10 or ref4); the SMC clock is 1.25 ns and the peripheral
+clock 5 ns in both cells. The ``+smc_cell`` run argument or a subclass ``CELL`` pins it;
+otherwise build_phase draws it uniformly from the seed.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 import pyuvm
@@ -33,28 +36,40 @@ class smc_ref_reset_cycles_test(smc_base_test):
         "CHK-REF-RESET-RELEASE-CYCLES",
         "CHK-TIMEOUT-PATHS",
     )
-    CELL = "ref10"
+    # None draws the cell from the seed; a variant subclass pins one.
+    CELL: str | None = None
     min_evidence = 4
 
     auto_protocol_vip = False
 
     def build_phase(self) -> None:
         super().build_phase()
-        cell = cocotb.plusargs.get("smc_cell", self.CELL)
-        assert cell in REF_PERIODS_NS, f"+smc_cell={cell} is not one of {sorted(REF_PERIODS_NS)}"
+        seed = self.random_seed()
+        pinned = cocotb.plusargs.get("smc_cell", self.CELL)
+        cell = pinned if pinned is not None else random.Random(seed).choice(sorted(REF_PERIODS_NS))
+        assert cell in REF_PERIODS_NS, f"cell {cell} is not one of {sorted(REF_PERIODS_NS)}"
+        self.cell = cell
         self.cfg.ref_clk_period_ns = REF_PERIODS_NS[cell]
         self.cfg.smc_clk_period_ns = SMC_CLK_PERIOD_NS
         self.cfg.periph_clk_period_ns = PERIPH_CLK_PERIOD_NS
+        if pinned is None:
+            source = "drawn"
+        elif "smc_cell" in cocotb.plusargs:
+            source = "pinned by +smc_cell"
+        else:
+            source = "pinned by the class"
+        self.logger.info("RAND-SEED: %d; RAND-DRAW: cell=%s (%s)", seed, cell, source)
         self.logger.info(
-            "SMC timing pinned by the leaf: cell=%s ref=%sns smc=%sns periph=%sns",
+            "SMC timing set by the leaf: cell=%s (%s) ref=%sns smc=%sns periph=%sns",
             cell,
+            source,
             self.cfg.ref_clk_period_ns,
             SMC_CLK_PERIOD_NS,
             PERIPH_CLK_PERIOD_NS,
         )
 
     async def run_scenario(self) -> None:
-        seq = smc_ref_reset_cycles_test_seq("ref_reset_cycles_seq")
+        seq = smc_ref_reset_cycles_test_seq("ref_reset_cycles_seq", cell=self.cell)
         await self.start_seq(seq, self.env.reset_agent.sequencer)
         assert seq.n_rel is not None and seq.n_rel >= RELEASE_MIN_CYCLES, seq.n_rel
         assert seq.n_assert is not None and seq.n_assert >= 1, seq.n_assert

@@ -9,9 +9,9 @@ CHK-OTP-ARM proves the source is armed and the main loop answers. CHK-OTP-PULSE
 proves HK-IRQSET fired and ``IRQ_STATUS.otp_change`` reads 1. CHK-OTP-ENTRY
 requires the KM CPU to enter the KMCSR interrupt after the pulse, so the handler
 ran. CHK-OTP-RETIRE requires PIC vector bit 30 to stay 0 and a following CMD_STAT to complete with
-return code 0, since the handler does not halt the KM. OBS-OTP-STICKY logs
-``IRQ_STATUS.otp_change`` and its enabled line after the handler; CHK-OTP-RETIRE
-grades the effect of the handler's clear, so they are not graded again.
+return code 0, since the handler does not halt the KM. CHK-OTP-STICKY requires
+``IRQ_STATUS.otp_change`` and its enabled line to read 0 after the handler, which
+clears the bit (``hw/ip/key_manager/doc/firmware.adoc``, OTP change handler).
 """
 
 from __future__ import annotations
@@ -184,7 +184,15 @@ class sep_km_otp_change_irq_test(sep_base_test):
             pic = self._pic30()
             line = int((st & en & OTP_CHANGE) != 0)
             bit = int((st & OTP_CHANGE) != 0)
-            self.logger.info("OBS-OTP-STICKY LOG status_otp_change=%d line=%d", bit, line)
+            # key_manager firmware.adoc, OTP change handler: "Clear (write-1-to-clear)
+            # the OTP change bit in IRQ_STATUS".
+            if bit != 0 or line != 0:
+                self.logger.error("CHK-OTP-STICKY FAIL: status_otp_change=%d line=%d", bit, line)
+                raise AssertionError(
+                    f"CHK-OTP-STICKY FAIL: status_otp_change={bit} line={line} after the "
+                    "handler, expected 0 (the handler clears IRQ_STATUS.otp_change)"
+                )
+            self.logger.info("CHK-OTP-STICKY PASS: status_otp_change=0 line=0")
             entries = self._kmcsr_entries() - ent0
             if entries < 1:
                 self.logger.error("CHK-OTP-ENTRY FAIL: kmcsr_irq_entries=%d", entries)

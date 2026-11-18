@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef PWM_WRAP_RDL
+`define PWM_WRAP_RDL
+
+`include "pwm.rdl"
+`include "pwm_ctrl.rdl"
+
+addrmap pwm_wrap #(
+    longint unsigned N_OUTPUTS = 4
+) {
+    name = "PWM Wrapper Address Map";
+    desc = "Wrapper address map instantiating the PWM register block and its pad control.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    pwm      #(.N_OUTPUTS(N_OUTPUTS))    pwm         @0x000;
+    pwm_ctrl #(.N_OUTPUTS(N_OUTPUTS))    pwm_ctrl    @0x800;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+};
+
+`endif

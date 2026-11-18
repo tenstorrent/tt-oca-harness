@@ -237,6 +237,15 @@ run_modes = ["smoke"]
 name = "smc_ref_reset_cycles_test"
 module = "smc_ref_reset_cycles_test"
 seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ref_reset_cycles_ref10_test"
+module = "smc_ref_reset_cycles_ref10_test"
+seed = 1
 timeout_sec = 1800
 tags = ["clock"]
 run_modes = ["smoke"]
@@ -254,6 +263,15 @@ args = ["+smc_cell=ref4"]
 [[tests]]
 name = "smc_periph_floor_roundtrip_test"
 module = "smc_periph_floor_roundtrip_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_periph_floor_roundtrip_periph10_test"
+module = "smc_periph_floor_roundtrip_periph10_test"
 seed = 1
 timeout_sec = 1800
 tags = ["clock"]
@@ -388,6 +406,15 @@ run_modes = ["smoke"]
 name = "smc_octs_clk_rate_test"
 module = "smc_octs_clk_rate_test"
 seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_octs_clk_rate_default_test"
+module = "smc_octs_clk_rate_default_test"
+seed = 1
 timeout_sec = 1800
 tags = ["clock"]
 run_modes = ["smoke"]
@@ -441,6 +468,15 @@ args = ["+smc_cell=periph3"]
 [[tests]]
 name = "smc_clk_relation_regxbar_test"
 module = "smc_clk_relation_regxbar_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_relation_regxbar_default_test"
+module = "smc_clk_relation_regxbar_default_test"
 seed = 1
 timeout_sec = 1800
 tags = ["clock"]

@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut smu --mode formal`. The stage graph, the tool allowlist and the
+# SymbiYosys default come from profile = "native-formal"; the property module, bind files, task
+# file and reset environment live under formal/ (hw/common/dv/docs/formal-property-style.adoc).
+# The plan section is SMU_VPLAN.adoc, "Formal Verification Plan".
+name = "smu"
+profile = "native-formal"
+description = "SMU formal properties on the smu_axi_xbar top (SymbiYosys open path)"
+
+[testlist]
+path = "testlists/formal.toml"
+format = "toml_list"
+
+# The filelist stage runs ahead of the formal stage and writes the list the sby task file reads
+# through its [files] entry `../../build/smu.f`.
+[native.stages.flist]
+kind = "filelist"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/sys/smu/dv/formal/build"]
+
+[build]
+top_module = "smu_axi_xbar"
+filelist = "hw/sys/smu/dv/formal/build/smu.f"
+bender_filelist = "hw/sys/smu/dv/formal/build/smu_bender.f"
+work_dir = "hw/sys/smu/dv/formal/build"
+# assert/yosys precedes assert/ so that the frontend picks up the prim_assert.sv shim over the
+# vendored OpenTitan header; the formal macros and ocah_assert.svh come from assert/.
+incdirs = ["hw/common/assert/yosys", "hw/common/assert"]
+# The vendored AXI crossbar and the common cells it decodes and spills with.
+common_bender_targets = ["axi_rtl", "common_cells_rtl"]
+# The SMU sources sit in the Bender target all(dtp, sep, smc), which brings in the whole SEP and
+# SMC trees; the crossbar needs only its package and itself, so they are listed in `sources`.
+bender_targets = []
+# The crossbar package and module, then the shared AXI checker in the boolean subset; the bind
+# files under formal/props/ attach it to the top.
+sources = [
+  "hw/sys/smu/rtl/smu_axi_xbar_pkg.sv",
+  "hw/sys/smu/rtl/smu_axi_xbar.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv",
+]
+
+[targets.default]
+description = "The crossbar's property module and protocol checkers bound into smu_axi_xbar"
+build_dir = "hw/sys/smu/dv/formal/build"
+
+# `xbar_fpv` runs the crossbar's bmc, cover and prove task triple of smu.sby in one sby invocation,
+# from the task file's directory, so its [files] entries resolve.
+[formal.apps.xbar_fpv.sby]
+cwd = "hw/sys/smu/dv/formal/fpv/sby"
+script = "smu.sby"
+args = ["xbar_bmc", "xbar_cover", "xbar_prove"]

@@ -72,7 +72,7 @@ from env.sep_lcc_golden import LC_PROD, lc_state_name
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, sep_addr_define, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, sep_addr_define, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import (
     F_ALLOW_NS,
@@ -145,7 +145,7 @@ MBX_COMPLETE = 7
 WIN_CFG = F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED
 WIN_CFG_NS = (WIN_CFG, WIN_CFG | F_ALLOW_NS)
 # Implemented fields of the FILTER_CONFIG upper word (RDL); the firmware writes 0.
-FILTER_CFG_HI_FIELDS = INBOUND_FILTER_CTRL_0.mask("FILTER_CONFIG") >> 32
+FILTER_CFG_HI_FIELDS = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask("FILTER_CONFIG") >> 32
 assert FILTER_CFG_HI_FIELDS != 0, "FILTER_CONFIG upper word has no field"
 CW_HI = 0x5EC0_C0DE
 CW = {"A": 0x0C0D_E0A0, "B": 0x0C0D_E0B0}

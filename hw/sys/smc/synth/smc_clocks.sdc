@@ -20,6 +20,16 @@ if {[info procs cdc_is_block_top] eq ""} {
     source [file normalize [file join [file dirname [info script]] \
         ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
 }
+
+if {[info procs packed_clk_ports] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/packed_port_procs.tcl]]
+}
+
+# tn_pkg::TRC_RAM_INSTANCES and smc_config_pkg::NumI3c
+set smc_num_trace_mem 8
+set smc_num_i3c 6
+
 # Boundary clocks: block-top only. At the parent these nets carry the parent's clocks.
 if {[cdc_is_block_top]} {
 create_clock -add -name REFCLK                  -period $clock_periods(REFCLK_PERIOD)                [get_ports "clk_ref_i"]
@@ -68,7 +78,7 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*2*clk]  -name SM
 create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SMCCLK_DCACHE_DATA3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
 # Trace sink RAM clocks (the gated DFD funnel clock)
-set trace_mem_clk_ports [lsort -dictionary [get_object_name [get_ports {trace_mem_req_o*mem_clk}]]]
+set trace_mem_clk_ports [packed_clk_ports trace_mem_req_o $smc_num_trace_mem mem_clk]
 set trace_mem_clk_idx 0
 foreach trace_mem_clk_port $trace_mem_clk_ports {
     create_generated_clock [get_ports $trace_mem_clk_port] -name SMCCLK_TRACE_MEM${trace_mem_clk_idx} -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
@@ -77,7 +87,7 @@ foreach trace_mem_clk_port $trace_mem_clk_ports {
 
 # I3C DAT/DCT/RLT table memory clocks (the gated I3C peripheral clock)
 foreach mem {dat dct rlt} {
-    set i3c_mem_clk_ports [lsort -dictionary [get_object_name [get_ports -quiet "i3c_${mem}_mem_sink_o*clk"]]]
+    set i3c_mem_clk_ports [packed_clk_ports i3c_${mem}_mem_sink_o $smc_num_i3c]
     set i3c_mem_clk_idx 0
     foreach i3c_mem_clk_port $i3c_mem_clk_ports {
         create_generated_clock [get_ports $i3c_mem_clk_port] -name PERIPHERALCLK_I3C_[string toupper $mem]${i3c_mem_clk_idx} -master_clock PERIPHERALCLK -divide_by 1 -source [get_ports "clk_periph_i"] -combinational

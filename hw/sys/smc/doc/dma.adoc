@@ -164,15 +164,19 @@ scatter evenly spaced rows; there is no linked-list walker.
 
 The frontend does not validate the command. Every read of `NEXT_ID_0` submits
 the shared registers as they stand, including their reset values, and returns a
-transfer ID, never 0. Two commands move no data but still retire a transfer ID:
+transfer ID, never 0. Two commands move no data but still retire:
 
 * A command with zero repetitions. Clearing `CONFIG.ENABLED_ND` forces the
 midend repetition count to zero, so the reset state of the registers is such a
-command. The midend answers it with an internal error response.
-* A command with a length of 0. The backend answers it with an error response.
+command. The midend answers it with one internal error response, and it retires
+once.
+* A command with a length of 0 and one or more repetitions. The backend answers
+each row with an error response that it marks as the command's last, so the
+command retires once per repetition, not once.
 
-The control aperture does not expose the error payload, so a retired ID alone
-is not proof that valid data was copied.
+The control aperture does not expose the error payload, so a retirement alone
+is not proof that valid data was copied. <<smc-dma-retirement-counting>> gives
+the count for every command.
 
 The names above follow the published register map. The RTL frontend calls the
 configuration `conf`, the ND-enable field `enable_nd`, and the repetition pair
@@ -214,18 +218,53 @@ room to accept a command. These are not per-channel backend busy bits.
 while a submitted command waits in the request FIFO or is being expanded into
 rows, and falls when the backend accepts the last row of the last queued
 command. The backend can still be moving that row, so bit 8 can fall before
-`DONE_0` reaches the command's transfer ID. Bit 9 is zero.
-|`DONE_0` |Most recently retired transfer ID. No byte-progress or classified
-software error-status register is provided.
+the command retires. Bit 9 is zero.
+|`DONE_0` |Retirement counter; see <<smc-dma-retirement-counting>>. No
+byte-progress or classified software error-status register is provided.
 |DMA interrupt |One-cycle pulse on a falling edge of combined frontend/backend
 busy, routed to raw CPU vector bit 322 (PLIC ID 323). No local enable, mask or
 pending register; this is not one interrupt per submitted descriptor.
 |===
 
 Frontend readiness and a zero `STATUS` value do not indicate completion.
-The transfer-ID generator resets `NEXT_ID` to 2 and `DONE` to 1 and skips zero
-on wrap. PLIC gateway behavior does not turn successive busy-falling pulses
-into a counted queue.
+PLIC gateway behavior does not turn successive busy-falling pulses into a
+counted queue.
+
+[[smc-dma-retirement-counting]]
+=== Retirement Counting
+
+`DONE_0` counts retirements. It resets to 1 and adds 1 for each retirement, in
+the order the responses return. The number of retirements a command makes
+depends only on its descriptor, taken at the effective widths in
+<<smc-dma-transfer-parameters-table>>:
+
+[[smc-dma-retirements-table]]
+[cols="3,1",options="header"]
+.Retirements per DMA command
+|===
+|Command |Retirements
+|`CONFIG.ENABLED_ND` clear |1
+|`ENABLED_ND` set, `NUM_REPETITIONS` 0 |1
+|`ENABLED_ND` set, `NUM_REPETITIONS` N of 1 or more, `LENGTH` nonzero |1
+|`ENABLED_ND` set, `NUM_REPETITIONS` N of 1 or more, `LENGTH` 0 |N
+|===
+
+A command whose bursts receive an AXI error response still retires once.
+
+The counter cycles through 2^32^ - 2 counts and never reads 0. When it reaches
+`0xFFFFFFFF` it reads 1 from the next cycle without a retirement, so
+`0xFFFFFFFF` and 1 denote the same count. After R retirements from a reading of
+D, `DONE_0` therefore reads ((D - 1 + R) mod (2^32^ - 2)) + 1, or `0xFFFFFFFF`
+for one cycle where that gives 1. Software that has submitted a set of commands
+can sum their retirements from the table and wait for that value to confirm
+that every command retired.
+
+`NEXT_ID_0` resets to 2 and wraps the same way, but it advances by one per
+command. The ID a read returns therefore equals the `DONE_0` value after that
+command retires only while every earlier command retired once. A zero-length
+command with N repetitions leaves `DONE_0` N - 1 counts ahead of the returned
+IDs from then on, so a later command's ID can equal `DONE_0` before that
+command has retired.
 
 == Memory Map and Register Reference
 

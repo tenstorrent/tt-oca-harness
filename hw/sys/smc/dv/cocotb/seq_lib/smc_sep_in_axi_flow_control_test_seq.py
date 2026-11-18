@@ -17,9 +17,9 @@ Two AMBA IHI 0022 rules are what make that safe, and both are checked here:
   issued. Three passes over eight scratch registers go out in one outstanding
   write group, each pass carrying its own word; the individual readbacks must
   show the last pass, and four further passes in one outstanding read group
-  must return the same word every time. A fabric that dropped, merged,
-  reordered or mis-routed one of the pipelined accesses returns the wrong word
-  for that address.
+  must return the same word every time. A fabric that drops or mis-routes the
+  last write to an address, or reorders it behind an earlier pass, returns the
+  wrong word for that address.
 
 The stall counts are also asserted non-zero. They are not the claim -- they are
 the measurement that the backpressure this sequence is named for actually
@@ -42,9 +42,9 @@ SCRATCH_STRIDE = 4
 # SCRATCH_COLD has eight registers (smc_reg.py: SCRATCH_COLD_SCRATCH_0..7).
 SCRATCH_COUNT = 8
 # Passes over the eight registers inside one outstanding group. Each write pass
-# carries its own value, so the readback also shows the writes to one address
-# completed in the order they were issued; the read passes repeat the same
-# expectation from deeper in the pipeline.
+# carries its own value, so the readback shows which pass landed last on each
+# address; the read passes repeat the same expectation from deeper in the
+# pipeline.
 WRITE_PASSES = 3
 READ_PASSES = 4
 
@@ -59,8 +59,17 @@ def scratch_addr(index: int) -> int:
 
 
 def scratch_pattern(index: int, write_pass: int = WRITE_PASSES - 1) -> int:
-    """Word for one register on one write pass: distinct in both."""
-    return 0xC0DE_0000 | (write_pass << 16) | (index << 8) | (0xF0 ^ index)
+    """Word for one register on one write pass: distinct in both.
+
+    The pass number sits in bits 27:24, which the constant leaves clear, so the
+    words of the three passes differ.
+    """
+    return 0xC0DE_0000 | (write_pass << 24) | (index << 8) | (0xF0 ^ index)
+
+
+assert len({scratch_pattern(i, p) for i in range(SCRATCH_COUNT) for p in range(WRITE_PASSES)}) == (
+    SCRATCH_COUNT * WRITE_PASSES
+)
 
 
 EXPECTED_ACCESSES = SCRATCH_COUNT * (WRITE_PASSES + READ_PASSES + 2)

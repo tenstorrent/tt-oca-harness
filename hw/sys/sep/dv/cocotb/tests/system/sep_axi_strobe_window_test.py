@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Narrow-write byte masking and memory-window readback.
+"""Narrow-write byte masking; OTBN memory-window accesses logged.
 
 no_cpu / +skip_fuse_sense. Every AxSIZE at every legal lane offset runs on
 every seed; the seed varies the staged data, never whether a case is covered.
@@ -10,15 +10,14 @@ lanes. The word is primed with a known value first and the expected result is
 computed from the AXI lane rule, so a stage that widens the strobe, drops it,
 or writes the whole beat fails the compare rather than looking normal.
 
-CHK-WINDOW-DATA: a memory-mapped window must read back what was written. A
-window behind an SRAM-style TileLink adapter uses the mask on reads, unlike a
-register behind a register adapter which ignores it, so a bridge that drives
-the mask from the write strobe returns zeros from the window while every
-register in the same block behaves. The response is correct in that failure,
-which is why only a data compare catches it.
-
-A window that will not accept the write at all is reported as skipped with the
-response code, not counted as a pass.
+OBS-OTBN-MEM-BUSY-ACCESS: the memory windows are OTBN IMEM and DMEM. The
+no_cpu run does not bring EDN up, so OTBN stays in its post-reset internal wipe
+(STATUS BUSY_SEC_WIPE_INT). The OTBN register text states that a busy OTBN
+reads 0 and ignores the write; each window write and readback is logged, not
+graded, under the OTBN wipe-state memory access exception
+(docs/test_contracts/smoke_uvm.adoc).
+CTRL-OTBN-MEM-PRECOND fails the leaf unless STATUS reads BUSY_SEC_WIPE_INT
+before the windows, so a configuration that leaves the wipe is noticed.
 
 FCOV: the owner window of this leaf (``sep_axi_decode_cg.cp_strobe_merge``)
 is open for one narrow write and its read-back at a time. It opens after the
@@ -52,7 +51,7 @@ WINDOW_HOLD_CYCLES = 2
 
 @pyuvm.test()
 class sep_axi_strobe_window_test(sep_base_test):
-    """Byte-lane masking on narrow writes; data integrity through windows."""
+    """Byte-lane masking on narrow writes; OTBN window accesses logged, not graded."""
 
     async def run_scenario(self) -> None:
         cfg = SepAxiStrobeWindowCfg(self.random_seed())
@@ -84,27 +83,14 @@ class sep_axi_strobe_window_test(sep_base_test):
         finally:
             close_graded_window(self.logger)
 
+        await sw.check_otbn_busy()
         for p in cfg.windows:
-            miss = await sw.probe_window(p)
-            if miss is not None:
-                fails.append(miss)
-                self.logger.error("CHK-WINDOW-DATA FAIL: %s", miss)
-            elif p.name in sw.window_skipped:
-                self.logger.info(
-                    "CHK-WINDOW-DATA SKIP: %s not writable here (%s)",
-                    p.name,
-                    sw.window_skipped[p.name],
-                )
-            else:
-                self.logger.info(
-                    "CHK-WINDOW-DATA PASS: %s 0x%08x read back 0x%08x", p.name, p.addr, p.value
-                )
+            await sw.observe_window(p)
 
         if fails:
             raise AssertionError(
-                f"CHK-STROBE/WINDOW FAIL: {len(fails)} failure(s); "
-                f"{sw.narrow_ok}/{len(cfg.writes)} narrow writes masked "
-                f"correctly, {sw.window_ok}/{len(cfg.windows)} windows verified"
+                f"CHK-STROBE FAIL: {len(fails)} failure(s); "
+                f"{sw.narrow_ok}/{len(cfg.writes)} narrow writes masked correctly"
             )
 
         # Positive evidence: every narrow write ran and was compared.
@@ -116,24 +102,6 @@ class sep_axi_strobe_window_test(sep_base_test):
             "lanes (sizes 1B/2B/4B at every legal offset)",
             sw.narrow_ok,
         )
-
-        # Windows are load-bearing evidence only when at least one was
-        # writable; say which, rather than implying all three were checked.
-        if sw.window_ok:
-            self.logger.info(
-                "CHK-WINDOW-DATA PASS: %d of %d memory window(s) returned the "
-                "written value; %d skipped as not writable here",
-                sw.window_ok,
-                len(cfg.windows),
-                len(sw.window_skipped),
-            )
-        else:
-            raise AssertionError(
-                "CHK-WINDOW-DATA FAIL: no memory window was writable, so the "
-                "read-mask contract has no evidence here ("
-                + ", ".join(f"{k}: {v}" for k, v in sw.window_skipped.items())
-                + ")"
-            )
 
         # Config report, not a checker: the size axis is the SIZE_BYTES loop, and
         # the module selftest pins its shape at import.

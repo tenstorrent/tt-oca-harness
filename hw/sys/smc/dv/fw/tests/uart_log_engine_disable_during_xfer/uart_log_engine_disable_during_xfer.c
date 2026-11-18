@@ -19,6 +19,7 @@
 
 #include "smc_io.h"
 #include "smc_test.h"
+#include "uart_16550_main_wo.h"
 
 #define WRAP0_CTRL_REG \
     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
@@ -34,6 +35,8 @@
 #define LE_REGION_ADDR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_ADDR_HI_OFF \
+    (LE_REGION_ADDR_OFF + LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp / 8u)
 #define LE_WRITE_ADDR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
@@ -65,8 +68,13 @@
 #define UART_LSR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
-#define UART_LSR_DR 0x1u
-#define UART_LSR_TEMT 0x40u
+#define UART_LSR_DR UART_16550_MAIN__LSR__DR_bm
+#define UART_LSR_TEMT UART_16550_MAIN__LSR__TEMT_bm
+
+#define LE_INTR_ERRORS \
+    (LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bm)
+#define LE_INTR_ENABLE_ERRORS \
+    (LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm)
 
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
 #define LOG_REGION_SIZE 0x100u // 16-byte slots
@@ -147,15 +155,16 @@ static void check_aborted_transfer(const char *tag, uint8_t (*expect)(uint32_t))
 // back, re-enable, trigger a 16-byte entry and require exactly those 16 bytes.
 static void check_retrigger_delivers(const char *tag, uint8_t (*expect)(uint32_t)) {
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, LOG_REGION_SIZE);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u); // clear stale error status
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, LE_INTR_ERRORS); // clear stale error status
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, RETRIGGER_ENTRY_BYTES);
     {
         /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
          * fastest divisor, about 650 register reads at the 1.25 ns core clock;
          * the bound must expire before the harness timeout. */
         uint32_t timeout = 4000u;
-        while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
+        while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) &
+                                LOG_ENGINE__LOG_CTRL__LOG_LEN_bm) != 0u) {
             timeout--;
         }
         if (timeout == 0u) {
@@ -172,7 +181,7 @@ static void check_retrigger_delivers(const char *tag, uint8_t (*expect)(uint32_t
         test_fail(0);
     }
     {
-        uint32_t st = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
+        uint32_t st = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS;
         if (st != 0u) {
             info_msg_s(0, tag);
             info_msg_hex32_s(0, "FAIL: INTR_STATUS set after clean re-run=", st);
@@ -191,26 +200,26 @@ int main(void) {
     }
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    write_reg(WRAP0_CTRL_REG, 1u);
+    write_reg(WRAP0_CTRL_REG, UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm);
 
     /* UART at the fastest rate with 8-bit words, FIFOs and internal loopback,
      * so every byte the engine writes comes back on the receive side. The
      * engine writes to UART offset 0, which is the transmit register only
      * while divisor latch access is off, so the UART is set up first. */
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, UART_16550_MAIN__LCR__DLAB_bm);
     write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u);
     write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u);
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u);
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u);
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, UART_16550_MAIN__LCR__WLS_bm);
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm);
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, UART_16550_MAIN__MCR__LOOP_bm);
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, ABORT_REGION_SIZE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
-    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
+    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_HI_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
     /* Error status latches whether or not its interrupt is enabled; enabling
      * also drives the interrupt line on an error. */
-    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0x11u);
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, LE_INTR_ENABLE_ERRORS);
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
 
     //--------------------------------------------------------------------------
     // SCENARIO A: trigger entry 0 with the 32-byte slot and disable one register
@@ -229,7 +238,7 @@ int main(void) {
 
     // Disabling must not raise an error
     {
-        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
+        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS;
         if (s != 0u) {
             info_msg_hex32_s(0, "FAIL: INTR_STATUS unexpectedly set after disable=", s);
             test_fail(0);
@@ -260,7 +269,7 @@ int main(void) {
         buf[i] = (uint8_t)(0xC0u + (i & 0x3Fu));
     }
 
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
 
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0), 16u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1), 16u);
@@ -272,10 +281,14 @@ int main(void) {
          * it must expire before the harness timeout. */
         uint32_t timeout = 4000u;
         while (timeout > 0u) {
-            uint32_t c0 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0)) & 0xFFFFu;
-            uint32_t c1 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1)) & 0xFFFFu;
-            uint32_t c2 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(2)) & 0xFFFFu;
-            uint32_t c3 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(3)) & 0xFFFFu;
+            uint32_t c0 =
+                read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0)) & LOG_ENGINE__LOG_CTRL__LOG_LEN_bm;
+            uint32_t c1 =
+                read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1)) & LOG_ENGINE__LOG_CTRL__LOG_LEN_bm;
+            uint32_t c2 =
+                read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(2)) & LOG_ENGINE__LOG_CTRL__LOG_LEN_bm;
+            uint32_t c3 =
+                read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(3)) & LOG_ENGINE__LOG_CTRL__LOG_LEN_bm;
             if ((c0 | c1 | c2 | c3) == 0u) break;
             timeout--;
         }
@@ -293,14 +306,14 @@ int main(void) {
     // SCENARIO C: disable a 32-byte entry a short time after it starts, then
     // require the same halt and recovery as scenario A.
     //--------------------------------------------------------------------------
-    info_msg_s(0, "scenario C: abort while FSM is in WAIT");
+    info_msg_s(0, "scenario C: second abort a short spin after the trigger");
 
     // Give the abort the 32-byte slot again; it now holds scenario B's pattern
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, LE_INTR_ERRORS);
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, ABORT_REGION_SIZE);
 
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, ABORT_ENTRY_BYTES);
 
     // Short spin intended to let the first fetch go out before the disable
@@ -310,9 +323,9 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
 
     {
-        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
+        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS;
         info_msg_hex32_s(0, "scenario C INTR_STATUS=", s);
-        // INTR_STATUS after an abort in WAIT is not pinned: an in-flight beat
+        // INTR_STATUS after this abort is not pinned: an in-flight beat
         // may or may not have raised an error before the disable took effect.
     }
 
@@ -333,24 +346,25 @@ int main(void) {
 #define WRAP1_LE_CTRL_OFF LE_CTRL_OFF /* same offset within block */
 #define WRAP1_LE_REGION_SIZE LE_REGION_SIZE_OFF
 #define WRAP1_LE_REGION_ADDR LE_REGION_ADDR_OFF
+#define WRAP1_LE_REGION_ADDR_HI LE_REGION_ADDR_HI_OFF
 #define WRAP1_LE_WRITE_ADDR LE_WRITE_ADDR_OFF
 #define WRAP1_LE_LOG_CTRL0 LE_LOG_CTRL0_OFF
 #define WRAP1_UART_RBR UART_RBR_OFF
 #define WRAP1_UART_MCR UART_MCR_OFF
 
-    write_reg(WRAP1_CTRL_REG, 1u);
+    write_reg(WRAP1_CTRL_REG, UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm);
     // Same UART setup as wrapper 0, for the same reason
-    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x80u);
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, UART_16550_MAIN__LCR__DLAB_bm);
     write_reg(WRAP1_UART_BASE + UART_RBR_OFF, 0x01u);
     write_reg(WRAP1_UART_BASE + UART_IER_OFF, 0x00u);
-    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x03u);
-    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, 0x01u);
-    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x10u);
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, UART_16550_MAIN__LCR__WLS_bm);
+    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm);
+    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, UART_16550_MAIN__MCR__LOOP_bm);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_SIZE, LOG_REGION_SIZE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR, LOG_BUFFER_BASE);
-    write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR + 4, 0u);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR_HI, 0u);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_WRITE_ADDR, WRAP1_UART_BASE + WRAP1_UART_RBR);
-    write_reg(WRAP1_LE_BASE + WRAP1_LE_CTRL_OFF, 1u);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0, 16u);
 
     {
@@ -358,7 +372,8 @@ int main(void) {
          * fastest divisor, about 650 register reads at the 1.25 ns core clock;
          * the bound must expire before the harness timeout. */
         uint32_t timeout = 4000u;
-        while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
+        while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) &
+                                LOG_ENGINE__LOG_CTRL__LOG_LEN_bm) != 0u) {
             timeout--;
         }
         if (timeout == 0u) {

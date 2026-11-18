@@ -133,9 +133,9 @@ typedef enum int unsigned {
 localparam int unsigned SmcFabricGaters = 8;
 localparam int unsigned SmcFabricRegWords = 5;
 localparam int unsigned SmcCgFilterEntry =
-    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM) - 1;
+    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM) - 1;
 localparam int unsigned SmcCgRemapRegion =
-    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_NUM) - 1;
+    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM) - 1;
 
 typedef struct {
   string name;
@@ -148,53 +148,74 @@ typedef struct {
 
 function automatic bit [63:0] smc_cg_filter_config(bit inbound);
   if (inbound)
-    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
         SmcCgFilterEntry
     );
-  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
       SmcCgFilterEntry
   );
 endfunction
 
 function automatic bit [63:0] smc_cg_filter_end(bit inbound);
   if (inbound)
-    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(
+    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(
         SmcCgFilterEntry
     );
-  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(SmcCgFilterEntry);
+  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(
+      SmcCgFilterEntry
+  );
 endfunction
 
 function automatic void smc_fabric_reg_catalog(ref smc_fabric_reg_entry_t entries[$]);
   entries.delete();
-  entries.push_back(
-      '{"OB_FILTER.START",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(SmcCgFilterEntry),
-      FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
-      FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_OB_FILTER});
-  entries.push_back(
-      '{"IB_FILTER.START",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(SmcCgFilterEntry),
-      FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
-      FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_IB_FILTER});
-  entries.push_back(
-      '{"ALIAS.REGION_START",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(SmcCgRemapRegion),
-      REMAP_REGION_REGION_START_REG_DEFAULT, REMAP_REGION_REGION_START_START_ADDR_MASK,
-      REMAP_REGION_REGION_START_START_ADDR_MASK, SMC_CG_ALIAS_REMAP});
-  entries.push_back(
-      '{"MMODE.REGION_ATTRS",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR(SmcCgRemapRegion),
-      OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
-      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
-      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
-      SMC_CG_MMODE_REMAP});
-  entries.push_back(
-      '{"XVISOR.REGION_ATTRS",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR(SmcCgRemapRegion),
-      OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
-      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
-      OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK | OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
-      SMC_CG_XVISOR_REMAP});
+  entries.push_back('{"OB_FILTER.START",
+                    smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR
+                    (
+                        SmcCgFilterEntry
+                    ),
+                    FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
+                    FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_OB_FILTER});
+  entries.push_back('{"IB_FILTER.START",
+                    smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR
+                    (
+                        SmcCgFilterEntry
+                    ),
+                    FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
+                    FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_IB_FILTER});
+  entries.push_back('{"ALIAS.REGION_START",
+                    smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR
+                    (
+                        SmcCgRemapRegion
+                    ),
+                    REMAP_REGION_REGION_START_REG_DEFAULT,
+                    REMAP_REGION_REGION_START_START_ADDR_MASK,
+                    REMAP_REGION_REGION_START_START_ADDR_MASK, SMC_CG_ALIAS_REMAP});
+  entries.push_back('{"MMODE.REGION_ATTRS",
+                    smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR
+                    (
+                        SmcCgRemapRegion
+                    ),
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK
+                    |
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK
+                    |
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+                    SMC_CG_MMODE_REMAP});
+  entries.push_back('{"XVISOR.REGION_ATTRS",
+                    smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR
+                    (
+                        SmcCgRemapRegion
+                    ),
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK
+                    |
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK
+                    |
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK,
+                    SMC_CG_XVISOR_REMAP});
 endfunction
 
 function automatic bit smc_fabric_reg_lookup(bit [63:0] addr, output int unsigned index);
@@ -239,15 +260,15 @@ localparam bit [63:0] SmcHangDataAccelThresholdAddr = 64'(
     smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR
 );
 localparam bit [63:0] SmcAliasRegionStartAddr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
     0
 ));
 localparam bit [63:0] SmcAliasRegionEndAddr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(
     0
 ));
 localparam bit [63:0] SmcAliasRegionAttrsAddr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
     0
 ));
 
@@ -645,8 +666,9 @@ endfunction
 //
 // Both registers are declared regwidth/accesswidth 64, but each live field
 // sits inside the low 32 bits, so the bench's 4-byte CSR access covers the
-// whole field under test; bits above the field carry no RDL field and are
-// masked out of every compare rather than being given an invented expectation.
+// whole field under test. Low-word bits above the field carry no RDL field and
+// are masked out of the compare; an upper MUTEX word reads as zero per
+// cpu_ctrl.rdl and is compared whole.
 // ---------------------------------------------------------------------------
 
 localparam int unsigned SmcMutexCount = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_MUTEX_NUM);
@@ -694,6 +716,21 @@ function automatic bit smc_is_mutex_sema_access(ocah_axi_item t, output int unsi
                                                 output bit is_sema);
   if (!smc_mutex_sema_lookup(smc_csr_word_addr(t.address), idx, is_sema)) return 1'b0;
   return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+endfunction
+
+// An OKAY single-beat 32-bit read of the upper MUTEX word acquires the mutex and,
+// per cpu_ctrl.rdl, returns zero across the whole word.
+function automatic bit smc_is_mutex_upper_read(ocah_axi_item t, output int unsigned idx);
+  if (t.direction != OCAH_AXI_DIR_READ || !t.is_ok() || t.size != SmcCsrSize ||
+      t.data_words.size() != 1 || t.beat_count() != 1)
+    return 0;
+  for (int unsigned i = 0; i < SmcMutexCount; i++) begin
+    if (t.address == smc_mutex_addr(i) + SmcCsrBytes) begin
+      idx = i;
+      return 1;
+    end
+  end
+  return 0;
 endfunction
 
 // ---------------------------------------------------------------------------

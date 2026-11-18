@@ -26,6 +26,10 @@ Scratch register 0 is at `0xC0039080`; consecutive scratch registers are eight b
 |`0xC0039090`
 |Virtual console output in debug-enabled builds.
 
+|3
+|`0xC0039098`
+|Park request from the SEP; see <<smc-park-interlock>>.
+
 |8
 |`0xC00390C0`
 |Manifest offset from SRAM base, or `0xFFFFFFFF` when invalid.
@@ -55,8 +59,9 @@ Scratch register 0 is at `0xC0039080`; consecutive scratch registers are eight b
 |MBIST, memory-repair, or ROM-padding-trap status.
 |===
 
-Assembly clears registers 8, 9, 11, 13, and 14 after installing the early trap vector.
-It deliberately preserves register 15.
+Assembly on the boot hart clears registers 3, 8, 9, 11, 13, and 14 after installing the early
+trap vector; a secondary hart that enters the ROM leaves them alone. It deliberately preserves
+register 15.
 
 .Scratch register 9
 [cols="1,2,4",options="header"]
@@ -66,6 +71,7 @@ It deliberately preserves register 15.
 |1 |Manifest ready |`AuthenticateImage` has published scratch register 8.
 |2 |Status buffer ready |Scratch register 11 contains the SEP ring-buffer offset.
 |3 |SRAM protected |Defined by the interface but not set by the current ROM.
+|4 |Hart 0 parked |Hart 0 has written back its L1 D-cache and stopped in the ROM; see <<smc-park-interlock>>.
 |===
 
 Manifest ready means that register 8 has been published; it does not certify the offset.
@@ -73,6 +79,42 @@ An invalid publication carries `0xFFFFFFFF`, and the SEP must reject that marker
 
 The published SRAM addresses are offsets from `0xC0060000`.
 The normal values in registers 13 and 14 describe `0xC0066400` through `0xC015AFFF`.
+
+[[smc-park-interlock]]
+=== Hart 0 park interlock
+
+A core reset applies to hart 0 immediately, without draining it: a store still held in its
+L1 D-cache is lost, and an OCCP transaction in progress is cut off. Before the SEP resets
+hart 0, it confirms that hart 0 is parked.
+
+After the early MBIST and memory-repair checks, every stop of hart 0 ends in
+`smc_park_hart0`:
+
+* the park after `AuthenticateImage`;
+* each C boot halt: invalid lifecycle, PLL failure, OCCP initialization failure, and an
+  unexpected return from the command loop;
+* a trap taken by hart 0;
+* a park on request.
+
+The MBIST and memory-repair failure loops run before any of this and do not park. A trap on a
+secondary hart spins without parking.
+
+`smc_park_hart0` clears `mie` and `mstatus.MIE`, then executes `fence`, `cflush.d.l1 x0`
+(write back and invalidate the whole L1 D-cache) and `fence`. It then sets bit 4 of scratch
+register 9 with a read-modify-write that keeps the other bits, and loops on `wfi` at
+`smc_park_hart0_wfi`. It uses no stack, so nothing dirties the cache after the write-back.
+
+The parked bit means only that hart 0 has stopped, not that it booted: a halt on an invalid
+lifecycle sets it too. It describes hart 0 only while hart 0 runs the ROM. The ROM clears it
+on entry, and the image that hart 0 runs next must clear it before anything else, so the bit
+never reports a running hart as parked.
+
+The SEP requests a park by writing `0x50524B31` ("PRK1") to scratch register 3; any other
+value is no request. The ROM reads scratch register 3 once per polling iteration of the OCCP
+command loop, between commands, and parks instead of servicing more commands. A command in
+progress, including its transport timeout, completes first, so the time to park is bounded by
+the longest OCCP command rather than by the polling loop. Only the SEP writes the register.
+Assembly clears it on entry, so a request left from before a reset is discarded.
 
 === Ring buffers
 

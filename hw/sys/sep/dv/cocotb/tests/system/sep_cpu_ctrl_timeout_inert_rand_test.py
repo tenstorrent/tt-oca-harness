@@ -76,7 +76,12 @@ from env.sep_mbox_golden import IRQ_WTIRQ
 from env.sep_pic_map import VEC_GRADED, idle_unstated_line
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, SEP_CPU_CTRL, RegBlock, sym
+from sep_reg_meta import (
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
+    SEP_CPU_CTRL,
+    RegBlock,
+    sym,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_dma_ops import _D, ST_BUSY, ST_DONE, ST_ERROR, SepDmaOps
@@ -120,7 +125,7 @@ ALIAS_TARGET = ALIAS_ACCESS + ALIAS_OFFSET
 ALIAS_REGION = 0
 OUT_PAIR_SMU = (4, 5)
 OUT_PAIR_ALIAS = (6, 7)
-_AM = LOCAL_MASTER_ALIAS_REMAP_CTRL_0
+_AM = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0
 ALIAS_OFFSET_FIELD = _AM.field_mask("REGION_REGION_ATTRS", "offset")
 ALIAS_VALID_FIELD = _AM.field_mask("REGION_REGION_ATTRS", "valid")
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
@@ -167,8 +172,8 @@ class _AliasReg(SepAxiRegDriver):
 
     async def program(self) -> None:
         base = ALIAS_BASE + ALIAS_REGION * (
-            sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR")
-            - sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
+            sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR")
+            - sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
         )
         attrs = (ALIAS_OFFSET & ALIAS_OFFSET_FIELD) | ALIAS_VALID_FIELD
         for off, v in (

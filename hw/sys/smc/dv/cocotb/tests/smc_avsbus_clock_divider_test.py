@@ -23,8 +23,10 @@ class smc_avsbus_clock_divider_test(smc_base_test):
         "CHK-AVS-CLKDIV-MINIMUM",
         "CHK-AVS-CLKDIV-PERIOD",
         "CHK-AVS-CLKDIV-RESTORE",
+        "CHK-AVS-DIVIDER-ALONE-PULSE",
+        "CHK-AVS-ODD-DIVIDER-DUTY",
     )
-    min_evidence = 4
+    min_evidence = 6
 
     auto_protocol_vip = False
 

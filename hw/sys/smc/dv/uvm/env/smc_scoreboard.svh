@@ -22,6 +22,8 @@
 //                smc_mutex_sema_ref_model published for it, compared under the
 //                RDL field mask: acquire-on-read for a mutex, the signed
 //                accumulator for a semaphore.
+//                OKAY 32-bit MUTEX upper-word reads also acquire; their
+//                entire returned word is compared against zero.
 //
 //   lock_csr     every OKAY single-beat read of a reset-unit write-once lock
 //                register or of the register it guards is paired in order with
@@ -208,7 +210,12 @@ class smc_scoreboard extends ocah_scoreboard;
   function void write_smc_mutex_observed(ocah_axi_item t);
     int unsigned idx;
     bit          is_sema;
-    if (t.direction != OCAH_AXI_DIR_READ || !smc_is_mutex_sema_access(t, idx, is_sema)) return;
+    if (t.direction != OCAH_AXI_DIR_READ || (!smc_is_mutex_sema_access(
+            t, idx, is_sema
+        ) && !smc_is_mutex_upper_read(
+            t, idx
+        )))
+      return;
     push_observed(SmcFeatureMutexSema, t);
   endfunction
 
@@ -397,8 +404,8 @@ class smc_scoreboard extends ocah_scoreboard;
 
   // Bits the feature has a contract on. Every CSR feature here owns the whole
   // 32-bit word except mutex_sema, whose registers are declared regwidth 64
-  // with a narrower live field, so the bits above the field are excluded
-  // rather than given an invented expectation.
+  // with a narrower live field: the low word is compared under the field mask,
+  // and an upper MUTEX word, which reads as zero, is compared whole.
   protected function bit [31:0] field_mask(string feature, bit [63:0] word_addr);
     int unsigned idx;
     bit          is_sema;
@@ -482,6 +489,8 @@ class smc_scoreboard extends ocah_scoreboard;
         return $sformatf(
             "CPU_CTRL_%s_%0d addr=0x%0h", is_sema ? "SEMA" : "MUTEX", ms_idx, word_addr
         );
+      if (smc_mutex_sema_lookup(word_addr - SmcCsrBytes, ms_idx, is_sema) && !is_sema)
+        return $sformatf("CPU_CTRL_MUTEX_%0d upper addr=0x%0h", ms_idx, word_addr);
       return $sformatf("addr=0x%0h", word_addr);
     end
     if (feature == SmcFeatureLockCsr) begin

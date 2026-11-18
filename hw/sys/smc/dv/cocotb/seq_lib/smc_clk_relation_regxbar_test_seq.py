@@ -316,7 +316,8 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
             self._term("S2", "RESET_ROUND_TRIPPED")
             self._chk(
                 "CHK-REGXBAR-RESET-RT",
-                f"HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD reset read 0x{saved_thr_reset:05x} "
+                f"cell={self.cell}: HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD reset read "
+                f"0x{saved_thr_reset:05x} "
                 f"(RDL reset 0x{THR_RESET:05x}), after write of 0x{THR_PATTERN:05x} read "
                 f"0x{wrote:05x}, after restore read 0x{restored:05x}, all OKAY",
             )
@@ -340,7 +341,7 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
         self._term("S3", "BOTH_READ_BACK")
         self._chk(
             "CHK-CLK-RELATION-ROUNDTRIP",
-            f"cell {self.cell} periods {periods}: HANG_DET threshold wrote 0x{THR_PATTERN:05x} "
+            f"cell={self.cell} periods {periods}: HANG_DET threshold wrote 0x{THR_PATTERN:05x} "
             f"read 0x{thr_rb:05x}, restored 0x{thr_back:05x}; AVS_CFG_0 MAX_RETRIES "
             f"0x{MAX_RETRIES_VALUE:x} wrote 0x{avs_word:08x} read 0x{avs_rb:08x}, restored "
             f"0x{avs_back:08x}; all OKAY",
@@ -351,7 +352,7 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
             self._term("S4", "SMC_SIDE_REPEATED")
             self._chk(
                 "CHK-REGXBAR-PERIODS",
-                f"cell {self.cell} periods {periods}: HANG_DET threshold read 0x{wrote:05x} "
+                f"cell={self.cell} periods {periods}: HANG_DET threshold read 0x{wrote:05x} "
                 f"after writing 0x{THR_PATTERN:05x} and 0x{restored:05x} after restore to "
                 f"0x{THR_RESET:05x}, the values of the default-triple run",
             )
@@ -361,7 +362,7 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
             self._term("S5", "OUTSTANDING_DRAINED")
             self._chk(
                 "CHK-CLK-RELATION-BACKPRESSURE",
-                f"cell {self.cell} periods {periods}: 2 writes issued together, both B "
+                f"cell={self.cell} periods {periods}: 2 writes issued together, both B "
                 f"responses taken, then {OUTSTANDING_READS} alternating reads under one AXI id "
                 f"issued together; {detail}; all OKAY within {elapsed} ns (bound "
                 f"{ACCESS_TIMEOUT_NS} ns, drain time printed, not specified, measured); "
@@ -383,11 +384,17 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
             f"outstanding_drain={ACCESS_TIMEOUT_NS}ns last={self.group_state} "
             f"fail=AssertionError(member timeout or elapsed over bound)",
         )
-        cocotb.log.info("CHK-TIMEOUT-PATHS: %d bounded waits: %s", len(waits), " ".join(waits))
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: cell=%s: %d bounded waits: %s",
+            self.cell,
+            len(waits),
+            " ".join(waits),
+        )
 
         self._assert_fence(steps)
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
+            "CHK-NONVAC: cell=%s: ordered fence %s; checker lines %s; stamps %s",
+            self.cell,
             " < ".join(t for t, _, _ in self.terms),
             ", ".join(c for c, _ in self.chks),
             ", ".join(f"{t}@{ps}" for t, _, ps in self.terms),

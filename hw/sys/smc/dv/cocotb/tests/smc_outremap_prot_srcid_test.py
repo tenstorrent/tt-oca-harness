@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Output remaps leave AxPROT unchanged; the AxUSER source ID of each path is observed."""
+"""Output remaps leave AxPROT unchanged; each outbound path leaves with its own AxUSER source ID."""
 
 from __future__ import annotations
 
@@ -19,11 +19,11 @@ class smc_outremap_prot_srcid_test(smc_base_test):
         "CHK-PROT-DIRECT",
         "CHK-PROT-MMODE",
         "CHK-PROT-XVISOR",
-        "CHK-SRCID-DIRECT-OBSERVE",
-        "CHK-SRCID-MMODE-OBSERVE",
-        "CHK-SRCID-XVISOR-OBSERVE",
+        "CHK-SRCID-DIRECT-0X3",
+        "CHK-SRCID-MMODE-0XC",
+        "CHK-SRCID-XVISOR-0X0",
         "CHK-TIMEOUT-PATHS",
-        "CHK-VALID0-SRCID-OBSERVE",
+        "CHK-VALID0-SRCID-MMODE-0XC",
     )
     min_evidence = 10
 

@@ -751,52 +751,63 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
         await self._step_setup()
         self._mark_step("S1")
 
-        aw_lag = AxiTimingProfile(aw_delay=SKEW)
-        w_lag = AxiTimingProfile(w_delay=SKEW)
-        w_first = await self._scratch_skew("WFIRST", 0, 0xC0DE_1000, aw_lag, False)
-        self._mark_step("S2")
-        burst_w = await self._burst_skew("WFIRST_BURST", 0, 0xC2, aw_lag, False)
-        self._mark_step("S3")
-        self._log_chk(
-            "CHK-CTP-W-FIRST",
-            f"W presented {SKEW} cycles ahead of AW: " + "; ".join(w_first) + f"; {burst_w}; "
-            "ordinary reads returned 0xC0DE_1000+k",
-        )
+        # smc_outstanding_cg samples the walk of steps 2 to 9; the inbound window is
+        # programmed in the setup and restored in the teardown, outside its gate.
+        cocotb.top.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            aw_lag = AxiTimingProfile(aw_delay=SKEW)
+            w_lag = AxiTimingProfile(w_delay=SKEW)
+            w_first = await self._scratch_skew("WFIRST", 0, 0xC0DE_1000, aw_lag, False)
+            self._mark_step("S2")
+            burst_w = await self._burst_skew("WFIRST_BURST", 0, 0xC2, aw_lag, False)
+            self._mark_step("S3")
+            self._log_chk(
+                "CHK-CTP-W-FIRST",
+                f"W presented {SKEW} cycles ahead of AW: " + "; ".join(w_first) + f"; {burst_w}; "
+                "ordinary reads returned 0xC0DE_1000+k",
+            )
 
-        aw_first = await self._scratch_skew("AWFIRST", 3, 0xC0DE_2000, w_lag, True)
-        self._mark_step("S4")
-        burst_a = await self._burst_skew("AWFIRST_BURST", 0x400, 0xC3, w_lag, True)
-        self._mark_step("S5")
-        self._log_chk(
-            "CHK-CTP-AW-FIRST",
-            f"AW presented {SKEW} cycles ahead of W: " + "; ".join(aw_first) + f"; {burst_a}; "
-            "ordinary reads returned 0xC0DE_2000+k",
-        )
+            aw_first = await self._scratch_skew("AWFIRST", 3, 0xC0DE_2000, w_lag, True)
+            self._mark_step("S4")
+            burst_a = await self._burst_skew("AWFIRST_BURST", 0x400, 0xC3, w_lag, True)
+            self._mark_step("S5")
+            self._log_chk(
+                "CHK-CTP-AW-FIRST",
+                f"AW presented {SKEW} cycles ahead of W: " + "; ".join(aw_first) + f"; {burst_a}; "
+                "ordinary reads returned 0xC0DE_2000+k",
+            )
 
-        queue = await self._step_queue()
-        self._mark_step("S6")
-        self._log_chk("CHK-CTP-AW-QUEUE", queue)
+            queue = await self._step_queue()
+            self._mark_step("S6")
+            self._log_chk("CHK-CTP-AW-QUEUE", queue)
 
-        bready = await self._step_bready(rng)
-        self._mark_step("S7")
-        self._log_chk(
-            "CHK-CTP-BREADY-PORTS",
-            f"B held on SEP_IN by tb_sep_axi_b_hold and then BREADY held {B_HOLD} cycles on every "
-            f"port: {bready}; drawn=seed {self.seed} b_hold {self.b_hold} ids "
-            f"{self._ids_text()}",
-        )
+            bready = await self._step_bready(rng)
+            self._mark_step("S7")
+            self._log_chk(
+                "CHK-CTP-BREADY-PORTS",
+                f"B held on SEP_IN by tb_sep_axi_b_hold and then BREADY held {B_HOLD} cycles on every "
+                f"port: {bready}; drawn=seed {self.seed} b_hold {self.b_hold} ids "
+                f"{self._ids_text()}",
+            )
 
-        rready = await self._step_rready(rng)
-        self._mark_step("S8")
-        self._log_chk(
-            "CHK-CTP-RREADY-BEATS",
-            f"RREADY held {R_HOLD} cycles: {rready}; drawn=seed {self.seed} r_hold "
-            f"{self.r_hold} ids {self._ids_text()}",
-        )
+            rready = await self._step_rready(rng)
+            self._mark_step("S8")
+            self._log_chk(
+                "CHK-CTP-RREADY-BEATS",
+                f"RREADY held {R_HOLD} cycles: {rready}; drawn=seed {self.seed} r_hold "
+                f"{self.r_hold} ids {self._ids_text()}",
+            )
 
-        random_text = await self._step_random(rng)
-        self._mark_step("S9")
-        self._log_chk("CHK-CTP-RANDOM-STALLS", random_text)
+            random_text = await self._step_random(rng)
+            self._mark_step("S9")
+            self._log_chk("CHK-CTP-RANDOM-STALLS", random_text)
+        finally:
+            # A compare that fails inside a read-only phase leaves it with the
+            # exception; the gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            cocotb.top.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
 
         await self._step_teardown()
         self._mark_step("S10")

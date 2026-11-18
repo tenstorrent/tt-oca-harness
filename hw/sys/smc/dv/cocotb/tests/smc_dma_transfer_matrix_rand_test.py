@@ -19,10 +19,11 @@ class smc_dma_transfer_matrix_rand_test(smc_base_test):
         "CHK-DXM-DONE-ID",
         "CHK-DXM-ND-CLEAR",
         "CHK-DXM-ZERO-LENGTH",
+        "CHK-DXM-ZERO-LENGTH-DONE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     auto_protocol_vip = False
 

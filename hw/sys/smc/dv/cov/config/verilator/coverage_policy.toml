@@ -51,8 +51,9 @@
 # targets, read from the run SMC_FCOV.adoc names in "Owning tests, measured"
 # (its commit and simulator). Every collected `user` point is hit by an
 # enrolled leaf; a point this bench cannot legally reach is not collected (see
-# the Phase 2 list in SMC_FCOV.adoc) rather than waived here, so this file
-# carries no `[[holes]]`.
+# the Phase 2 list in SMC_FCOV.adoc) rather than waived here. The
+# `[[holes]]` below are smc_axi_order_fcov cells that a port's ID width, or
+# the stimulus of the order-coverage proof set, leaves dark.
 #
 # Hole categories a row may carry:
 #   missing_stimulus  no enrolled test drives the condition; the rationale
@@ -80,3 +81,48 @@ metric_family = "user"
 population = "effective"
 minimum_percent = 100.0
 max_unclassified_points = 0
+
+[[holes]]
+id = "axi-order-jtag-in-rd-eight-ids"
+title = "c_rd_eight_ids on JTAG_IN"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "JTAG_IN carries a 2-bit ARID, so at most four distinct ARIDs exist and eight cannot be outstanding in one span. The SEP_IN and SYS_IN instances (6-bit ID) carry the point."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_jtag_in_order_fcov.c_rd_eight_ids"
+
+[[holes]]
+id = "axi-order-sys-in-w-first"
+title = "c_w_first on SYS_IN"
+category = "missing_stimulus"
+disposition = "waive"
+status = "open"
+confidence = "medium"
+rationale = "In the order-coverage proof run (smoke plus smc_sep_in_axi_flow_control_test, smc_cpuif_handshake_test, smc_clk_ratio_order_per_id_test and smc_axi_random_stress_test; the random-stress leaf at its group-mode seed) no SYS_IN write that completed OKAY had its first WVALID raised before its AWVALID. The SEP_IN and JTAG_IN instances record the order."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_sys_in_order_fcov.c_w_first"
+
+[[holes]]
+id = "axi-order-sys-in-ar-during-write"
+title = "c_ar_during_write on SYS_IN"
+category = "missing_stimulus"
+disposition = "waive"
+status = "open"
+confidence = "medium"
+rationale = "In the order-coverage proof run (smoke plus smc_sep_in_axi_flow_control_test, smc_cpuif_handshake_test, smc_clk_ratio_order_per_id_test and smc_axi_random_stress_test; the random-stress leaf at its group-mode seed) no SYS_IN read was accepted while an accepted SYS_IN AW had no WVALID yet with both completing OKAY. The SEP_IN and JTAG_IN instances record the overlap."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_sys_in_order_fcov.c_ar_during_write"

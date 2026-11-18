@@ -7,7 +7,7 @@
 
 `smc_cpuif_handshake_test` drives instance 0 of each register block. This
 sequence drives every instance of the multi-instance families -- GPIO
-interfaces 0..64, inbound and outbound filter entries 0..15, M-mode, Xvisor and
+interfaces 0..66, inbound and outbound filter entries 0..15, M-mode, Xvisor and
 alias remaps 0..7, I2C 0..2, the UART/log wraps 0..3 (control, main UART,
 divisor latch, log engine), telemetry receivers 0..2 and the cold and warm
 scratch banks -- and instance 0 of every single-instance family: reset unit,
@@ -15,7 +15,7 @@ cpu_ctrl, the IRQEN register of each of the 64 mailbox apertures, AVSBus, I2C
 control, OCTS, DFX, base configuration, eFuse interface control and shadow,
 zeroer and iDMA control, I3C 0, the DFD/CLA sink, chip_config, ndm_reset and
 the straps window. One instance at a time, through SEP_IN. The DTP CSR target
-has no responder on this bench and is never accessed (SF-040).
+has no responder on this bench and is never accessed.
 
 Each instance has one reference register: on a pinned-map family a
 side-effect-free read-write register whose fields the spec documents as inert
@@ -52,7 +52,7 @@ orders no read against writes on the write channel, so a read that overlaps a
 write of its group may return either value. It is held to the last write whose B
 preceded its AR, or to a write of the group whose AW handshake is at or before
 the read's R and whose B is not before its AR; those matches are logged with
-their AR, R, AW and B cycles (SF-010). Any other value fails.
+their AR, R, AW and B cycles. Any other value fails.
 BREADY and RREADY are held through the VIP's response sinks, released a fixed
 number of cycles after the response's VALID is first seen; for a W-ahead write
 the AW source is held and released so that AW VALID rises exactly the driven
@@ -77,11 +77,13 @@ from ocah_axi_vip import AxiTimingProfile
 
 from .smc_addr_map import GPIO_INTF_NUM, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_log_engine_utils import DLL_OFFSET, LCR_DLAB, uart_base, uart_reg
+from .smc_log_engine_utils import DLL_OFFSET, DLM_OFFSET, LCR_DLAB, uart_base, uart_reg
 from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, MAILBOX_CG_EN
 from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
 
 RESP_OKAY = 0
+# The divisor-latch window places DLL and DLM back to back, one register apart.
+DLL_WIDTH = DLM_OFFSET - DLL_OFFSET
 
 # Each group wait is bounded below the driver's own 50 us per-access bound, so
 # an expiry reports the outstanding count before the driver raises.
@@ -312,6 +314,10 @@ def _deposit(k: int, mask: int) -> int:
     return out
 
 
+def _lcr_width(wrap: int) -> int:
+    return rdl_contract(f"smc_uart_wrap/uart_log_engine_wrap[{wrap}]/uart/LCR").width_bytes
+
+
 def _indexed(sym: str, path: str, idx: int) -> RdlReg:
     """Instance ``idx`` of ``path`` (a ``{}`` marks the index), held to both maps."""
     reg = rdl_contract(path.format(idx))
@@ -326,16 +332,16 @@ def _indexed(sym: str, path: str, idx: int) -> RdlReg:
 
 def build_instances() -> tuple[Inst, ...]:
     out: list[Inst] = []
-    assert GPIO_INTF_NUM == 65, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..64"
+    assert GPIO_INTF_NUM == 67, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..66"
     for i in range(GPIO_INTF_NUM):
-        sym = "SMC_TOP_GPIO_INTF_BASE_ADDR"
-        a = _indexed(sym, "gpio_intf[{}]/ACCESS_FILTER", i)
-        b = _indexed(sym, "gpio_intf[{}]/DATA_CTRL", i)
+        sym = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR"
+        a = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", i)
+        b = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/DATA_CTRL", i)
         _check_probe(a, written=True)
         _check_probe(b, written=True)
         out.append(
             Inst(
-                f"gpio_intf[{i}]",
+                f"gpio_intf_wrap/gpio_intf[{i}]",
                 "gpio_intf",
                 a.addr,
                 a.width_bytes,
@@ -350,9 +356,9 @@ def build_instances() -> tuple[Inst, ...]:
             )
         )
     for bank in ("inbound", "outbound"):
-        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_BASE_ADDR"
+        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR"
         for i in range(16):
-            path = f"smc_{bank}_filter_ctrl[{{}}]/"
+            path = f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{{}}]/"
             cfg = _indexed(sym, path + "FILTER_CONFIG", i)
             a = _indexed(sym, path + "START_ADDR", i)
             b = _indexed(sym, path + "END_ADDR", i)
@@ -383,8 +389,11 @@ def build_instances() -> tuple[Inst, ...]:
                 )
             )
     for fam in ("mmode", "xvisor"):
-        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_BASE_ADDR"
-        regs = [_indexed(sym, f"smc_{fam}_remap[{{}}]/REGION/region_attrs", i) for i in range(8)]
+        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_WRAP_OUTPUT_REMAP_BASE_ADDR"
+        regs = [
+            _indexed(sym, f"smc_{fam}_remap_wrap/output_remap[{{}}]/REGION/region_attrs", i)
+            for i in range(8)
+        ]
         for i, a in enumerate(regs):
             b = regs[(i + 1) % len(regs)]
             _check_probe(a, written=True)
@@ -405,11 +414,11 @@ def build_instances() -> tuple[Inst, ...]:
                     b_zero=_mask(b, "valid"),
                 )
             )
-    sym = "SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR"
+    sym = "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR"
     for i in range(8):
-        a = _indexed(sym, "smc_alias_remap[{}]/REGION/region_start", i)
-        b = _indexed(sym, "smc_alias_remap[{}]/REGION/region_end", i)
-        attrs = _indexed(sym, "smc_alias_remap[{}]/REGION/region_attrs", i)
+        a = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", i)
+        b = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_end", i)
+        attrs = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", i)
         for reg in (a, b, attrs):
             _check_probe(reg, written=reg is not attrs)
         out.append(
@@ -455,7 +464,7 @@ def build_instances() -> tuple[Inst, ...]:
                 f"uart_16550_dl[{w}]",
                 "uart_16550_dl",
                 uart_base(w) + DLL_OFFSET,
-                4,
+                DLL_WIDTH,
                 False,
                 dlab_wrap=w,
             )
@@ -508,7 +517,7 @@ def build_instances() -> tuple[Inst, ...]:
             "straps",
             "straps",
             smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR"),
-            4,
+            rdl_register("smc_external/mandatory/straps/STRAPS_LO").width_bytes,
             False,
         )
     )
@@ -833,7 +842,8 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             inflight += 1
             cocotb.log.info(
                 "MEASURE %s: read ID %d AR cycle %d R cycle %d returned overlapping write 0x%x "
-                "(AW cycle %d <= R, B cycle %d >= AR), last acknowledged 0x%x (SF-010)",
+                "(AW cycle %d <= R, B cycle %d >= AR), last acknowledged 0x%x (open: the "
+                "outstanding depth and read-after-write value of a register block)",
                 label,
                 rd.axi_id,
                 ar,
@@ -1013,7 +1023,8 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             self.logged_writeback.append(x.name)
             cocotb.log.info(
                 "MEASURE %s: read 0x%x, write-back BRESP %s, following read 0x%x "
-                "(check set open, SF-001/SF-009)",
+                "(open: which registers of each endpoint form the check set and which "
+                "instances count as generated register blocks)",
                 label,
                 first,
                 bresp,
@@ -1049,7 +1060,8 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             self.sweep["logged_equal"] += equal
             cocotb.log.info(
                 "MEASURE %s: %d sweep reads after write-backs of 0x%x, %d equal to it "
-                "(check set open, SF-001/SF-009)",
+                "(open: which registers of each endpoint form the check set and which "
+                "instances count as generated register blocks)",
                 x.name,
                 len(reads),
                 value,
@@ -1206,10 +1218,12 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         saved_lcr = None
         if x.dlab_wrap is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
-            item = self._rd(x, "lcr_saved", addr=lcr, width=4)
+            item = self._rd(x, "lcr_saved", addr=lcr, width=_lcr_width(x.dlab_wrap))
             await self._run(f"{x.name}_lcr_saved", [item])
             saved_lcr = item.rdata
-            await self._write(x, "lcr_dlab", saved_lcr | LCR_DLAB, addr=lcr, width=4)
+            await self._write(
+                x, "lcr_dlab", saved_lcr | LCR_DLAB, addr=lcr, width=_lcr_width(x.dlab_wrap)
+            )
         values = None
 
         cocotb.log.info("STEP S1: %s reference read of 0x%x", x.name, x.addr)
@@ -1261,8 +1275,9 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
 
         if saved_lcr is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
-            await self._write(x, "lcr_restore", saved_lcr, addr=lcr, width=4)
-            got = await self._read(x, "lcr_restore_rb", addr=lcr, width=4, expected=saved_lcr)
+            width = _lcr_width(x.dlab_wrap)
+            await self._write(x, "lcr_restore", saved_lcr, addr=lcr, width=width)
+            got = await self._read(x, "lcr_restore_rb", addr=lcr, width=width, expected=saved_lcr)
             assert got == saved_lcr, f"{x.name}: LCR restore read 0x{got:x}, saved 0x{saved_lcr:x}"
         return times
 
@@ -1286,7 +1301,13 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         mon_task = cocotb.start_soon(self.mon.run())
         try:
             # The mailbox apertures answer only with their clock enabled.
-            cg = Inst("clock_gate_control", "smc_base_config", CLOCK_GATE_CONTROL, 8, False)
+            cg = Inst(
+                "clock_gate_control",
+                "smc_base_config",
+                CLOCK_GATE_CONTROL,
+                rdl_register("smc_base_config/CLOCK_GATE_CONTROL").width_bytes,
+                False,
+            )
             saved_cg = await self._read(cg, "saved")
             await self._write(cg, "mailbox_on", saved_cg | MAILBOX_CG_EN)
             await self._read(cg, "mailbox_on_rb", expected=saved_cg | MAILBOX_CG_EN)
@@ -1372,7 +1393,8 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-CPUIF-PIPELINED-RW: %d instances x 8 txns, OKAY, depth min/max=%d/%d (>=2), "
-            "reads==last-acked-write %d, reads==overlapping-write %d (SF-010, logged; per match "
+            "reads==last-acked-write %d, reads==overlapping-write %d (logged, open: the "
+            "read-after-write value of a register block; per match "
             "AR/R/AW/B cycles), reads==no-write-of-group 0, a+b=%d; per-channel depth AR min/max=%d/%d AW min/max=%d/%d",
             prw.instances,
             min(rw_depth),
@@ -1420,8 +1442,9 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-CPUIF-HELD-GROUP: %d instances x 16, 16/16 in order, 0 lost, 0 duplicated, "
-            "reads==reference-or-last-acked-write %d, reads==overlapping-write %d (SF-010, "
-            "logged; per match AR/R/AW/B cycles), reads==no-write-of-group 0",
+            "reads==reference-or-last-acked-write %d, reads==overlapping-write %d (logged, "
+            "open: the read-after-write value of a register block; per match AR/R/AW/B "
+            "cycles), reads==no-write-of-group 0",
             hg.instances,
             hg.strict,
             hg.inflight,
@@ -1430,7 +1453,8 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             "CHK-CPUIF-LONG-HOLD: %d instances in %d families x %d behind a %d-cycle hold, "
             "%d/%d in order, "
             "0 lost, 0 duplicated; reads==reference-or-last-acked-write %d, "
-            "reads==overlapping-write %d (SF-010, logged; per match AR/R/AW/B cycles), "
+            "reads==overlapping-write %d (logged, open: the read-after-write value of a "
+            "register block; per match AR/R/AW/B cycles), "
             "reads==no-write-of-group 0; head held cycles RREADY min/max=%d/%d BREADY "
             "min/max=%d/%d, head unchanged while held; distinct-ID groups %d accesses; "
             "instances %s",

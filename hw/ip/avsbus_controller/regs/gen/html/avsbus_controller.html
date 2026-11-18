@@ -82,11 +82,11 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>27:24</td><td>READBACK_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the readback FIFO</td></tr>
+<tr><td>27:24</td><td>READBACK_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</td></tr>
 <tr><td>23:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>19:16</td><td>READBACK_FIFO_OCCUPIED_SLOTS</td><td>R</td><td>0x0</td><td>Number of occupied slots in the readback FIFO</td></tr>
 <tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>11:8</td><td>CMD_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the command FIFO</td></tr>
+<tr><td>11:8</td><td>CMD_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>3:0</td><td>CMD_FIFO_OCCUPIED_SLOTS</td><td>R</td><td>0x0</td><td>Number of occupied slots in the command FIFO</td></tr>
 </table>

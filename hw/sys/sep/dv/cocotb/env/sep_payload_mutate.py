@@ -585,6 +585,14 @@ def set_bl1_load_addr(buf: bytearray, slot: str, value: int) -> int:
     return before
 
 
+def set_bl1_load_end(buf: bytearray, slot: str, end: int) -> int:
+    """Set BL1's ``load_addr`` so its image ends at byte address ``end``. Returns the new address."""
+    e = find_image(buf, slot)
+    load_addr = end - _u64(buf, e + E_LENGTH)
+    set_bl1_load_addr(buf, slot, load_addr)
+    return load_addr
+
+
 def corrupt_ciphertext(buf: bytearray, slot: str, *, offset: int = 0) -> int:
     if not is_encrypted(buf, slot):
         raise AssertionError(f"{slot} payload is not encrypted; there is no ciphertext to flip")

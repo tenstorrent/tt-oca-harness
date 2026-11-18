@@ -38,15 +38,15 @@
 |The reset-value read returns the specified non-zero reset value, proving real decode rather than an unmapped-address zero.
 |CHK-WR-RB
 |Each read/write register returns exactly the pattern written, masked to its implemented bits. Note the `SEP_NMI_VEC` pattern already has bit 0 clear, so the reserved-bit mask is a no-op here and this test does not exercise reserved-bit behaviour; `sep_reg_bit_bash_rand_test` CHK-RESERVED does.
-|CHK-RESP
-|Every read beat returns `OKAY` and no transaction decode-errors. The cited tally covers read beats; write responses are enforced by the scoreboard line under CHK-NONVAC, which fails any non-OKAY item.
 |CHK-NONVAC
-|The scoreboard performed a non-zero number of value comparisons.
+|The shared scoreboard judges the value of every read the sequence issues, the reset read and the four readbacks, and rejects no access while the sequence runs. The scoreboard judges only the value of a read that answers `OKAY`.
+|OBS-RESP
+|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of these `sep_cpu_ctrl` accesses, so no check of this leaf grades it. The shared scoreboard rejects a non-OKAY response of any access that does not opt out, as for every plain access of this bench.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-AXI-SMOKE` (`cocotb/seq_lib/sep_axi_smoke_seq.py`), covers CHK-DECODE and CHK-WR-RB. CHK-RESP and CHK-NONVAC are enforced in `check_phase` of the shared scoreboard (`cocotb/env/sep_scoreboard.py`).
+*Evidence*: `cocotb/seq_lib/sep_axi_smoke_seq.py` logs `CHK-DECODE PASS` (the reset read) and one `CHK-WR-RB PASS` line per register (pattern, readback and mask). `cocotb/tests/system/sep_axi_smoke_test.py` logs `OBS-RESP LOG accesses=9 <op>@0x<a>=<resp> ...` and `CHK-NONVAC PASS: scoreboard judged 5/5 read values, 0 rejections`, from the scoreboard (`cocotb/env/sep_scoreboard.py`) counts taken before and after the sequence. The leaf names the three `CHK-` records in `required_evidence`, so a missing record fails it.
 
 '''''
 
@@ -191,7 +191,7 @@
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Read the target location and require zero.
+. Read the target location before any write; it must answer `OKAY` with a word other than the 64-bit pattern.
 . Write a 64-bit pattern; read it back.
 . Write a 32-bit pattern to the upper half; read the full 64 bits back.
 
@@ -200,19 +200,19 @@
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-RESET-READ
-|A read of the target location before any write returns zero with an `OKAY` response — the decode and liveness anchor for the write/readback that follows. This is not an SRAM reset property: the macro has no array reset, and the zero comes from simulator memory initialisation, so this leg would not reproduce on silicon.
+|CTRL-SRAM-PRE
+|A read of the target location before any write answers `OKAY` with a word other than the 64-bit pattern, so CHK-STORE cannot pass on a word that was already there. The `OKAY` is required because a refused read returns 0, which also differs from the pattern. The read data is logged and not graded: the macro has no array reset, and the value comes from simulator memory initialisation. A miss logs `CTRL-MISSING SRAM-PRE` and fails the leaf.
 |CHK-STORE
 |A 64-bit write stores and reads back exactly.
 |CHK-LANE
 |A genuine 4-byte beat (`AxSIZE=2`) to the upper half changes only those lanes; the lower four survive.
-|CHK-RESP
-|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
+|OBS-RESP
+|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of an SRAM access, so no check of this leaf grades it. The shared scoreboard rejects a non-OKAY response of any access that does not opt out, as for every plain access of this bench.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-SRAM-SMOKE` (`cocotb/seq_lib/sep_sram_smoke_seq.py`), covers CHK-RESET-READ (the `expected=0` read), CHK-STORE (64-bit write and readback) and CHK-LANE (the 4-byte beat at `size=2`). CHK-RESP is enforced by the shared scoreboard.
+*Evidence*: `cocotb/seq_lib/sep_sram_smoke_seq.py` logs `CTRL-SRAM-PRE seen` (the read before any write, with its response and read data), then `CHK-STORE PASS` (64-bit write and readback) and `CHK-LANE PASS` (the 4-byte beat at `size=2`), each with the address and the 64-bit read data. `cocotb/tests/sram/sep_sram_smoke_test.py` logs `OBS-RESP LOG accesses=5 <op>@0x<a>=<resp> ...`. The leaf names the two `CHK-` records in `required_evidence`, so a missing record fails it.
 
 '''''
 
@@ -282,48 +282,67 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the OTBN instruction and data memories are writable and readable over the CPU LSU frontdoor at the 32-bit access width OTBN's own program-load driver uses.
+*Objective*: Writes and reads back one word of the OTBN instruction and data memories over the CPU LSU frontdoor at the 32-bit access width OTBN's own program-load driver uses, and logs the result. The leaf grades only its bench state, under the <<sep-otbn-wipe-access-exception,OTBN wipe-state memory access exception>>.
 
-*Test Coverage*: OTBN IMEM/DMEM 32-bit LSU write and read.
+*Test Coverage*: OTBN IMEM/DMEM 32-bit LSU write and read while `STATUS` reads BUSY_SEC_WIPE_INT.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Read OTBN `STATUS` and require it to be neither `LOCKED` nor executing.
+. Read OTBN `STATUS` once. Require its status field to be BUSY_SEC_WIPE_INT (`CTRL-OTBN-MEM-PRECOND`); otherwise the leaf logs `CTRL-MISSING` and fails.
 . Write a known word to the OTBN instruction memory base; read it back.
 . Write a known word to the OTBN data memory base; read it back.
-. Read the instruction and data memory request and write counters.
+. Read the instruction and data memory request and write counters, and log them with the responses and readbacks (`OBS-OTBN-MEM-BUSY-ACCESS`).
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-IMEM
-|The instruction-memory word reads back exactly as written.
-|CHK-DMEM
-|The data-memory word reads back exactly as written.
-|CHK-ARRIVED
-|Both memories saw exactly the issued accesses — 2 SRAM requests each, of which 1 is a write — proven by the counters rather than by the readback alone.
-|CHK-WRESP
-|Both write responses are `OKAY`.
-|CHK-PRECOND
-|OTBN is neither `LOCKED` nor executing when the memories are accessed, so a bus access to them is legal. This is an exclusion, not an exact-state check: any other `STATUS` value is acceptable. Bus access is diverted and flagged illegal only while OTBN executes.
+|CTRL-OTBN-MEM-PRECOND
+|Bench-state control, not a DUT check. The `STATUS` read before the memory accesses reports BUSY_SEC_WIPE_INT, the state that `OBS-OTBN-MEM-BUSY-ACCESS` describes. Any other value logs `CTRL-MISSING` and fails the leaf, so a configuration that leaves the internal wipe is not logged as this state. The `STATUS` read response is graded OKAY by the shared scoreboard.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+*Pass Criteria*: `CTRL-OTBN-MEM-PRECOND` is seen, no access times out, and the shared scoreboard rejects no graded access. UVM_ERROR == 0. The leaf has no CHK record of its own and is listed in `_EvidenceFilter.NO_OWN_EVIDENCE` (`cocotb/tests/sep_base_test.py`).
 
-*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`.
+*Evidence*: `CTRL-OTBN-MEM-PRECOND seen: status=0x<raw word> status_code=0x04 expect=0x04` (`cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`), or `CTRL-MISSING OTBN-MEM-PRECOND: ...` and a failed leaf. One `OBS-OTBN-MEM-BUSY-ACCESS status=0x<raw word> imem_wr_resp=<code> imem_rd_resp=<code> imem_written=0x<word> imem_readback=0x<word> imem_reqs=<n> imem_writes=<n>` line with the same fields for `dmem` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). The memory accesses carry no expected value, and their responses are not graded.
 
-*Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
-test — leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
-smoke configuration never brings EDN up. The internal wipe does not touch
-IMEM/DMEM, which is why every access completes OKAY. `CHK-PRECOND` excludes only
-the states that would invalidate the access (`LOCKED`, and `BusyExecute`, in which
-the core owns these memories and a bus request is diverted to a dummy response
-and flagged illegal); it does not pin `STATUS`, and it does not detect a change
-from `BusySecWipeInt` to `IDLE` or `BusyExecute`.
+*Scope limit*: OTBN sits in BUSY_SEC_WIPE_INT (`0x04`) for the whole of this
+test -- leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
+smoke configuration never brings EDN up. `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`
+and `:821-828` state that the memories are accessible only while OTBN is idle
+and that, while OTBN is busy, a read returns 0, a write is ignored and the
+access raises ILLEGAL_BUS_ACCESS. `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md:103-105`
+names BUSY_SEC_WIPE_INT a busy state. The DUT returns the written word with
+`OKAY` in this state. The leaf logs the result and does not grade it, under the
+accepted exception below.
+
+[[sep-otbn-wipe-access-exception]]
+*Accepted exception (OTBN wipe-state memory access)*:
+
+* Unproven claim: the result of a host write and read of OTBN IMEM or DMEM
+  while `STATUS` reads BUSY_SEC_WIPE_INT (`0x04`).
+* Why the proven path is not used: `hw/sys/sep/doc/otbn.adoc:96-97` defers
+  core behaviour to the vendored OpenTitan documents.
+  `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`,
+  `:821-828` and `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/registers.md:300-305`
+  state that a busy OTBN returns 0 on a read, ignores a write and raises
+  ILLEGAL_BUS_ACCESS, and `theory_of_operation.md:103-105` names
+  BUSY_SEC_WIPE_INT a busy state. Upstream OpenTitan keeps host memory access
+  open during the initial wipe (lowRISC/opentitan#14066, closed as not
+  planned), and the upstream RTL blocks host access only while OTBN executes.
+  The vendored text is therefore not the contract of this integration, and no
+  SEP text states the result in this state. A `no_cpu` run cannot leave the
+  wipe, because leaving it needs EDN entropy.
+* Accepted scope: `sep_otbn_mem_smoke_test` (cocotb and SV-UVM views) and the
+  OTBN IMEM and DMEM windows of `sep_axi_strobe_window_test`, only while
+  `STATUS` reads BUSY_SEC_WIPE_INT, which `CTRL-OTBN-MEM-PRECOND` requires
+  before the accesses. These accesses are logged as
+  `OBS-OTBN-MEM-BUSY-ACCESS` and not graded. The exception ends when a SEP
+  sentence or the upstream text states the result in this state; the leaves
+  then grade that result.
+* Approver: the SEP DV owner (GitHub `yenhenglai`), 2026-11-06.
 
 *Design context, not a claim*: accesses drive `AxSIZE=2` (4-byte beats). These
 memories are 32-bit SECDED words and reject the 64-bit default beat with SLVERR;
@@ -343,18 +362,19 @@ not grade that rejection.
 
 *Source Module*: `sep_efuse_sense_test`
 
-*BFM / Model*: ocah_axi_vip
+*BFM / Model*: No AXI master (the test builds no AXI env). The behavioral OTP bank model with its image preload, and the sensed-shadow probe `efuse_shadow_probe_o` read through the backdoor.
 
 *Objective*: Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word.
 
-*Test Coverage*: Reset sense-done; shadow words match the programmed image.
+*Test Coverage*: Reset sense-done; shadow words match the programmed image; `lc_state_o` holds INVALID through the pre-sense window and takes the sensed value at sense done.
 
 *Test Procedure*:
 
 [arabic]
 . Stage an eFuse image and bring up with real fuse sense — no skip plusarg.
-. Wait for sense-done.
+. Wait for sense-done. While waiting, record on every clock the first clock at which each shadow word changes at `efuse_shadow_probe_o`, and the clock of the `sep_fuse_sense_done_o` rise (CHK-SENSE-WORD-ORDER).
 . Compare all shadow words against the staged image.
+. From the `rst_ni` release to the sense-done rise, sample `lc_state_o`, the sensed `LC_STATE` byte and `security_disable_o` on every clock, and on the rise clock sample `lc_state_o` and the sensed byte.
 
 *Checkers*:
 
@@ -363,13 +383,19 @@ not grade that rejection.
 |Checker |Contract
 |CHK-SENSE-DONE
 |The sense sequence completes rather than hanging.
+|CHK-SENSE-WORD-ORDER
+|The sense loads the shadow words in ascending word order, one word per response strobe, and `sep_fuse_sense_done_o` rises one clock after the strobe that stores word 255 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, eFuse sensing). Over the words whose staged value differs from reset, the first clock on which each word changes at `efuse_shadow_probe_o` rises strictly with the word index; the done rise is one clock after the change of word 255, or after the last changed word when word 255 stays at reset. Fewer than two changed words fails the check.
 |CHK-IMAGE-MATCH
-|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
+|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare shows a store only for a word whose staged value differs from its RDL reset value. The image keeps the `LOCKS` and `LOCKS_SPARE` words at their reset value 0, because a non-zero lock word locks the image, so for those words the compare also passes on a word that was not stored; `CHK-SENSE-WORD-ORDER` prints the count of words that changed (`changed_words`). The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
+|CHK-LC-STATE-PRESENSE-HOLD
+|On every clock from the `rst_ni` release until the `sep_fuse_sense_done_o` rise, `lc_state_o` (tap `lc_state_probe_o`) equals the `LC_STATE` RDL reset value 0x0F, the INVALID encoding, and `security_disable_o` is 0 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, Fuse Sensing and Boot Sequencing: the logical `LC_STATE` output remains `4'b1111` until fuse sensing completes). The sensed `LC_STATE` byte at `efuse_shadow_probe_o` must equal the staged encoding on at least one of those clocks, so the hold is graded while the sensed value is present; the staged state must not encode INVALID. A window of zero clocks fails the check.
+|CHK-LC-STATE-RELEASE
+|On the first clock with `sep_fuse_sense_done_o` = 1, `lc_state_o` equals the sensed `LC_STATE` byte and the encoding `{~raw, raw}` of the staged raw state (same section; `doc/integrator/src/smu-sep.adoc`, `lc_state_o`). The cited sentence names no clock: taking that first clock as the point where sensing has completed is this test's contract, not a statement of the document.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare.
+*Evidence*: `cocotb/tests/efuse/sep_efuse_sense_test.py` logs `CHK-SENSE-DONE PASS` with the clock of the `sep_fuse_sense_done_o` rise. The shared backdoor compare (`cocotb/seq_lib/sep_efuse_backdoor_check.py`, run by the bring-up) logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or `CHK-SENSE-BACKDOOR FAIL` and fails the leaf. `CHK-IMAGE-MATCH PASS words=<n>` follows only when that compare logged its PASS and `+skip_fuse_sense` is absent. The leaf names the six records in `required_evidence`, so a missing record fails it. `CHK-LC-STATE-PRESENSE-HOLD PASS` logs the window length in clocks, the staged encoding and the number of window clocks on which the sensed byte equalled it; `CHK-LC-STATE-RELEASE PASS` logs the sense-done clock, the port, the sensed byte and the staged encoding. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing. `OBS-SHADOW-PRESENSE-WITHHELD` logs, for `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID`, the first clock on which the field at `efuse_shadow_probe_o` holds its sense-done value (`landed`), the first clock on which the value half of the Key Manager OTP input `km_otp_sep_*_id_o` equals it (`downstream`), the number of clocks on which the sensed field held that value and the input did not (`withheld_clocks`), whether the sensed value is zero (`sensed_zero`), and the sense-done clock. It grades nothing: `hw/sys/sep/doc/otp_fuse_controller.adoc` (Fuse Sensing and Boot Sequencing) makes these fields available downstream as soon as they are ready, and the description of `hw/sys/sep/doc/assets/sep-token-processing.svg` withholds the shadow map until sense done.
 
 '''''
 
@@ -394,7 +420,7 @@ not grade that rejection.
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Configure the SPI host: clock divider, chip-select timing, enable.
+. Configure the SPI host: clock divider, chip-select timing, enable. Read CONFIGOPTS back; it equals the written word (CTRL-SPI-CONFIGOPTS).
 . Issue the JEDEC identify command through the command and transmit registers.
 . Read the received identifier out of the receive register.
 
@@ -403,12 +429,10 @@ not grade that rejection.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CTRL-SPI-CONFIGOPTS
+|CONFIGOPTS reads back the written Mode 0 word (CLKDIV 9, CSNIDLE, CSNTRAIL and CSNLEAD 2; every CONFIGOPTS field is `sw = rw` in `vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl`). The reset value 0 also runs Mode 0, so a write that does not land would pass every other checker; a mismatch fails the leaf. Evidence: `CTRL-SPI-CONFIGOPTS PASS: configopts=0x<w> expect=0x<w>`.
 |CHK-JEDEC-ID
-|The received identifier equals the flash model's device identifier.
-|CHK-RESP
-|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
-|CHK-NONVAC
-|The scoreboard performed a non-zero number of checks.
+|The RXDATA word carries the flash model's three identifier bytes in wire order (the model sends the most significant byte of the identifier first) in one in-word byte order, and its fourth byte reads 0. The word is graded in either order; a byte that is wrong, rotated or non-zero in the pad position fails. The in-word order is not graded (OBS-SPI-BYTEORDER).
 |CHK-SPI-WIRE
 |The shared SPI monitor grades the pad ports in SPI Mode 0 on every frame: SCK is at the CPOL level at each chip-select edge and moves only to that level while chip select is high; MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge; no graded pin resolves to X or Z. The monitor also grades the monitor-only taps `spi_sd_o`, `spi_sd_oe_o`, `spi_cs_oe_o` and `spi_sck_oe_o` against the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment": lane n drives `sd[n]` with output enable `sd_oe[n]`, chip select and clock have `cs_oe` and `sck_oe`, and the host drives a data lane only while chip select is asserted): no data lane output enable rises, or is on at an SCK edge, while chip select is high (`oe_idle`); at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 (`oe_lanes`); and the chip-select and clock output enables are on at each sample edge (`oe_ctrl`). The MOSI edge and X/Z rules apply to every data lane whose output enable is on. A host that drives a data lane while chip select is high, enables another lane pattern, or turns off the chip-select or clock output enable in a frame fails. At least one Mode 0 frame is graded.
 |CHK-SPI-FRAME-SHAPE
@@ -416,12 +440,14 @@ not grade that rejection.
 |CHK-SPI-LEDGER
 |The flash model records and the monitor frames match one for one, in order, with the same command byte and the same input clock count.
 |CHK-SPI-SB-RX
-|The SPI data scoreboard (`hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py`) compares three copies of the identifier byte for byte: the three bytes the DUT delivered in RXDATA (the first received byte in the least significant byte, ByteOrder 1), the first three bytes of the flash record's `data_out` for the READ JEDEC ID frame, and the first three bytes of the monitor's own decode of the response phase on the pads. The monitor frame is the one at the position of the flash record (CHK-SPI-LEDGER lines the two lists up). A receive path that drops, reorders or corrupts a byte, or that delivers the bytes in the opposite order, fails; so does a run with no READ JEDEC ID record. Evidence: one `INFO-SPI-SB RX` line with the expected, wire and device bytes, and `CHK-SPI-SB-RX PASS seed=<n> frames=1 bytes=3`.
+|The SPI data scoreboard (`hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py`) compares three copies of the identifier byte for byte: the three bytes the DUT delivered in RXDATA (read from the word in the order CHK-JEDEC-ID accepted), the first three bytes of the flash record's `data_out` for the READ JEDEC ID frame, and the first three bytes of the monitor's own decode of the response phase on the pads. The monitor frame is the one at the position of the flash record (CHK-SPI-LEDGER lines the two lists up). A receive path that drops, reorders or corrupts a byte fails; so does a run with no READ JEDEC ID record. Evidence: one `INFO-SPI-SB RX` line with the expected, wire and device bytes, and `CHK-SPI-SB-RX PASS seed=<n> frames=1 bytes=3`.
+|OBS-SPI-BYTEORDER
+|Logged, not graded: no authored text states which in-word byte order the SEP SPI host uses (`spi_controller.adoc` gives `STATUS.BYTEORDER` as read-only with reset 0x0; the OpenTitan SPI_HOST theory of operation gives `ByteOrder = 1` as the default). One line at the end of the leaf: `OBS-SPI-BYTEORDER seed=<n> order=<lsb_first\|msb_first\|undecided> fixed_at=<where\|-> decisive_words=<n> ambiguous_words=<n> other_order_words=<n> unmatched_words=<n> compares=<n> status_byteorder=-`. The JEDEC identifier has distinct bytes, so the word fixes the order.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-JEDEC` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`), covers CHK-JEDEC-ID. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
+*Evidence*: `CHK-JEDEC-ID PASS: opcode=0x9F rxdata=0x<w> bytes=<hex> order=<lsb_first\|msb_first\|undecided>` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode, the RXDATA word, the identifier bytes read from it and the order; the leaf raises before it when the flash model saw no 0x9F frame or the word does not carry the model identifier bytes with a zero pad byte. The shared scoreboard (`cocotb/env/sep_scoreboard.py`) fails the leaf on any access that does not answer `OKAY` and on a run with no AXI transaction; it prints no named record. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
 
 '''''
 
@@ -438,9 +464,9 @@ not grade that rejection.
 
 *BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
 
-*Objective*: Proves the CPU fetch unit executes real code out of the boot ROM across the main RISC-V instruction formats.
+*Objective*: Proves the CPU fetch unit executes real code out of the boot ROM across the main RISC-V instruction formats, and that a repeated call of the same ROM code returns the same value each time.
 
-*Test Coverage*: Boot-ROM fetch across the main RV32 instruction formats.
+*Test Coverage*: Boot-ROM fetch across the main RV32 instruction formats, and the same seven calls in three iterations.
 
 *Test Procedure*:
 
@@ -448,6 +474,7 @@ not grade that rejection.
 . Initialise the fabric filter.
 . Call seven ROM functions through pointers at known offsets: immediate arithmetic, a multi-instruction chain, argument passthrough, an upper-immediate load, a jump, a no-operation sled, and a two-register add.
 . Compare each return value with its expected value.
+. Repeat steps 2 and 3 for a total of three iterations. Each check line carries the iteration number.
 
 *Checkers*:
 
@@ -455,14 +482,16 @@ not grade that rejection.
 |===
 |Checker |Contract
 |CHK-IFU-TYPES
-|All seven functions fetch and execute correctly, each returning its distinct expected value across the immediate, upper-immediate, register and jump formats.
+|All seven functions fetch and execute correctly in every iteration, each returning its expected value across the immediate, upper-immediate, register and jump formats. The seven expected values differ, so a fetch that lands on another function returns a value that fails its row.
+|CHK-IFU-REPEAT
+|Each of the seven functions returns its expected value in each of the three iterations: the console holds one `CHK-IFU-TYPES PASS` line for each function in each iteration, with the same seven names in every iteration, and no `CHK-IFU-TYPES FAIL` line. A call that returns the right value once and a wrong value on a repeat fails here. The ROM fetches per call are not counted.
 |CHK-ALL
-|The test passes only if all seven match; a partial result is a failure. The host also counts the seven per-function lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
+|The test passes only if all 21 calls match; a partial result is a failure. The host also counts the 21 per-call lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `[PASS] IFU` or `[FAIL] IFU` line per function, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-ALL is the host-side `CHK-ALL` record (`cocotb/tests/cpu/sep_rom_sanity_test.py`), which counts seven `[PASS] IFU` lines and requires the `PASS: 7/7` summary.
+*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `CHK-IFU-TYPES PASS` or `CHK-IFU-TYPES FAIL` line per call, `<function name> k=<iteration> got=<value> want=<value>`, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-IFU-REPEAT and CHK-ALL are host-side records (`cocotb/tests/cpu/sep_rom_sanity_test.py`): CHK-IFU-REPEAT counts 21 `CHK-IFU-TYPES PASS` lines (seven per iteration, `iterations=3 functions=7 pass_lines=21/21 fail_lines=0`) and requires the `PASS: 21/21` summary; CHK-ALL confirms the 21 lines in the console.
 
 '''''
 
@@ -559,8 +588,9 @@ CHK-FUSE-SENSE-DONE.
 (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`, `+SEP_AXI_SMOKE_TEST_LOOPS`).
 Adds `+SEP_RANDOM_COUNT` seeded random patterns per register (five by default),
 and a restore readback of each reset value (CHK-CSR-RANDOM-READBACK,
-CHK-CSR-RESTORE). CHK-DECODE, CHK-WR-RB and CHK-RESP are named
-CHK-CSR-RESET-VALUE, CHK-CSR-READBACK and CHK-CSR-RESP. The scoreboard check is
+CHK-CSR-RESTORE). CHK-DECODE and CHK-WR-RB are named CHK-CSR-RESET-VALUE and
+CHK-CSR-READBACK. The SV sequence also grades every response `OKAY`
+(CHK-CSR-RESP), which the cocotb leaf logs as OBS-RESP. The scoreboard check is
 CHK-SB-CPU-CTRL-CSR, and CHK-NONVAC requires the scoreboard compares of a pass
 to equal the predicted reads it issued. `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts
 the prediction, and the run must FAIL.
@@ -568,7 +598,7 @@ the prediction, and the run must FAIL.
 |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_MEMORY_TEST_LOOPS`, `+SEP_SRAM_SMOKE_TEST_LOOPS`), each
-on its own SRAM word so every read before a write sees the zero fill. Adds
+on its own SRAM word so every read before a write sees the zero fill. The SV sequence grades that read as zero under `CHK-RESET-READ`; the zero is the zero fill of the SRAM macro in `tb/tb_top.sv`. Adds
 `+SEP_RANDOM_COUNT` seeded random rounds per pass (five by default): a 64-bit write and readback, then a 4-byte
 beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
 CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns
@@ -583,7 +613,13 @@ access class of each `sep_cpu_ctrl` register, transcribed from
 response of each sweep access. Adds `+SEP_RANDOM_COUNT`
 seeded random patterns per storage register, a readback after each restore,
 and a read of `0x10A3_0170` after the hole write that must return zero. The
-scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+scoreboard check CHK-SB-CPU-CTRL-CSR is required. The PR-EXT and PR-OUT tap
+checks (CTRL-EXT-DEMUX-PORT, CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL,
+CTRL-CPU-CTRL-HOLE-LOCAL) and
+the `SEP_TEST_CTRL` write check (CHK-SEP-TEST-CTRL-RO) run on cocotb only. The
+SV sequence grades the response class of the eFuse-shim boundary words, the
+response of each walked read and, for the rows whose register has a non-zero
+RDL reset, its value; it reads `SEP_TEST_CTRL` with a response check only.
 
 |<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
@@ -614,15 +650,20 @@ write carries a seeded random word. Adds an OKAY check on every other access (CH
 (`+SEP_TEST_LOOPS`, `+SEP_CRYPTO_TEST_LOOPS`, `+SEP_OTBN_MEM_SMOKE_TEST_LOOPS`).
 Adds `+SEP_RANDOM_COUNT` seeded
 random words per memory (five by default) after the directed word, each written
-and read back at the memory base. CHK-IMEM, CHK-DMEM and CHK-ARRIVED are
-recorded under CHK-OTBN-MEM, together with the read responses; the counters are
-graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
+and read back at the memory base. Each pass logs one `OBS-OTBN-MEM-BUSY-ACCESS`
+line per memory with the counter increments of the pass and each word's
+responses and readback; none is graded. `CTRL-OTBN-MEM-PRECOND` is a
+`uvm_info` line, and `CTRL-MISSING` is a UVM_ERROR. The STATUS read response is
+CHK-CSR-RESP, the only graded record. An X/Z response or read data is a
+UVM_ERROR.
 
 |<<sep_efuse_sense_test,`sep_efuse_sense_test`>>
 |Same as the cocotb procedure, over sixteen passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
 the sense runs once at bring-up and each pass compares the held shadow again.
 The staged image is the committed default preload (`+sep_efuse_hex`).
+The SV-UVM pass does not grade CHK-SENSE-WORD-ORDER, CHK-LC-STATE-PRESENSE-HOLD
+or CHK-LC-STATE-RELEASE; the cocotb leaf grades them.
 CHK-SENSE-DONE is named CHK-FUSE-SENSE-DONE. CHK-SENSE compares the whole
 shadow probe with the committed expected shadow
 `tb/efuse_preloads/sep_efuse_default.shadow.hex` (`+sep_efuse_shadow_hex`),

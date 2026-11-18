@@ -28,6 +28,10 @@
 #include "irq_common.h"
 #include "key_manager_fw.h"
 
+_Static_assert(ROM_KM_IRQ_STATUS_SRAM_WRITE_LOCK_ERR_MASK ==
+                   KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bm,
+               "ROM_KM_IRQ_STATUS_SRAM_WRITE_LOCK_ERR_MASK disagrees with km_csr.h");
+
 /*===========================================================================
  * Internal helpers
  *===========================================================================*/
@@ -189,8 +193,9 @@ __attribute__((noreturn)) void rom_handover_finish(uint32_t fw_size_bytes) {
 
     /* --- Step 5: disable all KMCSR IRQs and clear sticky status ---
      * Prevents spurious SRAM_WRITE_LOCK faults when the assembly scramble
-     * routine writes to locked regions (hardware silently drops the writes but
-     * still sets the sticky bit if the IRQ is enabled).
+     * routine writes to locked regions.  Hardware silently drops the writes
+     * but still sets the sticky bits regardless of IRQ_ENABLE, so
+     * rom_handover_jump clears them after the scramble.
      */
     rom_kmcsr_irq_enable_write(0u);
     rom_kmcsr_irq_status_clear(0xFFFFFFFFu);

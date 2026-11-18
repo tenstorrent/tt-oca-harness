@@ -123,7 +123,9 @@ CHECKERS = (
 
 
 def _outbound(reg: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", entry
+    )
 
 
 class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
@@ -331,7 +333,9 @@ class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
             "output_responder_obs", f"{RESPONDER_OBS_TIMEOUT_CYCLES} clk_smc_i", "none"
         )  # fmt: skip
         for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
-            self._resets[reg] = rdl_contract(f"smc_outbound_filter_ctrl/{reg}").reset_word
+            self._resets[reg] = rdl_contract(
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{reg}"
+            ).reset_word
         watcher = cocotb.start_soon(self._watch())
 
         # S1

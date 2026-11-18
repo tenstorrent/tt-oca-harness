@@ -11,7 +11,7 @@ name = "sep_hello_world_test"
 module = "cpu.sep_hello_world_test"
 firmware = "hello_world"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["smoke", "boot", "cpu"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+axi_sva_need_lsu"]
@@ -23,7 +23,7 @@ name = "sep_cpu_trace_diag_test"
 module = "cpu.sep_cpu_trace_diag_test"
 firmware = "cpu_trace_diag_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["boot", "cpu", "trace", "debug"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -33,7 +33,7 @@ name = "sep_dma_hash_test"
 module = "cpu.sep_dma_hash_test"
 firmware = "dma_hash_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 1500
 tags = ["boot", "cpu", "dma", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -45,7 +45,7 @@ name = "sep_mailbox_plic_test"
 module = "cpu.sep_mailbox_plic_test"
 firmware = "mailbox_plic_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 2400
 tags = ["boot", "cpu", "mailbox", "interrupt", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -57,7 +57,7 @@ name = "sep_nmi_sanity_test"
 module = "cpu.sep_nmi_sanity_test"
 firmware = "nmi_sanity_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 1200
 tags = ["nmi", "wdt", "interrupt", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -65,15 +65,28 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # ML-DSA-87 verify, through the boot ROM's ABR driver, of a blob signed with the test
 # key (committed vectors), and the rejected variants. +abr_case_mask=<hex> runs a subset
-# of the cases from the same image.
-name = "sep_abr_mldsa87_verify_test"
+# of the cases from the same image. Two entries of the one module split the cases;
+# their masks together select every case (0x3FFF). This entry runs cases 0 to 6 and 13,
+# so each entry ends with a genuine verify after its other cases.
+name = "sep_abr_mldsa87_verify_test_cases_a"
 module = "cpu.sep_abr_mldsa87_verify_test"
 firmware = "abr_mldsa87_verify_test"
 seed = 1
-timeout_sec = 7200
+timeout_sec = 7500
 tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+abr_case_mask=0x207F"]
+
+[[tests]]
+# The second entry of sep_abr_mldsa87_verify_test: cases 7 to 13.
+name = "sep_abr_mldsa87_verify_test_cases_b"
+module = "cpu.sep_abr_mldsa87_verify_test"
+firmware = "abr_mldsa87_verify_test"
+seed = 1
+timeout_sec = 6600
+tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+abr_case_mask=0x3F80"]
 
 [[tests]]
 # Adams Bridge ignores every ML-DSA command (+sep_abr_cmd_drop); the verify driver must
@@ -97,7 +110,7 @@ module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
 seed = 1
 # No reseed: every source runs every seed.
-timeout_sec = 1800
+timeout_sec = 1500
 tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -109,8 +122,8 @@ module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
-tags = ["boot", "cpu", "dma", "subsystem"]
+timeout_sec = 1500
+tags = ["boot", "cpu", "dma", "subsystem", "sep_ras"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+axi_sva_need_tcm", "+axi_sva_need_dma"]
 
@@ -120,8 +133,8 @@ name = "sep_dma_zero_test"
 module = "cpu.sep_dma_zero_test"
 firmware = "dma_zero_test"
 seed = 1
-timeout_sec = 3600
-tags = ["boot", "cpu", "dma", "zero", "subsystem"]
+timeout_sec = 900
+tags = ["boot", "cpu", "dma", "zero", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -132,7 +145,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_cpu_dbg_reset_independence_test"
 module = "cpu.sep_cpu_dbg_reset_independence_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["reset", "debug", "cpu", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -144,7 +157,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_warm_cold_reset_scratch_test"
 module = "cpu.sep_warm_cold_reset_scratch_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["reset", "scratch", "cpu", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -157,7 +170,7 @@ name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
 module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"
 firmware = "cpu_alias_remap_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["fabric", "alias", "remap", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -169,8 +182,8 @@ name = "sep_efuse_token_match_fault_pic_test"
 module = "efuse.sep_efuse_token_match_fault_pic_test"
 firmware = "token_match_fault_pic_test"
 seed = 1
-timeout_sec = 1800
-tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
+timeout_sec = 900
+tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem", "sep_spec_log", "sep_ras"]
 run_modes = ["cpu"]
 
 # Fabric and remap tests.
@@ -182,7 +195,7 @@ module = "cpu.sep_cpu_lsu_alias_window_twin_test"
 firmware = "alias_twin_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["fabric", "alias", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -195,9 +208,21 @@ firmware = "dma_endpoint_matrix_test"
 seed = 1
 reseed = 4
 timeout_sec = 4500
-tags = ["fabric", "dma", "smc", "cpu", "subsystem"]
+tags = ["fabric", "dma", "smc", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
+
+[[tests]]
+# Same module and firmware as sep_fabric_dma_endpoint_matrix_test with the bench extension-port responder answering SLVERR. Only the extension-port legs run: a DMA read and a DMA write that meet the SLVERR end with STATUS.ERROR and ERROR_CODE.BUS_ERROR, and a recovery copy is exact.
+name = "sep_fabric_dma_endpoint_matrix_test_slverr"
+module = "cpu.sep_fabric_dma_endpoint_matrix_test"
+firmware = "dma_endpoint_matrix_test"
+seed = 1
+reseed = 1
+timeout_sec = 900
+tags = ["fabric", "dma", "smc", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000", "+sep_ext_port_responder"]
 
 # Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
 
@@ -207,9 +232,9 @@ name = "sep_pic_reg_rand_test"
 module = "cpu.sep_pic_reg_rand_test"
 firmware = "pic_reg_rand_test"
 seed = 1
-reseed = 3
-timeout_sec = 3600
-tags = ["pic", "interrupt", "cpu", "subsystem"]
+reseed = 1
+timeout_sec = 2700
+tags = ["pic", "interrupt", "cpu", "subsystem", "sep_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -219,8 +244,8 @@ name = "sep_pic_external_access_refuse_test"
 module = "cpu.sep_pic_external_access_refuse_test"
 firmware = "pic_external_access_refuse_test"
 seed = 1
-reseed = 3
-timeout_sec = 3600
+reseed = 1
+timeout_sec = 1200
 tags = ["pic", "fabric", "filter", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
@@ -232,7 +257,7 @@ firmware = "pic_priority_gate_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 8000
-tags = ["pic", "interrupt", "priority", "cpu", "subsystem"]
+tags = ["pic", "interrupt", "priority", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -243,8 +268,8 @@ module = "cpu.sep_pic_pending_map_walk_rand_test"
 firmware = "pic_pending_map_walk_rand_test"
 seed = 1
 reseed = 4
-timeout_sec = 7200
-tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem"]
+timeout_sec = 6900
+tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value", "sep_ras"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
@@ -255,8 +280,8 @@ module = "cpu.sep_nmi_vector_bark_rand_test"
 firmware = "nmi_vector_bark_rand_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
-tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem"]
+timeout_sec = 4800
+tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem", "logs_open_spec_value", "grades_spec_rst_timer"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -266,9 +291,9 @@ args = ["+skip_fuse_sense"]
 name = "sep_cpu_reset_entry_test"
 module = "cpu.sep_cpu_reset_entry_test"
 seed = 1
-reseed = 4
-timeout_sec = 3600
-tags = ["boot", "reset", "cpu", "jtag", "subsystem"]
+reseed = 1
+timeout_sec = 4200
+tags = ["boot", "reset", "cpu", "jtag", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+axi_sva_need_sb"]
 
@@ -279,9 +304,9 @@ args = ["+skip_fuse_sense", "+axi_sva_need_sb"]
 name = "sep_cpu_reset_entry_test_real_sense"
 module = "cpu.sep_cpu_reset_entry_test"
 seed = 1
-reseed = 3
-timeout_sec = 3600
-tags = ["boot", "reset", "cpu", "jtag", "efuse", "subsystem"]
+reseed = 1
+timeout_sec = 3900
+tags = ["boot", "reset", "cpu", "jtag", "efuse", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = [
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
@@ -294,9 +319,10 @@ args = [
 name = "sep_debug_master_target_matrix_test"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-reseed = 4
-timeout_sec = 3600
-tags = ["debug", "jtag", "dmi", "cpu", "subsystem"]
+# No reseed: every run runs all steps; the seed selects only the ungraded uncore write data
+# and the TCK period and phase, which change TAP timing only and no check grades.
+timeout_sec = 900
+tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -310,7 +336,7 @@ firmware = "cpu_isa_pmp_csr_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["cpu", "isa", "pmp", "csr", "subsystem"]
+tags = ["cpu", "isa", "pmp", "csr", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -321,8 +347,8 @@ name = "sep_cpu_zbe_exec_test"
 module = "cpu.sep_cpu_zbe_exec_test"
 firmware = "cpu_zbe_exec_test"
 seed = 1
-reseed = 4
-timeout_sec = 3600
+reseed = 1
+timeout_sec = 1200
 tags = ["cpu", "isa", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]

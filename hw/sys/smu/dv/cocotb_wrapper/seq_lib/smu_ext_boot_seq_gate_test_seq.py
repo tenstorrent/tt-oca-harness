@@ -9,6 +9,15 @@ Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_d
 S6 lowers ext_boot_seq_done_i again and pulses the cold reset: the gate holds the
 fuse reset asserted across the new release, and raising the gate releases it
 (CHK-BOOT-SEQ-REGATE).
+
+The pin is qualified inside the SMC and fanned to the SEP (hw/sys/smu/doc/port_table.adoc
+``ext_boot_seq_done_i``; doc/integrator/src/smu-composition.adoc, "DFT Signals":
+``ext_boot_seq_done_qual_o`` drives the SEP's ``ext_boot_seq_done_i``), and the SEP qualifies
+its reset release with ``ext_boot_seq_done_i`` asserted (hw/sys/sep/doc/clk_rst.adoc, the OTP
+controller release; hw/sys/sep/doc/port_table.adoc ``ext_boot_seq_done_i``). With the pin low
+``sep_reset_n_o`` reads 0 on every gated sample, and it rises only after the pin, in S4
+and again across the S6 cold reset (CHK-BOOT-SEQ-GATE-SEP). The sense-done level during
+the gated window is logged: this leaf runs with the sense skipped.
 """
 
 from __future__ import annotations
@@ -43,9 +52,11 @@ class smu_ext_boot_seq_gate_test_seq:
     WAIT_LABELS = (
         "primary_released_while_boot_gated",
         "fuse_reset_n_delayed_after_ungate",
+        "sep_reset_n_after_ungate",
     )
     PRIMARY = "rst_primary_smc_clk_no"
     FUSE = "smc_fuse_reset_n_delayed_o"
+    SEP = "sep_reset_n_o"
 
     def __init__(self, test) -> None:
         self.test = test
@@ -53,7 +64,11 @@ class smu_ext_boot_seq_gate_test_seq:
         self.cfg = test.cfg
         self._waits: list[_BoundedWait] = []
         #: Simulation time (ns) at which each tracked output is first sampled 1.
-        self._first_high_ns: dict[str, float | None] = {self.PRIMARY: None, self.FUSE: None}
+        self._first_high_ns: dict[str, float | None] = {
+            self.PRIMARY: None,
+            self.FUSE: None,
+            self.SEP: None,
+        }
         self._trackers: list = []
 
     def _log(self, msg: str) -> None:
@@ -83,6 +98,7 @@ class smu_ext_boot_seq_gate_test_seq:
             cocotb.start_soon(
                 self._track_first_high(self.dut.smc_fuse_reset_n_delayed_o, self.FUSE)
             ),
+            cocotb.start_soon(self._track_first_high(self.dut.sep_reset_n_o, self.SEP)),
         ]
 
     def _stop_trackers(self) -> None:
@@ -153,6 +169,8 @@ class smu_ext_boot_seq_gate_test_seq:
             "GATED: ext_boot_seq_done_i=0 holds smc_fuse_reset_n_delayed_o low",
         )
         gated_samples = 0
+        sep_low_gated = 0
+        sense_done_gated = 0
         for _ in range(self.GATED_SAMPLES):
             await RisingEdge(dut.clk_smu_i)
             fuse = self._sample(dut.smc_fuse_reset_n_delayed_o, self.FUSE)
@@ -164,6 +182,8 @@ class smu_ext_boot_seq_gate_test_seq:
                     f"smc_fuse_reset_n_delayed_o released while gated at sample {gated_samples}"
                 )
             gated_samples += 1
+            sep_low_gated += self._sample(dut.sep_reset_n_o, self.SEP) == 0
+            sense_done_gated += self._sample(dut.smc_fuse_sense_done_o, "smc_fuse_sense_done_o")
         t_gated_end = get_sim_time("ns")
 
         self._step(
@@ -209,6 +229,32 @@ class smu_ext_boot_seq_gate_test_seq:
             released,
             1,
             evidence="CHK-BOOT-SEQ-GATE",
+        )
+        sep_released = await self._wait_eq(
+            dut.sep_reset_n_o,
+            1,
+            clk=dut.clk_smu_i,
+            bound=self.RELEASE_BOUND,
+            label=self.WAIT_LABELS[2],
+            first_high=self.SEP,
+        )
+        t_sep = self._first_high_ns[self.SEP]
+        self._log(
+            f"OBS smc_fuse_sense_done_o=1 on {sense_done_gated}/{gated_samples} gated samples "
+            "(supplied by the skipped sense, logged only)"
+        )
+        self._log(
+            f"CHK-BOOT-SEQ-GATE-SEP sep_reset_n_o low on {sep_low_gated}/{gated_samples} gated "
+            f"samples; sep_reset_n_o={sep_released} after the ungate, first rise {t_sep}ns, "
+            f"ungate {t_ungate}ns"
+        )
+        sb.expect_eq(
+            "CHK-BOOT-SEQ-GATE-SEP with ext_boot_seq_done_i low sep_reset_n_o reads 0 on every "
+            "gated sample, and sep_reset_n_o first rises within the bound and only after the pin "
+            "rises",
+            (sep_low_gated, sep_released, t_sep is not None and t_sep > t_ungate),
+            (self.GATED_SAMPLES, 1, True),
+            evidence="CHK-BOOT-SEQ-GATE-SEP",
         )
 
         self._step("S5", "TIMEOUT: bounded sample waits with last reset/gate state")
@@ -259,15 +305,19 @@ class smu_ext_boot_seq_gate_test_seq:
         dut.rst_cold_ni.value = 1
         await ClockCycles(dut.clk_ref_i, self.SETTLE_REF_CYCLES)
         held = 0
+        sep_held = 0
         for _ in range(self.GATED_SAMPLES):
             await RisingEdge(dut.clk_smu_i)
             held += self._sample(dut.smc_fuse_reset_n_delayed_o, self.FUSE) == 0
+            sep_held += self._sample(dut.sep_reset_n_o, self.SEP) == 0
         dut.ext_boot_seq_done_i.value = 1
         rereleased = 0
+        sep_rereleased = 0
         for _ in range(self.RELEASE_BOUND):
             await RisingEdge(dut.clk_smu_i)
-            if self._sample(dut.smc_fuse_reset_n_delayed_o, self.FUSE):
-                rereleased = 1
+            rereleased |= self._sample(dut.smc_fuse_reset_n_delayed_o, self.FUSE)
+            sep_rereleased |= self._sample(dut.sep_reset_n_o, self.SEP)
+            if rereleased and sep_rereleased:
                 break
         self._log(f"CHK-BOOT-SEQ-REGATE held={held}/{self.GATED_SAMPLES} released={rereleased}")
         sb.expect_eq(
@@ -275,6 +325,17 @@ class smu_ext_boot_seq_gate_test_seq:
             (held, rereleased),
             (self.GATED_SAMPLES, 1),
             evidence="CHK-BOOT-SEQ-REGATE",
+        )
+        self._log(
+            f"CHK-BOOT-SEQ-GATE-SEP across the second cold reset sep_reset_n_o low on "
+            f"{sep_held}/{self.GATED_SAMPLES} gated samples, released={sep_rereleased}"
+        )
+        sb.expect_eq(
+            "CHK-BOOT-SEQ-GATE-SEP across a cold reset with the pin low sep_reset_n_o reads 0 on "
+            "every gated sample and rises within the bound after the pin",
+            (sep_held, sep_rereleased),
+            (self.GATED_SAMPLES, 1),
+            evidence="CHK-BOOT-SEQ-GATE-SEP",
         )
         # The poll sees the release on the edge that made it; the cov/sv monitors
         # sample it on the next one, which the simulation has to reach.

@@ -43,12 +43,15 @@ class WireFloor:
     #: True: only frames whose address byte was ACKed count; False: only NACKed
     #: ones (no target answers); None: both.
     addr_acked: bool | None = True
+    #: True: only frames a STOP closed count; None: frame closure is not graded.
+    stop_closed: bool | None = None
 
     def describe(self) -> str:
         rw = "any" if self.read is None else ("R" if self.read else "W")
         ack = "any" if self.addr_acked is None else ("ACK" if self.addr_acked else "NACK")
+        stop = "" if self.stop_closed is None else f" stop_closed={self.stop_closed}"
         return (
-            f"addr=0x{self.addr7:02x} dir={rw} addr_ack={ack} "
+            f"addr=0x{self.addr7:02x} dir={rw} addr_ack={ack}{stop} "
             f"frames>={self.min_frames} bytes>={self.min_data_bytes}"
         )
 
@@ -88,12 +91,13 @@ class smc_fw_i2c_pair_test_seq(smc_fw_image_boot_seq):
         self.wire.stop()
         cocotb.log.info("I2C0 wire summary: %s", self.wire.summary())
         for f in self.wire.frames:
-            cocotb.log.info("I2C0 wire frame %s", f)
+            cocotb.log.info("I2C0 wire frame %s stop_closed=%s", f, f.stop_closed)
         for floor in self.floors:
             frames = [
                 f
                 for f in self.wire.frames_to(floor.addr7, read=floor.read)
-                if floor.addr_acked is None or f.addr_acked == floor.addr_acked
+                if (floor.addr_acked is None or f.addr_acked == floor.addr_acked)
+                and (floor.stop_closed is None or f.stop_closed == floor.stop_closed)
             ]
             data_bytes = sum(f.data_bytes(acked_only=not bool(f.read)) for f in frames)
             assert len(frames) >= floor.min_frames and data_bytes >= floor.min_data_bytes, (

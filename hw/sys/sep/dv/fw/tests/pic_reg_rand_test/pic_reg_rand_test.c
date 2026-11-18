@@ -30,8 +30,9 @@
 // held PIC register-map coverage of a graded leg after every CHK line of that
 // leg passed.
 //
-// Every compare covers the RDL field bits only; the PASS line logs the other
-// bits as rsvd. The six excluded idle bits of meip come in the parameter block.
+// Every compare covers the RDL field bits only; the record logs the other
+// bits as rsvd, which the host grades on the reset, entry-0 and meigwclr reads.
+// The six excluded idle bits of meip come in the parameter block.
 // Source 1 (mailbox 0 inbound line) is the control source: the CPU pushes one
 // word into the inbound WRITE_DATA of mailbox 0 with IRQEN.wtirq 1, WIRQT 0 and
 // an inbound filter allow window open over that port, and releases it with a pop of the outbound
@@ -117,11 +118,12 @@ static int g_err;
 
 static void mbx_window(uint32_t idx, uint32_t m) {
     volatile uint32_t *cfg =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+            idx);
     volatile uint32_t *st =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx);
     volatile uint32_t *en =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx);
     uint32_t s =
         SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + m * SEP_AXIL_MBOX_STRIDE;
     cfg[0] = 0u;
@@ -514,7 +516,10 @@ static void leg_entry0(void) {
     rec_hex("meie0", r_ie & MEIE_BM);
     rec_hex("gwctrl0", r_gw & GW_BM);
     rec_hex("gwclr0", r_gc & GWCLR_BM);
-    rec_hex("rsvd", (r_pl & ~MEIPL_BM) | (r_ie & ~MEIE_BM) | (r_gw & ~GW_BM) | (r_gc & ~GWCLR_BM));
+    rec_hex("rsvd_meipl", r_pl & ~MEIPL_BM);
+    rec_hex("rsvd_meie", r_ie & ~MEIE_BM);
+    rec_hex("rsvd_meigwctrl", r_gw & ~GW_BM);
+    rec_hex("rsvd_meigwclr", r_gc & ~GWCLR_BM);
     rec_num("entry1_same", (uint32_t)e1_same);
     rec_hex("entry1_rd", (e1_pl << 8) | (e1_ie << 4) | e1_gw);
     rec_num("entry1_ctl", (uint32_t)ctl);

@@ -799,6 +799,7 @@ class smc_reset_mid_transaction_rand_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "tb_zeroer_busy",
             "tb_cpu_l2_pending_aw",
             "tb_cpu_l2_pending_ar",
+            "tb_fcov_gate",
         ):
             assert hasattr(dut, name), f"tb_top has no {name}"
         dut.tb_cfg_flr_pf_active.value = 0
@@ -843,14 +844,20 @@ class smc_reset_mid_transaction_rand_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self._program(p)
         task = await self._launch(p)
         self._mark("S2", p.index)
-        await self._inject(p)
-        self._mark("S3", p.index)
-        await self._release(p)
-        self.texts["CHK-RMT-WARM-EQUATION"].append(self._equation(p))
-        p.fate = await self._fate(p, task)
-        cocotb.log.info("P%d in-flight operation, measured: %s", p.index, p.fate)
-        self._mark("S4", p.index)
-        await self._compare(p)
+        # smc_reset_kind_inflight_cg samples this pass's reset assertion and its
+        # S5 read-back only, not the S2 and S6 accesses to the same registers.
+        cocotb.top.tb_fcov_gate.value = 1
+        try:
+            await self._inject(p)
+            self._mark("S3", p.index)
+            await self._release(p)
+            self.texts["CHK-RMT-WARM-EQUATION"].append(self._equation(p))
+            p.fate = await self._fate(p, task)
+            cocotb.log.info("P%d in-flight operation, measured: %s", p.index, p.fate)
+            self._mark("S4", p.index)
+            await self._compare(p)
+        finally:
+            cocotb.top.tb_fcov_gate.value = 0
         self._mark("S5", p.index)
         await self._recover(p)
         self._mark("S6", p.index)

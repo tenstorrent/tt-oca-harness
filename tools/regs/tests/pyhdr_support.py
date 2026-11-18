@@ -69,5 +69,9 @@ def ipxact_registers(xml: Path):
                 yield f"{path}.{name}[{i}]", addr + i * width // 8, width, fields
 
     for block in ET.parse(xml).getroot().iter(f"{{{NS['i']}}}addressBlock"):
+        # A top with no array child exports each unit as its own addressBlock, memories
+        # included; a memory holds no registers.
+        if block.findtext("i:usage", namespaces=NS) == "memory":
+            continue
         name = block.find("i:name", NS).text
         yield from walk(block, name, num(block.find("i:baseAddress", NS).text))

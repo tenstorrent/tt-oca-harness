@@ -7,7 +7,9 @@ Agents and monitors:
     sampling, not protocol BFMs.
   * Protocol / traffic agents: sep_in_axi (alias: sys_axi) / sys_in_axi /
     jtag_axi / protocol_vip.
-  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT),
+  * Passive monitors: axi_monitor (SEP_IN, alias sep_in_axi_monitor),
+    sys_in_axi_monitor (SYS_IN), jtag_in_axi_monitor (JTAG_IN),
+    output_axi_monitor (SYS_OUT),
     cpu_trace_mon (hart-0 retirement trace; idle without a firmware image).
 """
 
@@ -56,7 +58,33 @@ class SmcEnv(uvm_env):
         self.jtag_axi_agent = SmcJtagAxiAgent("jtag_axi_agent", self)
         self.protocol_vip_agent = SmcProtocolVipAgent("protocol_vip_agent", self)
         # --- Bus monitors ---
+        # One monitor per inbound port. `axi_monitor` is the SEP_IN instance,
+        # where a DECERR inside a declared window fails. The SYS_IN and JTAG_IN
+        # instances tally DECERR without failing: the SYS_IN inbound filter
+        # answers blocked accesses with DECERR, and neither port's tests
+        # register expected-DECERR addresses on a monitor. They also tally a
+        # response beat with no recorded request instead of failing it
+        # (fail_unmatched=False).
         self.axi_monitor = SmcAxiMonitor("axi_monitor", self)
+        self.sep_in_axi_monitor = self.axi_monitor
+        self.sys_in_axi_monitor = SmcAxiMonitor(
+            "sys_in_axi_monitor",
+            self,
+            bus_prefix="sys_axi",
+            port_name="SYS-IN",
+            fail_decerr=False,
+            fail_unmatched=False,
+            all_x_any_resp=False,
+        )
+        self.jtag_in_axi_monitor = SmcAxiMonitor(
+            "jtag_in_axi_monitor",
+            self,
+            bus_prefix="jtag_axi",
+            port_name="JTAG-IN",
+            fail_decerr=False,
+            fail_unmatched=False,
+            all_x_any_resp=False,
+        )
         self.output_axi_monitor = SmcOutputAxiMonitor("output_axi_monitor", self)
         self.cpu_trace_mon = SmcCpuTraceMonitor("cpu_trace_mon", self)
         self.scoreboard = SmcScoreboard("scoreboard", self)

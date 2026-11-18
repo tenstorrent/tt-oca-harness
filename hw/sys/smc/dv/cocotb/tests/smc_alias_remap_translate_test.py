@@ -14,9 +14,10 @@ from smc_base_test import smc_base_test
 
 REQUIRED = (
     "CHK-ALIAS-CARRY",
-    "CHK-ALIAS-EMPTY-REGION-OBSERVE",
+    "CHK-ALIAS-EMPTY-REGION-IDENTITY",
+    "CHK-ALIAS-LOWEST-REGION-WINS",
     "CHK-ALIAS-OFFSET-LOW12",
-    "CHK-ALIAS-OVERLAP-OBSERVE",
+    "CHK-ALIAS-OFFSET-WRAPS-AT-BIT55",
     "CHK-ALIAS-RANGE-EDGES",
     "CHK-ALIAS-RD-WR",
     "CHK-ALIAS-REPROGRAM-OUTSTANDING",
@@ -29,7 +30,7 @@ REQUIRED = (
 
 @pyuvm.test()
 class smc_alias_remap_translate_test(smc_base_test):
-    """Alias remap reset identity, offsets, edges, carry and the overlap, empty, reprogram legs."""
+    """Alias remap reset identity, offsets, edges, carry, bit-55 wrap, overlap, empty, reprogram."""
 
     required_evidence = REQUIRED
     min_evidence = len(REQUIRED)

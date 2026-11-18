@@ -15,16 +15,22 @@ extern "C" {
 
 // reg - uart_log_engine_ctrl::CTRL
 // Control Register
-// UART Enable. When set, the pad-mux downstream will be forced to accept UART
-// traffic.
+// UART Enable. The hardware LSIO request of the UART's RX, TX, RTS and CTS
+// pads: while set, the UART owns their data and direction. While clear, the UART
+// keeps running, but its pads follow the GPIO data and direction selection like
+// any pad without a hardware request, so TX and RTS do not reach the pins unless
+// software forces LSIO selection.
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm 0x1
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bp 0
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bw 1
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // UART Enable. When set, the pad-mux downstream will be forced to accept UART
-        // traffic.
+        // UART Enable. The hardware LSIO request of the UART's RX, TX, RTS and CTS
+        // pads: while set, the UART owns their data and direction. While clear, the UART
+        // keeps running, but its pads follow the GPIO data and direction selection like
+        // any pad without a hardware request, so TX and RTS do not reach the pins unless
+        // software forces LSIO selection.
         uint32_t UART_EN :1;
         uint32_t :31;
     } f;

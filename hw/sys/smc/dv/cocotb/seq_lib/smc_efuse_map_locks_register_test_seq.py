@@ -15,6 +15,7 @@ from __future__ import annotations
 import random
 
 import cocotb
+from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_reset_item import SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
@@ -70,6 +71,12 @@ class smc_efuse_map_locks_register_test_seq(SmcResetSeqBase, SmcCsrSeq):
         cocotb.log.info("%s: " + fmt, chk_id, *args)
 
     # --- probes ---------------------------------------------------------
+    @staticmethod
+    def _gate(up: bool) -> None:
+        """Drive tb_fcov_gate, the graded window of smc_efuse_lock_cg."""
+        cocotb.top.tb_fcov_gate.value = int(up)
+        cocotb.log.info("CTRL-FCOV-GATE: %s %d ps", "rise" if up else "fall", get_sim_time("ps"))
+
     @staticmethod
     def _sig(name: str) -> int:
         dut = cocotb.top
@@ -219,177 +226,198 @@ class smc_efuse_map_locks_register_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self._sense_wait("sense1")
         self._done("S1")
 
-        # S2: sensed LOCKS
-        lo, hi = await self._read_locks("SENSED")
-        floor += 2
-        self._done("S2")
-        self._chk(
-            "CHK-EMAP-LOCKS-SENSED",
-            "LOCKS lo=0x%08x hi=0x%08x == image words 0/1",
-            lo,
-            hi,
-        )
-
-        # Non-zero TB pattern in every field before any lock is set from software
-        pre_rnd = random.Random(self.seed + 1)
-        floor += await self._prewrite_fields(pre_rnd, "PRE")
-        prewritten = sum(
-            1 for m in range(_SLOTS) if not self._locked(m, "w") and self.shadow[self.fields[m][1]]
-        )
-
-        # S3: 32-bit halves
-        base = word_addr(lo_word)
-        await self.csr_write("HALF_LO", base, 0x1)
-        self.locks_model |= 0x1
-        h1 = await self._read_locks("HALF_LO_RB")
-        await self.csr_write("HALF_HI", base + 4, 0x1)
-        self.locks_model |= 1 << 32
-        h2 = await self._read_locks("HALF_HI_RB")
-        floor += 6
-        self._done("S3")
-        self._chk(
-            "CHK-EMAP-LOCKS-HALVES",
-            "after low write lo=0x%08x hi=0x%08x; after high write lo=0x%08x hi=0x%08x",
-            *h1,
-            *h2,
-        )
-
-        # S4: idempotent set
-        await self.csr_write("IDEMPOTENT", base, 0x1)
-        i1 = await self._read_locks("IDEMPOTENT_RB")
-        floor += 3
-        self._done("S4")
-        self._chk(
-            "CHK-EMAP-LOCKS-IDEMPOTENT",
-            "repeat write of 0x1 to low word: lo=0x%08x hi=0x%08x unchanged",
-            *i1,
-        )
-
-        # S5: one 64-bit write
-        await self._write_locks64("WIDE", 0x0000_0002_0000_0010)
-        w1 = await self._read_locks("WIDE_RB")
-        wide = await self.csr_read("WIDE_RB64", base, expected=self.locks_model, length=8)
-        floor += 4
-        self._done("S5")
-        self._chk(
-            "CHK-EMAP-LOCKS-WIDE",
-            "64-bit write 0x0000000200000010: lo=0x%08x hi=0x%08x, 64-bit read 0x%016x",
-            *w1,
-            wide,
-        )
-
-        # S5R: cold reset re-sense, image LOCKS restored, patterns re-applied
-        await self._cold_reset("resense", "sense_resense")
-        self.locks_model = image.locks
-        self.shadow = list(image.words)
-        rs = await self._read_locks("RESENSE")
-        floor += 2
-        floor += await self._prewrite_fields(random.Random(self.seed + 2), "RE")
-        prewritten = sum(
-            1 for m in range(_SLOTS) if not self._locked(m, "w") and self.shadow[self.fields[m][1]]
-        )
-        self._done("S5R")
-
-        # S6: slot sweep
-        rnd = random.Random(self.seed)
-        order = list(range(_SLOTS))
-        rnd.shuffle(order)
-        bits_written: list[int] = []
-        rejected = hidden = isolated = unreadable = probe_rejected = 0
-        preset = [b for b in range(64) if (self.locks_model >> b) & 1]
-        probe_checked = False
-        for n in order:
-            name, first, wmask, rmask, words = self.fields[n]
-            wbit = wmask.bit_length() - 1
-            rbit = rmask.bit_length() - 1
-            await self._write_locks64(f"SLOT{n}_WLOCK", wmask)
-            bits_written.append(wbit)
-            await self._read_locks(f"SLOT{n}_WLOCK_RB")
-            floor += 3
-            assert self._locked(n, "w")
-            held_words = self.shadow[first : first + words]
-            if self._locked(n, "r"):
-                assert [self._probe_word(first + k) for k in range(words)] == held_words, (
-                    f"slot {n} {name}: probe words differ from the model before the write"
-                )
-            for k in range(words):
-                await self._write_field(f"SLOT{n}_LOCKED_WR{k}", first + k, self._fresh(rnd, n, k))
-            floor += words
-            if self._locked(n, "r"):
-                unreadable += 1
-                assert [self._probe_word(first + k) for k in range(words)] == held_words, (
-                    f"slot {n} {name}: the rejected write changed the probe words"
-                )
-                probe_rejected += words
-            else:
-                for k in range(words):
-                    await self.csr_read(
-                        f"SLOT{n}_HELD{k}", word_addr(first + k), expected=self.shadow[first + k]
-                    )
-                    rejected += 1
-                floor += words
-            for m in range(_SLOTS):
-                if self._locked(m, "w"):
-                    continue
-                mname, mfirst, _w, _r, mwords = self.fields[m]
-                for k in range(mwords):
-                    value = self._fresh(rnd, m, k)
-                    await self._write_field(f"SLOT{n}_FIELD{m}_WR{k}", mfirst + k, value)
-                    self.shadow[mfirst + k] = value
-                if self._locked(m, "r"):
-                    continue
-                for k in range(mwords):
-                    await self.csr_read(
-                        f"SLOT{n}_FIELD{m}_RB{k}",
-                        word_addr(mfirst + k),
-                        expected=self.shadow[mfirst + k],
-                    )
-                isolated += 1
-                if not probe_checked:
-                    probe_checked = True
-                    got = self._probe_word(mfirst)
-                    alt = self._probe_word(len(self.shadow) - 1 - mfirst)
-                    assert got == self.shadow[mfirst] and alt != got, (
-                        f"efuse_shadow_probe_o word {mfirst} reads 0x{got:08x}, the field holds "
-                        f"0x{self.shadow[mfirst]:08x}; mirrored word reads 0x{alt:08x}"
-                    )
-            await self._write_locks64(f"SLOT{n}_RLOCK", rmask)
-            bits_written.append(rbit)
-            await self._read_locks(f"SLOT{n}_RLOCK_RB")
-            held = self.shadow[first]
-            got = await self._read_any(f"SLOT{n}_HIDDEN", first)
-            assert got not in (held, ~held & _WORD_MASK), (
-                f"slot {n} {name} first word reads 0x{got:08x} with its read lock set; "
-                f"the field holds 0x{held:08x}"
+        # smc_efuse_lock_cg samples the LOCKS writes and the field accesses of
+        # S2 to S6, with the gate low over each cold reset (the sample event of
+        # the reset covergroup) and over S7 and S8.
+        self._gate(True)
+        try:
+            # S2: sensed LOCKS
+            lo, hi = await self._read_locks("SENSED")
+            floor += 2
+            self._done("S2")
+            self._chk(
+                "CHK-EMAP-LOCKS-SENSED",
+                "LOCKS lo=0x%08x hi=0x%08x == image words 0/1",
+                lo,
+                hi,
             )
-            hidden += 1
+
+            # Non-zero TB pattern in every field before any lock is set from software
+            pre_rnd = random.Random(self.seed + 1)
+            floor += await self._prewrite_fields(pre_rnd, "PRE")
+            prewritten = sum(
+                1
+                for m in range(_SLOTS)
+                if not self._locked(m, "w") and self.shadow[self.fields[m][1]]
+            )
+
+            # S3: 32-bit halves
+            base = word_addr(lo_word)
+            await self.csr_write("HALF_LO", base, 0x1)
+            self.locks_model |= 0x1
+            h1 = await self._read_locks("HALF_LO_RB")
+            await self.csr_write("HALF_HI", base + 4, 0x1)
+            self.locks_model |= 1 << 32
+            h2 = await self._read_locks("HALF_HI_RB")
+            floor += 6
+            self._done("S3")
+            self._chk(
+                "CHK-EMAP-LOCKS-HALVES",
+                "after low write lo=0x%08x hi=0x%08x; after high write lo=0x%08x hi=0x%08x",
+                *h1,
+                *h2,
+            )
+
+            # S4: idempotent set
+            await self.csr_write("IDEMPOTENT", base, 0x1)
+            i1 = await self._read_locks("IDEMPOTENT_RB")
+            floor += 3
+            self._done("S4")
+            self._chk(
+                "CHK-EMAP-LOCKS-IDEMPOTENT",
+                "repeat write of 0x1 to low word: lo=0x%08x hi=0x%08x unchanged",
+                *i1,
+            )
+
+            # S5: one 64-bit write
+            await self._write_locks64("WIDE", 0x0000_0002_0000_0010)
+            w1 = await self._read_locks("WIDE_RB")
+            wide = await self.csr_read("WIDE_RB64", base, expected=self.locks_model, length=8)
             floor += 4
-        assert probe_checked, "no unlocked field was available for the probe word-order check"
-        assert len(bits_written) == 64 and sorted(bits_written) == list(range(64))
-        assert self.locks_model == (1 << 64) - 1, f"LOCKS model 0x{self.locks_model:x} not full"
-        final = await self._read_locks("SWEEP_FINAL")
-        floor += 2
-        self._done("S6")
-        self._chk(
-            "CHK-EMAP-SLOT-MAP",
-            "32 slots: write lock 2n rejected writes of %d words read back over SEP_IN in %d "
-            "slots and %d words observed on efuse_shadow_probe_o in %d slots (read lock already "
-            "set); %d fields held a non-zero TB value after the re-sense; slot 31 image-locked, "
-            "compared against image 0; read lock 2n+1 hid %d first words (neither value nor "
-            "complement); order %s",
-            rejected,
-            _SLOTS - unreadable,
-            probe_rejected,
-            unreadable,
-            prewritten,
-            hidden,
-            order,
-        )
-        self._chk(
-            "CHK-EMAP-SLOT-ISOLATION",
-            "after each lock %d not-yet-locked fields accepted a write and read back",
-            isolated,
-        )
+            self._done("S5")
+            self._chk(
+                "CHK-EMAP-LOCKS-WIDE",
+                "64-bit write 0x0000000200000010: lo=0x%08x hi=0x%08x, 64-bit read 0x%016x",
+                *w1,
+                wide,
+            )
+
+            # S5R: cold reset re-sense, image LOCKS restored, patterns re-applied
+            await RisingEdge(cocotb.top.clk_smc_i)
+            self._gate(False)
+            await self._cold_reset("resense", "sense_resense")
+            self._gate(True)
+            self.locks_model = image.locks
+            self.shadow = list(image.words)
+            rs = await self._read_locks("RESENSE")
+            floor += 2
+            floor += await self._prewrite_fields(random.Random(self.seed + 2), "RE")
+            prewritten = sum(
+                1
+                for m in range(_SLOTS)
+                if not self._locked(m, "w") and self.shadow[self.fields[m][1]]
+            )
+            self._done("S5R")
+
+            # S6: slot sweep
+            rnd = random.Random(self.seed)
+            order = list(range(_SLOTS))
+            rnd.shuffle(order)
+            bits_written: list[int] = []
+            rejected = hidden = isolated = unreadable = probe_rejected = 0
+            preset = [b for b in range(64) if (self.locks_model >> b) & 1]
+            probe_checked = False
+            for n in order:
+                name, first, wmask, rmask, words = self.fields[n]
+                wbit = wmask.bit_length() - 1
+                rbit = rmask.bit_length() - 1
+                await self._write_locks64(f"SLOT{n}_WLOCK", wmask)
+                bits_written.append(wbit)
+                await self._read_locks(f"SLOT{n}_WLOCK_RB")
+                floor += 3
+                assert self._locked(n, "w")
+                held_words = self.shadow[first : first + words]
+                if self._locked(n, "r"):
+                    assert [self._probe_word(first + k) for k in range(words)] == held_words, (
+                        f"slot {n} {name}: probe words differ from the model before the write"
+                    )
+                for k in range(words):
+                    await self._write_field(
+                        f"SLOT{n}_LOCKED_WR{k}", first + k, self._fresh(rnd, n, k)
+                    )
+                floor += words
+                if self._locked(n, "r"):
+                    unreadable += 1
+                    assert [self._probe_word(first + k) for k in range(words)] == held_words, (
+                        f"slot {n} {name}: the rejected write changed the probe words"
+                    )
+                    probe_rejected += words
+                else:
+                    for k in range(words):
+                        await self.csr_read(
+                            f"SLOT{n}_HELD{k}",
+                            word_addr(first + k),
+                            expected=self.shadow[first + k],
+                        )
+                        rejected += 1
+                    floor += words
+                for m in range(_SLOTS):
+                    if self._locked(m, "w"):
+                        continue
+                    mname, mfirst, _w, _r, mwords = self.fields[m]
+                    for k in range(mwords):
+                        value = self._fresh(rnd, m, k)
+                        await self._write_field(f"SLOT{n}_FIELD{m}_WR{k}", mfirst + k, value)
+                        self.shadow[mfirst + k] = value
+                    if self._locked(m, "r"):
+                        continue
+                    for k in range(mwords):
+                        await self.csr_read(
+                            f"SLOT{n}_FIELD{m}_RB{k}",
+                            word_addr(mfirst + k),
+                            expected=self.shadow[mfirst + k],
+                        )
+                    isolated += 1
+                    if not probe_checked:
+                        probe_checked = True
+                        got = self._probe_word(mfirst)
+                        alt = self._probe_word(len(self.shadow) - 1 - mfirst)
+                        assert got == self.shadow[mfirst] and alt != got, (
+                            f"efuse_shadow_probe_o word {mfirst} reads 0x{got:08x}, the field holds "
+                            f"0x{self.shadow[mfirst]:08x}; mirrored word reads 0x{alt:08x}"
+                        )
+                await self._write_locks64(f"SLOT{n}_RLOCK", rmask)
+                bits_written.append(rbit)
+                await self._read_locks(f"SLOT{n}_RLOCK_RB")
+                held = self.shadow[first]
+                got = await self._read_any(f"SLOT{n}_HIDDEN", first)
+                assert got not in (held, ~held & _WORD_MASK), (
+                    f"slot {n} {name} first word reads 0x{got:08x} with its read lock set; "
+                    f"the field holds 0x{held:08x}"
+                )
+                hidden += 1
+                floor += 4
+            assert probe_checked, "no unlocked field was available for the probe word-order check"
+            assert len(bits_written) == 64 and sorted(bits_written) == list(range(64))
+            assert self.locks_model == (1 << 64) - 1, f"LOCKS model 0x{self.locks_model:x} not full"
+            final = await self._read_locks("SWEEP_FINAL")
+            floor += 2
+            self._done("S6")
+            self._chk(
+                "CHK-EMAP-SLOT-MAP",
+                "32 slots: write lock 2n rejected writes of %d words read back over SEP_IN in %d "
+                "slots and %d words observed on efuse_shadow_probe_o in %d slots (read lock already "
+                "set); %d fields held a non-zero TB value after the re-sense; slot 31 image-locked, "
+                "compared against image 0; read lock 2n+1 hid %d first words (neither value nor "
+                "complement); order %s",
+                rejected,
+                _SLOTS - unreadable,
+                probe_rejected,
+                unreadable,
+                prewritten,
+                hidden,
+                order,
+            )
+            self._chk(
+                "CHK-EMAP-SLOT-ISOLATION",
+                "after each lock %d not-yet-locked fields accepted a write and read back",
+                isolated,
+            )
+        finally:
+            # A compare that fails inside a step leaves it with the exception;
+            # the gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            self._gate(False)
 
         # S7: persistence on the probe
         jpi = self.fields[0][1]

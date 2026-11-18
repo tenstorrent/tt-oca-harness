@@ -1,22 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// OROM memory clear implementation (Step N).
+// SEP SRAM clears: the optional scrub before any manifest is staged ([S15]),
+// and the clear between SPI manifest slots. Both use the secure DMA zero fill.
 //
-// Clears SEP EXT SRAM to zero for deterministic state before manifest load
-// and BL1 execution:
-//   write_zeros(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, false)
-//
-// Uses a CPU word loop, not the secure DMA zero fill.
-//
-// Controlled by SRAM_SCRUB_BYTES (build knob; 0x40000 clears all of SEP SRAM).
-// The Makefile sets the default.
+// The scrub is controlled by SRAM_SCRUB_BYTES (build knob; 0x40000 clears all of
+// SEP SRAM). The Makefile sets the default.
 
 #include <stdint.h>
 
-#include "oca_boot.h"
 #include "errors.h"
+#include "harden.h"
+#include "oca_boot.h"
 #include "rom_mmio.h"
+#include "rom_virt_console.h"
+#include "sep_dma.h"
 
 // Generated register map (provides SEP_TOP_SEP_SRAM_BASE_ADDR/SIZE).
 #include "sep.h"
@@ -28,7 +26,29 @@
 #define SRAM_SCRUB_BYTES 0
 #endif
 
-void rom_clear_ext_sram(void) {
+#if (SRAM_SCRUB_BYTES % 4) != 0
+#error "SRAM_SCRUB_BYTES must be a whole number of 32-bit words"
+#endif
+
+// Zeroes [SRAM_BASE, SRAM_BASE + len) and reads back its first, middle and last
+// words, which must be zero. The readback catches a fill the engine reported
+// complete but did not write.
+static uint32_t sram_zero(uint32_t len) {
+    const uint32_t err = sep_dma_zero(SRAM_BASE, len);
+    if (err != 0u || harden_u32(err) != 0u) {
+        return err != 0u ? err : SEP_DMA_ERR_TRANSFER;
+    }
+    const uint32_t mid = SRAM_BASE + ((len / 2u) & ~3u);
+    const uint32_t last = SRAM_BASE + len - 4u;
+    const uint32_t seen = mmio_read32(SRAM_BASE) | mmio_read32(mid) | mmio_read32(last);
+    if (seen != 0u || harden_u32(seen) != 0u) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
+        return SEP_DMA_ERR_TRANSFER;
+    }
+    return 0u;
+}
+
+uint32_t rom_clear_ext_sram(void) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_EXT_SRAM_CLEAR_START);
     simputshex32("SRAM_SCRUB_CFG=", (uint32_t)SRAM_SCRUB_BYTES);
 
@@ -37,15 +57,10 @@ void rom_clear_ext_sram(void) {
     if (scrub > SRAM_SIZE) scrub = SRAM_SIZE;
 
     simputshex32("SRAM_SCRUB_LEN=", scrub);
-    volatile uint32_t *p = (volatile uint32_t *)(uintptr_t)SRAM_BASE;
-    uint32_t words = scrub / 4u;
-
-    for (uint32_t i = 0; i < words; ++i) {
-        p[i] = 0u;
-        // Progress every 16K words (64 KiB).
-        if ((i & 0x3FFF) == 0) {
-            simputshex32("SRAM_CLR_PROG=", i * 4u);
-        }
+    const uint32_t err = sram_zero(scrub);
+    if (err != 0u || harden_u32(err) != 0u) {
+        simputs("SRAM_CLR_FAIL\n");
+        return err != 0u ? err : SEP_DMA_ERR_TRANSFER;
     }
     simputs("SRAM_CLR_OK\n");
 #else
@@ -53,4 +68,14 @@ void rom_clear_ext_sram(void) {
 #endif
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_EXT_SRAM_CLEAR_DONE);
+    return 0u;
+}
+
+uint32_t rom_clear_sram_for_retry(void) {
+    const uint32_t err = sram_zero(SRAM_SIZE);
+    if (err != 0u || harden_u32(err) != 0u) {
+        simputs("SRAM_RETRY_CLR_FAIL\n");
+        return OCA_BOOT_ERR_DMA;
+    }
+    return 0u;
 }

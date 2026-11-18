@@ -133,11 +133,14 @@ common_bender_targets = [
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
 # hw/common/assert carries ocah_assert.svh, included by the AXI protocol SVA.
 # hw/sys/sep/regs/gen/svh carries the generated register header sep_fcov
-# includes for CSR addresses, reset values, and field masks.
+# includes for CSR addresses, reset values, and field masks;
+# hw/ip/key_manager/regs/gen/svh carries the KMCSR and KM DRBG sampler headers
+# that sep_fcov and tb_top include for the same.
 incdirs = [
   "hw/sys/sep/dv/tb",
   "hw/common/assert",
   "hw/sys/sep/regs/gen/svh",
+  "hw/ip/key_manager/regs/gen/svh",
   # ocah_path_plusargs.svh, the file-path plusarg guard tb_top runs at time 0.
   "hw/common/dv/vip/ocah_lib/uvm",
 ]
@@ -414,6 +417,29 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_pio/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_pio/boot_rom.dtcm.hex",
   "hw/sys/sep/bootrom/prod/build_pio/boot_rom.sym",
+]
+
+[c_build.boot_rom_clear]
+# The default Boot ROM with its optional memory clears built in, so that each
+# clear runs where a test can see it (-> build_clear/). SRAM_SCRUB_BYTES=0x40000
+# zeroes all of SEP SRAM before any manifest is staged, and ROM_ICCM_CLEAR_FULL=1
+# zeroes all of ICCM at boot instead of only the pad past BL1. Tests that run it
+# preload nothing into SEP SRAM, since the scrub would erase it.
+#
+# Everything else matches [c_build.boot_rom]: the RISCV_TOOLCHAIN-or-
+# container split, the no-braces argv constraint, and the shared `oca-images`.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" BUILD_DIR=build_clear key-digests; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" BUILD_DIR=build_clear ROM_ICCM_CLEAR_FULL=1 SRAM_SCRUB_BYTES=0x40000 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building the memory-clear boot ROM in the ocah-container image\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" OTBN_PYTHON=python3 MANIFEST_PYTHON=python3 BUILD_DIR=build_clear ROM_ICCM_CLEAR_FULL=1 SRAM_SCRUB_BYTES=0x40000 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required without a picolibc RISCV_TOOLCHAIN\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
+]
+outputs = [
+  "hw/sys/sep/bootrom/prod/build_clear/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_clear/boot_rom.elf",
+  "hw/sys/sep/bootrom/prod/build_clear/boot_rom.itcm.hex",
+  "hw/sys/sep/bootrom/prod/build_clear/boot_rom.dtcm.hex",
+  "hw/sys/sep/bootrom/prod/build_clear/boot_rom.sym",
 ]
 
 [c_build.km_rom_main]
@@ -744,11 +770,14 @@ filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_compile.f"
 bender_filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_bender.f"
 work_dir = "hw/sys/sep/dv/build/uvm"
 # hw/sys/sep/regs/gen/svh carries the generated register header sep_env_pkg
-# includes for addresses, reset values, and field masks.
+# includes for addresses, reset values, and field masks;
+# hw/ip/key_manager/regs/gen/svh carries the KMCSR and KM DRBG sampler headers
+# that sep_fcov and tb_top include.
 incdirs = [
   "hw/sys/sep/dv/tb",
   "hw/common/assert",
   "hw/sys/sep/regs/gen/svh",
+  "hw/ip/key_manager/regs/gen/svh",
   "hw/sys/sep/dv/uvm/env",
   "hw/sys/sep/dv/uvm/seq_lib",
   "hw/sys/sep/dv/uvm/tests",

@@ -41,8 +41,8 @@ if str(_SMC_REG_PY) not in sys.path:
 
 from smc_reg import GPIO_INTF_ACCESS_FILTER_REG_DEFAULT  # noqa: E402
 
-GPIO0_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
-GPIO1_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 1)
+GPIO0_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
+GPIO1_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 1)
 
 # Address, reset default and every field mask come from the SAME generated
 # block, `gpio_intf` -- the block whose ACCESS_FILTER register these addresses

@@ -72,37 +72,37 @@ module sep_system_peripherals_xbar
     // system_csr.local_master_alias_remap_ctrl: 0x10a10000 - 0x10a10200
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(0)),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(0) +
-                    sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_TOTAL_SIZE)
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_SIZE)
     },
     // system_csr.ap_output_remap_ctrl: 0x10a10200 - 0x10a10280
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(0)),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(0) +
-                    sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_TOTAL_SIZE)
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_SIZE)
     },
     // system_csr.stee_output_remap_ctrl: 0x10a10300 - 0x10a10380
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(0)),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(0) +
-                    sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_TOTAL_SIZE)
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE)
     },
     // system_csr.outbound_filter_ctrl: 0x10a20000 - 0x10a20400
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0) +
-                    sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_TOTAL_SIZE)
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE)
     },
     // system_csr.inbound_filter_ctrl: 0x10a21000 - 0x10a21200
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) +
-                    sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_TOTAL_SIZE)
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE)
     },
     // system_csr.sep_cpu_ctrl: 0x10a30000 - 0x10a31008
     '{

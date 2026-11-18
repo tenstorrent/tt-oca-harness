@@ -15,12 +15,14 @@ class smc_gpio_p0_mux_test(smc_base_test):
     """GPIO0 interface_enable vs a live lsio_select competitor."""
 
     required_evidence = (
+        "CHK-GPIO-P0-MUX-HW-OVER-USE-REG",
         "CHK-GPIO-P0-MUX-LSIO",
         "CHK-GPIO-P0-MUX-PATTERN",
         "CHK-GPIO-P0-MUX-PRIO",
         "CHK-GPIO-P0-MUX-REG",
+        "CHK-GPIO-SW-LSIO-DISABLED",
     )
-    min_evidence = 4
+    min_evidence = 6
 
     auto_protocol_vip = False
 

@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Raw interrupt vector assembly across regions, reserved bits and region edges.
 
-Spec sources: interrupts.adoc SMC indexed interrupt map table, CPU interrupt vector map.
+Spec sources: interrupts.adoc SMC indexed interrupt map table (inbound mailbox channel m at raw
+bit 288 + m), CPU interrupt vector map.
 """
 
 from __future__ import annotations
@@ -22,17 +23,13 @@ from .smc_addr_map import (
     ZEROER_CTRL_STATUS,
 )
 from .smc_mailbox_multi_instance_test_seq import (
-    _CTRL_OFFSET,
     _CTRL_WFLUSH,
-    _INBOUND_MAILBOX_BASE,
+    _INBOUND_PFX,
     _IRQ_PATTERN,
-    _IRQEN_OFFSET,
     _IRQEN_WTIRQ,
-    _IRQS_OFFSET,
     _IRQS_WTIRQ,
     _MAILBOX_CG_EN,
-    _MAILBOX_STRIDE,
-    _WRITE_DATA_OFFSET,
+    _reg,
 )
 from .smc_output_fabric_vip_utils import output_fabric_pass_all_cfg_seq
 from .smc_zeroer_dma_timeout_test_seq import ZEROER_CTRL_STATUS_START
@@ -44,13 +41,12 @@ HOLD_RISES = 256
 ZEROER_CEILING_RISES = 4096
 FUSE_SENSE_RISES = 200_000
 AXI_TIMEOUT_NS = 50_000
-MASKED_OUT = ((1 << 32) - 1) << 288
 TAIL = 0xF << 324
 ZEROER_BIT = 323
 ZEROER_BYTES = 256
 ZEROER_DEST = 0x0200_3000
 MAILBOXES = (0, 31)
-# (name, raw bit or None for the masked-out inbound mailboxes)
+# (name, raw bit)
 SOURCES = (
     ("ext0", 0),
     ("ext16", 16),
@@ -58,8 +54,8 @@ SOURCES = (
     ("sep7", 263),
     ("ndm", 267),
     ("hang", 286),
-    ("mbx0", None),
-    ("mbx31", None),
+    ("mbx0", 288),
+    ("mbx31", 319),
 )
 _PINS = {
     "ext0": "tb_ext_interrupt_0_i",
@@ -77,7 +73,7 @@ _CHECKERS = (
     "CHK-VECASM-RSVD-287",
     "CHK-VECASM-EDGES",
     "CHK-VECASM-TAIL-ZERO",
-    "CHK-VECASM-INBOUND-LOG",
+    "CHK-VECASM-INBOUND",
 )
 _CHECK_STEP = ("S2", "S3", "S4", "S5", "S5", "S6", "S6")
 
@@ -139,41 +135,39 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
             self.inbound[n] += _bit(vec, n)
         return vec
 
-    def _masked(self, vec: int) -> int:
-        return (vec ^ self._base) & ~MASKED_OUT
+    def _xor(self, vec: int) -> int:
+        return vec ^ self._base
 
     async def _reach(self, name: str, want: int, mbx: tuple[int, int] | None = None) -> int:
-        """Wait until the masked XOR vector equals want (and the mailbox bit its level)."""
+        """Wait until the vector XOR the baseline equals want (and the mailbox bit its level)."""
         bound = MAILBOX_CEILING_RISES if mbx else CEILING_RISES
         vec = self._sample(f"{name} entry")
         for n in range(1, bound + 1):
             await RisingEdge(cocotb.top.clk_smc_i)
             vec = self._sample(f"{name}[{n}]")
             mb = int(cocotb.top.tb_mailbox_interrupts.value)
-            self._waits[name] = (f"{bound} rises", f"xor=0x{self._masked(vec):x} after {n}")
-            if self._masked(vec) == want and (mbx is None or _bit(mb, mbx[0]) == mbx[1]):
+            self._waits[name] = (f"{bound} rises", f"xor=0x{self._xor(vec):x} after {n}")
+            if self._xor(vec) == want and (mbx is None or _bit(mb, mbx[0]) == mbx[1]):
                 return n
         raise AssertionError(
-            f"{name}: masked xor 0x{self._masked(vec):x} did not reach "
+            f"{name}: xor 0x{self._xor(vec):x} did not reach "
             f"0x{want:x} within {bound} rises (mailbox bits {mbx})"
         )
 
     async def _mailbox(self, idx: int, level: int) -> None:
-        base = _INBOUND_MAILBOX_BASE + idx * _MAILBOX_STRIDE
+        pfx = _INBOUND_PFX.format(idx)
         await self.csr_write(
-            f"MBOX_IN_{idx}_IRQEN", base + _IRQEN_OFFSET, _IRQEN_WTIRQ * level, length=8
+            f"MBOX_IN_{idx}_IRQEN", _reg(pfx, "IRQEN"), _IRQEN_WTIRQ * level, length=8
         )
         if level:
             await self.csr_write(
-                f"MBOX_IN_{idx}_WRITE_DATA", base + _WRITE_DATA_OFFSET, _IRQ_PATTERN, length=8
+                f"MBOX_IN_{idx}_WRITE_DATA", _reg(pfx, "WRITE_DATA"), _IRQ_PATTERN, length=8
             )
 
     async def _mailbox_clear(self, idx: int) -> None:
-        base = _INBOUND_MAILBOX_BASE + idx * _MAILBOX_STRIDE
-        await self.csr_write(f"MBOX_IN_{idx}_WFLUSH", base + _CTRL_OFFSET, _CTRL_WFLUSH, length=8)
-        await self.csr_write(
-            f"MBOX_IN_{idx}_IRQS_CLEAR", base + _IRQS_OFFSET, _IRQS_WTIRQ, length=8
-        )
+        pfx = _INBOUND_PFX.format(idx)
+        await self.csr_write(f"MBOX_IN_{idx}_WFLUSH", _reg(pfx, "CTRL"), _CTRL_WFLUSH, length=8)
+        await self.csr_write(f"MBOX_IN_{idx}_IRQS_CLEAR", _reg(pfx, "IRQS"), _IRQS_WTIRQ, length=8)
 
     async def _act(self, src: str, level: int) -> None:
         if src in _PINS:
@@ -205,13 +199,13 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
         for n in range(1, HOLD_RISES + 1):
             await RisingEdge(cocotb.top.clk_smc_i)
             vec = self._sample(f"{name}[{n}]")
-            assert self._masked(vec) == want, (
-                f"{name}: masked xor 0x{self._masked(vec):x} != 0x{want:x} at rise {n}"
+            assert self._xor(vec) == want, (
+                f"{name}: xor 0x{self._xor(vec):x} != 0x{want:x} at rise {n}"
             )
             assert int(cocotb.top.tb_peripheral_interrupts.value) == peri, (
                 f"{name}: tb_peripheral_interrupts changed at rise {n}"
             )
-            self._waits[name] = (f"{HOLD_RISES} rises", f"xor=0x{self._masked(vec):x} at {n}")
+            self._waits[name] = (f"{HOLD_RISES} rises", f"xor=0x{self._xor(vec):x} at {n}")
         return peri
 
     async def _watch_zeroer(self) -> tuple[int, int]:
@@ -261,7 +255,7 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
 
         want, up = 0, []
         for src, bit in SOURCES:
-            want |= (1 << bit) if bit is not None else 0
+            want |= 1 << bit
             up.append(f"{src}:{await self._toggle(src, 1, want)}")
         full = want
         self._mark_step("S2")
@@ -270,12 +264,12 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
             "sources asserted one by one",
             "tb_cpu_interrupts each rise",
             "sources dropped in S4",
-            "masked vector equals the baseline after the last drop",
+            "vector equals the baseline after the last drop",
         )
         self._log_chk(
             "CHK-VECASM-ALL-REGIONS",
-            f"masked xor equals the cumulative mask after each assertion, final "
-            f"0x{full:x} (raw 0,16,256,263,267,286); rises to reach {','.join(up)}",
+            f"vector xor baseline equals the cumulative mask after each assertion, final "
+            f"0x{full:x} (raw 0,16,256,263,267,286,288,319); rises to reach {','.join(up)}",
         )
 
         peri = await self._hold("hold", full)
@@ -285,18 +279,18 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
             "all sources held asserted",
             "tb_cpu_interrupts and tb_peripheral_interrupts each rise",
             "sources dropped in S4",
-            "masked vector equals the baseline after S4",
+            "vector equals the baseline after S4",
         )
         self._log_chk(
             "CHK-VECASM-HOLD",
-            f"masked xor stayed 0x{full:x} and "
+            f"vector xor baseline stayed 0x{full:x} and "
             f"tb_peripheral_interrupts stayed 0x{peri:x} for "
             f"{HOLD_RISES} consecutive rises",
         )
 
         down = []
         for src, bit in reversed(SOURCES):
-            want &= ~((1 << bit) if bit is not None else 0)
+            want &= ~(1 << bit)
             down.append(f"{src}:{await self._toggle(src, 0, want)}")
         assert want == 0
         self._mark_step("S4")
@@ -305,11 +299,11 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
             "all sources asserted",
             "tb_cpu_interrupts each rise",
             "one source dropped at a time",
-            "masked xor 0x0 after the last drop",
+            "xor 0x0 after the last drop",
         )
         self._log_chk(
             "CHK-VECASM-DROP-EACH",
-            "masked xor equaled the remaining mask after each "
+            "vector xor baseline equaled the remaining mask after each "
             f"drop in reverse order, final 0x0; rises to settle {','.join(down)}",
         )
 
@@ -319,14 +313,19 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
         edge_rises = [f"sep0:{await self._toggle('sep0', 1, 1 << 256)}"]
         await self._toggle("sep0", 0, 0)
         edge_rises.append(f"hang+mbx0:{await self._toggle('hang', 1, 1 << 286)}")
-        await self._toggle("mbx0", 1, 1 << 286)
+        await self._toggle("mbx0", 1, (1 << 286) | (1 << 288))
         mbx0_raw = {n: _bit(self._sample("mbx0 288"), n) for n in self.inbound}
-        await self._toggle("hang", 0, 0)
+        await self._toggle("hang", 0, 1 << 288)
         await self._toggle("mbx0", 0, 0)
         await self._mailbox_clear(0)
-        edge_rises.append(f"mbx31:{await self._toggle('mbx31', 1, 0)}")
+        edge_rises.append(f"mbx31:{await self._toggle('mbx31', 1, 1 << 319)}")
         mbx31_raw = {n: _bit(self._sample("mbx31 319"), n) for n in self.inbound}
         await self._toggle("mbx31", 0, 0)
+        assert (mbx0_raw[288], mbx0_raw[319], mbx31_raw[288], mbx31_raw[319]) == (1, 0, 0, 1), (
+            f"CHK-VECASM-INBOUND: after the mailbox 0 push raw 288={mbx0_raw[288]} raw 319="
+            f"{mbx0_raw[319]}, after the mailbox 31 push raw 288={mbx31_raw[288]} raw 319="
+            f"{mbx31_raw[319]}; expected 1, 0 then 0, 1"
+        )
         await self._mailbox_clear(31)
         self._edges = False
         self._mark_step("S5")
@@ -352,12 +351,12 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
             f"after {pulse} rises of the zeroer job",
         )
         self._log_chk(
-            "CHK-VECASM-INBOUND-LOG",
-            f"observe-and-log (not specified, measured): expected raw 288 (mailbox 0) and "
-            f"raw 319 (mailbox 31); after the mailbox 0 push raw 288={mbx0_raw[288]} raw 319="
-            f"{mbx0_raw[319]}; after the mailbox 31 push raw 288={mbx31_raw[288]} "
-            f"raw 319={mbx31_raw[319]}; rises high over the run raw 288="
-            f"{self.inbound[288]} raw 319={self.inbound[319]} of {self.samples}",
+            "CHK-VECASM-INBOUND",
+            f"inbound mailbox 0 is raw 288 and mailbox 31 is raw 319: after the mailbox 0 push "
+            f"raw 288={mbx0_raw[288]} raw 319={mbx0_raw[319]}; after the mailbox 31 push raw "
+            f"288={mbx31_raw[288]} raw 319={mbx31_raw[319]}; both bits entered the cumulative "
+            f"mask 0x{full:x} of S2 to S4; rises high over the run raw 288={self.inbound[288]} "
+            f"raw 319={self.inbound[319]} of {self.samples}",
         )
 
         for idx in MAILBOXES:
@@ -421,6 +420,6 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
         )
         cocotb.log.info(
             "CHK-TIMEOUT-PATHS: every bounded wait raises AssertionError on expiry "
-            "with the last masked xor, mailbox bit and tb_zeroer_intp; %s",
+            "with the last xor, mailbox bit and tb_zeroer_intp; %s",
             waits,
         )

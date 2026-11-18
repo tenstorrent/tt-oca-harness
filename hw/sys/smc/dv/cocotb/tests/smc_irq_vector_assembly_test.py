@@ -20,7 +20,7 @@ class smc_irq_vector_assembly_test(smc_base_test):
         "CHK-VECASM-DROP-EACH",
         "CHK-VECASM-EDGES",
         "CHK-VECASM-HOLD",
-        "CHK-VECASM-INBOUND-LOG",
+        "CHK-VECASM-INBOUND",
         "CHK-VECASM-RSVD-287",
         "CHK-VECASM-TAIL-ZERO",
     )

@@ -4,7 +4,7 @@
 
 Closes SMC-GPIO-EXTCTRL.S3, SMC-GPIO-EXTCTRL.S4, SMC-GPIO-EXTCTRL.S5 and
 SMC-EXTWIN-MAND.S2 (memmap.adoc: AXI-Lite External Window): the supplementary
-region's control blocks and the first, second and last of the 65 per-pad
+region's control blocks and the first, second and last of the 67 per-pad
 control blocks are read at their generated-map addresses; each access
 must drive the adopter external AXI-Lite port while in flight and complete
 with a decode error carrying the error-slave word 0xBADCAB1E, the terminator's

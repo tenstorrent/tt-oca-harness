@@ -8,9 +8,9 @@ values above that range into the target before cold reset -- a well-formed
 structurally valid but semantically illegal state -- and requires the ROM to reach its
 POST error state rather than continue booting.
 
-Pass criterion: POST code boot phase ERROR with error INVALID_SEC_MODE. Reaching
-TEST_PASS instead is a failure: it would mean the ROM booted on a lifecycle it cannot
-classify.
+Pass criterion: POST code boot phase ERROR with error INVALID_SEC_MODE, and the ROM
+parks hart 0 (HART0_PARKED in scratch 9, hart 0 inside smc_park_hart0). Reaching TEST_PASS
+instead is a failure: it would mean the ROM booted on a lifecycle it cannot classify.
 
 The controller is not part of this: it runs its own image and is not gated on. Only the
 target's POST code decides the outcome.
@@ -47,6 +47,7 @@ from smc_occp_dual_defs import (
     post_code_error,
     required_plusarg,
 )
+from smc_rom_park_defs import expect_parked
 
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
@@ -59,7 +60,7 @@ ILLEGAL_LC_VALUES = (0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF)
 # POST code fields the ROM must land on, from the names in smc_occp_dual_defs.
 POST_PHASE_ERROR = 0x7
 POST_ERROR_INVALID_SEC_MODE = 0x5
-REQUIRED_EVIDENCE = ("CHK-ROM-INVALID-LC",)
+REQUIRED_EVIDENCE = ("CHK-ROM-INVALID-LC", "CHK-ROM-PARK-ON-HALT")
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -166,6 +167,7 @@ async def smc_rom_invalid_lc_state_test(harness: SmcDualHarness) -> None:
             f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
+    scratch_9 = await expect_parked(dut, harness, dut_csr, "smc_rom_invalid_lc_state_test")
     dut_console.flush()
     harness.dump_cpu_trace(logging.INFO)
     cocotb.log.info(
@@ -173,4 +175,5 @@ async def smc_rom_invalid_lc_state_test(harness: SmcDualHarness) -> None:
         lc_value,
         describe_post_code(post),
     )
+    cocotb.log.info("CHK-ROM-PARK-ON-HALT: halted hart 0 parked; scratch 9 %#010x", scratch_9)
     cocotb.log.info("smc_rom_invalid_lc_state_test PASS")

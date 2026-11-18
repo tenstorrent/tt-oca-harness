@@ -32,7 +32,7 @@ class smc_uart_error_conditions_test(smc_base_test):
         "CHK-UART13-ITR-THRE",
         "CHK-UART13-LSR-RC",
         "CHK-UART13-MCR-LOOP",
-        "CHK-UART13-OUT2-IIR",
+        "CHK-UART13-OUT2-LINE",
         "CHK-UART13-PARITY",
         "CHK-UART13-XMIT-RESET",
     )

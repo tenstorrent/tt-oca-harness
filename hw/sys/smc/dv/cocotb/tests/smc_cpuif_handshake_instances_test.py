@@ -5,7 +5,7 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 9 ENV: cocotb
 """Every register-block instance: pipelined, back to back, W ahead of AW and held.
 
-Every instance of the multi-instance families (GPIO interfaces 0..64, inbound and
+Every instance of the multi-instance families (GPIO interfaces 0..66, inbound and
 outbound filter entries 0..15, M-mode, Xvisor and alias remaps 0..7, I2C 0..2,
 the UART/log wraps 0..3, telemetry receivers 0..2, the cold and warm scratch
 banks) and instance 0 of every single-instance family (reset unit, cpu_ctrl, the
@@ -33,7 +33,7 @@ from seq_lib.smc_cpuif_handshake_instances_test_seq import (
 from smc_base_test import smc_base_test
 
 # Directed stimulus floor, written out here rather than read back from the
-# sequence. 187 pinned-map instances (65 GPIO interfaces, 32 filter entries,
+# sequence. 189 pinned-map instances (67 GPIO interfaces, 32 filter entries,
 # 8 M-mode, 8 Xvisor and 8 alias remaps, 64 mailbox apertures, reset unit,
 # cpu_ctrl) at 188 SEP_IN accesses each: the reference read; 8 pipelined
 # accesses and a restore (10); 4 pipelined reads; 2 back-to-back reads; the
@@ -52,7 +52,7 @@ from smc_base_test import smc_base_test
 # filter entries, 24 remaps and one GPIO interface; 12 plain: 3 telemetry
 # receivers and one instance of nine other families) repeat the held groups: 86
 # accesses each on a pinned-map instance and 82 on a plain one.
-PINNED = 187
+PINNED = 189
 PLAIN = 38
 LONG_PINNED = 57
 LONG_PLAIN = 12

@@ -18,9 +18,16 @@ together. The Key Manager mailbox, the eFuse wrapper host port, the lifecycle
 controller, the entropy pool and the external TRNG window have no isolate stage
 and answer as in the memory map while a domain is isolated.
 
+Leg C (``+sep_swiso_km_key_beat`` only). For each of the five destinations of
+the Key Manager key path, a key-share write that the destination's key path
+accepted before its isolate request rose gets its response before the
+destination reset asserts; the response code is not stated.
+
 Sources: ``hw/sys/sep/doc/reset_controller.adoc`` (Software Reset Register,
 Isolation and Reset Sequencing, the table of paths isolated before each
-software reset, Resetting the TRNG); ``hw/sys/sep/doc/clk_rst.adoc`` (Reset
+software reset, Resetting the TRNG); ``hw/sys/sep/doc/crypto.adoc`` (the key
+paths drain before the Key Manager or the destination enters software reset);
+``hw/sys/sep/doc/clk_rst.adoc`` (Reset
 Architecture); ``hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc``
 (``SW_RESET_N``, bits 63:7 with Access "-"); ``hw/sys/sep/regs/gen/adoc/memory_map.adoc``
 (external TRNG window).
@@ -39,6 +46,16 @@ pass the leaf puts host transactions in flight on the path of the victim. For
 OTBN and AES the first host transaction is placed from measured latencies
 (``CAL-DRAIN``) so that the host isolate stage accepts it one clock before the
 isolate request rises, and the master holds RREADY low until the request rises.
+Leg C runs after leg B with the POKE Key Manager image. For each destination,
+in an order drawn from its own seeded stream, the image stores the drawn
+non-zero words of KEY_SHARE0 and KEY_SHARE1 (the generated
+``<engine>_wrapper_key`` addresses; no KEY_CTRL write) after a host sync
+word. The leaf measures the beat period at the slave side of the
+destination's key-path isolate stage and issues the ``SW_RESET_N`` write so
+that the isolate request rises one clock after a drawn beat is accepted, plus
+an attempt offset from (0, +1, -1, +2, -2, +3, -3, +4). It releases the
+destination and waits for the list to finish. At most eight attempts run per
+destination; the first that anchors is graded.
 
 Probes. Approved: ``ip_rst_n[6:1]`` (``*_gated_rst_n_probe_o``). Observation
 taps: ``ip_rst_n[0]`` (``km_gated_rst_n_probe_o``) and the 14-bit isolate
@@ -46,7 +63,9 @@ request and isolate-complete vectors (``crypto_isolate_req_probe_o``,
 ``crypto_isolated_probe_o``), read in the bench index of
 ``env/sep_reset_taps.py``, and the slave-side handshakes of the 14 isolate
 stages (``iso_slv_{aw,ar,b,r}_hs_probe_o``, ``iso_slv_{b,r}resp_probe_o``). The handshakes of ``s_axi`` are sampled on the same
-clock as the taps.
+clock as the taps. Leg C also samples the Key Manager key-path AW channel
+(``km_key_aw_{valid,ready}_o``, KM-BUS) and reads the POKE results through
+``km_sram_probe_o`` (KM-RESULT).
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-SUBSET        each leg A step with two or more domains: the domains of S
@@ -70,8 +89,12 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     EDN, Adams Bridge) gets a read of its high lane on every
                     seed. For OTBN, AES, KMAC and Adams Bridge every write of
                     the size sweep also completes SLVERR (HMAC and TRNG log
-                    their write answers as ``INFO-ISO-RESP``). The written value
+                    their read and write counts as ``INFO-ISO-RESP``; their
+                    writes are graded by CHK-ISO-WR-SLVERR). The written value
                     is absent after the release.
+  CHK-ISO-WR-SLVERR HMAC, TRNG: every write of the isolated window completes
+                    SLVERR while ``ip_rst_n[D]`` is still low; a window
+                    without a write fails.
   CHK-ISO-REL       the isolate-complete bits of D fall within the allowance of
                     the ``ip_rst_n[D]`` rise; the probe reads its RDL default.
   CHK-ISO-NEVER     the drawn never-isolated port answers as in the memory map
@@ -89,20 +112,39 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     falls (the others log ``INFO-ISO-DRAIN``). The ``s_axi``
                     arrival of the same responses is logged as
                     ``OBS-ISO-DRAIN-SAXI``.
+  CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
+                    on a later clock than the last slave-side response of
+                    the transactions the stage accepted before the request
+                    (the others log ``INFO-ISO-ACK-AFTER-DRAIN``). The response
+                    code and the ``s_axi`` arrival stay logged only.
   CHK-ISO-PATHS     the isolate requests that rise from the baseline equal the
                     table set of the victims written.
+  CHK-ISO-KEY-DRAIN leg C, every destination: every key-share write that the
+                    slave side of the destination's key-path isolate stage
+                    accepted before the isolate request rose has its B there
+                    on a clock before ``ip_rst_n[D]`` falls. The B codes and
+                    the isolate-complete rise are logged only. Control
+                    ``CTRL-KEY-BEAT-INFLIGHT``: on the graded attempt at least
+                    one of those writes has no B yet when the request rises;
+                    a destination with no such attempt fails the leaf. A
+                    Key Manager AW that is valid and not ready at the rise is
+                    logged only (``INFO-KEY-BEAT-ATTEMPT``).
 
 Environment choices (logged): the release allowance of CHK-ISO-REL
 (``REL_ALLOW`` clocks) and the bound of every wait.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, with the Key
 Manager ROM image the open Key Manager tests stage (``km_rom``,
-``+km_rom_hex=km_rom.parhex``). Four seeds, Verilator and VCS.
+``+km_rom_hex=km_rom.parhex``). Four seeds, Verilator and VCS. The
+``_km_poke`` entry boots the POKE image (``+km_rom_hex=km_rom_poke.parhex``)
+and adds ``+sep_swiso_km_key_beat``, which runs leg C.
 """
 
 from __future__ import annotations
 
+import importlib.util
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import cocotb
 import pyuvm
@@ -183,6 +225,44 @@ KM_SET = TABLE["km"]  # bench indices 8 to 13
 FIELD_REQ = {**{d: HOST[d] for d in DOMS}, "km": ("km_efuse",)}
 KM_KEY_HKA = _mask(("km_hmac", "km_kmac", "km_abr"))
 
+# Key-share window of each leg C destination, from the generated Key Manager
+# register header: the KEY_SHARE0 words followed by the KEY_SHARE1 words.
+_KM_GEN_PY = Path(__file__).resolve().parents[6] / "ip" / "key_manager" / "regs" / "gen" / "py"
+_KM_REG_SPEC = importlib.util.spec_from_file_location(
+    "swiso_key_manager_reg", _KM_GEN_PY / "key_manager_reg.py"
+)
+if _KM_REG_SPEC is None or _KM_REG_SPEC.loader is None:
+    raise FileNotFoundError(_KM_GEN_PY / "key_manager_reg.py")
+_KM_REG = importlib.util.module_from_spec(_KM_REG_SPEC)
+_KM_REG_SPEC.loader.exec_module(_KM_REG)
+_KEY_SHARE_PREFIX = {
+    "otbn": "OTBN_WRAPPER_KEY_KEY_SHARE",
+    "aes": "AES_WRAPPER_KEY_KEY_SHARE",
+    "hmac": "HMAC_WRAPPER_KEY_KEY_SHARE",
+    "kmac": "KMAC_WRAPPER_KEY_KEY_SHARE",
+    "abr": "ABR_WRAPPER_KEY_MLDSA_SEED_KEY_SHARE",
+}
+
+
+def _key_window(prefix: str) -> tuple[int, int]:
+    """``(first address, words)`` of KEY_SHARE0 then KEY_SHARE1; raises unless contiguous."""
+    addrs = []
+    for s in (0, 1):
+        i = 0
+        while hasattr(_KM_REG, f"{prefix}{s}_{i}__REG_ADDR"):
+            addrs.append(int(getattr(_KM_REG, f"{prefix}{s}_{i}__REG_ADDR")))
+            i += 1
+    if not addrs or addrs != [addrs[0] + 4 * k for k in range(len(addrs))] or len(addrs) % 2:
+        raise AssertionError(f"{prefix}0/1: share words are not one contiguous even run")
+    return addrs[0], len(addrs)
+
+
+KEY_WIN = {d: _key_window(p) for d, p in _KEY_SHARE_PREFIX.items()}
+# Leg C: offset of the isolate request rise from one clock after the accept of
+# the drawn beat, in attempt order.
+KEY_BEAT_DELTAS = (0, 1, -1, 2, -2, 3, -3, 4)
+KEY_BEAT_SALT = 0x4B42_4541
+
 _BY_NAME = {p.name: p for p in PROBES}
 
 
@@ -235,6 +315,8 @@ REL_ALLOW = 4  # isolate-complete fall against the ip_rst_n rise (CHK-ISO-REL)
 TAP_BOUND = 4_000
 DRAIN_BOUND = 4_000
 KM_BOUND = 20_000
+KEY_BEAT_AW_BOUND = 4_000  # sync word posted to the second key-path AW handshake
+KEY_BEAT_LIST_BOUND = 200_000  # POKE list to SYNC or DONE
 N_VALUES = 4
 HOST_IDS = (1, 2, 3, 4)
 SW_ID = 0
@@ -452,7 +534,9 @@ class IsoSlvLog:
     Reads ``iso_slv_{aw,ar,b,r}_hs_probe_o`` and the response codes on every rising
     edge of ``clk_i`` in the read-only phase and drives nothing. A handshake is one
     clock with valid and ready high, so every high clock is recorded. ``clk`` counts
-    the sampled edges from ``start``.
+    the sampled edges from ``start``. While ``km_on`` is set it also records, per
+    clock, the Key Manager key-path ports whose AW is valid and not ready
+    (``km_key_aw_{valid,ready}_o``, port i = bench stage 8 + i).
     """
 
     CH = ("aw", "ar", "b", "r")
@@ -461,6 +545,8 @@ class IsoSlvLog:
         self.dut = dut
         self.clk = 0
         self.ev: list[tuple[int, str, int, int]] = []  # (clk, ch, bench stage, resp)
+        self.km_on = False
+        self.km_wait: dict[int, int] = {}  # clk -> ports with AW valid and not ready
         self._task = None
 
     async def _run(self) -> None:
@@ -485,6 +571,13 @@ class IsoSlvLog:
                     if (v >> x) & 1:
                         code = (codes >> (2 * x)) & 3 if codes >= 0 else -1
                         self.ev.append((self.clk, ch, x, code))
+            if self.km_on:
+                kv, kr = d.km_key_aw_valid_o.value, d.km_key_aw_ready_o.value
+                if not (kv.is_resolvable and kr.is_resolvable):
+                    raise AssertionError(f"km_key_aw_valid_o/ready_o is X/Z at clock {self.clk}")
+                waiting = int(kv) & ~int(kr)
+                if waiting:
+                    self.km_wait[self.clk] = waiting
 
     def start(self) -> "IsoSlvLog":
         self._task = cocotb.start_soon(self._run())
@@ -507,6 +600,10 @@ class IsoSlvLog:
             if ch in ("b", "r"):
                 out[f"{ch}resp"].append(RESP_NAME.get(code, code))
         return out
+
+    def km_aw_waiting(self, tap_clk: int, port: int, off: int) -> bool:
+        """Key-path port ``port`` had AW valid and not ready on tap clock ``tap_clk``."""
+        return bool((self.km_wait.get(tap_clk + off, 0) >> port) & 1)
 
 
 class PassView:
@@ -605,7 +702,10 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         "CHK-ISO-ORDER",
         "CHK-ISO-DRAIN",
         "CHK-ISO-PATHS",
+        "CHK-ISO-ACK-AFTER-DRAIN",
+        "CHK-ISO-WR-SLVERR",
     )
+    min_evidence = len(required_evidence)
 
     # ---- log helpers --------------------------------------------------------
     def _chk(self, chk: str, ok: bool, values: str) -> None:
@@ -673,8 +773,12 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         await self.pd.write(p, val)
         got = await self.pd.read(p)
         fc = field_compare(got, val, p.mask)
-        if not fc.ok or (val & p.mask) == (p.reset & p.mask):
-            raise AssertionError(f"arm {p.name}: {fc.fields()} RDL reset 0x{p.reset:08x}")
+        self._ctl(
+            "CTRL-ARM",
+            fc.ok and (val & p.mask) != (p.reset & p.mask),
+            f"probe={p.name} wrote=0x{val:08x} read=0x{got:08x} mask=0x{p.mask:08x} "
+            f"rdl_reset=0x{p.reset:08x} {fc.fields()}",
+        )
         self.armed[p.name] = val
 
     async def _read(self, p: ResetProbe) -> tuple[int, int]:
@@ -700,15 +804,22 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         self.seed = self.random_seed()
         self.k = 0
         self.plan = Plan(self.seed)
+        self.key_beat = "sep_swiso_km_key_beat" in cocotb.plusargs
+        if self.key_beat:
+            self.required_evidence = type(self).required_evidence + ("CHK-ISO-KEY-DRAIN",)
         self.logger.info("SEED %s seed=%d", TEST, self.seed)
         for line in self.plan.lines:
             self.logger.info(line)
         self.logger.info(
-            "ENV rel_allow=%d tap_bound=%d drain_bound=%d km_bound=%d (clk_i cycles)",
+            "ENV rel_allow=%d tap_bound=%d drain_bound=%d km_bound=%d key_beat_aw_bound=%d "
+            "key_beat_list_bound=%d (clk_i cycles) leg_c=%d",
             REL_ALLOW,
             TAP_BOUND,
             DRAIN_BOUND,
             KM_BOUND,
+            KEY_BEAT_AW_BOUND,
+            KEY_BEAT_LIST_BOUND,
+            int(self.key_beat),
         )
         await self.bring_up_no_cpu()
         dut = cocotb.top
@@ -743,6 +854,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await FallingEdge(dut.clk_i)
             await self._leg_a()
             await self._leg_b()
+            if self.key_beat:
+                await self._leg_key_beat()
         finally:
             self.hold.release_all()
             await self._gate(False)
@@ -1253,7 +1366,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         await self._grade_pass(pd, view, host_evs, fall, rel_marks, win, baseline)
 
     async def _window(self, pd: PassDraw) -> dict:
-        res = {"rd4": [], "slverr": 0, "n": 0, "other": [], "writes": 0, "lanes": []}
+        res = {"rd4": [], "slverr": 0, "n": 0, "other": [], "writes": 0, "lanes": [], "wr": []}
         for size, addr in pd.reads:
             seq = await self._acc(SepAxiOp.READ, addr, size)
             res["n"] += 1
@@ -1270,6 +1383,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             res["n"] += 1
             res["writes"] += 1
             res["slverr"] += int(seq.resp_code == RESP_SLVERR)
+            res["wr"].append((size, addr, data, seq.resp_code))
         if pd.victims[0] == "abr":
             # The open owners grade the SLVERR answer of an MLKEM_STATUS read in the
             # isolated window; this leaf logs it.
@@ -1385,6 +1499,29 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
         ack_hi = {v: view.ack_rise(TABLE[v] & ~baseline, first_write - 1) for v in pd.victims}
         host_hi = {v: view.ack_rise(HOST_MASK[v], first_write - 1) for v in pd.victims}
+        # CHK-ISO-ACK-AFTER-DRAIN / INFO-ISO-ACK-AFTER-DRAIN: the host isolate stage
+        # of D reports isolated only after the last response of the transactions it
+        # accepted before the request rose (reset_controller.adoc, Isolation and
+        # Reset Sequencing, step 3). Both clocks are tap clocks; a handshake at tap
+        # clock k completes at the edge that ends k, so the rise must be later.
+        last_rsp = max(rsp_r + rsp_w) if rsp_r or rsp_w else None
+        h = host_hi[d]
+        vals = (
+            f"dom={d} pass={name} host_ack_rise_cycle={h} last_stage_resp_cycle={last_rsp} "
+            f"accepted={accepted} responses={len(rsp_r) + len(rsp_w)} "
+            f"ack-last={(h - last_rsp) if h is not None and last_rsp is not None else 'na'}"
+        )
+        if d in ("otbn", "aes"):
+            self._chk(
+                "CHK-ISO-ACK-AFTER-DRAIN",
+                h is not None
+                and last_rsp is not None
+                and len(rsp_r) + len(rsp_w) == accepted
+                and h > last_rsp,
+                vals,
+            )
+        else:
+            self.logger.info("INFO-ISO-ACK-AFTER-DRAIN: %s", vals)
         if len(pd.victims) == 1:
             a, r = ack_hi[d], fall[d]
             ok = a is not None and r is not None and r >= a
@@ -1492,6 +1629,18 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"other_size_data=[{';'.join(win['other'])}] control_okay={int(written_absent)} "
             f"written_absent={int(written_absent)} in_window={int(win['still_low'])}",
         )
+        if d in ("hmac", "trng"):
+            # Every window write answers SLVERR (reset_controller.adoc, Isolation and
+            # Reset Sequencing, step 2); a window without a write grades nothing.
+            wr = win["wr"]
+            n_slverr = sum(1 for *_, r in wr if r == RESP_SLVERR)
+            self._chk_late(
+                "CHK-ISO-WR-SLVERR",
+                bool(wr) and n_slverr == len(wr) and win["still_low"],
+                f"dom={d} pass={name} writes={len(wr)} slverr={n_slverr}/{len(wr)} wr="
+                + ",".join(f"{s}B@0x{a:08x}=0x{v:x}/{RESP_NAME[r]}" for s, a, v, r in wr)
+                + f" in_window={int(win['still_low'])}",
+            )
         for port, resp, data, need_okay in win["never"]:
             isolated_answer = resp == RESP_SLVERR and data == ISO_DATA
             ok = (resp == RESP_OKAY) if need_okay else not isolated_answer
@@ -1566,3 +1715,181 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"dom=km rst_rise={rise} ack_fall={afall} abs_delta={delta} allow={REL_ALLOW} "
             f"control_ack_rise_cycle={a} before rst_assert_cycle={fall} release_aw={rel_aw}",
         )
+
+    # ---- leg C --------------------------------------------------------------
+    async def _leg_key_beat(self) -> None:
+        """Leg C: a key-share write in flight on each destination key path at its reset."""
+        from env import sep_km_poke as kp
+        from seq_lib.sep_km_poke_seq import SepKmPoke
+
+        await self._gate(False)
+        rng = SepSeededRng(self.seed ^ KEY_BEAT_SALT)
+        order = list(KEY_WIN)
+        rng.shuffle(order)
+        self.logger.info(
+            "DRAW legC order=%s windows=%s deltas=%s",
+            ",".join(order),
+            ",".join(f"{d}:0x{a:08x}+{n}w" for d, (a, n) in KEY_WIN.items()),
+            ",".join(map(str, KEY_BEAT_DELTAS)),
+        )
+        await self._wait_ack(KM_SET, 0, "Key Manager key paths before leg C")
+        sw = await self._sw_read64()
+        need = KM_BIT | sum(1 << IPRST[d] for d in order)
+        self._ctl(
+            "CTRL-KEY-BEAT-SETUP",
+            (sw & SW_FIELDS) == self.sw and (sw & need) == need,
+            f"SW_RESET_N fields=0b{sw & SW_FIELDS:07b} tracked=0b{self.sw:07b} "
+            f"released_needed=0b{need:07b}",
+        )
+        poke = SepKmPoke(self)
+        waited = await poke.wait_boot()
+        self.logger.info("INFO-KEY-BEAT-BOOT: POKE start marker after %d cycles", waited)
+        self.isolog.km_on = True
+        graded = 0
+        for d in order:
+            hit = None
+            tried = []
+            for k, delta in enumerate(KEY_BEAT_DELTAS):
+                res = await self._key_beat_attempt(poke, kp, rng, d, k, delta)
+                tried.append(res["brief"])
+                if res["anchor"]:
+                    hit = res
+                    break
+            if hit is None:
+                self._ctl(
+                    "CTRL-KEY-BEAT-INFLIGHT",
+                    False,
+                    f"premise false dest={d} attempts={len(tried)}: no attempt had a key-share "
+                    f"write accepted before the isolate request rose and open at the rise; "
+                    + "; ".join(tried),
+                )
+                return
+            self._ctl("CTRL-KEY-BEAT-INFLIGHT", True, hit["vals"])
+            acc, rsp, fall = hit["acc"], hit["rsp"], hit["fall"]
+            before = sum(1 for c in rsp if c < fall)
+            self._chk(
+                "CHK-ISO-KEY-DRAIN",
+                len(rsp) == len(acc) and before == len(acc),
+                hit["vals"] + f" responses_before_rst={before}/{len(acc)} {hit['logged']}",
+            )
+            graded += 1
+        self.logger.info("INFO-KEY-BEAT-COUNT: destinations=%d graded=%d", len(order), graded)
+
+    async def _key_beat_attempt(self, poke, kp, rng, d: str, k: int, delta: int) -> dict:
+        """One leg C attempt on destination ``d``: burst, mid-burst reset, release, record."""
+        dut = cocotb.top
+        x = X[KEYP[d][0]]
+        port = x - X["km_otbn"]
+        bit = 1 << x
+        bitd = 1 << IPRST[d]
+        base, n = KEY_WIN[d]
+        words: list[int] = []
+        while len(words) < n:
+            w = rng.getrandbits(32)
+            if w:
+                words.append(w)
+        j0 = rng.randrange(2, n - 1)
+        sync_word = rng.getrandbits(32)
+        self.logger.info(
+            "DRAW legC dest=%s attempt=%d delta=%d beat_j=%d sync=0x%08x words=%s",
+            d,
+            k,
+            delta,
+            j0,
+            sync_word,
+            ",".join(f"0x{w:08x}" for w in words),
+        )
+        req0 = self.taps.iso_req_now()
+        self._ctl(
+            "CTRL-ISO-BASELINE",
+            req0 == 0,
+            f"pass=key_beat dest={d} attempt={k} iso_req=0x{req0 or 0:04x} baseline=0x0000",
+        )
+        handle = await poke.post([kp.sync(), kp.wrblk(base, words)])
+        await poke.wait(handle, (kp.ST_SYNC,), timeout_cycles=KEY_BEAT_LIST_BOUND)
+        await RisingEdge(dut.clk_i)
+        view = PassView(self.taps, self.chan, self.off)
+        start = view.m["iso_req"].clk
+        await poke.mbox.post_raw_words([sync_word])
+        # Beat period from the first two accepted key-share writes at the stage.
+        aws: list[int] = []
+        for _ in range(KEY_BEAT_AW_BOUND):
+            await FallingEdge(dut.clk_i)
+            aws = self.isolog.since(start, bit, self.iso_off)["aw"]
+            if len(aws) >= 2:
+                break
+        else:
+            raise AssertionError(
+                f"leg C dest={d} attempt={k}: {len(aws)} AW handshakes at stage x{x} within "
+                f"{KEY_BEAT_AW_BOUND} clocks of the sync word"
+            )
+        period = aws[1] - aws[0]
+        now = self.taps.iso_req.clk
+        j = issue = issued = None
+        for jj in range(j0, n - 1):
+            c = aws[0] + (jj - 1) * period + 1 + delta - self.lat_req
+            if c >= now:
+                j, issue = jj, c
+                break
+        if issue is not None:
+            while self.taps.iso_req.clk < issue:
+                await FallingEdge(dut.clk_i)
+            issued = self.taps.iso_req.clk
+            ev = self._sw_issue(self.sw & ~bitd)
+            await ev.wait()
+            self.sw &= ~bitd
+            await self._wait_ip(IPRST[d], 0, f"leg C dest={d} attempt={k} reset")
+            await self._sw_write_seq(self.sw | bitd)
+            await self._wait_ip(IPRST[d], 1, f"leg C dest={d} attempt={k} release")
+            await self._wait_ack(TABLE[d], 0, f"leg C dest={d} attempt={k} isolate release")
+        await poke.wait(handle, (kp.ST_DONE,), timeout_cycles=KEY_BEAT_LIST_BOUND)
+        res = poke.results(handle)
+        if res[0].value != sync_word:
+            raise AssertionError(
+                f"leg C dest={d} attempt={k}: POKE sync slot 0x{res[0].value:08x}, "
+                f"posted 0x{sync_word:08x}"
+            )
+        await self._cycles(4)
+        r = view.req_rise(bit) if issued is not None else None
+        fall = view.ip_fall(IPRST[d]) if issued is not None else None
+        st = self.isolog.since(start, bit, self.iso_off)
+        acc = [c for c in st["aw"] if r is not None and c < r]
+        rsp = st["b"][: len(acc)]
+        open_at = 0
+        if r is not None:
+            open_at = sum(1 for c in rsp if c >= r) + len(acc) - len(rsp)
+        km_wait = r is not None and self.isolog.km_aw_waiting(r, port, self.iso_off)
+        ack = view.ack_rise(bit, r - 1) if r is not None else None
+        anchor = r is not None and fall is not None and open_at >= 1
+        vals = (
+            f"dest={d} stage=x{x} attempt={k} delta={delta} beat_j={j} period={period} "
+            f"lat_req={self.lat_req} issue_cycle={issued} iso_req_cycle={r} "
+            f"rst_assert_cycle={fall} accepted_before_req={len(acc)} open_at_req={open_at} "
+            f"stage_aw_cycles={acc} stage_b_cycles={rsp}"
+        )
+        logged = (
+            f"b_codes={st['bresp'][: len(acc)]} iso_ack_rise_cycle={ack} "
+            f"rst-ack={(fall - ack) if fall is not None and ack is not None else 'na'}"
+        )
+        self.logger.info(
+            "INFO-KEY-BEAT-ATTEMPT: %s anchor=%d km_aw_valid_not_ready_at_req=%d "
+            "stage_aw_at_or_after_req=%d stage_aw_total=%d burst_slv=%d burst_dec=%d %s",
+            vals,
+            int(anchor),
+            int(km_wait),
+            sum(1 for c in st["aw"] if r is not None and c >= r),
+            len(st["aw"]),
+            res[1].slv,
+            res[1].dec,
+            logged,
+        )
+        brief = f"a{k}:delta={delta},j={j},req={r},open={open_at},aw={len(st['aw'])}"
+        return {
+            "anchor": anchor,
+            "vals": vals,
+            "logged": logged,
+            "acc": acc,
+            "rsp": rsp,
+            "fall": fall,
+            "brief": brief,
+        }

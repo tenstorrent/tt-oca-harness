@@ -15,7 +15,8 @@ REQUIRED = (
     "CHK-ALR-EDGE-MISS",
     "CHK-ALR-HIT-CACHE",
     "CHK-ALR-HIT-TRANSLATE",
-    "CHK-ALR-LOGGED",
+    "CHK-ALR-LOWEST-REGION-WINS",
+    "CHK-ALR-OFFSET-WRAPS-AT-BIT55",
     "CHK-ALR-RESET-TRANSPARENT",
     "CHK-ALR-RESET-WORDS",
     "CHK-ALR-VALID-CLEAR",
@@ -26,7 +27,7 @@ REQUIRED = (
 
 @pyuvm.test()
 class smc_alias_remap_attr_rand_test(smc_base_test):
-    """Drawn alias remap regions: hits, edges, valid clear, and the measured legs."""
+    """Drawn alias remap regions: hits, edges, valid clear, overlap priority and the bit-55 wrap."""
 
     required_evidence = REQUIRED
     min_evidence = len(REQUIRED)

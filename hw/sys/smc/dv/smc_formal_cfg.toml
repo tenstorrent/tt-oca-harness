@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut smc --mode formal`. The stage graph, the tool allowlist and the
+# SymbiYosys default come from profile = "native-formal"; the property modules, bind files and
+# task file live under formal/ (hw/common/dv/docs/formal-property-style.adoc). The plan section
+# is SMC_VPLAN.adoc, "Formal Verification Plan".
+name = "smc"
+profile = "native-formal"
+description = "SMC filter-control lock properties on the smc_internal_regs top (SymbiYosys open path)"
+
+[testlist]
+path = "testlists/formal.toml"
+format = "toml_list"
+
+# The filelist stage runs ahead of the formal stage and writes the list the sby task file reads
+# through its [files] entry `../../build/smc.f`.
+[native.stages.flist]
+kind = "filelist"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/sys/smc/dv/formal/build"]
+
+[build]
+# smc_internal_regs is the smallest module that holds the filter-control register blocks
+# together with their lock steering (the per-entry demux to the error subordinate);
+# axi_filter_wrap only consumes the configuration and holds neither.
+top_module = "smc_internal_regs"
+filelist = "hw/sys/smc/dv/formal/build/smc.f"
+bender_filelist = "hw/sys/smc/dv/formal/build/smc_bender.f"
+work_dir = "hw/sys/smc/dv/formal/build"
+# assert/yosys precedes assert/ so that the frontend picks up the prim_assert.sv shim over the
+# vendored OpenTitan header; the formal macros come from assert/.
+incdirs = ["hw/common/assert/yosys", "hw/common/assert"]
+common_bender_targets = [
+  "axi_rtl",
+  "apb_rtl",
+  "common_cells_rtl",
+  "common_cell_sync_shim",
+  "idma_rtl",
+  "register_interface_l1",
+]
+# The design only: the simulation target's testbench sources have no place in the formal model.
+bender_targets = ["smc"]
+# The shared protocol checker in the boolean subset; the bind file under formal/props/ attaches
+# it to the top.
+sources = [
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv",
+]
+
+[targets.default]
+description = "The filter-control lock property module bound into smc_internal_regs"
+build_dir = "hw/sys/smc/dv/formal/build"
+
+# `smc_filter_lock_fpv` runs the bmc, cover and prove task triple of smc.sby in one sby
+# invocation, from the task file's directory, so its [files] entries resolve.
+[formal.apps.smc_filter_lock_fpv.sby]
+cwd = "hw/sys/smc/dv/formal/fpv/sby"
+script = "smc.sby"
+args = ["smc_filter_lock_bmc", "smc_filter_lock_cover", "smc_filter_lock_prove"]

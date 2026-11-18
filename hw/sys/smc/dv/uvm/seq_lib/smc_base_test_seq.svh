@@ -36,6 +36,7 @@ class smc_base_test_seq extends ocah_sequence;
   smc_test_cfg      test_cfg;
   smc_env_cfg       env_cfg;
   smc_scoreboard    scoreboard;
+  smc_sep_in_history sep_in_history;
 
   // Per-pass named evidence and the access counts it certifies, kept apart so
   // a scenario's non-vacuity claim names the access shape it actually issued.

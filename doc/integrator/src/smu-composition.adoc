@@ -103,8 +103,9 @@ aperture rules below do not apply. The `smu_axi_in` / `smu_axi_out` port types
 are the same in both configurations.
 
 The SMU AXI ports and crossbar carry 12-bit user fields on all five channels.
-The crossbar presents 6-bit transaction IDs to the SEP and SMC inbound
-subordinates.
+`smu_axi_in` accepts 8-bit transaction IDs and `smu_axi_out` presents 10-bit
+transaction IDs, in both `CFG.SEP` configurations. The crossbar presents 6-bit
+transaction IDs to the SEP and SMC inbound subordinates.
 
 ifdef::backend-html5[]
 Connectivity is described in
@@ -154,6 +155,75 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 the SMU AXI Crossbar section of the Technical Reference Manual.
 endif::backend-pdf[]
+
+[[smu-axi-boundary-contract]]
+=== AXI boundary contract
+
+The SMU does not check that requests on `smu_axi_in` are legal for it. The
+system fabric that drives the port must meet the following rules in both
+`CFG.SEP` configurations.
+
+Atomic transactions::
+The SMU does not support AXI atomic transactions: `AWATOP` must be 0. Nothing
+in the SMU refuses or answers an atomic request. It is forwarded as an ordinary
+write, and an atomic that expects read data never receives it, so the requester
+waits indefinitely. If the system fabric can issue atomics towards the SMU,
+filter them in front of `smu_axi_in`.
+
+Burst encodings::
+Every request must be a legal AXI4 burst. The crossbar routes a burst by its
+start address and does not inspect `AxBURST`, `AxLEN` or the end address, so a
+WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11 and an INCR
+burst that crosses a 4 KiB boundary are forwarded unchanged and their effect is
+set by the target. The SEP SRAM refuses a multi-beat burst that is not INCR,
+and the SMC scratchpad accepts all three with `OKAY`. The inbound traffic
+filters decide a burst by its start address, so a burst that crosses a 4 KiB
+boundary also escapes the filter entries of the page it enters.
+
+The SEP and SMC filters decide what a request may reach from two attributes
+that cross the SMU boundary: its security state in AxPROT[1] (NS) and its
+source ID in AxUSER[3:0]. The SMU ports carry them unchanged in both `CFG.SEP`
+configurations, and the integrator decides what the system fabric drives into
+`smu_axi_in` and keeps from `smu_axi_out`.
+
+<<smu-axi-source-id-table>> gives the source ID and NS that each SMC and SEP
+outbound path drives on `smu_axi_out`.
+
+[[smu-axi-source-id-table]]
+.Source ID and NS on `smu_axi_out`
+[cols="2,3,1,1,2",options="header"]
+|===
+|Subsystem |Path |Source ID (AxUSER[3:0]) |Value |NS (AxPROT[1])
+|SMC |Direct path |`SMC_ID` |0x3 |Initiator's
+|SMC |M-mode remap window, for another processor's machine-mode firmware |`MMODE_ID` |0xC |Initiator's
+|SMC |Xvisor remap window, for another processor's hypervisor and guests |`OTHER_ID` |0x0 |Initiator's
+|SEP |SMU aperture, or an address at or above `0x1_0000_0000`, from any SEP master |SEP |0xF |Inverse of address bit 55
+|SEP |AP region, through the AP-controlled remapper |`OTHERS` |0x0 |1
+|SEP |STEE region, through the STEE-controlled remapper |`OTHERS` |0x0 |Inverse of bit 55 of the remapped address
+|===
+
+AxUSER[11:4] are reserved: the harness drives them as 0 on `smu_axi_out` and
+the filters ignore them on `smu_axi_in`. WUSER, BUSER and RUSER carry no
+defined attribute: the filters check only AWUSER and ARUSER, so the system
+fabric need not drive WUSER on `smu_axi_in`.
+
+Inbound attributes::
+The system fabric must drive AxPROT[1] of each `smu_axi_in` request from the
+requester's own security state, and AxUSER[3:0] from its requester identity,
+using the encodings above. A filter entry with a non-zero `src_id` matches only
+that source ID, and `allow_ns` matches only that security state. A constant
+AxUSER makes every request arrive as one requester, so entries for any other
+source ID never match. A constant AxPROT[1] of 0 presents every request as
+Secure, so an entry meant for Secure requesters also admits Non-secure
+software.
+
+Outbound attributes::
+The system fabric must carry NS from `smu_axi_out` into its own security
+attribute (AXI AxPROT[1], or CHI NS or PAS), and AxUSER[3:0] wherever a
+downstream filter matches on the requester. The SMC and SEP outbound paths set
+both per path, including the SEP rule that NS is the inverse of address bit 55.
+Overriding or dropping either attribute is a security decision of the
+integrator and must be recorded.
 
 [[smu-firmware-programming-order]]
 === Firmware programming order

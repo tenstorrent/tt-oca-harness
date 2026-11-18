@@ -4,7 +4,8 @@
 // Minimal MMIO helpers for ROM bring-up (freestanding).
 // Keep this header C/C++ friendly and usable from tiny ROM code.
 
-#pragma once
+#ifndef ROM_MMIO_H
+#define ROM_MMIO_H
 
 #include <stdint.h>
 
@@ -28,3 +29,5 @@ static inline uint32_t mmio_read32(uint32_t addr) {
 static inline void mmio_fence(void) {
     __asm__ volatile("fence" ::: "memory");
 }
+
+#endif // ROM_MMIO_H

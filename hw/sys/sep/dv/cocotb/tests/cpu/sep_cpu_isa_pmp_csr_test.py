@@ -23,15 +23,36 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   reads without a trap. Readbacks are logged and never compared with the
   drawn values or with each other: the implemented width and granularity are
   not claimed.
+* CHK-PMP16 (host) a further drawn word is written to ``pmpaddr16`` and
+  ``pmpaddr63`` (CSR 0x3C0 and 0x3EF) and read back (before); the firmware then
+  writes the complement of the before-read to ``pmpaddr0`` and ``pmpaddr15``
+  and reads the probed CSR again (after). The VeeR EL2 PRM at the Bender pin
+  (``physical-memory-protection.md``, table "CSR configurations for RV-32")
+  gives a 16-entry core 4 ``pmpcfgX`` and 16 ``pmpaddrX`` CSRs, and the core
+  has 16 entries (``hw/sys/sep/doc/cpu.adoc``). RISC-V Privileged
+  Architecture 20211203, ``priv-csrs.tex``: "Attempts to access a non-existent
+  CSR raise an illegal instruction exception." and, for a WARL field, "allow
+  any value to be written while guaranteeing to return a legal value whenever
+  read [...] the range of supported values can be determined by attempting to
+  write a desired setting then reading to see if the value was retained";
+  ``machine.tex`` section 3.7.1: "All PMP CSR fields are WARL and may be
+  read-only zero". A CSR passes when each of its three accesses traps once with
+  ``mcause`` 2 (a non-existent CSR), or when none traps and the before-read and
+  the after-read are both 0 (read-only zero). CTRL-PMP16-NEIGHBOUR: the
+  neighbour writes do not trap and both
+  neighbours read back a value other than the before-read, so an alias of
+  either neighbour changes the after-read. The check runs after every other
+  check of the leaf.
 * CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
   value, the user-mode load from the PMP-denied SRAM region traps with
   ``mcause`` 5 and the denied word does not reach its register; the
   allowed-region load of the same run returns the stored word (control). Each
-  2-bit region field of a draw is 0b00, 0b01 or 0b10 (cpu.adoc, Memory
-  attributes: a cacheability and a side-effect attribute per region); a field
-  with both bits set, whose readback the specification does not state, is not
-  drawn. A draw equal to the start-up value ``MRAC_BOOT`` is redrawn, so a
-  core that ignores the write fails the readback.
+  2-bit region field of a draw is 0b00, 0b01 or 0b10, a legal value of a R/W
+  WARL field, so it reads back as written (VeeR EL2 PRM at 07a51d81,
+  ``memory-map.md``, Region Access Control Register: fields "R/W", registers
+  "WARL", "'11' ... is illegal"). A field with both bits set is not drawn. A
+  draw equal to the start-up value ``MRAC_BOOT`` is redrawn, so a core that
+  ignores the write fails the readback.
 * CHK-TRACE-INSTRET (host) the ``minstret`` delta over the straight-line block
   equals the retirements that the trace monitor counts from the first
   ``minstret`` read up to the second.
@@ -58,10 +79,13 @@ FCOV pass label ``isa_pmp_pass`` (``env/sep_fcov_gate.set_isa_pmp_pass``): the
 sampler holds the ``cp_pmp_entry``, ``cp_mrac_no_perm``, ``cp_lockstep_inert``,
 ``cp_instr_class`` and ``cp_traced_event`` (taken trap) cells of this owner as
 pending while the firmware runs, because the host grades the console only
-after the run. The leaf writes the bits after every check of the run passes:
-bit i of ``cp_pmp_entry`` for an entry i that CHK-PMP passed, the ``mrac`` bit
-for CHK-MRAC, the lockstep bits for CHK-LOCKSTEP-INERT, the class and trap
-bits for CHK-ISA and CHK-MRAC. A FAIL closes the window and writes 0.
+after the run. The leaf adds each bit to the label as soon as the checks that
+grade its cell pass: the class bit after CHK-ISA, bit i of ``cp_pmp_entry``
+after CHK-PMP of entry i, the ``mrac`` and trap bits after CHK-MRAC (CHK-ISA
+grades the ``bset`` trap and passed first), the lockstep bits after
+CHK-LOCKSTEP-INERT. CHK-TRACE-INSTRET and CHK-PMP16 grade no held cell and
+release no bit. A FAIL closes the window and writes 0, so the cells of the
+failing check and of every later check never sample.
 """
 
 from __future__ import annotations
@@ -252,6 +276,7 @@ class IsaCfg:
     aw: list[int] = field(default_factory=list)
     dw: list[int] = field(default_factory=list)
     ls_order: list[int] = field(default_factory=list)
+    pmpx: int = 0
 
     @classmethod
     def from_seed(cls, seed: int) -> "IsaCfg":
@@ -285,6 +310,7 @@ class IsaCfg:
         # does not move.
         cfg.ls_order = list(LS_VALUES)
         rng.shuffle(cfg.ls_order)
+        cfg.pmpx = rng.getrandbits(32) or 1
         return cfg
 
     def words(self) -> list[int]:
@@ -295,6 +321,7 @@ class IsaCfg:
         for r in self.rows:
             out += list(r)
         out += [0] * (4 * (NROW_MAX - len(self.rows)))
+        out.append(self.pmpx)
         return out
 
     def draw_lines(self) -> list[str]:
@@ -309,6 +336,7 @@ class IsaCfg:
             + ",".join(f"0x{v:08x}" for v in self.dw)
             + f" allowed_region=0x{ALLOW_REG:08x} denied_region=0x{DENY_REG:08x}",
             "DRAW lockstep_order=" + ",".join(str(v) for v in self.ls_order),
+            f"DRAW pmpx=0x{self.pmpx:08x}",
         ]
         return out
 
@@ -328,7 +356,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
     """RV32 M/C/Zba/Zbb/Zbc results, the Zbs trap, pmpaddr non-aliasing, mrac, minstret and inert lockstep."""
 
     build_env = False
-    required_evidence = ("CHK-ISA", "CHK-PMP", "CHK-MRAC", "CHK-TRACE-INSTRET")
+    required_evidence = ("CHK-ISA", "CHK-PMP", "CHK-MRAC", "CHK-TRACE-INSTRET", "CHK-PMP16")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -421,6 +449,41 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             )
         self.logger.info("CHK-ISA PASS: seed=%d %s", cfg.seed, body)
         return 1
+
+    def _chk_pmp16(self) -> int:
+        recs = self._recs("PMPX")
+        addrs = [int(rec.kv["a"]) for rec in recs]
+        if addrs != [0x3C0, 0x3EF]:
+            raise AssertionError(f"CHK-PMP16 FAIL: PMPX lines for CSRs {addrs}, want 0x3c0,0x3ef")
+        bad = []
+        for rec in recs:
+            kv = {k: int(x) for k, x in rec.kv.items()}
+            body = (
+                f"a=0x{kv['a']:03x} v=0x{kv['v']:08x} before=0x{kv['b']:08x} "
+                f"neighbour_wr=0x{kv['n']:08x} pmpaddr0=0x{kv['n0']:08x} "
+                f"pmpaddr15=0x{kv['n15']:08x} after=0x{kv['aft']:08x} "
+                f"traps=wr:{kv['wtr']},rd:{kv['btr']},rd:{kv['atr']} "
+                f"mcause=0x{kv['wmc']:x},0x{kv['bmc']:x},0x{kv['amc']:x}"
+            )
+            if kv["ntr"] or kv["n0"] == kv["b"] or kv["n15"] == kv["b"]:
+                raise AssertionError(
+                    f"CTRL-PMP16-NEIGHBOUR FAIL: neighbour_traps={kv['ntr']} {body}"
+                )
+            self.logger.info("CTRL-PMP16-NEIGHBOUR PASS: neighbours differ from before; %s", body)
+            traps = (kv["wtr"], kv["btr"], kv["atr"])
+            causes = (kv["wmc"], kv["bmc"], kv["amc"])
+            if traps == (1, 1, 1) and causes == (MCAUSE_ILLEGAL,) * 3:
+                leg = "illegal_instruction"
+            elif traps == (0, 0, 0) and kv["b"] == 0 and kv["aft"] == 0:
+                leg = "read_only_zero"
+            else:
+                leg = None
+            self.logger.info("CHK-PMP16 %s: leg=%s %s", "PASS" if leg else "FAIL", leg, body)
+            if leg is None:
+                bad.append(body)
+        if bad:
+            raise AssertionError(f"CHK-PMP16 FAIL: {'; '.join(bad)}")
+        return len(recs)
 
     def _chk_pmp(self) -> int:
         p0 = self._recs("PMP0")
@@ -629,6 +692,15 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         self.logger.info("CHK-LOCKSTEP-INERT PASS: %s", body)
         return 1
 
+    async def _release_cells(self, bits: int) -> None:
+        """Add ``bits`` to ``isa_pmp_pass`` and hold two clocks; only the added bits rise."""
+        dut = cocotb.top
+        self.isa_pmp_mask |= bits
+        await RisingEdge(dut.clk_i)
+        set_isa_pmp_pass(self.isa_pmp_mask, self.logger)
+        await RisingEdge(dut.clk_i)
+        await RisingEdge(dut.clk_i)
+
     def _recs(self, prefix: str):
         from env.sep_fw_console import ConsoleRec, parse_kv
 
@@ -641,9 +713,9 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = cfg = IsaCfg.from_seed(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for line in cfg.draw_lines():
-            self.logger.info("%s", line)
+            self.logger.info("INFO-%s", line)
         sy = load_symbols(_FW_DIR)
         need = ("isa_r1", "isa_r2", "isa_bset", "umode_stub", "trap_entry")
         missing = [n for n in need if n not in sy]
@@ -711,27 +783,23 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         seeds = self.con.text_lines("SEED")
         if not seeds or f"seed=0x{seed & _M32:08x}" not in seeds[0]:
             raise AssertionError(f"firmware did not run the patched block: {seeds}")
+        self.isa_pmp_mask = 0
         try:
-            n = self._chk_isa(sy) + self._chk_pmp() + self._chk_mrac() + self._chk_instret(sy)
+            n = self._chk_isa(sy)
+            await self._release_cells(1 << ISA_PMP_PASS_ICLS)
+            n += self._chk_pmp()
+            await self._release_cells(self.pmp_entry_pass)
+            n += self._chk_mrac()
+            await self._release_cells((1 << ISA_PMP_PASS_MRAC) | (1 << ISA_PMP_PASS_TRAP))
+            n += self._chk_instret(sy)
             if ls_leg:
                 n += self._chk_lockstep()
+                await self._release_cells((1 << ISA_PMP_PASS_LS_BIT0) | (1 << ISA_PMP_PASS_LS_BIT1))
+            n += self._chk_pmp16()
         except AssertionError:
             close_graded_window(self.logger)
             set_isa_pmp_pass(0, self.logger)
             raise
-        # Every check of the run passed: release the held cells.
-        mask = (
-            self.pmp_entry_pass
-            | (1 << ISA_PMP_PASS_MRAC)
-            | (1 << ISA_PMP_PASS_ICLS)
-            | (1 << ISA_PMP_PASS_TRAP)
-        )
-        if ls_leg:
-            mask |= (1 << ISA_PMP_PASS_LS_BIT0) | (1 << ISA_PMP_PASS_LS_BIT1)
-        await RisingEdge(dut.clk_i)
-        set_isa_pmp_pass(mask, self.logger)
-        await RisingEdge(dut.clk_i)
-        await RisingEdge(dut.clk_i)
         set_isa_pmp_pass(0, self.logger)
         await RisingEdge(dut.clk_i)
         self.result_pass(TEST, seed, n)

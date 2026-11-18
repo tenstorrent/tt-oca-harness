@@ -224,7 +224,7 @@ spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "bac
 markers = [
   "Zero is the only size class a manifest can reach: validate_toc_structure refuses a zero-length entry (0x00030015) and an entry past payload_length before the ROM's own BL1_SIZE and placement arms run, so BL1_SIZE is forbidden.",
   "Not covered: a BL1 larger than ICCM or the spec maximum, which needs a payload above 256 KiB to pass the TOC bound.",
-  "Not covered: the BL1_ADDR_RANGE arm of bl1_locate (a load range past the ICCM top), which the zero-length stimulus never reaches; no VP entry expects it.",
+  "Not covered here: the BL1_ADDR_RANGE arm of bl1_locate, which the zero-length stimulus never reaches; sep_bl1_span_past_sram_end_test expects it for a load range past the SEP SRAM top, and no VP entry reaches it through the ICCM top.",
   "The op reseals the entry hash, chain, payload hash and signature, so the zero length is each slot's only defect; RSA_VERIFY_OK and MANIFEST_OK twice confirm both manifests verify.",
   "NO_BL1_IMAGE is forbidden so a mutation that lost the entry type cannot pass for this one.",
 ]
@@ -314,4 +314,58 @@ markers = [
   "The check runs per slot in rom_bl1_check, after PAYLOAD_OK and inside the retry loop, so both slots print BL1_ENTRY_RANGE and the run ends terminal; the hand-off copy of the check in rom_handoff_bl1 is not reached.",
   "0x00030103 is a ROM code, not an oca_result_t, so rom_manifest_boot adds no status_for_result ERROR before ERROR 0x0213; the per-slot ERROR 0x012b comes from bl1_locate.",
   "BL1_ADDR_RANGE and BL1_SIZE are forbidden: they share the error code and run before the entry-point comparison.",
+]
+
+[[testcase]]
+name = "sep_bl1_span_at_sram_end_test"
+family = "bl1_image"
+classification = "partial"
+image = "bl1_load_ends_at_sram_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_DST=SRAM",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = ["BL1_ADDR_RANGE", "MANIFEST_BACKUP", "MANIFEST_ERR=", "MANIFEST_BOOT_FAIL="]
+expect_counts = { "BL1_COPIED" = 1, "GO!" = 1 }
+markers = [
+  "BL1 is re-sealed into SEP SRAM so that its last byte is the last byte of SEP SRAM, 0x1003ffff; the span check admits it, the copy runs, and BL1 boots from SRAM (BL1_SRAM_EXEC_ENABLE is on by default).",
+]
+
+[[testcase]]
+name = "sep_bl1_span_past_sram_end_test"
+family = "bl1_image"
+classification = "partial"
+image = "bl1_load_ends_past_sram_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_OK",
+  "BL1_ADDR_RANGE",
+  "MANIFEST_ERR=0x00030103",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = ["MANIFEST_ALL_FAILED", "MANIFEST_BOOT_FAIL=", "BL1_DST=SRAM"]
+expect_counts = { "BL1_ADDR_RANGE" = 1, "MANIFEST_BACKUP" = 1, "GO!" = 1 }
+markers = [
+  "The same move one word further puts BL1's last word past SEP SRAM: the primary is refused with BL1_ADDR_RANGE and the unchanged backup boots.",
 ]

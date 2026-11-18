@@ -44,6 +44,14 @@ _OP_HEX16 = 1
 _OP_DEC24 = 2
 
 
+async def wait_for_line(console: list[str], marker: str, every: int = 10) -> None:
+    """Return once a line containing ``marker`` is in ``console``, checking every ``every`` clocks."""
+    from cocotb.triggers import ClockCycles
+
+    while not any(marker in line for line in console):
+        await ClockCycles(cocotb.top.clk_i, every)
+
+
 async def rom_console_task(
     logger: logging.Logger,
     sink: list[str] | None = None,

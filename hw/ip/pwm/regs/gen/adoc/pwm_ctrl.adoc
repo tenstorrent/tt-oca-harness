@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-pwm_ctrl]
+== PWM Control Address Map
+
+Per-channel pad-function select for the PWM outputs.
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-pwm_ctrl-CTRL,CTRL>> | RW a| Control Register
+|===
+
+[#reg-{regmap-instance}-pwm_ctrl-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3:0 | `PAD_EN` | RW | 0x0 a| PWM Pad Function Select, one bit per channel. When bit i is set, the integration routes channel i's output to its pad. Does not start the channel; PWM_EN starts and stops each channel's waveform.
+|===

@@ -18,6 +18,7 @@ class smc_mailbox_multi_instance_test(smc_base_test):
     """Mailbox 32 outbound + 32 inbound STATUS sweep and access results on all 64 apertures."""
 
     required_evidence = (
+        "CHK-EMPTY-READ-UPPER-ZERO",
         "CHK-MAILBOX-CHANNEL-VECTOR",
         "CHK-MBX-EMPTY-B2B",
         "CHK-MBX-EMPTY-FLAGS",
@@ -30,7 +31,7 @@ class smc_mailbox_multi_instance_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 11
+    min_evidence = 12
 
     auto_protocol_vip = False
 

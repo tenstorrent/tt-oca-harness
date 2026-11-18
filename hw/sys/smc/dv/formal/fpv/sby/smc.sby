@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Open-path formal run with smc_internal_regs as the top, the smallest SMC module that holds the
+# filter-control register blocks and their lock steering. The shared Bender filelist of the smc
+# design supplies the sources (hw/common/dv/docs/formal-property-style.adoc); sby copies every
+# [files] entry into the task's src/ directory, so the paths inside the filelist must be absolute.
+# The filter-control register blocks run on idle-gated copies of the SMC core clock, so the clocks
+# are modelled explicitly (multiclock on). smc_filter_lock_props.sv carries the lock properties
+# and the reset and access environment; smc_filter_axi_fv_bind.sv binds the shared AXI checker on
+# the outbound filter-control AXI-Lite port with the master's rules assumed and the filter side's
+# asserted. The cover depth must exceed the step at which the deepest cov_ label is reached; the
+# bmc depth matches it. The bmc and prove engines keep going past a failed assertion, so a
+# failure leaves every other assertion its own verdict.
+
+[tasks]
+smc_filter_lock_bmc    smc_filter_lock bmc
+smc_filter_lock_cover  smc_filter_lock cover
+smc_filter_lock_prove  smc_filter_lock prove
+
+[options]
+multiclock on
+bmc:   mode bmc
+cover: mode cover
+prove: mode prove
+smc_filter_lock_bmc:   depth 40
+smc_filter_lock_cover: depth 40
+smc_filter_lock_prove: timeout 2400
+
+[engines]
+bmc:   smtbmc --keep-going yices
+cover: smtbmc yices
+prove: abc --keep-going pdr
+
+[script]
+plugin -i slang
+smc_filter_lock: read_slang -D FORMAL --top smc_internal_regs --single-unit --allow-use-before-declare --timescale=1ns/1ps -f smc.f smc_filter_lock_props.sv smc_filter_lock_props_bind.sv smc_filter_axi_fv_bind.sv
+prep -top smc_internal_regs
+
+[files]
+../../build/smc.f
+smc_filter_lock: ../../props/smc_filter_lock_props.sv
+smc_filter_lock: ../../props/smc_filter_lock_props_bind.sv
+smc_filter_lock: ../../props/smc_filter_axi_fv_bind.sv

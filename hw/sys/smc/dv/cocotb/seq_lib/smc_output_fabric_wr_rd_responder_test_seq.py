@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Response USER observation for smc_output_fabric_wr_rd_responder_test.
+"""Response USER sampling for smc_output_fabric_wr_rd_responder_test.
 
 The SYS_OUT responder draws BUSER/RUSER from a fixed seed; a passive sampler
 records every accepted B and R beat at the responder (``u_output_axi_if``) and
 at the JTAG-AXI manager port (``jtag_axi_*``) so each JTAG response can be
-paired with the beat the responder drove for it.
+paired with the beat the responder drove for it and compared with it
+(fabric.adoc Output Remapping: BUSER and RUSER pass back through the
+replacement unchanged).
 """
 
 from __future__ import annotations

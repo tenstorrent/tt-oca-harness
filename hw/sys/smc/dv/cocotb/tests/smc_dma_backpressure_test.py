@@ -16,8 +16,9 @@ class smc_dma_backpressure_test(smc_base_test):
     required_evidence = (
         "CHK-DMA-BACKPRESSURE",
         "CHK-DMA-READ-ERROR-BEAT",
+        "CHK-DMA-WRITE-ERROR-RETIRES-ONCE",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 

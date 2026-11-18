@@ -401,9 +401,9 @@ less than this setting.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Reserved` | - | - a| Reserved
-| 27:16 | `RXLVL` | R | - a| Controller RX FIFO fill level.
+| 27:16 | `RXLVL` | R | - a| Controller RX FIFO fill level, from 0 to the FIFO depth when full.
 | 15:12 | `Reserved` | - | - a| Reserved
-| 11:0 | `FMTLVL` | R | - a| Controller TX FIFO fill level.
+| 11:0 | `FMTLVL` | R | - a| Controller TX FIFO fill level, from 0 to the FIFO depth when full.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-TARGET_FIFO_STATUS]
@@ -413,9 +413,9 @@ less than this setting.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Reserved` | - | - a| Reserved
-| 27:16 | `ACQLVL` | R | 0x0 a| Target RX FIFO fill level.
+| 27:16 | `ACQLVL` | R | 0x0 a| Target RX FIFO fill level, from 0 to the FIFO depth when full.
 | 15:12 | `Reserved` | - | - a| Reserved
-| 11:0 | `TXLVL` | R | 0x0 a| Target TX FIFO fill level.
+| 11:0 | `TXLVL` | R | 0x0 a| Target TX FIFO fill level, from 0 to the FIFO depth when full.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-OVRD]

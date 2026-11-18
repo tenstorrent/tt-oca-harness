@@ -130,9 +130,11 @@ S_CTRL_FIELDS = _S.mask32("SEP_CTRL")
 # Image layout (tests/km_fw/km_rom_mbox_km.S).
 SIG_WORD = 0x80 // 4
 SIG_MAGIC = 0x4D42_4B4D
-LAYOUT_VERSION = 1
+LAYOUT_VERSION = 2
 STATE_MAGIC = 0x4D42_0000
 SYNC_WORD = 0x5359_4E43
+RACE_END_WORD = 0x454E_4421
+RACE_WORD = 0x5243_0000
 QUIET_ITERS = 64
 SETTLE_READS = 32
 W_STATE = 0
@@ -160,6 +162,8 @@ PH_IRQ_NEED = 0x0B
 PH_IRQ_RUN = 0x0C
 PH_IRQ_CTL = 0x0D
 PH_END = 0x0E
+PH_RACE_READY = 0x0F
+PH_RACE_DONE = 0x10
 PH_ERROR = 0xEE
 PHASE_NAMES = {
     PH_RST: "RST",
@@ -176,6 +180,8 @@ PHASE_NAMES = {
     PH_IRQ_RUN: "IRQ_RUN",
     PH_IRQ_CTL: "IRQ_CTL",
     PH_END: "END",
+    PH_RACE_READY: "RACE_READY",
+    PH_RACE_DONE: "RACE_DONE",
     PH_ERROR: "ERROR",
 }
 ERR_NAMES = {
@@ -240,6 +246,8 @@ def image_table() -> list[tuple[str, int]]:
         ("csr_drbg_set", CSR_DRBG_SET),
         ("csr_irq_all", CSR_IRQ_FIELDS),
         ("state_magic", STATE_MAGIC),
+        ("race_end_word", RACE_END_WORD),
+        ("race_word", RACE_WORD),
     ]
 
 

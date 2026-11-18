@@ -60,7 +60,11 @@ register with an access that includes byte 0.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:0 | `vector` | RW | 0xC0040000 a| -
+| 55:0 | `vector` | RW | 0xC0040000 a| Boot address of core n, one register per core. Core n starts fetching here when
+its reset releases, so a write takes effect at that core's next reset release;
+bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+instead. The register is on the primary reset and keeps its value across a warm
+reset.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-RESET_CTRL]
@@ -148,7 +152,7 @@ rather than equal to it.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x4000 a| Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+| 31:0 | `data` | RW | 0x4000 a| Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT_RESET]
@@ -270,7 +274,7 @@ The written value is treated as a signed number using 2s compliment.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `dummy_rom_word_0` | RW | 0x145051300000517 a| Word 0 of WFI loop
+| 63:0 | `dummy_rom_word_0` | RW | 0x145051300000517 a| Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_1]
@@ -279,7 +283,7 @@ The written value is treated as a signed number using 2s compliment.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `dummy_rom_word_1` | RW | 0xFFF0069330551073 a| Word 1 of WFI loop
+| 63:0 | `dummy_rom_word_1` | RW | 0xFFF0069330551073 a| Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_2]
@@ -288,7 +292,7 @@ The written value is treated as a signed number using 2s compliment.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `dummy_rom_word_2` | RW | 0x105000733046B073 a| Word 2 of WFI loop
+| 63:0 | `dummy_rom_word_2` | RW | 0x105000733046B073 a| Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_3]
@@ -297,7 +301,7 @@ The written value is treated as a signed number using 2s compliment.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `dummy_rom_word_3` | RW | 0xFFDFF06F a| Word 3 of WFI loop
+| 63:0 | `dummy_rom_word_3` | RW | 0xFFDFF06F a| Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-]
@@ -306,5 +310,5 @@ The written value is treated as a signed number using 2s compliment.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `dummy_rom_null` | RW | 0x0 a| Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom
+| 63:0 | `dummy_rom_null` | RW | 0x0 a| Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.
 |===

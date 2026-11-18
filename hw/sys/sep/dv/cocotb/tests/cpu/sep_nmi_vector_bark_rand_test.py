@@ -17,8 +17,10 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   on ``cpu_trace_addr_o``, equal the programmed vector. Bark 1 runs with
   mstatus.MIE 0, bark 2 with mstatus.MIE 1: the firmware reads mstatus back
   before each bark (``CTRL-MIE-AT-BARK``), and the check needs that read equal
-  to the value of the leg. ``wdt_timer_rst_req_o`` at the handler entry is
-  logged (``OBS-BITE-REQ``).
+  to the value of the leg.
+* CHK-NMI-BITE-LOW (host) at the first retired PC after the wait loop of each
+  of the two barks, ``wdt_timer_rst_req_o`` is a resolvable 0: the bark that
+  enters the handler raises no bite request. A 1, X/Z or no sample fails.
 * CHK-NMI-STUB (firmware) the reset-vector bark runs the stub at the
   SEP_NMI_VEC reset value once. CHK-NMI-ENTRY (firmware) each locked-copy bark
   enters the drawn copy once, with the ``CTRL-MIE-AT-BARK`` read equal to the
@@ -40,6 +42,16 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   reads 1 at the NMI entry, and no other NMI enters in the leg (``interrupts.adoc``: no
   ``mstatus.MIE`` or PIC setting suppresses the NMI; VeeR EL2 PRM section
   3.16). The return path to the external handler is not graded.
+
+Open-value leg (logged, not graded): in the held-bark leg of boot 1 the NMI
+handler leaves the bark asserted for its hold window, then clears it.
+``CTRL-NMI-NESTED`` (fails the leaf) counts the clocks with
+``wdt_bark_probe_o`` 1 between the handler's ``REQ m t=h0`` and ``t=h1``
+lines and needs one or more. ``OBS-NMI-NESTED`` logs the NMI entries the
+firmware counts, the retired PCs at the vector on the CPU trace in the leg,
+the bark level the handler reads and the ``mepc`` and ``mcause`` of each
+entry. After the control passes, the test raises the ``nmi_during_handler``
+bin of ``sep_open_value_leg_cg``.
 
 The sampler holds the owner-324 bark cells of each graded leg; the test raises
 the ``pic_fw_pass`` bits of the leg (``RELEASE``) once every firmware check of
@@ -76,6 +88,7 @@ from env.sep_fcov_gate import (
     PIC_FW_PASS_NMI_IN_EXT,
     PIC_FW_PASS_NMI_TARGET,
     close_graded_window,
+    set_open_value_leg_pass,
     set_pic_fw_pass,
 )
 from env.sep_fw_console import SepFwConsole
@@ -106,6 +119,8 @@ P_MAGIC = 0x324A7B0C
 N_BARK = 8  # bark thresholds 1..N_BARK; far below the bite threshold 0xFFFF_FFFF
 WAIT_ITERS = 200_000  # > N_BARK clk_wdt_i periods of the wait loop
 HOLD_ITERS = 3000
+# Salt of the open-value leg draws, so the draws above keep their seed mapping.
+_LEG_SALT = 0x4F56_4C47 << 32
 # OpenTitan event sources the firmware drives (hw/sys/sep/doc/interrupts.adoc).
 SOURCES = (18, 20, 21, 23, 24, 28, 30)
 CASES = {1: "b", 2: "c", 3: "d"}
@@ -200,6 +215,7 @@ class NmiCfg:
     barks: tuple[int, int, int, int]
     a: int
     nest_bark: int
+    held_bark: int
 
     @classmethod
     def from_seed(cls, seed: int, image_end: int) -> "NmiCfg":
@@ -220,7 +236,8 @@ class NmiCfg:
         while a % 0x100 == 0:
             a = lo + 2 * rng.randrange((hi - lo) // 2)
         nest_bark = rng.randrange(1, N_BARK + 1)
-        return cls(seed, copy, case, src, priord, raw, barks, a, nest_bark)
+        held_bark = SepSeededRng(seed ^ _LEG_SALT).randrange(1, N_BARK + 1)
+        return cls(seed, copy, case, src, priord, raw, barks, a, nest_bark, held_bark)
 
     def words(self, leg: int) -> list[int]:
         return [
@@ -238,13 +255,15 @@ class NmiCfg:
             HOLD_ITERS,
             *meip_idle_mask_words(),
             self.nest_bark,
+            self.held_bark,
         ]
 
     def draw_line(self) -> str:
         return (
             f"DRAW copy={self.copy} case={CASES[self.case]} src={self.src} priord={self.priord} "
             f"raw={self.raw} bark_thold={','.join(str(b) for b in self.barks)} A=0x{self.a:08x} "
-            f"H={4 * len(hk_words())} n_bark={N_BARK} nest_bark_thold={self.nest_bark}"
+            f"H={4 * len(hk_words())} n_bark={N_BARK} nest_bark_thold={self.nest_bark} "
+            f"held_bark_thold={self.held_bark}"
         )
 
 
@@ -260,6 +279,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         "CHK-NMI-IN-EXT",
         "CHK-NMI-ENTRY",
         "CHK-NMI-STUB",
+        "CHK-NMI-BITE-LOW",
     )
 
     def build_phase(self) -> None:
@@ -279,6 +299,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             pc = int(dut.cpu_trace_addr_o.value) & 0xFFFF_FFFF
             e = dut.dbg_cpu_trace_exc_o.value
             exc = int(e) if e.is_resolvable else 1
+            if pc == self.vec_pc and not exc:
+                self.vec_hits.append(self.con.clk)
             if self.loop[0] <= pc < self.loop[1]:
                 in_loop = True
                 continue
@@ -288,6 +310,44 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             if in_loop:
                 self.trans.append((self.con.clk, pc, str(dut.wdt_timer_rst_req_o.value)))
                 in_loop = False
+
+    async def _bark_tap(self) -> None:
+        """Running count of the clocks with ``wdt_bark_probe_o`` 1."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            v = dut.wdt_bark_probe_o.value
+            if v.is_resolvable and int(v):
+                self.bark_high += 1
+
+    async def _req_mark(self, kv: dict) -> None:
+        self.bark_marks[kv["t"]] = (self.con.clk, self.bark_high)
+
+    def _leg_nmi_held(self) -> None:
+        seed = self.tcfg.seed
+        h0, h1 = self.bark_marks.get("h0"), self.bark_marks.get("h1")
+        high = h1[1] - h0[1] if h0 and h1 else 0
+        span = h1[0] - h0[0] if h0 and h1 else 0
+        body = f"seed={seed} bark_high_in_handler_clk={high} handler_clk={span}"
+        if high == 0:
+            raise AssertionError(f"CTRL-MISSING NMI-NESTED: {body}")
+        self.logger.info("CTRL-NMI-NESTED LOG %s", body)
+        kv = self._one("INFO-NMI-HELD").kv
+        lo, hi = self._leg("nmi_held")
+        self.logger.info(
+            "OBS-NMI-NESTED LOG bark_thold=%d fw_entries=%s trace_entries=%d bark_in_handler=%s "
+            "mepc=0x%08x mcause=0x%08x nested_mepc=0x%08x nested_mcause=0x%08x timeout=%s",
+            self.tcfg.held_bark,
+            kv["entries"],
+            sum(1 for c in self.vec_hits if lo <= c < hi),
+            kv["bark_in_handler"],
+            kv["mepc"],
+            kv["mcause"],
+            kv["nested_mepc"],
+            kv["nested_mcause"],
+            kv["timeout"],
+        )
 
     async def _pass_label(self) -> None:
         """Raise the ``pic_fw_pass`` bits of this test: release and drop.
@@ -411,7 +471,6 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             t = self._first_trans(leg)
             pc = t[1] if t else None
             bite = t[2] if t else "na"
-            self.logger.info("OBS-BITE-REQ LOG bark=%d wdt_timer_rst_req_o=%s", bark, bite)
             kv = rec.kv
             ok = (
                 kv.get("entry") == vec
@@ -430,9 +489,13 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             if not ok:
                 raise AssertionError(f"CHK-NMI-TAKEN FAIL {body} exc={self.exc_events[-4:]}")
             self.logger.info("CHK-NMI-TAKEN PASS %s", body)
+            bite_body = f"seed={cfg.seed} bark={bark} wdt_timer_rst_req_o={bite}"
+            if bite != "0":
+                raise AssertionError(f"CHK-NMI-BITE-LOW FAIL {bite_body}")
+            self.logger.info("CHK-NMI-BITE-LOW PASS %s leg=%s", bite_body, leg)
         for r in self.con.records("OBS-NMI-MPIE"):
             self.logger.info("%s (firmware, not graded)", r.text)
-        return 2
+        return 4
 
     def _chk_bark_vec(self, sy: dict[str, int], boot2_clk: int) -> int:
         cfg = self.tcfg
@@ -497,6 +560,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if missing:
             raise AssertionError(f"firmware symbol listing lacks {missing} in {_FW_DIR}")
         self.loop = (sy["nmivb_loop_lo"], sy["nmivb_loop_hi"])
+        self.vec_pc = sy[f"nmivb_copy{cfg.copy}"]
         itcm = os.path.join(os.getcwd(), "sep_itcm_nmivb.hex")
         off, words = hk_block(cfg.a)
         place_words(_ITCM_HEX, itcm, off, words, limit=_ICCM_SIZE)
@@ -513,8 +577,13 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         self.sb.expected_line = _BANNER
         self.trans: list[tuple[int, int, str]] = []
         self.exc_events: list[tuple[int, int]] = []
+        self.vec_hits: list[int] = []
+        self.bark_high = 0
+        self.bark_marks: dict[str, tuple[int, int]] = {}
         self.con = SepFwConsole(self, graded_test=TEST).start()
+        self.con.on_request("m", self._req_mark)
         tr = cocotb.start_soon(self._trace())
+        bt = cocotb.start_soon(self._bark_tap())
         lbl = cocotb.start_soon(self._pass_label())
         close_graded_window(self.logger)
         set_pic_fw_pass(0, self.logger)
@@ -539,6 +608,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             await self._second_boot(itcm, dtcm2)
         finally:
             tr.cancel()
+            bt.cancel()
             lbl.cancel()
             await self.con.stop()
         assert self.sb.fw_done and self.sb.fw_pass, "boot 2: Hk did not write the PASS magic"
@@ -560,14 +630,20 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if cases != ["a", CASES[cfg.case]]:
             raise AssertionError(f"CHK-NMI-NOPIC FAIL: cases {cases}, drawn a,{CASES[cfg.case]}")
         n_host = self._chk_taken(sy) + self._chk_bark_vec(sy, boot2_clk)
+        self._leg_nmi_held()
         await self._release_targets()
         self.result_pass(TEST, seed, n_fw + n_host)
 
     async def _release_targets(self) -> None:
-        """Raise ``PIC_FW_PASS_NMI_TARGET`` once, after every check of the run passed."""
+        """Raise ``PIC_FW_PASS_NMI_TARGET`` once, after every check of the run passed,
+        then the ``nmi_during_handler`` leg bin, whose control passed before."""
         clk = cocotb.top.clk_i
         await RisingEdge(clk)
         set_pic_fw_pass(1 << PIC_FW_PASS_NMI_TARGET, self.logger)
         await ClockCycles(clk, 2)
         set_pic_fw_pass(0, self.logger)
+        await RisingEdge(clk)
+        set_open_value_leg_pass("nmi_during_handler", self.logger)
+        await ClockCycles(clk, 2)
+        set_open_value_leg_pass(None, self.logger)
         await RisingEdge(clk)

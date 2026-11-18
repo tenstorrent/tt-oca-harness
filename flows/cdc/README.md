@@ -27,6 +27,14 @@ sign-off constraints. The per-block pieces live beside each subsystem:
   the async groups through `set_async_clock_groups` (`-allow_paths` plus the
   default bounds); the per-instance max-delay layer is applied only by
   `constraints.sdc`, which the sign-off entry does not source.
+- `::MODPREFIX` — `""` (default). The module-name prefix of RTL whose modules are
+  all renamed `<prefix>_<name>`; set it to `<prefix>_` before sourcing an entry,
+  a waiver file or `constraints.sdc`. Every module name in the CDC, RDC and
+  synthesis constraints goes through it: tool options through `cdc_mod`, cell
+  `ref_name` filters directly, waiver `Module` filters as a `${MODPREFIX}` token
+  that `apply_modprefix` substitutes. It is distinct from the waivers'
+  `${PREFIX}`, the block's instance path in a parent run, and a replay leaves it
+  unchanged. Names the RTL does not declare (`prim_sync2`, `prim_sync2r`) stay bare.
 
 ## Replaying a block under a parent
 

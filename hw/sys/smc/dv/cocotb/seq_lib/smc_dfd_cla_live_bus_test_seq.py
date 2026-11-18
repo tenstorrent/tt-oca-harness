@@ -166,8 +166,6 @@ _MUXSEL_FIELDS = {
 _TOGGLE_SNAPSHOTS = 16
 # dfd_dst.rdl Trdstformat: 0 is no compression.
 _DST_FORMAT_NONE = 0
-# smc_cla.adoc Trdstcontrol: the read-write image at reset, Trdstformat 3.
-_DST_CONTROL_RESET_RW = 0x0300_0000
 # dfd.adoc: eight trace RAMs of 256 x 64 bits, 16 KiB in total.
 _TRACE_WINDOW_BYTES = 8 * 256 * 8
 _TRACE_WORDS = _TRACE_WINDOW_BYTES // 4
@@ -657,7 +655,8 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
             self.toggle_snapshots.append(await traced_bus(self, f"toggle_snap{index}"))
         cocotb.log.info(
             "CHK-CLA-LIVE-TOGGLE-MODE: CDbgMuxSelLo rb Dbmmode=%d Dbmid=%d (0x%016x, every other "
-            "field 0); snapshots %s (observed, not compared: LINKED-ISSUE SF-020, SF-024)",
+            "field 0); snapshots %s (observed, not compared; LINKED-ISSUE: what each Dbmmode "
+            "value drives on the mux lanes; what debug-bus value toggle mode produces)",
             (readback & mode.mask) >> mode.offset,
             (readback & dbmid.mask) >> dbmid.offset,
             readback,
@@ -938,11 +937,12 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         assert mux_rb == 0, f"CDbgMuxSelLo reads 0x{mux_rb:016x} after being written 0"
         dst = dst_register("Trdstcontrol")
         mask = checked_mask(dst, {"Trdstformat": 3})
-        await self._write(dst, _DST_CONTROL_RESET_RW, "trace_restore")
+        reset_rw = dst.reset_word & mask
+        await self._write(dst, reset_rw, "trace_restore")
         dst_rb = await self._read_okay(dst, "trace_restore_rb")
-        assert dst_rb & mask == _DST_CONTROL_RESET_RW, (
+        assert dst_rb & mask == reset_rw, (
             f"Trdstcontrol reads 0x{dst_rb:08x} after being written its reset read-write image "
-            f"0x{_DST_CONTROL_RESET_RW:08x}; read-write bits 0x{dst_rb & mask:08x}"
+            f"0x{reset_rw:08x}; read-write bits 0x{dst_rb & mask:08x}"
         )
         control = sink_register("Trdstramcontrol")
         control_mask = checked_mask(
@@ -982,11 +982,13 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         wp_field = reg_field(wp, "Trdstramwplow")
         wrap = reg_field(wp, "Trdstramwrap")
         cocotb.log.info(
-            "CHK-CLA-TRACE-FILL: pre-trace empty=%d (SF-032), WP samples %d monotonic from "
+            "CHK-CLA-TRACE-FILL: pre-trace empty=%d (open: when the trace RAM empty flag clears "
+            "and sets), WP samples %d monotonic from "
             "start over 0x0..0x%x (highest before the wrap 0x%x), wrap=%d at sample %d of the "
             "%d-poll bound, %d action re-issues; node %d pair 0 LogicalOp %d driven over "
             "Action0; Trdstempty=1 after stop within %d polls; post-trace Trdstramempty=%d "
-            "(logged, SF-032); final WP 0x%x (raw 0x%08x)",
+            "(logged, open: when the trace RAM empty flag clears and sets); final WP 0x%x "
+            "(raw 0x%08x)",
             self.ram_empty_before,
             len(self.wp_samples),
             _TRACE_LIMIT,
@@ -1048,7 +1050,7 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-CLA-TOGGLE-TRACE-DATA: %d words, distinct=%d, toggles[31:0]=%s, head=%s; "
             "captured with CDbgMuxSelLo=0x%x and Trdstformat=%d (observed, not compared: "
-            "LINKED-ISSUE SF-024)",
+            "LINKED-ISSUE: what debug-bus value toggle mode produces)",
             len(self.trace_words),
             distinct,
             ",".join(str(toggles[bit]) for bit in range(31, -1, -1)),

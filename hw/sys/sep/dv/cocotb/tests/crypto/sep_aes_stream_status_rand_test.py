@@ -35,8 +35,9 @@ times t_blk), the data words, the factor of the manual-leg wait (2 to 8
 times t_blk), the three blocks of the INPUT_READY leg, and last the busy-write
 leg: four blocks and the changed key word and its non-zero XOR mask of the key
 case, four blocks and the new IV of the IV case, and the missing IV word and the
-block of the partial-IV case. Keys, IVs and the CTR start counter come from published test
-constants; the CTR counter keeps its low 32 bits at or below 2^32 - N.
+block of the partial-IV case, then the block of the early-read leg. Keys, IVs
+and the CTR start counter come from published test constants; the CTR counter
+keeps its low 32 bits at or below 2^32 - N.
 
 Checkers:
   CHK-AES-STREAM      every block of each stream equals the streaming golden.
@@ -49,15 +50,30 @@ Checkers:
                       Control: four DATA_IN words start a block.
   CHK-AES-START-MANUAL  in manual mode, with block 1 written to DATA_IN, every
                       STATUS read of a 20 x t_blk window before the START write
-                      shows IDLE = 1 and OUTPUT_VALID = 0, and OUTPUT_VALID rises
-                      after the START write (aes.adoc:106, MANUAL_OPERATION: the
-                      unit "only starts to encrypt/decrypt after receiving a start
-                      trigger"). Control: in automatic mode the same DATA_IN write
+                      shows IDLE = 1, OUTPUT_VALID = 0 and INPUT_READY = 0, and
+                      OUTPUT_VALID rises after the START write (aes.adoc:106,
+                      MANUAL_OPERATION: the unit "only starts to encrypt/decrypt
+                      after receiving a start trigger"; aes.rdl STATUS.INPUT_READY:
+                      0 while the DATA_IN values are not loaded, so block 1 is
+                      shown to be in DATA_IN). Control: in automatic mode the same DATA_IN write
                       gives OUTPUT_VALID inside the window.
   CHK-AES-LOST        manual overwrite sets OUTPUT_LOST, DATA_OUT holds block
                       2, OUTPUT_LOST stays 1 after the full DATA_OUT read, and a
                       Control Register rewrite clears it.
                       Control: a read between the blocks keeps OUTPUT_LOST 0.
+  CHK-AES-TRIG-ONESHOT  in manual mode, after the START of block 1 executed and
+                      with its output unread, block 2 is written without a START:
+                      every STATUS read of a 20 x t_blk window shows IDLE = 1,
+                      INPUT_READY = 0 and OUTPUT_LOST = 0 (registers.md:392 TRIGGER:
+                      each bit "is individually cleared to zero when executing the
+                      corresponding trigger"; CTRL_SHADOWED.MANUAL_OPERATION: the
+                      unit "only starts to encrypt/decrypt after receiving a start
+                      trigger"; STATUS.IDLE, INPUT_READY, OUTPUT_LOST). A START
+                      bit that stays set starts block 2: IDLE falls, INPUT_READY
+                      rises and OUTPUT_LOST sets and stays set. OUTPUT_VALID is 1
+                      from the unread block 1 output and is logged, not graded.
+                      Control (CTRL-AES-TRIG-ONESHOT): the START write after the
+                      window gives OUTPUT_LOST = 1 and DATA_OUT = block 2 golden.
   CHK-AES-IDLE        IDLE reads 0 from its first fall until the OUTPUT_VALID
                       sample of each back-to-back polled block. Control: the
                       quiet unit reads IDLE = 1.
@@ -108,6 +124,17 @@ Checkers:
   OUTPUT_LOST is not graded in automatic mode (aes.rdl STATUS.OUTPUT_LOST:
   "not meaningful if MANUAL_OPERATION=0"); its value is logged.
 Vector bits 36 and 37 (entropy pool sources) are logged as ``OBS-POOL-VEC``.
+OUTPUT_VALID after each word of the first DATA_OUT read that the streams make
+word by word is logged as ``OBS-AES-OV-PARTIAL``.
+``OBS-AES-EARLY-READ``: in automatic ECB-256, one block is written; the access right
+after the last DATA_IN write reads DATA_OUT_0 while the block is in progress, and the
+next access reads STATUS. Only one DATA_OUT word is read before it, so OUTPUT_VALID = 0
+in that STATUS read shows that the block was still in progress at the DATA_OUT_0 read.
+Then, once OUTPUT_VALID is 1, DATA_OUT_0..3 and STATUS are read. The line
+logs the clocks of the write and the read, STATUS at the read, the early word, the final
+words, whether the final words equal the FIPS-197 golden, and STALL and IDLE after. No text states the effect of a DATA_OUT read before OUTPUT_VALID
+(aes.hjson DATA_OUT, OUTPUT_VALID), so nothing is graded; the leg runs with the
+graded window closed.
 ``aes.rdl`` is ``vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl``; the two ``.md``
 files are under ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/``; ``aes.hjson`` is
 ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson``.
@@ -126,7 +153,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes_cbc_decrypt, aes_decrypt_block, aes_encrypt_words
 from env.sep_bit_watch import SepBitWatch
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_crypto_kat_rows import AES_IV_ROWS, AES_KEY_ROWS
 from env.sep_edge_timer import SepEdgeTimer
 from env.sep_fcov_gate import (
@@ -293,7 +320,7 @@ class BusyPlan:
 
     def describe(self) -> str:
         return (
-            f"busy_key_word={self.key_word} busy_key_mask=0x{self.key_mask:08x} "
+            f"busy_key_word={self.key_word} busy_key_mask_sha={word_digest(self.key_mask)} "
             f"busy_iv_new={[hex(w) for w in self.iv_new]} piv_missing={self.piv_missing}"
         )
 
@@ -343,6 +370,7 @@ class Plan:
     hmac_msg: tuple[int, ...]
     ir_blocks: tuple[tuple[int, ...], ...]
     busy: BusyPlan
+    early_block: tuple[int, ...]
 
     def describe(self) -> str:
         return (
@@ -404,8 +432,17 @@ def draw_plan(seed: int) -> Plan:
     hmac_msg = tuple(_unique_words(rng, 8, used))
     ir_blocks = tuple(tuple(_unique_words(rng, 4, used)) for _ in range(3))
     busy = _draw_busy(rng, used)
+    early_block = tuple(_unique_words(rng, 4, used))
     return Plan(
-        seed, tuple(streams), manual_factor, auto_block, manual_blocks, hmac_msg, ir_blocks, busy
+        seed,
+        tuple(streams),
+        manual_factor,
+        auto_block,
+        manual_blocks,
+        hmac_msg,
+        ir_blocks,
+        busy,
+        early_block,
     )
 
 
@@ -419,6 +456,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         "CHK-AES-START-AUTO",
         "CHK-AES-START-MANUAL",
         "CHK-AES-LOST",
+        "CHK-AES-TRIG-ONESHOT",
         "CHK-AES-IDLE",
         "CHK-AES-NOIRQ",
         "CHK-AES-INPUT-READY",
@@ -433,11 +471,11 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         await self.bring_up_entropy(strict=True, score_km=False)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)
@@ -446,6 +484,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         # Clock count of the leaf: the clk of a watcher that samples every rising edge.
         self.clk = SepBitWatch(cocotb.top.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.t_blk: int | None = None
+        self.ov_partial_done = False
         self.auto_start_clk = -1
         self.quiet = False
         self.idle_busy = 0
@@ -464,7 +503,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         s0 = self.rd_known(dut.sep_internal_interrupts_probe_o)
         vec = SepEdgeTimer(dut.sep_internal_interrupts_probe_o, name="vector").start()
         t0_ps = get_sim_time("ps")
-        self.logger.info("S0 vector=0x%011x", s0)
+        self.logger.info("INFO-S0-VECTOR vector=0x%011x", s0)
 
         for s in plan.streams:
             await self._stream(s)
@@ -474,6 +513,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         await self._input_ready_leg()
         await self._busy_write_leg()
         close_graded_window(self.logger)
+        await self._early_read_leg()
 
         t1_ps = get_sim_time("ps")
         await vec.stop()
@@ -632,7 +672,24 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             return None
         if s.out_gap[i]:
             await ClockCycles(cocotb.top.clk_i, s.out_gap[i])
+        if not self.ov_partial_done:
+            self.ov_partial_done = True
+            return await self._read_out_partial(s.mode, i)
         return await self._read_out()
+
+    async def _read_out_partial(self, mode: str, i: int) -> list[int]:
+        """DATA_OUT read word by word with a STATUS read after each word.
+
+        No text states OUTPUT_VALID after a read of only some DATA_OUT words, so the
+        four values are logged as OBS-AES-OV-PARTIAL.
+        """
+        out: list[int] = []
+        ov_after: list[int] = []
+        for k in range(4):
+            out.append(await self.aes._rd(AES_DATA_OUT[k]))
+            ov_after.append(int(bool(await self.aes._rd(AES_STATUS) & ST_OV)))
+        self.chk.obs("AES-OV-PARTIAL", mode=mode, block=i, ov_after=ov_after)
+        return out
 
     # --- streams ------------------------------------------------------------------
     async def _stream(self, s: StreamPlan) -> None:
@@ -785,7 +842,9 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         start trigger". In the graded trial (``read_between`` False) block 1 waits in DATA_IN
         for START_WINDOW_FACTOR x t_blk before the START write; every STATUS read of that
         window must show IDLE = 1 and OUTPUT_VALID = 0, and OUTPUT_VALID must rise after the
-        START write (CHK-AES-START-MANUAL).
+        START write (CHK-AES-START-MANUAL). In the same trial block 2 waits in DATA_IN for
+        the same window before its START write, with output 1 unread; those STATUS reads
+        are kept in ``oneshot_pre`` for CHK-AES-TRIG-ONESHOT.
 
         aes.adoc:184: once set, OUTPUT_LOST "remains set until AES operation is restarted by
         re-writing the Control Register", so it reads 1 after the full DATA_OUT read and 0
@@ -809,6 +868,8 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         else:
             await self._read_out()
         await self._write_block(b2)
+        if not read_between:
+            self.oneshot_pre = await self._sample(START_WINDOW_FACTOR * (self.t_blk or 1))
         await self.aes._wr(AES_TRIGGER, TRIG_START)
         await ClockCycles(cocotb.top.clk_i, self.plan.manual_factor * (self.t_blk or 1))
         await self._wait(ST_IDLE, ST_IDLE, self._ov_bound(), "manual_b2_idle")
@@ -829,6 +890,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         lost = lost_read = lost2 = -1
         data: list[int] | None = None
         self.manual_pre: list[tuple[int, int]] = []
+        self.oneshot_pre: list[tuple[int, int]] = []
         self.manual_run_clk = -1
         self._open()
         try:
@@ -859,6 +921,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         self._grade(
             "AES-LOST", lost == 1 and data == g2 and lost_read == 1 and lost2 == 0, **fields
         )
+        self._grade_oneshot(lost, data == g2, reason)
         # CHK-AES-START-MANUAL. Control: in automatic mode the same DATA_IN write gave
         # OUTPUT_VALID inside the window (CTRL-AES-START-MANUAL), so a manual unit that
         # starts on DATA_IN shows OUTPUT_VALID = 1 inside the window.
@@ -868,11 +931,12 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             "AES-START-MANUAL", 0 <= auto_clk < window, auto_start_clk=auto_clk, window_clk=window
         )
         pre = self.manual_pre
-        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV]
+        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV or st & ST_IR]
         start_fields = {
             "pre_samples": len(pre),
             "pre_idle": 0 if any(not st & ST_IDLE for st in pre_bad) else 1,
             "pre_output_valid": 1 if any(st & ST_OV for st in pre_bad) else 0,
+            "pre_input_ready": 1 if any(st & ST_IR for st in pre_bad) else 0,
             "run_clk": self.manual_run_clk,
             "window_clk": window,
             "auto_start_clk": auto_clk,
@@ -887,6 +951,96 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             # The second START of the trial is graded by CHK-AES-LOST (DATA_OUT holds
             # block 2), so both bits wait for both checks.
             await self._pass_label(AES_STREAM_PASS_LOST | AES_STREAM_PASS_START_MANUAL)
+
+    def _grade_oneshot(self, lost: int, data_ok: bool, reason: str) -> None:
+        """CHK-AES-TRIG-ONESHOT over ``oneshot_pre``, with its START control.
+
+        Control: the START write after the window gives OUTPUT_LOST = 1 and DATA_OUT =
+        block 2 golden, so the same signals move once a START executes.
+        """
+        window = START_WINDOW_FACTOR * (self.t_blk or 1)
+        pre = self.oneshot_pre
+        self.chk.ctrl(
+            "AES-TRIG-ONESHOT",
+            lost == 1 and data_ok,
+            ctrl_output_lost=lost,
+            ctrl_data_out_eq_block2=int(data_ok),
+        )
+        busy = sum(1 for _, st in pre if not st & ST_IDLE)
+        ready = sum(1 for _, st in pre if st & ST_IR)
+        lost_set = sum(1 for _, st in pre if st & ST_LOST)
+        fields = {
+            "samples": len(pre),
+            "idle0_samples": busy,
+            "input_ready1_samples": ready,
+            "output_lost1_samples": lost_set,
+            "output_valid1_samples_obs": sum(1 for _, st in pre if st & ST_OV),
+            "window_clk": window,
+            "ctrl_output_lost": lost,
+            "ctrl_data_out_eq_block2": int(data_ok),
+        }
+        if reason:
+            fields["reason"] = reason
+        self._grade(
+            "AES-TRIG-ONESHOT",
+            not reason and bool(pre) and busy == 0 and ready == 0 and lost_set == 0,
+            **fields,
+        )
+
+    # --- DATA_OUT read before OUTPUT_VALID ------------------------------------------------
+    async def _early_read_leg(self) -> None:
+        """OBS-AES-EARLY-READ: DATA_OUT_0 read while the block is in progress.
+
+        aes.hjson DATA_OUT and STATUS.OUTPUT_VALID state when the output is valid, not
+        what a read before that returns or does. The STATUS read after the early read
+        logs OUTPUT_VALID at that read. The block golden is known, so whether the final
+        output equals it is logged with the early word. Nothing is graded.
+        """
+        key = _le_words(KEY_ROWS[256][0][1])
+        blk = list(self.plan.early_block)
+        gold = aes_encrypt_words("ecb", key, blk)
+        ctrl = build_aes_ctrl(sideload=False, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256)
+        early = st_read = -1
+        clk_write = clk_read = -1
+        final: list[int] | None = None
+        st_after = -1
+        reason = "-"
+        await self._pulse_aes()
+        try:
+            await self._load(ctrl, key, None)
+            await self._write_block(blk)
+            clk_write = self._now()
+            early = await self.aes._rd(AES_DATA_OUT[0])
+            clk_read = self._now()
+            st_read = await self._status()
+            await self._wait(ST_OV, ST_OV, self._ov_bound(), "early_read_output_valid")
+            final = await self._read_out()
+            st_after = await self._status()
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+
+        def bit(st: int, mask: int) -> int | str:
+            return int(bool(st & mask)) if st >= 0 else "none"
+
+        def hexw(w: int) -> str:
+            return f"0x{w:08x}" if w >= 0 else "none"
+
+        self.chk.obs(
+            "AES-EARLY-READ",
+            clk_write=clk_write,
+            clk_read=clk_read,
+            ov_at_read=bit(st_read, ST_OV),
+            idle_at_read=bit(st_read, ST_IDLE),
+            status_at_read=hexw(st_read),
+            early_w0=hexw(early),
+            early_eq_golden_w0=int(early == gold[0]),
+            final=[f"0x{w:08x}" for w in final] if final is not None else "none",
+            final_eq_golden=int(final == gold),
+            stall_after=bit(st_after, ST_STALL),
+            idle_after=bit(st_after, ST_IDLE),
+            status_after=hexw(st_after),
+            reason=reason,
+        )
 
     # --- INPUT_READY around a held stall -----------------------------------------------
     async def _input_ready_leg(self) -> None:
@@ -1075,7 +1229,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         fields = {
             **self._bw_fields(before, after),
             "key_word": bp.key_word,
-            "key_mask": f"0x{bp.key_mask:08x}",
+            "key_mask_sha": word_digest(bp.key_mask),
             "ct==old_key_golden": ct_ok,
             "twin_new_key": int(twin_ok),
         }

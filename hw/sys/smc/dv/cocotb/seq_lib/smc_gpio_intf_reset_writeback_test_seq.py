@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Reset-word write-back of ACCESS_FILTER, DATA_CTRL_ENABLE and DATA_CTRL on 65 instances.
+"""Reset-word write-back of ACCESS_FILTER, DATA_CTRL_ENABLE and DATA_CTRL on 67 instances.
 
 Spec sources: hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/regs/gen/c/smc_addr.h.
 """
@@ -13,25 +13,25 @@ from cocotb.utils import get_sim_time
 from .smc_regblock_field_sweep_utils import SmcRegblockFieldSweepSeq, reg_instances
 
 _ACCESS_FILTER = (
-    "gpio_intf/ACCESS_FILTER",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM",
-    "GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/ACCESS_FILTER",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
 )
 _DATA_CTRL_ENABLE = (
-    "gpio_intf/DATA_CTRL_ENABLE",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL_ENABLE",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
 )
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 
-_INSTANCES = 65
+_INSTANCES = 67
 _ACCESS_FILTER_RESET_WORD = 0x00010100
 _ZERO_WORD = 0x0
 _ACCESS_FILTER_PATTERN = 0x0006_0500

@@ -36,8 +36,8 @@ SMC_STACKLESS_ENTRY(smu_sep_ext_axi_smc_entry)
 #define SMC_REGION_SIZE_REG SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR
 
 /* First entry of each SMC filter; the next entry holds the non-secure rule. */
-#define SMC_INB_BASE SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)
-#define SMC_OUT_BASE SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
+#define SMC_INB_BASE SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(0)
+#define SMC_OUT_BASE SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(0)
 
 /* Egress window over the SMC to ext_out target, taken from the protocol header. */
 #define SMC_OUT_START ((uint64_t)EXTAXI_SMC_OUT_ADDR)

@@ -13,9 +13,15 @@ and the next transaction. The read-back compare uses the RDL field bits only:
 
 * FILTER_CONFIG lo word: the RW fields (``FILTER_CFG_LO_FIELDS``); the RO
   ``data_bus_width`` field and the Reserved bits are logged, not graded;
-* START_ADDR and END_ADDR: logged, not graded. The specification states no
-  write-back timing for the granule rule, so a caller that needs the admitted
-  set grades it through verdicts.
+* START_ADDR and END_ADDR of a range this driver wrote: the bits at and above
+  the 4 KiB granule (``RANGE_FIXED_MASK``) equal the written range. The granule
+  write-back rounds START down to the base and END up to the top of a granule
+  of at most 4 KiB, and only when both land in one granule; otherwise the
+  read-back is the programmed value (``filter_ctrl.rdl`` START_ADDR and
+  END_ADDR, ``hw/ip/axi_filter/doc/index.adoc`` "Granule widening examples").
+  The bits below the granule are logged, not graded: the specification states
+  no write-back timing, so they depend on the order of the four 32-bit writes.
+  A caller that needs the admitted set grades it through verdicts.
 
 The driver also keeps a :class:`env.sep_filter_model.FilterModel` of the bank
 in step with what it wrote, so a leaf asks the model for the verdict of a
@@ -25,8 +31,8 @@ probe. The ``locked`` bit is never written.
 from __future__ import annotations
 
 from env.sep_fabric_common import FILTER_ADDR_MASK
-from env.sep_filter_model import FilterEntry, FilterModel
-from sep_reg_meta import INBOUND_FILTER_CTRL_0
+from env.sep_filter_model import GRANULE_4K, FilterEntry, FilterModel
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, SEP_CPU_CTRL
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -51,11 +57,25 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 # The START_ADDR / END_ADDR field (the same width in both banks), and its part
 # above bit 31, which the hi word of each register holds.
 ADDR_HI_MASK = FILTER_ADDR_MASK >> 32
-SRC_ID_MASK = (1 << INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")) - 1
-GROUP_ID_MASK = (1 << INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")) - 1
+SRC_ID_MASK = (
+    1 << INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")
+) - 1
+GROUP_ID_MASK = (
+    1 << INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")
+) - 1
+# The range bits that no granule write-back changes: the largest granule is 4 KiB.
+RANGE_FIXED_MASK = FILTER_ADDR_MASK & ~(GRANULE_4K - 1)
 # RDL reset values of START_ADDR and END_ADDR (the same in both banks).
-START_RESET = INBOUND_FILTER_CTRL_0.reset("START_ADDR")
-END_RESET = INBOUND_FILTER_CTRL_0.reset("END_ADDR")
+START_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("START_ADDR")
+END_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("END_ADDR")
+
+# A word of the SMU aperture at its RDL reset, and its 4 KiB page. The route
+# demux sends the SMU aperture to the outbound port through the outbound filter
+# (hw/sys/sep/doc/fabric.adoc, "Fabric Topology", output fabric), so a read of
+# the word behind an enabled outbound pair over the page puts one AR handshake at
+# that address on the outbound port.
+SMU_PAGE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+SMU_PAGE_WORD = SMU_PAGE + 0x100
 
 
 def config_word(e: FilterEntry) -> int:
@@ -89,6 +109,7 @@ class SepFilterBank(SepAxiRegDriver):
         self.base = INFILT_BASE if bank == "in" else OUTFILT_BASE
         self.n = INFILT_ENTRIES if bank == "in" else OUTFILT_ENTRIES
         self.model = FilterModel(self.n, bank)
+        self.range_written = [False] * self.n
         self.readbacks = 0
 
     def entry_base(self, idx: int) -> int:
@@ -117,19 +138,28 @@ class SepFilterBank(SepAxiRegDriver):
         return cfg, s, e
 
     async def check_entry(self, idx: int, tag: str = "") -> tuple[int, int, int]:
-        """Read the entry back and compare FILTER_CONFIG on its RW fields.
+        """Read the entry back and compare FILTER_CONFIG on its RW fields, and
+        START and END on ``RANGE_FIXED_MASK`` when this driver wrote the range.
 
-        Raises on a FILTER_CONFIG field mismatch. START and END are logged.
+        Raises on a mismatch. The bits of START and END below the granule are logged.
         """
-        want = config_word(self.model.entries[idx])
+        ent = self.model.entries[idx]
+        want = config_word(ent)
         cfg, s, e = await self.read_entry(idx)
         rsvd = cfg & ~FILTER_CFG_LO_FIELDS & 0xFFFF_FFFF
+        graded = self.range_written[idx]
+        range_ok = not graded or (
+            (s & RANGE_FIXED_MASK) == (ent.start & RANGE_FIXED_MASK)
+            and (e & RANGE_FIXED_MASK) == (ent.end & RANGE_FIXED_MASK)
+        )
         line = (
             f"{self.bank} entry {idx} {tag} cfg=0x{cfg & FILTER_CFG_LO_FIELDS:08x} "
             f"want=0x{want & FILTER_CFG_LO_FIELDS:08x} field_mask=0x{FILTER_CFG_LO_FIELDS:08x} "
-            f"rsvd=0x{rsvd:08x} rb_start=0x{s:014x} rb_end=0x{e:014x}"
+            f"rsvd=0x{rsvd:08x} rb_start=0x{s:014x} rb_end=0x{e:014x} "
+            f"range_graded={int(graded)} want_start=0x{ent.start & FILTER_ADDR_MASK:014x} "
+            f"want_end=0x{ent.end & FILTER_ADDR_MASK:014x} range_mask=0x{RANGE_FIXED_MASK:014x}"
         )
-        if (cfg & FILTER_CFG_LO_FIELDS) != (want & FILTER_CFG_LO_FIELDS):
+        if (cfg & FILTER_CFG_LO_FIELDS) != (want & FILTER_CFG_LO_FIELDS) or not range_ok:
             raise AssertionError(f"CTRL-FILTER-READBACK FAIL: {line}")
         self.log.info("CTRL-FILTER-READBACK LOG: %s", line)
         self.readbacks += 1
@@ -149,8 +179,29 @@ class SepFilterBank(SepAxiRegDriver):
         await self._write_range(idx, e.start, e.end)
         await self._wr(self.cfg_addr(idx), config_word(e))
         self.model.set(idx, FilterEntry(**vars(e)))
+        self.range_written[idx] = True
         if check:
             await self.check_entry(idx, "program")
+
+    async def program_pair(self, idxs: tuple[int, int], start: int, end: int) -> None:
+        """Enable two entries over one range with ``allow_ns`` 0 and 1.
+
+        Read and write allowed, ``src_id`` 0; either AxPROT[1] value matches one
+        entry of the pair.
+        """
+        for idx, ns in zip(idxs, (False, True)):
+            await self.program(
+                idx,
+                FilterEntry(
+                    start=start,
+                    end=end,
+                    enabled=True,
+                    read_allowed=True,
+                    write_allowed=True,
+                    allow_ns=ns,
+                    src_id=0,
+                ),
+            )
 
     async def set_enabled(self, idx: int, enabled: bool, *, check: bool = True) -> None:
         """Change ``entry_enabled`` only; the other fields keep the model value."""

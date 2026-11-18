@@ -20,7 +20,7 @@ chapter, never from the implementation:
   targets are reset by the primary reset, which includes the stable cool reset;
   the locks mask writes to the corresponding target bits.
 
-The bus response to a write that hits locked bits is not specified (SF-014),
+The bus response to a write that hits locked bits is not specified,
 so the masked writes accept any response code, log it, and require only that
 it is the same code for all 32 writes of a pair.
 
@@ -43,7 +43,7 @@ from env.smc_reset_item import SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import smc_addr
+from .smc_addr_map import reset_unit_u32, smc_addr
 from .smc_csr_seq_utils import ALL_ONES_WORD, SmcCsrSeq
 from .smc_reset_seq_base import SmcResetSeqBase
 
@@ -67,6 +67,15 @@ LOCK_PAIRS = [
     ),
 ]
 TARGET_NAME = {"CONFIG": "SS_CONFIG", "COLD": "SS_COLD_RESET_N"}
+# Each register holds one full-width field at bit 0, so the field reset is the word reset.
+TARGET_RESET = {
+    "CONFIG": reset_unit_u32("RESET_UNIT__SS_CONFIG__SS_CONFIG_reset"),
+    "COLD": reset_unit_u32("RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_reset"),
+}
+LOCK_RESET = {
+    "CONFIG": reset_unit_u32("RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_reset"),
+    "COLD": reset_unit_u32("RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_reset"),
+}
 
 #: Bit i of the target before bit i is locked: 1 for even i, 0 for odd i.
 LOCK_PATTERN = 0x5555_5555
@@ -179,7 +188,7 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert item.resp_code == OKAY, f"{name} @ 0x{addr:x}: BRESP={item.resp_code}"
 
     async def _wr_masked(self, name: str, addr: int, data: int) -> int:
-        """Write hitting locked bits; the response code is measured, not expected (SF-014)."""
+        """Write hitting locked bits; the response code is measured, not expected."""
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
@@ -198,7 +207,7 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
     # ---- S2 -------------------------------------------------------------
     async def _unlocked(self, label: str, target: int, lock: int) -> int:
         tname = TARGET_NAME[label]
-        lk = await self._rd(f"{label}_LOCK_S2", lock, 0)
+        lk = await self._rd(f"{label}_LOCK_S2", lock, LOCK_RESET[label])
         await self._wr(f"{tname}_S2_ONES", target, ALL_ONES_WORD)
         ones = await self._rd(f"{tname}_S2_ONES_RB", target, ALL_ONES_WORD)
         await self._wr(f"{tname}_S2_ZERO", target, 0)
@@ -309,7 +318,8 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         self._chk(
             f"CHK-LOCK-{label}-MASKED-RESP",
-            "%d masked writes, BRESP=%d (uniform), LINKED-ISSUE SF-014 (pre-lock writes "
+            "%d masked writes, BRESP=%d (uniform), LINKED-ISSUE: the response to a write "
+            "that hits locked bits (pre-lock writes "
             "BRESP %s, logged only)",
             len(bresps),
             codes[0],
@@ -396,8 +406,8 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
         n = 0
         for label, target, lock, _ in LOCK_PAIRS:
             tname = TARGET_NAME[label]
-            lk = await self._rd(f"{label}_LOCK_POST_COOL", lock, 0)
-            tv = await self._rd(f"{tname}_POST_COOL", target, 0)
+            lk = await self._rd(f"{label}_LOCK_POST_COOL", lock, LOCK_RESET[label])
+            tv = await self._rd(f"{tname}_POST_COOL", target, TARGET_RESET[label])
             await self._wr(f"{tname}_POST_COOL_A5", target, POST_RESET_WORD)
             rb = await self._rd(f"{tname}_POST_COOL_A5_RB", target, POST_RESET_WORD)
             t_clr = int(get_sim_time("ps"))
@@ -423,7 +433,8 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
             self._chk(
                 f"CHK-LOCK-{label}-PRIMARY-RESET",
                 "lock 0x%08x->0x%08x, %s 0x%08x->0x%08x, rb 0x%08x, first-access=%d smc "
-                "cycles from release (measured; SF-016 waived by proxy); lifecycle set@%dps "
+                "cycles from release (measured; the bound from primary reset release to the "
+                "first accepted write is waived by proxy); lifecycle set@%dps "
                 "observed 0x%08x before the pulse, cleared %d-%dps, checked_cleared@%dps",
                 pre[f"{label}_LOCK"],
                 lk,

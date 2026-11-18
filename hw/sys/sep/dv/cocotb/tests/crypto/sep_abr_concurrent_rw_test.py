@@ -8,8 +8,9 @@ no_cpu / +skip_fuse_sense.
 may be outstanding on the aperture from any mix of masters, and that they are
 performed one at a time, each returning the value of the address it names.
 This leaf drives that: s_axi and m_axi each run a seeded stream of reads and
-writes with several outstanding, at the same time, with both response channels
-throttled from the master side.
+writes at the same time, with both response channels throttled from the master
+side. The first half of each stream runs with one access outstanding per master
+(lockstep), the second half with a seeded number from 3 to 6 outstanding.
 
 Ownership keeps the expectation exact without assuming any order between the
 masters: every read-write register is written by one master only, and that
@@ -37,9 +38,10 @@ CHK-ABR-CRW-STRESS pass, which grade every response of both streams. Entry
 reads, priming, CHK-ABR-CRW-FINAL and CHK-ABR-CRW-RESTORE run with the window
 closed.
 
-RANDCFG: the op mix, addresses, data, outstanding depths and throttle patterns
-all come from the run seed. The identity addresses a stream picks from are the
-pool built from the capture, so the configuration is built after it.
+RANDCFG: the op mix, addresses, data, the depth of each stream's second half
+and the throttle patterns all come from the run seed. The identity addresses a
+stream picks from are the pool built from the capture, so the configuration is
+built after it.
 """
 
 from __future__ import annotations
@@ -81,6 +83,15 @@ from seq_lib.sep_abr_bus_seq import (
 TEST = "sep_abr_concurrent_rw_test"
 
 OPS_PER_MASTER = 96
+
+# Each stream's first LOCKSTEP_OPS run one outstanding per master, so both
+# masters together hold two (the depth-2 x_abr_concurrent cells); the rest run
+# at the seeded depth.
+LOCKSTEP_OPS = OPS_PER_MASTER // 2
+
+# The lowest second-half depth, so CHK-ABR-CRW-STRESS requires every master to
+# hold at least this many accesses outstanding at once.
+MIN_DEEP_DEPTH = 3
 
 # The x_abr_concurrent cell value v (0 to 5: {rd, wr, mixed} x
 # {depth 2, depth 3 to 6}) passes on bit CRYPTO_BUS_PASS_ABR_CONCURRENT + v of
@@ -168,7 +179,7 @@ def _throttle(rng: SepSeededRng):
 
 
 class SepAbrConcurrentRwCfg:
-    """RANDCFG: both op streams, their depths and IDs, and the throttle seeds.
+    """RANDCFG: both op streams, their second-half depths and IDs, and the throttle seeds.
 
     ``pool`` and ``granules`` are the identity reads' targets from
     ``identity_pool``.
@@ -179,7 +190,7 @@ class SepAbrConcurrentRwCfg:
         self.seed = seed
         self.pool = pool
         self.granules = granules
-        self.depth = {bus: rng.randrange(3, 7) for bus in OWNED}
+        self.depth = {bus: rng.randrange(MIN_DEEP_DEPTH, 7) for bus in OWNED}
         self.awid = {bus: rng.randrange(1 << ID_WIDTH[bus]) for bus in OWNED}
         self.initial = {w.addr: rng.getrandbits(32) & w.mask for w in RW_WORDS}
         self.throttle_seed = {bus: rng.getrandbits(32) for bus in OWNED}
@@ -235,7 +246,10 @@ class SepAbrConcurrentRwCfg:
             bus: {t: sum(a.tag == t for a in ops) for t, _e in _MIX}
             for bus, ops in self.ops.items()
         }
-        return f"seed={self.seed} depth={self.depth} awid={self.awid} mix={mix}"
+        return (
+            f"seed={self.seed} lockstep_ops={LOCKSTEP_OPS} depth={self.depth} "
+            f"awid={self.awid} mix={mix}"
+        )
 
 
 @pyuvm.test()
@@ -258,7 +272,7 @@ class sep_abr_concurrent_rw_test(sep_base_test):
         pool, granules = identity_pool()
         cfg = SepAbrConcurrentRwCfg(self.random_seed(), pool, granules)
         self.logger.info(
-            "abr concurrent rw: %s identity-pool=%s",
+            "INFO-ABR-CRW cfg: %s identity-pool=%s",
             cfg.summary(),
             ",".join(w.name for w in pool),
         )
@@ -286,11 +300,17 @@ class sep_abr_concurrent_rw_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         try:
             try:
-                tasks = [
-                    cocotb.start_soon(abr.stream(cfg.ops[bus], cfg.depth[bus])) for bus in OWNED
-                ]
-                for t in tasks:
-                    await t
+                for phase in ("lockstep", "deep"):
+                    tasks = [
+                        cocotb.start_soon(
+                            abr.stream(cfg.ops[bus][:LOCKSTEP_OPS], 1)
+                            if phase == "lockstep"
+                            else abr.stream(cfg.ops[bus][LOCKSTEP_OPS:], cfg.depth[bus])
+                        )
+                        for bus in OWNED
+                    ]
+                    for t in tasks:
+                        await t
             finally:
                 watch.stop()
                 for bus in OWNED:
@@ -497,10 +517,10 @@ class sep_abr_concurrent_rw_test(sep_base_test):
                     f"{bus}: {len(rec.ar)} AR / {len(rec.aw)} AW / {len(rec.b)} B on the "
                     f"pins for {n_rd} reads and {n_wr} writes issued"
                 )
-            if rec.max_outstanding < 3:
+            if rec.max_outstanding < cfg.depth[bus]:
                 problems.append(
                     f"{bus}: at most {rec.max_outstanding} accesses outstanding at once, "
-                    f"with a stream depth of {cfg.depth[bus]}"
+                    f"below its stream depth of {cfg.depth[bus]}"
                 )
             if not (rec.r_stall_cycles and rec.b_stall_cycles):
                 problems.append(f"{bus}: a response channel was never held off")
@@ -513,7 +533,12 @@ class sep_abr_concurrent_rw_test(sep_base_test):
             problems.append("the two masters were never outstanding in the same cycle")
         assert not problems, "CHK-ABR-CRW-STRESS FAIL: " + "; ".join(problems)
         self.logger.info(
-            "CHK-ABR-CRW-STRESS PASS: both masters held several accesses outstanding, "
-            "overlapped for %d cycles, and had R and B held off by RREADY/BREADY",
+            "CHK-ABR-CRW-STRESS PASS: each master reached its stream depth (s_axi %d of "
+            "%d, m_axi %d of %d accesses outstanding), overlapped for %d cycles, and had "
+            "R and B held off by RREADY/BREADY",
+            watch.rec["s_axi"].max_outstanding,
+            cfg.depth["s_axi"],
+            watch.rec["m_axi"].max_outstanding,
+            cfg.depth["m_axi"],
             watch.all_busy_cycles,
         )

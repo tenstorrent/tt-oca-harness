@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, replace
 
+from env.sep_chk_log import word_digest
 from env.sep_crc_golden import crc8_rohc, crc32c
 from env.sep_seeded_rng import SepSeededRng
 
@@ -115,9 +116,15 @@ REQUIRED_PLEN = {CMD_HW_VER: 0, CMD_ROM_VER: 0, CMD_SRAM_VER: 0, CMD_STAT: 0, CM
 # ROM always returns failure to CMD_SRAM_VER ("0x02 - CMD_SRAM_VER").
 CARRIER_CODE = {CMD_HW_VER: RC_SUCCESS, CMD_ROM_VER: RC_SUCCESS, CMD_SRAM_VER: RC_FAILURE}
 
+DEST_HMAC = 0x01  # DEST_VALID bit 0 ("0x24 - CMD_KEY_TRANSFER", requested engines)
 DEST_AES = 0x04  # DEST_VALID bit 2 ("0x22 - CMD_KEY_GENERATE", destination policy)
 SHRED_MASK = 0x80  # contract carrier: CMD_ENGINE_SHRED with mask 0x80
-OTP_LOCK_MASK = 0x001  # contract: CMD_OTP_READ_LOCK_COLD with mask 0x001
+# Payload masks of "0x28 - CMD_OTP_READ_LOCK_COLD" (bit encoding table).
+# OTP_LOCK_MASK is bit 0 LC, the contract carrier. OTP_GATED_MASK is bit 1 D,
+# the lock bit that the gate matrix requests. No command that succeeds in this
+# test sets it, so a gated handler that ran shows it in OTP_READ_LOCK_COLD.
+OTP_LOCK_MASK = 0x001
+OTP_GATED_MASK = 0x002
 
 # "Message Buffers": the receive buffer holds 257 words. 257 words with no
 # separator fill it without a complete frame (rx_buff_oflow).
@@ -150,6 +157,12 @@ KIND_CODE = {
 
 # Sentinel for an argument that is logged and not graded (kind (d)).
 ARG_LOGGED = "logged"
+
+# Salt of the invalid-command control draw, so the draws of the main stream keep
+# their seed mapping.
+_INVALID_CMD_SALT = 0x4241_4443 << 32
+# Salt of the draws of the rejected CMD_KEY_TRANSFER, for the same reason.
+_XFER_SALT = 0x5846_4552 << 32
 
 
 def signed8(value: int) -> int:
@@ -317,6 +330,22 @@ def build_vault_frame(d: PairDraw, v: VaultDraw, e: int) -> FaultFrame:
     return build_fault_frame(vd, kinds, e, payload=v.payload)
 
 
+@dataclass(frozen=True)
+class XferDraw:
+    """The key loaded for the rejected CMD_KEY_TRANSFER and the one frame-level fault of that frame."""
+
+    key: tuple[int, ...]
+    dest_valid: int
+    fault: PairDraw  # first == second: the one kind the frame carries
+
+
+def build_xfer_frame(x: XferDraw, handle: int, e: int) -> FaultFrame:
+    """CMD_KEY_TRANSFER of ``handle`` to HMAC with the one fault of ``x``."""
+    return build_fault_frame(
+        x.fault, frozenset([x.fault.first]), e, payload=(handle & 0xFF, DEST_HMAC)
+    )
+
+
 # --- seeded plan ----------------------------------------------------------------------
 
 
@@ -399,7 +428,7 @@ class CommandProtocolPlan:
         # Step 14 positive twins.
         self.twin_load_key = _key(rng, 4)
         self.twin_abr_dest = rng.randrange(1, 0x100)
-        self._log("twin_load_key", self.twin_load_key)
+        self._log("twin_load_key_sha", word_digest(self.twin_load_key))
         self._log("twin_abr_dest", self.twin_abr_dest)
 
         self.wrap_carriers = tuple(rng.choice(self.WRAP_CARRIERS) for _ in range(self.WRAP_FRAMES))
@@ -447,6 +476,13 @@ class CommandProtocolPlan:
         self._log("oflow_pend_words", self.oflow_words)
 
         self.vault = tuple(self._vault(rng, i, d) for i, d in enumerate(self.pairs))
+
+        # Step 14 invalid-command control.
+        self.invalid_cmd = SepSeededRng(seed ^ _INVALID_CMD_SALT).choice(INVALID_CMD_IDS)
+        self._log("invalid_cmd", f"0x{self.invalid_cmd:02x}")
+
+        # Step 14 rejected CMD_KEY_TRANSFER.
+        self.xfer = self._xfer(SepSeededRng(seed ^ _XFER_SALT))
 
     # -- draw helpers ------------------------------------------------------------------
 
@@ -510,10 +546,42 @@ class CommandProtocolPlan:
                     break
         tag = f"pair{idx}_vault"
         self._log(f"{tag}_cmd", f"0x{cmd:02x}")
-        self._log(f"{tag}_payload", payload)
+        if cmd == CMD_KEY_GENERATE:
+            self._log(f"{tag}_payload", payload)
+        else:
+            self._log(f"{tag}_payload", payload[:2])
+            self._log(f"{tag}_key_sha", word_digest(payload[2:]))
         if "len_wire" in d.kinds:
             self._log(f"{tag}_d_plen", d_plen)
         return VaultDraw(cmd, payload, d_plen)
+
+    def _xfer(self, rng: SepSeededRng) -> XferDraw:
+        key = _key(rng, 8)
+        dest_valid = _dest_with(rng, DEST_HMAC)
+        kind = rng.choice(VAULT_KINDS)
+        crc_xor = rng.randrange(1, 0x100) if kind == "hdr_crc" else 0
+        seq_delta = rng.randrange(1, 0x100) if kind == "seq" else 0
+        flip_bit = rng.randrange(32) if kind == "pcrc" else 0
+        d_plen = 0
+        if kind == "len_wire":
+            while True:
+                d_plen = rng.randrange(0, 0x100)
+                if frame_len(d_plen) != frame_len(2):
+                    break
+        fault = PairDraw(
+            kind, kind, CMD_KEY_TRANSFER, crc_xor, seq_delta, 0, flip_bit, (), d_plen, ()
+        )
+        self._log("xfer_key_sha", word_digest(key))
+        self._log("xfer_dest_valid", dest_valid)
+        self._log("xfer_kind", kind)
+        name, value = {
+            "hdr_crc": ("crc_xor", crc_xor),
+            "seq": ("seq_delta", seq_delta),
+            "len_wire": ("d_plen", d_plen),
+            "pcrc": ("flip_bit", flip_bit),
+        }[kind]
+        self._log(f"xfer_{name}", value)
+        return XferDraw(key, dest_valid, fault)
 
     def _gate(self, rng: SepSeededRng, source: str) -> GateDraw:
         gen_words = rng.randrange(1, 17)
@@ -521,7 +589,7 @@ class CommandProtocolPlan:
         load_key = _key(rng, rng.randrange(8, 17))
         load_dest = _dest_with(rng, DEST_AES)
         h_key = _key(rng, 8)
-        h_dest = _dest_with(rng, DEST_AES)
+        h_dest = _dest_with(rng, DEST_AES | DEST_HMAC)
         abr_dest = rng.randrange(1, 0x100)
         order = list(ADMITTED + GATED)
         rng.shuffle(order)
@@ -558,7 +626,10 @@ class CommandProtocolPlan:
             "vf_flip_bit",
             "ack_delay",
         ):
-            self._log(f"{tag}_{name}", getattr(g, name))
+            if name in ("load_key", "h_key"):
+                self._log(f"{tag}_{name}_sha", word_digest(getattr(g, name)))
+            else:
+                self._log(f"{tag}_{name}", getattr(g, name))
         if oflow:
             self._log(f"{tag}_oflow_words", oflow)
         return g

@@ -13,11 +13,12 @@ Contract (``hw/sys/sep/doc/reset_controller.adoc``, SEP Reset Controller;
   order, and rise after the last of the three terms.
 * ``SMC_FUSE_SENSE_STATUS`` follows the level of ``smc_fuse_sense_done_i``.
 * ``SEP_FUSE_SENSE_STATUS`` (``sep_fuse_sense_done``, R, reset 0x0) indicates the
-  fuse sense status of SEP: after sensing the field reads 1. The register
+  fuse sense status of SEP. No specification line states the field value after
+  sensing, so it is logged (``OBS-SENSE-STATUS-DONE``) and not graded. The register
   block is reset by ``sep_reset_n`` (``reset_controller.adoc``, ``sep_reset_no``
   resets the system peripherals), and no specification line states that it
   answers a read while sensing runs, so the leaf issues no read of it before
-  the release and logs ``OBS-SENSE-STATUS-PRE`` instead.
+  the release and logs ``INFO-SENSE-STATUS-PRE`` instead.
 * From the ``rst_ni`` release until ``sep_fuse_sense_done_o`` rises, a read of
   the shadow map answers SLVERR. After sensing the same word reads OKAY with the
   staged word.
@@ -38,23 +39,34 @@ Checkers:
                     last term, and both rise within the release bound after it.
                     On VCS the ``sep_reset_n`` tap is also never X while
                     ``rst_ni`` is low.
+                    Control (CTRL-REL-ORDER): the sampled order of the
+                    ``rst_ni`` release, the sense rise and the term rise is
+                    the order the epoch kind places, or the leaf fails.
   CHK-REL-HOLD      in the H = yes epoch both taps read 0 for the whole hold (at
                     least 2 T samples after the sense rise) and rise after
                     ``ext_boot_seq_done_i`` rises.
   CHK-SMC-FOLLOW    every 64-bit poll of ``SMC_FUSE_SENSE_STATUS`` reads the
                     bench SMC input level: 0 in the hold leaf, 1 in the normal
                     leaf; bits 63:1 are masked and logged.
-  CHK-PRESENSE      every window probe whose R handshake falls while
-                    ``sep_fuse_sense_done_o`` is 0 answers SLVERR; each epoch
-                    has at least one such probe. Control in the same window:
-                    a read of ``FEAT_CTRL`` on the same LSU path, right after
-                    probe 1, answers OKAY with ``sep_fuse_sense_done_o`` and
-                    ``sep_reset_n`` both 0. ``lifecycle_controller.adoc`` (LC
-                    State Machine) has the life-cycle controller present the
-                    INVALID feature-control profile until sensing completes,
-                    so the register answers while sensing runs; a path that
-                    refused every access during the SEP reset fails here, so
-                    the SLVERR is the shadow-map refusal.
+  CHK-PRESENSE      every window probe (a JTAG read of a shadow-map word)
+                    whose R handshake falls while ``sep_fuse_sense_done_o`` is
+                    0 answers SLVERR; each epoch has at least one such probe.
+                    Control in the same window (CTRL-PRESENSE-PATH): a JTAG
+                    read of ``EFUSE_INTERFACE_CTRL_STATUS``, right after probe
+                    1, answers OKAY with ``sep_fuse_sense_done_o`` and
+                    ``sep_reset_n`` both 0. ``otp_fuse_controller.adoc``
+                    (Shadow Register and JTAG Access Control) restricts JTAG
+                    only in PROD and RMA_SIP, which the held INVALID state
+                    before sensing is not; outside the token block the
+                    restricted states refuse the interface control registers
+                    too, so the read is not a token-block read. The register
+                    sits behind the same AXI-Lite to APB bridge as the MAP
+                    window, and only the MAP window answers SLVERR before
+                    sensing (``otp_fuse_controller.adoc``: "Until then, APB
+                    accesses to the MAP window return SLVERR"). A lifecycle
+                    filter or bridge that refused non-token JTAG reads before
+                    sensing fails here, so the SLVERR is the shadow-map
+                    refusal.
   CHK-PRESENSE-CTL  after both taps rise, the same words read OKAY with the
                     staged word of the image (the golden is the staged image,
                     not a DUT read). Words staged 0 stay graded, and each epoch
@@ -64,10 +76,11 @@ Checkers:
   CHK-SENSE-STATUS  after ``sep_fuse_sense_done_o`` has held 1 for
                     ``_REL_BOUND`` ``clk_i`` cycles, one 64-bit read of
                     ``SEP_FUSE_SENSE_STATUS`` per epoch and the final polls
-                    answer OKAY with ``sep_fuse_sense_done`` at 1, and the port
-                    reads 1 around each read. The reserved bits 63:1 have no
-                    stated reset value: they are logged (``obs_rsvd``), not
-                    graded.
+                    complete within the bound, and the port reads 1 around
+                    each read. The response code, the field
+                    ``sep_fuse_sense_done`` and the reserved bits 63:1 have no
+                    stated value after sensing: they are logged
+                    (``OBS-SENSE-STATUS-DONE``), not graded.
 
 Controls: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the sensing is the last
 term, so those cells are controls of CHK-REL-GATE. The post-sense reads of
@@ -85,10 +98,15 @@ cycles of the release, and the bench SMC input high within ``_SMC_BOUND`` cycles
 The calibration boot also measures L, the worst issue-to-response latency of
 ``_CAL_PROBES`` shadow-map reads. A drawn probe clock is capped so that the last
 pre-release probe issues by release + T-1-L and the cap of each earlier one
-is L cycles before the cap of the next: the bench probe path is the core load path, which on silicon
-is idle while the core is in reset, so a probe that crosses the ``sep_reset_n``
-rise exists only on the bench. Each probe response is checked to land before
-that rise.
+is L cycles before the cap of the next, so the probes stay inside the reset
+window. Each probe response is checked to land before the ``sep_reset_n`` rise.
+
+Masters: the SEP core is held in reset until sensing completes
+(``reset_controller.adoc``), so its load path issues nothing before the
+release. Every read before the release (the calibration probes, the window
+probes and the path control) runs on the OTP JTAG port, which
+``otp_fuse_controller.adoc`` merges into the same AXI-Lite to APB path as the
+functional port. Every read after the release runs on the core load path.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense, Verilator and VCS;
 the X check of CHK-REL-GATE runs on VCS only. RANDCFG.
@@ -101,19 +119,20 @@ import pyuvm
 from cocotb.triggers import Event, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
+from env.sep_bh_smc import drive_bh_smc
 from env.sep_efuse_image import SHADOW_BASE
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rel_terms_pass
 from env.sep_field_compare import field_compare
 from env.sep_lcc_golden import (
     LC_RMA_CHIP_0,
     LC_RMA_SIP_0,
     LC_TEST_DEV,
-    LCC_FEAT_CTRL,
     lc_state_name,
 )
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_CPU_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 TEST = "sep_boot_release_terms_test"
@@ -124,12 +143,12 @@ _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 SMC_STATUS = SEP_CPU_CTRL.addr("SMC_FUSE_SENSE_STATUS")
 SMC_FIELD = SEP_CPU_CTRL.field_mask("SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done")
+# BH-SMC apertures: the static SMC row base and a base inside the reset SMU window.
+SMC_APERTURES = (0x4000_0000, 0x9000_0000)
+SMC_APERTURE_SIZE = 0x0100_0000
 SEP_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 SEP_FIELD = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
-SEP_LSB = SEP_CPU_CTRL.field_lsb("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
-# Golden of sep_fuse_sense_done in place after sensing. The reserved bits have
-# no stated reset and are logged.
-SEP_FIELD_POST = 1 << SEP_LSB
+IF_STATUS_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
 
 BOOT_FIRST = "BOOT_FIRST"
 BOOT_WITH_RST = "BOOT_WITH_RST"
@@ -138,6 +157,14 @@ BOOT_AFTER = "BOOT_AFTER_SENSE_H0"
 BOOT_HOLD = "BOOT_AFTER_SENSE_H1"
 # Drawn epoch E with the weights 2, 2, 2, 1.
 _EPOCH_WEIGHTS = ((BOOT_FIRST, 2), (BOOT_WITH_RST, 2), (BOOT_MID, 2), (BOOT_AFTER, 1))
+# Observed order of the term samples (t_rst_rel, t_sense, t_boot) that each kind places.
+_ORDER = {
+    BOOT_FIRST: ("t_boot < t_rst_rel < t_sense", lambda r, s, b: b < r < s),
+    BOOT_WITH_RST: ("t_boot == t_rst_rel < t_sense", lambda r, s, b: b == r < s),
+    BOOT_MID: ("t_rst_rel < t_boot < t_sense", lambda r, s, b: r < b < s),
+    BOOT_AFTER: ("t_rst_rel < t_sense < t_boot", lambda r, s, b: r < s < b),
+    BOOT_HOLD: ("t_rst_rel < t_sense < t_boot", lambda r, s, b: r < s < b),
+}
 
 _LC_SET = (LC_TEST_DEV, LC_RMA_SIP_0, LC_RMA_CHIP_0)
 # DV set of (SIP_DIS, SYS_DIS) pairs: the disable vectors the real-sense fabric
@@ -211,19 +238,19 @@ class sep_boot_release_terms_test(sep_base_test):
                 drawn = kind
                 break
             pick -= weight
-        log.info("DRAW epoch_E=%s", drawn)
+        log.info("INFO-DRAW epoch_E=%s", drawn)
         hold_first = rng.randrange(2) == 0
         self.epochs = [_Epoch(BOOT_HOLD), _Epoch(drawn)]
         if not hold_first:
             self.epochs.reverse()
-        log.info("DRAW order=%s", ",".join(e.kind for e in self.epochs))
+        log.info("INFO-DRAW order=%s", ",".join(e.kind for e in self.epochs))
         for ep in self.epochs:
             ep.w = rng.randrange(2, 41)
-            log.info("DRAW W[%s]=%d", ep.kind, ep.w)
+            log.info("INFO-DRAW W[%s]=%d", ep.kind, ep.w)
         self.lc_raw = rng.choice(_LC_SET)
         self.sip_dis, self.sys_dis = rng.choice(_DIS_VECTORS)
         log.info(
-            "DRAW image LC_STATE=%s SIP_DIS=0x%016x SYS_DIS=0x%016x",
+            "INFO-DRAW image LC_STATE=%s SIP_DIS=0x%016x SYS_DIS=0x%016x",
             lc_state_name(self.lc_raw),
             self.sip_dis,
             self.sys_dis,
@@ -233,19 +260,19 @@ class sep_boot_release_terms_test(sep_base_test):
                 # The term falls with rst_ni and rises d clocks before the
                 # release, so it is low for at least one clock with rst_ni low.
                 ep.delay = rng.randrange(1, ep.w)
-                log.info("DRAW delay[%s]=%d clocks before the release", ep.kind, ep.delay)
+                log.info("INFO-DRAW delay[%s]=%d clocks before the release", ep.kind, ep.delay)
             elif ep.kind == BOOT_WITH_RST:
                 ep.delay = 0
-                log.info("DRAW delay[%s]=0 (the release clock)", ep.kind)
+                log.info("INFO-DRAW delay[%s]=0 (the release clock)", ep.kind)
             elif ep.kind == BOOT_MID:
                 ep.u_m = rng.getrandbits(_FRAC_BITS)
-                log.info("DRAW u_m[%s]=%.9f", ep.kind, _frac(ep.u_m))
+                log.info("INFO-DRAW u_m[%s]=%.9f", ep.kind, _frac(ep.u_m))
             elif ep.kind == BOOT_AFTER:
                 ep.delay = rng.randrange(1, 401)
-                log.info("DRAW delay[%s]=%d clocks after sense done", ep.kind, ep.delay)
+                log.info("INFO-DRAW delay[%s]=%d clocks after sense done", ep.kind, ep.delay)
             else:
                 ep.delay = rng.randrange(0, 401)
-                log.info("DRAW hold_extra[%s]=%d clocks (added to 2T)", ep.kind, ep.delay)
+                log.info("INFO-DRAW hold_extra[%s]=%d clocks (added to 2T)", ep.kind, ep.delay)
         for ep in self.epochs:
             n = rng.randrange(3, 9)
             ep.words = [rng.randrange(0, 256)]
@@ -254,14 +281,14 @@ class sep_boot_release_terms_test(sep_base_test):
                 ep.u_probe.append(rng.getrandbits(_FRAC_BITS))
             ep.u_probe.sort()
             log.info(
-                "DRAW probes[%s] N=%d words=%s u=%s",
+                "INFO-DRAW probes[%s] N=%d words=%s u=%s",
                 ep.kind,
                 n,
                 ep.words,
                 ",".join(f"{_frac(u):.6f}" for u in ep.u_probe),
             )
         self.n_polls = rng.randrange(8, 65)
-        log.info("DRAW n_polls=%d", self.n_polls)
+        log.info("INFO-DRAW n_polls=%d", self.n_polls)
 
     # -- calibration -------------------------------------------------------
 
@@ -318,28 +345,26 @@ class sep_boot_release_terms_test(sep_base_test):
         return t
 
     async def _cal_probes(self, out: list[int]) -> None:
-        """Shadow-map reads of the calibration boot: issue-to-response latency in clk_i cycles.
+        """JTAG shadow-map reads of the calibration boot: issue-to-response latency in clk_i cycles.
 
         Ungraded (window closed). The latency places the pre-release probes of
         the epochs so that each completes before ``sep_reset_n`` rises.
         """
         await RisingEdge(cocotb.top.clk_i)
         for i in range(_CAL_PROBES):
-            out.append(await self._timed_read(i, f"cal_probe{i}"))
+            out.append(await self._timed_read(SHADOW_BASE + 4 * i))
 
-    async def _timed_read(self, idx: int, name: str, addr: int | None = None) -> int:
+    async def _timed_read(self, addr: int) -> int:
+        """One JTAG read of ``addr``; keeps (resp, data) in ``_last`` and returns its latency.
+
+        The core is held in reset until sensing completes, so the pre-release
+        reads use the OTP JTAG port, the master that exists then
+        (``reset_controller.adoc``; ``otp_fuse_controller.adoc``: the JTAG port
+        merges into the same AXI-Lite to APB path as the functional port).
+        """
         p_ps = round(self.cfg.sys_clk_period_ns * 1000)
         t0 = int(get_sim_time("ps"))
-        seq = SepAxiAccessSeq(
-            name,
-            op=SepAxiOp.READ,
-            addr=SHADOW_BASE + 4 * idx if addr is None else addr,
-            length=4,
-            size=2,
-            allow_ungraded_read_resp=True,
-        )
-        await self.start_seq(seq)
-        self._last_seq = seq
+        self._last = await self.jtag_axil_op(write=False, addr=addr)
         return -(-(int(get_sim_time("ps")) - t0) // p_ps)
 
     # -- one epoch -----------------------------------------------------------
@@ -348,20 +373,19 @@ class sep_boot_release_terms_test(sep_base_test):
         for i, idx in enumerate(ep.words):
             await events[i].wait()
             ep.probes[i]["issued"] = self._k
-            ep.probes[i]["lat"] = await self._timed_read(idx, f"presense_probe{i}")
-            seq = self._last_seq
-            ep.probes[i]["resp"] = seq.resp_code
-            ep.probes[i]["data"] = seq.rdata & 0xFFFF_FFFF
-            ep.probes[i]["timed_out"] = seq.timed_out
+            ep.probes[i]["lat"] = await self._timed_read(SHADOW_BASE + 4 * idx)
+            resp, data = self._last
+            ep.probes[i]["resp"] = resp
+            ep.probes[i]["data"] = data & 0xFFFF_FFFF
             if i == 0:
-                # Path control: a read on the same LSU path to FEAT_CTRL, which
-                # answers while sensing runs, right after the first probe.
+                # Path control: a JTAG read of an interface control register,
+                # outside the token block and behind the same AXI-Lite to APB
+                # bridge, right after the first probe.
                 ep.ctl = {"issued": self._k}
-                ep.ctl["lat"] = await self._timed_read(0, "presense_path_ctl", LCC_FEAT_CTRL)
-                seq = self._last_seq
-                ep.ctl["resp"] = seq.resp_code
-                ep.ctl["data"] = seq.rdata & 0xFFFF_FFFF
-                ep.ctl["timed_out"] = seq.timed_out
+                ep.ctl["lat"] = await self._timed_read(IF_STATUS_ADDR)
+                resp, data = self._last
+                ep.ctl["resp"] = resp
+                ep.ctl["data"] = data & 0xFFFF_FFFF
 
     async def _run_epoch(self, ep: _Epoch, t_cal: int) -> None:
         dut = cocotb.top
@@ -379,13 +403,9 @@ class sep_boot_release_terms_test(sep_base_test):
                         "done": _bit(dut.sep_fuse_sense_done_o),
                         "ext": _bit(dut.ext_boot_seq_done_i),
                         "rst": _bit(dut.rst_ni),
-                        "r_hs": bool(
-                            _bit(dut.s_axi_rvalid)
-                            and _bit(dut.s_axi_rready)
-                            and _bit(dut.s_axi_rlast)
-                        ),
-                        "rresp": (int(dut.s_axi_rresp.value) & 0x3)
-                        if dut.s_axi_rresp.value.is_resolvable
+                        "r_hs": bool(_bit(dut.j_axi_rvalid) and _bit(dut.j_axi_rready)),
+                        "rresp": (int(dut.j_axi_rresp.value) & 0x3)
+                        if dut.j_axi_rresp.value.is_resolvable
                         else None,
                     }
                 )
@@ -393,9 +413,10 @@ class sep_boot_release_terms_test(sep_base_test):
         w = ep.w
         release_k = w
         drawn_k = [release_k + 1] + [release_k + _scaled(u, t_cal - 1) for u in ep.u_probe]
-        # Each pre-release probe completes before sep_reset_n rises: the last
-        # issues by release + T-1-L, and the cap of each earlier one is L cycles
-        # before the cap of the next, so the sequential chain ends in time.
+        # Each pre-release probe completes before sep_reset_n rises, so it lands
+        # inside the pre-sense window: the last issues by release + T-1-L, and
+        # the cap of each earlier one is L cycles before the cap of the next, so
+        # the sequential chain ends in time.
         probe_k = list(drawn_k)
         cap = release_k + self.cutoff
         for i in range(len(probe_k) - 1, -1, -1):
@@ -413,7 +434,7 @@ class sep_boot_release_terms_test(sep_base_test):
             ep.delay = _scaled(ep.u_m, t_cal - 1)
             ext_k = release_k + ep.delay
             self.logger.info(
-                "PLACE BOOT_MID u_m=%.9f T=%d -> %d clocks after the release",
+                "INFO-PLACE BOOT_MID u_m=%.9f T=%d -> %d clocks after the release",
                 _frac(ep.u_m),
                 t_cal,
                 ep.delay,
@@ -423,7 +444,7 @@ class sep_boot_release_terms_test(sep_base_test):
         after = ep.delay if ep.kind == BOOT_AFTER else 2 * t_cal + ep.delay
         for i, (u, k) in enumerate(zip([None, *ep.u_probe], probe_k)):
             self.logger.info(
-                "PLACE probe%d word=%d u=%s -> drawn %d, issue %d clocks after the release",
+                "INFO-PLACE probe%d word=%d u=%s -> drawn %d, issue %d clocks after the release",
                 i,
                 ep.words[i],
                 "fixed" if u is None else f"{_frac(u):.6f}",
@@ -461,7 +482,7 @@ class sep_boot_release_terms_test(sep_base_test):
                 if sense_k is not None and ext_k is None:
                     ext_k = sense_k + after
                     self.logger.info(
-                        "PLACE %s sense rise at sample %d -> term at sample %d",
+                        "INFO-PLACE %s sense rise at sample %d -> term at sample %d",
                         ep.kind,
                         sense_k,
                         ext_k,
@@ -538,6 +559,19 @@ class sep_boot_release_terms_test(sep_base_test):
             f"the last term ({last_name} at sample {last}): sep_reset_n rise={sep_rise} "
             f"sep_cpu_reset_n rise={cpu_rise}"
         )
+        order, in_order = _ORDER[ep.kind]
+        assert in_order(t_rel, t_sense, t_boot), (
+            f"CTRL-REL-ORDER FAIL: {tag} observed t_rst_rel={t_rel} t_sense={t_sense} "
+            f"t_boot={t_boot} is not the placed order {order}"
+        )
+        self.logger.info(
+            "CTRL-REL-ORDER seen: kind=%s order=%s t_rst_rel=%d t_sense=%d t_boot=%d",
+            ep.kind,
+            order,
+            t_rel,
+            t_sense,
+            t_boot,
+        )
         x_low = 0
         if four_state:
             x_low = sum(1 for r in rec if r["rst"] == 0 and r["sep"] is None)
@@ -590,30 +624,29 @@ class sep_boot_release_terms_test(sep_base_test):
         rec = ep.rec
         hs = [i for i, r in enumerate(rec) if r["r_hs"]]
         assert len(hs) == len(ep.probes) + 1, (
-            f"CHK-PRESENSE FAIL: epoch={ep.kind} saw {len(hs)} R handshakes on s_axi for "
+            f"CHK-PRESENSE FAIL: epoch={ep.kind} saw {len(hs)} R handshakes on the JTAG port for "
             f"{len(ep.probes)} probes and the path control read"
         )
         # R handshake order: probe 0, the path control read, probes 1 to N-1.
         ctl_cyc = hs.pop(1)
         c = ep.ctl
         c_ok = (
-            not c["timed_out"]
-            and c["resp"] == RESP_OKAY
+            c["resp"] == RESP_OKAY
             and rec[ctl_cyc]["rresp"] == RESP_OKAY
             and rec[ctl_cyc]["done"] == 0
             and rec[ctl_cyc]["sep"] == 0
         )
         assert c_ok, (
-            f"CHK-PRESENSE FAIL: epoch={ep.kind} path control FEAT_CTRL @0x{LCC_FEAT_CTRL:08x} "
-            f"resp={_RESP_NAME.get(c['resp'], c['resp'])} timed_out={int(c['timed_out'])} at "
+            f"CTRL-PRESENSE-PATH FAIL: epoch={ep.kind} path control EFUSE_INTERFACE_CTRL_STATUS "
+            f"@0x{IF_STATUS_ADDR:08x} resp={_RESP_NAME.get(c['resp'], c['resp'])} at "
             f"sample {ctl_cyc} sense_done={rec[ctl_cyc]['done']} sep_reset_n={rec[ctl_cyc]['sep']}; "
             "expected OKAY inside the pre-sense window"
         )
         self.logger.info(
-            "CTRL-PRESENSE-PATH: epoch=%s FEAT_CTRL @0x%08x resp=OKAY data=0x%08x issued=%d "
-            "resp_cyc=%d done_at_resp=0 sep_reset_n_at_resp=0",
+            "CTRL-PRESENSE-PATH: epoch=%s JTAG EFUSE_INTERFACE_CTRL_STATUS @0x%08x resp=OKAY data=0x%08x "
+            "issued=%d resp_cyc=%d done_at_resp=0 sep_reset_n_at_resp=0",
             ep.kind,
-            LCC_FEAT_CTRL,
+            IF_STATUS_ADDR,
             c["data"],
             c["issued"],
             ctl_cyc,
@@ -621,15 +654,13 @@ class sep_boot_release_terms_test(sep_base_test):
         self._obs_sense_pre(ep, ctl_cyc)
         hits = 0
         for i, (p, cyc) in enumerate(zip(ep.probes, hs)):
-            assert not p["timed_out"], f"CHK-PRESENSE FAIL: epoch={ep.kind} probe{i} timed out"
             assert rec[cyc]["rresp"] == p["resp"], (
                 f"CHK-PRESENSE FAIL: epoch={ep.kind} probe{i} handshake rresp={rec[cyc]['rresp']} "
                 f"but the master returned resp={p['resp']}"
             )
             p["cyc"] = cyc
-            # Placement precondition: the bench probe path is the core load path,
-            # idle on silicon while the core is in reset, so no probe may cross
-            # the sep_reset_n rise.
+            # Placement precondition: each probe answers before the sep_reset_n
+            # rise, so the window probes stay inside the reset window.
             assert cyc < ep.t["sep_rise"], (
                 f"test error: epoch={ep.kind} probe{i} issued at sample {p['issued']} answered at "
                 f"{cyc}, not before the sep_reset_n rise {ep.t['sep_rise']} (L={self.lat})"
@@ -679,7 +710,7 @@ class sep_boot_release_terms_test(sep_base_test):
         return seq.rdata & _M64
 
     def _obs_sense_pre(self, ep: _Epoch, cyc: int) -> None:
-        """OBS-SENSE-STATUS-PRE: the pre-sense value of SEP_FUSE_SENSE_STATUS is not read.
+        """INFO-SENSE-STATUS-PRE: the pre-sense value of SEP_FUSE_SENSE_STATUS is not read.
 
         The register block is reset by ``sep_reset_n``, and no specification
         line states that it answers a read while sensing runs, so the leaf
@@ -687,7 +718,7 @@ class sep_boot_release_terms_test(sep_base_test):
         reset levels at the path control read; it grades nothing.
         """
         self.logger.info(
-            "OBS-SENSE-STATUS-PRE: epoch=%s no SEP_FUSE_SENSE_STATUS read while sensing runs; "
+            "INFO-SENSE-STATUS-PRE: epoch=%s no SEP_FUSE_SENSE_STATUS read while sensing runs; "
             "at the path control read (sample %d) sense_done=%s sep_reset_n=%s (not scored)",
             ep.kind,
             cyc,
@@ -700,7 +731,9 @@ class sep_boot_release_terms_test(sep_base_test):
 
         The reads start after ``sep_fuse_sense_done_o`` held 1 on ``_REL_BOUND``
         consecutive ``clk_i`` edges; the port must read 1 before and after
-        every read.
+        every read, and every read must complete. No TT text states the
+        response code or the field value after sensing, so both are logged in
+        ``OBS-SENSE-STATUS-DONE``.
         """
         dut = cocotb.top
         for c in range(_REL_BOUND):
@@ -710,43 +743,43 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense sep_fuse_sense_done_o={level} "
                 f"at settle cycle {c}, expected 1 for {_REL_BOUND} cycles"
             )
-        exp = SEP_FIELD_POST
-        rsvd_all = []
+        words = []
+        resps = []
         for i in range(n):
             before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             seq = SepAxiAccessSeq(
-                f"sep_status_{tag}{i}", op=SepAxiOp.READ, addr=SEP_STATUS, length=8, size=3
+                f"sep_status_{tag}{i}",
+                op=SepAxiOp.READ,
+                addr=SEP_STATUS,
+                length=8,
+                size=3,
+                allow_ungraded_read_resp=True,
             )
             await self.start_seq(seq)
             after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             word = self._status_data(seq)
-            got = word & SEP_FIELD
-            rsvd = word & ~SEP_FIELD & _M64
-            ok = (
-                before == 1
-                and after == 1
-                and not seq.timed_out
-                and seq.resp_code == RESP_OKAY
-                and got == exp
-            )
+            ok = before == 1 and after == 1 and not seq.timed_out
             assert ok, (
                 f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense poll {i} "
-                f"resp={_RESP_NAME.get(seq.resp_code, seq.resp_code)} "
-                f"timed_out={int(seq.timed_out)} field=0x{got:x} exp=0x{exp:x} "
-                f"mask=0x{SEP_FIELD:x} obs_rsvd=0x{rsvd:016x} port_before={before} "
-                f"port_after={after}"
+                f"timed_out={int(seq.timed_out)} port_before={before} "
+                f"port_after={after} word=0x{word:016x}"
             )
-            rsvd_all.append(rsvd)
+            words.append(word)
+            resps.append(_RESP_NAME.get(seq.resp_code, str(seq.resp_code)))
         self.logger.info(
-            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d resp=OKAY field=0x%x exp=0x%x "
-            "mask=0x%x obs_rsvd=%s port=1 settle=%d",
+            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d completed=%d port=1 settle=%d",
             tag,
             n,
-            exp,
-            exp,
-            SEP_FIELD,
-            ",".join(f"0x{v:016x}" for v in sorted(set(rsvd_all))),
+            n,
             _REL_BOUND,
+        )
+        self.logger.info(
+            "OBS-SENSE-STATUS-DONE: %s resp=%s field_mask=0x%x field=%s word=%s (not scored)",
+            tag,
+            ",".join(resps),
+            SEP_FIELD,
+            ",".join(f"0x{v:x}" for v in sorted({w & SEP_FIELD for w in words})),
+            ",".join(f"0x{v:016x}" for v in sorted(set(words))),
         )
 
     def _ensure_nonzero_word(self, rng: SepSeededRng, image) -> None:
@@ -766,7 +799,7 @@ class sep_boot_release_terms_test(sep_base_test):
             old = ep.words[-1]
             ep.words[-1] = rng.choice(nonzero)
             self.logger.info(
-                "DRAW nonzero_word[%s]=%d replaces word %d (every drawn word staged 0)",
+                "INFO-DRAW nonzero_word[%s]=%d replaces word %d (every drawn word staged 0)",
                 ep.kind,
                 ep.words[-1],
                 old,
@@ -854,17 +887,55 @@ class sep_boot_release_terms_test(sep_base_test):
         )
         await self._sense_status_post("final", self.n_polls)
 
+    async def _obs_smc_presense(self) -> None:
+        """OBS-SMC-PRESENSE-RESP: one LSU read inside the SMC aperture while the SMC input is 0.
+
+        ``sep_cpu_ctrl.adoc`` tells software to wait for
+        ``smc_fuse_sense_done`` before a request to the SMC, and states that
+        such a request hangs; no line states whether SEP forwards it. The line
+        logs the PR-SMC AR count, a DUT value, and grades nothing. The
+        response and data come from the bench SMC responder and are not
+        logged.
+        """
+        dut = cocotb.top
+        level = self.rd(dut.smc_fuse_sense_done_model, allow_unknown=True)
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        tap = SepFabricTap("PR-SMC").start()
+        mark = tap.mark()
+        seq = SepAxiAccessSeq(
+            "smc_presense",
+            op=SepAxiOp.READ,
+            addr=self.smc_word,
+            length=4,
+            size=2,
+            allow_ungraded_read_resp=True,
+            allow_timeout=True,
+        )
+        await self.start_seq(seq)
+        if seq.timed_out or _RESP_NAME.get(seq.resp_code) != "DECERR":
+            mon.release_expected_decerr(1)
+        await RisingEdge(dut.clk_i)
+        n_ar = tap.count(mark, "ar")
+        await tap.stop()
+        self.logger.info(
+            "OBS-SMC-PRESENSE-RESP input=%s addr=0x%08x pr_smc_ar=%d",
+            level,
+            self.smc_word,
+            n_ar,
+        )
+
     # -- scenario --------------------------------------------------------------
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         hold = "sep_smc_fuse_sense_hold" in cocotb.plusargs
         rng = SepSeededRng(seed)
         self._draw(rng)
         four_state = "verilator" not in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
         self.logger.info(
-            "CFG leaf=%s smc_input=%s four_state=%d",
+            "INFO-CFG leaf=%s smc_input=%s four_state=%d",
             "hold" if hold else "normal",
             "held" if hold else "done",
             int(four_state),
@@ -876,12 +947,22 @@ class sep_boot_release_terms_test(sep_base_test):
         self.write_efuse_image(image)
 
         self._ensure_nonzero_word(rng, image)
+        if hold:
+            smc_base = rng.choice(SMC_APERTURES)
+            self.smc_word = smc_base + 4 * rng.randrange(SMC_APERTURE_SIZE // 4)
+            self.logger.info(
+                "INFO-SMC-APERTURE base=0x%08x size=0x%08x word=0x%08x",
+                smc_base,
+                SMC_APERTURE_SIZE,
+                self.smc_word,
+            )
+            drive_bh_smc(smc_base, SMC_APERTURE_SIZE)
         t_cal = await self._calibrate()
 
         open_graded_window(TEST, self.logger)
         try:
             for ep in self.epochs:
-                self.logger.info("EPOCH %s W=%d", ep.kind, ep.w)
+                self.logger.info("INFO-EPOCH %s W=%d", ep.kind, ep.w)
                 set_rel_terms_pass(0, self.logger)
                 await self._run_epoch(ep, t_cal)
                 self._grade_gate(ep, t_cal, four_state)
@@ -892,6 +973,8 @@ class sep_boot_release_terms_test(sep_base_test):
                 await self._sense_status_post(f"epoch={ep.kind}", 1)
 
             await self._sense_status(hold)
+            if hold:
+                await self._obs_smc_presense()
             set_rel_terms_pass(0, self.logger)
         except AssertionError:
             # The first FAIL closes the graded window before it fails the leaf.

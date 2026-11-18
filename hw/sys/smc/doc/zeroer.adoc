@@ -110,7 +110,8 @@ interface.
 [width="100%",cols="30%,70%",options="header",]
 |====================================================================
 |Parameter |Specification
-|Address Width |56-bit addressing for large system integration
+|Address Width |56-bit addressing for large system integration; `DEST_ADDR[63:56]`
+are ignored, and a clear starts at `DEST_ADDR[55:0]`
 |Data Width |64-bit data path
 |ID Width |4-bit transaction ID (internal 3-bit usage)
 |User Signals |12-bit user field for system-specific attributes

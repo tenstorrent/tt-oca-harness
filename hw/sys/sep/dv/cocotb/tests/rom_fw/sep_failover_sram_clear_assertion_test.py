@@ -3,7 +3,7 @@
 """The SEP EXT SRAM is cleared between the primary failure and the backup fetch.
 
 On a failed SPI slot with a retry left, ``rom_manifest_boot()`` (``bootrom/prod/src/oca_boot.c``)
-calls ``clear_sram_region(SRAM_BASE, SRAM_SIZE)`` and then ``boot_flash_reinit()``. The test
+calls ``rom_clear_sram_for_retry()`` and then ``boot_flash_reinit()``. The test
 writes a distinct non-zero value to all 32768 SRAM words and reads them back (CHK-SRAM-POISON),
 so a ROM that clears nothing cannot pass on zero-initialised memory. A scoreboard reads the
 array through VPI (``sep_public_scope.vlt``: ``prim_ram_1p`` ``mem`` is ``public_flat_rw``).
@@ -190,8 +190,9 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
           first-touch word[0] stops holding its poison (first SRAM write)
           residue     word[0] settles at the erased slot's bytes (primary DMA
                       landed; clear not started)
-          cleared     word[LAST] reads 0 (the ascending loop in
-                      clear_sram_region() reached its last word)
+          cleared     word[LAST] reads 0 (the zero fill in
+                      rom_clear_sram_for_retry(), which writes in
+                      ascending address order, reached its last word)
           redirtied   word[0] stops reading 0 (backup fetch began)
 
         "residue" triggers on the settled value, not on a change: the 64-bit macro
@@ -337,8 +338,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
                 f"word[{i}] (0x{_SRAM_BASE + i * _WORD_BYTES:08x}) = 0x{v:016x}"
                 for i, v in self._cleared["nonzero_sample"]
             )
-            + ". clear_sram_region(SRAM_BASE, SRAM_SIZE) is specified to zero the "
-            "whole 256 KiB."
+            + ". rom_clear_sram_for_retry() is specified to zero the whole 256 KiB."
         )
         self.logger.info(
             "CHK-SRAM-CLEARED: at t=%sns all %d words (0x%08x..0x%08x, %d KiB) read 0 "
@@ -370,7 +370,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         self.logger.info(
             "CHK-CLEAR-WINDOW: the clear completed at t=%sns, after %r and before %r "
             "-- i.e. inside the primary-fail -> backup-retry window. boot_flash_reinit() "
-            "is the next call after clear_sram_region() in rom_manifest_boot() "
+            "is the next call after rom_clear_sram_for_retry() in rom_manifest_boot() "
             "(oca_boot.c), so it had not yet been called",
             self._cleared["time_ns"],
             _PRIMARY_ERR,

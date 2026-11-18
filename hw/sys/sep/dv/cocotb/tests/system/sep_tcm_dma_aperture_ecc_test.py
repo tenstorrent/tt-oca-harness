@@ -34,18 +34,96 @@ Checkers:
                  flipped word returns the written data. Control: the stored word
                  on the PR-TCM response differs from the written word (PR-TCM
                  request) in bit k only.
+  CHK-TCM-SBE-WB after each CHK-TCM-SBE read, the PR-TCM tap shows a write of
+                 the flipped word whose 39-bit word (data and ECC bits) equals
+                 the word of the original write
+                 (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+                 ``docs/source/memory-map.md``, "Correctable Ecc/Parity Errors"
+                 ``:638-639`` ICCM, ``:646-647`` DCCM: a DMA read error is
+                 corrected in line and
+                 the corrected data is written back). No write, or another
+                 data or ECC value, fails.
   CHK-TCM-DBE    for 16 drawn bit pairs of each memory (at least 4 each of
                  data-data, data-ECC and ECC-ECC), the read of the flipped word
                  is one AR at its 8-byte word on PR-XBAR-TCM, every R beat with
                  the ID of that AR answers SLVERR or DECERR, the DMA transfer
-                 ends with STATUS.error at 1 and STATUS.done at 0, and
-                 ``host_path_err`` is set. Control: the clean read of the same
+                 ends with STATUS.error at 1, and ``host_path_err`` is set.
+                 No text states STATUS.done on an error, so done is logged
+                 (OBS-TCM-DBE-DONE) and not graded. Control: the clean read of the same
                  word is one AR on PR-XBAR-TCM answered OKAY, the flag reads 0
                  after the clear and after that clean read, and the stored word
                  differs from the written word in the two flipped bits.
-Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
-tap rose), OBS-TCM-DBG (``ext_debug_bus_o[367:364]`` during each DMA read),
-OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read).
+  CHK-TCM-DMA-DBG    the OR of ``ext_debug_bus_o[367:364]`` over every clock of
+                 each DMA read copy (clean, single-bit and double-bit flip, and
+                 the aperture reads) equals the lane of the error the read
+                 meets: none 0b0000, ICCM single 0b1000, ICCM double 0b0100,
+                 DCCM single 0b0010, DCCM double 0b0001
+                 (``hw/sys/sep/doc/interrupts.adoc:413-415``: the ICCM and DCCM
+                 single- and double-bit error signals are mirrored there, most
+                 significant first; the DMA-path errors of ``:401-403`` are in
+                 the same section). An X or Z sample of the nibble fails. The
+                 core is held off, so no CPU access drives the lanes. Control:
+                 CHK-TCM-SBE and CHK-TCM-DBE show the stored bits flipped.
+  CHK-TCM-SUBWORD-WR a 1- or 2-byte DMA copy into one drawn word of each
+                 memory ends with STATUS.error at 1, the BUS_ERROR bit of
+                 ERROR_CODE set and ``host_path_err`` set
+                 (``hw/sys/sep/doc/dma.adoc:118-121``: ICCM and DCCM take only
+                 whole 32-bit words from the DMA, any other write ends in
+                 BUS_ERROR and sets the host-path fault; ``:95-96``: error
+                 reporting is the same for a copy; VeeR EL2 PRM at
+                 tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``,
+                 "Write Alignment Rules" ``:1203-1204`` and "Misaligned
+                 Accesses" ``:422-427``). The spec states no other bit of
+                 ERROR_CODE, so the whole code is logged (OBS-TCM-SUBWORD-CODE)
+                 and not graded. Control: the ICCM and DCCM copies are both
+                 graded (count 2), and before each GO, after the STATUS and
+                 ``DMA_BUS_ERR_CLEAR`` clears, ERROR_CODE and
+                 ``DMA_BUS_ERR_STATUS`` read 0 (CTRL-TCM-SUBWORD-PRE; ERROR_CODE
+                 "is cleared by writing the RW1C STATUS.error register",
+                 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
+                 dma.hjson:669-670``; the faults are "cleared through
+                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:66-68``), so
+                 a stale code or flag cannot pass the check.
+  CHK-TCM-DMA-T2T one multi-word DMA copy ICCM -> DCCM and one DCCM -> ICCM
+                 (4 to 16 words, 4-byte width, one chunk, 8-byte aligned)
+                 end with DONE at 1, ERROR at 0 and ``host_path_err`` at 0, and
+                 each destination word, read back by a DMA copy to an SRAM
+                 staging word that holds its complement, equals its source
+                 word (``hw/sys/sep/doc/dma.adoc:58-59``: the TCM backdoor
+                 range is available to the DMA; ``:118-121``: whole 32-bit
+                 words; ``hw/sys/sep/doc/cpu.adoc:46-47``). The source words
+                 are written by single-word DMA copies from the SRAM. Controls
+                 (else CTRL-MISSING): before each copy, every destination word
+                 is written with the complement of its source word and reads
+                 it back through the same DMA readback path
+                 (CTRL-TCM-T2T-STAGE), so a copy that moves nothing fails on
+                 data; both ``dbg_iccm_active_o`` and ``dbg_dccm_active_o``
+                 rise during each copy.
+  CHK-TCM-ABORT-RECOVER  CONTROL.ABORT written while a 32- to 64-word copy from
+                 the SRAM to the DCCM runs sets STATUS.ABORTED; after the STATUS
+                 clear, a full copy of new words to the same DCCM words ends with
+                 DONE at 1, ERROR at 0, ERROR_CODE at 0 and ``host_path_err``
+                 at 0, and every DCCM word reads back its new source word
+                 (``secure_dma.adoc``, CONTROL.ABORT and STATUS.ABORTED;
+                 ``doc/programmer/src/sep-programming.adoc:805-806``). Control:
+                 ABORTED reads 0 before the GO, and the PR-TCM tap shows at
+                 least one DCCM write and fewer DCCM writes than the copy has
+                 words when the ABORT write returns, so the copy runs at the
+                 abort.
+Observations (not graded): OBS-DMA-TCM-SEAM (STATUS, ERROR_CODE,
+``DMA_BUS_ERR_STATUS`` and the four words read back after a 16-byte copy from
+the SRAM to the two last ICCM words and the two first DCCM words; no text
+states a DMA transfer across the ICCM end; the four words hold known values
+before the copy; CTRL-TCM-SEAM-ADJ requires the ICCM end to equal the DCCM
+base), OBS-TCM-EXCL (whether the other memory's clock-enable
+tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
+OBS-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
+and its bits other than BUS_ERROR), OBS-TCM-DBE-DONE (STATUS.done and
+STATUS.error after each double-bit read),
+OBS-TCM-SUBWORD (done, staging word and the word read back after the 1- or
+2-byte copy into one drawn word of each memory, and every field of the copy out
+of it; the word is not a flip target of the single- or double-bit legs, so it
+holds a clean code word; it runs after CHK-TCM-CLEAN).
 
 Bench: the TCM bit-flip hook (error inject, ``env/sep_tcm_flip.py``) XORs a mask
 into the stored 39-bit word (bits 31:0 data, 38:32 ECC). Flips land only on
@@ -72,7 +150,7 @@ import os
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
@@ -92,6 +170,16 @@ SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRC_STAGE = SRAM_BASE + 0x0_8000
 FLIP_STAGE = SRAM_BASE + 0x0_9000
 RB_STAGE = SRAM_BASE + 0x1_0000
+# Source and readback words of the logged sub-word copies.
+SUB_STAGE = SRAM_BASE + 0x0_A000
+# Source words of the TCM-to-TCM, seam and abort legs, the staged TCM-to-TCM
+# destination words, and their readback words.
+T2T_STAGE = SRAM_BASE + 0x0_B000
+T2T_DST_STAGE = SRAM_BASE + 0x0_B080
+SEAM_STAGE = SRAM_BASE + 0x0_B100
+ABORT_STAGE = SRAM_BASE + 0x0_C000
+RECOVER_STAGE = SRAM_BASE + 0x0_C100
+MW_RB_STAGE = SRAM_BASE + 0x1_C000
 
 MEMS = {
     "ICCM": (sym("SEP_ICCM_MEM_BASE_ADDR"), sym("SEP_ICCM_MEM_SIZE")),
@@ -106,6 +194,8 @@ CLASSES = ("data-data", "data-ECC", "ECC-ECC")
 DMA_STATUS_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_STATUS")
 DMA_STATUS_RESET = SEP_CPU_CTRL.reset("DMA_BUS_ERR_STATUS") & DMA_STATUS_MASK
 DMA_CLR = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_CLEAR", "clr")
+EC_MASK = _D.mask32("ERROR_CODE")
+EC_BUS_ERROR = _D.field_mask("ERROR_CODE", "bus_error")
 RANGE_REGS = (
     ("ENABLED_MEMORY_RANGE_BASE", 0x0),
     ("ENABLED_MEMORY_RANGE_LIMIT", 0xFFFF_FFFF),
@@ -114,6 +204,16 @@ RANGE_REGS = (
 WIDTH_ENC = 2  # TRANSFER_WIDTH: 4-byte beats
 WORD_BYTES = 4
 DBG_HI, DBG_LO = 367, 364
+# ext_debug_bus_o[367:364] lanes: ICCM single, ICCM double, DCCM single, DCCM double.
+DBG_WANT = {
+    ("ICCM", "single"): 0b1000,
+    ("ICCM", "double"): 0b0100,
+    ("DCCM", "single"): 0b0010,
+    ("DCCM", "double"): 0b0001,
+}
+T2T_PAIRS = (2, 8)  # TCM-to-TCM copy: 4 to 16 words, in 8-byte pairs
+ABORT_PAIRS = (16, 32)  # aborted copy: 32 to 64 words, in 8-byte pairs
+ABORT_WAIT = 2_000  # clk_i cycles from GO to the first DCCM write of the aborted copy
 ROW_BITS = 14
 ROW_MASK = (1 << ROW_BITS) - 1
 RESP_OKAY = 0
@@ -200,6 +300,47 @@ class _Cfg:
                 addr = rng.choice(self.apert[mem])[0]
                 self.dbe.append((mem, a, b, addr, uniq32()))
 
+        # Sub-word copies (logged): per memory a word that no flip leg targets,
+        # a width (1 or 2 bytes) and a width-aligned byte offset in the word.
+        flipped = {a for _, _, a, _ in self.sbe} | {a for *_, a, _ in self.dbe}
+        self.sub: dict[str, tuple[int, int, int, int]] = {}
+        for mem in MEMS:
+            enc = rng.randrange(2)
+            nbytes = 1 << enc
+            off = nbytes * rng.randrange(WORD_BYTES // nbytes)
+            clean = [a for a, _ in self.apert[mem] if a not in flipped]
+            assert clean, f"every {mem} aperture word is a flip target"
+            self.sub[mem] = (rng.choice(clean), enc, off, uniq32())
+
+        # TCM-to-TCM copies: one block per direction, 8-byte aligned, the ICCM
+        # source and destination in different halves and both DCCM blocks
+        # clear of the first DCCM pair at the seam.
+        iccm_sz, dccm_sz = MEMS["ICCM"][1], MEMS["DCCM"][1]
+        self.t2t_words = 2 * rng.randrange(T2T_PAIRS[0], T2T_PAIRS[1] + 1)
+
+        def block(lo: int, hi: int, n_words: int) -> int:
+            return 8 * rng.randrange(lo // 8, (hi - WORD_BYTES * n_words) // 8 + 1)
+
+        self.t2t = [
+            (
+                ("ICCM", MEMS["ICCM"][0] + block(0, iccm_sz // 2, self.t2t_words)),
+                ("DCCM", MEMS["DCCM"][0] + block(0x40, dccm_sz // 2, self.t2t_words)),
+            ),
+            (
+                ("DCCM", MEMS["DCCM"][0] + block(dccm_sz // 2, dccm_sz, self.t2t_words)),
+                ("ICCM", MEMS["ICCM"][0] + block(iccm_sz // 2, iccm_sz - 0x40, self.t2t_words)),
+            ),
+        ]
+        self.t2t_data = [[uniq32() for _ in range(self.t2t_words)] for _ in self.t2t]
+        # Seam copy: the words before it and the words it writes.
+        self.seam_before = [uniq32() for _ in range(4)]
+        self.seam_data = [uniq32() for _ in range(4)]
+        # Aborted copy into the DCCM and its recovery copy.
+        self.abort_words = 2 * rng.randrange(ABORT_PAIRS[0], ABORT_PAIRS[1] + 1)
+        self.abort_dst = MEMS["DCCM"][0] + block(0x40, dccm_sz, self.abort_words)
+        self.abort_data = [uniq32() for _ in range(self.abort_words)]
+        self.recover_data = [uniq32() for _ in range(self.abort_words)]
+
     def draw_lines(self) -> list[str]:
         out = []
         for mem, rows in self.apert.items():
@@ -209,11 +350,19 @@ class _Cfg:
             )
         out.append("sbe=" + " ".join(f"{m}/k={k}/@0x{a:08x}" for m, k, a, _ in self.sbe))
         out.append(
+            "sub=" + " ".join(f"{m}/enc={e}/@0x{a + o:08x}" for m, (a, e, o, _) in self.sub.items())
+        )
+        out.append(
             "dbe="
             + " ".join(
                 f"{m}/{a},{b}/{pair_class(a, b)}/@0x{addr:08x}" for m, a, b, addr, _ in self.dbe
             )
         )
+        out.append(
+            f"t2t words={self.t2t_words} "
+            + " ".join(f"{sm}@0x{sa:08x}->{dm}@0x{da:08x}" for (sm, sa), (dm, da) in self.t2t)
+        )
+        out.append(f"abort words={self.abort_words} dst=0x{self.abort_dst:08x}")
         return out
 
 
@@ -221,7 +370,8 @@ class _TapSampler:
     """Per-clock sampler of the TCM clock-enable taps and the debug-bus nibble.
 
     ``arm`` opens a window; ``take`` closes it and returns whether each tap rose
-    (a 0 to 1 change inside the window) and the OR of the nibble samples.
+    (a 0 to 1 change inside the window) and the OR of the nibble samples, or
+    None when a nibble sample was X or Z.
     """
 
     def __init__(self, dut) -> None:
@@ -233,6 +383,7 @@ class _TapSampler:
         self.rose = {"ICCM": False, "DCCM": False}
         self.prev = {"ICCM": None, "DCCM": None}
         self.nibble = 0
+        self.nibble_x = False
         self.armed = False
 
     @staticmethod
@@ -257,7 +408,10 @@ class _TapSampler:
             bus = self.dut.ext_debug_bus_o.value
             s = str(bus)
             nib = s[len(s) - 1 - DBG_HI : len(s) - DBG_LO]
-            self.nibble |= int(nib, 2) if all(c in "01" for c in nib) else 0
+            if all(c in "01" for c in nib):
+                self.nibble |= int(nib, 2)
+            else:
+                self.nibble_x = True
 
     def start(self) -> None:
         self.task = cocotb.start_soon(self._run())
@@ -275,19 +429,29 @@ class _TapSampler:
         }
         self.armed = True
 
-    def take(self) -> tuple[dict[str, bool], int]:
+    def take(self) -> tuple[dict[str, bool], int | None]:
         """Close the window; raises if the sampler task ended while it was open."""
         self.armed = False
         if self.task is None or self.task.done():
             raise AssertionError("MONITOR-LIFE FAIL: TCM clock-enable sampler task is not running")
-        return dict(self.rose), self.nibble
+        return dict(self.rose), None if self.nibble_x else self.nibble
 
 
 @pyuvm.test()
 class sep_tcm_dma_aperture_ecc_test(sep_base_test):
     """DMA-path TCM aperture reach and ECC response."""
 
-    required_evidence = ("CHK-TCM-APERT", "CHK-TCM-CLEAN", "CHK-TCM-SBE", "CHK-TCM-DBE")
+    required_evidence = (
+        "CHK-TCM-APERT",
+        "CHK-TCM-CLEAN",
+        "CHK-TCM-SBE",
+        "CHK-TCM-SBE-WB",
+        "CHK-TCM-SUBWORD-WR",
+        "CHK-TCM-DBE",
+        "CHK-TCM-DMA-DBG",
+        "CHK-TCM-DMA-T2T",
+        "CHK-TCM-ABORT-RECOVER",
+    )
 
     # ---- primitives --------------------------------------------------------------
     async def _bus_err(self) -> int:
@@ -402,6 +566,21 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             return [], desc
         return [b.resp for b in rs], desc
 
+    def _chk_dbg(self, mem: str, kind: str, nib: int | None) -> None:
+        """CHK-TCM-DMA-DBG: the debug-bus nibble of one DMA read against the error it meets."""
+        want = DBG_WANT.get((mem, kind), 0)
+        got = "X" if nib is None else format(nib, "04b")
+        line = f"mem={mem} kind={kind} bus367_364=0b{got} want=0b{want:04b}"
+        if nib != want:
+            self._fail("CHK-TCM-DMA-DBG", line)
+        self.logger.info("CHK-TCM-DMA-DBG PASS: %s", line)
+        self.n_checks += 1
+
+    def _missing(self, chk: str, line: str) -> None:
+        msg = f"CTRL-MISSING {chk}: {line}"
+        self.logger.error(msg)
+        raise AssertionError(msg)
+
     def _fail(self, chk: str, line: str) -> None:
         msg = f"{chk} FAIL: {line}"
         self.logger.error(msg)
@@ -446,6 +625,10 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             if not fc.ok:
                 raise AssertionError(f"CTRL-TCM-RANGE FAIL: {name} readback {fc.fields()}")
         self.logger.info("CTRL-TCM-RANGE: %s", " | ".join(parts))
+        await self._word_xfer()
+
+    async def _word_xfer(self) -> None:
+        """Program and read back the one-word transfer that ``_copy`` relies on."""
         written = await self.dma.program_transfer(
             src=SRC_STAGE, dst=RB_STAGE, total=WORD_BYTES, chunk=WORD_BYTES, width_enc=WIDTH_ENC
         )
@@ -489,9 +672,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             except AssertionError as exc:
                 self._fail("CHK-TCM-APERT", f"read copy of 0x{addr:08x}: {exc}")
             berr = await self._bus_err()
-            self.logger.info(
-                "OBS-TCM-DBG: mem=%s kind=none bus367_364=0b%s", mem, format(nib, "04b")
-            )
+            self._chk_dbg(mem, "none", nib)
             if not rose[mem]:
                 miss_tap.append(f"read {mem} 0x{addr:08x}")
             other[mem] |= rose["DCCM" if mem == "ICCM" else "ICCM"]
@@ -531,7 +712,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         rb = RB_STAGE + 0x4000 + 4 * (j % 256)
         st, _, got, _, nib, _ = await self._read_tcm(mem, addr, data, rb, f"{tag} clean read")
         berr = await self._bus_err()
-        self.logger.info("OBS-TCM-DBG: mem=%s kind=none bus367_364=0b%s", mem, format(nib, "04b"))
+        self._chk_dbg(mem, "none", nib)
         self.n_clean_reads += 1
         if berr & DMA_HOST_PATH_BIT or st.error or got != data:
             self.clean_bad.append(f"{tag} clean read {st.fmt()} data=0x{got:08x} berr=0x{berr:x}")
@@ -542,7 +723,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         close_graded_window(self.logger)
         stored = self._stored_word(mem, addr, mark)
         berr = await self._bus_err()
-        self.logger.info("OBS-TCM-DBG: mem=%s kind=single bus367_364=0b%s", mem, format(nib, "04b"))
+        self._chk_dbg(mem, "single", nib)
         self.logger.info("OBS-TCM-SBE-STATUS: mem=%s k=%d dma_bus_err_status=0x%x", mem, k, berr)
         flipped = int(written is not None and stored is not None and (stored ^ written) == mask)
         line = (
@@ -554,6 +735,19 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         if got != data or not flipped or before != (~data & M32):
             self._fail("CHK-TCM-SBE", line)
         self.logger.info("CHK-TCM-SBE PASS: %s", line)
+        self.n_checks += 1
+        wb = self._written_word(mem, addr, mark)
+        line = (
+            f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Correctable Ecc/Parity Errors' "
+            f":638-639,646-647 mem={mem} addr=0x{addr:08x} k={k} "
+            f"written_data={'X' if wb is None else hex(wb & M32)} "
+            f"written_ecc={'X' if wb is None else hex(wb >> DATA_BITS)} expect=0x{data:08x} "
+            f"expect_ecc={'X' if written is None else hex(written >> DATA_BITS)}"
+        )
+        # The corrected word is the stored word before the flip: data and ECC bits.
+        if wb is None or written is None or wb & M32 != data or wb != written:
+            self._fail("CHK-TCM-SBE-WB", line)
+        self.logger.info("CHK-TCM-SBE-WB PASS: %s", line)
         self.n_checks += 1
         await self.dma.clean_state()
         await self._clear_bus_err()
@@ -568,7 +762,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         st, _, got, _, nib, _ = await self._read_tcm(mem, addr, data, rb, f"{tag} clean read")
         clean_resp, clean_desc = self._xbar_read(addr, xmark)
         clean_flag = await self._bus_err()
-        self.logger.info("OBS-TCM-DBG: mem=%s kind=none bus367_364=0b%s", mem, format(nib, "04b"))
+        self._chk_dbg(mem, "none", nib)
         self.n_clean_reads += 1
         if clean_flag & DMA_HOST_PATH_BIT or st.error or got != data:
             self.clean_bad.append(
@@ -583,14 +777,23 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         berr = await self._bus_err()
         close_graded_window(self.logger)
         stored = self._stored_word(mem, addr, mark)
-        self.logger.info("OBS-TCM-DBG: mem=%s kind=double bus367_364=0b%s", mem, format(nib, "04b"))
+        self._chk_dbg(mem, "double", nib)
         hpe = int(bool(berr & DMA_HOST_PATH_BIT))
         self.dbe_flag_seen |= hpe
         flipped = int(written is not None and stored is not None and (stored ^ written) == mask)
         cf = int(bool((flag | clean_flag) & DMA_HOST_PATH_BIT))
         err_resp = int(bool(resp) and all(r in RESP_ERR for r in resp))
         clean_okay = int(bool(clean_resp) and all(r == RESP_OKAY for r in clean_resp))
-        dma_err = int(bool(st.error) and not st.done)
+        dma_err = int(bool(st.error))
+        self.logger.info(
+            "OBS-TCM-DBE-DONE: mem=%s addr=0x%08x k1=%d k2=%d done=%d error=%d",
+            mem,
+            addr,
+            a,
+            b,
+            st.done,
+            st.error,
+        )
         line = (
             f"mem={mem} addr=0x{addr:08x} k1={a} k2={b} class={pair_class(a, b)} "
             f"rresp_err={err_resp} clean_rresp_okay={clean_okay} dma_error={dma_err} "
@@ -606,14 +809,309 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         await self.dma.clean_state()
         await self._clear_bus_err()
 
+    # ---- sub-word copies ----------------------------------------------------------------
+    async def _sub_copy(self, src: int, dst: int, nbytes: int, enc: int) -> tuple:
+        """One DMA copy of ``nbytes`` at TRANSFER_WIDTH ``enc``; returns (STATUS, ERROR_CODE, bus err)."""
+        await self.dma.clean_state()
+        pre_berr = await self._clear_bus_err()
+        pre_ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
+        pre = (
+            f"contract=dma.hjson:669-670,hw/sys/sep/doc/dma.adoc:66-68 src=0x{src:08x} "
+            f"dst=0x{dst:08x} bytes={nbytes} error_code=0x{pre_ecode:x} "
+            f"dma_bus_err_status=0x{pre_berr:x} expect=0x0/0x0"
+        )
+        if pre_ecode or pre_berr:
+            msg = f"CTRL-MISSING CTRL-TCM-SUBWORD-PRE: {pre}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-TCM-SUBWORD-PRE PASS: %s", pre)
+        await self.dma.program_transfer(src=src, dst=dst, total=nbytes, chunk=nbytes, width_enc=enc)
+        await self.dma.go()
+        st = await self.dma.poll_status(
+            lambda s: bool(s.done or s.error), self.dma.done_bound(WORD_BYTES), "sub-word copy"
+        )
+        ecode = await self.dma.rd(_D.addr("ERROR_CODE"))
+        return st, ecode, await self._bus_err()
+
+    def _chk_subword_wr(self, mem: str, addr: int, nbytes: int, st, ecode: int, berr: int) -> None:
+        """CHK-TCM-SUBWORD-WR: a sub-word DMA write into a TCM word sets ERROR_CODE.BUS_ERROR."""
+        hpe = int(bool(berr & DMA_HOST_PATH_BIT))
+        code = ecode & EC_MASK
+        bus_error = int(bool(code & EC_BUS_ERROR))
+        self.logger.info(
+            "OBS-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x",
+            mem,
+            addr,
+            nbytes,
+            code,
+            code & ~EC_BUS_ERROR & EC_MASK,
+        )
+        line = (
+            f"contract=hw/sys/sep/doc/dma.adoc:118-121 mem={mem} dir=write addr=0x{addr:08x} bytes={nbytes} "
+            f"error={st.error} bus_error={bus_error} bus_error_mask=0x{EC_BUS_ERROR:x} "
+            f"host_path_err={hpe}"
+        )
+        if not st.error or not bus_error or not hpe:
+            self._fail("CHK-TCM-SUBWORD-WR", line)
+        self.logger.info("CHK-TCM-SUBWORD-WR PASS: %s", line)
+        self.n_checks += 1
+        self.n_sub_wr += 1
+
+    async def _subword(self) -> None:
+        self.n_sub_wr = 0
+        for mem, (addr, enc, off, data) in self.plan.sub.items():
+            nbytes = 1 << enc
+            src, rb = SUB_STAGE, SUB_STAGE + 0x10
+            await self.mem.fill(src, [data])
+            for direction, s_a, d_a in (("write", src, addr + off), ("read", addr + off, rb)):
+                await self.mem.fill(rb, [~data & M32])
+                st, ecode, berr = await self._sub_copy(s_a, d_a, nbytes, enc)
+                if direction == "write":
+                    self._chk_subword_wr(mem, addr + off, nbytes, st, ecode, berr)
+                rb_sub = (await self.mem.read(rb, 1))[0]
+                wst, _, wberr = await self._sub_copy(addr, rb, WORD_BYTES, 2)
+                word = (await self.mem.read(rb, 1))[0]
+                self.logger.info(
+                    "OBS-TCM-SUBWORD: mem=%s dir=%s addr=0x%08x bytes=%d enc=%d done=%d "
+                    "error=%d error_code=0x%x dma_bus_err_status=0x%x staging=0x%08x "
+                    "word_read_done=%d word_read_error=%d word_read_bus_err=0x%x word=0x%08x "
+                    "src_word=0x%08x",
+                    mem,
+                    direction,
+                    addr + off,
+                    nbytes,
+                    enc,
+                    st.done,
+                    st.error,
+                    ecode,
+                    berr,
+                    rb_sub,
+                    wst.done,
+                    wst.error,
+                    wberr,
+                    word,
+                    data,
+                )
+        if self.n_sub_wr != len(MEMS):
+            msg = f"CTRL-MISSING CHK-TCM-SUBWORD-WR: graded={self.n_sub_wr} expect={len(MEMS)}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+
+    # ---- multi-word legs ---------------------------------------------------------------
+    async def _copy_n(self, src: int, dst: int, n_words: int, what: str):
+        """One multi-word copy; returns (STATUS, ERROR_CODE, bus err, taps).
+
+        Restores the one-word transfer before it returns.
+        """
+        nbytes = WORD_BYTES * n_words
+        await self.dma.clean_state()
+        await self.dma.program_transfer(
+            src=src, dst=dst, total=nbytes, chunk=nbytes, width_enc=WIDTH_ENC
+        )
+        self.sampler.arm()
+        await self.dma.go()
+        st = await self.dma.poll_status(
+            lambda s: bool(s.done or s.error), self.dma.done_bound(nbytes), what
+        )
+        await ClockCycles(cocotb.top.clk_i, 2)
+        rose, _ = self.sampler.take()
+        ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
+        berr = await self._bus_err()
+        self.n_copies += 1
+        await self._word_xfer()
+        return st, ecode, berr, rose
+
+    async def _read_words(self, mem: str, base: int, expect: list[int], what: str) -> list[str]:
+        """Read each word through ``_read_tcm``; returns one entry per word that differs."""
+        bad = []
+        for i, want in enumerate(expect):
+            addr = base + WORD_BYTES * i
+            st, _, got, _, _, _ = await self._read_tcm(
+                mem, addr, want, MW_RB_STAGE + WORD_BYTES * i, what
+            )
+            if got != want or st.error or not st.done:
+                bad.append(f"0x{addr:08x}=0x{got:08x}/exp=0x{want:08x}/{st.fmt()}")
+        return bad
+
+    async def _t2t(self) -> None:
+        """CHK-TCM-DMA-T2T: ICCM -> DCCM and DCCM -> ICCM multi-word copies."""
+        c = self.plan
+        n = c.t2t_words
+        for ((smem, src), (dmem, dst)), data in zip(c.t2t, c.t2t_data):
+            tag = f"T2T {smem}->{dmem}"
+            await self.mem.fill(T2T_STAGE, data)
+            for i in range(n):
+                await self._write_tcm(
+                    smem, src + WORD_BYTES * i, data[i], T2T_STAGE + WORD_BYTES * i, f"{tag} source"
+                )
+            stage = [~w & M32 for w in data]
+            for i in range(n):
+                await self._write_tcm(
+                    dmem,
+                    dst + WORD_BYTES * i,
+                    stage[i],
+                    T2T_DST_STAGE + WORD_BYTES * i,
+                    f"{tag} destination stage",
+                )
+            stage_bad = await self._read_words(dmem, dst, stage, f"{tag} destination stage")
+            same = sum(1 for a, b in zip(stage, data) if a == b)
+            stage_line = (
+                f"dir={smem}->{dmem} dst=0x{dst:08x} words={n} equal_to_source={same} "
+                f"stage_mismatches={len(stage_bad)} first={stage_bad[:2]}"
+            )
+            self.logger.info("CTRL-TCM-T2T-STAGE: %s", stage_line)
+            if same or stage_bad:
+                self._missing("CHK-TCM-DMA-T2T", stage_line)
+            await self._clear_bus_err()
+            open_graded_window(TEST, self.logger)
+            st, ecode, berr, rose = await self._copy_n(src, dst, n, tag)
+            bad = await self._read_words(dmem, dst, data, f"{tag} readback")
+            close_graded_window(self.logger)
+            hpe = int(bool(berr & DMA_HOST_PATH_BIT))
+            line = (
+                f"contract=hw/sys/sep/doc/dma.adoc:58-59,118-121 dir={smem}->{dmem} "
+                f"src=0x{src:08x} dst=0x{dst:08x} words={n} done={st.done} error={st.error} "
+                f"error_code=0x{ecode:x} host_path_err={hpe} iccm_rose={int(rose['ICCM'])} "
+                f"dccm_rose={int(rose['DCCM'])} mismatches={len(bad)} first={bad[:2]}"
+            )
+            if not (rose["ICCM"] and rose["DCCM"]):
+                self._missing("CHK-TCM-DMA-T2T", line)
+            if not st.done or st.error or hpe or bad:
+                self._fail("CHK-TCM-DMA-T2T", line)
+            self.logger.info("CHK-TCM-DMA-T2T PASS: %s", line)
+            self.n_checks += 1
+            await self.dma.clean_state()
+            await self._clear_bus_err()
+
+    async def _seam(self) -> None:
+        """OBS-DMA-TCM-SEAM: a 16-byte copy from the SRAM over the ICCM end."""
+        c = self.plan
+        iccm_base, iccm_sz = MEMS["ICCM"]
+        seam = iccm_base + iccm_sz
+        adj = f"iccm_end=0x{seam:08x} dccm_base=0x{MEMS['DCCM'][0]:08x}"
+        if seam != MEMS["DCCM"][0]:
+            self._missing("CTRL-TCM-SEAM-ADJ", adj)
+        self.logger.info("CTRL-TCM-SEAM-ADJ: %s", adj)
+        start = seam - 8
+        mems = ("ICCM", "ICCM", "DCCM", "DCCM")
+        await self.mem.fill(SEAM_STAGE, c.seam_before)
+        for i, mem in enumerate(mems):
+            await self._write_tcm(
+                mem,
+                start + WORD_BYTES * i,
+                c.seam_before[i],
+                SEAM_STAGE + WORD_BYTES * i,
+                "seam before",
+            )
+        await self.mem.fill(SEAM_STAGE, c.seam_data)
+        await self._clear_bus_err()
+        st, ecode, berr, _ = await self._copy_n(SEAM_STAGE, start, len(mems), "seam copy")
+        await self._clear_bus_err()
+        words = []
+        for i, mem in enumerate(mems):
+            addr = start + WORD_BYTES * i
+            rst, _, got, _, _, _ = await self._read_tcm(
+                mem, addr, c.seam_data[i], MW_RB_STAGE + WORD_BYTES * i, "seam readback"
+            )
+            words.append(
+                f"0x{addr:08x}=0x{got:08x}/before=0x{c.seam_before[i]:08x}/"
+                f"src=0x{c.seam_data[i]:08x}/read_error={rst.error}"
+            )
+            await self._clear_bus_err()
+        self.logger.info(
+            "OBS-DMA-TCM-SEAM LOG %s error_code=0x%x dma_bus_err_status=0x%x words=%s",
+            st.fmt(),
+            ecode,
+            berr,
+            " ".join(words),
+        )
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+
+    def _dccm_writes(self, mark) -> int:
+        """DCCM bank writes on PR-TCM since ``mark``."""
+        return sum(
+            1
+            for b in self.tcm_tap.since(mark, "dccm")
+            for bank in (0, 1)
+            if b.lane("clken", bank, 1) == 1 and b.lane("wren", bank, 1) == 1
+        )
+
+    async def _abort_recover(self) -> None:
+        """CHK-TCM-ABORT-RECOVER: ABORT during an SRAM -> DCCM copy, then a full copy."""
+        c = self.plan
+        top = cocotb.top
+        n, dst = c.abort_words, c.abort_dst
+        nbytes = WORD_BYTES * n
+        await self.mem.fill(ABORT_STAGE, c.abort_data)
+        await self.mem.fill(RECOVER_STAGE, c.recover_data)
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+        await self.dma.program_transfer(
+            src=ABORT_STAGE, dst=dst, total=nbytes, chunk=nbytes, width_enc=WIDTH_ENC
+        )
+        st0 = await self.dma.read_status()
+        if st0.aborted:
+            self._missing("CHK-TCM-ABORT-RECOVER", f"ABORTED before GO {st0.fmt()}")
+        mark = self.tcm_tap.mark()
+        await self.dma.go()
+        first = 0
+        for _ in range(ABORT_WAIT):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            first = self._dccm_writes(mark)
+            if first:
+                break
+        await FallingEdge(top.clk_i)
+        if not first:
+            self._missing(
+                "CHK-TCM-ABORT-RECOVER",
+                f"no DCCM write within {ABORT_WAIT} clk_i cycles of GO",
+            )
+        await self.dma.abort()
+        at_abort = self._dccm_writes(mark)
+        if at_abort >= n:
+            self._missing(
+                "CHK-TCM-ABORT-RECOVER",
+                f"the copy wrote {at_abort} of {n} DCCM words before the ABORT write returned",
+            )
+        st = await self.dma.poll_status(
+            lambda s: bool(s.aborted or s.done or s.error), self.dma.done_bound(nbytes), "abort"
+        )
+        await ClockCycles(top.clk_i, 16)
+        total = self._dccm_writes(mark)
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+        st_clr = await self.dma.read_status()
+        if st_clr.aborted:
+            self._missing("CHK-TCM-ABORT-RECOVER", f"ABORTED after the W1C {st_clr.fmt()}")
+        rst, ecode, berr, _ = await self._copy_n(RECOVER_STAGE, dst, n, "recovery copy")
+        bad = await self._read_words("DCCM", dst, c.recover_data, "recovery readback")
+        hpe = int(bool(berr & DMA_HOST_PATH_BIT))
+        line = (
+            f"contract=secure_dma.adoc CONTROL.ABORT,STATUS.ABORTED;sep-programming.adoc:805-806 "
+            f"dst=0x{dst:08x} words={n} dccm_writes_first={first} dccm_writes_at_abort={at_abort} "
+            f"dccm_writes_aborted_run={total} abort_{st.fmt()} recovery_done={rst.done} "
+            f"recovery_error={rst.error} recovery_error_code=0x{ecode:x} host_path_err={hpe} "
+            f"mismatches={len(bad)} first={bad[:2]}"
+        )
+        if not st.aborted or not rst.done or rst.error or ecode or hpe or bad:
+            self._fail("CHK-TCM-ABORT-RECOVER", line)
+        self.logger.info("CHK-TCM-ABORT-RECOVER PASS: %s", line)
+        self.n_checks += 1
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+
     # ---- scenario ---------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         plan = _Cfg(seed)
         self.plan = plan
         for line in plan.draw_lines():
-            self.logger.info("DRAW %s", line)
+            self.logger.info("INFO-DRAW %s", line)
 
         await self.bring_up_no_cpu()
         full = self.full_cpu_build()
@@ -654,6 +1152,10 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             self._fail("CHK-TCM-CLEAN", f"{line} first: {self.clean_bad[:4]}")
         self.logger.info("CHK-TCM-CLEAN PASS: %s", line)
         self.n_checks += 1
+        await self._subword()
+        await self._t2t()
+        await self._seam()
+        await self._abort_recover()
 
         self.sampler.stop()
         await self.tcm_tap.stop()

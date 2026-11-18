@@ -117,13 +117,13 @@ class SmcCsrSeq(smc_base_test_seq):
             await self.csr_read(name, addr, expected)
 
     # Data word an AXI error slave returns alongside its error response. The
-    # one place the value is specified is the eFuse architecture document
-    # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "When a
-    # request is blocked, the error slave returns an error response with data
-    # value 0xbadcab1e"); ``EFUSE_BLOCKED_READ_DATA`` is the DV-owned copy of
-    # that sentence. The document states the word for the eFuse error slave
-    # only; expecting it from the other error-terminated windows the sweeps
-    # probe is a DV-owned assumption, declared here rather than cited.
+    # eFuse architecture document fixes it for the JTAG lifecycle error slave
+    # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "the error
+    # slave returns an SLVERR response with data value 0xbadcab1e") and the RDL
+    # ``LOCKS`` description for a locked SMC_EFUSE_MAP shadow access;
+    # ``EFUSE_BLOCKED_READ_DATA`` is the DV-owned copy of that word. Expecting
+    # it from the other error-terminated windows the sweeps probe is a DV-owned
+    # assumption, declared here rather than cited.
     ERR_SLAVE_SIGNATURE = EFUSE_BLOCKED_READ_DATA
 
     async def csr_read_err_signature(
@@ -390,7 +390,9 @@ class SmcCsrSeq(smc_base_test_seq):
     # The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) gives
     # each I2C instance four consecutive pads, SCL, SDA, SMB_A and SMB_D, with
     # instance `i` starting at its "I2C[i] SCL" row. DATA_CTRL stride from GPIO0.
-    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr(
+        "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0
+    )
     _GPIO_INTF_STRIDE = GPIO_INTF_STRIDE
     _I2C0_SCL_PAD = pad_index("I2C[0] SCL")
     _GPIO_LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")

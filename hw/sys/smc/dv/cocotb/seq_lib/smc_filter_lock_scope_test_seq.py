@@ -63,7 +63,7 @@ _CHECKERS = (
 
 
 def _reg(bank: str, reg: str, entry: int) -> int:
-    sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_{reg}_BASE_ADDR"
+    sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR"
     return smc_indexed_addr(sym, entry)
 
 

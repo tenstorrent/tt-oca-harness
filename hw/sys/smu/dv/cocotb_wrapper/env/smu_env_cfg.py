@@ -11,6 +11,7 @@ from cocotb.triggers import Event, RisingEdge
 from cocotb.utils import get_sim_time
 from ocah_axi_vip import OcahAxiConfig, OcahAxiProtocol, OcahAxiSlaveSequence
 from pyuvm import uvm_object
+from seq_lib.smu_axi_helpers import AXI_TIMEOUT_NS
 
 # Periods of the three domain clocks, as pll_wrap (hw/sys/smc/dv/models/
 # pll_wrap.sv) defines them: ref and periph are fixed, sys follows
@@ -107,6 +108,9 @@ class SmuEnvCfg(uvm_object):
         # one request at a time.
         self.axi_out_max_outstanding: int | None = None
         self.axi_out_mem: OcahAxiSlaveSequence | None = None
+        # Slave READY wait budget of the boundary AXI monitors (SmuAxiMonitor);
+        # a leaf with a longer AXI completion bound raises it.
+        self.axi_timeout_ns = AXI_TIMEOUT_NS
 
     def resolve_pll_timing(self) -> None:
         """Take the sys-clock period from ``+pll_sys_period_ns``."""

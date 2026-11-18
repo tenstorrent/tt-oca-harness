@@ -29,7 +29,11 @@
 // any of the eight meip words, masked by the excluded idle bits; the pending
 // source delivers once after its gate opens); CHK-NMI-IN-EXT (a bark fired
 // while the external handler of the pending source waits enters the locked
-// trampoline copy once, inside that handler; the return path is not graded).
+// trampoline copy once, inside that handler; the return path is not graded);
+// INFO-NMI-HELD (the held-bark leg: the NMI entries, the bark level the
+// handler reads and the mepc and mcause of each entry). The handler of that
+// leg prints "REQ m t=h0" and "REQ m t=h1" around its hold window, so the host
+// counts the bark clocks while the handler runs.
 // The vector reads print as CTL lines. The host grades CHK-NMI-TAKEN and
 // CHK-BARK-VEC with the CPU trace. The host releases the held NMI coverage of
 // a graded leg after every CHK line of that leg passed.
@@ -61,6 +65,7 @@ enum {
     P_HOLD,
     P_IDLE,              // 8 words: the excluded idle bits of meip
     P_NEST = P_IDLE + 8, // bark threshold of the bark inside the external handler
+    P_HELD,              // bark threshold of the held-bark leg
     P_WORDS,
 };
 
@@ -141,6 +146,13 @@ static volatile uint32_t g_in_ext;
 static volatile uint32_t g_nmi_in_ext;
 static volatile uint32_t g_nest_nmi_runs;
 static volatile uint32_t g_nest_timeout;
+// Held-bark leg: the NMI handler leaves the bark asserted while it runs.
+static volatile uint32_t g_held_mode;
+static volatile uint32_t g_held_depth;
+static volatile uint32_t g_held_entries;
+static volatile uint32_t g_held_bark;
+static volatile uint32_t g_held_epc, g_held_cause;
+static volatile uint32_t g_held_nested_epc, g_held_nested_cause;
 static int g_err;
 
 struct ot_src {
@@ -222,7 +234,49 @@ void nmivb_stub_c(void) {
     g_flag++;
 }
 
+#define REQ_SPIN 96u
+static void req_mark(const char *tag) {
+    rec_req("m");
+    rec_str("t", tag);
+    rec_end();
+    rec_spin(REQ_SPIN);
+}
+
+// The handler of the held-bark leg. The first entry keeps the bark asserted
+// for the hold window between the host marks h0 and h1, then clears it and
+// writes its own mepc and mstatus back before its mret. An entry while the
+// first one runs records its mepc and mcause, clears the bark and returns.
+static void nmi_held(void) {
+    uint32_t epc, mst, cause;
+    __asm__ volatile("csrr %0, mepc" : "=r"(epc));
+    __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
+    __asm__ volatile("csrr %0, mcause" : "=r"(cause));
+    g_held_entries++;
+    if (++g_held_depth > 1u) {
+        g_held_nested_epc = epc;
+        g_held_nested_cause = cause;
+        bark_clear();
+        g_held_depth--;
+        return;
+    }
+    g_held_epc = epc;
+    g_held_cause = cause;
+    req_mark("h0");
+    hold();
+    g_held_bark = (wdt_get_intr_state() & WDT_INTR_BARK) != 0u;
+    req_mark("h1");
+    bark_clear();
+    __asm__ volatile("csrw mstatus, %0" ::"r"(mst));
+    __asm__ volatile("csrw mepc, %0" ::"r"(epc));
+    g_held_depth--;
+    g_flag++;
+}
+
 void nmivb_common_c(uint32_t entry, uint32_t copy) {
+    if (g_held_mode) {
+        nmi_held();
+        return;
+    }
     g_nmi_in_ext = g_in_ext;
     uint32_t mst;
     __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
@@ -572,6 +626,28 @@ static int boot1(void) {
     if (!pass_n) {
         g_err++;
     }
+
+    // Held bark: the NMI handler keeps the bark asserted for its hold window.
+    rec_mark(1, "nmi_held");
+    f0 = g_flag;
+    g_held_entries = 0u;
+    g_held_bark = 0u;
+    g_held_mode = 1u;
+    bark_arm(g_prm[P_HELD]);
+    left = nmivb_wait(&g_flag, f0, g_prm[P_WAIT]);
+    g_held_mode = 0u;
+    if (left == 0u) {
+        bark_clear();
+    }
+    rec_info("NMI-HELD");
+    rec_num("entries", g_held_entries);
+    rec_num("bark_in_handler", g_held_bark);
+    rec_hex("mepc", g_held_epc);
+    rec_hex("mcause", g_held_cause);
+    rec_hex("nested_mepc", g_held_nested_epc);
+    rec_hex("nested_mcause", g_held_nested_cause);
+    rec_num("timeout", left == 0u);
+    rec_end();
 
     rec_mark(0, "boot1_end");
     mstatus_mie(0);

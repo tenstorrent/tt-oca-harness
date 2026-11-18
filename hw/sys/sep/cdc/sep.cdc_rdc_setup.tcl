@@ -11,8 +11,12 @@
 
 puts "INFO: Loading SEP-specific CDC/RDC constraints"
 
+if { [info procs cdc_conv_ignore_among] eq "" } {
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
+}
+
 # Entropy source black-box boundary is SEPCLK-synchronous; tie its pins to a sync virtual clock
-configure_unconstrained_ports -module entropy_source -input_model virtual_sync_all -output_model virtual_sync_all -use_inferred_domains
+configure_unconstrained_ports -module ${::MODPREFIX}entropy_source -input_model virtual_sync_all -output_model virtual_sync_all -use_inferred_domains
 
 # VeeR PIC external-interrupt gateways: every external interrupt source is synchronised
 # alone in its own pic_ctrl gateway (IO_CLK_GRP[*].GW[*].gw_inst/sync_inst, rvsyncss
@@ -22,9 +26,6 @@ configure_unconstrained_ports -module entropy_source -input_model virtual_sync_a
 # waivers SEP_CDC_COHERENCY_RECONV_COMB_5939/5940). Contribute the second-stage sync
 # outputs to the convergence-ignore union instead of waiving the reconvergence. Generate labels carry
 # brackets, so the cells are collected by full_name and each cell's Q pins taken literally.
-if { [info procs cdc_conv_ignore_among] eq "" } {
-    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
-}
 set _sep_pic_sync_cells [get_cells -hier -filter {full_name =~ *pic_ctrl_inst/IO_CLK_GRP*gw_inst/sync_inst/sync_ff2/*dout} -quiet]
 set _sep_pic_sync_pins [list]
 foreach_in_collection c $_sep_pic_sync_cells {

@@ -13,6 +13,10 @@ Packet formats, command semantics, CRCs, transport binding, and controller-visib
 ....
 @startuml
 start
+if (Park requested in scratch 3?) then (yes)
+  :Park hart 0;
+  stop
+endif
 if (Interface latched?) then (yes)
   :Poll only latched interface;
   if (One million empty polls?) then (yes)
@@ -56,6 +60,10 @@ stop
 ....
 
 === Polling and latching
+
+Each polling iteration first reads scratch register 3. If it holds the park request, the loop
+stops servicing commands and parks hart 0 (<<smc-park-interlock>>). A command already being
+received or executed completes first, since the check runs only between commands.
 
 Before latching, the loop polls each active interface in array order: I3C0, I3C1, I3C3, I2C0, and I2C1.
 After an unlatch, round-robin polling begins with the interface after the one just released.
@@ -108,5 +116,5 @@ It does not use an idle-time window to consume newly arriving commands.
 === Terminal commands
 
 `ExecuteImage` sends its success response before transferring control and therefore never returns to this loop.
-`AuthenticateImage` sends its success response before publishing the manifest coordination state and parking in `wfi`.
+`AuthenticateImage` sends its success response before publishing the manifest coordination state and parking hart 0 (<<smc-park-interlock>>).
 No command-processing or status-only service loop remains active after `AuthenticateImage`.

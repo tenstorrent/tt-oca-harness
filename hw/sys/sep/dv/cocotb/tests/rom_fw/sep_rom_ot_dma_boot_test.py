@@ -138,6 +138,18 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         only, never asserting: a raise here would mask the real exception.
         """
 
+    def start_watchers(self, console: list[str]) -> None:
+        """Hook to start coroutines that follow the ROM console as it fills. Default: none."""
+
+    async def run_boot(self) -> None:
+        """Run the CPU from reset to the end of the boot. Default: until BL1 reports PASS."""
+        await self.poll_boot(
+            self.sb,
+            max_run_cycles=self.max_run_cycles,
+            no_boot_cycles=_NO_BOOT_CYCLES,
+            progress_every=_PROGRESS_EVERY,
+        )
+
     def check_transport(self, console: list[str], flash) -> None:
         """Hook for the SPI address-detect testcases.
 
@@ -170,6 +182,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
 
         console: list[str] = []
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
+        self.start_watchers(console)
 
         flash = OcahSpiFlash(
             dut.spi_cs_n_o,
@@ -198,12 +211,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
             # scrub for DCCM and from the DMA that loads BL1 for ICCM, within the
             # loaded image only.
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
-            await self.poll_boot(
-                self.sb,
-                max_run_cycles=self.max_run_cycles,
-                no_boot_cycles=_NO_BOOT_CYCLES,
-                progress_every=_PROGRESS_EVERY,
-            )
+            await self.run_boot()
         finally:
             await flash.stop()
             self.log_transport(flash)

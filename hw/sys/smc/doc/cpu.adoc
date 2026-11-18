@@ -422,6 +422,70 @@ debug memory accesses independent of cluster reset or boundary isolation.
 Per-core boot addresses are controlled by the `RESET_VECTOR` registers
 described above.
 
+The system bus access engine of the Debug Module is reset with the uncore,
+while its DMI registers are not. A system bus access requested while the
+uncore reset is applied is not started and is not replayed after the release.
+No DMI register reports it: `sbcs` reads `sbbusy` 0 and `sberror` 0, as after a
+completed access, `sbaddress0` does not advance under `sbautoincrement`, and a
+write leaves its target unchanged. Before relying on a system bus access, a
+debugger checks that `RESET_CTRL.uncore_reset_n_n0_scan` reads 1 and
+`RESET_TIMEOUT.reset_applied` reads 0.
+
+[[smc-debug-transport-module]]
+=== Debug Transport Module
+
+The cluster's JTAG debug transport module follows the instruction assignments
+of version 0.13 of the RISC-V External Debug Support specification.
+<<smc-debug-transport-module-table>> lists its instruction register and the
+fixed `dtmcs` fields. An instruction not listed selects the 1-bit bypass
+register.
+
+[[smc-debug-transport-module-table]]
+[cols="30%,15%,55%",options="header"]
+.SMC debug transport module
+|===
+|Item |Value |Meaning
+|Instruction register length |5 bits |Resets to `IDCODE`
+|`IDCODE` instruction |0x01 |Selects the 32-bit identification register
+|`dtmcs` instruction |0x10 |Selects the 32-bit DTM control and status register
+|`dmi` instruction |0x11 |Selects the DMI access register, `abits` + 34 bits long
+|`dtmcs.version` |1 |Debug Specification 0.13
+|`dtmcs.abits` |7 |DMI address width in bits
+|`dtmcs.idle` |5 |Run-Test/Idle cycles to spend between DMI accesses
+|===
+
+A `dmi` scan captures an `op` of 0 when the previous access succeeded, 1 when
+it failed, and 3 when it is still in progress. The failure code is 1, not the
+2 of the specification. A failed or in-progress access makes the next `dmi`
+updates no-ops until `dtmcs.dmireset` is written or the TAP passes through
+Test-Logic-Reset; `dtmcs.dmistat` reports the sticky condition as 3 after a
+failure and 1 after a scan that found an access in progress. The DMI access
+captured after a failure reports `op` 0, so read `dmistat` to detect a dropped
+access.
+
+The DMI is split across two reset domains. `dmcontrol`, `hartinfo`,
+`hawindowsel` and `hawindow` live on TCK and are reset only by the JTAG reset.
+Every other DMI register is in the part of the Debug Module that
+`CPU_CTRL.RESET_CTRL` resets, and is reached only while `dmcontrol.dmactive` is
+1 and that part has acknowledged it out of reset. The `dmactive` that
+`dmcontrol` reads back is the written bit qualified by the same
+acknowledgement. While `RESET_CTRL` holds the Debug Module in reset, therefore:
+
+* `dmcontrol` and `hawindow` read and write with `op` 0. A write of `dmactive`
+  1 is kept, but `dmactive` reads 0 until the acknowledgement arrives.
+* `hartinfo` and `hawindowsel` read 0 with `op` 0.
+* An access to any other DMI register, `dmstatus` included, is refused: the
+  `dmi` scan that follows captures `op` 1 with data 0, `dtmcs.dmistat` reads
+  3, and later accesses are dropped until `dtmcs.dmireset` is written or the
+  TAP passes through Test-Logic-Reset.
+
+After `RESET_CTRL` releases the Debug Module with `dmactive` at 1, the
+acknowledgement passes a three-stage synchronizer on the SMC clock and another
+on TCK. Until it arrives the DMI answers as it does while the Debug Module is
+held: `dmcontrol` returns `op` 0 with `dmactive` 0, `hartinfo`, `hawindowsel`
+and `hawindow` answer with `op` 0, and only the other DMI registers are
+refused.
+
 [[smc-debug-module-configuration]]
 === Debug Module Configuration
 

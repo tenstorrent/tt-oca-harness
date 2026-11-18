@@ -35,6 +35,7 @@ from smc_base_test import smc_base_test
 
 REQUIRED = (
     "CHK-ALIAS-CACHEABLE",
+    "CHK-AXUSER-WHOLE-REPLACED",
     "CHK-NONVAC",
     "CHK-ORMP-VALID-MMODE",
     "CHK-ORMP-VALID-ROUTE",
@@ -47,7 +48,6 @@ REQUIRED = (
     "CHK-OUT-PROT",
     "CHK-OUT-QRL",
     "CHK-OUT-SRCID",
-    "CHK-OUT-USER",
     "CHK-OUTPUT-REMAP-WINDOWS",
     "CHK-TIMEOUT-PATHS",
 )

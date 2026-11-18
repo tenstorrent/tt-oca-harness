@@ -41,9 +41,15 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_image import SHADOW_BASE, SepEfuseImage
-from env.sep_efuse_plan import T_FIELD_LAYOUT, field_used_masks, plan
+from env.sep_efuse_plan import (
+    DIGEST_FIELDS,
+    SECRET_FIELDS,
+    T_FIELD_LAYOUT,
+    field_used_masks,
+    plan,
+)
 from env.sep_efuse_test_lib import SepEfuseFd, hook_fail, log_line, probe_words
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
@@ -165,15 +171,15 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
                 fd_words[off // 4 + k] = v
             exp = staged[off // 4 : off // 4 + nw]
             mask = _USED_MASK.get(name, _WORD) if nw == 1 else (1 << (32 * nw)) - 1
+            if name in SECRET_FIELDS or name in DIGEST_FIELDS:
+                vals = {"exp_sha": word_digest(exp), "got_sha": word_digest(got)}
+            else:
+                vals = {
+                    "exp": f"0x{_words_int(exp) & mask:x}",
+                    "got": f"0x{_words_int(got) & mask:x}",
+                }
             log_line(
-                self.logger,
-                "INFO-FIELD",
-                seed,
-                field=name,
-                off=f"0x{off:x}",
-                words=nw,
-                exp=f"0x{_words_int(exp) & mask:x}",
-                got=f"0x{_words_int(got) & mask:x}",
+                self.logger, "INFO-FIELD", seed, field=name, off=f"0x{off:x}", words=nw, **vals
             )
         hook = self._hook_ok(self._port(), "field_reads") and hook
 

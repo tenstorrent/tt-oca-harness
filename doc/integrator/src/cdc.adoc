@@ -258,13 +258,19 @@ stages, `u_sync_1`/`u_sync_2` two-stage synchronisers, `q_o` flops, `en_latch`
 clock gates); `flows/cdc/README.md` lists them. Run the sign-off against the
 generic primitive set or re-anchor the collateral to the swapped names.
 
-Two variables select how the files are read:
+Three variables select how the files are read:
 
 * `::cdc_app` is `cdc` (default) or `rdc`; the entry skips CDC-only files for
   `rdc`.
 * `::cdc_scenario` is `synth` (default) or `functional`. The functional scenario
   is the sign-off run: the case-analysis files pin the DFT and strap ports, so
   `cdc_pinned_port_delay` skips the I/O delays on those ports.
+* `::MODPREFIX` is `""` (default) or the module-name prefix of RTL whose modules
+  are all renamed `<prefix>_<name>`. Set it to `<prefix>_` before sourcing the
+  CDC/RDC entries, the waiver files or the synthesis `constraints.sdc`; every
+  module name they give the tool, from synchronizer and verified-IP declarations
+  to waiver `Module` filters, then carries the prefix. Instance paths are not
+  renamed and need no change.
 
 `hw/sys/smu/cdc/smu.cdc_rdc.tcl` shows how a parent replays a child:
 `cdc_begin_block <prefix> {clock aliases} {reset aliases}`, source the child's

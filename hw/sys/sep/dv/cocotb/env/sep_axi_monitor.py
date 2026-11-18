@@ -155,6 +155,19 @@ class SepAxiMonitor(uvm_component):
         # Ordered RRESP capture window; None when closed. See start_beat_capture.
         # Entries are None when a beat's rresp does not resolve to an int.
         self._beat_capture: list[int | None] | None = None
+        # (rresp, rid, rlast) per captured beat, same window as _beat_capture;
+        # take_beat_capture moves it to last_beat_detail.
+        self._beat_detail: list[tuple[int | None, int | None, int | None]] = []
+        self.last_beat_detail: list[tuple[int | None, int | None, int | None]] = []
+        # Response side-band of the last R and B handshakes (None when X or
+        # when the bus has no such net).
+        self.last_ruser: int | None = None
+        self.last_buser: int | None = None
+        self.last_rid: int | None = None
+        self.last_bid: int | None = None
+        # (cycle, "R"/"B", user) of every response handshake while a caller
+        # holds this as a list; None leaves it off.
+        self.resp_user_log: list[tuple[int, str, int | None]] | None = None
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
         # AR handshakes waiting for their R beats, per ARID, in issue order.
@@ -203,11 +216,18 @@ class SepAxiMonitor(uvm_component):
         treat a mismatch as no evidence rather than as a verdict.
         """
         self._beat_capture = []
+        self._beat_detail = []
 
     def take_beat_capture(self) -> list[int | None]:
-        """Return the captured RRESP sequence and close the window."""
+        """Return the captured RRESP sequence and close the window.
+
+        The (rresp, rid, rlast) tuple of each captured beat stays readable in
+        ``last_beat_detail`` until the next capture opens.
+        """
         captured: list[int | None] = self._beat_capture or []
         self._beat_capture = None
+        self.last_beat_detail = self._beat_detail
+        self._beat_detail = []
         return captured
 
     def arm_expected_decerr(self, n: int = 1) -> None:
@@ -389,6 +409,10 @@ class SepAxiMonitor(uvm_component):
                 "arburst",
                 "arid",
                 "rid",
+                "rlast",
+                "ruser",
+                "bid",
+                "buser",
             )
         }
         if any(sig[n] is None for n in ("rvalid", "rready", "rdata")):
@@ -450,8 +474,15 @@ class SepAxiMonitor(uvm_component):
                 if sig["rresp"] is not None and code is None:
                     self._fail(f"R beat RRESP={_bits(sig['rresp'])} (X/Z on an accepted beat)")
                 self.resp_tally[code if code in (0, 1, 2, 3) else None] += 1
+                rid = _resp(sig["rid"]) if sig["rid"] is not None else None
+                self.last_rid = rid
+                self.last_ruser = _resp(sig["ruser"]) if sig["ruser"] is not None else None
+                if self.resp_user_log is not None:
+                    self.resp_user_log.append((self.cycles, "R", self.last_ruser))
                 if self._beat_capture is not None:
                     self._beat_capture.append(code)
+                    rlast = _resp(sig["rlast"]) if sig["rlast"] is not None else None
+                    self._beat_detail.append((code, rid, rlast))
                 # Lane check for a beat joined to its AR; whole-bus all-X check
                 # otherwise. Both only on a *successful* response (an error
                 # beat may legitimately carry X data).
@@ -468,6 +499,10 @@ class SepAxiMonitor(uvm_component):
             if has_b and _hi(sig["bvalid"]) and _hi(sig["bready"]):
                 self.b_resps += 1
                 bcode = _resp(sig["bresp"]) if sig["bresp"] is not None else None
+                self.last_bid = _resp(sig["bid"]) if sig["bid"] is not None else None
+                self.last_buser = _resp(sig["buser"]) if sig["buser"] is not None else None
+                if self.resp_user_log is not None:
+                    self.resp_user_log.append((self.cycles, "B", self.last_buser))
                 if sig["bresp"] is not None and bcode is None:
                     self._fail(f"B beat BRESP={_bits(sig['bresp'])} (X/Z on an accepted beat)")
                 if bcode == 3 and self.fail_decerr:

@@ -15,7 +15,12 @@ stores behind the ATB port, and this leaf drives each past its bound:
   asserted; no document states it. `CTRL.BUFFER_THRESHOLD` with its
   interrupt enabled is checked on the way up: `telemetry_receiver.rdl` raises
   `INTR_STATUS.BUFFER_THRESHOLD` while the number of messages is greater than
-  the threshold, and clears it when the level drops back.
+  the threshold, and clears it when the level drops back. The same RDL
+  states that "only the low log2(queue depth)+1 bits are compared, so
+  values alias modulo twice the queue depth, and only values below the queue
+  depth can assert the interrupt": with one message queued a threshold of
+  0x010 asserts and 0x011 does not, and with the queue full 8 and 0xFF8
+  never assert while 7 and 0x017 do.
 * **The assembly buffer.** `INTR_STATUS.MISSING_LAST` is raised "when the
   Telemetry Receiver has not received a Last Packet flag when the maximum
   number of packets a message can consist of has been received"
@@ -47,19 +52,19 @@ taken from the IP documents (`architecture.adoc`, `interface.adoc`,
 * **Push against pop.** With the queue full, `BUFFER_POP` is written at each
   offset from -4 to +4 `clk_periph_i` cycles around the last beat of one more
   message. The drain is either every message after the oldest, or one fewer;
-  both are consistent with the documents (SF-027), and which one each offset
+  both are consistent with the documents, and which one each offset
   produced is logged.
 * **Transmitter flush.** The bench holds `afready_i` of receivers 1 and 2 high
   and does not publish their `afvalid_o`, so the flush runs at that level: the
   request self-clears and the three queued messages drain in order. The
-  handshake with `afready_i` low is not reachable on this bench (SF-044).
+  handshake with `afready_i` low is not reachable on this bench.
 * **MISSING_LAST.** Beats without the last-packet marker are sent one at a
   time until `INTR_STATUS.MISSING_LAST` sets, with `INTR_ENABLE` off and then
   on; `peripheral_interrupts_o[8+r]` must follow the enable, and a written one
-  clears the status and the line. The beat count is logged only (SF-024).
+  clears the status and the line. The beat count is logged only.
 * **INTR_TEST.** `INTR_TEST.MISSING_LAST` raises the line with the enable on
   and leaves it low with the enable off; `INTR_STATUS` after the test write is
-  logged only (SF-025).
+  logged only.
 """
 
 from __future__ import annotations
@@ -123,6 +128,10 @@ EXT_RECEIVERS = (1, 2)
 EXT_ATID = {1: 0x11, 2: 0x22}
 #: Messages the queue holds: `BUFFER_DEPTH` default 8 (interface.adoc).
 QUEUE_DEPTH = 8
+#: Threshold values that alias modulo 2 x QUEUE_DEPTH, with the status each must show
+#: at one queued message and at a full queue (telemetry_receiver.rdl BUFFER_THRESHOLD).
+ALIAS_AT_ONE = ((0x000, True), (0x001, False), (0x010, True), (0x011, False))
+ALIAS_AT_FULL = ((0x007, True), (0x017, True), (0x008, False), (0xFF8, False))
 STATUS_EMPTY = BUFFER_EMPTY_BM
 STATUS_FULL = BUFFER_FULL_BM
 STATUS_NEITHER = 0x0
@@ -131,7 +140,7 @@ NINTH_ID = 0x19
 WINDOW_FILL_IDS = tuple(range(0x01, 0x01 + QUEUE_DEPTH))
 WINDOW_ID = 0x09
 WINDOW_OFFSETS = tuple(range(-4, 5))
-#: The two drains the documents allow for a push meeting a pop (SF-027).
+#: The two drains the documents allow for a push meeting a pop.
 WINDOW_NO_DROP = [*WINDOW_FILL_IDS[1:], WINDOW_ID]
 WINDOW_ONE_DROP = [*WINDOW_FILL_IDS[2:], WINDOW_ID]
 TX_FLUSH_IDS = (0x1A, 0x1B, 0x1C)
@@ -282,6 +291,48 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-POP-EMPTY: CTRL.BUFFER_POP on an empty buffer left STATUS empty and "
             "not full, and the next message read back its own probe ID 0x%02x",
             probe_id,
+        )
+
+    async def _threshold_status(self, label: str, threshold: int, want: bool, queued: int) -> int:
+        ctrl = (threshold << THRESHOLD_BP) & THRESHOLD_BM
+        await self.csr_write(f"{label}_CTRL", CTRL, ctrl)
+        await self.csr_read(f"{label}_CTRL_RB", CTRL, expected=ctrl)
+        intr = await self.csr_read(f"{label}_INTR", INTR_STATUS)
+        assert bool(intr & INTR_THRESHOLD) == want, (
+            f"{label}: with {queued} messages queued and CTRL.BUFFER_THRESHOLD=0x{threshold:03x} "
+            f"(low {QUEUE_DEPTH.bit_length()} bits 0x{threshold % (2 * QUEUE_DEPTH):x}), "
+            f"INTR_STATUS.BUFFER_THRESHOLD reads {int(bool(intr & INTR_THRESHOLD))}, want "
+            f"{int(want)}"
+        )
+        return int(bool(intr & INTR_THRESHOLD))
+
+    async def _threshold_alias(self) -> None:
+        """BUFFER_THRESHOLD aliases modulo 2 x depth; only values below the depth assert."""
+        await self._send(_probe(0))
+        await self._wait_status("ALIAS_ONE", BUFFER_EMPTY_BM, False)
+        at_one = [
+            (t, await self._threshold_status(f"ALIAS1_T{t:03X}", t, want, 1))
+            for t, want in ALIAS_AT_ONE
+        ]
+        for index in range(1, QUEUE_DEPTH):
+            await self._send(_probe(index))
+        await self._wait_status("ALIAS_FULL", BUFFER_FULL_BM, True)
+        at_full = [
+            (t, await self._threshold_status(f"ALIAS8_T{t:03X}", t, want, QUEUE_DEPTH))
+            for t, want in ALIAS_AT_FULL
+        ]
+        await self.csr_write("ALIAS_THRESHOLD_ZERO", CTRL, 0)
+        for index in range(QUEUE_DEPTH):
+            await self.csr_write(f"ALIAS_DRAIN_{index}_POP", CTRL, BUFFER_POP_BM)
+        await self._wait_status("ALIAS_DRAINED", BUFFER_EMPTY_BM, True)
+        cocotb.log.info(
+            "CHK-TELEMETRY-THRESHOLD-ALIAS: with 1 message queued INTR_STATUS.BUFFER_THRESHOLD "
+            "read %s; with %d queued it read %s; each 12-bit CTRL.BUFFER_THRESHOLD value read "
+            "back unchanged, and the status followed only the low %d bits of it",
+            ", ".join(f"0x{t:03x}->{v}" for t, v in at_one),
+            QUEUE_DEPTH,
+            ", ".join(f"0x{t:03x}->{v}" for t, v in at_full),
+            QUEUE_DEPTH.bit_length(),
         )
 
     async def _overflow(self) -> None:
@@ -625,6 +676,16 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
     async def _ext_window_trial(self, rx: int, offset: int) -> str:
         """Pop at `offset` clk_periph_i cycles from the last beat of one more message."""
         dut = cocotb.top
+
+        async def periph_cycles(cycles: int) -> None:
+            # The beat and AXI drivers hold a value from one clk_smc_i edge to the next.
+            # A clk_periph_i edge coincides with a clk_smc_i edge on this bench, and a
+            # wait that returns on it resumes in that edge's timestep: a value set there
+            # is lifted on the same edge and the DUT never samples it. Resume on the
+            # clk_smc_i edge instead, so the value spans a full cycle.
+            await ClockCycles(dut.clk_periph_i, cycles)
+            await RisingEdge(dut.clk_smc_i)
+
         label = f"WINDOW_D{offset:+d}"
         await self._ext_fill(rx, WINDOW_FILL_IDS, label)
         packet = _frame_all_ones_message(WINDOW_ID)
@@ -634,13 +695,13 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         last = len(beats) - 1
         if offset < 0:
             pop = cocotb.start_soon(self._ext_pop(label, rx))
-            await ClockCycles(dut.clk_periph_i, -offset)
+            await periph_cycles(-offset)
             await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
             await pop
         else:
             await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
             if offset:
-                await ClockCycles(dut.clk_periph_i, offset)
+                await periph_cycles(offset)
             await self._ext_pop(label, rx)
 
         # The pop has landed; the push has landed once the queue is full again or
@@ -692,7 +753,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             outcomes[rx] = [await self._ext_window_trial(rx, d) for d in WINDOW_OFFSETS]
         for rx in EXT_RECEIVERS:
             cocotb.log.info(
-                "TELEM12 push/pop window receiver %d (SF-027): %s",
+                "TELEM12 push/pop window receiver %d (drain unstated when a push meets a pop): %s",
                 rx,
                 " ".join(f"d={d:+d}:{o}" for d, o in zip(WINDOW_OFFSETS, outcomes[rx])),
             )
@@ -701,7 +762,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"for every offset d in {WINDOW_OFFSETS[0]}..{WINDOW_OFFSETS[-1]} clk_periph_i "
             f"cycles on receivers {list(EXT_RECEIVERS)}, the drain was exactly "
             f"{[hex(i) for i in WINDOW_NO_DROP]} (no-drop) or "
-            f"{[hex(i) for i in WINDOW_ONE_DROP]} (one-drop), in order; per offset (SF-027): "
+            f"{[hex(i) for i in WINDOW_ONE_DROP]} (one-drop), in order; per offset: "
             + "; ".join(
                 f"r{rx} " + ",".join(f"{d:+d}={o}" for d, o in zip(WINDOW_OFFSETS, outcomes[rx]))
                 for rx in EXT_RECEIVERS
@@ -770,7 +831,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"written CTRL.TELEMETRY_TX_FLUSH self-cleared within {POLL_BOUND} polls, STATUS read "
             f"0x00 with PROBE_ID=0x{TX_FLUSH_IDS[0]:02x}, and the queued messages drained in "
             f"order {[hex(i) for i in TX_FLUSH_IDS]}; the afready_i-low handshake is "
-            f"NOT-REACHABLE-AT-THIS-LEVEL on this bench (SF-044)",
+            f"NOT-REACHABLE-AT-THIS-LEVEL on this bench",
         )
         await ClockCycles(cocotb.top.clk_smc_i, 1)
         self._stamp("TELEM12_TX_FLUSH")
@@ -844,7 +905,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
                 f"beats_to_missing_last_r{rx}={counts[rx][0]},{counts[rx][1]}"
                 for rx in EXT_RECEIVERS
             )
-            + " (measured, LINKED-ISSUE SF-024)",
+            + " (measured, LINKED-ISSUE: the beat count that sets MISSING_LAST)",
         )
         await ClockCycles(cocotb.top.clk_smc_i, 1)
         self._stamp("TELEM12_MISSING_LAST")
@@ -896,7 +957,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"raised the line ("
             + ", ".join(f"r{rx} {rise[rx]} cycles" for rx in EXT_RECEIVERS)
             + ") and with INTR_ENABLE=0x00 left it 0; INTR_STATUS after the test write "
-            "(logged, SF-025): "
+            "(logged): "
             + " ".join(
                 f"r{rx}_enabled=0x{logged[rx][0]:02x} r{rx}_disabled=0x{logged[rx][1]:02x}"
                 for rx in EXT_RECEIVERS
@@ -943,6 +1004,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         await self.csr_read("CLOCK_GATE_CONTROL_TEL_ON_RB", CLOCK_GATE_CONTROL, expected=ungated)
 
         await self._pop_on_empty()
+        await self._threshold_alias()
         await self._overflow()
         await self._missing_last()
         await self._partial_and_flush_leg()

@@ -42,6 +42,10 @@ Checkers:
                       bound (``_IDLE_MULT`` x t_start) after the mark of the
                       ``CMD.process`` write. ``INTR_STATE`` is polled from the
                       process write with no ``STATUS`` read in between.
+  CHK-KMAC-DONE-W1C   after ``kmac_done`` read 1, a write of 1 to
+                      ``INTR_STATE.kmac_done`` makes the next read show 0
+                      (kmac.adoc line 57: ``kmac_done`` is RW1C). Graded on
+                      every cell.
   CHK-KMAC-FIFO-DONE  the first ``STATUS`` read after ``kmac_done`` reads 1:
                       ``fifo_depth`` 0, ``fifo_empty`` 1, ``fifo_full`` 0
                       (kmac.adoc lines 226-239). Graded on every cell. Control,
@@ -55,7 +59,14 @@ Checkers:
                       more than rate message bytes.
   CHK-KMAC-REGWEN     CFG_REGWEN 1 in the idle window, 0 in absorb; a double
                       write of CFG_SHADOWED in absorb leaves it at C. Control:
-                      the idle write reads back C.
+                      the idle write reads back C. A second line (``part=squeeze``)
+                      grades CFG_REGWEN 0 on the read after ``kmac_done``,
+                      with the STATUS read before it showing ``sha3_squeeze``
+                      1: squeeze is not the idle state, and the configuration
+                      is updated only in the idle state (kmac.hjson lines
+                      354-358;
+                      ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/programmers_guide.md``
+                      line 5).
   CHK-KMAC-REGWEN-GATED  on one drawn cell: in absorb, with CFG_REGWEN read 0,
                       a write of PREFIX_n = pre XOR mask reads back pre
                       (role=prefix), and a write of ENTROPY_PERIOD = pre XOR
@@ -74,17 +85,63 @@ Checkers:
                       window; the low 12 address bits are ignored). It runs
                       once per seed after the cells, with the graded FCOV
                       window closed.
+  CHK-KMAC-FE-INTRTEST  after a KMAC reset, at idle with the graded FCOV window
+                      closed: ``INTR_STATE.fifo_empty`` reads 0 (reset 0x0),
+                      and the first read after a write of 1 to
+                      ``INTR_TEST.fifo_empty`` reads 1 (kmac.adoc lines 50
+                      and 80: "Write 1 to force !!INTR_STATE.fifo_empty to 1.").
+  CHK-KMAC-FIFO-FULL  after a KMAC reset, in absorb with the graded FCOV window
+                      closed and ``kmac_fifo_drain_stall_i`` holding the read side
+                      of the message FIFO: 32-bit message writes, each followed
+                      by a ``STATUS`` read, until a read shows ``fifo_full`` 1 or
+                      ``fifo_depth`` at the golden. That read shows
+                      ``fifo_full`` 1 and ``fifo_depth`` equal to the golden, and
+                      every write completes OKAY. Golden: ``NumEntriesMsgFifo``
+                      ``default: "10"``, ``local: "true"``
+                      (``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson``
+                      lines 163-167, read from that file;
+                      ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/README.md``
+                      line 25 "64b x 10 depth Message FIFO"). A write with no
+                      response within ``_HELD_WRITE_CLK`` clocks fails the check;
+                      the stall is then released so the write completes.
 
 The cells write each message beat at byte lane 0 of ``MSG_FIFO`` in the drawn
 width, so the cell checks grade the stages, endianness, corners and lock on
 their own; the byte-lane placement is graded only by CHK-KMAC-NARROW-WRITE.
 
-Observations: ``OBS-KMAC-DONE-FALL`` logs bit 20 after the write-one clear.
+Observations: ``OBS-KMAC-DONE-FALL`` logs vector bit 20 after the write-one
+clear; no text states the clock at which the line falls.
 ``INFO-KMAC-FIFO-DONE`` logs the whole ``STATUS`` word of the graded read.
 ``OBS-KMAC-REGWEN-GATED-ERR`` logs ``INTR_STATE.kmac_err`` and ``ERR_CODE``
-after the gated writes (registers.md lines 724-725 say an update while hashing
-reports an error and state no code). ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
+after the gated writes. The ``PREFIX`` text (registers.md lines 722-725) says
+that while the engine hashes it discards attempts to update "the secret keys"
+and reports an error, and states no code. Whether that error applies to a
+gated ``PREFIX`` write is open against the DUT, so both values are logged and
+not graded. ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
 ENTROPY_PERIOD reserved bits, which have no stated value.
+``OBS-KMAC-REGWEN-SQUEEZE`` logs ``CFG_REGWEN`` in squeeze and at idle after
+``CMD.done`` of each cell, and ``regwen_return_clk``: the clocks from the
+``CMD.done`` write to the first ``CFG_REGWEN`` read that shows 1 (reads every
+4 clocks, bound ``_OUTER_CLK``; ``not_returned`` at the bound). No text states
+the clock at which ``CFG_REGWEN`` returns to 1, and no line grades that clock.
+The squeeze value is graded by CHK-KMAC-REGWEN ``part=squeeze``, and the idle
+value by the CHK-KMAC-REGWEN idle read of the next cell, which runs with no
+reset in between.
+``OBS-KMAC-FE-INTRTEST`` logs ``INTR_STATE.fifo_empty``
+of the CHK-KMAC-FE-INTRTEST leg after a settle window and after a write-one
+clear: no text states whether the forced bit stays set or whether the clear
+acts on it.
+``OBS-KMAC-CFG-LOCKED-RESP`` logs, on every cell, ``CFG_REGWEN`` in absorb
+(``absorb_regwen``), the AXI B response of each of the two locked
+``CFG_SHADOWED`` writes (``resp0``, ``resp1``) and the ``CFG_SHADOWED`` read
+after them (``cfg_after``). kmac.hjson lines 377-381 state that a write while
+``CFG_REGWEN`` is 0 is discarded, and no text states its response; the value
+is graded by CHK-KMAC-REGWEN, the responses are not.
+``OBS-KMAC-FIFO-FILL-STATUS`` logs, for each write of the CHK-KMAC-FIFO-FULL
+fill, the write count (``writes``), the whole ``STATUS`` word and its
+``fifo_depth``, ``fifo_empty`` and ``fifo_full`` fields. kmac.adoc lines
+226-239 give the field meanings; no text states how many writes make one
+FIFO entry while the drain is stalled, so the mid-fill values are not graded.
 
 FCOV gate: the leaf opens the graded window of its owner code before the cells.
 The first FAIL or missing control closes the window before it is recorded, and
@@ -116,6 +173,7 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
+from env.sep_decode_resp import RESP_CODE
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_kmac_stream_pass
 from env.sep_kmac_golden import sha3, shake
 from env.sep_seeded_rng import SepSeededRng
@@ -125,6 +183,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_kmac_seq import (
     KMAC_CFG_SHADOWED,
     KMAC_CMD,
+    KMAC_CMD_CODES,
     KMAC_CMD_DONE,
     KMAC_CMD_PROCESS,
     KMAC_CMD_START,
@@ -137,12 +196,13 @@ from seq_lib.sep_kmac_seq import (
     KMAC_STRENGTH,
     SepKmac,
     build_kmac_cfg,
+    kmac_hjson_int_param,
 )
 
 TEST = "sep_kmac_stream_cfg_rand_test"
 
-# kmac.hjson CMD.cmd enum (lines 656-660): run = 49.
-_KMAC_CMD_RUN = 49
+# kmac.hjson CMD.cmd enum (lines 656-660): run.
+_KMAC_CMD_RUN = KMAC_CMD_CODES["run"] << KMAC.field_lsb("CMD", "cmd")
 
 _KMAC_INTR_ENABLE = KMAC.addr("INTR_ENABLE")
 _KMAC_CFG_REGWEN = KMAC.addr("CFG_REGWEN")
@@ -160,7 +220,11 @@ _KMAC_ERR = KMAC.field_mask("INTR_STATE", "kmac_err")
 _FIFO_DEPTH = KMAC.field_mask("STATUS", "fifo_depth")
 _FIFO_DEPTH_LSB = KMAC.field_lsb("STATUS", "fifo_depth")
 _FIFO_EMPTY = KMAC.field_mask("STATUS", "fifo_empty")
+_KMAC_INTR_TEST = KMAC.addr("INTR_TEST")
+_INTR_TEST_FIFO_EMPTY = KMAC.field_mask("INTR_TEST", "fifo_empty")
+_INTR_FIFO_EMPTY = KMAC.field_mask("INTR_STATE", "fifo_empty")
 _FIFO_FULL = KMAC.field_mask("STATUS", "fifo_full")
+_RESP_NAME = {v: k for k, v in RESP_CODE.items()}
 _KMAC_ENTROPY_PERIOD = KMAC.addr("ENTROPY_PERIOD")
 _EP_PRESCALER_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "prescaler")
 _EP_PRESCALER_WIDTH = KMAC.field_width("ENTROPY_PERIOD", "prescaler")
@@ -208,7 +272,15 @@ _FILL_BYTES = 16
 # on which the sampler sees the rise.
 _LABEL_EDGES = 2
 _OUTER_CLK = 20_000
+# Clocks from the INTR_TEST write to the second INTR_STATE read of
+# OBS-KMAC-FE-INTRTEST. A testbench timing, not a spec value.
+_FE_SETTLE_CLK = 64
 _RESET_EDGE_CLK = 200
+# Outer limit of the CHK-KMAC-FIFO-FULL fill: 32-bit writes, and the clocks one
+# write may wait for its response. Termination bounds of the leg, not spec values.
+_FULL_WRITE_BOUND = 64
+_HELD_WRITE_CLK = 2_000
+_FULL_FILL_WORD = 0x5A5A_0000
 
 
 def keccak_rate_bytes(strength: int) -> int:
@@ -318,6 +390,10 @@ def _bits(v: int, m: int) -> int:
     return int(bool(v & m))
 
 
+def _resp_name(code: int) -> str:
+    return _RESP_NAME.get(code, str(code))
+
+
 def _prefix_addr(n: int) -> int:
     return KMAC_PREFIX_0 + _PREFIX_STRIDE * n
 
@@ -336,10 +412,13 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         "CHK-KMAC-RUN",
         "CHK-KMAC-IDLE",
         "CHK-KMAC-DONE-LINE",
+        "CHK-KMAC-DONE-W1C",
         "CHK-KMAC-REGWEN",
         "CHK-KMAC-NARROW-WRITE",
         "CHK-KMAC-FIFO-DONE",
         "CHK-KMAC-REGWEN-GATED",
+        "CHK-KMAC-FE-INTRTEST",
+        "CHK-KMAC-FIFO-FULL",
     )
 
     # --- FCOV window and grading ----------------------------------------------
@@ -512,7 +591,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         baseline = await self.swrst.read_back()
-        self.logger.info("SW_RESET_N baseline=0x%08x", baseline)
+        self.logger.info("INFO-BASELINE SW_RESET_N=0x%08x", baseline)
 
         seed = self.random_seed()
         self.kmac = SepKmac(self)
@@ -523,16 +602,14 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             cocotb.top.sep_internal_interrupts_probe_o, {"kmac_done": _VEC_KMAC_DONE}
         ).start()
         plan = draw_plan(seed)
-        self.logger.info(
-            "PLAN seed=%d redraws=%d rg_cell=%d rg_prefix=%d rg_prefix_mask=0x%08x "
-            "rg_ep_mask=0x%08x cells=%s",
-            seed,
-            plan.redraws,
-            plan.rg_cell,
-            plan.rg_prefix,
-            plan.rg_prefix_mask,
-            plan.rg_ep_mask,
-            ",".join(
+        self.chk.info(
+            "PLAN",
+            redraws=plan.redraws,
+            rg_cell=plan.rg_cell,
+            rg_prefix=plan.rg_prefix,
+            rg_prefix_mask=f"0x{plan.rg_prefix_mask:08x}",
+            rg_ep_mask=f"0x{plan.rg_ep_mask:08x}",
+            cells=",".join(
                 f"{c.mode}{c.strength}/L{c.length}/me{c.msg_end}se{c.state_end}"
                 f"/w{''.join(str(w) for _, w in c.writes)}"
                 for c in plan.cells
@@ -541,7 +618,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
 
         t_start = await self._warm_up()
         window = _IDLE_MULT * t_start
-        self.logger.info("t_start seed=%d t_start=%d window_clk=%d", seed, t_start, window)
+        self.chk.info("T-START", t_start=t_start, window_clk=window)
 
         self._open()
         for cell in plan.cells:
@@ -560,6 +637,8 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 self._open()
         self._close()
 
+        await self._fe_intrtest_leg()
+        await self._fifo_full_leg()
         await self._narrow_lane_leg(seed)
 
         await self.vec.stop()
@@ -684,8 +763,18 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
 
         # Step 8: the lock in the absorb stage.
         absorb_regwen = _bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN)
-        await self._write_cfg(c_word ^ _STATE_END)
+        locked_wr_resp = [
+            await self._wr_resp(KMAC_CFG_SHADOWED, c_word ^ _STATE_END) for _ in range(2)
+        ]
         cfg_after = await self._rd(KMAC_CFG_SHADOWED) & _CFG_MASK
+        self.chk.obs(
+            "KMAC-CFG-LOCKED-RESP",
+            **tag,
+            absorb_regwen=absorb_regwen,
+            resp0=_resp_name(locked_wr_resp[0]),
+            resp1=_resp_name(locked_wr_resp[1]),
+            cfg_after=f"0x{cfg_after:08x}",
+        )
         self._ok(
             "KMAC-REGWEN",
             idle_regwen == 1 and absorb_regwen == 0 and cfg_after == (c_word & _CFG_MASK),
@@ -762,16 +851,31 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         done_status = await self._rd(KMAC_STATUS)
         ctrl_process_squeeze = _bits(done_status, _SQUEEZE)
         self._grade_fifo_done(tag, cell, done_status, written, fill)
+        squeeze_regwen = _bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN)
+        self._ok(
+            "KMAC-REGWEN",
+            ctrl_process_squeeze == 1 and squeeze_regwen == 0,
+            **tag,
+            part="squeeze",
+            squeeze=ctrl_process_squeeze,
+            squeeze_regwen=squeeze_regwen,
+        )
 
         # Step 12: write-one clear of kmac_done; the line fall is logged only.
         await self._wr(KMAC_INTR_STATE, _DONE)
         done_after = _bits(await self._rd(KMAC_INTR_STATE), _DONE)
         await RisingEdge(cocotb.top.clk_i)
+        self._ok(
+            "KMAC-DONE-W1C",
+            done_after == 0,
+            **tag,
+            state_before=int(seen),
+            state_after_w1c=done_after,
+        )
         self.chk.obs(
             "KMAC-DONE-FALL",
             seed=seed,
             cell=cell.index,
-            state_after_w1c=done_after,
             vec20_after_w1c=self.vec.level("kmac_done"),
         )
 
@@ -806,11 +910,24 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         # Step 15: done, idle; clear kmac_done before the next idle window.
         t2 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
+        regwen_back, _, regwen_clk = await self._poll(
+            _KMAC_CFG_REGWEN, _REGWEN_EN, _REGWEN_EN, t2, _OUTER_CLK
+        )
         done_idle, status, _ = await self._poll(
             KMAC_STATUS, _IDLE | _SQUEEZE, _IDLE, t2, _OUTER_CLK
         )
         await self._wr(KMAC_INTR_STATE, _DONE)
         cleared = _bits(await self._rd(KMAC_INTR_STATE), _DONE) == 0
+        self.chk.obs(
+            "KMAC-REGWEN-SQUEEZE",
+            seed=seed,
+            cell=cell.index,
+            squeeze=ctrl_process_squeeze,
+            squeeze_regwen=squeeze_regwen,
+            regwen_return_clk=regwen_clk if regwen_back else f"not_returned bound={_OUTER_CLK}",
+            idle_after_done=int(done_idle),
+            done_regwen=_bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN),
+        )
 
         # Step 15b: the ENTROPY_PERIOD write in absorb, read back at idle.
         if rg_ep is not None:
@@ -887,9 +1004,15 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             )
 
     async def _wr_resp(self, addr: int, data: int) -> int:
-        """One 32-bit register write; returns its AXI response code."""
+        """One refused 32-bit register write; returns its AXI response code, not graded."""
         seq = SepAxiAccessSeq(
-            "kmac_rg_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data, length=4, size=_AXSIZE[4]
+            "kmac_rg_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=_AXSIZE[4],
+            allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
         return seq.resp_code
@@ -1072,6 +1195,105 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             squeeze=squeeze,
         )
         return False
+
+    async def _fe_intrtest_leg(self) -> None:
+        """CHK-KMAC-FE-INTRTEST: ``INTR_TEST.fifo_empty`` at idle sets ``INTR_STATE.fifo_empty``.
+
+        The graded FCOV window stays closed. The reads after the settle window
+        and after the write-one clear are logged only.
+        """
+        await self._reset_kmac()
+        before = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        await self._wr(_KMAC_INTR_TEST, _INTR_TEST_FIFO_EMPTY)
+        await ClockCycles(cocotb.top.clk_i, 1)
+        st_1 = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        await ClockCycles(cocotb.top.clk_i, _FE_SETTLE_CLK)
+        st_settle = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        await self._wr(KMAC_INTR_STATE, _INTR_FIFO_EMPTY)
+        st_w1c = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        self._ok(
+            "KMAC-FE-INTRTEST",
+            before == 0 and st_1 == 1,
+            state_before=before,
+            state_1clk=st_1,
+        )
+        self.chk.obs(
+            "KMAC-FE-INTRTEST",
+            state_settle=st_settle,
+            settle_clk=_FE_SETTLE_CLK,
+            state_after_w1c=st_w1c,
+        )
+        await self._reset_kmac()
+
+    async def _fifo_full_leg(self) -> None:
+        """CHK-KMAC-FIFO-FULL: the message FIFO reads full at the kmac.hjson ``NumEntriesMsgFifo`` depth.
+
+        Each fill read logs OBS-KMAC-FIFO-FILL-STATUS; only the read that ends
+        the fill is graded.
+
+        The graded FCOV window stays closed. No write follows a read that ends the
+        fill, so no write waits on a full FIFO unless the DUT hides it.
+        """
+        dut = cocotb.top
+        entries = kmac_hjson_int_param("NumEntriesMsgFifo")
+        await self._reset_kmac()
+        await self._write_cfg(_cfg_word("sha3", 256))
+        t0 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        ok, status, _ = await self._poll(KMAC_STATUS, _ABSORB, _ABSORB, t0, _OUTER_CLK)
+        if not ok:
+            self._ok("KMAC-FIFO-FULL", False, reason="start_timeout", bound=_OUTER_CLK)
+            await self._reset_kmac()
+            return
+        writes = 0
+        refused: list[str] = []
+        reason = ""
+        depth = full = 0
+        dut.kmac_fifo_drain_stall_i.value = 1
+        try:
+            await RisingEdge(dut.clk_i)
+            while writes < _FULL_WRITE_BOUND:
+                task = cocotb.start_soon(self._write_beats(((0, 4),), (_FULL_FILL_WORD | writes,)))
+                for _ in range(_HELD_WRITE_CLK):
+                    if task.done():
+                        break
+                    await RisingEdge(dut.clk_i)
+                if not task.done():
+                    reason = f"write_held bound={_HELD_WRITE_CLK}"
+                    dut.kmac_fifo_drain_stall_i.value = 0
+                refused += await task
+                writes += 1
+                if reason:
+                    break
+                status = await self._rd(KMAC_STATUS)
+                depth = (status & _FIFO_DEPTH) >> _FIFO_DEPTH_LSB
+                full = _bits(status, _FIFO_FULL)
+                self.chk.obs(
+                    "KMAC-FIFO-FILL-STATUS",
+                    writes=writes,
+                    status=f"0x{status:08x}",
+                    fifo_depth=depth,
+                    fifo_empty=_bits(status, _FIFO_EMPTY),
+                    fifo_full=full,
+                )
+                if full or depth >= entries:
+                    break
+            else:
+                reason = f"no_full bound={_FULL_WRITE_BOUND}"
+        finally:
+            dut.kmac_fifo_drain_stall_i.value = 0
+        self._ok(
+            "KMAC-FIFO-FULL",
+            not reason and not refused and full == 1 and depth == entries,
+            writes=writes,
+            fifo_full=full,
+            fifo_depth=depth,
+            expected_fifo_depth=entries,
+            status=f"0x{status:08x}",
+            refused_lane_width_resp=",".join(refused) or "-",
+            **({"reason": reason} if reason else {}),
+        )
+        await self._reset_kmac()
 
     async def _narrow_lane_leg(self, seed: int) -> None:
         """CHK-KMAC-NARROW-WRITE: the fixed message at byte lanes 1 to 3, SHA3-256.

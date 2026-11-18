@@ -32,8 +32,8 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
-    INBOUND_FILTER_CTRL_0,
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_0,
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
     SEP_CPU_CTRL,
     RegBlock,
     indexed_block_count,
@@ -51,35 +51,39 @@ CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
-ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-ALIAS_STRIDE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
-ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
-ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.reset32("REGION_REGION_END")
-ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
-ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
-ALIAS_START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_START")
+ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
+ALIAS_STRIDE = (
+    sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
+)
+ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.offset("REGION_REGION_START")
+ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.reset32("REGION_REGION_END")
+ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.offset("REGION_REGION_END")
+ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.offset("REGION_REGION_ATTRS")
+ALIAS_START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask32("REGION_REGION_START")
 # REGION_START.start_addr[55:12] continues into the hi word as bits [23:0].
-ALIAS_START_HI_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask("REGION_REGION_START") >> 32
-ALIAS_END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_END")
-ALIAS_ATTRS_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_ATTRS")
+ALIAS_START_HI_MASK = (
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask("REGION_REGION_START") >> 32
+)
+ALIAS_END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask32("REGION_REGION_END")
+ALIAS_ATTRS_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask32("REGION_REGION_ATTRS")
 
 # --- AP / STEE output-remap ---------------------------------------------------
-AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
-REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
+AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
+STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
+REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR") - AP_BASE
+REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET")
 # REMAP_STRIDE, REMAP_ATTRS and REMAP_REGIONS serve the AP and the STEE bank, so
 # the STEE values are read from the STEE RDL symbols and must equal the AP ones;
 # a layout that differs stops the import.
 _ap_layout = (
     REMAP_STRIDE,
     REMAP_ATTRS,
-    indexed_block_count("AP_OUTPUT_REMAP_CTRL"),
+    indexed_block_count("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP"),
 )
 _stee_layout = (
-    sym("STEE_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - STEE_BASE,
-    sym("STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET"),
-    indexed_block_count("STEE_OUTPUT_REMAP_CTRL"),
+    sym("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR") - STEE_BASE,
+    sym("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET"),
+    indexed_block_count("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP"),
 )
 if _stee_layout != _ap_layout:
     raise ImportError(
@@ -98,19 +102,19 @@ REMAP_RW_HI_MASK = (
 ) >> 32
 
 # --- inbound / outbound filter config -----------------------------------------
-INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
-OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
-FILTER_STRIDE = sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
+INFILT_BASE = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+FILTER_STRIDE = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
 # Per-entry FILTER_* offsets (64-bit START/END as lo/hi 32-bit words). Both SEP
 # filters are instances of the same axi_filter_wrap block (hw/sys/sep/doc/fabric.adoc).
 # The constants below serve the inbound and the outbound bank, so the outbound
 # stride and offsets are read from the outbound RDL symbols and must equal the
 # inbound ones; a layout that differs stops the import.
-FILTER_START_ADDR = INBOUND_FILTER_CTRL_0.offset("START_ADDR")
-FILTER_END_ADDR = INBOUND_FILTER_CTRL_0.offset("END_ADDR")
-FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
-_OUTBOUND_FILTER_CTRL_0 = RegBlock("OUTBOUND_FILTER_CTRL_0_")
-OUTFILT_STRIDE = sym("OUTBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - OUTFILT_BASE
+FILTER_START_ADDR = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.offset("START_ADDR")
+FILTER_END_ADDR = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.offset("END_ADDR")
+FILTER_CONFIG = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.offset("FILTER_CONFIG")
+_OUTBOUND_FILTER_CTRL_0 = RegBlock("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
+OUTFILT_STRIDE = sym("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - OUTFILT_BASE
 _out_layout = (
     OUTFILT_STRIDE,
     _OUTBOUND_FILTER_CTRL_0.offset("START_ADDR"),
@@ -127,10 +131,15 @@ if _out_layout != _in_layout:
 # remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
 # One hi-word bit index serves both, so each field's own RDL symbol must give it;
 # a position that differs stops the import.
-WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
+WOSET_HI_BIT = (
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
+)
 _hi_bits = {
     "alias REGION_ATTRS.valid": WOSET_HI_BIT,
-    "inbound FILTER_CONFIG.locked": INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32,
+    "inbound FILTER_CONFIG.locked": INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_lsb(
+        "FILTER_CONFIG", "locked"
+    )
+    - 32,
     "outbound FILTER_CONFIG.locked": _OUTBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked")
     - 32,
 }
@@ -145,19 +154,23 @@ RESP_OKAY = 0
 RESP_DECERR = 3
 
 # FILTER_CONFIG field positions (lo word), from the generated bitfield.
-F_READ_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed")
-F_WRITE_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "write_allowed")
-F_ENTRY_ENABLED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "entry_enabled")
-F_ALLOW_NS = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_ns")
-_DBW_MASK = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "data_bus_width")
-DBW_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "data_bus_width")
+F_READ_ALLOWED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed")
+F_WRITE_ALLOWED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask(
+    "FILTER_CONFIG", "write_allowed"
+)
+F_ENTRY_ENABLED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask(
+    "FILTER_CONFIG", "entry_enabled"
+)
+F_ALLOW_NS = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_ns")
+_DBW_MASK = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "data_bus_width")
+DBW_LSB = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "data_bus_width")
 DBW_MASK = _DBW_MASK >> DBW_LSB
-DBW_RO_VAL = (INBOUND_FILTER_CTRL_0.reset32("FILTER_CONFIG") >> DBW_LSB) & DBW_MASK
-F_SRC_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "src_id")
-F_GROUP_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "group_id")
-F_SRC_ID_WIDTH = INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")
-F_GROUP_ID_WIDTH = INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")
-F_ALLOW_BURST = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_burst")
+DBW_RO_VAL = (INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset32("FILTER_CONFIG") >> DBW_LSB) & DBW_MASK
+F_SRC_ID_LSB = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "src_id")
+F_GROUP_ID_LSB = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "group_id")
+F_SRC_ID_WIDTH = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")
+F_GROUP_ID_WIDTH = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")
+F_ALLOW_BURST = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_burst")
 
 # A representative RW pattern across the writable FILTER_CONFIG fields (NOT touching
 # the RO data_bus_width [14:12]). src_id=0x5, group_id=0xA.
@@ -173,16 +186,18 @@ FILTER_RW_PATTERN = (
 FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, exclude RO
 # The implemented R/W fields of the FILTER_CONFIG lo word only: no reserved bit
 # and no RO data_bus_width. A pattern inverted under this mask reads back exactly.
-FILTER_CFG_LO_FIELDS = INBOUND_FILTER_CTRL_0.mask32("FILTER_CONFIG") & FILTER_RW_MASK
+FILTER_CFG_LO_FIELDS = (
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("FILTER_CONFIG") & FILTER_RW_MASK
+)
 
 # Bank sizes (entries) for index randomization. The counts must track the RDL
 # arrays: an undersized count leaves the tail entries unswept with a clean pass.
-ALIAS_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
-REMAP_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
+ALIAS_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP")
+REMAP_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP")
 # Both banks are RDL arrays; take the counts from the export so this sweep and
 # the filter-rule sweep cannot disagree about how many entries exist.
-INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
-OUTFILT_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
+INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL")
+OUTFILT_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL")
 
 
 class SepFabricCsrCfg:

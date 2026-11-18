@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 
+from sep_chk_log import word_digest
 from sep_seeded_rng import SepSeededRng
 
 
@@ -49,7 +50,8 @@ class SepRmaTokenCfg:
         }
 
     def summary(self) -> str:
+        """Seed and token digests; a token is never printed."""
         return (
-            f"seed={self.seed} sip_token=0x{self.sip_token:064x} "
-            f"chiplet_token=0x{self.chiplet_token:064x}"
+            f"seed={self.seed} sip_token_sha={word_digest(self.sip_token)} "
+            f"chiplet_token_sha={word_digest(self.chiplet_token)}"
         )

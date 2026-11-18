@@ -460,10 +460,7 @@ def apply_coverage_policy(
 
     details.policy_fingerprint = policy.sha256
     details.scope_fingerprint = hashlib.sha256(
-        (
-            f"{details.build_fingerprint or ''}\0"
-            f"{details.scope_fingerprint or ''}\0{policy.scope_epoch}"
-        ).encode()
+        f"{details.scope_fingerprint or ''}\0{policy.scope_epoch}".encode()
     ).hexdigest()
     details.finalize()
     details.thresholds = evaluate_thresholds(details, policy)

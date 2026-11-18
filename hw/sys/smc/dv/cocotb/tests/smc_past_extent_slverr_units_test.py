@@ -32,8 +32,8 @@ from smc_base_test import smc_base_test
 # CLA 3, UART/log-engine wrappers 36; window probes: CLA 10, DMA 3 + zeroer 5, UART 6 +
 # log engine 8, eFuse 6, I3C 3, telemetry 5 + AVSBus 3, external 4.
 STIMULUS_FLOOR = 223
-# The UART and I3C aperture-end reads bypass the driver, so the scoreboard sees the rest.
-UNCONVERTED_READS = 2
+# The I3C aperture-end read bypasses the driver, so the scoreboard sees the rest.
+UNCONVERTED_READS = 1
 SCOREBOARD_ACCESSES = STIMULUS_FLOOR - UNCONVERTED_READS
 
 

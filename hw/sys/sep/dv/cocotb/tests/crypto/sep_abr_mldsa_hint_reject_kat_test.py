@@ -18,10 +18,28 @@ is the register contract: a signature verifies if and only if
 case passes when ``MLDSA_VERIFY_RES`` differs from c~. No spec states when the
 engine rejects relative to the message stream or what ``MLDSA_VERIFY_RES``
 holds after a reject, so the leaf logs both as OBS lines and grades neither.
+On the streamed cases the leaf also grades that ``MLDSA_VERIFY_RES`` reads ~c~
+once VERIFY is accepted: the accelerator preloads it then
+(``hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc``).
 
 Case 0 is a pure-with-context signature that must verify, run first: the
 streamed message and the context are new to this aperture's DV, and a stream or
 context fault fails there on a known answer rather than reading as a reject.
+The ACVP tgId 11 external-mu sigVer case that must verify (``NIST_SV_ACCEPT``)
+runs before the first external-mu reject case, so a fault on the
+``MLDSA_EXTERNAL_MU`` path (``sw = w``, no readback) fails there on a known
+answer too.
+
+Once VALID rises, the leaf reads back the hint words of ``MLDSA_SIGNATURE``
+(``sw = rw``, abr_reg.rdl) and requires the written values
+(``CTRL-HINT-SIG-LOADED``), so a reject is graded only on a malformed hint that
+reached the engine. The readback follows VALID, where the driver reads c~ back
+from the signature (``hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc:80-83``);
+no text states what the signature reads before an operation completes. It
+also reads back ``MLDSA_PUBKEY`` (``sw = rw``) and requires the written key
+(``CTRL-HINT-PK-LOADED``), as the driver does after VALID
+(``abr-mldsa-driver.adoc:82-83``), so a reject is not caused by a lost key
+write.
 
 VALID is sticky and READY does not re-assert until a zeroize, so each command
 is preceded by one. no_cpu / +skip_fuse_sense; the vectors are fixed.
@@ -29,10 +47,12 @@ is preceded by one. no_cpu / +skip_fuse_sense; the vectors are fixed.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_abr_nist import NIST_HINT_CASES
+from env.sep_abr_nist import NIST_HINT_CASES, NIST_SV_ACCEPT
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_abr_reject_class
 from env.sep_spec_tables import abr_field_mask, abr_off
 from sep_base_test import sep_base_test
@@ -70,13 +90,37 @@ TEST = "sep_abr_mldsa_hint_reject_kat_test"
 # FCOV stimulus label of sep_abr_completion_cg cp_verify_outcome for an ACVP
 # "modified signature - hint" row (env/sep_fcov_gate.py, set_abr_reject_class).
 _REJECT_CLASS_HINT = 3
+# FIPS 204 sigEncode for ML-DSA-87: c~ (64 bytes) || z (7 * 640 bytes) || h
+# (omega + k = 83 bytes), so the hint starts at byte 4544, word 1136.
+_HINT_WORD0 = (64 + 7 * 640) // 4
+
+_EXT_MU_ACCEPT = SimpleNamespace(
+    tcid=NIST_SV_ACCEPT.tcid,
+    verdict=NIST_SV_ACCEPT.verdict,
+    external_mu=True,
+    interface="external mu",
+    pk=NIST_SV_ACCEPT.pk,
+    sig=NIST_SV_ACCEPT.sig,
+    mu=NIST_SV_ACCEPT.mu,
+    msg=[],
+    msg_bytes=0,
+    ctx=[],
+    ctx_bytes=0,
+)
+_FIRST_EXT = next(i for i, c in enumerate(NIST_HINT_CASES) if c.external_mu)
+_CASES = [*NIST_HINT_CASES[:_FIRST_EXT], _EXT_MU_ACCEPT, *NIST_HINT_CASES[_FIRST_EXT:]]
 
 
 @pyuvm.test()
 class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
     """ML-DSA-87 VERIFY on the NIST malformed-hint cases, after one that must verify."""
 
-    required_evidence = ("CHK-HINT-VALID", "CHK-HINT-CONTROL", "CHK-HINT-REJECT")
+    required_evidence = (
+        "CHK-HINT-VALID",
+        "CHK-HINT-PRELOAD",
+        "CHK-HINT-CONTROL",
+        "CHK-HINT-REJECT",
+    )
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):
@@ -131,7 +175,7 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
         n_control = n_pure = n_ext = 0
 
         open_graded_window(TEST, self.logger)
-        for case in NIST_HINT_CASES:
+        for case in _CASES:
             what = f"tcId {case.tcid} ({case.interface})"
             c_tilde = list(case.sig[:VERIFY_RES_WORDS])
             inverse = [~w & 0xFFFF_FFFF for w in c_tilde]
@@ -154,13 +198,17 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
                 await abr.wr32(ABR_CTX_CONFIG, case.ctx_bytes)
                 await abr.write_words(ABR_CTX, case.ctx)
                 await abr.wr32(ABR_CTRL, CMD_VERIFY | CTRL_STREAM_MSG)
-                # No hardware spec states what MLDSA_VERIFY_RES holds once VERIFY is
-                # accepted, so the value is logged, not graded.
+                # The accelerator preloads MLDSA_VERIFY_RES with ~c~ when it
+                # accepts VERIFY (bootrom/prod/doc/abr-mldsa-driver.adoc:70-72).
                 pre = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
+                assert pre == inverse, (
+                    f"CHK-HINT-PRELOAD FAIL: {what}: MLDSA_VERIFY_RES after VERIFY accept is "
+                    f"{'c~' if pre == c_tilde else ('0' if not any(pre) else 'other')}, "
+                    "want ~c~"
+                )
                 self.logger.info(
-                    "OBS-HINT-PRELOAD: %s: MLDSA_VERIFY_RES after VERIFY accept is %s",
+                    "CHK-HINT-PRELOAD PASS: %s: MLDSA_VERIFY_RES after VERIFY accept is ~c~",
                     what,
-                    "~c~" if pre == inverse else ("0" if not any(pre) else "other"),
                 )
                 streamed = await self._stream(abr, case.msg, case.msg_bytes, what=what)
 
@@ -172,6 +220,29 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
             res = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
             if label:
                 set_abr_reject_class(0, self.logger)
+            hint = list(case.sig[_HINT_WORD0:])
+            hint_rb = await abr.read_words(ABR_SIGNATURE + 4 * _HINT_WORD0, len(hint))
+            assert hint_rb == hint, (
+                f"CTRL-MISSING HINT-SIG-LOADED: {what}: MLDSA_SIGNATURE hint words "
+                f"{_HINT_WORD0}..{_HINT_WORD0 + len(hint) - 1} read back "
+                f"{sum(a != b for a, b in zip(hint_rb, hint))} word(s) different from the written values"
+            )
+            self.logger.info(
+                "CTRL-HINT-SIG-LOADED: %s: MLDSA_SIGNATURE words %d..%d read back as written",
+                what,
+                _HINT_WORD0,
+                _HINT_WORD0 + len(hint) - 1,
+            )
+            pk_rb = await abr.read_words(ABR_PUBKEY, len(case.pk))
+            assert pk_rb == case.pk, (
+                f"CTRL-MISSING HINT-PK-LOADED: {what}: MLDSA_PUBKEY read back "
+                f"{sum(a != b for a, b in zip(pk_rb, case.pk))} word(s) different from the written values"
+            )
+            self.logger.info(
+                "CTRL-HINT-PK-LOADED: %s: MLDSA_PUBKEY words 0..%d read back as written",
+                what,
+                len(case.pk) - 1,
+            )
 
             if case.verdict:
                 assert res == c_tilde, (
@@ -179,13 +250,18 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
                     f"{'the inverted c~' if res == inverse else 'neither c~ nor its inverse'}"
                     f"{'' if streamed is not False else '; VALID rose before MSG_STREAM_READY'}"
                 )
-                self.logger.info(
-                    "CHK-HINT-CONTROL PASS: %s verifies: %d-byte message streamed, "
-                    "%d-byte context, MLDSA_VERIFY_RES equals c~",
-                    what,
-                    case.msg_bytes,
-                    case.ctx_bytes,
-                )
+                if case.external_mu:
+                    self.logger.info(
+                        "CHK-HINT-CONTROL PASS: %s verifies: MLDSA_VERIFY_RES equals c~", what
+                    )
+                else:
+                    self.logger.info(
+                        "CHK-HINT-CONTROL PASS: %s verifies: %d-byte message streamed, "
+                        "%d-byte context, MLDSA_VERIFY_RES equals c~",
+                        what,
+                        case.msg_bytes,
+                        case.ctx_bytes,
+                    )
                 n_control += 1
             else:
                 assert res != c_tilde, (
@@ -222,11 +298,11 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
 
         await self._zeroize(abr, what="after the last case")
         close_graded_window(self.logger)
-        assert n_control + n_pure + n_ext == len(NIST_HINT_CASES), (
-            f"ran {n_control + n_pure + n_ext} of {len(NIST_HINT_CASES)} cases"
+        assert n_control == 2 and n_control + n_pure + n_ext == len(_CASES), (
+            f"ran {n_control + n_pure + n_ext} of {len(_CASES)} cases, {n_control} controls"
         )
         self.logger.info(
-            "CHK-HINT-REJECT: %d malformed-hint cases rejected, %d pure and %d external mu",
+            "INFO-HINT-CASES: %d malformed-hint cases rejected, %d pure and %d external mu",
             n_pure + n_ext,
             n_pure,
             n_ext,

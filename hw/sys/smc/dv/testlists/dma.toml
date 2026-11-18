@@ -75,6 +75,13 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "dma"]
 run_modes = ["smoke"]
+args = [
+    "+axi_sva_need_dma",
+    "+axi_sva_need_dma_ctrl",
+    "+axi_sva_need_local_out",
+    "+axi_sva_need_stall_sys_out",
+    "+axi_sva_need_stall_dma",
+]
 
 [[tests]]
 name = "smc_dma_reg_byte_enable_error_test"
@@ -170,6 +177,30 @@ module = "smc_zeroer_busy_outstanding_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_busy_trigger_test"
+module = "smc_zeroer_busy_trigger_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_capture_burst_test"
+module = "smc_zeroer_capture_burst_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_strobe_error_status_test"
+module = "smc_zeroer_strobe_error_status_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer"]
 run_modes = ["smoke"]
 
 [[tests]]

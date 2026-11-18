@@ -31,6 +31,14 @@ on PR-INFLT, so the DECERR is not the filter's. The responses of the
 in-window edge reads and of the read at ``0x3FFF_FFF8`` are logged only: the
 specification states no response for those local addresses.
 
+Logged, not graded: after the in-window legs, SI reads and writes of the cold
+scratch word, a system register, carry a drawn AxPROT with bit 1 at the
+allow_ns of the entry and bits 0 and 2 not both 0, on a seeded stream of their
+own so the other draws keep their values. No specification states an AxPROT[0]
+or AxPROT[2] rule at a SEP target. CTRL-SYSCSR-PROT: the m_axi handshake of
+each access carried the drawn AxPROT. OBS-SYSCSR-PROT: the response, the read
+data, and the LSU read-back of the word after each write.
+
 Run mode: ``no_cpu`` on ``lsu_stub_all_live`` with real PROD fuse sense of a
 pinned image, so the inbound filter is active on every request. RAND-REP: the
 seed draws the SRAM read and write offsets and the scratch word; the
@@ -43,13 +51,18 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
 from env.sep_fabric_common import RESP_NAME as _RESP
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rebase_pass
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+    set_rebase_pass,
+)
 from env.sep_field_compare import field_compare, lane32
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
@@ -76,6 +89,10 @@ _LABEL_CLOCKS = 2
 # programs allow_ns equal to prot[1], and every probe carries AxUSER 0.
 SI_PROT = 0b010
 SI_NS = (SI_PROT >> 1) & 1
+# Drawn system-register AxPROT: bit 1 as SI_PROT, bits 0 and 2 not both 0.
+SYSCSR_PROTS = tuple(p for p in range(8) if (p >> 1) & 1 == SI_NS and p != SI_PROT)
+_SYSCSR_PROT_SALT = 0x5359_5350
+SYSCSR_PROT_ACCESSES = 2
 
 # Aperture configurations (base, size). Each size is a power of two and a
 # 4 KiB multiple. The specification states no legal values for either register.
@@ -120,6 +137,18 @@ ADDR_56 = (1 << 56) - 1
 ADDR_64 = (1 << 64) - 1
 GLOBAL_BASE_MASK = SEP_CPU_CTRL.mask("SEP_GLOBAL_BASE_ADDR")
 REGION_SIZE_MASK = SEP_CPU_CTRL.mask("SEP_REGION_SIZE")
+
+
+async def _capture_si_prot(channel: str) -> int:
+    """AxPROT of the next ``channel`` (``ar`` or ``aw``) handshake on the m_axi pins."""
+    dut = cocotb.top
+    valid = getattr(dut, f"m_axi_{channel}valid")
+    ready = getattr(dut, f"m_axi_{channel}ready")
+    prot = getattr(dut, f"m_axi_{channel}prot")
+    while True:
+        await RisingEdge(dut.clk_i)
+        if valid.value == 1 and ready.value == 1:
+            return int(prot.value)
 
 
 @dataclass(frozen=True)
@@ -220,6 +249,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         length: int,
         wdata: int = 0,
         ungraded: bool = False,
+        prot: int = SI_PROT,
     ) -> SepAxiAccessSeq:
         """One SI access. ``ungraded`` reads accept any response, and a missing
         response returns with ``timed_out`` set for the caller to fail on."""
@@ -236,7 +266,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             wdata=wdata,
             length=length,
             size=size,
-            prot=SI_PROT,
+            prot=prot,
             user=0,
             **kw,
         )
@@ -316,6 +346,41 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
         setter(False)
         await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+
+    async def _syscsr_prot_leg(self, ga: int, scr: int) -> None:
+        """SI accesses of the cold scratch word with drawn AxPROT[0] and AxPROT[2]."""
+        rng = SepSeededRng(self.random_seed() ^ _SYSCSR_PROT_SALT)
+        bad = []
+        obs = []
+        for _ in range(SYSCSR_PROT_ACCESSES):
+            for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+                prot = rng.choice(SYSCSR_PROTS)
+                data = rng.getrandbits(32)
+                ch = "ar" if op is SepAxiOp.READ else "aw"
+                cap = cocotb.start_soon(_capture_si_prot(ch))
+                seq = await self._si(op, ga, length=4, wdata=data, ungraded=True, prot=prot)
+                seen = cap.result() if cap.done() else None
+                cap.cancel()
+                if seq.timed_out or seen != prot:
+                    bad.append(
+                        f"{op.value} prot=0b{prot:03b} seen={seen} timed_out={seq.timed_out}"
+                    )
+                text = f"op={op.value} global=0x{ga:x} prot=0b{prot:03b} resp={_RESP.get(seq.resp_code)}"
+                if op is SepAxiOp.READ:
+                    text += f" rdata_lo=0x{seq.rdata & 0xFFFF_FFFF:x}"
+                else:
+                    rb = lane32(await self._lsu_rd(scr), scr)
+                    text += f" wdata=0x{data:x} lsu_readback=0x{rb:x}"
+                obs.append(text)
+        line = f"accesses={2 * SYSCSR_PROT_ACCESSES} mismatches={len(bad)}"
+        if bad:
+            raise AssertionError(f"CTRL-SYSCSR-PROT FAIL: {line}: " + "; ".join(bad))
+        self.logger.info("CTRL-SYSCSR-PROT LOG: %s; each handshake carried the drawn AxPROT", line)
+        set_open_value_leg_pass("syscsr_prot_drawn", self.logger)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+        set_open_value_leg_pass(None, self.logger)
+        for text in obs:
+            self.logger.info("OBS-SYSCSR-PROT %s", text)
 
     async def _sram_control_read(self, cfg: str) -> tuple[int, int]:
         """The live-path control of the unit cells: SI read of M1 through entry 3."""
@@ -526,6 +591,8 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         if seq.resp_code != RESP_OKAY or seen != [n] or direct != d.w:
             raise AssertionError(f"CHK-REBASE FAIL: {line} model_local=0x{n:x}")
         self.logger.info("CHK-REBASE PASS: %s", line)
+
+        await self._syscsr_prot_leg(G + SCRATCH_COLD + d.s, scr)
 
         # Steps 10 to 13: unreachable units, configuration A.
         await self._unit_cells("A")

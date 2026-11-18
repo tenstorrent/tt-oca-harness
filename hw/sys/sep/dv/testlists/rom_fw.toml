@@ -56,6 +56,105 @@ args = [
 ]
 
 [[tests]]
+# The [S29] pad fill also leaves the last SEP SRAM word, holding a sentinel, unchanged. Verilator
+# only: the word is reached through sep_public_scope.vlt.
+name = "sep_iccm_pad_sram_top_intact_test"
+module = "rom_fw.sep_iccm_pad_sram_top_intact_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+tools = ["verilator"]
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "handoff", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# The clear-enabled ROM (build_clear/): SEP SRAM reads zero after the scrub, and ICCM outside BL1
+# after the full ICCM clear.
+# Verilator only: ICCM is reached through sep_public_scope.vlt.
+name = "sep_rom_clear_variant_test"
+module = "rom_fw.sep_rom_clear_variant_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_clear", mode = "boot_rom_clear" }
+tools = ["verilator"]
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "clear", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_clear/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# A faulted ICCM pad fill stops the hand-off: ICCM_PAD_FAIL, BL1_BAD_ADDR, FAIL verdict.
+name = "sep_rom_zero_fill_fault_pad_test"
+module = "rom_fw.sep_rom_zero_fill_fault_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "clear", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+zero_fill_fault=pad",
+]
+
+[[tests]]
+# A faulted SEP SRAM clear between SPI slots ends the search: no backup staged, FAIL verdict.
+name = "sep_rom_zero_fill_fault_retry_test"
+module = "rom_fw.sep_rom_zero_fill_fault_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "clear", "failover", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+zero_fill_fault=retry",
+]
+
+[[tests]]
+# A faulted SEP SRAM scrub (build_clear/) stops the boot before any manifest is loaded.
+name = "sep_rom_zero_fill_fault_scrub_test"
+module = "rom_fw.sep_rom_zero_fill_fault_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_clear", mode = "boot_rom_clear" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "clear", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_clear/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+zero_fill_fault=scrub",
+]
+
+[[tests]]
+# A faulted full ICCM clear (build_clear/) stops the boot before any manifest is loaded.
+name = "sep_rom_zero_fill_fault_iccm_clear_test"
+module = "rom_fw.sep_rom_zero_fill_fault_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_clear", mode = "boot_rom_clear" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "clear", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_clear/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+zero_fill_fault=iccm_clear",
+]
+
+[[tests]]
 # OpenTitan SPI boot, CPU PIO drain; a separate ROM build (build_pio/) from the DMA entry.
 name = "sep_rom_ot_pio_boot_test"
 module = "rom_fw.sep_rom_ot_pio_boot_test"

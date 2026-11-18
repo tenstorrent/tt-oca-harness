@@ -86,6 +86,34 @@ register after a clear (the coupling of the KM_STATUS and KM_IRQ_STATUS
 sticky bits is not stated), the flush poll counts, the reset value of the
 level bits, and the reserved bits of every KM-side readback with their mask.
 
+Open-value leg (logged, not graded; its control fails the leaf). Flush race,
+after the flush cells: per attempt the image waits for a SYNC_WORD and a delay
+d, runs d loop passes and writes one outbound word; the host writes
+SEP_CTRL.flush as soon as SEP_STATUS shows both words left the inbound FIFO.
+A host stream of the seed XOR a leg salt draws the first d and the host delay
+of the search; later attempts move d (or, below d = 0, the host delay) by
+bisection until the KM write lands inside the flush write, for at most
+``_RACE_ATTEMPTS`` attempts. The KM write handshake clock is the first clock
+the KM AXI-adapter write capture (``km_axi_wr_addr_o``) shows KM_WRITE_DATA in
+the attempt; the flush window is the clocks from the start of the host
+SEP_CTRL write to its response.
+  CTRL-KMBOX-FLUSH-RACE  in one attempt the KM write handshake falls inside the
+                   flush window and the image saw flushed_by_sep.
+  OBS-KMBOX-FLUSH-RACE   per attempt: d, the host delay, the write clock, the
+                   window, KM_STATUS right after the write and after the flush,
+                   KM_IRQ_STATUS before and after the write of 1 to
+                   flushed_by_sep, and the words the host drained from
+                   SEP_READ_DATA. ``firmware.adoc:1112-1113`` states only that
+                   a SEP flush resets the software buffers; no text states the
+                   fate of a KM word written during the flush.
+
+KM CPU ready mux (the bench counters ``km_{rom,sram,axi}_ready_{on,off}_target_count_o``,
+read at the end of the leaf): ``CTRL-KM-READY-TAP`` requires each on-target
+count to be non-zero (the image fetched from ROM, wrote KM SRAM and reached the
+mailbox through the AXI adapter); ``OBS-KM-READY-OFFTGT`` logs the three
+off-target counts. ``architecture.adoc`` does not state whether a memory source
+may drive ready without a request for it.
+
 Not sent: the SEP inbound overflow and the SEP outbound underflow, a flush in
 the middle of a frame, a second arm of the separator with no write between.
 """
@@ -96,11 +124,12 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_img_param as kip
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_open_value_leg_pass
+from env.sep_reg_meta import ip_c_header
 from env.sep_seeded_rng import SepSeededRng
 from km import sep_km_mailbox_km_side_rand_model as m
 from sep_base_test import sep_base_test
@@ -124,6 +153,25 @@ _BOOT_BOUND = 400_000
 _PHASE_BOUND = 2_000_000
 _POLL_CYCLES = 16
 _SEP_FLUSH_POLL = 1_000
+
+# Flush race: attempt bound, delay bounds, host-delay unit, leg salt.
+_RACE_ATTEMPTS = 16
+_RACE_D_MAX = 4_096
+_RACE_HOST_UNIT = 4  # host clocks per step below d = 0
+_RACE_SALT = 0x5243_4531
+_LABEL_CLKS = 2
+
+
+def _km_addr(name: str) -> int:
+    """A KM bus address from the generated KM address header."""
+    for line in ip_c_header("key_manager").with_name("key_manager_addr.h").read_text().splitlines():
+        parts = line.split()
+        if parts[:2] == ["#define", name]:
+            return int(parts[2], 0)
+    raise KeyError(name)
+
+
+_KM_WRITE_DATA_A = _km_addr("KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR")
 
 _REQUIRED = (
     "CHK-KMBOX-RST",
@@ -264,9 +312,11 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
         self._grade_reset()
         await self._step_err()
         await self._step_flush()
+        await self._step_race()
         await self._step_irq()
         close_graded_window(self.logger)
         await self._step_end()
+        self._ready_tap()
         self._grade_nonvac()
         self.chk.finish()
 
@@ -715,6 +765,145 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             else:
                 self._rsvd("KM_IRQ_STATUS", r[2] | r[8] | r[9] | r[10], m.IRQ_FIELDS)
             await self._sync()
+
+    # Flush race.
+    async def _race_clock(self) -> None:
+        """Clock count, and the clock of each new KM_WRITE_DATA adapter write."""
+        dut = cocotb.top
+        prev = None
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            self.clk += 1
+            wa = self.rd(dut.km_axi_wr_addr_o)
+            if wa == _KM_WRITE_DATA_A and prev != _KM_WRITE_DATA_A and self.wr_clk is None:
+                self.wr_clk = self.clk
+            prev = wa
+
+    async def _race_attempt(self, k: int, x: int) -> tuple[str, dict]:
+        """One attempt at search point ``x``: d = x, or host delay -x units below 0."""
+        d = max(x, 0)
+        host_wait = max(-x, 0) * _RACE_HOST_UNIT
+        await self._wait((m.PH_RACE_READY,), f"race attempt {k} ready")
+        if self._report(1)[0] != k:
+            raise AssertionError(f"IMG-MBOX-KM race attempt {self._report(1)[0]}, host {k}")
+        self.wr_clk = None
+        stale = self.rd(cocotb.top.km_axi_wr_addr_o) == _KM_WRITE_DATA_A
+        await self._sep_wr(KM_MBOX_WRITE_DATA, m.SYNC_WORD)
+        await self._sep_wr(KM_MBOX_WRITE_DATA, d)
+        for _ in range(_SEP_FLUSH_POLL):
+            if m.sep_depths(await self._sep_rd(KM_MBOX_STATUS))[1] == 0:
+                break
+        else:
+            raise AssertionError(f"race attempt {k}: the inbound FIFO did not drain")
+        if host_wait:
+            await ClockCycles(cocotb.top.clk_i, host_wait)
+        keep = await self._sep_rd(KM_MBOX_CTRL)
+        a = self.clk
+        await self._sep_wr(KM_MBOX_CTRL, (keep & m.S_CTRL_FIELDS) | m.S_CTRL_FLUSH)
+        b = self.clk
+        last = m.S_CTRL_FLUSH
+        for _ in range(_SEP_FLUSH_POLL):
+            last = await self._sep_rd(KM_MBOX_CTRL)
+            if not last & m.S_CTRL_FLUSH:
+                break
+        if last & m.S_CTRL_FLUSH:
+            raise AssertionError(f"SEP_CTRL.flush did not read 0 in {_SEP_FLUSH_POLL} reads")
+        await self._wait((m.PH_RACE_DONE,), f"race attempt {k} done")
+        r = self._report(7)
+        if (r[0], r[1]) != (k, d):
+            raise AssertionError(f"IMG-MBOX-KM race attempt {r[:2]}, host {[k, d]}")
+        drained = []
+        st = await self._sep_rd(KM_MBOX_STATUS)
+        while not m.fld(st, m.S_OUT_EMPTY) and len(drained) < m.DEPTH:
+            drained.append(_h(await self._sep_rd(KM_MBOX_READ_DATA)))
+            st = await self._sep_rd(KM_MBOX_STATUS)
+        wr = None if stale else self.wr_clk
+        if wr is None:
+            where = "unseen"
+        elif wr < a:
+            where = "before"
+        elif wr > b:
+            where = "after"
+        else:
+            where = "inside"
+        rec = {
+            "attempt": k,
+            "d": d,
+            "host_wait": host_wait,
+            "wr_clk": -1 if wr is None else wr - a,
+            "flush_win": [0, b - a],
+            "where": where,
+            "km_status_after_write": _h(r[2]),
+            "flushed_seen": r[3],
+            "km_status_after_flush": _h(r[4]),
+            "km_irq_before_clear": _h(r[5]),
+            "km_irq_after_clear": _h(r[6]),
+            "drained": drained,
+        }
+        self.chk.obs("KMBOX-FLUSH-RACE", **rec)
+        self._rsvd("KM_STATUS", r[2] | r[4], m.ST_FIELDS)
+        self._rsvd("KM_IRQ_STATUS", r[5] | r[6], m.IRQ_FIELDS)
+        await self._sync()
+        return where, rec
+
+    async def _step_race(self) -> None:
+        """Attempts until the KM write lands inside the flush write, bisecting on x."""
+        rng = SepSeededRng(self.random_seed() ^ _RACE_SALT)
+        x = rng.randrange(0, 8)
+        step = rng.randrange(16, 64)
+        lo = hi = None
+        recs = []
+        hit = False
+        self.clk = 0
+        self.wr_clk = None
+        task = cocotb.start_soon(self._race_clock())
+        for k in range(_RACE_ATTEMPTS):
+            where, rec = await self._race_attempt(k, x)
+            recs.append(rec)
+            if where == "inside":
+                hit = rec["flushed_seen"] == 1
+                break
+            if where == "unseen":
+                break
+            if where == "before":
+                lo = x
+            else:
+                hi = x
+            if lo is not None and hi is not None:
+                if hi - lo <= 1:
+                    break
+                x = (lo + hi) // 2
+            else:
+                x = lo + step if hi is None else hi - step
+                step *= 2
+                if abs(x) > _RACE_D_MAX:
+                    break
+        await self._wait((m.PH_RACE_READY,), "the end of the race phase")
+        await self._sep_wr(KM_MBOX_WRITE_DATA, m.RACE_END_WORD)
+        await self._sep_wr(KM_MBOX_WRITE_DATA, 0)
+        task.cancel()
+        ok = self.chk.ctrl(
+            "KMBOX-FLUSH-RACE",
+            hit,
+            attempts=len(recs),
+            wr_clk=[rec["wr_clk"] for rec in recs],
+            flush_win=[rec["flush_win"] for rec in recs],
+        )
+        if ok:
+            set_open_value_leg_pass("km_mbox_flush_race", self.logger)
+            await ClockCycles(cocotb.top.clk_i, _LABEL_CLKS)
+            set_open_value_leg_pass(None, self.logger)
+
+    def _ready_tap(self) -> None:
+        """KM CPU ready-mux counters at the end of the leaf."""
+        dut = cocotb.top
+        on, off = {}, {}
+        for src in ("rom", "sram", "axi"):
+            on[f"{src}_on"] = self.rd(getattr(dut, f"km_{src}_ready_on_target_count_o"))
+            off[f"{src}_off"] = self.rd(getattr(dut, f"km_{src}_ready_off_target_count_o"))
+        self.chk.ctrl("KM-READY-TAP", all(on.values()), **on)
+        self.chk.obs("KM-READY-OFFTGT", **off)
 
     # Steps 9 to 13.
     async def _step_irq(self) -> None:

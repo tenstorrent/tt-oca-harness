@@ -123,7 +123,8 @@ int main(void) {
          * strobe clear and writes the lower fields, the entry enable included,
          * to 0; the reset lower half is then written back.
          */
-        uint64_t filter = SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(14);
+        uint64_t filter =
+            SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(14);
         uint32_t filter_lower = read_reg(filter);
         hold_other_half_with("FILTER_CONFIG lower lanes", filter, filter + 4, FILTER_LOWER_LANES);
         hold_other_half_with("FILTER_CONFIG locked lane", filter + 4, filter, FILTER_LOCKED_LANE);
@@ -176,7 +177,7 @@ int main(void) {
          * new offset remaps nothing. The bench reads the word back and restores
          * it.
          */
-        uint64_t attrs = SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0);
+        uint64_t attrs = SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0);
         uint32_t upper_before = read_reg(attrs + 4);
         write_reg(attrs, ALL_ONES);
         io_fence();

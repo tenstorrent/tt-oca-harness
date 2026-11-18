@@ -58,6 +58,7 @@ C_RANGE = (1, 8)  # CMD_STAT frames at point (ii)
 J_RANGE = (1, 15)  # partial-frame words at point (iii)
 R_RANGE = (1, 3)  # unread CMD_STAT responses at point (iv)
 W_RANGE = (0, 16)  # stale inbound words while the KM is held
+W_UNREAD_RANGE = (1, 16)  # at point (iv), which every seed reaches: at least one stale word
 N_RANGE = (8, 64)  # spin image size in words
 
 
@@ -152,7 +153,7 @@ class BootResetPlan:
             c = _in(rng, C_RANGE) if p == POINT_CMDS else 0
             partial = _words(rng, _in(rng, J_RANGE)) if p == POINT_PARTIAL else ()
             r = _in(rng, R_RANGE) if p == POINT_UNREAD else 0
-            stale = _words(rng, _in(rng, W_RANGE))
+            stale = _words(rng, _in(rng, W_UNREAD_RANGE if p == POINT_UNREAD else W_RANGE))
             if p == POINT_CMDS:
                 self._log(f"reset{k}_c", c)
             if p == POINT_PARTIAL:
@@ -174,5 +175,5 @@ class BootResetPlan:
         self._draws.append((name, value))
 
     def draw_lines(self) -> list[str]:
-        """One ``DRAW <name>=<value>`` line for every drawn value."""
-        return [f"DRAW {name}={_fmt(value)}" for name, value in self._draws]
+        """One ``INFO-DRAW <name>=<value>`` line for every drawn value."""
+        return [f"INFO-DRAW {name}={_fmt(value)}" for name, value in self._draws]

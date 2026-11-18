@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# LOAD_CHECKSUM advances only on a full-word host write to IMEM or DMEM, so a host read of either
+# memory leaves it unchanged, as Memory Load Integrity and the LOAD_CHECKSUM description state.
+
+diff --git a/hw/ip/otbn/rtl/otbn.sv b/hw/ip/otbn/rtl/otbn.sv
+index 4e118fb..c094047 100644
+--- a/hw/ip/otbn/rtl/otbn.sv
++++ b/hw/ip/otbn/rtl/otbn.sv
+@@ -782,8 +782,8 @@ module otbn
+ 
+   // Only advance CRC calculation on full 32-bit writes;
+   assign mem_crc_data_in_valid   = ~(dmem_access_core | imem_access_core) &
+-      ((imem_req_bus & (imem_byte_mask_bus == 4'hf)) |
+-       (dmem_req_bus & (dmem_byte_mask_bus == 4'hf)));
++      ((imem_req_bus & imem_write_bus & (imem_byte_mask_bus == 4'hf)) |
++       (dmem_req_bus & dmem_write_bus & (dmem_byte_mask_bus == 4'hf)));
+ 
+   assign mem_crc_data_in.wr_data = imem_req_bus ? imem_wdata_bus[31:0] :
+                                                   dmem_wdata_narrow_bus[31:0];

@@ -52,7 +52,7 @@ A second leg then traces the CLA debug-bus mux in toggle mode
   from its start. A read that returns unread data advances the read pointer by
   one word, and from ``Trdstramlimitlow`` it wraps to ``Trdstramstartlow``, so
   every pointer sample has to equal the segment start plus one word per
-  data-returning read, and once a read returns nothing the pointer stays put.
+  pointer-advancing read, and once a read leaves the pointer in place it stays put.
   How many reads return data and which bits the words carry are logged, not
   compared: the RAM address map, the unread-data accounting after a wrap and
   the toggle payload format are not documented.
@@ -414,7 +414,8 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         self._term_end("EXISTING_LEGS")
         cocotb.log.info(
             "CHK-DST-TOGGLE-EMPTY-RP: %d empty reads, rp before/after/data per position %s; "
-            "documented unchanged (LINKED-ISSUE SF-041)",
+            "documented unchanged (LINKED-ISSUE: whether an empty-buffer data read advances "
+            "the read pointer)",
             len(self.empty_rp),
             " ".join(f"before=0x{b:x} after=0x{a:x} data=0x{d:x}" for b, a, d in self.empty_rp),
         )
@@ -454,7 +455,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             )
 
     def _rp_expected(self, start: int, reads: int) -> int:
-        """Read-pointer byte address after ``reads`` data-returning reads from ``start``."""
+        """Read-pointer byte address after ``reads`` pointer-advancing reads from ``start``."""
         return (start + 4 * reads) % _TOGGLE_WINDOW_BYTES
 
     async def _toggle_leg(self) -> None:
@@ -544,7 +545,8 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             "(>= 0x%x) then wrapped to 0x%x after %d polls (bound %d, %d action re-issues) over "
             "a 0x%x-byte window; wp after re-arm 0x%x flag=%d; wp/wrap-flag samples "
             "(pointer/flag/2KiB-segment, xN repeats) %s; wp after stop 0x%x flag=%d (flag "
-            "logged, LINKED-ISSUE SF-042; RAM address map LINKED-ISSUE SF-022)",
+            "logged, LINKED-ISSUE: what clears the sticky sink wrap flag; RAM address map "
+            "LINKED-ISSUE: how start and limit address the trace RAM)",
             _DBM_MODE_TOGGLE,
             _DST_FORMAT_NONE,
             peak,
@@ -651,9 +653,9 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         self.value_checks += 1
         cocotb.log.info(
             "CHK-DST-TOGGLE-RP-ADVANCE: segment 0..7 words returned=%s rp==start+n at %d "
-            "samples (%d per segment, after reads %s), one word per data-returning read and "
-            "no move after a read that returned none (count of data-returning reads "
-            "LINKED-ISSUE SF-022)",
+            "samples (%d per segment, after reads %s), one word per pointer-advancing read and "
+            "no move after a read that returned none (count of pointer-advancing reads "
+            "LINKED-ISSUE: how start and limit address the trace RAM)",
             ",".join(str(n) for n in self.segment_words),
             sample_total,
             len(_RP_SAMPLES),
@@ -661,7 +663,9 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-DST-TOGGLE-PAYLOAD: %s; every segment more than one distinct word; mux "
-            "after=%d/%d (bit masks LINKED-ISSUE SF-020 SF-021 SF-022)",
+            "after=%d/%d (bit masks LINKED-ISSUE: the format and drivable byte lanes of the "
+            "trace words; the memory-mode encoding and when the wrap flag sets; how start "
+            "and limit address the trace RAM)",
             "; ".join(payload),
             mux_mode,
             mux_id,

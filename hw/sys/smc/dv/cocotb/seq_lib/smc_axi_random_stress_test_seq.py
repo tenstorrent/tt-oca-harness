@@ -24,6 +24,7 @@ from collections import Counter, defaultdict
 from typing import TYPE_CHECKING
 
 import cocotb
+from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_env_cfg import SYS_OUT_MEM_SIZE
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
@@ -1566,73 +1567,84 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
         await self._s1()
         self._mark_step("S1")
 
-        self._step = "S2"
-        text = await self._s2()
-        self._mark_step("S2")
-        self._log_chk("CHK-RAND-ID-ECHO", text)
+        # smc_outstanding_cg samples the groups of S2 to S11; the filter windows are
+        # programmed in S1 and restored in S12, outside its gate.
+        cocotb.top.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            self._step = "S2"
+            text = await self._s2()
+            self._mark_step("S2")
+            self._log_chk("CHK-RAND-ID-ECHO", text)
 
-        self._step = "S3"
-        text = await self._s3()
-        self._mark_step("S3")
-        self._log_chk("CHK-RAND-ATTR-OWN-WORD", text)
+            self._step = "S3"
+            text = await self._s3()
+            self._mark_step("S3")
+            self._log_chk("CHK-RAND-ATTR-OWN-WORD", text)
 
-        self._step = "S4"
-        text = await self._s4()
-        self._mark_step("S4")
-        self._log_chk("CHK-RAND-LOCK-OBS", text)
+            self._step = "S4"
+            text = await self._s4()
+            self._mark_step("S4")
+            self._log_chk("CHK-RAND-LOCK-OBS", text)
 
-        self._step = "S5"
-        text = await self._s5()
-        self._mark_step("S5")
-        self._log_chk("CHK-RAND-OUT-SIDEBAND", text)
+            self._step = "S5"
+            text = await self._s5()
+            self._mark_step("S5")
+            self._log_chk("CHK-RAND-OUT-SIDEBAND", text)
 
-        self._step = "S6"
-        notes6 = await self._s6()
-        self._mark_step("S6")
+            self._step = "S6"
+            notes6 = await self._s6()
+            self._mark_step("S6")
 
-        self._step = "S7"
-        await self._s7()
-        self._mark_step("S7")
-        self._log_shape_rows()
-        floors = {
-            "S6": [self._compare_floor("S6", p) for p in PORTS],
-            "S7": [self._compare_floor("S7", p) for p in PORTS],
-        }
-        self._log_chk(
-            "CHK-RAND-SHAPE-BY-ADDR",
-            f"all {self._step_accesses['S6']} + {self._step_accesses['S7']} accesses of steps 6 "
-            f"and 7 completed within the guard with defined data, each beat count equals AxLEN+1, "
-            f"every OKAY read at a KNOWN byte returned the golden byte of its own address and "
-            f"every read issued at KNOWN bytes with AxPROT[1] clear answered OKAY "
-            f"(compared/issued: step 6 {', '.join(floors['S6'])}, step 7 "
-            f"{', '.join(floors['S7'])}; "
-            f"{self._cmp_bytes['S6'] + self._cmp_bytes['S7']} bytes compared), recovery "
-            f"write-then-reads returned the fresh word; responses of FIXED, WRAP, narrow register, "
-            f"AxLOCK 1 and AxPROT[1] accesses are printed and not graded: {self._shape_text()}; "
-            + " | ".join(notes6),
-        )
+            self._step = "S7"
+            await self._s7()
+            self._mark_step("S7")
+            self._log_shape_rows()
+            floors = {
+                "S6": [self._compare_floor("S6", p) for p in PORTS],
+                "S7": [self._compare_floor("S7", p) for p in PORTS],
+            }
+            self._log_chk(
+                "CHK-RAND-SHAPE-BY-ADDR",
+                f"all {self._step_accesses['S6']} + {self._step_accesses['S7']} accesses of steps 6 "
+                f"and 7 completed within the guard with defined data, each beat count equals AxLEN+1, "
+                f"every OKAY read at a KNOWN byte returned the golden byte of its own address and "
+                f"every read issued at KNOWN bytes with AxPROT[1] clear answered OKAY "
+                f"(compared/issued: step 6 {', '.join(floors['S6'])}, step 7 "
+                f"{', '.join(floors['S7'])}; "
+                f"{self._cmp_bytes['S6'] + self._cmp_bytes['S7']} bytes compared), recovery "
+                f"write-then-reads returned the fresh word; responses of FIXED, WRAP, narrow register, "
+                f"AxLOCK 1 and AxPROT[1] accesses are printed and not graded: {self._shape_text()}; "
+                + " | ".join(notes6),
+            )
 
-        self._step = "S8"
-        text = await self._s8()
-        self._mark_step("S8")
-        self._log_chk("CHK-RAND-LOCAL-DEEP", text)
+            self._step = "S8"
+            text = await self._s8()
+            self._mark_step("S8")
+            self._log_chk("CHK-RAND-LOCAL-DEEP", text)
 
-        self._step = "S9"
-        deep, others = await self._s9()
-        self._mark_step("S9")
-        self._log_chk("CHK-RAND-OUT-DEEP", deep)
-        self._log_chk("CHK-RAND-OUT-OTHER-PORTS-DECERR", others)
+            self._step = "S9"
+            deep, others = await self._s9()
+            self._mark_step("S9")
+            self._log_chk("CHK-RAND-OUT-DEEP", deep)
+            self._log_chk("CHK-RAND-OUT-OTHER-PORTS-DECERR", others)
 
-        self._step = "S10"
-        text = await self._s10()
-        self._mark_step("S10")
-        self._log_chk("CHK-RAND-RESP-TIMING", text)
+            self._step = "S10"
+            text = await self._s10()
+            self._mark_step("S10")
+            self._log_chk("CHK-RAND-RESP-TIMING", text)
 
-        self._step = "S11"
-        errors_text, combined_text = await self._s11()
-        self._mark_step("S11")
-        self._log_chk("CHK-RAND-RESP-ERRORS-ECHO", errors_text)
-        self._log_chk("CHK-RAND-RESP-COMBINED", combined_text)
+            self._step = "S11"
+            errors_text, combined_text = await self._s11()
+            self._mark_step("S11")
+            self._log_chk("CHK-RAND-RESP-ERRORS-ECHO", errors_text)
+            self._log_chk("CHK-RAND-RESP-COMBINED", combined_text)
+        finally:
+            # A compare that fails inside a read-only phase leaves it with the
+            # exception; the gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            cocotb.top.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
 
         self._step = "S12"
         await self._s12()

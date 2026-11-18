@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import cocotb
+from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -78,8 +79,8 @@ GATED_WINDOW_ENABLES = (
 )
 
 # Row counts of the generated component map the walk is written against.
-PAST_ROWS = 30
-PAST_ROWS_INSIDE = 24
+PAST_ROWS = 31
+PAST_ROWS_INSIDE = 25
 PAST_ROWS_BEYOND = (
     "smc_cluster_plic",
     "smc_cluster_clint",
@@ -333,6 +334,11 @@ class smc_map_row_response_matrix_test_seq(SmcCsrSeq):
                 f"CLOCK_GATE_CONTROL 0x{cg:08x}: {name} enable set before the walk"
             )
             enables.append(f"{name}=0")
+        # smc_map_row_response_cg counts only while inbound entry 0 has been written
+        # since tb_fcov_gate rose: the pass-all writes below are inside the window,
+        # the S6 restore is not.
+        cocotb.top.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
         for label, addr, value in (
             ("START", INBOUND0_START, 0),
             ("END", INBOUND0_END, PASS_ALL_END),
@@ -440,23 +446,30 @@ class smc_map_row_response_matrix_test_seq(SmcCsrSeq):
         )
 
     async def body(self) -> None:
-        text = await self._s1()
-        self._mark("S1")
-        self._chk("CHK-MRR-GATE-CLEAR", text)
+        try:
+            text = await self._s1()
+            self._mark("S1")
+            self._chk("CHK-MRR-GATE-CLEAR", text)
 
-        self._draw()
+            self._draw()
 
-        text = await self._s3_rows()
-        self._mark("S3")
-        self._chk("CHK-MRR-PAST-EXTENT", text)
+            text = await self._s3_rows()
+            self._mark("S3")
+            self._chk("CHK-MRR-PAST-EXTENT", text)
 
-        text = await self._s4_gaps()
-        self._mark("S4")
-        self._chk("CHK-MRR-GAP", text)
+            text = await self._s4_gaps()
+            self._mark("S4")
+            self._chk("CHK-MRR-GAP", text)
 
-        text = await self._s5_outside()
-        self._mark("S5")
-        self._chk("CHK-MRR-OUTSIDE-WINDOWS", text)
+            text = await self._s5_outside()
+            self._mark("S5")
+            self._chk("CHK-MRR-OUTSIDE-WINDOWS", text)
+        finally:
+            # A compare that fails inside a step leaves it with the exception; the
+            # gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            cocotb.top.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
 
         await self._s6_restore()
         self._mark("S6")

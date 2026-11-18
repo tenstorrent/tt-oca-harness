@@ -182,6 +182,14 @@ reset boundary, not a completion or cancellation guarantee for an external
 accelerator transaction. Mailbox FIFO contents survive warm reset; ROM
 flushes the mailbox during boot before accepting new commands.
 
+The PicoRV32 clears its bus requests with synchronous-reset flops, so a request
+waiting for READY when `rst_warm_sync_no` asserts keeps its VALID high until the
+next clock edge. On the KM CPU AXI4-Lite port, the master drives `ARVALID`,
+`AWVALID` and `WVALID` low no later than the first clock edge after the KM CPU
+reset asserts. `ARREADY`, `AWREADY` and `WREADY` are not constrained during
+reset. A request that completes a handshake on that edge is dropped: it gets no
+response, during reset or after release.
+
 Writing `0x53525354` (ASCII `"SRST"`) to KMCSR `SOFT_RST_CODE` triggers the
 warm path. `BOOT_STATUS.COLD_BOOT_DONE` survives it: ROM sets this flag after
 cold-boot initialization and reads it on subsequent boots to distinguish

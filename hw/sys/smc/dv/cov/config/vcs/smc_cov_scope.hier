@@ -26,8 +26,10 @@
 -module gpio_model
 -module ocah_axi_if
 -module ocah_axi_struct_bridge
+-module ocah_axi_sva
 -module pll_wrap
 -module pvt_wrap
+-module smc_axi_data_known_sva
 -module smc_cpu_mem_dv
 -module smc_dual_inst
 -module smc_uvm_top
@@ -646,6 +648,7 @@
 // bench coverage collectors: code and toggle metrics only
 begin line+cond+fsm+branch+tgl
 -module smc_axi_chan_fcov
+-module smc_axi_order_fcov
 -module smc_clk_domain_fcov
 -module smc_clk_fcov
 -module smc_cpu_fcov

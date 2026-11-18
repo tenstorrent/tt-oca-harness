@@ -25,7 +25,7 @@ from cocotb.triggers import ClockCycles
 from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_gpio_vip_utils import drive_gpio_pad
-from .smc_pad_table import pad_function, pad_index
+from .smc_pad_table import pad_index
 from .smc_probe_positive_control import _pad_vec
 
 # Field positions from the generated gpio_intf.h.
@@ -40,21 +40,18 @@ DATA_CTRL_RESET = 0
 
 # Wraps chosen from the integrator pad table (`doc/integrator/meta/
 # ocah_gpio_table.csv`): three SPI data lanes and the SPI chip select, whose
-# function the bench leaves disabled, the thermal-emergency input and a pad the
-# table reserves. Whether a wrap is free is measured, not assumed: each must
-# read its enable bit clear before it is programmed and follow the bench drive
-# on `pad2core`, so a wrap some function or bench block owns fails here.
-_RESERVED_WRAP = 60
-assert pad_function(_RESERVED_WRAP) == "Reserved", (
-    f"the integrator pad table no longer reserves pad {_RESERVED_WRAP}"
-)
+# function the bench leaves disabled, the thermal-emergency input and the PWM[1]
+# pad, which PWM CTRL.PAD_EN leaves to register control from reset. Whether a
+# wrap is free is measured, not assumed: each must read its enable bit clear
+# before it is programmed and follow the bench drive on `pad2core`, so a wrap
+# some function or bench block owns fails here.
 WRAPS = (
     pad_index("SPI.DATA[0]"),
     pad_index("SPI.DATA[1]"),
     pad_index("SPI.DATA[2]"),
     pad_index("SPI.CS"),
     pad_index("Thermal Emergency N"),
-    _RESERVED_WRAP,
+    pad_index("PWM[1]"),
 )
 # DATA_CTRL reads polled until pad2core follows the pad; the path is the pad
 # shim, a two-flop synchronizer and the register read.
@@ -79,7 +76,7 @@ class smc_gpio_pad_input_readback_test_seq(SmcCsrSeq):
 
     @staticmethod
     def _data_ctrl(wrap: int) -> int:
-        return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
+        return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
 
     async def _await_pad2core(self, wrap: int, want: int) -> int:
         addr = self._data_ctrl(wrap)

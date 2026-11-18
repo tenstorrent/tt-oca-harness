@@ -9,7 +9,8 @@ The P2 card shares this anchor: the P1 steps and checkers run first and emit
 their evidence tokens verbatim; `_p2_extension` sweeps the
 pending-access-while-gated race across 3 required cells (at the gate-off
 boundary with the gap to the access measured and bounded, long after gate,
-back-to-back across the gate boundary), per SF-004:
+back-to-back across the gate boundary), assuming, for how register activity
+is defined for the zeroer clock gates,
 register_activity asserts on any AXI4-Lite access; pending-access service must
 complete within the card's own declared bounded wait (there is no separate SPEC
 max-wait constant).
@@ -118,7 +119,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                     return
 
         mon = cocotb.start_soon(_mon())
-        # SF-004: any AXI4-Lite access (read or write) to Zeroer register block.
+        # Assumed answer to how register activity is defined for the zeroer clock gates: any
+        # AXI4-Lite access (read or write) to Zeroer register block.
         _ = await self.csr_read("ZEROER_DEST_ADDR_ACT", ZEROER_CTRL_DEST_ADDR, length=8)
         for _ in range(BUSY_TIMEOUT_SMC * 8):
             if state["done"]:
@@ -610,7 +612,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "idle-gate-off-observed")
 
-        # ---- S2: any AXI4-Lite access to Zeroer wakes reg_clk (SF-004) ----
+        # ---- S2: any AXI4-Lite access to Zeroer wakes reg_clk (assumed answer to how
+        # register activity is defined for the zeroer clock gates) ----
         cg.log_step(
             "S2",
             "issue AXI4-Lite read to Zeroer DEST_ADDR; observe reg_clk resume",

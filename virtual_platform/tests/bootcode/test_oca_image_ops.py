@@ -41,6 +41,7 @@ _CASES = {
     "set_bl1_entry_point": {},
     "set_bl1_zero_length": {},
     "set_bl1_load_addr": {"value": 0x10002000},
+    "set_bl1_load_end": {"end": 0x10040000},
     "set_encryption_iv": {"iv": "ff" * 16},
     "set_encryption_kdf_input": {"kdf_input": "ee" * 64},
     "declare_payload_length": {"payload_length": 0x100},

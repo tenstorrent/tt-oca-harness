@@ -85,6 +85,11 @@ uint32_t rom_bl1_check(void);
 // Does not return on success.
 uint32_t rom_handoff_bl1(void);
 
-// Zero SEP EXT SRAM before any manifest is staged into it (src/rom_mem_clear.c).
+// Zero SEP EXT SRAM before any manifest is staged into it (src/rom_mem_clear.c),
+// when the build enables the scrub. Returns 0, or non-zero if the clear failed.
 // Declared here because this header owns the SRAM staging area.
-void rom_clear_ext_sram(void);
+uint32_t rom_clear_ext_sram(void);
+
+// Zero all of SEP EXT SRAM between SPI manifest slots (src/rom_mem_clear.c).
+// Returns 0, or OCA_BOOT_ERR_DMA if the clear failed.
+uint32_t rom_clear_sram_for_retry(void);

@@ -35,7 +35,7 @@ PERIPH_DESTS = (
     ),
     (
         "GPIO",
-        smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", 0),
     ),
     (
         "I3C",

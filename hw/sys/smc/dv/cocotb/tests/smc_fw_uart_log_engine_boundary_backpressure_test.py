@@ -16,7 +16,7 @@ Bench observation: while the image runs, `tb_uart0_log_write_stalled` -- a
 fetched byte waiting at the wrap-0 log engine's read-data FIFO while the UART
 transmit-ready input is low, the cycles on which its write FSM is held off --
 is sampled on every clk_smc_i edge and must be 1 on at least one cycle and not
-on all of them: the write FSM honours the UART's ready input. The count covers
+on all of them: backpressure occurred while the engine held fetched data. The count covers
 the whole image; `tb_uart0_tx_ready` alone would not do, since it is also low
 on cycles where the engine has nothing to write. After the PASS word the SPM
 source
@@ -92,7 +92,7 @@ class _boundary_backpressure_seq(smc_fw_log_engine_test_seq):
             "CHK-FW-LOG-ENGINE-TX-BACKPRESSURE: %s sampled 1 on %d of %d clk_smc_i cycles "
             "while the image ran (a fetched byte held at the engine's read-data FIFO while "
             "%s was low; %s was low on %d cycles in all, the rest with nothing to write), so "
-            "the log-write FSM honours the UART's ready input; the firmware read all %d of "
+            "backpressure occurred while the engine held fetched data; the firmware read all %d of "
             "scenario B's bytes back in order under it",
             STALL_SIGNAL,
             self.stalled_cycles,

@@ -64,8 +64,9 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
 
     RELEASE_BOUND_REF_CYCLES = BOUND_REF_CYCLES
 
-    def __init__(self, name: str = "smc_ref_reset_cycles_test_seq") -> None:
+    def __init__(self, name: str = "smc_ref_reset_cycles_test_seq", *, cell: str) -> None:
         super().__init__(name)
+        self.cell = cell
         self.n_rel: int | None = None
         self.n_assert: int | None = None
         self._stamps: list[tuple[str, int]] = []
@@ -157,7 +158,7 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
         assert still == 1, f"rst_primary_ref_clk_no reads {still} after the chain release wait"
         self._log_chk(
             "CHK-REF-RESET-RELEASE-CYCLES",
-            f"N_rel={n_rel} clk_ref_i cycles from the rst_cold_ni release to "
+            f"cell={self.cell} N_rel={n_rel} clk_ref_i cycles from the rst_cold_ni release to "
             f"rst_primary_ref_clk_no=1 at ref {self.cfg.ref_clk_period_ns} ns "
             f"(minimum {RELEASE_MIN_CYCLES}; not specified, measured); "
             f"rst_primary_ref_clk_no reads {still} after the chain release",
@@ -218,7 +219,8 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
         self._stamp("PULSE_32_ASSERTED")
         self._log_chk(
             "CHK-REF-RESET-DEGLITCH",
-            f"a {GLITCH_SAMPLES}-cycle low pulse left rst_primary_ref_clk_no high at all "
+            f"cell={self.cell}: a {GLITCH_SAMPLES}-cycle low pulse left rst_primary_ref_clk_no "
+            f"high at all "
             f"{glitch_samples} samples; a {ASSERT_SAMPLES}-cycle low pulse drove it to 0 "
             f"{n_assert} clk_ref_i cycles after the first low sample "
             f"at ref {self.cfg.ref_clk_period_ns} ns (not specified, measured)",
@@ -240,12 +242,14 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
         chk_times = [t for _, t in self._chk_marks]
         assert chk_times[0] < chk_times[1], f"checker lines out of order {chk_times}"
         cocotb.log.info(
-            "CHK-TIMEOUT-PATHS: %d bounded waits: %s",
+            "CHK-TIMEOUT-PATHS: cell=%s: %d bounded waits: %s",
+            self.cell,
             len(self._waits),
             " ".join(self._waits),
         )
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
+            "CHK-NONVAC: cell=%s: ordered fence %s; checker lines %s; stamps %s",
+            self.cell,
             " < ".join(FENCE),
             ",".join(chk_ids),
             ",".join(f"{s}={t}" for s, t in self._stamps),

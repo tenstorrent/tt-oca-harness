@@ -8,6 +8,7 @@ Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl, hw/sys/smc/doc/memmap.ado
 from __future__ import annotations
 
 import cocotb
+from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -30,7 +31,9 @@ FENCE_TERMS = {
 CHK_STEP = {
     "CHK-ACCR-ZERO": "S2",
     "CHK-ACCR-RO-RESP": "S3",
+    "CHK-RO-WRITE-OKAY": "S3",
     "CHK-ACCR-RESERVED": "S4",
+    "CHK-RESET-CTRL-RSVD-STORE": "S4",
     "CHK-ACCR-PROT": "S5",
 }
 CHK_ORDER = tuple(CHK_STEP)
@@ -184,36 +187,74 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
             ("SMC_ATTRIBUTES", attrs),
             ("LOCAL_BASE", local_base),
         ]
+        irq_before = self._irq_lines()
+        irq_seen: set[tuple[int, int]] = set()
+        irq_watch = cocotb.start_soon(self._watch_irq_lines(irq_seen))
         for label, addr in targets:
             before = await self._rd(f"{label}_BEFORE", addr)
             resp = await self._wr(f"{label}_ALL_ONES", addr, WORD64)
+            assert resp == "OKAY", (
+                f"CHK-RO-WRITE-OKAY FAIL: {label} write of all ones answered {resp}, want OKAY "
+                f"(last access: {self._last_access})"
+            )
             after = await self._expect(f"{label}_AFTER", addr, before)
             rows.append(f"{label}:wr=0x{WORD64:x},resp={resp},read=0x{after:x}")
         before = await self._rd("CORE_RESETS_DONE_BEFORE", cnt)
         assert before == count_reset, f"pulse count read 0x{before:x} != 0x{count_reset:x}"
         for label, word in (("ZERO", before & ~done_bm),):
             resp = await self._wr(f"CORE_RESETS_DONE_{label}", cnt, word)
+            assert resp == "OKAY", (
+                f"CHK-RO-WRITE-OKAY FAIL: core_resets_done write answered {resp}, want OKAY "
+                f"(last access: {self._last_access})"
+            )
             after = await self._expect(f"CORE_RESETS_DONE_{label}_AFTER", cnt, before)
             rows.append(f"core_resets_done_{label}:wr=0x{word:x},resp={resp},read=0x{after:x}")
+        irq_watch.cancel()
+        assert irq_seen == {irq_before}, (
+            f"CHK-RO-WRITE-OKAY FAIL: interrupt lines {irq_before} before the read-only writes, "
+            f"values seen on clk_smc_i edges across them {sorted(irq_seen)}"
+        )
         self._stamp("S3")
         self._chk(
             "CHK-ACCR-RO-RESP",
-            "each read-only register read its pre-write word after the write "
-            "(write responses printed, not specified, measured): " + " ".join(rows),
+            "each read-only register read its pre-write word after the write: " + " ".join(rows),
+        )
+        self._chk(
+            "CHK-RO-WRITE-OKAY",
+            f"{len(rows)} writes to read-only registers and the read-only core_resets_done field "
+            f"each answered OKAY with no effect; interrupt lines {irq_before} on every clk_smc_i "
+            f"edge across them",
         )
 
         # S4
         rows = []
 
-        async def reserved_leg(label: str, addr: int, declared: int, length: int = 8) -> None:
+        async def reserved_leg(
+            label: str, addr: int, declared: int, stored: bool = False, length: int = 8
+        ) -> None:
             full = (1 << (length * 8)) - 1
             gap = full & ~declared
             before = await self._rd(f"{label}_BEFORE", addr, length)
-            resp = await self._wr(f"{label}_GAP_ONES", addr, (before & declared) | gap, length)
+            # A held register keeps its named fields; otherwise the lowest named bit flips
+            # with the write, so a write that never lands reads back as such.
+            flip = 0 if stored else declared & -declared
+            named = (before & declared) ^ flip
+            resp = await self._wr(f"{label}_GAP_ONES", addr, named | gap, length)
+            assert resp == "OKAY", (
+                f"{label}: ones over reserved bits answered {resp}, want OKAY "
+                f"(last access: {self._last_access})"
+            )
             after = await self._rd(f"{label}_AFTER", addr, length)
-            assert after & declared == before & declared, (
+            assert after & declared == named, (
                 f"{label}: named fields 0x{before & declared:x} -> 0x{after & declared:x} "
-                f"after ones over reserved bits 0x{gap:x} (last access: {self._last_access})"
+                f"after 0x{named:x} with ones over reserved bits 0x{gap:x}, want 0x{named:x} "
+                f"(last access: {self._last_access})"
+            )
+            want = gap if stored else 0
+            assert after & gap == want, (
+                f"{'CHK-RESET-CTRL-RSVD-STORE' if stored else 'CHK-ACCR-RESERVED'} FAIL: {label} "
+                f"reserved bits read 0x{after & gap:x} after ones over 0x{gap:x}, want 0x{want:x} "
+                f"(last access: {self._last_access})"
             )
             await self._wr_ok(f"{label}_RESTORE", addr, before, length)
             restored = await self._rd(f"{label}_RESTORE_RB", addr, length)
@@ -228,16 +269,25 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
 
         await reserved_leg("SCRATCH1", scratch1, scratch_bm)
         await reserved_leg("RESET_VECTOR1", rvec1, vec_bm)
-        await reserved_leg("RESET_CTRL", rctrl, ctrl_named)
         await reserved_leg("WDT_TIMEOUT", wdt, wdt_bm)
 
         before = await self._rd("WB_PC_CORE0_0_RSV_BEFORE", wb_pc)
         gap = WORD64 & ~pc_bm
+        # WB_PC_CORE0[0] is read-only: the write answers OKAY, its named field is held and
+        # its reserved bits read 0.
         resp = await self._wr("WB_PC_CORE0_0_RSV_ONES", wb_pc, (before & pc_bm) | gap)
+        assert resp == "OKAY", (
+            f"WB_PC_CORE0[0]: ones over reserved bits answered {resp}, want OKAY "
+            f"(last access: {self._last_access})"
+        )
         after = await self._rd("WB_PC_CORE0_0_RSV_AFTER", wb_pc)
         assert after & pc_bm == before & pc_bm, (
             f"WB_PC_CORE0[0]: pc 0x{before & pc_bm:x} -> 0x{after & pc_bm:x} "
             f"(last access: {self._last_access})"
+        )
+        assert after & gap == 0, (
+            f"CHK-ACCR-RESERVED FAIL: WB_PC_CORE0[0] reserved bits read 0x{after & gap:x} after "
+            f"ones over 0x{gap:x}, want 0 (last access: {self._last_access})"
         )
         rows.append(
             f"WB_PC_CORE0_0:resp={resp},reserved_read=0x{after & gap:x}/mask=0x{gap:x},"
@@ -246,8 +296,19 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._stamp("S4")
         self._chk(
             "CHK-ACCR-RESERVED",
-            "named fields held after ones over undeclared bits; reserved bits as read "
-            "(not specified, measured): " + " ".join(rows),
+            "the lowest named bit took the write and the undeclared bits read 0 after ones over "
+            "them (WB_PC_CORE0[0] read-only, named field held): " + " ".join(rows),
+        )
+        ctrl_gap = WORD64 & ~ctrl_named
+        assert ctrl_gap == (0xFFFF_FFFF_FFFF_FFFF << 25 & WORD64) | (0x7FFF << 9), (
+            f"RESET_CTRL undeclared bits 0x{ctrl_gap:x} are not [23:9] and [63:25]"
+        )
+        rows = []
+        await reserved_leg("RESET_CTRL", rctrl, ctrl_named, stored=True)
+        self._chk(
+            "CHK-RESET-CTRL-RSVD-STORE",
+            f"RESET_CTRL bits [23:9] and [63:25] (mask 0x{ctrl_gap:x}) read back the ones written "
+            f"with the named fields held, then restore: " + " ".join(rows),
         )
 
         # S5
@@ -282,6 +343,21 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._chk_order.append(("CHK-TIMEOUT-PATHS", len(self._stamps)))
         self.chk_seen.add("CHK-TIMEOUT-PATHS")
         self._fence()
+
+    async def _watch_irq_lines(self, seen: set[tuple[int, int]]) -> None:
+        clk = cocotb.top.clk_smc_i
+        while True:
+            await RisingEdge(clk)
+            await ReadOnly()
+            seen.add(self._irq_lines())
+
+    @staticmethod
+    def _irq_lines() -> tuple[int, int]:
+        """``cpu_interrupts`` and ``peripheral_interrupts`` of the SMC as the bench exports them."""
+        dut = cocotb.top
+        cpu, periph = dut.tb_cpu_interrupts.value, dut.tb_peripheral_interrupts.value
+        assert cpu.is_resolvable and periph.is_resolvable, "interrupt lines are X/Z"
+        return int(cpu), int(periph)
 
     def _fence(self) -> None:
         steps = [s for s, _ in self._stamps]

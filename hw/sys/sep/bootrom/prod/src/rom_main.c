@@ -55,6 +55,7 @@
 #include "oca_boot.h"
 #include "pll_init.h"
 #include "errors.h"
+#include "harden.h"
 #include "rom_smc.h"
 #include "fuse_lock.h"
 #include "hmac_sha256.h"
@@ -257,11 +258,10 @@ static void rom_iccm_clear(void) {
     //
     // The fill goes through the DMA because the CPU cannot store to ICCM: ICCM
     // shares VeeR region 0xC with DCCM, so every ICCM address faults as
-    // unmapped. sep_dma_zero() also handles the address remap ICCM needs.
+    // unmapped.
 #if ROM_ICCM_CLEAR_ENABLE && ROM_ICCM_CLEAR_FULL
-    sep_dma_init();
-    uint32_t err = sep_dma_zero(ROM_ICCM_BASE, ROM_ICCM_SIZE_BYTES);
-    if (err) {
+    const uint32_t err = sep_dma_zero(ROM_ICCM_BASE, ROM_ICCM_SIZE_BYTES);
+    if (err != 0u || harden_u32(err) != 0u) {
         simputs("ICCM_CLR_FAIL\n");
         rom_err_fail(err);
     }
@@ -310,7 +310,10 @@ static void rom_crypto_init(void) {
 
 static void rom_mem_clear(void) {
     // Status reports are inside rom_clear_ext_sram() itself.
-    rom_clear_ext_sram();
+    const uint32_t err = rom_clear_ext_sram();
+    if (err != 0u || harden_u32(err) != 0u) {
+        rom_err_fail(err);
+    }
 }
 
 static void rom_dma_init(void) {

@@ -14,12 +14,22 @@ extern "C" {
 #include <assert.h>
 
 // reg - cpu_ctrl::RESET_VECTOR
+// Boot address of core n, one register per core. Core n starts fetching here when
+// its reset releases, so a write takes effect at that core's next reset release;
+// bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+// instead. The register is on the primary reset and keeps its value across a warm
+// reset.
 #define CPU_CTRL__RESET_VECTOR__VECTOR_bm 0xffffffffffffff
 #define CPU_CTRL__RESET_VECTOR__VECTOR_bp 0
 #define CPU_CTRL__RESET_VECTOR__VECTOR_bw 56
 #define CPU_CTRL__RESET_VECTOR__VECTOR_reset 0xc0040000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Boot address of core n, one register per core. Core n starts fetching here when
+        // its reset releases, so a write takes effect at that core's next reset release;
+        // bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+        // instead. The register is on the primary reset and keeps its value across a warm
+        // reset.
         uint64_t vector :56;
         uint64_t :8;
     } f;
@@ -233,14 +243,14 @@ typedef union {
 } cpu_ctrl__REFERENCE_COUNTER_t;
 
 // reg - cpu_ctrl::WDT_TIMEOUT
-// Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+// Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bm 0xffffffff
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bp 0
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bw 32
 #define CPU_CTRL__WDT_TIMEOUT__DATA_reset 0x4000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+        // Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
         uint32_t data :32;
     } f;
     uint32_t w;
@@ -412,70 +422,70 @@ typedef union {
 } cpu_ctrl__SEMA_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_0
-// Word 0 of WFI loop
+// Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_bp 0
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_bw 64
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_reset 0x145051300000517
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Word 0 of WFI loop
+        // Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
         uint64_t dummy_rom_word_0 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_0_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_1
-// Word 1 of WFI loop
+// Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_bp 0
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_bw 64
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_reset 0xfff0069330551073
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Word 1 of WFI loop
+        // Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
         uint64_t dummy_rom_word_1 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_1_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_2
-// Word 2 of WFI loop
+// Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_bp 0
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_bw 64
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_reset 0x105000733046b073
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Word 2 of WFI loop
+        // Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
         uint64_t dummy_rom_word_2 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_2_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_3
-// Word 3 of WFI loop
+// Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_bp 0
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_bw 64
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_reset 0xffdff06f
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Word 3 of WFI loop
+        // Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.
         uint64_t dummy_rom_word_3 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_3_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_NULL
-// Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom
+// Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bp 0
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bw 64
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom
+        // Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.
         uint64_t dummy_rom_null :64;
     } f;
     uint64_t w;

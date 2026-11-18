@@ -250,6 +250,10 @@ programmer)
   cp $MOD/aou/partials/software-operation.adoc $MOD/aou/partials/pdf/
   ;;
 esac
+# Asciidoctor turns a -- between word characters into an em dash before it
+# parses links, so a link target that names such an ID carries the -- escaped.
+find "$MOD/aou/partials" -name '*.adoc' -type f -exec \
+  sed -i -E ':a; s@((xref:|<<|://)[^][[:space:]]*[[:alnum:]])--([[:alnum:]])@\1\\--\3@; ta' {} +
 
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,

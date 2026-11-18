@@ -44,7 +44,12 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
+from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
+    SEP_CPU_CTRL,
+    indexed_block_count,
+    sym,
+)
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -92,10 +97,10 @@ RESP_SLVERR = 2
 RESP_DECERR = 3
 
 
-# Entry count from the generated export (`inbound_filter_ctrl[16]`).
+# Entry count from the generated export (`inbound_filter_ctrl_wrap`, NUM_ENTRIES 16).
 # disable_all() must clear every entry or a leftover allow window survives a
 # walk that assumes it cleared them.
-INFILT_N_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
+INFILT_N_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL")
 WALK_ENTRIES = (0, 7)
 ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
 # Non-zero FILTER_CONFIG.src_id and a distinct AXI user[3:0] for the mismatch
@@ -137,7 +142,9 @@ WIDEN_ADJ_BELOW = (
 # The last table entry: the write-once lock is sticky until reset, so it must not
 # land on an entry the matrix or burst walk reprograms.
 WIDEN_ENTRY = INFILT_N_ENTRIES - 1
-FILTER_LOCKED_HI_BIT = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32
+FILTER_LOCKED_HI_BIT = (
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32
+)
 
 
 class SepInboundFilterWidenCfg:

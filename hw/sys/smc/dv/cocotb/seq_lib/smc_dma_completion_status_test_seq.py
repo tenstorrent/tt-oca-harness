@@ -5,7 +5,8 @@
 Specs hw/sys/smc/doc/dma.adoc, doc/programmer/src/smc-programming.adoc, vendor idma dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
-through its backdoor. Every AR and AW handshake of the exported SYS_OUT probes is recorded.
+through its backdoor. Every AR and AW handshake of the exported SYS_OUT probes is recorded with
+its address and time, and bit 322 of tb_cpu_interrupts and tb_dma_busy at every clk_smc_i rise.
 """
 
 from __future__ import annotations
@@ -50,11 +51,24 @@ STATUS_ROOM_MASK = 0xFF
 STATUS_BIT8 = 1 << 8
 STATUS_BIT9 = 1 << 9
 HOLD_POLLS = 6
+IRQ_BIT = 322
+#: NEXT_ID_0 resets to 2 and DONE_0 to 1 (dma.adoc, Retirement Counting).
+RESET_NEXT_ID = 2
 
 ROWS = 8
 ROW_LENGTH = 16
 SRC_STRIDE = 0x30
 DST_STRIDE = 0x28
+#: The queued commands: QUEUE1 has more rows than the backend issues with the read responses
+#: held, so its expansion stalls and the commands behind it wait in the request FIFO, whose
+#: depth dma.adoc (SMC DMA elaboration settings) gives as F2M_FIFO_DEPTH 4. The chapter does
+#: not state whether the command being expanded keeps its slot, so readiness may fall after
+#: F2M_FIFO_DEPTH - 1 or after F2M_FIFO_DEPTH launches behind QUEUE1.
+QUEUE1_ROWS = 40
+QUEUE1_LENGTH = 8
+QUEUE2_ROWS = 4
+F2M_FIFO_DEPTH = 4
+QUEUE_TAIL = 3
 
 _TB_SIGNALS = (
     "tb_output_axi_arvalid",
@@ -64,7 +78,21 @@ _TB_SIGNALS = (
     "tb_output_axi_awready",
     "tb_output_axi_awaddr",
     "tb_output_axi_resp_hold",
+    "tb_cpu_interrupts",
+    "tb_dma_busy",
 )
+
+
+def _pulse_widths(bits: list[int], lo: int, hi: int) -> list[int]:
+    """Widths, in samples, of the pulses whose first high sample lies in bits[lo:hi]."""
+    widths = []
+    for i in range(lo, min(hi, len(bits))):
+        if bits[i] and (i == 0 or not bits[i - 1]):
+            end = i
+            while end < len(bits) and bits[end]:
+                end += 1
+            widths.append(end - i)
+    return widths
 
 
 def _pattern(addr: int) -> int:
@@ -89,12 +117,16 @@ class _Job:
 
 
 class _BurstSampler:
-    """Records every AR and AW handshake address."""
+    """Records every AR and AW handshake address, the time of every AW handshake, and per
+    clk_smc_i rise the interrupt bit and tb_dma_busy."""
 
     def __init__(self, dut) -> None:
         self.dut = dut
         self.ar: list[int] = []
         self.aw: list[int] = []
+        self.aw_ps: list[int] = []
+        self.irq: list[int] = []
+        self.busy: list[int] = []
 
     @staticmethod
     def _bit(sig, name: str) -> int:
@@ -112,10 +144,16 @@ class _BurstSampler:
                 ready = self._bit(getattr(dut, f"tb_output_axi_{ch}ready"), f"{ch}ready")
                 if valid and ready:
                     store.append(self._bit(getattr(dut, f"tb_output_axi_{ch}addr"), f"{ch}addr"))
+                    if ch == "aw":
+                        self.aw_ps.append(int(get_sim_time("ps")))
+            self.irq.append((self._bit(dut.tb_cpu_interrupts, "tb_cpu_interrupts") >> IRQ_BIT) & 1)
+            self.busy.append(self._bit(dut.tb_dma_busy, "tb_dma_busy"))
 
 
 class smc_dma_completion_status_test_seq(SmcCsrSeq):
-    """DONE_0 and STATUS_0 reporting at idle, across a copy, for no-data commands and a hold."""
+    """DONE_0 and STATUS_0 reporting at idle, for the reset-state command, across two queued
+    copies, for no-data commands and under a hold (dma.adoc, Submission and Completion and
+    Retirement Counting)."""
 
     def __init__(self, name: str = "smc_dma_completion_status_test_seq") -> None:
         super().__init__(name)
@@ -128,6 +166,7 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
         self.copy_ar = 0
         self.copy_aw = 0
         self.case = 0
+        self.dma_writes = 0
 
     # -- plumbing ---------------------------------------------------------
 
@@ -205,6 +244,21 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
             (DMA_CTRL_NUM_REPETITIONS_HI, 0),
         ):
             await self.csr_write(f"{j.name}_0x{reg & 0xFFF:03x}", reg, value)
+            self.dma_writes += 1
+
+    async def _readback(self, name: str, config: int, length: int, reps: int) -> str:
+        """Reads CONFIG, LENGTH_LO and NUM_REPETITIONS_LO and requires the given values."""
+        got = {}
+        for label, reg, want in (
+            ("CONFIG", DMA_CTRL_CONFIG, config),
+            ("LENGTH_LO", DMA_CTRL_LENGTH_LO, length),
+            ("NUM_REPETITIONS_LO", DMA_CTRL_NUM_REPETITIONS_LO, reps),
+        ):
+            got[label] = await self.csr_read(f"{name}_{label}_RB", reg)
+            assert got[label] == want, (
+                f"{name}: {label} reads 0x{got[label]:x}, want 0x{want:x} before the launch"
+            )
+        return " ".join(f"{k}=0x{v:x}" for k, v in got.items())
 
     async def _launch(self, j: _Job) -> None:
         j.id = await self.csr_read(f"{j.name}_NEXT_ID", DMA_CTRL_NEXT_ID_0)
@@ -268,53 +322,184 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
         )
 
     async def _s4(self) -> str:
+        """The reset-state command: no descriptor register written since reset."""
         s = self.sampler
-        base = self._case_base()
-        j = _Job("COPY8", base, base + 0x800, ROW_LENGTH, ROWS)
-        self._seed(j)
+        assert self.dma_writes == 0, (
+            f"{self.dma_writes} DMA register writes before the reset-state command"
+        )
+        ar0, aw0, irq0 = len(s.ar), len(s.aw), len(s.irq)
+        j = _Job("RESET_STATE", 0, 0, 0, 0)
+        regs = await self._readback("RESET_STATE", 0, 0, 0)
+        await self._launch(j)
+        assert j.id == RESET_NEXT_ID, (
+            f"CHK-DMA-RESET-STATE-COMMAND FAIL: the first NEXT_ID_0 read returned {j.id}, "
+            f"want {RESET_NEXT_ID}"
+        )
+        polls = await self._await_done(j)
+        low = await self._busy_low_sample(len(s.busy), "RESET_STATE")
+        irq_end = low + 2
+        while len(s.irq) < irq_end:
+            await RisingEdge(cocotb.top.clk_smc_i)
+            await ReadOnly()
+        widths = _pulse_widths(s.irq, irq0, irq_end)
+        ar, aw = self._tally_window(ar0, aw0)
+        assert not ar and not aw, (
+            f"CHK-DMA-RESET-STATE-COMMAND FAIL: AR {[hex(a) for a in ar]} AW "
+            f"{[hex(a) for a in aw]} handshakes for the reset-state command"
+        )
+        assert widths == [1], (
+            f"CHK-DMA-RESET-STATE-COMMAND FAIL: bit {IRQ_BIT} pulse widths {widths} between the "
+            f"launch and one rise after tb_dma_busy read low, want one one-cycle pulse"
+        )
+        self._mark("S4")
+        return (
+            f"with no DMA register written since reset ({regs} read back at their reset "
+            f"values), the first NEXT_ID_0 read returned {j.id}; DONE_0 reached {j.id} after "
+            f"{polls} polls; AR {len(ar)} AW {len(aw)} "
+            f"handshakes; bit {IRQ_BIT} pulses {widths} (count, width in clk_smc_i cycles) over "
+            f"{irq_end - irq0} samples"
+        )
+
+    async def _busy_low_sample(self, first: int, name: str) -> int:
+        """Index of the first tb_dma_busy sample at or after `first` that reads low, once the
+        sample after it exists."""
+        s = self.sampler
+        for _ in range(POLL_LIMIT):
+            await RisingEdge(cocotb.top.clk_smc_i)
+            await ReadOnly()
+            lows = [i for i in range(first, len(s.busy)) if not s.busy[i]]
+            if lows and len(s.busy) > lows[0] + 1:
+                return lows[0]
+        raise AssertionError(f"{name}: tb_dma_busy did not read low in {POLL_LIMIT} rises")
+
+    async def _s5(self) -> list[str]:
+        dut = cocotb.top
+        s = self.sampler
+        queue = [
+            _Job("QUEUE1", 0, 0, QUEUE1_LENGTH, QUEUE1_ROWS),
+            _Job("QUEUE2", 0, 0, ROW_LENGTH, QUEUE2_ROWS),
+        ] + [_Job(f"QUEUE{n + 3}", 0, 0, ROW_LENGTH, 1) for n in range(QUEUE_TAIL)]
+        for j in queue:
+            base = self._case_base()
+            j.src, j.dst = base, base + 0x800
+            self._seed(j)
+        q1 = queue[0]
         ar0, aw0 = len(s.ar), len(s.aw)
         idle_bit8 = [(v >> 8) & 1 for v in self.idle_status]
         assert idle_bit8 == [0, 0], "STATUS_0 bit 8 high at the idle read before the copy"
-        await self._program(j)
-        t_submit = int(get_sim_time("ps"))
-        await self._launch(j)
-        samples: list[tuple[int, int, int]] = []
-        first_done = -1
+        after_launch: list[int] = []
+        held: list[int] = []
+        polls: list[tuple[int, int, int]] = []
+        await self._program(q1)
+        dut.tb_output_axi_resp_hold.value = 1
+        try:
+            await self._launch(q1)
+            after_launch.append(await self.csr_read("QUEUE1_STATUS", DMA_CTRL_STATUS_0))
+            for prev, j in zip(queue, queue[1:]):
+                if after_launch[-1] & STATUS_ROOM_MASK == 0:
+                    break
+                await self._program(j)
+                j.id = await self.csr_read(f"{j.name}_NEXT_ID", DMA_CTRL_NEXT_ID_0)
+                assert j.id == prev.id + 1, (
+                    f"{j.name}: NEXT_ID returned {j.id} after {prev.name} id {prev.id}"
+                )
+                after_launch.append(await self.csr_read(f"{j.name}_STATUS", DMA_CTRL_STATUS_0))
+            queue = [j for j in queue if j.id > 0]
+            last = queue[-1]
+            for n in range(HOLD_POLLS):
+                held.append(await self.csr_read(f"QUEUE_HELD_STATUS{n}", DMA_CTRL_STATUS_0))
+            waiting_rows = {j.src + n * j.src_stride for j in queue[1:] for n in range(j.reps)}
+            early = [a for a in s.ar[ar0:] if a in waiting_rows]
+            assert not early, (
+                f"CHK-DMA-STATUS-BIT8-QUEUED FAIL: rows {[hex(a) for a in early]} of the queued "
+                f"commands were read while the responses were held, so they did not wait behind "
+                f"QUEUE1"
+            )
+            assert all((v >> 8) & 1 for v in after_launch + held), (
+                f"CHK-DMA-STATUS-BIT8-QUEUED FAIL: STATUS_0 reads "
+                f"{[hex(v) for v in after_launch + held]} while commands waited behind QUEUE1, "
+                f"want bit 8 set on every read"
+            )
+            assert not any(v & STATUS_BIT9 for v in after_launch + held), (
+                f"CHK-DMA-STATUS-BIT8-QUEUED FAIL: STATUS_0 reads "
+                f"{[hex(v) for v in after_launch + held]} with bit 9 set"
+            )
+            room = [v & STATUS_ROOM_MASK for v in after_launch]
+            fell_at = len(room) - 1
+            assert room[:-1] == [STATUS_ROOM_MASK] * (len(room) - 1) and room[-1] == 0, (
+                f"CHK-DMA-FE-QUEUE-DEPTH FAIL: STATUS_0[7:0] after each launch "
+                f"{[hex(r) for r in room]}, want 0xFF until the one read of 0"
+            )
+            assert fell_at in (F2M_FIFO_DEPTH - 1, F2M_FIFO_DEPTH), (
+                f"CHK-DMA-FE-QUEUE-DEPTH FAIL: readiness read 0 after launch {fell_at} behind "
+                f"the stalled QUEUE1, want launch {F2M_FIFO_DEPTH - 1} or {F2M_FIFO_DEPTH} for "
+                f"a request FIFO of depth {F2M_FIFO_DEPTH}"
+            )
+            assert all(v & STATUS_ROOM_MASK == 0 for v in held), (
+                f"CHK-DMA-FE-QUEUE-DEPTH FAIL: STATUS_0 reads {[hex(v) for v in held]} with "
+                f"{F2M_FIFO_DEPTH} commands queued, want bits [7:0] 0 on every read"
+            )
+        finally:
+            await FallingEdge(dut.clk_smc_i)
+            dut.tb_output_axi_resp_hold.value = 0
+        retired_at = -1
         for poll in range(1, POLL_LIMIT + 1):
-            status = await self.csr_read("COPY8_STATUS", DMA_CTRL_STATUS_0)
-            t_status = int(get_sim_time("ps")) - t_submit
-            done = await self.csr_read("COPY8_DONE", DMA_CTRL_DONE_0)
-            samples.append((poll, (status >> 8) & 1, t_status))
-            if done == j.id:
-                first_done = poll
+            t_before = int(get_sim_time("ps"))
+            status = await self.csr_read("QUEUE_STATUS", DMA_CTRL_STATUS_0)
+            done = await self.csr_read("QUEUE_DONE", DMA_CTRL_DONE_0)
+            polls.append((poll, t_before, (status >> 8) & 1))
+            if done == last.id:
+                retired_at = poll
                 break
-            assert done < j.id, f"COPY8: DONE_0 reads {done}, past its id {j.id}"
-        assert first_done > 0, (
-            f"COPY8: DONE_0 did not reach {j.id} within {POLL_LIMIT} polls; "
-            f"last STATUS_0 bit 8 {samples[-1][1]}"
+            assert done < last.id, f"{last.name}: DONE_0 reads {done}, past its id {last.id}"
+        assert retired_at > 0, (
+            f"{last.name}: DONE_0 did not reach {last.id} within {POLL_LIMIT} polls"
         )
-        self.last_done = j.id
-        after = await self.csr_read("COPY8_STATUS_AFTER", DMA_CTRL_STATUS_0)
-        self._compare_dst(j, True)
+        self.last_done = last.id
+        t_before = int(get_sim_time("ps"))
+        after = await self.csr_read("QUEUE_STATUS_AFTER", DMA_CTRL_STATUS_0)
+        polls.append((retired_at + 1, t_before, (after >> 8) & 1))
+        aw_ps = [t for a, t in zip(s.aw[aw0:], s.aw_ps[aw0:]) if a == last.dst]
+        assert len(aw_ps) == 1, (
+            f"CHK-DMA-STATUS-BIT8-QUEUED FAIL: {len(aw_ps)} AW handshakes at the last queued "
+            f"row 0x{last.dst:x}, want one"
+        )
+        late = [(p, b) for p, t, b in polls if t > aw_ps[0]]
+        assert late and all(b == 0 for _, b in late), (
+            f"CHK-DMA-STATUS-BIT8-QUEUED FAIL: STATUS_0 bit 8 reads (poll, bit) {late} on the "
+            f"polls started after the last-row AW handshake at {aw_ps[0]} ps, want 0 on each"
+        )
+        first_zero = next(p for p, _, b in polls if b == 0)
+        for j in queue:
+            self._compare_dst(j, True)
+        rows = sum(j.reps for j in queue)
         ar, aw = self._tally_window(ar0, aw0)
-        assert ar and aw, f"8-row copy produced ar={len(ar)} aw={len(aw)} handshakes"
-        self.copy_ar, self.copy_aw = len(ar), len(aw)
-        self._mark("S4")
-        high = [p for p, b, _ in samples if b]
-        edges = [
-            f"{samples[i][0]}:{samples[i - 1][1]}->{samples[i][1]}"
-            for i in range(1, len(samples))
-            if samples[i][1] != samples[i - 1][1]
-        ]
-        trace = ",".join(f"{p}@{t}ps={b}" for p, b, t in samples)
-        return (
-            f"idle bit 8 {idle_bit8}; {ROWS}-row copy id {j.id} submitted; STATUS_0 bit 8 "
-            f"samples (poll@time since submit=bit) {trace}; samples with bit 8 high {high}; "
-            f"bit 8 transitions {edges}; DONE_0 first equals {j.id} at sample {first_done} of "
-            f"{len(samples)}; STATUS_0 bit 8 after retirement {(after >> 8) & 1} "
-            f"(STATUS_0 0x{after:x}); AR {len(ar)} AW {len(aw)} handshakes; destination equals "
-            f"source rows; timing is measured and printed (not specified)"
+        assert len(ar) >= rows and len(aw) >= rows, (
+            f"{len(queue)} queued copies of {rows} rows produced ar={len(ar)} aw={len(aw)} "
+            f"handshakes"
         )
+        self.copy_ar, self.copy_aw = len(ar), len(aw)
+        self._mark("S5")
+        ids = ", ".join(f"{j.name} {j.reps} rows id {j.id}" for j in queue)
+        trace = ",".join(f"{p}@{t}ps={b}" for p, t, b in polls)
+        return [
+            f"idle bit 8 {idle_bit8}; with the responses held {ids} launched; STATUS_0 after each "
+            f"launch {[hex(v) for v in after_launch]} and {len(held)} further reads "
+            f"{[hex(v) for v in held]} while the commands waited (bit 8 set on each, no row of "
+            f"a waiting command read); after the release the last queued row's AW handshake "
+            f"came at {aw_ps[0]} ps, the {len(late)} STATUS_0 reads started after it read bit 8 "
+            f"clear (poll@start=bit {trace}); first bit 8 clear at poll {first_zero}, DONE_0 "
+            f"equal to {last.id} at poll {retired_at} (the fall before the retirement is "
+            f"measured, not compared); AR {len(ar)} AW {len(aw)} handshakes; all {len(queue)} "
+            f"destinations equal their source rows",
+            f"with QUEUE1 stalled at the head of the request FIFO (no row of a later command "
+            f"read while held), STATUS_0[7:0] read {[hex(r) for r in room]} after the "
+            f"{len(queue)} launches: 0xFF after each launch until launch {fell_at} behind "
+            f"QUEUE1 read 0, within the {F2M_FIFO_DEPTH - 1}..{F2M_FIFO_DEPTH} a request FIFO "
+            f"of depth F2M_FIFO_DEPTH {F2M_FIFO_DEPTH} allows (whether the command being "
+            f"expanded keeps a slot is measured, not compared); {len(held)} further reads kept "
+            f"bits [7:0] 0; after the release all {len(queue)} commands retired",
+        ]
 
     async def _no_data(self, step: str, name: str, config: int, reps_lo: int) -> str:
         s = self.sampler
@@ -324,6 +509,7 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
         self._seed(j)
         ar0, aw0 = len(s.ar), len(s.aw)
         await self._program(j, reps_lo)
+        regs = await self._readback(name, config, ROW_LENGTH, reps_lo)
         await self._launch(j)
         polls = await self._await_done(j)
         ar, aw = self._tally_window(ar0, aw0)
@@ -333,20 +519,21 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
         assert self.copy_ar > 0 and self.copy_aw > 0
         self._mark(step)
         return (
-            f"command CONFIG 0x{config:x} NUM_REPETITIONS_LO {reps_lo} returned id {j.id}; "
+            f"command CONFIG 0x{config:x} NUM_REPETITIONS_LO {reps_lo} (read back {regs}) "
+            f"returned id {j.id}; "
             f"DONE_0 equals {j.id} after {polls} polls; AR {len(ar)} AW {len(aw)} at the "
             f"programmed addresses (source 0x{j.src:x}, destination 0x{j.dst:x}); "
-            f"destination {j.span} poison bytes unchanged; tally positive control: the 8-row "
-            f"copy counted AR {self.copy_ar} AW {self.copy_aw}"
+            f"destination {j.span} poison bytes unchanged; tally positive control: the queued "
+            f"copies counted AR {self.copy_ar} AW {self.copy_aw}"
         )
 
-    async def _s5(self) -> str:
-        return await self._no_data("S5", "ND_CLEAR", 0, ROWS)
-
     async def _s6(self) -> str:
-        return await self._no_data("S6", "REPS_ZERO", DMA_CONFIG_ENABLED_ND, 0)
+        return await self._no_data("S6", "ND_CLEAR", 0, ROWS)
 
     async def _s7(self) -> str:
+        return await self._no_data("S7", "REPS_ZERO", DMA_CONFIG_ENABLED_ND, 0)
+
+    async def _s8(self) -> str:
         dut = cocotb.top
         s = self.sampler
         base = self._case_base()
@@ -373,7 +560,7 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
             dut.tb_output_axi_resp_hold.value = 0
         count = await self._await_done(j)
         self._compare_dst(j, True)
-        self._mark("S7")
+        self._mark("S8")
         return (
             f"{HOLD_POLLS} STATUS_0 and DONE_0 reads while held completed OKAY "
             f"({'; '.join(polls)}); "
@@ -385,16 +572,21 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         await self._s1()
         steps = (
-            ("S2", self._s2, "CHK-DMA-DONE-RESET"),
-            ("S3", self._s3, "CHK-DMA-STATUS-IDLE"),
-            ("S4", self._s4, "CHK-DMA-STATUS-BIT8"),
-            ("S5", self._s5, "CHK-DMA-NO-DATA-ND-CLEAR"),
-            ("S6", self._s6, "CHK-DMA-NO-DATA-REPS-ZERO"),
-            ("S7", self._s7, "CHK-DMA-POLL-IN-FLIGHT"),
+            ("S2", self._s2, ("CHK-DMA-DONE-RESET",)),
+            ("S3", self._s3, ("CHK-DMA-STATUS-IDLE",)),
+            ("S4", self._s4, ("CHK-DMA-RESET-STATE-COMMAND",)),
+            ("S5", self._s5, ("CHK-DMA-STATUS-BIT8-QUEUED", "CHK-DMA-FE-QUEUE-DEPTH")),
+            ("S6", self._s6, ("CHK-DMA-NO-DATA-ND-CLEAR",)),
+            ("S7", self._s7, ("CHK-DMA-NO-DATA-REPS-ZERO",)),
+            ("S8", self._s8, ("CHK-DMA-POLL-IN-FLIGHT",)),
         )
-        for step, fn, chk in steps:
-            text = await fn()
-            self._chk(step, chk, text)
+        for step, fn, chks in steps:
+            texts = await fn()
+            if isinstance(texts, str):
+                texts = [texts]
+            assert len(texts) == len(chks), f"{step}: {len(texts)} texts for {chks}"
+            for chk, text in zip(chks, texts):
+                self._chk(step, chk, text)
         self._nonvac(steps)
 
     def _nonvac(self, steps) -> None:
@@ -402,7 +594,7 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
         assert [s for s, _ in self.steps] == order, f"step order {self.steps}"
         stamps = [ps for _, ps in self.steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing {stamps}"
-        want = [(s, c) for s, _, c in steps]
+        want = [(s, c) for s, _, cs in steps for c in cs]
         assert self.chk_steps == want, f"checker lines {self.chk_steps}"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence checker lines in step order, step stamps strictly "

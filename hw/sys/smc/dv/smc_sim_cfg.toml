@@ -76,6 +76,17 @@ incdirs = [
   "hw/common/assert",
   # ocah_path_plusargs.svh, the file-path plusarg guard tb_top runs at time 0.
   "hw/common/dv/vip/ocah_lib/uvm",
+  # filter_ctrl_reg.svh and alias_remap_reg.svh, the filter-entry and
+  # remap-region field positions and reset words smc_filt_fcov includes; the
+  # entry and region addresses keep coming from smc_top_addrmap_pkg and
+  # filter_ctrl_addrmap_pkg through the bender filelist.
+  "hw/ip/axi_filter/regs/gen/svh",
+  "hw/ip/axi_alias_remap/regs/gen/svh",
+  # smc_reg.svh, the SMC_BASE_CONFIG reset words and CLOCK_GATE_CONTROL field
+  # masks smc_map_row_fcov includes and the LOCKS bit positions and eFuse
+  # interface-control fields smc_efuse_ctrl_fcov includes; the register
+  # addresses keep coming from smc_top_addrmap_pkg through the bender filelist.
+  "hw/sys/smc/regs/gen/svh",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
@@ -136,11 +147,17 @@ sources = [
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # Clean-room AXI4 protocol checker, instantiated on the SMC AXI master
-  # links at the foot of the single-instance body of tb_top. The Verilator
-  # targets pass no --assert, so Verilator drops its two-state rules; the
-  # X-hygiene rules are gated by OCAH_INC_ASSERT, which Verilator does not
-  # define. The rules are live under VCS.
+  # links at the foot of the single-instance body of tb_top. Its two-state
+  # rules are live on both simulators (the Verilator targets pass --assert);
+  # the X-hygiene rules are gated by OCAH_INC_ASSERT, which Verilator does not
+  # define, so they are live under VCS only.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  # Four-state WDATA/RDATA known-ness rules beside each ocah_axi_sva instance;
+  # the rules need OCAH_INC_ASSERT, so they are live under VCS only.
+  "hw/sys/smc/dv/tb/smc_axi_data_known_sva.sv",
+  # Reset-protocol rules of the SMC chapters, instantiated once in the
+  # single-instance body of tb_top; two-state, live on both simulators.
+  "hw/sys/smc/dv/tb/smc_reset_sva.sv",
   # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
   # this list feeds the cocotb/Verilator filelist, and the
   # [frameworks.uvm.build] sources list (which replaces this one) repeats the
@@ -151,13 +168,17 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Order and depth points, one instance per inbound port in tb_top.
+  "hw/sys/smc/dv/cov/sv/smc_axi_order_fcov.sv",
   # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_map_row_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_ctrl_fcov.sv",
   # Spec-derived P1 coverage.
   "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
@@ -467,7 +488,11 @@ build_dir = "hw/sys/smc/dv/build/cocotb"
 # VERILATOR; VCS and Xcelium run them. The shared native profile sets
 # COMMON_CELLS_ASSERTS_OFF in its Verilator flags only, so the PULP
 # common_cells inline asserts are compiled out on Verilator and run on VCS
-# and Xcelium. Verilator also keeps +define+ASSERTS_OFF below.
+# and Xcelium. Verilator also keeps +define+ASSERTS_OFF below, so the
+# vendored RTL assertions stay off there. --assert evaluates the two-state
+# rules of the testbench SVA checkers (a failure prints %Error and stops the
+# run); --no-assert-case keeps the unique/priority-case checks of the DUT and
+# vendored RTL out of that set. The X-hygiene rules run on VCS only.
 
 # COVERIGN is an error: Verilator drops a covergroup construct it does not
 # support with only that warning, and then builds other bins than the
@@ -478,6 +503,8 @@ flags = [
   "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
+  "--no-assert-case",
 ]
 
 # Dual-SMC OCCP boot model. Same tb_top.sv, same smc_uvm_top; `SMC_DUAL` selects
@@ -512,6 +539,8 @@ flags = [
   "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
+  "--no-assert-case",
 ]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
@@ -556,6 +585,10 @@ incdirs = [
   # coming from smc_top_addrmap_pkg through the bender filelist. Same split as
   # hw/sys/sep/dv/sep_sim_cfg.toml.
   "hw/sys/smc/regs/gen/svh",
+  # filter_ctrl_reg.svh and alias_remap_reg.svh for smc_filt_fcov, as in the
+  # [build] table above.
+  "hw/ip/axi_filter/regs/gen/svh",
+  "hw/ip/axi_alias_remap/regs/gen/svh",
   "hw/sys/smc/dv/uvm/env",
   "hw/sys/smc/dv/uvm/seq_lib",
   "hw/sys/smc/dv/uvm/tests",
@@ -588,8 +621,6 @@ sources = [
   # must stay empty.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_dec.sv",
@@ -604,6 +635,8 @@ sources = [
   # TB collateral shared with the cocotb flow.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  "hw/sys/smc/dv/tb/smc_axi_data_known_sva.sv",
+  "hw/sys/smc/dv/tb/smc_reset_sva.sv",
   # Flow-shared functional-coverage modules; the same entries the [build]
   # sources list carries for the cocotb/Verilator flow.
   "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
@@ -612,13 +645,17 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Order and depth points, one instance per inbound port in tb_top.
+  "hw/sys/smc/dv/cov/sv/smc_axi_order_fcov.sv",
   # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_map_row_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_ctrl_fcov.sv",
   # Spec-derived P1 coverage.
   "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",

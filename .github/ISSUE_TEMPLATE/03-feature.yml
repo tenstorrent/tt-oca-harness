@@ -68,12 +68,11 @@ body:
     id: priority
     attributes:
       label: Priority
-      description: Project board. Pick P2 if you are not sure.
+      description: Project board.
       options:
         - P0
         - P1
         - P2
-      default: 2
     validations:
       required: true
   - type: dropdown

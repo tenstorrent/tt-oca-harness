@@ -14,6 +14,8 @@ class smu_axi_in_sep_aperture_test(smu_base_test):
     """ext_in reaches SEP SRAM, the SEP error paths and every SEP aperture address bit."""
 
     use_shared_env = True
+    # AXI monitor ext_in READY rule: the HELD stage withholds RREADY/BREADY 20000 cycles.
+    axi_monitor_ready_budget_ext_in = False
 
     async def run_scenario(self) -> None:
         self.logger.info("DUT_TAG=WRAPPER smu_axi_in_sep_aperture_test SEP=1 ext_in -> sep_in")

@@ -67,12 +67,12 @@ They contribute to the I2C/I3C identifier fallback described in <<interface-addr
 The eFuse driver reads I2C/I3C identifier slots 0, 1, 3, 6, and 7 and the `RESERVED_1` transport timeout.
 Early assembly additionally reads:
 
-* `RESERVED_0[6]`, which requests explicit SRAM clearing; and
-* `RESERVED_2[0]`, which permits boot to continue after an MBIST or memory-repair failure while preserving the failure code in scratch register 15.
+* `SMC_CONFIG.sram_auto_zero_disable` (bit 7), which requests explicit SRAM clearing; and
+* `SMC_CONFIG.dft_ignore_error` (bit 15), which permits boot to continue after an MBIST abort, MBIST failure or memory-repair failure while preserving the failure code in scratch register 15.
 
 === SRAM initialization
 
-Hardware auto-zero is assumed unless either `SRAM_AUTO_ZERO_DISABLE` or eFuse `RESERVED_0[6]` is set.
+Hardware auto-zero is assumed unless either `SRAM_AUTO_ZERO_DISABLE` or eFuse `SMC_CONFIG.sram_auto_zero_disable` is set.
 When explicit clearing is requested, `__metal_sram_init_early`:
 
 . disables machine interrupts while configuring the operation;
@@ -99,8 +99,7 @@ The MBIST check uses:
 
 If MBIST was not run, the ROM continues.
 If it passed, the ROM continues.
-An abort records `0xDEADC0DE` and halts.
-A failure records `0xDEADBEEF` and halts unless eFuse `RESERVED_2[0]` permits continuation.
+An abort records `0xDEADC0DE` and a failure records `0xDEADBEEF`; either halts unless eFuse `SMC_CONFIG.dft_ignore_error` permits continuation.
 Scratch register 15 contains `0x12345678` while the MBIST result check is in
 progress.
 `MEM_BIST_BYPASS` records `0x12340002` and skips the check.
@@ -111,7 +110,7 @@ The memory-repair check uses:
 * bit 1, `mem_repair_success`.
 
 If repair was not run or succeeded, the final status is normally `0x600DCAFE`.
-A failure records `0xBADC0FFE` and halts unless eFuse `RESERVED_2[0]` permits continuation.
+A failure records `0xBADC0FFE` and halts unless eFuse `SMC_CONFIG.dft_ignore_error` permits continuation.
 `MEM_REPAIR_BYPASS` records `0x12340001` and skips the check.
 On its normal completion path, the repair check preserves a preceding MBIST failure, timeout, or bypass status.
 If both bypass straps are asserted, the memory-repair check runs second and

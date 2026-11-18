@@ -1415,7 +1415,7 @@ greater than this setting.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>FMTLVL</ipxact:name>
-            <ipxact:description>Controller TX FIFO fill level.</ipxact:description>
+            <ipxact:description>Controller TX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:bitWidth>12</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
@@ -1423,7 +1423,7 @@ greater than this setting.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>RXLVL</ipxact:name>
-            <ipxact:description>Controller RX FIFO fill level.</ipxact:description>
+            <ipxact:description>Controller RX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:bitWidth>12</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
@@ -1437,7 +1437,7 @@ greater than this setting.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>TXLVL</ipxact:name>
-            <ipxact:description>Target TX FIFO fill level.</ipxact:description>
+            <ipxact:description>Target TX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1450,7 +1450,7 @@ greater than this setting.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ACQLVL</ipxact:name>
-            <ipxact:description>Target RX FIFO fill level.</ipxact:description>
+            <ipxact:description>Target RX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

@@ -27,6 +27,8 @@ class smc_mailbox_access_error_test(smc_base_test):
         "CHK-ERRFLAGS-STICKY-ONE-READ-CLEARS",
         "CHK-FULL-WRITE-FLAGS",
         "CHK-FULL-WRITE-RECOVERS",
+        "CHK-MBOX-ERRFLAGS-UPPER-HALF-CLEARS",
+        "CHK-MBOX-NARROW-READ-POPS",
         "CHK-NONVAC",
         "CHK-READ-ONLY-WRITES-NO-SIDE-EFFECT-OBSERVED",
         "CHK-READ-ONLY-WRITES-REJECTED",
@@ -34,7 +36,7 @@ class smc_mailbox_access_error_test(smc_base_test):
         "CHK-WRITE-DATA-READ-EMPTY",
         "CHK-WRITE-DATA-READ-NO-EFFECT",
     )
-    min_evidence = 19
+    min_evidence = 21
 
     auto_protocol_vip = False
 

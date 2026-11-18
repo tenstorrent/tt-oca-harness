@@ -11,6 +11,11 @@ target disabled (the flags stay clear) and then enabled (both set). The flags
 read set on repeated reads, and each clears only on its own written one. Which
 disable the record survives: the specification does not state the value;
 the values after `CTRL = 0` are logged and never compared.
+
+`CTRL.ACQ_START_STOP_EN` stays 0 throughout. `i2c.rdl` states that at 0 the
+START and STOP symbols are not written into the ACQ FIFO and firmware relies on
+the detect flags instead, so the enabled transfer must leave exactly one entry
+in the FIFO, the data byte with `SIGNAL` 0, and no entry carrying the address.
 """
 
 from __future__ import annotations
@@ -22,10 +27,16 @@ from cocotb.utils import get_sim_time
 from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_i2c_field_masks import (
+    I2C_ACQ_SIGNAL_NONE,
+    I2C_CTRL_ACQ_START_STOP_EN,
     I2C_CTRL_ENABLETARGET,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_TARGET_FIFO_STATUS_ACQLVL_BM,
+    I2C_TARGET_FIFO_STATUS_ACQLVL_BP,
     I2C_WRAP_CTRL_TARGET,
+    acq_abyte,
+    acq_signal,
 )
 from .smc_i2c_master_target_test_seq import _i2c_u32
 from .smc_i2c_protocol_vip import SmcI2cMasterVip
@@ -56,6 +67,8 @@ def _i2c0(register: str) -> int:
 
 I2C0_INTR_STATE = _i2c0("INTR_STATE")
 I2C0_TARGET_EVENTS = _i2c0("TARGET_EVENTS")
+I2C0_TARGET_FIFO_STATUS = _i2c0("TARGET_FIFO_STATUS")
+I2C0_ACQDATA = _i2c0("ACQDATA")
 
 START_DETECT = _i2c_u32("I2C__TARGET_EVENTS__START_DETECT_bm")
 STOP_DETECT = _i2c_u32("I2C__TARGET_EVENTS__STOP_DETECT_bm")
@@ -70,10 +83,10 @@ RETAIN_WAIT_CYCLES = 256
 FLAG_POLL_READS = 40
 FENCE_TERMS = ["S1", "S2", "S3", "S4", "S5"]
 FENCE_CHECKERS = {
-    "S2": "CHK-I2C-TGT-FLAG-DISABLED-NOSET",
-    "S3": "CHK-I2C-TGT-FLAG-SET",
-    "S4": "CHK-I2C-TGT-FLAG-STICKY-W1C",
-    "S5": "CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS",
+    "S2": ("CHK-I2C-TGT-FLAG-DISABLED-NOSET",),
+    "S3": ("CHK-I2C-TGT-FLAG-SET", "CHK-I2C-ACQ-NO-SYMBOLS"),
+    "S4": ("CHK-I2C-TGT-FLAG-STICKY-W1C",),
+    "S5": ("CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS",),
 }
 
 
@@ -89,12 +102,22 @@ class smc_i2c_target_event_flags_test_seq(SmcCsrSeq):
     def _step_done(self, step: str) -> None:
         self.fence.append((step, int(get_sim_time(unit="ps"))))
 
-    def _chk(self, step: str, text: str) -> None:
+    def _chk(self, step: str, text: str, which: int = 0) -> None:
+        checker = FENCE_CHECKERS[step][which]
         assert self.fence and self.fence[-1][0] == step, (
-            f"{FENCE_CHECKERS[step]} would print before step {step} completed"
+            f"{checker} would print before step {step} completed"
         )
-        cocotb.log.info("%s: %s", FENCE_CHECKERS[step], text)
-        self.printed.append(FENCE_CHECKERS[step])
+        cocotb.log.info("%s: %s", checker, text)
+        self.printed.append(checker)
+
+    async def _drain_acq(self, label: str) -> list[tuple[int, int]]:
+        fifo = await self.csr_read(f"{label}_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
+        level = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
+        entries = []
+        for n in range(level):
+            word = await self.csr_read(f"{label}_ACQ_{n}", I2C0_ACQDATA)
+            entries.append((acq_signal(word), acq_abyte(word)))
+        return entries
 
     async def _events(self, label: str) -> int:
         value = await self.csr_read(label, I2C0_TARGET_EVENTS)
@@ -168,14 +191,34 @@ class smc_i2c_target_event_flags_test_seq(SmcCsrSeq):
 
     async def _s3(self) -> None:
         await self.csr_write("I2C0_CTRL_TARGET", I2C0_CTRL, I2C_CTRL_ENABLETARGET)
+        ctrl = await self.csr_read("I2C0_CTRL_TARGET_RB", I2C0_CTRL)
+        assert ctrl & I2C_CTRL_ACQ_START_STOP_EN == 0, (
+            f"CTRL=0x{ctrl:08x} has ACQ_START_STOP_EN set"
+        )
         await self._transfer()
         events = await self._wait_both_set("SET_EVENTS")
+        entries = await self._drain_acq("SET_ACQ")
+        wanted = [(I2C_ACQ_SIGNAL_NONE, PAYLOAD[0])]
+        assert entries == wanted, (
+            f"ACQ FIFO holds {entries} as (SIGNAL, byte) after one START, address "
+            f"0x{TARGET_ADDR << 1:02x}, data 0x{PAYLOAD[0]:02x} and STOP with ACQ_START_STOP_EN "
+            f"clear; i2c.rdl keeps the START and STOP symbols out of the FIFO at 0, so only "
+            f"{wanted} may be there"
+        )
         self._step_done("S3")
         self._chk(
             "S3",
             f"transfer to 0x{TARGET_ADDR:02x} data 0x{PAYLOAD[0]:02x} with ENABLETARGET set; "
             f"TARGET_EVENTS=0x{events:08x} START_DETECT=1 STOP_DETECT=1 "
             f"(lifecycle set=transfer observed=both-1)",
+        )
+        self._chk(
+            "S3",
+            f"with CTRL.ACQ_START_STOP_EN clear (CTRL=0x{ctrl:08x}) the same transfer left "
+            f"exactly {len(entries)} ACQ entry, (SIGNAL 0x{entries[0][0]:x}, byte "
+            f"0x{entries[0][1]:02x}): no START, STOP or address entry, while START_DETECT and "
+            f"STOP_DETECT carried the symbols",
+            which=1,
         )
 
     async def _s4(self) -> None:
@@ -237,7 +280,8 @@ class smc_i2c_target_event_flags_test_seq(SmcCsrSeq):
         stamps = [s for _, s in self.fence]
         assert order == FENCE_TERMS, f"fence order {order}, expected {FENCE_TERMS}"
         assert all(a < b for a, b in zip(stamps, stamps[1:])), f"fence stamps {stamps}"
-        assert self.printed == [FENCE_CHECKERS[s] for s in FENCE_TERMS[1:]], self.printed
+        expected = [c for s in FENCE_TERMS[1:] for c in FENCE_CHECKERS[s]]
+        assert self.printed == expected, self.printed
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s ps",
             " < ".join(order),

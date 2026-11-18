@@ -62,6 +62,7 @@ OPS: Mapping[str, OpSpec] = {
         _PM, "set_encryption_kdf_input", "kdf_input", hex_args=("kdf_input",)
     ),
     "declare_payload_length": _op(_PM, "declare_payload_length", "payload_length"),
+    "set_bl1_load_end": _op(_PM, "set_bl1_load_end", "end"),
     "set_overlapping_payload_offset": _op(_PM, "set_overlapping_payload_offset", "value"),
     # sep_manifest_mutate setters only rehash, so the signature is refreshed here.
     "set_demotion": _op(

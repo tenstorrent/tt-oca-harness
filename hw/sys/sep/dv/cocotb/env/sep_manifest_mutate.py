@@ -410,6 +410,24 @@ _OCA_BOOT_C = _SEP_ROOT / "bootrom" / "prod" / "src" / "oca_boot.c"
 _STATUS_VALUES_H = _SEP_ROOT / "bootrom" / "prod" / "include" / "status_values.h"
 
 
+def rom_status(name: str) -> int:
+    """Value of one ``SEP_MSG_*`` status, by name, from the ROM's status_values.h."""
+    return _c_define(_STATUS_VALUES_H, name)
+
+
+_ERRORS_H = _SEP_ROOT / "bootrom" / "prod" / "include" / "errors.h"
+
+
+def rom_status_word(kind: str, name: str) -> int:
+    """The cold_scratch[1] word the ROM writes for ``report_status(STATUS_TYPE_<kind>, <name>)``.
+
+    ``STATUS_ENCODE`` in errors.h: type in bits 31:24, the BL0 status id in 23:16 and the
+    ``SEP_MSG_*`` value in 15:0.
+    """
+    kind_value = _c_define(_ERRORS_H, f"STATUS_TYPE_{kind}")
+    return (kind_value << 24) | (_c_define(_ERRORS_H, "STATUS_ID_BL0") << 16) | rom_status(name)
+
+
 def rom_status_for_result(boot_error: int) -> int:
     """The ``SEP_MSG_*`` value the ROM reports for one ``MANIFEST_ERR=`` code."""
     return _c_define(_STATUS_VALUES_H, rom_status_name_for_result(boot_error))

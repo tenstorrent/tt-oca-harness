@@ -34,10 +34,13 @@ segment; Tx words are seeded. The shared SPI monitor
 (``env/sep_spi_wire_monitor.py``) decodes every frame from the pad taps, and
 the scoreboard (``env/sep_spi_scoreboard.py``) grades each frame of each leg
 at its width: Tx bytes queued against the wire decode; Rx bytes driven against
-the wire decode and the RXDATA words the DUT delivered (``ByteOrder = 1``: the
-first byte on the wire is TXDATA[7:0], the first byte received lands in
-RXDATA[7:0]). Each width also runs one Tx and one Rx data frame of seeded
-length.
+the wire decode and the RXDATA words the DUT delivered. No SEP text states the
+in-word byte order of TXDATA and RXDATA (``theory_of_operation.md:415-419``
+names two), so one ``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``)
+grades every Tx and Rx data word of the leaf in one order, the same order for
+every word; the order seen is logged once on OBS-SPI-BYTEORDER with
+STATUS.BYTEORDER, not graded. Each width also runs one Tx and one Rx data
+frame of seeded length.
 
 Monitor sessions. The monitor runs from the first segment to the end, except
 across each SW_RST abort: it stops before the aborted segment starts and restarts
@@ -61,8 +64,13 @@ Checkers:
                    (RXQD > RX_WATERMARK) one below and one above RX_WATERMARK
                    0, 1 and a drawn mid value, and reads 0 when a drain takes
                    RXQD to RX_WATERMARK minus 1. Control: TX_WATERMARK 1 with
-                   TXQD 0 gives TXWM=1. The TX cells at watermark 1, a mid value
-                   and the TX depth are logged with OBS-SPI-WM only.
+                   TXQD 0 gives TXWM=1. Control: CONTROL reads back each
+                   RX_WATERMARK value the leg writes before its RXWM reads,
+                   else CTRL-MISSING. At the drawn control watermark Wt (1, a
+                   mid value or the TX depth) TXWM equals (q < Wt) at each
+                   occupancy q: TXWM "If high, the amount of data in the TX
+                   FIFO has fallen below the level of CONTROL.TX_WATERMARK
+                   words" (spi_host.hjson:282).
   CHK-SPI-QD       With ACTIVE=0 each RXDATA read lowers RXQD by 1. TXFULL is
                    set with ACTIVE=1 during a Tx segment of twice the TX depth
                    in words, and that segment ends with every sck cycle. An Rx
@@ -72,6 +80,41 @@ Checkers:
                    a count). TXFULL/TXEMPTY and RXFULL/RXEMPTY
                    are never set together in any STATUS read; each of the four
                    flags is set in at least one read (control).
+  CHK-SPI-QD-IDLE  Each STATUS read with ACTIVE=0 at a known FIFO content
+                   shows TXQD and RXQD equal to the words in each FIFO: after
+                   the COMMAND write of the TX stall leg (0 and 0), after each
+                   idle Rx segment of the RX depth search and the RX
+                   watermark leg (0 and r), after the RX-full idle segment
+                   (0 and R), and after the extra 4-byte Rx segment behind the
+                   full RX FIFO (0 and R: no RXDATA read and no TXDATA write
+                   since, and a full FIFO of RxDepth words takes no more;
+                   spi_host.hjson:98-101). A segment that stalls on the full
+                   FIFO holds ACTIVE=1, so that read is graded only when the
+                   segment ended with ACTIVE=0; INFO-SPI-QD-EXTRA logs per
+                   width whether it was graded. RXQD/TXQD give "how many unread/unsent 32-bit
+                   words are currently in the RX/TX FIFO"; only "When active"
+                   may they under- or overestimate (spi_host.hjson:322-333).
+                   A read with ACTIVE=1 is logged as OBS-SPI-QD. At least one
+                   graded read per run (required evidence).
+  CHK-SPI-QD-ACTIVE At each STATUS read of the RX stall drain with ACTIVE=1,
+                   RXQD <= ceil(lanes * e / 32) - d: e is the leading sck
+                   edges on the pads from the COMMAND write to the end of the
+                   read, d the RXDATA reads issued before it. RXQD counts
+                   "unread 32-bit words" in the RX FIFO and "When active" may
+                   only underestimate
+                   (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:105-107``),
+                   so an RXQD above the words received and not yet read
+                   fails. Both counts are taken at the pads and the bus, not
+                   from STATUS. One PASS line per width with the sample
+                   count, which must be at least 1 (the first drain read is
+                   in the stalled segment).
+  OBS-SPI-TXQD-ACTIVE At each STATUS read of the TX stall leg with ACTIVE=1:
+                   TXQD, the TXDATA words written, the words shifted out
+                   (floor(lanes * e / 32), e the leading sck edges since the
+                   COMMAND write) and their difference. Logged, not graded:
+                   TXQD counts the TX FIFO only, and no text bounds the words
+                   held past it in the byte select and the shift register
+                   (``theory_of_operation.md:684,699``).
   CHK-SPI-CMDQD    COMMANDs are accepted while the head segment waits for
                    TX data; after one TXDATA word releases the head, every
                    queued command shows one chip-select-low window and the
@@ -183,10 +226,12 @@ Checkers:
 Every CHK line of a per-width leg carries ``width=x1|x2|x4``; the TX
 watermark leg has no segment and no width.
 
-Not graded: TXQD and RXQD at idle (logged with OBS-SPI-QD), TXQD and RXQD while
-ACTIVE=1, the CMDQD at which READY stays 0 and the head-segment count of CMDQD
-(logged with OBS-SPI-CMDQD-FULL), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F against the
-reset value, overflow and underflow.
+Not graded: TXQD while ACTIVE=1 (logged with OBS-SPI-QD and OBS-SPI-TXQD-ACTIVE),
+RXQD while ACTIVE=1 outside the RX stall drain (OBS-SPI-QD), the CMDQD at which
+READY stays 0 and the head-segment count of CMDQD (logged with
+OBS-SPI-CMDQD-FULL), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F
+against the reset value, the in-word byte order (OBS-SPI-BYTEORDER), overflow
+and underflow.
 
 Run mode: no_cpu (target ``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+sep_spi_four_lane``, no ``rst_ni`` pulse. Every draw comes from
@@ -204,10 +249,10 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_lane_responder import (
+    SepSpiByteOrder,
     SepSpiLaneResponder,
     run_lane_frame,
     spi_lane_fcov,
-    unpack_rx_words,
 )
 from env.sep_spi_pad_sampler import SepSpiPadSampler
 from env.sep_spi_scoreboard import SepSpiScoreboard
@@ -245,6 +290,9 @@ TEST = "sep_spi_fifo_stall_watermark_rand_test"
 _R = SPI_CONTROLLER
 # Bits per sck cycle at COMMAND.SPEED 0, 1, 2 (spi_controller.adoc, COMMAND).
 LANES = {0: 1, 1: 2, 2: 4}
+# The sck idle level (CPOL 0); a leading edge leaves it.
+SCK_IDLE = 0
+WORD_BITS = 32
 SPEED = {lanes: speed for speed, lanes in LANES.items()}
 # The stall window, in sck periods (a test parameter).
 STALL_PERIODS = 8
@@ -330,6 +378,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-RXSTALL",
         "CHK-SPI-WM",
         "CHK-SPI-QD",
+        "CHK-SPI-QD-IDLE",
+        "CHK-SPI-QD-ACTIVE",
         "CHK-SPI-CMDQD",
         "CHK-SPI-CMDQD-DEPTH",
         "CHK-SPI-EVENT-WM",
@@ -392,7 +442,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 self.data_tally[kind][1] += len(value)
 
     def _tx_expect(self, mark: int, words: list[int], *, leg: str) -> None:
-        """A Tx frame of ``words`` (ByteOrder 1) at the current width."""
+        """A Tx frame of the TXDATA ``words`` at the current width.
+
+        ``data`` is the bytes ``pack_tx_words`` packs into ``words``; the
+        scoreboard grades the wire in the leaf's in-word byte order.
+        """
         data = b"".join((w & 0xFFFF_FFFF).to_bytes(4, "little") for w in words)
         self._expect(mark, [(LANES[self.speed], "tx", data)], leg=leg)
 
@@ -407,7 +461,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self._expect(
             mark,
             [(LANES[self.speed], "rx", rx)],
-            delivered=unpack_rx_words(words, len(rx)),
+            delivered=self.order.bytes_of(
+                words, len(rx), expect=rx, where=f"width={self._w} leg={leg}"
+            ),
             leg=leg,
         )
 
@@ -507,6 +563,53 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             st.active,
         )
 
+    def _lead_edges(self, mark, st: SpiStatus) -> int:
+        """Leading sck edges on the pads from ``mark`` to the end of the read ``st``."""
+        edges = self.pads.sck_edges_between(mark.clk + 1, st.clk1 + 1)
+        return sum(1 for _, lvl in edges if lvl != SCK_IDLE)
+
+    def _obs_txqd_active(self, st: SpiStatus, mark, written: int, where: str) -> None:
+        """OBS-SPI-TXQD-ACTIVE: TXQD with the pad-side count of a read with ACTIVE=1."""
+        if not st.active:
+            return
+        shifted = LANES[self.speed] * self._lead_edges(mark, st) // WORD_BITS
+        self.logger.info(
+            "OBS-SPI-TXQD-ACTIVE seed=%d width=%s where=%s txqd=%d written=%d shifted=%d unsent=%d",
+            self.seed,
+            self._w,
+            where,
+            st.txqd,
+            written,
+            shifted,
+            written - shifted,
+        )
+
+    def _chk_qd_idle(self, st: SpiStatus, where: str, tx: int, rx: int) -> bool:
+        """Grade TXQD/RXQD against the known FIFO content when ACTIVE=0; True when graded."""
+        if st.active:
+            self._obs_qd(st, where)
+            return False
+        line = (
+            f"seed={self.seed} where={where} txqd={st.txqd} expect_txqd={tx} "
+            f"rxqd={st.rxqd} expect_rxqd={rx} active=0"
+        )
+        if st.txqd != tx or st.rxqd != rx:
+            self._fail("CHK-SPI-QD-IDLE", line)
+        self.logger.info("CHK-SPI-QD-IDLE PASS %s", line)
+        return True
+
+    def _obs_txstall(self, st: SpiStatus, where: str) -> None:
+        self.logger.info(
+            "OBS-SPI-TXSTALL seed=%d where=%s txstall=%d active=%d txqd=%d rxqd=%d cs_low=%d",
+            self.seed,
+            where,
+            st.txstall,
+            st.active,
+            st.txqd,
+            st.rxqd,
+            int(self.pads.cs_low()),
+        )
+
     def _done_read(self, st: SpiStatus, mark, windows: int) -> bool:
         """True when ``st`` ends a segment: the windows are complete before the read."""
         wins = self.pads.windows_since(mark)
@@ -579,7 +682,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         # Segment bytes come from their own stream, in leaf order.
         self.data_rng = SepSeededRng(rng.getrandbits(63))
         self.logger.info(
-            "PLAN seed=%d widths=%s tx_gap_clk=%d rx_gap_clk=%d rx_burst=%d clkdiv=%d "
+            "INFO-PLAN seed=%d widths=%s tx_gap_clk=%d rx_gap_clk=%d rx_burst=%d clkdiv=%d "
             "mid_tx_raw=%d mid_rx_raw=%d tx_ctrl_class=%s rx_order=%s m_raw=%d m1_raw=%d "
             "n_cmds=%d payload_words=%d payload0=0x%08x stall_periods=%d legs=%s",
             self.seed,
@@ -603,7 +706,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         )
         for w in (1, 2, 4):
             self.logger.info(
-                "PLAN seed=%d width=x%d %s",
+                "INFO-PLAN seed=%d width=x%d %s",
                 self.seed,
                 w,
                 " ".join(f"{k}={v}" for k, v in self.per_width[w].items()),
@@ -612,7 +715,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
         self.pads = SepSpiPadSampler().start()
-        self.pads.set_idle_level(0)
+        self.pads.set_idle_level(SCK_IDLE)
         self.ops = SepSpiHostOps(self, clock=self.pads.now)
         self.wire = SepSpiWireMonitor(cocotb.top)
         # Every frame here is a raw segment frame, not a flash command; the
@@ -624,6 +727,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self._sess_first = 0
         self._sess_tally = 0
         self._session = 0
+        self.order = SepSpiByteOrder()
         self.speed = SPEED[self.widths[0]]
         try:
             await self._run()
@@ -647,7 +751,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self.ops.clean_state()
         st = await self.ops.read_status()
         self.logger.info(
-            "START seed=%d txempty=%d rxempty=%d %s", self.seed, st.txempty, st.rxempty, st.fmt()
+            "INFO-START seed=%d txempty=%d rxempty=%d %s",
+            self.seed,
+            st.txempty,
+            st.rxempty,
+            st.fmt(),
         )
 
         self.tx_depth = await self._find_tx_depth()
@@ -657,7 +765,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             if self.clkdiv_now != self.clkdiv:
                 self._gate(False)
                 await self._set_clkdiv(self.clkdiv)
-            self.sb = SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed)
+            self.sb = SepSpiScoreboard(
+                self.wire, None, self.logger, seed=self.seed, order=self.order
+            )
             self.data_tally = {"tx": [0, 0], "rx": [0, 0]}
             log0 = len(self.ops.status_log)
             rx_stall = await self._rx_stall_leg()
@@ -682,6 +792,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self._session_end()
         await self.wire.finish(self.logger, seed=self.seed)
         self._gate(False)
+        self.order.log_obs(
+            self.logger, self.seed, status_byteorder=self.ops.status_log[-1].byteorder
+        )
         self.result_pass(TEST, self.seed, 10)
 
     def _lane_data(self) -> None:
@@ -711,7 +824,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         else:
             self._ctrl_missing("CHK-SPI-QD", f"TXFULL=0 after {written} TXDATA writes")
         self.logger.info(
-            "DRAW seed=%d tx_depth=%d (words written before TXFULL=1)", self.seed, written
+            "INFO-DRAW seed=%d tx_depth=%d (words written before TXFULL=1)", self.seed, written
         )
         line = (
             f"written={written} expect={TX_ACCEPT_WORDS} txfull=1 active=0 "
@@ -752,7 +865,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         edges = len(self.pads.sck_edges_between(st0.clk1, st1.clk0))
         span = st1.clk0 - st0.clk1
         self.logger.info(
-            "RX stall window seed=%d clocks=%d (>= %d) sck_edges=%d start: %s end: %s",
+            "INFO-RX-STALL-WINDOW seed=%d clocks=%d (>= %d) sck_edges=%d start: %s end: %s",
             self.seed,
             span,
             self._stall_win(),
@@ -771,10 +884,13 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         # Step 5: drain in bursts with the drawn gap until the segment is done.
         drained = 0
         words: list[int] = []
+        qd_samples: list[str] = []
         deadline = self.pads.now() + 4 * self._seg_bound(RX_STALL_BYTES, self.speed)
         while True:
             for _ in range(self.rx_burst):
                 st = await self.ops.read_status()
+                if st.active:
+                    self._chk_qd_active(st, mark, drained, qd_samples)
                 if st.rxempty:
                     break
                 words.append(await self.ops.rd(RXDATA))
@@ -790,6 +906,13 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             self._fail(chk, f"drained_words={drained} expect={RX_STALL_WORDS}")
         if cycles != exp_cycles:
             self._fail(chk, f"cycles={cycles}/{exp_cycles} drained_words={drained}")
+        qd_line = (
+            f"seed={self.seed} width={self._w} samples={len(qd_samples)} "
+            f"rxqd/bound={','.join(qd_samples[:8])}{',...' if len(qd_samples) > 8 else ''}"
+        )
+        if not qd_samples:
+            self._ctrl_missing("CHK-SPI-QD-ACTIVE", qd_line)
+        self.logger.info("CHK-SPI-QD-ACTIVE PASS %s", qd_line)
         self._rx_expect(pending, words, leg="rx_stall")
         self.logger.info(
             "%s PASS seed=%d width=%s rxfull=1 rxstall=1 sck_edges_in_stall=0 "
@@ -809,6 +932,22 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         )
         return {"s": st0.rxqd}
 
+    def _chk_qd_active(self, st: SpiStatus, mark, reads: int, samples: list[str]) -> None:
+        """CHK-SPI-QD-ACTIVE at one drain STATUS read with ACTIVE=1 of the RX stall leg.
+
+        The segment is the only one since ``mark`` and moves RX data only, so
+        every leading sck edge since ``mark`` carries ``lanes`` received bits.
+        """
+        edges = self._lead_edges(mark, st)
+        bound = -(-LANES[self.speed] * edges // WORD_BITS) - reads
+        samples.append(f"{st.rxqd}/{bound}")
+        if st.rxqd > bound:
+            self._fail(
+                "CHK-SPI-QD-ACTIVE",
+                f"width={self._w} rxqd={st.rxqd} bound={bound} lead_edges={edges} "
+                f"rxdata_reads={reads} lanes={LANES[self.speed]} {st.fmt()}",
+            )
+
     async def _find_rx_depth(self, s: int) -> int:
         """First idle Rx segment length r (from max(1, s-1) up) whose read shows RXFULL=1."""
         self._gate(False)
@@ -822,13 +961,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 below = st
             if st.rxfull:
                 break
-            self._obs_qd(st, f"rx_depth_search r={r} rxfull=0")
+            self._chk_qd_idle(st, f"rx_depth_search r={r} rxfull=0", 0, r)
             self._rx_expect(pending, await self._drain_words(), leg=f"rx_depth_search_r{r}")
             if r >= QD_MAX:
                 self._ctrl_missing("CHK-SPI-QD", f"RXFULL=0 at r={r}, the largest RXQD")
             r += 1
-        self._obs_qd(st, f"rx_depth_search r={r} rxfull=1")
-        self.logger.info("DRAW seed=%d rx_depth=%d (search start %d)", self.seed, r, max(1, s - 1))
+        self._chk_qd_idle(st, f"rx_depth_search r={r} rxfull=1", 0, r)
+        self.logger.info(
+            "INFO-DRAW seed=%d rx_depth=%d (search start %d)", self.seed, r, max(1, s - 1)
+        )
         line = (
             f"width={self._w} words={r} expect_words={RX_DEPTH_WORDS} rxfull={st.rxfull} "
             f"rxqd={st.rxqd} expect_rxqd={RX_DEPTH_WORDS} active={st.active} "
@@ -854,7 +995,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.m = 2 + self.m_raw % (d - 1)  # 2 .. D
         self.m1 = 1 + self.m1_raw % (self.m - 1)  # 1 .. m-1
         self.logger.info(
-            "DRAW seed=%d mid_tx=%d mid_rx=%d tx_ctrl_wm=%d (%s) m=%d m1=%d",
+            "INFO-DRAW seed=%d mid_tx=%d mid_rx=%d tx_ctrl_wm=%d (%s) m=%d m1=%d",
             self.seed,
             self.mid_tx,
             self.mid_rx,
@@ -876,6 +1017,10 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         fmark = self.sb.frame_mark()
         mark = self.pads.mark()
         await self.ops.issue_command(command_word(4 * m - 1, speed=self.speed, direction=DIR_TX))
+        st_pre = await self.ops.read_status()
+        self._obs_txstall(st_pre, "pre_push")
+        self._obs_txqd_active(st_pre, mark, 0, "pre_push")
+        self._chk_qd_idle(st_pre, "pre_push", 0, 0)
         for w in words[:m1]:
             await self.ops.push_tx(w)
         pre = 4 * m1 * 8 // lanes
@@ -884,12 +1029,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         except AssertionError as exc:
             self._fail(chk, f"sck cycles of the first {m1} words: {exc}")
         st0 = await self._poll(lambda s: s.txstall == 1, self._seg_bound(4, 0), "TXSTALL=1", chk)
+        self._obs_txstall(st0, "tx_stall")
+        self._obs_txqd_active(st0, mark, m1, "tx_stall_start")
         await self._clocks(self._stall_win())
         st1 = await self.ops.read_status()
+        self._obs_txqd_active(st1, mark, m1, "tx_stall_end")
         edges = len(self.pads.sck_edges_between(st0.clk1, st1.clk0))
         span = st1.clk0 - st0.clk1
         self.logger.info(
-            "TX stall window seed=%d m=%d m1=%d clocks=%d (>= %d) sck_edges=%d cycles_before=%d "
+            "INFO-TX-STALL-WINDOW seed=%d m=%d m1=%d clocks=%d (>= %d) sck_edges=%d cycles_before=%d "
             "start: %s end: %s",
             self.seed,
             m,
@@ -920,6 +1068,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             chk,
         )
         in_seg = int(self.pads.cs_low())
+        self._obs_txqd_active(st2, mark, m, "tx_stall_released")
         if st2.txstall != 0 or not in_seg:
             self._fail(
                 chk, f"TXSTALL still set with the data written: in_segment={in_seg} {st2.fmt()}"
@@ -964,7 +1113,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         stalled = [s for s in inside if s.txstall]
         cycles = self.pads.leading_edges_since(mark)
         self.logger.info(
-            "TX stall control seed=%d reads=%d reads_cs_low=%d txstall_set=%d cycles=%d/%d",
+            "INFO-TX-STALL-CONTROL seed=%d reads=%d reads_cs_low=%d txstall_set=%d cycles=%d/%d",
             self.seed,
             len(reads),
             len(inside),
@@ -1005,13 +1154,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             wts.append(d + 1)
         else:
             self.logger.info(
-                "TX watermark seed=%d depth+1=%d above %d: skipped", self.seed, d + 1, TX_WM_MAX
+                "INFO-TX-WATERMARK seed=%d depth+1=%d above %d: skipped",
+                self.seed,
+                d + 1,
+                TX_WM_MAX,
             )
         wts.append(self.tx_ctrl)
         await self._clean()
         for wt in wts:
-            graded = wt in (0, d + 1)
-            self._gate(graded)
+            self._gate(True)
             await self._write_control(tx_wm=wt)
             qs = sorted({q for q in (0, 1, wt - 1, wt, d) if 0 <= q <= d})
             occ = 0
@@ -1026,12 +1177,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                     chk,
                 )
                 flag = st.txwm
-                if not graded:
-                    self.logger.info(
-                        "OBS-SPI-WM seed=%d side=tx wm=%d q=%d flag=%d", self.seed, wt, q, flag
-                    )
-                    continue
-                expect = 0 if wt == 0 else 1
+                expect = int(q < wt)
                 fc = field_compare(st.raw, expect * ST_TXWM, ST_TXWM)
                 if not fc.ok:
                     self._fail(chk, f"side=tx wm={wt} q={q} flag={flag} expect={expect}")
@@ -1071,6 +1217,12 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             wr = vals[name]
             self._gate(True)
             await self._write_control(rx_wm=wr)
+            back = (await self.ops.rd(CONTROL) & CTRL_RX_WM) >> RX_WM_LSB
+            if back != wr:
+                self._ctrl_missing(chk, f"side=rx CONTROL.RX_WATERMARK reads {back}, wrote {wr}")
+            self.logger.info(
+                "CTRL-SPI-WM seed=%d side=rx wm=%d control_rx_watermark=%d", self.seed, wr, back
+            )
             rs = ([wr - 1] if wr >= 1 else []) + [wr + 1]
             pending = None
             for r in rs:
@@ -1087,7 +1239,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                     f"RXQD={r} with ACTIVE=0",
                     chk,
                 )
-                self._obs_qd(st, f"rx_wm wr={wr} r={r}")
+                self._chk_qd_idle(st, f"rx_wm wr={wr} r={r}", 0, r)
                 expect = 1 if r > wr else 0
                 fc = field_compare(st.raw, expect * ST_RXWM, ST_RXWM)
                 if not fc.ok:
@@ -1214,7 +1366,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             )
             prev = st2.cmdqd
             trail.append(f"cmdqd={st2.cmdqd} ready={st2.ready}")
-        self.logger.info("CMDQD seed=%d n=%d %s", self.seed, self.n_cmds, " ".join(trail))
+        self.logger.info("INFO-CMDQD seed=%d n=%d %s", self.seed, self.n_cmds, " ".join(trail))
         if accepted == 0:
             self._ctrl_missing(chk, "no COMMAND accepted behind the held head")
         full_st, lat_max = await self._cmdq_fill(prev, accepted, t_acc, ctrl_reads, trail)
@@ -1370,7 +1522,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 f"(TXFULL=1 with ACTIVE=0 in {idle_full} STATUS reads)",
             )
         self.logger.info(
-            "TX full while active seed=%d width=%s written=%d txqd=%d %s",
+            "INFO-TX-FULL-ACTIVE seed=%d width=%s written=%d txqd=%d %s",
             self.seed,
             self._w,
             written,
@@ -1403,7 +1555,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self._gate(True)
         first = await self._rx_segment(r, self.speed, chk)
         st = await self.ops.read_status()
-        self._obs_qd(st, f"rx_full_idle R={r}")
+        self._chk_qd_idle(st, f"rx_full_idle R={r}", 0, r)
         if st.rxfull != 1:
             fc = field_compare(st.raw, ST_RXFULL, ST_RXFULL)
             self._fail(chk, f"rxfull_at_R=0 after an Rx segment of {r} words: {fc.fields()}")
@@ -1426,7 +1578,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         if ended == "timeout":
             self._fail(chk, "extra Rx segment: neither chip select high nor a quiet stall window")
         st_x = await self.ops.read_status()
-        self._obs_qd(st_x, f"rx_full_idle extra segment ended={ended}")
+        graded = self._chk_qd_idle(st_x, f"rx_full_idle extra segment ended={ended}", 0, r)
+        self.logger.info(
+            "INFO-SPI-QD-EXTRA seed=%d width=%s graded=%d active=%d ended=%s",
+            self.seed,
+            self._w,
+            int(graded),
+            st_x.active,
+            ended,
+        )
         if st_x.rxqd > r:
             self._fail(chk, f"rxqd_after_extra={st_x.rxqd} max={r}")
         words = 0
@@ -1474,7 +1634,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             data = self._data_bytes(n)
             segs = [(lanes, kind, data)]
             fmark = self.sb.frame_mark()
-            delivered = await run_lane_frame(self.ops, segs, responder=self.rsp)
+            delivered = await run_lane_frame(self.ops, segs, responder=self.rsp, order=self.order)
             self._expect(fmark, segs, delivered=delivered, leg=f"data_{kind}")
 
     # ---- watermark events in INTR_STATE.SPI_EVENT ------------------------
@@ -1646,7 +1806,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             (lanes, "rx", self._data_bytes(pw["clean_rx"])),
         ]
         fmark = self.sb.frame_mark()
-        delivered = await run_lane_frame(self.ops, segs, responder=self.rsp)
+        delivered = await run_lane_frame(self.ops, segs, responder=self.rsp, order=self.order)
         self._expect(fmark, segs, delivered=delivered, leg="after_sw_rst")
 
     # ---- step 16 and the CHK-SPI-QD verdict ------------------------------

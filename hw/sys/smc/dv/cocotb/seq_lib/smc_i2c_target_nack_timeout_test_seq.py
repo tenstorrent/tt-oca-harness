@@ -32,21 +32,36 @@ it on the edge where the target decides to NACK the transaction, and the field
 is read-to-clear, so each leg reads it clear beforehand and requires exactly
 one afterwards. The acquisition FIFO carries the other half: the NACK-stop
 entry the target appends so software can see the transaction ended badly.
+
+The limit is cumulative over a transaction (`i2c.rdl`: "The count is
+cumulative over an entire transaction. In other words, this is SMBus's
+cumulative target clock extension time"). On I2C0 two ACK-control holds that
+software releases, each shorter than the limit but together longer, are driven
+inside one write of two bytes: the byte at the second hold must be NACKed. The
+same single hold released alone, in a write of one byte, is acknowledged, and
+so are two shorter holds whose sum stays under the limit, so a counter that
+restarted at every stretch would pass the controls and fail the pair, and a
+target that refused any second held byte would fail the two-hold control.
+`TARGET_ACK_CTRL.NBYTES` is cleared while the target is idle, so every data
+byte is held until the sequence writes one.
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, Timer
+from cocotb.utils import get_sim_time
 
-from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
+from .smc_addr_map import I2C_CG_EN, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import ALL_ONES_WORD, TOP_BYTE_LANE, SmcCsrSeq
 from .smc_i2c_field_masks import (
+    _I2C_H,
     I2C_ACQ_SIGNAL_ERROR,
     I2C_ACQ_SIGNAL_NONE,
     I2C_ACQ_SIGNAL_RESTART,
     I2C_ACQ_SIGNAL_START,
     I2C_ACQ_SIGNAL_STOP,
+    I2C_ACQDATA_ABYTE,
     I2C_ACQDATA_SIGNAL,
     I2C_ACQDATA_SIGNAL_BP,
     I2C_CTRL_ACK_CTRL_EN,
@@ -56,6 +71,7 @@ from .smc_i2c_field_masks import (
     I2C_CTRL_TX_STRETCH_CTRL_EN,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_STATUS_ACK_CTRL_STRETCH,
     I2C_STATUS_ACQEMPTY,
     I2C_TARGET_EVENTS_TX_PENDING,
     I2C_TARGET_FIFO_STATUS_ACQLVL_BM,
@@ -85,11 +101,35 @@ VIP_SPEED = 2_000_000
 #: enough that the limit is reached within one held byte.
 NACK_TIMEOUT_CYCLES = 64
 WRITE_PAYLOAD = bytes((0x70 + i) & 0xFF for i in range(2))
+#: The ACK bits of a write the target refuses at its first data byte: the address
+#: acknowledged, every data byte NACKed.
+REFUSED_ACKS = [0] + [1] * len(WRITE_PAYLOAD)
 READ_BYTES = 2
-NACK_COUNT_BM = 0xFF
+NACK_COUNT_BM = _field_mask(_I2C_H, "I2C__TARGET_NACK_COUNT__TARGET_NACK_COUNT_bm")
 #: `TARGET_NACK_COUNT` saturates rather than wrapping (`i2c.rdl`: "saturating at
 #: 255"), so a preset at the top of its range has to hold there across a NACK.
-NACK_COUNT_TOP = 0xFF
+NACK_COUNT_TOP = NACK_COUNT_BM
+#: Cumulative allowance for the held-write legs, in the target's clock periods,
+#: and the time software lets each hold run before releasing it: one hold of
+#: HOLD_CYCLES stays under the limit, two together pass it, and two of
+#: SHORT_HOLD_CYCLES together stay under it.
+CUMULATIVE_LIMIT = 6000
+HOLD_CYCLES = 3600
+SHORT_HOLD_CYCLES = 2400
+#: Two data bytes give two ACK-control holds; one gives the single hold of the
+#: control.
+CUMULATIVE_PAYLOAD = bytes((0x61, 0x62))
+CONTROL_PAYLOAD = CUMULATIVE_PAYLOAD[:1]
+#: The held-write legs: name, payload, hold per byte, and whether the write is
+#: acknowledged throughout.
+HELD_WRITES = (
+    ("CONTROL", CONTROL_PAYLOAD, HOLD_CYCLES, True),
+    ("PAIR_UNDER", CUMULATIVE_PAYLOAD, SHORT_HOLD_CYCLES, True),
+    ("PAIR", CUMULATIVE_PAYLOAD, HOLD_CYCLES, False),
+)
+RELOAD_BYTES = 1
+HOLD_POLLS = 400
+HOLD_POLL_CYCLES = 50
 #: `VAL` holds the last sixteen oversampled levels of SCL and SDA, so an idle
 #: bus, released high, reads all ones in both halves.
 VAL_IDLE = 0xFFFF_FFFF
@@ -109,6 +149,7 @@ _REGS = {
     "target_id": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR",
     "timeout": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_TIMEOUT_CTRL_BASE_ADDR",
     "nack_count": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR",
+    "ack_ctrl": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR",
     "target_events": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR",
     "fifo_status": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR",
     "acqdata": "SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR",
@@ -125,7 +166,7 @@ def _regs(idx: int) -> dict[str, int]:
     return {key: smc_indexed_addr(sym, idx) for key, sym in _REGS.items()}
 
 
-_ABYTE_BM = 0xFF
+_ABYTE_BM = I2C_ACQDATA_ABYTE
 POLL_CYCLES = 100
 FINISH_POLLS = 4000
 #: Dwell between the bench's last edge and the drain. The target writes its
@@ -144,6 +185,8 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         self.retained: list[str] = []
         self.val_idle: list[int] = []
         self.restarts: dict[str, list[int]] = {}
+        self.cumulative: dict[str, tuple[list[int], list[int], int, int]] = {}
+        self.saturate_acks: list[int] = []
 
     async def _pop_all(self, r: dict[str, int], into: list[tuple[int, int]]) -> None:
         await Timer(STOP_DETECT_DWELL_NS, unit="ns")
@@ -167,6 +210,7 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         tx_stretch: bool = False,
         nack_addr: bool = False,
         timeout: bool = True,
+        limit: int = NACK_TIMEOUT_CYCLES,
     ) -> dict[str, int]:
         r = _regs(idx)
         ctrl = I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
@@ -193,7 +237,7 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         await self.csr_write(
             f"I2C{idx}_TARGET_ID", r["target_id"], _pack_target_id(TARGET_ADDR[idx], 0x7F, 0, 0)
         )
-        timeout = I2C_TARGET_TIMEOUT_CTRL_EN | NACK_TIMEOUT_CYCLES
+        timeout = I2C_TARGET_TIMEOUT_CTRL_EN | limit
         await self.csr_write(f"I2C{idx}_TARGET_TIMEOUT_{label}", r["timeout"], timeout)
         await self.csr_read(f"I2C{idx}_TARGET_TIMEOUT_{label}_RB", r["timeout"], expected=timeout)
         await self.csr_write(f"I2C{idx}_CTRL_{label}", r["ctrl"], ctrl)
@@ -231,10 +275,10 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         await self._pop_all(r, entries)
         count = (await self.csr_read(f"{label}_COUNT", r["nack_count"])) & NACK_COUNT_BM
 
-        assert acks[0] == 0, f"{label}: the target NACKed its own address (ACK bits {acks})"
-        assert any(a == 1 for a in acks[1:]), (
-            f"{label}: every data byte was acknowledged although the target was left holding "
-            f"the bus past its {NACK_TIMEOUT_CYCLES}-cycle allowance (ACK bits {acks})"
+        assert acks == REFUSED_ACKS, (
+            f"{label}: ACK bits {acks}; the address is acknowledged, the first data byte is "
+            f"held past the {NACK_TIMEOUT_CYCLES}-cycle allowance and NACKed, and every later "
+            f"byte of the refused transaction is NACKed ({REFUSED_ACKS})"
         )
         assert count == 1, (
             f"{label}: TARGET_NACK_COUNT reads {count} after one transaction the target gave "
@@ -287,10 +331,11 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_PRESET", r["nack_count"], NACK_COUNT_TOP)
         master = SmcI2cMasterVip(speed=VIP_SPEED, name=f"smc_i2c{idx}_nack_saturate")
         acks = await self._nacking_write(idx, master, label)
-        assert any(a == 1 for a in acks[1:]), (
-            f"{label}: the target did not give up on the write (ACK bits {acks}), so there "
-            f"was no NACK for the counter to take"
+        assert acks == REFUSED_ACKS, (
+            f"{label}: ACK bits {acks}, not {REFUSED_ACKS}; the target did not give up on the "
+            f"write at its first data byte, so there was no NACK for the counter to take"
         )
+        self.saturate_acks = acks
         held = (await self.csr_read(f"{label}_HELD", r["nack_count"])) & NACK_COUNT_BM
         after = (await self.csr_read(f"{label}_CLEARED", r["nack_count"])) & NACK_COUNT_BM
         assert held == NACK_COUNT_TOP, (
@@ -345,8 +390,9 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         await self._pop_all(r, entries)
         count = (await self.csr_read(f"{label}_COUNT", r["nack_count"])) & NACK_COUNT_BM
         restart_addr_ack, restart_byte_ack = acks[-2], acks[-1]
-        assert any(a == 1 for a in acks[1 : 1 + len(WRITE_PAYLOAD)]), (
-            f"{label}: the target did not give up on the first write (ACK bits {acks})"
+        assert acks[: len(REFUSED_ACKS)] == REFUSED_ACKS, (
+            f"{label}: ACK bits {acks}; the first write is refused at its first data byte "
+            f"({REFUSED_ACKS}) before the repeated START"
         )
         if nack_addr:
             assert restart_addr_ack == 1, (
@@ -369,6 +415,92 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             f"target had already refused (acquired {entries})"
         )
         self.restarts[mode] = acks
+
+    async def _held_write(
+        self, idx: int, r: dict[str, int], label: str, payload: bytes, hold_cycles: int
+    ) -> tuple[list[int], list[int]]:
+        """A write whose ACK-control holds software releases after ``hold_cycles`` each.
+
+        `TARGET_ACK_CTRL.NBYTES` is cleared while the target is idle, so every
+        data byte is held until the sequence writes one. Returns the ACK bits
+        the bench read and the measured length of each hold in the target's
+        clock periods, from the poll that saw `STATUS.ACK_CTRL_STRETCH` to the
+        completed reload.
+        """
+        master = SmcI2cMasterVip(speed=VIP_SPEED, name=f"smc_i2c{idx}_{label.lower()}")
+        acks: list[int] = []
+
+        async def run() -> None:
+            await master.send_start()
+            acks.append(await master.send_byte((TARGET_ADDR[idx] & 0x7F) << 1))
+            for value in payload:
+                acks.append(await master.send_byte(value))
+            await master.send_stop()
+
+        task = cocotb.start_soon(run())
+        period_ps = int(float(self.cfg.periph_clk_period_ns) * 1000 + 0.5)
+        holds: list[int] = []
+        for hold in range(len(payload)):
+            status = 0
+            for _ in range(HOLD_POLLS):
+                status = await self.csr_read(f"{label}_HOLD{hold}_STATUS", r["status"])
+                if status & I2C_STATUS_ACK_CTRL_STRETCH:
+                    break
+                await ClockCycles(cocotb.top.clk_smc_i, HOLD_POLL_CYCLES)
+            assert status & I2C_STATUS_ACK_CTRL_STRETCH, (
+                f"{label}: STATUS.ACK_CTRL_STRETCH never set at hold {hold} "
+                f"(STATUS=0x{status:08x}, ACK bits so far {acks})"
+            )
+            seen = get_sim_time("ps")
+            await ClockCycles(cocotb.top.clk_periph_i, hold_cycles)
+            await self.csr_write(f"{label}_NBYTES_RELOAD{hold}", r["ack_ctrl"], RELOAD_BYTES)
+            holds.append(int(get_sim_time("ps") - seen) // period_ps)
+        await self._await_task(label, task)
+        return acks, holds
+
+    async def _cumulative_leg(self, idx: int) -> None:
+        for name, payload, hold_cycles, acked in HELD_WRITES:
+            label = f"I2C{idx}_CUMULATIVE_{name}"
+            r = await self._bring_up(
+                idx, f"CUMULATIVE_{name}", ack_ctrl=True, limit=CUMULATIVE_LIMIT
+            )
+            acks, holds = await self._held_write(idx, r, label, payload, hold_cycles)
+            entries: list[tuple[int, int]] = []
+            await self._pop_all(r, entries)
+            count = (await self.csr_read(f"{label}_COUNT", r["nack_count"])) & NACK_COUNT_BM
+            assert all(hold_cycles <= h < CUMULATIVE_LIMIT for h in holds), (
+                f"{label}: measured holds {holds} cycles are not each at least {hold_cycles} and "
+                f"below the {CUMULATIVE_LIMIT}-cycle limit, so the leg does not split the limit"
+            )
+            assert acks[0] == 0, f"{label}: the target NACKed its own address (ACK bits {acks})"
+            if acked:
+                assert sum(holds) < CUMULATIVE_LIMIT, (
+                    f"{label}: the holds {holds} sum past the {CUMULATIVE_LIMIT}-cycle limit"
+                )
+                assert all(a == 0 for a in acks), (
+                    f"{label}: {len(holds)} hold(s) of {holds} cycles summing under the "
+                    f"{CUMULATIVE_LIMIT}-cycle limit were not acknowledged once released "
+                    f"(ACK bits {acks})"
+                )
+                assert count == 0 and entries and entries[-1][0] == I2C_ACQ_SIGNAL_STOP, (
+                    f"{label}: TARGET_NACK_COUNT {count} and stream {entries} after a write "
+                    f"whose holds stayed under the limit"
+                )
+            else:
+                assert sum(holds) > CUMULATIVE_LIMIT, (
+                    f"{label}: the two holds {holds} do not sum past the {CUMULATIVE_LIMIT}-cycle "
+                    f"limit"
+                )
+                assert acks == [0] * (len(payload)) + [1], (
+                    f"{label}: ACK bits {acks} after two holds of {holds} cycles under one "
+                    f"transaction; i2c.rdl counts the stretch cumulatively over the transaction, "
+                    f"so the byte at the second hold is NACKed"
+                )
+                assert count == 1 and entries and entries[-1][0] == I2C_ACQ_SIGNAL_ERROR, (
+                    f"{label}: TARGET_NACK_COUNT {count} and stream {entries} after the "
+                    f"cumulative limit ran out at the second hold"
+                )
+            self.cumulative[name] = (acks, holds, count, entries[-1][0])
 
     async def _tx_pending_retain(self, r: dict[str, int], label: str) -> None:
         """TARGET_EVENTS.TX_PENDING clears on a written one and nothing else.
@@ -456,6 +588,7 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         await self._clean_restart(DETAIL_INSTANCE)
         await self._restart_after_nack(DETAIL_INSTANCE, nack_addr=False)
         await self._restart_after_nack(DETAIL_INSTANCE, nack_addr=True)
+        await self._cumulative_leg(DETAIL_INSTANCE)
         cocotb.log.info(
             "CHK-I2C-VAL-IDLE: VAL read all ones on I2C%s with the bus idle, the last sixteen "
             "oversampled levels of a released SCL and SDA",
@@ -463,10 +596,11 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-I2C-TGT-NACK-COUNT-SATURATES: on I2C%d a NACK taken with TARGET_NACK_COUNT "
-            "preset to 0x%02x left it at 0x%02x rather than wrapping, and the read that "
-            "returned it cleared it",
+            "preset to 0x%02x (ACK bits %s) left it at 0x%02x rather than wrapping, and the "
+            "read that returned it cleared it",
             DETAIL_INSTANCE,
             NACK_COUNT_TOP,
+            self.saturate_acks,
             NACK_COUNT_TOP,
         )
         cocotb.log.info(
@@ -481,6 +615,32 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             self.restarts["NACKADDR"],
         )
 
+        control, under, pair = (self.cumulative[k] for k in ("CONTROL", "PAIR_UNDER", "PAIR"))
+        cocotb.log.info(
+            "CHK-I2C-TGT-TIMEOUT-CUMULATIVE: on I2C%d with TARGET_TIMEOUT_CTRL.VAL=%d one "
+            "ACK-control hold of %s cycles released by software was acknowledged (ACK bits %s, "
+            "TARGET_NACK_COUNT %d, stream ends with signal 0x%x), two holds of %s cycles inside "
+            "one write summing to %d under the limit were acknowledged (ACK bits %s, "
+            "TARGET_NACK_COUNT %d, stream ends with signal 0x%x), and two holds of %s cycles "
+            "inside one write, each under the limit and %d together, ended in the target's NACK "
+            "at the second (ACK bits %s, TARGET_NACK_COUNT %d, stream ends with signal 0x%x)",
+            DETAIL_INSTANCE,
+            CUMULATIVE_LIMIT,
+            control[1],
+            control[0],
+            control[2],
+            control[3],
+            under[1],
+            sum(under[1]),
+            under[0],
+            under[2],
+            under[3],
+            pair[1],
+            sum(pair[1]),
+            pair[0],
+            pair[2],
+            pair[3],
+        )
         rx = [i for (i, kind) in self.results if kind == "rx"]
         tx = [i for (i, kind) in self.results if kind == "tx"]
         cocotb.log.info(

@@ -4,8 +4,9 @@
 
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL_ENABLE, DATA_CTRL), integrator GPIO pad table.
 
-Instance 60 is the pad the integrator table reserves. Each DATA_CTRL_ENABLE bit is written
-alone, then DATA_CTRL core2pad and DATA_CTRL_ENABLE = 0x31 are written in both orders.
+Instance 60 is the PWM[1] pad; with PWM CTRL.PAD_EN at its reset 0 the pad is register-controlled
+GPIO. Each DATA_CTRL_ENABLE bit is written alone, then DATA_CTRL core2pad and DATA_CTRL_ENABLE =
+0x31 are written in both orders.
 """
 
 from __future__ import annotations
@@ -18,20 +19,20 @@ from .smc_pad_table import pad_function
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 _DATA_CTRL_ENABLE = (
-    "gpio_intf/DATA_CTRL_ENABLE",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL_ENABLE",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
 )
 
 _INSTANCE = 60
-_INSTANCE_FUNCTION = "Reserved"
+_INSTANCE_FUNCTION = "PWM[1]"
 
 STEP_ORDER = (
     "BRINGUP_DONE",

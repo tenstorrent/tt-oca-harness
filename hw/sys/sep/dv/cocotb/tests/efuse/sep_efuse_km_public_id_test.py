@@ -7,8 +7,9 @@ no_cpu, real fuse sense, LC_PROD, ``+km_rom_hex=km_rom_otp_id.parhex``. RANDCFG.
 
 ``SepKmOtpIdCfg(seed)`` stages three public IDs with no zero, all-ones or
 shared word, and sets the eFuse read lock of one of them, so every seed grades
-a read-locked field next to two unlocked ones. The four secret fields carry
-their fixed named vectors. Every expected value comes from the staged image.
+a read-locked field next to two unlocked ones. A staged word of the locked
+field equal to ``0xBADCAB1E`` fails the leaf as a test bug. The four secret
+fields carry their fixed named vectors. Every expected value comes from the staged image.
 
 Two legs, in this order: strap 0 (``secure_tm_req_i`` = 0, the bring-up) and
 strap 1 (a cold reset with ``secure_tm_req_i`` = 1 from before the release and
@@ -25,7 +26,9 @@ OTP_READ_LOCK holds the field's bit.
   CHK-KM-ID-PORT        each field on the KM ``otp_data_i`` port is
                         ``{~id, id}`` of the staged value, before and after
                         the KM-side lock.
-  CHK-KM-ID-EFUSE-LOCK  a shadow read of the eFuse-read-locked field does not
+  CHK-KM-ID-EFUSE-LOCK  a shadow read of the eFuse-read-locked field completes
+                        with RRESP SLVERR and read data ``0xBADCAB1E``
+                        (``otp_fuse_controller.adoc:110-112``) and does not
                         return its staged word; the same read of an unlocked
                         ID returns it, judged by the scoreboard.
   CHK-KM-ID-CSR         the 48 KMCSR words KM firmware read, the eFuse-locked
@@ -74,8 +77,10 @@ from typing import Any
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
+from env.sep_chk_log import diff_words, word_digest
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
 from env.sep_efuse_test_lib import rst_pulse, wait_bit
+from env.sep_fabric_common import RESP_SLVERR, resp_name
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_otp_id import (
     DEMOTION_WORD,
@@ -106,6 +111,7 @@ from env.sep_km_otp_id import (
     secret_val_words,
     window_label,
 )
+from env.sep_locked_field_irq import DENY_DATA_MARKER
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
@@ -142,9 +148,12 @@ class sep_efuse_km_public_id_test(sep_base_test):
         for field in ID_FIELDS:
             observed = self.rd_known(getattr(cocotb.top, _PROBES[field]))
             expected = dual_rail(cfg.ids[field])
+            got_w = [id_word(observed, k) for k in range(2 * ID_WORDS)]
+            exp_w = [id_word(expected, k) for k in range(2 * ID_WORDS)]
             assert observed == expected, (
-                f"CHK-KM-ID-PORT FAIL ({when}): KM otp_data_i.{field.lower()} = "
-                f"0x{observed:0128x}, expected {{~id, id}} = 0x{expected:0128x}"
+                f"CHK-KM-ID-PORT FAIL ({when}): KM otp_data_i.{field.lower()} differs from "
+                f"{{~id, id}} at words {diff_words(got_w, exp_w)}: "
+                f"got_sha={word_digest(got_w)} exp_sha={word_digest(exp_w)}"
             )
         self.logger.info(
             "CHK-KM-ID-PORT PASS (%s): KM otp_data_i carries {~id, id} for %s",
@@ -156,10 +165,18 @@ class sep_efuse_km_public_id_test(sep_base_test):
         drv = SepLockedFieldIrq(self)
         for k in range(ID_WORDS):
             staged = id_word(cfg.ids[cfg.locked_field], k)
+            assert staged != DENY_DATA_MARKER, (
+                f"test bug: {cfg.locked_field}[{k}] is staged as 0x{DENY_DATA_MARKER:08x}, "
+                "the read data of a read-locked shadow"
+            )
             rd = await drv.access(cfg.locked_field, word_idx=k, locked=True)
-            assert rd.rdata != staged, (
-                f"CHK-KM-ID-EFUSE-LOCK FAIL: read-locked {cfg.locked_field}[{k}] returned "
-                f"its staged word 0x{staged:08x} (resp={rd.resp_code})"
+            assert (
+                rd.resp_code == RESP_SLVERR and rd.rdata == DENY_DATA_MARKER and rd.rdata != staged
+            ), (
+                f"CHK-KM-ID-EFUSE-LOCK FAIL: read-locked {cfg.locked_field}[{k}] "
+                f"RRESP={resp_name(rd.resp_code)} expected SLVERR, RDATA=0x{rd.rdata:08x} "
+                f"expected 0x{DENY_DATA_MARKER:08x}, eq_staged={int(rd.rdata == staged)} "
+                f"word_sha={word_digest(staged)}"
             )
         mark = self.sb_mark()
         await self.start_seq(
@@ -172,10 +189,11 @@ class sep_efuse_km_public_id_test(sep_base_test):
         )
         self.assert_sb_judged(mark, "CHK-KM-ID-EFUSE-LOCK")
         self.logger.info(
-            "CHK-KM-ID-EFUSE-LOCK PASS: %d shadow reads of read-locked %s withheld the "
-            "staged words; %d reads of %s returned them",
+            "CHK-KM-ID-EFUSE-LOCK PASS: %d shadow reads of read-locked %s returned "
+            "SLVERR and 0x%08x, not the staged words; %d reads of %s returned them",
             ID_WORDS,
             cfg.locked_field,
+            DENY_DATA_MARKER,
             ID_WORDS * len(cfg.unlocked_fields),
             " and ".join(cfg.unlocked_fields),
         )
@@ -217,11 +235,7 @@ class sep_efuse_km_public_id_test(sep_base_test):
 
     @staticmethod
     def _mismatches(observed: list[int], expected: list[int]) -> list[str]:
-        return [
-            f"{window_label(i)}=0x{o:08x} (expected 0x{e:08x})"
-            for i, (o, e) in enumerate(zip(observed, expected))
-            if o != e
-        ]
+        return [window_label(i) for i in diff_words(observed, expected)]
 
     async def _km_run(self, leg: str) -> list[int]:
         await self.start_seq(sep_km_release_seq(f"km_release_{leg}"))
@@ -232,11 +246,7 @@ class sep_efuse_km_public_id_test(sep_base_test):
         vals = sram[SECRET_VAL_WORD : SECRET_VAL_WORD + SECRET_WORDS]
         rails = sram[SECRET_RAIL_WORD : SECRET_RAIL_WORD + len(KM_SECRET_FIELDS)]
         want = secret_val_words(SECRETS) if strap == 0 else [0] * SECRET_WORDS
-        bad = [
-            f"{secret_label(i)}=0x{o:08x} (expected 0x{e:08x})"
-            for i, (o, e) in enumerate(zip(vals, want))
-            if o != e
-        ]
+        bad = [secret_label(i) for i in diff_words(vals, want)]
         bad += [
             f"rail {f}=0x{r:08x} (expected 0x{RAIL_ALL_ONES:08x})"
             for f, r in zip(KM_SECRET_FIELDS, rails)
@@ -244,7 +254,8 @@ class sep_efuse_km_public_id_test(sep_base_test):
         ]
         line = (
             f"strap={strap} secure_tm_o={strap} val_words={SECRET_WORDS} "
-            f"val0=0x{vals[0]:08x} expected0=0x{want[0]:08x} rails="
+            f"val_match={SECRET_WORDS - len(diff_words(vals, want))}/{SECRET_WORDS} "
+            f"val_sha={word_digest(vals)} expected_sha={word_digest(want)} rails="
             + ",".join(f"0x{r:08x}" for r in rails)
         )
         return not bad, line + ("" if not bad else ": " + "; ".join(bad[:8]))
@@ -344,11 +355,11 @@ class sep_efuse_km_public_id_test(sep_base_test):
         self.logger.info(
             "CHK-KM-PUBID-TM1 PASS: strap=1 secure_tm_o=1 KM firmware read %d "
             "OTP_SEP_*_ID_{VAL,CPL} words equal to the staged IDs and their complements "
-            "(eFuse-read-locked %s included) zero=%d word0=0x%08x",
+            "(eFuse-read-locked %s included) zero=%d words_sha=%s",
             DUMP_WORDS,
             cfg.locked_field,
             zero1,
-            opened1[0],
+            word_digest(opened1),
         )
         self.logger.info(
             "OBS-KM-OTHER-TM1: KM port public-ID taps equal to staged at strap 1: %s",

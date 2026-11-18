@@ -163,7 +163,8 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
         assert len(self.assert_polls) == len(self.release_polls) == WALK_BITS
         cocotb.log.info(
             "CHK-SSRC-ASSERT: %d/%d bits read exactly 1<<i, polls=%d..%d "
-            "(measured, no spec latency; LINKED-ISSUE SF-023)",
+            "(measured, no spec latency; LINKED-ISSUE: the synchronizer clock and latency of the "
+            "reset-complete vector)",
             len(self.assert_polls),
             WALK_BITS,
             min(self.assert_polls),
@@ -204,7 +205,8 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
             self.ro_readbacks.append(rb)
         cocotb.log.info(
             "CHK-SSRC-RO-WRITE: rb after 0x%08x write=0x%08x, after 0x%08x write=0x%08x, "
-            "BRESP=%s/%s (measured, not compared; LINKED-ISSUE SF-024)",
+            "BRESP=%s/%s (measured, not compared; LINKED-ISSUE: the response to a write to a "
+            "read-only register)",
             RO_WRITE_WORDS[0],
             self.ro_readbacks[0],
             RO_WRITE_WORDS[1],

@@ -140,7 +140,7 @@ ITR_TTBEI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TTBEI_bm")
 EXTERNAL_PLL_WRAP = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR")
 EXTERNAL_PLL_WRAP_EXPECTED = 0
 
-GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 # DATA_CTRL field bits by symbol from generated hw/ip/gpio/regs/gen/c/gpio_intf.h.
 # Encodings from hw/ip/gpio/regs/gen/adoc/gpio_intf.adoc: enable_rx_tx 2'b10 =
 # RX enabled, interrupt_type 2'b01 = active-low level.

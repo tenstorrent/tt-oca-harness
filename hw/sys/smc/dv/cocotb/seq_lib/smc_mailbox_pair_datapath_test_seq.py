@@ -2,7 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Paired mailbox FIFO data path, partial-write lanes and push with pop on one FIFO.
 
-Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc.
+Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc, axil_mailbox.rdl
+(`WRITE_DATA`: any write pushes one entry irrespective of WSTRB, including a write with no
+byte lanes enabled; lanes whose strobe is 0 are pushed as 0).
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ MAILBOX_CG_EN = _field_mask(
 
 FUSE_SENSE_RISES = 200_000
 AXI_SLVERR = 2
-EMPTY_ERROR_DATA = 0xFEEDDEAD
+EMPTY_ERROR_WORD = 0x0000_0000_FEED_DEAD
 PAIRS = (0, 1, 15, 16, 31)
 ISOLATION_PAIRS = (0, 1, 16, 31)
 DRAIN_LIMIT = 4
@@ -41,7 +43,7 @@ _CHECKERS = (
     ("CHK-PAIR-BOTH-DIRECTIONS", "S5"),
     ("CHK-PARTIAL-LANES-ZERO", "S6"),
     ("CHK-PARTIAL-NO-MERGE", "S7"),
-    ("CHK-PARTIAL-ZERO-STROBE-OBSERVED", "S8"),
+    ("CHK-PARTIAL-ZERO-STROBE-PUSHES", "S8"),
     ("CHK-PARTIAL-FILLS-FIFO", "S9"),
     ("CHK-PUSHPOP-OCCUPANCY-ONE", "S10"),
     ("CHK-PUSHPOP-FULL-OBSERVED", "S11"),
@@ -91,8 +93,8 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
         want = AXI_SLVERR if mode == ERROR else 0
         assert item.resp_code == want, f"{item.name}: resp {item.resp_code}, want {want}"
         if mode == ERROR and item.op is SmcSysAxiOp.READ:
-            assert item.rdata & 0xFFFF_FFFF == EMPTY_ERROR_DATA, (
-                f"{item.name}: error rdata 0x{item.rdata:x}, want low word 0x{EMPTY_ERROR_DATA:x}"
+            assert item.rdata == EMPTY_ERROR_WORD, (
+                f"{item.name}: error rdata 0x{item.rdata:016x}, want 0x{EMPTY_ERROR_WORD:016x}"
             )
         return item
 
@@ -132,7 +134,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
         for n in range(DRAIN_LIMIT):
             item = await self._rd(f"{name}_{n}", direction, pair, mode=OBSERVE)
             if item.resp_code == AXI_SLVERR:
-                assert item.rdata & 0xFFFF_FFFF == EMPTY_ERROR_DATA, f"{name}: bad empty data"
+                assert item.rdata == EMPTY_ERROR_WORD, f"{name}: bad empty data 0x{item.rdata:x}"
                 return words
             words.append((item.resp_code, item.rdata))
         raise AssertionError(f"{name}: no empty error within {DRAIN_LIMIT} reads: {words}")
@@ -196,7 +198,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-PAIR-ISOLATION",
             f"{iso} reads of pairs {ISOLATION_PAIRS} answered SLVERR "
-            f"with low word 0x{EMPTY_ERROR_DATA:08x} while X sat in pair 15; pair 15 "
+            f"with 0x{EMPTY_ERROR_WORD:016x} while X sat in pair 15; pair 15 "
             f"inbound returned 0x{x:016x}",
         )
 
@@ -244,18 +246,17 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             "0x0000000099aabbcc, third read was the empty error",
         )
 
-        zero = await self._wr(
-            "ZERO_STROBE", "OUTBOUND", 0, 0xDEAD_BEEF_DEAD_BEEF, wstrb=0x00, mode=OBSERVE
-        )
-        first = await self._rd("ZERO_STROBE_PEER", "INBOUND", 0, mode=OBSERVE)
+        zero = await self._wr("ZERO_STROBE", "OUTBOUND", 0, 0xDEAD_BEEF_DEAD_BEEF, wstrb=0x00)
+        first = await self._rd("ZERO_STROBE_PEER", "INBOUND", 0, expected=0)
+        assert first.rdata == 0, f"S8: the peer popped 0x{first.rdata:016x}, not a zero entry"
         rest = await self._drain("ZERO_STROBE_DRAIN", "INBOUND", 0)
+        assert rest == [], f"S8: a strobe-0x00 write pushed more than one entry: {rest}"
         self._mark_step("S8")
         self._log_chk(
-            "CHK-PARTIAL-ZERO-STROBE-OBSERVED",
-            f"wstrb=0x00 write B resp={zero.resp_code}; "
-            f"peer read resp={first.resp_code} data=0x{first.rdata:016x}; further OKAY "
-            f"words {[hex(w) for _, w in rest]}; drain ended in the empty error; "
-            "no compare",
+            "CHK-PARTIAL-ZERO-STROBE-PUSHES",
+            f"wstrb=0x00 write of 0xdeadbeefdeadbeef answered resp={zero.resp_code}; the peer "
+            f"popped resp={first.resp_code} data=0x{first.rdata:016x} (one zero entry) and the "
+            "next read was the empty error",
         )
 
         await self._wr("F9", "OUTBOUND", 0, f, wstrb=0xFF)

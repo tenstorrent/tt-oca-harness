@@ -41,7 +41,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["smoke", "ci", "combined", "canonical"]
 run_modes = ["smoke"]
-args = ["+axi_sva_need_periph"]
+args = ["+axi_sva_need_periph", "+axi_sva_need_base_config"]
 
 [[groups]]
 name = "combined"

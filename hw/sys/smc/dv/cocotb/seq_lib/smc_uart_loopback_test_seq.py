@@ -7,7 +7,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_addr_map import UART_CG_EN, smc_addr, smc_indexed_addr
+from .smc_addr_map import UART_CG_EN, smc_addr, smc_indexed_addr, uart_16550_main_u32
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_uart_protocol_vip import SmcUartVip, SmcUartVipError
 
@@ -26,8 +26,9 @@ UART0_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LS
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = 0x1
-LCR_DLAB = 0x80
-LCR_8N1 = 0x03  # WLS=8, no parity, 1 stop
+LCR_DLAB = uart_16550_main_u32("UART_16550_MAIN__LCR__DLAB_bm")
+# WLS at its full value is 8 bits per character (uart_16550_main.rdl); no parity, 1 stop.
+LCR_8N1 = uart_16550_main_u32("UART_16550_MAIN__LCR__WLS_bm")
 TX_BYTE = 0xA5
 BAUD = 115200
 # One 8N1 frame is about 87 us at 115200 baud; the bound is a ceiling only.

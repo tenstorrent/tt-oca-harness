@@ -35,8 +35,7 @@ from smc_base_test import smc_base_test
 REQUIRED = (
     "CHK-NONVAC",
     "CHK-OUTPUT-FABRIC-WR-RD-GOLDEN",
-    "CHK-RSP-USER-DBG-READ",
-    "CHK-RSP-USER-DBG-WRITE",
+    "CHK-RSP-USER-UNCHANGED",
     "CHK-TIMEOUT-PATHS",
 )
 
@@ -115,14 +114,17 @@ class smc_output_fabric_wr_rd_responder_test(smc_base_test):
         assert drv_b != 0, "S2: responder drew BUSER 0; the seeded stimulus left BUSER idle"
         assert jtag_b.user is not None, "S2: BUSER at the JTAG manager is X/Z"
         obs_b = jtag_b.user & USER_MASK
+        assert obs_b == drv_b, (
+            f"CHK-RSP-USER-UNCHANGED: S2 BUSER at the JTAG manager 0x{obs_b:03x}, the SYS_OUT "
+            f"responder drove 0x{drv_b:03x} (fabric.adoc Output Remapping: BUSER passes back "
+            f"through the replacement unchanged)"
+        )
         cocotb.log.info(
-            "CHK-RSP-USER-DBG-WRITE: seed=0x%x responder BUSER=0x%03x jtag BUSER=0x%03x "
-            "equal=%s BRESP=OKAY (measured, LINKED-ISSUE SF-001; responder write_count "
-            "%d -> %d, B at %d ps)",
+            "STEP S2 done: seed=0x%x responder BUSER=0x%03x jtag BUSER=0x%03x BRESP=OKAY "
+            "(responder write_count %d -> %d, B at %d ps)",
             RESP_USER_SEED,
             drv_b,
             obs_b,
-            "y" if obs_b == drv_b else "n",
             start_writes,
             write_obs_writes,
             jtag_b.time_ps,
@@ -156,14 +158,22 @@ class smc_output_fabric_wr_rd_responder_test(smc_base_test):
         assert drv_r != 0, "S3: responder drew RUSER 0; the seeded stimulus left RUSER idle"
         assert jtag_r.user is not None, "S3: RUSER at the JTAG manager is X/Z"
         obs_r = jtag_r.user & USER_MASK
+        assert obs_r == drv_r, (
+            f"CHK-RSP-USER-UNCHANGED: S3 RUSER at the JTAG manager 0x{obs_r:03x}, the SYS_OUT "
+            f"responder drove 0x{drv_r:03x} (fabric.adoc Output Remapping: RUSER passes back "
+            f"through the replacement unchanged)"
+        )
         cocotb.log.info(
-            "CHK-RSP-USER-DBG-READ: seed=0x%x responder RUSER=0x%03x jtag RUSER=0x%03x "
-            "equal=%s RRESP=OKAY RDATA=0x%016x (measured, LINKED-ISSUE SF-001; R at %d ps)",
+            "CHK-RSP-USER-UNCHANGED: seed=0x%x responder BUSER=0x%03x -> jtag BUSER=0x%03x, "
+            "responder RUSER=0x%03x -> jtag RUSER=0x%03x, both equal and non-zero; BRESP/RRESP "
+            "OKAY RDATA=0x%016x (B at %d ps, R at %d ps)",
             RESP_USER_SEED,
+            drv_b,
+            obs_b,
             drv_r,
             obs_r,
-            "y" if obs_r == drv_r else "n",
             r_item.rdata,
+            jtag_b.time_ps,
             jtag_r.time_ps,
         )
         fence.append(("JTAG-READ", jtag_r.time_ps, 1))

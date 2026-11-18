@@ -17,6 +17,12 @@
 //     the VIP's memory-shadow reference model cannot describe a CSR block
 //     (reset values, read-only fields, side effects), so the bench's own
 //     reference models predict on its item stream;
+//   * smc_sep_in_history on that passive env's item_ap, counting completed
+//     SEP_IN reads and writes for scenario access accounting; it publishes
+//     and checks nothing;
+//   * smc_sep_in_reset_monitor on SEP_IN, built only when
+//     enable_sep_in_reset_monitor is set, sampling requests, responses and
+//     stale response VALID across a reset epoch; it drives nothing;
 //   * one reference model per scoreboard feature on the SEP_IN stream
 //     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
 //     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,
@@ -40,6 +46,7 @@ class smc_env extends ocah_env;
   // SEP_IN observation: shared VIP passive env, monitor only.
   ocah_axi_config m_sep_in_axi_cfg;
   ocah_axi_env    m_sep_in_axi_env;
+  smc_sep_in_reset_monitor m_sep_in_reset_monitor;
 
   // SYS_OUT egress: the shared VIP responder on the ocah_axi_if the struct
   // bridge feeds in tb_top.
@@ -58,6 +65,7 @@ class smc_env extends ocah_env;
   smc_fabric_reg_ref_model m_fabric_reg_ref_model;
   smc_mailbox_fifo_ref_model m_mailbox_fifo_ref_model;
   smc_scoreboard            m_scoreboard;
+  smc_sep_in_history m_sep_in_history;
   smc_virtual_sequencer     m_vseqr;
 
   function new(string name = "smc_env", uvm_component parent = null);
@@ -77,6 +85,12 @@ class smc_env extends ocah_env;
 
     build_sep_in_master();
     build_sep_in_passive();
+    if (cfg.enable_sep_in_reset_monitor) begin
+      m_sep_in_reset_monitor =
+          smc_sep_in_reset_monitor::type_id::create("m_sep_in_reset_monitor", this);
+      m_sep_in_reset_monitor.vif = m_sep_in_axi_cfg.vif;
+      m_sep_in_reset_monitor.tb_vif = tb_vif;
+    end
     build_sys_out_slave();
 
     m_scratch_csr_ref_model =
@@ -106,6 +120,7 @@ class smc_env extends ocah_env;
         smc_mailbox_fifo_ref_model::type_id::create("m_mailbox_fifo_ref_model", this);
     m_mailbox_fifo_ref_model.tb_vif = tb_vif;
     m_scoreboard = smc_scoreboard::type_id::create("m_scoreboard", this);
+    m_sep_in_history = smc_sep_in_history::type_id::create("m_sep_in_history", this);
 
     m_vseqr = smc_virtual_sequencer::type_id::create("m_vseqr", this);
   endfunction
@@ -114,6 +129,7 @@ class smc_env extends ocah_env;
     super.connect_phase(phase);
     m_vseqr.m_sep_in_seqr       = m_sep_in_master_env.m_sequencer;
     m_vseqr.m_sys_out_slave_seq = m_sys_out_slave_agent.seq;
+    m_sep_in_axi_env.item_ap.connect(m_sep_in_history.analysis_export);
     // scratch_csr: the monitor stream feeds the reference model and the
     // scoreboard's observed side; the model's expected_ap feeds the other.
     m_sep_in_axi_env.item_ap.connect(m_scratch_csr_ref_model.analysis_export);

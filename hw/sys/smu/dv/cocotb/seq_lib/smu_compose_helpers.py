@@ -7,11 +7,11 @@ with the specification it is transcribed from: ``doc/integrator/src/smu.adoc``
 and ``doc/integrator/src/smu-smc.adoc``, the SMU, SMC, SEP and DTP port
 tables, the SMC interrupt and fabric documents, the SEP security-disable
 document, or a generated register header. A value no specification in this
-tree states is not compared: the SMN crossbar's transaction-ID and user
-widths, the SEP inbound ID width, the packed layout of the crossbar's channel
-structs and the packed layout of the SMU build-configuration struct are read
-from the elaboration alone, and a compare against a recorded elaboration
-proves no requirement.
+tree states is not compared: the crossbar-side ID width of the two ID-width
+converters, the SEP inbound ID width, the packed layout of the crossbar's
+channel structs and the packed layout of the SMU build-configuration struct
+are read from the elaboration alone, and a compare against a recorded
+elaboration proves no requirement.
 
 The sections the cites name: "SMU Default Parameters", "Cross Trigger
 Parameters", "JTAG Configuration Parameters", "Pipeline Depth Parameters" and
@@ -59,6 +59,12 @@ NUM_SUBSYSTEMS = 32
 # IDs") and hw/sys/smc/doc/port_table.adoc `sys_axi_in_req_i`: the SMC system
 # AXI input, the port the crossbar's SMC leg lands on.
 SMC_SYS_IN_ID_WIDTH = 6
+# doc/integrator/src/smu-composition.adoc "AXI Crossbar": `smu_axi_in`
+# accepts 8-bit transaction IDs, `smu_axi_out` presents 10-bit transaction
+# IDs, and the SMU AXI ports carry 12-bit user fields on all five channels.
+SMU_AXI_IN_ID_WIDTH = 8
+SMU_AXI_OUT_ID_WIDTH = 10
+SMU_AXI_USER_WIDTH = 12
 # hw/sys/sep/doc/security_disable.adoc: the security-disable token is a
 # 256-bit value.
 SEP_SEC_DISABLE_TOKEN_WIDTH = 256

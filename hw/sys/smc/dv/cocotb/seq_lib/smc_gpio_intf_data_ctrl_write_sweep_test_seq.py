@@ -11,7 +11,8 @@ instance through one cycle:
 * `lsio_select` set on its own: the software select ranks below the hardware
   request, so the status reads what it read at reset;
 * register control of the receiver with `lsio_disable` set, which withdraws
-  the hardware request on every pad so the status reads 0, then the pad driven
+  the hardware request on every pad so the status reads 0, written first with
+  `core2pad` clear and then with it set, then the pad driven
   from the bench through each interrupt type: the two level types follow the
   pad both ways, the two edge types pulse once on their edge, and a cleared
   `interrupt_enable` masks an active level that the next write unmasks;
@@ -39,10 +40,10 @@ from .smc_pad_table import AVS_SDATA_PAD, pad_index
 from .smc_regblock_field_sweep_utils import RegInstance, SmcRegblockFieldSweepSeq, reg_instances
 
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 _LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
 _PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
@@ -86,14 +87,19 @@ _BENCH_OWNED_PADS: dict[int, tuple[str, bool, int]] = {
 
 # Cycles a level interrupt is re-checked once it has reached the expected value.
 _LEVEL_HOLD_CYCLES = 4
+# Cycles the masked active level is held at 0. `body` requires every measured
+# level-interrupt latency, pad to interrupt and write to interrupt, to be
+# shorter, so an ignored `interrupt_enable` would raise the bit inside the hold.
+_MASKED_HOLD_CYCLES = 32
 
 # SEP_IN accesses per instance: the reset read; a write and readback for the
-# lsio_select word; the active-high write with a readback at each pad level; a
-# write and readback for each of active-low, rising edge, falling edge, the
-# masked level and the unmasked level; the restore write and readback.
-_ACCESSES_PER_INSTANCE = 18
+# lsio_select word; a write and readback with core2pad clear; the active-high
+# write with a readback at each pad level; a write and readback for each of
+# active-low, rising edge, falling edge, the masked level and the unmasked
+# level; the restore write and readback.
+_ACCESSES_PER_INSTANCE = 20
 # Every readback but the reset read carries a fully predicted word.
-_PREDICTED_READS_PER_INSTANCE = 9
+_PREDICTED_READS_PER_INSTANCE = 10
 
 
 class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
@@ -103,6 +109,7 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
         super().__init__(name)
         self.lsio_requests = 0
         self.pulse_widths: set[int] = set()
+        self.level_latencies: set[int] = set()
 
     @staticmethod
     def _drive_pad(dut, wrap: int, level: int | None) -> None:
@@ -123,10 +130,12 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
         assert raw.is_resolvable, f"{name} is not resolvable (X/Z): {raw}"
         return (int(raw) >> wrap) & 1
 
-    def _register_word(self, inst: RegInstance, interrupt_type: int, interrupt_enable: int) -> int:
+    def _register_word(
+        self, inst: RegInstance, interrupt_type: int, interrupt_enable: int, core2pad: int = 1
+    ) -> int:
         return self.pack_fields(
             inst,
-            core2pad=1,
+            core2pad=core2pad,
             enable_rx_tx=_RX_ONLY,
             interface_enable=1,
             lsio_disable=1,
@@ -150,14 +159,15 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
         self.value_checks += 1
         return got
 
-    def _require_receiver(self, inst: RegInstance, dut) -> None:
+    def _require_receiver(self, inst: RegInstance, dut, core2pad: int) -> None:
         wrap = inst.index
         assert self._port_bit(dut, "tb_pad2core_en_o", wrap) == 1, (
             f"{inst.label}: pad2core_en_o[{wrap}] is 0 while the register enables the receiver"
         )
-        assert self._port_bit(dut, "tb_core2pad_o", wrap) == 1, (
-            f"{inst.label}: core2pad_o[{wrap}] is 0 while the register owns core2pad with the "
-            f"field set"
+        got = self._port_bit(dut, "tb_core2pad_o", wrap)
+        assert got == core2pad, (
+            f"{inst.label}: core2pad_o[{wrap}] is {got} while the register owns core2pad with "
+            f"the field at {core2pad}"
         )
         assert self._port_bit(dut, "tb_core2pad_en_o", wrap) == 0, (
             f"{inst.label}: core2pad_en_o[{wrap}] is 1 while enable_rx_tx enables the receiver "
@@ -197,13 +207,21 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
         await self._read_word(inst, "lsio_select", word, lsio_request, 0)
 
         self._drive_pad(dut, wrap, 0)
+        word = self._register_word(inst, _ACTIVE_HIGH, 1, core2pad=0)
+        await self.csr_write(f"{inst.label}:core2pad_clear", inst.addr, word)
+        await await_gpio_irq_only(
+            dut, wrap, 0, f"{inst.label}:core2pad_clear pad low", _LEVEL_HOLD_CYCLES
+        )
+        await self._read_word(inst, "core2pad_clear", word, 0, 0)
+        self._require_receiver(inst, dut, 0)
+
         word = self._register_word(inst, _ACTIVE_HIGH, 1)
         await self.csr_write(f"{inst.label}:active_high", inst.addr, word)
         await await_gpio_irq_only(
             dut, wrap, 0, f"{inst.label}:active_high pad low", _LEVEL_HOLD_CYCLES
         )
         await self._read_word(inst, "active_high:pad_low", word, 0, 0)
-        self._require_receiver(inst, dut)
+        self._require_receiver(inst, dut, 1)
         self._drive_pad(dut, wrap, 1)
         await await_gpio_irq_only(
             dut, wrap, 1, f"{inst.label}:active_high pad high", _LEVEL_HOLD_CYCLES
@@ -217,8 +235,10 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
         )
         await self._read_word(inst, "active_low", word, 0, 1)
         self._drive_pad(dut, wrap, 0)
-        await await_gpio_irq_only(
-            dut, wrap, 1, f"{inst.label}:active_low pad low", _LEVEL_HOLD_CYCLES
+        self.level_latencies.add(
+            await await_gpio_irq_only(
+                dut, wrap, 1, f"{inst.label}:active_low pad low", _LEVEL_HOLD_CYCLES
+            )
         )
 
         word = self._register_word(inst, _RISING_EDGE, 1)
@@ -241,11 +261,13 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
 
         word = self._register_word(inst, _ACTIVE_LOW, 0)
         await self.csr_write(f"{inst.label}:masked", inst.addr, word)
-        await await_gpio_irq_only(dut, wrap, 0, f"{inst.label}:masked", _LEVEL_HOLD_CYCLES)
+        await await_gpio_irq_only(dut, wrap, 0, f"{inst.label}:masked", _MASKED_HOLD_CYCLES)
         await self._read_word(inst, "masked", word, 0, 0)
         word = self._register_word(inst, _ACTIVE_LOW, 1)
         await self.csr_write(f"{inst.label}:unmasked", inst.addr, word)
-        await await_gpio_irq_only(dut, wrap, 1, f"{inst.label}:unmasked", _LEVEL_HOLD_CYCLES)
+        self.level_latencies.add(
+            await await_gpio_irq_only(dut, wrap, 1, f"{inst.label}:unmasked", _LEVEL_HOLD_CYCLES)
+        )
         await self._read_word(inst, "unmasked", word, 0, 0)
 
         self._drive_pad(dut, wrap, None)
@@ -281,6 +303,11 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
         booked = self.assert_value_checks(
             sb_before, count * _PREDICTED_READS_PER_INSTANCE, "GPIO_INTF_DATA_CTRL_WRITE_SWEEP"
         )
+        assert max(self.level_latencies) < _MASKED_HOLD_CYCLES, (
+            f"a level interrupt took {max(self.level_latencies)} clk_smc_i cycles to rise, "
+            f"not less than the {_MASKED_HOLD_CYCLES}-cycle masked hold, so the masked leg "
+            f"could pass with interrupt_enable ignored"
+        )
         assert self.lsio_requests > 0, (
             "no instance read a hardware LSIO request at reset, so the lsio_enable leg "
             "compared nothing"
@@ -302,16 +329,19 @@ class smc_gpio_intf_data_ctrl_write_sweep_test_seq(SmcRegblockFieldSweepSeq):
             "CHK-GPIO-INTF-IRQ-TYPE-SWEEP: on each of %d instances the interrupt bit of that "
             "instance alone followed the pad both ways as active-high and as active-low "
             "level, pulsed once on the rising edge and once on the falling edge (pulse "
-            "widths seen: %s clk_smc_i cycles), stayed clear with interrupt_enable clear "
-            "while the active-low level was active, and rose when the next write set "
-            "interrupt_enable again",
+            "widths seen: %s clk_smc_i cycles), stayed clear for %d clk_smc_i cycles with "
+            "interrupt_enable clear while the active-low level was active, and rose when the "
+            "next write set interrupt_enable again (level rise latencies seen, pad and "
+            "unmask write: %s clk_smc_i cycles, each below that hold)",
             count,
             sorted(self.pulse_widths),
+            _MASKED_HOLD_CYCLES,
+            sorted(self.level_latencies),
         )
         cocotb.log.info(
             "CHK-GPIO-INTF-PAD-RECEIVER-SWEEP: on each of %d instances under register control "
             "DATA_CTRL.pad2core read the bench-driven pad level both ways, pad2core_en_o "
-            "carried the receiver enable, core2pad_o carried the core2pad field and "
-            "core2pad_en_o stayed 0, so the pad was sampled and never driven by the register",
+            "carried the receiver enable, core2pad_o carried the core2pad field at 0 and at 1 "
+            "and core2pad_en_o stayed 0, so the pad was sampled and never driven by the register",
             count,
         )

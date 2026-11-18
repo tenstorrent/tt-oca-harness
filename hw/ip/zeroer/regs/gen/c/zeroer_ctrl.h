@@ -14,14 +14,14 @@ extern "C" {
 #include <assert.h>
 
 // reg - zeroer_ctrl::DEST_ADDR
-// Byte address to write zeros to
+// Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_bm 0xffffffffffffffff
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_bp 0
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_bw 64
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Byte address to write zeros to
+        // Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.
         uint64_t DEST_ADDR :64;
     } f;
     uint64_t w;

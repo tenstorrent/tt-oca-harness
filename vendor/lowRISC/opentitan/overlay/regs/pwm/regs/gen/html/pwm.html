@@ -1,0 +1,81 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-pwm">Pulse Width Modulator</h2>
+<p>Transmission of pulse-width modulated output signals with adjustable duty cycle</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>PWM_PARAM[4]</strong>: 4 registers, base 0x14, stride 0x4</li>
+<li><strong>DUTY_CYCLE[4]</strong>: 4 registers, base 0x24, stride 0x4</li>
+<li><strong>BLINK_PARAM[4]</strong>: 4 registers, base 0x34, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#REGWEN">REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#CFG">CFG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#PWM_EN">PWM_EN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#INVERT">INVERT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14 - 0x20</td><td><a href="#PWM_PARAM_4_">PWM_PARAM[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24 - 0x30</td><td><a href="#DUTY_CYCLE_4_">DUTY_CYCLE[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x34 - 0x40</td><td><a href="#BLINK_PARAM_4_">BLINK_PARAM[4]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>fatal_fault</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="REGWEN">REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW0C</td><td>0x1</td><td>When true, all writable registers can be modified.<br>When false, they become read-only. Defaults true, write<br>zero to clear. This can be cleared after initial<br>configuration at boot in order to lock in the supplied<br>register settings.</td></tr>
+</table>
+<h3 id="CFG">CFG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>CNTR_EN</td><td>RW</td><td>0x0</td><td>Assert this bit to enable the PWM phase counter.<br>Clearing this bit disables and resets the phase counter.</td></tr>
+<tr><td>30:27</td><td>DC_RESN</td><td>RW</td><td>0x7</td><td>Phase Resolution (logarithmic). All duty-cycle and phase<br>shift registers represent fractional PWM cycles, expressed in<br>units of 2^-16 PWM cycles. Each PWM cycle is divided<br>into 2^(DC_RESN+1) time slices, and thus only the (DC_RESN+1)<br>most significant bits of each phase or duty cycle register<br>are relevant.</td></tr>
+<tr><td>26:0</td><td>CLK_DIV</td><td>RW</td><td>0x8000</td><td>Sets the period of each PWM beat to be (CLK_DIV+1)<br>input clock periods.  Since PWM pulses are generated once<br>every 2^(DC_RESN+1) beats, the period between output<br>pulses is 2^(DC_RESN+1)*(CLK_DIV+1) times longer than the<br>input clock period.</td></tr>
+</table>
+<h3 id="PWM_EN">PWM_EN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>EN</td><td>RW</td><td>0x0</td><td>Write 1 to this bit to enable PWM pulses on the<br>corresponding channel.</td></tr>
+</table>
+<h3 id="INVERT">INVERT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Write 1 to this bit to invert the output for each channel,<br>so that the corresponding output is active-low.</td></tr>
+</table>
+<h3 id="PWM_PARAM_4_">PWM_PARAM[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>BLINK_EN</td><td>RW</td><td>0x0</td><td>Enables blink (or heartbeat).  If cleared, the output duty<br>cycle will remain constant at DUTY_CYCLE.A. Enabling this<br>bit  causes the PWM duty cycle to alternate between<br>DUTY_CYCLE.A and DUTY_CYCLE.B</td></tr>
+<tr><td>30</td><td>HTBT_EN</td><td>RW</td><td>0x0</td><td>Modulates blink behavior to create a heartbeat effect. When<br>HTBT_EN is set, the duty cycle increases (or decreases)<br>linearly from DUTY_CYCLE.A to DUTY_CYCLE.B and back, in<br>steps of (BLINK_PARAM.Y+1), with an increment (decrement)<br>once every (BLINK_PARAM.X+1) PWM cycles.<br><br>When HTBT_EN is cleared, the standard blink behavior applies,<br>meaning that the output duty cycle alternates between DUTY_CYCLE.A for<br>(BLINK_PARAM.X+1) pulses and DUTY_CYCLE.B for<br>(BLINK_PARAM.Y+1) pulses.</td></tr>
+<tr><td>29:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>PHASE_DELAY</td><td>RW</td><td>0x0</td><td>Phase delay of the PWM leading edge, in units of 2^(-16) PWM<br>cycles. The leading edge will be the rising edge of the output<br>signal unless the corresponding INVERT bit is set.</td></tr>
+</table>
+<h3 id="DUTY_CYCLE_4_">DUTY_CYCLE[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>B</td><td>RW</td><td>0x7FFF</td><td>The target duty cycle for PWM output, in units<br>of 2^(-16)ths of a pulse cycle. The actual precision is<br>however limited to the (DC_RESN+1) most significant bits.<br>This setting only applies when blinking, and determines<br>the target duty cycle.</td></tr>
+<tr><td>15:0</td><td>A</td><td>RW</td><td>0x7FFF</td><td>The initial duty cycle for PWM output, in units<br>of 2^(-16)ths of a pulse cycle. The actual precision is<br>however limited to the (DC_RESN+1) most significant bits.<br>This setting applies continuously when not blinking<br>and determines the initial duty cycle when blinking.</td></tr>
+</table>
+<h3 id="BLINK_PARAM_4_">BLINK_PARAM[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Y</td><td>RW</td><td>0x0</td><td>This blink-rate timing parameter has two different<br>interpretations depending on whether or not the heartbeat<br>feature is enabled. If heartbeat is disabled, a blinking<br>PWM will pulse at duty cycle B for (Y+1) pulse cycles<br>before returning to duty cycle A. If heartbeat is enabled<br>the duty cycle will increase (or decrease) by (Y+1) units<br>every time it is incremented (or decremented).</td></tr>
+<tr><td>15:0</td><td>X</td><td>RW</td><td>0x0</td><td>This blink-rate timing parameter has two different<br>interpretations depending on whether or not the heartbeat<br>feature is enabled. If heartbeat is disabled, a blinking<br>PWM will pulse at duty cycle A for (X+1) pulse cycles before<br>switching to duty cycle B. If heartbeat is enabled<br>the duty cycle will start at duty cycle A, but<br>will be incremented (or decremented) every (X+1) cycles.<br>In heartbeat mode is enabled, the size of each step is<br>controlled by BLINK_PARAM.Y.</td></tr>
+</table>
+</div>

@@ -22,7 +22,12 @@ Checks:
                        fetch handshake and its response and no PR-IFU-XBAR
                        request outside the SRAM in the fetch window (cpu.adoc,
                        CPU: the IFU demux sends every address other than ROM and
-                       SRAM to a DECERR responder). Control: the ROM fetches
+                       SRAM to a DECERR responder). U is each of the three drawn
+                       targets and the fixed secure DMA register base, a mapped
+                       crossbar target that the IFU demux does not reach
+                       (fabric.adoc, SEP local fabric: the IFU demux answers
+                       addresses outside the boot ROM and SEP SRAM with DECERR).
+                       Control: the ROM fetches
                        (boot stub, trap handler) and the SRAM fetch of the
                        copied routine appear on those taps, the SRAM fetch also
                        on PR-IFU-XBAR.
@@ -42,9 +47,58 @@ Checks:
                        store, read by a DMA copy to the SRAM (rom.adoc, ROM
                        Architecture: the load/store unit cannot access ICCM).
                        Control: the DCCM pair reads K, writes V2 and reads V2.
+  CHK-IFU-TRAP       : each fetch at U traps once, with mcause 0x1 (instruction
+                       access fault) and mtval U (VeeR EL2 PRM at
+                       tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``
+                       "Unmapped Addresses" ``:273-276``: a fetch with a bus
+                       error is a precise instruction access fault; "Exception
+                       Handling" ``:199``: a precise exception captures the
+                       faulting address in mtval;
+                       ``physical-memory-protection.md`` "Exceptions"
+                       ``:99-101``: code 1).
+                       Control: the IFU request at U is in the window.
+  CHK-LSU-ICCM-CAUSE : the LSU load at the ICCM word traps once with mcause 0x5
+                       (load access fault) and the LSU store once with mcause
+                       0x7 (store access fault) (PRM at the same revision,
+                       ``memory-map.md`` "Unmapped Addresses" ``:281``,
+                       ``:300`` with footnote 4 ``:330``: loads and stores to
+                       the ICCM range in the DCCM region fault; codes
+                       ``physical-memory-protection.md`` "Exceptions"
+                       ``:102-107``; ICCM and DCCM
+                       share region 12, ``hw/sys/sep/doc/memory_map.adoc:41-43``).
+                       Control: the DCCM pair reads K, writes V2 and reads V2.
+  CHK-EXT-READ-NMI   : the LSU read at 0x2000_0100 raises exactly one NMI
+                       between the EXT_B and EXT_E markers, with mcause
+                       0xF000_0001 (load bus error) and mdseac 0x2000_0100
+                       (the extension port answers DECERR, SEP_TB_ARCH.adoc
+                       "AXI Extension port responder"; NMI mcause values, VeeR
+                       EL2 PRM linked from cpu.adoc). Control: the read is on
+                       PR-EXT.
   CHK-LSU-ICCM-WE    : no ICCM write enable on PR-TCM during the LSU store.
                        Control: the DMA copy of an SRAM word to another ICCM
                        word shows the ICCM write enable.
+  CHK-LSU-GAP-FAULT  : at each gap address G (the first and the last word of
+                       each Reserved row of the SEP EL2 CPU Resources table,
+                       ``hw/sys/sep/regs/gen/adoc/memory_map.adoc:28,30``:
+                       0xC006_0000, 0xC007_FFFC, 0xC008_8000, 0xCFFF_FFFC)
+                       the LSU load traps once with mcause 0x5 (load access
+                       fault) and then the LSU store traps once with mcause 0x7
+                       (store access fault), each with mtval G, and no AR or AW
+                       at the 8-byte word of G is on PR-LSU-XBAR, PR-EXT or
+                       PR-OUT between the GB and GE markers of G (PRM at the
+                       same revision, ``memory-map.md`` "Rules for Core-Local
+                       Memory Accesses" ``:242-244``: a load/store to a region
+                       that holds a DCCM/PIC sub-region faults when it is not
+                       completely inside that sub-region; "Handling of Unmapped
+                       Addresses" ``:278-282`` (load, core) and ``:298-301``
+                       (store, core); "Exception Handling" ``:199``: mtval;
+                       codes ``physical-memory-protection.md`` "Exceptions"
+                       ``:102-107``). The base register holds G and the offset
+                       is 0, so the core-local prediction from the base and
+                       the final address agree. Control: the GB marker store
+                       is one AW on PR-LSU-XBAR and one on PR-OUT inside the
+                       window, and the extension-port read of step 6 is on
+                       PR-EXT.
   CTRL-CORE-PATH      : (control) the marker code logs the drawn marker value and
                        the DCCM patterns read back exact; a difference fails the
                        leaf as a failed precondition.
@@ -54,15 +108,21 @@ The routine first sets ``mrac`` as the SEP firmware start-up does
 (ICCM, DCCM, PIC). The CSR number and the value are parsed from the first
 ``li t0`` and ``csrw <csr>, t0`` pair of ``_start`` in that file; the routine
 reads the CSR back into a mailbox record, and a read-back that differs fails
-the leaf (``CTRL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
+the leaf (``CTRL-DEMUX-MRAC``). The gap addresses come from the generated
+memory map; the leaf stops at import when one is outside the 256 MiB region of
+the DCCM or when that region's ``mrac`` bits are not 0. The core then issues each store at its own size, so a 32-bit
 register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
-write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
+write to the secure DMA registers. The CHK-EXT-READ-NMI line also lists every
+NMI record of the run with the last marker before it.
 
-The core reaction to an unmapped fetch and the response to an ICCM data access
-are not scored; their records are logged (``OBS-``). Every expected value comes
-from the drawn plan and the staged images; no expected value is read from the
-DUT.
+The trap cause and value of an unmapped fetch and the cause of an ICCM data
+access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
+``CHK-IFU-TRAP`` grades. ``INFO-LSU-ICCM`` re-logs the two trap causes, which
+``CHK-LSU-ICCM-CAUSE`` grades, and the load value. When the load traps, the value holds
+the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
+no check grades. Every expected value comes from the drawn plan and the staged images; no
+expected value is read from the DUT.
 
 cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
 """
@@ -76,6 +136,7 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, Timer
+from env.sep_decode_resp import sep_memory_map
 from env.sep_fabric_common import RESP_DECERR
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -125,7 +186,10 @@ from seq_lib.sep_dma_ops import (
     RANGE_VALID,
     SECURE_DMA,
     ST_ABORTED,
+    ST_BUSY,
+    ST_CHUNK_DONE,
     ST_CLEAN_W1C,
+    ST_DIGEST_VALID,
     ST_DONE,
     ST_ERROR,
     STATUS,
@@ -147,7 +211,7 @@ if ROM_BYTES // 8 != ROM_WORDS:
     raise RuntimeError("the ROM image model and the memory map disagree on the ROM size")
 
 _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
-_OUTF = RegBlock("OUTBOUND_FILTER_CTRL_0_")
+_OUTF = RegBlock("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
 NMI_VEC_ADDR = _CPU_CTRL.addr("SEP_NMI_VEC")
 MBX = _CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR") & _CPU_CTRL.mask("SMU_GLOBAL_BASE_ADDR")
 # The mailbox address has bit 55 clear, so the SMU path delivers it non-secure.
@@ -179,7 +243,11 @@ U_SET = (
     0x4000_0000,
     0x0000_1000,
 )
+# The fixed fetch target after the drawn ones: the secure DMA register base,
+# reached by the LSU, debug and external masters but not by the IFU demux.
+U_DMA_CSR = sym("SECURE_DMA_REG_MAP_BASE_ADDR")
 EXT_ADDR = 0x2000_0100  # extension port read of step 6
+NMI_LOAD_BUS_ERROR = 0xF000_0001
 OUT_ADDR = MBX  # outbound port store of step 6 (the console address)
 OUT_VAL = 0x5EC0_0006
 
@@ -188,7 +256,7 @@ _SLOTS = (
     "GATE FAIL TRAP_CAUSE TRAP_VAL NMI NMI_ADDR ROMLD_B ROMLD_V ROMLD_E SRAMLD_B SRAMLD_V "
     "SRAMLD_E EXT_B EXT_E OUT_B OUT_E FB0 FE0 FB1 FE1 FB2 FE2 CORE_B MARKV CORE_M DCCMV CORE_E "
     "DMA1_B DMA_ST DMA1_E LSUL_B ILOAD LSUL_E LSUS_B LSUS_E DMA2_B IREAD DMA2_E DMA3_B DMA3_E "
-    "PAIR_B PAIR0 PAIR1 PAIR_E DONE MRAC"
+    "PAIR_B PAIR0 PAIR1 PAIR_E DONE MRAC FB3 FE3 GB0 GE0 GB1 GE1 GB2 GE2 GB3 GE3"
 ).split()
 OFF = {name: 8 * (k + 1) for k, name in enumerate(_SLOTS)}
 if max(OFF.values()) + 8 > 0x200:
@@ -226,6 +294,28 @@ def _crt0_mrac(path: Path) -> tuple[int, int]:
 # VeeR EL2 mrac (region access control) as fw/startup/crt0.s writes it.
 CSR_MRAC, MRAC_SEP = _crt0_mrac(CRT0)
 
+# mcause exception codes (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+# docs/source/physical-memory-protection.md "Exceptions" :99-107).
+MCAUSE_FETCH_FAULT = 0x1
+MCAUSE_LOAD_FAULT = 0x5
+MCAUSE_STORE_FAULT = 0x7
+
+# The first and the last word of each Reserved row of the CPU Resources table.
+GAP_ADDRS = tuple(
+    a
+    for r in sep_memory_map.VIEWS["sep-cpu-resources"]["rows"]
+    if r["kind"] == "reserved"
+    for a in (r["base"], r["end"] - 3)
+)
+_REGION = DCCM_BASE >> 28
+if len(GAP_ADDRS) != 4 or any(a >> 28 != _REGION for a in GAP_ADDRS):
+    raise RuntimeError(
+        f"gap addresses {[hex(a) for a in GAP_ADDRS]}: expected two Reserved rows in the "
+        f"256 MiB region of the DCCM (0x{_REGION:x})"
+    )
+if (MRAC_SEP >> (2 * _REGION)) & 3:
+    raise RuntimeError(f"mrac 0x{MRAC_SEP:08x} marks region 0x{_REGION:x} cacheable or side-effect")
+
 # Environment choices (logged).
 DMA_POLL = 4_000  # STATUS reads per DMA copy
 NMI_WAIT = 200  # spin iterations after the extension-port read
@@ -259,6 +349,11 @@ class _Plan:
         self.sram_ld_val = rng.getrandbits(32)
         self.sram_a_val = rng.getrandbits(32)
         self.sram_s_val = rng.getrandbits(32)
+
+    @property
+    def fetches(self) -> list[int]:
+        """The drawn unmapped targets, then the fixed secure DMA register base."""
+        return [*self.u, U_DMA_CSR]
 
     @property
     def iccm_w(self) -> int:
@@ -296,6 +391,19 @@ def _fail_if_ne(a: Asm, addr: int, exp: int, mask: int, code: int, tag: str) -> 
     a.op(sw(A1, GP, OFF["FAIL"] + 4))
     a.li(T0, code).op(sw(T0, GP, OFF["FAIL"]), FENCE).j("halt")
     a.label(f"ok_{tag}")
+
+
+def _dma_status_bits(status: int) -> str:
+    """The six SECURE_DMA ``STATUS`` bits of one copy, in register order."""
+    bits = (
+        ("BUSY", ST_BUSY),
+        ("DONE", ST_DONE),
+        ("ABORTED", ST_ABORTED),
+        ("ERROR", ST_ERROR),
+        ("SHA2_DIGEST_VALID", ST_DIGEST_VALID),
+        ("CHUNK_DONE", ST_CHUNK_DONE),
+    )
+    return ",".join(f"{n}={int(bool(status & m))}" for n, m in bits)
 
 
 def _dma_copy(a: Asm, src: int, dst: int, tag: str, code: int) -> None:
@@ -408,7 +516,7 @@ def build_main(p: _Plan) -> Asm:
     _mark(a, "OUT_E")
     # Step 7: a fetch at each unmapped target; the ROM handler resumes at
     # the recovery address.
-    for k, u in enumerate(p.u):
+    for k, u in enumerate(p.fetches):
         _gate(a, 1)
         _mark(a, f"FB{k}")
         a.la(T0, f"rec{k}").op(csrw(CSR_MSCRATCH, T0))
@@ -459,6 +567,16 @@ def build_main(p: _Plan) -> Asm:
     a.li(T0, p.dccm_k).op(lw(A0, T0, 0), sw(A0, GP, OFF["PAIR0"]))
     a.li(T1, p.v2_val).op(sw(T1, T0, 0), FENCE, lw(A0, T0, 0), sw(A0, GP, OFF["PAIR1"]))
     _mark(a, "PAIR_E")
+    # Step 12: an LSU load, then an LSU store, at each gap address.
+    for k, g in enumerate(GAP_ADDRS):
+        _mark(a, f"GB{k}")
+        a.la(T0, f"gl_rec{k}").op(csrw(CSR_MSCRATCH, T0))
+        a.li(T1, g).op(lw(A0, T1, 0))
+        a.label(f"gl_rec{k}")
+        a.la(T0, f"gs_rec{k}").op(csrw(CSR_MSCRATCH, T0))
+        a.li(T1, g).li(T2, p.v_val).op(sw(T2, T1, 0))
+        a.label(f"gs_rec{k}").op(FENCE)
+        _mark(a, f"GE{k}")
     _mark(a, "DONE")
     a.label("halt").j("halt")
     if a.nbytes > p.mark_off:
@@ -488,6 +606,10 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         "CHK-CORE-PATH-XBAR",
         "CHK-LSU-ICCM",
         "CHK-LSU-ICCM-WE",
+        "CHK-IFU-TRAP",
+        "CHK-LSU-ICCM-CAUSE",
+        "CHK-EXT-READ-NMI",
+        "CHK-LSU-GAP-FAULT",
     )
 
     def _grade(self, chk: str, ok: bool, text: str) -> None:
@@ -498,12 +620,17 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             self.logger.error("%s FAIL: %s", chk, text)
             self.failures.append(f"{chk}: {text}")
 
+    def _ctrl_missing(self, chk: str, why: str) -> None:
+        self.logger.error("CTRL-MISSING %s: %s", chk, why)
+        self.failures.append(f"CTRL-MISSING {chk}: {why}")
+
     # ---------------------------------------------------------------- set-up
     def _draw(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
         p = self.plan = _Plan(SepSeededRng(seed))
         self.logger.info("DRAW U=%s", ",".join(f"0x{u:08x}" for u in p.u))
+        self.logger.info("CFG fixed fetch target U=0x%08x (secure DMA register base)", U_DMA_CSR)
         self.logger.info("DRAW marker_offset=0x%x marker_value=0x%08x", p.mark_off, p.mark_val)
         self.logger.info(
             "DRAW dccm_offsets=%s pattern=%s",
@@ -712,6 +839,14 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         rb, re_ = self.mbx.find(OFF[b]), self.mbx.find(OFF[e])
         return [r for r in self.mbx.records()[rb.seq : re_.seq] if r.off == OFF[name]]
 
+    def _ext_ctl(self) -> int:
+        """AR handshakes of the step-6 extension-port read on PR-EXT."""
+        return sum(
+            1
+            for b in self._beats("PR-EXT", self._win("EXT_B", "EXT_E"), ("ar",))
+            if b.addr == EXT_ADDR
+        )
+
     # ---------------------------------------------------------------- grading
     def _grade_all(self) -> None:
         self._log_dma_csr_writes()
@@ -720,6 +855,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             self._grade_route,
             self._grade_core,
             self._grade_iccm,
+            self._grade_gap,
         ):
             try:
                 step()
@@ -746,19 +882,14 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         ctl_xbar = sum(1 for b in xbar_ar if b.addr is not None and SRAM_RT <= b.addr < SRAM_RT + 8)
         ctl_ok = ctl_rom >= 1 and ctl_sram >= 1 and ctl_rom_port >= 1 and ctl_sram_port >= 1
         ctl_ok = ctl_ok and ctl_xbar >= 1
-        e0 = self._win("EXT_B", "EXT_E")
-        ext_ctl = sum(
-            1
-            for b in self._beats("PR-EXT", e0, ("ar",))
-            if b.addr is not None and b.addr == EXT_ADDR
-        )
+        ext_ctl = self._ext_ctl()
         o0 = self._win("OUT_B", "OUT_E")
         out_ctl = sum(
             1
             for b in self._beats("PR-OUT", o0, ("aw",))
             if b.addr is not None and (b.addr & ~7) == OUT_ADDR
         )
-        for k, u in enumerate(p.u):
+        for k, u in enumerate(p.fetches):
             w = self._win(f"FB{k}", f"FE{k}")
             ars = [b for b in ifu_ar if w[0] <= b.t_ps <= w[1] and b.addr == u]
             xbar_n = sum(
@@ -770,11 +901,24 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             causes = self._recs(f"FB{k}", f"FE{k}", "TRAP_CAUSE")
             tvals = self._recs(f"FB{k}", f"FE{k}", "TRAP_VAL")
             self.logger.info(
-                "OBS-IFU-TRAP LOG fetch=0x%08x mcause=%s mtval=%s",
+                "INFO-IFU-TRAP LOG fetch=0x%08x mcause=%s mtval=%s graded_by=CHK-IFU-TRAP",
                 u,
                 ",".join(f"0x{r.val:x}" for r in causes) or "-",
                 ",".join(f"0x{r.val:08x}" for r in tvals) or "-",
             )
+            mc = ",".join(f"0x{r.val:x}" for r in causes) or "-"
+            mt = ",".join(f"0x{r.val:08x}" for r in tvals) or "-"
+            if not ars:
+                self._ctrl_missing("CHK-IFU-TRAP", f"k={k} fetch=0x{u:08x}: no IFU request at U")
+            else:
+                self._grade(
+                    "CHK-IFU-TRAP",
+                    [r.val for r in causes] == [MCAUSE_FETCH_FAULT]
+                    and [r.val for r in tvals] == [u],
+                    f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Unmapped Addresses' :273-276 "
+                    f"'Exception Handling' :199 k={k} fetch=0x{u:08x} mcause={mc} "
+                    f"mtval={mt} expect_mcause=0x{MCAUSE_FETCH_FAULT:x} expect_mtval=0x{u:08x}",
+                )
             resp = None
             rom_n = sram_n = -1
             if ars:
@@ -831,19 +975,19 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             if r.off == OFF["NMI"]:
                 nxt = recs[i + 1].val if i + 1 < len(recs) else 0
                 rows.append(f"0x{r.val:08x}@{last}/0x{nxt:08x}")
-            elif names.get(r.off, "").endswith(("_B", "_E", "_M")) or r.off in (
-                OFF["FB0"],
-                OFF["FB1"],
-                OFF["FB2"],
-                OFF["FE0"],
-                OFF["FE1"],
-                OFF["FE2"],
-            ):
+            elif names.get(r.off, "").endswith(("_B", "_E", "_M")) or names.get(
+                r.off, ""
+            ).startswith(("FB", "FE")):
                 last = names[r.off]
-        self.logger.info(
-            "OBS-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s",
-            len(rows),
-            " ".join(rows) or "-",
+        causes = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI")]
+        addrs = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI_ADDR")]
+        self._grade(
+            "CHK-EXT-READ-NMI",
+            causes == [NMI_LOAD_BUS_ERROR] and addrs == [EXT_ADDR] and ext_ctl >= 1,
+            f"nmi_in_window={len(causes)} mcause={','.join(f'0x{v:08x}' for v in causes) or 'none'} "
+            f"mdseac={','.join(f'0x{v:08x}' for v in addrs) or 'none'} "
+            f"expect=0x{NMI_LOAD_BUS_ERROR:08x}/0x{EXT_ADDR:08x} lsu_ext_seen={ext_ctl} "
+            f"nmi_records={len(rows)} mcause@marker/mdseac={' '.join(rows) or '-'}",
         )
 
     def _log_dma_csr_writes(self) -> None:
@@ -953,12 +1097,34 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             and pair1[0].val == p.v2_val
         )
         self.logger.info(
-            "OBS-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s dma_status=%s",
+            "INFO-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s "
+            "cause_graded_by=CHK-LSU-ICCM-CAUSE value_graded_by=%s",
             ",".join(f"0x{r.val:x}" for r in traps) or "-",
             ",".join(f"0x{r.val:x}" for r in straps) or "-",
             "X" if load_val is None else f"0x{load_val:08x}",
-            ",".join(f"0x{v:08x}" for v in dma_st),
+            "-" if traps else "CHK-LSU-ICCM",
         )
+        dma = [(f"0x{v:08x}", _dma_status_bits(v)) for v in dma_st[:3]]
+        dma += [("-", "-")] * (3 - len(dma))
+        self.logger.info(
+            "OBS-LSU-ICCM-DMA-STATUS seed=%d "
+            "dma_d1=%s d1_bits=%s dma_d2=%s d2_bits=%s dma_d3=%s d3_bits=%s",
+            self.random_seed(),
+            *(f for pair in dma for f in pair),
+        )
+        lc = ",".join(f"0x{r.val:x}" for r in traps) or "-"
+        sc = ",".join(f"0x{r.val:x}" for r in straps) or "-"
+        if not dccm_rw:
+            self._ctrl_missing("CHK-LSU-ICCM-CAUSE", "the DCCM pair control did not pass")
+        else:
+            self._grade(
+                "CHK-LSU-ICCM-CAUSE",
+                [r.val for r in traps] == [MCAUSE_LOAD_FAULT]
+                and [r.val for r in straps] == [MCAUSE_STORE_FAULT],
+                f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Unmapped Addresses' :281,300,330 "
+                f"load_mcause={lc} store_mcause={sc} "
+                f"expect=0x{MCAUSE_LOAD_FAULT:x}/0x{MCAUSE_STORE_FAULT:x}",
+            )
         self._grade(
             "CHK-LSU-ICCM",
             load_ne_w == 1 and macro == p.w_val and dccm_rw == 1,
@@ -988,3 +1154,61 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             we_st == 0 and we_ctl >= 1,
             f"iccm_we={we_st} control_dma_iccm_we={we_ctl}",
         )
+
+    def _grade_gap(self) -> None:
+        ext_ctl = self._ext_ctl()
+        for k, g in enumerate(GAP_ADDRS):
+            w = self._win(f"GB{k}", f"GE{k}")
+            causes = [r.val for r in self._recs(f"GB{k}", f"GE{k}", "TRAP_CAUSE")]
+            tvals = [r.val for r in self._recs(f"GB{k}", f"GE{k}", "TRAP_VAL")]
+            seen = {
+                tap: sum(
+                    1
+                    for b in self._beats(tap, w, ("ar", "aw"))
+                    if b.addr is None or (b.addr & 0xFFFF_FFF8) == (g & ~7)
+                )
+                for tap in ("PR-LSU-XBAR", "PR-EXT", "PR-OUT")
+            }
+            mark = MBX + OFF[f"GB{k}"]
+            ctl_xbar = sum(
+                1
+                for b in self._beats("PR-LSU-XBAR", w, ("aw",))
+                if b.addr is not None and (b.addr & ~7) == mark
+            )
+            ctl_out = sum(
+                1
+                for b in self._beats("PR-OUT", w, ("aw",))
+                if b.addr is not None and (b.addr & ~7) == mark
+            )
+            if not (ctl_xbar >= 1 and ctl_out >= 1 and ext_ctl >= 1):
+                self._ctrl_missing(
+                    "CHK-LSU-GAP-FAULT",
+                    f"addr=0x{g:08x} control_lsu_xbar={ctl_xbar} control_out={ctl_out} "
+                    f"control_ext={ext_ctl}",
+                )
+                continue
+            mc = ",".join(f"0x{v:x}" for v in causes) or "-"
+            mt = ",".join(f"0x{v:08x}" for v in tvals) or "-"
+            refused = all(n == 0 for n in seen.values())
+            req = " ".join(f"{t[3:].lower().replace('-', '_')}_req={n}" for t, n in seen.items())
+            for i, (op, exp) in enumerate(
+                (("load", MCAUSE_LOAD_FAULT), ("store", MCAUSE_STORE_FAULT))
+            ):
+                got_c = causes[i] if i < len(causes) else None
+                got_v = tvals[i] if i < len(tvals) else None
+                self._grade(
+                    "CHK-LSU-GAP-FAULT",
+                    len(causes) == 2
+                    and len(tvals) == 2
+                    and got_c == exp
+                    and got_v == g
+                    and refused,
+                    f"addr=0x{g:08x} op={op} "
+                    f"mcause={'-' if got_c is None else f'0x{got_c:x}'} "
+                    f"mtval={'-' if got_v is None else f'0x{got_v:08x}'} "
+                    f"expect_mcause=0x{exp:x} expect_mtval=0x{g:08x} "
+                    f"window_mcause={mc} window_mtval={mt} {req} "
+                    f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md "
+                    f"'Rules for Core-Local Memory Accesses' :242-244 "
+                    f"'Handling of Unmapped Addresses' :278-282,298-301 'Exception Handling' :199",
+                )

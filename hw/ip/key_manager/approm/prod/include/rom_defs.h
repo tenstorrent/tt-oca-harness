@@ -197,6 +197,8 @@ extern const uint8_t __km_fw_load_limit[];
 #define ROM_KM_IRQ_MBOX_BIT (1 << 4)
 /** @brief PicoRV32 IRQ bitmask for the ABR ML-KEM shared-key pulse (bit 5). */
 #define ROM_KM_IRQ_ABR_SHAREDKEY_BIT (1 << 5)
+/** @brief KMCSR IRQ_STATUS bitmask for sram_write_lock_err (bit 3). */
+#define ROM_KM_IRQ_STATUS_SRAM_WRITE_LOCK_ERR_MASK (1 << 3)
 
 #ifndef __ASSEMBLER__
 /*===========================================================================

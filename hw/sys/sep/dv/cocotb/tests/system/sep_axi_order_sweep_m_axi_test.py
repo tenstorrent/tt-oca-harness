@@ -11,7 +11,7 @@ inbound filter, so an adapter that mishandles a channel ordering has to be
 caught from both TB-driven masters. The filter denies by default, so the walk
 opens allow windows from the CPU-LSU side first.
 
-The sixteen INBOUND_FILTER_CTRL blocks are not swept here and are counted as
+The sixteen INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL blocks are not swept here and are counted as
 skips: those CSRs gate the access in flight, so writing them mid-walk would
 measure filter reprogramming rather than adapter ordering. They stay swept on
 s_axi, which has no inbound filter.

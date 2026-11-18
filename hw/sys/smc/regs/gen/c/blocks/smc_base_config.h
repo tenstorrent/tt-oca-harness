@@ -44,14 +44,14 @@ typedef union {
 } smc_base_config__LOCAL_BASE_t;
 
 // reg - smc_base_config::REGION_SIZE
-// Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
+// Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. An inbound access at or above BASE + this size answers DECERR; a unit that extends past the limit stays reachable below it. Pick a size that no unit straddles. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bm 0xffffffff
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bp 0
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bw 32
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset 0x1000000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
+        // Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. An inbound access at or above BASE + this size answers DECERR; a unit that extends past the limit stays reachable below it. Pick a size that no unit straddles. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
         uint64_t size :32;
         uint64_t :32;
     } f;
@@ -213,15 +213,15 @@ typedef union {
 } smc_base_config__HANG_DET_CTRL_t;
 
 // reg - smc_base_config::HANG_DET_TIMEOUT_THRESHOLD
-// Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
-// Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+// Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.
+// Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bm 0xfffff
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bp 0
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bw 20
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset 0x1000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+        // Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
         uint32_t value :20;
         uint32_t :12;
     } f;

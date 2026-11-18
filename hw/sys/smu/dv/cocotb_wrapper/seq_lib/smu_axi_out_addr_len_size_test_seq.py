@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.smu_axi_monitor import expected_decerr
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import _REPO_ROOT, c_header_u32, smc_addr, smc_indexed_addr
@@ -115,8 +116,8 @@ ZEROER_TARGET = 0x0600_0000
 ZEROER_LENGTH = 0x200
 MMODE_WINDOW = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR")
 XVISOR_WINDOW = smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR")
-MMODE_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR", 0)
-XVISOR_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_BASE_ADDR", 0)
+MMODE_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0)
+XVISOR_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0)
 _OUTPUT_REMAP_H = _REPO_ROOT / "hw/ip/output_remap/regs/gen/c/output_remap.h"
 OUTPUT_REMAP_VALID = c_header_u32(
     _OUTPUT_REMAP_H, "OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm"
@@ -492,7 +493,9 @@ class smu_axi_out_addr_len_size_test_seq:
             await self._step_single(jtag, sb, tap)
             await self._step_dma(jtag, sb, tap)
             await self._step_backpressure(jtag, sb, tap)
-            await self._step_errors(jtag, sb)
+            # AXI monitor decode rule: the injected DECERR read and write are two DECERR beats.
+            with expected_decerr("ext_out", 2):
+                await self._step_errors(jtag, sb)
             await self._step_zeroer(jtag, sb, tap)
             await self._step_output_remap(jtag, sb, tap)
         finally:

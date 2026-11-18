@@ -44,7 +44,7 @@ addrmap filter_ctrl {
         field {
             sw = r;
             hw = w;
-            desc = "Data bus width in bytes, encoded as 2^value";
+            desc = "Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.";
         } data_bus_width[14:12] = 0x3;
 
         field {
@@ -111,7 +111,8 @@ addrmap filter_ctrl {
             hw = rw;
             desc = "End of the allowable address range, rounded up to the top of its granule.
                     The granule and the write-back behaviour are described under start_addr.
-                    Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.";
+                    Resets to 7, the top of the first 8-byte granule that applies while bursts are
+                    disabled on a 64-bit bus; the reset does not follow the data width.";
         } end_addr[55:0] = 0x7;
     };
 

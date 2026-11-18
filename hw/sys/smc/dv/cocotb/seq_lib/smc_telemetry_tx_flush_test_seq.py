@@ -63,8 +63,8 @@ CTRL_THRESHOLD_ONE = 1 << THRESHOLD_BP
 MESSAGE_GAP_CYCLES = 8
 CTRL_THRESHOLD_PENDING = CTRL_THRESHOLD_ONLY | TX_FLUSH_BM
 
-# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block layout is a
-# bench choice.
+# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block i at bits
+# [9i+8:9i] and the probe ID inside block 6's data byte from index.adoc "Telemetry packet fields".
 _ATB_BEAT_BITS = 8
 _ATB_PACKET_BITS = 64
 _BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS

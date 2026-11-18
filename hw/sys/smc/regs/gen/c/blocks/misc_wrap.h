@@ -34,56 +34,56 @@ typedef struct __attribute__ ((__packed__)) {
 } scratch_t;
 
 // reg - chip_config::VERSION_LO
-// SMC version, lower 32 bits
+// SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bm 0xffffffff
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bp 0
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bw 32
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_reset 0x100a0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // SMC version, lower 32 bits
+        // SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
         uint32_t version_lo :32;
     } f;
     uint32_t w;
 } chip_config__VERSION_LO_t;
 
 // reg - chip_config::VERSION_HI
-// SMC version, upper 32 bits
+// SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bm 0xffffffff
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bp 0
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bw 32
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // SMC version, upper 32 bits
+        // SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
         uint32_t version_hi :32;
     } f;
     uint32_t w;
 } chip_config__VERSION_HI_t;
 
 // reg - chip_config::CHIP_ID
-// Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)
+// Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_bm 0xffffffff
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_bp 0
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_bw 32
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)
+        // Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.
         uint32_t chip_id :32;
     } f;
     uint32_t w;
 } chip_config__CHIP_ID_t;
 
 // reg - chip_config::LC_STATE
-// Lifecycle state value from SEP. Default to invalid state
+// Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).
 #define CHIP_CONFIG__LC_STATE__LC_STATE_bm 0xff
 #define CHIP_CONFIG__LC_STATE__LC_STATE_bp 0
 #define CHIP_CONFIG__LC_STATE__LC_STATE_bw 8
 #define CHIP_CONFIG__LC_STATE__LC_STATE_reset 0xf
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Lifecycle state value from SEP. Default to invalid state
+        // Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).
         uint32_t lc_state :8;
         uint32_t :24;
     } f;

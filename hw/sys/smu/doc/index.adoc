@@ -146,6 +146,12 @@ goes, as <<smu-axi-crossbar-routing-table>> shows.
 The crossbar generates each `DECERR` response itself; the request reaches no
 subordinate.
 
+The crossbar routes a burst by its start address and does not check its
+encoding. An illegal AXI4 burst on `ext_in` -- a WRAP burst with `AxLEN` 0, the
+reserved `AxBURST` encoding, or an INCR burst that crosses a 4 KiB boundary --
+is forwarded unchanged, and its effect is set by the target. The driver of
+`smu_axi_in` must issue only legal bursts.
+
 [[smu-clocks-and-resets]]
 == Clocks and Resets
 

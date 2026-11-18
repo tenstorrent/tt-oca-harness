@@ -36,7 +36,7 @@
 
 /* SEP outbound egress filter, entry 0. The layout and the open-window
  * encoding match drivers/sep_outbound_filter.h. */
-.equ OUTBOUND_FILTER_CTRL_BASE, 0x10A20000
+.equ OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE, 0x10A20000
 .equ FILTER_CONFIG_OFF,         0x0
 .equ FILTER_START_OFF,          0x8
 .equ FILTER_END_OFF,            0x10
@@ -62,7 +62,7 @@ _start:
      *
      * START/END before CONFIG so the entry enables over the final range.
      */
-    li      t0, OUTBOUND_FILTER_CTRL_BASE
+    li      t0, OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE
     li      t1, STDOUT
     sw      t1, FILTER_START_OFF(t0)
     sw      zero, FILTER_START_OFF+4(t0)

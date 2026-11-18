@@ -11,7 +11,7 @@ window and response. So an endpoint must answer a request the same whatever
 AxPROT, AxUSER, AxREGION, AxQOS, AxLOCK, AxCACHE, AxLEN or AxID it carries.
 
 The check set holds one register per endpoint: every internal-crossbar target
-but the DTP CSR port, which has no responder below the SMU (SF-040),
+but the DTP CSR port, which has no responder below the SMU,
 each of the 32 filter entries, one mailbox port, every peripheral-crossbar
 target, the data-accelerator control windows and the DFD/CLA window. Each probe
 is a plain read-write register, checked against the generated contract before
@@ -77,7 +77,7 @@ SEED_PATTERN = 0x9E37_79B9_7F4A_7C15
 RESET_UNIT_PROBE = "smc_reset_unit/ISOLATE_REQ_FLR_COUNTER_VALUE"
 
 PROT_VALUES = (0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x0)
-# Which AxUSER bits carry the source ID is open (SF-005), so the sweep walks a
+# Which AxUSER bits carry the source ID is open, so the sweep walks a
 # one over all twelve.
 USER_VALUES = (0xFFF, *(1 << bit for bit in range(12)), 0x000)
 REGION_VALUES = (0x1, 0x2, 0x4, 0x8, 0xF, 0x0)
@@ -200,28 +200,36 @@ def check_set() -> tuple[Endpoint, ...]:
         _probe("i3c", "periph-ctrl", "oca_i3c_wrap/i3c_csr[0]/I3CBase/DEV_CTX_BASE_LO", seed=RW),
         _probe("efuse_map", "efuse", "smc_efuse_map/I2C_I3C_ID[0]", efuse=True, seed=RW),
         _probe("efuse_intf", "efuse", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", efuse=True),
-        _probe("gpio", "internal-regs", "gpio_intf[0]/ACCESS_FILTER"),
+        _probe("gpio", "internal-regs", "gpio_intf_wrap/gpio_intf[0]/ACCESS_FILTER"),
         _probe("dfx", "internal-regs", "dfx_ctrl/DEBUG_BUS_MUX", seed=0xFF00),
         _probe(
             "base_config", "internal-regs", "smc_base_config/HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"
         ),
         _probe("cpu_ctrl", "internal-regs", "smc_cpu_ctrl/SCRATCH[15]", seed=RW),
-        _probe("alias_remap", "remap-ctrl", "smc_alias_remap[0]/REGION/region_start", seed=RW),
+        _probe(
+            "alias_remap",
+            "remap-ctrl",
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_start",
+            seed=RW,
+        ),
         _probe(
             "mmode_remap",
             "remap-ctrl",
-            "smc_mmode_remap[0]/REGION/region_attrs",
+            "smc_mmode_remap_wrap/output_remap[0]/REGION/region_attrs",
             seed=REMAP_OFFSET,
         ),
         _probe(
             "xvisor_remap",
             "remap-ctrl",
-            "smc_xvisor_remap[0]/REGION/region_attrs",
+            "smc_xvisor_remap_wrap/output_remap[0]/REGION/region_attrs",
             seed=REMAP_OFFSET,
         ),
         *(
             _probe(
-                f"in_filter{i}", "filter-entry", f"smc_inbound_filter_ctrl[{i}]/START_ADDR", seed=RW
+                f"in_filter{i}",
+                "filter-entry",
+                f"smc_inbound_filter_ctrl_wrap/filter_ctrl[{i}]/START_ADDR",
+                seed=RW,
             )
             for i in range(16)
         ),
@@ -229,7 +237,7 @@ def check_set() -> tuple[Endpoint, ...]:
             _probe(
                 f"out_filter{i}",
                 "filter-entry",
-                f"smc_outbound_filter_ctrl[{i}]/START_ADDR",
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl[{i}]/START_ADDR",
                 seed=RW,
             )
             for i in range(16)
@@ -304,7 +312,7 @@ BURST_SET = (
     *(
         Burst(
             f"out-remap-mmode len{n - 1}",
-            tuple(f"smc_mmode_remap[{i}]/REGION/region_attrs" for i in range(n)),
+            tuple(f"smc_mmode_remap_wrap/output_remap[{i}]/REGION/region_attrs" for i in range(n)),
             n,
         )
         for n in (2, 4, 8)
@@ -312,14 +320,17 @@ BURST_SET = (
     *(
         Burst(
             f"out-remap-xvisor len{n - 1}",
-            tuple(f"smc_xvisor_remap[{i}]/REGION/region_attrs" for i in range(n)),
+            tuple(f"smc_xvisor_remap_wrap/output_remap[{i}]/REGION/region_attrs" for i in range(n)),
             n,
         )
         for n in (2, 4, 8)
     ),
     Burst(
         "alias-remap len1",
-        ("smc_alias_remap[0]/REGION/region_start", "smc_alias_remap[0]/REGION/region_end"),
+        (
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_start",
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_end",
+        ),
         2,
     ),
     Burst(
@@ -923,7 +934,8 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
         else:
             self._measure(
                 f"SHIM 0x{ep.addr:08x}: rd1 {_resp(rd1.resp_code)} 0x{v1:x}, "
-                f"wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:x} (SF-041)"
+                f"wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:x} (open: the "
+                f"response and side effects of the first eFuse SHIM word)"
             )
         line = (
             f"rd 0x{ep.addr:08x} resp={_resp(rd1.resp_code)} data=0x{v1:016x}, "

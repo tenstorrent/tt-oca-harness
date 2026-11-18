@@ -8,6 +8,9 @@ public_flat_rw -module "smc_uvm_top" -var "*"
 // The shared AXI VIP interface on the SYS_OUT boundary: cocotb binds the slave
 // agent to its members.
 public_flat_rw -module "ocah_axi_if" -var "*"
+// The AXI protocol checkers' enable: the partial-reset leaf reads en_i of the
+// twelve instances it names to show they were armed while it graded. READ-ONLY.
+public_flat_rd -module "ocah_axi_sva" -var "en_i"
 // SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
 // prim_ram_2p is the I3C RLT memory, instantiated in smc_ip_integration.
 public_flat_rw -module "prim_rom" -var "mem"
@@ -33,6 +36,15 @@ public_flat_rd -module "smc_efuse_wrapper" -var "is_prod_or_rma_sip"
 // `[NO-FORCED-INTERNAL-STATE]` structurally true.
 public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mcause"
 public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mepc"
+// FIFO integrity fault injection. `storage` is the entry array of every
+// prim_fifo_sync_parity (one odd-parity bit per entry); `q_o` is prim_flop,
+// the register prim_count keeps each copy of a hardened pointer in. Only the
+// two FIFO-integrity leaves write them: one bit of a queued entry's parity, or
+// one bit of a pointer's secondary copy, so the fault report is graded from a
+// real storage fault rather than the INTR_TEST / ITR force. The directive is
+// per module, so every instance of the two cells is published.
+public_flat_rw -module "prim_fifo_sync_parity" -var "storage"
+public_flat_rw -module "prim_flop" -var "q_o"
 
 // The dual target makes IMPLICIT an error so an undeclared net in this harness
 // stops the build instead of becoming a constant-0 wire. Vendored OpenTitan

@@ -11,7 +11,7 @@ LSIO owner (INTERFACE_ENABLE, LSIO_DISABLE) with INTERRUPT_ENABLE at its reset
 type (active-high level) (hw/ip/gpio register description). The walk gives
 every pad a code of its own: in phase k a pad's field is set when bit k of
 (pad index + 1) is 1, which over seven phases is a distinct, nonzero,
-not-all-ones word for each of the 65 pads. In the seven receive phases each
+not-all-ones word for each of the 67 pads. In the seven receive phases each
 pad has both ENABLE_RX_TX enables and CORE2PAD from its code, so the pads and
 gpio_interrupt_o must both equal the phase mask bit for bit: a pad answering
 another pad's DATA_CTRL, or an interrupt lane taken from another pad, reads a
@@ -43,8 +43,8 @@ from seq_lib.smu_jtag_helpers import make_smu_jtag_tap
 from seq_lib.smu_tb_pins import smc_primary_reset
 from smu_base_test import smu_base_test
 
-DATA_CTRL_SYM = "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR"
-LANES = smc_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_NUM")
+DATA_CTRL_SYM = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR"
+LANES = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM")
 BP = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
 BASE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm") | gpio_intf_u32(
     "GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm"

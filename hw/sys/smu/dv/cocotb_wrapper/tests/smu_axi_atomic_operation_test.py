@@ -12,7 +12,8 @@ What it proves: with the SMC aperture and an INBOUND0 window programmed over
 JTAG, a plain 32-bit read of ``VERSION_LO`` on the SMN path is answered OKAY
 with the register's reset value, and the RID sampled off the live R channel
 mirrors the ARID that was issued. DECERR / err_slv poison stays OUT for this
-leaf: no ATOP can be driven to provoke it.
+leaf: the ``smu_axi_in`` boundary contract requires ``AWATOP`` = 0 and the SMU
+neither refuses nor answers an atomic, so no deny path exists to provoke.
 """
 
 from __future__ import annotations

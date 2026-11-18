@@ -60,12 +60,12 @@ extern "C" {
 #define I2C_DEFAULT_TX_THRESH 5
 #define I2C_DEFAULT_ACQ_THRESH 29
 
-/* SMC I2C FIFO depths. The IP defaults are the parameters of hw/ip/i2c/rtl/i2c_core.sv
- * (CONTROLLER_TX_FIFO_DEPTH, CONTROLLER_RX_FIFO_DEPTH and TARGET_TX_FIFO_DEPTH 64,
- * TARGET_RX_FIFO_DEPTH 268); the SMC integration overrides the target RX depth to 64
- * (hw/sys/smc/doc/periphs.adoc, smc_config_pkg::I2cTargetRxFifoDepth). No generated C export
- * carries them, so keep this table in step with those two sources; the IP default of 268 must
- * not be assumed at the SMC level. */
+/* SMC I2C FIFO depths, as the SMC peripheral chapter (hw/sys/smc/doc/periphs.adoc) states
+ * them: the IP defaults of 64 entries for the controller TX (FMT), controller RX and target TX
+ * FIFOs (hw/ip/i2c/doc/index.adoc), and the target RX depth overridden from the IP default of
+ * 268 to 64. A level field reads the depth when its FIFO is full. No generated C export carries
+ * them, so keep this table in step with those two chapters; the IP default of 268 must not be
+ * assumed at the SMC level. */
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 64u
 #define I2C_CONTROLLER_RX_FIFO_DEPTH 64u
 #define I2C_TARGET_TX_FIFO_DEPTH 64u

@@ -25,6 +25,19 @@ FCOV_BINS: dict[str, dict[str, set[str]]] = {
             "reprogram_shrink",
             "config_clear_deny",
         },
+        "route_cell": {
+            "sep_out_to_smc_in",
+            "sep_out_to_ext_out",
+            "smc_out_to_sep_in",
+            "smc_out_to_ext_out",
+            "ext_in_to_sep_in",
+            "ext_in_to_smc_in",
+            "decerr_sep_out_sep",
+            "decerr_smc_out_smc",
+            "decerr_ext_in_neither",
+        },
+        "outstanding_depth": {"1", "2_4", "5_8", "gt8"},
+        "id_return": {"inorder", "ooo"},
     },
     "reg_access_cg": {
         "path": {"jtag2axi_fabric", "jtag2axi_otp", "hier_ctn", "smn"},
@@ -291,6 +304,30 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_telemetry_atb_handshake_test": [
         ("glue_p4_cg", "telemetry", "atb_handshake"),
+    ],
+    "smu_axi_in_burst_outstanding_test": [
+        ("xbar_route_cg", "route_cell", "ext_in_to_smc_in"),
+        ("xbar_route_cg", "outstanding_depth", "1"),
+        ("xbar_route_cg", "outstanding_depth", "2_4"),
+    ],
+    "smu_axi_in_sep_aperture_test": [
+        ("xbar_route_cg", "route_cell", "ext_in_to_sep_in"),
+    ],
+    "smu_axi_out_outstanding_test": [
+        ("xbar_route_cg", "route_cell", "smc_out_to_ext_out"),
+        ("xbar_route_cg", "outstanding_depth", "2_4"),
+    ],
+    "smu_xbar_decerr_burst_response_test": [
+        ("xbar_route_cg", "route_cell", "decerr_ext_in_neither"),
+        ("xbar_route_cg", "route_cell", "ext_in_to_smc_in"),
+    ],
+    "smu_axi_concurrent_initiators_stall_test": [
+        ("xbar_route_cg", "route_cell", "smc_out_to_sep_in"),
+        ("xbar_route_cg", "route_cell", "smc_out_to_ext_out"),
+        ("xbar_route_cg", "route_cell", "ext_in_to_sep_in"),
+        ("xbar_route_cg", "route_cell", "ext_in_to_smc_in"),
+        ("xbar_route_cg", "route_cell", "decerr_ext_in_neither"),
+        ("xbar_route_cg", "id_return", "inorder"),
     ],
 }
 

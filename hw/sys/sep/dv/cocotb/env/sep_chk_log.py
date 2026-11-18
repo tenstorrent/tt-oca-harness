@@ -11,10 +11,19 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   ``CTRL-MISSING <NAME>`` and is recorded as a failure: a check whose control
   did not show the healthy behaviour proves nothing.
 * ``obs(name, **fields)`` logs ``OBS-<NAME> ...``: a DUT value whose golden no
-  specification states yet. ``blocked(check, reason)`` logs
-  ``OBS-BLOCKED CHK-<NAME> reason=<r>``. ``info(name, **fields)`` logs
-  ``INFO-<NAME> ...``: a bench record (set-up value, reference timing, leg
-  marker, bookkeeping). None of the three grades anything.
+  specification states yet.
+* ``blocked(check, reason)`` logs ``INFO-BLOCKED CHK-<NAME> reason=<r>``: a
+  check that the leaf cannot grade.
+* ``info(name, **fields)`` logs
+  ``INFO-<NAME> ...``: a bench record (set-up value, stimulus draw or redraw,
+  reference timing, leg marker, bookkeeping), or a re-log of a DUT value that a named ``CHK-``
+  grades, in the same leaf or in another leaf. That INFO line names its
+  ``CHK-``, and its leaf when the check is in another leaf. ``INFO-`` also
+  logs a DUT value that no check of the leaf grades and that no open
+  specification question asks for: the specification states its golden but
+  the leaf does not grade it, or an ``OBS-`` line of another leaf holds the
+  open question; the test contract says that the value is not graded.
+  ``obs()``, ``blocked()`` and ``info()`` grade nothing.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the
@@ -32,11 +41,18 @@ is not. The prefix set is defined in
 ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, section "Log line prefixes".
 Names are upper case: ``[A-Z0-9_-]``, with or without the ``CHK-`` prefix. Field values print as given: ``bool`` as 0/1, ``int`` in decimal, a
 list as ``[a,b]``; pass a register value as a string, e.g. ``f"0x{v:08x}"``.
+
+A key, key share, UID, token, token digest or other secret word is never
+printed. ``word_digest`` gives a short SHA-256 digest of the words (or of a
+wide integer), so two lines can be compared, and
+``diff_words`` gives the indexes of the words that differ.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 _NAME = re.compile(r"^[A-Z0-9][A-Z0-9_-]*$")
@@ -58,6 +74,24 @@ def _fmt(value: Any) -> str:
         return "[" + ",".join(_fmt(v) for v in value) + "]"
     text = str(value)
     return repr(text) if (not text or any(c.isspace() for c in text)) else text
+
+
+def word_digest(words: Iterable[int] | int) -> str:
+    """First 8 hex digits of SHA-256 over ``words``, each a 32-bit big-endian word.
+
+    An ``int`` is taken as its 32-bit words, least significant first, so
+    ``word_digest(w)`` equals ``word_digest([w])`` for one word.
+    """
+    if isinstance(words, int):
+        n = max(1, (words.bit_length() + 31) // 32)
+        words = [(words >> (32 * k)) & 0xFFFF_FFFF for k in range(n)]
+    return hashlib.sha256(b"".join(w.to_bytes(4, "big") for w in words)).hexdigest()[:8]
+
+
+def diff_words(got: Sequence[int], exp: Sequence[int]) -> list[int]:
+    """Indexes where ``got`` and ``exp`` differ; a length mismatch adds the extra indexes."""
+    n = max(len(got), len(exp))
+    return [i for i in range(n) if i >= len(got) or i >= len(exp) or got[i] != exp[i]]
 
 
 class SepChkLog:
@@ -145,12 +179,12 @@ class SepChkLog:
         self._log.info(self._line(f"OBS-{_name(name)}", fields))
 
     def info(self, name: str, **fields: Any) -> None:
-        """Log one bench record. It grades nothing and never fails the leaf."""
+        """Log one bench record or a re-log of a value a named CHK grades. It never fails the leaf."""
         self._log.info(self._line(f"INFO-{_name(name)}", fields))
 
     def blocked(self, check: str, reason: str) -> None:
         """Log a check that this leaf cannot grade. It earns no credit."""
-        self._log.info(f"OBS-BLOCKED CHK-{_name(check)} reason={_fmt(reason)} seed={self._seed}")
+        self._log.info(f"INFO-BLOCKED CHK-{_name(check)} reason={_fmt(reason)} seed={self._seed}")
 
     # -- verdict -------------------------------------------------------------
 

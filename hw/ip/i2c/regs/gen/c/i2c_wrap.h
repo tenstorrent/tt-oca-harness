@@ -1000,20 +1000,20 @@ typedef union {
 
 // reg - i2c::HOST_FIFO_STATUS
 // Controller FIFOs Status Register (Controller Mode only)
-// Controller TX FIFO fill level.
+// Controller TX FIFO fill level, from 0 to the FIFO depth when full.
 #define I2C__HOST_FIFO_STATUS__FMTLVL_bm 0xfff
 #define I2C__HOST_FIFO_STATUS__FMTLVL_bp 0
 #define I2C__HOST_FIFO_STATUS__FMTLVL_bw 12
-// Controller RX FIFO fill level.
+// Controller RX FIFO fill level, from 0 to the FIFO depth when full.
 #define I2C__HOST_FIFO_STATUS__RXLVL_bm 0xfff0000
 #define I2C__HOST_FIFO_STATUS__RXLVL_bp 16
 #define I2C__HOST_FIFO_STATUS__RXLVL_bw 12
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Controller TX FIFO fill level.
+        // Controller TX FIFO fill level, from 0 to the FIFO depth when full.
         uint32_t FMTLVL :12;
         uint32_t :4;
-        // Controller RX FIFO fill level.
+        // Controller RX FIFO fill level, from 0 to the FIFO depth when full.
         uint32_t RXLVL :12;
         uint32_t :4;
     } f;
@@ -1022,22 +1022,22 @@ typedef union {
 
 // reg - i2c::TARGET_FIFO_STATUS
 // Target FIFOs Status Register (Target Mode only)
-// Target TX FIFO fill level.
+// Target TX FIFO fill level, from 0 to the FIFO depth when full.
 #define I2C__TARGET_FIFO_STATUS__TXLVL_bm 0xfff
 #define I2C__TARGET_FIFO_STATUS__TXLVL_bp 0
 #define I2C__TARGET_FIFO_STATUS__TXLVL_bw 12
 #define I2C__TARGET_FIFO_STATUS__TXLVL_reset 0x0
-// Target RX FIFO fill level.
+// Target RX FIFO fill level, from 0 to the FIFO depth when full.
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_bm 0xfff0000
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_bp 16
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_bw 12
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Target TX FIFO fill level.
+        // Target TX FIFO fill level, from 0 to the FIFO depth when full.
         uint32_t TXLVL :12;
         uint32_t :4;
-        // Target RX FIFO fill level.
+        // Target RX FIFO fill level, from 0 to the FIFO depth when full.
         uint32_t ACQLVL :12;
         uint32_t :4;
     } f;

@@ -102,6 +102,7 @@ tests = [
     "smc_hang_detector_sys_timeout_test",
     "smc_hang_detector_data_timeout_test",
     "smc_hang_detector_plic_route_test",
+    "smc_hang_detector_window_rand_test",
     "smc_temp_interrupt_test",
     "smc_ext_interrupts_pin_test",
 ]
@@ -246,6 +247,23 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_mbx_inbound_irq_vector_test"
 module = "smc_mbx_inbound_irq_vector_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_hang_detector_window_rand_test"
+module = "smc_hang_detector_window_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_plic_gateway_claim_test"
+module = "smc_plic_gateway_claim_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "irq"]

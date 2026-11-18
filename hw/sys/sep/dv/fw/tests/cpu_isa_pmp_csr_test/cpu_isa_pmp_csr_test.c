@@ -21,7 +21,10 @@
 //   ROW i= op= r= / CROW i= op= r=         result of table row i (control rows after bset)
 //   ZBS traps= mcause= mepc= pc=           the bset step
 //   PMP0 r0..r15= / PMPC i= r0..r15=       pmpaddr readbacks after the drawn and the complement
-//   writes MSECCFG v= traps= MRAC j= v= rb= traps= mcause= mepc= rok= rden= INSTRET r1= r2= pc1=
+//   writes
+//   PMPX a= v= wtr= wmc= b= btr= bmc= n= ntr= n0= n15= aft= atr= amc=
+//                                          pmpaddr16 and pmpaddr63 probes (pmpx_probe)
+//   MSECCFG v= traps= MRAC j= v= rb= traps= mcause= mepc= rok= rden= INSTRET r1= r2= pc1=
 //   pc2=
 
 #include <stdint.h>
@@ -41,15 +44,16 @@ enum {
     P_MAGIC = 0,
     P_SEED,
     P_NROW,
-    P_CTRL,                 // NCTRL row indices re-run after the bset trap
-    P_PMP = P_CTRL + NCTRL, // 16 drawn pmpaddr values
-    P_MRAC = P_PMP + NPMP,  // 4 drawn mrac values
-    P_AW = P_MRAC + NMRAC,  // 4 seeded words of the allowed region
-    P_DW = P_AW + NMRAC,    // 4 seeded words of the denied region
-    P_AREG = P_DW + NMRAC,  // allowed SRAM region base (4 KiB aligned)
-    P_DREG,                 // denied SRAM region base (4 KiB aligned)
-    P_ROWS,                 // NROW_MAX rows of {op, a, b, expected}
-    P_WORDS = P_ROWS + 4u * NROW_MAX,
+    P_CTRL,                          // NCTRL row indices re-run after the bset trap
+    P_PMP = P_CTRL + NCTRL,          // 16 drawn pmpaddr values
+    P_MRAC = P_PMP + NPMP,           // 4 drawn mrac values
+    P_AW = P_MRAC + NMRAC,           // 4 seeded words of the allowed region
+    P_DW = P_AW + NMRAC,             // 4 seeded words of the denied region
+    P_AREG = P_DW + NMRAC,           // allowed SRAM region base (4 KiB aligned)
+    P_DREG,                          // denied SRAM region base (4 KiB aligned)
+    P_ROWS,                          // NROW_MAX rows of {op, a, b, expected}
+    P_PMPX = P_ROWS + 4u * NROW_MAX, // drawn value for pmpaddr16 and pmpaddr63
+    P_WORDS,
 };
 
 volatile uint32_t g_prm[P_WORDS] = {
@@ -398,6 +402,57 @@ static void put_list(const uint32_t *r) {
     rec_end();
 }
 
+// Probe pmpaddr16 (CSR 0x3C0) or pmpaddr63 (CSR 0x3EF): write v, read it (b),
+// write ~b to pmpaddr0 and pmpaddr15 and read both back (n0, n15), then read
+// the probed CSR again (aft). Each access logs its trap count and mcause; a
+// read that traps leaves 0 in its register.
+#define PMPX_ACCESS(stmt, ntr, mc) \
+    do { \
+        uint32_t ntrap0_ = g_ntrap; \
+        g_mcause = 0u; \
+        stmt; \
+        ntr = g_ntrap - ntrap0_; \
+        mc = g_mcause; \
+    } while (0)
+#define PMPX_PROBE(csr) \
+    do { \
+        uint32_t b_ = 0u, a_ = 0u, wt_, wm_, bt_, bm_, at_, am_, nt_, nm_; \
+        PMPX_ACCESS(CSR_WRITE(csr, v), wt_, wm_); \
+        PMPX_ACCESS(__asm__ volatile("csrr %0, " #csr : "+r"(b_)::"memory"), bt_, bm_); \
+        uint32_t n_ = ~b_; \
+        PMPX_ACCESS( \
+            { \
+                CSR_WRITE(pmpaddr0, n_); \
+                CSR_WRITE(pmpaddr15, n_); \
+            }, \
+            nt_, nm_); \
+        uint32_t n0_ = CSR_READ(pmpaddr0); \
+        uint32_t n15_ = CSR_READ(pmpaddr15); \
+        PMPX_ACCESS(__asm__ volatile("csrr %0, " #csr : "+r"(a_)::"memory"), at_, am_); \
+        sep_mbx_puts("PMPX"); \
+        rec_hex("a", csr); \
+        rec_hex("v", v); \
+        rec_hex("wtr", wt_); \
+        rec_hex("wmc", wm_); \
+        rec_hex("b", b_); \
+        rec_hex("btr", bt_); \
+        rec_hex("bmc", bm_); \
+        rec_hex("n", n_); \
+        rec_hex("ntr", nt_); \
+        rec_hex("n0", n0_); \
+        rec_hex("n15", n15_); \
+        rec_hex("aft", a_); \
+        rec_hex("atr", at_); \
+        rec_hex("amc", am_); \
+        rec_end(); \
+        (void)nm_; \
+    } while (0)
+
+static void pmpx_probe(uint32_t v) {
+    PMPX_PROBE(0x3C0);
+    PMPX_PROBE(0x3EF);
+}
+
 // NAPOT pmpaddr of a naturally aligned 4 KiB region.
 static uint32_t napot4k(uint32_t base) {
     return (base >> 2) | 0x1FFu;
@@ -483,6 +538,7 @@ int main(void) {
         rec_hex("i", i);
         put_list(rb);
     }
+    pmpx_probe(g_prm[P_PMPX]);
     n0 = g_ntrap;
     uint32_t msec = CSR_READ(0x747);
     sep_mbx_puts("MSECCFG");

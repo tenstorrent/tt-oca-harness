@@ -90,6 +90,7 @@ class smc_base_test extends ocah_test;
     smc_seq.test_cfg   = test_cfg;
     smc_seq.env_cfg    = env_cfg;
     smc_seq.scoreboard = m_env.m_scoreboard;
+    smc_seq.sep_in_history = m_env.m_sep_in_history;
   endfunction
 
   // Clock/reset bring-up (cocotb _bring_up parity): power-good and cold

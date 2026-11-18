@@ -92,7 +92,7 @@ stops the result on idle. The output, `avs_clock`, leaves through
 |===
 |Clock |Logic and boundary
 |`clk_smc_i` |CPU cluster, local fabric, remapping/filtering, register crossbar,
-OCTS, and telemetry decoding/message storage. Individual blocks may gate this clock.
+OCTS, PWM, and telemetry decoding/message storage. Individual blocks may gate this clock.
 |`clk_ref_i` |Power-good/reset conditioning, FLR countdowns, DFD local time tick
 and peripheral reference-clock inputs.
 |`clk_periph_i` |AVSBus, I2C, UART/log-engine and I3C operation. Register accesses
@@ -438,7 +438,7 @@ image::smc-flr-isolation.svg[alt="Primary and secondary chiplet SMCs with their 
 Each chiplet's SMC takes its cold reset from the board `BP_RESET_N` and
 its cool reset from its `BP_COOL_RESET_N_I` input; the primary reset
 is the AND of these and the FLR cool reset. The FLR cool reset also
-drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 62, which pulls the
+drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 64, which pulls the
 line low while the reset is asserted and leaves it undriven otherwise. The
 primary chiplet's `BP_COOL_RESET_N_O` connects to the secondary chiplet's
 `BP_COOL_RESET_N_I`, so an FLR on the primary chiplet cool-resets the
