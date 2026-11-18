@@ -168,6 +168,9 @@ OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
 OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
 OCAH_REG_ADDR_WIDTH_zeroer_ctrl ?= 12
 OCAH_REG_ADDR_WIDTH_sep_reset_ctrl ?= 12
+OCAH_REG_ADDR_WIDTH_sep_lifecycle_ctrl ?= 12
+OCAH_REG_ADDR_WIDTH_km_mailbox_sep ?= 12
+OCAH_REG_ADDR_WIDTH_entropy_source ?= 12
 
 # Blocks that share a page: the regblock decodes the whole window its wrapper
 # routes it.

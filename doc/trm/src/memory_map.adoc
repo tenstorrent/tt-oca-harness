@@ -122,8 +122,8 @@ follows:
 
 The cross-trigger network divides its own address map into windows by the same
 rules. The eFuse blocks, the external window of each subsystem, the units
-inside the SMC CPU cluster and the units behind the SEP crypto interconnect keep
-their own decode.
+inside the SMC CPU cluster and the CSRNG and EDN windows of the SEP crypto
+interconnect keep their own decode.
 
 === Responses Inside a Window
 

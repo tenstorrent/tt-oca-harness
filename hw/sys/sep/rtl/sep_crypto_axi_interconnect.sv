@@ -13,6 +13,7 @@
 // are not isolated; the eFuse and lifecycle legs leave as full AXI4 without isolation.
 
 `include "axi/typedef.svh"
+`include "ocah_assert.svh"
 
 module sep_crypto_axi_interconnect (
   input  logic clk_i,                         // System clock.
@@ -264,6 +265,31 @@ module sep_crypto_axi_interconnect (
       ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
     end else begin
       ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
+    end
+  end
+
+  // The priority chains pick the target an address belongs to only while no two rules overlap.
+  localparam int unsigned NumRules = sep_crypto_pkg::SepCryptoNumAxiMst - 1;
+  localparam axi_pkg::xbar_rule_32_t Rules[NumRules] = '{
+      sep_crypto_pkg::OTBN_RULE,
+      sep_crypto_pkg::HMAC_RULE,
+      sep_crypto_pkg::AES_RULE,
+      sep_crypto_pkg::KMAC_RULE,
+      sep_crypto_pkg::FUSE_RULE,
+      sep_crypto_pkg::LIFECYCLE_RULE,
+      sep_crypto_pkg::KM_RULE,
+      sep_crypto_pkg::CSRNG_RULE,
+      sep_crypto_pkg::EDN_RULE,
+      sep_crypto_pkg::ENTROPY_SOURCE_RULE,
+      sep_crypto_pkg::TRNG_RULE,
+      sep_crypto_pkg::ABR_RULE
+  };
+
+  for (genvar i = 0; i < NumRules; i++) begin : gen_rule_checks
+    for (genvar j = i + 1; j < NumRules; j++) begin : gen_disjoint
+      `OCAH_ASSERT_STATIC(
+          RulesDisjoint_A,
+          Rules[i].end_addr <= Rules[j].start_addr || Rules[j].end_addr <= Rules[i].start_addr)
     end
   end
 

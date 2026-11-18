@@ -126,7 +126,10 @@ block to the SMC or the SEP:
 
 * Start a block that has a page to itself on a 4 KiB boundary, and end its
   crossbar rule at the end of its last 4 KiB page (`smc_pkg::reg_page_end` or
-  `sep_pkg::reg_page_end`), so that its target owns whole pages.
+  `sep_pkg::reg_page_end`), so that its target owns whole pages. Put a vendored
+  block that does not refuse every address past its registers behind a
+  `prim_axil_addr_demux` with `MISS_RESP` set to SLVERR, which answers the rest
+  of the page.
 * Give a block that shares a page a window whose size is a power of two and
   whose base is a multiple of that size, and route it through
   `prim_axil_addr_demux`, or in `sep_system_csr` through its own demux. Either

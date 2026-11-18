@@ -269,7 +269,7 @@ module sep_entropy_fifo
   // -------------------------------------------------------------------------
   // AXI-Lite read channel (single outstanding, non-blocking pop)
   // -------------------------------------------------------------------------
-  // Decode the aperture offset (region is 64 KiB) against the register offsets
+  // Decode the aperture offset (region is 4 KiB) against the register offsets
   // taken from the generated sep_entropy_pool address map, so the three
   // registers are not mirrored across the aperture:
   //   STATUS    -> status word    (non-destructive)

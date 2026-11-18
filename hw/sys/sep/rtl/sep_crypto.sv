@@ -546,6 +546,7 @@ module sep_crypto #(
   aes_wrapper u_aes_wrapper_s3c_scan (
     .clk_i               (clk_i),
     .rst_ni              (gated_rst_ni.aes),
+    .test_en_i           (test_en_i),
     .aes_axil_req_i      (aes_axil_isolated_req),
     .aes_axil_resp_o     (aes_axil_isolated_resp),
     .aes_key_axil_req_i  (aes_key_axil_isolated_req),

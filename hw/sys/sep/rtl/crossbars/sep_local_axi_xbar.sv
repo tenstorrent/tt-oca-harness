@@ -88,8 +88,7 @@ module sep_local_axi_xbar
                                               // sep_io.
   input  axi_out_resp_t sep_io_resp_i,        // Response from sep_io.
 
-  output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool,
-                                              // 0x1095_0000-0x1095_FFFF.
+  output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool register page.
   input  axi_out_resp_t entropy_fifo_resp_i,  // Response from the entropy pool.
 
   output axi_out_req_t  sep_external_req_o,   // Request for the sep_external window
@@ -193,11 +192,12 @@ module sep_local_axi_xbar
           end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR,
                                               sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE))
       },
-      // entropy_fifo.main: 0x10950000 - 0x10960000
+      // entropy_fifo.main: the entropy_pool page, all of which sep_entropy_fifo decodes.
       '{
           idx: 8,
-          start_addr: 32'h10950000,
-          end_addr: 33'h10960000
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_SIZE))
       },
       // sep_external.main: above the eFuse shim window - 0x40000000
       '{

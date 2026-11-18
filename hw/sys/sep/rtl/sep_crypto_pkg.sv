@@ -27,13 +27,15 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_HMAC_SIZE
   };
 
+  // The AES page; aes_wrapper answers the addresses outside the window the AES decodes.
   parameter axi_pkg::xbar_rule_32_t AES_RULE = '{
       idx: 2,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR,
       end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_AES_SIZE  // 256 bytes for AES.
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_AES_SIZE
+      )
   };
 
   parameter axi_pkg::xbar_rule_32_t KMAC_RULE = '{
@@ -52,22 +54,28 @@ package sep_crypto_pkg;
       end_addr: sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR + sep_pkg::RegPageSize
   };
 
+  // The lifecycle controller page, all of which its register block decodes.
   parameter axi_pkg::xbar_rule_32_t LIFECYCLE_RULE = '{
       idx: 5,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
       end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
+      )
   };
 
+  // The Key Manager mailbox page, all of which its register block decodes.
   parameter axi_pkg::xbar_rule_32_t KM_RULE = '{
       idx: 6,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
       end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_SIZE
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_SIZE
+      )
   };
 
   parameter axi_pkg::xbar_rule_32_t CSRNG_RULE = '{
@@ -85,13 +93,16 @@ package sep_crypto_pkg;
       end_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
   };
 
+  // The entropy source page, all of which its register block decodes.
   parameter axi_pkg::xbar_rule_32_t ENTROPY_SOURCE_RULE = '{
       idx: 9,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
       end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_SIZE
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_SIZE
+      )
   };
 
   // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to an external TRNG
@@ -104,10 +115,16 @@ package sep_crypto_pkg;
       end_addr: TrngEndAddr
   };
 
+  // Up to the end of the ABR's last page; sep_crypto_abr_wrapper answers the addresses past
+  // its registers.
   parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
       idx: 11,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR,
-      end_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
+      end_addr:
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
+      )
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).

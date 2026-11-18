@@ -32,8 +32,8 @@ module entropy_source
 
     input       logic        s_axil_awvalid_i,  // AXI-Lite write-address valid.
     output      logic        s_axil_awready_o,  // AXI-Lite write-address ready.
-    input       logic [8:0]  s_axil_awaddr_i,  // AXI-Lite write byte address within the register
-                                               // map.
+    input       entropy_source_pkg::reg_addr_t s_axil_awaddr_i,  // AXI-Lite write byte address
+                                                                 // within the register map.
     input       logic [2:0]  s_axil_awprot_i,  // AXI-Lite write protection attributes.
 
     input       logic        s_axil_wvalid_i,  // AXI-Lite write-data valid.
@@ -47,8 +47,8 @@ module entropy_source
 
     input       logic        s_axil_arvalid_i,  // AXI-Lite read-address valid.
     output      logic        s_axil_arready_o,  // AXI-Lite read-address ready.
-    input       logic [8:0]  s_axil_araddr_i,  // AXI-Lite read byte address within the register
-                                               // map.
+    input       entropy_source_pkg::reg_addr_t s_axil_araddr_i,  // AXI-Lite read byte address
+                                                                 // within the register map.
     input       logic [2:0]  s_axil_arprot_i,  // AXI-Lite read protection attributes.
 
     output      logic        s_axil_rvalid_o,  // AXI-Lite read-data valid.
@@ -712,7 +712,7 @@ module entropy_source
     ////////////////////
 
     axi4lite_intf #(
-        .ADDR_WIDTH (9),
+        .ADDR_WIDTH (entropy_source_pkg::RegAddrWidth),
         .DATA_WIDTH (32)
     ) s_axil ();
 

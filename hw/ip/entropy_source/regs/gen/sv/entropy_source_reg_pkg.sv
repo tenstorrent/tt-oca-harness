@@ -7,7 +7,7 @@
 package entropy_source_reg_pkg;
 
     localparam ENTROPY_SOURCE_REG_DATA_WIDTH = 32;
-    localparam ENTROPY_SOURCE_REG_MIN_ADDR_WIDTH = 9;
+    localparam ENTROPY_SOURCE_REG_MIN_ADDR_WIDTH = 12;
     localparam ENTROPY_SOURCE_REG_SIZE = 'h17c;
 
     typedef struct {

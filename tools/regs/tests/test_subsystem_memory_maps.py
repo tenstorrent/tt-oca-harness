@@ -225,9 +225,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
                 if view.name == "sep-components"
             )
         )
-        self.assertEqual(
-            sep["main:km_mailbox_sep"].past_response.text, "DECERR, 0xBADCAB1E / DECERR"
-        )
+        self.assertEqual(sep["main:km_mailbox_sep"].past_response.text, "SLVERR, 0x0 / SLVERR")
 
         smc = rows_by_key(
             next(
