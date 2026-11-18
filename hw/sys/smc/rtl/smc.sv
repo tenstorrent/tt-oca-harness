@@ -26,8 +26,8 @@ module smc #(
                                                   // here and is overridden by an
                                                   // integration that models the block.
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region, its
-                                                                  // window at or above
-                                                                  // EFUSE_SHIM_SIZE; '0 omits it.
+                                                                              // window at or above
+                                                                              // EFUSE_SHIM_SIZE; '0 omits it.
   localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
       efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS),
 
@@ -176,11 +176,11 @@ module smc #(
                                                     // completes unless SEP security
                                                     // disable is set.
   output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary fuse shadow-register
-                                                                            // contents; zero until fuse
-                                                                            // sensing completes unless SEP
-                                                                            // security disable is set, and
-                                                                            // always without the supplementary
-                                                                            // region.
+                                                                                  // contents; zero until fuse
+                                                                                  // sensing completes unless SEP
+                                                                                  // security disable is set, and
+                                                                                  // always without the supplementary
+                                                                                  // region.
                supplementary_shadow_regs_o,
 
   output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,  // AXI-L interface for

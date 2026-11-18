@@ -95,12 +95,12 @@ module efuse_interface_controller #(
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
   parameter int unsigned SUPPLEMENTARY_FUSE_WORDS = 0,  // Supplementary fuse region size in words, starting at fuse
-                                                  // bit SHADOW_REG_BITS; 0 omits the region.
+                                                        // bit SHADOW_REG_BITS; 0 omits the region.
   parameter bit [31:0] SUPPLEMENTARY_REG_MAP_BASE_ADDR = 32'h0,  // Base address of the supplementary window; needs only
-                                                           // word alignment.
+                                                                 // word alignment.
   parameter int unsigned SUPPLEMENTARY_LOCKS_BIT_OFFSET = 0,  // Shadow bit address of the 64-bit supplementary lock
-                                                             // register; word aligned, at or above the harness
-                                                             // lock pairs. Unused without a supplementary region.
+                                                              // register; word aligned, at or above the harness
+                                                              // lock pairs. Unused without a supplementary region.
   localparam int unsigned SupplementaryLockRegions = efuse_pkg::SupplementaryLockRegions,  // Supplementary field-map entries.
   localparam bit HasSupplementaryFuses = SUPPLEMENTARY_FUSE_WORDS > 0,  // Supplementary fuse region present.
   localparam int unsigned SupplementaryPortWords = efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE_WORDS),  // Supplementary shadow port width in words.
@@ -137,8 +137,8 @@ module efuse_interface_controller #(
                                                                      // sensing and opens APB access to the shadow registers.
   input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Per-field access-control rules.
   input  efuse_pkg::rule_t [SupplementaryLockRegions-1:0] supplementary_field_map_i,  // Per-region access-control rules
-                                                                            // at supplementary window offsets; unused
-                                                                            // without the supplementary region.
+                                                                                      // at supplementary window offsets; unused
+                                                                                      // without the supplementary region.
 
   output logic                                  reset_n_o,  // Active-low reset, released through a
                                                             // synchronizer once fuse sensing and
@@ -157,11 +157,11 @@ module efuse_interface_controller #(
                                                                 // security_disable_i (without it)
                                                                 // is set.
   output logic [SupplementaryPortWords-1:0][EFUSE_MACRO_WORD_WIDTH-1:0] supplementary_shadow_regs_o,  // Supplementary shadow register
-                                                                                          // contents; zero until fuse
-                                                                                          // sensing completes unless
-                                                                                          // security_disable_i is set,
-                                                                                          // and always without the
-                                                                                          // supplementary region.
+                                                                                                      // contents; zero until fuse
+                                                                                                      // sensing completes unless
+                                                                                                      // security_disable_i is set,
+                                                                                                      // and always without the
+                                                                                                      // supplementary region.
 
   input  logic                                  ext_boot_seq_done_i,  // External boot sequence complete, such as memory
                                                                       // repair and shadow override; gates the

@@ -23,7 +23,7 @@ module efuse_guard #(
   parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
   parameter int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1),  // Harness lock bits on locks_i.
   parameter int unsigned SUPPLEMENTARY_FIELDS = 0,  // Supplementary field-map entry count; 0 disables the
-                                              // supplementary lookup.
+                                                    // supplementary lookup.
   parameter int unsigned SUPPLEMENTARY_BIT_BASE = 0,  // Fuse bit address of the first supplementary fuse.
 
   parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts harness index 0 from locks and gates
@@ -40,7 +40,7 @@ module efuse_guard #(
 
   localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],  // Fuse byte-address type.
   localparam int unsigned NumSupplementaryRules = SUPPLEMENTARY_FIELDS > 0 ? SUPPLEMENTARY_FIELDS : 1,  // Supplementary field-map
-                                                                                      // port width.
+                                                                                                        // port width.
   localparam efuse_addr_t SipTokenBitAddr = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),  // Bit address of the RMA SiP token bit.
   localparam efuse_addr_t ChipletTokenBitAddr = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)  // Bit address of the RMA chiplet token bit.
 ) (
@@ -53,9 +53,9 @@ module efuse_guard #(
                                                                  // indices used to find the lock
                                                                  // bits for a harness target.
   input efuse_pkg::rule_t [NumSupplementaryRules-1:0] supplementary_field_map_i,  // Per-region byte ranges, from
-                                                                      // SUPPLEMENTARY_BIT_BASE, and lock
-                                                                      // indices for a supplementary target;
-                                                                      // unused when SUPPLEMENTARY_FIELDS is 0.
+                                                                                  // SUPPLEMENTARY_BIT_BASE, and lock
+                                                                                  // indices for a supplementary target;
+                                                                                  // unused when SUPPLEMENTARY_FIELDS is 0.
 
   input logic [5:0] rma_sip_token_match_i,  // RMA SiP token-match status code from token
                                             // processing.
@@ -71,7 +71,7 @@ module efuse_guard #(
   input logic [LOCK_VECTOR_BITS-1:0] locks_i,  // Harness lock bits: write lock at 2n, read lock
                                                // at 2n+1 for lock index n.
   input logic [efuse_pkg::SupplementaryLockBits-1:0] supplementary_locks_i,  // SUPPLEMENTARY_LOCKS, in the same
-                                                                 // layout as locks_i.
+                                                                             // layout as locks_i.
   input efuse_addr_t program_target_addr_i,  // Fuse bit address a program start would target.
   input efuse_addr_t read_target_addr_i,  // Fuse bit address a read start would target.
   input logic program_blocked_i,        // One-cycle pulse: a lock refused a program start.

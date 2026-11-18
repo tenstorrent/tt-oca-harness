@@ -26,13 +26,13 @@ module smc_periph_axi_lite_xbar
                                                   // bytes; those addresses route to the
                                                   // efuse target.
   parameter int unsigned SUPPLEMENTARY_FUSE_BASE = 0,  // Byte offset of the supplementary fuse window in
-                                                 // smc_external, at or above EFUSE_SHIM_SIZE.
+                                                       // smc_external, at or above EFUSE_SHIM_SIZE.
   parameter int unsigned SUPPLEMENTARY_FUSE_WORDS = 0,  // Supplementary fuse window size in 32-bit words;
-                                                  // 0 routes no supplementary window.
+                                                        // 0 routes no supplementary window.
   localparam int unsigned SupplementaryStart =  // First supplementary window byte.
       SUPPLEMENTARY_FUSE_WORDS > 0 ? SUPPLEMENTARY_FUSE_BASE : EFUSE_SHIM_SIZE,
   localparam int unsigned SupplementaryEnd = SupplementaryStart + 4 * SUPPLEMENTARY_FUSE_WORDS  // Byte after the
-                                                                              // supplementary window.
+                                                                                                // supplementary window.
 )
 (
   input  logic clk_i,                   // SMC core clock.

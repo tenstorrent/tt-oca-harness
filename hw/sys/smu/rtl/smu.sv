@@ -193,8 +193,8 @@ module smu #(
   input  smc_efuse_pkg::fuse_command_resp_t   smc_efuse_shim_command_resp_i,  // SMC eFuse shim command response.
   output smc_efuse_pkg::efuse_map_t           smc_shadow_regs_o,  // SMC eFuse shadow-register map.
   output logic [SmcSupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // SMC supplementary fuse shadow
-                                                                               // registers; one word tied to
-                                                                               // zero without a region.
+                                                                                     // registers; one word tied to
+                                                                                     // zero without a region.
                                               smc_supplementary_shadow_regs_o,
 
   output logic [smc_pkg::NumGpioWraps-1:0]  lsio_interface_select_o,  // Per-GPIO-wrap LSIO interface select.

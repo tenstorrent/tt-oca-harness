@@ -16,7 +16,7 @@
 
 module smc_efuse_wrapper #(
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region; '0
-                                                                  // omits it.
+                                                                              // omits it.
   localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
       efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS)
 ) (
@@ -97,11 +97,11 @@ module smc_efuse_wrapper #(
                                                                      // sep_security_disable_i is
                                                                      // set.
   output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary shadow-register
-                                                                            // contents; zero until fuse
-                                                                            // sensing completes unless
-                                                                            // sep_security_disable_i is set,
-                                                                            // and always without the supplementary
-                                                                            // region.
+                                                                                  // contents; zero until fuse
+                                                                                  // sensing completes unless
+                                                                                  // sep_security_disable_i is set,
+                                                                                  // and always without the supplementary
+                                                                                  // region.
                                                      supplementary_shadow_regs_o,
 
   output logic [9:0]                                 efuse_debug_o,  // eFuse controller status,
