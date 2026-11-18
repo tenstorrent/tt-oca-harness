@@ -25,7 +25,11 @@ in non-scannable storage. CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are
 non-scannable as well and read as zero downstream while SECURE_TM is 1. The
 nine spare fields fill the last nine rows and are drawn as one band.
 
-NOTE: <<sep-otp-fuse-bank-diagram>> shows the fuse map of the 0.5 release.
+// Review labels: [New] marks prose added, and [Changed] prose reworded, since
+// commit de4903467 (the revision reviewed on PR #2921). Tables carry no
+// labels. The labels are a review aid: remove them all before this is merged.
+
+NOTE: #*[New]*# <<sep-otp-fuse-bank-diagram>> shows the fuse map of the 0.5 release.
 <<sep-fuse-fields-table>> is the 1.0 map. In it two fields are wider, the last
 spare field is shorter and `SIGNATURE_REVOKE` is added, so the spare fields no
 longer start on a row boundary. <<fuse-fields>> lists the differences.
@@ -114,13 +118,14 @@ A write-lock blocks fuse programming and shadow writes; a read-lock blocks
 software and JTAG reads of both the fuse field and its shadow. The sensing FSM
 can still read locked fuses to populate the shadows.
 
+#*[Changed]*#
 There are three exceptions. The slot numbers and bit positions are defined in
 <<sep-fuse-fields-table>>.
 
 * The `LOCKS` and `LOCKS_SPARE` registers have no lock slot of their own.
 * `LC_STATE` ignores its assigned lock bits. Lifecycle transition and token
 checks still apply to it.
-* The four signing-policy fields, `PUBK_REVOKE`, `REQUIRED_SIGNERS`,
+* #*[New]*# The four signing-policy fields, `PUBK_REVOKE`, `REQUIRED_SIGNERS`,
 `REQUIRED_ALGS` and `SIGNATURE_REVOKE`, ignore the fuse value of their lock
 bits. At fuse sensing the lock shadow bits of their slots are loaded as 0,
 whatever the fuse holds. Their read-lock bits have no effect at any time, so
@@ -130,6 +135,7 @@ last until the next cold reset. For `PUBK_REVOKE` and `SIGNATURE_REVOKE` that wr
 fuse programming and shadow writes. For `REQUIRED_SIGNERS` and `REQUIRED_ALGS`
 it blocks fuse programming only, and the shadow register stays writable.
 
+#*[New]*#
 The third exception exists because the lock field cannot protect itself: any
 code that can program fuses can program a lock bit, and a programmed lock bit
 takes effect at the next cold reset, before any firmware runs. A read-locked
@@ -229,7 +235,7 @@ downstream logic during test.
 Slot numbers select lock bits; they are neither OTP word offsets nor register
 addresses. Access permissions remain subject to the lock and lifecycle rules above.
 
-NOTE: <<sep-fuse-fields-table>> is the fuse map of the 1.0 release. The RDL, the
+NOTE: #*[New]*# <<sep-fuse-fields-table>> is the fuse map of the 1.0 release. The RDL, the
 register reference generated from it at the end of this chapter,
 <<sep-otp-fuse-bank-diagram>> and the released 0.5 RTL, ROM and DV implement
 the 0.5 map, which differs in four places: `REQUIRED_SIGNERS` and
