@@ -24,9 +24,9 @@ from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
 IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
-# Error-slave read data named by hw/ip/efuse/doc/architecture.adoc (access
-# control). It is not an expected value here: no staged pattern may equal it, so
-# a read-lock readback that returns it still differs from the stored field.
+# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:110-112).
+# No staged pattern may equal it, so a read-lock readback that returns it also
+# differs from the stored field.
 DENY_DATA_MARKER = 0xBADCAB1E
 
 
