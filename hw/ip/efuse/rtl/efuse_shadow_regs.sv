@@ -103,9 +103,8 @@ module efuse_shadow_regs
                                                                   // write.
 
     output efuse_apb_resp_t                     apb_resp_o,  // APB response; errors with 0xBADCAB1E
-                                                             // before fuse sensing completes or
-                                                             // beyond the shadow file, and returns
-                                                             // 0xBADCAB1E without an error for a
+                                                             // before fuse sensing completes,
+                                                             // beyond the shadow file, or for a
                                                              // locked access.
 
     output logic                                fuse_sense_done_o,  // Set once the sense read has returned a
@@ -310,7 +309,7 @@ module efuse_shadow_regs
   // APB Access
   ////////////////////////////////////////////////////////////////////////////
 
-  // An access phase to a locked field completes at once with 0xBADCAB1E and no error, and
+  // An access phase to a locked field completes at once with an error and 0xBADCAB1E, and
   // touches no storage. Every other access phase is a shadow-register access, answered from
   // apb_resp_q.
   logic apb_access_phase;
@@ -332,8 +331,9 @@ module efuse_shadow_regs
     apb_resp_o.prdata  = efuse_data_t'(0);
     apb_resp_o.pslverr = 1'b0;
     if (write_blocked || read_blocked) begin
-      apb_resp_o.pready = 1'b1;
-      apb_resp_o.prdata = efuse_data_t'(32'hbadcab1e);
+      apb_resp_o.pready  = 1'b1;
+      apb_resp_o.pslverr = 1'b1;
+      apb_resp_o.prdata  = efuse_data_t'(32'hbadcab1e);
     end else if (shadow_reg_access) begin
       apb_resp_o = apb_resp_q;
     end
@@ -652,8 +652,8 @@ module efuse_shadow_regs
       end else if (!shadow_reg_access) begin : transient_rma_en
         if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-            priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
-                         !chiplet_state_change_completed_n0_scan) begin
+            if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
+                !chiplet_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
