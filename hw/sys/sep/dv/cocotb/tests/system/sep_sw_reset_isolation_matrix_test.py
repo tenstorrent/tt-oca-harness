@@ -305,7 +305,10 @@ WINDOW_REGS = {
 NEVER = {
     "ext_trng": (sym("TRNG_REG_MAP_BASE_ADDR"), False),
     "km_mbox": (KM_MBOX_BASE + KM_MBOX_STATUS, True),
-    "efuse": (sym("EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR"), True),
+    "efuse": (
+        sym("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR"),
+        True,
+    ),
     "lifecycle": (sym("SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR"), True),
     "pool": (sym("ENTROPY_POOL_STATUS_REG_ADDR"), True),
 }

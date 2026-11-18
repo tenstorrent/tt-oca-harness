@@ -36,7 +36,7 @@ T_XBAR_EFUSE = "sep_km_crossbar_efuse_window_rand_test"
 T_OTP_IFACE = "sep_km_otp_interface_rand_test"
 TESTS = (T_XBAR_EFUSE, T_OTP_IFACE)
 
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+_EFUSE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 
 # Fields that a plan never draws: the lock vectors, the life-cycle word and the
 # two disable vectors (sep_efuse_map.adoc; the VPLAN rule that a draw never sets

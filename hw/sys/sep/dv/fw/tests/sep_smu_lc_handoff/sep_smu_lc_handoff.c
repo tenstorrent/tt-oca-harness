@@ -65,7 +65,7 @@ static int run_lc_handoff(void) {
         return -12;
     }
 
-    lc = READ_REG(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR) & 0xFFu;
+    lc = READ_REG(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR) & 0xFFu;
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(9), lc);
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC_HANDOFF_ARMED);
     lc_handoff_blocked_window();

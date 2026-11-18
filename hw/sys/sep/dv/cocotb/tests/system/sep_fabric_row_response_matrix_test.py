@@ -287,15 +287,19 @@ BURST_PAST_ROWS = (
 # Sub-word LSU targets: (name, word address, whether a changed value is written
 # and the word restored after). A target without restore takes its own value.
 SUBWORD_TARGETS = (
-    ("scratch", sep_reg.SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
+    ("scratch", sep_reg.SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
     ("wdt_wkup_thold_lo", sep_reg.WDT_TIMER_WKUP_THOLD_LO_REG_ADDR, True),
     ("cpu_ctrl_nmi_vec", sep_reg.SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR, True),
     ("spi_csid", sep_reg.SPI_CONTROLLER_CSID_REG_ADDR, True),
     ("spi_configopts", sep_reg.SPI_CONTROLLER_CONFIGOPTS_REG_ADDR, True),
     ("km_mbox_irq_enable", rr.KM_IRQ_ENABLE, True),
     ("otbn_imem", sep_reg.OTBN_IMEM_MEM_BASE_ADDR, True),
-    ("efuse_shadow", sep_reg.SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
-    ("efuse_program_ctrl", sep_reg.EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR, False),
+    ("efuse_shadow", sep_reg.SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
+    (
+        "efuse_program_ctrl",
+        sep_reg.SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR,
+        False,
+    ),
     ("sw_reset_n", rr.SW_RESET_N, False),
 )
 # A narrow read inside a peripheral register answers OKAY and a partial write

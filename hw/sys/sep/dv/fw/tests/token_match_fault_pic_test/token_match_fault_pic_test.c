@@ -48,7 +48,7 @@ void __attribute__((interrupt("machine"))) token_fault_isr(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
     g_claim_id = (meihap >> 2) & 0xFFu;
-    g_fault = READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
+    g_fault = READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
     /* The level cannot be cleared, so the handler masks the source after at
      * most REENTRY_CAP unmasked entries; this keeps a storm from stalling the
      * CPU. */
@@ -60,11 +60,11 @@ void __attribute__((interrupt("machine"))) token_fault_isr(void) {
 }
 
 static void present_sec_disable(void) {
-    const uint32_t token[SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_NUM] = {1u};
-    for (uint32_t i = 0; i < SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_NUM; i++) {
-        WRITE_REG(SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(i), token[i]);
+    const uint32_t token[SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_NUM] = {1u};
+    for (uint32_t i = 0; i < SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_NUM; i++) {
+        WRITE_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(i), token[i]);
     }
-    WRITE_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR,
+    WRITE_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR,
               EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm);
 }
 

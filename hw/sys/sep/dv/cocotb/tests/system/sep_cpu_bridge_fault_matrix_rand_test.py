@@ -321,7 +321,7 @@ OTHER_BLOCKS = (
     ("esrc", "ENTROPY_SOURCE"),
     ("spi", "SPI_CONTROLLER"),
     ("km", "KM_MAILBOX_SEP"),
-    ("otp", "EFUSE_INTERFACE_CTRL"),
+    ("otp", "SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL"),
     ("lc", "SEP_LIFECYCLE_CTRL"),
     ("abr", "ABR"),
 )

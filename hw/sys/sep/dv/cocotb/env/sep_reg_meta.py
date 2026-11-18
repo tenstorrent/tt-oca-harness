@@ -79,15 +79,15 @@ _TYPE_ALIAS = {
 # ambiguous (more than one ``*_REG_DEFAULT`` ends with the register name).
 _TYPE_KEY_OVERRIDE = {
     ("AXIL_MAILBOX_OUTBOUND_MAILBOX_0", "ERROR_FLAGS"): "AXIL_MAILBOX_ERROR",
-    ("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0_", "REGION_REGION_ATTRS"): (
+    ("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0_", "REGION_REGION_ATTRS"): (
         "REMAP_REGION_REGION_ATTRS"
     ),
     (
-        "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_",
+        "SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0_",
         "REGION_REGION_ATTRS",
     ): "OUTPUT_REMAP_REGION_REGION_ATTRS",
     (
-        "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_",
+        "SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0_",
         "REGION_REGION_ATTRS",
     ): "OUTPUT_REMAP_REGION_REGION_ATTRS",
 }
@@ -1080,16 +1080,18 @@ WDT_TIMER = RegBlock("WDT_TIMER")
 SPI_CONTROLLER = RegBlock("SPI_CONTROLLER")
 CSRNG = CHeaderRegBlock("CSRNG", ot_c_header("csrng"))
 EDN = CHeaderRegBlock("EDN", ot_c_header("edn"))
-EFUSE_INTERFACE_CTRL = RegBlock("EFUSE_INTERFACE_CTRL")
-EFUSE_MMR = RegBlock("EFUSE_MMR")
+EFUSE_INTERFACE_CTRL = RegBlock("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL")
+EFUSE_MMR = RegBlock("SEP_EFUSE_WRAP_EFUSE_MMR")
 AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
 SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
 KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
 INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
-LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0 = RegBlock(
-    "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0_"
+SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0 = RegBlock(
+    "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0_"
 )
-AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_")
+SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0 = RegBlock(
+    "SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0_"
+)
 
 
 def _selftest() -> int:
@@ -1225,7 +1227,7 @@ def _selftest() -> int:
     nmi = by_key.get(("SEP_CPU_CTRL", "SEP_NMI_VEC"))
     if nmi is None or nmi.addr != 0x10A3_0180 or nmi.reset != 0xC000_0100:
         failures.append(f"iter_registers missed SEP_NMI_VEC: {nmi}")
-    scratch = by_key.get(("SEP_SCRATCH_COLD", "SCRATCH_0_"))
+    scratch = by_key.get(("SEP_SCRATCH_WRAP_SCRATCH_COLD", "SCRATCH_0_"))
     if scratch is None or scratch.addr != 0x1080_2000 or scratch.reset != 0:
         failures.append(f"iter_registers missed scratch[0]: {scratch}")
     filt = by_key.get(("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_", "FILTER_CONFIG"))
@@ -1238,7 +1240,9 @@ def _selftest() -> int:
     if AXIL_MAILBOX_OUTBOUND_0.field_mask("ERROR_FLAGS", "read_error") != 0x1:
         failures.append("mailbox ERROR_FLAGS.read_error mask is not bit 0")
     if (
-        LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_lsb("REGION_REGION_ATTRS", "valid")
+        SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_lsb(
+            "REGION_REGION_ATTRS", "valid"
+        )
         != 63
     ):
         failures.append("alias-remap REGION_ATTRS.valid is not bit 63")

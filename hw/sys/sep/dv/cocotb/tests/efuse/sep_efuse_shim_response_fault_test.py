@@ -151,7 +151,7 @@ _M_PG_DATA = _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _M_PG_FIELDS = _IC.mask32("EFUSE_PROGRAM_CTRL")
 _PG_RESET = _IC.reset32("EFUSE_PROGRAM_CTRL")
 # One shadow word per 32-bit register of the MAP window.
-_N_WORDS = sym("SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
+_N_WORDS = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
 # READ commands of one sense: ST_READ issues a single READ command for all shadow
 # words (hw/sys/sep/doc/otp_fuse_controller.adoc:96).
 _SENSE_READ_CMDS = 1

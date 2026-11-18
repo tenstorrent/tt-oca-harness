@@ -133,7 +133,7 @@ if max(ALIAS_BASE, OUTFILT_BASE) & ~(PAGE - 1) >= SRC_PAGE:
 BANK_PG = min(ALIAS_BASE, OUTFILT_BASE) >> IDX_START
 if BANK_PG < 2:
     raise RuntimeError("no page below the programmed banks for an inverted END")
-_ = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
+_ = sym("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
 
 
 class SepAliasRegionDriver(SepAxiRegDriver):
@@ -356,7 +356,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         # scratch page and the low 12 bits keep the source offset, so the
         # target is an unbacked word of the Reserved row above the scratch banks.
         p = plans[0]
-        tgt_pg = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR") >> IDX_START
+        tgt_pg = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR") >> IDX_START
         carry_off = ((tgt_pg - SRC_PG) & PG_MASK) << IDX_START
         tgt = remapped_addr(carry_off, SRC_ADDR)
         exp = expected_unbacked(tgt, "r")

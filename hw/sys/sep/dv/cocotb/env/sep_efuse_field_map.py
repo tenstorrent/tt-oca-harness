@@ -24,7 +24,9 @@ from sep_reg_meta import RegBlock
 # LC_STATE used bits are the lifecycle nibble; the LC W1S leaves own them.
 _DIS_FUNCTION_GROUP = (0xFFFF_0000, 1)
 # LOCKS_SPARE: slots 32-40 in [17:0], slots 41-47 unassigned in [31:18].
-_LOCK_UNASSIGNED = RegBlock("SEP_EFUSE_MAP").field_mask("LOCKS_SPARE", "spare_lock_rsvd")
+_LOCK_UNASSIGNED = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_mask(
+    "LOCKS_SPARE", "spare_lock_rsvd"
+)
 _LOCK_ASSIGNED = ~_LOCK_UNASSIGNED & 0xFFFF_FFFF
 _SWEEP_EXCLUDE = frozenset({"LC_STATE", "LOCK"})
 

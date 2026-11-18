@@ -1302,7 +1302,7 @@ int main(void) {
     rec_hex("out3", aes_out[3]);
     rec_end();
     req_kv("win", "otp", 1u);
-    uint32_t otp = rd(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
+    uint32_t otp = rd(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
     wait_clk(g_p[P_SETTLE]);
     req_kv("win", "otp", 0u);
     req_kv("win", "lcc", 1u);

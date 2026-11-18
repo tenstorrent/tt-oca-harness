@@ -23,13 +23,17 @@ from sep_reg_meta import RegBlock, sym
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # SEP System-block scratch register addresses (sep_system_csr.sv aperture).
-SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")  # cold domain: .arst_n(rst_ni)
-SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")  # warm domain: .arst_n(rst_warm_ni)
+SCRATCH_COLD_0 = sym(
+    "SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR"
+)  # cold domain: .arst_n(rst_ni)
+SCRATCH_WARM_0 = sym(
+    "SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR"
+)  # warm domain: .arst_n(rst_warm_ni)
 # Reset value of every SCRATCH register, from the generated RDL register
 # metadata (sep_scratch.rdl `data` field reset), at the 32-bit DV access width.
 # Both banks instantiate the same RDL type, so they must agree.
-SCRATCH_RESET_DEFAULT = RegBlock("SEP_SCRATCH_COLD").reset32("SCRATCH_0_")
-if RegBlock("SEP_SCRATCH_WARM").reset32("SCRATCH_0_") != SCRATCH_RESET_DEFAULT:
+SCRATCH_RESET_DEFAULT = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD").reset32("SCRATCH_0_")
+if RegBlock("SEP_SCRATCH_WRAP_SCRATCH_WARM").reset32("SCRATCH_0_") != SCRATCH_RESET_DEFAULT:
     raise RuntimeError(
         "SEP_SCRATCH_COLD and SEP_SCRATCH_WARM SCRATCH_0 resets differ in the "
         "register export; the scratch reset golden has no single source"
@@ -45,7 +49,7 @@ def _bank_addrs(bank: str) -> tuple[int, ...]:
     addrs: list[int] = []
     while True:
         try:
-            addrs.append(sym(f"SEP_SCRATCH_{bank}_SCRATCH_{len(addrs)}__REG_ADDR"))
+            addrs.append(sym(f"SEP_SCRATCH_WRAP_SCRATCH_{bank}_SCRATCH_{len(addrs)}__REG_ADDR"))
         except KeyError:
             break
     if not addrs:

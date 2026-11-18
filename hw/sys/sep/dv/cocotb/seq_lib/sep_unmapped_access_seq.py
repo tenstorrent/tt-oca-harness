@@ -217,7 +217,7 @@ TOKEN_MATCH_FAULT_RESET = EFUSE_MMR.reset32("TOKEN_MATCH_FAULT")
 _ARRAYS = (
     (
         "local_master_alias_remap_ctrl",
-        "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
+        "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP",
         ALIAS_REGIONS,
     ),
     ("outbound_filter_ctrl", "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", OUTFILT_ENTRIES),
@@ -293,7 +293,7 @@ class SepUnmappedCfg:
                 # One distinct, non-zero programmed word per slot. The alias
                 # remap uses REGION_END (4 KB-aligned, valid stays clear); the
                 # filters use START_ADDR (entry_enabled stays clear).
-                if prefix == "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP":
+                if prefix == "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP":
                     addr = base + ALIAS_END
                     value = ((0x40 + i) << 12) & ALIAS_END_MASK
                 else:
@@ -315,7 +315,7 @@ class SepUnmappedCfg:
                     )
             # The first word past the array aperture. It is a refusal point only
             # where no other RDL block owns it: the word past the alias-remap
-            # array is AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP[0], a live word.
+            # array is SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP[0], a live word.
             ap_end = bases[0] + total
             if _rdl_owner(ap_end) is None:
                 self.tails.append(
@@ -333,12 +333,12 @@ class SepUnmappedCfg:
     def _build_syscsr(self) -> None:
         g = GROUP_SYSCSR
         ap_last = REMAP_REGIONS - 1
-        ap_end = _slot_base("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last) + _slot_size(
-            "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last
+        ap_end = _slot_base("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", ap_last) + _slot_size(
+            "SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", ap_last
         )
-        stee_end = _slot_base("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last) + _slot_size(
-            "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last
-        )
+        stee_end = _slot_base(
+            "SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", ap_last
+        ) + _slot_size("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", ap_last)
         remap_img = ALIAS_BASE + _pow2_ceil(stee_end - ALIAS_BASE)
         out_last = OUTFILT_ENTRIES - 1
         out_img = OUTFILT_BASE + _pow2_ceil(
@@ -364,13 +364,13 @@ class SepUnmappedCfg:
             ("ap_output_remap[0]", AP_BASE, 0x00A5_A000),
             (
                 f"ap_output_remap[{ap_last}]",
-                _slot_base("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last),
+                _slot_base("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", ap_last),
                 0x00C7_C000,
             ),
             ("stee_output_remap[0]", STEE_BASE, 0x00B6_B000),
             (
                 f"stee_output_remap[{ap_last}]",
-                _slot_base("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last),
+                _slot_base("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", ap_last),
                 0x00D8_D000,
             ),
         ):
@@ -386,27 +386,27 @@ class SepUnmappedCfg:
         # Scratch banks: the first and last SCRATCH word of each bank. A bank's
         # extent is its RDL size, so the word one extent up from SCRATCH_0 is
         # the first word past that bank.
-        cold = RegBlock("SEP_SCRATCH_COLD")
-        warm = RegBlock("SEP_SCRATCH_WARM")
-        cold_base = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
-        warm_base = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
-        cold_end = cold_base + block_size("SEP_SCRATCH_COLD")
-        warm_end = warm_base + block_size("SEP_SCRATCH_WARM")
+        cold = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD")
+        warm = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_WARM")
+        cold_base = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+        warm_base = sym("SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
+        cold_end = cold_base + block_size("SEP_SCRATCH_WRAP_SCRATCH_COLD")
+        warm_end = warm_base + block_size("SEP_SCRATCH_WRAP_SCRATCH_WARM")
         scratch_img = cold_base + _pow2_ceil(warm_end - cold_base)
-        scratch_last = _scratch_count("SEP_SCRATCH_COLD") - 1
-        if _scratch_count("SEP_SCRATCH_WARM") - 1 != scratch_last:
+        scratch_last = _scratch_count("SEP_SCRATCH_WRAP_SCRATCH_COLD") - 1
+        if _scratch_count("SEP_SCRATCH_WRAP_SCRATCH_WARM") - 1 != scratch_last:
             raise RuntimeError("cold and warm scratch banks differ in SCRATCH count")
         for label, blk, reg, value in (
-            ("sep_scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
+            ("sep_scratch_wrap.scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
             (
-                f"sep_scratch_cold.SCRATCH_{scratch_last}",
+                f"sep_scratch_wrap.scratch_cold.SCRATCH_{scratch_last}",
                 cold,
                 f"SCRATCH_{scratch_last}_",
                 0x5C01_D0F7,
             ),
-            ("sep_scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
+            ("sep_scratch_wrap.scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
             (
-                f"sep_scratch_warm.SCRATCH_{scratch_last}",
+                f"sep_scratch_wrap.scratch_warm.SCRATCH_{scratch_last}",
                 warm,
                 f"SCRATCH_{scratch_last}_",
                 0x5CA2_30F7,
@@ -505,10 +505,10 @@ class SepUnmappedCfg:
 
     # --- eFuse siblings ----------------------------------------------------
     def _build_efuse(self) -> None:
-        ctrl_base = sym("EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
-        ctrl_end = ctrl_base + block_size("EFUSE_INTERFACE_CTRL")
-        mmr_base = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
-        mmr_end = mmr_base + block_size("EFUSE_MMR")
+        ctrl_base = sym("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
+        ctrl_end = ctrl_base + block_size("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL")
+        mmr_base = sym("SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR")
+        mmr_end = mmr_base + block_size("SEP_EFUSE_WRAP_EFUSE_MMR")
         # The two siblings sit in equal windows in the generated map, so the
         # spacing of their bases is the window size of each.
         window = mmr_base - ctrl_base
@@ -540,8 +540,8 @@ class SepUnmappedCfg:
                 LiveWord("efuse_mmr.TOKEN_MATCH_FAULT", TOKEN_MATCH_FAULT),
             )
         )
-        ctrl_img = _pow2_ceil(block_size("EFUSE_INTERFACE_CTRL"))
-        mmr_img = _pow2_ceil(block_size("EFUSE_MMR"))
+        ctrl_img = _pow2_ceil(block_size("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL"))
+        mmr_img = _pow2_ceil(block_size("SEP_EFUSE_WRAP_EFUSE_MMR"))
         # The map states one read word past this extent. Probe both 32-bit lanes of
         # the 64-bit bus: the first word past the extent, and the first word past
         # it with the other value of address bit 2.

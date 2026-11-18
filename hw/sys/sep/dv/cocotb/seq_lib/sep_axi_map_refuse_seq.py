@@ -43,7 +43,9 @@ MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 ROM_ONE_PAST = sym("SEP_BOOT_ROM_MEM_BASE_ADDR") + sym("SEP_BOOT_ROM_MEM_SIZE")
 # First byte above the last OTP register block (EFUSE_MMR) in the generated
 # export. No RDL block owns the OTP window from here to 0x1093_FFFF.
-OTP_ONE_PAST = sym("EFUSE_MMR_REG_MAP_BASE_ADDR") + sym("EFUSE_MMR_REG_MAP_SIZE")
+OTP_ONE_PAST = sym("SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR") + sym(
+    "SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_SIZE"
+)
 
 # Live words a refused read must not return. A refused access never reaches a
 # unit (memory_map.adoc), so a refused read that hands back one of these values

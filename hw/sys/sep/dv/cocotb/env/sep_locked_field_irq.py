@@ -42,7 +42,7 @@ def _spare_count() -> int:
     fields = sorted(
         int(m.group(1))
         for n in dir(sep_reg)
-        if (m := re.fullmatch(r"SEP_EFUSE_MAP_SPARE(\d+)_REG_OFFSET", n))
+        if (m := re.fullmatch(r"SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE(\d+)_REG_OFFSET", n))
     )
     locks = sorted(
         int(m.group(1))
@@ -110,7 +110,7 @@ def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
 # (otp_fuse_controller.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
 SECURE_TM_LOCK_FIELDS = spec_secure_tm_blocked()
 
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+_EFUSE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 
 # LC_STATE bytes [31:8] (the RDL rsvd field) OR-merge as ordinary shadow bytes
 # and do not disturb the lifecycle nibble, so they are the safe payload for

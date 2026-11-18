@@ -25,6 +25,11 @@ An RDL rdata that carries no upper word (a 32-bit value such as
 (the ``ocah_resp.rdata`` definition and Decode Response Codes in
 ``doc/trm/src/memory_map.adoc``), so every read has one stated word.
 
+A wrapper unit in ``_WRAPPERS`` has one row covering its page. It is split into
+a row per sub-block, with the sub-block windows and sizes from ``sep_addr.h``,
+and a Reserved row for the space between and past them, each with the part of
+the wrapper's responses that applies there.
+
 A lookup that meets a note, a row with more than one hole response, or
 a response that is not a bus response (``FORWARD``, ``ADOPTER``) raises: the
 expectation is not modeled, so the caller must not probe there.
@@ -32,6 +37,7 @@ expectation is not modeled, so the caller must not probe there.
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
@@ -44,6 +50,8 @@ if _GEN_PY.is_dir() and str(_GEN_PY) not in sys.path:
 import sep_memory_map  # noqa: E402  (path bootstrap must precede the import)
 
 _VIEW = "sep-components"
+_SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
+_WRAPPERS = ("sep_scratch_wrap", "sep_efuse_wrap", "sep_remap_wrap")
 
 # AMBA AXI4 (IHI 0022) response codes.
 RESP_CODE = {"OKAY": 0, "SLVERR": 2, "DECERR": 3}
@@ -108,6 +116,55 @@ def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
 
 
 @lru_cache(maxsize=1)
+def _addr_defines() -> dict[str, int]:
+    text = _SEP_ADDR_H.read_text(encoding="utf-8")
+    return {
+        m[1]: int(m[2], 0) for m in re.finditer(r"^#define (\w+) (0x[0-9A-Fa-f]+)$", text, re.M)
+    }
+
+
+def _sub_block_rows(r: dict) -> list[MapRow]:
+    """The rows of wrapper row ``r``: one per sub-block, and Reserved rows between and past them."""
+    defines = _addr_defines()
+    prefix = f"SEP_TOP_{r['key'].rsplit(':', 1)[-1].upper()}_"
+    sizes = (re.fullmatch(rf"{prefix}(\w+)_SIZE", n) for n in defines)
+    names = {m[1] for m in sizes if m and f"{prefix}{m[1]}_BASE_ADDR" in defines}
+    children = sorted(
+        (c for c in names if not any(c.startswith(f"{o}_") for o in names)),
+        key=lambda c: defines[f"{prefix}{c}_BASE_ADDR"],
+    )
+    if not children:
+        raise ValueError(f"sep_addr.h: no sub-blocks under {prefix}")
+    notes = tuple(r["hole_notes"])
+    parts = {label: _cell(((label, resp),), notes) for label, resp in r["hole_responses"]}
+    past_part = parts.get("past sub-block registers")
+    bases = [defines[f"{prefix}{c}_BASE_ADDR"] for c in children]
+    extent_end = r["base"] + r["occupied_size"]
+    rows = []
+    for c, base, next_base in zip(children, bases, [*bases[1:], extent_end]):
+        size = defines[f"{prefix}{c}_SIZE"]
+        padded = any(
+            n.startswith(f"{prefix}{c}_")
+            and n.endswith("_STRIDE")
+            and v > defines.get(n.removesuffix("STRIDE") + "SIZE", v)
+            for n, v in defines.items()
+        )
+        end = next_base - 1 if past_part else base + size - 1
+        hole = parts.get("between instances") if padded else None
+        rows.append(MapRow(base, end, size, c.lower(), hole, past_part))
+        if end + 1 < next_base:
+            gap = next_base - end - 1
+            rows.append(
+                MapRow(end + 1, next_base - 1, gap, "Reserved", parts["between sub-blocks"], None)
+            )
+    if extent_end <= r["end"]:
+        past_notes = (r["past_note"],) if r["past_note"] else ()
+        past = _cell((("", r["past_response"]),), past_notes)
+        rows.append(MapRow(extent_end, r["end"], r["end"] + 1 - extent_end, "Reserved", past, None))
+    return rows
+
+
+@lru_cache(maxsize=1)
 def sep_map_rows() -> tuple[MapRow, ...]:
     """The ``sep-components`` rows of the generated SEP memory map, in address order."""
     try:
@@ -118,6 +175,9 @@ def sep_map_rows() -> tuple[MapRow, ...]:
     for r in view["rows"]:
         if r["end"] != r["base"] + r["aperture_size"] - 1:
             raise ValueError(f"sep_memory_map.py: {r['label']} size disagrees with its bounds")
+        if r["key"].rsplit(":", 1)[-1] in _WRAPPERS:
+            rows.extend(_sub_block_rows(r))
+            continue
         past = () if r["past_response"] is None else (("", r["past_response"]),)
         past_notes = (r["past_note"],) if r["past_note"] else ()
         rows.append(

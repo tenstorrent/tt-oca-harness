@@ -94,17 +94,21 @@ _SRB_ROWS = _rdl_window_rows(
     0x1080_2000,
     0x1080_2FFF,
     (
-        ("SEP_SCRATCH_COLD", "SRB cold", "Cold-reset scratch register bank"),
-        ("SEP_SCRATCH_WARM", "SRB warm", "Warm-reset scratch register bank"),
+        ("SEP_SCRATCH_WRAP_SCRATCH_COLD", "SRB cold", "Cold-reset scratch register bank"),
+        ("SEP_SCRATCH_WRAP_SCRATCH_WARM", "SRB warm", "Warm-reset scratch register bank"),
     ),
 )
 _OTP_ROWS = _rdl_window_rows(
     0x1093_0000,
     0x1093_FFFF,
     (
-        ("SEP_EFUSE_MAP", "OTP shadow", "eFuse shadow map"),
-        ("EFUSE_INTERFACE_CTRL", "OTP interface", "eFuse command and status registers"),
-        ("EFUSE_MMR", "OTP MMR", "eFuse security-token registers"),
+        ("SEP_EFUSE_WRAP_SEP_EFUSE_MAP", "OTP shadow", "eFuse shadow map"),
+        (
+            "SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL",
+            "OTP interface",
+            "eFuse command and status registers",
+        ),
+        ("SEP_EFUSE_WRAP_EFUSE_MMR", "OTP MMR", "eFuse security-token registers"),
     ),
 )
 _SYS_ROWS = _rdl_window_rows(
@@ -113,12 +117,12 @@ _SYS_ROWS = _rdl_window_rows(
     (
         ("AXIL_MAILBOX", "SYS mailbox", "Mailbox pairs"),
         (
-            "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
+            "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP",
             "SYS alias remap",
             "Local master alias remap",
         ),
-        ("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", "SYS AP remap", "AP output remap"),
-        ("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", "SYS STEE remap", "STEE output remap"),
+        ("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", "SYS AP remap", "AP output remap"),
+        ("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", "SYS STEE remap", "STEE output remap"),
         ("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", "SYS outbound filter", "Outbound filter control"),
         ("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", "SYS inbound filter", "Inbound filter control"),
         ("SEP_CPU_CTRL", "SYS CPU control", "SEP CPU control and interrupt registers"),
@@ -299,9 +303,9 @@ def _selftest() -> None:
         for a in (lo, hi & ~0x3):
             assert not may_complete(a, regions), f"0x{a:08x} has no RDL block but reads allocated"
     for unit, stem in (
-        ("SRB cold", "SEP_SCRATCH_COLD"),
-        ("SRB warm", "SEP_SCRATCH_WARM"),
-        ("OTP MMR", "EFUSE_MMR"),
+        ("SRB cold", "SEP_SCRATCH_WRAP_SCRATCH_COLD"),
+        ("SRB warm", "SEP_SCRATCH_WRAP_SCRATCH_WARM"),
+        ("OTP MMR", "SEP_EFUSE_WRAP_EFUSE_MMR"),
         ("SYS CPU control", "SEP_CPU_CTRL"),
     ):
         hit = region_of(sym(f"{stem}_REG_MAP_BASE_ADDR"), regions)

@@ -252,7 +252,7 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "wdt_timer",
             sym("WDT_TIMER_REG_MAP_BASE_ADDR"),
-            sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"),
+            sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR"),
             block_size("WDT_TIMER"),
             _sep_watch(sym("WDT_TIMER_REG_MAP_BASE_ADDR"), block_size("WDT_TIMER")),
         ),

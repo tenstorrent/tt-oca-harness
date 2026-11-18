@@ -1496,7 +1496,7 @@ Block 3 "301284989" "in_range = 1'b0;"
 
 CHECKSUM: "3595078827 4037587957"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-AC-PADDR-ZEXT: hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:185, :215 zero-extend apb_req_paddr_i, which is EFUSE_ADDR_WIDTH = $clog2(SEP_TOP_SEP_EFUSE_MAP_SIZE=0x400) = 10 bits wide (hw/ip/efuse/rtl/efuse_interface_controller.sv:55), so paddr[31:10] is always 0. NOT waived: apb_req_from_ac_o.paddr[9:0] and the other APB request fields."
+ANNOTATION: "SEP-EFUSE-AC-PADDR-ZEXT: hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:185, :215 zero-extend apb_req_paddr_i, which is EFUSE_ADDR_WIDTH = $clog2(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIZE=0x400) = 10 bits wide (hw/ip/efuse/rtl/efuse_interface_controller.sv:55), so paddr[31:10] is always 0. NOT waived: apb_req_from_ac_o.paddr[9:0] and the other APB request fields."
 Toggle apb_req_from_ac_o.paddr [31:10] "logic apb_req_from_ac_o.paddr[31:0]"
 
 CHECKSUM: "2345007664 1400203680"

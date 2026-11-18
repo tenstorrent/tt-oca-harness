@@ -95,11 +95,11 @@ BOOT_FAILURE_TOKENS = (
 )
 
 KEY_AND_UID_LOCK_BITS = {
-    name: RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
+    name: RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
     for name in ("CLASS_KEY", "CHIPLET_UID", "SIP_UID", "SYS_UID")
 }
 EXTRA_LOCK_BITS = {
-    name: RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
+    name: RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
     for name in ("RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DIGEST")
 }
 ALL_LOCK_BITS = {**KEY_AND_UID_LOCK_BITS, **EXTRA_LOCK_BITS}
@@ -108,7 +108,7 @@ for _bit in ALL_LOCK_BITS.values():
     FUSE_SECRET_READ_LOCK_MASK |= 1 << _bit
 
 # efuse_shadow_probe_o puts OTP word i at bits 32*i; LOCKS[31:0] is word 0.
-_LOCKS_WORD = sym("SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4
+_LOCKS_WORD = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4
 
 
 def bl1_locks_echo() -> str:

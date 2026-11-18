@@ -158,8 +158,12 @@ MATCH_READS = 400
 SENSE_BOUND = 20_000
 # The controller sends every address outside [MAP base, end of the last register window)
 # to the shim's bank control registers (otp_fuse_controller.adoc, eFuse controller figure).
-EFUSE_WINDOWS = ("SEP_EFUSE_MAP", "EFUSE_INTERFACE_CTRL", "EFUSE_MMR")
-SHIM_SPAN_GAP_LO = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
+EFUSE_WINDOWS = (
+    "SEP_EFUSE_WRAP_SEP_EFUSE_MAP",
+    "SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL",
+    "SEP_EFUSE_WRAP_EFUSE_MMR",
+)
+SHIM_SPAN_GAP_LO = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 SHIM_SPAN_GAP_HI = max(
     sym(f"{w}_REG_MAP_BASE_ADDR") + sym(f"{w}_REG_MAP_SIZE") for w in EFUSE_WINDOWS
 )

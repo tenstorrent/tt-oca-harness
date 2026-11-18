@@ -103,7 +103,7 @@ SENSE_REGS = {
         SEP_CPU_CTRL.field_mask("SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done"),
     ),
 }
-SCR_META = RegBlock("SEP_SCRATCH_COLD")
+SCR_META = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD")
 SCR_FIELD = SCR_META.field_mask("SCRATCH_0_", "data")
 SCR_RESET = SCR_META.reset("SCRATCH_0_") & SCR_FIELD
 BANKS = {"cold": SCRATCH_COLD_ADDRS, "warm": SCRATCH_WARM_ADDRS}

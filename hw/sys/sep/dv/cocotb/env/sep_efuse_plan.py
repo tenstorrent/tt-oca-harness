@@ -98,7 +98,7 @@ __all__ = [
     "vector_filter_legal",
 ]
 
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+_EFUSE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 _MASK64 = (1 << 64) - 1
 # Bound of every redraw loop. Each predicate below accepts a large fraction of
 # its draws, so the bound is never reached; reaching it raises.
@@ -567,14 +567,14 @@ CH_SEC_DIS = "sec_dis"
 CHANNELS = (CH_SIP, CH_CHIPLET, CH_SEC_DIS)
 _CH_ARRAY = {CH_SIP: "RMA_SIP", CH_CHIPLET: "RMA_CHIPLET", CH_SEC_DIS: "SEC_DISABLE"}
 TOKEN_ARRAY_ADDR: dict[str, tuple[int, ...]] = {
-    ch: tuple(sym(f"EFUSE_MMR_{arr}_TOKEN_I_{i}__REG_ADDR") for i in range(8))
+    ch: tuple(sym(f"SEP_EFUSE_WRAP_EFUSE_MMR_{arr}_TOKEN_I_{i}__REG_ADDR") for i in range(8))
     for ch, arr in _CH_ARRAY.items()
 }
 MATCH_ADDR: dict[str, int] = {
-    ch: sym(f"EFUSE_MMR_{arr}_TOKEN_MATCH_REG_ADDR") for ch, arr in _CH_ARRAY.items()
+    ch: sym(f"SEP_EFUSE_WRAP_EFUSE_MMR_{arr}_TOKEN_MATCH_REG_ADDR") for ch, arr in _CH_ARRAY.items()
 }
-TOKEN_EOP_ADDR = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
-TOKEN_MATCH_FAULT_ADDR = sym("EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
+TOKEN_EOP_ADDR = sym("SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+TOKEN_MATCH_FAULT_ADDR = sym("SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
 GO_MASK: dict[str, int] = {
     CH_SIP: EFUSE_MMR.field_mask("TOKEN_EOP", "rma_sip_token_go"),
     CH_CHIPLET: EFUSE_MMR.field_mask("TOKEN_EOP", "rma_chiplet_token_go"),

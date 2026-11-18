@@ -85,7 +85,7 @@ _CONTROL_FIELD = "SPARE0"
 
 # A SPARE word: programming one bit of it disturbs no graded field, and OTP is
 # write-once so the control must pick a fresh bit each time it runs.
-_CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
+_CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
 
 _READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
 _READ_TIMEOUT = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_REQ_TIMEOUT")

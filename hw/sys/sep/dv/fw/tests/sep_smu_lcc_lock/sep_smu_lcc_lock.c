@@ -42,7 +42,7 @@
 
 /* Results kept in SEP-local cold scratch so the flow is inspectable even when a
  * later stage fails. */
-#define SCRATCH(n) SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n)
+#define SCRATCH(n) SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n)
 #define SC_FEAT_BASE_LO SCRATCH(1)
 #define SC_DEMOTE_1_LOCKED SCRATCH(2)
 #define SC_DEMOTE_1_AFTER_WRITE SCRATCH(3)
