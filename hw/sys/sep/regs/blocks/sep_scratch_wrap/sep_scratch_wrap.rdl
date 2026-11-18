@@ -19,11 +19,7 @@ addrmap sep_scratch_wrap {
     sep_scratch     scratch_warm    @0x000_0080;
 
 `ifdef OCAH_DOC_MEMORY_MAP
-    scratch_cold->ocah_aperture_size = 0x80;
-    scratch_cold->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     scratch_cold->desc = "Cold-reset scratch register bank.";
-    scratch_warm->ocah_aperture_size = 0x80;
-    scratch_warm->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     scratch_warm->desc = "Warm-reset scratch register bank.";
 `endif
 };

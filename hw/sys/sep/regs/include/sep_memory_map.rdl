@@ -3,7 +3,9 @@
 
 // Memory-map annotations of sep_top: aperture sizes, descriptions and the response an access
 // outside a unit's registers receives. sep.rdl includes this file inside sep_top, and only
-// the memory-map generator defines OCAH_DOC_MEMORY_MAP.
+// the memory-map generator defines OCAH_DOC_MEMORY_MAP. The generator gives a unit with a
+// generated decoder its window and the response past its registers, and fails on a line
+// that states them again.
 
 `define OCAH_SEP_OKAY ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY}
 `define OCAH_SEP_SLVERR ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR}
@@ -21,10 +23,6 @@
     wdt_timer->ocah_aperture_size = 0x1000;
     wdt_timer->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     wdt_timer->ocah_past_extent_note = "Up to offset 0x3F the timer answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.wdt, one of the bits behind PIC source 43.";
-    sep_scratch_wrap->ocah_aperture_size = 0x1000;
-    sep_scratch_wrap->ocah_past_extent_resp = `OCAH_SEP_DECERR;
-    sep_reset_ctrl->ocah_aperture_size = 0x1000;
-    sep_reset_ctrl->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     otbn->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
     aes->ocah_aperture_size = 0x1000;
     aes->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
@@ -40,14 +38,7 @@
     csrng->ocah_past_extent_note = "Up to offset 0x7F the CSRNG answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.csrng, one of the bits behind PIC source 43.";
     trng->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
     trng->ocah_hole_note = "With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.";
-    entropy_source->ocah_aperture_size = 0x1000;
-    entropy_source->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
-    sep_lifecycle_ctrl->ocah_aperture_size = 0x1000;
-    sep_lifecycle_ctrl->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     sep_lifecycle_ctrl->desc = "Lifecycle state and transition control.";
-    km_mailbox_sep->ocah_aperture_size = 0x1000;
-    km_mailbox_sep->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
-    sep_efuse_wrap->ocah_aperture_size = 0x1000;
     abr->ocah_aperture_size = 0xD000;
     abr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     abr->desc = "Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.";
@@ -57,16 +48,8 @@
     axil_mailbox->ocah_aperture_size = 0x8000;
     axil_mailbox->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
-    sep_remap_wrap->ocah_aperture_size = 0x1000;
-    sep_remap_wrap->ocah_past_extent_resp = `OCAH_SEP_DECERR;
-    outbound_filter_ctrl_wrap->ocah_aperture_size = 0x1000;
     outbound_filter_ctrl_wrap->ocah_full_stride_extent = true;
-    outbound_filter_ctrl_wrap->ocah_past_extent_resp = `OCAH_SEP_DECERR;
-    inbound_filter_ctrl_wrap->ocah_aperture_size = 0x1000;
     inbound_filter_ctrl_wrap->ocah_full_stride_extent = true;
-    inbound_filter_ctrl_wrap->ocah_past_extent_resp = `OCAH_SEP_DECERR;
-    sep_cpu_ctrl->ocah_aperture_size = 0x2000;
-    sep_cpu_ctrl->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
     spi_controller->ocah_aperture_size = 0x1000;
     spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};

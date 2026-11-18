@@ -18,13 +18,16 @@ size. The place of an instance gives the window it owns:
 The instances of one block share one generated module, so the block decodes
 the smallest window any of its instances owns, and an instance with more room
 leaves the rest to its wrapper.
+
+The memory maps take the same windows: state_windows gives them to the blocks
+whose decoders the flow generates, so their RDL states only the others.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from math import prod
-from typing import Iterable
+from typing import Any, Iterable
 
 from systemrdl.node import AddrmapNode, MemNode, Node, RegfileNode, RegNode, RootNode
 
@@ -85,13 +88,22 @@ def _stated(node: Node) -> int | None:
     return None if value is None else int(value)
 
 
-def _forwarded(node: Node) -> bool:
+def _inherited(node: Node, name: str) -> Any:
     while not isinstance(node, RootNode):
-        value = node.get_property("ocah_hole_resp", default=None)
+        value = node.get_property(name, default=None)
         if value is not None:
-            return bool({value.rresp.name, value.bresp.name} & _FORWARDED)
+            return value
         node = node.parent
-    return False
+    return None
+
+
+def _forwarded(node: Node) -> bool:
+    value = _inherited(node, "ocah_hole_resp")
+    return value is not None and bool({value.rresp.name, value.bresp.name} & _FORWARDED)
+
+
+def _whole_pages(size: int) -> int:
+    return -(-size // PAGE_SIZE) * PAGE_SIZE
 
 
 def _children(node: Node) -> list[Node]:
@@ -125,7 +137,7 @@ class WindowSizer:
         windows = []
         for child, following in zip(children, children[1:] + [None]):
             base = int(child.raw_address_offset)
-            span = -(-max(int(child.total_size), _stated(child) or 0) // PAGE_SIZE) * PAGE_SIZE
+            span = _whole_pages(max(int(child.total_size), _stated(child) or 0))
             if base % PAGE_SIZE:
                 self.errors.append(
                     f"{child.get_path()}: starts at 0x{base:X}, not on a 4 KiB boundary"
@@ -212,6 +224,67 @@ class WindowSizer:
             if window > decoded:
                 widths[name] = window.bit_length() - 1
         return widths
+
+
+@dataclass(frozen=True)
+class Decoders:
+    regblocks: frozenset[str]
+    wrappers: frozenset[str]
+    no_err: frozenset[str]
+    widths: dict[str, int]
+
+    def window(self, node: AddrmapNode) -> int:
+        name = type_name(node)
+        return 1 << self.widths[name] if name in self.widths else decoded_window(node)
+
+
+def _text(value: Any) -> str:
+    if isinstance(value, int):
+        return f"0x{value:X}"
+    return f"{value.rresp.name}, 0x{int(value.rdata):X} / {value.bresp.name}"
+
+
+def state_windows(top: AddrmapNode, pages: bool, decoders: Decoders) -> list[str]:
+    """Give each block with a generated decoder its window and past-registers response.
+
+    A child of a page top has its whole pages, and a register block in a wrapper
+    the window it decodes. Past its registers a register block answers its
+    generated error, and a wrapper what its sub-blocks' gaps answer. The values
+    become the blocks' own properties, so every reader of the map sees them.
+    Returns an error for each value the map already states.
+    """
+    struct = top.env.property_rules.user_properties["ocah_past_extent_resp"].valid_type
+    codes = {code.name: code for code in struct._members["rresp"]}
+    errors = []
+    for node in top.descendants(unroll=False):
+        if not isinstance(node, AddrmapNode) or node.is_array or _forwarded(node):
+            continue
+        name = type_name(node)
+        if name in decoders.regblocks:
+            code = codes["OKAY" if name in decoders.no_err else "SLVERR"]
+            past = struct({"rresp": code, "rdata": 0, "bresp": code})
+        elif name in decoders.wrappers:
+            past = _inherited(node, "ocah_gap_resp")
+        else:
+            continue
+        if pages and node.parent.inst is top.inst:
+            window = _whole_pages(int(node.total_size))
+        elif type_name(node.parent) in decoders.wrappers and name in decoders.regblocks:
+            window = decoders.window(node)
+        else:
+            continue
+        for prop, value in (("ocah_aperture_size", window), ("ocah_past_extent_resp", past)):
+            if value is None:
+                continue
+            stated = node.get_property(prop, default=None)
+            if stated is None:
+                node.inst.properties[prop] = value
+            elif _text(stated) == _text(value):
+                errors.append(
+                    f"{node.get_path()}: {prop} {_text(stated)} is the value the generator "
+                    "gives it; remove the assignment"
+                )
+    return errors
 
 
 def _generated(comment: str, about: list[str], body: list[str]) -> str:

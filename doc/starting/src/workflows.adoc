@@ -145,8 +145,11 @@ block to the SMC or the SEP:
   its size.
 * Add an array whose stride is wider than one instance to
   `OCAH_REG_NO_ERR_BLOCKS`, so that its padding answers `OKAY`.
-* In the RDL, give the block its window as its `ocah_aperture_size` and the
-  responses it returns there, so that the generated memory map states them.
+* The generated memory map takes the window of a generated block, and of a
+  wrapper placed directly in the SMC or SEP map, from the same rules, with the
+  response past their registers. In the RDL, state the window and responses of
+  any other block, such as a vendored one. `make regen-regs-adoc` fails on an
+  assignment that repeats a value the generator gives.
 
 == DV Firmware
 

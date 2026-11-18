@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from tools.regs.common.memorymap import compile_root
-from tools.regs.common.windows import WindowSizer, render_window_pkg
+from tools.regs.common.windows import Decoders, WindowSizer, render_window_pkg, state_windows
 
 REGBLOCK_UDP = Path(__file__).resolve().parents[3] / "hw/common/regs/regblock_udps.rdl"
 
@@ -104,6 +104,82 @@ class WindowSizerTest(unittest.TestCase):
         )
         self.assertEqual(errors, [])
         self.assertEqual(widths, {})
+
+
+DECERR = "ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR}"
+
+
+class StateWindowsTest(unittest.TestCase):
+    def _state(self, body: str, no_err: tuple[str, ...] = ()) -> tuple[object, list[str]]:
+        top = _compile(
+            "addrmap vendored { reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0; };"
+            + body
+        )
+        decoders = Decoders(
+            frozenset(REGBLOCKS), frozenset(WRAPPERS), frozenset(no_err), {"small": 8}
+        )
+        return top, state_windows(top, True, decoders)
+
+    @staticmethod
+    def _window(node) -> tuple[int | None, str | None]:
+        past = node.get_property("ocah_past_extent_resp", default=None)
+        return (
+            node.get_property("ocah_aperture_size", default=None),
+            None if past is None else f"{past.rresp.name} 0x{int(past.rdata):X}",
+        )
+
+    def test_generated_decoders_get_their_windows_and_responses(self) -> None:
+        top, errors = self._state(
+            "addrmap wrap { small low @0x0; wide high @0x100; };"
+            f"addrmap top {{ ocah_gap_resp = {DECERR}; small alone @0x0; wide quiet @0x1000;"
+            "wrap shared @0x2000; };",
+            no_err=("wide",),
+        )
+        self.assertEqual(errors, [])
+        shared = top.get_child_by_name("shared")
+        self.assertEqual(self._window(top.get_child_by_name("alone")), (0x1000, "SLVERR 0x0"))
+        self.assertEqual(self._window(top.get_child_by_name("quiet")), (0x1000, "OKAY 0x0"))
+        self.assertEqual(self._window(shared), (0x1000, "DECERR 0xBADCAB1E"))
+        self.assertEqual(self._window(shared.get_child_by_name("low")), (0x100, "SLVERR 0x0"))
+        self.assertEqual(self._window(shared.get_child_by_name("high")), (0x10, "OKAY 0x0"))
+
+    def test_other_blocks_keep_what_the_map_states(self) -> None:
+        top, errors = self._state(
+            "addrmap element { small low @0x0; };"
+            "addrmap wrap { element inner @0x0; small copies[2] @0x100 += 0x100; };"
+            "addrmap top { vendored bought @0x0; wrap shared @0x1000; };"
+        )
+        self.assertEqual(errors, [])
+        shared = top.get_child_by_name("shared")
+        for node in (
+            top.get_child_by_name("bought"),
+            shared.get_child_by_name("inner"),
+            shared.get_child_by_name("copies"),
+        ):
+            self.assertEqual(self._window(node), (None, None))
+
+    def test_a_stated_value_the_generator_gives_fails(self) -> None:
+        top, errors = self._state(
+            f"""
+            addrmap top {{
+                small alone @0x0;
+            `ifdef OCAH_DOC_MEMORY_MAP
+                alone->ocah_aperture_size = 0x1000;
+                alone->ocah_past_extent_resp = {DECERR};
+            `endif
+            }};
+            """
+        )
+        self.assertEqual(
+            errors,
+            [
+                "top.alone: ocah_aperture_size 0x1000 is the value the generator gives it; "
+                "remove the assignment"
+            ],
+        )
+        self.assertEqual(
+            self._window(top.get_child_by_name("alone")), (0x1000, "DECERR 0xBADCAB1E")
+        )
 
 
 if __name__ == "__main__":
