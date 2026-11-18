@@ -25,6 +25,11 @@ in non-scannable storage. CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are
 non-scannable as well and read as zero downstream while SECURE_TM is 1. The
 nine spare fields fill the last nine rows and are drawn as one band.
 
+NOTE: <<sep-otp-fuse-bank-diagram>> shows the fuse map of the 0.5 release.
+<<sep-fuse-fields-table>> is the 1.0 map. In it two fields are wider, the last
+spare field is shorter and `SIGNATURE_REVOKE` is added, so the spare fields no
+longer start on a row boundary. <<fuse-fields>> lists the differences.
+
 <<sep-efuse-interface-diagram>> shows the controller boundary and the
 technology-specific fuse interface.
 
@@ -109,10 +114,32 @@ A write-lock blocks fuse programming and shadow writes; a read-lock blocks
 software and JTAG reads of both the fuse field and its shadow. The sensing FSM
 can still read locked fuses to populate the shadows.
 
-There are two exceptions: the `LOCKS` and `LOCKS_SPARE` registers have no lock
-slot of their own, and `LC_STATE` ignores its assigned lock bits. Lifecycle
-transition and token checks still apply to `LC_STATE`. The slot numbers and
-bit positions are defined in <<sep-fuse-fields-table>>.
+There are three exceptions. The slot numbers and bit positions are defined in
+<<sep-fuse-fields-table>>.
+
+* The `LOCKS` and `LOCKS_SPARE` registers have no lock slot of their own.
+* `LC_STATE` ignores its assigned lock bits. Lifecycle transition and token
+checks still apply to it.
+* The four signing-policy fields, `PUBK_REVOKE`, `REQUIRED_SIGNERS`,
+`REQUIRED_ALGS` and `SIGNATURE_REVOKE`, ignore the fuse value of their lock
+bits. At fuse sensing the lock shadow bits of their slots are loaded as 0,
+whatever the fuse holds. Their read-lock bits have no effect at any time, so
+the four fields are always readable. Their write-lock bits take effect only
+when firmware sets them in the `LOCKS` or `LOCKS_SPARE` shadow register, and
+last until the next cold reset. For `PUBK_REVOKE` and `SIGNATURE_REVOKE` that write-lock blocks
+fuse programming and shadow writes. For `REQUIRED_SIGNERS` and `REQUIRED_ALGS`
+it blocks fuse programming only, and the shadow register stays writable.
+
+The third exception exists because the lock field cannot protect itself: any
+code that can program fuses can program a lock bit, and a programmed lock bit
+takes effect at the next cold reset, before any firmware runs. A read-locked
+field returns a fixed pattern instead of its value, so a lock bit could
+otherwise hide a revocation from SEP ROM, and a write-lock bit could otherwise
+close a revocation field for good. For the other fuse fields it relies on, SEP
+ROM shall never use the value of a read-locked field as data. A read-locked
+`SIP_DIS` or `SYS_DIS` counts as debug disabled in the Secure Boot Decision,
+and a read-locked key digest makes that key unusable. How SEP ROM treats any
+other read-locked field is specified with the SEP Boot ROM.
 
 A write-lock bit exists in two places that must not be confused: the LOCKS *shadow*
 register bit, which firmware sets to close a field for the remainder of the current
@@ -202,6 +229,19 @@ downstream logic during test.
 Slot numbers select lock bits; they are neither OTP word offsets nor register
 addresses. Access permissions remain subject to the lock and lifecycle rules above.
 
+NOTE: <<sep-fuse-fields-table>> is the fuse map of the 1.0 release. The RDL, the
+register reference generated from it at the end of this chapter,
+<<sep-otp-fuse-bank-diagram>> and the released 0.5 RTL, ROM and DV implement
+the 0.5 map, which differs in four places: `REQUIRED_SIGNERS` and
+`REQUIRED_ALGS` are 32 bits each, spare8 is 256 bits, there is no
+`SIGNATURE_REVOKE`, and `PUBK_REVOKE` is named `CHIPLET_PUBK_REVOKE`. Slots
+0–31 are the same in both maps. `SIGNATURE_REVOKE` takes slot 32, so the nine
+spare fields move from slots 32–40 to slots 33–41. Fields are packed in slot
+order from the base of the MAP window, so in the 1.0 map `REQUIRED_ALGS` moves
+from offset `0x1BC` to `0x1C0`, every field from `CHIPLET_PUBK_PQC_HASH0`
+through `SEP_SYS_ID` starts 8 bytes later, `SIGNATURE_REVOKE` is at `0x2E8`,
+and the spare fields start 16 bytes later, from `0x2F0`.
+
 [[sep-fuse-fields-table]]
 [width="100%",cols="<15%,<10%,<10%,<10%,<10%,<45%",options="header",]
 .SEP fuse fields
@@ -210,16 +250,17 @@ addresses. Access permissions remain subject to the lock and lifecycle rules abo
 |LOCK |— |96 |set-only |true |Lock state occupies OTP words 0–2:
 
 `LOCKS` (64 bits at `0x0`) covers slots 0–31: write-lock at bit `2n`,
-read-lock at bit `2n+1` for slot `n`. Slot 23 (SIGNATURE_REVOKE) is in bits
-[47:46].
+read-lock at bit `2n+1` for slot `n`.
 
-`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–41, SEP_SYS_ID and spare0
-through spare8: write-lock at bit `2(n-32)`, read-lock at bit `2(n-32)+1`.
-Bits [31:20] are unassigned slots 42–47.
+`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–41: write-lock at bit
+`2(n-32)`, read-lock at bit `2(n-32)+1`. Slot 32 (SIGNATURE_REVOKE) is in bits
+[1:0]; bits [31:20] are unassigned slots 42–47.
 
 Firmware reads the complete state as three consecutive 32-bit words.
 There are 42 assigned slots (0–41); slot 0 belongs to `LC_STATE`, which ignores
-both lock bits. LOCK has no lock-bit pair and cannot lock itself.
+both lock bits. LOCK has no lock-bit pair and cannot lock itself. The lock bits
+of slots 8, 21, 22 and 32, the four signing-policy fields, behave as described
+under Shadow Register and JTAG Access Control.
 
 |LC_STATE |0 |32 (4-bit state, 8-bit encoding) |set-only |true |Life-cycle state of the
 chiplet. The shadow encodes the logical state as `{~raw[3:0], raw[3:0]}`
@@ -261,23 +302,19 @@ RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state
 
 |CLASS_KEY |7 |256 |true |true |Can be used for firmware encryption and decryption.
 
-|PUBK_REVOKE |8 |32 |set-only |true |Global public-key revocation
-vector covering every boot-verification key of every owner (classical and
-PQC). SEP ROM embeds a set of public-key hash digests and accesses
-additional fused key hashes; each key entry maps to one bit here. Once set,
-SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator
-classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator
-PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1;
-[20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH /
-SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26]
-reserved. Before the chiplet owner transfers a
-part to the customer, the development-key bits shall be set (revoked).
-The write-lock of this field, LOCKS[16], shall never be programmed in the
-LOCKS fuse: a key whose private key is compromised must remain revocable at
-any point in the device's life, by whichever owner holds it. A write-lock set
-in the LOCKS shadow register lasts for the rest of that boot only.
-(Formerly CHIPLET_PUBK_REVOKE; the RDL, ROM and DV of the 0.5 release use
-that name.)
+|PUBK_REVOKE |8 |32 |set-only |true |Public-key revocation: one bit for each
+boot-verification key of every owner. SEP ROM rejects a key whose bit is set.
+Bit N names the same key as bit N of the manifest's public_key_select_classic,
+public_key_select_pqc, public_key_classic_revoke and public_key_pqc_revoke
+bitmaps. [5:0] ROM chiplet-creator classical keys (0 and 1
+are development keys); [7:6] reserved; [13:8] ROM chiplet-creator post-quantum
+keys; [15:14] reserved; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19]
+CHIPLET_PUBK_PQC_HASH0/1; [20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0;
+[22]/[23] SYS_PUBK_HASH / SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 /
+SIP_PUBK_PQC_HASH1; [31:26] reserved. The development-key bits shall be set
+before the chiplet creator transfers a part. See Policy Fuse Updates in the
+Life Cycle Controller section. (Formerly CHIPLET_PUBK_REVOKE; the RDL, ROM and
+DV of the 0.5 release use that name.)
 
 |BL1_VERSION |9 |256 |set-only |true |BL1 anti-rollback storage. The
 production ROM supplies the low 128 raw bits as security-version flags to
@@ -335,79 +372,76 @@ the hashes embedded in the ROM to authenticate manifests.
 |CHIPLET_PUBK_HASH1 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 1, fused.
 
-|REQUIRED_SIGNERS |21 |64 (40 used) |true |true |Which co-signers a manifest must
+|REQUIRED_SIGNERS |21 |64 (44 used) |true |true |Which co-signers a manifest must
 carry to be authenticated by SEP ROM, and whose keys they must use. Bits [7:0] are
 the required-co-signer mask, bit N-1 for co-signer N, matching co_signer_enable in
 the OCA Payload Manifest. Bits [4N+7:4N+4] hold the one-hot owner code of
-co-signer N: 0b0001 anonymous, 0b0010 chiplet-designated, 0b0100 SiP owner,
-0b1000 system owner; other values reserved. Bits [63:40] reserved. The chiplet
-creator is always required and has no slot here. Because the fuse is one-way and
-the codes are one-hot, burn a co-signer's owner code and read it back before
-burning its bit in [7:0]. Owner codes, the requirement rule and policy propagation
-are specified under Secure-Boot Signing Model in the Life Cycle Controller section.
+co-signer N: 0b0010 chiplet-designated, 0b0100 SiP owner, 0b1000 system owner;
+every other value, including 0b0001, is reserved. Bits [43:40] hold the owner
+code of the ROOT of a later-stage manifest, with the same codes; all-zero also
+means the chiplet creator, and SEP ROM does not use these bits. Bits [63:44]
+reserved.
+Program a co-signer's owner code and read the fuse back through the eFuse read
+interface before programming its bit in [7:0]; the shadow register does not
+show a programmed value until the next fuse sensing. See Secure-Boot Signing
+Model and Policy Fuse Updates in the Life Cycle Controller section.
 
-|REQUIRED_ALGS |22 |64 (40 used) |true |true |Which signature classes each
-verification entity must supply. Each entity has four bits: bit 0 set requires a
-classical signature (RSA, ECDSA or EdDSA), bit 1 set requires a post-quantum
-signature (ML-DSA), both set requires both, bits 3:2 reserved. Bits [3:0] are the
-chiplet creator (the manifest's ROOT), bits [7:4] the verifier key entry, and bits
-[4N+7:4N+4] co-signer N for N = 1 to 8, the same positions as its owner code in
-REQUIRED_SIGNERS. Bits [63:40] reserved. An entity's bits apply only when that
-entity is required. An unprovisioned field reads all-zero, so SEP ROM enforces
-bits [1:0] = 01 (classical required) when the fused value is 00 and writes 01
-to the shadow register before hand-off: an unprovisioned part requires a
-classical chiplet-creator signature rather than none. The requirement rule,
-hybrid verification and policy propagation are specified under Secure-Boot
-Signing Model in the Life Cycle Controller section.
+|REQUIRED_ALGS |22 |64 (40 used) |set-only |true |The minimum signature groups
+each verification entity must declare. Each entity has four bits: bit 0 set
+requires a classical signature, bit 1 set requires a post-quantum signature of
+any class, both set require both, both clear set no minimum, and bits 3:2 are
+reserved. Bits [3:0] are the manifest's ROOT (the chiplet creator for the BL1
+manifest), bits [7:4]
+the verifier key entry, and bits [4N+7:4N+4] co-signer N for N = 1 to 8, the
+same positions as its owner code in REQUIRED_SIGNERS. Bits [63:40] reserved.
+The layout is that of the OCA Payload Manifest's signature_cohort_enforce
+field. See Secure-Boot Signing Model and Policy Fuse Updates in the Life Cycle
+Controller section.
 
-|SIGNATURE_REVOKE |23 |64 (40 used) |set-only |true |Signature-algorithm class
-revocation: a required signature whose class is revoked fails verification, and a
-set group code revokes a whole group, after which SEP ROM no longer enforces that
-group's REQUIRED_ALGS bits for any entity. The layout is that of the OCA Payload
-Manifest's signature_class_revoke
-field. Bits [7:0] classical classes: 0 RSA-3072, 1 RSA-4096, 2 ECDSA P-256, 3
-ECDSA P-384, 4 ECDSA P-521, 5 Ed25519, 6 Ed448, 7 adopter-defined classical
-(signature_type_classic `0xF0-0xFF`). Bits [15:8] classical group code: `0x00`, or
-exactly `0xCA`. Bits [23:16] reserved. Bits [31:24] post-quantum classes: 24
-ML-DSA-44, 25 ML-DSA-65, 26 ML-DSA-87, 27 reserved for FN-DSA, 28 SLH-DSA-128, 29
-SLH-DSA-192, 30 SLH-DSA-256, 31 adopter-defined post-quantum (signature_type_pqc
-`0xF0-0xFF`). Bits [39:32] post-quantum group code: `0x00`, or exactly `0xAC`.
-Bits [63:40] reserved. Programmed only by BL1, and write-locked for the rest of
-each boot in the LOCKS shadow register, never in the LOCKS fuse. Lock slot 23 in
-LOCKS[47:46]. Semantics, group codes and the update procedure are specified
-under Signature Algorithm Revocation in the Life Cycle Controller section.
-
-|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA PQC
+|CHIPLET_PUBK_PQC_HASH0 |23 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
 
-|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA PQC
+|CHIPLET_PUBK_PQC_HASH1 |24 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.
 
-|SIP_PUBK_PQC_HASH0 |26 |256 |true |true |Hash digest of the SiP owner's
+|SIP_PUBK_PQC_HASH0 |25 |256 |true |true |Hash digest of the SiP owner's
 ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.
 
-|SYS_PUBK_PQC_HASH |27 |256 |true |true |Hash digest of the system owner's
+|SYS_PUBK_PQC_HASH |26 |256 |true |true |Hash digest of the system owner's
 ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.
 
-|SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
+|SIP_PUBK_HASH1 |27 |256 |true |true |Hash digest of the SiP owner's root
 public key for secure boot, slot 1. Second slot so the SiP owner retains a
 usable root key after revoking slot 0 via PUBK_REVOKE[24].
 
-|SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
+|SIP_PUBK_PQC_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's ML-DSA
 PQC root public key for secure boot, slot 1. PQC counterpart of
 SIP_PUBK_HASH1; revocable via PUBK_REVOKE[25].
 
-|SEP_CHIPLET_ID |30 |256 |true |true |Per-owner chiplet public identity fuse
+|SEP_CHIPLET_ID |29 |256 |true |true |Per-owner chiplet public identity fuse
 used as a public identity input to the Key Manager. No read protection
 is required.
 
-|SEP_SIP_ID |31 |256 |true |true |SiP-owner public identity fuse used as a public identity
+|SEP_SIP_ID |30 |256 |true |true |SiP-owner public identity fuse used as a public identity
 input to the Key Manager. No read protection is required.
 
-|SEP_SYS_ID |32 |256 |true |true |System-owner public identity fuse used as a public identity
+|SEP_SYS_ID |31 |256 |true |true |System-owner public identity fuse used as a public identity
 input to the Key Manager. No read protection is required.
+
+|SIGNATURE_REVOKE |32 |64 (40 used) |set-only |true |Signature-algorithm class
+revocation. A declared signature whose class is revoked causes the manifest to
+be rejected; a group code disables a whole group. The layout is that of the OCA
+Payload Manifest's signature_class_revoke field. Bits [7:0] classical classes:
+0 RSA-3072, 1 RSA-4096, 2 ECDSA P-256, 3 ECDSA P-384, 4 ECDSA P-521, 5 Ed25519,
+6 Ed448, 7 adopter-defined classical. Bits [15:8] classical group code: `0x00`,
+or exactly `0xCA`. Bits [23:16] reserved. Bits [31:24] post-quantum classes: 24
+ML-DSA-44, 25 ML-DSA-65, 26 ML-DSA-87, 27 reserved for FN-DSA, 28 SLH-DSA-128,
+29 SLH-DSA-192, 30 SLH-DSA-256, 31 adopter-defined post-quantum. Bits [39:32]
+post-quantum group code: `0x00`, or exactly `0xAC`. Bits [63:40] reserved. See
+Signature Algorithm Revocation and Policy Fuse Updates in the Life Cycle
+Controller section.
 
 |spare0 |33 |256 |true |true |Spare field 0 for future use.
 
