@@ -65,7 +65,7 @@ class UnjudgeableError(JudgeError):
 
 @dataclass(frozen=True)
 class SpiReadSpan:
-    """A half-open flash address span and the read count the contract permits there."""
+    """A half-open flash address span and the reads the contract permits there."""
 
     name: str
     low: int
@@ -73,6 +73,8 @@ class SpiReadSpan:
     exact: int | None = None
     minimum: int | None = None
     maximum: int | None = None
+    # Total bytes the device serves in the span; independent of how the ROM chunks reads.
+    total_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -335,6 +337,7 @@ def _judge_spi_reads(
         )
 
     served: dict[str, int] = {span.name: 0 for span in spans}
+    served_bytes: dict[str, int] = {span.name: 0 for span in spans}
     first_touch: dict[str, int] = {}
     for index, read in enumerate(flash_reads(raw)):
         span = next((s for s in spans if s.low <= read.address < s.high), None)
@@ -350,6 +353,7 @@ def _judge_spi_reads(
                 "match how the ROM chunks its transfers"
             )
         served[span.name] += 1
+        served_bytes[span.name] += read.length
         first_touch.setdefault(span.name, index)
 
     for span in spans:
@@ -360,6 +364,11 @@ def _judge_spi_reads(
             raise JudgeError(_span_count_error(span, "at least", span.minimum, count))
         if span.maximum is not None and count > span.maximum:
             raise JudgeError(_span_count_error(span, "at most", span.maximum, count))
+        if span.total_bytes is not None and served_bytes[span.name] != span.total_bytes:
+            raise JudgeError(
+                f"span {span.name} [0x{span.low:x},0x{span.high:x}): expected exactly "
+                f"{span.total_bytes} byte(s), device served {served_bytes[span.name]}"
+            )
 
     positions = []
     for name in order:
