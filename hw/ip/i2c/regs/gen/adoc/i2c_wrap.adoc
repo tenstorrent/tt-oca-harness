@@ -94,14 +94,26 @@ Wrapper address map instantiating the per-controller I2C register blocks and sha
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19 | `TARGET_RX_FIFO_ERROR` | RW1C | 0x0 a| Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-Write `1` to clear.
-| 18 | `TARGET_TX_FIFO_ERROR` | RW1C | 0x0 a| Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-Write `1` to clear.
-| 17 | `CONTROLLER_RX_FIFO_ERROR` | RW1C | 0x0 a| Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-error. Write `1` to clear.
-| 16 | `CONTROLLER_TX_FIFO_ERROR` | RW1C | 0x0 a| Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-error. Write `1` to clear.
+| 19 | `TARGET_RX_FIFO_ERROR` | RW1C | 0x0 a| Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.
+| 18 | `TARGET_TX_FIFO_ERROR` | RW1C | 0x0 a| Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | RW1C | 0x0 a| Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | RW1C | 0x0 a| Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.
 | 15 | `SMBALERT` | RW1C | 0x0 a| Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
 to clear.
 | 14 | `HOST_TIMEOUT` | RW1C | 0x0 a| Target Mode interrupt: asserted when the controller stops generating the clock
