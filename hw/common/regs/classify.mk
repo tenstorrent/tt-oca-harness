@@ -56,7 +56,7 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # vendored OpenTitan PWM map, whose register RTL is upstream's, with its
 # pwm_ctrl regblock leaf.
 OCAH_REG_WRAPPER_BLOCKS ?= \
-  misc_wrap pwm_wrap \
+  misc_wrap smc_cluster_wdt_wrap pwm_wrap \
   gpio_intf_wrap alias_remap_wrap output_remap_wrap filter_ctrl_wrap
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_WRAPPER_BLOCKS)
 

@@ -318,7 +318,7 @@ package smc_pkg;
   // The remap starts are offsets into the SMC register window, since the fabric adds them to a
   // runtime window base. SMC_TOP_BASE_ADDR is the addrmap root (0), not the window base, so the
   // window base is taken from the lowest-addressed block in the window instead.
-  localparam smc_axi_addr_t RegWindowBase      = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+  localparam smc_axi_addr_t RegWindowBase      = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR);
   localparam smc_axi_addr_t MmodeRemapStart    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR) - RegWindowBase;
   localparam smc_axi_addr_t MmodeRemapSize     = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_SIZE);
   localparam smc_axi_addr_t XvisorRemapStart   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR) - RegWindowBase;

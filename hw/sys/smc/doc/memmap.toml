@@ -12,7 +12,7 @@ columns = ["range", "size", "label", "description"]
 [[views.rows]]
 kind = "group"
 label = "Watchdog Timers"
-members = ["smc_cluster_core0_wdt", "smc_cluster_core1_wdt", "smc_cluster_core2_wdt", "smc_cluster_core3_wdt"]
+members = ["smc_cluster_wdt_wrap"]
 description = "Per-core watchdog timers."
 
 [[views.rows]]

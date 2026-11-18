@@ -77,21 +77,21 @@ module smc_local_xbar
   // hart-facing window has no rule: only the cluster's harts may reach it.
   localparam smc_local_xbar_pkg::addr_rule_t [smc_local_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SIZE)},
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SIZE)},
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SIZE)},
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SIZE)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR),
       end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR,

@@ -34,7 +34,7 @@
 `include "cpu_ctrl.rdl"
 `include "smc_base_config.rdl"
 `include "smc_efuse_map.rdl"
-`include "wdt.rdl"
+`include "smc_cluster_wdt_wrap.rdl"
 `include "i2c_wrap.rdl"
 `include "smc_cla.rdl"
 `include "smc_external.rdl"
@@ -46,10 +46,7 @@ addrmap smc_top #(
     name = "SMC Top-Level Address Map";
     desc = "Top-level SMC address map exposing the resources accessible to external agents.";
 
-    wdt                                       smc_cluster_core0_wdt          @BASE_ADDR + 0x000_0000;
-    wdt                                       smc_cluster_core1_wdt          @BASE_ADDR + 0x000_0400;
-    wdt                                       smc_cluster_core2_wdt          @BASE_ADDR + 0x000_0800;
-    wdt                                       smc_cluster_core3_wdt          @BASE_ADDR + 0x000_0c00;
+    smc_cluster_wdt_wrap                      smc_cluster_wdt_wrap           @BASE_ADDR + 0x000_0000;
 
     debug_module                              debug_module                   @BASE_ADDR + 0x000_1000;
 

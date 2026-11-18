@@ -32,103 +32,114 @@ localparam int unsigned SMC_TOP_REG_MAP_SIZE                                    
 
 
 //==============================================================================
-// Addresses for Address Map: smc_cluster_core0_wdt
+// Addresses for Address Map: smc_cluster_wdt_wrap
 //==============================================================================
 
 
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_REG_MAP_BASE_ADDR                                                   = 32'hC0000000;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_REG_MAP_SIZE                                                        = 32'h00000024;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_REG_MAP_BASE_ADDR                                                    = 32'hC0000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_REG_MAP_SIZE                                                         = 32'h00000C24;
 
 
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_CTRL_REG_OFFSET                                                     = 32'h00000000;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_CTRL_REG_ADDR                                                       = 32'hC0000000;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_REG_ADDR                                                      = 32'hC0000008;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC000000C;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000010;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_FEED_REG_ADDR                                                       = 32'hC0000018;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_KEY_REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_KEY_REG_ADDR                                                        = 32'hC000001C;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_CMP_REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned SMC_CLUSTER_CORE0_WDT_CMP_REG_ADDR                                                        = 32'hC0000020;
 
 
 //==============================================================================
-// Addresses for Address Map: smc_cluster_core1_wdt
+// Addresses for Address Map: core0_wdt
 //==============================================================================
 
 
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_REG_MAP_BASE_ADDR                                                   = 32'hC0000400;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_REG_MAP_SIZE                                                        = 32'h00000024;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_REG_MAP_BASE_ADDR                                          = 32'hC0000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_REG_MAP_SIZE                                               = 32'h00000024;
 
 
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_CTRL_REG_OFFSET                                                     = 32'h00000000;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_CTRL_REG_ADDR                                                       = 32'hC0000400;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_REG_ADDR                                                      = 32'hC0000408;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC000040C;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000410;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_FEED_REG_ADDR                                                       = 32'hC0000418;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_KEY_REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_KEY_REG_ADDR                                                        = 32'hC000041C;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_CMP_REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned SMC_CLUSTER_CORE1_WDT_CMP_REG_ADDR                                                        = 32'hC0000420;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_cluster_core2_wdt
-//==============================================================================
-
-
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_REG_MAP_BASE_ADDR                                                   = 32'hC0000800;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_REG_MAP_SIZE                                                        = 32'h00000024;
-
-
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_CTRL_REG_OFFSET                                                     = 32'h00000000;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_CTRL_REG_ADDR                                                       = 32'hC0000800;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_REG_ADDR                                                      = 32'hC0000808;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC000080C;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000810;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_FEED_REG_ADDR                                                       = 32'hC0000818;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_KEY_REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_KEY_REG_ADDR                                                        = 32'hC000081C;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_CMP_REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned SMC_CLUSTER_CORE2_WDT_CMP_REG_ADDR                                                        = 32'hC0000820;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_REG_ADDR                                              = 32'hC0000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_REG_OFFSET                                           = 32'h00000008;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_REG_ADDR                                             = 32'hC0000008;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_HI_REG_OFFSET                                        = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_HI_REG_ADDR                                          = 32'hC000000C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SCALED_COUNT_REG_OFFSET                                    = 32'h00000010;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SCALED_COUNT_REG_ADDR                                      = 32'hC0000010;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_FEED_REG_OFFSET                                            = 32'h00000018;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_FEED_REG_ADDR                                              = 32'hC0000018;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_REG_OFFSET                                             = 32'h0000001C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_REG_ADDR                                               = 32'hC000001C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_REG_OFFSET                                             = 32'h00000020;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_REG_ADDR                                               = 32'hC0000020;
 
 
 //==============================================================================
-// Addresses for Address Map: smc_cluster_core3_wdt
+// Addresses for Address Map: core1_wdt
 //==============================================================================
 
 
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_REG_MAP_BASE_ADDR                                                   = 32'hC0000C00;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_REG_MAP_SIZE                                                        = 32'h00000024;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_REG_MAP_BASE_ADDR                                          = 32'hC0000400;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_REG_MAP_SIZE                                               = 32'h00000024;
 
 
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_CTRL_REG_OFFSET                                                     = 32'h00000000;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_CTRL_REG_ADDR                                                       = 32'hC0000C00;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_REG_ADDR                                                      = 32'hC0000C08;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC0000C0C;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000C10;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_FEED_REG_ADDR                                                       = 32'hC0000C18;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_KEY_REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_KEY_REG_ADDR                                                        = 32'hC0000C1C;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_CMP_REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned SMC_CLUSTER_CORE3_WDT_CMP_REG_ADDR                                                        = 32'hC0000C20;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CTRL_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CTRL_REG_ADDR                                              = 32'hC0000400;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_REG_OFFSET                                           = 32'h00000008;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_REG_ADDR                                             = 32'hC0000408;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_HI_REG_OFFSET                                        = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_HI_REG_ADDR                                          = 32'hC000040C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SCALED_COUNT_REG_OFFSET                                    = 32'h00000010;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SCALED_COUNT_REG_ADDR                                      = 32'hC0000410;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_FEED_REG_OFFSET                                            = 32'h00000018;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_FEED_REG_ADDR                                              = 32'hC0000418;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_KEY_REG_OFFSET                                             = 32'h0000001C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_KEY_REG_ADDR                                               = 32'hC000041C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CMP_REG_OFFSET                                             = 32'h00000020;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CMP_REG_ADDR                                               = 32'hC0000420;
+
+
+//==============================================================================
+// Addresses for Address Map: core2_wdt
+//==============================================================================
+
+
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_REG_MAP_BASE_ADDR                                          = 32'hC0000800;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_REG_MAP_SIZE                                               = 32'h00000024;
+
+
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CTRL_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CTRL_REG_ADDR                                              = 32'hC0000800;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_REG_OFFSET                                           = 32'h00000008;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_REG_ADDR                                             = 32'hC0000808;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_HI_REG_OFFSET                                        = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_HI_REG_ADDR                                          = 32'hC000080C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SCALED_COUNT_REG_OFFSET                                    = 32'h00000010;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SCALED_COUNT_REG_ADDR                                      = 32'hC0000810;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_FEED_REG_OFFSET                                            = 32'h00000018;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_FEED_REG_ADDR                                              = 32'hC0000818;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_KEY_REG_OFFSET                                             = 32'h0000001C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_KEY_REG_ADDR                                               = 32'hC000081C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CMP_REG_OFFSET                                             = 32'h00000020;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CMP_REG_ADDR                                               = 32'hC0000820;
+
+
+//==============================================================================
+// Addresses for Address Map: core3_wdt
+//==============================================================================
+
+
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_REG_MAP_BASE_ADDR                                          = 32'hC0000C00;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_REG_MAP_SIZE                                               = 32'h00000024;
+
+
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CTRL_REG_OFFSET                                            = 32'h00000000;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CTRL_REG_ADDR                                              = 32'hC0000C00;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_REG_OFFSET                                           = 32'h00000008;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_REG_ADDR                                             = 32'hC0000C08;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_HI_REG_OFFSET                                        = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_HI_REG_ADDR                                          = 32'hC0000C0C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SCALED_COUNT_REG_OFFSET                                    = 32'h00000010;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SCALED_COUNT_REG_ADDR                                      = 32'hC0000C10;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_FEED_REG_OFFSET                                            = 32'h00000018;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_FEED_REG_ADDR                                              = 32'hC0000C18;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_KEY_REG_OFFSET                                             = 32'h0000001C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_KEY_REG_ADDR                                               = 32'hC0000C1C;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CMP_REG_OFFSET                                             = 32'h00000020;
+localparam int unsigned SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CMP_REG_ADDR                                               = 32'hC0000C20;
 
 
 //==============================================================================
@@ -16542,6 +16553,9 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHI
 
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
+
+
+
 
 
 
