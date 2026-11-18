@@ -106,12 +106,12 @@ module cross_trigger_port #(
   );
 
   // Configuration signals from registers
-  // The one-bit MODE field reaches only wire-OR and point-to-point; toggle mode is not
-  // selectable through the CSRs.
   cross_trigger_port_pkg::ctp_mode_e mode;
   logic invert;
   logic handshake_reset;
 
+  // The one-bit MODE field reaches only wire-OR and point-to-point; toggle mode is not
+  // selectable through the CSRs.
   assign mode           = reg_out.CONFIG.MODE.value ? cross_trigger_port_pkg::MODE_POINT_TO_POINT
                                                     : cross_trigger_port_pkg::MODE_WIRE_OR;
   assign invert         = reg_out.CONFIG.INVERT.value;

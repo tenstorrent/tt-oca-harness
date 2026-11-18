@@ -144,7 +144,6 @@ module cross_trigger_port_core
     .stretched_pulse_o (stretched_pulse)
   );
 
-  // Toggle mode: each accepted trigger inverts the outgoing level.
   logic toggle_q;
   `OCAH_FF(toggle_q, toggle_q ^ toggle_accept, 1'b0, clk_i, rst_ni)
 
@@ -255,7 +254,7 @@ module cross_trigger_port_core
   assign ct_ack_out_dout_en_o = ct_ack_out_dout_en_q;
   assign ct_ack_out_dout_o    = ct_ack_out_dout_q;
 
-  // BUSY signal generation: the stretched pulse in wire-OR mode and the hold in toggle mode
+  // BUSY signal generation. In toggle mode the stretched pulse is the hold.
   logic busy_raw;
   assign busy_raw = mode_p2p ? handshake_busy : stretched_pulse;
 
