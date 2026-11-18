@@ -1438,7 +1438,7 @@ typedef union {
 
 // reg - dfd_cla::CDbgSignalEdgeDetectCfg
 // Register to configure debug bus for edge triggers.
-// Define which signal to select for edge detection.
+// Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bm 0x7f
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bp 0
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bw 7
@@ -1448,7 +1448,7 @@ typedef union {
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bp 7
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bw 1
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_reset 0x0
-// Define which signal to select for edge detection.
+// Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bm 0x7f00
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bp 8
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bw 7
@@ -1460,11 +1460,11 @@ typedef union {
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Define which signal to select for edge detection.
+        // Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.
         uint64_t Signal0Select :7;
         // Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
         uint64_t PosEdgeSignal0 :1;
-        // Define which signal to select for edge detection.
+        // Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.
         uint64_t Signal1Select :7;
         // Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
         uint64_t PosEdgeSignal1 :1;
@@ -1543,66 +1543,82 @@ typedef union {
 #define DFD_CLA__CDBGEAPSTATUS__RSVD3116_bp 16
 #define DFD_CLA__CDBGEAPSTATUS__RSVD3116_bw 16
 #define DFD_CLA__CDBGEAPSTATUS__RSVD3116_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_bm 0x100000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_bp 32
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_bm 0x200000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_bp 33
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP1W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_bm 0x400000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_bp 34
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP2W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_bm 0x800000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_bp 35
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP3W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bm 0x1000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bp 36
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP0W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bm 0x2000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bp 37
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP1W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_bm 0x4000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_bp 38
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP2W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_bm 0x8000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_bp 39
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE1EAP3W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bm 0x10000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bp 40
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP0W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bm 0x20000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bp 41
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP1W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_bm 0x40000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_bp 42
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP2W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_bm 0x80000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_bp 43
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE2EAP3W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bm 0x100000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bp 44
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP0W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bm 0x200000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bp 45
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP1W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_bm 0x400000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_bp 46
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_bw 1
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP2W2C_reset 0x0
+// Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_bm 0x800000000000
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_bp 47
 #define DFD_CLA__CDBGEAPSTATUS__NODE3EAP3W2C_bw 1
@@ -1626,21 +1642,37 @@ typedef union {
         uint64_t Node3Eap2 :1;
         uint64_t Node3Eap3 :1;
         uint64_t Rsvd3116 :16;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node0Eap0W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node0Eap1W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node0Eap2W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node0Eap3W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node1Eap0W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node1Eap1W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node1Eap2W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node1Eap3W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node2Eap0W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node2Eap1W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node2Eap2W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node2Eap3W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node3Eap0W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node3Eap1W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node3Eap2W2C :1;
+        // Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.
         uint64_t Node3Eap3W2C :1;
         uint64_t :16;
     } f;
@@ -4305,7 +4337,7 @@ typedef union {
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bp 28
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bw 3
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_reset 0x4
-// DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
+// DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.
 #define DFD_DST__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bm 0x80000000
 #define DFD_DST__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bp 31
 #define DFD_DST__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bw 1
@@ -4322,7 +4354,7 @@ typedef union {
         uint32_t Trdstvendorframelength :4;
         // Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
         uint32_t Trdstvendorstreamlength :3;
-        // DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
+        // DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.
         uint32_t Trdsttimestampconfig :1;
     } f;
     uint32_t w;
