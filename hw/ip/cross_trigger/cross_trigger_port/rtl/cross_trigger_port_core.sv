@@ -12,11 +12,13 @@
 // CT_Req_in and CT_Ack_in pad inputs until their synchronizers carry pad data.
 // ct_dst_o, busy_o, and the pad controls are registered and reset low.
 
+`include "ocah_assert.svh"
 `include "ocah_registers.svh"
 
 module cross_trigger_port_core
   import cross_trigger_port_pkg::ctp_mode_e;
   import cross_trigger_port_pkg::MODE_WIRE_OR;
+  import cross_trigger_port_pkg::MODE_POINT_TO_POINT;
   import cross_trigger_port_pkg::MODE_TOGGLE;
 (
   input  logic        clk_i,            // System clock for the port logic.
@@ -87,14 +89,17 @@ module cross_trigger_port_core
                                         // always low outside point-to-point mode.
 );
 
-  // Mode decode. 2'b11 decodes as point-to-point.
+  // Mode decode
   logic mode_wire_or;
-  logic mode_toggle;
   logic mode_p2p;
+  logic mode_toggle;
 
   assign mode_wire_or = (mode_i == MODE_WIRE_OR);
+  assign mode_p2p     = (mode_i == MODE_POINT_TO_POINT);
   assign mode_toggle  = (mode_i == MODE_TOGGLE);
-  assign mode_p2p     = ~mode_wire_or & ~mode_toggle;
+
+  `OCAH_ASSERT(ModeLegal_A, mode_i inside {MODE_WIRE_OR, MODE_POINT_TO_POINT, MODE_TOGGLE}, clk_i,
+               !rst_ni)
 
   // Synchronizer module
   logic ct_req_out_din_sync;
