@@ -21,9 +21,9 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
-MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
-RESERVED_SYM = "SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR"
+MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
+MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE")
+RESERVED_SYM = "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR"
 # Three distinct SPARE entries; all are 8-byte-aligned (stride 0x20).
 RESERVED_IDX = (1, 2, 3)
 PATTERNS = (0xA11C_E001, 0xB22D_F112, 0xC33E_0223)

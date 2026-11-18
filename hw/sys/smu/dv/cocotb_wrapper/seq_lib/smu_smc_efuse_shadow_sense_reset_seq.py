@@ -58,7 +58,7 @@ class smu_smc_efuse_shadow_sense_reset_seq:
         self.cfg = test.cfg
         self.log = test.logger
         self.sb = test.env.scoreboard
-        self.map_bytes = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
+        self.map_bytes = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE")
         self.map_words = self.map_bytes // FUSE_WORD_BYTES
         self.map_bits = self.map_bytes * 8
 
@@ -93,29 +93,34 @@ class smu_smc_efuse_shadow_sense_reset_seq:
 
     def _regions(self) -> list[tuple[str, int, int]]:
         """(name, byte offset, byte length) per register of the map, from smc_addr.h."""
-        base = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+        base = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
         entries = [
-            ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
+            ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
             (
                 "JTAG_PUBLIC_IDENTITY",
-                smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
             ),
-            ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
+            ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
             (
                 "OCCP_TRANSPORT_TIMEOUT",
-                smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
             ),
         ]
-        for i in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")):
+        for i in range(smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")):
             entries.append(
                 (
                     f"I2C_I3C_ID[{i}]",
-                    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", i),
+                    smc_indexed_addr(
+                        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", i
+                    ),
                 )
             )
-        for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")):
+        for k in range(smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM")):
             entries.append(
-                (f"SPARE[{k}]", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k))
+                (
+                    f"SPARE[{k}]",
+                    smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k),
+                )
             )
         entries.sort(key=lambda row: row[1])
         offsets = [addr - base for _, addr in entries]
@@ -173,7 +178,7 @@ class smu_smc_efuse_shadow_sense_reset_seq:
             evidence=SENSE,
         )
         sb.expect_eq(
-            "smc_shadow_regs is as wide as the eFuse map SMC_TOP_SMC_EFUSE_MAP_SIZE declares",
+            "smc_shadow_regs is as wide as the eFuse map SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE declares",
             len(dut.smc_shadow_regs),
             self.map_bits,
             evidence=SENSE,

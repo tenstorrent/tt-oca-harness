@@ -161,7 +161,7 @@ SEP_EFUSE_SHIM_INIT_TIME_RESET = c_header_u32(
 )
 
 #: SMC eFuse MAP SPARE[0], the word smu_dtp_otp_smc_map_rw_test also uses.
-SMC_EFUSE_SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+SMC_EFUSE_SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 
 #: SMC CPU_CTRL scratch0, SMC-local. A benign always-mapped fabric target; the
 #: point is whether the bridge launches, not what it returns.

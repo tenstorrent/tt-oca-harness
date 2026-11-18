@@ -13,9 +13,9 @@ S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A
     map, below the end of the eFuse page) returns SLVERR + ``0xbadcab1e`` and a SINGLE_OP re-read of SPARE[0]
     after it still returns SUCCESS + PATTERN_A.
 
-SPARE[0] from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
-The hole set holds the gap's first word, ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR +
-SMC_TOP_SMC_EFUSE_MAP_SIZE``, in every run; the seed draws zero to two further
+SPARE[0] from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
+The hole set holds the gap's first word, ``SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR +
+SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE``, in every run; the seed draws zero to two further
 distinct 4-byte-aligned words from the rest of the gap, up to the end of the 4 KiB
 eFuse page (interface ctrl, then map, in ``smc.rdl``), and the order they are read in.
 
@@ -44,10 +44,10 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
-SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
-MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
-CTRL_BASE = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
+SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
+MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE")
+CTRL_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
 PAGE_END = (CTRL_BASE & ~0xFFF) + 0x1000
 HOLE_START = MAP_BASE + MAP_SIZE
 if not (CTRL_BASE < MAP_BASE < HOLE_START < PAGE_END):

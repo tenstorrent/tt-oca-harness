@@ -5136,7 +5136,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-EFUSE-SHADOW-SENSE",
             "CHK-SMU-EFUSE-SHADOW-SENSE",
             "with +skip_fuse_sense unset, smc_shadow_regs carries the whole "
-            "SMC_TOP_SMC_EFUSE_MAP_SIZE-wide sensed image, register slice by register "
+            "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE-wide sensed image, register slice by register "
             "slice at the byte offsets smc_addr.h gives them, and holds it after the sense",
         ),
         (

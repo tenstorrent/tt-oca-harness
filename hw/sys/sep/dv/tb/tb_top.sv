@@ -776,7 +776,7 @@ module sep_uvm_top
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
             SmcSepViewBase),
         // SMC_EFUSE_MAP: chiplet/package ID
-        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
         // DFX_CTRL: STATUS_SMU
         56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
         // SMC_CPU_CTRL: scratch[0..15] at +0x80
@@ -788,7 +788,7 @@ module sep_uvm_top
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
-        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
