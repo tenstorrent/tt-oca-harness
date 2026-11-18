@@ -29361,9 +29361,7 @@ module sep_fcov (
       bins bypass_all = {3'b1_10};
     }
     cp_lane_pop: coverpoint s.lp iff (s.lp_v) {bins no_lane = {1'b0}; bins one_lane = {1'b1};}
-    cp_ds_interval: coverpoint s.di iff (s.di_v) {
-      bins rate_1 = {1'b0}; bins rate_2_to_15 = {1'b1};
-    }
+    cp_ds_interval: coverpoint s.di iff (s.di_v) {bins rate_1 = {1'b0}; bins rate_2_to_15 = {1'b1};}
     // LEVEL classes: 0, 1, mid (2 to 61), 62_63, 64.
     x_fifo_op_level: coverpoint s.fop iff (s.fop_v) {
       bins push_level_0 = {5'b00_000};
@@ -32122,8 +32120,9 @@ module sep_fcov (
       end
       if (cz_fifo_rel[CzFifoPopLive] && cz_fo_lv) cz_cond(cz_fo_lop, {1'b0, cz_fo_lcls});
     end
-    if (!cy_own_esfifo || !cz_es_on || cz_win_open || (cz_fifo_rel != 4'h0) ||
-        $isunknown({cz_flvl, cz_flvl_q, cz_fwp, cz_fwp_q, cz_frp, cz_frp_q, cz_fen0})) begin
+    if (!cy_own_esfifo || !cz_es_on || cz_win_open || (cz_fifo_rel != 4'h0) || $isunknown(
+            {cz_flvl, cz_flvl_q, cz_fwp, cz_fwp_q, cz_frp, cz_frp_q, cz_fen0}
+        )) begin
       cz_fo_push  <= '0;
       cz_fo_pop   <= '0;
       cz_fo_churn <= '0;
