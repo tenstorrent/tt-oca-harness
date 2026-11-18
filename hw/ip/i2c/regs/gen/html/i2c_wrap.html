@@ -299,7 +299,7 @@
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>28:16</td><td>THD_DAT</td><td>RW</td><td>0x0</td><td>Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in<br>system clock cycles. See Table 11 in the I2C Specification for details. This<br>field is sized to meet the I2C Standard-mode (100 kHz)&#x27;s `t_HD;DAT = 5.0 μs`<br>minimum requirement, assuming a 1 GHz system clock.</td></tr>
 <tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8:0</td><td>TSU_DAT</td><td>RW</td><td>0x0</td><td>Global control: specifies the data setup time (`t_SU;DAT`) in system clock<br>cycles. See Table 11 in the I2C Specification for details. This field is sized<br>to meet the I2C Standard-mode (100 kHz)&#x27;s `t_SU;DAT = 250 ns` minimum<br>requirement, assuming a 1 GHz system clock.</td></tr>
+<tr><td>8:0</td><td>TSU_DAT</td><td>RW</td><td>0x0</td><td>Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock<br>cycles: after driving a data or ACK bit, the target holds SCL low for<br>`TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does<br>not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets<br>`t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C<br>Specification for details. This field is sized to meet the I2C Standard-mode<br>(100 kHz)&#x27;s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system<br>clock.</td></tr>
 </table>
 <h3 id="i2c_3_.TIMING4">i2c[3].TIMING4</h3>
 <table>
