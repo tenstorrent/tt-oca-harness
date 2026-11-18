@@ -170,7 +170,7 @@ async def smc_rom_boot_hart_gate_test(harness: SmcDualHarness) -> None:
     )
 
     for name in CHECK_FUNCTIONS:
-        if not _inside(harts.seen(0), ranges[name]):
+        if not _inside(harts.retired[0], ranges[name]):
             raise AssertionError(
                 f"target hart 0 never retired inside {describe(name)}; the boot hart skipped "
                 "the check"
@@ -178,7 +178,7 @@ async def smc_rom_boot_hart_gate_test(harness: SmcDualHarness) -> None:
     cocotb.log.info(
         "CHK-ROM-BOOT-HART-CHECKS: target hart 0 retired inside %s",
         " and ".join(
-            f"{describe(name)} at {[f'{pc:#x}' for pc in _inside(harts.seen(0), ranges[name])]}"
+            f"{describe(name)} at {[f'{pc:#x}' for pc in _inside(harts.retired[0], ranges[name])]}"
             for name in CHECK_FUNCTIONS
         ),
     )

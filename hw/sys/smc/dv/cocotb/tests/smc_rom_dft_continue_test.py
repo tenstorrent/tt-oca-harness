@@ -48,13 +48,13 @@ from env.smc_dft_status_driver import (
     MBIST_STATUS_MEM_BIST_BYPASSED,
     MBIST_STATUS_MEM_REPAIR_BYPASSED,
     MBIST_STATUS_MEM_REPAIR_FAIL,
-    SMC_CONFIG_DFT_IGNORE_ERROR,
     SmcDftStatusDriver,
 )
 from smc_dual_base_test import DualCsr, SmcDualHarness, dual_test
 from smc_occp_dual_defs import (
     POST_CODE_BOOT_PHASE_OCCP_PROC,
     SCRATCH_MBIST_STATUS,
+    SMC_CONFIG_DFT_IGNORE_ERROR,
     STRAP_BITS,
     TEST_PASS,
     describe_post_code,

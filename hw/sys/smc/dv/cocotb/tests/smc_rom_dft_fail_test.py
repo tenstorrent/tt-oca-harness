@@ -39,7 +39,6 @@ from cocotb.triggers import ClockCycles
 from env.smc_dft_status_driver import (
     DFX_CTRL_STATUS_SMU,
     EXPECTED_STATUS,
-    SMC_CONFIG_DFT_IGNORE_ERROR,
     SmcDftStatusDriver,
 )
 from env.smc_virt_console import VirtConsole
@@ -54,6 +53,7 @@ from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     SCRATCH_MBIST_STATUS,
     SCRATCH_POST_CODE,
+    SMC_CONFIG_DFT_IGNORE_ERROR,
     describe_post_code,
     required_plusarg,
 )

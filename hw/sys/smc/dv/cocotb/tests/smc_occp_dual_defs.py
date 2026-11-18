@@ -41,6 +41,7 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_SCRATCH_13__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_14__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_15__REG_ADDR,
+    SMC_EFUSE_MAP_SMC_CONFIG_REG_FIELDS,
     SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR,
     SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_ADDR,
 )
@@ -104,6 +105,11 @@ SCRATCH_MANIFEST_ADDR = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
 SEP_STATUS_MANIFEST_READY_BIT = 1
 
 SCRATCH_MBIST_STATUS = SMC_CPU_CTRL_SCRATCH_15__REG_ADDR
+
+# SMC_CONFIG.dft_ignore_error, which lets the ROM continue past a failure.
+SMC_CONFIG_DFT_IGNORE_ERROR = next(
+    1 << lsb for name, lsb, *_ in SMC_EFUSE_MAP_SMC_CONFIG_REG_FIELDS if name == "dft_ignore_error"
+)
 
 # Controller only, occp_boot_sequence_status_test: the target boot mode it must find in the
 # ring, and the summary of its one drain. Must match fw/tests/occp_boot_sequence_status_test.

@@ -92,8 +92,6 @@ SCENARIO_FIELDS = {
     },
 }
 
-# SMC_CONFIG.dft_ignore_error, which lets the ROM continue past a failure.
-SMC_CONFIG_DFT_IGNORE_ERROR = 1 << 15
 FUSE_SENSE_WAIT_CYCLES = 200_000
 
 
