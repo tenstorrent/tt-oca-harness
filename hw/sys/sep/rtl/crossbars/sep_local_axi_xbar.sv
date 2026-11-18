@@ -15,6 +15,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module sep_local_axi_xbar
   import sep_local_axi_xbar_pkg::axi64_req_t;
@@ -214,6 +215,9 @@ module sep_local_axi_xbar
                         + EFUSE_SHIM_SIZE)
       }
   };
+
+  // The eFuse shim and the external window rules share the first page of that window.
+  `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap, 10)
 
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)

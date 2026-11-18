@@ -13,6 +13,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module smc_local_xbar
   import smc_local_xbar_pkg::axi64_req_t;
@@ -151,6 +152,8 @@ module smc_local_xbar
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE)}
   };
+
+  `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap)
 
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)

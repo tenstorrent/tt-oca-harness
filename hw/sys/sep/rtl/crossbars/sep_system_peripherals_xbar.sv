@@ -15,6 +15,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module sep_system_peripherals_xbar
   import sep_system_peripherals_xbar_pkg::axi64_req_t;
@@ -124,6 +125,8 @@ module sep_system_peripherals_xbar
                                           sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE))
     }
   };
+
+  `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap)
 
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)

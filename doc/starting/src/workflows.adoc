@@ -133,7 +133,9 @@ block to the SMC or the SEP:
 * Give a block that shares a page a window whose size is a power of two and
   whose base is a multiple of that size, and route it through
   `prim_axil_addr_demux`, or in `sep_system_csr` through its own demux. Either
-  answers `DECERR` outside the blocks' windows.
+  answers `DECERR` outside the blocks' windows. Every crossbar rule that
+  reaches a page leads to one port; `OCAH_ASSERT_XBAR_PAGE_OWNER` in each
+  crossbar fails elaboration otherwise.
 * For a generated block, set `OCAH_REG_ADDR_WIDTH_<block>` in
   `hw/common/regs/classify.mk` to log~2~ of its window, 12 for a block alone in
   its page, so that the block decodes its whole window.

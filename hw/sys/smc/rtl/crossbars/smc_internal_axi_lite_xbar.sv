@@ -10,6 +10,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module smc_internal_axi_lite_xbar
   import smc_internal_axi_lite_xbar_pkg::axi_lite64_req_t;
@@ -109,6 +110,8 @@ module smc_internal_axi_lite_xbar
       end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR,
                                             smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))}
   };
+
+  `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap)
 
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
