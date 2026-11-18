@@ -7,8 +7,9 @@ no_cpu, real fuse sense, LC_PROD, ``+km_rom_hex=km_rom_otp_id.parhex``. RANDCFG.
 
 ``SepKmOtpIdCfg(seed)`` stages three public IDs with no zero, all-ones or
 shared word, and sets the eFuse read lock of one of them, so every seed grades
-a read-locked field next to two unlocked ones. The four secret fields carry
-their fixed named vectors. Every expected value comes from the staged image.
+a read-locked field next to two unlocked ones. A staged word of the locked
+field equal to ``0xBADCAB1E`` fails the leaf as a test bug. The four secret
+fields carry their fixed named vectors. Every expected value comes from the staged image.
 
 Two legs, in this order: strap 0 (``secure_tm_req_i`` = 0, the bring-up) and
 strap 1 (a cold reset with ``secure_tm_req_i`` = 1 from before the release and
@@ -25,7 +26,9 @@ OTP_READ_LOCK holds the field's bit.
   CHK-KM-ID-PORT        each field on the KM ``otp_data_i`` port is
                         ``{~id, id}`` of the staged value, before and after
                         the KM-side lock.
-  CHK-KM-ID-EFUSE-LOCK  a shadow read of the eFuse-read-locked field does not
+  CHK-KM-ID-EFUSE-LOCK  a shadow read of the eFuse-read-locked field completes
+                        with RRESP SLVERR and read data ``0xBADCAB1E``
+                        (``otp_fuse_controller.adoc:110-112``) and does not
                         return its staged word; the same read of an unlocked
                         ID returns it, judged by the scoreboard.
   CHK-KM-ID-CSR         the 48 KMCSR words KM firmware read, the eFuse-locked
@@ -77,6 +80,7 @@ from cocotb.triggers import RisingEdge
 from env.sep_chk_log import diff_words, word_digest
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
 from env.sep_efuse_test_lib import rst_pulse, wait_bit
+from env.sep_fabric_common import RESP_SLVERR, resp_name
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_otp_id import (
     DEMOTION_WORD,
@@ -107,6 +111,7 @@ from env.sep_km_otp_id import (
     secret_val_words,
     window_label,
 )
+from env.sep_locked_field_irq import DENY_DATA_MARKER
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
@@ -160,10 +165,18 @@ class sep_efuse_km_public_id_test(sep_base_test):
         drv = SepLockedFieldIrq(self)
         for k in range(ID_WORDS):
             staged = id_word(cfg.ids[cfg.locked_field], k)
+            assert staged != DENY_DATA_MARKER, (
+                f"test bug: {cfg.locked_field}[{k}] is staged as 0x{DENY_DATA_MARKER:08x}, "
+                "the read data of a read-locked shadow"
+            )
             rd = await drv.access(cfg.locked_field, word_idx=k, locked=True)
-            assert rd.rdata != staged, (
-                f"CHK-KM-ID-EFUSE-LOCK FAIL: read-locked {cfg.locked_field}[{k}] returned "
-                f"its staged word, word_sha={word_digest(staged)} (resp={rd.resp_code})"
+            assert (
+                rd.resp_code == RESP_SLVERR and rd.rdata == DENY_DATA_MARKER and rd.rdata != staged
+            ), (
+                f"CHK-KM-ID-EFUSE-LOCK FAIL: read-locked {cfg.locked_field}[{k}] "
+                f"RRESP={resp_name(rd.resp_code)} expected SLVERR, RDATA=0x{rd.rdata:08x} "
+                f"expected 0x{DENY_DATA_MARKER:08x}, eq_staged={int(rd.rdata == staged)} "
+                f"word_sha={word_digest(staged)}"
             )
         mark = self.sb_mark()
         await self.start_seq(
@@ -176,10 +189,11 @@ class sep_efuse_km_public_id_test(sep_base_test):
         )
         self.assert_sb_judged(mark, "CHK-KM-ID-EFUSE-LOCK")
         self.logger.info(
-            "CHK-KM-ID-EFUSE-LOCK PASS: %d shadow reads of read-locked %s withheld the "
-            "staged words; %d reads of %s returned them",
+            "CHK-KM-ID-EFUSE-LOCK PASS: %d shadow reads of read-locked %s returned "
+            "SLVERR and 0x%08x, not the staged words; %d reads of %s returned them",
             ID_WORDS,
             cfg.locked_field,
+            DENY_DATA_MARKER,
             ID_WORDS * len(cfg.unlocked_fields),
             " and ".join(cfg.unlocked_fields),
         )
