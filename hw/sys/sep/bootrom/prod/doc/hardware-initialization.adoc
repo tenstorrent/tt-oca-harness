@@ -107,7 +107,7 @@ stamp, so changing either rebuilds the affected objects.
 
 The C path validates its runtime state, initializes the SMC-backed status
 channel when enabled, and selects the reference or PLL-derived clock. It then
-initializes `bl0_state`, validates the lifecycle state, reports the SMC chip ID,
+initializes `bl0_state`, validates the lifecycle state, reports the SMC chiplet type,
 and runs SHA-256 over the NIST `"abc"` vector as a crypto-engine self-test.
 
 The peripheral/bus reset function currently reports that the sequence is not

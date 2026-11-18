@@ -30,7 +30,7 @@ typedef struct {
     uint8_t bl0_pllclk;             /* 1 = Use reference clock (default is PLL generated clock) */
     uint8_t rotate_update;          /* 1 = Swaps primary and backup image in SEP BL0 ROM */
     uint8_t status_rpt_disable;     /* 1 = Disable BL0 status reporting */
-    uint8_t chip_id;                /* Chip ID bits [3:0] - I2C/I3C static address strap */
+    uint8_t addr_sel;               /* ADDR_SEL[3:0] - I2C/I3C fallback address select strap */
 
     /* Additional parsed fields can be added here as needed */
     uint8_t _reserved[1]; /* Padding for future expansion */
@@ -63,11 +63,11 @@ const smc_strap_config_t *smc_strap_get_config(void);
 uint8_t smc_strap_is_sram_auto_zero_disabled(void);
 
 /**
- * Returns the value of the chip ID [3:0] bits from straps.
+ * Returns the value of the ADDR_SEL[3:0] straps.
  *
- * @return Chip ID [3:0]
+ * @return ADDR_SEL[3:0]
  */
-uint8_t smc_strap_get_chip_id(void);
+uint8_t smc_strap_get_addr_sel(void);
 
 /**
  * Check if OCCP status reporting is disabled

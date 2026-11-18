@@ -6,7 +6,7 @@
 
 addrmap chip_config {
     name = "Chip Configuration Address Map";
-    desc = "Chip version, identification, and lifecycle-state registers.";
+    desc = "Chip version, chiplet type, and lifecycle-state registers.";
 
 	reg VERSION_LO {
         field {
@@ -24,12 +24,20 @@ addrmap chip_config {
         } version_hi [31:0] = 0x0;
     };
 
-    reg CHIP_ID {
+    enum chiplet_type_e {
+        MEMORY     = 32'd0 { desc = "Memory chiplet"; };
+        CPU        = 32'd1 { desc = "CPU chiplet"; };
+        AI_COMPUTE = 32'd2 { desc = "AI compute chiplet"; };
+        ETHERNET   = 32'd3 { desc = "Ethernet chiplet"; };
+    };
+
+    reg CHIPLET_TYPE {
         field {
             sw = r;
             hw = w;
-            desc = "Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.";
-        } chip_id [31:0] = 0x0;
+            encode = chiplet_type_e;
+            desc = "Kind of chiplet the SMC is integrated in, a constant fixed when the SMC is integrated, not read from fuses: 0 = MEMORY, 1 = CPU, 2 = AI_COMPUTE, 3 = ETHERNET; values 4 and above are reserved. Bits 1:0 are the upper two bits of the boot ROM's fallback I2C and I3C address, so two chiplet types that share a bus must report different values. The register has no storage: a read returns that constant, and the reset value is the default constant.";
+        } chiplet_type [31:0] = 0x0;
     };
 
     reg LC_STATE {
@@ -44,7 +52,7 @@ addrmap chip_config {
 
 	VERSION_LO                      VERSION_LO          @ 0x00;
 	VERSION_HI                      VERSION_HI          @ 0x04;
-	CHIP_ID                         CHIP_ID             @ 0x08;
+	CHIPLET_TYPE                    CHIPLET_TYPE        @ 0x08;
 	LC_STATE                        LC_STATE            @ 0x0C;
 
 };

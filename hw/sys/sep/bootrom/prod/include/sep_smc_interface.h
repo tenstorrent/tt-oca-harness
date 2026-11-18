@@ -126,8 +126,8 @@ static inline void smc_scratch_write(uint32_t index, uint32_t value) {
     mmio_write32(sep_get_smc_base() + SMC_SCRATCH_OFFSET(index), value);
 }
 
-static inline uint32_t smc_read_chip_id(void) {
-    return mmio_read32(sep_get_smc_base() + SMC_CHIP_ID_OFFSET);
+static inline uint32_t smc_read_chiplet_type(void) {
+    return mmio_read32(sep_get_smc_base() + SMC_CHIPLET_TYPE_OFFSET);
 }
 
 static inline uint32_t smc_read_lc_state(void) {

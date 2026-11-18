@@ -229,7 +229,7 @@ module chip_config_reg (
     typedef struct {
         logic VERSION_LO;
         logic VERSION_HI;
-        logic CHIP_ID;
+        logic CHIPLET_TYPE;
         logic LC_STATE;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -249,7 +249,7 @@ module chip_config_reg (
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 4'h0);
         decoded_reg_strb.VERSION_HI = cpuif_req_masked & (cpuif_addr == 4'h4) & !cpuif_req_is_wr;
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 4'h4);
-        decoded_reg_strb.CHIP_ID = cpuif_req_masked & (cpuif_addr == 4'h8) & !cpuif_req_is_wr;
+        decoded_reg_strb.CHIPLET_TYPE = cpuif_req_masked & (cpuif_addr == 4'h8) & !cpuif_req_is_wr;
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 4'h8);
         decoded_reg_strb.LC_STATE = cpuif_req_masked & (cpuif_addr == 4'hc) & !cpuif_req_is_wr;
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 4'hc);
@@ -300,7 +300,7 @@ module chip_config_reg (
             readback_data_var[31:0] = hwif_in.VERSION_HI.version_hi.next;
         end
         if(rd_mux_addr == 4'h8) begin
-            readback_data_var[31:0] = hwif_in.CHIP_ID.chip_id.next;
+            readback_data_var[31:0] = hwif_in.CHIPLET_TYPE.chiplet_type.next;
         end
         if(rd_mux_addr == 4'hc) begin
             readback_data_var[7:0] = hwif_in.LC_STATE.lc_state.next;

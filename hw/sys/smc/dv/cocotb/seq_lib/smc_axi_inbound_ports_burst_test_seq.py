@@ -41,7 +41,7 @@ INBOUND_END_RESET = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 
 CHIP_CONFIG = tuple(
     (name, smc_addr(f"SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_{name}_BASE_ADDR"))
-    for name in ("VERSION_LO", "VERSION_HI", "CHIP_ID", "LC_STATE")
+    for name in ("VERSION_LO", "VERSION_HI", "CHIPLET_TYPE", "LC_STATE")
 )
 
 

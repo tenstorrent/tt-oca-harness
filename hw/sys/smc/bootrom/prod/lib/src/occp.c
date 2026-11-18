@@ -1673,17 +1673,17 @@ static uint64_t smc_occp_determine_i3c_address(uint8_t efuse_slot_id) {
      * I3C ID assignment flow is:
      * Use 64-bit provisional ID in eFuses if it exist.
      * Use 7-bit legacy ID in eFuses if it exists.
-     * Use 7-bit ID from RESET_UNIT_CHIP_ID register and Chip id straps as fallback.
+     * Use {CHIP_CONFIG.CHIPLET_TYPE[1:0], 1'b0, ADDR_SEL[3:0] straps} as fallback.
      */
     uint64_t determined_pid = 0;
     uint64_t pid0 = smc_efuse_get_i2c_i3c_id(efuse_slot_id);
 
     if (pid0 == 0x0) {
-        determined_pid = smc_strap_get_chip_id();
-        chip_config__CHIP_ID_t chip_id = {0};
-        chip_id.w = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR);
-        determined_pid |= (chip_id.f.chip_id << 5);
-        simputs("No 64-bit I3C/I2C ID found in eFuses, using straps and RESET_UNIT_CHIP_ID\n");
+        determined_pid = smc_strap_get_addr_sel();
+        chip_config__CHIPLET_TYPE_t chiplet_type = {0};
+        chiplet_type.w = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR);
+        determined_pid |= (chiplet_type.f.chiplet_type << 5);
+        simputs("No 64-bit I3C/I2C ID found in eFuses, using straps and CHIPLET_TYPE\n");
         simputshex64("Determined I3C/I2C ID from Straps: ", determined_pid);
     } else {
         determined_pid = pid0;

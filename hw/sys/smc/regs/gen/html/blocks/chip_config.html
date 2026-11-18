@@ -7,13 +7,13 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-chip_config">Chip Configuration Address Map</h2>
-<p>Chip version, identification, and lifecycle-state registers.</p>
+<p>Chip version, chiplet type, and lifecycle-state registers.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#CHIPLET_TYPE">CHIPLET_TYPE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
@@ -27,10 +27,10 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</td></tr>
 </table>
-<h3 id="CHIP_ID">CHIP_ID</h3>
+<h3 id="CHIPLET_TYPE">CHIPLET_TYPE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.</td></tr>
+<tr><td>31:0</td><td>chiplet_type</td><td>R</td><td>0x0</td><td>Kind of chiplet the SMC is integrated in, a constant fixed when the SMC is integrated, not read from fuses: 0 = MEMORY, 1 = CPU, 2 = AI_COMPUTE, 3 = ETHERNET; values 4 and above are reserved. Bits 1:0 are the upper two bits of the boot ROM&#x27;s fallback I2C and I3C address, so two chiplet types that share a bus must report different values. The register has no storage: a read returns that constant, and the reset value is the default constant.</td></tr>
 </table>
 <h3 id="LC_STATE">LC_STATE</h3>
 <table>

@@ -11732,7 +11732,7 @@ bring-up wait; the scoreboard per-bus access counts for `SEP_IN AXI`, `SYS_IN AX
 the SPM memory window at `SMC_TOP_SPM_MEMORY_BASE_ADDR`, inbound filter entry 0 (`START_ADDR`,
 `END_ADDR`, `FILTER_CONFIG`), outbound filter entry 1 (`START_ADDR`, `FILTER_CONFIG`),
 `SCRATCH_COLD` words 0 to 3 and the read-only `CHIP_CONFIG` words (`VERSION_LO`, `VERSION_HI`,
-`CHIP_ID`, `LC_STATE`)
+`CHIPLET_TYPE`, `LC_STATE`)
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
@@ -13797,7 +13797,7 @@ as a SEP_IN group for the two-manager leg; a stall watcher on the SEP_IN handsha
 (`SmcAxiPortWatch` on `s_axi`) counting stalled AR, R, AW and B cycles; `tb_fuse_sense_done`,
 `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the bring-up wait; the scoreboard exact-value
 compare count (`sys_axi_value_checks_seen`); registers `SCRATCH_COLD` and `SCRATCH_COLD_WARM` words
-0 to 7, the read-only `CHIP_CONFIG` words (`VERSION_LO`, `VERSION_HI`, `CHIP_ID`, `LC_STATE`) and
+0 to 7, the read-only `CHIP_CONFIG` words (`VERSION_LO`, `VERSION_HI`, `CHIPLET_TYPE`, `LC_STATE`) and
 the SPM words at `SMC_TOP_SPM_MEMORY_BASE_ADDR` plus 0x8_0000
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
@@ -13816,7 +13816,7 @@ draws nothing from the seed.
   `SCRATCH_COLD`, `SCRATCH_COLD_WARM` and `CHIP_CONFIG`; and a SEP_IN group of 4 beside a JTAG group
   of 4 started in the same cycle. Every read must complete OKAY within the guard with the word of
   its own register (`scratch.rdl`, `SCRATCH` read-write; `CHIP_CONFIG` read-only: `VERSION_LO`,
-  `VERSION_HI` and `CHIP_ID` equal their `chip_config.rdl` resets, `LC_STATE` is hardware driven and
+  `VERSION_HI` and `CHIPLET_TYPE` equal their `chip_config.rdl` resets, `LC_STATE` is hardware driven and
   equal to its first reading).
 * Outstanding reads on the local AXI4 crossbar, whose limit is 8 per manager and per subordinate
   (`fabric.adoc`): 8 reads of SPM words; 9 and 16 reads of SPM words; 24 interleaved reads over the
@@ -13862,7 +13862,7 @@ read returning its own register's word; the limit of 4 is not asserted and the s
 cycles are printed, not compared
 |`CHK-XLIM-LITE-MULTI` |The 12 interleaved reads over `SCRATCH_COLD`, `SCRATCH_COLD_WARM`
 and `CHIP_CONFIG` complete OKAY with 0xC0DE_0500 + i, 0xC0DE_0600 + i and the
-`CHIP_CONFIG` values read at the start (`VERSION_LO`, `VERSION_HI` and `CHIP_ID` equal their
+`CHIP_CONFIG` values read at the start (`VERSION_LO`, `VERSION_HI` and `CHIPLET_TYPE` equal their
 `chip_config.rdl` resets; only `LC_STATE` is compared with its first reading)
 |`CHK-XLIM-LITE-TWO-MGR` |The SEP_IN group of 4 and the JTAG group of 4 started in one
 cycle both complete OKAY within the guard, each read returning its own word; the
@@ -25445,7 +25445,7 @@ specification does not state the values.
 STRAPS and chip-configuration reads, one 8-beat 8-byte burst read); no firmware image and no
 preload; CPU_CTRL RESET_VECTOR[0..3], RESET_CTRL (bit 24 `debug_reset_n`), DUMMY_ROM_0..3,
 DUMMY_ROM_NULL[0..3] and SCRATCH[0]; STRAPS_LO and STRAPS_HI; chip configuration VERSION_LO,
-VERSION_HI and CHIP_ID; SMC base configuration GLOBAL_BASE, LOCAL_BASE and REGION_SIZE.
+VERSION_HI and CHIPLET_TYPE; SMC base configuration GLOBAL_BASE, LOCAL_BASE and REGION_SIZE.
 
 *Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
 `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -25464,7 +25464,7 @@ the register description.
 * STRAPS_LO and STRAPS_HI: the 64-bit read at the STRAPS_LO address is compared with the two 32-bit
   reads combined (`straps.rdl`); the bench ties the straps to zero, so the compare does not
   discriminate lane order (measured); the strap levels are printed.
-* VERSION_LO `0x0001_00A0`, VERSION_HI 0 and CHIP_ID 0 (`chip_config.rdl`).
+* VERSION_LO `0x0001_00A0`, VERSION_HI 0 and CHIPLET_TYPE 0 (`chip_config.rdl`).
 * GLOBAL_BASE `0x4000_0000`, LOCAL_BASE `0xC000_0000` and REGION_SIZE `0x0100_0000`
   (`smc_base_config.rdl`, `fabric.adoc`); LOCAL_BASE is read-only (`smc_base_config.rdl`), the
   response to a write is printed and not compared.
@@ -25483,7 +25483,7 @@ the register description.
 . Read STRAPS_LO and STRAPS_HI as 32-bit reads, then the 64-bit word at the STRAPS_LO address; the
   64-bit word is compared with `(HI << 32) | LO`; with the straps tied to zero the compare is
   non-discriminating (measured).
-. Read VERSION_LO, VERSION_HI and CHIP_ID and compare with `0x0001_00A0`, 0 and 0.
+. Read VERSION_LO, VERSION_HI and CHIPLET_TYPE and compare with `0x0001_00A0`, 0 and 0.
 . Read GLOBAL_BASE, LOCAL_BASE and REGION_SIZE and compare with `0x4000_0000`, `0xC000_0000` and
   `0x0100_0000`.
 . Error injection. Point: the read-only LOCAL_BASE register of the SMC base configuration. Kind: a
@@ -25510,7 +25510,7 @@ the register description.
 |`CHK-BOOT-STRAP-WORD` |The 64-bit read at STRAPS_LO is compared with `(STRAPS_HI << 32) | STRAPS_LO`
   from the two 32-bit reads; the straps are tied to zero, so the compare is non-discriminating
   (measured); the three values are printed.
-|`CHK-BOOT-CHIPCFG-RESET` |VERSION_LO must read `0x0001_00A0`, VERSION_HI 0 and CHIP_ID 0.
+|`CHK-BOOT-CHIPCFG-RESET` |VERSION_LO must read `0x0001_00A0`, VERSION_HI 0 and CHIPLET_TYPE 0.
 |`CHK-BOOT-APERTURE-RESET` |GLOBAL_BASE must read `0x4000_0000`, LOCAL_BASE `0xC000_0000` and
   REGION_SIZE `0x0100_0000`.
 |`CHK-BOOT-LOCALBASE-RO` |LOCAL_BASE must still read `0xC000_0000` after a write of `0xD000_0000`;
@@ -30262,7 +30262,7 @@ Drive `smc_efuse_otp_clock_config_depth_test_seq`. Each checker below is a named
 *Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-CLOCK-GATE-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Of the CHIP_CONFIG proxy reads, `VERSION_LO` and `VERSION_HI` are compared against
-their generated RDL resets; the remaining two registers (`CHIP_ID`, `LC_STATE`) are observed only.
+their generated RDL resets; the remaining two registers (`CHIPLET_TYPE`, `LC_STATE`) are observed only.
 '''''
 
 [[sec-096-smc_efuse_otp_clock_test]]
@@ -30330,7 +30330,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* DEFENDS: the four CHIP_CONFIG registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
+* DEFENDS: the four CHIP_CONFIG registers decode; `VERSION_LO`, `VERSION_HI` and `CHIPLET_TYPE` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
 * DOES NOT DEFEND: eFuse permission semantics. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition and attempts no denied access, because the SMC CSR boundary exposes none of that. Lifecycle-gated access control is proven by `smc_efuse_jtag_lc_access_matrix_test` and locked-shadow access by `smc_efuse_locked_access_interrupt_test`; the raw OTP window has no responder on `smc_wrapper` and is recorded under Known Limitations.
 * PROXY: the protocol-VIP record this leaf files carries `proxy=True` and names what it stands in for -- the raw OTP permission paths -- and what it did not do (no lock programmed, no lifecycle transition, no denied access, no raw OTP window touched). The record is not feature credit for that path.
 
@@ -46531,7 +46531,7 @@ the register description.
 * Fields whose readback the contract does not pin -- hardware-driven, `singlepulse`, `oneToSet`, read-side-effect -- are never written by the generic cycle. The four CPU_CTRL registers that carry a contract of their own (`WDT_TIMEOUT_RESET`, `MUTEX`, `SEMA`, `REFERENCE_COUNTER`) are driven against that contract instead.
 * `_EXCLUDED` in the sequence names every remaining software-writable register of those blocks and what driving it here would do; `_assert_partition` fails when a register of the blocks is in neither list, so a regenerated map cannot add one silently.
 * The adopter strap capture registers are the `sw = r` half: `hw/sys/smc/doc/memmap.adoc` places `STRAPS_LO` / `STRAPS_HI` at BASE + 0x040_3000 / 0x040_3004 in the mandatory region of the adopter external window, and straps.rdl makes both `sw = r; hw = w`. What they captured at cold reset is read once and held against the write, not predicted from the integration; the contract proven is that every undeclared bit reads 0 and a software write changes nothing.
-* CHIP_CONFIG (`VERSION_LO`, `VERSION_HI`, `CHIP_ID`, `LC_STATE`, all `R` in chip_config.adoc) takes a 0xFFFFFFFF write with WSTRB 0xF and then 0xFF in each single byte lane (WSTRB 1<<b), each followed by a readback; every BRESP is logged, not compared, and `CHIP_ID` / `LC_STATE` are logged against their documented resets 0x0 / 0xF.
+* CHIP_CONFIG (`VERSION_LO`, `VERSION_HI`, `CHIPLET_TYPE`, `LC_STATE`, all `R` in chip_config.adoc) takes a 0xFFFFFFFF write with WSTRB 0xF and then 0xFF in each single byte lane (WSTRB 1<<b), each followed by a readback; every BRESP is logged, not compared, and `CHIPLET_TYPE` / `LC_STATE` are logged against their documented resets 0x0 / 0xF.
 * `NDMRESET_PROCESS` (`RW` 31:0 in ndm_reset.adoc) stores 0xFFFFFFFF and 0, and from 0 a 0xA5 written in lane b alone changes only byte b (compared); `NDMRESET_REQUEST` and `NDMRESET_CLUSTER_COUNT` (`R`) take the same all-ones and single-lane writes with BRESP logged.
 * `ISOLATE_REQ_SMC_REG` takes a write of 0x00000001 with WSTRB 0x0. Its B response must arrive within the driver's bound; BRESP and the register value before and after are logged and not compared.
 
@@ -46547,7 +46547,7 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 |`CHK-RDL-SWEEP-CYCLE` |Every swept register instance read its RDL reset with all undeclared bits 0, took the pattern its access type allows through half-register writes and the co-resident array pass, and read back its RDL reset after the restore
 |`CHK-RDL-SWEEP-SPECIAL` |CPU_CTRL `WDT_TIMEOUT_RESET` self-cleared its `singlepulse` fields, `MUTEX[0..3]` handed the mutex out once and released it on a write, `SEMA[0..3]` added and subtracted the signed written value, and `REFERENCE_COUNTER` dropped below its earlier sample once a software write of 0 had crossed into the reference-clock domain, then advanced again from the loaded value
 |`CHK-RDL-STRAPS-RO` |`STRAPS_LO` and `STRAPS_HI` read with every undeclared bit 0, and a software write of 0xffffffff left both unchanged
-|`CHK-RDL-CHIPCFG-ALLONES` |After a 0xFFFFFFFF write with WSTRB 0xF, `VERSION_LO` reads 0x000100A0, `VERSION_HI` 0x00000000, and `CHIP_ID` / `LC_STATE` their pre-write values, logged against the documented resets 0x0 / 0xF; BRESP logged (LINKED-ISSUE: the write response of a read-only register). Fails on a read-only register taking a written bit, a version value other than the documented one, a missing B, or X
+|`CHK-RDL-CHIPCFG-ALLONES` |After a 0xFFFFFFFF write with WSTRB 0xF, `VERSION_LO` reads 0x000100A0, `VERSION_HI` 0x00000000, and `CHIPLET_TYPE` / `LC_STATE` their pre-write values, logged against the documented resets 0x0 / 0xF; BRESP logged (LINKED-ISSUE: the write response of a read-only register). Fails on a read-only register taking a written bit, a version value other than the documented one, a missing B, or X
 |`CHK-RDL-CHIPCFG-LANES` |Each of the 16 single-lane writes (four registers, lanes 0 to 3) leaves its register reading its pre-write value; BRESP logged (LINKED-ISSUE: the write response of a read-only register). Fails on a lane write changing a read-only register, a missing B, or X
 |`CHK-RDL-NDM-ALLONES` |`NDMRESET_PROCESS` reads 0xFFFFFFFF after the all-ones write and 0x00000000 after the restore. Fails on any bit not stored, a restore not reading back, or X
 |`CHK-RDL-NDM-LANES` |From 0, `NDMRESET_PROCESS` reads 0x000000A5, 0x0000A5A5, 0x00A5A5A5 and 0xA5A5A5A5 after 0xA5 is written in lane 0, 1, 2 and 3 alone, then 0 after the restore. Fails on a masked lane changing, an enabled lane not taking, or X

@@ -41,19 +41,19 @@ typedef union {
     uint32_t w;
 } chip_config__VERSION_HI_t;
 
-// reg - chip_config::CHIP_ID
-// Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.
-#define CHIP_CONFIG__CHIP_ID__CHIP_ID_bm 0xffffffff
-#define CHIP_CONFIG__CHIP_ID__CHIP_ID_bp 0
-#define CHIP_CONFIG__CHIP_ID__CHIP_ID_bw 32
-#define CHIP_CONFIG__CHIP_ID__CHIP_ID_reset 0x0
+// reg - chip_config::CHIPLET_TYPE
+// Kind of chiplet the SMC is integrated in, a constant fixed when the SMC is integrated, not read from fuses: 0 = MEMORY, 1 = CPU, 2 = AI_COMPUTE, 3 = ETHERNET; values 4 and above are reserved. Bits 1:0 are the upper two bits of the boot ROM's fallback I2C and I3C address, so two chiplet types that share a bus must report different values. The register has no storage: a read returns that constant, and the reset value is the default constant.
+#define CHIP_CONFIG__CHIPLET_TYPE__CHIPLET_TYPE_bm 0xffffffff
+#define CHIP_CONFIG__CHIPLET_TYPE__CHIPLET_TYPE_bp 0
+#define CHIP_CONFIG__CHIPLET_TYPE__CHIPLET_TYPE_bw 32
+#define CHIP_CONFIG__CHIPLET_TYPE__CHIPLET_TYPE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.
-        uint32_t chip_id :32;
+        // Kind of chiplet the SMC is integrated in, a constant fixed when the SMC is integrated, not read from fuses: 0 = MEMORY, 1 = CPU, 2 = AI_COMPUTE, 3 = ETHERNET; values 4 and above are reserved. Bits 1:0 are the upper two bits of the boot ROM's fallback I2C and I3C address, so two chiplet types that share a bus must report different values. The register has no storage: a read returns that constant, and the reset value is the default constant.
+        uint32_t chiplet_type :32;
     } f;
     uint32_t w;
-} chip_config__CHIP_ID_t;
+} chip_config__CHIPLET_TYPE_t;
 
 // reg - chip_config::LC_STATE
 // Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).
@@ -71,11 +71,11 @@ typedef union {
 } chip_config__LC_STATE_t;
 
 // addrmap - chip_config
-// Chip version, identification, and lifecycle-state registers.
+// Chip version, chiplet type, and lifecycle-state registers.
 typedef struct __attribute__ ((__packed__)) {
     chip_config__VERSION_LO_t VERSION_LO;
     chip_config__VERSION_HI_t VERSION_HI;
-    chip_config__CHIP_ID_t CHIP_ID;
+    chip_config__CHIPLET_TYPE_t CHIPLET_TYPE;
     chip_config__LC_STATE_t LC_STATE;
 } chip_config_t;
 

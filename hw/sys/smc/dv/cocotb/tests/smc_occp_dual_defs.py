@@ -124,24 +124,24 @@ STRAP_BITS = {
     "ROTATE_UPDATE": 58,
 }
 
-STRAP_CHIP_ID_BITS = (23, 15, 12, 11)
+STRAP_ADDR_SEL_BITS = (23, 15, 12, 11)
 
 I2C_ADDR_MIN = 0x08
 I2C_ADDR_MAX = 0x77
 I2C_ADDR_FALLBACK = 0x55
 
 
-def chip_id_straps(chip_id: int) -> int:
+def addr_sel_straps(addr_sel: int) -> int:
     value = 0
-    for bit, gpio in enumerate(STRAP_CHIP_ID_BITS):
-        if (chip_id >> bit) & 1:
+    for bit, gpio in enumerate(STRAP_ADDR_SEL_BITS):
+        if (addr_sel >> bit) & 1:
             value |= 1 << gpio
     return value
 
 
 # Valid only while the target's eFuse I2C address slot is unprogrammed.
-def occp_i2c_address(chip_id: int, chip_config_id: int = 0) -> int:
-    addr = (chip_id & 0xF) | ((chip_config_id & 0x3) << 5)
+def occp_i2c_address(addr_sel: int, chiplet_type: int = 0) -> int:
+    addr = (addr_sel & 0xF) | ((chiplet_type & 0x3) << 5)
     if addr < I2C_ADDR_MIN or addr > I2C_ADDR_MAX:
         return I2C_ADDR_FALLBACK
     return addr
