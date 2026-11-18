@@ -25,7 +25,7 @@ An RDL rdata that carries no upper word (a 32-bit value such as
 (the ``ocah_resp.rdata`` definition and Decode Response Codes in
 ``doc/trm/src/memory_map.adoc``), so every read has one stated word.
 
-A wrapper unit in ``_WRAPPERS`` has one row covering its page. It is split into
+A wrapper unit in ``WRAPPERS`` has one row covering its page. It is split into
 a row per sub-block, with the sub-block windows and sizes from ``sep_addr.h``,
 and a Reserved row for the space between and past them, each with the part of
 the wrapper's responses that applies there.
@@ -51,7 +51,7 @@ import sep_memory_map  # noqa: E402  (path bootstrap must precede the import)
 
 _VIEW = "sep-components"
 _SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
-_WRAPPERS = ("sep_scratch_wrap", "sep_efuse_wrap", "sep_remap_wrap")
+WRAPPERS = ("sep_scratch_wrap", "sep_efuse_wrap", "sep_remap_wrap")
 
 # AMBA AXI4 (IHI 0022) response codes.
 RESP_CODE = {"OKAY": 0, "SLVERR": 2, "DECERR": 3}
@@ -123,7 +123,7 @@ def _addr_defines() -> dict[str, int]:
     }
 
 
-def _sub_block_rows(r: dict) -> list[MapRow]:
+def sub_block_rows(r: dict) -> list[MapRow]:
     """The rows of wrapper row ``r``: one per sub-block, and Reserved rows between and past them."""
     defines = _addr_defines()
     prefix = f"SEP_TOP_{r['key'].rsplit(':', 1)[-1].upper()}_"
@@ -175,8 +175,8 @@ def sep_map_rows() -> tuple[MapRow, ...]:
     for r in view["rows"]:
         if r["end"] != r["base"] + r["aperture_size"] - 1:
             raise ValueError(f"sep_memory_map.py: {r['label']} size disagrees with its bounds")
-        if r["key"].rsplit(":", 1)[-1] in _WRAPPERS:
-            rows.extend(_sub_block_rows(r))
+        if r["key"].rsplit(":", 1)[-1] in WRAPPERS:
+            rows.extend(sub_block_rows(r))
             continue
         past = () if r["past_response"] is None else (("", r["past_response"]),)
         past_notes = (r["past_note"],) if r["past_note"] else ()

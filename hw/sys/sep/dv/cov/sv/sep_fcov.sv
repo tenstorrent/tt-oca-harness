@@ -5231,9 +5231,9 @@ module sep_fcov (
   localparam logic [31:0] FExtFirst = FShimLast + 32'd1;
   // Unit classes by aperture: the scratch banks, the system CSRs (alias remap
   // control to CPU control) and the mailboxes.
-  localparam logic [31:0] FScrBase = FapBaseSepScratchCold;
-  localparam logic [31:0] FScrLast = FapLastSepScratchWarm;
-  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemapCtrlWrap;
+  localparam logic [31:0] FScrBase = FapBaseScratchCold;
+  localparam logic [31:0] FScrLast = FapLastScratchWarm;
+  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemap;
   localparam logic [31:0] FSysLast = FapLastSepCpuCtrl;
   localparam logic [31:0] FMbxBase = FapBaseAxilMailbox;
   localparam logic [31:0] FMbxLast = FapLastAxilMailbox;
@@ -6928,7 +6928,7 @@ module sep_fcov (
       32'(AXIL_MAILBOX_REG_MAP_BASE_ADDR),
       32'(SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR),
       32'(SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR),
-      FapBaseLocalMasterAliasRemapCtrlWrap,
+      FapBaseLocalMasterAliasRemap,
       FapBaseOutboundFilterCtrlWrap,
       32'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR),
       32'(SEP_CPU_CTRL_REG_MAP_BASE_ADDR),
@@ -8742,8 +8742,8 @@ module sep_fcov (
             ))
           c_array_tail = 3'd3;
         if ((lq_resp == FRespDecerr) && (lq_dir_w || (fx_lane32 == 32'hBADC_AB1E))) begin
-          if (lq_a == FapLastApOutputRemapCtrlWrap + 32'd1) c_array_tail = 3'd4;
-          if (lq_a == FapLastSteeOutputRemapCtrlWrap + 32'd1) c_array_tail = 3'd5;
+          if (lq_a == FapLastApOutputRemap + 32'd1) c_array_tail = 3'd4;
+          if (lq_a == FapLastSteeOutputRemap + 32'd1) c_array_tail = 3'd5;
         end
       end
       // Output-remap pass-through read.
@@ -21873,7 +21873,7 @@ module sep_fcov (
     if (in_rng(a, FapBaseWdtTimer, FapLastWdtTimer)) return 4'd2;
     if (in_rng(a, FapBaseHmac, FapLastHmac)) return 4'd3;
     if ({a[31:2], 2'b00} == SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR) return 4'd4;
-    if (in_rng(a, FapBaseSepScratchCold, FapLastSepScratchCold)) return 4'd5;
+    if (in_rng(a, FapBaseScratchCold, FapLastScratchCold)) return 4'd5;
     if (in_rng(a, FapBaseSecureDma, FapLastSecureDma)) return 4'd6;
     if ({a[31:3], 3'b000} == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) return 4'd7;
     if ({a[31:2], 2'b00} == SPI_CONTROLLER_CSID_REG_ADDR) return 4'd8;
