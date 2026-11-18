@@ -601,8 +601,9 @@ typedef union {
 // This would violate the proper protocol for a controller to join a multi-controller
 // environment. However, if this controller is known to be the first to join, this
 // ordering will enable skipping the idle wait.
-// When `0`, the bus monitor will report that the bus is always free, so the
-// Controller FSM is never blocked from transmitting.
+// When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+// wait after a qualified STOP, so that wait is the only time the Controller FSM
+// is blocked from transmitting.
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bm 0x20
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bp 5
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bw 1
@@ -689,8 +690,9 @@ typedef union {
         // This would violate the proper protocol for a controller to join a multi-controller
         // environment. However, if this controller is known to be the first to join, this
         // ordering will enable skipping the idle wait.
-        // When `0`, the bus monitor will report that the bus is always free, so the
-        // Controller FSM is never blocked from transmitting.
+        // When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+        // wait after a qualified STOP, so that wait is the only time the Controller FSM
+        // is blocked from transmitting.
         uint32_t MULTI_CONTROLLER_MONITOR_EN :1;
         // Target mode control: enables the Software TX Stretch Control Mechanism. If this
         // bit is:
@@ -1268,8 +1270,18 @@ typedef union {
 #define I2C__TIMING4__TSU_STO_bp 0
 #define I2C__TIMING4__TSU_STO_bw 13
 #define I2C__TIMING4__TSU_STO_reset 0x0
-// Global control: specifies the time between a STOP and START condition (`t_BUF`)
-// in system clock cycles. See Table 11 in the I²C Specification for details. This
+// Global control: specifies the bus free time between a STOP and the following
+// START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+// Specification for details. The bus monitor starts this wait once SCL has stayed
+// high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+// holds a START back only while the wait runs. With
+// `CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+// Otherwise, a START behind the controller's own STOP waits only when that STOP
+// is qualified before the controller takes the next FMT FIFO entry: when
+// `THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+// entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+// entry already queued, the START follows the STOP's SDA rise after
+// `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
 // field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
 // requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING4__T_BUF_bm 0x1fff0000
@@ -1284,8 +1296,18 @@ typedef union {
         // minimum requirement, assuming a 1 GHz system clock.
         uint32_t TSU_STO :13;
         uint32_t :3;
-        // Global control: specifies the time between a STOP and START condition (`t_BUF`)
-        // in system clock cycles. See Table 11 in the I²C Specification for details. This
+        // Global control: specifies the bus free time between a STOP and the following
+        // START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+        // Specification for details. The bus monitor starts this wait once SCL has stayed
+        // high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+        // holds a START back only while the wait runs. With
+        // `CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+        // Otherwise, a START behind the controller's own STOP waits only when that STOP
+        // is qualified before the controller takes the next FMT FIFO entry: when
+        // `THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+        // entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+        // entry already queued, the START follows the STOP's SDA rise after
+        // `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
         // field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
         // requirement, assuming a 1 GHz system clock.
         uint32_t T_BUF :13;

@@ -2320,3 +2320,15 @@ and its device interface functions (DIF). In addition, set the wrapper's
 `I2C_CTRL.I2C_CONTROLLER_MODE_EN`, which sets the direction of the SMBus alert
 and suspend pads, in agreement with the role selected by `CTRL.ENABLEHOST` or
 `CTRL.ENABLETARGET`. Neither wrapper field enables the core itself.
+
+`TIMING4.T_BUF` does not always separate the controller's own queued transfers.
+Outside multi-controller monitoring, the controller waits `T_BUF` after its
+STOP only when the bus monitor qualifies that STOP before the controller takes
+the next FMT FIFO entry, which for an entry already queued requires
+`TIMING3.THD_DAT` of 0 or 1. With `THD_DAT` of 2 or more and the next transfer
+already queued, the next START follows the STOP's SDA rise after
+`TIMING1.T_R + TIMING2.TSU_STA` plus 7 system clock cycles of input
+synchronisation, controller state steps and output register. To meet the bus's
+`t_BUF` on queued transfers, program `TSU_STA` so that this sum is at least the
+required bus free time. The longer `TSU_STA` also lengthens every repeated
+START setup time.
