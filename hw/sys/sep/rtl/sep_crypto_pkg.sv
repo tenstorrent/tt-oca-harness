@@ -81,19 +81,26 @@ package sep_crypto_pkg;
       )
   };
 
+  // The CSRNG page; the interconnect answers the addresses outside the window the CSRNG decodes.
   parameter axi_pkg::xbar_rule_32_t CSRNG_RULE = '{
       idx: 7,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR,
       end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_CSRNG_SIZE
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_CSRNG_SIZE
+      )
   };
 
+  // The EDN page; the interconnect answers the addresses outside the window the EDN decodes.
   parameter axi_pkg::xbar_rule_32_t EDN_RULE = '{
       idx: 8,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR,
-      end_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
+      end_addr:
+      sep_pkg::reg_page_end
+      (
+          sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
+      )
   };
 
   // The entropy source page, all of which its register block decodes.

@@ -59,11 +59,11 @@ localparam longint unsigned SEP_TOP_KMAC_STATE_SIZE = 64'h200;
 localparam longint unsigned SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR = 64'h10913800;
 localparam longint unsigned SEP_TOP_KMAC_MSG_FIFO_SIZE = 64'h800;
 
+localparam longint unsigned SEP_TOP_EDN_BASE_ADDR = 64'h10914000;
+localparam longint unsigned SEP_TOP_EDN_SIZE = 64'h48;
+
 localparam longint unsigned SEP_TOP_CSRNG_BASE_ADDR = 64'h10915000;
 localparam longint unsigned SEP_TOP_CSRNG_SIZE = 64'h60;
-
-localparam longint unsigned SEP_TOP_EDN_BASE_ADDR = 64'h10915800;
-localparam longint unsigned SEP_TOP_EDN_SIZE = 64'h48;
 
 localparam longint unsigned SEP_TOP_ENTROPY_SOURCE_BASE_ADDR = 64'h10916000;
 localparam longint unsigned SEP_TOP_ENTROPY_SOURCE_SIZE = 64'h17C;
@@ -441,6 +441,24 @@ function automatic longint unsigned SEP_TOP_KMAC_PREFIX_BASE_ADDR(input int unsi
 endfunction
 localparam longint unsigned SEP_TOP_KMAC_PREFIX_NUM = 64'hB;
 localparam longint unsigned SEP_TOP_KMAC_ERR_CODE_BASE_ADDR = 64'h109130E0;
+localparam longint unsigned SEP_TOP_EDN_INTR_STATE_BASE_ADDR = 64'h10914000;
+localparam longint unsigned SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR = 64'h10914004;
+localparam longint unsigned SEP_TOP_EDN_INTR_TEST_BASE_ADDR = 64'h10914008;
+localparam longint unsigned SEP_TOP_EDN_ALERT_TEST_BASE_ADDR = 64'h1091400C;
+localparam longint unsigned SEP_TOP_EDN_REGWEN_BASE_ADDR = 64'h10914010;
+localparam longint unsigned SEP_TOP_EDN_CTRL_BASE_ADDR = 64'h10914014;
+localparam longint unsigned SEP_TOP_EDN_BOOT_INS_CMD_BASE_ADDR = 64'h10914018;
+localparam longint unsigned SEP_TOP_EDN_BOOT_GEN_CMD_BASE_ADDR = 64'h1091401C;
+localparam longint unsigned SEP_TOP_EDN_SW_CMD_REQ_BASE_ADDR = 64'h10914020;
+localparam longint unsigned SEP_TOP_EDN_SW_CMD_STS_BASE_ADDR = 64'h10914024;
+localparam longint unsigned SEP_TOP_EDN_HW_CMD_STS_BASE_ADDR = 64'h10914028;
+localparam longint unsigned SEP_TOP_EDN_RESEED_CMD_BASE_ADDR = 64'h1091402C;
+localparam longint unsigned SEP_TOP_EDN_GENERATE_CMD_BASE_ADDR = 64'h10914030;
+localparam longint unsigned SEP_TOP_EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_BASE_ADDR = 64'h10914034;
+localparam longint unsigned SEP_TOP_EDN_RECOV_ALERT_STS_BASE_ADDR = 64'h10914038;
+localparam longint unsigned SEP_TOP_EDN_ERR_CODE_BASE_ADDR = 64'h1091403C;
+localparam longint unsigned SEP_TOP_EDN_ERR_CODE_TEST_BASE_ADDR = 64'h10914040;
+localparam longint unsigned SEP_TOP_EDN_MAIN_SM_STATE_BASE_ADDR = 64'h10914044;
 localparam longint unsigned SEP_TOP_CSRNG_INTR_STATE_BASE_ADDR = 64'h10915000;
 localparam longint unsigned SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR = 64'h10915004;
 localparam longint unsigned SEP_TOP_CSRNG_INTR_TEST_BASE_ADDR = 64'h10915008;
@@ -465,24 +483,6 @@ localparam longint unsigned SEP_TOP_CSRNG_RECOV_ALERT_STS_BASE_ADDR = 64'h109150
 localparam longint unsigned SEP_TOP_CSRNG_ERR_CODE_BASE_ADDR = 64'h10915054;
 localparam longint unsigned SEP_TOP_CSRNG_ERR_CODE_TEST_BASE_ADDR = 64'h10915058;
 localparam longint unsigned SEP_TOP_CSRNG_MAIN_SM_STATE_BASE_ADDR = 64'h1091505C;
-localparam longint unsigned SEP_TOP_EDN_INTR_STATE_BASE_ADDR = 64'h10915800;
-localparam longint unsigned SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR = 64'h10915804;
-localparam longint unsigned SEP_TOP_EDN_INTR_TEST_BASE_ADDR = 64'h10915808;
-localparam longint unsigned SEP_TOP_EDN_ALERT_TEST_BASE_ADDR = 64'h1091580C;
-localparam longint unsigned SEP_TOP_EDN_REGWEN_BASE_ADDR = 64'h10915810;
-localparam longint unsigned SEP_TOP_EDN_CTRL_BASE_ADDR = 64'h10915814;
-localparam longint unsigned SEP_TOP_EDN_BOOT_INS_CMD_BASE_ADDR = 64'h10915818;
-localparam longint unsigned SEP_TOP_EDN_BOOT_GEN_CMD_BASE_ADDR = 64'h1091581C;
-localparam longint unsigned SEP_TOP_EDN_SW_CMD_REQ_BASE_ADDR = 64'h10915820;
-localparam longint unsigned SEP_TOP_EDN_SW_CMD_STS_BASE_ADDR = 64'h10915824;
-localparam longint unsigned SEP_TOP_EDN_HW_CMD_STS_BASE_ADDR = 64'h10915828;
-localparam longint unsigned SEP_TOP_EDN_RESEED_CMD_BASE_ADDR = 64'h1091582C;
-localparam longint unsigned SEP_TOP_EDN_GENERATE_CMD_BASE_ADDR = 64'h10915830;
-localparam longint unsigned SEP_TOP_EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_BASE_ADDR = 64'h10915834;
-localparam longint unsigned SEP_TOP_EDN_RECOV_ALERT_STS_BASE_ADDR = 64'h10915838;
-localparam longint unsigned SEP_TOP_EDN_ERR_CODE_BASE_ADDR = 64'h1091583C;
-localparam longint unsigned SEP_TOP_EDN_ERR_CODE_TEST_BASE_ADDR = 64'h10915840;
-localparam longint unsigned SEP_TOP_EDN_MAIN_SM_STATE_BASE_ADDR = 64'h10915844;
 localparam longint unsigned SEP_TOP_ENTROPY_SOURCE_COMPONENT_ID_BASE_ADDR = 64'h10916000;
 localparam longint unsigned SEP_TOP_ENTROPY_SOURCE_CTRL_BASE_ADDR = 64'h10916004;
 localparam longint unsigned SEP_TOP_ENTROPY_SOURCE_DEBUG_CTRL_BASE_ADDR = 64'h1091600C;

@@ -813,6 +813,62 @@ KMAC_STATE_MEM_BASE_ADDR = 0x10913400
 KMAC_STATE_MEM_SIZE = 0x00000200
 KMAC_MSG_FIFO_MEM_BASE_ADDR = 0x10913800
 KMAC_MSG_FIFO_MEM_SIZE = 0x00000800
+EDN_REG_MAP_BASE_ADDR = 0x10914000
+EDN_REG_MAP_SIZE = 0x00000048
+EDN_INTR_STATE_REG_OFFSET = 0x00000000
+EDN_INTR_STATE_REG_ADDR = 0x10914000
+EDN_INTR_STATE_REG_TYPE = 'EDN_INTR_STATE'
+EDN_INTR_ENABLE_REG_OFFSET = 0x00000004
+EDN_INTR_ENABLE_REG_ADDR = 0x10914004
+EDN_INTR_ENABLE_REG_TYPE = 'EDN_INTR_ENABLE'
+EDN_INTR_TEST_REG_OFFSET = 0x00000008
+EDN_INTR_TEST_REG_ADDR = 0x10914008
+EDN_INTR_TEST_REG_TYPE = 'EDN_INTR_TEST'
+EDN_ALERT_TEST_REG_OFFSET = 0x0000000C
+EDN_ALERT_TEST_REG_ADDR = 0x1091400C
+EDN_ALERT_TEST_REG_TYPE = 'EDN_ALERT_TEST'
+EDN_REGWEN_REG_OFFSET = 0x00000010
+EDN_REGWEN_REG_ADDR = 0x10914010
+EDN_REGWEN_REG_TYPE = 'EDN_REGWEN'
+EDN_CTRL_REG_OFFSET = 0x00000014
+EDN_CTRL_REG_ADDR = 0x10914014
+EDN_CTRL_REG_TYPE = 'EDN_CTRL'
+EDN_BOOT_INS_CMD_REG_OFFSET = 0x00000018
+EDN_BOOT_INS_CMD_REG_ADDR = 0x10914018
+EDN_BOOT_INS_CMD_REG_TYPE = 'EDN_BOOT_INS_CMD'
+EDN_BOOT_GEN_CMD_REG_OFFSET = 0x0000001C
+EDN_BOOT_GEN_CMD_REG_ADDR = 0x1091401C
+EDN_BOOT_GEN_CMD_REG_TYPE = 'EDN_BOOT_GEN_CMD'
+EDN_SW_CMD_REQ_REG_OFFSET = 0x00000020
+EDN_SW_CMD_REQ_REG_ADDR = 0x10914020
+EDN_SW_CMD_REQ_REG_TYPE = 'EDN_SW_CMD_REQ'
+EDN_SW_CMD_STS_REG_OFFSET = 0x00000024
+EDN_SW_CMD_STS_REG_ADDR = 0x10914024
+EDN_SW_CMD_STS_REG_TYPE = 'EDN_SW_CMD_STS'
+EDN_HW_CMD_STS_REG_OFFSET = 0x00000028
+EDN_HW_CMD_STS_REG_ADDR = 0x10914028
+EDN_HW_CMD_STS_REG_TYPE = 'EDN_HW_CMD_STS'
+EDN_RESEED_CMD_REG_OFFSET = 0x0000002C
+EDN_RESEED_CMD_REG_ADDR = 0x1091402C
+EDN_RESEED_CMD_REG_TYPE = 'EDN_RESEED_CMD'
+EDN_GENERATE_CMD_REG_OFFSET = 0x00000030
+EDN_GENERATE_CMD_REG_ADDR = 0x10914030
+EDN_GENERATE_CMD_REG_TYPE = 'EDN_GENERATE_CMD'
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_OFFSET = 0x00000034
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_ADDR = 0x10914034
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_TYPE = 'EDN_MAX_NUM_REQS_BETWEEN_RESEEDS'
+EDN_RECOV_ALERT_STS_REG_OFFSET = 0x00000038
+EDN_RECOV_ALERT_STS_REG_ADDR = 0x10914038
+EDN_RECOV_ALERT_STS_REG_TYPE = 'EDN_RECOV_ALERT_STS'
+EDN_ERR_CODE_REG_OFFSET = 0x0000003C
+EDN_ERR_CODE_REG_ADDR = 0x1091403C
+EDN_ERR_CODE_REG_TYPE = 'EDN_ERR_CODE'
+EDN_ERR_CODE_TEST_REG_OFFSET = 0x00000040
+EDN_ERR_CODE_TEST_REG_ADDR = 0x10914040
+EDN_ERR_CODE_TEST_REG_TYPE = 'EDN_ERR_CODE_TEST'
+EDN_MAIN_SM_STATE_REG_OFFSET = 0x00000044
+EDN_MAIN_SM_STATE_REG_ADDR = 0x10914044
+EDN_MAIN_SM_STATE_REG_TYPE = 'EDN_MAIN_SM_STATE'
 CSRNG_REG_MAP_BASE_ADDR = 0x10915000
 CSRNG_REG_MAP_SIZE = 0x00000060
 CSRNG_INTR_STATE_REG_OFFSET = 0x00000000
@@ -887,62 +943,6 @@ CSRNG_ERR_CODE_TEST_REG_TYPE = 'CSRNG_ERR_CODE_TEST'
 CSRNG_MAIN_SM_STATE_REG_OFFSET = 0x0000005C
 CSRNG_MAIN_SM_STATE_REG_ADDR = 0x1091505C
 CSRNG_MAIN_SM_STATE_REG_TYPE = 'CSRNG_MAIN_SM_STATE'
-EDN_REG_MAP_BASE_ADDR = 0x10915800
-EDN_REG_MAP_SIZE = 0x00000048
-EDN_INTR_STATE_REG_OFFSET = 0x00000000
-EDN_INTR_STATE_REG_ADDR = 0x10915800
-EDN_INTR_STATE_REG_TYPE = 'EDN_INTR_STATE'
-EDN_INTR_ENABLE_REG_OFFSET = 0x00000004
-EDN_INTR_ENABLE_REG_ADDR = 0x10915804
-EDN_INTR_ENABLE_REG_TYPE = 'EDN_INTR_ENABLE'
-EDN_INTR_TEST_REG_OFFSET = 0x00000008
-EDN_INTR_TEST_REG_ADDR = 0x10915808
-EDN_INTR_TEST_REG_TYPE = 'EDN_INTR_TEST'
-EDN_ALERT_TEST_REG_OFFSET = 0x0000000C
-EDN_ALERT_TEST_REG_ADDR = 0x1091580C
-EDN_ALERT_TEST_REG_TYPE = 'EDN_ALERT_TEST'
-EDN_REGWEN_REG_OFFSET = 0x00000010
-EDN_REGWEN_REG_ADDR = 0x10915810
-EDN_REGWEN_REG_TYPE = 'EDN_REGWEN'
-EDN_CTRL_REG_OFFSET = 0x00000014
-EDN_CTRL_REG_ADDR = 0x10915814
-EDN_CTRL_REG_TYPE = 'EDN_CTRL'
-EDN_BOOT_INS_CMD_REG_OFFSET = 0x00000018
-EDN_BOOT_INS_CMD_REG_ADDR = 0x10915818
-EDN_BOOT_INS_CMD_REG_TYPE = 'EDN_BOOT_INS_CMD'
-EDN_BOOT_GEN_CMD_REG_OFFSET = 0x0000001C
-EDN_BOOT_GEN_CMD_REG_ADDR = 0x1091581C
-EDN_BOOT_GEN_CMD_REG_TYPE = 'EDN_BOOT_GEN_CMD'
-EDN_SW_CMD_REQ_REG_OFFSET = 0x00000020
-EDN_SW_CMD_REQ_REG_ADDR = 0x10915820
-EDN_SW_CMD_REQ_REG_TYPE = 'EDN_SW_CMD_REQ'
-EDN_SW_CMD_STS_REG_OFFSET = 0x00000024
-EDN_SW_CMD_STS_REG_ADDR = 0x10915824
-EDN_SW_CMD_STS_REG_TYPE = 'EDN_SW_CMD_STS'
-EDN_HW_CMD_STS_REG_OFFSET = 0x00000028
-EDN_HW_CMD_STS_REG_ADDR = 0x10915828
-EDN_HW_CMD_STS_REG_TYPE = 'EDN_HW_CMD_STS'
-EDN_RESEED_CMD_REG_OFFSET = 0x0000002C
-EDN_RESEED_CMD_REG_ADDR = 0x1091582C
-EDN_RESEED_CMD_REG_TYPE = 'EDN_RESEED_CMD'
-EDN_GENERATE_CMD_REG_OFFSET = 0x00000030
-EDN_GENERATE_CMD_REG_ADDR = 0x10915830
-EDN_GENERATE_CMD_REG_TYPE = 'EDN_GENERATE_CMD'
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_OFFSET = 0x00000034
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_ADDR = 0x10915834
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_TYPE = 'EDN_MAX_NUM_REQS_BETWEEN_RESEEDS'
-EDN_RECOV_ALERT_STS_REG_OFFSET = 0x00000038
-EDN_RECOV_ALERT_STS_REG_ADDR = 0x10915838
-EDN_RECOV_ALERT_STS_REG_TYPE = 'EDN_RECOV_ALERT_STS'
-EDN_ERR_CODE_REG_OFFSET = 0x0000003C
-EDN_ERR_CODE_REG_ADDR = 0x1091583C
-EDN_ERR_CODE_REG_TYPE = 'EDN_ERR_CODE'
-EDN_ERR_CODE_TEST_REG_OFFSET = 0x00000040
-EDN_ERR_CODE_TEST_REG_ADDR = 0x10915840
-EDN_ERR_CODE_TEST_REG_TYPE = 'EDN_ERR_CODE_TEST'
-EDN_MAIN_SM_STATE_REG_OFFSET = 0x00000044
-EDN_MAIN_SM_STATE_REG_ADDR = 0x10915844
-EDN_MAIN_SM_STATE_REG_TYPE = 'EDN_MAIN_SM_STATE'
 ENTROPY_SOURCE_REG_MAP_BASE_ADDR = 0x10916000
 ENTROPY_SOURCE_REG_MAP_SIZE = 0x0000017C
 ENTROPY_SOURCE_COMPONENT_ID_REG_OFFSET = 0x00000000
@@ -10872,6 +10872,753 @@ class KMAC_ERR_CODE_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
+EDN_INTR_STATE_REG_DEFAULT = 0x00000000
+EDN_INTR_STATE_REG_FIELD_ACCESS = (
+    ('edn_cmd_req_done', 'rw', 'woclr', '', False),
+    ('edn_fatal_err', 'rw', 'woclr', '', False),
+)
+
+EDN_INTR_STATE_REG_WIDTH = 32
+EDN_INTR_STATE_REG_FIELDS = (
+    ('edn_cmd_req_done', 0, 0, 'rw', 'rw', 'woclr', '', False, True, 0),
+    ('edn_fatal_err', 1, 1, 'rw', 'rw', 'woclr', '', False, True, 0),
+)
+
+class EDN_INTR_STATE_reg_t(Structure):
+    _fields_ = [
+        ('edn_cmd_req_done', c_uint8, 1),
+        ('edn_fatal_err', c_uint8, 1),
+    ]
+
+EDN_INTR_STATE_REG_DEFAULT = 0x00000000
+
+class EDN_INTR_STATE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_INTR_STATE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_INTR_STATE_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_INTR_STATE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_INTR_ENABLE_REG_DEFAULT = 0x00000000
+EDN_INTR_ENABLE_REG_FIELD_ACCESS = (
+    ('edn_cmd_req_done', 'rw', '', '', False),
+    ('edn_fatal_err', 'rw', '', '', False),
+)
+
+EDN_INTR_ENABLE_REG_WIDTH = 32
+EDN_INTR_ENABLE_REG_FIELDS = (
+    ('edn_cmd_req_done', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('edn_fatal_err', 1, 1, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EDN_INTR_ENABLE_reg_t(Structure):
+    _fields_ = [
+        ('edn_cmd_req_done', c_uint8, 1),
+        ('edn_fatal_err', c_uint8, 1),
+    ]
+
+EDN_INTR_ENABLE_REG_DEFAULT = 0x00000000
+
+class EDN_INTR_ENABLE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_INTR_ENABLE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_INTR_ENABLE_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_INTR_ENABLE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_INTR_TEST_REG_DEFAULT = 0x00000000
+EDN_INTR_TEST_REG_FIELD_ACCESS = (
+    ('edn_cmd_req_done', 'w', '', '', False),
+    ('edn_fatal_err', 'w', '', '', False),
+)
+
+EDN_INTR_TEST_REG_WIDTH = 32
+EDN_INTR_TEST_REG_FIELDS = (
+    ('edn_cmd_req_done', 0, 0, 'w', 'r', '', '', False, False, 0),
+    ('edn_fatal_err', 1, 1, 'w', 'r', '', '', False, False, 0),
+)
+
+class EDN_INTR_TEST_reg_t(Structure):
+    _fields_ = [
+        ('edn_cmd_req_done', c_uint8, 1),
+        ('edn_fatal_err', c_uint8, 1),
+    ]
+
+EDN_INTR_TEST_REG_DEFAULT = 0x00000000
+
+class EDN_INTR_TEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_INTR_TEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_INTR_TEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_INTR_TEST_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_ALERT_TEST_REG_DEFAULT = 0x00000000
+EDN_ALERT_TEST_REG_FIELD_ACCESS = (
+    ('recov_alert', 'w', '', '', False),
+    ('fatal_alert', 'w', '', '', False),
+)
+
+EDN_ALERT_TEST_REG_WIDTH = 32
+EDN_ALERT_TEST_REG_FIELDS = (
+    ('recov_alert', 0, 0, 'w', 'r', '', '', False, False, 0),
+    ('fatal_alert', 1, 1, 'w', 'r', '', '', False, False, 0),
+)
+
+class EDN_ALERT_TEST_reg_t(Structure):
+    _fields_ = [
+        ('recov_alert', c_uint8, 1),
+        ('fatal_alert', c_uint8, 1),
+    ]
+
+EDN_ALERT_TEST_REG_DEFAULT = 0x00000000
+
+class EDN_ALERT_TEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_ALERT_TEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_ALERT_TEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_ALERT_TEST_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_REGWEN_REG_DEFAULT = 0x00000001
+EDN_REGWEN_REG_FIELD_ACCESS = (
+    ('REGWEN', 'rw', 'wzc', '', False),
+)
+
+EDN_REGWEN_REG_WIDTH = 32
+EDN_REGWEN_REG_FIELDS = (
+    ('REGWEN', 0, 0, 'rw', 'na', 'wzc', '', False, False, 1),
+)
+
+class EDN_REGWEN_reg_t(Structure):
+    _fields_ = [
+        ('regwen', c_uint8, 1),
+    ]
+
+EDN_REGWEN_REG_DEFAULT = 0x00000001
+
+class EDN_REGWEN_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_REGWEN_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_REGWEN_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_REGWEN_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_CTRL_REG_DEFAULT = 0x00009999
+EDN_CTRL_REG_FIELD_ACCESS = (
+    ('EDN_ENABLE', 'rw', '', '', False),
+    ('BOOT_REQ_MODE', 'rw', '', '', False),
+    ('AUTO_REQ_MODE', 'rw', '', '', False),
+    ('CMD_FIFO_RST', 'rw', '', '', False),
+)
+
+EDN_CTRL_REG_WIDTH = 32
+EDN_CTRL_REG_FIELDS = (
+    ('EDN_ENABLE', 0, 3, 'rw', 'r', '', '', False, False, 9),
+    ('BOOT_REQ_MODE', 4, 7, 'rw', 'r', '', '', False, False, 9),
+    ('AUTO_REQ_MODE', 8, 11, 'rw', 'r', '', '', False, False, 9),
+    ('CMD_FIFO_RST', 12, 15, 'rw', 'r', '', '', False, False, 9),
+)
+
+class EDN_CTRL_reg_t(Structure):
+    _fields_ = [
+        ('edn_enable', c_uint16, 4),
+        ('boot_req_mode', c_uint16, 4),
+        ('auto_req_mode', c_uint16, 4),
+        ('cmd_fifo_rst', c_uint16, 4),
+    ]
+
+EDN_CTRL_REG_DEFAULT = 0x00009999
+
+class EDN_CTRL_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_CTRL_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_CTRL_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_BOOT_INS_CMD_REG_DEFAULT = 0x00000901
+EDN_BOOT_INS_CMD_REG_FIELD_ACCESS = (
+    ('BOOT_INS_CMD', 'rw', '', '', False),
+)
+
+EDN_BOOT_INS_CMD_REG_WIDTH = 32
+EDN_BOOT_INS_CMD_REG_FIELDS = (
+    ('BOOT_INS_CMD', 0, 31, 'rw', 'r', '', '', False, False, 2305),
+)
+
+class EDN_BOOT_INS_CMD_reg_t(Structure):
+    _fields_ = [
+        ('boot_ins_cmd', c_uint32, 32),
+    ]
+
+EDN_BOOT_INS_CMD_REG_DEFAULT = 0x00000901
+
+class EDN_BOOT_INS_CMD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_BOOT_INS_CMD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_BOOT_INS_CMD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_BOOT_INS_CMD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_BOOT_GEN_CMD_REG_DEFAULT = 0x00FFF003
+EDN_BOOT_GEN_CMD_REG_FIELD_ACCESS = (
+    ('BOOT_GEN_CMD', 'rw', '', '', False),
+)
+
+EDN_BOOT_GEN_CMD_REG_WIDTH = 32
+EDN_BOOT_GEN_CMD_REG_FIELDS = (
+    ('BOOT_GEN_CMD', 0, 31, 'rw', 'r', '', '', False, False, 16773123),
+)
+
+class EDN_BOOT_GEN_CMD_reg_t(Structure):
+    _fields_ = [
+        ('boot_gen_cmd', c_uint32, 32),
+    ]
+
+EDN_BOOT_GEN_CMD_REG_DEFAULT = 0x00FFF003
+
+class EDN_BOOT_GEN_CMD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_BOOT_GEN_CMD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_BOOT_GEN_CMD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_BOOT_GEN_CMD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_SW_CMD_REQ_REG_DEFAULT = 0x00000000
+EDN_SW_CMD_REQ_REG_FIELD_ACCESS = (
+    ('SW_CMD_REQ', 'w', '', '', False),
+)
+
+EDN_SW_CMD_REQ_REG_WIDTH = 32
+EDN_SW_CMD_REQ_REG_FIELDS = (
+    ('SW_CMD_REQ', 0, 31, 'w', 'r', '', '', False, False, None),
+)
+
+class EDN_SW_CMD_REQ_reg_t(Structure):
+    _fields_ = [
+        ('sw_cmd_req', c_uint32, 32),
+    ]
+
+EDN_SW_CMD_REQ_REG_DEFAULT = 0x00000000
+
+class EDN_SW_CMD_REQ_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_SW_CMD_REQ_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_SW_CMD_REQ_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_SW_CMD_REQ_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_SW_CMD_STS_REG_DEFAULT = 0x00000000
+EDN_SW_CMD_STS_REG_FIELD_ACCESS = (
+    ('CMD_REG_RDY', 'r', '', '', False),
+    ('CMD_RDY', 'r', '', '', False),
+    ('CMD_ACK', 'r', '', '', False),
+    ('CMD_STS', 'r', '', '', False),
+)
+
+EDN_SW_CMD_STS_REG_WIDTH = 32
+EDN_SW_CMD_STS_REG_FIELDS = (
+    ('CMD_REG_RDY', 0, 0, 'r', 'w', '', '', False, True, 0),
+    ('CMD_RDY', 1, 1, 'r', 'w', '', '', False, True, 0),
+    ('CMD_ACK', 2, 2, 'r', 'w', '', '', False, True, 0),
+    ('CMD_STS', 3, 5, 'r', 'w', '', '', False, True, 0),
+)
+
+class EDN_SW_CMD_STS_reg_t(Structure):
+    _fields_ = [
+        ('cmd_reg_rdy', c_uint8, 1),
+        ('cmd_rdy', c_uint8, 1),
+        ('cmd_ack', c_uint8, 1),
+        ('cmd_sts', c_uint8, 3),
+    ]
+
+EDN_SW_CMD_STS_REG_DEFAULT = 0x00000000
+
+class EDN_SW_CMD_STS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_SW_CMD_STS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_SW_CMD_STS_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_SW_CMD_STS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_HW_CMD_STS_REG_DEFAULT = 0x00000000
+EDN_HW_CMD_STS_REG_FIELD_ACCESS = (
+    ('BOOT_MODE', 'r', '', '', False),
+    ('AUTO_MODE', 'r', '', '', False),
+    ('CMD_TYPE', 'r', '', '', False),
+    ('CMD_ACK', 'r', '', '', False),
+    ('CMD_STS', 'r', '', '', False),
+)
+
+EDN_HW_CMD_STS_REG_WIDTH = 32
+EDN_HW_CMD_STS_REG_FIELDS = (
+    ('BOOT_MODE', 0, 0, 'r', 'w', '', '', False, True, 0),
+    ('AUTO_MODE', 1, 1, 'r', 'w', '', '', False, True, 0),
+    ('CMD_TYPE', 2, 5, 'r', 'w', '', '', False, True, 0),
+    ('CMD_ACK', 6, 6, 'r', 'w', '', '', False, True, 0),
+    ('CMD_STS', 7, 9, 'r', 'w', '', '', False, True, 0),
+)
+
+class EDN_HW_CMD_STS_reg_t(Structure):
+    _fields_ = [
+        ('boot_mode', c_uint16, 1),
+        ('auto_mode', c_uint16, 1),
+        ('cmd_type', c_uint16, 4),
+        ('cmd_ack', c_uint16, 1),
+        ('cmd_sts', c_uint16, 3),
+    ]
+
+EDN_HW_CMD_STS_REG_DEFAULT = 0x00000000
+
+class EDN_HW_CMD_STS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_HW_CMD_STS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_HW_CMD_STS_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_HW_CMD_STS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_RESEED_CMD_REG_DEFAULT = 0x00000000
+EDN_RESEED_CMD_REG_FIELD_ACCESS = (
+    ('RESEED_CMD', 'w', '', '', False),
+)
+
+EDN_RESEED_CMD_REG_WIDTH = 32
+EDN_RESEED_CMD_REG_FIELDS = (
+    ('RESEED_CMD', 0, 31, 'w', 'r', '', '', False, False, None),
+)
+
+class EDN_RESEED_CMD_reg_t(Structure):
+    _fields_ = [
+        ('reseed_cmd', c_uint32, 32),
+    ]
+
+EDN_RESEED_CMD_REG_DEFAULT = 0x00000000
+
+class EDN_RESEED_CMD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_RESEED_CMD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_RESEED_CMD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_RESEED_CMD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_GENERATE_CMD_REG_DEFAULT = 0x00000000
+EDN_GENERATE_CMD_REG_FIELD_ACCESS = (
+    ('GENERATE_CMD', 'w', '', '', False),
+)
+
+EDN_GENERATE_CMD_REG_WIDTH = 32
+EDN_GENERATE_CMD_REG_FIELDS = (
+    ('GENERATE_CMD', 0, 31, 'w', 'r', '', '', False, False, None),
+)
+
+class EDN_GENERATE_CMD_reg_t(Structure):
+    _fields_ = [
+        ('generate_cmd', c_uint32, 32),
+    ]
+
+EDN_GENERATE_CMD_REG_DEFAULT = 0x00000000
+
+class EDN_GENERATE_CMD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_GENERATE_CMD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_GENERATE_CMD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_GENERATE_CMD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT = 0x00000000
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_FIELD_ACCESS = (
+    ('MAX_NUM_REQS_BETWEEN_RESEEDS', 'rw', '', '', False),
+)
+
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_WIDTH = 32
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_FIELDS = (
+    ('MAX_NUM_REQS_BETWEEN_RESEEDS', 0, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_t(Structure):
+    _fields_ = [
+        ('max_num_reqs_between_reseeds', c_uint32, 32),
+    ]
+
+EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT = 0x00000000
+
+class EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_RECOV_ALERT_STS_REG_DEFAULT = 0x00000000
+EDN_RECOV_ALERT_STS_REG_FIELD_ACCESS = (
+    ('EDN_ENABLE_FIELD_ALERT', 'rw', 'wzc', '', False),
+    ('BOOT_REQ_MODE_FIELD_ALERT', 'rw', 'wzc', '', False),
+    ('AUTO_REQ_MODE_FIELD_ALERT', 'rw', 'wzc', '', False),
+    ('CMD_FIFO_RST_FIELD_ALERT', 'rw', 'wzc', '', False),
+    ('EDN_BUS_CMP_ALERT', 'rw', 'wzc', '', False),
+    ('CSRNG_ACK_ERR', 'rw', 'wzc', '', False),
+)
+
+EDN_RECOV_ALERT_STS_REG_WIDTH = 32
+EDN_RECOV_ALERT_STS_REG_FIELDS = (
+    ('EDN_ENABLE_FIELD_ALERT', 0, 0, 'rw', 'w', 'wzc', '', False, True, 0),
+    ('BOOT_REQ_MODE_FIELD_ALERT', 1, 1, 'rw', 'w', 'wzc', '', False, True, 0),
+    ('AUTO_REQ_MODE_FIELD_ALERT', 2, 2, 'rw', 'w', 'wzc', '', False, True, 0),
+    ('CMD_FIFO_RST_FIELD_ALERT', 3, 3, 'rw', 'w', 'wzc', '', False, True, 0),
+    ('EDN_BUS_CMP_ALERT', 12, 12, 'rw', 'w', 'wzc', '', False, True, 0),
+    ('CSRNG_ACK_ERR', 13, 13, 'rw', 'w', 'wzc', '', False, True, 0),
+)
+
+class EDN_RECOV_ALERT_STS_reg_t(Structure):
+    _fields_ = [
+        ('edn_enable_field_alert', c_uint16, 1),
+        ('boot_req_mode_field_alert', c_uint16, 1),
+        ('auto_req_mode_field_alert', c_uint16, 1),
+        ('cmd_fifo_rst_field_alert', c_uint16, 1),
+        ('rsvd_0', c_uint16, 8),
+        ('edn_bus_cmp_alert', c_uint16, 1),
+        ('csrng_ack_err', c_uint16, 1),
+    ]
+
+EDN_RECOV_ALERT_STS_REG_DEFAULT = 0x00000000
+
+class EDN_RECOV_ALERT_STS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_RECOV_ALERT_STS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_RECOV_ALERT_STS_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_RECOV_ALERT_STS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_ERR_CODE_REG_DEFAULT = 0x00000000
+EDN_ERR_CODE_REG_FIELD_ACCESS = (
+    ('SFIFO_RESCMD_ERR', 'r', '', '', False),
+    ('SFIFO_GENCMD_ERR', 'r', '', '', False),
+    ('EDN_ACK_SM_ERR', 'r', '', '', False),
+    ('EDN_MAIN_SM_ERR', 'r', '', '', False),
+    ('EDN_CNTR_ERR', 'r', '', '', False),
+    ('FIFO_WRITE_ERR', 'r', '', '', False),
+    ('FIFO_READ_ERR', 'r', '', '', False),
+    ('FIFO_STATE_ERR', 'r', '', '', False),
+)
+
+EDN_ERR_CODE_REG_WIDTH = 32
+EDN_ERR_CODE_REG_FIELDS = (
+    ('SFIFO_RESCMD_ERR', 0, 0, 'r', 'w', '', '', False, True, 0),
+    ('SFIFO_GENCMD_ERR', 1, 1, 'r', 'w', '', '', False, True, 0),
+    ('EDN_ACK_SM_ERR', 20, 20, 'r', 'w', '', '', False, True, 0),
+    ('EDN_MAIN_SM_ERR', 21, 21, 'r', 'w', '', '', False, True, 0),
+    ('EDN_CNTR_ERR', 22, 22, 'r', 'w', '', '', False, True, 0),
+    ('FIFO_WRITE_ERR', 28, 28, 'r', 'w', '', '', False, True, 0),
+    ('FIFO_READ_ERR', 29, 29, 'r', 'w', '', '', False, True, 0),
+    ('FIFO_STATE_ERR', 30, 30, 'r', 'w', '', '', False, True, 0),
+)
+
+class EDN_ERR_CODE_reg_t(Structure):
+    _fields_ = [
+        ('sfifo_rescmd_err', c_uint32, 1),
+        ('sfifo_gencmd_err', c_uint32, 1),
+        ('rsvd_0', c_uint32, 18),
+        ('edn_ack_sm_err', c_uint32, 1),
+        ('edn_main_sm_err', c_uint32, 1),
+        ('edn_cntr_err', c_uint32, 1),
+        ('rsvd_1', c_uint32, 5),
+        ('fifo_write_err', c_uint32, 1),
+        ('fifo_read_err', c_uint32, 1),
+        ('fifo_state_err', c_uint32, 1),
+    ]
+
+EDN_ERR_CODE_REG_DEFAULT = 0x00000000
+
+class EDN_ERR_CODE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_ERR_CODE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_ERR_CODE_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_ERR_CODE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_ERR_CODE_TEST_REG_DEFAULT = 0x00000000
+EDN_ERR_CODE_TEST_REG_FIELD_ACCESS = (
+    ('ERR_CODE_TEST', 'rw', '', '', False),
+)
+
+EDN_ERR_CODE_TEST_REG_WIDTH = 32
+EDN_ERR_CODE_TEST_REG_FIELDS = (
+    ('ERR_CODE_TEST', 0, 4, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EDN_ERR_CODE_TEST_reg_t(Structure):
+    _fields_ = [
+        ('err_code_test', c_uint8, 5),
+    ]
+
+EDN_ERR_CODE_TEST_REG_DEFAULT = 0x00000000
+
+class EDN_ERR_CODE_TEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_ERR_CODE_TEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_ERR_CODE_TEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_ERR_CODE_TEST_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EDN_MAIN_SM_STATE_REG_DEFAULT = 0x000000C1
+EDN_MAIN_SM_STATE_REG_FIELD_ACCESS = (
+    ('MAIN_SM_STATE', 'r', '', '', False),
+)
+
+EDN_MAIN_SM_STATE_REG_WIDTH = 32
+EDN_MAIN_SM_STATE_REG_FIELDS = (
+    ('MAIN_SM_STATE', 0, 8, 'r', 'w', '', '', False, True, 193),
+)
+
+class EDN_MAIN_SM_STATE_reg_t(Structure):
+    _fields_ = [
+        ('main_sm_state', c_uint16, 9),
+    ]
+
+EDN_MAIN_SM_STATE_REG_DEFAULT = 0x000000C1
+
+class EDN_MAIN_SM_STATE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EDN_MAIN_SM_STATE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EDN_MAIN_SM_STATE_reg_u, self).__init__(*args, **kwargs)
+        self.val = EDN_MAIN_SM_STATE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
 CSRNG_INTR_STATE_REG_DEFAULT = 0x00000000
 CSRNG_INTR_STATE_REG_FIELD_ACCESS = (
     ('CS_CMD_REQ_DONE', 'rw', 'woclr', '', False),
@@ -11853,753 +12600,6 @@ class CSRNG_MAIN_SM_STATE_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(CSRNG_MAIN_SM_STATE_reg_u, self).__init__(*args, **kwargs)
         self.val = CSRNG_MAIN_SM_STATE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_INTR_STATE_REG_DEFAULT = 0x00000000
-EDN_INTR_STATE_REG_FIELD_ACCESS = (
-    ('edn_cmd_req_done', 'rw', 'woclr', '', False),
-    ('edn_fatal_err', 'rw', 'woclr', '', False),
-)
-
-EDN_INTR_STATE_REG_WIDTH = 32
-EDN_INTR_STATE_REG_FIELDS = (
-    ('edn_cmd_req_done', 0, 0, 'rw', 'rw', 'woclr', '', False, True, 0),
-    ('edn_fatal_err', 1, 1, 'rw', 'rw', 'woclr', '', False, True, 0),
-)
-
-class EDN_INTR_STATE_reg_t(Structure):
-    _fields_ = [
-        ('edn_cmd_req_done', c_uint8, 1),
-        ('edn_fatal_err', c_uint8, 1),
-    ]
-
-EDN_INTR_STATE_REG_DEFAULT = 0x00000000
-
-class EDN_INTR_STATE_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_INTR_STATE_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_INTR_STATE_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_INTR_STATE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_INTR_ENABLE_REG_DEFAULT = 0x00000000
-EDN_INTR_ENABLE_REG_FIELD_ACCESS = (
-    ('edn_cmd_req_done', 'rw', '', '', False),
-    ('edn_fatal_err', 'rw', '', '', False),
-)
-
-EDN_INTR_ENABLE_REG_WIDTH = 32
-EDN_INTR_ENABLE_REG_FIELDS = (
-    ('edn_cmd_req_done', 0, 0, 'rw', 'r', '', '', False, False, 0),
-    ('edn_fatal_err', 1, 1, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EDN_INTR_ENABLE_reg_t(Structure):
-    _fields_ = [
-        ('edn_cmd_req_done', c_uint8, 1),
-        ('edn_fatal_err', c_uint8, 1),
-    ]
-
-EDN_INTR_ENABLE_REG_DEFAULT = 0x00000000
-
-class EDN_INTR_ENABLE_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_INTR_ENABLE_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_INTR_ENABLE_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_INTR_ENABLE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_INTR_TEST_REG_DEFAULT = 0x00000000
-EDN_INTR_TEST_REG_FIELD_ACCESS = (
-    ('edn_cmd_req_done', 'w', '', '', False),
-    ('edn_fatal_err', 'w', '', '', False),
-)
-
-EDN_INTR_TEST_REG_WIDTH = 32
-EDN_INTR_TEST_REG_FIELDS = (
-    ('edn_cmd_req_done', 0, 0, 'w', 'r', '', '', False, False, 0),
-    ('edn_fatal_err', 1, 1, 'w', 'r', '', '', False, False, 0),
-)
-
-class EDN_INTR_TEST_reg_t(Structure):
-    _fields_ = [
-        ('edn_cmd_req_done', c_uint8, 1),
-        ('edn_fatal_err', c_uint8, 1),
-    ]
-
-EDN_INTR_TEST_REG_DEFAULT = 0x00000000
-
-class EDN_INTR_TEST_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_INTR_TEST_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_INTR_TEST_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_INTR_TEST_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_ALERT_TEST_REG_DEFAULT = 0x00000000
-EDN_ALERT_TEST_REG_FIELD_ACCESS = (
-    ('recov_alert', 'w', '', '', False),
-    ('fatal_alert', 'w', '', '', False),
-)
-
-EDN_ALERT_TEST_REG_WIDTH = 32
-EDN_ALERT_TEST_REG_FIELDS = (
-    ('recov_alert', 0, 0, 'w', 'r', '', '', False, False, 0),
-    ('fatal_alert', 1, 1, 'w', 'r', '', '', False, False, 0),
-)
-
-class EDN_ALERT_TEST_reg_t(Structure):
-    _fields_ = [
-        ('recov_alert', c_uint8, 1),
-        ('fatal_alert', c_uint8, 1),
-    ]
-
-EDN_ALERT_TEST_REG_DEFAULT = 0x00000000
-
-class EDN_ALERT_TEST_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_ALERT_TEST_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_ALERT_TEST_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_ALERT_TEST_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_REGWEN_REG_DEFAULT = 0x00000001
-EDN_REGWEN_REG_FIELD_ACCESS = (
-    ('REGWEN', 'rw', 'wzc', '', False),
-)
-
-EDN_REGWEN_REG_WIDTH = 32
-EDN_REGWEN_REG_FIELDS = (
-    ('REGWEN', 0, 0, 'rw', 'na', 'wzc', '', False, False, 1),
-)
-
-class EDN_REGWEN_reg_t(Structure):
-    _fields_ = [
-        ('regwen', c_uint8, 1),
-    ]
-
-EDN_REGWEN_REG_DEFAULT = 0x00000001
-
-class EDN_REGWEN_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_REGWEN_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_REGWEN_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_REGWEN_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_CTRL_REG_DEFAULT = 0x00009999
-EDN_CTRL_REG_FIELD_ACCESS = (
-    ('EDN_ENABLE', 'rw', '', '', False),
-    ('BOOT_REQ_MODE', 'rw', '', '', False),
-    ('AUTO_REQ_MODE', 'rw', '', '', False),
-    ('CMD_FIFO_RST', 'rw', '', '', False),
-)
-
-EDN_CTRL_REG_WIDTH = 32
-EDN_CTRL_REG_FIELDS = (
-    ('EDN_ENABLE', 0, 3, 'rw', 'r', '', '', False, False, 9),
-    ('BOOT_REQ_MODE', 4, 7, 'rw', 'r', '', '', False, False, 9),
-    ('AUTO_REQ_MODE', 8, 11, 'rw', 'r', '', '', False, False, 9),
-    ('CMD_FIFO_RST', 12, 15, 'rw', 'r', '', '', False, False, 9),
-)
-
-class EDN_CTRL_reg_t(Structure):
-    _fields_ = [
-        ('edn_enable', c_uint16, 4),
-        ('boot_req_mode', c_uint16, 4),
-        ('auto_req_mode', c_uint16, 4),
-        ('cmd_fifo_rst', c_uint16, 4),
-    ]
-
-EDN_CTRL_REG_DEFAULT = 0x00009999
-
-class EDN_CTRL_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_CTRL_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_CTRL_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_BOOT_INS_CMD_REG_DEFAULT = 0x00000901
-EDN_BOOT_INS_CMD_REG_FIELD_ACCESS = (
-    ('BOOT_INS_CMD', 'rw', '', '', False),
-)
-
-EDN_BOOT_INS_CMD_REG_WIDTH = 32
-EDN_BOOT_INS_CMD_REG_FIELDS = (
-    ('BOOT_INS_CMD', 0, 31, 'rw', 'r', '', '', False, False, 2305),
-)
-
-class EDN_BOOT_INS_CMD_reg_t(Structure):
-    _fields_ = [
-        ('boot_ins_cmd', c_uint32, 32),
-    ]
-
-EDN_BOOT_INS_CMD_REG_DEFAULT = 0x00000901
-
-class EDN_BOOT_INS_CMD_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_BOOT_INS_CMD_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_BOOT_INS_CMD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_BOOT_INS_CMD_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_BOOT_GEN_CMD_REG_DEFAULT = 0x00FFF003
-EDN_BOOT_GEN_CMD_REG_FIELD_ACCESS = (
-    ('BOOT_GEN_CMD', 'rw', '', '', False),
-)
-
-EDN_BOOT_GEN_CMD_REG_WIDTH = 32
-EDN_BOOT_GEN_CMD_REG_FIELDS = (
-    ('BOOT_GEN_CMD', 0, 31, 'rw', 'r', '', '', False, False, 16773123),
-)
-
-class EDN_BOOT_GEN_CMD_reg_t(Structure):
-    _fields_ = [
-        ('boot_gen_cmd', c_uint32, 32),
-    ]
-
-EDN_BOOT_GEN_CMD_REG_DEFAULT = 0x00FFF003
-
-class EDN_BOOT_GEN_CMD_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_BOOT_GEN_CMD_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_BOOT_GEN_CMD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_BOOT_GEN_CMD_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_SW_CMD_REQ_REG_DEFAULT = 0x00000000
-EDN_SW_CMD_REQ_REG_FIELD_ACCESS = (
-    ('SW_CMD_REQ', 'w', '', '', False),
-)
-
-EDN_SW_CMD_REQ_REG_WIDTH = 32
-EDN_SW_CMD_REQ_REG_FIELDS = (
-    ('SW_CMD_REQ', 0, 31, 'w', 'r', '', '', False, False, None),
-)
-
-class EDN_SW_CMD_REQ_reg_t(Structure):
-    _fields_ = [
-        ('sw_cmd_req', c_uint32, 32),
-    ]
-
-EDN_SW_CMD_REQ_REG_DEFAULT = 0x00000000
-
-class EDN_SW_CMD_REQ_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_SW_CMD_REQ_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_SW_CMD_REQ_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_SW_CMD_REQ_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_SW_CMD_STS_REG_DEFAULT = 0x00000000
-EDN_SW_CMD_STS_REG_FIELD_ACCESS = (
-    ('CMD_REG_RDY', 'r', '', '', False),
-    ('CMD_RDY', 'r', '', '', False),
-    ('CMD_ACK', 'r', '', '', False),
-    ('CMD_STS', 'r', '', '', False),
-)
-
-EDN_SW_CMD_STS_REG_WIDTH = 32
-EDN_SW_CMD_STS_REG_FIELDS = (
-    ('CMD_REG_RDY', 0, 0, 'r', 'w', '', '', False, True, 0),
-    ('CMD_RDY', 1, 1, 'r', 'w', '', '', False, True, 0),
-    ('CMD_ACK', 2, 2, 'r', 'w', '', '', False, True, 0),
-    ('CMD_STS', 3, 5, 'r', 'w', '', '', False, True, 0),
-)
-
-class EDN_SW_CMD_STS_reg_t(Structure):
-    _fields_ = [
-        ('cmd_reg_rdy', c_uint8, 1),
-        ('cmd_rdy', c_uint8, 1),
-        ('cmd_ack', c_uint8, 1),
-        ('cmd_sts', c_uint8, 3),
-    ]
-
-EDN_SW_CMD_STS_REG_DEFAULT = 0x00000000
-
-class EDN_SW_CMD_STS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_SW_CMD_STS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_SW_CMD_STS_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_SW_CMD_STS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_HW_CMD_STS_REG_DEFAULT = 0x00000000
-EDN_HW_CMD_STS_REG_FIELD_ACCESS = (
-    ('BOOT_MODE', 'r', '', '', False),
-    ('AUTO_MODE', 'r', '', '', False),
-    ('CMD_TYPE', 'r', '', '', False),
-    ('CMD_ACK', 'r', '', '', False),
-    ('CMD_STS', 'r', '', '', False),
-)
-
-EDN_HW_CMD_STS_REG_WIDTH = 32
-EDN_HW_CMD_STS_REG_FIELDS = (
-    ('BOOT_MODE', 0, 0, 'r', 'w', '', '', False, True, 0),
-    ('AUTO_MODE', 1, 1, 'r', 'w', '', '', False, True, 0),
-    ('CMD_TYPE', 2, 5, 'r', 'w', '', '', False, True, 0),
-    ('CMD_ACK', 6, 6, 'r', 'w', '', '', False, True, 0),
-    ('CMD_STS', 7, 9, 'r', 'w', '', '', False, True, 0),
-)
-
-class EDN_HW_CMD_STS_reg_t(Structure):
-    _fields_ = [
-        ('boot_mode', c_uint16, 1),
-        ('auto_mode', c_uint16, 1),
-        ('cmd_type', c_uint16, 4),
-        ('cmd_ack', c_uint16, 1),
-        ('cmd_sts', c_uint16, 3),
-    ]
-
-EDN_HW_CMD_STS_REG_DEFAULT = 0x00000000
-
-class EDN_HW_CMD_STS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_HW_CMD_STS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_HW_CMD_STS_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_HW_CMD_STS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_RESEED_CMD_REG_DEFAULT = 0x00000000
-EDN_RESEED_CMD_REG_FIELD_ACCESS = (
-    ('RESEED_CMD', 'w', '', '', False),
-)
-
-EDN_RESEED_CMD_REG_WIDTH = 32
-EDN_RESEED_CMD_REG_FIELDS = (
-    ('RESEED_CMD', 0, 31, 'w', 'r', '', '', False, False, None),
-)
-
-class EDN_RESEED_CMD_reg_t(Structure):
-    _fields_ = [
-        ('reseed_cmd', c_uint32, 32),
-    ]
-
-EDN_RESEED_CMD_REG_DEFAULT = 0x00000000
-
-class EDN_RESEED_CMD_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_RESEED_CMD_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_RESEED_CMD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_RESEED_CMD_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_GENERATE_CMD_REG_DEFAULT = 0x00000000
-EDN_GENERATE_CMD_REG_FIELD_ACCESS = (
-    ('GENERATE_CMD', 'w', '', '', False),
-)
-
-EDN_GENERATE_CMD_REG_WIDTH = 32
-EDN_GENERATE_CMD_REG_FIELDS = (
-    ('GENERATE_CMD', 0, 31, 'w', 'r', '', '', False, False, None),
-)
-
-class EDN_GENERATE_CMD_reg_t(Structure):
-    _fields_ = [
-        ('generate_cmd', c_uint32, 32),
-    ]
-
-EDN_GENERATE_CMD_REG_DEFAULT = 0x00000000
-
-class EDN_GENERATE_CMD_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_GENERATE_CMD_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_GENERATE_CMD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_GENERATE_CMD_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT = 0x00000000
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_FIELD_ACCESS = (
-    ('MAX_NUM_REQS_BETWEEN_RESEEDS', 'rw', '', '', False),
-)
-
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_WIDTH = 32
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_FIELDS = (
-    ('MAX_NUM_REQS_BETWEEN_RESEEDS', 0, 31, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_t(Structure):
-    _fields_ = [
-        ('max_num_reqs_between_reseeds', c_uint32, 32),
-    ]
-
-EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT = 0x00000000
-
-class EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_RECOV_ALERT_STS_REG_DEFAULT = 0x00000000
-EDN_RECOV_ALERT_STS_REG_FIELD_ACCESS = (
-    ('EDN_ENABLE_FIELD_ALERT', 'rw', 'wzc', '', False),
-    ('BOOT_REQ_MODE_FIELD_ALERT', 'rw', 'wzc', '', False),
-    ('AUTO_REQ_MODE_FIELD_ALERT', 'rw', 'wzc', '', False),
-    ('CMD_FIFO_RST_FIELD_ALERT', 'rw', 'wzc', '', False),
-    ('EDN_BUS_CMP_ALERT', 'rw', 'wzc', '', False),
-    ('CSRNG_ACK_ERR', 'rw', 'wzc', '', False),
-)
-
-EDN_RECOV_ALERT_STS_REG_WIDTH = 32
-EDN_RECOV_ALERT_STS_REG_FIELDS = (
-    ('EDN_ENABLE_FIELD_ALERT', 0, 0, 'rw', 'w', 'wzc', '', False, True, 0),
-    ('BOOT_REQ_MODE_FIELD_ALERT', 1, 1, 'rw', 'w', 'wzc', '', False, True, 0),
-    ('AUTO_REQ_MODE_FIELD_ALERT', 2, 2, 'rw', 'w', 'wzc', '', False, True, 0),
-    ('CMD_FIFO_RST_FIELD_ALERT', 3, 3, 'rw', 'w', 'wzc', '', False, True, 0),
-    ('EDN_BUS_CMP_ALERT', 12, 12, 'rw', 'w', 'wzc', '', False, True, 0),
-    ('CSRNG_ACK_ERR', 13, 13, 'rw', 'w', 'wzc', '', False, True, 0),
-)
-
-class EDN_RECOV_ALERT_STS_reg_t(Structure):
-    _fields_ = [
-        ('edn_enable_field_alert', c_uint16, 1),
-        ('boot_req_mode_field_alert', c_uint16, 1),
-        ('auto_req_mode_field_alert', c_uint16, 1),
-        ('cmd_fifo_rst_field_alert', c_uint16, 1),
-        ('rsvd_0', c_uint16, 8),
-        ('edn_bus_cmp_alert', c_uint16, 1),
-        ('csrng_ack_err', c_uint16, 1),
-    ]
-
-EDN_RECOV_ALERT_STS_REG_DEFAULT = 0x00000000
-
-class EDN_RECOV_ALERT_STS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_RECOV_ALERT_STS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_RECOV_ALERT_STS_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_RECOV_ALERT_STS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_ERR_CODE_REG_DEFAULT = 0x00000000
-EDN_ERR_CODE_REG_FIELD_ACCESS = (
-    ('SFIFO_RESCMD_ERR', 'r', '', '', False),
-    ('SFIFO_GENCMD_ERR', 'r', '', '', False),
-    ('EDN_ACK_SM_ERR', 'r', '', '', False),
-    ('EDN_MAIN_SM_ERR', 'r', '', '', False),
-    ('EDN_CNTR_ERR', 'r', '', '', False),
-    ('FIFO_WRITE_ERR', 'r', '', '', False),
-    ('FIFO_READ_ERR', 'r', '', '', False),
-    ('FIFO_STATE_ERR', 'r', '', '', False),
-)
-
-EDN_ERR_CODE_REG_WIDTH = 32
-EDN_ERR_CODE_REG_FIELDS = (
-    ('SFIFO_RESCMD_ERR', 0, 0, 'r', 'w', '', '', False, True, 0),
-    ('SFIFO_GENCMD_ERR', 1, 1, 'r', 'w', '', '', False, True, 0),
-    ('EDN_ACK_SM_ERR', 20, 20, 'r', 'w', '', '', False, True, 0),
-    ('EDN_MAIN_SM_ERR', 21, 21, 'r', 'w', '', '', False, True, 0),
-    ('EDN_CNTR_ERR', 22, 22, 'r', 'w', '', '', False, True, 0),
-    ('FIFO_WRITE_ERR', 28, 28, 'r', 'w', '', '', False, True, 0),
-    ('FIFO_READ_ERR', 29, 29, 'r', 'w', '', '', False, True, 0),
-    ('FIFO_STATE_ERR', 30, 30, 'r', 'w', '', '', False, True, 0),
-)
-
-class EDN_ERR_CODE_reg_t(Structure):
-    _fields_ = [
-        ('sfifo_rescmd_err', c_uint32, 1),
-        ('sfifo_gencmd_err', c_uint32, 1),
-        ('rsvd_0', c_uint32, 18),
-        ('edn_ack_sm_err', c_uint32, 1),
-        ('edn_main_sm_err', c_uint32, 1),
-        ('edn_cntr_err', c_uint32, 1),
-        ('rsvd_1', c_uint32, 5),
-        ('fifo_write_err', c_uint32, 1),
-        ('fifo_read_err', c_uint32, 1),
-        ('fifo_state_err', c_uint32, 1),
-    ]
-
-EDN_ERR_CODE_REG_DEFAULT = 0x00000000
-
-class EDN_ERR_CODE_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_ERR_CODE_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_ERR_CODE_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_ERR_CODE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_ERR_CODE_TEST_REG_DEFAULT = 0x00000000
-EDN_ERR_CODE_TEST_REG_FIELD_ACCESS = (
-    ('ERR_CODE_TEST', 'rw', '', '', False),
-)
-
-EDN_ERR_CODE_TEST_REG_WIDTH = 32
-EDN_ERR_CODE_TEST_REG_FIELDS = (
-    ('ERR_CODE_TEST', 0, 4, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EDN_ERR_CODE_TEST_reg_t(Structure):
-    _fields_ = [
-        ('err_code_test', c_uint8, 5),
-    ]
-
-EDN_ERR_CODE_TEST_REG_DEFAULT = 0x00000000
-
-class EDN_ERR_CODE_TEST_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_ERR_CODE_TEST_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_ERR_CODE_TEST_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_ERR_CODE_TEST_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EDN_MAIN_SM_STATE_REG_DEFAULT = 0x000000C1
-EDN_MAIN_SM_STATE_REG_FIELD_ACCESS = (
-    ('MAIN_SM_STATE', 'r', '', '', False),
-)
-
-EDN_MAIN_SM_STATE_REG_WIDTH = 32
-EDN_MAIN_SM_STATE_REG_FIELDS = (
-    ('MAIN_SM_STATE', 0, 8, 'r', 'w', '', '', False, True, 193),
-)
-
-class EDN_MAIN_SM_STATE_reg_t(Structure):
-    _fields_ = [
-        ('main_sm_state', c_uint16, 9),
-    ]
-
-EDN_MAIN_SM_STATE_REG_DEFAULT = 0x000000C1
-
-class EDN_MAIN_SM_STATE_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EDN_MAIN_SM_STATE_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EDN_MAIN_SM_STATE_reg_u, self).__init__(*args, **kwargs)
-        self.val = EDN_MAIN_SM_STATE_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

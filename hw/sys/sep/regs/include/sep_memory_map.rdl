@@ -32,6 +32,12 @@
     aes->desc = "AES block-cipher accelerator.";
     hmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
     kmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    edn->ocah_aperture_size = 0x1000;
+    edn->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    edn->ocah_past_extent_note = "Up to offset 0x7F the EDN answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.edn, one of the bits behind PIC source 43.";
+    csrng->ocah_aperture_size = 0x1000;
+    csrng->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    csrng->ocah_past_extent_note = "Up to offset 0x7F the CSRNG answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.csrng, one of the bits behind PIC source 43.";
     trng->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
     trng->ocah_hole_note = "With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.";
     entropy_source->ocah_aperture_size = 0x1000;

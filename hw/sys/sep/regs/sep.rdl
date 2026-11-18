@@ -84,9 +84,9 @@ addrmap sep_top #(
     // KMAC/SHA3 Accelerator
     kmac                                   kmac                                @BASE_ADDR + 0x1091_3000;
 
-    // DRBG: CSRNG and EDN share one aperture
+    // DRBG: EDN and CSRNG
+    edn                                    edn                                 @BASE_ADDR + 0x1091_4000;
     csrng                                  csrng                               @BASE_ADDR + 0x1091_5000;
-    edn                                    edn                                 @BASE_ADDR + 0x1091_5800;
 
     // Entropy Source (ESRC)
     entropy_source                         entropy_source                      @BASE_ADDR + 0x1091_6000;
