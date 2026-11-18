@@ -27685,8 +27685,7 @@ module sep_fcov (
   // and sep_kmac_ms_cg (owner sep_kmac_mode_strength_rand_test).
   // ---------------------------------------------------------------------
   // A CMD.start write. Both groups drop a held outcome on it.
-  wire cy_kx_start = wr_ev && (aw_addr_q == KMAC_CMD_REG_ADDR) &&
-      (wr_data[5:0] == KmacCmdStart6);
+  wire cy_kx_start = wr_ev && (aw_addr_q == KMAC_CMD_REG_ADDR) && (wr_data[5:0] == KmacCmdStart6);
 
   // ERR_CODE[31:24] of an error-code leg whose check passed (kmac.hjson
   // ERR_CODE; theory_of_operation.md error table). 0x80 is the Sha3Control
@@ -27732,13 +27731,17 @@ module sep_fcov (
   );
     option.per_instance = 1;
     option.name = "sep_kmac_ms_cg";
-    cp_prefix_custom: coverpoint {en, s_empty} iff ((mode == KmacCshake) && pfx) {
+    cp_prefix_custom: coverpoint {
+      en, s_empty
+    } iff ((mode == KmacCshake) && pfx) {
       bins cshake_s_set = {2'b00};
       bins cshake_s_empty = {2'b01};
       bins kmac_s_set = {2'b10};
       bins kmac_s_empty = {2'b11};
     }
-    cp_cell_digest_ok: coverpoint {en, strength} iff (mode == KmacCshake) {
+    cp_cell_digest_ok: coverpoint {
+      en, strength
+    } iff (mode == KmacCshake) {
       bins cshake_128 = {{1'b0, KmacL128}};
       bins cshake_256 = {{1'b0, KmacL256}};
       bins kmac_128 = {{1'b1, KmacL128}};
