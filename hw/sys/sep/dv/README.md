@@ -17,6 +17,8 @@ realization.
 
 [![SEP testbench architecture](docs/assets/sep_tb_architecture.svg)](docs/SEP_TB_ARCH.adoc#_testbench_hierarchy)
 
+[![SEP SV-UVM testbench architecture](docs/assets/sep_tb_uvm_architecture.svg)](docs/SEP_TB_ARCH.adoc#sep-uvm-realization)
+
 ## Getting Started
 
 ```bash
