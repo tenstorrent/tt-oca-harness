@@ -85,8 +85,8 @@ endif
 
 . Clear general-purpose registers `x1` through `x31`.
 . Call `__metal_sram_init_early`.
-. Call the strong `__metal_mbist_early_check` implementation.
-. Call the strong `__metal_memory_repair_check` implementation.
+. On the boot hart, call the strong `__metal_mbist_early_check` implementation.
+. On the boot hart, call the strong `__metal_memory_repair_check` implementation.
 . Establish `gp`.
 . Install `early_trap_vector` in `mtvec`.
 . On the boot hart, clear coordination scratch registers 3, 8, 9, 11, 13, and 14 while preserving scratch register 15.
