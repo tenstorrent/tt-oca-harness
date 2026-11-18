@@ -340,18 +340,17 @@ module smc_fabric_fcov (
   `OCAH_FCOV_COVER(c_efuse_jtag_w_accept, ej_w_accept_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_efuse_jtag_ar_accept, ej_ar_accept_e, clk_smc_i, in_reset)
 
-  // A request the lifecycle policy blocks gets "an error response" from the
-  // port's error slave (efuse architecture.adoc, JTAG Access Control Based on
-  // LC_STATE), which the DECERR points record; an admitted request is
-  // answered OKAY.
+  // A request the lifecycle policy blocks gets SLVERR from the port's error
+  // slave (efuse architecture.adoc, JTAG Access Control Based on LC_STATE),
+  // which the SLVERR points record; an admitted request is answered OKAY.
   wire ej_bresp_okay_e = ej_b_accept && (ej_bresp_i == 2'b00);
-  wire ej_bresp_decerr_e = ej_b_accept && (ej_bresp_i == 2'b11);
+  wire ej_bresp_slverr_e = ej_b_accept && (ej_bresp_i == 2'b10);
   wire ej_rresp_okay_e = ej_r_accept && (ej_rresp_i == 2'b00);
-  wire ej_rresp_decerr_e = ej_r_accept && (ej_rresp_i == 2'b11);
+  wire ej_rresp_slverr_e = ej_r_accept && (ej_rresp_i == 2'b10);
   `OCAH_FCOV_COVER(c_efuse_jtag_bresp_okay, ej_bresp_okay_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_efuse_jtag_bresp_decerr, ej_bresp_decerr_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_efuse_jtag_bresp_slverr, ej_bresp_slverr_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_efuse_jtag_rresp_okay, ej_rresp_okay_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_efuse_jtag_rresp_decerr, ej_rresp_decerr_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_efuse_jtag_rresp_slverr, ej_rresp_slverr_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
   // SYS_OUT outbound side. SLVERR here comes from the SYS_OUT slave agent's
