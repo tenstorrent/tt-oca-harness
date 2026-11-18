@@ -56,14 +56,13 @@ S19: every wait is bounded and every window logs its length and outcome.
 
 The orphan's fate, the same-ID hold, the acceptance counts, the responses
 during and after a hold and whether the release alone restores OKAY are OBS
-lines without a verdict (SF-011, SF-012, SF-013, SF-018, SF-023). The R beat
-the SEP side of sep_in withdraws at the fall is OBS-SEPIN-WITHDRAWN, recorded
-and never graded; the bench's expectation window
-(+axi_sva_expect_sep_in_override) covers the checker rules it trips, and the
-leaf grades that window under CHK-HELD-REACH. Every handshake is sampled on
-the ext_in pins each clk_smu_i cycle; the crossbar subordinate counters, the
-sep_in AR tap, the reset nets and the window signals are read from the bench
-top. No force or deposit.
+lines without a verdict. The R beat the SEP side of sep_in withdraws at the
+fall is OBS-SEPIN-WITHDRAWN, recorded and never graded; the bench's
+expectation window (+axi_sva_expect_sep_in_override) covers the checker rules
+it trips, and the leaf grades that window under CHK-HELD-REACH. Every
+handshake is sampled on the ext_in pins each clk_smu_i cycle; the crossbar
+subordinate counters, the sep_in AR tap, the reset nets and the window signals
+are read from the bench top. No force or deposit.
 """
 
 from __future__ import annotations

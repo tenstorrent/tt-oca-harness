@@ -11,7 +11,7 @@ LSIO owner (INTERFACE_ENABLE, LSIO_DISABLE) with INTERRUPT_ENABLE at its reset
 type (active-high level) (hw/ip/gpio register description). The walk gives
 every pad a code of its own: in phase k a pad's field is set when bit k of
 (pad index + 1) is 1, which over seven phases is a distinct, nonzero,
-not-all-ones word for each of the 65 pads. In the seven receive phases each
+not-all-ones word for each of the 67 pads. In the seven receive phases each
 pad has both ENABLE_RX_TX enables and CORE2PAD from its code, so the pads and
 gpio_interrupt_o must both equal the phase mask bit for bit: a pad answering
 another pad's DATA_CTRL, or an interrupt lane taken from another pad, reads a

@@ -89,7 +89,7 @@ def _i3c_dynamic_addr_pattern(idx: int) -> int:
     return (_I3C_DEV_ADDR_RESET & ~_I3C_DYNAMIC_ADDR_MASK) | value
 
 
-# --- GPIO: instances 0 and 64 ------------------------------------------------------------------
+# --- GPIO: instances 0 and 66 ------------------------------------------------------------------
 GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
 GPIO_STRIDE = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE")
 # ACCESS_FILTER's two *PROT_REQUIREMENT fields are plain storage and take

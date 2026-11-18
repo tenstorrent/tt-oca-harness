@@ -3,7 +3,9 @@
 
 /*
  * Stresses SMC status ring buffer head/tail movement through fill, wrap past capacity,
- * interleaved read/write and underflow, using ROM-reported OCCP errors as the entries.
+ * interleaved read/write and underflow, using ROM-reported OCCP errors as the entries. With the
+ * STATUS_RPT_DISABLE strap set, every GET_SMC_STATUS must return Unsupported_StatusID instead,
+ * and no entry or empty-buffer check runs.
  */
 
 #include "occp_test_common.h"
@@ -102,6 +104,9 @@ static bool verify_empty_buffer(test_context_t *ctx) {
     if (!fetch_smc_status(ctx, &status)) {
         return false;
     }
+    if (ctx->status_reporting_disabled) {
+        return true;
+    }
 
     if (status != 0) {
         simputshex32("ERROR: Expected empty buffer (status) ", status);
@@ -120,6 +125,9 @@ static bool drain_and_verify_expected(test_context_t *ctx, uint32_t expected_cou
         uint32_t status = 0;
         if (!fetch_smc_status(ctx, &status)) {
             result = false;
+        }
+        if (ctx->status_reporting_disabled) {
+            continue;
         }
 
         if (status == 0) {

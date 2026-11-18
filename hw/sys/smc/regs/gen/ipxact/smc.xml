@@ -1623,7 +1623,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>version_lo</ipxact:name>
-              <ipxact:description>SMC version, lower 32 bits</ipxact:description>
+              <ipxact:description>SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1641,7 +1641,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>version_hi</ipxact:name>
-              <ipxact:description>SMC version, upper 32 bits</ipxact:description>
+              <ipxact:description>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1761,13 +1761,13 @@ Software masks those registers with this value. The maximum is 32.</ipxact:descr
         <ipxact:displayName>GPIO Interface Wrapper Address Map</ipxact:displayName>
         <ipxact:description>Wrapper address map instantiating one GPIO interface register block per pad.</ipxact:description>
         <ipxact:baseAddress>'hc0003000</ipxact:baseAddress>
-        <ipxact:range>'h410</ipxact:range>
+        <ipxact:range>'h430</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>gpio_intf</ipxact:name>
           <ipxact:displayName>GPIO Interface Address Map</ipxact:displayName>
           <ipxact:description>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</ipxact:description>
-          <ipxact:dim>65</ipxact:dim>
+          <ipxact:dim>67</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h10</ipxact:range>
           <ipxact:register>
@@ -2423,7 +2423,7 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CMD_FIFO_VACANT_SLOTS</ipxact:name>
-            <ipxact:description>Number of vacant slots in the command FIFO</ipxact:description>
+            <ipxact:description>Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2449,7 +2449,7 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>READBACK_FIFO_VACANT_SLOTS</ipxact:name>
-            <ipxact:description>Number of vacant slots in the readback FIFO</ipxact:description>
+            <ipxact:description>Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8464,6 +8464,8 @@ level-3 muxes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>Rsvd158</ipxact:name>
+            <ipxact:description>No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+it. Write 0.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8582,6 +8584,310 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
+        <ipxact:name>smc_pwm</ipxact:name>
+        <ipxact:displayName>PWM Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Wrapper address map instantiating the PWM register block and its pad control.</ipxact:description>
+        <ipxact:baseAddress>'hc000c000</ipxact:baseAddress>
+        <ipxact:range>'h804</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:registerFile>
+          <ipxact:name>pwm</ipxact:name>
+          <ipxact:displayName>Pulse Width Modulator</ipxact:displayName>
+          <ipxact:description>Transmission of pulse-width modulated output signals with adjustable duty cycle</ipxact:description>
+          <ipxact:addressOffset>'h0</ipxact:addressOffset>
+          <ipxact:range>'h44</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>ALERT_TEST</ipxact:name>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>fatal_fault</ipxact:name>
+              <ipxact:description>Write 1 to trigger one alert event of this kind.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>REGWEN</ipxact:name>
+            <ipxact:addressOffset>'h4</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>REGWEN</ipxact:name>
+              <ipxact:description>When true, all writable registers can be modified.
+When false, they become read-only. Defaults true, write
+zero to clear. This can be cleared after initial
+configuration at boot in order to lock in the supplied
+register settings.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>zeroToClear</ipxact:modifiedWriteValue>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>CFG</ipxact:name>
+            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>CLK_DIV</ipxact:name>
+              <ipxact:description>Sets the period of each PWM beat to be (CLK_DIV+1)
+input clock periods.  Since PWM pulses are generated once
+every 2^(DC_RESN+1) beats, the period between output
+pulses is 2^(DC_RESN+1)*(CLK_DIV+1) times longer than the
+input clock period.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h8000</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>27</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>DC_RESN</ipxact:name>
+              <ipxact:description>Phase Resolution (logarithmic). All duty-cycle and phase
+shift registers represent fractional PWM cycles, expressed in
+units of 2^-16 PWM cycles. Each PWM cycle is divided
+into 2^(DC_RESN+1) time slices, and thus only the (DC_RESN+1)
+most significant bits of each phase or duty cycle register
+are relevant.</ipxact:description>
+              <ipxact:bitOffset>27</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h7</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>CNTR_EN</ipxact:name>
+              <ipxact:description>Assert this bit to enable the PWM phase counter.
+Clearing this bit disables and resets the phase counter.</ipxact:description>
+              <ipxact:bitOffset>31</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PWM_EN</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>EN</ipxact:name>
+              <ipxact:description>Write 1 to this bit to enable PWM pulses on the
+corresponding channel.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>INVERT</ipxact:name>
+            <ipxact:addressOffset>'h10</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>INVERT</ipxact:name>
+              <ipxact:description>Write 1 to this bit to invert the output for each channel,
+so that the corresponding output is active-low.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PWM_PARAM</ipxact:name>
+            <ipxact:dim>4</ipxact:dim>
+            <ipxact:addressOffset>'h14</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>PHASE_DELAY</ipxact:name>
+              <ipxact:description>Phase delay of the PWM leading edge, in units of 2^(-16) PWM
+cycles. The leading edge will be the rising edge of the output
+signal unless the corresponding INVERT bit is set.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>16</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>HTBT_EN</ipxact:name>
+              <ipxact:description>Modulates blink behavior to create a heartbeat effect. When
+HTBT_EN is set, the duty cycle increases (or decreases)
+linearly from DUTY_CYCLE.A to DUTY_CYCLE.B and back, in
+steps of (BLINK_PARAM.Y+1), with an increment (decrement)
+once every (BLINK_PARAM.X+1) PWM cycles.
+
+When HTBT_EN is cleared, the standard blink behavior applies,
+meaning that the output duty cycle alternates between DUTY_CYCLE.A for
+(BLINK_PARAM.X+1) pulses and DUTY_CYCLE.B for
+(BLINK_PARAM.Y+1) pulses.</ipxact:description>
+              <ipxact:bitOffset>30</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>BLINK_EN</ipxact:name>
+              <ipxact:description>Enables blink (or heartbeat).  If cleared, the output duty
+cycle will remain constant at DUTY_CYCLE.A. Enabling this
+bit  causes the PWM duty cycle to alternate between
+DUTY_CYCLE.A and DUTY_CYCLE.B</ipxact:description>
+              <ipxact:bitOffset>31</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DUTY_CYCLE</ipxact:name>
+            <ipxact:dim>4</ipxact:dim>
+            <ipxact:addressOffset>'h24</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>A</ipxact:name>
+              <ipxact:description>The initial duty cycle for PWM output, in units
+of 2^(-16)ths of a pulse cycle. The actual precision is
+however limited to the (DC_RESN+1) most significant bits.
+This setting applies continuously when not blinking
+and determines the initial duty cycle when blinking.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h7fff</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>16</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>B</ipxact:name>
+              <ipxact:description>The target duty cycle for PWM output, in units
+of 2^(-16)ths of a pulse cycle. The actual precision is
+however limited to the (DC_RESN+1) most significant bits.
+This setting only applies when blinking, and determines
+the target duty cycle.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h7fff</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>16</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>BLINK_PARAM</ipxact:name>
+            <ipxact:dim>4</ipxact:dim>
+            <ipxact:addressOffset>'h34</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>X</ipxact:name>
+              <ipxact:description>This blink-rate timing parameter has two different
+interpretations depending on whether or not the heartbeat
+feature is enabled. If heartbeat is disabled, a blinking
+PWM will pulse at duty cycle A for (X+1) pulse cycles before
+switching to duty cycle B. If heartbeat is enabled
+the duty cycle will start at duty cycle A, but
+will be incremented (or decremented) every (X+1) cycles.
+In heartbeat mode is enabled, the size of each step is
+controlled by BLINK_PARAM.Y.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>16</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>Y</ipxact:name>
+              <ipxact:description>This blink-rate timing parameter has two different
+interpretations depending on whether or not the heartbeat
+feature is enabled. If heartbeat is disabled, a blinking
+PWM will pulse at duty cycle B for (Y+1) pulse cycles
+before returning to duty cycle A. If heartbeat is enabled
+the duty cycle will increase (or decrease) by (Y+1) units
+every time it is incremented (or decremented).</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>16</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>pwm_ctrl</ipxact:name>
+          <ipxact:displayName>PWM Control Address Map</ipxact:displayName>
+          <ipxact:description>Per-channel pad-function select for the PWM outputs.</ipxact:description>
+          <ipxact:addressOffset>'h800</ipxact:addressOffset>
+          <ipxact:range>'h4</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>CTRL</ipxact:name>
+            <ipxact:description>Control Register</ipxact:description>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>PAD_EN</ipxact:name>
+              <ipxact:description>PWM Pad Function Select, one bit per channel. When bit i is set, the integration routes channel i's output to its pad. Does not start the channel; PWM_EN starts and stops each channel's waveform.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>smc_base_config</ipxact:name>
@@ -9315,7 +9621,7 @@ Filter entry will match if AxPROT[1] matches the value in this field</ipxact:des
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>data_bus_width</ipxact:name>
-              <ipxact:description>Data bus width in bytes, encoded as 2^value</ipxact:description>
+              <ipxact:description>Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9422,7 +9728,8 @@ matching is still granule-aligned.</ipxact:description>
               <ipxact:name>end_addr</ipxact:name>
               <ipxact:description>End of the allowable address range, rounded up to the top of its granule.
 The granule and the write-back behaviour are described under start_addr.
-Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</ipxact:description>
+Resets to 7, the top of the first 8-byte granule that applies while bursts are
+disabled on a 64-bit bus; the reset does not follow the data width.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9505,7 +9812,7 @@ Filter entry will match if AxPROT[1] matches the value in this field</ipxact:des
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>data_bus_width</ipxact:name>
-              <ipxact:description>Data bus width in bytes, encoded as 2^value</ipxact:description>
+              <ipxact:description>Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9612,7 +9919,8 @@ matching is still granule-aligned.</ipxact:description>
               <ipxact:name>end_addr</ipxact:name>
               <ipxact:description>End of the allowable address range, rounded up to the top of its granule.
 The granule and the write-back behaviour are described under start_addr.
-Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</ipxact:description>
+Resets to 7, the top of the first 8-byte granule that applies while bursts are
+disabled on a 64-bit bus; the reset does not follow the data width.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34194,6 +34502,11 @@ Wait for STATUS to read 0 before writing this register again.</ipxact:descriptio
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>vector</ipxact:name>
+            <ipxact:description>Boot address of core n, one register per core. Core n starts fetching here when
+its reset releases, so a write takes effect at that core's next reset release;
+bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+instead. The register is on the primary reset and keeps its value across a warm
+reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34770,7 +35083,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_0</ipxact:name>
-            <ipxact:description>Word 0 of WFI loop</ipxact:description>
+            <ipxact:description>Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34787,7 +35100,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_1</ipxact:name>
-            <ipxact:description>Word 1 of WFI loop</ipxact:description>
+            <ipxact:description>Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34804,7 +35117,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_2</ipxact:name>
-            <ipxact:description>Word 2 of WFI loop</ipxact:description>
+            <ipxact:description>Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34821,7 +35134,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_3</ipxact:name>
-            <ipxact:description>Word 3 of WFI loop</ipxact:description>
+            <ipxact:description>Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34839,7 +35152,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_null</ipxact:name>
-            <ipxact:description>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</ipxact:description>
+            <ipxact:description>Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -49739,7 +50052,7 @@ Strap assignments in this range:
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>straps</ipxact:name>
-                <ipxact:description>Configuration straps 32 - 60.
+                <ipxact:description>Configuration straps 32 - 62.
 All bits other than those listed below have no strap assigned; no strap
 function consumes them.
 Strap assignments in this range:
@@ -49751,7 +50064,7 @@ Strap assignments in this range:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>29</ipxact:bitWidth>
+                <ipxact:bitWidth>31</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
                 <ipxact:access>read-only</ipxact:access>
               </ipxact:field>

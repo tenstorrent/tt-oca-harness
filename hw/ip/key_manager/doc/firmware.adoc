@@ -1228,7 +1228,9 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   SRAM range `0x8000`–`0xFFFF`, and overwrites each address with a
   pseudo-random word.  Hardware silently discards writes to write-locked
   regions (firmware image and `rom_persist`), so only ROM runtime data
-  (stack, `.data`, `.bss`) is actually overwritten.  No stack pointer or
+  (stack, `.data`, `.bss`) is actually overwritten.  The dropped writes still
+  set `IRQ_STATUS.sram_write_lock_err` and `SRAM_WRITE_LOCK_VIOLATION`, so the
+  routine clears both once the scramble completes.  No stack pointer or
   memory-resident variable is accessed during or after this step.
 
 . *Clear GPRs.*  The entry address is loaded into `x5` first, and every other

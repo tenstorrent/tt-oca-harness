@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C0 controller wire timing on the instance-0 pads as a function of TIMING0-TIMING4."""
+"""I2C0 wire timing on the instance-0 pads as a function of TIMING0-TIMING4.
+
+The controller's phases are graded against THIGH, TLOW, T_R, T_F, THD_DAT, TSU_STA, THD_STA,
+TSU_STO and T_BUF; TSU_DAT, whose effect the controller's bits do not show, is graded with I2C0
+as a target.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +21,7 @@ class smc_i2c_wire_timing_test(smc_base_test):
     required_evidence = (
         "CHK-I2C-WIRE-BUS-FREE-DELTA",
         "CHK-I2C-WIRE-DATA-HOLD-DELTA",
-        "CHK-I2C-WIRE-DATA-SETUP-MEASURED",
+        "CHK-I2C-WIRE-DATA-SETUP-DELTA",
         "CHK-I2C-WIRE-MEASURED-ONLY",
         "CHK-I2C-WIRE-MIN-SET-RUN",
         "CHK-I2C-WIRE-NACK-HOLD-DELTA",
@@ -26,10 +31,11 @@ class smc_i2c_wire_timing_test(smc_base_test):
         "CHK-I2C-WIRE-SCL-PERIOD-DELTA",
         "CHK-I2C-WIRE-STOP-SETUP-DELTA",
         "CHK-I2C-WIRE-TIMING-FIELDS",
+        "CHK-I2C-WIRE-TRTF-DELTA",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 14
+    min_evidence = 15
 
     auto_protocol_vip = False
 

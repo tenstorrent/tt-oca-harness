@@ -4,7 +4,7 @@
 // Aggregate SMC peripherals, eFuse, and pad-facing I/O.
 //
 // Instantiates the peripheral CSR crossbar and its clock-domain crossings, the padring
-// and GPIOs, UART, I2C, I3C, telemetry receivers, AVSBus controller, eFuse wrapper,
+// and GPIOs, UART, I2C, I3C, PWM, telemetry receivers, AVSBus controller, eFuse wrapper,
 // system timer, misc registers and the SMC reset unit. The SPI controller is outside this
 // module: its signals only pass through the padring to the SPI pads. Returns UART/GPIO
 // interrupts, the gated I3C clock, and debug buses.
@@ -418,6 +418,9 @@ module smc_peripherals #(
   smc_pkg::smc_axil_32_32_req_t  axil_system_timer_octs_req;
   smc_pkg::smc_axil_32_32_resp_t axil_system_timer_octs_resp;
 
+  smc_pkg::smc_axil_32_32_req_t  axil_pwm_req;
+  smc_pkg::smc_axil_32_32_resp_t axil_pwm_resp;
+
   smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_smc_clk;
   smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_smc_clk;
   smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_periph_clk;
@@ -573,7 +576,9 @@ module smc_peripherals #(
     .misc_req_o                       (axil_misc_req),
     .misc_resp_i                      (axil_misc_resp),
     .external_req_o                   (axil_external_req),
-    .external_resp_i                  (axil_external_resp)
+    .external_resp_i                  (axil_external_resp),
+    .pwm_req_o                        (axil_pwm_req),
+    .pwm_resp_i                       (axil_pwm_resp)
   );
 
   ///////////////////////////////////
@@ -877,6 +882,11 @@ module smc_peripherals #(
   // Padring //
   /////////////
 
+  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_out;
+  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_out_en;
+  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_pad_en;
+  logic                                     pwm_fatal_alert;
+
   // Protect against truncation from casts
   `OCAH_ASSERT_STATIC(
       PadringGpioBaseFits_A,
@@ -968,6 +978,10 @@ module smc_peripherals #(
 
     // Isolate Request Pin
     .isolate_req_pin_o          (isolate_req_pin),
+
+    // PWM
+    .pwm_i                      (pwm_out),
+    .pwm_pad_en_i               (pwm_pad_en),
 
     // GPIO Data Lines
     .lsio_interface_select_o    (lsio_interface_select_o),
@@ -1190,6 +1204,46 @@ module smc_peripherals #(
 
   assign axil_log_engine_req_o = axil_log_engine_req_smc_clk;
   assign axil_log_engine_resp_smc_clk = axil_log_engine_resp_i;
+
+  /////////
+  // PWM //
+  /////////
+
+  pwm_wrap #(
+    .NUM_OUTPUTS            (smc_config_pkg::NumPwmOutputs),
+    .REG_MAP_BASE_ADDR      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_BASE_ADDR)),
+    .REG_MAP_SIZE           (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_SIZE)),
+    .CTRL_REG_MAP_BASE_ADDR (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_CTRL_BASE_ADDR)),
+    .CTRL_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_CTRL_SIZE)),
+    .PWM_PARAM_REG_OFFSET   (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_PWM_PARAM_BASE_ADDR(0)
+                                 - smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_BASE_ADDR)),
+    .DUTY_CYCLE_REG_OFFSET  (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_DUTY_CYCLE_BASE_ADDR(0)
+                                 - smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_BASE_ADDR)),
+    .BLINK_PARAM_REG_OFFSET (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR(0)
+                                 - smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_BASE_ADDR)),
+    .axil_aw_chan_t         (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t          (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t          (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t         (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t          (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axil_req_t             (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t            (smc_pkg::smc_axil_32_32_resp_t)
+  ) u_pwm_wrap (
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_no),
+    .clk_core_i      (clk_smc_i),
+    .rst_core_ni     (rst_primary_smc_clk_no),
+    .test_en_i       (test_en_i),
+    .csr_axil_req_i  (axil_pwm_req),
+    .csr_axil_resp_o (axil_pwm_resp),
+    .pad_en_o        (pwm_pad_en),
+    .pwm_o           (pwm_out),
+    .pwm_en_o        (pwm_out_en),
+    .fatal_alert_o   (pwm_fatal_alert)
+  );
+
+  logic unused_pwm;
+  assign unused_pwm = ^{pwm_out_en, pwm_fatal_alert};
 
   ////////////////////
   // Telemetry Unit //
@@ -1568,6 +1622,8 @@ module smc_peripherals #(
     .q_o   (rst_ext_wdt_smc_clk)
   );
 
+  localparam int unsigned GpioIrqSplit = 32;
+
   always_comb begin
     peripheral_interrupts_o          = '0;
     peripheral_interrupts_o[7:0]     = sep_mailbox_interrupts_i;
@@ -1579,8 +1635,8 @@ module smc_peripherals #(
     peripheral_interrupts_o[25:23]   = i2c_irqs_smc_clk;
     peripheral_interrupts_o[26]      = rst_ext_wdt_smc_clk; // synchronized active-high WDT reset assertion
     peripheral_interrupts_o[27]      = locked_field_access_interrupt;
-    peripheral_interrupts_o[28]      = |gpio_interrupt[smc_pkg::NumGpioWraps/2-1:0];                    // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
-    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NumGpioWraps-1:smc_pkg::NumGpioWraps/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[28]      = |gpio_interrupt[GpioIrqSplit-1:0];                    // OR-reduced across GPIO wraps 0-31; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NumGpioWraps-1:GpioIrqSplit]; // OR-reduced across GPIO wraps 32 and up; SW reads GPIO status regs to identify source
     peripheral_interrupts_o[30]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
   end
 

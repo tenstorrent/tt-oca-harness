@@ -4,8 +4,9 @@
 
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL), doc/programmer/src/smc-programming.adoc.
 
-Instance 60 is the pad the integrator table reserves. Every access is a whole-word write of
-the software-writable bits; DATA_CTRL is restored to its reset word after each phase.
+Instance 60 is the PWM[1] pad; with PWM CTRL.PAD_EN at its reset 0 the pad is register-controlled
+GPIO. Every access is a whole-word write of the software-writable bits; DATA_CTRL is restored to
+its reset word after each phase.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ _DATA_CTRL = (
 )
 
 _INSTANCE = 60
-_INSTANCE_FUNCTION = "Reserved"
+_INSTANCE_FUNCTION = "PWM[1]"
 _RW_FIELDS = (
     "core2pad",
     "enable_rx_tx",

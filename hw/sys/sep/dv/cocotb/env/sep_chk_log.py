@@ -11,13 +11,19 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   ``CTRL-MISSING <NAME>`` and is recorded as a failure: a check whose control
   did not show the healthy behaviour proves nothing.
 * ``obs(name, **fields)`` logs ``OBS-<NAME> ...``: a DUT value whose golden no
-  specification states yet. ``blocked(check, reason)`` logs
-  ``OBS-BLOCKED CHK-<NAME> reason=<r>``. ``info(name, **fields)`` logs
-  ``INFO-<NAME> ...``: a bench record (set-up value, reference timing, leg
-  marker, bookkeeping), or a re-log of a DUT value that a named ``CHK-``
+  specification states yet.
+* ``blocked(check, reason)`` logs ``INFO-BLOCKED CHK-<NAME> reason=<r>``: a
+  check that the leaf cannot grade.
+* ``info(name, **fields)`` logs
+  ``INFO-<NAME> ...``: a bench record (set-up value, stimulus draw or redraw,
+  reference timing, leg marker, bookkeeping), or a re-log of a DUT value that a named ``CHK-``
   grades, in the same leaf or in another leaf. That INFO line names its
-  ``CHK-``, and its leaf when the check is in another leaf. None of the three
-  grades anything.
+  ``CHK-``, and its leaf when the check is in another leaf. ``INFO-`` also
+  logs a DUT value that no check of the leaf grades and that no open
+  specification question asks for: the specification states its golden but
+  the leaf does not grade it, or an ``OBS-`` line of another leaf holds the
+  open question; the test contract says that the value is not graded.
+  ``obs()``, ``blocked()`` and ``info()`` grade nothing.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the
@@ -178,7 +184,7 @@ class SepChkLog:
 
     def blocked(self, check: str, reason: str) -> None:
         """Log a check that this leaf cannot grade. It earns no credit."""
-        self._log.info(f"OBS-BLOCKED CHK-{_name(check)} reason={_fmt(reason)} seed={self._seed}")
+        self._log.info(f"INFO-BLOCKED CHK-{_name(check)} reason={_fmt(reason)} seed={self._seed}")
 
     # -- verdict -------------------------------------------------------------
 

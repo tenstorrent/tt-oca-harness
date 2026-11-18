@@ -13,8 +13,11 @@ virtual platform, so the two runs' case lines can be compared. The firmware retu
 and this test also requires a PASS line for every selected case other than case 0,
 so a mask that ran fewer cases than it selected cannot pass. Case 0 prints the
 driver's identity status as a diagnostic; a mask must select at least one other case. The firmware prints the case mask it runs;
-that line must equal the mask this test selected, so the firmware's default mask and
-this test's ``_ALL_CASES`` cannot differ unnoticed.
+that line must equal the mask this test selected. Without a mask plusarg the firmware
+runs its built-in mask, so the printed line must equal ``_ALL_CASES``; with one, the
+test reads the built-in mask from the unpatched image and requires ``_ALL_CASES``
+before it patches. In both paths the firmware's built-in mask and this test's
+``_ALL_CASES`` cannot differ unnoticed.
 
 ``+abr_case_mask=<hex>`` selects cases by bit (bit n runs case n) by patching the
 firmware's case-parameter block in the staged DCCM image, so a subset runs from the
@@ -29,7 +32,7 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
-from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_dtcm_param_patch import find_magic, parse_hex_cells, patch_param_block
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -51,6 +54,13 @@ _MAX_RUN_CYCLES = 60_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 500_000
 _PASS_LINE = f"{_FW_NAME}: PASS"
+
+
+def _builtin_case_mask(dtcm_hex: str) -> int:
+    """Return the case mask that the image holds in the word after the param-block magic."""
+    cells = parse_hex_cells(dtcm_hex)
+    base = find_magic(cells, _CASE_PARAM_MAGIC.to_bytes(4, "little"))
+    return int.from_bytes(bytes(cells[base + 4 + i] for i in range(4)), "little")
 
 
 @pyuvm.test()
@@ -75,6 +85,12 @@ class sep_abr_mldsa87_verify_test(sep_base_test):
             assert mask & ~_IDENTITY_CASE != 0 and mask & ~_ALL_CASES == 0, (
                 f"+abr_case_mask=0x{mask:x} selects no graded case or an unknown one"
             )
+            builtin = _builtin_case_mask(_DTCM_HEX)
+            assert builtin == _ALL_CASES, (
+                f"CHK-FW-CONSOLE FAIL: the image's built-in case mask is 0x{builtin:04x}, "
+                f"expected 0x{_ALL_CASES:04x}"
+            )
+            self.logger.info("CHK-FW-CONSOLE PASS: the image's built-in case mask is 0x%x", builtin)
             dtcm_hex = os.path.join(os.getcwd(), f"{_FW_NAME}.masked.dtcm.hex")
             patch_param_block(_DTCM_HEX, dtcm_hex, _CASE_PARAM_MAGIC, [_CASE_PARAM_MAGIC, mask])
             self.logger.info("abr_case_mask=0x%x patched into %s", mask, dtcm_hex)

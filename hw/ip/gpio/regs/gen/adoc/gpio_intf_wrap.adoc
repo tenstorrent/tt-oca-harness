@@ -12,22 +12,22 @@ Wrapper address map instantiating one GPIO interface register block per pad.
 ======
 *Register Arrays:*
 
-* *gpio_intf[65].DATA_CTRL*: 65 registers, base 0x0, stride 0x10
-* *gpio_intf[65].DATA_CTRL_ENABLE*: 65 registers, base 0x4, stride 0x10
-* *gpio_intf[65].ACCESS_FILTER*: 65 registers, base 0x8, stride 0x10
+* *gpio_intf[67].DATA_CTRL*: 67 registers, base 0x0, stride 0x10
+* *gpio_intf[67].DATA_CTRL_ENABLE*: 67 registers, base 0x4, stride 0x10
+* *gpio_intf[67].ACCESS_FILTER*: 67 registers, base 0x8, stride 0x10
 ======
 
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x400 | <<reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-DATA_CTRL,gpio_intf[65].DATA_CTRL>> | RW a| -
-| 0x4 - 0x404 | <<reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-DATA_CTRL_ENABLE,gpio_intf[65].DATA_CTRL_ENABLE>> | RW a| -
-| 0x8 - 0x408 | <<reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-ACCESS_FILTER,gpio_intf[65].ACCESS_FILTER>> | RW a| GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+| 0x0 - 0x420 | <<reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-DATA_CTRL,gpio_intf[67].DATA_CTRL>> | RW a| -
+| 0x4 - 0x424 | <<reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-DATA_CTRL_ENABLE,gpio_intf[67].DATA_CTRL_ENABLE>> | RW a| -
+| 0x8 - 0x428 | <<reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-ACCESS_FILTER,gpio_intf[67].ACCESS_FILTER>> | RW a| GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.
 |===
 
 [#reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-DATA_CTRL]
-=== gpio_intf[65].DATA_CTRL
+=== gpio_intf[67].DATA_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -55,7 +55,7 @@ outranks interface_enable. Use lsio_disable to gate both.
 |===
 
 [#reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-DATA_CTRL_ENABLE]
-=== gpio_intf[65].DATA_CTRL_ENABLE
+=== gpio_intf[67].DATA_CTRL_ENABLE
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -68,7 +68,7 @@ outranks interface_enable. Use lsio_disable to gate both.
 |===
 
 [#reg-{regmap-instance}-gpio_intf_wrap-gpio_intf-ACCESS_FILTER]
-=== gpio_intf[65].ACCESS_FILTER
+=== gpio_intf[67].ACCESS_FILTER
 
 [cols="1,3,1,1,6", options="header"]
 |===

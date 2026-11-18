@@ -63,23 +63,25 @@
 |56 |System Timer Credit Count |PD |
 |57 |Boot Stall |PD |Stall after fuse sensing to override shadow register values. Boot will resume when this GPIO is released. This value can be overridden by the value specified over JTAG using the boot_stall_jtag_ovrd and boot_stall_jtag_val signals from DTP.
 |58 |OCCP Interface |PD |
-|59 |Reserved |PD |
-|60 |Reserved |PD |
-|61 |Cool Reset In |PU |Not packaged out
-|62 |Cool Reset Out |PU |Not packaged out
-|63 |I3C[1] SCL |PU |Not packaged out
-|64 |I3C[1] SDA |PU |Not packaged out
-|65 |PTAP TCK | |No dedicated interface in harness
-|66 |PTAP TRST | |No dedicated interface in harness
-|67 |PTAP TDI | |No dedicated interface in harness
-|68 |PTAP TMS | |No dedicated interface in harness
-|69 |PTAP TDO | |No dedicated interface in harness
-|70 |STAP TCK | |No dedicated interface in harness
-|71 |STAP TRST | |No dedicated interface in harness
-|72 |STAP TDI | |No dedicated interface in harness
-|73 |STAP TMS | |No dedicated interface in harness
-|74 |STAP TDO | |No dedicated interface in harness
-|75 |BP_REFCLK_VDD_SYS | |No dedicated interface in harness
-|76 |BP_RESETN | |No dedicated interface in harness
-|77 |BP_POWERGOOD | |No dedicated interface in harness
+|59 |PWM[0] |PD |
+|60 |PWM[1] |PD |
+|61 |PWM[2] |PD |
+|62 |PWM[3] |PD |
+|63 |Cool Reset In |PU |Not packaged out
+|64 |Cool Reset Out |PU |Not packaged out
+|65 |I3C[1] SCL |PU |Not packaged out
+|66 |I3C[1] SDA |PU |Not packaged out
+|67 |PTAP TCK | |No dedicated interface in harness
+|68 |PTAP TRST | |No dedicated interface in harness
+|69 |PTAP TDI | |No dedicated interface in harness
+|70 |PTAP TMS | |No dedicated interface in harness
+|71 |PTAP TDO | |No dedicated interface in harness
+|72 |STAP TCK | |No dedicated interface in harness
+|73 |STAP TRST | |No dedicated interface in harness
+|74 |STAP TDI | |No dedicated interface in harness
+|75 |STAP TMS | |No dedicated interface in harness
+|76 |STAP TDO | |No dedicated interface in harness
+|77 |BP_REFCLK_VDD_SYS | |No dedicated interface in harness
+|78 |BP_RESETN | |No dedicated interface in harness
+|79 |BP_POWERGOOD | |No dedicated interface in harness
 |===

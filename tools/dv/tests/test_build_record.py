@@ -91,34 +91,52 @@ class BuildRecordDecision(unittest.TestCase):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_requested_rebuild_wins(self):
-        self.assertEqual(_build_record_decision(self.record, "fp-one", True), (True, "requested"))
+        self.assertEqual(
+            _build_record_decision(self.record, "fp-one", self.root, True), (True, "requested")
+        )
 
     def test_no_build_dir_needs_no_forcing(self):
-        self.assertEqual(_build_record_decision(self.record, "fp-one", False), (False, ""))
+        self.assertEqual(
+            _build_record_decision(self.record, "fp-one", self.root, False), (False, "")
+        )
 
     def test_model_without_record_is_rebuilt_once(self):
         self.build.mkdir()
         self.assertEqual(
-            _build_record_decision(self.record, "fp-one", False), (True, "no build record")
+            _build_record_decision(self.record, "fp-one", self.root, False),
+            (True, "no build record"),
         )
-        _write_build_record(self.record, "fp-one", "vcs X", False)
-        self.assertEqual(_build_record_decision(self.record, "fp-one", False), (False, ""))
+        _write_build_record(self.record, "fp-one", self.root, "vcs X", False)
+        self.assertEqual(
+            _build_record_decision(self.record, "fp-one", self.root, False), (False, "")
+        )
         payload = json.loads(self.record.read_text())
         self.assertEqual((payload["fingerprint"], payload["tool_version"]), ("fp-one", "vcs X"))
+        self.assertEqual(payload["root"], str(self.root))
         self.assertIn("written_at", payload)
 
     def test_changed_inputs_force_a_clean_build(self):
         self.build.mkdir()
-        _write_build_record(self.record, "fp-one", "vcs X", False)
+        _write_build_record(self.record, "fp-one", self.root, "vcs X", False)
         self.assertEqual(
-            _build_record_decision(self.record, "fp-two", False), (True, "inputs changed")
+            _build_record_decision(self.record, "fp-two", self.root, False),
+            (True, "inputs changed"),
+        )
+
+    def test_a_model_built_in_another_checkout_is_rebuilt(self):
+        self.build.mkdir()
+        _write_build_record(self.record, "fp-one", self.root / "elsewhere", "vcs X", False)
+        self.assertEqual(
+            _build_record_decision(self.record, "fp-one", self.root, False),
+            (True, "inputs changed"),
         )
 
     def test_corrupt_record_is_treated_as_missing(self):
         self.build.mkdir()
         self.record.write_text("{not json")
         self.assertEqual(
-            _build_record_decision(self.record, "fp-one", False), (True, "no build record")
+            _build_record_decision(self.record, "fp-one", self.root, False),
+            (True, "no build record"),
         )
 
 
@@ -143,6 +161,8 @@ class ReadBuildRecord(unittest.TestCase):
         self.assertIsNone(_read_build_record(self.model))
 
     def test_a_written_record_reads_back(self):
-        _write_build_record(self.model / BUILD_RECORD_NAME, "fp-one", "vcs X", False)
+        _write_build_record(
+            self.model / BUILD_RECORD_NAME, "fp-one", self.model.parent, "vcs X", False
+        )
         record = _read_build_record(self.model)
         self.assertEqual((record["fingerprint"], record["tool_version"]), ("fp-one", "vcs X"))

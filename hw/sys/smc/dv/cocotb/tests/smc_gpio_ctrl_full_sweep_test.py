@@ -25,11 +25,11 @@ class smc_gpio_ctrl_full_sweep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
-            # Directed stimulus floor: 65 GPIO_CTRL window reads (one per
+            # Directed stimulus floor: 67 GPIO_CTRL window reads (one per
             # bootrom EXTERNAL_MANDATORY GPIO_CTRL instance); a floor taken from
             # `seq.accesses` would shrink with a sequence that stopped issuing
             # them.
-            min_csr_accesses=65,
+            min_csr_accesses=67,
             csr_accesses=seq.accesses,
             proxy=True,
             details=("U5 GPIO_CTRL RW-stub WR->RD sweep (CSR storage, not pad protocol)"),

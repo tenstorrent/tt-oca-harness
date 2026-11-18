@@ -45,7 +45,8 @@ import random
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, SimTimeoutError, with_timeout
+from cocotb.triggers import ClockCycles, RisingEdge, SimTimeoutError, with_timeout
+from cocotb.utils import get_sim_time
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
@@ -256,56 +257,18 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         await ClockCycles(dut.clk_smc_i, 5)
         await wait_fuse_sense_done()
 
-        for idx in self.image_order:
-            raw, sigint, label = LC_MATRIX[idx]
-            await self._set_lc_state(raw, sigint, label)
-            before = len(self.errors)
-            observed: list[str] = []
-            non_id_name, non_id_addr = self.non_id[idx]
-            for op in self.op_order[idx]:
-                if op == "READ_NON_ID":
-                    # The pinned LOCKS probe and the drawn register are both read, so the
-                    # non-identity class is graded on the cell every seed shares and on the
-                    # drawn one.
-                    for cls, addr in (("NON_ID", EFUSE_MAP_NON_ID), (non_id_name, non_id_addr)):
-                        if addr == EFUSE_MAP_NON_ID and cls != "NON_ID":
-                            continue
-                        code = await self._check_read(
-                            label, cls, addr, expect_read_blocked(raw, sigint, addr)
-                        )
-                        observed.append(f"{cls}:resp={code}")
-                elif op == "READ_IDENTITY":
-                    cls, addr = READ_CLASSES[1]
-                    code = await self._check_read(
-                        label, cls, addr, expect_read_blocked(raw, sigint, addr)
-                    )
-                    observed.append(f"{cls}:resp={code}")
-                else:
-                    code = await self._check_write(
-                        label, EFUSE_MAP_NON_ID, expect_write_blocked(raw, sigint)
-                    )
-                    observed.append(f"WRITE:resp={code}")
-            if len(self.errors) == before:
-                token = f"CHK-EFUSE-JTAG-LC-{label}"
-                cocotb.log.info(
-                    "%s: lc_state_i=0x%02x (raw=0x%x sigint=%s) -- all SPEC-derived "
-                    "block/allow expectations held (%s); drawn=seed %d image position %d "
-                    "operation order %s non-identity register %s@0x%08x",
-                    token,
-                    pack_lc_state(raw, sigint=sigint),
-                    raw,
-                    sigint,
-                    " ".join(observed),
-                    self.seed,
-                    self.image_order.index(idx),
-                    ">".join(self.op_order[idx]),
-                    non_id_name,
-                    non_id_addr,
-                )
-                self.chk_seen.add(token)
-
-        # Restore a benign lifecycle state.
-        await self._set_lc_state(LC_TEST_DEV, False, "RESTORE")
+        # smc_efuse_jtag_lc_cg samples every JTAG eFuse completion of the six
+        # images and of the restore.
+        dut.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            await self._walk_images()
+        finally:
+            # A compare that fails inside an image leaves it with the exception;
+            # the gate is written after the next clock edge.
+            await RisingEdge(dut.clk_smc_i)
+            dut.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
 
         assert not self.errors, "eFuse JTAG LC access-control matrix mismatch:\n" + "\n".join(
             self.errors
@@ -357,6 +320,59 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 "same address. No data claim is made on the allowed reads"
             ),
         )
+
+    async def _walk_images(self) -> None:
+        """The six images in the drawn order, each with its three operations, then the restore."""
+        for idx in self.image_order:
+            raw, sigint, label = LC_MATRIX[idx]
+            await self._set_lc_state(raw, sigint, label)
+            before = len(self.errors)
+            observed: list[str] = []
+            non_id_name, non_id_addr = self.non_id[idx]
+            for op in self.op_order[idx]:
+                if op == "READ_NON_ID":
+                    # The pinned LOCKS probe and the drawn register are both read, so the
+                    # non-identity class is graded on the cell every seed shares and on the
+                    # drawn one.
+                    for cls, addr in (("NON_ID", EFUSE_MAP_NON_ID), (non_id_name, non_id_addr)):
+                        if addr == EFUSE_MAP_NON_ID and cls != "NON_ID":
+                            continue
+                        code = await self._check_read(
+                            label, cls, addr, expect_read_blocked(raw, sigint, addr)
+                        )
+                        observed.append(f"{cls}:resp={code}")
+                elif op == "READ_IDENTITY":
+                    cls, addr = READ_CLASSES[1]
+                    code = await self._check_read(
+                        label, cls, addr, expect_read_blocked(raw, sigint, addr)
+                    )
+                    observed.append(f"{cls}:resp={code}")
+                else:
+                    code = await self._check_write(
+                        label, EFUSE_MAP_NON_ID, expect_write_blocked(raw, sigint)
+                    )
+                    observed.append(f"WRITE:resp={code}")
+            if len(self.errors) == before:
+                token = f"CHK-EFUSE-JTAG-LC-{label}"
+                cocotb.log.info(
+                    "%s: lc_state_i=0x%02x (raw=0x%x sigint=%s) -- all SPEC-derived "
+                    "block/allow expectations held (%s); drawn=seed %d image position %d "
+                    "operation order %s non-identity register %s@0x%08x",
+                    token,
+                    pack_lc_state(raw, sigint=sigint),
+                    raw,
+                    sigint,
+                    " ".join(observed),
+                    self.seed,
+                    self.image_order.index(idx),
+                    ">".join(self.op_order[idx]),
+                    non_id_name,
+                    non_id_addr,
+                )
+                self.chk_seen.add(token)
+
+        # Restore a benign lifecycle state.
+        await self._set_lc_state(LC_TEST_DEV, False, "RESTORE")
 
     # --- lifecycle drive + optional white-box decode cross-check -------------
 

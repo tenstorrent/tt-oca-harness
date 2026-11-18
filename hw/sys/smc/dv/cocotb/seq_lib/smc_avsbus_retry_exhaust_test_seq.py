@@ -39,7 +39,7 @@ and Diagnostics" makes SlaveAck 1 and 2 retry codes, counted in
 * budgets of 8 and 10 against SlaveAck 1 on every attempt, and 8 against
   SlaveAck 2, must send exactly ``MAX_RETRIES`` + 1 identical master subframes,
   raise ``TOTAL_RETRIES`` by the budget and set the interrupt; the
-  ``AVS_READBACK`` content after exhaustion is logged only (SF-032),
+  ``AVS_READBACK`` content after exhaustion is logged only,
 * success on retry 1 and retry 7 costs exactly that many retries, raises no
   interrupt and delivers the SlaveAck 0 reply,
 * with two commands back to back and the first retried twice, the reply to the
@@ -699,7 +699,7 @@ class smc_avsbus_retry_exhaust_test_seq(SmcCsrSeq):
                 f"AVS_INTERRUPT=0x{got['intr']:08x}"
             )
             cocotb.log.info(
-                "CHK-AVS-RETRY8-ACK1: AVS_READBACK_M%d=%s (SF-032, measured, not compared; "
+                "CHK-AVS-RETRY8-ACK1: AVS_READBACK_M%d=%s (measured, not compared; "
                 "unused replies left queued=%d)",
                 budget,
                 ",".join(f"0x{w:08x}" for w in got["readback"]) or "empty",

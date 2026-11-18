@@ -35,6 +35,21 @@ Isolation proof (both directions, then the remaining isolated bits):
                     from that reset (proves the pulse landed in that engine's
                     domain). DATA_OUT after the pulse is logged only.
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
+  * CHK-AES-RESET-MIDMSG  an AES SW_RESET_N pulse after k of N1 blocks of a
+                    CBC-ENC-256 message, with block k + 1 written to DATA_IN;
+                    after STATUS.IDLE, a new CTRL_SHADOWED, key and IV, the
+                    whole new CBC message of M blocks equals its NIST SP
+                    800-38A golden (upstream aes/doc/programmers_guide.md,
+                    Clear upon Reset and Initialization;
+                    ``hw/sys/sep/doc/reset_controller.adoc:98``). Controls:
+                    CTRL-AES-MIDMSG-PREFIX, the k blocks before the reset equal
+                    the CBC golden prefix; CTRL-AES-MIDMSG-DISTINCT, the new
+                    golden differs from CBC under the old key, the old IV or
+                    the chaining value after block k or k + 1;
+                    CTRL-AES-MIDMSG-TAKEN, STATUS shows the engine took block
+                    k + 1 (IDLE=0 or OUTPUT_VALID=1, from OUTPUT_VALID=0)
+                    before the pulse. STATUS before the pulse is logged
+                    (INFO-AES-MIDMSG-POINT).
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim): AES DATA_OUT
                     survives the HMAC pulse. HMAC DIGEST has no stated reset
                     value, so its value after the pulse is logged only.
@@ -195,6 +210,12 @@ lifecycle) and +esrc_noise_force (deterministic ESRC ring-osc noise so the entro
 stack is alive under sim -- required by bring_up_entropy, same as the km/crypto
 entropy tests).
 
+Randomization (``SepSeededRng`` from the run seed, drawn before the step that
+uses it, with no simulator access): N1 in 2..5, k in 1..N1 - 1, the two keys,
+the two IVs, the N1 plaintext blocks of message 1 and the M (2..4) plaintext
+blocks of message 2 of CHK-AES-RESET-MIDMSG. Message 2 is drawn again until
+CTRL-AES-MIDMSG-DISTINCT holds. Every other vector of the leaf is fixed.
+
 Scope: the held state is a completed golden result resident in the
 engine's output registers (re-readable across the sibling's reset), not a paused
 mid-round micro-state. A cycle-accurate mid-round freeze and an all-pairs matrix
@@ -206,15 +227,18 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+from dataclasses import dataclass
 
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge, with_timeout
 from cocotb.utils import get_sim_time
-from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_aes_golden import aes256_ecb_encrypt_words, aes_encrypt_words
+from env.sep_chk_log import word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_iprst_edn_pass
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_reset_taps import ISO_BENCH
+from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, register_fields, sym, word_reset
@@ -222,7 +246,12 @@ from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
     AES_DATA_OUT_0,
+    AES_KEYLEN_CTRL,
+    AES_MODE_CTRL,
     AES_OP_ENC,
+    AES_STATUS,
+    AES_STATUS_IDLE,
+    AES_STATUS_OUTPUT_VALID,
     AES_TRIGGER,
     AES_TRIGGER_PRNG_RESEED,
     SepAes,
@@ -415,6 +444,69 @@ def _info_name(tag: str) -> str:
     return "INFO-" + tag.removeprefix("CHK-")
 
 
+@dataclass(frozen=True)
+class MidMsgPlan:
+    """Draws of the AES mid-message reset step: message 1 is cut after ``k`` of ``n1``
+    blocks; message 2 runs whole after the reset."""
+
+    n1: int
+    k: int
+    key1: tuple[int, ...]
+    iv1: tuple[int, ...]
+    pt1: tuple[int, ...]
+    key2: tuple[int, ...]
+    iv2: tuple[int, ...]
+    pt2: tuple[int, ...]
+
+    def golden1(self) -> list[int]:
+        return aes_encrypt_words("cbc", list(self.key1), list(self.pt1), list(self.iv1))
+
+    def golden2(self) -> list[int]:
+        return aes_encrypt_words("cbc", list(self.key2), list(self.pt2), list(self.iv2))
+
+    def stale_goldens(self) -> dict[str, list[int]]:
+        """CBC of ``pt2`` under a key or chaining value left from message 1."""
+        c1 = self.golden1()
+        k1, k2, iv1, iv2 = (list(v) for v in (self.key1, self.key2, self.iv1, self.iv2))
+        pt2 = list(self.pt2)
+        return {
+            "key1_iv2": aes_encrypt_words("cbc", k1, pt2, iv2),
+            "key2_iv1": aes_encrypt_words("cbc", k2, pt2, iv1),
+            "key1_iv1": aes_encrypt_words("cbc", k1, pt2, iv1),
+            "key2_ck": aes_encrypt_words("cbc", k2, pt2, c1[4 * self.k - 4 : 4 * self.k]),
+            "key2_ck1": aes_encrypt_words("cbc", k2, pt2, c1[4 * self.k : 4 * self.k + 4]),
+            "key1_ck": aes_encrypt_words("cbc", k1, pt2, c1[4 * self.k - 4 : 4 * self.k]),
+            "key1_ck1": aes_encrypt_words("cbc", k1, pt2, c1[4 * self.k : 4 * self.k + 4]),
+        }
+
+    def distinct(self) -> bool:
+        """Message 2 differs from message 1 in key and IV, and its golden differs
+        from every CBC result that a key or chaining value of message 1 gives."""
+        g2 = self.golden2()
+        return (
+            self.key2 != self.key1
+            and self.iv2 != self.iv1
+            and all(g != g2 for g in self.stale_goldens().values())
+        )
+
+
+def draw_midmsg_plan(seed: int) -> MidMsgPlan:
+    """Every draw of the mid-message reset step, in a fixed order, with no simulator access."""
+    rng = SepSeededRng(seed)
+
+    def words(n: int) -> tuple[int, ...]:
+        return tuple(rng.getrandbits(32) for _ in range(n))
+
+    n1 = rng.randrange(2, 6)
+    k = rng.randrange(1, n1)
+    key1, iv1, pt1 = words(8), words(4), words(4 * n1)
+    m = rng.randrange(2, 5)
+    while True:
+        plan = MidMsgPlan(n1, k, key1, iv1, pt1, words(8), words(4), words(4 * m))
+        if plan.distinct():
+            return plan
+
+
 def sha256_digest_words(msg_words: list[int]) -> list[int]:
     """hashlib golden: msg words pushed little-endian per word (msg_be=0); DIGEST
     word i == big-endian word i of the standard SHA-256 (digest_swap=0)."""
@@ -537,6 +629,100 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
         await self.aes.check_status_clean("ecb-enc")
         return ct
+
+    async def _aes_reset_midmsg(self) -> None:
+        """CHK-AES-RESET-MIDMSG: an AES SW_RESET_N pulse in the middle of a CBC message,
+        then a whole new CBC message under a new key and IV equals its golden.
+
+        Message 1 (CBC-ENC-256) runs ``k`` blocks, each equal to the SP 800-38A CBC
+        golden prefix (CTRL-AES-MIDMSG-PREFIX, so the reset cuts a live chain); block
+        ``k + 1`` is written to DATA_IN and the reset is pulsed at once.
+        CTRL-AES-MIDMSG-TAKEN: STATUS.OUTPUT_VALID reads 0 before that write, and after
+        it STATUS reads IDLE=0 (busy) or OUTPUT_VALID=1, so the engine took block
+        ``k + 1`` before the pulse (aes.hjson:807, automatic mode starts on new input
+        data; :943, IDLE is 0 while an encryption runs; :977, OUTPUT_VALID). STATUS
+        just before the pulse is also logged (INFO-AES-MIDMSG-POINT). After the pulse the leaf waits for STATUS.IDLE
+        (upstream aes/doc/programmers_guide.md, Clear upon Reset: the unit then idles and
+        is ready for initialization), reprograms CTRL_SHADOWED, key and IV, and runs
+        message 2. CTRL-AES-MIDMSG-DISTINCT: the message 2 golden differs from the CBC
+        result under message 1's key, IV or chaining value, so a key or IV write after
+        the reset that does not take effect fails the check. The new key and IV
+        overwrite whatever the reset left, so the check does not see whether the reset
+        itself clears them.
+        """
+        seed = self.random_seed()
+        mp = draw_midmsg_plan(seed)
+        g1 = mp.golden1()
+        g2 = mp.golden2()
+        desc = (
+            f"seed={seed} n1={mp.n1} k={mp.k} m={len(mp.pt2) // 4} "
+            f"key1_sha={word_digest(list(mp.key1))} key2_sha={word_digest(list(mp.key2))} "
+            f"iv1={[hex(w) for w in mp.iv1]} iv2={[hex(w) for w in mp.iv2]}"
+        )
+        if not mp.distinct():
+            raise AssertionError(f"CTRL-MISSING CTRL-AES-MIDMSG-DISTINCT: {desc}")
+        self.logger.info(
+            "CTRL-AES-MIDMSG-DISTINCT seen: %s stale_goldens=%s",
+            desc,
+            ",".join(sorted(mp.stale_goldens())),
+        )
+        ctrl = {
+            "mode": AES_MODE_CTRL["cbc"],
+            "key_len": AES_KEYLEN_CTRL[256],
+            "operation": AES_OP_ENC,
+        }
+
+        await self.aes.configure(**ctrl)
+        await self.aes.load_key_iv(list(mp.key1), list(mp.iv1))
+        prefix: list[int] = []
+        for i in range(mp.k):
+            prefix += await self.aes.run_ecb_block(list(mp.pt1[4 * i : 4 * i + 4]))
+        if prefix != g1[: 4 * mp.k]:
+            raise AssertionError(
+                f"CTRL-MISSING CTRL-AES-MIDMSG-PREFIX: {desc} got={[hex(w) for w in prefix]} "
+                f"exp={[hex(w) for w in g1[: 4 * mp.k]]}"
+            )
+        self.logger.info(
+            "CTRL-AES-MIDMSG-PREFIX seen: %s blocks=%d equal the CBC golden prefix", desc, mp.k
+        )
+        await self.aes.wait_idle("pre-midmsg-block")
+        pre = await self.aes._rd(AES_STATUS)
+        await self.aes.start_block_no_wait(list(mp.pt1[4 * mp.k : 4 * mp.k + 4]))
+        st = await self.aes._rd(AES_STATUS)
+        self.logger.info("INFO-AES-MIDMSG-POINT %s block=%d status=0x%08x", desc, mp.k + 1, st)
+        idle = 1 << AES_STATUS_IDLE
+        valid = 1 << AES_STATUS_OUTPUT_VALID
+        taken = (pre & valid) == 0 and ((st & idle) == 0 or (st & valid) != 0)
+        if not taken:
+            raise AssertionError(
+                f"CTRL-MISSING CTRL-AES-MIDMSG-TAKEN: {desc} block={mp.k + 1} "
+                f"status_before=0x{pre:08x} status_after=0x{st:08x}: expected OUTPUT_VALID=0 "
+                "before the DATA_IN write and IDLE=0 or OUTPUT_VALID=1 after it"
+            )
+        self.logger.info(
+            "CTRL-AES-MIDMSG-TAKEN seen: %s block=%d status_before=0x%08x status_after=0x%08x "
+            "(engine busy or output valid before the reset pulse)",
+            desc,
+            mp.k + 1,
+            pre,
+            st,
+        )
+        await self._pulse_reset(ENG_AES.rst_bit)
+        await self.aes.wait_idle("idle-after-midmsg-reset")
+
+        await self.aes.configure(**ctrl)
+        await self.aes.load_key_iv(list(mp.key2), list(mp.iv2))
+        got = await self.aes.run_blocks(list(mp.pt2))
+        bad = [i // 4 for i in range(0, len(g2), 4) if got[i : i + 4] != g2[i : i + 4]]
+        self._grade(
+            got == g2,
+            "CHK-AES-RESET-MIDMSG",
+            f"{desc} status_at_reset=0x{st:08x}: message 2 after the reset differs from "
+            f"its CBC golden in blocks {bad}: got={[hex(w) for w in got]} "
+            f"exp={[hex(w) for w in g2]}",
+            f"{desc} status_at_reset=0x{st:08x}: all {len(g2) // 4} blocks of message 2 "
+            f"after the mid-message reset equal the CBC golden (last=0x{g2[-1]:08x})",
+        )
 
     async def _run_kmac(self) -> list[int]:
         """SHA3-256, leave STATE in squeeze so a re-read is a held result."""
@@ -2508,6 +2694,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"before={[hex(w) for w in h_digest]} after={[hex(w) for w in hmac_survived]}",
             f"HMAC DIGEST bit-exact intact across the AES reset ([0]=0x{h_digest[0]:08x})",
         )
+        await self._aes_reset_midmsg()
 
         # ---- Case B (reverse): pulse HMAC (victim); AES (neighbor) must survive --
         # Re-establish the AES held result (cleared by its Case-A reset); HMAC still

@@ -34,28 +34,28 @@ typedef struct __attribute__ ((__packed__)) {
 } scratch_t;
 
 // reg - chip_config::VERSION_LO
-// SMC version, lower 32 bits
+// SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bm 0xffffffff
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bp 0
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bw 32
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_reset 0x100a0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // SMC version, lower 32 bits
+        // SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
         uint32_t version_lo :32;
     } f;
     uint32_t w;
 } chip_config__VERSION_LO_t;
 
 // reg - chip_config::VERSION_HI
-// SMC version, upper 32 bits
+// SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bm 0xffffffff
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bp 0
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bw 32
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // SMC version, upper 32 bits
+        // SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
         uint32_t version_hi :32;
     } f;
     uint32_t w;

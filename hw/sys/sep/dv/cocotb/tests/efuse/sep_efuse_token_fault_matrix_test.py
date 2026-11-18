@@ -33,16 +33,20 @@ after the release the same token replaces the digest with the value it gave
 without the freeze. The comparison is relative, because the specification states
 no latch layout. No result code is graded under the freeze.
 
-Source exclusivity (each fault cell): at every rise of vector bit 39 (PIC source
-40) after the inject, every other bit of ``sep_internal_interrupts`` keeps its
-value of one clock before (``hw/sys/sep/doc/interrupts.adoc:22-23`` bit ``i`` is
-PIC source ``i + 1``; ``:33-34`` slots 1-43 are individually assigned; ``:219-224``
-source 40 is the OR of the three sticky ``TOKEN_MATCH_FAULT`` bits). The six bits
-with an unstated idle level are not compared (``env/sep_bit_watch.pic_vector_watch``).
-The token fault raises no other source, so no bit is exempt for the same clock. A
-cell with no rise of bit 39 fails.
+Source 40 rise (each fault cell): vector bit 39 (PIC source 40) rises exactly
+once after the inject (CHK-SRC40-RISE; ``hw/sys/sep/doc/interrupts.adoc:22-23``
+bit ``i`` is PIC source ``i + 1``; ``:219-223`` source 40 is the OR of the three
+sticky ``TOKEN_MATCH_FAULT`` bits and stays asserted;
+``hw/sys/sep/doc/token_processing.adoc:138-141`` the fault flags remain set until
+reset). The level before the inject is 0 (graded by CHK-FAULT-CELL) and no reset
+lies in the window, so a second rise needs a fall the specification forbids. A
+cell with no rise of bit 39 fails. The other bits of ``sep_internal_interrupts``
+that moved in the clock of the rise are logged (OBS-SRC40-COINCIDENT), with no
+bit exempt for the same clock and the six bits with an unstated idle level left
+out (``env/sep_bit_watch.pic_vector_watch``); no document states that no other
+source moves.
 
-Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-EXCL, CHK-FAULT-STICKY,
+Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
 CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-FAULT-RESET-WORDS, CHK-LATCH-FREEZE.
 CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
 cell and prints their digest beside the digest of the expected token (the words
@@ -55,7 +59,7 @@ common-mode cell logs the N/A line of the three fault-only checkers. A failing h
 
 FCOV: the graded window is open only over a graded step, from right before its DUT
 step to its last check: the inject of a fault or common-mode cell to CHK-FAULT-CELL
-and CHK-SRC40-EXCL; the retry to CHK-FAULT-STICKY; the write of ones to
+and CHK-SRC40-RISE; the retry to CHK-FAULT-STICKY; the write of ones to
 CHK-FAULT-NO-W1C; the cold reset to CHK-FAULT-RESET; the test-enable inject of a
 freeze cell to CHK-LATCH-FREEZE. Held phases, the SEC_DIS control, inject release,
 the Match clean-up and the token array read of CHK-FAULT-RESET-WORDS run with the
@@ -64,9 +68,11 @@ legal sample of ``sep_token_fault_cg`` and the error sample of
 ``sep_token_channel_cg.cp_code`` is held with the tag of its step
 (``set_ef_hold_tag``) and samples only when the leaf writes that tag to the pass
 label (``set_ef_hold_pass``) after every check of the step passed. An illegal value
-samples at the event. ``sep_sec_dis_activation_cg.x_verdict_out`` (error) and
-``sep_pic_source_map_cg.cp_src_exclusive_other`` (s40) sample at the event: each
-compare is the compare of its check. The first FAIL closes the window and keeps it
+samples at the event. ``sep_sec_dis_activation_cg.x_verdict_out`` (error) samples
+at the event: its compare is the compare of its check.
+``sep_pic_source_map_cg.cp_src_exclusive_other`` (s40) also samples at the event;
+its exclusivity compare is the sampler's own, since CHK-SRC40-RISE grades the rise
+and OBS-SRC40-COINCIDENT only logs the other bits. The first FAIL closes the window and keeps it
 closed for the rest of the leaf.
 """
 
@@ -76,7 +82,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_bit_watch import SepVecWatch, VecMark, VecWatchNoRiseError, pic_vector_watch
+from env.sep_bit_watch import SepVecWatch, VecMark, pic_vector_watch
 from env.sep_chk_log import SepChkLog, diff_words, word_digest
 from env.sep_efuse_plan import (
     CH_CHIPLET,
@@ -235,7 +241,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     required_evidence = (
         "CHK-BIND",
         "CHK-FAULT-CELL",
-        "CHK-SRC40-EXCL",
+        "CHK-SRC40-RISE",
         "CHK-FAULT-STICKY",
         "CHK-FAULT-NO-W1C",
         "CHK-FAULT-RESET",
@@ -282,33 +288,38 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     def _check_src40(
         self, vec: SepVecWatch, mark: VecMark, ch: str, kind: str, copy: int | None
     ) -> bool:
-        """CHK-SRC40-EXCL: at each rise of bit 39 after ``mark`` every other bit keeps its value.
+        """CHK-SRC40-RISE: bit 39 rises exactly once after ``mark``; OBS-SRC40-COINCIDENT.
 
-        The compared bits are the whole vector except bit 39 and the six bits with
-        an unstated idle level; no bit is exempt for the same clock. A cell with no
-        rise of bit 39 fails.
+        The OBS line logs the other bits that moved in the clock of each rise: the
+        whole vector except bit 39 and the six bits with an unstated idle level, no
+        bit exempt for the same clock. It grades nothing. A cell with no rise of
+        bit 39 fails CHK-SRC40-RISE.
         """
-        try:
-            rises = vec.rises_since(mark, "s40")
+        rises = vec.rises_since(mark, "s40")
+        cell = {"ch": _CH_NAME[ch], "kind": kind, "copy": "na" if copy is None else copy}
+        # smears_since raises when bit 39 did not rise; that case reaches the
+        # FAIL line of CHK-SRC40-RISE with rises=0.
+        if rises:
             smears = vec.smears_since(mark, "s40")
-        except VecWatchNoRiseError:
-            rises, smears = [], []
-        first = rises[0] if rises else None
-        moved = 0
-        for _clk, m in smears:
-            moved |= m
+            moved = 0
+            for _clk, m in smears:
+                moved |= m
+            self.chk.obs(
+                "SRC40-COINCIDENT",
+                **cell,
+                rises=len(rises),
+                coincident=len(smears),
+                moved=f"0x{moved:011x}",
+                smear_clk=",".join(str(c) for c, _m in smears) or "none",
+                before=f"0x{rises[0].before:011x}",
+                after=f"0x{rises[0].after:011x}",
+            )
         return self._grade(
-            "SRC40-EXCL",
-            bool(rises) and not smears,
-            ch=_CH_NAME[ch],
-            kind=kind,
-            copy="na" if copy is None else copy,
+            "SRC40-RISE",
+            len(rises) == 1,
+            **cell,
             rises=len(rises),
             rise_clk=",".join(str(r.clk) for r in rises) or "none",
-            moved=f"0x{moved:011x}",
-            smear_clk=",".join(str(c) for c, _m in smears) or "none",
-            before="none" if first is None else f"0x{first.before:011x}",
-            after="none" if first is None else f"0x{first.after:011x}",
         )
 
     # ------------------------------------------------------------------ bus

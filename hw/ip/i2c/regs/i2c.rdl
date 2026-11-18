@@ -1218,7 +1218,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that this controller has halted due to a Bus Timeout. See
@@ -1228,7 +1228,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that the controller has halted due to it losing an arbitration
@@ -1242,7 +1242,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that the target is stretching the clock due to receiving a READ
@@ -1254,7 +1254,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that this target has halted due a Bus Timeout terminating a READ
@@ -1264,7 +1264,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that a controller has lost arbitration, causing a READ

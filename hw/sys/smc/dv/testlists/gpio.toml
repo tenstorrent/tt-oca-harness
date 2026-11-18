@@ -247,7 +247,7 @@ timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
-# INPUT_BY_DEFAULT per instance on the pad vectors, forced on all 65 under a
+# INPUT_BY_DEFAULT per instance on the pad vectors, forced on all 67 under a
 # cold reset.
 [[tests]]
 name = "smc_gpio_default_direction_test"

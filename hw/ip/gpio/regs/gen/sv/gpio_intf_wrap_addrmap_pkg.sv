@@ -6,28 +6,28 @@
 package gpio_intf_wrap_addrmap_pkg;
 
 localparam longint unsigned GPIO_INTF_WRAP_BASE_ADDR = 64'h0;
-localparam longint unsigned GPIO_INTF_WRAP_SIZE = 64'h410;
+localparam longint unsigned GPIO_INTF_WRAP_SIZE = 64'h430;
 
 function automatic longint unsigned GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'h0 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_NUM = 64'h41;
+localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_NUM = 64'h43;
 localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_SIZE = 64'hC;
 localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_STRIDE = 64'h10;
-localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE = 64'h410;
+localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE = 64'h430;
 
 function automatic longint unsigned GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'h0 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
+localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM = 64'h43;
 function automatic longint unsigned GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'h4 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
+localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h43;
 function automatic longint unsigned GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'h8 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
+localparam longint unsigned GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h43;
 
 
 endpackage

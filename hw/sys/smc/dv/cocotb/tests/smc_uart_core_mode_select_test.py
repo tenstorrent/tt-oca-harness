@@ -3,9 +3,11 @@
 """The UART mode selectors no leaf drives: FIFOs off, DMA mode 1, line loopback.
 
 On all four wrappers: turn the FIFOs off with a character unread and send two
-more through the receiver buffer register, then select DMA mode 1 with the
+more through the receiver buffer register, then two back to back so the second
+overwrites the unread first without an overrun; select DMA mode 1 with the
 receive trigger at four characters and check the reception timeout below the
-trigger and the round trip with it reached. On wrapper 0, whose receive pad the
+trigger and the round trip with it reached; then time the reception timeout
+on the raw interrupt line with IER clear. On wrapper 0, whose receive pad the
 testbench drives: set MCR.LINE_LOOPBACK, check the four MSR level bits read 0
 and that nothing is received, and burst more characters than the transmit FIFO
 holds so it fills and drains.
@@ -23,20 +25,24 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses. Every leg polls, so the real
 # count is higher and depends on the baud rate.
 #
-# 4 wrappers, at least 55 SEP_IN AXI accesses each:
+# 4 wrappers, at least 76 SEP_IN AXI accesses each:
 #   UART setup and restore                                              10 + 8
 #   receiver-buffer leg: the parked character and its poll, FCR off, IIR,
 #     LSR, then per character a THR write, a poll and an RBR read, the
-#     drained LSR read, FCR on, IIR and its LSR read              5 + 3 x 2 + 4
+#     drained LSR read, the overwrite pair with its drain poll, two LSR
+#     reads and an RBR read, FCR on, IIR and its LSR read    5 + 3 x 2 + 1 + 6 + 3
 #   DMA-mode leg: FCR, IER, the timed-out character with its poll, its IIR
 #     poll, its RBR read and the drained IIR, then four characters with a
 #     drain poll each, one IIR poll, four RBR reads, IER and FCR
 #                                                        7 + 2 x 4 + 1 + 4 + 2
+#   timed timeout leg: four divisor and format writes, FCR, IER, IIR, LSR,
+#     the character and its poll, IER, IIR, RBR, IIR                   8 + 2 + 4
 #
-# plus 77 on wrapper 0 for the line-loopback leg: the divisor change, MCR, FCR,
-# two MSR reads, the quiet character and its drain poll, the 64-character burst
-# and the two LSR reads around it, and the MCR restore.
-UART_CORE_MODE_SELECT_MIN_CSR_ACCESSES = 4 * 55 + 77
+# plus 80 on wrapper 0 for the line-loopback leg: the divisor change, the two
+# MCR writes with the two MSR reads of the loopback control, FCR, two MSR
+# reads, the quiet character and its drain poll, the 64-character burst and
+# the two LSR reads around it, and the MCR restore.
+UART_CORE_MODE_SELECT_MIN_CSR_ACCESSES = 4 * 76 + 80
 
 
 @pyuvm.test()
@@ -46,10 +52,13 @@ class smc_uart_core_mode_select_test(smc_base_test):
     required_evidence = (
         "CHK-UART-DMA-MODE-1",
         "CHK-UART-LINE-LOOPBACK",
+        "CHK-UART-RBR-OVERWRITE-NO-OE",
         "CHK-UART-RBR-PATH",
         "CHK-UART-RX-TIMEOUT",
+        "CHK-UART-RX-TIMEOUT-4CHAR",
+        "CHK-UART-RX-TIMEOUT-IER-INDEPENDENT",
     )
-    min_evidence = 4
+    min_evidence = 7
 
     auto_protocol_vip = False
 
@@ -65,6 +74,9 @@ class smc_uart_core_mode_select_test(smc_base_test):
             details=(
                 f"{seq.uarts} UARTs, {seq.rbr_bytes} bytes through RBR, "
                 f"{seq.dma_bytes} bytes in DMA mode 1, {seq.timeout_legs} timeout legs, "
+                f"{seq.overwrite_legs} RBR overwrite legs, {seq.timed_legs} timed timeout legs "
+                f"({', '.join(f'w{w}={c:.2f}' for w, c in sorted(seq.timed_chars.items()))} "
+                f"character times), "
                 f"{seq.line_loopback_legs} line-loopback leg with {seq.burst_bytes} "
                 f"burst characters"
             ),

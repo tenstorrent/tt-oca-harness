@@ -16,6 +16,15 @@ image and every stimulus choice above; the run seed is the ``seed=`` of every
 check line. INFO-SEED prints the plan seed as ``seed=`` and both seeds as
 ``run_seed=`` and ``plan_seed=``.
 
+With ``+sep_pin_cell=prod`` the plan seed is the fixed seed of the cell in ``_PIN``
+in place of the run seed; it draws enable 0 and start PROD, so the leaf runs
+neither leg B nor leg S and reaches the out-of-order program of bit 2. The entry
+that sets it stages the same image with ``+sep_efuse_preload``. INFO-SEED also
+prints ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell;
+``+sep_pin_cell`` with ``+sep_rma_require_legb`` is a setup failure. CTRL-PIN-LEG:
+the plan draws the pinned pair; a plan that draws another pair logs
+``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
+
 Leg A (every leaf): each script step presents ``TOKEN_T1`` on RMA_SIP or
 ``TOKEN_T2`` on RMA_CHIPLET, waits for Match ``0x15`` and a window W, and reads the
 ``LC_STATE`` shadow and ``FEAT_CTRL``. With the enable at 1 a SIP match sets bit 1
@@ -198,6 +207,18 @@ _SCRIPT_CH = {"SIP": CH_SIP, "CHIPLET": CH_CHIPLET}
 _LEG_S_STARTS = ("TEST_DEV", "PROD")
 # Plan seed of ``+sep_rma_require_legb``: plan(T_TRANSIENT, _S_B) draws leg B.
 _S_B = 8
+# Pinned cells: plan seed and the draw the cell needs.
+_PIN = {"prod": (15, lambda p: p.leg["enable"] == 0 and p.leg["start"] == "PROD")}
+
+
+def _pin(seed: int) -> tuple[str | None, int]:
+    """Pinned cell and plan seed: no cell and the run seed without ``+sep_pin_cell``."""
+    cell = cocotb.plusargs.get("sep_pin_cell")
+    if cell is None:
+        return None, seed
+    if cell not in _PIN:
+        raise AssertionError(f"SETUP FAIL seed={seed} reason=unknown sep_pin_cell {cell!r}")
+    return cell, int(cocotb.plusargs.get("sep_pin_plan_seed", _PIN[cell][0]))
 
 
 def _hex2(code: int | None) -> str:
@@ -522,7 +543,12 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         dut = cocotb.top
         seed = self.random_seed()
         require_legb = "sep_rma_require_legb" in cocotb.plusargs
-        plan_seed = _S_B if require_legb else seed
+        cell, pin_seed = _pin(seed)
+        if require_legb and cell is not None:
+            raise AssertionError(
+                f"SETUP FAIL seed={seed} reason=sep_pin_cell with sep_rma_require_legb"
+            )
+        plan_seed = _S_B if require_legb else pin_seed
         p = plan(T_TRANSIENT, plan_seed)
         self.plan = p
         self.plan_seed = plan_seed
@@ -539,6 +565,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         seed_fields = {
             "run_seed": seed,
             "plan_seed": plan_seed,
+            "pin": cell or "none",
             "en": en,
             "start": start,
             "script": "_then_".join(leg["script"]),
@@ -548,6 +575,18 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         for line in p.log_lines(**seed_fields):
             self.logger.info("%s", line)
         self.chk = SepChkLog(self, _NAME, seed)
+        if cell is not None and not self.chk.ctrl(
+            "PIN-LEG",
+            _PIN[cell][1](p),
+            pin=cell,
+            plan_seed=plan_seed,
+            en=en,
+            start=start,
+            leg_b=int(leg_b),
+            leg_s=int(leg_s),
+        ):
+            self.chk.finish()
+            return
         self.fd = SepEfuseFd(self)
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")

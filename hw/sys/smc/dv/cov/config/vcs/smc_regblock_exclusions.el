@@ -4126,7 +4126,6 @@ Toggle hwif_in.TARGET_FIFO_STATUS.TXLVL.next [11:7] "logic hwif_in.TARGET_FIFO_S
 Toggle hwif_in.HOST_FIFO_STATUS.RXLVL.next [11:7] "logic hwif_in.HOST_FIFO_STATUS.RXLVL.next[11:0]"
 Toggle hwif_in.HOST_FIFO_STATUS.FMTLVL.next [11:7] "logic hwif_in.HOST_FIFO_STATUS.FMTLVL.next[11:0]"
 Toggle hwif_in.RDATA.rd_data._reserved_31_8 "logic hwif_in.RDATA.rd_data._reserved_31_8[23:0]"
-Toggle hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value "logic hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value"
 
 CHECKSUM: "3349051658 973666922"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg

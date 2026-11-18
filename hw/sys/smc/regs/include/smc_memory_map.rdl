@@ -55,6 +55,9 @@
     dfx_ctrl->ocah_aperture_size = 0x800;
     dfx_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     dfx_ctrl->desc = "DFT status exposed to boot firmware.";
+    smc_pwm->ocah_aperture_size = 0x1000;
+    smc_pwm->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_pwm->desc = "Pulse-width modulator.";
     smc_base_config->ocah_aperture_size = 0x2000;
     smc_base_config->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_base_config->desc = "SMC base-address and aperture configuration.";

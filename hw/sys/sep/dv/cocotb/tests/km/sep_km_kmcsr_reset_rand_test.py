@@ -1224,7 +1224,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             for a in rnd.addrs
         ]
         await self._run_items(items)
-        r31_locked = bool((rnd.lock >> 31) & 1)
+        r31_locked = bool((rnd.lock >> pl.LAST_REGION) & 1)
         r31: dict[int, bool] = {}
         await self._run_items([self._store_item(rnd, a, r31_locked, r31) for a in pl.R31_FIXED])
         if r31_locked:

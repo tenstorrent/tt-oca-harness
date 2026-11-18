@@ -3,15 +3,15 @@
 """The GPIO default direction map at the pads, and the cold-reset forcing of every controller.
 
 `hw/sys/smc/doc/periphs.adoc` (parameter table) gives `INPUT_BY_DEFAULT` per instance from
-`smc_padring_pkg::DefaultDirectionMap`: input on 62 of 65 GPIOs, output on the remaining 3;
-the package the document delegates to names them as pads 62-64. `hw/ip/gpio/doc/architecture.adoc` states what the
+`smc_padring_pkg::DefaultDirectionMap`: input on 60 of 67 GPIOs, output on the remaining 7;
+the package the document delegates to names them as pads 59-62 and 64-66. `hw/ip/gpio/doc/architecture.adoc` states what the
 parameter does: with no owner the controller gives output data 0, TX disabled and RX set by
 `INPUT_BY_DEFAULT` (Data and Direction Ownership, priority 4), and `rst_cold_ni` separately
 forces controller outputs to data 0, TX disabled and RX = `INPUT_BY_DEFAULT` (Reset and Strap
 Capture).
-The bench exposes `tb_pad2core_en_o`, `tb_core2pad_en_o` and `tb_core2pad_o` of all 65
+The bench exposes `tb_pad2core_en_o`, `tb_core2pad_en_o` and `tb_core2pad_o` of all 67
 controllers and `tb_lsio_interface_select`. The map is graded twice: on the pads no LSIO
-function owns at reset while the SMC runs, and on all 65 pads while a cold reset is asserted
+function owns at reset while the SMC runs, and on all 67 pads while a cold reset is asserted
 through the reset agent, after two pads were programmed as outputs with RX off so the forcing
 has something to undo. After the release the registers are back at reset and the map holds
 again.
@@ -30,8 +30,8 @@ from .smc_reset_seq_base import SmcResetSeqBase
 
 PAD_COUNT = gpio_pad_count()
 PAD_MASK = (1 << PAD_COUNT) - 1
-#: Pads the package makes outputs by default (`DefaultDirectionMap` 62-64).
-OUTPUT_BY_DEFAULT = (62, 63, 64)
+#: Pads the package makes outputs by default (`DefaultDirectionMap` 59-62 and 64-66).
+OUTPUT_BY_DEFAULT = (59, 60, 61, 62, 64, 65, 66)
 DEFAULT_INPUT_MAP = PAD_MASK & ~sum(1 << p for p in OUTPUT_BY_DEFAULT)
 DEFAULT_INPUT_COUNT = PAD_COUNT - len(OUTPUT_BY_DEFAULT)
 #: Two pads no LSIO function owns at reset, programmed as outputs before the cold reset.
@@ -60,7 +60,7 @@ def _pads(value: int) -> list[int]:
 
 
 class smc_gpio_default_direction_test_seq(SmcResetSeqBase, SmcCsrSeq):
-    """Grade the 62/3 direction map on the pads, in operation and under cold reset."""
+    """Grade the 60/7 direction map on the pads, in operation and under cold reset."""
 
     def __init__(self, name: str = "smc_gpio_default_direction_test_seq") -> None:
         super().__init__(name)

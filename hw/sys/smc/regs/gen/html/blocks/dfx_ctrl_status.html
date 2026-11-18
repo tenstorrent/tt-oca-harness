@@ -54,7 +54,7 @@
 <tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
 <tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
 <tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
-<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>No effect in the SMC: the field stores and reads back, but no debug-bus mux uses<br>it. Write 0.</td></tr>
 <tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the<br>level-3 muxes.</td></tr>
 <tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
 </table>

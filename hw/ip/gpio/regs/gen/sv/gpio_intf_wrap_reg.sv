@@ -230,7 +230,7 @@ module gpio_intf_wrap_reg (
     // Address Decode
     //--------------------------------------------------------------------------
     typedef struct {
-        logic gpio_intf[65];
+        logic gpio_intf[67];
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -249,13 +249,13 @@ module gpio_intf_wrap_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        for(int i0=0; i0<65; i0++) begin
+        for(int i0=0; i0<67; i0++) begin
             decoded_reg_strb.gpio_intf[i0] = cpuif_req_masked & (cpuif_addr >= 11'h0 + (11)'(i0) * 11'h10) & (cpuif_addr <= 11'h0 + (11)'(i0) * 11'h10 + 11'hb);
             is_external |= cpuif_req_masked & (cpuif_addr >= 11'h0 + (11)'(i0) * 11'h10) & (cpuif_addr <= 11'h0 + (11)'(i0) * 11'h10 + 11'hb);
             is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 11'h0 + (11)'(i0) * 11'h10) & (cpuif_addr <= 11'h0 + (11)'(i0) * 11'h10 + 11'hb);
             is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 11'h0 + (11)'(i0) * 11'h10) & (cpuif_addr <= 11'h0 + (11)'(i0) * 11'h10 + 11'hb);
         end
-        is_valid_addr = cpuif_addr < 11'h410;
+        is_valid_addr = cpuif_addr < 11'h430;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -290,7 +290,7 @@ module gpio_intf_wrap_reg (
 
     
 
-    for(genvar i0=0; i0<65; i0++) begin
+    for(genvar i0=0; i0<67; i0++) begin
         // External region: gpio_intf_wrap.gpio_intf[]
         assign hwif_out.gpio_intf[i0].req = decoded_reg_strb.gpio_intf[i0];
         assign hwif_out.gpio_intf[i0].addr = decoded_addr[3:0];
@@ -305,7 +305,7 @@ module gpio_intf_wrap_reg (
     always_comb begin
         automatic logic wr_ack;
         wr_ack = '0;
-        for(int i0=0; i0<65; i0++) begin
+        for(int i0=0; i0<67; i0++) begin
             wr_ack |= hwif_in.gpio_intf[i0].wr_ack;
         end
         external_wr_ack = wr_ack;
@@ -321,7 +321,7 @@ module gpio_intf_wrap_reg (
     always_comb begin
         automatic logic rd_ack;
         rd_ack = '0;
-        for(int i0=0; i0<65; i0++) begin
+        for(int i0=0; i0<67; i0++) begin
             rd_ack |= hwif_in.gpio_intf[i0].rd_ack;
         end
         readback_external_rd_ack_c = rd_ack;
@@ -349,7 +349,7 @@ module gpio_intf_wrap_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        for(int i0=0; i0<65; i0++) begin
+        for(int i0=0; i0<67; i0++) begin
             if((rd_mux_addr >= 11'h0 + (11)'(i0) * 11'h10) && (rd_mux_addr <= 11'h0 + (11)'(i0) * 11'h10 + 11'hb)) begin
                 readback_data_var = hwif_in.gpio_intf[i0].rd_data;
             end

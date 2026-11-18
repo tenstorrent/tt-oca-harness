@@ -666,7 +666,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
         self.rc_rows.append(f"U{rx}:{tag}:first=0x{lsr1:x},second=0x{lsr2:x},drained=0x{lsr3:x}")
         return (
             f"U{rx}(from U{tx}) ELSI={int(elsi)} IIR=0x{iir:x} LSR first=0x{lsr1:x} "
-            f"second(measured, SF-041)=0x{lsr2:x} after drain=0x{lsr3:x} "
+            f"second(measured; whether the first LSR read clears the error indication is "
+            f"open)=0x{lsr2:x} after drain=0x{lsr3:x} "
             f"others={','.join(f'U{o}=0x{v:x}' for o, v in others.items())} line={line} "
             f"chars={[f'0x{c:02x}' for c in got[rx]]}"
         )
@@ -702,8 +703,9 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "a %d-clk_periph break from each peer gave BI=1 (ERROR_IN_RCVR_FIFO=1 and "
             "IIR=0x%x with ELSI=1, no ID 0x3 with ELSI=0) and LSR bits 4:2 = 0 after the RBR "
             "drain; the other receivers read LSR bits 4:1 = 0; line, break character count and "
-            "the second LSR read before the drain measured (LINKED-ISSUE SF-001, SF-021, "
-            "SF-041): %s",
+            "the second LSR read before the drain measured (LINKED-ISSUE: how the per-instance "
+            "UART interrupt line combines its sources, how many break characters one line break "
+            "produces, whether the first LSR read clears the error indication): %s",
             BREAK_CLOCKS,
             IIR_LSR,
             " | ".join(rows),
@@ -728,7 +730,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "0x%02x sent odd parity into an even-parity receiver gave PE=1 (IIR=0x%x with "
             "ELSI=1, no ID 0x3 with ELSI=0) and LSR bits 4:2 = 0 after the RBR drain; the other "
             "receivers read PE=0; line and the second LSR read before the drain measured "
-            "(LINKED-ISSUE SF-001, SF-041): %s",
+            "(LINKED-ISSUE: how the per-instance UART interrupt line combines its sources, "
+            "whether the first LSR read clears the error indication): %s",
             PARITY_CHAR,
             IIR_LSR,
             " | ".join(rows),
@@ -753,8 +756,9 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "S4",
             "8N1 0x%02x into a 5-bit receiver put 0 at its stop position: FE=1 with BI=0 "
             "(IIR=0x%x with ELSI=1, no ID 0x3 with ELSI=0) and LSR bits 4:2 = 0 after the RBR "
-            "drain; line and the second LSR read before the drain measured (LINKED-ISSUE "
-            "SF-001, SF-041): %s",
+            "drain; line and the second LSR read before the drain measured (LINKED-ISSUE: how "
+            "the per-instance UART interrupt line combines its sources, whether the first LSR "
+            "read clears the error indication): %s",
             FRAMING_CHAR,
             IIR_LSR,
             " | ".join(rows),
@@ -764,7 +768,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "S4",
             "%d legs (BI, PE, FE x ELSI on/off x UART1-3): the first LSR read carried the error "
             "and the LSR read after the RBR drain returned bits 4:2 = 0; the second LSR read "
-            "before the drain measured (LINKED-ISSUE gate T_impl_uart_err-s2-dut / SF-041): %s",
+            "before the drain measured (LINKED-ISSUE: whether the "
+            "first LSR read clears the error indication): %s",
             len(self.rc_rows),
             ", ".join(self.rc_rows),
         )
@@ -854,7 +859,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-UART13-OUT2-LINE",
             "S6",
-            "after MCR=0x%02x then 0x00 (stimulus only, SF-042), MCR read back OUT2 set after "
+            "after MCR=0x%02x then 0x00 (stimulus only; where the MCR DTR, OUT1 and OUT2 "
+            "levels are observable is open), MCR read back OUT2 set after "
             "the OUT2=1 write and clear after the OUT2=0 write, with ITR.TTBEI forcing the "
             "combined interrupt line read 1 and IIR read 0x%x after each, and the line read 0 "
             "once ITR and IER were cleared: %s",
@@ -914,7 +920,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             rows.append(
                 f"U{n}: empty IIR 0x{first:x},0x{second:x} LSR=0x{lsr:x}; drained IIR "
                 f"0x{drained:x}; PE IIR 0x{raised:x},0x{both:x} LSR=0x{lsr_pe:x} IIR after the "
-                f"LSR read (measured, SF-041) 0x{after:x}; drained "
+                f"LSR read (measured; whether the first LSR read clears the error indication "
+                f"is open) 0x{after:x}; drained "
                 f"{[f'0x{c:02x}' for c in rx + got[n]]} LSR=0x{lsr_drained:x} IIR 0x{serviced:x}"
             )
         self._step("S7")
@@ -924,8 +931,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "with ETBEI=1 and the TX FIFO empty IIR read 0x%x then 0x%x with LSR.THRE=1, "
             "0x%x again after a character drained, and with a parity error also pending "
             "0x%x, then 0x%x after the RBR drain and an LSR read; the IIR read right after "
-            "the first LSR read measured (LINKED-ISSUE gate T_impl_uart_err-s2-dut / "
-            "SF-041): %s",
+            "the first LSR read measured (LINKED-ISSUE: whether "
+            "the first LSR read clears the error indication): %s",
             IIR_THRE,
             IIR_NONE,
             IIR_THRE,
@@ -967,7 +974,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "CHK-UART13-ITR-THRE",
             "S8",
             "with %d characters queued (LSR.THRE=0) ITR.TTBEI=1 made IIR read 0x%x and ITR=0 "
-            "made it read 0x%x; line measured (LINKED-ISSUE SF-001): %s",
+            "made it read 0x%x; line measured (LINKED-ISSUE: how the per-instance UART "
+            "interrupt line combines its sources): %s",
             len(ITR_CHARS),
             IIR_THRE,
             IIR_NONE,
@@ -1095,7 +1103,8 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             "CHK-UART13-FIFO-ACCESS-OBS",
             "S10",
             "LSR.DR read 0 after each empty RBR read; THR overflow and RBR underflow "
-            "indications measured at divisor %d (LINKED-ISSUE SF-018): %s",
+            "indications measured at divisor %d (LINKED-ISSUE: what a THR write does when the "
+            "transmit FIFO is full): %s",
             FIFO_ACCESS_DIVISOR,
             " | ".join(rows),
         )

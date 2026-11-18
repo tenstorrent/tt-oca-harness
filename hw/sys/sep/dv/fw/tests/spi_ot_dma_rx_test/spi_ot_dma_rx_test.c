@@ -19,8 +19,12 @@
 // order, each at its own flash address, with the seeded words the testbench
 // preloads into the flash there. Every DMA-written SRAM word is compared with
 // those words, which proves the data path at each width and not only
-// completion. The test also checks that DMA DONE still reads set after the poll
-// and clears only on the write-one-to-clear.
+// completion. The compare accepts either in-word byte order of the SPI host
+// (first byte in bits 7:0 or in bits 31:24), but the same order for every word
+// of the image; the order seen is printed once on OBS-SPI-BYTEORDER. The test
+// also checks that DMA DONE still reads set after the poll and clears only on
+// the write-one-to-clear, and that the DMA and the SPI host report no error
+// (CHK-NOERR).
 //
 // main() returns the error count; crt0.s turns it into the pass/fail mailbox
 // word that the boot scoreboard gates on.
@@ -52,13 +56,50 @@
 
 // Read block. [0]=magic, [1]=read count (1..MAX_READS), then per read
 // [opcode, flash addr, RX_WORDS words the flash holds there]. Word i holds the
-// flash bytes at addr + 4i, the first byte in bits 7:0 (ByteOrder 1). Volatile
-// so the patched values are not folded. The directed default stages no read:
+// flash bytes at addr + 4i, the first byte in bits 7:0; the same bytes with the
+// first byte in bits 31:24 are its byte swap. Volatile so the patched values
+// are not folded. The directed default stages no read:
 // the words must match the flash preload, which only the cocotb test makes.
 volatile uint32_t g_spi2_params[2 + MAX_READS * READ_STRIDE] = {
     SPI2_PARAM_MAGIC,
     0u,
 };
+
+// In-word byte order of the DMA-written words: fixed by the first word that
+// only one order matches, then required of every later word.
+#define ORDER_NONE 0u
+#define ORDER_LSB_FIRST 1u
+#define ORDER_MSB_FIRST 2u
+static uint32_t g_order = ORDER_NONE;
+static uint32_t g_decisive_words;
+static uint32_t g_ambiguous_words;
+
+static inline uint32_t bswap32(uint32_t v) {
+    return (v >> 24) | ((v >> 8) & 0x0000FF00u) | ((v << 8) & 0x00FF0000u) | (v << 24);
+}
+
+// 1 when `got` carries the bytes of `want` in the image's byte order; a word
+// that both orders match (a byte palindrome) passes and fixes nothing.
+static int word_in_order(uint32_t got, uint32_t want) {
+    int lsb = (got == want);
+    int msb = (got == bswap32(want));
+    if (lsb && msb) {
+        g_ambiguous_words++;
+        return 1;
+    }
+    if (!lsb && !msb) {
+        return 0;
+    }
+    uint32_t order = lsb ? ORDER_LSB_FIRST : ORDER_MSB_FIRST;
+    if (g_order == ORDER_NONE) {
+        g_order = order;
+    }
+    if (order != g_order) {
+        return 0;
+    }
+    g_decisive_words++;
+    return 1;
+}
 
 // Arms the Secure DMA: RXDATA (fixed/WRAP) -> SRAM (incrementing), hardware
 // handshake from the SPI DMA trigger. The trigger follows the FIFO level, so no
@@ -151,10 +192,37 @@ static int run_read(uint32_t idx, uint32_t opcode, uint32_t addr, volatile uint3
         sep_mbx_puts("FAIL: DMA reported error\n");
         errors++;
     }
-    if (sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR) != 0) {
+    uint32_t dma_err_code = sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (dma_err_code != 0) {
         sep_mbx_puts("FAIL: DMA error code set\n");
         errors++;
     }
+
+    // --- SPI controller must be clean ----------------------------------------
+    int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);
+    if (!spi_idle) {
+        sep_mbx_puts("FAIL: SPI host stuck active\n");
+        errors++;
+    }
+    uint32_t spi_err_status = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (spi_err_status != 0) {
+        sep_mbx_puts("FAIL: SPI error status set\n");
+        errors++;
+    }
+
+    // The values graded above, all read before the DMA status write-one-to-clear.
+    int noerr = (status_before_clear & SECURE_DMA__STATUS__DONE_bm) &&
+                !(status_before_clear & SECURE_DMA__STATUS__ERROR_bm) && dma_err_code == 0 &&
+                spi_idle && spi_err_status == 0;
+    sep_mbx_puts(noerr ? "CHK-NOERR PASS: dma_status=" : "FAIL: CHK-NOERR dma_status=");
+    sep_mbx_puthex(status_before_clear);
+    sep_mbx_puts(" dma_err_code=");
+    sep_mbx_puthex(dma_err_code);
+    sep_mbx_puts(" spi_idle=");
+    sep_mbx_putc(spi_idle ? '1' : '0');
+    sep_mbx_puts(" spi_err_status=");
+    sep_mbx_puthex(spi_err_status);
+    sep_mbx_putc('\n');
 
     // --- RW1C status-clear proof ---------------------------------------------
     // DONE is write-one-to-clear and a read has no side effect, so a second read
@@ -183,37 +251,14 @@ static int run_read(uint32_t idx, uint32_t opcode, uint32_t addr, volatile uint3
     sep_mbx_puthex(status_after_clear);
     sep_mbx_putc('\n');
 
-    // --- SPI controller must be clean ----------------------------------------
-    int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);
-    if (!spi_idle) {
-        sep_mbx_puts("FAIL: SPI host stuck active\n");
-        errors++;
-    }
-    uint32_t spi_err_status = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    if (spi_err_status != 0) {
-        sep_mbx_puts("FAIL: SPI error status set\n");
-        errors++;
-    }
-
-    // Log the values behind the checks above, so a pass is auditable.
-    sep_mbx_puts("CHK-NOERR: dma_status=");
-    sep_mbx_puthex(status_after_clear);
-    sep_mbx_puts(" dma_err_code=");
-    sep_mbx_puthex(sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
-    sep_mbx_puts(" spi_idle=");
-    sep_mbx_putc(spi_idle ? '1' : '0');
-    sep_mbx_puts(" spi_err_status=");
-    sep_mbx_puthex(spi_err_status);
-    sep_mbx_putc('\n');
-
     // --- Value-check the received data ---------------------------------------
-    // Each SRAM word must equal the staged word. The pattern holds at least two
-    // byte values, so a stuck lane, the idle all-ones line, the FILL_WORD marker
-    // and a partial transfer all fail.
+    // Each SRAM word must carry the staged bytes in the image's byte order. The
+    // pattern holds at least two byte values, so a stuck lane, the idle
+    // all-ones line, the FILL_WORD marker and a partial transfer all fail.
     int data_err = 0;
     for (uint32_t i = 0; i < RX_WORDS; i++) {
         uint32_t got = dst[i];
-        if (got != want[i]) {
+        if (!word_in_order(got, want[i])) {
             sep_mbx_puts("FAIL: CHK-DATAPATH op=");
             sep_mbx_puthex(opcode);
             sep_mbx_puts(" word ");
@@ -222,6 +267,8 @@ static int run_read(uint32_t idx, uint32_t opcode, uint32_t addr, volatile uint3
             sep_mbx_puthex(got);
             sep_mbx_puts(" exp ");
             sep_mbx_puthex(want[i]);
+            sep_mbx_puts(" order=");
+            sep_mbx_puthex(g_order);
             sep_mbx_putc('\n');
             data_err++;
         }
@@ -278,6 +325,20 @@ int main(void) {
         errors +=
             run_read(r, g_spi2_params[base], g_spi2_params[base + 1u], &g_spi2_params[base + 2u]);
     }
+
+    // The order seen is logged, not graded: no SEP text states it.
+    sep_mbx_puts("OBS-SPI-BYTEORDER fw order=");
+    sep_mbx_puts(g_order == ORDER_LSB_FIRST   ? "lsb_first"
+                 : g_order == ORDER_MSB_FIRST ? "msb_first"
+                                              : "undecided");
+    sep_mbx_puts(" decisive_words=");
+    sep_mbx_puthex(g_decisive_words);
+    sep_mbx_puts(" ambiguous_words=");
+    sep_mbx_puthex(g_ambiguous_words);
+    uint32_t spi_status = spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    sep_mbx_puts(" status_byteorder=");
+    sep_mbx_putc((spi_status & SPI_CONTROLLER__STATUS__BYTEORDER_bm) ? '1' : '0');
+    sep_mbx_putc('\n');
 
     // --- Cleanup -------------------------------------------------------------
     sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x0);

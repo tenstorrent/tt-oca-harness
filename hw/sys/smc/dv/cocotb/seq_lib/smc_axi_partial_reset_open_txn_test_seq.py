@@ -14,8 +14,7 @@ warm reset for 32 reference clock cycles after the input releases
 (clk_rst.adoc:213-216), counted on the reference clock. SEP_IN reads of
 SCRATCH_COLD and SYS_OUT writes stay open across the warm edge on cold-domain
 targets; no SCRATCH_COLD_WARM access is open across it. Their outcome and the
-post-release response codes are measured, never compared (SF-003, ruling
-#3341).
+post-release response codes are measured, never compared (ruling #3341).
 
 The bench's own-domain checkers (u_cpu_mmio_uncore_rst_axi_sva on the cluster
 uncore reset, u_misc_warm_axil_sva on the misc wrapper's warm reset) grade the
@@ -558,14 +557,16 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
             _int(dut.tb_cpu_mmio_pending_ar, "tb_cpu_mmio_pending_ar"),
         )
         cocotb.log.info(
-            "OBS-G2-CPU-RST-NET: legA edge t=%d ns %s; open at edge %s (observation, SF-001)",
+            "OBS-G2-CPU-RST-NET: legA edge t=%d ns %s; open at edge %s (observation; open: "
+            "which reset is the AXI reset of each CPU port)",
             edge_ns,
             self._resets(),
             [(t.link, t.task.done()) for t in open_a],
         )
         cocotb.log.info(
             "OBS-G2-HELD-CORE-OWN-TXN: MMIO isolate pending aw/w/ar at the core reset edge = "
-            "%d/%d/%d; open own transactions at the edge=%d (observation, SF-005, ruling #2449)",
+            "%d/%d/%d; open own transactions at the edge=%d (observation; open: the fate of a "
+            "held core's open MMIO transaction; ruling #2449)",
             *pending,
             pending[0] + pending[2],
         )
@@ -605,7 +606,8 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         front_held = self._shadow("axi_cpu_front_core_held_hs") - front_held0
         cocotb.log.info(
             "OBS-G2-FRONT-PORT-DOMAIN: u_cpu_front_axi_sva graded %d AW/AR handshakes while "
-            "tb_cpu_core_reset_n was 0 (observation, evidence for SF-001)",
+            "tb_cpu_core_reset_n was 0 (observation, evidence for which reset is the AXI reset "
+            "of each CPU port)",
             front_held,
         )
         cocotb.log.info(
@@ -670,7 +672,7 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
             txn.edge = f"legB@{warm_ns}ns"
         cocotb.log.info(
             "OBS-G2-MISC-WARM-LEG: legB edge t=%d ns misc_warm_rst_n=%s tb_rst_warm_smc_clk_n=%s "
-            "(observation, SF-002)",
+            "(observation; open: whether the warm scratch leg follows the warm or primary reset)",
             warm_ns,
             _sample(dut.misc_warm_rst_n),
             _sample(dut.tb_rst_warm_smc_clk_n),
@@ -718,7 +720,8 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         for txn in open_b:
             await self._wait_txn(txn)
         cocotb.log.info(
-            "OBS-G2-WARM-OPEN-TXN: %s; %s (observation, SF-003, ruling #3341)",
+            "OBS-G2-WARM-OPEN-TXN: %s; %s (observation; open: the fate of transactions open "
+            "when a watchdog warm reset asserts; ruling #3341)",
             " ".join(f"{t.link}:{t.kind}:0x{t.addr:x}={t.code}" for t in open_b),
             self._resets(),
         )
@@ -728,7 +731,7 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         misc_b = await self._misc_leg("LEGB")
         cocotb.log.info(
             "OBS-G2-WARM-OPEN-TXN: legB post-release codes %s SCRATCH_COLD=%s misc_leg=%s "
-            "(observation, SF-003)",
+            "(observation; open: whether the fabric serves new traffic after warm release)",
             " ".join(f"{k}={v}" for k, v in codes_b.items()),
             cold.code,
             misc_b,

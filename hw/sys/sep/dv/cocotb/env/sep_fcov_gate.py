@@ -528,6 +528,37 @@ def set_rom_ap_pass(passed: bool, log=None) -> bool:
     return _set_bound("rom_ap_pass", int(bool(passed)), "FCOV-ROM-AP-PASS", log)
 
 
+def set_sram_access_pass(point: int, cell: int = 0, log=None) -> bool:
+    """Write ``u_sep_fcov.sram_access_pass`` (``point * 256 + cell``, or 0 for point 0).
+
+    The pass label of the owner-graded points of ``sep_sram_access_cg``. Point
+    1 ``cp_sram_wstrb`` (owner ``sep_sram_axi_shape_matrix_test``, cell = WSTRB
+    0x00 to 0x0F), 2 ``cp_xmaster_pair`` (owner
+    ``sep_sram_inbound_burst_attr_test``, cell = writer * 4 + reader with 0
+    System Interface, 1 CPU LSU, 2 DMA, writer != reader), 3
+    ``cp_pattern_class`` and 4 ``cp_addr_line_class`` (owner
+    ``sep_sram_datapath_breadth_test``; pattern 0 0xAA, 1 0x55, 2 walking one, 3
+    walking zero, 4 fixed, 5 seed random; address line 0 base word, k for offset
+    2^k with k 3 to 17, 18 top word). The leaf writes the value after the check
+    that grades that cell passed, holds it two clocks and writes 0. A rise from
+    0 samples the cell when the last window opened in the run belongs to the
+    owner of the point; a point 1 cell also needs an inbound W beat with that
+    WSTRB in the window since the last point 1 release. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    cells = {
+        0: (0,),
+        1: range(16),
+        2: (1, 2, 4, 6, 8, 9),
+        3: range(6),
+        4: (0, *range(3, 19)),
+    }
+    if point not in cells or cell not in cells[point]:
+        raise ValueError(f"sram_access_pass point {point} cell {cell} is not a bin")
+    return _set_bound("sram_access_pass", point * 256 + cell, "FCOV-SRAM-ACCESS-PASS", log)
+
+
 def set_test_en_pin_pass(cells: int, log=None) -> bool:
     """Write ``u_sep_fcov.te_pin_pass`` (a 4-bit cell mask, or 0 for none).
 
@@ -1291,8 +1322,7 @@ def set_exo_pass(mask: int, log=None) -> bool:
     s35, s36 and s41 to s43. The sampler holds each exclusive rise of those
     sources in the window of their owner and samples a held rise only when bit
     ``source - 32`` (``exo_pass_bit``) rises; the release does not depend on
-    the window. The owner writes the bit after CHK-SRC<source>-EXCL (sources
-    35 and 36) or CHK-SRC<source>-RISE (sources 41 to 43) passes,
+    the window. The owner writes the bit after CHK-SRC<source>-RISE passes,
     keeps the bits of the checks that passed before it, holds the value at
     least one clock and writes 0 at the end. Same rules as ``graded_owner``: a
     no-op that returns False on Verilator. On VCS a sampler without the
@@ -1432,6 +1462,7 @@ PFP_THRESHOLD = 2  # CHK-THRESHOLD
 PFP_NEST = 3  # CHK-NEST
 PFP_TIMER = 4  # an internal-timer leg: CHK-INT-TIMER-HOLD or CHK-INT-TIMER-TRAP
 PFP_IDLE = 5  # the idle and control legs: CHK-MIP-IDLE, CHK-CONTROL, CHK-NO-TIMER-TRAP
+PFP_SOFT = 6  # the soft-pin leg: CHK-SOFT-PIN
 PFP_DROP_320 = 7  # drop every held owner-320 sample
 PFP_320_MASK = 0xFF
 # sep_nmi_vector_bark_rand_test (owner 324) writes bit 16 after CHK-NMI-IN-EXT

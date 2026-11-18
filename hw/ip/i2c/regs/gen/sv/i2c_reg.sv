@@ -3751,7 +3751,6 @@ module i2c_reg (
             end
         end
     end
-    assign hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value = field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value;
     // Field: i2c.CONTROLLER_EVENTS.ARBITRATION_LOST
     always_comb begin
         automatic logic [0:0] next_c;
@@ -3777,7 +3776,6 @@ module i2c_reg (
             end
         end
     end
-    assign hwif_out.CONTROLLER_EVENTS.ARBITRATION_LOST.value = field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value;
     assign hwif_out.CONTROLLER_EVENTS.intr =
         |field_storage.CONTROLLER_EVENTS.NACK.value
         || |field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value
@@ -3808,7 +3806,6 @@ module i2c_reg (
             end
         end
     end
-    assign hwif_out.TARGET_EVENTS.TX_PENDING.value = field_storage.TARGET_EVENTS.TX_PENDING.value;
     // Field: i2c.TARGET_EVENTS.BUS_TIMEOUT
     always_comb begin
         automatic logic [0:0] next_c;
@@ -3834,7 +3831,6 @@ module i2c_reg (
             end
         end
     end
-    assign hwif_out.TARGET_EVENTS.BUS_TIMEOUT.value = field_storage.TARGET_EVENTS.BUS_TIMEOUT.value;
     // Field: i2c.TARGET_EVENTS.ARBITRATION_LOST
     always_comb begin
         automatic logic [0:0] next_c;
@@ -3860,7 +3856,6 @@ module i2c_reg (
             end
         end
     end
-    assign hwif_out.TARGET_EVENTS.ARBITRATION_LOST.value = field_storage.TARGET_EVENTS.ARBITRATION_LOST.value;
     // Field: i2c.TARGET_EVENTS.START_DETECT
     always_comb begin
         automatic logic [0:0] next_c;

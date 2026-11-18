@@ -414,7 +414,8 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         self._term_end("EXISTING_LEGS")
         cocotb.log.info(
             "CHK-DST-TOGGLE-EMPTY-RP: %d empty reads, rp before/after/data per position %s; "
-            "documented unchanged (LINKED-ISSUE SF-041)",
+            "documented unchanged (LINKED-ISSUE: whether an empty-buffer data read advances "
+            "the read pointer)",
             len(self.empty_rp),
             " ".join(f"before=0x{b:x} after=0x{a:x} data=0x{d:x}" for b, a, d in self.empty_rp),
         )
@@ -544,7 +545,8 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             "(>= 0x%x) then wrapped to 0x%x after %d polls (bound %d, %d action re-issues) over "
             "a 0x%x-byte window; wp after re-arm 0x%x flag=%d; wp/wrap-flag samples "
             "(pointer/flag/2KiB-segment, xN repeats) %s; wp after stop 0x%x flag=%d (flag "
-            "logged, LINKED-ISSUE SF-042; RAM address map LINKED-ISSUE SF-022)",
+            "logged, LINKED-ISSUE: what clears the sticky sink wrap flag; RAM address map "
+            "LINKED-ISSUE: how start and limit address the trace RAM)",
             _DBM_MODE_TOGGLE,
             _DST_FORMAT_NONE,
             peak,
@@ -653,7 +655,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             "CHK-DST-TOGGLE-RP-ADVANCE: segment 0..7 words returned=%s rp==start+n at %d "
             "samples (%d per segment, after reads %s), one word per pointer-advancing read and "
             "no move after a read that returned none (count of pointer-advancing reads "
-            "LINKED-ISSUE SF-022)",
+            "LINKED-ISSUE: how start and limit address the trace RAM)",
             ",".join(str(n) for n in self.segment_words),
             sample_total,
             len(_RP_SAMPLES),
@@ -661,7 +663,9 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-DST-TOGGLE-PAYLOAD: %s; every segment more than one distinct word; mux "
-            "after=%d/%d (bit masks LINKED-ISSUE SF-020 SF-021 SF-022)",
+            "after=%d/%d (bit masks LINKED-ISSUE: the format and drivable byte lanes of the "
+            "trace words; the memory-mode encoding and when the wrap flag sets; how start "
+            "and limit address the trace RAM)",
             "; ".join(payload),
             mux_mode,
             mux_id,

@@ -35,7 +35,7 @@ extern "C" {
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bp 8
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_reset 0x0
-// Data bus width in bytes, encoded as 2^value
+// Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bm 0x7000
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp 12
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bw 3
@@ -86,7 +86,7 @@ typedef union {
         // Filter entry will match if AxPROT[1] matches the value in this field
         uint64_t allow_ns :1;
         uint64_t :3;
-        // Data bus width in bytes, encoded as 2^value
+        // Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.
         uint64_t data_bus_width :3;
         uint64_t :1;
         // Source ID field to match. Filter entry will match if the transactions src_id matches the value in this field.
@@ -148,7 +148,8 @@ typedef union {
 // reg - filter_ctrl::END_ADDR
 // End of the allowable address range, rounded up to the top of its granule.
 // The granule and the write-back behaviour are described under start_addr.
-// Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.
+// Resets to 7, the top of the first 8-byte granule that applies while bursts are
+// disabled on a 64-bit bus; the reset does not follow the data width.
 #define FILTER_CTRL__END_ADDR__END_ADDR_bm 0xffffffffffffff
 #define FILTER_CTRL__END_ADDR__END_ADDR_bp 0
 #define FILTER_CTRL__END_ADDR__END_ADDR_bw 56
@@ -157,7 +158,8 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // End of the allowable address range, rounded up to the top of its granule.
         // The granule and the write-back behaviour are described under start_addr.
-        // Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.
+        // Resets to 7, the top of the first 8-byte granule that applies while bursts are
+        // disabled on a 64-bit bus; the reset does not follow the data width.
         uint64_t end_addr :56;
         uint64_t :8;
     } f;

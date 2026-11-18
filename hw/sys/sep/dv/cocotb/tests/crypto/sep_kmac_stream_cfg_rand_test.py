@@ -58,10 +58,8 @@ Checkers:
                       value fails); the inject is then released, and the cell wrote
                       more than rate message bytes.
   CHK-KMAC-REGWEN     CFG_REGWEN 1 in the idle window, 0 in absorb; a double
-                      write of CFG_SHADOWED in absorb leaves it at C. The line
-                      logs the AXI response of each locked write
-                      (``locked_wr_resp``, not graded). Control: the idle
-                      write reads back C. A second line (``part=squeeze``)
+                      write of CFG_SHADOWED in absorb leaves it at C. Control:
+                      the idle write reads back C. A second line (``part=squeeze``)
                       grades CFG_REGWEN 0 on the read after ``kmac_done``,
                       with the STATUS read before it showing ``sha3_squeeze``
                       1: squeeze is not the idle state, and the configuration
@@ -133,6 +131,17 @@ reset in between.
 of the CHK-KMAC-FE-INTRTEST leg after a settle window and after a write-one
 clear: no text states whether the forced bit stays set or whether the clear
 acts on it.
+``OBS-KMAC-CFG-LOCKED-RESP`` logs, on every cell, ``CFG_REGWEN`` in absorb
+(``absorb_regwen``), the AXI B response of each of the two locked
+``CFG_SHADOWED`` writes (``resp0``, ``resp1``) and the ``CFG_SHADOWED`` read
+after them (``cfg_after``). kmac.hjson lines 377-381 state that a write while
+``CFG_REGWEN`` is 0 is discarded, and no text states its response; the value
+is graded by CHK-KMAC-REGWEN, the responses are not.
+``OBS-KMAC-FIFO-FILL-STATUS`` logs, for each write of the CHK-KMAC-FIFO-FULL
+fill, the write count (``writes``), the whole ``STATUS`` word and its
+``fifo_depth``, ``fifo_empty`` and ``fifo_full`` fields. kmac.adoc lines
+226-239 give the field meanings; no text states how many writes make one
+FIFO entry while the drain is stalled, so the mid-fill values are not graded.
 
 FCOV gate: the leaf opens the graded window of its owner code before the cells.
 The first FAIL or missing control closes the window before it is recorded, and
@@ -164,6 +173,7 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
+from env.sep_decode_resp import RESP_CODE
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_kmac_stream_pass
 from env.sep_kmac_golden import sha3, shake
 from env.sep_seeded_rng import SepSeededRng
@@ -214,6 +224,7 @@ _KMAC_INTR_TEST = KMAC.addr("INTR_TEST")
 _INTR_TEST_FIFO_EMPTY = KMAC.field_mask("INTR_TEST", "fifo_empty")
 _INTR_FIFO_EMPTY = KMAC.field_mask("INTR_STATE", "fifo_empty")
 _FIFO_FULL = KMAC.field_mask("STATUS", "fifo_full")
+_RESP_NAME = {v: k for k, v in RESP_CODE.items()}
 _KMAC_ENTROPY_PERIOD = KMAC.addr("ENTROPY_PERIOD")
 _EP_PRESCALER_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "prescaler")
 _EP_PRESCALER_WIDTH = KMAC.field_width("ENTROPY_PERIOD", "prescaler")
@@ -377,6 +388,10 @@ def _words(data: bytes, state_end: int) -> list[int]:
 
 def _bits(v: int, m: int) -> int:
     return int(bool(v & m))
+
+
+def _resp_name(code: int) -> str:
+    return _RESP_NAME.get(code, str(code))
 
 
 def _prefix_addr(n: int) -> int:
@@ -752,6 +767,14 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             await self._wr_resp(KMAC_CFG_SHADOWED, c_word ^ _STATE_END) for _ in range(2)
         ]
         cfg_after = await self._rd(KMAC_CFG_SHADOWED) & _CFG_MASK
+        self.chk.obs(
+            "KMAC-CFG-LOCKED-RESP",
+            **tag,
+            absorb_regwen=absorb_regwen,
+            resp0=_resp_name(locked_wr_resp[0]),
+            resp1=_resp_name(locked_wr_resp[1]),
+            cfg_after=f"0x{cfg_after:08x}",
+        )
         self._ok(
             "KMAC-REGWEN",
             idle_regwen == 1 and absorb_regwen == 0 and cfg_after == (c_word & _CFG_MASK),
@@ -760,7 +783,6 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             absorb_regwen=absorb_regwen,
             cfg=f"0x{c_word & _CFG_MASK:08x}",
             cfg_after_locked_write=f"0x{cfg_after:08x}",
-            locked_wr_resp=locked_wr_resp,
         )
         self._ctrl("KMAC-REGWEN", c_live, **tag, idle_cfg_readback=f"0x{c_read:08x}")
 
@@ -1206,6 +1228,9 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
     async def _fifo_full_leg(self) -> None:
         """CHK-KMAC-FIFO-FULL: the message FIFO reads full at the kmac.hjson ``NumEntriesMsgFifo`` depth.
 
+        Each fill read logs OBS-KMAC-FIFO-FILL-STATUS; only the read that ends
+        the fill is graded.
+
         The graded FCOV window stays closed. No write follows a read that ends the
         fill, so no write waits on a full FIFO unless the DUT hides it.
         """
@@ -1243,6 +1268,14 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 status = await self._rd(KMAC_STATUS)
                 depth = (status & _FIFO_DEPTH) >> _FIFO_DEPTH_LSB
                 full = _bits(status, _FIFO_FULL)
+                self.chk.obs(
+                    "KMAC-FIFO-FILL-STATUS",
+                    writes=writes,
+                    status=f"0x{status:08x}",
+                    fifo_depth=depth,
+                    fifo_empty=_bits(status, _FIFO_EMPTY),
+                    fifo_full=full,
+                )
                 if full or depth >= entries:
                     break
             else:

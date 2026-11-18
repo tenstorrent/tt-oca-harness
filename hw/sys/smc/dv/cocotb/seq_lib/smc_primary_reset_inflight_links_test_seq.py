@@ -1244,7 +1244,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             )
         else:
             for n in ENTRIES:
-                cocotb.log.info("OBS-EFUSE-FRESH-WORD: word=0x%08x sf=SF-021", recs[n].efuse_value)
+                cocotb.log.info("OBS-EFUSE-FRESH-WORD: word=0x%08x", recs[n].efuse_value)
             efuse_text = (
                 f"pin/jtag/flr: read completed OKAY; {EFUSE_FRESH_SOURCE} is 0, so the word is "
                 f"not graded (completion only, value on OBS-EFUSE-FRESH-WORD)"
@@ -1517,7 +1517,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 obs["OBS-COOL-PHASE-FATE"].append(
                     f"OBS-COOL-PHASE-FATE: entry={n} link={link} items={item_counts[link]} "
                     f"aborted={aborted[link]} late_resp={code} ar={c['ar']} r={c['r']} "
-                    f"aw={c['aw']} b={c['b']} sf=SF-001"
+                    f"aw={c['aw']} b={c['b']}"
                 )
             mon = r.mon
             to_ar = (
@@ -1532,12 +1532,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             )
             obs["OBS-COOL-RELEASE-LATENCY"].append(
                 f"OBS-COOL-RELEASE-LATENCY: entry={n} release_to_ar={to_ar} release_to_r={to_r} "
-                f"clk_smc_i cycles sf=SF-008"
+                f"clk_smc_i cycles"
             )
             for link, high in mon.first_edge.items():
                 obs["OBS-VALID-FIRST-EDGE"].append(
                     f"OBS-VALID-FIRST-EDGE: link={link} entry={n} "
-                    f"valids_high_at_first_edge={','.join(high) or 'none'} sf=SF-003"
+                    f"valids_high_at_first_edge={','.join(high) or 'none'}"
                 )
         j = recs["jtag"]
         fall = j.mon.assert_ref - j.ref_write
@@ -1545,7 +1545,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         passed = "yes" if fall >= 32 else "no"
         obs["OBS-JTAG-COOL-OVERRIDE"].append(
             f"OBS-JTAG-COOL-OVERRIDE: write_to_fall={fall} value1_to_release={rise} "
-            f"deglitch_passed={passed} sf=SF-024"
+            f"deglitch_passed={passed}"
         )
 
     def _fence_check(self, recs, fails: list[str]) -> str:

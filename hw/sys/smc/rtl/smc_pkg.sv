@@ -16,7 +16,7 @@ package smc_pkg;
   // Include register header file
 
   // Peripheral parameters
-  localparam int unsigned NumGpioWraps = 65;
+  localparam int unsigned NumGpioWraps = 67;
 
   // DFD parameters
   localparam int unsigned XtriggerWidth = 2;

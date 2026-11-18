@@ -1,0 +1,177 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-pwm_wrap]
+== PWM Wrapper Address Map
+
+Wrapper address map instantiating the PWM register block and its pad control.
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *PWM_PARAM[4]*: 4 registers, base 0x14, stride 0x4
+* *DUTY_CYCLE[4]*: 4 registers, base 0x24, stride 0x4
+* *BLINK_PARAM[4]*: 4 registers, base 0x34, stride 0x4
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-pwm_wrap-pwm-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x4 | <<reg-{regmap-instance}-pwm_wrap-pwm-REGWEN,REGWEN>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-pwm_wrap-pwm-CFG,CFG>> | RW a| -
+| 0xC | <<reg-{regmap-instance}-pwm_wrap-pwm-PWM_EN,PWM_EN>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-pwm_wrap-pwm-INVERT,INVERT>> | RW a| -
+| 0x14 - 0x20 | <<reg-{regmap-instance}-pwm_wrap-pwm-PWM_PARAM-,PWM_PARAM[4]>> | RW a| -
+| 0x24 - 0x30 | <<reg-{regmap-instance}-pwm_wrap-pwm-DUTY_CYCLE-,DUTY_CYCLE[4]>> | RW a| -
+| 0x34 - 0x40 | <<reg-{regmap-instance}-pwm_wrap-pwm-BLINK_PARAM-,BLINK_PARAM[4]>> | RW a| -
+| 0x800 | <<reg-{regmap-instance}-pwm_wrap-pwm_ctrl-CTRL,CTRL>> | RW a| Control Register
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `fatal_fault` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-REGWEN]
+=== REGWEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `REGWEN` | RW0C | 0x1 a| When true, all writable registers can be modified.
+When false, they become read-only. Defaults true, write
+zero to clear. This can be cleared after initial
+configuration at boot in order to lock in the supplied
+register settings.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-CFG]
+=== CFG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `CNTR_EN` | RW | 0x0 a| Assert this bit to enable the PWM phase counter.
+Clearing this bit disables and resets the phase counter.
+| 30:27 | `DC_RESN` | RW | 0x7 a| Phase Resolution (logarithmic). All duty-cycle and phase
+shift registers represent fractional PWM cycles, expressed in
+units of 2^-16 PWM cycles. Each PWM cycle is divided
+into 2^(DC_RESN+1) time slices, and thus only the (DC_RESN+1)
+most significant bits of each phase or duty cycle register
+are relevant.
+| 26:0 | `CLK_DIV` | RW | 0x8000 a| Sets the period of each PWM beat to be (CLK_DIV+1)
+input clock periods.  Since PWM pulses are generated once
+every 2^(DC_RESN+1) beats, the period between output
+pulses is 2^(DC_RESN+1)*(CLK_DIV+1) times longer than the
+input clock period.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-PWM_EN]
+=== PWM_EN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3:0 | `EN` | RW | 0x0 a| Write 1 to this bit to enable PWM pulses on the
+corresponding channel.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-INVERT]
+=== INVERT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3:0 | `INVERT` | RW | 0x0 a| Write 1 to this bit to invert the output for each channel,
+so that the corresponding output is active-low.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-PWM_PARAM-]
+=== PWM_PARAM[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `BLINK_EN` | RW | 0x0 a| Enables blink (or heartbeat).  If cleared, the output duty
+cycle will remain constant at DUTY_CYCLE.A. Enabling this
+bit  causes the PWM duty cycle to alternate between
+DUTY_CYCLE.A and DUTY_CYCLE.B
+| 30 | `HTBT_EN` | RW | 0x0 a| Modulates blink behavior to create a heartbeat effect. When
+HTBT_EN is set, the duty cycle increases (or decreases)
+linearly from DUTY_CYCLE.A to DUTY_CYCLE.B and back, in
+steps of (BLINK_PARAM.Y+1), with an increment (decrement)
+once every (BLINK_PARAM.X+1) PWM cycles.
+
+When HTBT_EN is cleared, the standard blink behavior applies,
+meaning that the output duty cycle alternates between DUTY_CYCLE.A for
+(BLINK_PARAM.X+1) pulses and DUTY_CYCLE.B for
+(BLINK_PARAM.Y+1) pulses.
+| 29:16 | `Reserved` | - | - a| Reserved
+| 15:0 | `PHASE_DELAY` | RW | 0x0 a| Phase delay of the PWM leading edge, in units of 2^(-16) PWM
+cycles. The leading edge will be the rising edge of the output
+signal unless the corresponding INVERT bit is set.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-DUTY_CYCLE-]
+=== DUTY_CYCLE[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:16 | `B` | RW | 0x7FFF a| The target duty cycle for PWM output, in units
+of 2^(-16)ths of a pulse cycle. The actual precision is
+however limited to the (DC_RESN+1) most significant bits.
+This setting only applies when blinking, and determines
+the target duty cycle.
+| 15:0 | `A` | RW | 0x7FFF a| The initial duty cycle for PWM output, in units
+of 2^(-16)ths of a pulse cycle. The actual precision is
+however limited to the (DC_RESN+1) most significant bits.
+This setting applies continuously when not blinking
+and determines the initial duty cycle when blinking.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm-BLINK_PARAM-]
+=== BLINK_PARAM[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:16 | `Y` | RW | 0x0 a| This blink-rate timing parameter has two different
+interpretations depending on whether or not the heartbeat
+feature is enabled. If heartbeat is disabled, a blinking
+PWM will pulse at duty cycle B for (Y+1) pulse cycles
+before returning to duty cycle A. If heartbeat is enabled
+the duty cycle will increase (or decrease) by (Y+1) units
+every time it is incremented (or decremented).
+| 15:0 | `X` | RW | 0x0 a| This blink-rate timing parameter has two different
+interpretations depending on whether or not the heartbeat
+feature is enabled. If heartbeat is disabled, a blinking
+PWM will pulse at duty cycle A for (X+1) pulse cycles before
+switching to duty cycle B. If heartbeat is enabled
+the duty cycle will start at duty cycle A, but
+will be incremented (or decremented) every (X+1) cycles.
+In heartbeat mode is enabled, the size of each step is
+controlled by BLINK_PARAM.Y.
+|===
+
+[#reg-{regmap-instance}-pwm_wrap-pwm_ctrl-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3:0 | `PAD_EN` | RW | 0x0 a| PWM Pad Function Select, one bit per channel. When bit i is set, the integration routes channel i's output to its pad. Does not start the channel; PWM_EN starts and stops each channel's waveform.
+|===

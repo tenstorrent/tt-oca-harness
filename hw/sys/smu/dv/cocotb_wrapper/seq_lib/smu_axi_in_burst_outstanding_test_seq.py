@@ -499,14 +499,19 @@ class smu_axi_in_burst_outstanding_test_seq:
             master, VERSION_LO, RESP_OKAY, clk=dut.clk_smu_i, label="axiin_window_ready"
         )
 
-        if self.burst_position == "before_reads":
-            await self._step_burst_type(master, sb)
-        await self._step_read_train(master, sb)
-        if self.burst_position == "between_trains":
-            await self._step_burst_type(master, sb)
-        for run, awid in enumerate(self.write_ids):
-            await self._step_write_train(master, sb, awid, run)
-        self.s1_ok = True
-        if self.burst_position == "after_writes":
-            await self._step_burst_type(master, sb)
-        await self._step_spm(master, sb)
+        # smu_outstanding_cg samples the trains, the burst-type step and the SPM walk only.
+        dut.tb_fcov_gate.value = 1
+        try:
+            if self.burst_position == "before_reads":
+                await self._step_burst_type(master, sb)
+            await self._step_read_train(master, sb)
+            if self.burst_position == "between_trains":
+                await self._step_burst_type(master, sb)
+            for run, awid in enumerate(self.write_ids):
+                await self._step_write_train(master, sb, awid, run)
+            self.s1_ok = True
+            if self.burst_position == "after_writes":
+                await self._step_burst_type(master, sb)
+            await self._step_spm(master, sb)
+        finally:
+            dut.tb_fcov_gate.value = 0

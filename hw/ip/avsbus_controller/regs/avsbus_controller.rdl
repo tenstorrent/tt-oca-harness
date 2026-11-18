@@ -264,7 +264,7 @@ addrmap avsbus_controller {
       field {
          sw = r;
          hw = w;
-         desc = "Number of vacant slots in the readback FIFO";
+         desc = "Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.";
       } READBACK_FIFO_VACANT_SLOTS[27:24] = 8;
 
       field {
@@ -276,7 +276,7 @@ addrmap avsbus_controller {
       field {
          sw = r;
          hw = w;
-         desc = "Number of vacant slots in the command FIFO";
+         desc = "Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.";
       } CMD_FIFO_VACANT_SLOTS[11:8] = 8;
 
       field {

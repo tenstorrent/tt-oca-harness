@@ -4,8 +4,9 @@
 
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL_ENABLE, DATA_CTRL), integrator GPIO pad table.
 
-Instance 60 is the pad the integrator table reserves. Each DATA_CTRL_ENABLE bit is written
-alone, then DATA_CTRL core2pad and DATA_CTRL_ENABLE = 0x31 are written in both orders.
+Instance 60 is the PWM[1] pad; with PWM CTRL.PAD_EN at its reset 0 the pad is register-controlled
+GPIO. Each DATA_CTRL_ENABLE bit is written alone, then DATA_CTRL core2pad and DATA_CTRL_ENABLE =
+0x31 are written in both orders.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ _DATA_CTRL_ENABLE = (
 )
 
 _INSTANCE = 60
-_INSTANCE_FUNCTION = "Reserved"
+_INSTANCE_FUNCTION = "PWM[1]"
 
 STEP_ORDER = (
     "BRINGUP_DONE",

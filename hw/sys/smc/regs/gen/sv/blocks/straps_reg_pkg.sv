@@ -19,7 +19,7 @@ package straps_reg_pkg;
     } straps__STRAPS_LO__in_t;
 
     typedef struct {
-        logic [28:0] next;
+        logic [30:0] next;
     } straps__STRAPS_HI__straps__in_t;
 
     typedef struct {

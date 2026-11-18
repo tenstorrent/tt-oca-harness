@@ -9,15 +9,16 @@
 # PicoRV32 is RV32E (x0-x15 only). Do not use x16+.
 #
 # Host writes one mailbox word before/while this image waits:
-#   [5:0]   legal KPV slot (0..63)
-#   [12:8]  SRAM lock region (1..31; never 0, which holds the result words)
+#   [5:0]   legal KPV slot
+#   [12:8]  SRAM lock region (never 0, which holds the result words)
 #   [21:16] slot to seal then erase, distinct from the others
 #   [29:24] slot to erase unsealed, distinct from the others
 #
 # Then:
 #   store key data to the seed slot before any lock and require AXI_SLVERR
 #     to stay clear (the control for the locked store below)
-#   write LOCK_WRITE on slot 0, the seed slot, and slot 63; read back bit 0
+#   write LOCK_WRITE on slot 0, the seed slot, and the last slot; read back
+#     bit 0
 #   store key data to the write-locked seed slot and require AXI_SLVERR
 #   read the seed slot while it holds only lock_write: the first store comes
 #     back with AXI_SLVERR clear; then set lock_use and require the same read
@@ -96,10 +97,15 @@
     .equ CTRL_LAST_OFF,    (KEY_MANAGER_KPV_CTRL_BASE_ADDR((KEY_MANAGER_KPV_CTRL_NUM - 1)) - KEY_MANAGER_KPV_CTRL_BASE_ADDR(0))
     .equ KEY_WORD_LAST_OFF, (KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, (KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM - 1)) - KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0))
 
-    // KM SRAM base from the generated map. The 1 KB lock regions start here:
-    // km_csr.rdl SRAM_LOCK (region 0 = 0x8000-0x83FF) and
-    // hw/ip/key_manager/doc/architecture.adoc.
+    // KM SRAM base from the generated map. The lock regions start here, one
+    // equal region per SRAM_LOCK bit (km_csr.rdl SRAM_LOCK and
+    // hw/ip/key_manager/doc/architecture.adoc). The region index scales by a
+    // shift, so the region size must be the power of two named here.
     .equ KM_SRAM_BASE, KEY_MANAGER_SRAM_BASE_ADDR
+    .equ REGION_SHIFT, 10
+    .if (KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw << REGION_SHIFT) != KEY_MANAGER_SRAM_SIZE
+    .error "SRAM_LOCK region size is not 1 << REGION_SHIFT"
+    .endif
 
     // Every pass/fail decision below continues toward a pass flag only
     // through a TAKEN branch whose condition is a known true; the fall-through
@@ -337,7 +343,7 @@ extent_done:
 
     # --- SRAM write-lock ---
     li    x10, KM_SRAM_BASE
-    slli  x6, x4, 10            # region * 0x400
+    slli  x6, x4, REGION_SHIFT  # region base offset
     add   x6, x10, x6
     addi  x6, x6, 0x100         # test address
     lui   x7, 0x11111

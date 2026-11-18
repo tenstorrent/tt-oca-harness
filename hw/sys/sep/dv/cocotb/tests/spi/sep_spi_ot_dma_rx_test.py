@@ -16,13 +16,23 @@ lanes (``mode="quad_io"``, ``dq_out`` = ``spi_sd_o``, ``dq_in`` = ``spi_sd_i``) 
 testlist passes ``+sep_spi_four_lane``.
 
 Checks:
-  CHK-DATAPATH (firmware): every DMA-written SRAM word of a read equals the staged word;
-    one PASS line per read with its opcode, width and byte count. The leaf requires exactly
-    one line per staged read, in order.
+  CHK-DATAPATH (firmware): every DMA-written SRAM word of a read carries the staged bytes in
+    one in-word byte order, the same order for every word of the image (first byte in bits
+    7:0, or in bits 31:24; OpenTitan spi_host "Input and Output Byte Ordering"); one PASS
+    line per read with its opcode, width and byte count. The leaf requires exactly one line
+    per staged read, in order. The firmware prints the order seen once on
+    ``OBS-SPI-BYTEORDER fw order=...``, logged, not graded: no SEP text states it. The leaf
+    requires that line.
+  CHK-NOERR (firmware): per read, the polled DMA STATUS has DONE=1 and ERROR=0, ERROR_CODE
+    reads 0, the SPI host goes idle and ERROR_STATUS reads 0, each read before the DMA
+    status write-one-to-clear (``secure_dma.rdl`` STATUS, ERROR_CODE;
+    ``spi_controller.rdl`` ERROR_STATUS). The PASS line prints those values; the leaf
+    requires one line per staged read and checks the printed values again.
   CHK-RW1C (firmware): the DMA done status holds after the poll and clears on
     write-one-to-clear; the verdict line names it.
   CHK-SPI-SB-RX: per read, the seeded bytes equal the flash record's ``data_out`` and the
-    monitor's wire decode at the read's lane width.
+    monitor's wire decode at the read's lane width. No RXDATA word enters it, so it does
+    not depend on the in-word byte order.
 
 Run mode: cpu with +skip_fuse_sense.
 """
@@ -45,6 +55,7 @@ from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
+from seq_lib.sep_dma_ops import ST_DONE, ST_ERROR
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_dma_rx_test")
@@ -72,6 +83,11 @@ _FW_LINE = re.compile(
     r"CHK-DATAPATH PASS: op=0x([0-9a-f]{8}) width=x(\d) words=0x([0-9a-f]{8}) "
     r"bytes=0x([0-9a-f]{8})"
 )
+_FW_NOERR = re.compile(
+    r"CHK-NOERR PASS: dma_status=0x([0-9a-f]{8}) dma_err_code=0x([0-9a-f]{8}) "
+    r"spi_idle=([01]) spi_err_status=0x([0-9a-f]{8})"
+)
+_FW_ORDER = re.compile(r"OBS-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided) ")
 
 # Scratch-mutation hooks (None/False in the committed leaf). MUT_PATTERN_SEED
 # stages expected patterns drawn from another seed while the flash keeps this
@@ -92,7 +108,7 @@ class SepSpiDmaRxRead:
     data: bytes
 
     def words(self) -> list[int]:
-        """The bytes as RXDATA words, the first byte received in bits 7:0 (ByteOrder 1)."""
+        """The bytes as staged words, first byte in bits 7:0; the firmware also takes the swap."""
         return [int.from_bytes(self.data[i : i + 4], "little") for i in range(0, _RX_SIZE, 4)]
 
 
@@ -145,7 +161,7 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
     """Each read's SRAM words, flash record and wire bytes equal its seeded pattern."""
 
     build_env = False
-    required_evidence = ("CHK-DATAPATH", "CHK-RW1C", "CHK-SPI-SB-RX")
+    required_evidence = ("CHK-DATAPATH", "CHK-NOERR", "CHK-RW1C", "CHK-SPI-SB-RX")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -226,7 +242,7 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             await spi_lane_fcov(_TEST, "data", lanes=read.lanes, rx=True)
 
     def _firmware_check(self, cfg: SepSpiDmaRxCfg) -> None:
-        """The verdict line and one CHK-DATAPATH PASS line per staged read, in order."""
+        """The verdict line, one CHK-DATAPATH and one CHK-NOERR PASS line per staged read."""
         console = self.sb.console_text()
         verdict = next(
             (ln for ln in console.splitlines() if ln.startswith(_VERDICT_PREFIX)),
@@ -274,3 +290,34 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             "CHK-RW1C PASS: firmware reported the DMA done status holding after the poll "
             "and clearing on write-one-to-clear"
         )
+        noerr = _FW_NOERR.findall(console)
+        bad = [
+            line
+            for line in noerr
+            if not int(line[0], 16) & ST_DONE
+            or int(line[0], 16) & ST_ERROR
+            or int(line[1], 16)
+            or line[2] != "1"
+            or int(line[3], 16)
+        ]
+        if len(noerr) != len(cfg.reads) or bad or "FAIL: CHK-NOERR" in console:
+            raise AssertionError(
+                f"CHK-NOERR FAIL seed={cfg.seed}: {len(noerr)} firmware PASS lines for "
+                f"{len(cfg.reads)} reads, bad values {bad}. Console was:\n{console}"
+            )
+        for read, (status, err_code, _, spi_err) in zip(cfg.reads, noerr):
+            self.logger.info(
+                "CHK-NOERR PASS seed=%d read[%d] dma_status=0x%s dma_err_code=0x%s spi_idle=1 "
+                "spi_err_status=0x%s",
+                cfg.seed,
+                read.idx,
+                status,
+                err_code,
+                spi_err,
+            )
+        orders = _FW_ORDER.findall(console)
+        if len(orders) != 1:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-DATAPATH seed={cfg.seed}: {len(orders)} firmware "
+                f"OBS-SPI-BYTEORDER lines, expected 1. Console was:\n{console}"
+            )

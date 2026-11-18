@@ -19,10 +19,11 @@ seed-randomized:
 
 This leaf drives single-beat accesses only. INCR bursts are
 sep_sram_inbound_burst_attr_test, and refused FIXED/WRAP bursts are
-sep_sram_burst_type_test. WSTRB=0x00 is excluded (undefined). Non-contiguous
-WSTRB masks (e.g. 0x05) are not walked: cocotbext-axi derives the
-strobe from addr+length (contiguous only), and this master has no explicit-strobe
-write.
+sep_sram_burst_type_test. WSTRB=0x00 and non-contiguous WSTRB masks (e.g. 0x05)
+are not walked here: cocotbext-axi derives the strobe from addr+length
+(contiguous only), and this master has no explicit-strobe write. CHK-SRAM-STRB
+in sep_sram_axi_shape_matrix_test grades them, 0x00 included, on the inbound
+master.
 
 Checks (each logs a positive PASS line; CHK-SRAM-MACRO-MAP grades the SRAM macro
 request tap, the others value-compare an exact read-back against the cfg golden):
@@ -50,14 +51,22 @@ request tap, the others value-compare an exact read-back against the cfg golden)
                  that access.
 
 Run mode: no_cpu with +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
+
+The graded window (owner code of this test) is open around the checks. After
+CHK-PATTERN passes, the leaf writes each pattern class it graded (0xAAAA, 0x5555,
+walking one, walking zero, the fixed word, seed random) to the pass label of
+``sep_sram_access_cg.cp_pattern_class``; after CHK-ADDR-LINES passes, each
+address-line class (base word, offset 2^k, top word) to the pass label of
+``cp_addr_line_class`` (``set_sram_access_pass``).
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_fabric_tap import SepFabricTap
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_sram_access_pass
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_sram_breadth_seq import (
@@ -68,6 +77,22 @@ from seq_lib.sep_sram_breadth_seq import (
     SepSramBreadth,
     SepSramBreadthCfg,
 )
+
+TEST = "sep_sram_datapath_breadth_test"
+
+# Pass-label cells of sep_sram_access_cg.cp_pattern_class: the fixed patterns by
+# value, then the walks; any other graded word is seed random.
+PATTERN_CELL = {
+    0xAAAA_AAAA_AAAA_AAAA: 0,
+    0x5555_5555_5555_5555: 1,
+    **dict.fromkeys(WALKING_ONE_PATTERNS, 2),
+    **dict.fromkeys(WALKING_ZERO_PATTERNS, 3),
+    0xDEAD_BEEF_CAFE_BABE: 4,
+}
+PATTERN_RANDOM_CELL = 5
+# Pass-label cells of cp_addr_line_class: base word 0, offset 2^k cell k, top word 18.
+ADDR_LINE_BASE_CELL = 0
+ADDR_LINE_TOP_CELL = 18
 
 # SRAM macro geometry from the generated memory map: one macro word per SRAM
 # memory word, and one macro address per word of the aperture.
@@ -167,6 +192,7 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.macro_tap = SepFabricTap("PR-SRAM-MACRO").start()
         self.sram = SepSramMacroMapped(self, self.scfg, self.macro_tap)
+        open_graded_window(TEST, self.logger)
         await self._chk_wstrb()
         await self._chk_pattern()
         await self._chk_boundary()
@@ -174,10 +200,20 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         await self._chk_nonvac()
         await self._chk_addr_lines()
         await self._chk_sram_macro_map()
+        close_graded_window(self.logger)
         self.logger.info(
             "SRAM datapath breadth PASS: SRAM datapath breadth verified "
             "(wstrb / pattern / boundary / seq / nonvac / addr lines)"
         )
+
+    async def _sram_pass(self, point: int, cells) -> None:
+        """Write each cell to the pass label, hold it two clocks, then write 0."""
+        clk = cocotb.top.clk_i
+        for cell in sorted(set(cells)):
+            await RisingEdge(clk)
+            set_sram_access_pass(point, cell, self.logger)
+            await ClockCycles(clk, 2)
+            set_sram_access_pass(0, log=self.logger)
 
     async def _chk_sram_macro_map(self) -> None:
         sram = self.sram
@@ -245,6 +281,9 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             addr,
             len(WALKING_ONE_PATTERNS),
             len(WALKING_ZERO_PATTERNS),
+        )
+        await self._sram_pass(
+            3, (PATTERN_CELL.get(p, PATTERN_RANDOM_CELL) for p in cfg.pattern_values)
         )
 
     async def _chk_boundary(self) -> None:
@@ -328,4 +367,9 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             len(pairs),
             cfg.size,
             ", ".join(f"+0x{off:05x}" for off in upper),
+        )
+        top = cfg.size - SRAM_WORD_BYTES
+        cells = {0: ADDR_LINE_BASE_CELL, top: ADDR_LINE_TOP_CELL}
+        await self._sram_pass(
+            4, (cells.get(off, off.bit_length() - 1) for off in cfg.addr_line_offsets)
         )

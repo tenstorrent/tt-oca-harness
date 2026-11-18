@@ -50,6 +50,16 @@ xref:smu.adoc#sep-integration[SEP Integration]
 |xref:smu.adoc#smu-axi-boundary-contract[AXI boundary contract]
 
 |[ ]
+|Drive AxPROT[1] (NS) and AxUSER[3:0] (source ID) of each `smu_axi_in` request from the requester's security state and identity
+|Fabric mapping of security state and requester identity to NS and source ID reviewed; inbound filter test with non-zero `src_id`
+|xref:smu.adoc#smu-axi-boundary-contract[AXI boundary contract]
+
+|[ ]
+|Carry NS and the source ID from `smu_axi_out` into the system fabric's security attribute and downstream filters
+|Fabric mapping reviewed; any override or dropped attribute recorded as a security decision
+|xref:smu.adoc#smu-axi-boundary-contract[AXI boundary contract]
+
+|[ ]
 |Apply technology-mapping and CDC constraints; run integration-level verification
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |xref:prim.adoc#prim-cell-replacement[Prim Cell Replacement],
@@ -98,6 +108,16 @@ ifdef::backend-pdf[]
 |[ ]
 |Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
 |Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
+|<<smu-axi-boundary-contract,AXI boundary contract>>
+
+|[ ]
+|Drive AxPROT[1] (NS) and AxUSER[3:0] (source ID) of each `smu_axi_in` request from the requester's security state and identity
+|Fabric mapping of security state and requester identity to NS and source ID reviewed; inbound filter test with non-zero `src_id`
+|<<smu-axi-boundary-contract,AXI boundary contract>>
+
+|[ ]
+|Carry NS and the source ID from `smu_axi_out` into the system fabric's security attribute and downstream filters
+|Fabric mapping reviewed; any override or dropped attribute recorded as a security decision
 |<<smu-axi-boundary-contract,AXI boundary contract>>
 
 |[ ]

@@ -20,8 +20,8 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # on OCAH_REG_NO_ERR_BLOCKS answers OKAY for every address.
 # OCAH_REG_ADDR_WIDTH_<stem> widens the CPU port past the minimum the RDL needs;
 # the instantiating wrapper must then drive the block's offset, not a slice of
-# the bus address.
-ocah_reg_regblock_opts = $(if $(filter $(1),$(OCAH_REG_ERR_CHECK_BLOCKS)),--err-if-bad-addr --err-if-bad-rw,$(if $(filter $(1),$(OCAH_REG_NO_ERR_BLOCKS)),,--err-if-out-of-range)) $(addprefix --addr-width ,$(OCAH_REG_ADDR_WIDTH_$(1)))
+# the bus address. OCAH_REG_REGBLOCK_OPTS_<stem> adds further regblock options.
+ocah_reg_regblock_opts = $(if $(filter $(1),$(OCAH_REG_ERR_CHECK_BLOCKS)),--err-if-bad-addr --err-if-bad-rw,$(if $(filter $(1),$(OCAH_REG_NO_ERR_BLOCKS)),,--err-if-out-of-range)) $(addprefix --addr-width ,$(OCAH_REG_ADDR_WIDTH_$(1))) $(OCAH_REG_REGBLOCK_OPTS_$(1))
 # PeakRDL addrmap parameter overrides (`-P NAME=VALUE`). Keyed by the RDL stem.
 ocah_reg_rdl_params = $(foreach p,$(OCAH_REG_RDL_PARAMS_$(call ocah_reg_name,$(1))),-P $(p))
 # Non-empty when the block's register RTL is sourced outside regblock.

@@ -50,14 +50,13 @@ WSTRB enables no lane:
   pre-write value after an all-ones write and after each of the four single-lane
   writes; VERSION_LO / VERSION_HI also read their documented 0x000100A0 /
   0x00000000. CHIP_ID and LC_STATE are logged against their documented resets
-  (SF-023) and every BRESP is logged, not compared (SF-022).
+  and every BRESP is logged, not compared.
 * NDMRESET_PROCESS (ndm_reset.adoc, `RW` 31:0): stores all ones and 0, and a
-  0xA5 written in lane b alone changes only byte b (SF-024).
+  0xA5 written in lane b alone changes only byte b.
 * NDMRESET_REQUEST / NDMRESET_CLUSTER_COUNT (`R`): unchanged by an all-ones
-  write and by 0xFF in each single lane; BRESP logged (SF-022).
+  write and by 0xFF in each single lane; BRESP logged.
 * ISOLATE_REQ_SMC_REG: the zero-strobe write must answer B within the driver's
-  bound; BRESP and the value before and after are logged and not compared
-  (SF-021).
+  bound; BRESP and the value before and after are logged and not compared.
 """
 
 from __future__ import annotations
@@ -227,7 +226,7 @@ _STRAPS_WRITE_PATTERN = 0xFFFF_FFFF
 _REF_COUNTER_LOAD_POLLS = 16
 
 # VERSION_LO / VERSION_HI are `R` and read their RDL reset; the documented
-# resets of CHIP_ID / LC_STATE are logged only (SF-023).
+# resets of CHIP_ID / LC_STATE are logged only.
 _VERSION_REGS = ("VERSION_LO", "VERSION_HI")
 _CHIPCFG_RESET_DOC = {"CHIP_ID": 0x0, "LC_STATE": 0xF}
 
@@ -633,7 +632,7 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-RDL-CHIPCFG-ALLONES: VERSION_LO=0x%08X VERSION_HI=0x%X CHIP_ID=pre(0x%X) "
             "LC_STATE=pre(0x%X) after 0xFFFFFFFF WSTRB 0xF; CHIP_ID doc reset 0x%X, LC_STATE "
-            "doc reset 0x%X (logged, SF-023); BRESP logged %s (SF-022)",
+            "doc reset 0x%X (logged); BRESP logged %s",
             pre["VERSION_LO"],
             pre["VERSION_HI"],
             pre["CHIP_ID"],
@@ -658,7 +657,7 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         self._mark("CHIPCFG-LANES", lanes)
         cocotb.log.info(
             "CHK-RDL-CHIPCFG-LANES: %d/%d single-lane writes, readback == pre-write; BRESP "
-            "logged %s (SF-022)",
+            "logged %s",
             lanes,
             len(regs) * _LANES,
             self._resp_list(bresp),
@@ -735,8 +734,7 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
             cocotb.log.info("%s pre-write value 0x%08x", name, pre)
         self._mark("NDM-RO", self.strobe_compares - start)
         cocotb.log.info(
-            "CHK-RDL-NDM-RO: REQUEST %d/5 unchanged, CLUSTER_COUNT %d/5 unchanged; BRESP "
-            "logged %s (SF-022)",
+            "CHK-RDL-NDM-RO: REQUEST %d/5 unchanged, CLUSTER_COUNT %d/5 unchanged; BRESP logged %s",
             unchanged["NDMRESET_REQUEST"],
             unchanged["NDMRESET_CLUSTER_COUNT"],
             self._resp_list(bresp),
@@ -757,7 +755,7 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         self._mark("ISO-ZERO-STROBE", 1)
         cocotb.log.info(
             "CHK-RDL-ISO-ZERO-STROBE: wstrb=0 B received, BRESP=%s, ISOLATE_REQ_SMC_REG "
-            "pre=0x%X post=0x%X (observed only, SF-021)",
+            "pre=0x%X post=0x%X (observed only)",
             _RESP_NAMES.get(item.resp_code, str(item.resp_code)),
             pre,
             post,

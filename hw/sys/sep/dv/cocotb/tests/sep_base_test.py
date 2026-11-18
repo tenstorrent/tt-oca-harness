@@ -121,7 +121,14 @@ class _EvidenceFilter(logging.Filter):
     )
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
-    NO_OWN_EVIDENCE: dict[str, str] = {}
+    NO_OWN_EVIDENCE: dict[str, str] = {
+        "sep_otbn_mem_smoke_test": (
+            "grades only the bench state (CTRL-OTBN-MEM-PRECOND); the IMEM/DMEM "
+            "access result while STATUS reads BUSY_SEC_WIPE_INT is logged by "
+            "OBS-OTBN-MEM-BUSY-ACCESS under the OTBN wipe-state memory access "
+            "exception (docs/test_contracts/smoke_uvm.adoc)"
+        ),
+    }
 
     def __init__(self) -> None:
         super().__init__()

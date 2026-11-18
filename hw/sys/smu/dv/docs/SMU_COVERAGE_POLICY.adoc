@@ -46,9 +46,10 @@ the run's commit, simulator and figures. No `hosted`-only figure is recorded
 tracker
 |===
 
-`cov/sv/` carries ten functional-coverage modules, 109 points in all; the
-counts are the `OCAH_FCOV_COVER` invocations in each file.
-`tb/tb_wrapper_top.sv` instantiates all ten, and 102 points enter the
+`cov/sv/` carries twelve functional-coverage modules, 204 points in all; the
+counts are the `OCAH_FCOV_COVER` invocations in each file, and the Coverage
+Summary of `hw/sys/smu/dv/docs/SMU_FCOV.adoc` is their record.
+`tb/tb_wrapper_top.sv` instantiates all twelve, and 197 points enter the
 database on its single target, `compile_smu_chiplet`, which has SEP present:
 three points sit behind `SMU_FCOV_PHASE2`, which no configuration defines,
 and the four inside `g_nosep` generate blocks exist only on a SEP=0
@@ -58,7 +59,7 @@ elaboration, which this package does not build
 [cols="2,1,4",options="header",]
 |===
 |Module |Points |Spec area
-|`smu_xbar_fcov.sv` |25 |Window programming and reprogramming, inbound AXI
+|`smu_xbar_fcov.sv` |115 |Window programming and reprogramming, inbound AXI
 handshake, all four response encodings, inbound traffic not forwarded outbound
 |`smu_boot_fcov.sv` |21 |Reset-release edges, boot-stall sources and release,
 lifecycle broadcast, fuse sense, SRAM auto-init
@@ -69,9 +70,11 @@ order, powergood
 boundary
 |`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
 |`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
+|`smu_filter_fcov.sv` |5 |The SMC inbound traffic filter denying each match term alone
 |`smu_alias_fcov.sv` |4 |SEP-to-SMC dedicated-port routing at the SMU boundary
 |`smu_clk_fcov.sv` |3 |Clock mirrors `tb/tb_wrapper_top.sv` exposes
 |`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
+|`smu_remap_fcov.sv` |0 |The alias and output remap windows and attributes; covergroup only
 |===
 
 [[smu-cov-paths]]

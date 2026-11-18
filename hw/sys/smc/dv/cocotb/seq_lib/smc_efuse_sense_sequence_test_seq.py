@@ -17,7 +17,8 @@ after the hand-over quiet window. R is the lowest-addressed map register whose f
 non-zero in the image named by +smc_efuse_hex; that image word is the expected value, since the
 shadow registers are loaded from the OTP at each boot (efuse architecture.adoc). The reference
 read must equal it. The response and data of the read during sense are logged without a compare
-(SF-030); the read after sense done must answer OKAY with the image word.
+(open: the response and data of a shadow read during sense); the read after sense
+done must answer OKAY with the image word.
 
 Every bounded wait is recorded with the bound in force, the expiry outcome and the last state
 read from its own mechanism: the edge waits below, the reset agent's WAIT_STATE items and the
@@ -449,7 +450,8 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-SENSE-SHADOW-PRESENSE",
             "R=%s@0x%08x, read issued at strobe %d/%d, completed at edge %d with sense_done=%d, "
-            "RRESP=%d, RDATA=0x%08x (response and data measured, not compared: SF-030)",
+            "RRESP=%d, RDATA=0x%08x (response and data measured, not compared; open: the response "
+            "and data of a shadow read during sense)",
             name,
             addr,
             pre_k,

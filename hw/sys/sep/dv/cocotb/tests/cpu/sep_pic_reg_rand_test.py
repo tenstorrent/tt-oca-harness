@@ -87,7 +87,7 @@ Expected values are the RDL reset and field layout
 (``hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc``) and the drawn stimulus,
 never a DUT read-back. cpu run mode, ``+skip_fuse_sense``; VCS grades
 CHK-RESET-X. Verilator is two-state, so it logs each group as
-``OBS-BLOCKED CHK-RESET-X reason=two_state`` without grading the group's read
+``INFO-BLOCKED CHK-RESET-X reason=two_state`` without grading the group's read
 count or X bits, and grades only the probe compare as the control
 ``CTRL-RESET-X``.
 """
@@ -495,7 +495,7 @@ class sep_pic_reg_rand_test(sep_base_test):
                 f"ctrl_nonzero={ctrl_nonzero}"
             )
             if not four_state:
-                self.logger.info("OBS-BLOCKED CHK-RESET-X reason=two_state %s", body)
+                self.logger.info("INFO-BLOCKED CHK-RESET-X reason=two_state %s", body)
                 continue
             if not ok:
                 raise AssertionError(

@@ -15,13 +15,13 @@
         <ipxact:displayName>GPIO Interface Wrapper Address Map</ipxact:displayName>
         <ipxact:description>Wrapper address map instantiating one GPIO interface register block per pad.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'h410</ipxact:range>
+        <ipxact:range>'h430</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>gpio_intf</ipxact:name>
           <ipxact:displayName>GPIO Interface Address Map</ipxact:displayName>
           <ipxact:description>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</ipxact:description>
-          <ipxact:dim>65</ipxact:dim>
+          <ipxact:dim>67</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h10</ipxact:range>
           <ipxact:register>

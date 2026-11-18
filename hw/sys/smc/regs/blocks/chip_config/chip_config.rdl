@@ -12,7 +12,7 @@ addrmap chip_config {
         field {
             sw = r;
             hw = w;
-            desc = "SMC version, lower 32 bits";
+            desc = "SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.";
         } version_lo [31:0] = 0x000100A0;
     };
 
@@ -20,7 +20,7 @@ addrmap chip_config {
         field {
             sw = r;
             hw = w;
-            desc = "SMC version, upper 32 bits";
+            desc = "SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.";
         } version_hi [31:0] = 0x0;
     };
 

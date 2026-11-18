@@ -32,7 +32,7 @@ first reads after it hold every entry to the documented field resets of
 `filter_ctrl.adoc` (`data_bus_width` 0x3, every other FILTER_CONFIG field 0,
 `START_ADDR[55:0]` 0x0, `END_ADDR[55:0]` 0x7) with `locked` clear, and an
 `allow_ns` write to each entry then answers OKAY and reads back, so the lock
-did not survive the reset. Whether the reserved bits read 0 is open (SF-006):
+did not survive the reset. Whether the reserved bits read 0 is open:
 they are logged and never compared.
 
 `START_ADDR` and `END_ADDR` are not written here. Hardware writes a widened
@@ -415,7 +415,7 @@ class smc_filter_config_field_sweep_test_seq(SmcResetSeqBase, SmcRegblockFieldSw
             "CHK-FILTER-COLD-RESET-WORDS: %d/%d entries cfg fields reset (dbw=3, locked, "
             "allow_burst, group_id, src_id, allow_ns, entry_enabled, write_allowed, "
             "read_allowed = 0), start[55:0]=0x%x, end[55:0]=0x%x, all 64-bit reads OKAY; "
-            "reserved bits logged (SF-006, not compared): cfg %s start %s end %s",
+            "reserved bits logged (not compared): cfg %s start %s end %s",
             self.reset_words_read,
             count,
             _START_RESET,

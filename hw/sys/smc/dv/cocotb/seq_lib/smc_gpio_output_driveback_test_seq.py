@@ -20,13 +20,14 @@ DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit16     interface_enable  select register values to drive the pad
 
 After the wrap-0 leg, every GPIO interface except the bench-owned pads 27, 28
-and 51, the boot-stall pad 57 and the cool-reset-in pad 61 is walked alone
+and 51, the boot-stall pad 57 and the cool-reset-in pad 63 is walked alone
 with lsio_disable set: enable_rx_tx 01 (TX), 00, 11, then the reset word, each
 written and read back over SEP_IN before ``tb_core2pad_en_o``,
 ``tb_pad2core_en_o`` and ``tb_core2pad_o`` are sampled. Each interface's pad
 p_w is the one ``core2pad_en_o`` bit that differs between its TX and 00
 samples. The absolute enable levels and DATA_CTRL.pad2core are logged, not
-compared (SF-013). The AVS controller drives the data bits of pads 49 and 50
+compared; the pad enable polarity and pad2core under enable 11 are open. The
+AVS controller drives the data bits of pads 49 and 50
 (AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE resets to 0, so the AVS clock runs while the
 bus is idle); every other-pads compare logs those two data bits instead of
 comparing them and keeps their enables.
@@ -72,7 +73,7 @@ EXCLUDED_PADS = {
     28: "bench-owned",
     51: "bench-owned",
     57: "boot stall",
-    61: "cool reset in",
+    63: "cool reset in",
 }
 #: Pads whose core2pad_o data bit the AVS controller drives; the other-pads compares
 #: log it instead of comparing it, and keep comparing their enables.
@@ -84,8 +85,8 @@ TRANSITIONS = (
     ("BOTH-OFF", "RESTORE"),
     ("RESTORE", "RESET-WORD"),
 )
-#: Interfaces the testcase contract walks (0..64 minus the five above).
-WALKED_COUNT = 60
+#: Interfaces the testcase contract walks (0..66 minus the five above).
+WALKED_COUNT = 62
 #: (term, enable_rx_tx) for each write of one interface, in walk order.
 WALK_TERMS = (("TX", 0b01), ("BOTH-OFF", 0b00), ("RESTORE", 0b11), ("RESET-WORD", None))
 
@@ -448,7 +449,9 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
                 f"the integrator pad table puts {function} on pad {pad_index(function)}, not {q}"
             )
         walk = [w for w in range(count) if w not in EXCLUDED_PADS]
-        assert len(walk) == WALKED_COUNT, f"{len(walk)} interfaces to walk, contract says 60"
+        assert len(walk) == WALKED_COUNT, (
+            f"{len(walk)} interfaces to walk, contract says {WALKED_COUNT}"
+        )
         cocotb.log.info(
             "walk: %d interfaces of %d; excluded %s; words %s",
             len(walk),
@@ -504,7 +507,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
             "CHK-GPIO-PAD-TX-ENABLE: %d interfaces, %d distinct pads, en(TX)!=en(00) on p_w "
             "only, core2pad_o[p_w]=1 on all %d; no other pad's enable bit and no other "
             "pad's data bit outside 49/50 changed; measured core2pad_en_o[p_w] level under "
-            "TX: %d read 1, %d read 0 (SF-013); core2pad_o[49]/[50] logged, not compared: "
+            "TX: %d read 1, %d read 0 (open: the pad enable polarity and pad2core under enable "
+            "11); core2pad_o[49]/[50] logged, not compared: "
             "%s; w->p_w %s",
             n_walked,
             n_distinct,
@@ -526,7 +530,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-GPIO-PAD-RESTORE: %d/%d tx-en back to TX level, rx-en toggled, baseline after "
-            "reset word; pad2core logged (LINKED-ISSUE SF-013): %d read 1, %d read 0; "
+            "reset word; pad2core logged (LINKED-ISSUE: the pad enable polarity and pad2core "
+            "under enable 11): %d read 1, %d read 0; "
             "core2pad_o[49]/[50] logged, not compared: %s; pad2core per w %s",
             n_walked,
             n_walked,

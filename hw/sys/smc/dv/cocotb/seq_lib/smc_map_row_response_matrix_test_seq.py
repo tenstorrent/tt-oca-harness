@@ -79,8 +79,8 @@ GATED_WINDOW_ENABLES = (
 )
 
 # Row counts of the generated component map the walk is written against.
-PAST_ROWS = 30
-PAST_ROWS_INSIDE = 24
+PAST_ROWS = 31
+PAST_ROWS_INSIDE = 25
 PAST_ROWS_BEYOND = (
     "smc_cluster_plic",
     "smc_cluster_clint",
