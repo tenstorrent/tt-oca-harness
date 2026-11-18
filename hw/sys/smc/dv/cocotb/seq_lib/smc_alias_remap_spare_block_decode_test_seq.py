@@ -52,8 +52,8 @@ from smc_reg import (  # noqa: E402
 LOCAL_BASE = 0xC000_0000
 
 # --- local alias base: the core-0 watchdog sits at window offset 0 ------------
-WDT0_CTRL = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR")
-WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
+WDT0_CTRL = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_BASE_ADDR")
+WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR")
 assert WDT0_CTRL == LOCAL_BASE
 
 # --- alias remap: 8 regions, 0x20 apart --------------------------------------

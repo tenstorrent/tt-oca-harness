@@ -288,7 +288,7 @@ class smc_remap_region_offset_walk_test_seq(SmcCsrSeq):
         assert local_base == LOCAL_BASE_RESET, (
             f"LOCAL_BASE reads 0x{local_base:x}, the documented reset is 0x{LOCAL_BASE_RESET:x}"
         )
-        reg_window = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
+        reg_window = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR")
         assert smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR") - reg_window == MMODE_WINDOW
         assert smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR") - reg_window == XVISOR_WINDOW
         self._mark("SETUP", 1)

@@ -4774,7 +4774,7 @@ not state a spacing.
 *Source Module*: `smc_wdt_count_feed_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 and core 1 watchdog blocks
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*` and `SMC_TOP_SMC_CLUSTER_CORE1_WDT_*`: `CTRL`, `COUNT`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*` and `SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_*`: `CTRL`, `COUNT`,
 `COUNT_HI`, `FEED`, `KEY`); the CPU control registers `RESET_CTRL` and `RESET_TIMEOUT` (8-byte
 accesses) for the core 1 level reset; `tb_top.tb_cpu_core_resets_n` bit 1 sampled on `clk_smc_i`; a
 bounded SEP_IN read through the driver's tolerated-timeout path for the access made while core 1 is
@@ -4904,7 +4904,7 @@ condition is not stated by the specification.
 
 *Source Module*: `smc_wdt_ip0_clear_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; core 0 watchdog block `SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; core 0 watchdog block `SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`
 registers `KEY`, `CTRL`, `CMP`, `COUNT` and `FEED`; `CTRL` bit 28 (`wdogip0`) read back
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5013,7 +5013,7 @@ zero init also reads 0.
 *Source Module*: `smc_wdt_irq_source_ids_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 2 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE2_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`); bench pin `tb_sep_wdt_reset_n`
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`); bench pin `tb_sep_wdt_reset_n`
 (driven low and high); observation points `tb_cpu_interrupts` (raw vector, 328 bits, bit 282
 sampled), `tb_sep_wdt_irq_sync`, `tb_plic_pending_331` (PLIC source ID 331, core 2 watchdog) and
 `tb_rst_warm_smc_clk_n`, all sampled on `clk_smc_i`; `tb_fuse_sense_done`
@@ -5107,7 +5107,7 @@ specification does not state whether the PLIC pending bit is level or latch.
 *Source Module*: `smc_wdt_key_relock_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
 `CMP`; 4-byte accesses and one 8-byte write at `FEED`)
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5231,8 +5231,8 @@ write is not stated by the specification.
 
 *Source Module*: `smc_wdt_register_map_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (watchdog blocks `SMC_TOP_SMC_CLUSTER_CORE0_WDT_*` to
-`SMC_TOP_SMC_CLUSTER_CORE3_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (watchdog blocks `SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*` to
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
 `CMP`; 4-byte accesses)
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5415,7 +5415,7 @@ read of 0 is bench-limited: a 2-state zero init also reads 0.
 *Source Module*: `smc_wdt_scale_zerocmp_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `SCALED_COUNT`, `CMP`; 4-byte accesses);
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `SCALED_COUNT`, `CMP`; 4-byte accesses);
 `CTRL` bit 28 (`wdogip0`) read back
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5522,7 +5522,7 @@ printed, because the count value at the `wdogzerocmp` clear is not stated by the
 *Source Module*: `smc_wdt_write_width_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
 `CMP`; 4-byte reads, 4-byte writes and writes with explicit byte-enable masks through the strobed
 write item)
 
@@ -7838,7 +7838,7 @@ and the chunk lengths. This entry is the hosted, seed-drawn counterpart of the f
 *Source Module*: `smc_wdt_warm_reset_rand_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (the watchdog block of the drawn core
-`SMC_TOP_SMC_CLUSTER_CORE<n>_WDT_*`: `KEY`, `CMP`, `COUNT`, `CTRL`; and `CPU_CTRL.WDT_TIMEOUT`); the
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE<n>_WDT_*`: `KEY`, `CMP`, `COUNT`, `CTRL`; and `CPU_CTRL.WDT_TIMEOUT`); the
 `tb_top.sv` timeout taps `tb_wdt_first_timeout` and `tb_wdt_second_timeout` with the sticky latches
 `tb_wdt_first_timeout_seen` and `tb_wdt_second_timeout_seen`; observation points
 `tb_rst_warm_smc_clk_n`, `tb_fuse_reset_n`, `rst_primary_smc_clk_no` (a `tb_top` output of the
@@ -8107,7 +8107,7 @@ The hold is a level reset through `RESET_CTRL`; a core pulse and a debug hart re
 *Source Module*: `smc_wdt_plic_source_ids_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (the four watchdog blocks
-`SMC_TOP_SMC_CLUSTER_CORE{0..3}_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`; PLIC `PRIORITY[329..332]`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{0..3}_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`; PLIC `PRIORITY[329..332]`,
 `CORE0_MEIP_ENABLE[10]`, `CORE0_MEIP_THRESHOLD`, `CORE0_MEIP_CLAIM_COMPLETE`; `REGION_SIZE` widened
 to `0x1000_0000`); bench probes `tb_top.tb_plic_pending_329`, `tb_plic_pending_330`,
 `tb_plic_pending_331` and `tb_plic_pending_332` (PLIC pending bits of sources 329 to 332),

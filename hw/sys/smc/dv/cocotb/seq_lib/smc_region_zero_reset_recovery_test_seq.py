@@ -123,10 +123,10 @@ _K_TERM_STEP = {
 # map. The harts-only units (Debug Module Hart Interface, cluster error device) and the
 # forwarded regions (dtp_ctrl_reg, mmode_region, xvisor_region) are not probed.
 _PROBE_UNITS = (
-    ("WDT0", "smc_cluster_core0_wdt", "smc_cluster_core0_wdt/CTRL"),
-    ("WDT1", "smc_cluster_core1_wdt", "smc_cluster_core1_wdt/CTRL"),
-    ("WDT2", "smc_cluster_core2_wdt", "smc_cluster_core2_wdt/CTRL"),
-    ("WDT3", "smc_cluster_core3_wdt", "smc_cluster_core3_wdt/CTRL"),
+    ("WDT0", "smc_cluster_wdt_wrap.core0_wdt", "smc_cluster_wdt_wrap/core0_wdt/CTRL"),
+    ("WDT1", "smc_cluster_wdt_wrap.core1_wdt", "smc_cluster_wdt_wrap/core1_wdt/CTRL"),
+    ("WDT2", "smc_cluster_wdt_wrap.core2_wdt", "smc_cluster_wdt_wrap/core2_wdt/CTRL"),
+    ("WDT3", "smc_cluster_wdt_wrap.core3_wdt", "smc_cluster_wdt_wrap/core3_wdt/CTRL"),
     ("RESET_UNIT", "smc_reset_unit", None),
     ("MISC_WRAP", "smc_misc_wrap", "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
     ("GPIO", "gpio_intf_wrap", "gpio_intf_wrap/gpio_intf/DATA_CTRL"),
