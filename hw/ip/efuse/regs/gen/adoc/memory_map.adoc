@@ -19,7 +19,7 @@
 [cols="<,<,<,<,<",options="header"]
 |===
 |Address Range |Size |Decoded Extent |Unit |Description
-|BASE + 0x7000 – BASE + 0x77FF |2 KiB |28 B |eFuse Control CSR |eFuse command and status registers.
+|BASE + 0x7000 – BASE + 0x73FF |1 KiB |28 B |eFuse Control CSR |eFuse command and status registers.
 |BASE + 0x7800 – BASE + 0x7FFF |2 KiB |1 KiB |Shadow Registers |Address map for efuse shadow registers providing access to various chip configuration and ID fields
 |===
 // end::smc-efuse[]

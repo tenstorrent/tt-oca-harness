@@ -57,7 +57,7 @@
 |0x10919000 |0x1091FFFF |28 KiB |28 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10920000 |0x10920FFF |4 KiB |28 B |Key Manager Mailbox SEP Side |Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO) |- |SLVERR, 0x0 / SLVERR
 |0x10921000 |0x1092FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10930000 |0x10930FFF |4 KiB |4 KiB |SEP eFuse Wrapper Address Map |Places the SEP eFuse controller, its security-token registers and its shadow registers in one 4 KiB page. |SLVERR, 0xBADCAB1E / SLVERR |-
+|0x10930000 |0x10930FFF |4 KiB |4 KiB |SEP eFuse Wrapper Address Map |Places the SEP eFuse controller, its security-token registers and its shadow registers in one 4 KiB page. |past efuse_interface_ctrl registers: SLVERR, 0x0 / SLVERR; past efuse_mmr registers: SLVERR, 0x0 / SLVERR; past sep_efuse_map registers: SLVERR, 0xBADCAB1E / SLVERR |-
 |0x10931000 |0x1093FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10940000 |0x1094CFFF |52 KiB |49176 B |abr |Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM. |OKAY, 0x0 / OKAY |SLVERR, 0xBADCAB1E / SLVERR
 |0x1094D000 |0x1094FFFF |12 KiB |12 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-

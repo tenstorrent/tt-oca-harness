@@ -530,7 +530,7 @@ VIEWS = {
                 "occupied_size": 0x1000,
                 "count": 1,
                 "stride": 0x0,
-                "hole_responses": (("past sub-block registers", {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"}),),
+                "hole_responses": (("past efuse_interface_ctrl registers", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"}), ("past efuse_mmr registers", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"}), ("past sep_efuse_map registers", {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"})),
                 "hole_notes": (),
                 "past_response": None,
                 "past_note": "",

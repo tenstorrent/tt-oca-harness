@@ -121,8 +121,11 @@ follows:
   block, the window its register block decodes.
 
 The cross-trigger network divides its own address map into windows by the same
-rules. The eFuse blocks, the external window of each subsystem and the units
-inside the SMC CPU cluster keep their own decode.
+rules. The eFuse control registers own 1 KiB in both the SEP and SMC pages,
+because one register block serves both, and the SMC eFuse controller answers
+the next 1 KiB with `SLVERR` and read data `0xBADCAB1E`. The eFuse shadow
+registers, the external window of each subsystem and the units inside the SMC
+CPU cluster keep their own decode.
 
 === Responses Inside a Window
 

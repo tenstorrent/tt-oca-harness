@@ -5,8 +5,9 @@
 //
 // Arbitrate the functional and JTAG AXI-Lite ports onto one path, bridge it to APB and decode
 // it into the MAP, CTRL and MMR windows (MMR only with HAS_LC_STATE), with SLVERR for any other
-// address. Each window decodes only its low address bits, so each window base must be a
-// multiple of its size rounded up to a power of two.
+// address. The CTRL and MMR windows span the address width of their register blocks, which
+// answer SLVERR past their last register. Each window decodes only its low address bits, so
+// each window base must be a multiple of its size rounded up to a power of two.
 //
 // SEP_SEC_DISABLE_TOKEN is embedded in RTL. HAS_LC_STATE, CLASS1_SHADOW_RANGES,
 // SECRET_SHADOW_RANGES, and LC_STATE_BIT_POSITION configure lifecycle and secret masking.
@@ -60,15 +61,15 @@ module efuse_interface_controller #(
   parameter bit [31:0] EFUSE_CTRL_REG_MAP_BASE_ADDR = 32'h1000,  // Base address of the CTRL window
                                                                  // holding the interface control
                                                                  // registers.
-  parameter bit [31:0] EFUSE_CTRL_REG_MAP_SIZE = 32'h1000,  // Size of the CTRL window in bytes.
-  localparam bit [31:0] EfuseCtrlRegMapEndAddr = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,  // Last byte address of the CTRL window.
+  localparam int unsigned EfuseCtrlRegMapWidth = efuse_interface_ctrl_reg_pkg::EFUSE_INTERFACE_CTRL_REG_MIN_ADDR_WIDTH,  // Offset address width of the CTRL window.
+  localparam bit [31:0] EfuseCtrlRegMapEndAddr = EFUSE_CTRL_REG_MAP_BASE_ADDR + (32'd1 << EfuseCtrlRegMapWidth) - 32'd1,  // Last byte address of the CTRL window.
 
   parameter bit [31:0] EFUSE_MMR_REG_MAP_BASE_ADDR = 32'h2000,  // Base address of the MMR window
                                                                 // holding the token registers;
                                                                 // decoded only when HAS_LC_STATE is
                                                                 // set.
-  parameter bit [31:0] EFUSE_MMR_REG_MAP_SIZE = 32'h1000,  // Size of the MMR window in bytes.
-  localparam bit [31:0] EfuseMmrRegMapEndAddr = EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32'd1,  // Last byte address of the MMR window.
+  localparam int unsigned EfuseMmrRegMapWidth = efuse_mmr_reg_pkg::EFUSE_MMR_REG_MIN_ADDR_WIDTH,  // Offset address width of the MMR window.
+  localparam bit [31:0] EfuseMmrRegMapEndAddr = EFUSE_MMR_REG_MAP_BASE_ADDR + (32'd1 << EfuseMmrRegMapWidth) - 32'd1,  // Last byte address of the MMR window.
 
   parameter int unsigned SHADOW_REG_BITS = 8192,  // Shadow register file size in bits; program and
                                                   // read CSR bit addresses at or above it are
@@ -175,9 +176,6 @@ module efuse_interface_controller #(
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
 
   localparam logic [5:0] TokenMatchCode = 6'b010101;
-
-  localparam int unsigned EfuseCtrlRegMapWidth = $clog2(EFUSE_CTRL_REG_MAP_SIZE);
-  localparam int unsigned EfuseMmrRegMapWidth = $clog2(EFUSE_MMR_REG_MAP_SIZE);
 
   `OCAH_ASSERT_STATIC(MapBaseAligned_A,
                       EFUSE_MAP_REG_MAP_BASE_ADDR % (32'd1 << EfuseMapRegMapWidth) == 0)
@@ -440,7 +438,7 @@ module efuse_interface_controller #(
     .s_apb_penable (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].penable),
     .s_apb_pwrite  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pwrite),
     .s_apb_pprot   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pprot),
-    .s_apb_paddr   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].paddr[4:0]),
+    .s_apb_paddr   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].paddr[EfuseCtrlRegMapWidth-1:0]),
     .s_apb_pwdata  (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pwdata),
     .s_apb_pstrb   (apb_endpoint_reqs[efuse_pkg::EFUSE_CSR_REG_MAP].pstrb),
     .s_apb_pready  (apb_endpoint_resps[efuse_pkg::EFUSE_CSR_REG_MAP].pready),

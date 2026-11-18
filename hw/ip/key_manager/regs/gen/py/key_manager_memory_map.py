@@ -102,7 +102,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"},
                 "past_note": "",
             },
             {
@@ -117,7 +117,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"},
                 "past_note": "",
             },
             {

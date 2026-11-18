@@ -12,7 +12,7 @@ module efuse_mmr_reg (
         input wire s_apb_penable,
         input wire s_apb_pwrite,
         input wire [2:0] s_apb_pprot,
-        input wire [6:0] s_apb_paddr,
+        input wire [9:0] s_apb_paddr,
         input wire [31:0] s_apb_pwdata,
         input wire [3:0] s_apb_pstrb,
         output logic s_apb_pready,
@@ -28,7 +28,7 @@ module efuse_mmr_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [6:0] cpuif_addr;
+    logic [9:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -57,7 +57,7 @@ module efuse_mmr_reg (
                     is_active <= '1;
                     cpuif_req <= '1;
                     cpuif_req_is_wr <= s_apb_pwrite;
-                    cpuif_addr <= {s_apb_paddr[6:2], 2'b0};
+                    cpuif_addr <= {s_apb_paddr[9:2], 2'b0};
                     cpuif_wr_data <= s_apb_pwdata;
                     for(int i=0; i<4; i++) begin
                         cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
@@ -105,7 +105,7 @@ module efuse_mmr_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [6:0] decoded_addr;
+    logic [9:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -119,31 +119,31 @@ module efuse_mmr_reg (
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.RMA_SIP_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
-            is_external |= cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
+            decoded_reg_strb.RMA_SIP_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 10'h0 + (10)'(i0) * 10'h4);
+            is_external |= cpuif_req_masked & (cpuif_addr == 10'h0 + (10)'(i0) * 10'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h0 + (10)'(i0) * 10'h4);
         end
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.RMA_CHIPLET_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
-            is_external |= cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
+            decoded_reg_strb.RMA_CHIPLET_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 10'h20 + (10)'(i0) * 10'h4);
+            is_external |= cpuif_req_masked & (cpuif_addr == 10'h20 + (10)'(i0) * 10'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h20 + (10)'(i0) * 10'h4);
         end
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.SEC_DISABLE_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
-            is_external |= cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
+            decoded_reg_strb.SEC_DISABLE_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 10'h40 + (10)'(i0) * 10'h4);
+            is_external |= cpuif_req_masked & (cpuif_addr == 10'h40 + (10)'(i0) * 10'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h40 + (10)'(i0) * 10'h4);
         end
-        decoded_reg_strb.TOKEN_EOP = cpuif_req_masked & (cpuif_addr == 7'h60) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h60);
-        decoded_reg_strb.RMA_SIP_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h64) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h64);
-        decoded_reg_strb.RMA_CHIPLET_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h68) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h68);
-        decoded_reg_strb.SEC_DISABLE_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h6c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h6c);
-        decoded_reg_strb.TOKEN_MATCH_FAULT = cpuif_req_masked & (cpuif_addr == 7'h70) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h70);
-        is_valid_addr = cpuif_addr < 7'h74;
+        decoded_reg_strb.TOKEN_EOP = cpuif_req_masked & (cpuif_addr == 10'h60) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h60);
+        decoded_reg_strb.RMA_SIP_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 10'h64) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h64);
+        decoded_reg_strb.RMA_CHIPLET_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 10'h68) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h68);
+        decoded_reg_strb.SEC_DISABLE_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 10'h6c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h6c);
+        decoded_reg_strb.TOKEN_MATCH_FAULT = cpuif_req_masked & (cpuif_addr == 10'h70) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h70);
+        is_valid_addr = cpuif_addr < 10'h74;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -351,8 +351,8 @@ module efuse_mmr_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [6:0] rd_mux_addr;
-    logic [6:0] pending_rd_addr;
+    logic [9:0] rd_mux_addr;
+    logic [9:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -370,30 +370,30 @@ module efuse_mmr_reg (
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 7'h0 + (7)'(i0) * 7'h4) begin
+            if(rd_mux_addr == 10'h0 + (10)'(i0) * 10'h4) begin
                 readback_data_var = hwif_in.RMA_SIP_TOKEN_I[i0].rd_data;
             end
         end
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 7'h20 + (7)'(i0) * 7'h4) begin
+            if(rd_mux_addr == 10'h20 + (10)'(i0) * 10'h4) begin
                 readback_data_var = hwif_in.RMA_CHIPLET_TOKEN_I[i0].rd_data;
             end
         end
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 7'h40 + (7)'(i0) * 7'h4) begin
+            if(rd_mux_addr == 10'h40 + (10)'(i0) * 10'h4) begin
                 readback_data_var = hwif_in.SEC_DISABLE_TOKEN_I[i0].rd_data;
             end
         end
-        if(rd_mux_addr == 7'h64) begin
+        if(rd_mux_addr == 10'h64) begin
             readback_data_var[5:0] = hwif_in.RMA_SIP_TOKEN_MATCH.token_match_status.next;
         end
-        if(rd_mux_addr == 7'h68) begin
+        if(rd_mux_addr == 10'h68) begin
             readback_data_var[5:0] = hwif_in.RMA_CHIPLET_TOKEN_MATCH.token_match_status.next;
         end
-        if(rd_mux_addr == 7'h6c) begin
+        if(rd_mux_addr == 10'h6c) begin
             readback_data_var[5:0] = hwif_in.SEC_DISABLE_TOKEN_MATCH.token_match_status.next;
         end
-        if(rd_mux_addr == 7'h70) begin
+        if(rd_mux_addr == 10'h70) begin
             readback_data_var[0] = hwif_in.TOKEN_MATCH_FAULT.rma_sip_token_fault.next;
             readback_data_var[8] = hwif_in.TOKEN_MATCH_FAULT.rma_chiplet_token_fault.next;
             readback_data_var[16] = hwif_in.TOKEN_MATCH_FAULT.secure_disable_token_fault.next;

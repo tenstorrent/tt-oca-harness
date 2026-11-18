@@ -491,10 +491,8 @@ module sep_efuse_wrapper #(
     .EFUSE_MAP_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIZE)),
 
     .EFUSE_MMR_REG_MAP_BASE_ADDR(32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_BASE_ADDR)),
-    .EFUSE_MMR_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_SIZE)),
 
     .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
-    .EFUSE_CTRL_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE)),
 
     .SHADOW_REG_BITS            (sep_efuse_pkg::ShadowRegBits),
     .EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),

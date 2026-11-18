@@ -311,10 +311,8 @@ module smc_efuse_wrapper #(
     .EFUSE_MAP_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE)),
 
     .EFUSE_MMR_REG_MAP_BASE_ADDR ('0),
-    .EFUSE_MMR_REG_MAP_SIZE      ('0),
 
     .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
-    .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE)),
 
     .SHADOW_REG_BITS             (smc_efuse_pkg::ShadowRegBits),
     .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),
