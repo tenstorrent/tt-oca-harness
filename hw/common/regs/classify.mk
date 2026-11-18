@@ -37,22 +37,28 @@ ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1)
 # oca_i3c_wrap describes the same map as the SMC top sees it (HCI fields
 # expanded), while its register RTL comes from the vendored i3c-core.
 # The axil_mailbox maps describe the register interface implemented by the
-# vendored PULP mailbox RTL. pwm_wrap composes the vendored OpenTitan PWM map,
-# whose register RTL is upstream's; its pwm_ctrl sub-block is a regblock leaf.
-# The gpio_intf/alias_remap/output_remap/filter_ctrl wraps array copies of a
-# leaf block; the RTL decodes the copies and instantiates the leaf's regblock.
+# vendored PULP mailbox RTL.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
-  clint plic debug_module wdt bus_error_unit misc_wrap \
+  clint plic debug_module wdt bus_error_unit \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
   pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
-  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm pwm_wrap \
-  gpio_intf_wrap alias_remap_wrap output_remap_wrap filter_ctrl_wrap
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
+
+# Wrappers: maps with no registers of their own that place several blocks in
+# one 4 KiB page, or array copies of a leaf block, behind one crossbar port.
+# The RTL in front of the wrapper decodes its children. pwm_wrap composes the
+# vendored OpenTitan PWM map, whose register RTL is upstream's, with its
+# pwm_ctrl regblock leaf.
+OCAH_REG_WRAPPER_BLOCKS ?= \
+  misc_wrap pwm_wrap \
+  gpio_intf_wrap alias_remap_wrap output_remap_wrap filter_ctrl_wrap
+OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_WRAPPER_BLOCKS)
 
 # UVM RAL models are opt-in: only a DV environment that drives registers through
 # a uvm_reg_block needs one (today just the SEP TB), and every extra block is
