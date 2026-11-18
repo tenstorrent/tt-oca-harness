@@ -78,8 +78,6 @@ module efuse_program_interface #(
 
   fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
 
-  efuse_addr_t captured_program_addr;
-
   // Program execution state machine
   typedef enum logic [1:0] {
     ST_PROGRAM_IDLE = 2'b01,
@@ -88,15 +86,6 @@ module efuse_program_interface #(
 
 
   efuse_program_state_e program_state_q, program_state_d;
-
-  // Capture program address when idle
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      captured_program_addr <= 'd0;
-    end else if (program_state_q == ST_PROGRAM_IDLE) begin
-      captured_program_addr <= program_addr_i;
-    end
-  end
 
   logic program_err_q, program_err_d;
   logic program_done_q, program_done_d;

@@ -73,8 +73,6 @@ module efuse_read_interface #(
 
   fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
 
-  efuse_addr_t captured_read_addr;
-
   // Program execution state machine
   typedef enum logic [1:0] {
     ST_READ_IDLE = 2'b01,
@@ -83,15 +81,6 @@ module efuse_read_interface #(
 
 
   efuse_read_state_e read_state_q, read_state_d;
-
-  // Capture read address when idle
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      captured_read_addr <= 'd0;
-    end else if (read_state_q == ST_READ_IDLE) begin
-      captured_read_addr <= read_addr_i;
-    end
-  end
 
   logic read_err_q, read_err_d;
   logic read_done_q, read_done_d;
