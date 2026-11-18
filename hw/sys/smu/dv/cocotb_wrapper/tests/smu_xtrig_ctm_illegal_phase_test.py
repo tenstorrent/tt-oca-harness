@@ -5,12 +5,12 @@
 This enrolled subset uses only product TB pins:
 
   0. live control: lane 7 is the one lane both TB tops configure in req/ack
-     mode (XTRIG_INT_CT_MODE = 8'h80); per the Integrator Guide's cross-trigger
-     port section a mode bit of 1 means the ack is used, a mode bit of 0
-     (pulse synchronization) means it is not. Requesting on lane 7 must
+     mode (XTRIG_INT_CT_MODE[7].mode = MODE_POINT_TO_POINT); per the Integrator
+     Guide's cross-trigger section the ack is used on a point-to-point lane and
+     unused on a wire-OR or toggle lane. Requesting on lane 7 must
      therefore raise ack[7] and dropping the request must clear it -- this is
      what makes "ack stays 0" below a measurement rather than a dead wire.
-  1. req drop without ack: assert then clear dst_req on pulse-sync lanes ->
+  1. req drop without ack: assert then clear dst_req on wire-OR lanes ->
      TB ack stays 0; SMC[1:0] idle (no phantom handshake)
   2. double-req: change pattern mid-req without completing four-phase ->
      new pattern visible on DTP[9:2]; SMC[1:0] never polluted
