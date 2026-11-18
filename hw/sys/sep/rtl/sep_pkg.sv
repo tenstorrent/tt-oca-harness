@@ -20,10 +20,6 @@ package sep_pkg;
   // them keeps a burst on one target.
   localparam longint unsigned RegPageSize = 64'h1000;
 
-  function automatic longint unsigned reg_page_end(longint unsigned base, longint unsigned size);
-    return (base + size + RegPageSize - 1) & ~(RegPageSize - 1);
-  endfunction
-
   //////////
   // AXI4 main types (decoupled from old xbar config)
   //////////

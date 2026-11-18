@@ -165,7 +165,8 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
 # sizes the window each block decodes from them (the rules are in
 # tools/regs/common/windows.py) and writes OCAH_REG_ADDR_WIDTH_<stem> for each
 # block whose window is wider than its registers need. The children of a page
-# top start on 4 KiB boundaries and own whole pages.
+# top start on 4 KiB boundaries and own whole pages, which the top's generated
+# <top>_window_pkg gives the crossbars.
 OCAH_REG_WINDOW_TOPS ?= hw/sys/smc hw/sys/sep hw/ip/key_manager \
   hw/ip/cross_trigger/cross_trigger_network
 OCAH_REG_PAGE_TOPS ?= hw/sys/smc hw/sys/sep

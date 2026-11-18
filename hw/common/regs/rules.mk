@@ -273,8 +273,8 @@ ifneq ($(filter $(OCAH_REGEN_DEP_GOALS),$(MAKECMDGOALS)),)
 $(OCAH_REG_WINDOWS_STAMP): $(foreach t,$(OCAH_REG_WINDOW_TOPS),$(call ocah_reg_rdl,$(t))) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/hw/common/regs/classify.mk $(OCAH_ROOT)/tools/regs/rdlwindows.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(@D)"
 	@echo "Sizing register block windows"
-	@$(ocah_sh) '"$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlwindows.py" -u "$(OCAH_REGBLOCK_UDP)" --regblocks "$(OCAH_REG_SV_NAMES)" --wrappers "$(OCAH_REG_WRAPPER_BLOCKS)" -o "$(OCAH_REG_ADDR_WIDTHS)" --depfile "$(OCAH_REG_WINDOWS_DEP)" --target "$@" $(foreach t,$(OCAH_REG_WINDOW_TOPS),--top "$(call ocah_reg_rdl,$(t))" $(if $(filter $(t),$(OCAH_REG_PAGE_TOPS)),--pages) $(call ocah_reg_incdirs,$(t)) $(call ocah_reg_rdl_params,$(t)))'
+	@$(ocah_sh) '"$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlwindows.py" -u "$(OCAH_REGBLOCK_UDP)" --regblocks "$(OCAH_REG_SV_NAMES)" --wrappers "$(OCAH_REG_WRAPPER_BLOCKS)" -o "$(OCAH_REG_ADDR_WIDTHS)" --depfile "$(OCAH_REG_WINDOWS_DEP)" --target "$@" $(foreach t,$(OCAH_REG_WINDOW_TOPS),--top "$(call ocah_reg_rdl,$(t))" $(if $(call ocah_reg_window_pkg,$(t)),--pages "$(call ocah_reg_window_pkg,$(t))") $(call ocah_reg_incdirs,$(t)) $(call ocah_reg_rdl_params,$(t)))'
 	@touch "$@"
 
-$(OCAH_REG_ADDR_WIDTHS): $(OCAH_REG_WINDOWS_STAMP) ;
+$(OCAH_REG_ADDR_WIDTHS) $(foreach t,$(OCAH_REG_PAGE_TOPS),$(call ocah_reg_window_pkg,$(t))): $(OCAH_REG_WINDOWS_STAMP) ;
 endif

@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from tools.regs.common.memorymap import compile_root
-from tools.regs.common.windows import WindowSizer
+from tools.regs.common.windows import WindowSizer, render_window_pkg
 
 REGBLOCK_UDP = Path(__file__).resolve().parents[3] / "hw/common/regs/regblock_udps.rdl"
 
@@ -26,15 +26,27 @@ REGBLOCKS = ("small", "wide")
 WRAPPERS = ("wrap", "element")
 
 
+def _compile(body: str):
+    with TemporaryDirectory() as tmp:
+        rdl = Path(tmp) / "top.rdl"
+        rdl.write_text(BLOCKS + body, encoding="utf-8")
+        return compile_root(rdl, REGBLOCK_UDP).top
+
+
 class WindowSizerTest(unittest.TestCase):
     def _size(self, body: str, pages: bool = True) -> tuple[dict[str, int], list[str]]:
-        with TemporaryDirectory() as tmp:
-            rdl = Path(tmp) / "top.rdl"
-            rdl.write_text(BLOCKS + body, encoding="utf-8")
-            root = compile_root(rdl, REGBLOCK_UDP)
         sizer = WindowSizer(REGBLOCKS, WRAPPERS)
-        sizer.add_top(root.top, pages)
+        sizer.add_top(_compile(body), pages)
         return sizer.widths(), sizer.errors
+
+    def test_page_windows_round_each_child_up_to_whole_pages(self) -> None:
+        top = _compile("addrmap top { small alone @0x1000; small copies[2] @0x4000 += 0x1000; };")
+        sizer = WindowSizer(REGBLOCKS, WRAPPERS)
+        package = render_window_pkg(top, sizer.add_top(top, True))
+        self.assertEqual(sizer.errors, [])
+        self.assertIn("package top_window_pkg;", package)
+        self.assertIn("localparam longint unsigned TOP_ALONE_WINDOW_SIZE = 64'h1000;", package)
+        self.assertIn("localparam longint unsigned TOP_COPIES_WINDOW_SIZE = 64'h2000;", package)
 
     def test_block_alone_in_a_page_decodes_the_page(self) -> None:
         widths, errors = self._size("addrmap top { small alone @0x1000; };")

@@ -52,6 +52,7 @@ ocah_reg_html_block_dir = $(call ocah_reg_gen,$(1))/html/blocks
 ocah_reg_ral_dir = $(call ocah_reg_gen,$(1))/ral
 ocah_reg_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1)).h
 ocah_reg_svpkg_output = $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_addrmap_pkg.sv
+ocah_reg_window_pkg = $(if $(filter $(1),$(OCAH_REG_PAGE_TOPS)),$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_window_pkg.sv)
 ocah_reg_svh_output = $(call ocah_reg_gen,$(1))/svh/$(call ocah_reg_name,$(1))_reg.svh
 ocah_reg_raw_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1))_addr.h
 ocah_reg_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_reg.py
@@ -135,7 +136,8 @@ ocah_reg_dep_targets = \
 
 OCAH_REGEN_REG_SV     := $(call ocah_reg_collect,ocah_reg_sv_target)
 OCAH_REGEN_REG_H      := $(call ocah_reg_collect,ocah_reg_h_full)
-OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output)
+OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output) \
+  $(call ocah_reg_collect,ocah_reg_window_pkg)
 OCAH_REGEN_REG_SVH     := $(call ocah_reg_collect,ocah_reg_svh_output)
 OCAH_REGEN_REG_PY     := $(call ocah_reg_collect,ocah_reg_py_output)
 OCAH_REGEN_REG_RAL    := $(call ocah_reg_collect,ocah_reg_ral_target)

@@ -4,10 +4,11 @@
 
 """Generate the address width of each register block from the maps that place it.
 
-Each map follows its own --top: the RDL, then --pages if its children own whole
-4 KiB pages, then its -I and -P options. The output is a make fragment, rewritten
-only when its content changes so that make reruns the block generators only for
-a real change.
+Each map follows its own --top: the RDL, then --pages PKG if its children own
+whole 4 KiB pages, then its -I and -P options. PKG is a SystemVerilog package of
+the window each of those children owns. The address widths go to a make fragment.
+Each output is rewritten only when its content changes, so that make reruns the
+block generators only for a real change.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from systemrdl import RDLCompileError, RDLCompiler
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.rdlview import parse_rdl_params  # noqa: E402
-from common.windows import WindowSizer, render_widths  # noqa: E402
+from common.windows import WindowSizer, render_widths, render_window_pkg  # noqa: E402
 
 
 def _compile(rdl: str, udp: str, incdirs: list[str], parameters: dict[str, int]):
@@ -33,6 +34,12 @@ def _compile(rdl: str, udp: str, incdirs: list[str], parameters: dict[str, int])
     return root.top, [rdl, *info.included_files]
 
 
+def _write(path: Path, content: str) -> None:
+    if not path.is_file() or path.read_text(encoding="utf-8") != content:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+
 def main() -> int:
     argv = sys.argv[1:]
     starts = [index for index, arg in enumerate(argv) if arg == "--top"]
@@ -40,7 +47,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(
         description=__doc__,
-        epilog="--top RDL [--pages] [-I DIR ...] [-P NAME=VALUE ...], repeated per map",
+        epilog="--top RDL [--pages PKG] [-I DIR ...] [-P NAME=VALUE ...], repeated per map",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("-u", "--udp-rdl-file", required=True)
@@ -55,12 +62,13 @@ def main() -> int:
 
     top_parser = argparse.ArgumentParser(prog=f"{parser.prog} --top")
     top_parser.add_argument("rdl")
-    top_parser.add_argument("--pages", action="store_true")
+    top_parser.add_argument("--pages", metavar="PKG", type=Path)
     top_parser.add_argument("-I", "-i", "--incdir", action="append", default=[])
     top_parser.add_argument("-P", "--parameter", action="append", default=[])
 
     sizer = WindowSizer(args.regblocks.split(), args.wrappers.split())
     sources: set[str] = set()
+    packages: dict[Path, str] = {}
     for group in groups:
         top = top_parser.parse_args(group)
         try:
@@ -70,18 +78,18 @@ def main() -> int:
         except RDLCompileError:
             return 1
         sources.update(str(Path(path).resolve()) for path in files)
-        sizer.add_top(node, top.pages)
+        windows = sizer.add_top(node, top.pages is not None)
+        if top.pages is not None:
+            packages[top.pages] = render_window_pkg(node, windows)
     widths = sizer.widths()
     if sizer.errors:
         for error in sizer.errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
 
-    output = Path(args.output)
-    content = render_widths(widths)
-    if not output.is_file() or output.read_text(encoding="utf-8") != content:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(content, encoding="utf-8")
+    _write(Path(args.output), render_widths(widths))
+    for path, content in packages.items():
+        _write(path, content)
 
     if args.depfile:
         prerequisites = sorted(sources)

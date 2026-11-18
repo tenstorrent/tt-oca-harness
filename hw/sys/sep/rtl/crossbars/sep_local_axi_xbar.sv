@@ -129,23 +129,23 @@ module sep_local_axi_xbar
       '{
           idx: 2,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE))
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR
+                      + sep_top_window_pkg::SEP_TOP_SECURE_DMA_WINDOW_SIZE)
       },
       // sep_wdt.main: the wdt_timer page; sep_wdt_wrap answers the addresses outside the
       // window aon_timer_reg_top decodes.
       '{
           idx: 3,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE))
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR
+                      + sep_top_window_pkg::SEP_TOP_WDT_TIMER_WINDOW_SIZE)
       },
       // sep_reset_ctrl.main: the sep_reset_ctrl page, all of which its register block decodes.
       '{
           idx: 4,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_SIZE))
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR
+                      + sep_top_window_pkg::SEP_TOP_SEP_RESET_CTRL_WINDOW_SIZE)
       },
       // sep_crypto.main: 0x10900000 - 0x10950000
       '{
@@ -157,9 +157,9 @@ module sep_local_axi_xbar
       // addresses outside the cold and warm scratch windows.
       '{
           idx: 6,
-          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE))
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_BASE_ADDR),
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_BASE_ADDR
+                      + sep_top_window_pkg::SEP_TOP_SEP_SCRATCH_WRAP_WINDOW_SIZE)
       },
       // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a50000
       '{
@@ -190,15 +190,15 @@ module sep_local_axi_xbar
       '{
           idx: 7,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE))
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR
+                      + sep_top_window_pkg::SEP_TOP_SPI_CONTROLLER_WINDOW_SIZE)
       },
       // entropy_fifo.main: the entropy_pool page, all of which sep_entropy_fifo decodes.
       '{
           idx: 8,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR),
-          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR,
-                                              sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_SIZE))
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR
+                      + sep_top_window_pkg::SEP_TOP_ENTROPY_POOL_WINDOW_SIZE)
       },
       // sep_external.main: above the eFuse shim window - 0x40000000
       '{
