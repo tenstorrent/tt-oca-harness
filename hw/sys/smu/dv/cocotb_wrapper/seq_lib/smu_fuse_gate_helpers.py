@@ -322,6 +322,7 @@ class FetchLeg:
     name: str
     start: int
     held_edges: int = 0
+    held_reads: int = 0
     max_count: int = 0
     saw_low: bool = False
     release_at: int | None = None
@@ -422,13 +423,11 @@ class RomFetchSampler:
                 leg.saw_low = True
                 leg.held_edges += 1
                 if read:
-                    leg.error = "ROM read request while the fuse reset is held"
+                    leg.held_reads += 1
             elif not leg.saw_low:
                 leg.error = "the fuse reset reads 1 on the first sample of the leg"
             else:
                 leg.release_at = self.cycle
-            if count != 0 and leg.error is None:
-                leg.error = f"smc_rom_read_count_o reads {count} before the release edge"
             if leg.error is not None:
                 self._open = None
                 leg.finish()
@@ -503,6 +502,12 @@ class RomFetchSampler:
                 f"CHK-NO-FETCH-WHILE-HELD: leg={name} release edge not seen "
                 f"last_state={leg.last_state}"
             )
+        sb.expect_eq(
+            f"held-window ROM read requests and max smc_rom_read_count_o ({name})",
+            (leg.held_reads, leg.max_count),
+            (0, 0),
+            evidence="CHK-NO-FETCH-WHILE-HELD",
+        )
         armed = "" if leg.count_at_arm is None else f" count_at_arm={leg.count_at_arm}"
         log.info(
             "CHK-NO-FETCH-WHILE-HELD: leg=%s held_cycles=%d rom_reads=0%s PASS",
@@ -561,18 +566,16 @@ class RomFetchSampler:
         """CHK-NONVAC fence and the CHK-TIMEOUT-PATHS summary line."""
         labels = [label for label, _ in self.fence]
         stamps = [ns for _, ns in self.fence]
-        if labels != expected:
-            raise AssertionError(f"CHK-NONVAC: fence {labels} differs from {expected}")
+        sb.expect_eq(
+            "CHK-NONVAC ordered fence labels of every leg checker",
+            labels,
+            expected,
+            evidence="CHK-NONVAC",
+        )
         if stamps != sorted(stamps):
             raise AssertionError(f"CHK-NONVAC: fence stamps {stamps} are not ordered")
         held = sum(label.startswith("CHK-NO-FETCH-WHILE-HELD") for label in labels)
         first = sum(label.startswith("CHK-FIRST-FETCH-AFTER-RELEASE") for label in labels)
-        sb.expect_eq(
-            "CHK-NONVAC ordered legs with one line per leg of each new checker",
-            (held, first),
-            (len(self.legs), len(self.legs)),
-            evidence="CHK-NONVAC",
-        )
         log.info(
             "CHK-NONVAC: PASS fence=%s no_fetch_lines=%d first_fetch_lines=%d",
             " < ".join(labels),
