@@ -27,6 +27,8 @@ localparam int unsigned SmcSysOutAddrWidth = 56;
 localparam int unsigned SmcSysOutDataWidth = 64;
 localparam int unsigned SmcSysOutIdWidth = 8;
 localparam int unsigned SmcSepInBeatBytes = SmcSepInDataWidth / 8;
+localparam int unsigned SmcSysOutBeatBytes = SmcSysOutDataWidth / 8;
+localparam int unsigned SmcSysOutSize = $clog2(SmcSysOutBeatBytes);
 
 // Every SMC CSR is a 32-bit register reached with a narrow single-beat
 // transfer on the 64-bit bus (AxSIZE = 2); the data rides the addressed
@@ -114,6 +116,7 @@ localparam string SmcFeatureSpmMem = "spm_mem";
 localparam string SmcFeatureRegblockWide = "regblock_wide";
 localparam string SmcFeatureWdtCsr = "wdt_csr";
 
+localparam string SmcFeatureZeroerRange = "zeroer_range";
 localparam string SmcFeatureFabricReg = "fabric_reg";
 localparam string SmcFeatureMailboxFifo = "mailbox_fifo";
 

@@ -5868,6 +5868,18 @@ module smc_uvm_top
         u_dut.u_smc.u_smc_base.sys_out_filter_bus_active
     };
     assign u_tb_if.zeroer_busy               = tb_zeroer_busy;
+    assign u_tb_if.zeroer_state            = tb_zeroer_state;
+    assign u_tb_if.zeroer_awvalid          = tb_zeroer_awvalid;
+    assign u_tb_if.zeroer_awready          = tb_zeroer_awready;
+    assign u_tb_if.zeroer_wvalid           = tb_zeroer_wvalid;
+    assign u_tb_if.zeroer_wready           = tb_zeroer_wready;
+    assign u_tb_if.zeroer_wlast            = tb_zeroer_wlast;
+    assign u_tb_if.zeroer_wstrb            = tb_zeroer_wstrb;
+    assign u_tb_if.zeroer_bvalid           = tb_zeroer_bvalid;
+    assign u_tb_if.zeroer_bready           = tb_zeroer_bready;
+    assign u_tb_if.zeroer_intp             = tb_zeroer_intp;
+    assign u_tb_if.zeroer_outstanding      = tb_zeroer_outstanding;
+
     assign u_tb_if.clk_smc                   = clk_smc;
     assign u_tb_if.wdt_first_timeout         = tb_wdt_first_timeout;
     assign u_tb_if.wdt_second_timeout        = tb_wdt_second_timeout;
@@ -6106,8 +6118,8 @@ module smc_uvm_top
     assign ej_axi_arvalid = 1'b0;
     assign ej_axi_rready  = 1'b0;
 
-    // SYS_OUT responder control: no response hold.
-    assign tb_output_axi_resp_hold = 1'b0;
+    // SYS_OUT response hold is owned by the scenario.
+    assign tb_output_axi_resp_hold = u_tb_if.output_axi_resp_hold;
 
     // FCOV graded-window gate: no covergroup that needs it is sampled here.
     assign tb_fcov_gate = 1'b0;
