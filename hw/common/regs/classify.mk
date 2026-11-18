@@ -45,7 +45,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
-  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
+  pll_wrap pvt_wrap oca_i3c_wrap key_manager \
   axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
@@ -59,7 +59,8 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 OCAH_REG_WRAPPER_BLOCKS ?= \
   misc_wrap smc_cluster_wdt_wrap smc_efuse_wrap sep_scratch_wrap sep_efuse_wrap \
   sep_remap_wrap pwm_wrap gpio_intf_wrap alias_remap_wrap output_remap_wrap \
-  filter_ctrl_wrap
+  filter_ctrl_wrap i2c_wrap uart_wrap uart_log_engine_wrap telemetry_receiver_wrap \
+  cross_trigger_network
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_WRAPPER_BLOCKS)
 
 # UVM RAL models are opt-in: only a DV environment that drives registers through
@@ -160,32 +161,16 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   filter_ctrl \
   gpio_intf
 
-# Blocks alone in a 4 KiB page: the regblock decodes the whole page, so an access
-# past its last register answers SLVERR.
-OCAH_REG_ADDR_WIDTH_reset_unit ?= 12
-OCAH_REG_ADDR_WIDTH_avsbus_controller ?= 12
-OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
-OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
-OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
-OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_zeroer_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_sep_reset_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_sep_lifecycle_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_km_mailbox_sep ?= 12
-OCAH_REG_ADDR_WIDTH_entropy_source ?= 12
-
-# Blocks that share a page: the regblock decodes the whole window its wrapper
-# routes it.
-OCAH_REG_ADDR_WIDTH_scratch ?= 7
-OCAH_REG_ADDR_WIDTH_chip_config ?= 8
-OCAH_REG_ADDR_WIDTH_i2c ?= 9
-OCAH_REG_ADDR_WIDTH_uart_log_engine_ctrl ?= 8
-OCAH_REG_ADDR_WIDTH_uart_16550_main ?= 8
-OCAH_REG_ADDR_WIDTH_log_engine ?= 9
-OCAH_REG_ADDR_WIDTH_cross_trigger_matrix ?= 9
-OCAH_REG_ADDR_WIDTH_sep_scratch ?= 7
-OCAH_REG_ADDR_WIDTH_efuse_interface_ctrl ?= 10
-OCAH_REG_ADDR_WIDTH_efuse_mmr ?= 10
+# The maps that place the generated register blocks. tools/regs/rdlwindows.py
+# sizes the window each block decodes from them (the rules are in
+# tools/regs/common/windows.py) and writes OCAH_REG_ADDR_WIDTH_<stem> for each
+# block whose window is wider than its registers need. The children of a page
+# top start on 4 KiB boundaries and own whole pages.
+OCAH_REG_WINDOW_TOPS ?= hw/sys/smc hw/sys/sep hw/ip/key_manager \
+  hw/ip/cross_trigger/cross_trigger_network
+OCAH_REG_PAGE_TOPS ?= hw/sys/smc hw/sys/sep
+OCAH_REG_ADDR_WIDTHS := $(OCAH_ROOT)/hw/common/regs/gen/addr_widths.mk
+-include $(OCAH_REG_ADDR_WIDTHS)
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
