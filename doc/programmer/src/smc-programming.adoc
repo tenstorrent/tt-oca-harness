@@ -1506,7 +1506,15 @@ running, but those pads take the first applicable lower row of the GPIO data
 and direction selection: register data and direction if `interface_enable` or
 a `use_reg_*` bit is set, software-forced LSIO if `lsio_select` is set,
 otherwise output 0 with the transmitter disabled. A frame the UART shifts out
-in that state does not reach the TX pin.
+in that state does not reach the TX pin. Unless `lsio_select` is set on the RX
+and CTS pads, the UART's receive and CTS inputs read high, the serial idle
+level: the receiver sees no start bit and `MSR.CTS` reads 0.
+
+The same holds for every pad whose LSIO request is inactive, whether its
+peripheral's enable is clear or `lsio_disable` reclaims it: the peripheral
+reads the idle level of the signal, not the pad. That level is high for the
+UART RX and CTS, I2C SCL, SDA, SMBALERT# and SMBSUS#, and I3C SCL and SDA
+inputs, and low for every other input.
 
 Software should not change a pad's owner while the current owner is active, or
 the pad output can glitch. This applies to `interface_enable`, `lsio_select`, `lsio_disable`,
