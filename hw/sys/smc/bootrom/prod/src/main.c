@@ -23,10 +23,8 @@ int main(void) {
     /* Boot announcement */
     simputs("=== SMC Production ROM v1.0 ===\n");
 
-    /* The boot hart's assembly checks recorded the MBIST and memory-repair
-     * result in scratch register 15 (0x600DCAFE = passed). Boot also reaches
-     * this point after a bypass strap, or after a failure or MBIST abort that
-     * SMC_CONFIG.dft_ignore_error permits, with that code recorded. */
+    /* Scratch register 15 holds the boot hart's memory-health result: 0x600DCAFE, a bypass
+     * code, or a failure or MBIST abort code that SMC_CONFIG.dft_ignore_error let through. */
 
     /* Phase 0: Initialize POST codes and basic systems */
     smc_post_code_init();

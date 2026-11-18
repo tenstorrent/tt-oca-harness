@@ -21,8 +21,8 @@
  * No stack operations allowed - uses only registers
  *
  * Input: None
- * Output: Returns unless MBIST failed or aborted with OTP SMC_CONFIG bit 15
- *         (dft_ignore_error) clear; then records the code and loops in wfi.
+ * Output: Records the MBIST result in scratch 15 and returns, except after a failure
+ *         or abort with OTP SMC_CONFIG bit 15 (dft_ignore_error) clear, which loops in wfi.
  * Clobbers: t0, t1, t2, t3
  * Preserves: All other registers including ra
  */

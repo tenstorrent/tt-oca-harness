@@ -20,7 +20,7 @@
 |Register sources |`hw/sys/smc/regs/` (SystemRDL) and the generated export `hw/sys/smc/regs/gen/`
 |Testbench architecture |<<smc-dv-testbench-architecture,SMC_TB_ARCH>>
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut smc --items occp_rom`)
-|Tests |Every entry of `testlists/smc_rom.toml`: 45 tests
+|Tests |Every entry of `testlists/smc_rom.toml`: 48 tests
 |===
 
 This plan is the technical contract for the SMC Boot ROM firmware tests. It
