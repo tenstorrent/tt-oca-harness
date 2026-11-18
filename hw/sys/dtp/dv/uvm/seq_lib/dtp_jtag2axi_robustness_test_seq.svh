@@ -2880,11 +2880,9 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     end
     for (int unsigned i = 0; i < NumTargets; i++) series_corner_sticky_status(i, beats);
     series_corner_interleaved(beats);
-    if (test_cfg != null && test_cfg.j2a_flush_edge_read) begin
-      for (int unsigned i = 0; i < NumTargets; i++) series_flush_fill(i);
-      for (int unsigned i = 0; i < NumTargets; i++) begin
-        series_flush_edge_read(i, bit'((scenario_seed + i + 1) % 2));
-      end
+    for (int unsigned i = 0; i < NumTargets; i++) series_flush_fill(i);
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      series_flush_edge_read(i, bit'((scenario_seed + i + 1) % 2));
     end
   endtask
 
