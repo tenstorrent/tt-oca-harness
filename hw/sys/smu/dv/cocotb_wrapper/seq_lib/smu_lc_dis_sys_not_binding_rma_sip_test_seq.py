@@ -103,17 +103,17 @@ FEAT_CTRL_RMA_SIP_SYS_DIS = FEAT_CTRL_ALL_ENABLED
 #: hw/sys/sep/regs/gen/c/sep_addr.h: byte offsets of the SIP_DIS and SYS_DIS vectors in the eFuse
 #: shadow image, each stored low word first.
 SIP_DIS_OFFSET = c_header_u32(
-    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR"
-) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR"
+) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BASE_ADDR")
 SYS_DIS_OFFSET = c_header_u32(
-    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR"
-) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR"
+) - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BASE_ADDR")
 #: hw/sys/sep/regs/gen/c/sep_addr.h: the SYS_DIS shadow register on the SEP map, read as two
 #: 32-bit words, low word first, over the debug module's system bus (RISC-V Debug Specification
 #: 0.13, "System Bus Access"). hw/sys/sep/doc/otp_fuse_controller.adoc, "Shadow Register and
 #: JTAG Access Control": SYS_DIS is SW readable and the image sets no read-lock; the SEP OTP JTAG
 #: bridge is closed to it in RMA_SIP, so the system bus is the read-back path.
-SYS_DIS_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR")
+SYS_DIS_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR")
 SYS_DIS_WORD_BYTES = 4
 
 SPEC = ExportSpec(

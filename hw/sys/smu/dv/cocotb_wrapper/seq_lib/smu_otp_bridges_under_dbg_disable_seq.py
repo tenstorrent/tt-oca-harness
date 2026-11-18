@@ -148,9 +148,13 @@ _SHIM_CTRL_H = (
 )
 
 #: SEP eFuse MAP LC_STATE, the word the shadow image programs.
-SEP_EFUSE_LC_STATE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+SEP_EFUSE_LC_STATE = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
+)
 #: SEP eFuse MAP SPARE0, a writable word no other consumer reads.
-SEP_EFUSE_SPARE0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
+SEP_EFUSE_SPARE0 = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR"
+)
 #: eFuse bank-control shim CSR, outside the MAP/MMR window and therefore on
 #: the SMU boundary port.
 SEP_EFUSE_SHIM_INIT_TIME = c_header_u32(

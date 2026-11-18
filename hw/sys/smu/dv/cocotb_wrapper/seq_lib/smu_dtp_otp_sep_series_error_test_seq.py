@@ -59,15 +59,15 @@ _SEP_ADDR_H = Path(__file__).resolve().parents[6] / "hw/sys/sep/regs/gen/c/sep_a
 
 # hw/sys/sep/regs/gen/c/sep_addr.h: SPARE0 is a 256-bit register of the SEP shadow map; its first
 # two 32-bit words sit at 0x10930AE0 and 0x10930AE4.
-SPARE0_W0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
+SPARE0_W0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
 SPARE0_W1 = SPARE0_W0 + 4
 # hw/sys/sep/regs/gen/c/sep_addr.h: the EFUSE_INTERFACE_CTRL window ends at BASE + SIZE, below
 # EFUSE_MMR_BASE_ADDR; that first word owns no register. hw/sys/sep/doc/otp_fuse_controller.adoc:
 # the APB decode answers an address in the span outside the register windows with SLVERR.
-HOLE_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR") + c_header_u32(
-    _SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE"
-)
-EFUSE_MMR_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_MMR_BASE_ADDR")
+HOLE_ADDR = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR"
+) + c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE")
+EFUSE_MMR_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_BASE_ADDR")
 if not HOLE_ADDR < EFUSE_MMR_BASE:
     raise RuntimeError(f"hole 0x{HOLE_ADDR:08x} is not below EFUSE_MMR 0x{EFUSE_MMR_BASE:08x}")
 # Words written to the SPARE0 words: non-zero and distinct.
