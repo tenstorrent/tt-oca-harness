@@ -1,0 +1,191 @@
+cla_mmrs, dst_mmrs: state the SMC timestamp tie-off, edge-select range and W2C self-clear
+
+Three descriptions read for the generic block and hid SMC behaviour:
+- trDstTimestampConfig source 0 is the external timestamp input, which the
+  SMC ties to zero, so at reset every DST timestamp packet carries zero.
+- Signal0Select and Signal1Select are 7 bits, but only indices below the
+  debug signal width (64 in the SMC) select a signal.
+- Each CDbgEapStatus W2C bit is cleared by hardware one cycle after it
+  rises, so a further clear needs another write of 1.
+
+Recorded as a patch so the hand-mirrored upstream/ tree stays
+reproducible from the vendored spec plus patches/ applied in order.
+diff --git a/rtl/mmr/spec/cla_mmrs.yml b/rtl/mmr/spec/cla_mmrs.yml
+index c6a575f4c..4df9a7d6b 100644
+--- a/rtl/mmr/spec/cla_mmrs.yml
++++ b/rtl/mmr/spec/cla_mmrs.yml
+@@ -3175,7 +3175,7 @@ c_dbg_signal_edge_detect_cfg:
+     FIELDS_RANGE: '14:8'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: Define which signal to select for edge detection.
++    DESCRIPTION: "Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3196,7 +3196,7 @@ c_dbg_signal_edge_detect_cfg:
+     FIELDS_RANGE: '6:0'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: Define which signal to select for edge detection.
++    DESCRIPTION: "Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3221,7 +3221,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '47:47'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3231,7 +3231,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '46:46'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3241,7 +3241,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '45:45'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3251,7 +3251,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '44:44'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3261,7 +3261,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '43:43'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3271,7 +3271,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '42:42'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3281,7 +3281,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '41:41'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3291,7 +3291,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '40:40'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3301,7 +3301,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '39:39'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3311,7 +3311,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '38:38'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3321,7 +3321,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '37:37'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3331,7 +3331,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '36:36'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3341,7 +3341,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '35:35'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3351,7 +3351,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '34:34'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3361,7 +3361,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '33:33'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3371,7 +3371,7 @@ c_dbg_eap_status:
+     FIELDS_RANGE: '32:32'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1."
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+diff --git a/rtl/mmr/spec/dst_mmrs.yml b/rtl/mmr/spec/dst_mmrs.yml
+index e6ceaecc0..b49f99aa7 100644
+--- a/rtl/mmr/spec/dst_mmrs.yml
++++ b/rtl/mmr/spec/dst_mmrs.yml
+@@ -251,7 +251,7 @@ trDstImpl:
+     FIELDS_RANGE: '31:31'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: 'DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.'
++    DESCRIPTION: 'DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.'
+     SW_WRITE: W
+     SW_READ: R
+     SW_TYPE: ''
