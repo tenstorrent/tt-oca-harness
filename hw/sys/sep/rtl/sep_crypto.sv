@@ -381,8 +381,8 @@ module sep_crypto #(
   km_intf_pkg::km_axil_resp_t    km_mbox_axil_resp;
   sep_pkg::sep_32_32_axil_req_t  esrc_axil_isolated_req;
   sep_pkg::sep_32_32_axil_resp_t esrc_axil_isolated_resp;
-  drbg_pkg::drbg_axil64_req_t csrng_axil_req, edn_axil_req;
-  drbg_pkg::drbg_axil64_resp_t csrng_axil_resp, edn_axil_resp;
+  drbg_pkg::drbg_axil64_req_t csrng_axil_isolated_req, edn_axil_isolated_req;
+  drbg_pkg::drbg_axil64_resp_t csrng_axil_isolated_resp, edn_axil_isolated_resp;
   sep_pkg::sep_32_64_6_12_axi_req_t fuse_axi_req, lifecycle_axi_req;
   sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp;
   sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_isolated_req;
@@ -432,10 +432,10 @@ module sep_crypto #(
     .km_mbox_axil_resp_i          (km_mbox_axil_resp),
     .esrc_axil_isolated_req_o     (esrc_axil_isolated_req),
     .esrc_axil_isolated_resp_i    (esrc_axil_isolated_resp),
-    .csrng_axil_req_o             (csrng_axil_req),
-    .csrng_axil_resp_i            (csrng_axil_resp),
-    .edn_axil_req_o               (edn_axil_req),
-    .edn_axil_resp_i              (edn_axil_resp),
+    .csrng_axil_isolated_req_o    (csrng_axil_isolated_req),
+    .csrng_axil_isolated_resp_i   (csrng_axil_isolated_resp),
+    .edn_axil_isolated_req_o      (edn_axil_isolated_req),
+    .edn_axil_isolated_resp_i     (edn_axil_isolated_resp),
     .ext_trng_axil_req_o          (ext_trng_axil_req_o),
     .ext_trng_axil_resp_i         (ext_trng_axil_resp_i),
     .fuse_axi_req_o               (fuse_axi_req),
@@ -458,10 +458,10 @@ module sep_crypto #(
     .entropy_rosc_sample_clk_i (entropy_rosc_sample_clk_i),
     .esrc_axil_req_i           (esrc_axil_isolated_req),
     .esrc_axil_resp_o          (esrc_axil_isolated_resp),
-    .csrng_axil_req_i          (csrng_axil_req),
-    .csrng_axil_resp_o         (csrng_axil_resp),
-    .edn_axil_req_i            (edn_axil_req),
-    .edn_axil_resp_o           (edn_axil_resp),
+    .csrng_axil_req_i          (csrng_axil_isolated_req),
+    .csrng_axil_resp_o         (csrng_axil_isolated_resp),
+    .edn_axil_req_i            (edn_axil_isolated_req),
+    .edn_axil_resp_o           (edn_axil_isolated_resp),
     .drbg_axis_req_o           (drbg_int_axis_req),
     .drbg_axis_rsp_i           (drbg_int_axis_rsp),
     .csrng_alert_rx_i          (crypto_alert_rx[8:7]),

@@ -97,10 +97,10 @@ module sep_crypto_axi_interconnect (
 
   output sep_pkg::sep_32_32_axil_req_t       esrc_axil_isolated_req_o,  // Host request to entropy_source, converted to 32-bit AXI-Lite and isolated.
   input  sep_pkg::sep_32_32_axil_resp_t      esrc_axil_isolated_resp_i,  // Response from entropy_source.
-  output drbg_pkg::drbg_axil64_req_t         csrng_axil_req_o,  // Host request to CSRNG, converted to 64-bit AXI-Lite and isolated.
-  input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_resp_i,  // Response from CSRNG.
-  output drbg_pkg::drbg_axil64_req_t         edn_axil_req_o,  // Host request to EDN, converted to 64-bit AXI-Lite and isolated.
-  input  drbg_pkg::drbg_axil64_resp_t        edn_axil_resp_i,  // Response from EDN.
+  output drbg_pkg::drbg_axil64_req_t         csrng_axil_isolated_req_o,  // Host request to CSRNG, converted to 64-bit AXI-Lite and isolated.
+  input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_isolated_resp_i,  // Response from CSRNG.
+  output drbg_pkg::drbg_axil64_req_t         edn_axil_isolated_req_o,  // Host request to EDN, converted to 64-bit AXI-Lite and isolated.
+  input  drbg_pkg::drbg_axil64_resp_t        edn_axil_isolated_resp_i,  // Response from EDN.
 
   output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // Host request to the external
                                                                    // TRNG registers, converted to
@@ -994,8 +994,8 @@ module sep_crypto_axi_interconnect (
     .test_en_i,
     .slv_req_i   (csrng_page_axil_req),
     .slv_resp_o  (csrng_page_axil_resp),
-    .mst_reqs_o  (csrng_axil_req_o),
-    .mst_resps_i (csrng_axil_resp_i)
+    .mst_reqs_o  (csrng_axil_isolated_req_o),
+    .mst_resps_i (csrng_axil_isolated_resp_i)
   );
 
   // ---- EDN: 64b AXI -> 64b AXI-Lite -> isolate ----
@@ -1070,8 +1070,8 @@ module sep_crypto_axi_interconnect (
     .test_en_i,
     .slv_req_i   (edn_page_axil_req),
     .slv_resp_o  (edn_page_axil_resp),
-    .mst_reqs_o  (edn_axil_req_o),
-    .mst_resps_i (edn_axil_resp_i)
+    .mst_reqs_o  (edn_axil_isolated_req_o),
+    .mst_resps_i (edn_axil_isolated_resp_i)
   );
 
   //=========================================================================
