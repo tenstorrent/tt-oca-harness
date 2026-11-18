@@ -627,8 +627,8 @@ module efuse_shadow_regs
       end else if (!shadow_reg_access) begin : transient_rma_en
         if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-            priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
-                         !chiplet_state_change_completed_n0_scan) begin
+            if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
+                !chiplet_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
