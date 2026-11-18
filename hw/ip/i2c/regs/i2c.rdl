@@ -155,8 +155,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-                    error. Write `1` to clear.";
+            desc = "Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+                    integrity error: a parity mismatch on the entry at its head, or a pointer
+                    mismatch in its hardened counter. The parity error clears once that entry is
+                    read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+                    clear; the field stays set while the error persists.";
         } CONTROLLER_TX_FIFO_ERROR[16:16] = 0x0;
 
         field {
@@ -164,8 +167,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-                    error. Write `1` to clear.";
+            desc = "Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+                    integrity error: a parity mismatch on the entry at its head, or a pointer
+                    mismatch in its hardened counter. The parity error clears once that entry is
+                    read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+                    clear; the field stays set while the error persists.";
         } CONTROLLER_RX_FIFO_ERROR[17:17] = 0x0;
 
         field {
@@ -173,8 +179,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-                    Write `1` to clear.";
+            desc = "Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+                    error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+                    hardened counter. The parity error clears once that entry is read; the pointer
+                    error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+                    stays set while the error persists.";
         } TARGET_TX_FIFO_ERROR[18:18] = 0x0;
 
         field {
@@ -182,8 +191,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-                    Write `1` to clear.";
+            desc = "Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+                    error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+                    hardened counter. The parity error clears once that entry is read; the pointer
+                    error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+                    stays set while the error persists.";
         } TARGET_RX_FIFO_ERROR[19:19] = 0x0;
     };
 
@@ -937,10 +949,14 @@ addrmap i2c {
         field {
             sw = rw;
             hw = r;
-            desc = "Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-                    cycles. See Table 11 in the I2C Specification for details. This field is sized
-                    to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-                    requirement, assuming a 1 GHz system clock.";
+            desc = "Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+                    cycles: after driving a data or ACK bit, the target holds SCL low for
+                    `TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+                    not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+                    `t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+                    Specification for details. This field is sized to meet the I2C Standard-mode
+                    (100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+                    clock.";
         } TSU_DAT[8:0] = 0x0;
 
         field {
