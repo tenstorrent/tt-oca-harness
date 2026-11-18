@@ -64,12 +64,11 @@ ROW_BASE = {
     "km_mbox": sep_reg.KM_MAILBOX_SEP_REG_MAP_BASE_ADDR,
     "abr": sep_reg.ABR_REG_MAP_BASE_ADDR,
 }
-# The 8 Reserved rows this leaf grades, by base address. Each must be a
+# The 7 Reserved rows this leaf grades, by base address. Each must be a
 # Reserved row of the generated table (checked by ``reserved_row``).
 RESERVED_BASES = (
     0x1005_0000,
     0x1080_4000,
-    0x1091_4000,
     0x1092_1000,
     0x1093_1000,
     0x1095_1000,

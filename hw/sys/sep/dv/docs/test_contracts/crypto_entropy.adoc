@@ -96,7 +96,7 @@
 |===
 |Checker |Contract
 |CHK-ALERTS-ZERO
-|Generator and distribution error and alert status are clear. The four status registers read are the generator's `0x10915054` / `0x10915050` and the distribution block's `0x1091583c` / `0x10915838`, each required to be zero.
+|Generator and distribution error and alert status are clear. The four status registers read are the generator's `0x10915054` / `0x10915050` and the distribution block's `0x1091403c` / `0x10914038`, each required to be zero.
 |CHK1
 |Decorrelated output matches the golden model.
 |CHK2

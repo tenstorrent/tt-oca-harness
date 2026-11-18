@@ -6893,7 +6893,7 @@ module sep_fcov (
   // The base and the decoded extent of a unit row come from
   // sep_top_addrmap_pkg, sep_reg.svh or sep_fcov_crypto_reg_addrs.svh; the aperture end of each row and the
   // Reserved rows (13..20, 21..27) have no generated symbol and are copied
-  // from that table. Row 36 is a placeholder that matches no address.
+  // from that table. Rows 15 and 36 are placeholders that match no address.
   // ---------------------------------------------------------------------
   localparam int unsigned NRows = 38;
   localparam logic [31:0] RowBase[NRows] = '{
@@ -6912,7 +6912,7 @@ module sep_fcov (
       32'(SEP_TOP_ABR_BASE_ADDR),
       32'h1005_0000,
       32'h1080_4000,
-      32'h1091_4000,
+      32'hFFFF_FFFF,
       32'h1092_1000,
       32'h1093_1000,
       32'h1095_1000,
@@ -6944,15 +6944,15 @@ module sep_fcov (
       32'h1091_0FFF,
       32'h1091_2FFF,
       32'h1091_3FFF,
-      32'h1091_505F,
-      32'h1091_5847,
+      32'h1091_5FFF,
+      32'h1091_4FFF,
       32'h1091_6FFF,
       32'h1091_8FFF,
       32'h1092_0FFF,
       32'h1094_CFFF,
       32'h107F_FFFF,
       32'h108F_FFFF,
-      32'h1091_4FFF,
+      32'h0000_0000,
       32'h1092_FFFF,
       32'h1093_FFFF,
       32'h109F_FFFF,
@@ -7018,10 +7018,10 @@ module sep_fcov (
   };
   // Row ids: 0 DMA, 1 WDT, 2 reset control, 3 OTBN, 4 AES, 5 HMAC, 6 KMAC,
   // 7 CSRNG, 8 EDN, 9 entropy source, 10 LC, 11 KM mailbox, 12 ABR,
-  // 13..20 and 21..27 the Reserved rows, 28 AXI-Lite mailbox, 29 eFuse
-  // interface control, 30 eFuse token registers, 31 alias remap array,
-  // 32 outbound filter array, 33 inbound filter array, 34 SEP CPU control,
-  // 35 SPI host, 36 none, 37 External TRNG with no TRNG fitted.
+  // 13, 14, 16..20 and 21..27 the Reserved rows, 15 none, 28 AXI-Lite
+  // mailbox, 29 eFuse interface control, 30 eFuse token registers, 31 alias
+  // remap array, 32 outbound filter array, 33 inbound filter array, 34 SEP
+  // CPU control, 35 SPI host, 36 none, 37 External TRNG with no TRNG fitted.
   function automatic int row_of(input logic [31:0] a);
     for (int r = 0; r < NRows; r++) if (in_rng(a, RowBase[r], RowEnd[r])) return r;
     return -1;

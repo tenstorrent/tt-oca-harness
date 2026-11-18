@@ -112,7 +112,7 @@ _ANCHORS: tuple[tuple[int, str], ...] = (
     (ROM_ONE_PAST, "r"),
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
-    (0x1091_4000, "r"),  # KMAC/DRBG gap
+    (0x1091_4080, "r"),  # first byte past the EDN register window
     (0x1092_1000, "r"),  # above the Key Manager window
     (OTP_ONE_PAST, "r"),  # above the last OTP register block
     (0x1095_1000, "r"),  # above the entropy pool

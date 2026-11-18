@@ -60,11 +60,27 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
     ("u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_axi_demux.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_axi_err_slv.test_i", "axi_cell"),
     (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_addr_demux.u_err_slv.u_axi_err_slv.test_i",
+        "axi_cell",
+    ),
+    (
         "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_axi_to_axi_lite.test_i",
         "axi_cell",
     ),
     (
         "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_host_isolate.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_edn_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_edn_addr_demux.u_err_slv.u_axi_err_slv.test_i",
         "axi_cell",
     ),
     (
