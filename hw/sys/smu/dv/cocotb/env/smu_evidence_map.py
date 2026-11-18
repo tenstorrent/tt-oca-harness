@@ -1817,6 +1817,28 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-STALL-STICKY", "STALL_COLD_STICKY", "stall survives cold"),
         ("CHK-STALL-TRST", "STALL_TRST_CLEAR", "TRST clears stall"),
         ("CHK-STALL-REASSERT", "STALL_REASSERT_STICKY", "re-assert sticky"),
+        (
+            "CHK-NO-FETCH-WHILE-HELD",
+            "CHK-NO-FETCH-WHILE-HELD",
+            "per release leg (bring-up, trst-clear, ovrd-low-over-pad) smc_rom_read_count_o "
+            "reads 0 on every clk_smu edge from the leg's cold-reset release to the release "
+            "edge of smc_fuse_reset_n_delayed_o",
+        ),
+        (
+            "CHK-FIRST-FETCH-AFTER-RELEASE",
+            "CHK-FIRST-FETCH-AFTER-RELEASE",
+            "per release leg the first ROM macro request with en=1 and wmode=0 arrives within the "
+            "declared 524288 clk_smu liveness bound after the release edge at word address 0x0000 "
+            "(byte 0xC0040000, inside 0xC0040000..0xC005FFFF); the measured latency is logged and "
+            "not graded",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "the legs ran in the order bring-up, cold+stall hold, TRST-clear release, sticky "
+            "re-assert, pad-only hold, both-sources hold, override-low release, with one line per "
+            "leg of each of the two new checkers",
+        ),
     ],
     "smu_boot_stall_vs_ic_reset_priority_test": [
         ("CHK-STALL-VS-IC", "STALL_VS_IC_RESET", "IC_RESET does not clear stall"),

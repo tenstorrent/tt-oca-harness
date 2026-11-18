@@ -16,6 +16,11 @@ The SMC eFuse sense runs for real on the wrapper: every fuse_reset compare is
 anchored on smc_fuse_sense_done_o for the primary reset it follows, and the
 release after the clear is bounded by the gate path, not the sense.
 
+Each release (bring-up, TRST clear, override low over the pad) is also followed to the
+SMC's first ROM read request: a passive per-clk_smu sampler requires no ROM read while
+the fuse reset is held, then a first read request at word address 0x0000 (byte
+0xC0040000, the cold-reset vector at the base of the ROM) within a declared liveness bound.
+
 Must FAIL if sticky broken, if TRST fails to clear DEBUG_CONTROL, or if the
 GPIO pad holds the gate shut against an override that reads 0.
 """
@@ -28,6 +33,7 @@ from cocotb.triggers import ClockCycles
 from seq_lib.smu_axi_helpers import wait_signal_high
 from seq_lib.smu_fuse_gate_helpers import (
     FUSE_GATE_HOLD_CYCLES,
+    RomFetchSampler,
     arm_gate_release,
     expect_gate_held_after_sense,
     expect_gate_release,
@@ -38,6 +44,26 @@ from seq_lib.smu_fuse_gate_helpers import (
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
 from seq_lib.smu_tb_pins import smc_primary_reset
 from smu_base_test import smu_base_test
+
+# The cold-reset vector is the first word of the ROM (hw/sys/smc/doc/cpu.adoc:145,
+# hw/sys/smc/doc/rom.adoc:9-10).
+FIRST_WORD_ADDR = 0x0000
+
+EXPECTED_FENCE = [
+    "S2 bring-up release",
+    "CHK-NO-FETCH-WHILE-HELD bring-up",
+    "CHK-FIRST-FETCH-AFTER-RELEASE bring-up",
+    "S3 cold+stall hold",
+    "S4 TRST-clear release",
+    "CHK-NO-FETCH-WHILE-HELD trst-clear",
+    "CHK-FIRST-FETCH-AFTER-RELEASE trst-clear",
+    "S5 sticky re-assert",
+    "S6 pad-only hold",
+    "S6 both-sources hold",
+    "S7 override-low release",
+    "CHK-NO-FETCH-WHILE-HELD ovrd-low-over-pad",
+    "CHK-FIRST-FETCH-AFTER-RELEASE ovrd-low-over-pad",
+]
 
 
 @pyuvm.test()
@@ -51,8 +77,10 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         sb = self.env.scoreboard
         log = self.logger
 
+        sampler = RomFetchSampler(dut, log)
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await self.cfg.reset_done.wait()
+        sampler.begin_leg("bring-up", require_zero_count=True)
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
 
@@ -60,6 +88,9 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         await expect_release_after_sense(
             dut, sb, log, phase="bring-up", name="fuse_reset released after bring-up sense"
         )
+        sampler.mark("S2 bring-up release")
+        sampler.check_held(sb, log, "bring-up")
+        await sampler.check_first_fetch(sb, log, "bring-up", expect_word_addr=FIRST_WORD_ADDR)
 
         # --- Assert stall; cold reset with TRST high (DEBUG sticky) ---
         await jtag.write(
@@ -74,6 +105,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        sampler.begin_leg("trst-clear")
         # Arm the sense-done observation at the release itself: the flag reads 0
         # in reset, and the settle below can outlast the whole sense.
         gate_held = cocotb.start_soon(
@@ -107,6 +139,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         )
         # The cold reset restarted the sense; the gate is judged only once it is done.
         await gate_held
+        sampler.mark("S3 cold+stall hold")
 
         # --- TRST pulse clears DEBUG_CONTROL ---
         armed_ns = arm_gate_release(dut, sb, name="fuse_reset high after TRST clear")
@@ -131,6 +164,10 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             name="fuse_reset high after TRST clear",
             evidence="STALL_TRST_CLEAR",
         )
+        sampler.check_clear_to_release(log, "trst-clear")
+        sampler.mark("S4 TRST-clear release")
+        sampler.check_held(sb, log, "trst-clear")
+        await sampler.check_first_fetch(sb, log, "trst-clear", expect_word_addr=FIRST_WORD_ADDR)
 
         # --- Sticky re-assert: must NOT re-gate fuse_reset ---
         await jtag.write(
@@ -148,6 +185,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             name="fuse_reset stays high on sticky re-assert",
             evidence="STALL_REASSERT_STICKY",
         )
+        sampler.mark("S5 sticky re-assert")
 
         await jtag.write("DEBUG_CONTROL", 0)
         await ClockCycles(dut.clk_smu_i, 8)
@@ -163,6 +201,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        sampler.begin_leg("ovrd-low-over-pad")
         # Armed at the release, as the cold+stall leg is: with the pad the only
         # stall source the sense completes within a hundred clk_smu of the
         # release, inside the settle below.
@@ -186,6 +225,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq("pad-only leg: jtag ovrd idle", int(dut.jtag_boot_stall_ovrd.value), 0)
         await pad_gate_held
+        sampler.mark("S6 pad-only hold")
 
         # Both sources asserted: the override selects its own 1, which agrees
         # with the pad, so the gate stays shut.
@@ -209,6 +249,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             0,
             evidence="STALL_BOTH_SOURCES",
         )
+        sampler.mark("S6 both-sources hold")
 
         # Override forced low while the pad still drives 1: the mux takes the
         # JTAG value, so the gate must open.
@@ -229,6 +270,13 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             name="fuse_reset released by override-low over pad",
             evidence="STALL_OVRD_MASKS_PAD",
         )
+        sampler.check_clear_to_release(log, "ovrd-low-over-pad")
+        sampler.mark("S7 override-low release")
+        sampler.check_held(sb, log, "ovrd-low-over-pad")
+        await sampler.check_first_fetch(
+            sb, log, "ovrd-low-over-pad", expect_word_addr=FIRST_WORD_ADDR
+        )
+        sampler.check_fence(sb, log, EXPECTED_FENCE)
 
         dut.gpio_boot_stall_drive_i.value = 0
         await jtag.write("DEBUG_CONTROL", 0)
