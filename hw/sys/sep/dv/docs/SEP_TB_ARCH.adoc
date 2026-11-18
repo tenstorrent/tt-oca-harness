@@ -74,6 +74,9 @@ lifecycle / fuse policy, and scoreboarding.
 
 === Testbench Hierarchy
 
+.SEP testbench: drivers, DUT blocks by testlist bucket, monitor taps and the analysis path to the checkers
+image::assets/sep_tb_architecture.svg[SEP testbench architecture,width=100%]
+
 [source,text]
 ----
 sep_<scenario>_test (@pyuvm.test)
