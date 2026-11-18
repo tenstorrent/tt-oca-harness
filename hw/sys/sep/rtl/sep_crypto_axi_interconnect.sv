@@ -97,12 +97,10 @@ module sep_crypto_axi_interconnect (
 
   output sep_pkg::sep_32_32_axil_req_t       esrc_axil_isolated_req_o,  // Host request to entropy_source, converted to 32-bit AXI-Lite and isolated.
   input  sep_pkg::sep_32_32_axil_resp_t      esrc_axil_isolated_resp_i,  // Response from entropy_source.
-  output drbg_pkg::drbg_axil64_req_t         csrng_axil_isolated_req_o,  // Host request to CSRNG, converted to 64-bit AXI-Lite, isolated and
-                                                                         // limited to the CSRNG register window.
-  input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_isolated_resp_i,  // Response from CSRNG.
-  output drbg_pkg::drbg_axil64_req_t         edn_axil_isolated_req_o,  // Host request to EDN, converted to 64-bit AXI-Lite, isolated and
-                                                                       // limited to the EDN register window.
-  input  drbg_pkg::drbg_axil64_resp_t        edn_axil_isolated_resp_i,  // Response from EDN.
+  output drbg_pkg::drbg_axil64_req_t         csrng_axil_req_o,  // Host request to CSRNG, converted to 64-bit AXI-Lite and isolated.
+  input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_resp_i,  // Response from CSRNG.
+  output drbg_pkg::drbg_axil64_req_t         edn_axil_req_o,  // Host request to EDN, converted to 64-bit AXI-Lite and isolated.
+  input  drbg_pkg::drbg_axil64_resp_t        edn_axil_resp_i,  // Response from EDN.
 
   output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // Host request to the external
                                                                    // TRNG registers, converted to
@@ -924,12 +922,12 @@ module sep_crypto_axi_interconnect (
     .isolated_o (isolated_o.trng_entropy_source)
   );
 
-  // ---- CSRNG: 64b AXI -> 64b AXI-Lite -> isolate -> register window ----
+  // ---- CSRNG: 64b AXI -> 64b AXI-Lite -> isolate ----
 
   drbg_pkg::drbg_axil64_req_t  csrng_conv_axil_req;
   drbg_pkg::drbg_axil64_resp_t csrng_conv_axil_resp;
-  drbg_pkg::drbg_axil64_req_t  csrng_isolated_axil_req;
-  drbg_pkg::drbg_axil64_resp_t csrng_isolated_axil_resp;
+  drbg_pkg::drbg_axil64_req_t  csrng_page_axil_req;
+  drbg_pkg::drbg_axil64_resp_t csrng_page_axil_resp;
 
   axi_to_axi_lite #(
     .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -965,8 +963,8 @@ module sep_crypto_axi_interconnect (
     .test_i     (test_en_i),
     .slv_req_i  (csrng_conv_axil_req),
     .slv_resp_o (csrng_conv_axil_resp),
-    .mst_req_o  (csrng_isolated_axil_req),
-    .mst_resp_i (csrng_isolated_axil_resp),
+    .mst_req_o  (csrng_page_axil_req),
+    .mst_resp_i (csrng_page_axil_resp),
     .isolate_i  (isolate_req_i.trng_csrng),
     .isolated_o (isolated_o.trng_csrng)
   );
@@ -994,18 +992,18 @@ module sep_crypto_axi_interconnect (
     .clk_i,
     .rst_ni,
     .test_en_i,
-    .slv_req_i   (csrng_isolated_axil_req),
-    .slv_resp_o  (csrng_isolated_axil_resp),
-    .mst_reqs_o  (csrng_axil_isolated_req_o),
-    .mst_resps_i (csrng_axil_isolated_resp_i)
+    .slv_req_i   (csrng_page_axil_req),
+    .slv_resp_o  (csrng_page_axil_resp),
+    .mst_reqs_o  (csrng_axil_req_o),
+    .mst_resps_i (csrng_axil_resp_i)
   );
 
-  // ---- EDN: 64b AXI -> 64b AXI-Lite -> isolate -> register window ----
+  // ---- EDN: 64b AXI -> 64b AXI-Lite -> isolate ----
 
   drbg_pkg::drbg_axil64_req_t  edn_conv_axil_req;
   drbg_pkg::drbg_axil64_resp_t edn_conv_axil_resp;
-  drbg_pkg::drbg_axil64_req_t  edn_isolated_axil_req;
-  drbg_pkg::drbg_axil64_resp_t edn_isolated_axil_resp;
+  drbg_pkg::drbg_axil64_req_t  edn_page_axil_req;
+  drbg_pkg::drbg_axil64_resp_t edn_page_axil_resp;
 
   axi_to_axi_lite #(
     .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -1041,8 +1039,8 @@ module sep_crypto_axi_interconnect (
     .test_i     (test_en_i),
     .slv_req_i  (edn_conv_axil_req),
     .slv_resp_o (edn_conv_axil_resp),
-    .mst_req_o  (edn_isolated_axil_req),
-    .mst_resp_i (edn_isolated_axil_resp),
+    .mst_req_o  (edn_page_axil_req),
+    .mst_resp_i (edn_page_axil_resp),
     .isolate_i  (isolate_req_i.trng_edn),
     .isolated_o (isolated_o.trng_edn)
   );
@@ -1070,10 +1068,10 @@ module sep_crypto_axi_interconnect (
     .clk_i,
     .rst_ni,
     .test_en_i,
-    .slv_req_i   (edn_isolated_axil_req),
-    .slv_resp_o  (edn_isolated_axil_resp),
-    .mst_reqs_o  (edn_axil_isolated_req_o),
-    .mst_resps_i (edn_axil_isolated_resp_i)
+    .slv_req_i   (edn_page_axil_req),
+    .slv_resp_o  (edn_page_axil_resp),
+    .mst_reqs_o  (edn_axil_req_o),
+    .mst_resps_i (edn_axil_resp_i)
   );
 
   //=========================================================================

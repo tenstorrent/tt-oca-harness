@@ -459,10 +459,10 @@ Toggle esrc_axil_isolated_resp.b.resp "logic esrc_axil_isolated_resp.b.resp[1:0]
 CHECKSUM: "3536466054 1976754700"
 ANNOTATION: "SEP-DRBG-RESP-BIT0: drbg_axil64_lane_adapter returns AXI_RESP_OKAY, AXI_RESP_SLVERR or the axi_lite_to_tlul response, and axi_lite_to_tlul returns only 2'b00 or 2'b10, so resp bit 0 holds 0. hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv:44-45,112,158-159,214,229,250,280,258,287; hw/common/axi/axi_lite_to_tlul.sv:54-55,128-129,195,234"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
-Toggle csrng_axil_isolated_resp.r.resp [0] "logic csrng_axil_isolated_resp.r.resp[1:0]"
-Toggle csrng_axil_isolated_resp.b.resp [0] "logic csrng_axil_isolated_resp.b.resp[1:0]"
-Toggle edn_axil_isolated_resp.r.resp [0] "logic edn_axil_isolated_resp.r.resp[1:0]"
-Toggle edn_axil_isolated_resp.b.resp [0] "logic edn_axil_isolated_resp.b.resp[1:0]"
+Toggle csrng_axil_resp.r.resp [0] "logic csrng_axil_resp.r.resp[1:0]"
+Toggle csrng_axil_resp.b.resp [0] "logic csrng_axil_resp.b.resp[1:0]"
+Toggle edn_axil_resp.r.resp [0] "logic edn_axil_resp.r.resp[1:0]"
+Toggle edn_axil_resp.b.resp [0] "logic edn_axil_resp.b.resp[1:0]"
 
 CHECKSUM: "3536466054 1976754700"
 ANNOTATION: "SEP-TLUL-RESP-BIT0: axi_lite_to_tlul returns only AXI_RESP_OKAY=2'b00 or AXI_RESP_SLVERR=2'b10, so resp bit 0 holds 0 (bit 1 is the reachable SLVERR and is not listed). hw/common/axi/axi_lite_to_tlul.sv:54-55,128-129,195,234"
