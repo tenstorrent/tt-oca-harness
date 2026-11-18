@@ -555,15 +555,12 @@ SERIES_CTRL scan of the write security-gating scenarios, and
 its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.
 
-Two knobs add legs that are off by default and run with the checks of a
+One knob adds legs that are off by default and run with the checks of a
 default run: `DTP_J2A_VISIBLE_RESPONSE_RESET` adds the visible-response legs to
 `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test` (VPLAN 4.31), a
-system reset zero to six TCK edges after a SLVERR response's handshake, and
-`DTP_J2A_FLUSH_EDGE_READ` adds the flush-edge and fill legs to
-`dtp_jtag2axi_series_corner_all_bridges_test` (VPLAN 4.36), a SERIES_CTRL(READ)
-landing on the edge where the bridge takes a series read queued under the
-previous programming. As with the other knobs, they are environment variables
-in cocotb and plusargs in SV-UVM.
+system reset zero to six TCK edges after a SLVERR response's handshake. As
+with the other knobs, it is an environment variable in cocotb and a plusarg in
+SV-UVM.
 
 === Coverage Strategy
 
