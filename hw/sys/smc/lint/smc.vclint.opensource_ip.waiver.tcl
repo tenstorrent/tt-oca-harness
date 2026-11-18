@@ -38,8 +38,11 @@ if { ![info exists PREFIX] } {
 # Substitute the literal ${PREFIX} token in a -filter expression with $PREFIX's
 # value. Uses string map rather than brace interpolation so that $clog2, bus
 # indices like [i], and embedded quotes inside the filter are preserved verbatim.
+# ${LINT_TOP} is the module lint reports package-function hits against (the lint top). It defaults
+# to ${PREFIX}smc; a consumer linting from another top sets ::LINT_TOP.
 proc apply_prefix { filter } {
-    return [string map [list {${PREFIX}} $::PREFIX] $filter]
+    set top [expr {[info exists ::LINT_TOP] ? $::LINT_TOP : "${::PREFIX}smc"}]
+    return [string map [list {${PREFIX}} $::PREFIX {${LINT_TOP}} $top] $filter]
 }
 
 # Build an OR-of-equals Module predicate from a module-name list. Applies the packager module-name
@@ -211,7 +214,7 @@ waive_violation -add {SMC_SelfAssignment_prim_fifo_async_dec2gray} -comment {dec
 waive_violation -add {SMC_SelfAssignment_prim_secded_inv_39_32_enc_data_o} -comment {data_o is on both sides of an assignment. It is set earlier in the same block, so each statement builds on the previous value and there is no combinational loop. Third-party OpenTitan IP shouldn't be modified. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}prim_secded_inv_39_32_enc") AND (OprandName == "data_o")}] -app { lint } -tag { SelfAssignment-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
 waive_violation -add {SMC_SelfAssignment_prim_secded_inv_64_57_enc_data_o} -comment {data_o is on both sides of an assignment. It is set earlier in the same block, so each statement builds on the previous value and there is no combinational loop. Third-party OpenTitan IP shouldn't be modified. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}prim_secded_inv_64_57_enc") AND (OprandName == "data_o")}] -app { lint } -tag { SelfAssignment-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
 waive_violation -add {SMC_SelfAssignment_pwm_reg_top_wr_err} -comment {wr_err is on both sides of |=. It is set earlier in the same block, so each statement builds on the previous value and there is no combinational loop. Third-party OpenTitan IP shouldn't be modified. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}pwm_reg_top") AND (OprandName == "wr_err")}] -app { lint } -tag { SelfAssignment-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
-waive_violation -add {SMC_SelfAssignment_smc_data_o} -comment {data_o is on both sides of an assignment. It is set earlier in the same block, so each statement builds on the previous value and there is no combinational loop. Third-party OpenTitan IP shouldn't be modified. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}smc") AND (OprandName == "data_o")}] -app { lint } -tag { SelfAssignment-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
+waive_violation -add {SMC_SelfAssignment_smc_data_o} -comment {data_o is on both sides of an assignment. It is set earlier in the same block, so each statement builds on the previous value and there is no combinational loop. Third-party OpenTitan IP shouldn't be modified. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${LINT_TOP}") AND (OprandName == "data_o")}] -app { lint } -tag { SelfAssignment-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
 waive_violation -add {SMC_SelfAssignment_tt_debug_bus_mux_debug_mux_out} -comment {debug_mux_out is on both sides of |=. It is set earlier in the same block, so each statement builds on the previous value and there is no combinational loop. Vendored Tenstorrent IP shouldn't be modified here. Created by gchang on 16-Nov-2026} -filter [apply_prefix {(Module == "${PREFIX}tt_debug_bus_mux") AND (OprandName =~ "debug_mux_out*")}] -app { lint } -tag { SelfAssignment-ML } -user { gchang } -timestamp { 16-11-2026 12:00:00 }
 
 # SelfAssignment-ML: iDMA overlay register file, operand cleared first in the same always_comb.
