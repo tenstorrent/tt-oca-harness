@@ -122,6 +122,21 @@ module entropy_source_tb_top (
   output wire         tune_state
 );
 
+  entropy_source_pkg::rosc_ctrl_t              dut_rosc_ctrl;
+  logic [entropy_source_pkg::NRings-1:0]       dut_rosc_noise;
+  logic                                        dut_rosc_shared_clk;
+  logic                                        sampler_shared_clk;
+  logic                                        noise_source_async;
+
+  entropy_rosc_array u_dut_rosc_array (
+    .noise_enable_i  (dut_rosc_ctrl.noise_enable),
+    .noise_detune_i  (dut_rosc_ctrl.noise_detune),
+    .shared_enable_i (dut_rosc_ctrl.shared_enable),
+    .shared_detune_i (dut_rosc_ctrl.shared_detune),
+    .noise_o         (dut_rosc_noise),
+    .shared_clk_o    (dut_rosc_shared_clk)
+  );
+
   entropy_source u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),
@@ -147,6 +162,9 @@ module entropy_source_tb_top (
     .s_axil_rresp_o        (axil_rresp),
     .signal_monitor_o      (signal_monitor),
     .rosc_sample_clk_i     (rosc_sample_clk),
+    .rosc_ctrl_o           (dut_rosc_ctrl),
+    .rosc_noise_i          (dut_rosc_noise),
+    .rosc_shared_clk_i     (dut_rosc_shared_clk),
     .entropy_stream_data_o (entropy_stream_data),
     .entropy_stream_vld_o  (entropy_stream_valid),
     .irq_o                 (irq)
@@ -279,6 +297,15 @@ module entropy_source_tb_top (
     .output_count_o    (sha_output_count)
   );
 
+  entropy_ring_oscillator #(
+    .TOTAL_LENGTH(109),
+    .TAPPED_LENGTH(53)
+  ) u_sampler_shared_ro (
+    .enable_i (|sampler_enable),
+    .detune_i (|sampler_detune),
+    .noise_o  (sampler_shared_clk)
+  );
+
   entropy_sampler_clocks #(
     .NRINGS(2)
   ) u_sampler_clocks (
@@ -286,22 +313,26 @@ module entropy_source_tb_top (
     .rst_ni               (rst_n),
     .sample_clk_i         (rosc_sample_clk),
     .sample_clk_select_i  (sampler_select),
-    .enable_i             (sampler_enable),
-    .detune_ro_i          (sampler_detune),
+    .shared_clk_i         (sampler_shared_clk),
     .sample_clk_divide_i  ({sampler_divide_1, sampler_divide_0}),
     .sample_clk_o         (sampler_clk)
   );
 
-  entropy_noise_source #(
+  entropy_ring_oscillator #(
     .TOTAL_LENGTH(7),
     .TAPPED_LENGTH(5)
-  ) u_noise_source (
-    .clk_i        (clk),
-    .rst_ni       (rst_n),
-    .sample_clk_i (rosc_sample_clk),
-    .enable_i     (noise_source_enable),
-    .detune_i     (noise_source_detune),
-    .noise_o      (noise_source_bit)
+  ) u_noise_source_ro (
+    .enable_i (noise_source_enable),
+    .detune_i (noise_source_detune),
+    .noise_o  (noise_source_async)
+  );
+
+  entropy_noise_source u_noise_source (
+    .clk_i         (clk),
+    .rst_ni        (rst_n),
+    .sample_clk_i  (rosc_sample_clk),
+    .noise_async_i (noise_source_async),
+    .noise_o       (noise_source_bit)
   );
 
   entropy_debug_monitor #(
