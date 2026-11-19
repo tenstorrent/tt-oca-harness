@@ -35466,8 +35466,7 @@ module sep_fcov (
     x_kind_op: coverpoint s.ko iff (s.ko_v) {
       bins cells[] = {[5'd0 : 5'd7]};
       bins jtag_cells[] = {5'd10, 5'd14};
-      ignore_bins jtag_other = {5'd8, 5'd9, 5'd11, 5'd12, 5'd13, 5'd15,
-                                5'd25, 5'd27, 5'd29, 5'd31};
+      ignore_bins jtag_other = {5'd8, 5'd9, 5'd11, 5'd12, 5'd13, 5'd15, 5'd25, 5'd27, 5'd29, 5'd31};
       illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
       illegal_bins jtag_wrong_outcome = {5'd24, 5'd26, 5'd28, 5'd30};
     }
@@ -37717,8 +37716,8 @@ module sep_fcov (
               )) begin
             // Refused only on a known efuse_req_error of 1.
             ef_lk(1, {(rd_data & EfReqErrMask) !== EfReqErrMask, 7'((s - 6'd1) * 2 + 1)});
-            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b0, 1'b1, ef_wlock(s),
-                         1'b1}));
+            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b0, 1'b1, ef_wlock(s), 1'b1
+                  }));
           end
         end
         if (ef_rg_idle_open && (((ef_rg_cnt >= EfReqWait) && ef_idle && (ef_rg_cs != 4'd6)) ||
@@ -38001,10 +38000,13 @@ module sep_fcov (
         pa = 16'(ef_sw_jw & EfPgAddrMask);
         s = ef_slot_of({1'b0, pa[12:3]});
         // Program go with program_enable and data 1 to a fuse bit of a field.
-        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && !$isunknown(jtag_resp_i.b.resp) &&
-            !$isunknown(ef_sw_jw) && ((ef_sw_jw & EfPgGoMask) != 32'h0) &&
-            ((ef_sw_jw & EfPgEnMask) != 32'h0) && ((ef_sw_jw & EfPgDataMask) != 32'h0) &&
-            (pa < 16'(EfFuseBits)) && (s != EfNoSlot) && (s != 6'd0)) begin
+        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && !$isunknown(
+                jtag_resp_i.b.resp
+            ) && !$isunknown(
+                ef_sw_jw
+            ) && ((ef_sw_jw & EfPgGoMask) != 32'h0) && ((ef_sw_jw & EfPgEnMask) != 32'h0) &&
+                ((ef_sw_jw & EfPgDataMask) != 32'h0) && (pa < 16'(EfFuseBits)) && (s != EfNoSlot) &&
+                (s != 6'd0)) begin
           ef_jg_v <= 1'b1;
           ef_jg_addr <= pa;
           ef_jg_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
@@ -38016,9 +38018,12 @@ module sep_fcov (
         // REQUIRED_ALGS.
         off = 11'(ef_sw_jaw - EfMapBase);
         s = ef_slot_of(off);
-        if ((ef_win(ef_sw_jaw) == EfWShadow) &&
-            (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
-            !$isunknown({ef_sw_jw, ef_sw_jpre}) && ((ef_sw_jw & ~ef_sw_jpre) != 32'h0)) begin
+        if ((ef_win(
+                ef_sw_jaw
+            ) == EfWShadow) && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
+                !$isunknown(
+                {ef_sw_jw, ef_sw_jpre}
+            ) && ((ef_sw_jw & ~ef_sw_jpre) != 32'h0)) begin
           ef_jsw_v <= 1'b1;
           ef_jsw_cnt <= 0;
           ef_jsw_off <= off[9:0];
@@ -38044,8 +38049,9 @@ module sep_fcov (
         ef_jsw_v <= 1'b0;
         now = ef_word(ef_jsw_off);
         wl = ef_jsw_wl;
-        ef_lk(6, 8'({wl ? (now !== ef_jsw_pre) : (now !== (ef_jsw_pre | ef_jsw_data)), 1'b1,
-                     ef_jsw_f, wl}));
+        ef_lk(6, 8'({
+              wl ? (now !== ef_jsw_pre) : (now !== (ef_jsw_pre | ef_jsw_data)), 1'b1, ef_jsw_f, wl
+              }));
       end
     end
   end
