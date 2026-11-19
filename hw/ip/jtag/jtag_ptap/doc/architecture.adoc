@@ -212,8 +212,10 @@ normally resets all registers. When Test Mode Persistence is enabled, the
 conditional reset `chrst_n` allows boundary scan and configuration registers to
 survive TEST_LOGIC_RESET state transitions while in persistence mode.
 
-`test_logic_reset` resets the DTMCS and DMI registers of the JTAG2AXI bridges.
-The bridges themselves reset from `rst_n_i` (<<jtag2axi-system-reset>>).
+`test_logic_reset` resets the shift and update stages of the DTMCS and DMI
+registers of the JTAG2AXI bridges. The bridges themselves, which supply the
+value that each register captures, reset from `rst_n_i`
+(<<jtag2axi-system-reset>>).
 
 === TDR Multiplexer
 
@@ -815,9 +817,17 @@ transfers.
 [[jtag2axi-system-reset]]
 ==== Reset
 
-Test-Logic-Reset, TRST and the power-on reset reset the DTMCS and DMI registers
-of each bridge to 0. They do not reset the Debug Module, the SBA engine or the
-sticky DMI status. An operation that is in progress when they assert completes.
+Test-Logic-Reset, TRST and the power-on reset reset the shift and update stages
+of the DTMCS and DMI registers of each bridge to 0. They do not reset the bridge:
+the Debug Module, the SBA engine, the sticky DMI status and the address and data
+of the last operation do not change. An operation that is in progress when they
+assert completes.
+
+The bridge supplies the value that a register captures. A Capture-DR of the DMI
+register after one of these resets therefore returns the address, the data and
+the status of the last operation, not 0, and a Capture-DR of the DTMCS register
+returns the same status in `dmistat`. A debugger that needs a known status after
+a TAP reset writes `dmireset`.
 
 `rst_n_i` is the reset of each bridge. It asserts asynchronously, and the bridge
 releases it synchronously in the `clk_i` domain and in the TCK domain, three
