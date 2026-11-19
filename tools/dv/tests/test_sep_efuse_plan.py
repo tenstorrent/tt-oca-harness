@@ -378,7 +378,7 @@ class TokenGoldenTest(unittest.TestCase):
 
     def test_control_words(self) -> None:
         self.assertEqual(P.program_ctrl_word(), 1 << 16 | 1 << 17 | 1 << 27)
-        self.assertEqual(P.program_ctrl_word(data=0, read_back=1), 1 << 17 | 1 << 18 | 1 << 27)
+        self.assertEqual(P.program_ctrl_word(data=0), 1 << 17 | 1 << 27)
         self.assertEqual(P.read_ctrl_word(), 1 << 16 | 1 << 28)
         self.assertEqual(P.program_addr_word(0x1F01), 0x1F01)
         self.assertEqual(P.read_addr_word(0x20), 0x20)
