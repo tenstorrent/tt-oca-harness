@@ -188,11 +188,12 @@ module smc_base #(
 
   input  wire logic tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock action as a
                                                    // clock stop.
-  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while a CLA halt-clock action,
-                                                           // enabled by bit 0 of the clock-halt
-                                                           // trigger mask and
-                                                           // tdr_dbg_ctrl_clock_stop_en_i, requests
-                                                           // a clock stop; also CPU internal
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // CLA clock-halt request, set by a
+                                                           // halt-clock action and held until
+                                                           // primary reset; gated by bit 0 of the
+                                                           // clock-halt trigger mask and
+                                                           // tdr_dbg_ctrl_clock_stop_en_i. Its
+                                                           // rising edge pulses CPU internal
                                                            // interrupt 0.
 
   output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Requests from the DFD
@@ -347,6 +348,7 @@ module smc_base #(
 
   // DFD signals
   logic cla_interrupt;
+  logic cla_clocks_stopped_rise;
 
   assign wdt_first_timeout_o = |cpu_wdt_timeout_cluster_i;
 
@@ -364,6 +366,21 @@ module smc_base #(
     .q_o   (ext_interrupts_smc_clk)
   );
 
+  // The CLA holds its clock-stop request until primary reset, so the PLIC gets a one-cycle
+  // pulse on each rise rather than a level software cannot clear.
+  prim_edge_detector #(
+    .Width     (1),
+    .ResetValue(1'b0),
+    .EnSync    (1'b0)
+  ) u_cla_clocks_stopped_edge (
+    .clk_i            (clk_smc_i),
+    .rst_ni           (rst_primary_smc_clk_ni),
+    .d_i              (tdr_dbg_ctrl_clocks_stopped_by_cla_o),
+    .q_sync_o         (),
+    .q_posedge_pulse_o(cla_clocks_stopped_rise),
+    .q_negedge_pulse_o()
+  );
+
   // Interrupt distribution: N external interrupts, 32 peripheral interrupts,
   // 32 mailbox interrupts, 4 internal interrupts
   always_comb begin
@@ -371,7 +388,7 @@ module smc_base #(
     cpu_interrupts_o[NumExtInterrupts-1:0]        = ext_interrupts_smc_clk;
     cpu_interrupts_o[NumExtInterrupts+:32]        = peripheral_interrupts_i;               // 32 peripheral interrupts
     cpu_interrupts_o[(NumExtInterrupts+32)+:32]   = mailbox_interrupts;                    // 32 mailbox interrupts
-    cpu_interrupts_o[(NumExtInterrupts+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;  // internal interrupt 0
+    cpu_interrupts_o[(NumExtInterrupts+64)]       = cla_clocks_stopped_rise;               // internal interrupt 0
     cpu_interrupts_o[(NumExtInterrupts+64)+1]     = cla_interrupt;                         // internal interrupt 1
     cpu_interrupts_o[(NumExtInterrupts+64)+2]     = dma_intp;                              // internal interrupt 2
     cpu_interrupts_o[(NumExtInterrupts+64)+3]     = zeroer_intp;                           // internal interrupt 3

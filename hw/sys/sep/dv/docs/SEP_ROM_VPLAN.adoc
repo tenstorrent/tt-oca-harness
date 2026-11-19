@@ -1252,7 +1252,7 @@ PASS record of its own.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_fuse_lock_base.py`.
 
-*Objective:* Across the 2x2 of lifecycle (TEST_DEV/PROD) and SBOOT_DIS (0/1), the ROM takes the expected secure-boot decision, boots BL1 and sets all six fuse-secret read locks before hand-off.
+*Objective:* Across the 2x2 of lifecycle (TEST_DEV/PROD) and SBOOT_DIS (0/1), the ROM takes the expected secure-boot decision, boots BL1 and sets all six fuse-secret read locks before hand-off, and a BL1 read of CLASS_KEY, RMA_SIP_TOKEN_DIGEST and RMA_CHIPLET_TOKEN_DIGEST each completes with a bus error.
 
 *Procedure:*
 
@@ -1260,7 +1260,8 @@ PASS record of its own.
 . Pick the signed image when SBOOT_DIS=0 or the unsigned image when SBOOT_DIS=1, and assert each slot's enforced bit matches, the payload is plaintext and no usage constraint is set.
 . Plant a lifecycle constraint permitting only the cell's LC on both slots (re-sealed for signed, re-hashed for unsigned).
 . Start the ESRC noise driver, boot from SPI and poll cold_scratch[0] for the BL1 PASS verdict.
-. Assert required markers: LC_STATE=0x..., LC=..., FUSE: SBOOT_DIS: n, crypto markers or SBOOT_OFF, MANIFEST_OK, FUSE_SECRETS_LOCKED, BL1_COPIED, BL1_JUMP=, BL1 FUSE_CHK, LOCKS=0x<mask>, FUSE_OK, LOCK_RD_OK.
+. BL1 points SEP_NMI_VEC at its own handler, then reads each of the three locked fields with an NMI expectation armed and grades exactly one NMI with mcause 0xF0000001 and mdseac equal to that field's address; an NMI outside a read before GO! fails it.
+. Assert required markers: LC_STATE=0x..., LC=..., FUSE: SBOOT_DIS: n, crypto markers or SBOOT_OFF, MANIFEST_OK, FUSE_SECRETS_LOCKED, BL1_COPIED, BL1_JUMP=, BL1 FUSE_CHK, LOCKS=0x<mask>, FUSE_OK, one LOCK_RD_NMI=<field> N=0x00000001 MC=0xF0000001 DSEAC=<field address> line per field with the address from the generated register map, LOCK_RD_OK.
 . Forbid other LC decodes, the opposite secure-boot outcome, FUSE_SECRETS_NOT_LOCKED, BL1 lock failures and any MANIFEST_ERR=/MANIFEST_ALL_FAILED/LC_STATE_INVALID=.
 . Assert a single primary attempt in ROM order, with the LC and SBOOT_DIS echoes before it.
 . Read LOCKS[31:0] from efuse_shadow_probe_o and assert all six secret read-lock bits are set.
@@ -1273,15 +1274,15 @@ PASS record of its own.
 |`CHK-FUSE-LOCK-STIMULUS` |The staged image has the expected LC, SBOOT_DIS, LOCKS=0, LOCKS_SPARE=0 and clean key fuses.
 |`CHK-MANIFEST-PRECONDITION` |Each slot has the enforced bit, a plaintext payload and empty selector_bits.
 |`CHK-MANIFEST-LIFECYCLE` |The planted lifecycle constraint landed and is covered by manifest_hash.
-|`CHK-ROM-PATH` |Inherited: every required marker observed and no forbidden marker printed.
+|`CHK-ROM-PATH` |Inherited: every required marker observed and no forbidden marker printed. The BL1 locked-read markers require each of the three locked-field reads to take one load-bus-error NMI (mcause 0xF0000001) with mdseac at the field's address, per the SLVERR response in otp_fuse_controller.adoc, and forbid every BL1 lock, NMI and vector failure token.
 |`CHK-VERDICT` |Inherited: BL1 completes with PASS through cold_scratch[0].
 |`CHK-DECISION-ORDER` |One accepted primary attempt occurs in ROM order with the LC and SBOOT_DIS echoes before it.
 |`CHK-FUSE-LOCK-REGISTER` |LOCKS[31:0] from the shadow probe has all six secret read-lock bits set.
 |===
 
-*Anti-vacuity:* The staged image must carry LOCKS=0 so set locks can only come from the ROM, the manifest names only the cell's lifecycle so a wrong sensed state refuses the slot, and BL1's FUSE_CHK proves hand-off.
+*Anti-vacuity:* The staged image must carry LOCKS=0 so set locks can only come from the ROM, the manifest names only the cell's lifecycle so a wrong sensed state refuses the slot, and BL1's FUSE_CHK proves hand-off. BL1 reads LOCKS from the same eFuse map outside any read bracket after it takes the NMI vector, so a map that faulted every read would fail on that read, as a lock-bit mismatch or a stray NMI, rather than pass as three locked reads.
 
-*Observation:* Console markers (ROM and BL1 LOCKS echo), efuse_shadow_probe_o LOCKS word, cold_scratch[0] verdict.
+*Observation:* Console markers (ROM and BL1 LOCKS echo, BL1 LOCK_RD_NMI= evidence per locked read), efuse_shadow_probe_o LOCKS word, cold_scratch[0] verdict.
 
 *Members:*
 

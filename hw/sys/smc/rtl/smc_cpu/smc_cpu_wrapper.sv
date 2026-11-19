@@ -79,8 +79,8 @@ module smc_cpu_wrapper #(
                                           // selects the default core reset vector.
   input  wire logic fuse_reset_ni,      // Active-low reset for the scratch RAM zero-fill sequencer;
                                         // its release starts the zero-fill.
-  input  wire logic scan_rst_ni,        // Active-low scan reset, passed to cpu_ctrl, which does not
-                                        // use it.
+  input  wire logic scan_rst_ni,        // Active-low scan reset for the cluster reset synchronizers
+                                        // while test_en_i is high.
 
   input  wire logic chiplet_is_primary_i,  // High on the primary chiplet; reported by cpu_ctrl in
                                            // SMC_ATTRIBUTES.
@@ -150,7 +150,8 @@ module smc_cpu_wrapper #(
                                             // cluster.
 
   input  wire logic test_en_i,          // Scan test mode enable for the front-port demux, AXI-Lite
-                                        // converter and cluster debug clock gate.
+                                        // converter, cluster debug clock gate and cluster reset
+                                        // synchronizer bypass.
 
   input  wire logic        smc_cpu_jtag_TCK_i,  // JTAG test clock for the cluster debug transport
                                                 // module.
@@ -365,7 +366,8 @@ module smc_cpu_wrapper #(
     .disable_sram_auto_init_i     (disable_sram_auto_init_i),
     .init_mem_done_o              (init_mem_done_o),
 
-    .test_en_i                    (test_en_i)
+    .test_en_i                    (test_en_i),
+    .scan_rst_ni                  (scan_rst_ni)
   );
 
   // Convert ROM tilelink req to generic memory interface req
