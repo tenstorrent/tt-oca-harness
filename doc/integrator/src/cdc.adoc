@@ -88,7 +88,8 @@ the mux inputs is used.
 The elements covered are `prim_flop_2sync`, `prim_sync3/4` and their reset
 variants, the pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
 `avsbus_async_fifo`, `cdc_fifo_gray`, `axi_cdc`, `prim_reg_cdc`,
-`prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`, `dmi_wrapper` and
+`prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`,
+`cdc_2phase_clearable`, `dmi_wrapper` and
 Rocket `AsyncQueue`.
 
 The bound depends on what protects the crossing:
@@ -107,7 +108,7 @@ The bound depends on what protects the crossing:
 
 | Two-phase handshake nets
 | `min(T_src, T_dst)`
-| `cdc_2phase` runs the handshake in both directions, so the tighter domain governs. This is the module's own stated requirement.
+| `cdc_2phase` and `cdc_2phase_clearable` run the handshake in both directions, so the tighter domain governs. This is the module's own stated requirement.
 |===
 
 `T_dst` rather than `min(T_src, T_dst)` in the general case because the gating

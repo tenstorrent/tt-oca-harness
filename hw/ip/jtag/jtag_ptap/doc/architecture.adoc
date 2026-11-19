@@ -580,8 +580,14 @@ endif::backend-html5[]
 The PTAP has up to three JTAG2AXI bridges. Each bridge gives a debugger read and
 write access to one AXI4 or AXI4-Lite manager port through the System Bus Access
 (SBA) registers of a RISC-V Debug Module. The debugger reaches the Debug Module
-with the `dtmcs` and `dmi` registers of the RISC-V External Debug Support
-specification, version 0.13, so each bridge has two instructions.
+with the `dtmcs` and `dmi` registers of the
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:referenced-documents.adoc#ref-riscv-debug[RISC-V External Debug Support specification],
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ref-riscv-debug,RISC-V External Debug Support specification>>,
+endif::backend-pdf[]
+version 0.13, so each bridge has two instructions.
 
 <<ptap-jtag2axi-bridges-table>> lists the bridges, their instructions and their
 manager ports.

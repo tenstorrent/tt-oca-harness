@@ -91,7 +91,7 @@ sources:
       - upstream/src/popcount.sv
       - upstream/src/ring_buffer.sv
       - upstream/src/rr_arb_tree.sv
-      # - upstream/src/rstgen_bypass.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
+      # - upstream/src/rstgen_bypass.sv  # Plan B prune (see clk_int_div note); hw/common/rstgen_bypass.sv supplies the module
       - upstream/src/serial_deglitch.sv
       - upstream/src/shift_reg.sv
       - upstream/src/shift_reg_gated.sv

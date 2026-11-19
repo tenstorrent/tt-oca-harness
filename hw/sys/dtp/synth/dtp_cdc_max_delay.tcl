@@ -42,7 +42,7 @@ unset -nocomplain _bridge _inst
 # Every proc takes an optional trailing delay in ps that replaces the computed
 # value, for the cases where 0.5 * T_dst or 1.0 * T_dst will not close:
 #
-#   set_cdc_max_delay_cdc_fifo_gray <path> JTAG_TCK DTPCLK 2000
+#   set_cdc_max_delay_prim_sync_reset <path> DTPCLK 2000
 #
 # Re-stating a call here after the source above wins, since the later exception
 # is the one the tool keeps for identical object specifications. Empty is the
