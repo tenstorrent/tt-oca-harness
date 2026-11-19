@@ -3733,10 +3733,13 @@ module smc_uvm_top
 `define SMC_RST_SVA_CTRL u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap
 `define SMC_RST_SVA_L2   `SMC_RST_SVA_CPU.u_l2_frontend_axi_isolate
 `define SMC_RST_SVA_COOL u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap
-`define SMC_RST_SVA_PAD62 u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
+    // The cool-reset-out pad (BP_COOL_RESET_N_O, "Cool Reset Out" in the
+    // integrator pad table) is GPIO 64.
+    localparam int unsigned CoolResetOutPad = 64;
+`define SMC_RST_SVA_COOL_PAD \
+    u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[CoolResetOutPad].u_gpio_interface
     smc_reset_sva #(
-        .NUM_CORES       ($bits(tb_cpu_core_resets_n)),
-        .JTAG_CTRL_WIDTH ($bits(tb_jtag_reset_ctrl))
+        .NUM_CORES       ($bits(tb_cpu_core_resets_n))
     ) u_smc_reset_sva (
         .clk_smc_i                  (clk_smc),
         .clk_ref_i                  (clk_ref),
@@ -3746,7 +3749,7 @@ module smc_uvm_top
         .rst_wdt_smc_clk_ni         (rst_wdt_smc_clk_no),
         .rst_warm_smc_clk_ni        (tb_rst_warm_smc_clk_n),
         .rst_cold_stable_ref_clk_ni (rst_cold_stable_ref_clk_no),
-        .jtag_reset_ctrl_i          (tb_jtag_reset_ctrl),
+        .jtag_reset_ctrl_i          (jtag_smc_reset_ctrl_t'(tb_jtag_reset_ctrl)),
         .cpu_isolate_req_i          (tb_cpu_isolate_req),
         .cpu_drained_i              (tb_cpu_drained),
         .cpu_reset_timeout_i        (tb_cpu_reset_timeout),
@@ -3787,11 +3790,11 @@ module smc_uvm_top
         .flr_cool_reset_ni          (`SMC_RST_SVA_COOL.rst_cool_no),
         .flr_hold_count_ref_i       (`SMC_RST_SVA_COOL.flr_reset_set_cnt_ref_clk),
         .cool_reset_ni              (tb_rst_cool_from_flr),
-        .pad62_lsio_pin_i           (`SMC_RST_SVA_PAD62.lsio_pin),
-        .core2pad_62_i              (tb_core2pad_o[62]),
-        .core2pad_en_62_i           (tb_core2pad_en_o[62])
+        .cool_pad_lsio_pin_i        (`SMC_RST_SVA_COOL_PAD.lsio_pin),
+        .cool_pad_core2pad_i        (tb_core2pad_o[CoolResetOutPad]),
+        .cool_pad_core2pad_en_i     (tb_core2pad_en_o[CoolResetOutPad])
     );
-`undef SMC_RST_SVA_PAD62
+`undef SMC_RST_SVA_COOL_PAD
 `undef SMC_RST_SVA_COOL
 `undef SMC_RST_SVA_L2
 `undef SMC_RST_SVA_CTRL

@@ -444,7 +444,12 @@ def resolve_case(
         return _fill_image_facts(measured.get(text, text), facts)
 
     spans = tuple(
-        dataclasses.replace(span, low=evaluate(span.low, facts), high=evaluate(span.high, facts))
+        dataclasses.replace(
+            span,
+            low=evaluate(span.low, facts),
+            high=evaluate(span.high, facts),
+            total_bytes=None if span.total_bytes is None else evaluate(span.total_bytes, facts),
+        )
         for span in testcase.spi_reads
     )
     if spans != testcase.spi_reads:

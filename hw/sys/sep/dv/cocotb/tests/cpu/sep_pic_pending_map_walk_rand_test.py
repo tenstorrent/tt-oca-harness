@@ -1656,7 +1656,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )
         finally:
             await self.con.stop()
-            noise.cancel()
+            await noise.stop()
             for t in tasks:
                 t.cancel()
             await self.w.stop()
