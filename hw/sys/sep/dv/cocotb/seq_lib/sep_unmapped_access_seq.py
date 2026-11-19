@@ -555,15 +555,13 @@ class SepUnmappedCfg:
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(GROUP_EFUSE_CTRL, addr, op, note))
-        # The token span past the efuse_mmr extent, 0x1093_0574 to 0x1093_05FF,
-        # answers DECERR with read data 0xBADCAB1E:
-        # hw/sys/sep/regs/gen/adoc/memory_map.adoc:64 (eFuse Token Registers
-        # row, Past Extent column) states it, and this generated map is the
-        # golden CHK-UNMAPPED-CODE grades. Its codes were assigned from the RTL.
-        # hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states SLVERR for an
-        # address of the APB span outside the register windows; the two
-        # documents differ on this span, so the leaf also logs each code of
-        # the span as OBS-EFUSE-TOKEN-PAST-CODE.
+        # The token window past the efuse_mmr extent, 0x1093_0474 to 0x1093_07FF,
+        # answers SLVERR with read data 0x0:
+        # hw/sys/sep/regs/gen/adoc/memory_map.adoc (SEP eFuse Wrapper row, Past
+        # Extent column) states it, and this generated map is the golden
+        # CHK-UNMAPPED-CODE grades. hw/sys/sep/doc/otp_fuse_controller.adoc:45-46
+        # states SLVERR for the same span. The leaf also logs each code of the
+        # span as OBS-EFUSE-TOKEN-PAST-CODE.
         for addr, note in (
             (mmr_end, "first word past the efuse_mmr extent (after TOKEN_MATCH_FAULT)"),
             (mmr_base + mmr_img + tok0, "RMA_SIP_TOKEN_I[0], one extent image up"),

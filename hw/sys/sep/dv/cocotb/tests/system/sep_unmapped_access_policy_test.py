@@ -63,9 +63,9 @@ of reading as zero; every such read must have been lane-checked. The golden is
 the generated map, hw/sys/sep/regs/gen/adoc/memory_map.adoc, whose codes were
 assigned from the RTL; hw/sys/sep/doc/fabric.adoc:143-146 states the DECERR
 class between the register blocks of the system CSR windows. The eFuse token
-span past the efuse_mmr extent answers DECERR, 0xBADCAB1E (memory_map.adoc:64);
-hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states SLVERR for that span, so
-the leaf also logs each of its codes as OBS-EFUSE-TOKEN-PAST-CODE.
+span past the efuse_mmr extent answers SLVERR, 0x0 (memory_map.adoc, SEP eFuse
+Wrapper row), as hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states; the leaf
+also logs each of its codes as OBS-EFUSE-TOKEN-PAST-CODE.
 The in-extent holes, one word between two mailbox sub-blocks and one between
 two SEP CPU control registers on each bus lane, are read, written and read
 again: they answer the Hole in Extent cell of their row (memory_map.adoc:69,

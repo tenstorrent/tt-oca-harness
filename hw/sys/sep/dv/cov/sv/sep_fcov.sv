@@ -40874,15 +40874,15 @@ module sep_fcov (
       bins strap_stable_while_km_runs = {2'd2};
     }
     // {class (0 shadow map, 1 interface control, 2 token registers, 3 gap
-    // 0x1141C, 4 gap 0x11574, 5 reserved 0x11600), response (0 OKAY, 1 SLVERR
-    // with 0xBADCAB1E)}.
+    // 0x1101C, 4 gap 0x11474, 5 gap 0x11C00), response (0 OKAY, 1 SLVERR with
+    // read data 0x0 in gaps 3 and 4, 0xBADCAB1E in gap 5)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
-      bins gap_1141c_slverr = {4'b011_1};
-      bins gap_11574_slverr = {4'b100_1};
-      bins reserved_11600_slverr = {4'b101_1};
+      bins gap_1101c_slverr = {4'b011_1};
+      bins gap_11474_slverr = {4'b100_1};
+      bins gap_11c00_slverr = {4'b101_1};
       ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
@@ -40919,7 +40919,6 @@ module sep_fcov (
       bins efuse_map = {5'd5};
       bins efuse_ctrl = {5'd6};
       bins efuse_token = {5'd7};
-      bins rsv_11600 = {5'd8};
       bins kpv = {5'd9};
       bins kmcsr = {5'd10};
       bins rsv_14800 = {5'd11};
@@ -40937,8 +40936,8 @@ module sep_fcov (
       bins rsv_1c800 = {5'd23};
       bins vrom = {5'd24};
     }
-    // {outcome (0 DECERR on reserved, 1 SLVERR past extent, 2 SLVERR with
-    // 0xBADCAB1E in an eFuse gap), direction (0 read, 1 write)}.
+    // {outcome (0 DECERR on reserved, 1 SLVERR past extent, 2 SLVERR in an
+    // eFuse gap), direction (0 read, 1 write)}.
     cp_if_decode_outcome: coverpoint v[2:0] iff (pt == 5'd1) {
       bins reserved_decerr_rd = {3'b00_0};
       bins reserved_decerr_wr = {3'b00_1};
@@ -40955,7 +40954,7 @@ module sep_fcov (
       bins rom[] = {7'h00, 7'h01, 7'h04};
       bins sram[] = {7'h08, 7'h09, 7'h0C};
       bins mailbox[] = {7'h11, 7'h13, 7'h14};
-      bins efuse_map[] = {7'h18, 7'h19, 7'h1C};
+      bins efuse_map[] = {7'h18, 7'h19, 7'h1B, 7'h1C};
       bins efuse_ctrl[] = {7'h20, 7'h21, 7'h23, 7'h24};
       bins efuse_token[] = {7'h28, 7'h29, 7'h2B, 7'h2C};
       bins kpv[] = {7'h30, 7'h31, 7'h33, 7'h34};
@@ -40966,8 +40965,8 @@ module sep_fcov (
       bins kmac[] = {7'h59, 7'h5B, 7'h5C};
       bins hmac[] = {7'h61, 7'h63, 7'h64};
       bins abr[] = {7'h6A, 7'h69, 7'h6B, 7'h6C};
-      ignore_bins class_not_in_row = {7'h02, 7'h03, 7'h0A, 7'h0B, 7'h12, 7'h1A, 7'h1B, 7'h22,
-                                      7'h2A, 7'h32, 7'h42, 7'h43, 7'h4A, 7'h52, 7'h5A, 7'h62};
+      ignore_bins class_not_in_row = {7'h02, 7'h03, 7'h0A, 7'h0B, 7'h12, 7'h1A, 7'h22, 7'h2A,
+                                      7'h32, 7'h42, 7'h43, 7'h4A, 7'h52, 7'h5A, 7'h62};
     }
     cp_if_efuse_remap: coverpoint v[0] iff (pt == 5'd3) {
       bins low12_equal_km_offset = {1'b0}; bins upper_constant_over_three_maps = {1'b1};
@@ -42215,8 +42214,8 @@ module sep_fcov (
       logic [1:0] m;
       ea = 32'(km_efuse_req_i.ar.addr);
       ka = kx_rstart ? 32'(km_axi_req_i.ar.addr) : kx_raddr;
-      m = km_in(ka, KmEfMapBase, 32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE)) ? 2'd0 :
-          km_in(ka, KmEfCtrlBase, 32'h100) ? 2'd1 : 2'd2;
+      m = km_in(ka, KmEfMapBase, 32'h800) ? 2'd0 :
+          km_in(ka, KmEfCtrlBase, 32'h400) ? 2'd1 : 2'd2;
       if (ea[11:0] == ka[11:0]) km_remap_ok[0] <= 1'b1;
       if ((km_remap_seen != 3'b000) && (ea[31:12] != km_remap_hi)) km_remap_bad <= 1'b1;
       km_remap_hi <= ea[31:12];
@@ -42259,9 +42258,9 @@ module sep_fcov (
       32'(key_manager_addrmap_pkg::KEY_MANAGER_ROM_SIZE),
       32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE),
       32'h20,
-      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE),
-      32'h100,
-      32'h100,
+      32'h800,
+      32'h400,
+      32'h400,
       32'h2000,
       32'h800,
       32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_SIZE),
@@ -42342,8 +42341,7 @@ module sep_fcov (
     // Reserved windows: from the end of the span of one row to the base of
     // the next. The KM aperture end has no package symbol.
     if (km_rng(a, KmRomBase + KmRowSpan[0], KmSramBase)) return 5'd1;
-    if (km_rng(a, KmMbxBase + KmRowSpan[2], KmEfMapBase)) return 5'd4;
-    if (km_rng(a, KmEfMmrBase + KmRowSpan[5], KmKpvBase)) return 5'd8;
+    if (km_rng(a, KmMbxBase + KmRowSpan[2], KmEfCtrlBase)) return 5'd4;
     if (km_rng(a, KmCsrBase + KmRowSpan[7], KmSmpBase)) return 5'd11;
     if (km_rng(a, KmSmpBase + KmRowSpan[8], KmOtbnBase)) return 5'd13;
     if (km_rng(a, KmOtbnBase + KmRowSpan[9], KmAesBase)) return 5'd19;
@@ -42358,13 +42356,18 @@ module sep_fcov (
     return w inside {5'd1, 5'd4, 5'd11, 5'd13, 5'd19, 5'd20, 5'd21, 5'd22, 5'd23};
   endfunction
 
-  // eFuse gap of an address: 1 0x1141C to 0x114FF, 2 0x11574 to 0x115FF,
-  // 3 0x11600 to 0x11FFF, 0 none.
+  // eFuse gap of an address: 1 0x1101C to 0x113FF, 2 0x11474 to 0x117FF,
+  // 3 0x11C00 to 0x11FFF, 0 none.
   function automatic logic [1:0] km_ef_gap(logic [31:0] a);
-    if (km_rng(a, KmEfCtrlBase + KmRowExt[4], KmEfMmrBase)) return 2'd1;
+    if (km_rng(a, KmEfCtrlBase + KmRowExt[4], KmEfCtrlBase + KmRowSpan[4])) return 2'd1;
     if (km_rng(a, KmEfMmrBase + KmRowExt[5], KmEfMmrBase + KmRowSpan[5])) return 2'd2;
-    if (km_rng(a, KmEfMmrBase + KmRowSpan[5], KmKpvBase)) return 2'd3;
+    if (km_rng(a, KmEfMapBase + KmRowExt[3], KmEfMapBase + KmRowSpan[3])) return 2'd3;
     return 2'd0;
+  endfunction
+
+  // Read data of a SLVERR in eFuse gap g (memory_map.adoc).
+  function automatic logic [31:0] km_ef_gap_data(logic [1:0] g);
+    return (g == 2'd3) ? KmBadcab : 32'h0;
   endfunction
 
   // Past-extent or hole address of a non-eFuse decoded row.
@@ -42400,12 +42403,12 @@ module sep_fcov (
   //
   // Window and offset class: a cell is seen when a KM data access completes
   // in the owner window with the response that the owner grades for its
-  // address: DECERR in a reserved window outside the eFuse window, SLVERR
-  // with 0xBADCAB1E on a read in an eFuse gap, SLVERR with 0x0 on a read in
-  // a hole or past the extent of a non-eFuse row, OKAY at any other decoded
-  // word, and the completion on the KM CPU memory bus for ROM and SRAM. A
-  // seen cell samples only when the pass label km_xbar_pass rises inside
-  // the owner window, and only when the label holds the bit of that cell:
+  // address: DECERR in a reserved window, SLVERR with km_ef_gap_data() on a
+  // read in an eFuse gap, SLVERR with 0x0 on a read in a hole or past the
+  // extent of a non-eFuse row, OKAY at any other decoded word, and the
+  // completion on the KM CPU memory bus for ROM and SRAM. A seen cell samples
+  // only when the pass label km_xbar_pass rises inside the owner window, and
+  // only when the label holds the bit of that cell:
   // sep_km_crossbar_efuse_window_rand_test writes 0 before its decode walk
   // and, after CHK-XBAR, CHK-XBAR-RSV, CHK-XBAR-EFUSE and CHK-XBAR-SIZE pass,
   // bit {row, class} of each graded offset cell in [127:0] and bit 128 + w
@@ -42472,7 +42475,7 @@ module sep_fcov (
       gap = km_ef_gap(a);
       r = km_row(a);
       if (km_rsv_window(win)) ok = (rsp == KmDecerr);
-      else if (gap != 2'd0) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == KmBadcab));
+      else if (gap != 2'd0) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == km_ef_gap_data(gap)));
       else if (km_past(a)) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == 32'h0));
       else ok = (rsp == KmOkay);
       if (ok && (win != 5'h1F) && !(r inside {4'd0, 4'd1})) begin
@@ -42494,7 +42497,7 @@ module sep_fcov (
         km_dec_cls <= 2'd0;
         km_dec_wr <= kw_ev;
       end else if ((gap != 2'd0) && ((kw_ev ? kw_resp : kr_resp) == KmSlverr) &&
-                   (kw_ev || (kr_data == KmBadcab))) begin
+                   (kw_ev || (kr_data == km_ef_gap_data(gap)))) begin
         km_dec_pend <= 1'b1;
         km_dec_cls <= 2'd2;
         km_dec_wr <= kw_ev;
@@ -42511,16 +42514,17 @@ module sep_fcov (
          ((km_dec_cls != 2'd0) && (km_irq_status_i[KmIrqSlverr] === 1'b1))))
       km_dec_ok[{km_dec_cls, km_dec_wr}] <= 1'b1;
     // eFuse read class.
-    if (kr_ev && km_own_xbar && km_rng(kr_addr, KmEfMapBase, KmKpvBase)) begin
+    if (kr_ev && km_own_xbar && km_rng(kr_addr, KmEfCtrlBase, KmKpvBase)) begin
       logic [2:0] cls;
       logic ok_rsp;
       gap = km_ef_gap(kr_addr);
-      cls = km_in(kr_addr, KmEfMapBase, KmRowSpan[3]) ? 3'd0 :
-            (gap == 2'd1) ? 3'd3 : (gap == 2'd2) ? 3'd4 : (gap == 2'd3) ? 3'd5 :
+      cls = (gap == 2'd1) ? 3'd3 : (gap == 2'd2) ? 3'd4 : (gap == 2'd3) ? 3'd5 :
+            km_in(kr_addr, KmEfMapBase, KmRowSpan[3]) ? 3'd0 :
             km_in(kr_addr, KmEfCtrlBase, KmRowSpan[4]) ? 3'd1 : 3'd2;
       ok_rsp = (kr_resp == KmOkay);
       if (ok_rsp) km_rc_ok[{cls, 1'b0}] <= 1'b1;
-      else if ((kr_resp == KmSlverr) && (kr_data == KmBadcab)) km_rc_ok[{cls, 1'b1}] <= 1'b1;
+      else if ((gap != 2'd0) && (kr_resp == KmSlverr) && (kr_data == km_ef_gap_data(gap)))
+        km_rc_ok[{cls, 1'b1}] <= 1'b1;
     end
   end
 
