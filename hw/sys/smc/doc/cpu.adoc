@@ -204,6 +204,14 @@ reported failure. These firmware checks do not establish that repair has
 completed successfully. The external sequencer must enforce the platform's
 repair and MBIST requirements before reporting boot-sequence completion.
 
+`ext_boot_seq_done_i` releases the cores from reset, so it is asserted only
+once every SMC memory macro, the L1 cache macros as well as the scratchpad, is
+safe to use; any task that prepares them, such as memory repair or MBIST,
+finishes first. The boot ROM at `0xC004_0000` is cacheable and
+Rocket has no instruction-cache enable or bypass, so the first instruction
+fetch after `int_rst_core_n` releases already goes through the L1
+instruction-cache arrays, before any firmware can check them.
+
 == System Interfaces
 
 <<smc-cpu-system-interfaces-table>> identifies the protocols and roles of the CPU
