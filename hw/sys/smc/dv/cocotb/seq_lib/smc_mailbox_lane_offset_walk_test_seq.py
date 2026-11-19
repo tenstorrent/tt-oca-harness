@@ -162,6 +162,8 @@ class smc_mailbox_lane_offset_walk_test_seq(SmcCsrSeq):
             f" the mailbox span ending at {MAILBOX_END:#x})"
         )
         if want == AXI_RESP_SLVERR:
+            # The mailbox's default R channel for an address that decodes to no register is
+            # data 0 with SLVERR (vendored `axi_lite_mailbox.sv`, `r_chan` default).
             assert high.rdata == 0, (
                 f"{reader} pair {pair} read at {base + HIGH_OFFSET:#x} answered SLVERR with data "
                 f"{high.rdata:#x} while {word:#x} was queued; an unmapped offset returns 0"

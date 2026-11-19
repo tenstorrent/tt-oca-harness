@@ -51798,7 +51798,8 @@ Drive `smc_mailbox_lane_offset_walk_test_seq`. Each checker below is a named com
 *Pass Criteria*: all four checkers hold after their compares and every sequence assert holds; the sequence issues exactly the planned 1027 SEP_IN accesses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The data of the DECERR read past the mailbox span is not compared; the SLVERR
-reads inside it must return 0. Interrupts, thresholds and the full-FIFO error are the subject of
+reads inside it must return 0, the default read data the vendored `axi_lite_mailbox` drives for
+an address that decodes to no register. Interrupts, thresholds and the full-FIFO error are the subject of
 the other mailbox leaves.
 
 '''''
