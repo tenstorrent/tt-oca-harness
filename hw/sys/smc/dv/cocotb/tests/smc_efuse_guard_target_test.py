@@ -17,9 +17,10 @@ class smc_efuse_guard_target_test(smc_base_test):
         "CHK-EFUSE-GUARD-PROGRAM-TARGET",
         "CHK-EFUSE-GUARD-READ-TARGET",
         "CHK-EFUSE-PROGRAM-VERIFY",
+        "CHK-EFUSE-PROGRAM-WRITE-PSLVERR",
         "CHK-EFUSE-QUIET-TIMEOUTS",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     auto_protocol_vip = False
 

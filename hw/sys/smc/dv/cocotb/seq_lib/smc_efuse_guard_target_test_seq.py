@@ -34,6 +34,12 @@ write-1-to-set:
   it already set, must complete without error. The mismatch side of the verify
   read, `PROGRAM_STATUS` set when the bank keeps the bit clear, is
   `smc_efuse_otp_burn_shadow_test` (`CHK-EFUSE-OTP-PROGRAM-FAIL`).
+* **A program whose write answers PSLVERR.** The reference SHIM sets the
+  program `status` when the write or its read-back answers PSLVERR, or when the
+  bit did not stick (`architecture.adoc`). A third program of the SPARE[8] bit,
+  already set, with the bank's write-phase response forced to PSLVERR
+  (`tb_efuse_write_pslverr_inject`), must complete with `PROGRAM_STATUS` set: its
+  verify read finds the bit set, so only the write error can report the failure.
 
 * **Requests while `EFUSE_REQ_ERROR` is set.** The error "must be cleared by
   writing 1" (`efuse_interface_ctrl.rdl`); before it is, a read and a
@@ -319,4 +325,37 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
             plain_free[0],
             want,
         )
+        await self._write_pslverr(plain_bit, want)
         await self._quiet_timeouts_and_empty_data()
+
+    async def _write_pslverr(self, bit_addr: int, word: int) -> None:
+        """A program of a bit already set, with PSLVERR on the write phase, must fail."""
+        dut = cocotb.top
+        dut.tb_efuse_write_pslverr_inject.value = 1
+        try:
+            prog_ctrl = await self._program("WR_PSLVERR", bit_addr, 1)
+        finally:
+            dut.tb_efuse_write_pslverr_inject.value = 0
+        assert prog_ctrl & PROG_ERR, (
+            f"a program whose bank write answered PSLVERR completed without PROGRAM_STATUS "
+            f"(PROGRAM_CTRL=0x{prog_ctrl:08x}); the bit already reads 1, so the verify read passes "
+            f"and only the write error can report the failed program"
+        )
+        status = await self.csr_read("WR_PSLVERR_STATUS", STATUS)
+        assert not status & REQ_ERR, (
+            f"a program whose bank write answered PSLVERR raised EFUSE_REQ_ERROR "
+            f"(STATUS=0x{status:08x}); only a lock refusal raises it"
+        )
+        ctrl, data = await self._read("WR_PSLVERR_READ", _bit_addr(PLAIN_WORD_ADDR))
+        assert not ctrl & READ_ERR and data == word, (
+            f"after the PSLVERR program SPARE[{PLAIN_FIELD}] reads 0x{data:08x} "
+            f"(READ_CTRL=0x{ctrl:08x}); it held 0x{word:08x}"
+        )
+        cocotb.log.info(
+            "CHK-EFUSE-PROGRAM-WRITE-PSLVERR: a program of SPARE[%d]'s already-set bit with the "
+            "write phase answering PSLVERR completed with PROGRAM_STATUS set "
+            "(PROGRAM_CTRL=0x%08x), and the word still read 0x%08x",
+            PLAIN_FIELD,
+            prog_ctrl,
+            word,
+        )

@@ -6914,8 +6914,6 @@ CHECKSUM: "2585843499 1130749731"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
 ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
-Condition 12 "2953569792" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
-Condition 18 "3037674975" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
 
 CHECKSUM: "2948406138 4040424900"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaActionGen

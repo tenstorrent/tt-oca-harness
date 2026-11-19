@@ -50834,6 +50834,9 @@ draws nothing from the seed.
 ** The program must complete without error.
 ** A read of the word through the read interface must show the bit burnt.
 ** A second program of the same bit, whose verify read finds it already set, must complete without error.
+* A third program of the same bit with PSLVERR forced on the SHIM's write-phase response. The reference SHIM reports a write PSLVERR in the program status (`architecture.adoc`), and the verify read alone cannot see it because the bit already reads 1.
+** It must complete with `PROGRAM_STATUS` set and without `EFUSE_REQ_ERROR`.
+** The word must be unchanged.
 * The two locks hold until reset and are left set.
 * With `EFUSE_REQ_ERROR` still set, which "must be cleared by writing 1" (`efuse_interface_ctrl.rdl`), a read and a program of SPARE[9] must both be refused, and the program must not burn.
 * Timeouts configured but not reached. A program with the program timeout enabled at its reset length, and another with the timeout disabled and its length 0, must both complete. A program with no data bit must fail. A read with the read timeout disabled at length 0 must return exactly the two bits programmed.
@@ -50845,6 +50848,7 @@ draws nothing from the seed.
 . Error injection. Point: the read interface, with SPARE[6]'s read lock set through `LOCKS`. Kind: a read of a read-locked word. Expected response: the read completes with `READ_STATUS` set and `EFUSE_REQ_ERROR` raised, and does not return the word. Before the lock: program one bit of SPARE[6] and read the word.
 . Error injection. Point: the program interface, with SPARE[7]'s write lock set. Kind: a program of a bit the asset holds at 0 in a write-locked field. Expected response: `PROGRAM_STATUS` set and `EFUSE_REQ_ERROR` raised, and a read of the word afterwards still returns the asset value.
 . Program one SPARE[8] bit, read the word, and program the same bit again.
+. Error injection. Point: the reference SHIM's write-phase response, after its read/program demux (`tb_efuse_write_pslverr_inject`). Kind: PSLVERR on the write of a third program of the SPARE[8] bit, already set. Expected response: the program completes with `PROGRAM_STATUS` set, and without `EFUSE_REQ_ERROR`, although its verify read finds the bit set, and the word is unchanged.
 . Error injection. Point: both interfaces, with `EFUSE_REQ_ERROR` still set from the locked read. Kind: a read and a program of SPARE[9] issued before the error is cleared. Expected response: both refused, and the program does not burn.
 . Error injection. Point: the program interface. Kind: a program with no data bit. Expected response: the program fails. Also program two SPARE[9] bits under the two timeout settings, which must both complete, and read the word with the read timeout disabled at length 0.
 
@@ -50856,10 +50860,11 @@ draws nothing from the seed.
 |`CHK-EFUSE-GUARD-READ-TARGET` |An unlocked read of a SPARE word returned the value just programmed; with its read lock set the read failed with `EFUSE_REQ_ERROR` and did not return it
 |`CHK-EFUSE-GUARD-PROGRAM-TARGET` |A program of a write-locked SPARE field failed with `EFUSE_REQ_ERROR`, and the word still read its asset value
 |`CHK-EFUSE-PROGRAM-VERIFY` |A program of one bit completed without error, the read interface then showed the bit burnt, and a second program of the same bit, whose verify read finds it already set, completed without error
+|`CHK-EFUSE-PROGRAM-WRITE-PSLVERR` |A program of a bit already set, whose write phase answered PSLVERR, completed with `PROGRAM_STATUS` set, and the word was unchanged
 |`CHK-EFUSE-QUIET-TIMEOUTS` |Requests under `EFUSE_REQ_ERROR` were refused, programs completed under an enabled and a disabled timeout, a no-data program failed, and the word held exactly the two programmed bits
 |===
 
-*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
