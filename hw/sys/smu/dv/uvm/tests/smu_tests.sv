@@ -30,6 +30,9 @@ import smu_seq_lib_pkg::*;
 
 // SMC-under-SMU scenarios on the wrapper's boundary pins.
 `include "smu_ext_boot_seq_gate_test.svh"
+`include "smu_smc_mailbox_sanity_test.svh"
+`include "smu_smc_wdt_sanity_test.svh"
+`include "smu_smc_wdt_timeout_irq_test.svh"
 
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining

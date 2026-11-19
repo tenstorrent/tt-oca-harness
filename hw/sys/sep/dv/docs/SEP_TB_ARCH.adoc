@@ -453,12 +453,16 @@ Observation probe groups:
    aggregate, `RECOVERABLE_ERR`, `BOOT_STATUS.COLD_BOOT_DONE`,
    `SRAM_EXEC_MODE`, `OTP_READ_LOCK`, `OTP_READ_LOCK_COLD`,
    `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
-   writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
+   writes to `SCRAMBLER_KEY` (AW handshakes at the KMCSR port with the
+   `SCRAMBLER_KEY` offset), and the `SCRAMBLER_CTRL` enable and lock values,
+   on every clock. The tap has no count of writes to `SCRAMBLER_CTRL`; a test
+   that counts them uses KM-FETCH. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_boot_reset_rand_test`,
    `sep_km_fault_inject_rand_test`, `sep_km_sram_scrambler_key_rand_test`,
    `sep_km_command_protocol_rand_test` (`OTP_READ_LOCK_COLD`, CHK-NOCHG-VAULT),
    `sep_km_drbg_sampler_rand_test` (the interrupt aggregate `km_csr_irq_o`,
-   CHK-SMP-IRQ-GATE).
+   CHK-SMP-IRQ-GATE), `sep_km_command_set_rand_test` (`IRQ_ENABLE`,
+   `IRQ_STATUS`, CHK-OTP-CHG-DORMANT).
 ** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
    `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
    is a select of the tap and drives nothing in the DUT; it is 0 by default.
@@ -486,6 +490,7 @@ Observation probe groups:
    CHK-REFUSE-KEEP),
    `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
    `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO),
+   `sep_km_command_set_rand_test` (CHK-SHRED-FILL, CHK-GEN-DEST),
    `sep_sw_reset_isolation_matrix_test` (`km_key_aw_{valid,ready}_o` in leg C of
    the entry `sep_sw_reset_isolation_matrix_test_km_poke`: an AW valid and not
    ready at the isolate request, logged in INFO-KEY-BEAT-ATTEMPT).
@@ -495,13 +500,17 @@ Observation probe groups:
 ** KM-INFIFO (`km_infifo_head_o[32:0]`): the head word of the inbound FIFO of
    the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
    FIFO is empty. Read-only. Users: `sep_km_cpu_protect_rand_test`
-   (CHK-TRAP-SCOPE), `sep_km_handover_rand_test` (CHK-HO-MBOX).
+   (CHK-TRAP-SCOPE), `sep_km_handover_rand_test` (CHK-HO-MBOX),
+   `sep_km_mailbox_protocol_rand_test` (CHK-OVR-HEAD).
 ** KM-FETCH (`km_mem_{valid,ready,instr}_o`, `km_mem_addr_o[31:0]`,
    `km_mem_wstrb_o[3:0]`): the native memory request of the KM CPU wrapper
    (`u_key_manager_s3c_scan.u_cpu`, nets `mem_valid`, `mem_ready`,
    `mem_instr`, `mem_addr`, `mem_wstrb`), on every clock. A transfer completes
    on a clock with valid and ready high; `instr` high marks an instruction
-   fetch; `wstrb` 0 marks a read. Read-only.
+   fetch; `wstrb` 0 marks a read. Read-only. Users: `sep_km_command_set_rand_test`
+   (CHK-BOOT-SRAM-LOCK-NOWR, CTRL-BOOT-FETCH-DECODE),
+   `sep_km_sram_scrambler_key_rand_test` (CTRL-SSCR-LOCKED-CTRL-WR: completed
+   stores to the `SCRAMBLER_CTRL` address).
 ** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
    for each SRAM write-lock region of 256 words, the count of distinct
    logical word addresses (the KM CPU store address before the scrambler)
@@ -532,7 +541,8 @@ Observation probe groups:
   every clock. Users: `sep_km_boot_reset_rand_test` (all outputs:
   CHK-RST-AXI-VALID, CHK-RST-AXI-NORESP, CTRL-RST-AXI-HANDSHAKE,
   CTRL-RST-AXI-RSP-LIVE, OBS-RST-AXI-EXT-RSP), `sep_km_fault_inject_rand_test` and
-  `sep_km_kmcsr_reset_rand_test` (`km_cpu_rst_n_o` only).
+  `sep_km_kmcsr_reset_rand_test` and `sep_km_command_set_rand_test`
+  (`km_cpu_rst_n_o` only, in CTRL-BOOT-FETCH-DECODE).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list: the KM CPU AXI master and its error
@@ -612,8 +622,11 @@ Observation probe groups:
   each clock. Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`.
 * Crypto alert receiver probe (`crypto_alert_pulse_probe_o`): bit i is the
-  alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owner:
-  `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX).
+  alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owners:
+  `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX),
+  `sep_kmac_mode_strength_rand_test` (receivers 5 and 6: CHK-KMAC-ALERT-QUIET,
+  CTRL-KMAC-ALERT-LIVE, OBS-KMAC-ALERT-BIT) and
+  `sep_crypto_per_ip_reset_isolation_test` (OBS-KMAC-ALERT-RST).
 * External stream response monitor (`ext_trng_tready_o`, with the stream as
   the `sep` port sees it: `ext_trng_tvalid_o`, `ext_trng_tdata_o`,
   `ext_trng_tstrb_o`): `ext_trng_axis_rsp_o[i].tready` and
@@ -629,7 +642,10 @@ Observation probe groups:
   detune select of ESRC lane i (`u_generator.detune`). Users: the ESRC tuning
   entry of the crypto and entropy area.
 * OTBN status probe (`otbn_status_probe_o`): `status_q` of the OTBN core on
-  every clock. Users: the OTBN command entry of the crypto and entropy area.
+  every clock. Users: the OTBN command entry of the crypto and entropy area,
+  `sep_crypto_per_ip_reset_isolation_test` (CHK-OTBN-RST-RECOVER: the state at
+  the fall of the OTBN gated reset) and `sep_otbn_fw_control_flow_test`
+  (CHK-OTBN-FW-STATUS).
 * ESRC SHA-256 status tap (`esrc_sha256_status_o`): the next value of the
   `SHA256_STATUS` fields (`reg_in.SHA256_STATUS`) on every clock: bit 0 BUSY,
   bits 4:1 INPUT_COUNT, bits 8:5 OUTPUT_COUNT. Users: the ESRC conditioning
@@ -667,15 +683,27 @@ Observation probe groups:
   count (`downsample_count`), the decorrelator stream strobe after the boot
   gate (`entropy_stream_valid_gated`), and the divider count of lane 0
   (`gen_ecmplx[0].u_generator.u_decorrelator.clk_divider`). Read-only. Users:
-  the ESRC conditioning entry of the crypto and entropy area and the FCOV
-  sampler (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`,
-  `cp_ds_resume`).
+  the ESRC conditioning entry of the crypto and entropy area, `SepDrbgScoreboard`
+  (with the compressor bypassed its golden chain takes one sample on each
+  `esrc_stream_valid_gated_o` strobe) and the FCOV sampler
+  (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`, `cp_ds_resume`).
+* ESRC decorrelator chain tap (`esrc_decor_sr_o[347:0]`): the 29-stage chain
+  of each of the twelve lanes, lane i at bits [29i+28:29i]
+  (`gen_ecmplx[i].u_generator.u_decorrelator.ff_stage`). Read-only copy of DUT
+  nets: it drives nothing and adds no force. Users: `SepDrbgScoreboard`, which
+  seeds its decorrelator golden from this state once shifting is live, and the
+  ESRC conditioning entry of the crypto and entropy area (CHK-COND-DECOR-MASK
+  takes the state before one start strobe; CHK-COND-LANES-OFF and
+  CHK-COND-ONE-LANE grade the hold and the change of each slice).
 * ESRC generator enable probe (`esrc_ro_enable_o`): bit i is the enable of
   generator lane i at the generator complex
   (`u_generator_complex.jitter_ro_enable_i`, the stored
   `RING_OSC_ENABLE.ENABLE`). Read-only. A check that anchors on it assumes only
-  a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
-  of the crypto and entropy area (the lane enable clock of the period walk), and
+  a fixed delay from this tap to the lane's oscillator; the decorrelator of
+  lane i takes bit i as its `enable_i`. Users: the ESRC conditioning entry
+  of the crypto and entropy area (the lane enable clock of the period walk, and
+  the clock of the held state in CHK-COND-LANES-OFF: the first clock the tap
+  reads 0), and
   `SepDrbgScoreboard`, which compares it with the `RING_OSC_ENABLE.ENABLE`
   readback twice in every entropy bring-up, with the generators off (0) and on
   (0xFFF) (CHK-CHK1-RO-ENABLE).
@@ -1113,8 +1141,8 @@ Exceptions (a closed set):
   and no source event sets several bits in one clock. Both inputs are 0 by
   default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the IRQ_SET field storage of the register block) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
   is not forced. Users: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
-  CHK-STATUS-HELD, CHK-CPU-TRAP) and `sep_km_otp_change_irq_test`
-  (CHK-OTP-PULSE).
+  CHK-STATUS-HELD, CHK-CPU-TRAP), `sep_km_otp_change_irq_test`
+  (CHK-OTP-PULSE) and `sep_km_command_set_rand_test` (CHK-OTP-CHG-DORMANT).
 * *Key Manager mailbox flow-error pulse* — at the first falling edge with
   `km_mbox_ovf_inject_i` at 1 the bench forces the KM outbound-overflow
   detect net of the KM mailbox (`u_mailbox.km_outbound_overflow_detected`)

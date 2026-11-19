@@ -397,6 +397,10 @@ class SepAes(SepAxiRegDriver):
             await ClockCycles(cocotb.top.clk_i, poll_cycles)
         return False
 
+    async def read_status(self) -> int:
+        """One STATUS read."""
+        return await self._rd(AES_STATUS)
+
     async def start_block_no_wait(self, pt_words: list[int]) -> None:
         """Write one input block and return without waiting for a result."""
         assert len(pt_words) == 4, "AES block needs 4 data words"

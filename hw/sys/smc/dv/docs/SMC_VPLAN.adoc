@@ -1805,9 +1805,9 @@ descriptions state.
 measured pad interval for the same parameter than a smaller one, for each of the six parameters
 other than `T_BUF`, with a positive and a negative change among them on every seed; the bus-free
 time of the `T_BUF` pair is measured and printed.
-|`smc_i2c_tbuf_bus_free_test` |3, held out |Every bus-free time of the `T_BUF` pair after a STOP
-must be at least the programmed `TIMING4.T_BUF` of its run and move the way `T_BUF` moved (issue
-to follow).
+|`smc_i2c_tbuf_bus_free_test` |3 |With `THD_DAT` 25 to 32 and the next transfer queued, every
+bus-free time of the `T_BUF` pair after a STOP equals `T_R` plus `TSU_STA` plus 7 cycles and does
+not move with `TIMING4.T_BUF`, as the `T_BUF` description states.
 |===
 
 ==== I3C
@@ -19513,7 +19513,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The FLR cool reset drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 62, which pulls the line
+* The FLR cool reset drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 64, which pulls the line
   low while the reset is asserted and leaves it undriven otherwise (`clk_rst.adoc` "Isolation
   Connections"): on every `clk_ref_i` sample of two FLR legs the pad output enable equals the
   inverted `rst_cool_no` and the pad data is 0 whenever the enable is 1.
@@ -40998,8 +40998,9 @@ in the I2C0 target's data setup equals the difference in `TSU_DAT`.
   setup and hold and the STOP setup change by the programmed differences, each a different
   amount so a phase that carries the wrong field fails; with only `T_BUF` raised (set A4) the
   bus-free time between a STOP and the next START changes by the programmed difference. The
-  measured bus-free time of each set is printed next to its programmed `T_BUF`, which `i2c.rdl`
-  states as the time between a STOP and START condition; a value below it is printed, not compared.
+  measured bus-free time of each set is printed next to its programmed `T_BUF`; `i2c.rdl` states
+  that a queued START waits `T_BUF` only with `THD_DAT` 0 or 1, so sets B and C (`THD_DAT` 4 and
+  10) may print a value below it, not compared.
 * UM10204 Figure 38 and Table 11 measure `t_HIGH`, `t_SU;STA` and `t_SU;STO` from the rising
   edge that opens them and `t_LOW`, `t_HD;DAT` and `t_HD;STA` from the falling edge that opens
   them, with the rise or fall time spent before each, so a controller counting whole clock
@@ -41089,8 +41090,9 @@ other delta fails it.
 equals the change in `TSU_STO`; any other delta fails it.
 |`CHK-I2C-WIRE-BUS-FREE-DELTA` |The change in time from the SDA rise of the STOP of X to the SDA
 fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it. The
-measured bus-free time of each set is printed next to its programmed `T_BUF` (the time between a
-STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
+measured bus-free time of each set is printed next to its programmed `T_BUF`; a value below it
+is printed, not compared (`i2c.rdl` `TIMING4.T_BUF`: a queued START waits `T_BUF` only with
+`THD_DAT` 0 or 1).
 |`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 4 and the other fields at 1, read back
 and printed, transfer Y shows a START, an acknowledged address, one STOP, `HOSTIDLE` and
 `CMD_COMPLETE`, and its measured SCL high and low times are printed; a missing START or
@@ -41114,7 +41116,8 @@ Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reset readback of `TIMING0` to `TIMING4` is logged only, because a stuck-at-zero
 reset cannot be told apart on a 2-state bench; the measured bus-free time of each set is printed
-next to its programmed `T_BUF` and a value below it is printed, not compared; the hold of the first
+next to its programmed `T_BUF` and a value below it is printed, not compared (`i2c.rdl` gives the
+queued START the `T_BUF` wait only with `THD_DAT` 0 or 1); the hold of the first
 START in A and A3 and the STOP-to-next-START time are measured and printed with no expectation;
 full-rate Standard-mode SCL is not run.
 
@@ -41594,7 +41597,8 @@ is measured and printed.
 * Measured and logged only: the absolute intervals of every run, the measured difference of each
   pair next to the programmed difference, each bus-free time next to the programmed `T_BUF` (a
   value below it is printed, not compared), the bytes the repeated-START reads return, and the
-  order of the `T_BUF` pair (the question is in <<smc-vplan-phase3-blocked-legs>>).
+  equality of the `T_BUF` pair with `T_R + TSU_STA + 7` (graded by `smc_i2c_tbuf_bus_free_test`,
+  <<sec-570-smc_i2c_tbuf_bus_free_test>>).
 
 *Test Procedure*:
 
@@ -41667,15 +41671,13 @@ the six graded pairs gives the longer interval at every sample, both signs and b
 among them on every seed, and a set at the minimum `THIGH` completes a transfer; the `T_BUF` pair
 is printed, not graded. Enrolled in: `all`, `hosted`, `i2c`.
 
-*Scope limit*: The `T_BUF` pair is printed, not graded. `hw/ip/i2c/regs/i2c.rdl` (`TIMING4.T_BUF`)
-states that the field "specifies the time between a STOP and START condition (t_BUF) in system
-clock cycles"; observed on this bench, the bus-free time equals `T_R` plus `TSU_STA` plus 7 cycles
-and does not move with `T_BUF` when `THD_DAT` is long (25 to 32 here), and is below the programmed
-`T_BUF` in some samples, while set A of `smc_i2c_wire_timing_test`, with `THD_DAT` 1, does follow
-`T_BUF`; the open question is in <<smc-vplan-phase3-blocked-legs>>.
-`smc_i2c_tbuf_bus_free_test` (`rtl_issue`, <<sec-570-smc_i2c_tbuf_bus_free_test>>) runs the same
-draw and is the leaf that grades the pair, every bus-free time at least the programmed `T_BUF`
-and moving with it, under `expect_fail`; the issue number follows once filed. The absolute timings
+*Scope limit*: The `T_BUF` pair is printed, not graded here. `hw/ip/i2c/regs/i2c.rdl`
+(`TIMING4.T_BUF`) states that outside multi-controller monitoring, with `THD_DAT` of 2 or more
+and the next entry already queued, the START follows the STOP's SDA rise after `T_R` plus
+`TSU_STA` plus 7 cycles whatever `T_BUF` holds; with `THD_DAT` 25 to 32 every run here is that
+case. `smc_i2c_tbuf_bus_free_test` (<<sec-570-smc_i2c_tbuf_bus_free_test>>) runs the same draw
+and grades the pair against that sentence; set A of `smc_i2c_wire_timing_test`, with `THD_DAT` 1,
+grades the `T_BUF` wait. The absolute timings
 are measured only, so no interval is compared with a formula or with the programmed difference; the
 rise and fall times `T_R` and `T_F` and the data setup `TSU_DAT` take a drawn base value but are
 not changed in a pair, and the stretch length and SDA interference point of
@@ -41685,6 +41687,95 @@ address write, so the repeated-START shape at `THIGH` 2 is not run. The exact-di
 `smc_i2c_p0_timeout_test` and is the hosted counterpart of the firmware leaves
 `smc_i2c_bus_corners_test` (285) and `smc_i2c_controller_sda_interference_test` (229), which stay
 enrolled.
+
+'''''
+
+[[sec-570-smc_i2c_tbuf_bus_free_test]]
+===== 570 `smc_i2c_tbuf_bus_free_test`
+
+*Phase*: 3
+
+*Area*: I2C
+
+*Status*: implemented
+
+*Source Module*: `smc_i2c_tbuf_bus_free_test`
+
+*BFM / Model*: the bench of entry 568 (<<sec-568-smc_i2c_timing_set_rand_test>>):
+`SmcI2cEepromSlave` (0x50) on `tb_i2c0_scl` / `tb_i2c0_sda`; the clock-sampled measurer of
+`smc_i2c_timing_set_rand_test_seq`, which reads both pad nets on every `clk_periph_i` rising edge
+and keeps each edge as a cycle count; ocah_axi_vip (AXI) on SEP_IN for the I2C0 registers of
+entry 568; every draw from a `random.Random` stream seeded from `RANDOM_SEED`, logged at the draw
+
+*Run mode*: one testlist entry in `testlists/i2c.toml`; groups `i2c`, `all` and `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `i2c`; seed 1, reseed 3, as entry 568.
+
+*Randomization*: RAND-REP; the draw of entry 568 at the leaf's seed: one base timing set
+(`THD_DAT` 25 to 32, `T_BUF` 30 to 60) and the seven one-parameter pairs, the `T_BUF` pair with a
+drawn sign and size of change (1 to 24 cycles) and a drawn transfer shape; logged at the draw and
+carried in every checker line.
+
+*Objective*: With `THD_DAT` of 2 or more and the next transfer queued, every bus-free time of the
+`T_BUF` pair, from the STOP SDA rise of a transfer to the START SDA fall of the transfer queued
+behind it, equals `T_R` plus `TSU_STA` plus 7 cycles in both runs and does not move with `T_BUF`.
+
+*Test Coverage*:
+
+* Bus-free time before a queued START (`hw/ip/i2c/regs/i2c.rdl`, `TIMING4.T_BUF`: outside
+  multi-controller monitoring, with `THD_DAT` of 2 or more and the next entry already queued, "the
+  START follows the STOP's SDA rise after `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this
+  field holds"): three bus-free times per run, for the base run and the second run of the `T_BUF`
+  pair, each compared with `T_R + TSU_STA + 7`, and the second run's compared with the base run's
+  at every common sample; every other measured run of the draw with `THD_DAT` of 2 or more (the
+  two base runs and the other pairs) has its bus-free times compared with its own
+  `T_R + TSU_STA + 7`, so a `TSU_STA` pair lowered below `T_BUF` shows a bus-free time below the
+  programmed `T_BUF`.
+* Arm leg: the six other pairs of entry 568 are graded first (`CHK-ITS-ORDER`), so the measurer is
+  shown to follow a field change of the same run before the `T_BUF` pair is graded.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smc_i2c_timing_set_rand_test_seq` with `grade_tbuf_bus_free`: steps 1 to 4 of entry 568
+(draw, base runs, the seven pairs, the order of the six graded pairs and `CHK-ITS-ORDER`).
+. Grade the `T_BUF` pair: the drawn `T_BUF` differs between the runs and `THD_DAT` is at least 2;
+every bus-free time of each run equals `T_R + TSU_STA + 7`, at least two common samples, and the
+second run's equals the base run's at every common sample; every other measured run with `THD_DAT`
+of 2 or more has every bus-free time equal to its own `T_R + TSU_STA + 7`; print
+`CHK-ITS-TBUF-BUS-FREE` with the graded runs, the skipped runs and the largest `T_BUF` above the
+expected time among the graded runs, or
+raise `CHK-ITS-TBUF-BUS-FREE FAIL` with both runs' bus-free times, both programmed values, the
+expected time and the faults.
+. Steps 5 and 6 of entry 568 (`THIGH` 2, restore, `CHK-ITS-COMPLETE`, `CHK-TIMEOUT-PATHS`,
+`CHK-NONVAC`, the fence expecting the `CHK-ITS-TBUF-BUS-FREE` line after `CHK-ITS-ORDER`).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ITS-TBUF-BUS-FREE` |The graded leg: every bus-free time of the base run and of the second run
+of the `T_BUF` pair equals `T_R + TSU_STA + 7` of the base set, and at every common sample (at
+least two) the second run's equals the base run's, although `T_BUF` moved; every other measured
+run with `THD_DAT` of 2 or more matches its own `T_R + TSU_STA + 7`. A bus-free time that
+waits `T_BUF`, or any other value, fails it with a message beginning `CHK-ITS-TBUF-BUS-FREE FAIL`.
+|`CHK-ITS-ORDER` |As entry 568, the arm leg: the six pairs other than `T_BUF` ordered at every
+common sample.
+|`CHK-ITS-MIN-THIGH` |As entry 568.
+|`CHK-ITS-COMPLETE` |As entry 568.
+|`CHK-NONVAC` |As entry 568, with the `CHK-ITS-TBUF-BUS-FREE` line expected after `CHK-ITS-ORDER`.
+|`CHK-TIMEOUT-PATHS` |As entry 568.
+|===
+
+*Pass Criteria*: The six tokens above are all printed. Enrolled in: `all`, `hosted`, `i2c`.
+
+*Scope limit*: The `T_BUF` pair of the entry 568 draw only, with `THD_DAT` 25 to 32 and the next
+transfer queued; `smc_i2c_wire_timing_test` set A covers the `T_BUF` wait with `THD_DAT` 1. A
+queued START with `THD_DAT` 2 or 3, an FMT FIFO empty at the STOP, and multi-controller monitoring
+are not run here. A bus-free time that waits `T_BUF` adds to `T_R + TSU_STA + 7` and fails the
+equality; a model that instead holds a floor near `T_BUF` is caught only by a graded run whose
+`T_BUF` exceeds its `T_R + TSU_STA + 7`, which the line prints as the largest margin (24 cycles at
+seed 1, from the lowered `TSU_STA` pair) and which some reseeded draws do not reach.
 
 '''''
 
@@ -54001,11 +54092,7 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |<<smc-vplan-area-i2c,I2C>>
 |The I2C timing registers program the bus timings in system clock cycles.
 |The absolute SCL period, high and low times, START and STOP setup and hold and the bus-free time have no formula in the pinned sources: `hw/ip/i2c/regs/i2c.rdl` gives each `TIMING` field in system clock cycles and cites the OpenTitan theory of operation only by URL. Source: `hw/ip/i2c/regs/i2c.rdl` (`TIMING0` to `TIMING4`); `hw/ip/i2c/doc/index.adoc`.
-|`smc_i2c_wire_timing_test` grades the difference in each timing between two programmed sets and the controller's absolute data setup against `TLOW` minus `THD_DAT`, and logs the other absolute values, the measured bus-free time next to the programmed `T_BUF` among them, without comparing them. `smc_i2c_timing_set_rand_test` grades only the order of the intervals of each drawn one-parameter pair and prints the absolute intervals, the bus-free time measured from the STOP SDA rise to the next START SDA fall among them, without comparing them; its `T_BUF` pair is printed, not graded (next row).
-|<<smc-vplan-area-i2c,I2C>>
-|`TIMING4.T_BUF` sets the time between a STOP and the next START.
-|Whether the bus-free time follows `T_BUF` when `THD_DAT` is long. `hw/ip/i2c/regs/i2c.rdl` states that `T_BUF` "specifies the time between a STOP and START condition (t_BUF) in system clock cycles"; with `THD_DAT` 25 to 32 the measured time from the STOP SDA rise to the next START SDA fall equals `T_R` plus `TSU_STA` plus 7 cycles, does not change when `T_BUF` changes, and is below the programmed `T_BUF` in some samples; with `THD_DAT` 1 (`smc_i2c_wire_timing_test` set A) it follows `T_BUF`. Source: `hw/ip/i2c/regs/i2c.rdl` (`TIMING4.T_BUF`, `TIMING3.THD_DAT`).
-|`smc_i2c_timing_set_rand_test` runs the `T_BUF` pair and prints its bus-free times before and after the change beside both programmed values and the direction (`T_BUF-OBS`), without comparing them; its six other pairs stay graded under `CHK-ITS-ORDER`. `smc_i2c_wire_timing_test` grades the `T_BUF` difference with `THD_DAT` 1. `smc_i2c_tbuf_bus_free_test` (`rtl_issue`) runs the same draw and is the leaf that grades the pair, every bus-free time at least the programmed `T_BUF` and moving with it (`CHK-ITS-TBUF-BUS-FREE`), expected to fail until the defect is fixed; the issue number follows once filed.
+|`smc_i2c_wire_timing_test` grades the difference in each timing between two programmed sets and the controller's absolute data setup against `TLOW` minus `THD_DAT`, and logs the other absolute values, the measured bus-free time next to the programmed `T_BUF` among them, without comparing them. `smc_i2c_timing_set_rand_test` grades only the order of the intervals of each drawn one-parameter pair and prints the absolute intervals, the bus-free time measured from the STOP SDA rise to the next START SDA fall among them, without comparing them; its `T_BUF` pair is printed, not graded, and `smc_i2c_tbuf_bus_free_test` grades it against the `TIMING4.T_BUF` description.
 |<<smc-vplan-area-i2c,I2C>>
 |The format FIFO reset recovers a controller halted by a bus timeout.
 |`hw/ip/i2c/regs/i2c.rdl` states `FIFO_CTRL.FMTRST` resets the format FIFO and `BUS_TIMEOUT` clears by a written 1; what the controller does with a transaction interrupted mid-byte when `CTRL.ENABLEHOST` stays set is not stated. Source: `hw/ip/i2c/regs/i2c.rdl` (`FIFO_CTRL`, `INTR_STATE.BUS_TIMEOUT`, `CTRL.ENABLEHOST`); `hw/ip/i2c/doc/index.adoc`.
@@ -54342,33 +54429,33 @@ names them for their Phase 3 users.
 |<<smc-vplan-area-reset,RESET>>
 |Reset-protocol assertions, uncore reset handshake (`u_smc_reset_sva`: `SMC_RST_UNCORE_NOT_WHILE_WITHHELD`, `SMC_RST_UNCORE_LOW_HAS_CAUSE`, `SMC_RST_APPLIED_TAKES_EFFECT`, `SMC_ISO_DRAINED_MEANS_EMPTY`)
 |Monitor (`OCAH_SVA_ASSERT`)
-|`hw/sys/smc/dv/tb/smc_reset_sva.sv`, one instance in the single-instance body of `tb_top`. On `clk_smc`, disabled while `rst_primary_smc_clk_no` is low, enabled with the AXI checkers' enable: the cluster uncore reset (`tb_cpu_uncore_reset_n`) stays high on the edge after the software request was withheld (`tb_cpu_isolate_req` with `tb_cpu_drained` low and no force-mode timeout) while the warm reset (`tb_rst_warm_smc_clk_n`) is high on both edges; the uncore reset is low only with the warm reset low on this or the previous edge or `tb_cpu_reset_applied` high on the previous edge; and `tb_cpu_reset_applied` on one edge puts the uncore reset low on the next while the warm reset is high; and while `tb_cpu_drained` is high the four open-request counts `tb_cpu_l2_pending_aw`, `tb_cpu_l2_pending_ar`, `tb_cpu_mmio_pending_aw` and `tb_cpu_mmio_pending_ar` are zero. This is the drain handshake of `cpu.adoc` 233-240 and 272-280 and the `reset_applied` status of `cpu.adoc` 293-295, read as the reset contract accepts the asynchronous watchdog warm reset (`cpu.adoc` 328-338): a warm reset is a cause of its own. No knob. The final block prints `CHK-RESET-SVA-uncore_withheld`, `CHK-RESET-SVA-uncore_cause` and `CHK-RESET-SVA-uncore_applied` (antecedent edges); `+smc_reset_sva_need_<group>` fails a run whose count is 0.
+|`hw/sys/smc/dv/tb/smc_reset_sva.sv`, one instance in the single-instance body of `tb_top`. On `clk_smc`, disabled while `rst_primary_smc_clk_no` is low, enabled with the AXI checkers' enable: the cluster uncore reset (`tb_cpu_uncore_reset_n`) stays high on the edge after the software request was withheld (`tb_cpu_isolate_req` with `tb_cpu_drained` low and no force-mode timeout) while the warm reset (`tb_rst_warm_smc_clk_n`) is high on both edges; the uncore reset is low only with the warm reset low on this or the previous edge or `tb_cpu_reset_applied` high on the previous edge; and `tb_cpu_reset_applied` on one edge puts the uncore reset low on the next while the warm reset is high; and while `tb_cpu_drained` is high the four open-request counts `tb_cpu_l2_pending_aw`, `tb_cpu_l2_pending_ar`, `tb_cpu_mmio_pending_aw` and `tb_cpu_mmio_pending_ar` are zero. This is the drain handshake of `cpu.adoc` 233-240 and 272-280 and the `reset_applied` status of `cpu.adoc` 293-295, read as the reset contract accepts the asynchronous watchdog warm reset (`cpu.adoc` 328-338): a warm reset is a cause of its own. No knob. The final block prints `CHK-RESET-SVA-uncore_withheld`, `CHK-RESET-SVA-uncore_cause` and `CHK-RESET-SVA-uncore_applied` (antecedent edges); `+smc_reset_sva_need_<group>` fails a run whose count is 0, and a need plusarg whose group is not reported fails it too: `$value$plusargs` returns the first plusarg with the prefix, so the final block judges one need plusarg per run, and `tools/dv/tests/test_smc_reset_sva_plusargs.py` checks every need plusarg of every SMC testlist against the reported groups. Wiring guards, each pinning one RTL term rather than a sequence: `SMC_RST_UNCORE_NOT_WHILE_WITHHELD`, `SMC_RST_UNCORE_LOW_HAS_CAUSE` and `SMC_RST_APPLIED_TAKES_EFFECT` pin the withhold mux of the control wrapper's gated uncore reset and the warm-domain flop behind it; `SMC_ISO_DRAINED_MEANS_EMPTY` grades the two isolate state machines.
 |Every single-instance test; the software uncore request (force mode programmed, applied by the completed drain) is driven by `smc_cpu_uncore_reset_test` (`+smc_reset_sva_need_uncore_cause`, `+smc_reset_sva_need_uncore_applied`), the withheld window by `smc_cpu_reset_pulse_test` (`+smc_reset_sva_need_uncore_withheld`; the count is every withheld edge, not only a timed-out one), the force-mode timeout by `smc_cpu_l2_write_wedge_test`, the watchdog warm reset by `smc_wdt_warm_reset_rand_test` and `smc_axi_partial_reset_open_txn_test`
 |<<smc-vplan-area-reset,RESET>>
 |Reset-protocol assertions, cluster boundary isolate (`SMC_ISO_HELD_WHEN_NOT_READY`, `SMC_ISO_RELEASE_AFTER_FOUR`, `SMC_ISO_RELEASED_WHEN_READY_HELD`)
 |Monitor (`OCAH_SVA_ASSERT`)
-|On `clk_smc`, disabled while the primary reset is low. With `ready` = `smc_init_mem_done_o` and the uncore reset high and no isolate request: `tb_cpu_cluster_isolate` is high whenever `ready` is low; a fall of `tb_cpu_cluster_isolate` sees `ready` high now and four edges earlier; and `ready` high on five consecutive edges sees `tb_cpu_cluster_isolate` low (`cpu.adoc` 253-258: self-isolation on cold boot released four cycles after SRAM initialization with the uncore out of reset, isolated while the uncore is in reset, a held core does not isolate). The five-edge form holds under either reading of whether a `ready` dip restarts the delay. No knob. `CHK-RESET-SVA-iso_release` counts a fall of `tb_cpu_cluster_isolate` only after `tb_cpu_reset_applied` was high since the last fall, so the cold-boot release of every run is not in it; `CHK-RESET-SVA-iso_ready_held` counts every edge.
+|On `clk_smc`, disabled while the primary reset is low. With `ready` = `smc_init_mem_done_o` and the uncore reset high and no isolate request: `tb_cpu_cluster_isolate` is high whenever `ready` is low; a fall of `tb_cpu_cluster_isolate` sees `ready` high now and four edges earlier; and `ready` high on five consecutive edges sees `tb_cpu_cluster_isolate` low (`cpu.adoc` 253-258: self-isolation on cold boot released four cycles after SRAM initialization with the uncore out of reset, isolated while the uncore is in reset, a held core does not isolate). The five-edge form holds under either reading of whether a `ready` dip restarts the delay. Wiring guard: `SMC_ISO_HELD_WHEN_NOT_READY` pins the cluster's isolate term (not ready, or the four-deep ready shift not full); the two release rules grade the four-edge count. No knob. `CHK-RESET-SVA-iso_release` counts a fall of `tb_cpu_cluster_isolate` only after `tb_cpu_reset_applied` was high since the last fall, so the cold-boot release of every run is not in it; `CHK-RESET-SVA-iso_ready_held` counts every edge.
 |Every single-instance test (the cold-boot release); the software-request release is driven by `smc_cpu_uncore_reset_test` (`+smc_reset_sva_need_iso_release`, satisfied only by the release that follows its applied uncore request)
 |<<smc-vplan-area-reset,RESET>>
 |Reset-protocol assertions, reset tree (`SMC_RST_UNCORE_HOLDS_CORES`, `SMC_RST_WARM_HOLDS_CLUSTER`, `SMC_RST_PRIMARY_IMPLIES_WARM`, `SMC_RST_WDT_IMPLIES_WARM`)
 |Monitor (`OCAH_SVA_ASSERT`)
-|On `clk_smc`, disabled while `powergood_stable_o` is low so the cold window is graded: the uncore reset low puts every bit of `tb_cpu_core_resets_n` low on the same edge (`cpu.adoc` 157-158); the warm reset low holds the uncore and every core (`clk_rst.adoc` 299-301); with `tb_jtag_reset_ctrl` all zero, `rst_primary_smc_clk_no` low and `rst_wdt_smc_clk_no` low each imply `tb_rst_warm_smc_clk_n` low (`clk_rst.adoc` 287-291). The JTAG qualifier takes the override leaves out of the two containment rules on the edges they drive an override; the fuse term of the warm equation is not graded, since the lag of the wrapper's delayed fuse reset is not stated. No knob. `CHK-RESET-SVA-uncore_low` counts an uncore-reset-low edge with powergood high only after the uncore reset was first seen high, so the bring-up window of every run is not in it.
+|On `clk_smc`, disabled while `powergood_stable_o` is low so the cold window is graded: the uncore reset low puts every bit of `tb_cpu_core_resets_n` low on the same edge (`cpu.adoc` 157-158); the warm reset low holds the uncore and every core (`clk_rst.adoc` 299-301); with the warm JTAG override (`tb_jtag_reset_ctrl`, field `ovrd.warm_reset_n_ovrd`) clear, `rst_primary_smc_clk_no` low and `rst_wdt_smc_clk_no` low each imply `tb_rst_warm_smc_clk_n` low (`clk_rst.adoc` 287-291). The warm override is the one JTAG override that replaces the warm equation; the fuse, cold and cool overrides enter it as sources and the subsystem overrides leave the unit, so `smc_jtag_reset_ctrl_test` and `smc_jtag_reset_ovrd_walk_test` grade the two implications on every edge except those with the warm override selected. The fuse term of the warm equation is not graded, since the lag of the wrapper's delayed fuse reset is not stated. All four rules are wiring guards: `SMC_RST_UNCORE_HOLDS_CORES` pins the uncore-and-core AND of the control wrapper, `SMC_RST_WARM_HOLDS_CLUSTER` the warm asynchronous reset of its two reset flops, `SMC_RST_PRIMARY_IMPLIES_WARM` and `SMC_RST_WDT_IMPLIES_WARM` the warm AND chain of the reset controller through the warm override mux and the SMC-clock synchronizers. No knob. `CHK-RESET-SVA-uncore_low` counts an uncore-reset-low edge with powergood high only after the uncore reset was first seen high, so the bring-up window of every run is not in it.
 |Every single-instance test; `smc_cold_reset_test` (`+smc_reset_sva_need_uncore_low`, satisfied by the cold reset it asserts after bring-up) drives the cold path, `smc_wdt_warm_reset_rand_test` and `smc_wdt_timeout_pin_test` the watchdog path
 |<<smc-vplan-area-reset,RESET>>
-|Reset-protocol assertions, isolated ports and status crossings (`SMC_ISO_L2_ACCEPTS_NONE`, `SMC_ISO_MMIO_PRESENTS_NONE`, `SMC_ISO_MMIO_B_SLVERR`, `SMC_ISO_MMIO_R_SLVERR`, `SMC_ISO_STATUS_CLAMPED`)
+|Reset-protocol assertions, isolated ports and status crossings (`SMC_ISO_L2_ACCEPTS_NONE`, `SMC_ISO_MMIO_PRESENTS_NONE`, `SMC_ISO_MMIO_W_ONLY_HELD`, `SMC_ISO_MMIO_B_SLVERR`, `SMC_ISO_MMIO_R_SLVERR`, `SMC_ISO_STATUS_CLAMPED`)
 |Monitor (`OCAH_SVA_ASSERT`)
-|On `clk_smc`. While `tb_cpu_l2_isolated` is high no AW or AR handshake occurs on the L2 frontend isolate's slave port; while `tb_cpu_mmio_isolated` is high the CPU MMIO port presents no AW or AR to the fabric and every B or R beat the cluster side of the MMIO isolate sees carries SLVERR (`cpu.adoc` 245-249; the response code only, the data word the chapter does not name is not graded); while `tb_cpu_cluster_isolate` is high the cluster's `wb_pc_valid_o`, `wb_reg_pc_o` and `wdt_reset_o` are all zero (`cpu.adoc` 251-253). The port rules are disabled while the primary reset is low, the clamp rule while powergood is low. No knob. `CHK-RESET-SVA-iso_l2_blocked` (an AW or AR presented to the isolated L2 port) and `CHK-RESET-SVA-iso_mmio_resp` (a B or R beat seen while isolated).
-|Every single-instance test (the clamp, on the cold-boot window, and the MMIO presents-none rule on every isolation); a request presented to an isolated port and a response answered while isolated occur only in the firmware leaves `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test` (MMIO traffic while isolated), so no toolchain-free leaf carries `+smc_reset_sva_need_iso_l2_blocked` or `+smc_reset_sva_need_iso_mmio_resp`
+|On `clk_smc`. While `tb_cpu_l2_isolated` is high no AW or AR handshake occurs on the L2 frontend isolate's slave port; while `tb_cpu_mmio_isolated` is high the CPU MMIO port presents no AW or AR to the fabric, a W beat it presents was presented without READY on the previous edge while the latched flush `tb_cpu_mmio_flush_active` is high (`cpu.adoc` 297-299: the flush discards write data until isolation is released, so no new W reaches the fabric; `cpu.adoc` 304-306: the flush cannot cancel a beat presented without READY, so that beat stays), and every B or R beat the cluster side of the MMIO isolate sees carries SLVERR (`cpu.adoc` 245-249; the response code only, the data word the chapter does not name is not graded); while `tb_cpu_cluster_isolate` is high the cluster's `wb_pc_valid_o`, `wb_reg_pc_o` and `wdt_reset_o` are all zero (`cpu.adoc` 251-253). The port rules are disabled while the primary reset is low, the clamp rule while powergood is low. Wiring guards: `SMC_ISO_L2_ACCEPTS_NONE` and `SMC_ISO_MMIO_PRESENTS_NONE` pin the Isolate-state decode of the two isolates (slave READY and master VALID forced low), `SMC_ISO_STATUS_CLAMPED` the cluster's three clamp muxes; the W and SLVERR rules grade the flush path and the error slave. No knob. `CHK-RESET-SVA-iso_l2_blocked` (an AW or AR presented to the isolated L2 port) and `CHK-RESET-SVA-iso_mmio_resp` (a B or R beat seen while isolated).
+|Every single-instance test (the clamp, on the cold-boot window, and the MMIO presents-none rule on every isolation); `smc_cpu_l2_isolate_depth_and_block_test` (`+smc_reset_sva_need_iso_l2_blocked`) presents a SEP_IN read to the isolated L2 frontend port, which refuses the read's AR inside the leaf's 512-rise block window; a B or R beat answered while MMIO-isolated needs cluster traffic after the isolation, which only the firmware leaves `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test` issue, so no toolchain-free leaf carries `+smc_reset_sva_need_iso_mmio_resp`
 |<<smc-vplan-area-reset,RESET>>
 |Reset-protocol assertions, force-mode flush (`SMC_FLUSH_IS_FORCE`, `SMC_FLUSH_WINDOW_CLOSES_AT_RECONNECT`, `SMC_FLUSH_ONLY_WHEN_FORCED`, `SMC_MMIO_AW_HELD_UNDER_FLUSH`, `SMC_MMIO_W_HELD_UNDER_FLUSH`, `SMC_MMIO_AR_HELD_UNDER_FLUSH`)
 |Monitor (`OCAH_SVA_ASSERT`)
-|On `clk_smc`, disabled while the primary reset is low. The control wrapper's flush request equals `tb_cpu_reset_timeout` AND `timeout_mode` on every edge; a latched flush (`tb_cpu_l2_flush_active`, `tb_cpu_mmio_flush_active`) is low on the edge after `tb_cpu_cluster_isolate` is low; and a flush latches only on the edge after the force condition held (`cpu.adoc` 287-291, 297-298). On the CPU MMIO port into the fabric an AW, W or AR presented without READY is still presented on the next edge unless the warm reset fell (`cpu.adoc` 304-306: the flush cannot cancel a presented request; the asynchronous warm reset is outside the rule, `cpu.adoc` 328-338). The request-hold rules stay on in the leaves whose `+smc_front_port_r_arb_assertoff` turns the CPU-port AXI checkers off. No knob. `CHK-RESET-SVA-flush_rose` and `CHK-RESET-SVA-mmio_held`.
-|Every single-instance test; the flush is driven by `smc_cpu_l2_write_wedge_test` (`+smc_reset_sva_need_flush_rose`) and `smc_cpu_l2_read_wedge_test` (whose documented `OCAH_AXI_R_ID_OUTSTANDING` fire stops the Verilator run before the final block); a presented-without-READY MMIO request occurs only in the firmware leaves (`smc_fw_hello_world_test`, the MMIO wedge leaves), so no toolchain-free leaf carries `+smc_reset_sva_need_mmio_held`
+|On `clk_smc`, disabled while the primary reset is low. The control wrapper's flush request equals `tb_cpu_reset_timeout` AND `timeout_mode` on every edge; a latched flush (`tb_cpu_l2_flush_active`, `tb_cpu_mmio_flush_active`) is low on the edge after `tb_cpu_cluster_isolate` is low; and a flush latches only on the edge after the force condition held (`cpu.adoc` 287-291, 297-298). On the CPU MMIO port into the fabric an AW, W or AR presented without READY under the flush (the control wrapper's flush request `isolate_flush_o` or the isolate's latched flush `tb_cpu_mmio_flush_active`) is still presented on the next edge unless the warm reset fell (`cpu.adoc` 304-306: the flush cannot cancel a presented request and waits for that transfer; the asynchronous warm reset is outside the rule, `cpu.adoc` 328-338). Outside the flush window the VALID hold is the AXI checkers' rule. The request-hold rules stay on in the leaves whose `+smc_front_port_r_arb_assertoff` turns the CPU-port AXI checkers off. Wiring guards: `SMC_FLUSH_IS_FORCE` pins the control wrapper's flush request (the force-mode timeout), `SMC_FLUSH_WINDOW_CLOSES_AT_RECONNECT` and `SMC_FLUSH_ONLY_WHEN_FORCED` the clear and set of the isolates' latched flush; the three hold rules grade the hold through the flush. No knob. `CHK-RESET-SVA-flush_rose` and `CHK-RESET-SVA-mmio_held` (held beats under the flush).
+|Every single-instance test; the flush is driven by `smc_cpu_l2_write_wedge_test` (`+smc_reset_sva_need_flush_rose`) and `smc_cpu_l2_read_wedge_test` (whose documented `OCAH_AXI_R_ID_OUTSTANDING` fire stops the Verilator run before the final block); no leaf in hand presents an MMIO request without READY under the flush: the firmware MMIO wedge leaves wedge a response whose request the fabric accepted before the forced reset (held-under-flush count 0 in both), so no leaf carries `+smc_reset_sva_need_mmio_held` and the rule stays vacuous until a leaf issues a request from the cluster during the flush
 |<<smc-vplan-area-reset,RESET>>
-|Reset-protocol assertions, FLR cool reset (`SMC_FLR_ONE_PULSE_PER_EDGE`, `SMC_FLR_HOLD_ZERO_NO_PULSE`, `SMC_FLR_PAD62_PULLS_LOW`, `SMC_FLR_PAD62_UNDRIVEN`)
+|Reset-protocol assertions, FLR cool reset (`SMC_FLR_ONE_PULSE_PER_EDGE`, `SMC_FLR_HOLD_ZERO_NO_PULSE`, `SMC_FLR_COOL_PAD_PULLS_LOW`, `SMC_FLR_COOL_PAD_UNDRIVEN`)
 |Monitor (`OCAH_SVA_ASSERT`)
-|On `clk_ref`, disabled while `rst_cold_stable_ref_clk_no` is low. A fall of the sequencer's cool reset (`u_smc_cool_reset_wrap.rst_cool_no`, before the JTAG override) sees a pending FLR edge, set by a synchronized edge (`tb_flr_posedge_ref`) arriving with the sequencer idle (`tb_flr_counter_state`), the cool reset high and the reference-domain hold count nonzero, and cleared by the fall, so one edge starts at most one pulse and an edge inside the hold starts none (`clk_rst.adoc` 410-414, the sequencer is not a queue); the hold count latched at the edge the sequencer judged was nonzero (`clk_rst.adoc` 413-414, 418-419), so a count rewritten during the flow does not fire the rule. While GPIO 62 is on its LSIO function, `tb_rst_cool_from_flr` low drives `tb_core2pad_en_o[62]` high with `tb_core2pad_o[62]` low, and high leaves the enable low (`clk_rst.adoc` 440-442). Knob: `+smc_flr_requeue_assertoff` holds `SMC_FLR_ONE_PULSE_PER_EDGE` off in `smc_flr_hold_edge_requeue_test`, the `rtl_issue` holdout whose second pulse the rule reports. `CHK-RESET-SVA-flr_fall` and `CHK-RESET-SVA-pad62_low`.
-|Every single-instance test; the pulse is driven by `smc_flr_sequencer_single_pulse_test` (`+smc_reset_sva_need_flr_fall`, `+smc_reset_sva_need_pad62_low`), `smc_cool_reset_from_pcie_test`, `smc_cool_reset_pin_flr_overlap_test` and `smc_cool_reset_zero_delay_test`
+|On `clk_ref`, disabled while `rst_cold_stable_ref_clk_no` is low. A fall of the sequencer's cool reset (`u_smc_cool_reset_wrap.rst_cool_no`, before the JTAG override) sees a pending FLR edge, set by a synchronized edge (`tb_flr_posedge_ref`) arriving with the sequencer idle (`tb_flr_counter_state`), the cool reset high and the reference-domain hold count nonzero, and cleared by the fall, so one edge starts at most one pulse and an edge inside the hold starts none (`clk_rst.adoc` 410-414, the sequencer is not a queue); the hold count latched at the edge the sequencer judged was nonzero (`clk_rst.adoc` 413-414, 418-419), so a count rewritten during the flow does not fire the rule. While the cool-reset-out pad (`BP_COOL_RESET_N_O`, GPIO 64, the `CoolResetOutPad` constant of `tb_top`) is on its LSIO function, `tb_rst_cool_from_flr` low drives its `tb_core2pad_en_o` bit high with its `tb_core2pad_o` bit low, and high leaves the enable low (`clk_rst.adoc` 440-442); a move of the pad zeroes `CHK-RESET-SVA-cool_pad_low`, which the need plusarg of `smc_flr_sequencer_single_pulse_test` reports. Wiring guards: `SMC_FLR_COOL_PAD_PULLS_LOW` and `SMC_FLR_COOL_PAD_UNDRIVEN` pin the pad ring's cool-reset-out drive (enable from the cool reset, data zero) through that pad's GPIO interface; the two FLR rules grade the sequencer. Knob: `+smc_flr_requeue_assertoff` holds `SMC_FLR_ONE_PULSE_PER_EDGE` off in `smc_flr_hold_edge_requeue_test`, the `rtl_issue` holdout whose second pulse the rule reports. `CHK-RESET-SVA-flr_fall` and `CHK-RESET-SVA-cool_pad_low`.
+|Every single-instance test; the pulse is driven by `smc_flr_sequencer_single_pulse_test` (`+smc_reset_sva_need_flr_fall`, `+smc_reset_sva_need_cool_pad_low`), `smc_cool_reset_from_pcie_test`, `smc_cool_reset_pin_flr_overlap_test` and `smc_cool_reset_zero_delay_test`
 |===
 
 [[smc-vplan-phase3-added-hooks]]
@@ -54532,7 +54619,33 @@ extents and the eFuse map fills its decoded extent), one SEP_IN access at a time
 Zeroer control beats complete OKAY at the SYS_OUT responder, so none of those groups samples;
 the lifecycle and timeout owners drive no reset, and the lock owner none under its gate; the
 three launch no DMA, program no filter, region or zeroer register and issue one access at a
-time. Drives no `smc_wrapper` port and changes no stimulus.
+time. `cp_kind_op_phase` of `smc_reset_kind_inflight_cg` samples an assertion only when an SPM,
+DMA or zeroer operation is in flight at the fall or the window's SPM burst completes before it
+(`kind_sample_e`); its four twins count each assertion of the window once, at the fall when an
+operation is in flight or completed, otherwise when the window's operation appears, and none in a
+window with no operation or for an assertion after the window's engine operation has finished; the
+class tracker of `cp_kind_domain` arms on the window's first
+assertion whether or not `cp_kind_op_phase` samples it. The de-glitch owner issues no SPM, DMA or
+zeroer operation, so its cool-pin and FLR falls open no `cp_kind_op_phase` cell and no twin, and
+the tracker its first cool-pin fall arms samples nothing: its FLR counter reads precede that fall
+and its `ISOLATE_REQ_SMC_REG` reads are no class member. `smc_deglitch_cg` samples only while no SPM, DMA or
+zeroer operation has been in flight since the gate rose (`op_seen_q`, reloaded on every rise from
+the operation in flight at that edge): each
+window of the reset owner carries such an operation, so its cool-pin and FLR falls open no
+de-glitch cell, and its FLR holds carry no pin fall inside them. The de-glitch owner raises the
+gate before the FLR counter writes of its step 1 and drops it after its step 8; those writes and
+its `ISOLATE_REQ_SMC_REG` accesses lie in the reset-unit extent, outside the SPM window, name no
+filter entry, region, zeroer, timeout or eFuse register, drive no hook and no JTAG access, and are
+issued one at a time, so they open no cell of another group. `smc_powergood_glitch_cg` samples
+behind the gate alone, `cp_glitch_len` at the gate's fall after the owner's watcher ruling with
+`tb_sync_irq`, `tb_gpio_irq_any` and `tb_uart_irq_any` at 0 from the gate's rise and the recovery
+seen after the glitch record: the power-good
+owner's window, from after its idle baseline IRQ sample to after its watcher ruling, holds no SEP_IN access, no hook and no reset-source fall the reset group
+counts (its `powergood_i` low disables that group's samples and twins, and after the rise no
+operation is in flight), and no other owner drives `powergood_i` under its gate; the reset owner
+`smc_reset_mid_transaction_rand_test` is the only other owner that drives the cool pin or the FLR
+request under its gate, and since each of its windows carries an operation, its falls open no
+de-glitch cell. Drives no `smc_wrapper` port and changes no stimulus.
 |The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`,
 `smc_map_row_fcov` and `smc_efuse_ctrl_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
@@ -54541,7 +54654,8 @@ time. Drives no `smc_wrapper` port and changes no stimulus.
 `smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`,
 `smc_map_row_response_matrix_test`, `smc_state_fault_inject_test`,
 `smc_efuse_map_locks_register_test`, `smc_efuse_jtag_lc_access_matrix_test`,
-`smc_efuse_read_program_timeout_test`
+`smc_efuse_read_program_timeout_test`, `smc_cool_reset_deglitch_window_test`,
+`smc_irq_during_powergood_glitch_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]
@@ -54968,7 +55082,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes. Its `+smc_misc_warm_in_reset_assertoff` holds the leg's own-domain AXI-Lite checker off on the warm-reset cycles where the AR it presents on purpose would fire `OCAH_AXI_AR_VALID_RESET_LOW`; every other cycle and every other leaf keep the rule
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
-|to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
 |to follow |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold (the issue number follows once filed)
 |to follow |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it (the issue number follows once filed)
 |to follow |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers (the issue number follows once filed)
@@ -54990,92 +55103,6 @@ fixed and the leaf moves to its feature testlist. The members are the
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
 the wrong reason.
-
-[[sec-570-smc_i2c_tbuf_bus_free_test]]
-===== 570 `smc_i2c_tbuf_bus_free_test`
-
-*Phase*: 3
-
-*Area*: I2C
-
-*Status*: held out (`rtl_issue`, expected to fail)
-
-*Source Module*: `smc_i2c_tbuf_bus_free_test`
-
-*BFM / Model*: the bench of entry 568 (<<sec-568-smc_i2c_timing_set_rand_test>>):
-`SmcI2cEepromSlave` (0x50) on `tb_i2c0_scl` / `tb_i2c0_sda`; the clock-sampled measurer of
-`smc_i2c_timing_set_rand_test_seq`, which reads both pad nets on every `clk_periph_i` rising edge
-and keeps each edge as a cycle count; ocah_axi_vip (AXI) on SEP_IN for the I2C0 registers of
-entry 568; every draw from a `random.Random` stream seeded from `RANDOM_SEED`, logged at the draw
-
-*Run mode*: one testlist entry in `testlists/holdout.toml`; group `rtl_issue` (the weekly tier's
-own `regress.yml` row), not in `all`, `hosted` or `smoke`; `run_modes` `smoke`; `timeout_sec`
-1800; tag `rtl_issue`, no `ci`; seed 1; `expect_fail` "the I2C bus-free time after a STOP ignores
-TIMING4.T_BUF when THD_DAT is long" and `expect_fail_match` `CHK-ITS-TBUF-BUS-FREE FAIL`;
-tool Verilator (cocotb).
-
-*Randomization*: RAND-REP; the draw of entry 568 at the leaf's seed: one base timing set
-(`THD_DAT` 25 to 32, `T_BUF` 30 to 60) and the seven one-parameter pairs, the `T_BUF` pair with a
-drawn sign and size of change (1 to 24 cycles) and a drawn transfer shape; logged at the draw and
-carried in every checker line.
-
-*Objective*: Every bus-free time of the `T_BUF` pair, from the STOP SDA rise of a transfer to the
-START SDA fall of the transfer queued behind it, is at least the programmed `T_BUF` of its run,
-and the second run's moves the way `T_BUF` moved.
-
-*Test Coverage*:
-
-* Bus-free time (`hw/ip/i2c/regs/i2c.rdl`, `TIMING4.T_BUF`, which "specifies the time between a
-  STOP and START condition (t_BUF) in system clock cycles"): three bus-free times per run, for the
-  base run and the second run of the `T_BUF` pair, each compared with its run's programmed
-  `T_BUF`, and the second run's compared with the base run's at every common sample in the
-  programmed direction.
-* Arm leg: the six other pairs of entry 568 are graded first (`CHK-ITS-ORDER`), so the measurer is
-  shown to follow a field change of the same run before the `T_BUF` pair is graded; a failure
-  there is not the recorded one and grades `expected_fail_mismatch`.
-
-*Test Procedure*:
-
-[arabic]
-. Drive `smc_i2c_timing_set_rand_test_seq` with `grade_tbuf_bus_free`: steps 1 to 4 of entry 568
-(draw, base runs, the seven pairs, the order of the six graded pairs and `CHK-ITS-ORDER`).
-. Grade the `T_BUF` pair: every bus-free time of each run at least that run's programmed `T_BUF`,
-at least two common samples, and the second run's longer (or shorter) than the base run's at
-every common sample when `T_BUF` was raised (or lowered); print `CHK-ITS-TBUF-BUS-FREE`, or raise
-`CHK-ITS-TBUF-BUS-FREE FAIL` with both runs' bus-free times, both programmed values and the faults.
-. Steps 5 and 6 of entry 568 (`THIGH` 2, restore, `CHK-ITS-COMPLETE`, `CHK-TIMEOUT-PATHS`,
-`CHK-NONVAC`, the fence now expecting the `CHK-ITS-TBUF-BUS-FREE` line after `CHK-ITS-ORDER`).
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-ITS-TBUF-BUS-FREE` |The graded leg: every bus-free time of the base run and of the second run
-of the `T_BUF` pair is at least that run's programmed `T_BUF`, and at every common sample (at
-least two) the second run's is longer when `T_BUF` was raised and shorter when it was lowered. A
-fault raises a message beginning `CHK-ITS-TBUF-BUS-FREE FAIL`, the line `expect_fail_match` names.
-|`CHK-ITS-ORDER` |As entry 568, the arm leg: the six pairs other than `T_BUF` ordered at every
-common sample.
-|`CHK-ITS-MIN-THIGH` |As entry 568.
-|`CHK-ITS-COMPLETE` |As entry 568.
-|`CHK-NONVAC` |As entry 568, with the `CHK-ITS-TBUF-BUS-FREE` line expected after `CHK-ITS-ORDER`.
-|`CHK-TIMEOUT-PATHS` |As entry 568.
-|===
-
-*Pass Criteria*: Expected RED until the defect is fixed: on the current RTL the leaf fails at the
-`CHK-ITS-TBUF-BUS-FREE` compare with a message beginning `CHK-ITS-TBUF-BUS-FREE FAIL`, which the
-runner grades PASS under `expect_fail`; a failure for another reason grades FAIL
-(`expected_fail_mismatch`) and a PASS grades FAIL (`expected_fail_passed`), the signal to move the
-leaf to `testlists/i2c.toml` without the `expect_fail` pair. With the defect fixed the six tokens
-above are all printed. Enrolled in: `rtl_issue` only.
-
-*Scope limit*: One seed, the `T_BUF` pair of the entry 568 draw only, with `THD_DAT` 25 to 32;
-`smc_i2c_wire_timing_test` set A covers `THD_DAT` 1. The bus-free time is compared with the
-programmed `T_BUF` as a lower bound and in direction, not with a formula. The issue number follows
-once filed, appended to `expect_fail` as "(#NNNN)" and named in the held-out table.
-
-'''''
 
 [[sec-573-smc_flr_hold_edge_requeue_test]]
 ===== 573 `smc_flr_hold_edge_requeue_test`
@@ -58133,7 +58160,7 @@ and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
 `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test`,
+`smc_spm_write_cut_by_warm_reset_test` (#3510),
 `smc_flr_hold_edge_requeue_test` and `smc_clock_gate_inflight_completes_test` (issues to
 follow).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits

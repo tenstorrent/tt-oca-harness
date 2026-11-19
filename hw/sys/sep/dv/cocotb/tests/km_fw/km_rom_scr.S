@@ -22,7 +22,7 @@
 # result store could overwrite a drawn word that is still in use.
 #
 # Transport. Each boot starts with a bounded poll of KM_STATUS.inbound_empty
-# for one phase word (PHASE_MAGIC | n, n = 1..4) that the host posts. Each
+# for one phase word (PHASE_MAGIC | n, n = 1..5) that the host posts. Each
 # report is one message of at most 16 words with the separator on its last
 # word. After each message the image polls KM_STATUS.outbound_depth until it
 # is 0 (bounded), so the outbound FIFO never holds more than one message. A
@@ -45,6 +45,12 @@
 # Phase 4 (after a cold reset): 1   MSG_READY; kA, store 1 with the lock clear
 #                               1   MSG_ONE;   lock 1 / enable 0, store 2
 #                               2   SCRAMBLER_CTRL, MSG_DONE
+# Phase 5 (after a cold reset): 1   MSG_READY after the write of enable 1 / lock 0
+#                               3 x 10  one message per key epoch, in the order
+#                                   0x00000000, 0xFFFFFFFF, kB: SCRAMBLER_CTRL,
+#                                   SCRAMBLER_KEY, then the 8 words at addrs8
+#                                   after the 8 stores of the epoch words
+#                                   (ScrPlan.data_ep[8e..8e+7]) under that key
 #
 # The signature at SIG_ADDR lets the host check this layout and the field
 # masks that are typed here against the generated register map.
@@ -84,7 +90,8 @@
     .equ OFF_DATA64,      83
     .equ OFF_ADDRS_LOCK,  147
     .equ OFF_DATA_LOCK,   149
-    .equ PAYLOAD_WORDS,   151
+    .equ OFF_DATA_EP,     151
+    .equ PAYLOAD_WORDS,   175
 
     .equ PHASE_MAGIC,     0x50480000
     .equ MSG_READY,       0x52454459
@@ -96,7 +103,7 @@
 
     .equ SIG_ADDR,        0x40
     .equ SIG_MAGIC,       0x53435231   // "SCR1"
-    .equ LAYOUT_VERSION,  2
+    .equ LAYOUT_VERSION,  3
 
     // Registers:
     //   x1  link (calls from the phase code)   x2  KM mailbox base
@@ -128,6 +135,27 @@
     put_last x14
     .endm
 
+    // One phase 5 key epoch. x6 = the key. SCRAMBLER_KEY = x6, the 8 words from
+    // payload word \off stored to addrs8[0..7], then one message:
+    // SCRAMBLER_CTRL, SCRAMBLER_KEY and the 8 words read at addrs8[0..7].
+    .macro epoch off
+    sw    x6, 0(x4)
+    mv    x10, x3
+    addi  x11, x0, 8
+1:  lw    x7, (OFF_ADDRS8 * 4)(x10)
+    lw    x8, ((\off) * 4)(x10)
+    sw    x8, 0(x7)
+    addi  x10, x10, 4
+    addi  x11, x11, -1
+    bnez  x11, 1b
+    lw    x14, SCR_CTRL_OFF(x4)
+    put   x14
+    lw    x14, 0(x4)
+    put   x14
+    jal   x1, rd8
+    jal   x1, emit8
+    .endm
+
     .section .text
     .globl _start
 _start:
@@ -144,7 +172,8 @@ irq_vec:
     .word LAYOUT_VERSION
     .word PARAM_BASE
     .word OFF_KA, OFF_KB, OFF_ADDRS8, OFF_DATA8, OFF_ORDER8
-    .word OFF_ADDRS64, OFF_DATA64, OFF_ADDRS_LOCK, OFF_DATA_LOCK, PAYLOAD_WORDS
+    .word OFF_ADDRS64, OFF_DATA64, OFF_ADDRS_LOCK, OFF_DATA_LOCK, OFF_DATA_EP
+    .word PAYLOAD_WORDS
     .word SCR_ENABLE
     .word SCR_LOCK
     .word OUTBOUND_DEPTH_BP
@@ -186,6 +215,8 @@ boot:
     beq   x14, x5, phase3
     addi  x5, x0, 4
     beq   x14, x5, phase4
+    addi  x5, x0, 5
+    beq   x14, x5, phase5
 bad_phase:
     put_last_imm ERR_PHASE
     j     halt
@@ -360,6 +391,22 @@ phase4:
     sw    x8, 0(x7)                 // store 2, lock set
     put   x14
     put_last_imm MSG_DONE
+    j     halt
+
+    // ------------------------------------------------------------- phase 5
+    // Each epoch stores its 8 words and reads them back before the next key
+    // write, so no word is read under a key other than the key it was stored
+    // under.
+phase5:
+    addi  x6, x0, SCR_ENABLE
+    sw    x6, SCR_CTRL_OFF(x4)      // enable 1, lock 0
+    put_last_imm MSG_READY
+    addi  x6, x0, 0
+    epoch OFF_DATA_EP               // SCRAMBLER_KEY = 0x00000000
+    addi  x6, x0, -1
+    epoch (OFF_DATA_EP+8)           // SCRAMBLER_KEY = 0xFFFFFFFF
+    pw    x6, OFF_KB
+    epoch (OFF_DATA_EP+16)          // SCRAMBLER_KEY = kB
     j     halt
 
     // ------------------------------------------------------------ routines

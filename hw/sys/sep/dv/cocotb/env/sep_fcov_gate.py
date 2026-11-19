@@ -232,6 +232,21 @@ def set_kmac_stream_pass(passed: bool, log=None) -> bool:
     return _set_bound("kmac_stream_pass", int(bool(passed)), "FCOV-KMAC-STREAM-PASS", log)
 
 
+def set_kmac_mode_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.kmac_mode_pass`` (1 after a passed cell, or 0).
+
+    The pass label of the cells of the KMAC mode-and-strength leaf in
+    ``sep_kmac_ms_cg`` (``cp_prefix_custom``, ``cp_cell_digest_ok``). The sampler
+    holds the mode, strength and customization class of one cell and samples them
+    only when this value rises; the next ``CMD.start`` and the window close drop
+    them. The leaf writes 1 after the digest check of a cell passed, holds it for
+    at least one clk_i edge, and writes 0 before the next cell starts. Same rules
+    as ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("kmac_mode_pass", int(bool(passed)), "FCOV-KMAC-MODE-PASS", log)
+
+
 # Bits of ``u_sep_fcov.hmac_fifo_pass``: one per held cell of the HMAC FIFO leaf.
 HMAC_FIFO_PASS_LEN_CLASS = 1 << 0  # x_len_class
 HMAC_FIFO_PASS_FIFO_STATE = 1 << 1  # x_fifo_state_mode
@@ -261,19 +276,21 @@ def set_hmac_fifo_pass(bits: int, log=None) -> bool:
 
 
 def set_kmac_unsup_pass(check: int, log=None) -> bool:
-    """Write ``u_sep_fcov.kmac_unsup_pass`` (1 to 3, or 0 for none).
+    """Write ``u_sep_fcov.kmac_unsup_pass`` (1 to 4, or 0 for none).
 
     The pass label of the bins of the KMAC unsupported-configuration leaf: 1 the
     blocked cell passed its blocked-start and error-code checks, 2 its recovery
-    passed, 3 the enabled cell passed its absorb check. The sampler holds a legal
+    passed, 3 the enabled cell passed its absorb check, 4 an error-code leg passed
+    its error-code check (``cp_kmac_err_code_class``). The sampler holds a legal
     outcome as pending at its DUT event and samples it only when this value rises
-    from 0 to the check that grades it; illegal outcomes sample at once. The leaf
+    from 0 to the check that grades it; illegal outcomes sample at once, except a
+    ``cp_kmac_err_code_class`` code, which samples only on the rise to 4. The leaf
     writes the value after that check passes, holds it, then writes 0. Same rules
     as ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
     without the variable is a testbench error.
     """
-    if not 0 <= check <= 3:
-        raise ValueError(f"kmac_unsup_pass {check} is not 0 to 3")
+    if not 0 <= check <= 4:
+        raise ValueError(f"kmac_unsup_pass {check} is not 0 to 4")
     return _set_bound("kmac_unsup_pass", check, "FCOV-KMAC-UNSUP-PASS", log)
 
 
@@ -757,6 +774,25 @@ def set_km_pwd_pass(passed: bool, log=None) -> bool:
     return _set_bound("km_pwd_pass", int(bool(passed)), "FCOV-KM-PWD-PASS", log)
 
 
+def set_km_sbox_in(value: int | None, log=None) -> bool:
+    """Write ``u_sep_fcov.km_sbox_in`` (the S-box inputs of one store, or 0 for none).
+
+    ``value`` is ``word_index << 32 | (W ^ Rkey)`` of one KM SRAM scrambled store:
+    the 13-bit plaintext word index and the 32-bit data-path S-box input. The
+    setter writes it with bit 45 set as the valid bit, and 0 for None. The
+    sampler samples ``sep_km_sram_sbox_in_cg`` on each rise of bit 45 inside the
+    window of the scrambler leaf. The leaf writes one store after its checks of
+    the store run pass, holds it for at least one clk_i edge, and writes 0 for
+    at least one edge before the next. Same rules as ``graded_owner``: a no-op
+    that returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    if value is not None and not 0 <= value < 1 << 45:
+        raise ValueError(f"km_sbox_in value {value:#x} is outside 45 bits")
+    v = 0 if value is None else (1 << 45) | value
+    return _set_bound("km_sbox_in", v, "FCOV-KM-SBOX-IN", log)
+
+
 def set_km_efw_tm_pass(passed: bool, log=None) -> bool:
     """Write ``u_sep_fcov.km_efw_tm_pass`` (1 after the check passes, else 0).
 
@@ -1126,7 +1162,9 @@ ESRC_PA_DISABLE = 1 << 4  # CHK-PF-DISABLE
 ESRC_PA_HALT = 1 << 5  # CHK-PF-HALT
 ESRC_PA_RECOVER_E = 1 << 6  # CHK-PF-RECOVER, exit by MODULE_ENABLE
 ESRC_PA_RECOVER_R = 1 << 7  # CHK-PF-RECOVER, exit by TRNG reset
-ESRC_PA_SM_ERR = 1 << 8  # CHK-SM-ERR legs set and reset_clears (cp_sm_err, PERSISTENT_FAILURE)
+# CHK-SM-ERR legs set and reset_clears (cp_sm_err, PERSISTENT_FAILURE), and
+# CHK-SM-ERR-W1C (cp_sm_err w1c_clears only).
+ESRC_PA_SM_ERR = 1 << 8
 
 
 def set_esrc_pa_pass(bits: int, log=None) -> bool:
@@ -1149,29 +1187,58 @@ def set_esrc_pa_pass(bits: int, log=None) -> bool:
     return _set_bound("esrc_pa_pass", bits, "FCOV-ESRC-PA-PASS", log)
 
 
-# Bits of ``u_sep_fcov.esrc_cnt_pass``: one per counter check of the
-# conditioning leaf (the CzCnt* localparams of cov/sv/sep_fcov.sv).
+# Bits of ``u_sep_fcov.esrc_cnt_pass``: one per check of the conditioning leaf
+# (the CzCnt* localparams of cov/sv/sep_fcov.sv).
 ESRC_CNT_PASS_PERIOD = 1 << 0  # CHK-COND-PERIOD-RATIO (cp_sample_clk_div)
 ESRC_CNT_PASS_FIRST_STROBE = 1 << 1  # CHK-COND-FIRST-STROBE (cp_first_strobe)
 ESRC_CNT_PASS_FIRST_PUSH = 1 << 2  # CHK-COND-FIRST-PUSH (cp_ds_first_push)
+# CHK-COND-CTRL-CELL (x_path_fifo_off), one bit per
+# (BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE) cell with FIFO_CTRL.ENABLE = 0.
+ESRC_CNT_PASS_CTRL_CELL = {(1, 1): 1 << 3, (1, 0): 1 << 4, (0, 1): 1 << 5, (0, 0): 1 << 6}
+ESRC_CNT_PASS_DECOR_MASK = 1 << 7  # CHK-COND-DECOR-MASK (x_decor_mask_class)
+ESRC_CNT_PASS_LANES_OFF = 1 << 8  # CHK-COND-LANES-OFF (cp_lane_pop no_lane)
+ESRC_CNT_PASS_ONE_LANE = 1 << 9  # CHK-COND-ONE-LANE (cp_lane_pop one_lane)
+ESRC_CNT_PASS_DS_INTERVAL = 1 << 10  # CHK-COND-DS-INTERVAL (cp_ds_interval)
+ESRC_CNT_PASS_BITS = 11
 
 
 def set_esrc_cnt_pass(bits: int, log=None) -> bool:
     """Write ``u_sep_fcov.esrc_cnt_pass`` (the passed check bits ``ESRC_CNT_PASS_*``, or 0).
 
-    The pass label of ``cp_sample_clk_div``, ``cp_first_strobe`` and
-    ``cp_ds_first_push`` of ``sep_esrc_conditioning_cg``, which
-    ``sep_esrc_conditioning_matrix_rand_test`` owns. The sampler reads the
-    class of the stored ``DECORRELATOR_CTRL.SAMPLE_CLK_DIV`` or
-    ``CTRL.DOWNSAMPLE_RATE`` only when a bit rises. The leaf writes the bit
-    after the check passes, while the graded value is still stored, holds it
-    two clocks and writes 0. Same rules as ``graded_owner``: a no-op that
-    returns False on Verilator. On VCS a sampler without the variable is a
-    testbench error.
+    The pass label of ``cp_sample_clk_div``, ``cp_first_strobe``,
+    ``cp_ds_first_push``, ``x_path_fifo_off``, ``x_decor_mask_class``,
+    ``cp_lane_pop`` and ``cp_ds_interval`` of ``sep_esrc_conditioning_cg``,
+    which ``sep_esrc_conditioning_matrix_rand_test`` owns. The sampler reads
+    the class of the stored value that the check graded (``SAMPLE_CLK_DIV``,
+    ``DOWNSAMPLE_RATE``, the ``CTRL`` path with ``FIFO_CTRL.ENABLE``, the
+    ``ENTROPY_BYTE_MASK`` population, ``RING_OSC_ENABLE``) only when a bit
+    rises. The leaf writes the bit after the check passes, while the graded
+    value is still stored, holds it two clocks and writes 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
     """
-    if bits >> 3 or bits < 0:
-        raise ValueError(f"esrc_cnt_pass bits {bits:#x} are not 0 to 0x7")
+    if bits < 0 or bits >> ESRC_CNT_PASS_BITS:
+        raise ValueError(f"esrc_cnt_pass bits {bits:#x} are not 0 to 0x7ff")
     return _set_bound("esrc_cnt_pass", bits, "FCOV-ESRC-CNT-PASS", log)
+
+
+def set_esrc_fifo_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.esrc_fifo_pass`` (the passed check bits, or 0).
+
+    The pass label of ``x_fifo_op_level`` and ``x_churn_level`` of
+    ``sep_esrc_conditioning_cg``, which ``sep_esrc_fifo_flow_rand_test`` owns
+    (the CzFifo* localparams of cov/sv/sep_fcov.sv): bit 0 CHK-FIFO-FILL,
+    bit 1 CHK-FIFO-POP, bit 2 CHK-FIFO-POP-LIVE (one graded window), bit 3
+    CHK-FIFO-CHURN. The sampler holds each cell at its FIFO operation inside
+    the window and samples it only when the bit of the check that grades it
+    rises; every rise drops the other held cells. The leaf writes the bit
+    after the check passes, holds it two clocks and writes 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
+    """
+    if bits < 0 or bits >> 4:
+        raise ValueError(f"esrc_fifo_pass bits {bits:#x} are not 0 to 0xf")
+    return _set_bound("esrc_fifo_pass", bits, "FCOV-ESRC-FIFO-PASS", log)
 
 
 def set_bfault_pass(passed: bool, log=None) -> bool:

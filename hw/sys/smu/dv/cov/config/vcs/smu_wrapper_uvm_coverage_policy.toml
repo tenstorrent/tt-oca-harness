@@ -9,7 +9,7 @@
 # with the same checksums, as smu_wrapper_coverage_policy.toml, so a UVM report
 # applies the exclusions the cocotb view applies. It carries no
 # `[[thresholds]]` row: a threshold rule scopes to a tool and a target, not to
-# a framework, and the five SV-UVM leaves are not the coverage set that the
+# a framework, and the eight SV-UVM leaves are not the coverage set that the
 # cocotb policy's `user` floor is written for. The runner reports every
 # family's raw and effective figure for this view and gates none of them; the
 # `user` floor stays on smu_wrapper_coverage_policy.toml, which the cocotb
