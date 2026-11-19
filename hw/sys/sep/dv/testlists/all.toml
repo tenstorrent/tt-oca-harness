@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 295
+expected_count = 296
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -1080,7 +1080,7 @@ tests = [
 # Convenience group of the eFuse, lifecycle and SEC_DIS tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_efuse_lifecycle"
-expected_count = 20
+expected_count = 21
 tests = [
     "sep_efuse_window_decode_reset_test",
     "sep_efuse_field_layout_rand_test",
