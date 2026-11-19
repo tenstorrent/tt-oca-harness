@@ -40,15 +40,21 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     epoch before any program of that epoch) and no ``PROGRAM`` or
                     ``PROGRAM_READ_BACK`` command reaches ``efuse_shim_command_req_o``
                     at strap 1.
-  CHK-STM-PROG-STATUS  each strap-1 program reads ``program_done`` 1 and
+  CHK-STM-PROG-STATUS  the first strap-1 program reads ``program_done`` 1 and
                     ``program_status`` 1 (Error) in ``EFUSE_PROGRAM_CTRL`` after
                     ``W_prog``: a program start in secure test mode completes with an
                     error without issuing a command
                     (``hw/ip/efuse/doc/architecture.adoc:396``;
                     ``efuse_interface_ctrl.rdl:100-101`` ``program_done``,
-                    ``:106-107`` ``program_status``). ``INFO-STM-PROG-STATUS`` logs
-                    the word of each strap-0 program; CHK-STM-PROG-CTL grades the
-                    strap-0 outcome at the bank.
+                    ``:106-107`` ``program_status``). Control
+                    (``CTRL-STM-PROG-FRESH``): before that go both bits read their RDL
+                    reset value 0. Both bits hold until the next start, and a refused
+                    start sets them again in the same clock, so the four later
+                    strap-1 programs read the same word whether or not their go
+                    completed: ``INFO-STM-PROG-STATUS`` logs their word and the word
+                    of each strap-0 program. CHK-STM-PROG grades every strap-1 class
+                    at the bank and the tap; CHK-STM-PROG-CTL grades the strap-0
+                    outcome at the bank.
   CHK-STM-PROG-CTL  each strap-0 program lands inside ``W_prog`` (direct read) and
                     shows a program command with its address at the tap.
   CHK-STM-SECRET    at strap 1 the four secret fields read 0 at
@@ -105,6 +111,9 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
                     ``efuse_program_read_back``, ``program_enable``) read back equal to
                     the go, so a strap-1 go that did not land fails.
+  CTRL-STM-PROG-FRESH  before the first strap-1 go, ``program_done`` and
+                    ``program_status`` read their RDL reset value 0, so
+                    CHK-STM-PROG-STATUS reads the completion of that go.
 
 Each strap-0 target cell is graded right after its readback. A strap-1 cell FAILs
 right after its readback when the word changed; it PASSes only after the strap-0
@@ -230,6 +239,7 @@ _PG_RW = (
 )
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
+_PG_RESET = EFUSE_INTERFACE_CTRL.reset32("EFUSE_PROGRAM_CTRL")
 _REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )
@@ -471,11 +481,22 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         ``CTRL-STM-PROG-ISSUED`` requires the software-owned fields of
         ``EFUSE_PROGRAM_CTRL`` read back after ``w_prog`` to equal the go, so a go that
         did not land fails. At strap 1, CHK-STM-PROG-STATUS requires ``program_done`` 1
-        and ``program_status`` 1 (Error); at strap 0, ``INFO-STM-PROG-STATUS`` logs the
-        whole word.
+        and ``program_status`` 1 (Error) after the first go, which starts from both bits
+        at 0 (``CTRL-STM-PROG-FRESH``); ``INFO-STM-PROG-STATUS`` logs the whole word of
+        every other go.
         """
         cmds: dict[str, list] = {}
-        for cls in STM_PROGRAM_CLASSES:
+        if self._strap:
+            pre = await self.fd.rd(PROGRAM_CTRL_ADDR)
+            self._ctrl(
+                "STM-PROG-FRESH",
+                pre & (_PG_DONE | _PG_STATUS) == _PG_RESET & (_PG_DONE | _PG_STATUS),
+                strap=self._strap,
+                status=f"0x{pre:08x}",
+                program_done=int(bool(pre & _PG_DONE)),
+                program_status=int(bool(pre & _PG_STATUS)),
+            )
+        for i, cls in enumerate(STM_PROGRAM_CLASSES):
             pr = progs[cls]
             mark = self.shim.mark()
             go = program_ctrl_word(pr["addr"])
@@ -504,7 +525,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 program_status=int(bool(status & _PG_STATUS)),
                 program_cmds=len(cmds[cls]),
             )
-            if self._strap:
+            if self._strap and i == 0:
                 self._grade(
                     "STM-PROG-STATUS",
                     status & (_PG_DONE | _PG_STATUS) == _PG_DONE | _PG_STATUS,

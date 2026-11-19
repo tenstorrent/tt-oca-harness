@@ -35,7 +35,8 @@ comparator per lane). ``OBS-TOKEN-MULTI-GO`` logs the clocks from the write to e
 verdict.
 
 Partial refill, last: a drawn channel takes its right token with k drawn words
-(1 <= k < 8) replaced by ``TOKEN_OTHER`` words and settles to Mismatch. The k words
+(1 <= k < 8) replaced by ``TOKEN_OTHER`` words and settles to Mismatch
+(CTRL-TOKEN-REFILL requires the settle go to end at ``0x2a``). The k words
 then take their right-token words with no go between, and one go follows.
 CHK-TOKEN (shape ``refill``) expects the code of the array as it stands, Match: the
 engine streams the array rather than taking a snapshot, and the array has no reset
@@ -1172,6 +1173,13 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         for i in words:
             base[i] = token_words(TOKEN_OTHER)[i]
         settled = await self._settle(ch, words_token(base), CODE_MISMATCH, "refill.base")
+        self._ctrl(
+            "TOKEN-REFILL",
+            settled == CODE_MISMATCH,
+            ch=_CH_NAME[ch],
+            k=k,
+            settled="none" if settled is None else f"0x{settled:02x}",
+        )
         for i in p.draw.shuffled("refill.order", words):
             await self._wr(TOKEN_ARRAY_ADDR[ch][i], right[i])
         exp = match_code(ch, words_token(right), p.image)

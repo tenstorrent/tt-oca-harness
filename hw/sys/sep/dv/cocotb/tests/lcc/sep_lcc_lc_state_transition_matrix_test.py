@@ -36,8 +36,8 @@ part must transition exactly like a non-demoted one.
 
 The golden of every graded write cell is the chapter's: ``otp_fuse_controller.adoc``
 (Fuse Fields) gives LC_STATE as SW writable set-only under these rules, and
-``sep_efuse_map.rdl`` (register ``LC_STATE``) gives ``lc_state`` and ``rsvd`` as
-sw = rw, onwrite = woset.
+``sep_efuse_map.rdl`` (register ``LC_STATE``) gives ``lc_state`` as sw = rw,
+onwrite = woset. Bits [31:8] (``rsvd``) hold the last write: CHK-LC-UPPER.
 
 One sensed starting state per leaf. ``efuse_bank_model`` deposits the OTP image
 in a time-0 ``initial`` and a fuse survives reset, so a test cannot re-sense its
@@ -129,11 +129,12 @@ requires the s_axi W handshake to carry it with the lane strobe low.
                          by then, which is terminal, so the cell is not graded
                          and logs ``CHK-LC-B13-NOSTROBE N/A reason=invalid_terminal``.
   * CHK-LC-UPPER         at every write cell that no token gate and no terminal
-                         rule refuses, LC_STATE[31:8] reads the prior [31:8] OR
-                         the written [31:8] (``sep_efuse_map.rdl`` ``rsvd``;
-                         ``otp_fuse_controller.adoc`` LC_STATE set-only). The
-                         prior value is the sensed [31:8] for the first write
-                         and the readback of the cell before otherwise.
+                         rule refuses, LC_STATE[31:8] reads the [31:8] of that
+                         write, the last write (``sep_efuse_map.rdl`` ``rsvd``
+                         desc: "A read returns whatever the fuse word or the
+                         last write left in them"). The B13 cell of every leaf
+                         clears bit 9, which the cell before it set, so a DUT
+                         that ORs the write into the prior [31:8] fails.
 ``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
 collapsed comparator code) and ``CTRL-TOKEN-SIP-HELD`` (the SIP match before
 CHK-INVALID-TERM) record the preconditions of the hold cells.
@@ -574,11 +575,11 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 mark,
                 got_upper,
             )
-        # LC_STATE[31:8] is set-only (sep_efuse_map.rdl ``rsvd``: sw = rw,
-        # onwrite = woset), so a write ORs its strobed bytes into the prior value.
-        # A refused write is logged: no text states whether the refusal covers
-        # [31:8].
-        want_upper = self._upper | (written & LC_STATE_UPPER_MASK)
+        # A write leaves its strobed [31:8] bytes in LC_STATE (sep_efuse_map.rdl
+        # ``rsvd`` desc: a read returns what the last write left). A refused
+        # write is logged: no text states whether the refusal covers [31:8].
+        want_upper = (self._upper & ~lanes | written) & LC_STATE_UPPER_MASK
+        or_upper = self._upper | (written & LC_STATE_UPPER_MASK)
         if refused:
             self.logger.info(
                 "OBS-LC-UPPER LOG tag=%s wrote=0x%08x prior=0x%08x read=0x%08x "
@@ -588,7 +589,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 self._upper,
                 got_upper,
                 int(got_upper == pattern),
-                int(got_upper == want_upper),
+                int(got_upper == or_upper),
             )
         elif do_write:
             assert got_upper == want_upper, (
@@ -639,8 +640,9 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
     async def _prove_upper_write(self) -> None:
         """A second [31:8] pattern over the first, then the first to bytes 1-3.
 
-        The two patterns differ in both directions, so CHK-LC-UPPER fails an
-        overwrite. The nibble cell is a write of 0 (CHK-W1S-NO-CLEAR). The
+        The two patterns differ in both directions: bit 8 is set only in the
+        first and bit 9 only in the second, so CHK-LC-UPPER fails a DUT that
+        keeps the prior [31:8] bits. The nibble cell is a write of 0 (CHK-W1S-NO-CLEAR). The
         bytes 1-3 cell carries lifecycle bit 3 in the strobed-out byte 0
         (CHK-LC-B13-NOSTROBE). From INVALID, which is terminal, no byte-0 bit
         can move the state, so that cell is not graded there.

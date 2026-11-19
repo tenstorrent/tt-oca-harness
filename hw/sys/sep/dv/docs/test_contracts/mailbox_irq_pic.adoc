@@ -697,7 +697,7 @@ grades the rise on both lock flavours of one seed-selected spare; the
 |===
 |Checker |Contract
 |CHK-SECTM-CONTROL
-|With the strap low, the write lands and the value moves — set-only rows, `LC_STATE[31:8]` among them, read back the OR-merge of the pre-write value and the payload — and `[33]` stays low.
+|With the strap low, the write lands and the value moves — set-only rows read back the OR-merge of the pre-write value and the payload — and `[33]` stays low. For `LC_STATE` the check grades that `[31:8]` reads back the payload: the sensed `[31:8]` is 0, so the line shows that the payload landed and grades no other rule for those bits.
 |CTRL-SECTM-LATCH
 |`secure_tm_o` reads 0 after the first sense with the strap low and 1 after the resense with the strap high (`hw/sys/sep/doc/test_mode.adoc:29`, fuse-sense completion samples the strap). The value is logged on the line. Any other value, or an X, fails the leaf before the half that depends on it.
 |CHK-SECTM-BLOCK
@@ -725,9 +725,9 @@ shadow, and it completes with SLVERR and raises source 34 during the write
 (`hw/ip/efuse/doc/architecture.adoc:402-403`) on the fields that
 `otp_fuse_controller.adoc:178-180` lists, so `otp_fuse_controller.adoc:110-112`
 applies. `LC_STATE` is
-written in bytes [31:8], which OR-merge the payload into the shadow
-(`sep_efuse_map.rdl` `rsvd`: `sw = rw; onwrite = woset`) and leave the
-lifecycle nibble alone.
+written in bytes [31:8], which leave the lifecycle nibble alone; a read of
+them returns what the fuse word or the last write left (`sep_efuse_map.rdl`
+`rsvd` desc).
 
 *Anti-vacuity*: each field takes the same address and the same payload in both
 conditions within one run, so a write path that never worked would fail the

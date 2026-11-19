@@ -75,8 +75,9 @@ The strap-low half is the positive control: without it a DUT whose
 shadow writes never work at all would pass the deny half. LOCKS and
 LOCKS_SPARE are one field-map entry, so LOCKS_SPARE carries their shared
 positive control, and LOCKS takes its own on the slot-31 write-lock bit.
-LC_STATE is written in bytes [31:8], which OR-merge as ordinary shadow bytes
-and leave the lifecycle nibble alone.
+LC_STATE is written in bytes [31:8], which leave the lifecycle nibble alone.
+The sensed LC_STATE[31:8] is 0, so CHK-SECTM-CONTROL shows that the payload
+landed there and grades no other rule for those bits.
 """
 
 from __future__ import annotations
