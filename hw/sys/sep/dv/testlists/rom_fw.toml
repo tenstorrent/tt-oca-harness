@@ -3,7 +3,7 @@
 schema_version = 1
 
 # ROM firmware boot tests: the production Boot ROM on the `rom_boot` target with the
-# `boot_rom` / `boot_rom_pio` firmware profiles. They run only in the `rom_fw` group.
+# `boot_rom`, `boot_rom_pio` and `boot_rom_clear` firmware profiles.
 
 [[tests]]
 # Non-secure boot of the production Boot ROM with the manifest served from SMC SRAM (SPI stubbed).
@@ -3401,4 +3401,724 @@ tags = ["boot", "rom", "crypto", "negative", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+]
+
+[[tests]]
+# The ROM observer records retirements, status, console, a watched port, the hand-off mret and the
+# BL1 verdict of an SMC-SRAM boot to BL1.
+name = "sep_rom_observer_smoke_test"
+module = "rom_fw.sep_rom_observer_smoke_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# The ROM reads mhartid, programs mtvec and writes MRAC 0xAAAAAAA8 in that order before its
+# first data access, and hart 0 never enters the park loop.
+name = "sep_rom_reset_entry_order_test"
+module = "rom_fw.sep_rom_reset_entry_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "reset", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# Up to the hand-off mret the ROM writes no outbound-filter register (CPU-040 in part: no
+# window opened) or WDT register, takes and enables no interrupt, clears mie and mstatus.MIE
+# between the "entered _start" status and the PMP programming, and keeps sp and gp in DCCM.
+name = "sep_rom_boot_quiet_invariants_test"
+module = "rom_fw.sep_rom_boot_quiet_invariants_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# CPU-160 in part: with DCCM errors planted before reset, every DCCM read up to the hand-off
+# returns a value this boot wrote, and [DCCM base, __stack_top) is zero-written before rom_main.
+# The spec contradicts itself on the "at most __stack_top" upper bound, so it is not graded.
+name = "sep_rom_dccm_scrub_test"
+module = "rom_fw.sep_rom_dccm_scrub_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "ecc", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# CPU-100 in part, on the clear-enabled ROM (build_clear/): every SRAM byte and ICCM bank row is
+# zero-written, and the probed SRAM residue words read zero, before the first manifest read.
+name = "sep_rom_sram_iccm_clear_test"
+module = "rom_fw.sep_rom_sram_iccm_clear_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_clear", mode = "boot_rom_clear" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "clear", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_clear/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_sram_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_sram_residue.hex",
+]
+
+[[tests]]
+# FUSE-010 in part: with fuse sense done before CPU release, the ROM polls SMC_FUSE_SENSE_STATUS
+# and reads eFuse only after a poll that saw sense done.
+name = "sep_rom_fuse_sense_wait_test"
+module = "rom_fw.sep_rom_fuse_sense_wait_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# With fuse sense held not-done the ROM keeps polling and reads no eFuse register.
+name = "sep_rom_fuse_sense_wait_test_hold"
+module = "rom_fw.sep_rom_fuse_sense_wait_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_fuse_sense_hold",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE TEST_DEV (0x0) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_test_dev"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x0",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE PROD (0x1) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+# The ROM refuses the unsigned default image after that point, so the run ends on the FAIL verdict.
+name = "sep_rom_lc_state_record_test_prod"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x1",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_SiP (0x2) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_sip_0x2"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x2",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_SiP (0x3) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_sip_0x3"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x3",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_CHIPLET (0x6) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_chiplet_0x6"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x6",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_CHIPLET (0x7) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_chiplet_0x7"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x7",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE PROD_END (0x8) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+# The ROM refuses the unsigned default image after that point, so the run ends on the FAIL verdict.
+name = "sep_rom_lc_state_record_test_prod_end"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x8",
+]
+
+[[tests]]
+# Before the "PMP programmed" status the ROM sets mseccfg.RLB, programs locked rules that grant
+# exactly the reference region set with execute on the Boot ROM alone, then sets mseccfg.MMWP.
+name = "sep_rom_pmp_program_test"
+module = "rom_fw.sep_rom_pmp_program_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "pmp", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# After the hand-off progress codes the ROM adds execute to the one locked rule that holds BL1,
+# writes no other CSR, and jumps to the TOC entry through mepc, fence.i, fence and mret.
+name = "sep_rom_pmp_release_handoff_test"
+module = "rom_fw.sep_rom_pmp_release_handoff_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "pmp", "handoff", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# The PROD O5 demotion boot writes DEMOTE_1 only on a clk edge after all six fuse-secret
+# read-locks are set.
+name = "sep_rom_demote_after_lock_order_test"
+module = "rom_fw.sep_rom_demote_after_lock_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
+]
+
+[[tests]]
+# A cold boot reports BL0_VERSION and the SHA-256 of [ROM base, __metadata_end) of the loaded
+# image on the console, and the hash prefix as two INFO_EXT words after ROM_HASH, during [S05].
+name = "sep_rom_version_hash_report_test"
+module = "rom_fw.sep_rom_version_hash_report_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "attestation", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# Slot index and order only: RECORD_MEASUREMENT enrolls slot 0 after a full LSU read of
+# [ROM base, __metadata_end), then slot 1 after MANIFEST_VALIDATED; the slot-0 value is not graded.
+name = "sep_rom_pcrv_slot_order_test"
+module = "rom_fw.sep_rom_pcrv_slot_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "measurement", "attestation", "handoff", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# SMC-020 positive direction only: the ROM writes the four spec patterns to SMC scratch[7], reads
+# each back with matching data before the next write, and leaves scratch[7] at zero by the hand-off.
+name = "sep_rom_smc_scratch_sanity_test"
+module = "rom_fw.sep_rom_smc_scratch_sanity_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "smc", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# SMC-040, secondary boot: with MANIFEST_READY held low and a decoy in scratch[8], the ROM polls
+# scratch[9] and reads neither scratch[8] nor SMC SRAM until the release, then fetches the manifest
+# from the offset published at the release.
+name = "sep_rom_smc_manifest_ready_wait_test"
+module = "rom_fw.sep_rom_smc_manifest_ready_wait_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "smc", "manifest", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes the offset of the first byte past the 1 MiB SMC
+# SRAM window; the single slot fails and the boot halts. SMC SRAM reads are logged, since the ROM
+# docs disagree on them. The scratch[13]/[14] payload clause is not covered.
+name = "sep_rom_smc_manifest_offset_invalid_test_window_end"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=00100000",
+]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes an aligned offset 8 bytes below the end of the
+# 1 MiB SMC SRAM window, so the 4096 B manifest starts inside it and its end crosses it; the
+# single slot fails and the boot halts. SMC SRAM reads are logged, since the ROM docs disagree.
+name = "sep_rom_smc_manifest_offset_invalid_test_window_straddle"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=000FFFF8",
+]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes an aligned offset 0xFF8 bytes below the end of
+# the 1 MiB SMC SRAM window, so the 4096 B manifest starts inside it and its end crosses it by
+# 8 bytes; the single slot fails and the boot halts. SMC SRAM reads are logged, since the ROM
+# docs disagree on them.
+name = "sep_rom_smc_manifest_offset_invalid_test_manifest_straddle"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=000FF008",
+]
+
+[[tests]]
+# STAT-010, secondary boot: scratch[11] puts the 12-byte status-ring header across the end of the
+# 1 MiB SMC SRAM window; no SMC write leaves the window or touches the header, the scratch channel
+# reports STATUS_REPORTING_INVALID, and the boot reaches BL1. Partial STAT-010: no out-of-window
+# entry case and no "never disable reporting on a possibly-transient error" case.
+name = "sep_rom_status_ring_bounds_test_straddle"
+module = "rom_fw.sep_rom_status_ring_bounds_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "smc", "status", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_ring_case=straddle",
+]
+
+[[tests]]
+# STAT-010, secondary boot: the status-ring header lies inside SMC SRAM but its head equals its
+# entry count; no SMC write leaves the window or the declared ring, the scratch channel reports
+# STATUS_REPORTING_INVALID, and the boot reaches BL1. Partial STAT-010: no out-of-window entry
+# case and no "never disable reporting on a possibly-transient error" case.
+name = "sep_rom_status_ring_bounds_test_bad_header"
+module = "rom_fw.sep_rom_status_ring_bounds_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "smc", "status", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_ring_case=bad_header",
+]
+
+[[tests]]
+# STAT-020, secondary boot refused at the manifest: an 8-entry status ring fills with INFO before
+# the WARN and ERRORs arrive; the ring holds expected_ring() of the offered statuses (INFO marker
+# at 3 free, WARN marker at 2, ERROR in the last slot). Partial STAT-020: no draining consumer,
+# no wrap, no WARN insert or drop in simulation.
+name = "sep_rom_status_ring_severity_test"
+module = "rom_fw.sep_rom_status_ring_severity_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "status", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=00005000",
+]
+
+[[tests]]
+# MAN-020 positive only: oca_validate or oca_validate_manifest (whichever is linked; this ROM links
+# oca_validate_manifest) runs before MANIFEST_VALIDATED and calls the ROM's
+# sha256, verify_signature, revocation and security-version callbacks from library text; all eight
+# spec roles are wired in the ROM's callback table. Hardware routing of each callback is not graded.
+name = "sep_rom_oca_library_callback_test"
+module = "rom_fw.sep_rom_oca_library_callback_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "manifest", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# ENT-020: no noise driver, so the forced ESRC noise holds 0 and the startup health test fails;
+# the ROM halts on ROM_ERR_ENTROPY_INIT_FAILED with a FAIL verdict and never tries the backup
+# slot. Only the Phase B health-test failure is exercised.
+name = "sep_rom_entropy_health_fail_terminal_test"
+module = "rom_fw.sep_rom_entropy_health_fail_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "negative", "entropy", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # The noise driver stays off; the force holds every decorrelator input at 0.
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# ENT-030/040 order: FIPS_LOCK is written after the last MAIN_SM_STATUS poll read and the last
+# sample held back by the ESRC boot gate, and takes effect before entropy reaches CSRNG, a DRBG
+# stream or a crypto EDN client; the source lock follows the Instantiate wait and the seed ack and
+# takes effect before hand-off. Blocking not graded.
+name = "sep_rom_entropy_lock_order_test"
+module = "rom_fw.sep_rom_entropy_lock_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "entropy", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# SB-080: a secure boot whose manifest carries a security-version flag the fuses lack, with no
+# update suppression, leaves every OTP bank word unchanged from reset to the end of the run and
+# puts no PROGRAM command on the eFuse shim; BL1 boots. The bl0_state commit directive is not graded.
+name = "sep_rom_no_fuse_program_test"
+module = "rom_fw.sep_rom_no_fuse_program_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "rollback", "efuse", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_bl1ver36_spread.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# SB-100: the primary key keeps the authorized ROM key 0 modulus but carries exponent 5, with a
+# signature valid under (n, 5); the primary is refused and the backup boots. Refusal timing and
+# code are not graded.
+name = "sep_rom_rsa_exponent_non_f4_refuse_test"
+module = "rom_fw.sep_rom_rsa_exponent_non_f4_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+  "+sep_rsa_signed_exponent=5",
+]
+
+[[tests]]
+# SB-100: as above, but the signature is valid under (n, 65537), which the F4 verifier computes,
+# so a ROM that ignores the exponent would boot the primary. Refusal timing and code are not graded.
+name = "sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed"
+module = "rom_fw.sep_rom_rsa_exponent_non_f4_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+  "+sep_rsa_signed_exponent=65537",
+]
+
+[[tests]]
+# SB-110 (partial): on the signed SPI boot the CPU alone writes the manifest modulus into OTBN DMEM
+# before EXECUTE, and from the first retirement to the hand-off mret the Key Manager key paths,
+# sideload key valids, CPU and mailbox stay idle.
+name = "sep_rom_rsa_key_direct_otbn_test"
+module = "rom_fw.sep_rom_rsa_key_direct_otbn_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "km", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PL-050: TEST_DEV with debug open boots both slots carrying the encrypted payload made validly
+# unsigned (secure_boot_control 0); each slot is refused, no decryption starts (no decrypt-path
+# PC, no CPU AES access) and the boot ends on MANIFEST_LOAD_FAILED and the FAIL verdict. The spec
+# names two codes for the refusal (SECURE_BOOT_INVARIANT in PL-050, ENCRYPTION_REQUIRES_SECURE_BOOT
+# in MAN-030 and the registry), so bl0_state.error_code must be one of them.
+name = "sep_rom_encryption_requires_secure_boot_test"
+module = "rom_fw.sep_rom_encryption_requires_secure_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "encrypted", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PL-080 (software residue, partial): the encrypted primary decrypts and boots; when the decryption
+# stage returns and at the hand-off mret, DCCM holds no 16-byte segment of the class key, the derived
+# key or the KDF input.
+name = "sep_rom_decrypt_exit_zeroize_test_success"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=success",
+]
+
+[[tests]]
+# PL-080 (partial): SW_RESET_N reads back the AES bit as 0 from the decryption stage entry, so
+# aes_init() fails; no key material in DCCM when the stage returns and at the verdict.
+name = "sep_rom_decrypt_exit_zeroize_test_aes_init_fail"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 9600
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=aes_init_fail",
+]
+
+[[tests]]
+# PL-080 (software residue, partial): the HMAC message FIFO stops draining during the stage, so key
+# derivation fails; when the stage returns and at the FAIL verdict, DCCM holds no key material.
+name = "sep_rom_decrypt_exit_zeroize_test_kdf_fail"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=kdf_fail",
+]
+
+[[tests]]
+# PL-080 (partial): the AES reports a CTRL update error from the decryption stage entry, so the
+# cipher setup fails before the key load; no key material in DCCM when the stage returns and at the verdict.
+name = "sep_rom_decrypt_exit_zeroize_test_aes_dec_fail"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 9600
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=aes_dec_fail",
+]
+
+[[tests]]
+# SPI-030 (partial): every secure-DMA host response outside a zero fill is SLVERR from the first slot
+# attempt, so each OpenTitan SPI flash read fails; at most 4 attempts per slot, backup fallback,
+# then the FAIL verdict.
+name = "sep_rom_spi_retry_exhaust_test"
+module = "rom_fw.sep_rom_spi_retry_exhaust_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "dma", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
 ]

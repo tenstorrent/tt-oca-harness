@@ -356,7 +356,6 @@ __attribute__((noreturn)) static void
 rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
                               uint32_t lc_state) {
     // ── [S23] manifest load ──
-    report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
     uint32_t mfst_err = rom_manifest_boot(straps, spi_status);
     if (mfst_err != 0u) {
         simputshex32("MANIFEST_BOOT_FAIL=", mfst_err);
