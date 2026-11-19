@@ -224,7 +224,8 @@ After the alias remap, traffic routing is done as follows:
 * Any transaction that doesn’t get routed to local resources is directly
 routed out to the SMN.
 
-Both the chiplet ID and chiplet BAR are available in SMC as MMRs. The
+The SMC exposes its integration-time chiplet ID in `CHIP_CONFIG.CHIP_ID`;
+firmware programs the SMC global-aperture base in `GLOBAL_BASE`. The
 Programmer's Guide gives the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
