@@ -227,8 +227,6 @@ module sep_crypto #(
                                                                  // access, [6] read timeout, [7]
                                                                  // program timeout, [8] request
                                                                  // error, [9] secure TM blocked.
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // RMA SiP token match status code; 6'b010101 indicates a match.
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // RMA chiplet token match status code; 6'b010101 indicates a match.
 
   output logic                               locked_field_access_interrupt_o,  // Interrupt raised when an access targets a locked eFuse field.
 
@@ -812,8 +810,6 @@ module sep_crypto #(
     .sep_intermediate_reset_no(sep_intermediate_reset_no),
 
     .sep_efuse_debug_o(sep_efuse_debug_o),
-    .sep_efuse_token_match_sip_debug_o(sep_efuse_token_match_sip_debug_o),
-    .sep_efuse_token_match_chiplet_debug_o(sep_efuse_token_match_chiplet_debug_o),
 
     .locked_field_access_interrupt_o       (locked_field_access_interrupt_o),
 

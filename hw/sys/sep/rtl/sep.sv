@@ -227,8 +227,8 @@ module sep #(
                                               // RAS aggregation, on clk_i.
 
   output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits: CPU trace and control status,
-                                              // interrupts, reset and security status, eFuse, remap
-                                              // and filter debug; bits [159:0] are 0.
+                                              // reset and security status, eFuse, remap and filter
+                                              // debug; bits [351:336], [239:208] and [159:0] are 0.
 );
 
   /////////////////////////
@@ -257,8 +257,6 @@ module sep #(
   logic debug_mode_status_o;
   logic cpu_run_ack_o;
   logic [9:0] sep_efuse_debug;
-  logic [5:0] sep_efuse_token_match_sip_debug;
-  logic [5:0] sep_efuse_token_match_chiplet_debug;
 
   sep_pkg::remap_debug_t         local_masters_remap_debug;
   logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0]
@@ -1005,8 +1003,6 @@ NumSramDemuxPorts
     .edn_fatal_alert_o                      (edn_fatal_alert),
 
     .sep_efuse_debug_o                      (sep_efuse_debug),
-    .sep_efuse_token_match_sip_debug_o      (sep_efuse_token_match_sip_debug),
-    .sep_efuse_token_match_chiplet_debug_o  (sep_efuse_token_match_chiplet_debug),
 
     .locked_field_access_interrupt_o        (locked_field_access_interrupt),
 
@@ -1274,10 +1270,6 @@ NumSramDemuxPorts
       ExtDebugEccPerfLaneWidth_A, $bits
       ({cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error, cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error, cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3, 8'b0}
           ) == 16)
-  `OCAH_ASSERT_STATIC(
-      ExtDebugInterruptLaneWidth_A, $bits
-      ({intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq, entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error, 1'b0}
-          ) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugResetStatusLaneWidth_A, $bits
                       ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugTraceAddressLaneWidth_A, $bits
@@ -1292,10 +1284,6 @@ NumSramDemuxPorts
       ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
           ) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugSipTokenLaneWidth_A, $bits({10'b0, sep_efuse_token_match_sip_debug})
-                      == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugChipletTokenLaneWidth_A, $bits
-                      ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugRemapLaneWidth_A, $bits({6'b0, local_masters_remap_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugOutboundFilterLaneWidth_A, $bits
                       ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
@@ -1326,16 +1314,8 @@ NumSramDemuxPorts
     cpu_dec_tlu_perfcnt3,
     8'b0,
 
-    // [351:336] Seven scalar interrupts, eight mailbox interrupts, one reserved bit
-    intr_wdog_timer_bark,
-    sep_mailbox_interrupt,
-    km_mbox_irq,
-    entropy_source_irq,
-    ext_trng_irq,
-    intr_dma_done,
-    intr_dma_chunk_done,
-    intr_dma_error,
-    1'b0,  // [336] Reserved
+    // [351:336] Reserved
+    16'b0,
 
     // [335:320] Reset and security status
     sep_reset_n,
@@ -1369,13 +1349,8 @@ NumSramDemuxPorts
     6'b0,  // [255:250] Reserved padding
     sep_efuse_debug,  // [249:240]
 
-    // [239:224] SEP eFuse RMA SiP token match debug
-    10'b0,  // [239:230] Reserved padding
-    sep_efuse_token_match_sip_debug,  // [229:224]
-
-    // [223:208] SEP eFuse RMA chiplet token match debug
-    10'b0,  // [223:214] Reserved padding
-    sep_efuse_token_match_chiplet_debug,  // [213:208]
+    // [239:208] Reserved
+    32'b0,
 
     // [207:192] Local masters address-remap hit debug
     6'b0,  // [207:202] Reserved padding

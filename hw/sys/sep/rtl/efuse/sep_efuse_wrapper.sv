@@ -83,8 +83,6 @@ module sep_efuse_wrapper #(
                                                                  // access, [6] read timeout, [7]
                                                                  // program timeout, [8] request
                                                                  // error, [9] secure TM blocked.
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // RMA SiP token match status code; 6'b010101 indicates a match.
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // RMA chiplet token match status code; 6'b010101 indicates a match.
 
   output logic                               locked_field_access_interrupt_o,  // Interrupt raised when an access targets a locked eFuse field.
 
@@ -417,8 +415,8 @@ module sep_efuse_wrapper #(
     .is_program_timeout_debug_o         (sep_efuse_debug_o[7]),
     .is_efuse_req_err_o                 (sep_efuse_debug_o[8]),
     .is_secure_tm_blocked_o             (sep_efuse_debug_o[9]),
-    .is_rma_sip_token_match_debug_o     (sep_efuse_token_match_sip_debug_o),
-    .is_rma_chiplet_token_match_debug_o (sep_efuse_token_match_chiplet_debug_o),
+    .is_rma_sip_token_match_debug_o     (),
+    .is_rma_chiplet_token_match_debug_o (),
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 
