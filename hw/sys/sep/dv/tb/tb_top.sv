@@ -2955,13 +2955,12 @@ module sep_uvm_top
     // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
     // stimulus. Scope: the two state registers named below, for one cycle at
     // a time. Seeing the injected encoding on *_state_o confirms the force
-    // landed; it is not fail-closed evidence. After release the recovered
-    // encoding must be a legal idle/wait value (DUT-driven). Command
-    // withdraw and the error/done/busy/data terms are claimed only on the
-    // in-flight leg. The legal encodings 2'b01 idle and 2'b10 wait are the
-    // design's state encoding in efuse_read_interface.sv and
-    // efuse_program_interface.sv; this leaf grades recovery against that set
-    // and injects its complement. Owner:
+    // landed; it is not fail-closed evidence. The owner grades the error
+    // output and status field after each release; the recovered encoding,
+    // the in-flight command withdraw and the done/busy/data values are
+    // logged, not graded. The legal encodings 2'b01 idle and 2'b10 wait are
+    // the design's state encoding in efuse_read_interface.sv and
+    // efuse_program_interface.sv; the inject uses their complement. Owner:
     // sep_efuse_illegal_state_fail_closed_test.
     //
     // The registers are enum-typed and the injected encodings are not members

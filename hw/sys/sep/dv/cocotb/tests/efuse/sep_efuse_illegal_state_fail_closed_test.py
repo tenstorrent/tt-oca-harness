@@ -33,7 +33,10 @@ Logged, not graded: no authored text states the FSM encodings or the outputs
 of an interface after an illegal state. The withdrawal of the in-flight read
 command, the recovered state, the bank request after the release, and the
 done, busy and read-back data values are OBS lines (OBS-READ-SUPPRESS,
-OBS-READ-FAILCLOSED, OBS-PROGRAM-FAILCLOSED-STATUS).
+OBS-READ-FAILCLOSED, OBS-PROGRAM-FAILCLOSED-STATUS), and so is the clock at
+which a new go clears the read error (OBS-READ-ERR-CLEAR-EDGE). The idle
+program injection has no go pending, so its no-command term fails only if the
+illegal state itself issues a request; the error term carries that check.
 
 The leaf also grades the read-error lifecycle on the same interface:
 
@@ -295,7 +298,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
         self.logger.info(
-            "INFO-READ-ERR-CLEAR-EDGE err_after_cleanup=%d err_after_go=%d graded=0",
+            "OBS-READ-ERR-CLEAR-EDGE err_after_cleanup=%d err_after_go=%d graded=0",
             err_after_cleanup,
             err_after_go,
         )
