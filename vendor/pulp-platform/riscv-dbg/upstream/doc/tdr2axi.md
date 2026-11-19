@@ -46,7 +46,7 @@ header of each file).
 
 **Name**         | **Valid values**      | **Default**            | **Description**
 ---------------- | --------------------- | ---------------------- | -----------------------------------------------------------
-`AXI4_LITE`      | 0, 1                  | 0                      | 1: AXI4-Lite manager, 0: AXI4 manager
+`USE_AXI_LITE`   | 0, 1                  | 0                      | 1: AXI4-Lite manager, 0: AXI4 manager
 `AXI_ADDR_WIDTH` | 2..64 / 3..64 (1)     | 64                     | AXI address width; also `sbcs.sbasize`
 `AXI_DATA_WIDTH` | 32, 64                | 64                     | AXI data width; also the largest SBA access size
 `AXI_PROT`       | 3 bits                | `3'b010`               | AxPROT of every transaction (non-secure, unprivileged, data)

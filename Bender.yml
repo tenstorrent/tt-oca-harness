@@ -230,10 +230,10 @@ vendor_package:
     patch_dir: "vendor/pulp-platform/register_interface/patches"
 
   # riscv-dbg: the tdr2axi TDR-to-AXI bridge and the Debug Module register and System Bus
-  # Access sources it instantiates. The rev is on the fork branch bmelton/tdr2axi-param-rename.
+  # Access sources it instantiates. The rev is on the fork branch tt/master.
   - name: riscv-dbg
     target_dir: "vendor/pulp-platform/riscv-dbg/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-riscv-dbg.git", rev: "b25e677a3035748be1ca6300c3169e0e02798938" }
+    upstream: { git: "https://github.com/tenstorrent/tt-riscv-dbg.git", rev: "71278cb80aef7ccc35f08dd31959b5fe025acdb4" }
     include_from_upstream:
       - "LICENSE"
       - "src/dm_pkg.sv"

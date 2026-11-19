@@ -6,9 +6,9 @@
 //   TDR to AXI bridge using the RISC-V Debug Module System Bus Access (SBA).
 //
 //     41-bit DMI TDR -> dmi_tdr_bridge -> dm_csrs -> dm_sba -> mem port
-//       AXI4_LITE = 1: axi_lite_from_mem            -> AXI4-Lite manager
-//       AXI4_LITE = 0: axi_from_mem (+ lite_to_axi) -> AXI4 manager (single beat,
-//                                                     AxSIZE = sbcs.sbaccess)
+//       USE_AXI_LITE = 1: axi_lite_from_mem            -> AXI4-Lite manager
+//       USE_AXI_LITE = 0: axi_from_mem (+ lite_to_axi) -> AXI4 manager (single beat,
+//                                                         AxSIZE = sbcs.sbaccess)
 //
 //   Only the SBA registers are useful: there is no hart behind this DM, so hart 0
 //   reports unavailable and every abstract command fails with "not supported".
@@ -29,7 +29,7 @@
 //   cannot reset the system through tdr2axi.
 
 module tdr2axi #(
-    parameter bit              AXI4_LITE      = 1'b0,
+    parameter bit              USE_AXI_LITE   = 1'b0,
     parameter int unsigned     AXI_ADDR_WIDTH = 64,
     parameter int unsigned     AXI_DATA_WIDTH = 64,
     // Non-secure, unprivileged, data
@@ -244,7 +244,7 @@ module tdr2axi #(
   // ---------------------------------------------------------------------------
   // Mem port -> AXI4 / AXI4-Lite (dm_sba has one request in flight at a time)
   // ---------------------------------------------------------------------------
-  if (AXI4_LITE) begin : g_axi_lite
+  if (USE_AXI_LITE) begin : g_axi_lite
     axi_lite_from_mem #(
         .MemAddrWidth(AXI_ADDR_WIDTH),
         .AxiAddrWidth(AXI_ADDR_WIDTH),
