@@ -582,6 +582,122 @@ args = [
 ]
 
 [[tests]]
+# 0x110 leaves mem_repair_success clear; STRAPS_LO[13] must skip only the repair check.
+name = "sep_firmware_repair_bypass_test"
+module = "rom_fw.sep_firmware_repair_bypass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "mbist", "bypass", "strap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_dft_status=00000110",
+  "+sep_straps_lo=00002000",
+]
+
+[[tests]]
+# 0x1002 sets mbist_abort; STRAPS_HI[22] must skip only the MBIST check.
+name = "sep_firmware_mbist_bypass_test"
+module = "rom_fw.sep_firmware_mbist_bypass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "mbist", "bypass", "strap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_dft_status=00001002",
+  "+sep_straps_hi=00400000",
+]
+
+[[tests]]
+# 0x110 without the bypass strap: the memory-repair check halts the ROM before C.
+name = "sep_firmware_repair_fail_test"
+module = "rom_fw.sep_firmware_repair_fail_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_dft_status=00000110",
+]
+
+[[tests]]
+# 0x1002 without the bypass strap: the MBIST abort check halts the ROM before C.
+name = "sep_firmware_mbist_abort_test"
+module = "rom_fw.sep_firmware_mbist_abort_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_dft_status=00001002",
+]
+
+[[tests]]
+# 0x2 never sets mbist_done: the bounded poll ends in the same terminal handler.
+name = "sep_firmware_mbist_timeout_test"
+module = "rom_fw.sep_firmware_mbist_timeout_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "mbist", "timeout", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_dft_status=00000002",
+]
+
+[[tests]]
+# STRAPS_LO[21] over a live SMC SRAM ring: cold_scratch[1] keeps reporting, the ring stays
+# untouched, and the boot passes like sep_firmware_mbist_pass_test.
+name = "sep_status_reporting_disabled_test"
+module = "rom_fw.sep_status_reporting_disabled_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "status", "strap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_dft_status=00000112",
+  "+sep_straps_lo=00200000",
+]
+
+[[tests]]
+# Boot-stall JTAG override of the SEP_SIP_ID shadow under TEST_DEV: the control boot passes on the
+# sensed identity, the override boot is refused on the package identity, and a re-sense restores
+# the OTP value.
+name = "sep_boot_stall_efuse_shadow_override_test"
+module = "rom_fw.sep_boot_stall_efuse_shadow_override_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "efuse", "manifest", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
+
+[[tests]]
 # Recovery boot: the primary_chiplet and boot_recovery straps take the SMC-SRAM manifest path, not
 # SPI.
 name = "sep_boot_recovery_test"
@@ -809,6 +925,99 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_cold_scratch7=C0000200",
+]
+
+[[tests]]
+# Runtime deposit after the first ROM start, then a wdt_rst_ni CPU reset: jump to the `j .`
+# handler that +sep_iccm_word places at C0000100.
+name = "sep_runtime_warm_reset_valid_test"
+module = "rom_fw.sep_runtime_warm_dispatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+runtime_warm_case=valid",
+  "+sep_iccm_word=C0000100:0000006f",
+]
+
+[[tests]]
+# A runtime write of 0 before the warm reset must cold boot.
+name = "sep_runtime_warm_reset_zero_test"
+module = "rom_fw.sep_runtime_warm_dispatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+runtime_warm_case=zero",
+]
+
+[[tests]]
+# BFFFFFFC, the last word below ICCM and outside SEP SRAM, written at runtime must hang.
+name = "sep_runtime_warm_reset_below_range_test"
+module = "rom_fw.sep_runtime_warm_dispatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+runtime_warm_case=below",
+]
+
+[[tests]]
+# C0040000, the ICCM end, written at runtime must hang.
+name = "sep_runtime_warm_reset_upper_bound_test"
+module = "rom_fw.sep_runtime_warm_dispatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+runtime_warm_case=upper",
+]
+
+[[tests]]
+# C0000200 is accepted but ICCM holds no code there (no TCM staging), so the ROM must fault.
+name = "sep_runtime_warm_reset_bad_instruction_test"
+module = "rom_fw.sep_runtime_warm_dispatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+runtime_warm_case=bad_instruction",
+]
+
+[[tests]]
+# Jump, unarmed warm reset cold boots, runtime re-arm jumps again: the slot is one-shot.
+name = "sep_runtime_warm_reset_one_shot_rearm_test"
+module = "rom_fw.sep_runtime_warm_dispatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+runtime_warm_case=one_shot_rearm",
+  "+sep_iccm_word=C0000100:0000006f",
 ]
 
 [[tests]]
@@ -2933,6 +3142,24 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# Secondary chiplet secure boot: each seed grades one {PROD, PROD_END} x {signed, unsigned,
+# corrupt_signature} cell from the SMC-SRAM image the testcase writes.
+name = "sep_secondary_secure_boot_rand_test"
+module = "rom_fw.sep_secondary_secure_boot_rand_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+reseed = 24
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "secure", "crypto", "manifest", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
 ]
 
 [[tests]]
