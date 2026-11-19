@@ -137,7 +137,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          value, and BASE, LIMIT and DST_ADDR_LO, read before
                          GO, read back the alias-form values written.
 
-Logged only: ``INFO-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
+Logged: ``INFO-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract), and
 ``zero_words``, which CHK-DMA-ZERO-ABORT grades (``chk=CHK-DMA-ZERO-ABORT``);
 ``OBS-DMA-ZF-BASELIM``, STATUS, ERROR_CODE, the AW list (address, WSTRB) and the

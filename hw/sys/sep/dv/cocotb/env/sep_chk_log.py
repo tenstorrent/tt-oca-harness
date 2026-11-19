@@ -21,13 +21,14 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   grades, in the same leaf or in another leaf. That INFO line names its
   ``CHK-``, and its leaf when the check is in another leaf. ``INFO-`` also
   logs a DUT value that no check of the leaf grades and that no open
-  specification question asks for: the specification states its
+  specification question of this leaf asks for: the specification states its
   golden but the leaf does not grade it; an ``OBS-`` line of another leaf
   holds the open question; or no specification states its golden, and no
   open question asks for it because the value changes no firmware,
   integration or security behaviour. The test contract says which values
-  are not graded. On the cells where a ``CHK-`` of the same leaf compares the
-  value, the line names that check as ``chk=CHK-<NAME>``.
+  are not graded. When the line also prints a value that a ``CHK-`` of the
+  same leaf compares, the line names that check as ``chk=CHK-<NAME>`` on
+  those cells only.
   ``obs()``, ``blocked()`` and ``info()`` grade nothing.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
