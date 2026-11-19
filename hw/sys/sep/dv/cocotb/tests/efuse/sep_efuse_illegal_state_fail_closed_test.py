@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse read and program FSMs fail closed from an illegal state.
+"""eFuse read and program FSMs stay in service after an illegal state.
 
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
 state. ``hw/ip/efuse/doc/architecture.adoc`` (State Machine Architecture) says
@@ -11,40 +11,47 @@ probe during the live control operation before any injection (idle and in
 flight). CTRL-READ-STATES requires exactly two for the read machine;
 CTRL-PROGRAM-STATES requires at least two and fewer than four for the program
 machine. The leaf injects every other two-bit value for one cycle. Those codes
-have no frontdoor. No document states which encoding a machine takes after an
-encoding outside its states, so OBS-READ-RECOVER-STATE and
-OBS-PROGRAM-RECOVER-STATE log the recovered encoding without a verdict.
+have no frontdoor.
 
-The recovery this leaf grades is DV-owned:
+No allowed source states the response of either interface to an encoding
+outside its states. ``doc/trm/meta/ocah_hsr_table.adoc`` (OCAH-HSR-SEP-011)
+requires that a transition to an illegal state is detected and that an error
+signal leaves OCAH, and names no signal for these interfaces. So the recovery
+is logged without a verdict:
 
-* an in-flight read command is withdrawn while the illegal encoding is held;
-* on the next edge the read interface reports done and not busy with the error
-  set, issues no command, and does not hand back the sensed fuse word;
-* an idle program interface issues no bank command after the release. Its
-  pre-settled retirement status is not graded.
+* OBS-READ-SUPPRESS: the read bank request while the illegal encoding is held
+  on a read in flight;
+* OBS-READ-FAILCLOSED: the read bank request, error, done, busy and read-back
+  data one edge after the release, and whether the data equals the sensed word;
+* OBS-PROGRAM-FAILCLOSED: the program bank request and status one edge after
+  an idle injection is released;
+* OBS-READ-RECOVER-STATE, OBS-PROGRAM-RECOVER-STATE: the recovered encoding.
+
+The graded outcome is that each machine serves a frontdoor operation after the
+injections (CHK-READ-ALIVE, CHK-PROGRAM-ALIVE). ``efuse_interface_ctrl.rdl``
+(``EFUSE_READ_CTRL.efuse_read_go``, ``EFUSE_PROGRAM_CTRL.efuse_program_go``)
+states that a go triggers the operation.
 
 The leaf also grades the read-error lifecycle on the same interface:
 
-* a successful read retires with read_error_o clear, a read that outlives
+* a successful read, started with read_error_o set, retires with the error
+  clear and returns the staged word; a read that outlives
   EFUSE_READ_REQ_TIMEOUT retires with the error set, and the next legal read
   after it retires with the error clear (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT,
   -CLEAR-REQUEST). ``efuse_interface_ctrl.rdl`` (``EFUSE_READ_CTRL``):
   ``read_done`` "the read has completed, the status of which is in
   read_status", and ``read_status`` is "Set when read_go is asserted while read
   is not enabled, the address is out of bounds, or the read request times
-  out". No text states the clock on which the flag of the earlier read clears,
-  so OBS-READ-ERR-REQUEST-EDGE logs it one edge after the go;
+  out". A go without read_enable sets the error before the successful read
+  (CTRL-READ-ERR-PRE). No text states the clock on which the flag of the
+  earlier read clears, so OBS-READ-ERR-REQUEST-EDGE logs it one edge after the
+  go;
 * with secure_tm latched, a read retires with the error set and zero data
   (CHK-READ-ERR-BLOCKED).
 
-Failing closed is the point: an FSM that resumed a read from a corrupted state
-could return fuse data it never legitimately fetched.
-
 Every check is on a DUT output. The injections are bracketed by a frontdoor OTP
 read that must move the machine: fuse sense does not use this FSM, so only a
-real EFUSE_READ_CTRL read is a control. Without it the recovery checks hold on a
-block that never moves, which reports "no command issued, error set" whatever
-the state was.
+real EFUSE_READ_CTRL read is a control.
 """
 
 from __future__ import annotations
@@ -70,6 +77,9 @@ _MAX_SENSE_CYCLES = 20_000
 # so a recovery that returns 0 would match it. A recovery must not hand the
 # sensed spare back.
 _CONTROL_FIELD = "SPARE0"
+# CHK-READ-ERR-CLEAR-SUCCESS reads a different spare word, staged to differ
+# from the control word, so the read-data register cannot already hold it.
+_SUCCESS_FIELD = "SPARE1"
 
 # A SPARE word: programming one bit of it disturbs no graded field, and OTP is
 # write-once so the control must pick a fresh bit each time it runs.
@@ -78,6 +88,7 @@ _CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
 _READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
 _READ_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_ADDR")
 _READ_TIMEOUT = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_REQ_TIMEOUT")
+_READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_INTERFACE_READ_DATA")
 _GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_read_go")
 _ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable")
 # `read_req_timout_enable` -- the field name carries a typo in
@@ -124,7 +135,7 @@ _PROGRAM_BITS_NEEDED = 2 + _MAX_UNSEEN
 
 @pyuvm.test()
 class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
-    """Illegal FSM encodings recover legally; an in-flight read fails closed."""
+    """Both eFuse FSMs serve operations after illegal encodings; recovery is logged."""
 
     required_evidence = (
         "CHK-READ-ALIVE",
@@ -133,21 +144,15 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         "CHK-READ-ERR-TIMEOUT",
         "CHK-READ-ERR-CLEAR-REQUEST",
         "CHK-READ-ERR-BLOCKED",
-        "CHK-READ-HELD",
-        "CHK-READ-SUPPRESS",
-        "CHK-READ-FAILCLOSED",
-        "CHK-PROGRAM-FAILCLOSED",
     )
-    min_evidence = 10
+    min_evidence = 6
 
     async def _assert_read_alive(self, tag: str) -> None:
-        """Positive control: a frontdoor OTP read presents a bank command.
+        """A frontdoor OTP read presents a bank command.
 
-        Graded on the same signal the suppression checks use, so the control
-        and the check cannot disagree about what "a command" means. Fuse sense
-        does not drive this interface -- it serves the EFUSE_READ_CTRL
-        frontdoor -- so only a real direct read is a control. Without it,
-        "no command issued" holds on an interface that never issues one.
+        Graded on the same signal the OBS- recovery lines log. Fuse sense does
+        not drive this interface -- it serves the EFUSE_READ_CTRL frontdoor --
+        so only a real direct read moves it.
         """
         seen_active = False
         stop = Event()
@@ -169,8 +174,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         assert seen_active, (
             f"CHK-READ-ALIVE FAIL ({tag}): a frontdoor OTP read presented no command to "
-            "the fuse bank, so the suppression checks would hold on an interface that "
-            "never issues one"
+            "the fuse bank"
         )
         self.logger.info("CHK-READ-ALIVE PASS (%s): a frontdoor OTP read drove a bank command", tag)
 
@@ -205,17 +209,73 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 return probe
         raise AssertionError(f"the read interface never asserted read_done within {limit} cycles")
 
+    async def _go_and_retire(self, ctrl: int, limit: int = 400) -> tuple[bool, tuple]:
+        """Write ``ctrl`` to EFUSE_READ_CTRL and wait until the read retires.
+
+        Returns whether busy rose or done fell after the write started, and the
+        probe on the first edge with done set after that.
+        """
+        dut = cocotb.top
+        kick = cocotb.start_soon(self._csr(SepAxiOp.WRITE, _READ_CTRL, ctrl))
+        moved = False
+        try:
+            for _ in range(limit):
+                await RisingEdge(dut.clk_i)
+                probe = await self._read_probe()
+                moved = moved or bool(probe[1]) or not probe[0]
+                if moved and probe[0] and not probe[1]:
+                    return moved, probe
+            return moved, await self._read_probe()
+        finally:
+            await kick
+
     async def _read_error_lifecycle(self) -> None:
         """read_error_o is set by a failure and cleared by the next request."""
-        # 1. A successful read leaves the error flag clear (ReadSuccessClearsError).
-        await self.start_seq(sep_efuse_direct_read_seq(self._control_word))
-        done, busy, err, _ = await self._read_probe()
-        assert (done, busy, err) == (1, 0, 0), (
-            f"CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful read reported done={done} "
-            f"busy={busy} error={err}, expected 1/0/0"
+        # 1. A successful read started with the error set retires with it clear.
+        #    A go without read_enable sets read_status (efuse_interface_ctrl.rdl,
+        #    EFUSE_READ_CTRL.read_status), so a lost go leaves error=1.
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO)
+        pre = await self._await_read_done()
+        pre_data = await self._csr(SepAxiOp.READ, _READ_DATA)
+        assert pre[2] == 1 and pre_data != self._success_value, (
+            f"CTRL-READ-ERR-PRE FAIL: after a go without read_enable done={pre[0]} "
+            f"busy={pre[1]} error={pre[2]} data=0x{pre_data:08x}, expected error=1 and "
+            f"data other than the staged {_SUCCESS_FIELD} word 0x{self._success_value:08x}"
         )
         self.logger.info(
-            "CHK-READ-ERR-CLEAR-SUCCESS PASS: a completed read reports done, not busy, no error"
+            "CTRL-READ-ERR-PRE PASS: before the successful read done=%d busy=%d error=%d "
+            "data=0x%08x (staged %s word 0x%08x)",
+            *pre[:3],
+            pre_data,
+            _SUCCESS_FIELD,
+            self._success_value,
+        )
+        addr = _place(
+            EFUSE_INTERFACE_CTRL, "EFUSE_READ_ADDR", "efuse_addr", self._success_word * 32
+        )
+        await self._csr(SepAxiOp.WRITE, _READ_ADDR, addr)
+        moved, (done, busy, err, _) = await self._go_and_retire(_GO | _ENABLE)
+        assert moved, (
+            "CTRL-READ-ERR-GO FAIL: after the go of the successful read busy never rose "
+            "and done never fell, so the read did not start"
+        )
+        self.logger.info(
+            "CTRL-READ-ERR-GO PASS: the go of the successful read raised busy or "
+            "dropped done before the read retired"
+        )
+        data = await self._csr(SepAxiOp.READ, _READ_DATA)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        assert (done, busy, err) == (1, 0, 0) and data == self._success_value, (
+            f"CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful read started with error=1 "
+            f"retired with done={done} busy={busy} error={err} data=0x{data:08x}, "
+            f"expected 1/0/0 and the staged {_SUCCESS_FIELD} word "
+            f"0x{self._success_value:08x}"
+        )
+        self.logger.info(
+            "CHK-READ-ERR-CLEAR-SUCCESS PASS: a read started with error=1 retired with "
+            "done=1 busy=0 error=0 data=0x%08x (staged 0x%08x)",
+            data,
+            self._success_value,
         )
 
         # 2. A read that outlives its timeout budget sets the error
@@ -311,13 +371,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         )
 
     async def _assert_program_alive(self, bit_offset: int) -> None:
-        """Positive control for the program machine.
-
-        The request half of CHK-PROGRAM-FAILCLOSED asserts that this interface
-        presents no command. A machine that never issues one -- because nothing
-        ever asks it to -- satisfies that on any RTL, so a real program must be
-        shown to move it first.
-        """
+        """A frontdoor OTP program presents a bank command."""
         seen_active = False
         stop = Event()
         dut = cocotb.top
@@ -337,9 +391,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await task
 
         assert seen_active, (
-            "CHK-PROGRAM-ALIVE FAIL: a frontdoor OTP program presented no command to "
-            "the fuse bank, so the suppression checks below would hold on an "
-            "interface that never issues one"
+            "CHK-PROGRAM-ALIVE FAIL: a frontdoor OTP program presented no command to the fuse bank"
         )
         self.logger.info(
             "CHK-PROGRAM-ALIVE PASS: a frontdoor OTP program drove a bank command (SPARE7 bit %d)",
@@ -410,16 +462,14 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def _assert_request_held(self, which: str, bit_addr: int) -> int:
         """Control: measure how many cycles the bank request stays asserted.
 
-        The suppression check injects while that request is high and requires it
-        to drop. That is only evidence if a machine left alone would have KEPT
-        it high across the same edge -- otherwise the request falls on its own,
-        for reasons the injection had nothing to do with, and "no command" holds
-        on any RTL. So measure the hold first, on unforced outputs, and require
-        it to outlast the one cycle the injection costs.
+        OBS-READ-SUPPRESS logs the request while the injected encoding is held.
+        A low request there means something only if a machine left alone keeps
+        it high across the same edge, so measure the hold first, on unforced
+        outputs, and require it to outlast the one cycle the injection costs.
         """
         held = await self._kick_and_catch(which, bit_addr)
         assert held, (
-            f"CHK-{which.upper()}-HELD FAIL: the {which} interface never presented a "
+            f"CTRL-{which.upper()}-HELD FAIL: the {which} interface never presented a "
             "command to the fuse bank, so there is no in-flight window to inject into"
         )
         cycles = 1
@@ -432,13 +482,12 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             cycles += 1
         await self._quiesce(which)
         assert cycles >= 2, (
-            f"CHK-{which.upper()}-HELD FAIL: the bank request was asserted for only "
+            f"CTRL-{which.upper()}-HELD FAIL: the bank request was asserted for only "
             f"{cycles} cycle -- it would fall on its own across the injection edge, so "
-            "the suppression check below could not tell a suppressing design from one "
-            "that does nothing"
+            "OBS-READ-SUPPRESS could not tell a withdrawn command from one that ended"
         )
         self.logger.info(
-            "CHK-%s-HELD PASS: the %s interface holds its bank request for %d cycles, "
+            "CTRL-%s-HELD PASS: the %s interface holds its bank request for %d cycles, "
             "so an injection lands inside a window where a legal machine keeps it high",
             which.upper(),
             which,
@@ -449,13 +498,13 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def _inject(
         self, which: str, state: int, bit_addr: int, *, in_flight: bool = True
     ) -> None:
-        """Force an illegal encoding while a real command is in flight.
+        """Force an illegal encoding for one cycle and log the recovery.
 
-        Injecting into an idle block would grade a request that is already low,
-        which holds whether or not the design suppresses anything. Here the
-        interface is mid-operation with its request asserted, so the drop to
-        zero is a consequence of the injection and a design that carried the
-        command through a corrupted state fails.
+        With ``in_flight`` the interface is mid-operation with its request
+        asserted and error and done low, so a change on the release edge
+        follows the injection. An idle injection starts from the status the
+        last command left. No allowed source states the recovery, so every
+        term is an OBS- line.
         """
         dut = cocotb.top
         en = getattr(dut, f"efuse_{which}_state_inject_en_i")
@@ -464,45 +513,17 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         if in_flight:
             held = await self._kick_and_catch(which, bit_addr)
             assert held, (
-                f"test bug: the {which} interface presented no command, so the injection "
-                "would land in an idle window and grade nothing"
+                f"CTRL-{which.upper()}-INJECT FAIL: the {which} interface presented no "
+                "command, so the injection would land in an idle window"
             )
 
-        # _quiesce clears only the interface-level efuse_req_error, so on a later
-        # idle injection error_o can still hold the previous leg's error; that leg
-        # rests on the state report and the bank request.
         await ReadOnly()
         err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
         done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
-
         if in_flight:
-            # A command is mid-operation, so error and done are both low going in
-            # and the 1/1/0 verdict below is a consequence of the injection.
             assert (err_before, done_before) == (0, 0), (
-                f"{which} error_o={err_before} done_o={done_before} before an "
-                "in-flight injection; the verdict terms must start low or they are "
-                "not attributable to it"
-            )
-        else:
-            # Idle-window injection. An idle interface has retired its last command
-            # and reports it, so error_o and done_o are both 1 here, on the first
-            # injection and on later ones.
-            # busy/req are idle-low for the same reason, and the data term compares
-            # the fixed refusal sentinel against an image word, which are never
-            # equal. So every term of the 1/1/0 + data verdict is settled before
-            # the injection and none of it grades suppression.
-            #
-            # What this leg does still grade is the state-report path: the injected
-            # encoding must appear on *_state_o and the interface must recover to a
-            # legal state afterwards. The asserts above and below check both.
-            self.logger.info(
-                "%s idle-window injection (%#04x): error_o=%d done_o=%d before the "
-                "injection, so the 1/1/0 terms are pre-settled and grade nothing "
-                "here -- this leg grades the state report and the recovery",
-                which,
-                state,
-                err_before,
-                done_before,
+                f"CTRL-{which.upper()}-INJECT FAIL: error_o={err_before} "
+                f"done_o={done_before} before an in-flight injection, expected 0/0"
             )
 
         await NextTimeStep()
@@ -510,33 +531,33 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         en.value = 1
         await RisingEdge(dut.clk_i)
 
-        # While the state is illegal, the in-flight command must be withdrawn.
         await ReadOnly()
         observed = int(getattr(dut, f"efuse_{which}_state_o").value)
         assert observed == state, (
-            f"test bug: {which} state reads {observed:#04x}, expected the injected "
-            f"{state:#04x} -- the force did not reach the register (inject "
-            "confirmation, not fail-closed evidence)"
+            f"CTRL-{which.upper()}-INJECT FAIL: {which} state reads {observed:#04x}, "
+            f"expected the injected {state:#04x} -- the force did not land"
         )
-        # Suppression is graded only on the in-flight leg: on an idle interface the
-        # bank request is already low, so requiring it low holds whether or not the
-        # design suppresses anything.
-        req = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
+        self.logger.info(
+            "CTRL-%s-INJECT PASS: state_o=%#04x injected=%#04x in_flight=%d "
+            "error_before=%d done_before=%d",
+            which.upper(),
+            observed,
+            state,
+            int(in_flight),
+            err_before,
+            done_before,
+        )
+        req_held = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
         if in_flight:
-            assert req == 0, (
-                f"CHK-{which.upper()}-SUPPRESS FAIL: the {which} interface still "
-                f"presented its in-flight command to the fuse bank while "
-                f"{which}_state_q held the illegal encoding {state:#04x}"
-            )
             self.logger.info(
-                "CHK-%s-SUPPRESS PASS: an accepted bank command was withdrawn within "
-                "one cycle of %s_state_q = %#04x",
+                "OBS-%s-SUPPRESS: cmd_req_valid=%d while state_o=%#04x on an in-flight "
+                "%s (1 before the injection)",
                 which.upper(),
+                req_held,
+                observed,
                 which,
-                state,
             )
 
-        # Release, then grade the recovery on the following edge.
         await NextTimeStep()
         en.value = 0
         await RisingEdge(dut.clk_i)
@@ -551,57 +572,29 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             ",".join(f"{v:#04x}" for v in seen),
             int(recovered in seen),
         )
-        assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
-            f"command while recovering from {state:#04x}"
-        )
-        # Sample the shared status/data shape. These terms are graded only for
-        # an in-flight read; an idle program interface has them pre-settled.
         data_probe = (
             dut.efuse_read_back_data_o if which == "read" else dut.efuse_program_read_back_data_o
         )
+        req = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
         err = int(getattr(dut, f"efuse_{which}_error_o").value)
         done = int(getattr(dut, f"efuse_{which}_done_o").value)
         busy = int(getattr(dut, f"efuse_{which}_busy_o").value)
         data = int(data_probe.value)
-        sensed = self._sensed_control_word
-        # The 1/1/0 status terms and the data mismatch are only attributable
-        # when the injection landed mid-operation (they start 0/0). An idle
-        # interface already reports a retired command, so those compares hold
-        # whether or not the illegal encoding did anything. Idle grades the
-        # bank request above.
-        if in_flight:
-            assert (err, done, busy) == (1, 1, 0), (
-                f"CHK-{which.upper()}-FAILCLOSED FAIL: recovering from {state:#04x} the "
-                f"{which} interface reported error={err} done={done} busy={busy}, "
-                "expected 1/1/0 -- a machine that recovers silently leaves the caller "
-                "believing its operation is still in flight"
-            )
-            assert data != sensed, (
-                f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
-                f"{data:#010x} recovering from {state:#04x}, which is the sensed "
-                f"control word -- a leaked fuse value the operation never "
-                "legitimately fetched"
-            )
-            self.logger.info(
-                "CHK-%s-FAILCLOSED PASS: recovered from %#04x mid-operation "
-                "(state now %#04x), no bank command, error and done set, not busy, "
-                "data 0x%08x is not the sensed control word 0x%08x",
-                which.upper(),
-                state,
-                recovered,
-                data,
-                sensed,
-            )
-        else:
-            self.logger.info(
-                "CHK-%s-FAILCLOSED PASS: released from %#04x injected while idle "
-                "(state now %#04x), no bank command; 1/1/0 and data are "
-                "pre-settled on an idle interface and are not graded",
-                which.upper(),
-                state,
-                recovered,
-            )
+        self.logger.info(
+            "OBS-%s-FAILCLOSED: one edge after the release of %#04x (in_flight=%d): "
+            "cmd_req_valid=%d error=%d done=%d busy=%d data=0x%08x "
+            "data_is_sensed_word=%d (sensed=0x%08x)",
+            which.upper(),
+            state,
+            int(in_flight),
+            req,
+            err,
+            done,
+            busy,
+            data,
+            int(data == self._sensed_control_word),
+            self._sensed_control_word,
+        )
         await self._quiesce(which)
 
     def _unseen_states(self, which: str) -> list[int]:
@@ -661,22 +654,27 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         if (img.words[self._control_word] & 0xFFFF_FFFF) == 0:
             img.words[self._control_word] = 0xA5A5_5A5A
         self._sensed_control_word = img.shadow_word(self._control_word)
-        assert self._sensed_control_word != 0, (
-            f"test bug: {_CONTROL_FIELD} word {self._control_word} is staged "
-            "as 0, so a recovery that returns zero would not be "
-            "distinguishable from a leaked fuse word"
+        self._success_word = img.field(_SUCCESS_FIELD).word
+        staged = img.words[self._success_word] & 0xFFFF_FFFF
+        if staged in (0, self._sensed_control_word):
+            img.words[self._success_word] = (
+                ~self._sensed_control_word & 0xFFFF_FFFF
+            ) or 0x5A5A_A5A5
+        self._success_value = img.shadow_word(self._success_word)
+        assert 0 not in (self._sensed_control_word, self._success_value), (
+            f"test bug: {_CONTROL_FIELD} or {_SUCCESS_FIELD} is staged as 0, so a "
+            "zero read-back would match it"
         )
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
-        # Control first: prove the read path is live before grading a refusal.
-        # The live operations also record the encodings each machine shows.
+        # The live operations record the encodings each machine shows.
         self._seen_states: dict[str, set[int]] = {"read": set(), "program": set()}
         await self._assert_read_alive("before")
         await self._assert_program_alive(pg_bits[0])
         injected = {w: self._unseen_states(w) for w in ("read", "program")}
 
-        # Establish the in-flight window before grading a withdrawal inside it.
+        # Establish the in-flight window before logging a withdrawal inside it.
         await self._assert_request_held("read", self._control_word * 32)
 
         for state in injected["read"]:
@@ -684,14 +682,13 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # Idle window, not in flight. Aborting an ACCEPTED program parks the
         # example shim's write FSM (see the VPLAN section of this test), and
         # every later leg that resenses would then read a corrupted shadow
-        # word. The read leg is the one that observes a withdrawal.
+        # word. The read leg is the one that logs a withdrawal.
         for state, pg_bit in zip(injected["program"], pg_bits[2:]):
             await self._inject(
                 "program", state, _CONTROL_PROGRAM_WORD * 32 + pg_bit, in_flight=False
             )
 
-        # The block still works afterwards: recovery returned it to service
-        # rather than wedging it.
+        # Both machines serve a frontdoor operation after the injections.
         await self._assert_read_alive("after")
         # A fresh bit: OTP is write-once, so programming pg_bits[0] again would not
         # issue a command and the control would fail for the wrong reason.
@@ -705,6 +702,6 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # for the legs above.
         await self._read_blocked_by_secure_tm()
         self.logger.info(
-            "illegal-state fail-closed ALL CHECKS PASS: both FSMs, every encoding "
-            "outside the live states, read path live before and after"
+            "illegal-state ALL CHECKS PASS: both FSMs, every encoding outside the "
+            "live states injected, read and program paths live after"
         )

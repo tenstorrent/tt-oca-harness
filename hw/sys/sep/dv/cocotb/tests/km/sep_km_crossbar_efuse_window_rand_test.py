@@ -325,6 +325,8 @@ RC_BUSY = _f(R_READ, "read_busy")
 RC_GO = _f(R_READ, "efuse_read_go")
 RC_ADDR_MASK = _f(R_RADDR, "efuse_addr")
 RC_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb(R_RADDR, "efuse_addr")
+PC_ADDR_RESET = EFUSE_INTERFACE_CTRL.field_reset(R_PADDR, "efuse_addr")
+RC_ADDR_RESET = EFUSE_INTERFACE_CTRL.field_reset(R_RADDR, "efuse_addr")
 
 # --- test parameters ----------------------------------------------------------
 
@@ -2107,16 +2109,17 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         # of each path follow a cold reset of their own, and no start runs on
         # either interface between that reset and the goes, so each go starts
         # with done = 0 and gives a done rise. After each go the interface taps
-        # read done = 1 and busy = 0. A non-zero target address differs from the
-        # EFUSE_READ_ADDR reset value, so its readback shows the address write landed.
+        # read done = 1 and busy = 0. A target address that differs from the
+        # address register reset value shows by its readback that the write landed.
         for path in ("km", "host"):
             tgt = fp.targets["tm_km_spare" if path == "km" else "tm_host_spare"]
             r = tm_res[path]
             otp = r["otp"]
             rd_addr = _word_bit_addr(tgt)
-            if not rd_addr or not tgt.address:
+            if rd_addr == RC_ADDR_RESET or tgt.address == PC_ADDR_RESET:
                 problems.append(
-                    f"path={path}: target address 0 equals the address register reset value"
+                    f"path={path}: target address 0x{tgt.address:x} equals the address "
+                    "register reset value"
                 )
             if otp["addr"] != rd_addr:
                 problems.append(

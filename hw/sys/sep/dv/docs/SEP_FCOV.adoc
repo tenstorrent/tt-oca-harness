@@ -674,7 +674,7 @@ shift.
 
 ==== `sep_efuse_fail_closed_cg`
 
-*Description*: An eFuse read or program FSM recovers from an illegal state
+*Description*: An eFuse read or program FSM is forced to an illegal state
 encoding.
 
 [cols="2,5",options="header"]
@@ -688,8 +688,8 @@ encoding.
 The two illegal encodings are separate cells: they fail the legal-set
 test for different reasons, so a recovery written as a comparison against one
 value would fill one cell and leave the other dead. The cells record that the
-injection matrix was walked, not that the recovery was correct -- that stays on
-`CHK-READ-FAILCLOSED` and `CHK-PROGRAM-FAILCLOSED`. Because the DUT cannot reach
+injection matrix was walked, not that the recovery was correct; the recovery is
+logged as `OBS-READ-FAILCLOSED` and `OBS-PROGRAM-FAILCLOSED`. Because the DUT cannot reach
 these encodings, a hit records testbench injection by construction.
 
 ==== `sep_lc_state_cg`

@@ -69,6 +69,11 @@ Checkers:
                     completes the operation with an error;
                     ``efuse_interface_ctrl.rdl:143`` ``read_done``, ``:149``
                     ``read_status``). The line prints both values and the expected 1.
+                    Control CTRL-LOCK-READ-PRE: an accepted read of ``LOCKS`` runs
+                    first, and ``EFUSE_READ_CTRL`` read before the go shows
+                    ``read_done`` 1 and ``read_status`` 0, so the Error is set by
+                    this request; the line prints ``pre_read_done`` and
+                    ``pre_read_status``.
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -490,13 +495,23 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         await self._wr(STATUS_ADDR, _CLEAR3)
         return await self._req_err_now()
 
-    async def _read_if(self, bit_addr: int) -> dict[str, Any]:
+    async def _read_if(self, bit_addr: int, *, prime: bool = False) -> dict[str, Any]:
         """Read bit ``bit_addr`` through the read interface: go, full W, status, disable.
 
         ``efuse_req_error`` is sticky, so the request reads it before the go
         (``pre_req_err``) and after its own clear (``clr_req_err``); a blocked read
-        graded on a flag that was already set cannot pass.
+        graded on a flag that was already set cannot pass. ``read_done`` and
+        ``read_status`` hold the last request's value, so the request also reads
+        ``EFUSE_READ_CTRL`` before the go (``pre_done``, ``pre_status``). With
+        ``prime`` an accepted read of ``LOCKS`` (no lock slot) runs first, so a
+        blocked request starts from ``read_status`` 0.
         """
+        if prime:
+            await self._wr(READ_ADDR_ADDR, read_addr_word(bit_address("LOCKS")))
+            await self._wr(READ_CTRL_ADDR, read_ctrl_word())
+            await ClockCycles(cocotb.top.clk_i, self.w)
+            await self._wr(READ_CTRL_ADDR, 0)
+        pre_ctrl = await self._rd32(READ_CTRL_ADDR)
         pre = await self._req_err_now()
         addr = read_addr_word(bit_addr)
         await self._wr(READ_ADDR_ADDR, addr)
@@ -514,6 +529,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "status": _bit(ctrl, _RD_STATUS),
             "req_err": _bit(st, _REQ_ERR),
             "pre_req_err": pre,
+            "pre_done": _bit(pre_ctrl, _RD_DONE),
+            "pre_status": _bit(pre_ctrl, _RD_STATUS),
             "clr_req_err": "na",
         }
         if r["req_err"] or r["status"]:
@@ -744,7 +761,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             f["rd_pre_req_err"] = "na"
             f["rd_clr_req_err"] = "na"
         else:
-            r = await self._read_if(read_bit["addr"])
+            r = await self._read_if(read_bit["addr"], prime=bool(rl))
             f["rd_if"] = "blocked" if rl else "accepted"
             f["rd_req_err"] = r["req_err"]
             f["rd_pre_req_err"] = r["pre_req_err"]
@@ -759,6 +776,17 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
+                self._control(
+                    "LOCK-READ-PRE",
+                    r["pre_done"] == 1 and r["pre_status"] == 0,
+                    slot=slot,
+                    field=name,
+                    bit_addr=read_bit["addr"],
+                    pre_read_done=r["pre_done"],
+                    exp_pre_read_done=1,
+                    pre_read_status=r["pre_status"],
+                    exp_pre_read_status=0,
+                )
                 self._grade(
                     "LOCK-READ-DONE",
                     r["done"] == 1 and r["status"] == 1,
@@ -766,6 +794,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     slot=slot,
                     field=name,
                     bit_addr=read_bit["addr"],
+                    pre_read_done=r["pre_done"],
+                    pre_read_status=r["pre_status"],
                     read_done=r["done"],
                     exp_read_done=1,
                     read_status=r["status"],

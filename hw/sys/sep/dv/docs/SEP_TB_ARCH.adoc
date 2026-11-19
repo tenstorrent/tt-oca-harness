@@ -1243,9 +1243,9 @@ Exceptions (a closed set):
   Owner: `sep_efuse_shim_response_fault_test`.
 * *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
   `efuse_program_state_inject_i` with their enables force `read_state_q` /
-  `program_state_q` for one cycle at a time. The only legal encodings are
-  2'b01 and 2'b10, so the fail-closed recovery specified for 2'b00 and 2'b11
-  has no frontdoor. Scope is those two registers and nothing else — never the
+  `program_state_q` for one cycle at a time. The frontdoor reaches only the
+  live encodings the leaf observes on `*_state_o`, so an encoding outside that
+  set has no frontdoor. Scope is those two registers and nothing else — never the
   error, data, busy or request outputs the checkers read. Owner:
   `sep_efuse_illegal_state_fail_closed_test`.
 * *RMA-SIP digest test-enable inject* — `token_digest_test_en_inject_i`

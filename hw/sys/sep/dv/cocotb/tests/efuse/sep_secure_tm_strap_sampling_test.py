@@ -663,7 +663,10 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._edge()
         low = self._window(a, rel - 1)
         strap_low = self._window(a, rel - 1, "strap")
-        assert all(s == 1 for s in strap_low), f"leg A: strap not 1 during the reset: {strap_low}"
+        assert strap_low and all(s == 1 for s in strap_low), (
+            f"CHK-STM-CLEAR FAIL: test_en_strap_i not 1 during the reset at samples "
+            f"{[a + i for i, v in enumerate(strap_low) if v != 1][:8]}"
+        )
         # Sample a is the edge on which rst_ni falls: no clk_i edge has seen it low yet.
         late = [a + 1 + i for i, v in enumerate(low[1:]) if v != 0]
         assert len(low) >= 2 and not late, (
@@ -672,7 +675,10 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         self.logger.info(
             "CHK-STM-CLEAR PASS: rst_ni low -> secure_tm_o=0 from the first clk_i edge with "
-            "rst_ni low to the release, strap=1 edges_low=%d ones_while_low=%d control_legA=1",
+            "rst_ni low to the release, strap_high_samples=%d/%d edges_low=%d "
+            "ones_while_low=%d control_legA=1",
+            sum(1 for v in strap_low if v == 1),
+            len(strap_low),
             len(low) - 1,
             sum(1 for v in low if v == 1),
         )
@@ -725,15 +731,15 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 "INFO-LEG-B event=%s strap=0 samples=%d..%d secure_tm_o=1", ev, e0, e1 - 1
             )
         b1 = self._now() - 1
-        strap_b = self._window(b0, b1, "strap")
-        assert all(s == 0 for s in strap_b), "leg B: the strap did not stay at 0"
+        n_strap = self._strap_flipped(b0, b1 + 1, 0, "B")
         whole = self._window(fl, b1)
         assert all(v == 1 for v in whole), (
             f"CHK-STM-RETAIN FAIL: leg=B strap=0 secure_tm_o left 1 at samples "
             f"{[fl + i for i, v in enumerate(whole) if v != 1][:8]}"
         )
         retain.append(
-            f"leg=B events={','.join(graded)}{ungraded} strap=0 value=1 cycles={b1 - fl + 1}"
+            f"leg=B events={','.join(graded)}{ungraded} value=1 cycles={b1 - fl + 1} "
+            f"strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
 
@@ -744,15 +750,16 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._until(sense + c)
         dut.test_en_strap_i.value = 0
         f0 = self._now()
+        off = f0 - sense
         f1 = await self._hold()
         n_strap = self._strap_flipped(f0, f1, 0, "C strap 1->0")
         vals = self._window(f0, f1 - 1)
         assert all(v == 1 for v in vals), (
-            f"CHK-STM-RETAIN FAIL: leg=C strap 1->0 at sample {f0} (sense+{c}): secure_tm_o "
+            f"CHK-STM-RETAIN FAIL: leg=C strap 1->0 at sample {f0} (sense+{off}): secure_tm_o "
             f"left 1 at samples {[f0 + i for i, v in enumerate(vals) if v != 1][:8]}"
         )
         retain.append(
-            f"leg=C events=strap_1to0@sense+{c} value=1 cycles={f1 - f0} strap_samples={n_strap}"
+            f"leg=C events=strap_1to0@sense+{off} value=1 cycles={f1 - f0} strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
 
@@ -764,15 +771,16 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._until(sense + c)
         dut.test_en_strap_i.value = 1
         f0 = self._now()
+        off = f0 - sense
         f1 = await self._hold()
         n_strap = self._strap_flipped(f0, f1, 1, "C strap 0->1")
         vals = self._window(f0, f1 - 1)
         assert all(v == 0 for v in vals), (
-            f"CHK-STM-RETAIN FAIL: leg=C strap 0->1 at sample {f0} (sense+{c}): secure_tm_o "
+            f"CHK-STM-RETAIN FAIL: leg=C strap 0->1 at sample {f0} (sense+{off}): secure_tm_o "
             f"left 0 at samples {[f0 + i for i, v in enumerate(vals) if v != 0][:8]}"
         )
         retain.append(
-            f"leg=C events=strap_0to1@sense+{c} value=0 cycles={f1 - f0} strap_samples={n_strap}"
+            f"leg=C events=strap_0to1@sense+{off} value=0 cycles={f1 - f0} strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
 
