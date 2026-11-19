@@ -19,9 +19,9 @@ release after the clear is bounded by the gate path, not the sense.
 Each release (bring-up, TRST clear, override low over the pad) is also followed to the
 SMC's first ROM read request: a passive per-clk_smu sampler requires a first read request
 at word address 0x0000 (byte 0xC0040000, the cold-reset vector at the base of the ROM)
-within a declared liveness bound. On the TRST-clear and override legs, whose held windows
-outlast that latency, it also grades that no ROM read arrived while the fuse reset was
-held; the bring-up window is shorter and is logged only.
+within a declared liveness bound. The ROM reads seen while the fuse reset is held are
+logged as an observation and not graded: the window counted here is not held by the fuse
+reset alone, and its fuse-only part is shorter than the first-fetch latency.
 
 Must FAIL if sticky broken, if TRST fails to clear DEBUG_CONTROL, or if the
 GPIO pad holds the gate shut against an override that reads 0.
@@ -57,13 +57,11 @@ EXPECTED_FENCE = [
     "S3 cold+stall hold",
     "S4 TRST-clear release",
     "CHK-FIRST-FETCH-AFTER-RELEASE trst-clear",
-    "CHK-NO-FETCH-WHILE-HELD trst-clear",
     "S5 sticky re-assert",
     "S6 pad-only hold",
     "S6 both-sources hold",
     "S7 override-low release",
     "CHK-FIRST-FETCH-AFTER-RELEASE ovrd-low-over-pad",
-    "CHK-NO-FETCH-WHILE-HELD ovrd-low-over-pad",
 ]
 
 
@@ -81,7 +79,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         sampler = RomFetchSampler(dut, log)
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await self.cfg.reset_done.wait()
-        sampler.begin_leg("bring-up", require_zero_count=True)
+        sampler.begin_leg("bring-up", record_count_at_arm=True)
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
 
@@ -91,10 +89,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         )
         sampler.mark("S2 bring-up release")
         sampler.check_held(log, "bring-up")
-        # The bring-up held window is shorter than the first-fetch latency: observed, not graded.
-        await sampler.check_first_fetch(
-            sb, log, "bring-up", expect_word_addr=FIRST_WORD_ADDR, grade_held=False
-        )
+        await sampler.check_first_fetch(sb, log, "bring-up", expect_word_addr=FIRST_WORD_ADDR)
 
         # --- Assert stall; cold reset with TRST high (DEBUG sticky) ---
         await jtag.write(
@@ -171,9 +166,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         sampler.check_clear_to_release(log, "trst-clear")
         sampler.mark("S4 TRST-clear release")
         sampler.check_held(log, "trst-clear")
-        await sampler.check_first_fetch(
-            sb, log, "trst-clear", expect_word_addr=FIRST_WORD_ADDR, grade_held=True
-        )
+        await sampler.check_first_fetch(sb, log, "trst-clear", expect_word_addr=FIRST_WORD_ADDR)
 
         # --- Sticky re-assert: must NOT re-gate fuse_reset ---
         await jtag.write(
@@ -280,7 +273,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         sampler.mark("S7 override-low release")
         sampler.check_held(log, "ovrd-low-over-pad")
         await sampler.check_first_fetch(
-            sb, log, "ovrd-low-over-pad", expect_word_addr=FIRST_WORD_ADDR, grade_held=True
+            sb, log, "ovrd-low-over-pad", expect_word_addr=FIRST_WORD_ADDR
         )
         sampler.check_fence(sb, log, EXPECTED_FENCE)
 

@@ -1787,7 +1787,7 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
 * TRST pulse (reset_tap) clears DEBUG_CONTROL / boot-stall exports
 * fuse_reset releases after TRST clear
 * Sticky: re-assert stall without primary reset does not re-gate fuse_reset
-* After each fuse-reset release (bring-up, TRST clear, override low over the pad) the SMC CPU makes its first ROM request at word address 0x0000 (byte 0xC004_0000, inside 0xC004_0000..0xC005_FFFF) within the declared bound, and, on the TRST-clear and override legs, makes no ROM request while the fuse reset is held (`hw/sys/smc/doc/rom.adoc:9-10` and `:22-24`, `hw/sys/smc/doc/cpu.adoc:145`)
+* After each fuse-reset release (bring-up, TRST clear, override low over the pad) the SMC CPU makes its first ROM request at word address 0x0000 (byte 0xC004_0000, inside 0xC004_0000..0xC005_FFFF) within the declared bound (`hw/sys/smc/doc/rom.adoc:9-10` and `:22-24`, `hw/sys/smc/doc/cpu.adoc:145`)
 
 *Test Procedure*:
 
@@ -1805,12 +1805,10 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
   release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
   not the sense latency) and stay released for 64 `clk_smu`.
 . Arm a per-`clk_smu` sampler of `smc_rom_read_count_o` and the ROM macro request before the bring-up;
-  per release leg require the first
-  request (`en`=1, `wmode`=0) within 524288 `clk_smu` of the release at word address 0x0000, logging
+  per release leg require the first request (`en`=1, `wmode`=0) within 524288 `clk_smu` of the release at word address 0x0000, logging
   the leg name and the measured latency; the bound is a test-declared liveness bound (32 x 4096
-  zero-fill writes at one per cycle, times 4) and the specification states none. On the TRST-clear
-  and override legs also require count 0 from the cold-reset release to the release edge, and a
-  held window longer than the measured latency; the bring-up window is shorter and is logged only.
+  zero-fill writes at one per cycle, times 4) and the specification states none. The ROM reads seen
+  before the release edge are logged per leg (`OBS-NO-FETCH-WHILE-HELD`) and not graded.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -1835,7 +1833,6 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 |`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released; in the cocotb view the per-`clk_smu` sampler times the release from the observed clear edge and requires the gate to read 1 on every sampled edge from the release edge, at least 64 of them
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
 |`CHK-FIRST-FETCH-AFTER-RELEASE` |Cocotb view only: per release leg the first ROM macro request (`en`=1, `wmode`=0) arrives within 524288 `clk_smu` of the fuse-reset release at word address 0x0000 (byte 0xC004_0000, inside the 128 KiB ROM window); one line per leg with the measured latency
-|`CHK-NO-FETCH-WHILE-HELD` |Cocotb view only: on the TRST-clear and override legs, whose held windows must be longer than the measured first-fetch latency, `smc_rom_read_count_o` reads 0 on every `clk_smu` from the cold-reset release to the fuse-reset release
 |`CHK-STALL-BASELINE` |SV-UVM shape only (`--framework uvm`): after the TAP reset the fuse reset is released, the sense is done and the stall override idle
 |`CHK-DEBUG-CONTROL-READBACK` |SV-UVM shape only (`--framework uvm`): the written DEBUG_CONTROL image reads back on its four software-owned bits and on the SMC exports
 |`CHK-STALL-STICKY` |SV-UVM shape only (`--framework uvm`): `STALL_COLD_STICKY` in the SV-UVM shape: the stall exports survive the cold reset and the fuse reset reads 0 on every hold-window clock after the sense completes
@@ -1852,7 +1849,7 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE` and `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` must each fail the run.
 
-*Scope limit*: The first-fetch and quiet-period checkers are carried by the cocotb view only; the SV-UVM view does not carry them. The core that fetched is not identified, and the response word and the zero-fill completion order are not graded.
+*Scope limit*: The first-fetch checker is carried by the cocotb view only; the SV-UVM view does not carry it. No ROM read while the fuse reset alone holds the CPU is graded (the held window is logged only). The core that fetched is not identified, and the response word and the zero-fill completion order are not graded.
 
 '''''
 
