@@ -17,9 +17,11 @@ anchored on smc_fuse_sense_done_o for the primary reset it follows, and the
 release after the clear is bounded by the gate path, not the sense.
 
 Each release (bring-up, TRST clear, override low over the pad) is also followed to the
-SMC's first ROM read request: a passive per-clk_smu sampler requires no ROM read while
-the fuse reset is held, then a first read request at word address 0x0000 (byte
-0xC0040000, the cold-reset vector at the base of the ROM) within a declared liveness bound.
+SMC's first ROM read request: a passive per-clk_smu sampler requires a first read request
+at word address 0x0000 (byte 0xC0040000, the cold-reset vector at the base of the ROM)
+within a declared liveness bound. On the TRST-clear and override legs, whose held windows
+outlast that latency, it also grades that no ROM read arrived while the fuse reset was
+held; the bring-up window is shorter and is logged only.
 
 Must FAIL if sticky broken, if TRST fails to clear DEBUG_CONTROL, or if the
 GPIO pad holds the gate shut against an override that reads 0.
@@ -51,18 +53,17 @@ FIRST_WORD_ADDR = 0x0000
 
 EXPECTED_FENCE = [
     "S2 bring-up release",
-    "CHK-NO-FETCH-WHILE-HELD bring-up",
     "CHK-FIRST-FETCH-AFTER-RELEASE bring-up",
     "S3 cold+stall hold",
     "S4 TRST-clear release",
-    "CHK-NO-FETCH-WHILE-HELD trst-clear",
     "CHK-FIRST-FETCH-AFTER-RELEASE trst-clear",
+    "CHK-NO-FETCH-WHILE-HELD trst-clear",
     "S5 sticky re-assert",
     "S6 pad-only hold",
     "S6 both-sources hold",
     "S7 override-low release",
-    "CHK-NO-FETCH-WHILE-HELD ovrd-low-over-pad",
     "CHK-FIRST-FETCH-AFTER-RELEASE ovrd-low-over-pad",
+    "CHK-NO-FETCH-WHILE-HELD ovrd-low-over-pad",
 ]
 
 
@@ -89,8 +90,11 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             dut, sb, log, phase="bring-up", name="fuse_reset released after bring-up sense"
         )
         sampler.mark("S2 bring-up release")
-        sampler.check_held(sb, log, "bring-up")
-        await sampler.check_first_fetch(sb, log, "bring-up", expect_word_addr=FIRST_WORD_ADDR)
+        sampler.check_held(log, "bring-up")
+        # The bring-up held window is shorter than the first-fetch latency: observed, not graded.
+        await sampler.check_first_fetch(
+            sb, log, "bring-up", expect_word_addr=FIRST_WORD_ADDR, grade_held=False
+        )
 
         # --- Assert stall; cold reset with TRST high (DEBUG sticky) ---
         await jtag.write(
@@ -166,8 +170,10 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         )
         sampler.check_clear_to_release(log, "trst-clear")
         sampler.mark("S4 TRST-clear release")
-        sampler.check_held(sb, log, "trst-clear")
-        await sampler.check_first_fetch(sb, log, "trst-clear", expect_word_addr=FIRST_WORD_ADDR)
+        sampler.check_held(log, "trst-clear")
+        await sampler.check_first_fetch(
+            sb, log, "trst-clear", expect_word_addr=FIRST_WORD_ADDR, grade_held=True
+        )
 
         # --- Sticky re-assert: must NOT re-gate fuse_reset ---
         await jtag.write(
@@ -272,9 +278,9 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         )
         sampler.check_clear_to_release(log, "ovrd-low-over-pad")
         sampler.mark("S7 override-low release")
-        sampler.check_held(sb, log, "ovrd-low-over-pad")
+        sampler.check_held(log, "ovrd-low-over-pad")
         await sampler.check_first_fetch(
-            sb, log, "ovrd-low-over-pad", expect_word_addr=FIRST_WORD_ADDR
+            sb, log, "ovrd-low-over-pad", expect_word_addr=FIRST_WORD_ADDR, grade_held=True
         )
         sampler.check_fence(sb, log, EXPECTED_FENCE)
 

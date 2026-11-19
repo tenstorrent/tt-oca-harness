@@ -490,8 +490,13 @@ class RomFetchSampler:
         )
         return cycles
 
-    def check_held(self, sb, log, name: str) -> None:
-        """CHK-NO-FETCH-WHILE-HELD: no ROM read from the cold-reset release to the gate release."""
+    def check_held(self, log, name: str) -> None:
+        """Held-window bookkeeping: the release edge was seen and no ROM read arrived before it.
+
+        The graded CHK-NO-FETCH-WHILE-HELD compare runs in ``check_first_fetch``, once the
+        leg's first-fetch latency is known, because a held window shorter than that latency
+        cannot catch a CPU that the fuse reset fails to hold.
+        """
         leg = self.legs[name]
         if leg.error is not None:
             raise AssertionError(
@@ -502,25 +507,28 @@ class RomFetchSampler:
                 f"CHK-NO-FETCH-WHILE-HELD: leg={name} release edge not seen "
                 f"last_state={leg.last_state}"
             )
-        sb.expect_eq(
-            f"held-window ROM read requests and max smc_rom_read_count_o ({name})",
-            (leg.held_reads, leg.max_count),
-            (0, 0),
-            evidence="CHK-NO-FETCH-WHILE-HELD",
-        )
-        armed = "" if leg.count_at_arm is None else f" count_at_arm={leg.count_at_arm}"
+        if (leg.held_reads, leg.max_count) != (0, 0):
+            raise AssertionError(
+                f"CHK-NO-FETCH-WHILE-HELD: leg={name} held_reads={leg.held_reads} "
+                f"max_count={leg.max_count} before the release edge last_state={leg.last_state}"
+            )
         log.info(
-            "CHK-NO-FETCH-WHILE-HELD: leg=%s held_cycles=%d rom_reads=0%s PASS",
+            "held window: leg=%s held_cycles=%d rom_reads=0 count_at_arm=%s",
             name,
             leg.held_edges,
-            armed,
+            leg.count_at_arm,
         )
-        self.mark(f"CHK-NO-FETCH-WHILE-HELD {name}")
 
-    async def check_first_fetch(self, sb, log, name: str, *, expect_word_addr: int) -> int:
-        """CHK-FIRST-FETCH-AFTER-RELEASE: first read request within the declared bound.
+    async def check_first_fetch(
+        self, sb, log, name: str, *, expect_word_addr: int, grade_held: bool
+    ) -> int:
+        """CHK-FIRST-FETCH-AFTER-RELEASE, then CHK-NO-FETCH-WHILE-HELD for a graded leg.
 
-        Returns the measured latency in clk_smu. The latency is logged, never graded.
+        The latency is logged, never graded. With ``grade_held`` the leg's held window must be
+        longer than that latency (otherwise a CPU the fuse reset fails to hold would make its
+        first read after the window and the leg would pass), and its read count is then graded
+        as CHK-NO-FETCH-WHILE-HELD. Without it the held window is logged as an observation.
+        Returns the measured latency in clk_smu.
         """
         leg = self.legs[name]
         log.info(
@@ -560,6 +568,33 @@ class RomFetchSampler:
             ROM_LAST_BYTE,
         )
         self.mark(f"CHK-FIRST-FETCH-AFTER-RELEASE {name}")
+        if not grade_held:
+            log.info(
+                "OBS-NO-FETCH-WHILE-HELD: leg=%s held_cycles=%d latency=%d not graded: the "
+                "window is not longer than the first-fetch latency",
+                name,
+                leg.held_edges,
+                latency,
+            )
+            return latency
+        if leg.held_edges <= latency:
+            raise AssertionError(
+                f"CHK-NO-FETCH-WHILE-HELD: leg={name} held_cycles={leg.held_edges} is not longer "
+                f"than the first-fetch latency={latency}; the window cannot catch an ungated fetch"
+            )
+        sb.expect_eq(
+            f"held-window ROM read requests and max smc_rom_read_count_o ({name})",
+            (leg.held_reads, leg.max_count),
+            (0, 0),
+            evidence="CHK-NO-FETCH-WHILE-HELD",
+        )
+        log.info(
+            "CHK-NO-FETCH-WHILE-HELD: leg=%s held_cycles=%d > latency=%d rom_reads=0 PASS",
+            name,
+            leg.held_edges,
+            latency,
+        )
+        self.mark(f"CHK-NO-FETCH-WHILE-HELD {name}")
         return latency
 
     def check_fence(self, sb, log, expected: list[str]) -> None:

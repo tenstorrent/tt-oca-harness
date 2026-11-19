@@ -1820,9 +1820,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NO-FETCH-WHILE-HELD",
             "CHK-NO-FETCH-WHILE-HELD",
-            "per release leg (bring-up, trst-clear, ovrd-low-over-pad) smc_rom_read_count_o "
-            "reads 0 on every clk_smu edge from the leg's cold-reset release to the release "
-            "edge of smc_fuse_reset_n_delayed_o",
+            "on the trst-clear and ovrd-low-over-pad legs, whose held windows are longer than "
+            "the measured first-fetch latency, no ROM read request (smc_rom_read_count_o "
+            "reads 0) from the leg's cold-reset release to the release edge of "
+            "smc_fuse_reset_n_delayed_o",
         ),
         (
             "CHK-FIRST-FETCH-AFTER-RELEASE",
@@ -1836,8 +1837,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-NONVAC",
             "CHK-NONVAC",
             "the legs ran in the order bring-up, cold+stall hold, TRST-clear release, sticky "
-            "re-assert, pad-only hold, both-sources hold, override-low release, with one line per "
-            "leg of each of the two new checkers",
+            "re-assert, pad-only hold, both-sources hold, override-low release, with a "
+            "first-fetch line per leg and a held-window line per graded leg",
         ),
     ],
     "smu_boot_stall_vs_ic_reset_priority_test": [
