@@ -20,8 +20,14 @@ Graded after each injection:
 * the idle program interface issues no bank command: with no program go and
   no enable there is no program request (``efuse_interface_ctrl.rdl:82``,
   ``:112``; CHK-PROGRAM-FAILCLOSED);
-* both interfaces serve a new request after all injections (CHK-READ-ALIVE
-  and CHK-PROGRAM-ALIVE after; OCAH-HSR-SEP-010).
+* the read interface serves a new request after both injections, and the
+  program interface after each one (CHK-READ-ALIVE and CHK-PROGRAM-ALIVE
+  after; OCAH-HSR-SEP-010).
+
+Each injection enters with the error output at 0, and on the program interface
+with ``program_status`` at 0 (CTRL-<READ|PROGRAM>-FAILCLOSED-CLEAN). The second
+program leg follows a cold reset, which returns ``program_status`` to its reset
+value 0 (``efuse_interface_ctrl.rdl:107``).
 
 Logged, not graded: no authored text states the FSM encodings or the outputs
 of an interface after an illegal state. The withdrawal of the in-flight read
@@ -128,9 +134,9 @@ _REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
 _SETTLE_LIMIT = 400
 _SETTLE_CYCLES = 64
 
-# SPARE7 bits the program legs consume: two live controls and one per illegal
-# encoding.
-_PROGRAM_BITS_NEEDED = 2 + len(_ILLEGAL_STATES)
+# SPARE7 bits the program legs consume: the live control before the
+# injections, and per illegal encoding one injection and one live control.
+_PROGRAM_BITS_NEEDED = 1 + 2 * len(_ILLEGAL_STATES)
 
 
 @pyuvm.test()
@@ -537,32 +543,34 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "would land in an idle window"
             )
 
-        # error_o is not cleared by _quiesce, which clears only the
-        # interface-level efuse_req_error. An idle interface keeps the error_o
-        # of its last retirement into the injection.
+        # An error after the injection is attributable to it only where the
+        # error output, and on the idle program interface program_status, enter
+        # low. _quiesce clears only the interface-level efuse_req_error, so an
+        # idle interface keeps the error of its last retirement.
+        status_before = 0
+        if not in_flight:
+            status_before = int(bool(await self._csr(SepAxiOp.READ, _PROGRAM_CTRL) & _PG_STATUS))
         await ReadOnly()
         err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
         done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
         busy_before = int(getattr(dut, f"efuse_{which}_busy_o").value)
-
-        # An error after the injection is attributable to it only where the
-        # error output enters low: every in-flight read leg, and the first idle
-        # program leg, which follows a successful program.
-        if in_flight or leg == 1:
-            assert err_before == 0, (
-                f"CTRL-{tag}-FAILCLOSED-CLEAN FAIL: error_o={err_before} before the "
-                f"leg {leg} injection, so an error after it could be a stale one"
-            )
-            self.logger.info(
-                "CTRL-%s-FAILCLOSED-CLEAN state=%#04x leg=%d error_o=%d done_o=%d busy_o=%d "
-                "before the injection",
-                tag,
-                state,
-                leg,
-                err_before,
-                done_before,
-                busy_before,
-            )
+        before = f"error_o={err_before}"
+        if not in_flight:
+            before += f" program_status={status_before}"
+        assert err_before == 0 and status_before == 0, (
+            f"CTRL-{tag}-FAILCLOSED-CLEAN FAIL: {before} before the leg {leg} injection, "
+            "so an error after it could be a stale one"
+        )
+        self.logger.info(
+            "CTRL-%s-FAILCLOSED-CLEAN state=%#04x leg=%d %s done_o=%d busy_o=%d "
+            "before the injection",
+            tag,
+            state,
+            leg,
+            before,
+            done_before,
+            busy_before,
+        )
 
         await NextTimeStep()
         val.value = state
@@ -694,21 +702,37 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # Establish the in-flight window before logging a withdrawal inside it.
         await self._assert_request_held("read", self._control_word * 32)
 
-        for leg, (state, pg_bit) in enumerate(zip(_ILLEGAL_STATES, pg_bits[2:]), start=1):
+        for leg, state in enumerate(_ILLEGAL_STATES, start=1):
             await self._inject("read", state, self._control_word * 32, leg=leg)
+        # The read FSM serves a new request after the injections (OCAH-HSR-SEP-010).
+        await self._assert_read_alive("after")
+
+        # Each program leg uses two fresh bits: OTP is write-once, so programming
+        # a bit again would not issue a command and a control would fail for the
+        # wrong reason.
+        pg_leg_bits = zip(pg_bits[1::2], pg_bits[2::2])
+        for leg, (state, (inject_bit, alive_bit)) in enumerate(
+            zip(_ILLEGAL_STATES, pg_leg_bits), start=1
+        ):
+            if leg > 1:
+                # The leg before left program_status at 1. A cold reset returns
+                # it to its reset value 0 (efuse_interface_ctrl.rdl:107), so this
+                # leg's error is set by its own injection.
+                await self.resense(max_cycles=_MAX_SENSE_CYCLES)
             # Idle window, not in flight. Aborting an ACCEPTED program parks the
             # example shim's write FSM (see the VPLAN section of this test), and
             # every later leg that resenses would then read a corrupted shadow
             # word. The read leg is the one that logs a withdrawal.
             await self._inject(
-                "program", state, _CONTROL_PROGRAM_WORD * 32 + pg_bit, in_flight=False, leg=leg
+                "program",
+                state,
+                _CONTROL_PROGRAM_WORD * 32 + inject_bit,
+                in_flight=False,
+                leg=leg,
             )
-
-        # Both FSMs serve a new request after the injections (OCAH-HSR-SEP-010).
-        await self._assert_read_alive("after")
-        # A fresh bit: OTP is write-once, so programming pg_bits[0] again would not
-        # issue a command and the control would fail for the wrong reason.
-        await self._assert_program_alive(pg_bits[1])
+            # The program FSM serves a new request after this injection, before
+            # any reset (OCAH-HSR-SEP-010).
+            await self._assert_program_alive(alive_bit)
 
         # Error lifecycle on the same interface: set by a timed-out read, and
         # the next legal read completes cleanly.
@@ -719,5 +743,5 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await self._read_blocked_by_secure_tm()
         self.logger.info(
             "illegal-state ALL CHECKS PASS: both FSMs, both injected codes, both "
-            "interfaces live before and after"
+            "interfaces live before and after the injections"
         )
