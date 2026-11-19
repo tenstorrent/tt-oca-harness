@@ -34,7 +34,7 @@ targets this chapter states.
 `\[[thresholds]]` row at all, and neither does
 `cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml`, the policy the SV-UVM
 view (`--framework uvm`) reports against: a threshold rule scopes to a tool
-and a target, not to a framework, and the five SV-UVM leaves are not the
+and a target, not to a framework, and the eight SV-UVM leaves are not the
 coverage set the `user` floor is written for
 |Measured (Verilator, the `cov/sv` cover properties)
 |`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, the generated owners table, names
