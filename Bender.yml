@@ -13,6 +13,7 @@ dependencies:
   idma: { path: "vendor/pulp-platform/idma" }
   opentitan: { path: "vendor/lowRISC/opentitan" }
   picorv32: { path: "vendor/tenstorrent/tt-picorv32" }
+  riscv-dbg: { path: "vendor/pulp-platform/riscv-dbg" }
   pdk_ihp_sg13g2: { path: "flows/synth/pdk/ihp-sg13g2" }
 
 # Third-party IP vendored under vendor/<org>/<pkg>/upstream via `bender vendor init`.
@@ -227,6 +228,20 @@ vendor_package:
       - "include/register_interface/typedef.svh"
       - "include/register_interface/assign.svh"
     patch_dir: "vendor/pulp-platform/register_interface/patches"
+
+  # riscv-dbg: the tdr2axi TDR-to-AXI bridge and the Debug Module register and System Bus
+  # Access sources it instantiates. The rev is on the fork branch bmelton/tdr2axi-param-rename.
+  - name: riscv-dbg
+    target_dir: "vendor/pulp-platform/riscv-dbg/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-riscv-dbg.git", rev: "b25e677a3035748be1ca6300c3169e0e02798938" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src/dm_pkg.sv"
+      - "src/dm_csrs.sv"
+      - "src/dm_sba.sv"
+      - "src/tdr2axi"
+      - "doc/tdr2axi.md"
+    patch_dir: "vendor/pulp-platform/riscv-dbg/patches"
 
   # Adams Bridge post-quantum engine (ML-DSA-87 / ML-KEM-1024).
   # RTL reachable from abr_top and reference figures for the SEP documentation;
