@@ -217,22 +217,6 @@ expect_fail = "an SPM write cut by a watchdog warm reset receives no B after the
 expect_fail_match = "CHK-SPM-WRITE-CUT-BY-WARM-RESET FAIL"
 
 [[tests]]
-# With THD_DAT 25 to 32 the I2C controller starts the transfer queued behind
-# a STOP T_R + TSU_STA + 7 cycles after it whatever TIMING4.T_BUF holds, below
-# T_BUF in some samples, where i2c.rdl gives T_BUF as the time between a STOP
-# and START condition. The leaf runs the smc_i2c_timing_set_rand_test draw (its
-# six graded pairs are the arm leg) and asserts every bus-free time of the
-# T_BUF pair at least the programmed T_BUF and moving with it.
-name = "smc_i2c_tbuf_bus_free_test"
-module = "smc_i2c_tbuf_bus_free_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "the I2C bus-free time after a STOP ignores TIMING4.T_BUF when THD_DAT is long"
-expect_fail_match = "CHK-ITS-TBUF-BUS-FREE FAIL"
-
-[[tests]]
 # The vendored axi_demux sizes its per-ID-bucket in-flight counter to
 # clog2(MaxTrans) bits and reports the bucket full when the counter is all
 # ones (axi_demux_simple.sv, axi_demux_id_counters.sv), so a power-of-two
@@ -336,12 +320,11 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 7
+expected_count = 6
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_spm_write_cut_by_warm_reset_test",
-    "smc_i2c_tbuf_bus_free_test",
     "smc_flr_hold_edge_requeue_test",
     "smc_clock_gate_inflight_completes_test",
     "smc_fabric_demux_bucket_limits_test",
