@@ -57,11 +57,41 @@ Checkers:
                        each appear after the recovery GO write. The probe
                        carries no R channel, so R beats are not graded.
   CHK-DMA-ABORT-CLR    a write of 1 to STATUS.ABORTED clears it.
+  CHK-DMA-RW1C         in runs 1 and 2, a write of 0 to STATUS returns OKAY
+                       (``w0_resp``) and leaves ABORTED at 1, and the write
+                       of 1 that follows clears it (STATUS.ABORTED is RW1C).
   CHK-DMA-RECOVER      the recovery copy sets DONE, leaves ERROR and
                        ERROR_CODE clear, copies the data and leaves the guards
                        and the rest of the destination at the sentinel.
 
-Logged only: ``OBS-DMA-ABORT`` (BUSY, GO, DONE and ERROR after the abort, which
+SHA abort run (every seed, from a cold reset, with the same redraw and landing
+rules): a one-chunk SHA-256 run (OPCODE SHA-256, INITIAL_TRANSFER=1, width 4,
+CHUNK_DATA_SIZE = TOTAL_DATA_SIZE = T) of the source words takes an ABORT inside
+the window W < k < N - W. Then, with no reset, an INITIAL_TRANSFER SHA-256 run of
+the 56-byte FIPS 180-4 example message follows.
+
+  CHK-DMA-ABORT-SHA    the SHA run reads ABORTED=1 after an ABORT with
+                       busy_at_abort = 1; the recovery hash reads DONE=1,
+                       ERROR=0, ERROR_CODE=0 and SHA2_DIGEST_VALID=1, and
+                       SHA2_DIGEST_0..7 equal the FIPS 180-4 SHA-256 digest of
+                       the message (DIGEST_SWAP=0: word n is the big-endian read
+                       of digest bytes 4n..4n+3; golden from
+                       ``env/sep_hmac_golden.py``). Control: the digest words
+                       read before the recovery GO differ from that digest
+                       (``CTRL-MISSING`` otherwise).
+
+In-flight reset (every seed, after the SHA run): a cold reset of ``rst_ni``
+while a copy is in flight. A sampler on ``dma_axi_req_probe_o`` and
+``dma_busy_probe_o`` waits, from a drawn delay inside the first chunk, for a
+clock with BUSY=1 and an open beat (an AW with no B yet, or AR, AW or W VALID
+without READY), bounded by ``BUSY_RISE_BOUND`` + t_clean clocks
+(``CTRL-MISSING`` when none is seen). The probe carries no R channel, so an
+outstanding read is not observable.
+
+Logged only: ``OBS-DMA-RESET-INFLIGHT`` (the open beats at the ``rst_ni`` fall,
+the AR, AW, W and B handshakes from the fall to t_clean clocks after the reset
+release, and STATUS and CONTROL after the release; no text states the fate of a
+transfer in flight at reset), ``OBS-DMA-ABORT`` (BUSY, GO, DONE and ERROR after the abort, which
 the register description does not state) and the destination content after the
 abort.
 """
@@ -73,12 +103,15 @@ from dataclasses import dataclass
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import DmaXfer, bytes_to_words, words_to_bytes
 from env.sep_dma_model import draw_source_words as _draw_words
+from env.sep_dma_tap import FIELDS as TAP_FIELDS
 from env.sep_dma_tap import SepDmaTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
+from env.sep_hmac_golden import digest_words, sha2_bytes
 from env.sep_lcc_golden import LC_PROD
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -88,6 +121,8 @@ from seq_lib.sep_dma_ops import (
     CONTROL,
     ERROR_CODE,
     ERROR_CODE_MASK,
+    OP_COPY,
+    OP_SHA256,
     ST_ABORTED,
     ST_CHUNK_DONE,
     SepDmaOps,
@@ -112,6 +147,17 @@ POLL_PER_KIB = 1_500
 CLASSES_RUN2 = ("first", "boundary", "final")
 
 CTRL_GO_MASK = _D.field_mask("CONTROL", "go")
+STATUS = _D.addr("STATUS")
+VALID_POLL_BOUND = 200
+# Draws of the SHA abort point and the in-flight reset point come from this salted
+# stream, so the per-seed values of the main stream do not move.
+LATE_SALT = 0x5A_A5_93_0E
+# FIPS 180-4 SHA-256 example message (56 bytes, two blocks after padding).
+FIPS_MSG56 = b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+_TAP_F = {name: (lsb, width) for name, lsb, width in TAP_FIELDS}
+_TAP_CH = ("ar", "aw", "w", "b")
+_TAP_HS = tuple(f"{ch}_{x}" for ch in _TAP_CH for x in ("valid", "ready"))
+_TAP_HS_MASK = sum(1 << _TAP_F[k][0] for k in _TAP_HS)
 
 
 def _word(b: int) -> int:
@@ -176,6 +222,9 @@ class _Cfg:
         self.m_txn = self.chunk // 4
         self.n_txn = self.total // 4
         self.w_txn = max(4, self.m_txn // 20)
+        late = SepSeededRng(seed ^ LATE_SALT)
+        self.sha_pm = late.randrange(250, 751)
+        self.rst_pm = late.randrange(200, 801)
 
     def draw_line(self) -> str:
         return (
@@ -183,7 +232,8 @@ class _Cfg:
             f"src=0x{self.src:08x} dst=0x{self.dst:08x} guard={self.guard} "
             f"src_first={int(self.src_first)} sentinel=0x{self.sentinel:02x} "
             f"run2_class={self.run2_cls} mid_pm={self.mid_pm} bnd_j={self.bnd_j} "
-            f"bnd_pm={self.bnd_pm} fin_pm={self.fin_pm} "
+            f"bnd_pm={self.bnd_pm} fin_pm={self.fin_pm} sha_pm={self.sha_pm} "
+            f"rst_pm={self.rst_pm} "
             + " ".join(f"rec{r.idx}={r.rec_total}/{r.rec_chunk}" for r in self.runs)
         )
 
@@ -196,6 +246,8 @@ class _Cfg:
             return w + 1, m - w - 1
         if cls == "boundary":
             return j * m - w, j * m + w
+        if cls == "sha":
+            return w + 1, n - w - 1
         return n - n // 10, n
 
     def target(self, cls: str, j: int) -> int:
@@ -206,6 +258,7 @@ class _Cfg:
             "mid": m // 2,
             "boundary": j * m - w // 2,
             "final": n - n // 20,
+            "sha": n // 2,
         }[cls]
 
 
@@ -219,6 +272,8 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         "CHK-DMA-ABORT-BEATS",
         "CHK-DMA-ABORT-CLR",
         "CHK-DMA-RECOVER",
+        "CHK-DMA-RW1C",
+        "CHK-DMA-ABORT-SHA",
     )
 
     # ---- helpers -----------------------------------------------------------
@@ -244,7 +299,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self.pulse_rst_ni()
 
-    async def _setup_copy(self, src_words: list[int]) -> None:
+    async def _setup_copy(self, src_words: list[int], chunk: int | None = None) -> None:
         """Range, ASID, source, sentinel destination and guards, transfer registers."""
         c = self.cfg_t
         ops = self.ops
@@ -252,7 +307,9 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         await ops.wr(_D.addr("ADDR_SPACE_ID"), ASID_SEP)
         await self.mem.fill(c.src, src_words)
         await self._fill_dst_sentinel()
-        await ops.program_transfer(src=c.src, dst=c.dst, total=c.total, chunk=c.chunk)
+        await ops.program_transfer(
+            src=c.src, dst=c.dst, total=c.total, chunk=chunk if chunk is not None else c.chunk
+        )
 
     async def _fill_dst_sentinel(self) -> None:
         c = self.cfg_t
@@ -295,6 +352,8 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             return share * c.mid_pm // 1000
         if plan.cls == "first":
             return 0
+        if plan.cls == "sha":
+            return self.t_clean * c.sha_pm // 1000
         if plan.cls == "boundary":
             plan.j = c.bnd_j
             return max(0, c.bnd_j * share + share * c.bnd_pm // 1000)
@@ -311,7 +370,9 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
                 if st.chunk_done and not st.done and not st.busy:
                     await ops.wr(_D.addr("STATUS"), ST_CHUNK_DONE)
                     m = self.busy.mark()
-                    await ops.wr(CONTROL, control_word(go=1))
+                    await ops.wr(
+                        CONTROL, (ops.last_control & ~control_word(initial=1)) | control_word(go=1)
+                    )
                     go_writes += 1
                     await self.busy.wait_rise(m, BUSY_RISE_BOUND)
             else:
@@ -336,20 +397,24 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
                 out["mark"] = self.tap.mark()
                 return
 
-    async def _attempt(self, plan: _RunPlan, d: int, rec: dict) -> _Attempt:
+    async def _attempt(
+        self, plan: _RunPlan, d: int, rec: dict, *, opcode: int = OP_COPY, chunk: int | None = None
+    ) -> _Attempt:
         c = self.cfg_t
         ops = self.ops
+        sha = plan.cls == "sha"
         await self._cold_reset()
-        await self._setup_copy(c.src_words)
+        await self._setup_copy(c.src_words, chunk)
         st0 = await ops.read_status()
         rec["aborted_before"] = st0.aborted
         if st0.aborted:
             self._ctrl_missing(f"run={plan.idx} ABORTED reads 1 before GO: {st0.fmt()}")
 
-        open_graded_window(TEST, self.logger)
+        if not sha:
+            open_graded_window(TEST, self.logger)
         m_tap_go = self.tap.mark()
         m_busy_go = self.busy.mark()
-        await ops.go(initial=1)
+        await ops.go(opcode=opcode, initial=1)
         t0 = self.clk
         go_writes = await self._delay_with_rego(t0, d)
         t_ab0 = self.clk
@@ -404,7 +469,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             if finished and plan.cls in ("final", "boundary"):
                 return _Attempt("finished", d, k, 1)
             self._fail(
-                "CHK-DMA-ABORT",
+                "CHK-DMA-ABORT-SHA" if sha else "CHK-DMA-ABORT",
                 f"phase={plan.cls} busy_at_abort=1 aborted=0 aborted_before=0 "
                 f"bound={ABORT_POLL_BOUND} {st.fmt()}",
             )
@@ -412,14 +477,14 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         return _Attempt("graded", d, k, 1)
 
     # ---- one graded run ------------------------------------------------------
-    async def _abort_run(self, plan: _RunPlan) -> dict:
+    async def _graded_attempt(self, plan: _RunPlan, **kw) -> tuple[dict, int, int]:
+        """Repeat ``_attempt`` under the redraw and landing rules; returns (rec, redraws, landing)."""
         c = self.cfg_t
-        ops = self.ops
         d = self._initial_delay(plan)
         redraws = landing = 0
         rec: dict = {}
         while True:
-            att = await self._attempt(plan, d, rec)
+            att = await self._attempt(plan, d, rec, **kw)
             if att.outcome == "graded":
                 break
             if att.outcome.startswith("landing"):
@@ -458,6 +523,12 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
                     f"run={plan.idx} phase={plan.cls}: no graded abort after {MAX_REDRAW} repeats"
                 )
             d = d + self.step if att.outcome == "not_started" else max(0, d - self.step)
+        return rec, redraws, landing
+
+    async def _abort_run(self, plan: _RunPlan) -> dict:
+        c = self.cfg_t
+        ops = self.ops
+        rec, redraws, landing = await self._graded_attempt(plan)
 
         # Step 8: OBS-DMA-ABORT.
         st = await ops.read_status()
@@ -481,10 +552,13 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         n_sent = len(dest1) - n_written
         diff = [i for i, (a, b) in enumerate(zip(img1, img2)) if a != b]
         rec.update(quiet_ok=not diff, quiet_diff=diff[:4], written=n_written, sentinel=n_sent)
-        # Step 10: ABORTED W1C.
+        # Step 10: ABORTED holds on a write of 0, then clears on a write of 1.
         st_b = await ops.read_status()
-        await ops.wr(_D.addr("STATUS"), ST_ABORTED)
+        w0 = await ops.access(SepAxiOp.WRITE, STATUS, 0, ungraded=True)
+        st_0 = await ops.read_status()
+        await ops.wr(STATUS, ST_ABORTED)
         st_a = await ops.read_status()
+        fc_0 = field_compare(st_0.raw, ST_ABORTED, ST_ABORTED)
         fc_b = field_compare(st_b.raw, ST_ABORTED, ST_ABORTED)
         fc_a = field_compare(st_a.raw, 0, ST_ABORTED)
         clr_line = (
@@ -537,6 +611,16 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         if not fc_a.ok:
             self._fail("CHK-DMA-ABORT-CLR", clr_line)
         self._pass("CHK-DMA-ABORT-CLR", clr_line)
+        # CHK-DMA-RW1C.
+        rw1c_line = (
+            f"run={plan.idx} w0_resp={w0.resp_code} aborted_before_w0={st_b.aborted} "
+            f"aborted_after_w0={st_0.aborted} "
+            f"aborted_after_w1c={st_a.aborted} after_w0[{fc_0.fields()}] "
+            f"after_w1c[{fc_a.fields()}]"
+        )
+        if not (w0.resp_ok and fc_0.ok and fc_a.ok):
+            self._fail("CHK-DMA-RW1C", rw1c_line)
+        self._pass("CHK-DMA-RW1C", rw1c_line)
         # CHK-DMA-ABORT-BEATS.
         rises = [t for t in ev_go.rises("aborted") if t >= rec["m_tap_ab"].clk]
         ev_pre = self.tap.between(rec["m_tap_go"], rec["m_tap_ab"])
@@ -594,6 +678,141 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         self._pass("CHK-DMA-RECOVER", rec_line)
         return rec
 
+    # ---- SHA abort run ---------------------------------------------------------
+    async def _abort_sha_run(self) -> None:
+        c = self.cfg_t
+        ops = self.ops
+        plan = _RunPlan(3, "sha")
+        rec, redraws, landing = await self._graded_attempt(plan, opcode=OP_SHA256, chunk=c.total)
+        st_ab = await ops.read_status()
+        await ops.clean_state()
+        await ops.wr(CONTROL, control_word())
+        n_msg = len(FIPS_MSG56)
+        msg_words = [int.from_bytes(FIPS_MSG56[i : i + 4], "little") for i in range(0, n_msg, 4)]
+        await self.mem.fill(c.src, msg_words)
+        await ops.program_transfer(src=c.src, dst=c.dst, total=n_msg, chunk=n_msg)
+        want = digest_words(sha2_bytes(FIPS_MSG56, 256), "be")
+        pre = await ops.read_digest(len(want))
+        await ops.go(opcode=OP_SHA256, initial=1)
+        res = await ops.run_to_done(
+            n_msg, busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=" sha recovery"
+        )
+        st = res.status
+        for _ in range(VALID_POLL_BOUND):
+            if st.digest_valid or not st.done:
+                break
+            st = await ops.read_status()
+        ecode = await ops.rd(ERROR_CODE)
+        got = await ops.read_digest(len(want))
+        fc_e = field_compare(ecode, 0, ERROR_CODE_MASK)
+        bad = [i for i, (a, b) in enumerate(zip(got, want)) if a != b]
+        line = (
+            f"opcode={OP_SHA256} phase=sha busy_at_abort=1 aborted={st_ab.aborted} "
+            f"ar_beats_at_abort={rec['k']} d={rec['d']} redraws={redraws} "
+            f"landing_repeats={landing} recovery_len={n_msg} done={res.status.done} "
+            f"error={st.error} digest_valid={st.digest_valid} error_code[{fc_e.fields()}] "
+            f"digest_mismatch_words={len(bad)} "
+            f"digest={','.join(f'0x{w:08x}' for w in got)}"
+        )
+        if pre == want:
+            self._ctrl_missing(
+                f"CHK-DMA-ABORT-SHA control: digest equals the golden before GO: {line}"
+            )
+        if not (
+            st_ab.aborted
+            and res.status.done
+            and not st.error
+            and st.digest_valid
+            and fc_e.ok
+            and not bad
+        ):
+            self._fail("CHK-DMA-ABORT-SHA", line)
+        self._pass("CHK-DMA-ABORT-SHA", line)
+
+    # ---- in-flight reset -------------------------------------------------------
+    async def _reset_when_open(self, d: int, bound: int, out: dict) -> None:
+        """From clock ``d`` after start, pulse ``rst_ni`` on the first clock with BUSY=1 and an open beat.
+
+        The handshake counts start at the call, which comes before the GO write.
+        """
+        top = cocotb.top
+        n = dict.fromkeys(_TAP_CH, 0)
+        for t in range(1, bound + 1):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            v = self.rd(top.dma_axi_req_probe_o, _TAP_HS_MASK)
+            lvl = {k: (v >> _TAP_F[k][0]) & 1 for k in _TAP_HS}
+            for ch in _TAP_CH:
+                if lvl[f"{ch}_valid"] and lvl[f"{ch}_ready"]:
+                    n[ch] += 1
+            busy = self.rd(top.dma_busy_probe_o)
+            stall = {
+                ch: int(bool(lvl[f"{ch}_valid"] and not lvl[f"{ch}_ready"]))
+                for ch in ("ar", "aw", "w")
+            }
+            aw_minus_b = n["aw"] - n["b"]
+            if t >= d and busy and (aw_minus_b > 0 or any(stall.values())):
+                out.update(
+                    clk=t,
+                    busy=busy,
+                    aw_minus_b=aw_minus_b,
+                    **{f"{ch}_valid": lvl[f"{ch}_valid"] for ch in ("ar", "aw", "w")},
+                    **{f"{ch}_stall": stall[ch] for ch in stall},
+                    **{f"{ch}_count": n[ch] for ch in _TAP_CH},
+                )
+                out["mark"] = self.tap.mark()
+                await self.pulse_rst_ni()
+                return
+
+    async def _reset_inflight(self) -> None:
+        c = self.cfg_t
+        ops = self.ops
+        await self._cold_reset()
+        await self._setup_copy(c.src_words)
+        d = (self.t_clean // c.n) * c.rst_pm // 1000
+        bound = d + BUSY_RISE_BOUND + self.t_clean
+        out: dict = {}
+        sampler = cocotb.start_soon(self._reset_when_open(d, bound, out))
+        await ops.go(initial=1)
+        await sampler
+        if "mark" not in out:
+            self._ctrl_missing(
+                f"OBS-DMA-RESET-INFLIGHT: no clock with BUSY=1 and an open beat from {d} to "
+                f"{bound} clocks after the sampler start"
+            )
+        await ClockCycles(cocotb.top.clk_i, self.t_clean)
+        ev = self.tap.since(out["mark"])
+        st = await ops.read_status()
+        ctl = await ops.rd(CONTROL)
+        self.logger.info(
+            "OBS-DMA-RESET-INFLIGHT seed=%d rst_clk=%d delay=%d busy=%d aw_minus_b=%d "
+            "ar_valid=%d aw_valid=%d w_valid=%d ar_stall=%d aw_stall=%d w_stall=%d "
+            "ar_count=%d aw_count=%d w_count=%d b_count=%d after_rst_fall ar=%d aw=%d w=%d b=%d "
+            "window_clks=%d r_channel=unobserved %s CONTROL=0x%08x",
+            c.seed,
+            out["clk"],
+            d,
+            out["busy"],
+            out["aw_minus_b"],
+            out["ar_valid"],
+            out["aw_valid"],
+            out["w_valid"],
+            out["ar_stall"],
+            out["aw_stall"],
+            out["w_stall"],
+            out["ar_count"],
+            out["aw_count"],
+            out["w_count"],
+            out["b_count"],
+            len(ev.ar),
+            len(ev.aw),
+            len(ev.w),
+            len(ev.b),
+            self.tap.clk - out["mark"].clk,
+            st.fmt(),
+            ctl,
+        )
+
     # ---- scenario ----------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -601,7 +820,8 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         self.n_checks = 0
         self.logger.info(
             "PLAN seed=%d reference copy, abort run 1 (mid), abort run 2 (%s), each with a "
-            "recovery copy; repeats <= %d (redraw) and <= %d (landing) per run",
+            "recovery copy, a SHA-256 abort run with a FIPS 180-4 recovery hash, an in-flight "
+            "reset; repeats <= %d (redraw) and <= %d (landing) per run",
             seed,
             c.run2_cls,
             MAX_REDRAW,
@@ -645,6 +865,9 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             if not r["quiet_ok"]:
                 self._fail("CHK-DMA-ABORT-QUIET", line + f" first_diff_idx={r['quiet_diff']}")
             self._pass("CHK-DMA-ABORT-QUIET", line)
+
+        await self._abort_sha_run()
+        await self._reset_inflight()
 
         await self.tap.stop()
         await self.busy.stop()

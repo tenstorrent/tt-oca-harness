@@ -243,7 +243,12 @@ non-zero) and the preload DEMOTE_2 bit (redrawn while it equals the rsvd
 bit). Every leg runs on every seed. Entry C uses
 only the uncore DMI write data, which no check grades. The SEP_DBG observation
 entries use one more draw, their write word (redrawn while it equals SRAM word 0
-before the write). Every entry runs one seed per regression.
+before the write). Every entry also draws, from a separate stream of the seed,
+the TCK period (whole ps, a multiple of 4, above 3 and below 8 clk_i periods,
+never a multiple of the clk_i period) and the start phase of the first TAP
+operation after a clk_i rising edge (0 to the period less 1 ps); these change
+TAP timing only and no check grades them. Every entry runs one seed per
+regression.
 
 VCS only (``tools = ["vcs"]``), ``+skip_fuse_sense`` except the two SEP_DBG
 observation entries, which sense their preload image and compare the sensed
@@ -257,7 +262,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_plan import DFT_GATE_BITS, shadow_addr
 from env.sep_efuse_test_lib import SepEfuseFd
@@ -470,7 +475,12 @@ SBA_CELL = {
 }
 
 # Environment choices (logged).
-TCK_CLKS = 4  # clk_i periods per TCK period
+# The TCK period is a whole number of ps, a multiple of TCK_STEP_PS, strictly between
+# TCK_MIN_CLKS and TCK_MAX_CLKS clk_i periods and never a multiple of the clk_i period.
+TCK_STEP_PS = 4
+TCK_MIN_CLKS = 3
+TCK_MAX_CLKS = 8
+_TCK_DRAW_SALT = 0x5443_4B50
 TRST_TCK = 4  # TCK cycles of the jtag_trst_ni pulse
 RETIRE_BOUND = 20_000  # clk_i cycles for a retirement on the trace port
 PULSE_CLKS = 16  # clk_i cycles of the dbg_rstb_i and wdt_rst_ni_i pulses (test parameter)
@@ -480,7 +490,8 @@ SETTLE = 8  # clk_i cycles after a system-bus access before a tap is read
 LABEL_HOLD = 2  # clk_i cycles a pass label holds its value
 # sbcs reads while sbbusy is 1 (and DMI busy retries). A watchdog register sits in
 # the clk_wdt_i domain (5 us period on this bench), so its access waits for the
-# register CDC; 1024 reads of about 0.5 us each bound it with margin.
+# register CDC; a DMI read is two IR and two 41-bit DR scans, at least 0.4 us at the
+# shortest drawn TCK, so 1024 reads bound it with margin.
 SB_BUSY_READS = 1024
 UNCORE_ADDRS = (0x50, 0x7F)  # lowest and highest 7-bit DMI address at or above 0x50
 UNCORE_FIRST = UNCORE_ADDRS[0]
@@ -584,10 +595,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             self.moved_base,
             "/".join(str(s) for s in moved_sizes),
         )
+        self._draw_tck(seed)
         self.logger.info(
-            "INFO-ENV tck_clks=%d trst_tck=%d retire_bound=%d pulse_clks=%d tap_bound=%d "
+            "INFO-ENV tck_period_ps=%d trst_tck=%d retire_bound=%d pulse_clks=%d tap_bound=%d "
             "rst_hold=%d settle=%d sb_busy_reads=%d uncore_addrs=%s",
-            TCK_CLKS,
+            self.tck_period_ps,
             TRST_TCK,
             RETIRE_BOUND,
             PULSE_CLKS,
@@ -800,13 +812,32 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"sep_reset_n tap low for {self.cold_sep_low} clk_i cycles of the cold reset",
         )
 
+    def _draw_tck(self, seed: int) -> None:
+        """Draw the TCK period and its start phase from a separate salted stream."""
+        clk_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
+        lo = TCK_MIN_CLKS * clk_ps // TCK_STEP_PS + 1
+        hi = (TCK_MAX_CLKS * clk_ps - 1) // TCK_STEP_PS + 1
+        rng = SepSeededRng(seed ^ _TCK_DRAW_SALT)
+        period = TCK_STEP_PS * rng.randrange(lo, hi)
+        while period % clk_ps == 0:
+            period = TCK_STEP_PS * rng.randrange(lo, hi)
+        self.tck_period_ps = period
+        self.tck_phase_ps = rng.randrange(period)
+        self.logger.info(
+            "INFO-DRAW tck_period_ps=%d tck_phase_ps=%d clk_i_period_ps=%d seed=%d",
+            self.tck_period_ps,
+            self.tck_phase_ps,
+            clk_ps,
+            seed,
+        )
+
     async def _tap_setup(self) -> None:
         """Step 1: TAP pins to the bench, TRST pulse, Run-Test/Idle, DMI selected."""
         dut = cocotb.top
         tap = OcahJtagMasterDriver(
             dut,
             name="sep_core_tap",
-            tck_period_ns=int(round(TCK_CLKS * self.cfg.sys_clk_period_ns * 1000)),
+            tck_period_ns=self.tck_period_ps,
             ir_width=IR_WIDTH,
             tap_type="dtm",
             signal_map=dict(PIN_MAP),
@@ -814,6 +845,9 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         )
         self.dmi = SepJtagDmi(tap, dut=dut, log=self.logger, busy_bound=SB_BUSY_READS)
         self.dmi.take_pins()
+        await RisingEdge(dut.clk_i)
+        if self.tck_phase_ps:
+            await Timer(self.tck_phase_ps, units="ps")
         await self.dmi.trst_pulse(tck_cycles=TRST_TCK)
         await tap.goto_state("RUN_TEST_IDLE")
         await tap.shift_ir(IR_DMI, IR_WIDTH, back_to_rti=True)

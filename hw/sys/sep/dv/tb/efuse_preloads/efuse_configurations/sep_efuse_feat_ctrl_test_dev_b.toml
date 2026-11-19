@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The t=0 image of the feature-control matrix plan at plan seed 21: TEST_DEV
+# (raw 0x0), the plan that runs leg B.
+#
+# Each table sets the whole register value. sep_lcc_feat_ctrl_state_matrix_rand_test
+# builds the same image from the plan and grades the sensed shadow against it.
+#
+# Used by sep_lcc_feat_ctrl_state_matrix_rand_test_test_dev_b.
+
+[LC_STATE]
+value = 0xf0
+
+[SIP_DIS]
+value = 0x323e179e136a964f
+
+[SYS_DIS]
+value = 0x2f76a0826d56e0e2
+
+[RMA_SIP_TOKEN_DIGEST]
+value = 0x744837470c6afe8ff29c462ebe3b5751b28526ebaa885976f617349c86b09d54
+
+[RMA_CHIPLET_TOKEN_DIGEST]
+value = 0xfa2a17c44b0ff6c69d6b9852e40b0b69d486e486f553844149188df399d37be9
+
+[CLASS_KEY]
+value = 0x8b094d41ed8054072279204517c9e54bce172db5621fddf52421c1baca5f19c3
+
+[CHIPLET_PUBK_REVOKE]
+value = 0x1555555
+
+[BL1_VERSION]
+value = 0x6c5ca9158368f0a81d14fb388acabb0624bef2d4cd60806785721a65ca5da090
+
+[BL2_VERSION]
+value = 0x9d542ea0501c7a12af16591c35e15f98617ef1979cfd677d0e2f2346bbd1f1fd
+
+[CHIPLET_UID]
+value = 0xa4132c0adac67c38f48bc52b4ce54c72cf82e1b9a8188302e866c6963d89f205
+
+[SIP_PUBK_HASH0]
+value = 0x5ff68f76029ecee546d2f0bc4b81690a903c402b582b05b064a418cac5d4860d
+
+[SIP_UID]
+value = 0x26d8d907ec7f05a9fbe74f09a8dffd5ae93b79063537c9ecd29f6a530b73482f
+
+[SYS_PUBK_HASH]
+value = 0xc0cefefbd74a670f404456de36646f6e5dcb0307f94aff87af36f99de1a228f4
+
+[SYS_UID]
+value = 0x8193d593cc5dad5bba6d5b9b1cd162f00ab2279555f6ffa5e4607a057983865d
+
+[STATUS_RPT]
+value = 0x1
+
+[ROM_CTL]
+value = 0x15
+
+[SYSCLK_FREQ_MHZ]
+value = 0x190
+
+[CHIPLET_PUBK_HASH0]
+value = 0x3498b50c6782023bab3c5859f256274bfabac0204e0290fa1c428fee968b0ae3
+
+[CHIPLET_PUBK_HASH1]
+value = 0xfb97db368a7b64b59de67a7cee8425ad6000c0b5bd47717d718937899678d2f4
+
+[REQUIRED_SIGNERS]
+value = 0x2
+
+[REQUIRED_ALGS]
+value = 0x21
+
+[CHIPLET_PUBK_PQC_HASH0]
+value = 0xff443cdb72f2c0603740a2c9ce0dab71286f06369dc48ae5ae138e1bcd3765c5
+
+[CHIPLET_PUBK_PQC_HASH1]
+value = 0x7832203a4a3c4964485e3acb0a195ef7f6a8c83d296f614ee8374483abf30de
+
+[SIP_PUBK_PQC_HASH0]
+value = 0xbf8d6d9fb6bf6bd134af64dfa8b40948ae98e63b4a11c6445b76e37c061b1a6b
+
+[SYS_PUBK_PQC_HASH]
+value = 0xc4f6410727f376e616453ae2728fc47a2c7d9f7811f72e2a5c66a6f9f8bcc6ab
+
+[SIP_PUBK_HASH1]
+value = 0xac58b8905d39a662e5887af1034157f17d4b85c9d65e8f09dea750c4047c9805
+
+[SIP_PUBK_PQC_HASH1]
+value = 0xd3f0dd30b683e05236b6e72e00ba62a608101dedecc455aaa6cff3dd9bd6001a
+
+[SEP_CHIPLET_ID]
+value = 0x7b73d29ec75824f953dc9626a3f5db41b4ff9512532c150f59e260f75ec3661e
+
+[SEP_SIP_ID]
+value = 0xe97523df322d02d6426c22e5689c0b80c0f13e49c27f6cb5894921a5ee45b739
+
+[SEP_SYS_ID]
+value = 0x756841fcd94fdf7e79ec26a0fda8ea2c1c3286b9d1fee866f64d4c54da7cd07f
+
+[SPARE0]
+value = 0x8a4d3bd0911a06039a23835321f73f8af1a3ff7ce3a6eca483867cea38a524f4
+
+[SPARE1]
+value = 0x9aeed37b8f05cdf47dd784734b5ec346d63026400e76c59f4065601fd0a615a8
+
+[SPARE2]
+value = 0x75d75571800986ccdb984c130ac7165edbd7f6d322499ac5990adda2afc98c63
+
+[SPARE3]
+value = 0xe0780dd22737240d147f774375558a9632e267b3e095d1d514eef4b0a436fb60
+
+[SPARE4]
+value = 0x46b08b719a9afa879adab253b304d8af9805f36dd0ac2424ed6a02ec97848226
+
+[SPARE5]
+value = 0xad30baf19ebbe669f4d74c5a737dbfd34b5002c20e67b5e678ccb330429f39d8
+
+[SPARE6]
+value = 0xbeb129d585caa922ec8a622516b44fab9621eac1680f4308ed0a6c93eef8dc86
+
+[SPARE7]
+value = 0x28b1da924be123ce2d8a39d8979cda5433b29a8096764cc20db2251cca2f4223
+
+[SPARE8]
+value = 0xcf81dc649d96928e5384b3093392eec797ac58a6c78ddc379a6a231d1d28fab2

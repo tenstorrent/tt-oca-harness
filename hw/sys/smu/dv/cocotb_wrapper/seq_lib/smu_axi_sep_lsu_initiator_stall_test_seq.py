@@ -1282,7 +1282,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
             peaks[name] = f"wr={peak['w']} rd={peak['r']} MAX_OUTSTANDING={built}"
         self._raw(
             f"OBS-G4B-DEPTH: peak accepted-unanswered per link in S2 {peaks}; an "
-            f"OCAH_AXI_AW_OUTSTANDING_DEPTH fire is checker-side; waits on SF-008, never compared"
+            f"OCAH_AXI_AW_OUTSTANDING_DEPTH fire is checker-side; waits on an open spec question "
+            f"(the outstanding capacity of each crossbar port and converter), never compared"
         )
         waits = {}
         for who in ("lsu", "sba", "idma", "j2a"):
@@ -1300,7 +1301,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         self._raw(
             f"OBS-G4B-GRANT-WAIT: ext_out VALID-to-READY edges, max over S2 {waits}; spans at "
             f"ext_out per initiator { {k: len(v) for k, v in spans.items()} }; {sep_waits}; waits "
-            f"on SF-022, never compared"
+            f"on an open spec question (the crossbar arbitration and bounded progress under a "
+            f"stalled ext_out), never compared"
         )
         extra = {}
         for name in ("xbar_sep_out", "xbar_ext_out", "smu_out", "incut", "smu_in"):
@@ -1323,8 +1325,9 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         )
         self._raw(
             f"OBS-G4B-PAYLOAD-EXTRA: (channel, AxCACHE, AxQOS, AxREGION, AxUSER) per link {extra}; "
-            f"inbound cut smu_in/incut AW+AR handshakes={cut}; waits on SF-007, SF-010, never "
-            f"compared"
+            f"inbound cut smu_in/incut AW+AR handshakes={cut}; waits on open spec questions "
+            f"(which payload set and reset-entry rule bind on the run; where the inbound boundary "
+            f"cut sits and whether it is transparent), never compared"
         )
 
     # ------------------------------------------------------------------ S3
@@ -1585,7 +1588,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
             f"probe window {_hx(spm_probe)}; zeroer gap global={_hx(zero_gap)}; SMC inbound filter "
             f"entry 0 [0x0, {_hx(PASS_ALL_END)}] config={_hx(PASS_RW_CONFIG)}; SMC outbound entry 0 "
             f"pass-all; SEP outbound filter entry 1 [0x0, {_hx(ADDR_MASK)}] config="
-            f"{_hx(OUTBOUND_CFG_OPEN)}; waits on SF-023, never compared"
+            f"{_hx(OUTBOUND_CFG_OPEN)}; waits on an open spec question (which addresses and filter "
+            f"entries reach the SEP SRAM and SMC scratchpad), never compared"
         )
         self._mark("INTERLEAVE", requests, 40)
 
@@ -1684,7 +1688,10 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
             )
         sep_w = self.links["xbar_sep_out"].ev["w"][-4:]
         users.append(f"sep_out wuser={[_hx(e['wuser']) for e in sep_w]}")
-        self._raw(f"OBS-G4B-USER: {users}; waits on SF-026, never compared")
+        self._raw(
+            f"OBS-G4B-USER: {users}; waits on an open spec question (whether the crossbar forwards "
+            f"every USER field unchanged), never compared"
+        )
         self._mark("ROUTE_FWD", 2, 2)
 
     # ------------------------------------------------------------------ S5
@@ -1859,7 +1866,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
                         rows.append((f"{pname} {ap} {where} {init}", got, (exp, True)))
         self._raw(
             f"OBS-G4B-SEP-SMC-PORT: SEP system-bus reads inside the SMC aperture, the port that "
-            f"carried each {self.sep_smc_port}; waits on SF-013, never compared"
+            f"carried each {self.sep_smc_port}; waits on an open spec question (when an "
+            f"SMC-aperture request appears on sep_out), never compared"
         )
         self._mark("APERTURE_EDGES", len(rows), 40)
         return rows
@@ -1983,7 +1991,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         self._raw(f"CHK-G4B-ZERO: configs=3 requests={n_req} misrouted={len(bad)}")
         self._raw(
             f"OBS-G4B-DECERR-CONTENT: {self.decerr_obs}; a data-known fire on a DECERR beat is "
-            f"checker-side; waits on SF-015, SF-021, never compared"
+            f"checker-side; waits on open spec questions (the data, user and per-beat codes of a "
+            f"crossbar DECERR; whether RDATA must be resolved on error beats), never compared"
         )
         self._mark("ZERO_SIZE", n_req, 28)
 

@@ -324,6 +324,13 @@ class EncodingTest(unittest.TestCase):
             bad.write_text("\n".join(lines) + "\n")
             with self.assertRaises(AssertionError):
                 kp.check_image(bad)
+            tag_line = 3 + (kp.ENTRY_ROM_HI + kp.ROM_HI_TAG_OFFSET) // 4
+            self.assertEqual(rom[kp.ENTRY_ROM_HI + kp.ROM_HI_TAG_OFFSET], kp.ROM_HI_TAG)
+            lines = list(text)
+            lines[tag_line] = "E00000013"
+            bad.write_text("\n".join(lines) + "\n")
+            with self.assertRaises(AssertionError):
+                kp.check_image(bad)
 
 
 class ImageTest(unittest.TestCase):
@@ -396,6 +403,38 @@ class ImageTest(unittest.TestCase):
         with self.assertRaises(Trap):
             m2.run_until(lambda: False, 200_000)
         self.assertEqual(kp.progress_of(m2.word(kp.W_PROG))[0], 1)
+
+    def test_rom_hi_stub(self) -> None:
+        m = model()
+        marker, word = 0x5EC5_0004, 97
+        ops = [kp.jump(kp.ENTRY_ROM_HI, marker, kp.sram_addr(word))]
+        self.assertEqual(m.run_list(ops), (kp.ST_DONE, 1))
+        self.assertEqual(kp.decode(ops, m.words())[0].value, marker)
+        self.assertEqual(m.word(word), marker)
+
+    def test_flags_need_a_clean_clear(self) -> None:
+        op = kp.rd(SLVERR_ADDR)
+        stale = kp.PokeResult(0, op, (0,), (kp.SlotFlags(1, 0, 1, 0),))
+        self.assertFalse(stale.clean)
+        with self.assertRaises(AssertionError):
+            _ = stale.slv
+        with self.assertRaises(AssertionError):
+            _ = stale.dec
+        fresh = kp.PokeResult(0, op, (0,), (kp.SlotFlags(1, 0, 0, 0),))
+        self.assertEqual((fresh.slv, fresh.dec, fresh.clean), (1, 0, True))
+
+    def test_flags_need_known_words(self) -> None:
+        op = kp.rd(SLVERR_ADDR)
+        unknown = kp.PokeResult(0, op, (0,), (kp.SlotFlags(0, 0, 0, 0),), flags_known=False)
+        for name in ("slv", "dec", "clean"):
+            with self.assertRaises(AssertionError):
+                getattr(unknown, name)
+
+    def test_rom_word_outside_the_image(self) -> None:
+        words = kp.read_parhex(kp.IMAGE_PATH)
+        unset = max(words) + 4
+        self.assertEqual(kp.rom_word(unset), kp.ROM_UNSET_WORD)
+        self.assertEqual(kp.rom_word(0), words[0])
 
     def test_spin_and_handler(self) -> None:
         m = model()

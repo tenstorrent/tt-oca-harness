@@ -8,20 +8,23 @@
 Unlike the rom-only family, the testbench is a participant here, not just an observer: no
 SEP instance exists in this bench, so this test writes the status entries SEP would have
 written, over the target's inbound AXI port. The controller then asks for them back one
-GET_SEP_STATUS at a time and checks that the buffer drains to empty.
+GET_SEP_STATUS at a time and, with the STATUS_RPT_DISABLE strap clear, checks that the buffer
+drains to empty.
 
 Members differ only in how many entries are written, which is what selects the boundary
 under test:
 
-    +sep_rb_entries=0     underflow  -- every read must return an empty buffer
+    +sep_rb_entries=0     underflow  -- every read must return an empty buffer (strap clear)
     +sep_rb_entries=600   overflow   -- 512-slot buffer, so the oldest 89 are dropped
     (unset)               nominal    -- randomised 1..512
 
 Gating follows the rom-only family: poll both instances' scratch 0, fail on TEST_FAIL from
 either, pass on TEST_PASS. The firmware walks min(count, 511) entries and then requires ten
-further reads to return 0. It logs the entry values but compares none of them, so neither
-side checks which entries the ROM returns. The entries this driver wrote are logged so a
-failure can be read against them by hand.
+further reads to return 0; its GET_SEP_STATUS helper compares each entry, in FIFO order, with
+the shadow this driver mirrors into controller SRAM. With the STATUS_RPT_DISABLE strap set,
+every GET_SEP_STATUS must instead return Unsupported_StatusID (0x07), and neither the entries
+nor the empty buffer are checked. The entries this driver wrote are logged so a failure can be
+read against them by hand.
 
 Plusargs:
     +rom_bin64=<image>        target production ROM               (required)

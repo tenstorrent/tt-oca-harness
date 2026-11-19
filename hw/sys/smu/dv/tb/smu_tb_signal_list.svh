@@ -83,6 +83,10 @@
 `SMU_TB_OUT(logic, dtp_smc_dbg_aw_valid_o)
 `SMU_TB_OUT(logic, dtp_smc_dbg_w_valid_o)
 `SMU_TB_OUT(logic, dtp_smc_dbg_ar_valid_o)
+// The same port's AW and AR AxCACHE, the value the bridge issues; read while
+// the matching VALID is high.
+`SMU_TB_OUT(logic [3:0], dtp_smc_dbg_aw_cache_o)
+`SMU_TB_OUT(logic [3:0], dtp_smc_dbg_ar_cache_o)
 `SMU_TB_IN(logic, clk_ref_i)
 `SMU_TB_IN(logic, clk_periph_i)
 // The clocks pll_wrap delivers to the SMU: the model's own outputs, so a
@@ -451,6 +455,9 @@
 `SMU_TB_IN(logic, tb_secure_tm_req)
 // Clears the SRAM auto-initialisation strap the scratch-RAM preload raises.
 `SMU_TB_IN(logic, tb_smc_sram_auto_init_restore)
+// FCOV graded-window gate. The owning leaf of a cov/sv covergroup that
+// samples only inside a graded window holds it 1 over that window. Idle 0.
+`SMU_TB_IN(logic, tb_fcov_gate)
 `SMU_TB_OUT(logic, tb_secure_tm)
 // Cross-trigger port pads. The DTP is the pad controller on all four
 // groups. CT_Req_out sits on an ocah_open_drain_bus shared wire, a private

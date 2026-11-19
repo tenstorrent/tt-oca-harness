@@ -74,7 +74,6 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     if (m_tracker != null) m_tracker.kill();
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
-    mark_step("PASS", "scenario complete");
     check_evidence(ChkNonvac, "S3<S4 primary_release<ungate",
                    64'((m_t_primary_rise >= 0) && (m_t_primary_rise < m_t_ungate)), 64'd1,
                    $sformatf("primary_release=%0t ungate=%0t", m_t_primary_rise, m_t_ungate));
@@ -85,6 +84,7 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
                    64'((m_t_fuse_rise >= 0) && (m_t_ungate < m_t_fuse_rise)), 64'd1, $sformatf(
                    "ungate=%0t fuse_release=%0t", m_t_ungate, m_t_fuse_rise));
     finalize_evidence();
+    mark_step("END", "scenario complete");
   endtask
 
   // S1: gate shut, cold reset asserted (both tracked resets confirmed low),

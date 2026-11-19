@@ -189,7 +189,10 @@ module smc_internal_regs #(
                                                   // interrupt, for HANG_DET_DATA_ACCEL_CTRL.irq.
 
   output logic                                             cla_interrupt_o,  // Debug interrupt raised by
-                                                                             // a CLA external action.
+                                                                             // a CLA external action; held
+                                                                             // until EnableEap is cleared
+                                                                             // and the EAP status W2C is
+                                                                             // then written.
   output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,  // Custom CLA
                                                                                      // external-action
                                                                                      // outputs, one bit per
@@ -203,9 +206,10 @@ module smc_internal_regs #(
 
   input  wire logic tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
                                                    // action as a clock stop.
-  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while an enabled CLA
-                                                           // halt-clock action requests a
-                                                           // clock stop.
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // CLA clock-halt request, set
+                                                           // by a halt-clock action and
+                                                           // held until primary reset;
+                                                           // gated by its enables.
 
   input  logic [1023:0] debug_bus_i,    // Debug bus observed by the CLA, 64 lanes of 16 bits whose
                                         // upper 32 lanes carry adopter signals; not synchronized to

@@ -155,6 +155,7 @@ from env.sep_fcov_gate import (
     set_km_ss_pass,
     set_open_value_leg_pass,
 )
+from env.sep_km_img_h import SRAM_REGION_BYTES
 from env.sep_reg_meta import SEP_CPU_CTRL, CHeaderRegBlock, ip_c_header
 from env.sep_rv32_asm import Asm, lw, store, sw
 from env.sep_seeded_rng import SepSeededRng
@@ -201,7 +202,6 @@ _LABEL_CLKS = 2  # clocks after a pass-label write, so the sampler sees its rise
 
 # Sub-word leg: snippet region, result words, marker, bounds and leg salt.
 _SUBWORD_REGION = 1
-_SUBWORD_REGION_BYTES = 0x400  # km_csr.adoc, SRAM_LOCK: one bit per 1 KB region
 _W_SUBWORD = 95  # 95 IRQ_STATUS, 96 KEY_CTRL, 97 marker
 _SUBWORD_MARK = 0x5357_0001  # host-chosen; never a DUT value
 _SUBWORD_BOUND = 20_000  # clocks for the snippet marker
@@ -995,7 +995,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             [_h(w) for w in pt],
             [(size, j) for size, j, _ in stores],
         )
-        base = kp.KM_SRAM_BASE + _SUBWORD_REGION * _SUBWORD_REGION_BYTES
+        base = kp.KM_SRAM_BASE + _SUBWORD_REGION * SRAM_REGION_BYTES
         snippet = self._subword_snippet(base, stores, addr)
         pre = await self._run(
             [

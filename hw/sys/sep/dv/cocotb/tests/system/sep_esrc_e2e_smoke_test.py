@@ -33,6 +33,22 @@ scores mux endpoint [2] (AXIS2 == pool native EDN beats). This smoke does not
 drain the entropy-pool aperture (0x1095_0000); sep_entropy_pool_aperture_test
 owns it.
 
+Compressor bypass flow (default entry only). After the first flow passes, a
+second entropy bring-up pulses the TRNG reset, which returns the ESRC registers
+and FIPS_LOCK to reset (hw/ip/entropy_source/doc/architecture.adoc). Its CTRL
+write, before the lock, sets BYPASS_ENTROPY_COMPRESSOR = 1,
+SHA256_WHITENING_ENABLE = 0 and DOWNSAMPLE_RATE = N, N drawn from the seed.
+The golden then packs the twelve lane bytes of every (N+1)th gated decorrelator
+output from the TRNG reset into three words, with no BIW or SHA stage
+(entropy_source.rdl CTRL; architecture.adoc output select). A fresh strict
+scoreboard grades CHK1, CHK2 on the FIFO words, CHK3 the DUT seed against those
+words, CHK4 the genbits and CHK5 the pool beats, and CHK-E2E-SCOREBOARD passes
+only when that report is clean. CTRL-E2E-BYPASS-CFG reads CTRL back after the
+lock and needs the three fields at the written values. Before that bring-up the
+KM is held in software reset (SW_RESET_N KM bit 0), as hw/sys/sep/doc/trng.adoc
+requires before a TRNG reset; CTRL-E2E-KM-PARK reads the bit as 1 before and 0 after. The KM
+endpoint is not scored in this flow.
+
 Closed read path (+esrc_fifo_closed). hw/ip/entropy_source/doc/architecture.adoc:
 ``FIFO_CTRL.ENABLE`` gates only the FIFO write, so the DRBG seed stream continues
 whatever its value, and ``FIPS_LOCK`` covers the field. This mode writes ENABLE=0
@@ -52,6 +68,22 @@ path while words reach the DRBG seed port:
   read back at the value stored before the lock, and LEVEL is still 0 after
   more seed-port words cross. The response code of that write is logged as
   OBS-FIFO-ENABLE-LOCKED-RESP: no specification states it.
+* CHK-SEED-PACK-COUNT: the seed packer collects twelve words into each 384-bit
+  CSRNG seed (hw/sys/sep/doc/trng.adoc). A seed push is a rise of the DRBG
+  seed-queue valid, or a seed handshake followed by the valid still high on the
+  next clock. A word is accepted on a clock with the conditioner valid and the
+  packer ready. Ingress has no backpressure and the producer must not supply
+  words faster than the packer takes them (hw/ip/drbg/doc/architecture.adoc,
+  Entropy ingress and Seed Assembly), so a word offered while the packer is not
+  ready is outside the stated contract: it is not counted and is logged in
+  OBS-SEED-PACK-DROP. Every window from one push
+  to the clock before the next push is graded: it holds exactly 12 accepted words,
+  so no push comes before the 12th accepted word. A clock without the conditioner
+  valid counts no word. The check also needs at least one graded window and no X
+  or Z on a sampled port. The window from the tap start to the first push is not
+  bounded by two pushes and is not graded. OBS-SEED-PACK-DROP logs the accepted
+  and dropped words of each closed window, and a summary with the graded window
+  count and the dropped-word total.
 
 FCOV owner window: the leaf opens its window before the entropy bring-up and
 closes it at the end. The sampler holds each conditioner-to-seed and read-path
@@ -69,6 +101,7 @@ from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_entropy_golden import SEED_WORDS
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_esrc_e2e_pass
+from env.sep_seeded_rng import SepSeededRng
 from pyuvm import uvm_sequence
 from sep_base_test import sep_base_test
 from sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, sym
@@ -79,6 +112,7 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcRegSeq,
 )
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
 TEST = "sep_esrc_e2e_smoke_test"
 CLOSED_PLUSARG = "esrc_fifo_closed"
@@ -106,6 +140,22 @@ CS_STS_STS = CSRNG.fields("SW_CMD_STS")["CMD_STS"]
 SW_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
 # SW_CMD_STS polls (one bus read each) before the software command gives up.
 SW_CMD_POLLS = 400
+# DOWNSAMPLE_RATE range of the compressor bypass flow (DV choice). From 5 up, three
+# bypass words per N + 1 gated strobes are no more than the whitened words of the
+# first flow (eight per sixteen samples), the rate the concurrent FIFO drain holds.
+BYPASS_RATE_MIN = 5
+BYPASS_RATE_MAX = 15
+CTRL_FIELDS = ENTROPY_SOURCE.fields("CTRL")
+BYPASS_CTRL_FIELDS = ("BYPASS_ENTROPY_COMPRESSOR", "SHA256_WHITENING_ENABLE", "DOWNSAMPLE_RATE")
+# Clocks the compressor bypass flow waits for its first entropy-pool beat.
+POOL_BEAT_TIMEOUT = 60_000
+
+
+def _known_bit(sig) -> int | None:
+    """The bit value of a 1-bit port, or None for X or Z."""
+    value = sig.value
+    bits = str(getattr(value, "binstr", value)).strip()
+    return int(bits) if bits in ("0", "1") else None
 
 
 class _SeedPortTap:
@@ -116,6 +166,13 @@ class _SeedPortTap:
     the DRBG seed-queue valid: the queue holds one seed, so each rise is a new
     384-bit seed packed from seed-port words. ``accepted`` counts rising edges
     of the CSRNG seed handshake, the event CHK3 scores.
+
+    Per seed-push window (CHK-SEED-PACK-COUNT): a clock with the conditioner
+    valid counts as accepted when the packer is ready and as dropped otherwise.
+    ``windows`` holds each closed window as ``(index, accepted, dropped)``;
+    window 1 opens when the tap starts, a push closes the open window and the
+    push clock opens the next. ``xz`` counts clocks with an X or Z on a port the
+    window rule reads.
     """
 
     def __init__(self, dut) -> None:
@@ -123,6 +180,9 @@ class _SeedPortTap:
         self.words = 0
         self.assembled = 0
         self.accepted = 0
+        self.windows: list[tuple[int, int, int]] = []
+        self.xz = 0
+        self._win = [1, 0, 0]
         self._task = cocotb.start_soon(self._run())
 
     async def _run(self) -> None:
@@ -132,14 +192,25 @@ class _SeedPortTap:
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if sep_base_test.rd(dut.esrc_compress_vld_o, allow_unknown=True):
+            vld = _known_bit(dut.esrc_compress_vld_o)
+            ready = _known_bit(dut.drbg_seed_word_ready_o) if vld else 0
+            raw_valid = _known_bit(dut.drbg_seed_valid_o)
+            raw_ack = _known_bit(dut.drbg_es_ack_o) if raw_valid else 0
+            if None in (vld, ready, raw_valid, raw_ack):
+                self.xz += 1
+            if vld:
                 self.words += 1
-            valid = sep_base_test.rd(dut.drbg_seed_valid_o, allow_unknown=True)
-            hs = valid and sep_base_test.rd(dut.drbg_es_ack_o, allow_unknown=True)
+            valid = raw_valid or 0
+            hs = valid and (raw_ack or 0)
             if valid and not prev_valid:
                 self.assembled += 1
             if hs and not prev_hs:
                 self.accepted += 1
+            if valid and (not prev_valid or prev_hs):
+                self.windows.append(tuple(self._win))
+                self._win = [self._win[0] + 1, 0, 0]
+            if vld:
+                self._win[1 if ready else 2] += 1
             prev_valid = valid
             prev_hs = hs
 
@@ -239,6 +310,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
                 "CHK-FIFO-CLOSED",
                 "CHK-FIFO-ENABLE-LOCKED",
                 "CHK-KM-SRAM",
+                "CHK-SEED-PACK-COUNT",
                 "CHK-SEED-SW",
             )
         else:
@@ -352,6 +424,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         if closed:
             await self._close_read_path_window(tap, window)
             await self._check_fifo_enable_locked(cfg, tap)
+            await self._check_seed_pack_count(tap)
         else:
             await self._sw_instantiate_seed()
             await self.stop_fifo_drain()
@@ -362,6 +435,85 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         self.logger.info(
             "CHK-E2E-SCOREBOARD PASS: strict CHK1..CHK5 entropy scoreboard report clean"
         )
+        if not closed:
+            await self._bypass_flow()
+
+    # --- compressor bypass flow -------------------------------------------------
+    async def _bypass_flow(self) -> None:
+        """Bring the chain up again with the compressor bypassed and DOWNSAMPLE_RATE N.
+
+        The bring-up builds a new strict scoreboard whose golden takes every gated
+        decorrelator sample from the TRNG reset. The FIFO drain starts as soon as
+        the bring-up returns, so no bypass word is discarded while the FIFO is full.
+        The KM is held in software reset before the TRNG reset of the bring-up
+        (hw/sys/sep/doc/trng.adoc, TRNG reset: keep the KM idle; its sampler is not
+        scrubbed by the TRNG reset).
+        """
+        rate = SepSeededRng(self.random_seed()).randrange(BYPASS_RATE_MIN, BYPASS_RATE_MAX + 1)
+        cfg = SepEntropyCfg(sha_whitening=False, compressor_bypass=True, downsample_rate=rate)
+        self.drbg_sb.stop()
+        resets = SepSwReset(self)
+        resets.value = await resets.read_back()
+        km_bit = SW_RESET_N_BIT["km"]
+        before = resets.value
+        await resets.park("km")
+        parked = await resets.read_back()
+        km_held = (before >> km_bit) & 1 and not (parked >> km_bit) & 1
+        await self._grade(
+            km_held,
+            f"CTRL-E2E-KM-PARK FAIL: SW_RESET_N before=0x{before:08x} "
+            f"after=0x{parked:08x}: KM not released before or not held after",
+        )
+        self.logger.info(
+            "CTRL-E2E-KM-PARK: SW_RESET_N before=0x%08x after=0x%08x KM held", before, parked
+        )
+        await self.bring_up_entropy(
+            cfg, strict=True, score_km=False, score_sinks={"pool": "golden"}
+        )
+        ctrl = SepEsrcRegSeq("esrc_ctrl_bypass", reg="CTRL")
+        await self.start_seq(ctrl)
+        self.start_fifo_drain()
+
+        def _fields(value: int) -> dict[str, int]:
+            return {
+                f: (value & CTRL_FIELDS[f]["bm"]) >> CTRL_FIELDS[f]["bp"]
+                for f in BYPASS_CTRL_FIELDS
+            }
+
+        want = _fields(cfg.esrc_ctrl_whiten)
+        got = _fields(ctrl.rdata)
+        text = " ".join(f"{f}={got[f]}/{want[f]}" for f in BYPASS_CTRL_FIELDS)
+        await self._grade(
+            got == want, f"CTRL-E2E-BYPASS-CFG FAIL: CTRL=0x{ctrl.rdata:08x} read/written {text}"
+        )
+        self.logger.info("CTRL-E2E-BYPASS-CFG: CTRL=0x%08x read/written %s", ctrl.rdata, text)
+
+        await self._grade(
+            await self.wait_genbits(),
+            "CSRNG never produced genbits with the compressor bypassed",
+        )
+        await self._grade(
+            await self._wait_pool_beat(),
+            "no entropy-pool beat with the compressor bypassed",
+        )
+        await self.stop_fifo_drain()
+        await self._grade(
+            self.drbg_sb.report(),
+            "sep_drbg_scoreboard: CHK1..CHK5 report has a failure with the compressor bypassed",
+        )
+        self.logger.info(
+            "CHK-E2E-SCOREBOARD PASS: strict CHK1..CHK5 entropy scoreboard report clean "
+            "with the compressor bypassed, DOWNSAMPLE_RATE=%d",
+            rate,
+        )
+
+    async def _wait_pool_beat(self) -> bool:
+        """Wait until the scoreboard records one pool beat (bounded)."""
+        for _ in range(POOL_BEAT_TIMEOUT):
+            if self.drbg_sb.results["CHK5_pool"].dut_items:
+                return True
+            await RisingEdge(cocotb.top.clk_i)
+        return False
 
     # --- second CSRNG seed ----------------------------------------------------
     async def _sw_instantiate_seed(self) -> None:
@@ -509,6 +661,24 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
             intr.rdata,
             clr.rdata,
         )
+
+    async def _check_seed_pack_count(self, tap: _SeedPortTap) -> None:
+        """CHK-SEED-PACK-COUNT over the push-to-push windows; OBS-SEED-PACK-DROP per window."""
+        windows = list(tap.windows)
+        xz = tap.xz
+        for k, acc, drop in windows:
+            self.logger.info("OBS-SEED-PACK-DROP window=%d accepted=%d dropped=%d", k, acc, drop)
+        graded = [(k, acc) for k, acc, _ in windows if k > 1]
+        dropped = sum(drop for _, _, drop in windows)
+        self.logger.info("OBS-SEED-PACK-DROP graded=%d dropped=%d", len(graded), dropped)
+        bad = [f"{k}:{acc}" for k, acc in graded if acc != SEED_WORDS]
+        listing = ",".join(f"{k}:{acc}" for k, acc in graded)
+        line = f"graded={len(graded)} xz={xz} words_per_seed={SEED_WORDS} windows=[{listing}]"
+        await self._grade(
+            bool(graded) and not bad and xz == 0,
+            f"CHK-SEED-PACK-COUNT FAIL: {line} mismatched={bad}",
+        )
+        self.logger.info("CHK-SEED-PACK-COUNT PASS: %s", line)
 
     async def _check_fifo_enable_locked(self, cfg: SepEntropyCfg, tap: _SeedPortTap) -> None:
         """Under the lock, a write of both FIFO_CTRL fields is refused and the FIFO stays empty.

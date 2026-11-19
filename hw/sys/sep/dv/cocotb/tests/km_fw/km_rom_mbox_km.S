@@ -145,15 +145,12 @@
     // KMCSR IRQ_STATUS / IRQ_ENABLE / IRQ_SET
     .equ CSR_SLVERR,      KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm
     .equ CSR_DRBG,        KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bm
-    .equ CSR_DRBG_EN,     (1 << 6)
-    .equ CSR_DRBG_SET,    (1 << 6)
-    .equ CSR_IRQ_ALL,     0xFFF
+    .equ CSR_DRBG_EN,     KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bm
+    .equ CSR_DRBG_SET,    KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bm
+    .equ CSR_IRQ_ALL,     (KM_CSR__IRQ_STATUS_REG__RSVD_bm ^ 0xFFFFFFFF)
 
     .if (ST_IN_EMPTY != 0x1) || (ST_OUT_FULL != 0x8) || (SEP_SET != 0x1)
     .error "KM_STATUS / KM_WRITE_SEPARATOR fields moved; update the typed masks"
-    .endif
-    .if (CSR_DRBG != CSR_DRBG_EN) || (CSR_SLVERR != 0x10)
-    .error "KMCSR IRQ fields moved; update the typed masks"
     .endif
 
     // SRAM words
