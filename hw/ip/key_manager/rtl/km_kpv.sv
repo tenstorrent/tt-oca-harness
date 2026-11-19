@@ -51,8 +51,9 @@ module km_kpv
                                            // key-data write to a write-locked or sealed slot
                                            // and on a key-data read of a use-locked slot.
 
-  input  logic        wipe_pulse_i  // Wipe: pulse high for one cycle to zero the entire KPV
-                                    // on the next cycle.
+  input  logic        wipe_pulse_i,  // Wipe: pulse high for one cycle to zero the entire KPV
+                                     // on the next cycle.
+  output logic        erase_busy_o   // High while the slot eraser runs.
 );
 
   `include "prim_assert.sv"
@@ -159,6 +160,7 @@ module km_kpv
   logic [DataW-1:0]     erase_wr_data;
   logic [NumSlots-1:0]  erase_done;
   logic                 erase_busy;
+  assign erase_busy_o = erase_busy;
 
   // Per-slot seal state, which decides an erase's outcome.
   logic [NumSlots-1:0] slot_sealed;

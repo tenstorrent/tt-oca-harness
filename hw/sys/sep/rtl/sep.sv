@@ -260,6 +260,7 @@ module sep #(
   logic [13:0] sep_isolate_state_debug;
 
   sep_pkg::remap_debug_t         local_masters_remap_debug;
+  logic [10:0] km_trng_state_debug;
   logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0]
       outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
   logic [$clog2(sep_pkg::InboundFilterNumFilters)-1:0]
@@ -1004,6 +1005,7 @@ NumSramDemuxPorts
     .edn_fatal_alert_o                      (edn_fatal_alert),
 
     .sep_efuse_debug_o                      (sep_efuse_debug),
+    .km_trng_state_debug_o                  (km_trng_state_debug),
 
     .locked_field_access_interrupt_o        (locked_field_access_interrupt),
 
@@ -1314,8 +1316,9 @@ NumSramDemuxPorts
     cpu_dec_tlu_perfcnt3,
     8'b0,
 
-    // [351:336] Reserved
-    16'b0,
+    // [351:336] [2:0] KM DRBG sampler FSM, [3] KPV eraser busy, [4] entropy FIFO push FSM,
+    // [7:5] CSRNG and [10:8] EDN register-bridge FSMs
+    {5'b0, km_trng_state_debug},
 
     // [335:320] Reset and security status
     sep_reset_n,

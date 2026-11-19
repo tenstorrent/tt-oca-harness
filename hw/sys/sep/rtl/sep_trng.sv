@@ -75,8 +75,10 @@ module sep_trng #(
   input  logic edn_bus_err_clr_i,             // Single-cycle clear for edn_bus_err_o, pulsed by
                                               // PERIPH_BUS_ERR_CLEAR.edn in sep.
 
-  output logic trng_reset_active_o            // High while rst_ni is asserted, through a two-flop
+  output logic trng_reset_active_o,           // High while rst_ni is asserted, through a two-flop
                                               // synchronizer to clk_i that por_rst_ni resets high.
+  output logic [6:0] state_debug_o            // Debug bus: [0] entropy_source FIFO push FSM,
+                                              // [3:1] CSRNG and [6:4] EDN register-bridge FSMs.
 );
 
   logic trng_reset_active_async;
@@ -124,7 +126,8 @@ module sep_trng #(
     .rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
     .entropy_stream_data_o(entropy_stream_data),
     .entropy_stream_vld_o (entropy_stream_vld),
-    .irq_o                (entropy_source_irq_o)
+    .irq_o                (entropy_source_irq_o),
+    .fifo_push_state_debug_o(state_debug_o[0])
   );
 
   drbg #(
@@ -158,7 +161,8 @@ module sep_trng #(
     .csrng_bus_err_o           (csrng_bus_err_o),
     .csrng_bus_err_clr_i       (csrng_bus_err_clr_i),
     .edn_bus_err_o             (edn_bus_err_o),
-    .edn_bus_err_clr_i         (edn_bus_err_clr_i)
+    .edn_bus_err_clr_i         (edn_bus_err_clr_i),
+    .adapter_state_debug_o     (state_debug_o[6:1])
   );
 
   `OCAH_ASSERT_STATIC(NumAxis_A, NUM_AXIS == sep_crypto_pkg::SepCryptoEdnEndpointCount,

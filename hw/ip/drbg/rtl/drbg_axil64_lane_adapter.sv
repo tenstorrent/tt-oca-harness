@@ -40,7 +40,10 @@ module drbg_axil64_lane_adapter
                                                             // SLVERR returned by the bridge does
                                                             // not pulse it.
   output logic        forwarded_read_pulse_o,               // Pulse when a read is forwarded.
-  output logic        forwarded_write_pulse_o               // Pulse when a write is forwarded.
+  output logic        forwarded_write_pulse_o,              // Pulse when a write is forwarded.
+  output logic [2:0]  state_debug_o                         // FSM state for the debug bus: 0 idle,
+                                                            // 1-3 read req/wait/resp, 4-6 write
+                                                            // req/wait/resp.
 );
 
   `include "prim_assert.sv"
@@ -60,6 +63,7 @@ module drbg_axil64_lane_adapter
   } state_e;
 
   state_e state_q, state_d;
+  assign state_debug_o = state_q;
 
   localparam int unsigned Axil64ReqWidth = $bits(axil64_req_t);
   localparam int unsigned Axil64RspWidth = $bits(axil64_rsp_t);
