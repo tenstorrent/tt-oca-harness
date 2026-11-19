@@ -1651,6 +1651,19 @@ def plan_token_fault(seed: int) -> SepEfusePlan:
     return _make_plan(T_TOKEN_FAULT, seed, d, LC_TEST_DEV, sip, sys_, img, leg)
 
 
+# Width of the efuse_addr field of both address registers.
+EFUSE_ADDR_BITS = EFUSE_INTERFACE_CTRL.field_width(_PA, "efuse_addr")
+FUSE_BITS = NUM_FUSE_WORDS * WORD_BITS
+
+
+def _draw_wide_oor_address(d: SepEfuseDraws) -> int:
+    """Out-of-range address: a non-zero upper half of ``efuse_addr`` over an in-range bit."""
+    half = EFUSE_ADDR_BITS // 2
+    low = d.randrange("oor_wide_low", 0, FUSE_BITS)
+    high = d.randrange("oor_wide_high", 1, 1 << (EFUSE_ADDR_BITS - half))
+    return high << half | low
+
+
 IF_CASES = (
     "pre_sense",
     "read_go_no_enable",
@@ -1672,7 +1685,9 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
     program (pairwise different, none a lock-slot field), each with a zero bit; the
     zero bit of the lock-blocked program; the bit of the lock-blocked read; the
     unlocked read bits of the case frame, the read-go case, the lock-read twin and
-    the both-enables case.
+    the both-enables case; last, the wide out-of-range address: an in-range bit
+    address in the lower half of the ``efuse_addr`` field and a non-zero upper
+    half, so a compare of the lower half alone takes it as in range.
     """
     d = SepEfuseDraws(seed)
     order = d.shuffled("case_order", IF_CASES)
@@ -1696,7 +1711,7 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
         reads[role] = _pick_bit(d, f"read.{role}", img, f, zero=False)
     leg = {
         "case_order": order,
-        "oor_addresses": [8192, 65535, oor],
+        "oor_addresses": [8192, 65535, oor, _draw_wide_oor_address(d)],
         "write_lock_slot": wl,
         "read_lock_slot": rl,
         "programs": progs,

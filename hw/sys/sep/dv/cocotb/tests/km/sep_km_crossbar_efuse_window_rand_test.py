@@ -78,7 +78,7 @@ Checks (anchor):
                   (``hw/ip/efuse/doc/architecture.adoc:389-391, 399-400``):
                   on each path (KM, host) each read go and each program go
                   lands (the path reads EFUSE_PROGRAM_ADDR or EFUSE_READ_ADDR
-                  back as written), raises 0 command requests at
+                  back as written after the go), raises 0 command requests at
                   the interface command outputs, and leaves done = 1 and
                   busy = 0; the goes of each path follow a cold reset of
                   their own with the strap held, so each go is the first of
@@ -1484,9 +1484,6 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             kp.wr(km(R_PADDR), self._prog_addr(tgt)),
             kp.wr(km(R_PROG), pw),
         ]
-        if mode == "tm":
-            # Read back EFUSE_PROGRAM_ADDR (RW) before the other path touches it.
-            ops.append(kp.rd(km(R_PADDR)))
         ops += [
             kp.wr(km(R_PROG), pw | PC_GO, raw=mode == "allow"),
         ]
@@ -1499,8 +1496,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             ops.append(kp.poll(km(R_PROG), PC_BUSY, 0, PROG_POLL_LOADS))
         else:
             # A fixed interval: the condition never holds, so the poll makes
-            # exactly TM_POLL_READS loads.
+            # exactly TM_POLL_READS loads. EFUSE_PROGRAM_ADDR (RW) is read back
+            # after the go and its wait, before the other path touches it.
             ops.append(kp.poll(km(R_PROG), 0, 1, TM_POLL_READS))
+            ops.append(kp.rd(km(R_PADDR)))
         ops += [kp.rd(km(R_PROG)), kp.rd(km(R_STATUS))]
         if mode != "allow":
             # A refused or blocked program leaves the sticky efuse_req_error set;
@@ -1522,7 +1521,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             waited = bool(polls[0].data[0] & ST_REQ_ERR) and not polls[1].data[0] & PC_BUSY
         else:
             waited = polls[0].data[1] == TM_POLL_READS
-        echo = res[6].value if mode == "tm" else None
+        echo = res[-4].value if mode == "tm" else None
         return {
             "path": "km",
             "echo": echo,
@@ -1544,14 +1543,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         done_before = _bit(await self._hr(R_PROG), PC_DONE)
         await self._hw(R_PADDR, self._prog_addr(tgt))
         await self._hw(R_PROG, pw)
-        echo = await self._hr(R_PADDR) if mode == "tm" else None
         await self._hw(R_PROG, pw | PC_GO)
+        echo = None
         waited = False
         busy_seen = 0
         if mode == "tm":
             for _ in range(TM_POLL_READS):
                 await self._hr(R_PROG)
             waited = True
+            echo = await self._hr(R_PADDR)
         else:
             for _ in range(HOST_POLL_READS):
                 pc = await self._hr(R_PROG)
@@ -2083,7 +2083,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         # "Protection While Active"), so each path reads back its written address.
         if (echo["km"], echo["host"]) != (1, 1):
             problems.append(
-                "efuse_addr read back after the program go is not the written address: "
+                "efuse_addr read back after the program go and its wait is not the "
+                "written address: "
                 f"km echo={echo['km']} host echo={echo['host']}"
             )
         for path in ("km", "host"):

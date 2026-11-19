@@ -4,10 +4,10 @@
 
 A read go with ``read_enable`` clear sets ``read_status``. A read or program address
 of 8192 or more sets its own address-error flag (and ``read_status`` for a read), and
-the flag clears by write-one. A request that a lock blocks sets ``efuse_req_error`` and
-neither address-error flag. ``program_enable`` keeps a read from reaching the bank. No
-bank bit changes from reset release until sense completes. A program with data 0
-programs nothing and sets no flag.
+the flag clears by write-one; such a request is not issued. A request that a lock
+blocks sets ``efuse_req_error`` and neither address-error flag. ``program_enable``
+keeps a read from reaching the bank. No bank bit changes from reset release until
+sense completes. A program with data 0 programs nothing and sets no flag.
 
 Sources: ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
 (``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_PROGRAM_CTRL``, ``EFUSE_READ_CTRL``; field
@@ -19,7 +19,7 @@ section Fuse Fields: 256 words of 32 bits, so 8192 bits); ``hw/ip/efuse/doc/inte
 
 Image: prestaged from ``plan(test, seed)`` of ``env/sep_efuse_plan.py``: TEST_DEV, a
 burned write-lock slot and a burned read-lock slot, filter-legal pair. The plan also
-draws the case order, the out-of-range address and every program and read bit.
+draws the case order, the out-of-range addresses and every program and read bit.
 
 "Run a program" / "run a read" is a write of the address register, then one control
 write with enable and go, a wait of the full window W (``_W_MULT`` x the sense time
@@ -43,6 +43,14 @@ Checkers:
                    ``efuse_shim_command_req_o`` for the lock-blocked read (go to end of
                    W) and the both-enables read (go to the cold reset assertion); the
                    accepted read twin of each shows its read command.
+  CHK-IF-OOB-CMD   each out-of-range read and program passes 0 commands to
+                   ``efuse_shim_command_req_o`` and changes no bit at
+                   ``otp_bank_probe_o`` from the case frame to the flag clear
+                   (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``,
+                   ``EFUSE_PROGRAM_ADDR`` and ``EFUSE_READ_ADDR``: a start at or
+                   beyond the implemented size is not issued). One address has an
+                   in-range bit address in the lower half of ``efuse_addr`` and a
+                   non-zero upper half.
   CHK-IF-CTRL      every case starts with clean flags (case frame), and each refusal
                    case has an accepted twin that completes (program twins change the
                    bank by exactly their bit at ``otp_bank_probe_o``). The
@@ -90,10 +98,7 @@ event outside a graded step is dropped.
 
 Log-only: the flags of the pre-sense and both-enables cases
 (``OBS-IF-STATUS-FLAGS``), ``read_status`` (``OBS-IF-LOCK-READ-STATUS``) and the data of
-the lock-blocked read, the bank
-diff after the out-of-range program cases (``OBS-IF-CMD``), the
-count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
-program (``OBS-IF-OOB-CMD``), the status flags, ``program_done``, ``program_status``
+the lock-blocked read, the status flags, ``program_done``, ``program_status``
 and bank diff of the in-range program after the out-of-range programs
 (``INFO-IF-OOR-PROG-TWIN``), and, after the lock-program case, a read held by
 ``program_enable`` with ``program_enable`` cleared first: the READ commands at
@@ -224,6 +229,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     required_evidence = (
         "CHK-IF-STATUS",
         "CHK-IF-CMD",
+        "CHK-IF-OOB-CMD",
         "CHK-IF-CTRL",
         "CHK-IF-PRESENSE",
         "CHK-IF-PRESENSE-JTAG",
@@ -836,8 +842,21 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         _n, ok = await self._accepted_read("read_go_no_enable", bit)
         await self._pass(tag, ok)
 
+    def _oob_cmd(self, case: str, addr: int, snap: Any, m_cmd: Any) -> bool:
+        """An out-of-range command is not issued: no command past the guard, no bank change."""
+        n = len(self.cmds.commands_since(m_cmd))
+        diff = self.bank.diff_since(snap)
+        return self._grade(
+            "IF-OOB-CMD",
+            n == 0 and not diff,
+            case=case,
+            addr=addr,
+            post_guard_cmds=n,
+            otp_diff="none" if not diff else diff_log(diff),
+        )
+
     async def _case_oor_read(self) -> None:
-        """Step 9: accepted read of bit 8191, then reads at the three out-of-range addresses."""
+        """Step 9: accepted read of bit 8191, then reads at the four out-of-range addresses."""
         await self._frame("oor_read")
         tag = self._step()
         _n, ok = await self._accepted_read("oor_read", _BIT_8191)
@@ -847,47 +866,23 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             tag = self._step()
             m_cmd = self.cmds.mark()
             f = await self._run_read(a)
-            diff = self.bank.diff_since(snap)
-            self.logger.info(
-                "OBS-IF-CMD LOG seed=%d case=read_oob addr=%d otp_diff=%s",
-                self.seed,
-                a,
-                "none" if not diff else diff_log(diff),
-            )
-            self.logger.info(
-                "OBS-IF-OOB-CMD LOG seed=%d case=read_oob addr=%d post_guard_cmds=%d",
-                self.seed,
-                a,
-                len(self.cmds.commands_since(m_cmd)),
-            )
+            ok_cmd = self._oob_cmd("read_oob", a, snap, m_cmd)
             fc = await self._clear(_M_CLR_RAE)
             ok_clear = fc["rae"] == 0 and fc["pae"] == f["pae"] and fc["re"] == f["re"]
-            ok = self._status("oor_read", a, f, "0b1100", int(ok_clear), ok_clear)
+            ok = self._status("oor_read", a, f, "0b1100", int(ok_clear), ok_clear) and ok_cmd
             await self._pass(tag, ok)
 
     async def _case_oor_program(self) -> None:
-        """Step 10: programs at the three out-of-range addresses."""
+        """Step 10: programs at the four out-of-range addresses."""
         for a in self.oor:
             snap = await self._frame("oor_program")
             tag = self._step()
             m_cmd = self.cmds.mark()
             f = await self._run_program(a)
-            diff = self.bank.diff_since(snap)
-            self.logger.info(
-                "OBS-IF-CMD LOG seed=%d case=prog_oob addr=%d otp_diff=%s",
-                self.seed,
-                a,
-                "none" if not diff else diff_log(diff),
-            )
-            self.logger.info(
-                "OBS-IF-OOB-CMD LOG seed=%d case=prog_oob addr=%d post_guard_cmds=%d",
-                self.seed,
-                a,
-                len(self.cmds.commands_since(m_cmd)),
-            )
+            ok_cmd = self._oob_cmd("prog_oob", a, snap, m_cmd)
             fc = await self._clear(_M_CLR_PAE)
             ok_clear = fc["pae"] == 0 and fc["rae"] == f["rae"] and fc["re"] == f["re"]
-            ok = self._status("oor_program", a, f, "0b0010", int(ok_clear), ok_clear)
+            ok = self._status("oor_program", a, f, "0b0010", int(ok_clear), ok_clear) and ok_cmd
             await self._pass(tag, ok)
         twin = self.oor_twin["addr"]
         snap = await self._frame("oor_program")
