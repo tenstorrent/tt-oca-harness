@@ -20,8 +20,8 @@
 
 puts "INFO: Loading SMC-specific CDC constraints"
 
-# Hierarchy-reusable: anchored instance paths go through cdc_inst; pad2core_i[51] keeps
-# the same port name at the SMU top, so its get_ports reference needs no mapping.
+# Hierarchy-reusable: anchored instance paths go through cdc_inst, SMC pad ports through
+# cdc_boundary_port.
 if { [info procs cdc_conv_apply] eq "" } {
     source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
@@ -88,7 +88,7 @@ set avs_sdata_capture_q0_pin \
     [get_pins -quiet [cdc_inst {u_smc_peripherals/u_avsbus_controller/avs_sdata_capture/Q[0]}]]
 if { [sizeof_collection $avs_sdata_capture_q0_pin] > 0 } {
     configure_cdc_data_sync \
-        -from_obj [get_ports {pad2core_i[51]}] \
+        -from_obj [cdc_boundary_port {pad2core_i[51]}] \
         -to_obj $avs_sdata_capture_q0_pin \
         -sync_check_type enable_with_des_domain
     puts "INFO: Declared avs_sdata_capture/Q\[0\] as UDS for pad2core_i\[51\] (enable_with_des_domain)"
@@ -101,7 +101,7 @@ set avs_sdata_intdet_q0_pin \
     [get_pins -quiet [cdc_inst {u_smc_peripherals/u_avsbus_controller/avs_sdata_interrupt_detect/Q[0]}]]
 if { [sizeof_collection $avs_sdata_intdet_q0_pin] > 0 } {
     configure_cdc_data_sync \
-        -from_obj [get_ports {pad2core_i[51]}] \
+        -from_obj [cdc_boundary_port {pad2core_i[51]}] \
         -to_obj $avs_sdata_intdet_q0_pin \
         -sync_check_type enable_with_des_domain
     puts "INFO: Declared avs_sdata_interrupt_detect/Q\[0\] as UDS for pad2core_i\[51\] (enable_with_des_domain)"

@@ -96,6 +96,25 @@ proc cdc_port_or_pin { pattern } {
     return [get_pins -quiet "${::cdc_hier_prefix}${pattern}"]
 }
 
+# A block-top port reference for constraints on the chip boundary (pad-facing clocks,
+# ignore paths and synchronizer sources), where the tool reports crossings at the top port.
+# Under a prefix each child pin resolves to the top port on its net, or stays a pin when
+# its net reaches none. get_ports at block top.
+proc cdc_boundary_port { pattern } {
+    if { [cdc_is_block_top] } { return [get_ports $pattern] }
+    set out {}
+    foreach_in_collection pin [get_pins -quiet "${::cdc_hier_prefix}${pattern}"] {
+        set net [get_nets -quiet -top_net_of_hierarchical_group -of_objects $pin]
+        set port [get_ports -quiet -of_objects $net]
+        if { [sizeof_collection $port] == 1 } {
+            set out [add_to_collection $out $port]
+        } else {
+            set out [add_to_collection $out $pin]
+        }
+    }
+    return $out
+}
+
 # create_reset for a block TOP-PORT reset.
 # - Block top: plain create_reset on the port (unchanged behaviour).
 # - Parent, name aliased: SKIPPED - the driver net already carries the parent's reset

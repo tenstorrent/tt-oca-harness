@@ -288,7 +288,7 @@ if { [sizeof_collection $prim_fifo_async_cells] > 0 } {
 # to ck_feedthru is expected and does not require synchronization since the
 # destination is a primary output going to pads with no clock relationship.
 set_cdc_ignore_path \
-    -to [get_ports {core2pad_o*}] \
+    -to [cdc_boundary_port {core2pad_o*}] \
     -type cdc_crossing \
     -comments "GPIO core2pad outputs: SMCCLK register to async pad, no sync needed"
 
@@ -311,7 +311,7 @@ set_cdc_ignore_path \
 # Include clock_path_glitch so bits that behave as exported clocks under muxing
 # remain covered if the tool classifies them that way in a future rev.
 set_cdc_ignore_path \
-    -to [get_ports {core2pad_o*}] \
+    -to [cdc_boundary_port {core2pad_o*}] \
     -type {glitch clock_path_glitch} \
     -comments "GPIO core2pad: limit glitch-stage checks on terminal outputs; padring mux reconvergence is intentional. Ordinary CDC crossing handling stays via the separate cdc_crossing ignore."
 
