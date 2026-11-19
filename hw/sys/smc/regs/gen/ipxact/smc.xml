@@ -7635,12 +7635,12 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Data returned by the adopter SHIM with the last successful program response. The meaning of this data is defined by the adopter (for example, a read-back word from the macro). Retained until the next successful program; not valid after an error response. Hardware debug only.</ipxact:description>
+          <ipxact:description>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Data returned by the adopter SHIM with the last successful program response. The meaning is adopter-defined.</ipxact:description>
+            <ipxact:description>Program response data from the adopter SHIM; its meaning is adopter-defined.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

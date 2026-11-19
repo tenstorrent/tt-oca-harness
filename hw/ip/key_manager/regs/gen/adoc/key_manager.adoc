@@ -94,7 +94,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).
 | 0x11400 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_INTERFACE_CTRL_STATUS,EFUSE_INTERFACE_CTRL_STATUS>> | RW a| eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
 | 0x11404 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_CTRL,EFUSE_PROGRAM_CTRL>> | RW a| eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.
 | 0x11408 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_CTRL,EFUSE_READ_CTRL>> | RW a| eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
-| 0x1140C | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA,EFUSE_PROGRAM_INTERFACE_READ_DATA>> | R a| Data returned by the adopter SHIM with the last successful program response. The meaning of this data is defined by the adopter (for example, a read-back word from the macro). Retained until the next successful program; not valid after an error response. Hardware debug only.
+| 0x1140C | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA,EFUSE_PROGRAM_INTERFACE_READ_DATA>> | R a| Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.
 | 0x11410 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA,EFUSE_READ_INTERFACE_READ_DATA>> | R a| Read data returned through the eFuse read interface.
 | 0x11414 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT,EFUSE_READ_REQ_TIMEOUT>> | RW a| Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
 | 0x11418 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT,EFUSE_PROGRAM_REQ_TIMEOUT>> | RW a| Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
@@ -961,7 +961,7 @@ PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `dout` | R | 0x0 a| Data returned by the adopter SHIM with the last successful program response. The meaning is adopter-defined.
+| 31:0 | `dout` | R | 0x0 a| Program response data from the adopter SHIM; its meaning is adopter-defined.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA]
