@@ -107,10 +107,12 @@ Checkers:
                     shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
                     word has one (``no_twin_bit``), the leaf logs ``INFO-BLOCKED
                     CHK-LOCK-JTAG-WR part=shadow_write`` and grades the program part.
-                    The refused program ends with ``program_done`` 1 and ``program_status`` 1
-                    (``hw/ip/efuse/doc/architecture.adoc:247-249``: a locked target completes
-                    the operation with an error; ``efuse_interface_ctrl.rdl:96-107``), the
-                    twin program with ``program_done`` 1 and ``program_status`` 0. Logged, not
+                    The twin program runs first and ends with ``program_done`` 1 and
+                    ``program_status`` 0; the refused program then moves ``program_status`` from 0
+                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:247-249``:
+                    a locked target completes the operation with an error;
+                    ``efuse_interface_ctrl.rdl:96-107``; the field is read-only and holds its value
+                    until the next program completes, so ``pre_status`` is read before the go). Logged, not
                     graded: ``twin_wr_resp`` (the response of the accepted twin write) and
                     ``go_resp`` (the response of the program go write); no specification text
                     states them.
@@ -1176,8 +1178,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
     async def _jtag_prog(self, slot: int, bit_addr: int) -> tuple[dict, dict]:
         """JTAG program go of ``bit_addr``; returns the ``_program`` result and the log
-        fields."""
+        fields. ``pre_status`` is ``program_status`` before the go: the field is
+        read-only and holds its value until the next program completes."""
+        pre_status = _bit(await self._rd32(PROGRAM_CTRL_ADDR), _PG_STATUS)
         r = await self._program(bit_addr, wr=self._jtag_wr)
+        r["pre_status"] = pre_status
         pc: PulseCount = r["pulses"]
         f = {
             "slot": slot,
@@ -1194,6 +1199,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "edges": pc.edges,
             "valid_pulses": pc.valid,
             "psel_pulses": pc.psel,
+            "pre_status": pre_status,
             "pg_flags": f"busy{r['busy']}/done{r['done']}/st{r['prog_status']}",
             "go_resp": resp_name(r["go_resp"]),
         }
@@ -1262,18 +1268,6 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                 exp_after=f["data"],
                 twin_wr_resp=resp_name(resp),
             )
-        r, f = await self._jtag_prog(*progs[0])
-        pc = r["pulses"]
-        ok &= self._grade(
-            "LOCK-JTAG-WR",
-            self._refused(r)
-            and pc.valid == 0
-            and pc.psel == 0
-            and r["done"] == 1
-            and r["prog_status"] == 1,
-            part="program",
-            **f,
-        )
         r, f = await self._jtag_prog(*progs[1])
         pc = r["pulses"]
         ok &= self._control(
@@ -1283,6 +1277,19 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             and pc.psel >= 1
             and r["done"] == 1
             and r["prog_status"] == 0,
+            part="program",
+            **f,
+        )
+        r, f = await self._jtag_prog(*progs[0])
+        pc = r["pulses"]
+        ok &= self._grade(
+            "LOCK-JTAG-WR",
+            self._refused(r)
+            and pc.valid == 0
+            and pc.psel == 0
+            and r["pre_status"] == 0
+            and r["done"] == 1
+            and r["prog_status"] == 1,
             part="program",
             **f,
         )
