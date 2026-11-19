@@ -185,15 +185,15 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_READ_CTRL_t;
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_INTERFACE_READ_DATA
-// Data returned by the adopter SHIM with the last successful program response. The meaning of this data is defined by the adopter (for example, a read-back word from the macro). Retained until the next successful program; not valid after an error response. Hardware debug only.
-// Data returned by the adopter SHIM with the last successful program response. The meaning is adopter-defined.
+// Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.
+// Program response data from the adopter SHIM; its meaning is adopter-defined.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Data returned by the adopter SHIM with the last successful program response. The meaning is adopter-defined.
+        // Program response data from the adopter SHIM; its meaning is adopter-defined.
         uint32_t dout :32;
     } f;
     uint32_t w;

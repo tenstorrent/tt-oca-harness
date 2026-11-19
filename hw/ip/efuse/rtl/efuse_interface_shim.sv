@@ -316,9 +316,7 @@ module efuse_interface_shim #(
       write_readback_phase_en,
       write_readback_phase_en_flopped; // 1'b1 when we are in the write readback phase, 1'b0 when we are in the write phase
 
-  // PSLVERR of the write phase, held until the read-back completes so that it is reported in the
-  // program response status together with the read-back result.
-  logic write_pslverr_d, write_pslverr_q;
+  logic write_pslverr_d, write_pslverr_q;  // Write-phase PSLVERR, reported with the read-back.
 
 
 

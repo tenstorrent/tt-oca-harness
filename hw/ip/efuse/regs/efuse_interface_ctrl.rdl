@@ -153,11 +153,11 @@ addrmap efuse_interface_ctrl {
     };
 
     reg EFUSE_PROGRAM_INTERFACE_READ_DATA {
-        desc = "Data returned by the adopter SHIM with the last successful program response. The meaning of this data is defined by the adopter (for example, a read-back word from the macro). Retained until the next successful program; not valid after an error response. Hardware debug only.";
+        desc = "Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.";
         field {
         sw = r;
         hw = w;
-        desc = "Data returned by the adopter SHIM with the last successful program response. The meaning is adopter-defined.";
+        desc = "Program response data from the adopter SHIM; its meaning is adopter-defined.";
         } dout[31:0] = 0x0;
     };
 

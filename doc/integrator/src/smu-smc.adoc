@@ -419,13 +419,12 @@ value.
 * *Programs.* If a request has `command` set to `FUSE_COMMAND_PROGRAM`, program
 the single bit at `address` using the foundry's native program flow and respond
 with one `valid` strobe when done. The bit is always programmed to 1, and
-`read_word_count` is 0. `status` and `data` in the response are
-adopter-defined: whether to verify the bit and what data to return in the
-program response is the SHIM's responsibility, not the controller's. Set
-`status` for any error the macro reports during the program, not only for a
-failed verify: a bit that already reads 1 passes a verify even when the program
-itself failed. The reference SHIM sets `status` when the write or its read-back
-answers PSLVERR, or when the read-back does not show the bit set.
+`read_word_count` is 0. The SHIM decides whether to verify the bit and what to
+return in `data`. Set `status` for any error the macro reports during the
+program, not only for a failed verify, since a bit that already reads 1 passes a
+verify even when the program failed. The reference SHIM sets `status` when the
+write or its read-back answers PSLVERR, or when the read-back shows the bit
+clear.
 +
 NOTE: If the macro does not verify automatically, firmware should read the bit
 back through `EFUSE_READ_CTRL` *before* setting any read lock on the field.
