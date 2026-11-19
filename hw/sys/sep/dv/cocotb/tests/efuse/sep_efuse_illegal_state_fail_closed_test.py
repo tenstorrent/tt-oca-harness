@@ -561,6 +561,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"CTRL-{tag}-FAILCLOSED-CLEAN FAIL: {before} before the leg {leg} injection, "
             "so an error after it could be a stale one"
         )
+        assert not in_flight or (busy_before == 1 and done_before == 0), (
+            f"CTRL-{tag}-FAILCLOSED-CLEAN FAIL: busy_o={busy_before} done_o={done_before} "
+            f"before the leg {leg} injection, so the read is not in flight"
+        )
         self.logger.info(
             "CTRL-%s-FAILCLOSED-CLEAN state=%#04x leg=%d %s done_o=%d busy_o=%d "
             "before the injection",
