@@ -124,7 +124,7 @@ observe FIFOs at LEVEL 0 with capture off, RDATA and LEVEL, WPTR and RPTR before
 after one RDATA read (no text states the result of a read of an empty observe FIFO).
 ``INFO-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
-``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``INFO-LANESEL-SAME`` logs
+``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-LANESEL-SAME`` logs
 LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
 flushes on a lane change, the ``FLUSH`` text on a ``LANE_SEL`` change; they disagree
 here).
@@ -745,7 +745,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         fields = {"sel": sel, "level_before": before, "level_after": after}
         if not ok4:
             fields["reason"] = f"timeout:level_before bound={b4}"
-        self.chk.info("LANESEL-SAME", **fields)
+        self.chk.obs("LANESEL-SAME", **fields)
 
     def _grade_lane(self, v, cur, z, ok4, ok8, before, after, words, b4, b8) -> None:
         expect = _word(z)
