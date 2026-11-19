@@ -288,6 +288,149 @@ https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/jtag_intf_unit/d
 endif::backend-pdf[]
 gives the SIB bit map and segment ports.
 
+[[dtp-jtag2axi-access]]
+==== JTAG2AXI Bridge Access
+
+A JTAG2AXI bridge is a RISC-V Debug Module behind two primary TAP TDRs: a 32-bit
+DTMCS register and a 41-bit DMI register. The debugger reads and writes memory
+with the System Bus Access (SBA) registers of the Debug Module. Each bridge has
+its own instruction pair (<<dtp-jtag2axi-instructions-table>>). Read JTAG_CAPS
+first: the instructions of a bridge that the instance does not have behave as
+BYPASS.
+
+[[dtp-jtag2axi-instructions-table]]
+[width="100%",cols="<25%,<20%,<20%,<35%",options="header"]
+.JTAG2AXI bridge instructions
+|===
+|Bridge |DTMCS instruction |DMI instruction |Target
+|SMC OTP |`0x1B` |`0x1C` |SMC eFuse interface, AXI4-Lite
+|SEP OTP |`0x1D` |`0x1E` |SEP eFuse interface, AXI4-Lite
+|SMC fabric |`0x1F` |`0x20` |SMC AXI fabric, AXI4
+|===
+
+The
+ifdef::backend-html5[]
+xref:ocah-docs:ip:jtag_ptap/doc/index.adoc#ptap-jtag2axi-support[PTAP JTAG2AXI Support]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-jtag2axi-support[PTAP JTAG2AXI Support]
+endif::backend-pdf[]
+section of the TRM defines the two TDRs, the Debug Module registers and the AXI
+transfers.
+
+*One DMI operation*
+
+. With the DMI instruction selected, shift a 41-bit DR scan: `op` in bits 1:0
+  (1 for a read, 2 for a write), the write data in bits 33:2 and the register
+  address in bits 40:34.
+. Stay in Run-Test/Idle for some TCK cycles. The operation progresses only while
+  TCK runs. Start with the `idle` value that the DTMCS register reports.
+. Shift the next DMI DR scan. Bits 1:0 of the value shifted out are the status,
+  and bits 33:2 are the data of a read. Shift `op` 0 in this scan if no other
+  operation follows.
+
+A status of 0 means the operation completed. A status of 3 means a scan arrived
+while an operation was in progress, and the bridge did not take the operation of
+that scan. The status stays until it is cleared:
+
+. Clear it with a DTMCS DR scan that has `dmireset` (bit 16) set, or with a DMI
+  DR scan that has `op` 3.
+. Use more Run-Test/Idle cycles after each scan.
+. Send the operation again. A read that is sent again can reach the Debug Module
+  two times, so do not resend a read of `sbdata0` while `sbreadondata` is 1
+  without a check of the address.
+
+A status of 2 means the Debug Module refused an operation. Clear it in the same
+way.
+
+*Bring-up of a bridge*
+
+. Select the DTMCS instruction and shift a 32-bit DR scan of zeros. Check that
+  `version` (bits 3:0) is 1 and `abits` (bits 9:4) is 7.
+. Select the DMI instruction.
+. Write `dmcontrol` (address `0x10`) with `0x00000001` to set `dmactive`.
+. Read `sbcs` (address `0x38`). `sbasize` (bits 11:5) is the address width.
+  `sbaccess8`, `sbaccess16`, `sbaccess32` and `sbaccess64` (bits 0 to 3) show the
+  access sizes; the largest one is the data width.
+
+*Single write*
+
+. Write `sbcs` with `sbaccess` (bits 19:17) set to the access size: 0 for 1 byte,
+  1 for 2 bytes, 2 for 4 bytes, 3 for 8 bytes.
+. If the address width is more than 32 bits, write `sbaddress1` (`0x3A`) with
+  address bits 63:32.
+. Write `sbaddress0` (`0x39`) with address bits 31:0. The address must be aligned
+  to the access size.
+. For an 8-byte access, write `sbdata1` (`0x3D`) with data bits 63:32.
+. Write `sbdata0` (`0x3C`) with data bits 31:0. This write starts the AXI write.
+. Read `sbcs` until `sbbusy` (bit 21) is 0, then check `sberror` (bits 14:12) and
+  `sbbusyerror` (bit 22).
+
+*Single read*
+
+. Write `sbcs` with `sbaccess` set to the access size and `sbreadonaddr` (bit 20)
+  set.
+. Write `sbaddress1`, if the address width needs it, then `sbaddress0`. The
+  write of `sbaddress0` starts the AXI read.
+. Read `sbcs` until `sbbusy` is 0, then check `sberror` and `sbbusyerror`.
+. For an 8-byte access, read `sbdata1`. Then read `sbdata0`.
+
+*Block access*
+
+For a block write, also set `sbautoincrement` (bit 16) in `sbcs`. Each write of
+`sbdata0` then writes one element and advances the address by the access size.
+
+For a block read, set `sbreadonaddr`, `sbreadondata` (bit 15) and
+`sbautoincrement` in `sbcs`, then write the address. Each read of `sbdata0`
+returns one element and starts the read of the next one. Before the read of the
+last element, write `sbcs` again with `sbreadondata` clear, so that no access
+beyond the block starts.
+
+Give each element enough Run-Test/Idle cycles for its AXI transfer, or read
+`sbcs` until `sbbusy` is 0 between elements. An access to an SBA register while
+`sbbusy` is 1 sets `sbbusyerror` and does not take place.
+
+*Errors and recovery*
+
+* `sberror` 2: the AXI subordinate answered with an error, or the lifecycle
+  state disables the bridge. A disabled bridge answers every access with this
+  error and sends no request to its target; `sbcs` still reads the geometry.
+* `sberror` 3: the address is not aligned to the access size. `sberror` 4: the
+  access size is larger than the data width.
+* Clear `sberror` with a write of `sbcs` that has all three `sberror` bits set.
+  The bridge starts no access while `sberror` is not 0.
+* Clear `sbbusyerror` with a write of 1 to bit 22 of `sbcs`.
+* The bridges have no access timeout. If `sbbusy` stays 1, the target did not
+  complete the transfer, and only a system reset recovers the bridge.
+* A system reset clears `dmactive` and the SBA registers; do the bring-up again.
+  TRST and Test-Logic-Reset do not reset the Debug Module. A write of 0 and
+  then 1 to `dmactive` resets its registers.
+* Assert and release TRST only while TCK is stopped.
+
+*OpenOCD*
+
+The bridges have the DTMCS and DMI registers that the OpenOCD `riscv` target
+uses, but operation with OpenOCD is not validated. The setup for one bridge,
+here the SMC fabric bridge, is:
+
+[source,tcl]
+----
+jtag newtap chiplet ptap -irlen 6 -expected-id <idcode>
+target create chiplet.smc_bridge riscv -chain-position chiplet.ptap
+riscv set_ir dtmcs 0x1f
+riscv set_ir dmi 0x20
+riscv set_mem_access sysbus
+----
+
+`riscv set_ir` applies to the whole OpenOCD process, so one process addresses
+one bridge. The one hart of the Debug Module is always unavailable: halt, resume
+and register access have no function, and memory access goes through the system
+bus only.
+
+The `irscan`, `drscan` and `runtest` commands give direct access to the two TDRs
+with the sequences of this section, for example `irscan chiplet.ptap 0x20`,
+then `drscan chiplet.ptap 41 <value>` and `runtest <cycles>`.
+
 [[dtp-ic-reset-overrides]]
 ==== IC_RESET Overrides
 

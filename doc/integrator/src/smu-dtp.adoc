@@ -64,7 +64,7 @@ dtp #(
 
 * *TCK Domain*: JTAG logic operates on external Test Clock
 * *System Clock* (`clk_i`): Cross trigger logic and JTAG2AXI bridges
-* *System Reset* (`rst_n_i`): Resets cross trigger and AXI; does not affect TAP controller
+* *System Reset* (`rst_n_i`): Resets cross trigger logic and the JTAG2AXI bridges; does not affect TAP controller
 * *Power-On Reset* (`pwr_on_rst_ni`): Asynchronous reset for JTAG state machine
 
 == Constraints

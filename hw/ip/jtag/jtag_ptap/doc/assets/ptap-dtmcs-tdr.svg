@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="170" viewBox="0 0 1040 170" role="img" aria-labelledby="title desc">
+<title id="title">JTAG2AXI DTMCS register layout</title>
+<desc id="desc">The DTMCS test data register of a JTAG2AXI bridge, 32 bits long. From the most significant bit, nearest TDI, to bit 0, which shifts out to TDO first: zero in bits 31:18 (14 bits), dmihardreset in bit 17, dmireset in bit 16, zero in bit 15, idle in bits 14:12 (3 bits), dmistat in bits 11:10 (2 bits), abits in bits 9:4 (6 bits) and version in bits 3:0 (4 bits). Fields are not drawn to scale.</desc>
+<defs>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.s { font-size: 13px; fill: #484848; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+</style>
+</defs>
+<rect width="1040" height="170" fill="#ffffff"/>
+<rect class="external" x="90" y="52" width="120" height="58" rx="0"/>
+<text class="s" x="150" y="42" text-anchor="middle">31:18</text>
+<text class="t" x="150" y="86" text-anchor="middle">0</text>
+<text class="s" x="150" y="130" text-anchor="middle">14 bits</text>
+<rect class="fabric" x="210" y="52" width="140" height="58" rx="0"/>
+<text class="s" x="280" y="42" text-anchor="middle">17</text>
+<text class="t" x="280" y="86" text-anchor="middle">dmihardreset</text>
+<text class="s" x="280" y="130" text-anchor="middle">1 bit</text>
+<rect class="fabric" x="350" y="52" width="110" height="58" rx="0"/>
+<text class="s" x="405" y="42" text-anchor="middle">16</text>
+<text class="t" x="405" y="86" text-anchor="middle">dmireset</text>
+<text class="s" x="405" y="130" text-anchor="middle">1 bit</text>
+<rect class="external" x="460" y="52" width="60" height="58" rx="0"/>
+<text class="s" x="490" y="42" text-anchor="middle">15</text>
+<text class="t" x="490" y="86" text-anchor="middle">0</text>
+<text class="s" x="490" y="130" text-anchor="middle">1 bit</text>
+<rect class="fabric" x="520" y="52" width="100" height="58" rx="0"/>
+<text class="s" x="570" y="42" text-anchor="middle">14:12</text>
+<text class="t" x="570" y="86" text-anchor="middle">idle</text>
+<text class="s" x="570" y="130" text-anchor="middle">3 bits</text>
+<rect class="fabric" x="620" y="52" width="110" height="58" rx="0"/>
+<text class="s" x="675" y="42" text-anchor="middle">11:10</text>
+<text class="t" x="675" y="86" text-anchor="middle">dmistat</text>
+<text class="s" x="675" y="130" text-anchor="middle">2 bits</text>
+<rect class="fabric" x="730" y="52" width="110" height="58" rx="0"/>
+<text class="s" x="785" y="42" text-anchor="middle">9:4</text>
+<text class="t" x="785" y="86" text-anchor="middle">abits</text>
+<text class="s" x="785" y="130" text-anchor="middle">6 bits</text>
+<rect class="fabric" x="840" y="52" width="110" height="58" rx="0"/>
+<text class="s" x="895" y="42" text-anchor="middle">3:0</text>
+<text class="t" x="895" y="86" text-anchor="middle">version</text>
+<text class="s" x="895" y="130" text-anchor="middle">4 bits</text>
+<path class="jtag" d="M28,81.0 L86,81.0"/>
+<text class="s" x="28" y="73" text-anchor="start">TDI</text>
+<path class="jtag" d="M950,81.0 L1012,81.0"/>
+<text class="s" x="1012" y="73" text-anchor="end">TDO</text>
+</svg>

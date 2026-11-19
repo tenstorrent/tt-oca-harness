@@ -289,16 +289,17 @@ summarises the layout.
 
 | SMC | 365 | 412
 | SEP | 18 | 21
-| DTP | 250 | 270
-| SMU | 758 | 838
+| DTP | 48 | 48
+| SMU | 431 | 481
 |===
 
 SMU is a flat build containing the other three, so its instance paths carry
-`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. The SMU row has more CDC
-elements than the sum of the other three rows because the SMU instantiates a
-larger DTP. The DTP contains three JTAG2AXI bridges in the SMU configuration and
-only two when it is on its own. These configurations give the DTP 375 and 250
-elements, respectively.
+`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. All DTP elements belong to
+its three JTAG2AXI bridges. Each bridge has 16: the DMI request crossing and the
+DMI response crossing, each with its two handshake synchronizers and the four
+synchronizers of its reset controller, and the reset synchronizer of each clock
+domain. `hw/sys/dtp/synth/dtp_cdc_max_delay.tcl` and
+`hw/sys/smu/synth/smu_cdc_max_delay.tcl` list them.
 
 [[cdc-integration-checklist]]
 == Integration checklist

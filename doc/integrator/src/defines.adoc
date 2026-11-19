@@ -438,15 +438,11 @@ parameter and port lists.
 [[dtp-defines]]
 === DTP
 
-The `dtp` graph reads no define of its own. Two parts of it respond to the view
-names:
-
-* `jtag2axi` asserts AXI valid stability and address and data pairing on its
-  manager port when `OCAH_DEBUG_LIVE` is defined.
-* The `prim_flop_2sync`, `prim_sync3` and `prim_sync4` synchronizers
-  instantiate `prim_cdc_rand_delay` in the simulation view. The Bender
-  `simulation` target adds `prim_cdc_rand_delay.sv` to the `dtp` graph, so
-  generate a simulation filelist with `-t dtp -t simulation`.
+The `dtp` graph reads no define of its own. One part of it responds to the view
+names: the `prim_flop_2sync`, `prim_sync3` and `prim_sync4` synchronizers
+instantiate `prim_cdc_rand_delay` in the simulation view. The Bender
+`simulation` target adds `prim_cdc_rand_delay.sv` to the `dtp` graph, so
+generate a simulation filelist with `-t dtp -t simulation`.
 
 [[sep-defines]]
 === SEP
