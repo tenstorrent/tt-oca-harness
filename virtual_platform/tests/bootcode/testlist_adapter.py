@@ -65,7 +65,7 @@ def unresolved(testcase: RomTestCase) -> str | None:
         if token == MEASUREMENT_DIGEST_TOKEN or image_placeholders(token):
             return f"token {token!r}"
     for span in testcase.spi_reads:
-        if type(span.low) is str or type(span.high) is str:
+        if any(type(edge) is str for edge in (span.low, span.high, span.total_bytes)):
             return f"spi_reads span {span.name!r}"
     if testcase.smc_sram_source is not None and any(
         type(edge) is str for edge in testcase.smc_sram_source

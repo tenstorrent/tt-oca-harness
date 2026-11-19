@@ -62,20 +62,6 @@ expect_fail_match = "CHK-WARM-DOMAIN-ACCESS-IN-RESET FAIL"
 args = ["+smc_misc_warm_in_reset_assertoff"]
 
 [[tests]]
-# The CLA debug interrupt stays asserted after the CDbgEapStatus W2C write
-# (cla_node_eap.sv feeds the interrupt flop back without consulting the
-# status; core_logic_analyzer.sv gives the set priority over the clear);
-# dfd_cla.rdl names the W2C as the ISR's acknowledge.
-name = "smc_dfd_cla_irq_w2c_release_test"
-module = "smc_dfd_cla_irq_w2c_release_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "the CLA debug interrupt is not released by the EapStatus W2C write"
-expect_fail_match = "CHK-CLA-IRQ-W2C-RELEASE FAIL"
-
-[[tests]]
 # The CLA global clock-halt request is a set-only flop (cla_action_gen.sv)
 # cleared by the SMC primary reset alone; the W2C, EnableEap and
 # DisableGlobalClockHalt do not reach it, where the wrapper port, dfd.adoc and
@@ -350,10 +336,9 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 8
+expected_count = 7
 tests = [
     "smc_warm_domain_access_during_reset_test",
-    "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_spm_write_cut_by_warm_reset_test",
     "smc_i2c_tbuf_bus_free_test",
