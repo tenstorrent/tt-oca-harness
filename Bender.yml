@@ -927,17 +927,17 @@ sources:
       - hw/ip/idma_wrapper/rtl/idma_wrapper.sv
   - target: dtp
     files:
-      - hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
+      - hw/common/rstgen_bypass.sv
       - hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_byp_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_dmi2axi.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_idcode_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_inv_byp_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv

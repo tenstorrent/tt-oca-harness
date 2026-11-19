@@ -7,3 +7,6 @@ waive --rule=module-filename --regex="module axi_lite_to_ahb_tb_top" --location=
 
 # PeakRDL AXI4-Lite CPUIF import predating the `_if` convention.
 waive --rule=interface-name-style --regex="interface axi4lite_intf " --location=".*hw/common/axi/axi4lite_intf\.sv$"
+
+# Stand-in for the PULP common_cells module of the same name: vendored code names the parameter.
+waive --rule=parameter-name-style --regex="parameter int unsigned NumRegs" --location=".*hw/common/rstgen_bypass\.sv$"
