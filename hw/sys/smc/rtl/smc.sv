@@ -426,9 +426,10 @@ module smc #(
 
   input  wire logic tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
                                                    // action as a clock stop.
-  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while an enabled CLA
-                                                           // halt-clock action requests a
-                                                           // clock stop.
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // CLA clock-halt request, set
+                                                           // by a halt-clock action and
+                                                           // held until primary reset;
+                                                           // gated by its enables.
 
   output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Requests from the DFD
                                                                                           // trace sink to the

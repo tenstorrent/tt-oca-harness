@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Secure DMA interrupt gate and release, size errors, the range, ADDR_HI and tied-off ASIDs.
+"""Secure DMA interrupt gate and release, configuration errors, the range and configuration locks, ADDR_HI and tied-off ASIDs.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense with a PROD image
 and zero disable vectors, because the leaf pulses ``rst_ni``. Every trial
@@ -23,7 +23,15 @@ not a per-trigger interrupt in handshake mode" (``dma.adoc:129-131``); "Since in
 by writing a '1' to the corresponding bit in the STATUS register" (OpenTitan
 DMA ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``). So every STATUS read of the single-chunk copy
 gives CHUNK_DONE = 0, INTR_STATE.DMA_CHUNK_DONE reads 0 at the end of the trial
-and source 10 stays low.
+and source 10 stays low. INTR_STATE records the event whatever INTR_ENABLE
+holds: DMA_ERROR "DMA error has occurred.", DMA_CHUNK_DONE "Indicates the
+transfer of a single chunk has been completed.", DMA_DONE "DMA operation has
+been completed." and INTR_ENABLE "Enable interrupt when !!INTR_STATE.dma_done
+is set." (likewise for each event; ``secure_dma.adoc``, INTR_STATE,
+INTR_ENABLE). Both multi-chunk trials
+read INTR_STATE at the first CHUNK_DONE stop, before its write of 1 to
+STATUS.CHUNK_DONE, then continue with GO and INITIAL_TRANSFER=0 to DONE; the
+other trials read it at the end.
 
 Leg L2, SIZE_ERROR (``secure_dma.adoc``, ERROR_CODE, STATUS, INTR_STATE;
 ``dma.hjson``, ERROR_CODE). TOTAL_DATA_SIZE 0, CHUNK_DATA_SIZE 0, both 0, and a
@@ -178,8 +186,10 @@ the range values and the unlock-attempt orders, and for L4 the copy size and
 the two ADDR_HI values, and the BASE and LIMIT values written after the size
 error; from a second stream salted from the seed, the width-1 alignment copy,
 the hash opcode of each hash kind and the INTR_TEST release order of each event. The release trials reuse the L1 copy shapes; L5 reuses
-the L4 copy size and the L1 buffers. Every value is drawn before the first
-stimulus, on every simulator.
+the L4 copy size and the L1 buffers. The two-fault pairs reuse the
+configuration-error draws, and the extension-port copies the size and opcode of
+the opcode error. Every value is drawn before the first stimulus, on every
+simulator.
 
 Checkers:
   CHK-DMA-IRQ       per L1 trial: the three lines against the gate model, with
@@ -189,6 +199,13 @@ Checkers:
                     CHUNK_DONE, INTR_STATE.DMA_CHUNK_DONE reads 0 and source 10
                     stays low. Control: the multi-chunk trial with
                     DMA_CHUNK_DONE enabled shows source 10 high.
+  CHK-DMA-INTR-STATE-UNGATED per event (done, chunk, error), in the L1 trial
+                    whose INTR_ENABLE value clears the bit of the event: the
+                    INTR_STATE bit of the event reads 1 (chunk: at the first
+                    CHUNK_DONE stop; done and error: at the end); CHK-DMA-IRQ
+                    grades its line low. Control (CTRL-DMA-INTR-STATE-UNGATED,
+                    else CTRL-MISSING): in the twin with the bit set, the same
+                    INTR_STATE bit reads 1 and the line rose.
   CHK-DMA-SIZE-ERR  per L2 kind: the error response with ERROR_CODE equal to
                     SIZE_ERROR alone, its clear and the recovery copy; the
                     encoding-2 hash control of the same opcode completes
@@ -217,6 +234,34 @@ Checkers:
                     ends with DONE=1, ERROR=0, ERROR_CODE=0 and at least one
                     DMA AR and one AW beat (CTRL-DMA-CFG-ERR), so a dead DMA
                     master tap fails the control.
+  CHK-DMA-ERR-MULTI each of the six pairs of four faults, each copy from a cold
+                    reset: the drawn reserved CONTROL.OPCODE, the drawn
+                    reserved ASID on its drawn side, TOTAL_DATA_SIZE 0 and a
+                    destination 2 bytes off alignment at width 4. The copy
+                    ends with STATUS.ERROR=1, ERROR_CODE equal to the OR of the
+                    two single-fault bits and no DMA AR or AW beat: the
+                    controller checks the configuration "before starting a
+                    transfer" and "reports all detected errors in the
+                    ERROR_CODE register" (OpenTitan DMA
+                    ``programmers_guide.md:102-103``). The single-fault checks
+                    of the same seed (CHK-DMA-OPCODE-ERR, CHK-DMA-ASID-ERR,
+                    CHK-DMA-ALIGN-ERR and CHK-DMA-SIZE-ERR kind total) are the
+                    live control of each bit; the line logs their ERROR_CODE.
+  OBS-DMA-ERR-PREC  a copy with the drawn reserved opcode from a source in the
+                    AXI extension aperture outside the eFuse shim CSR window,
+                    which "leaves SEP on the AXI extension port"
+                    (``hw/sys/sep/doc/fabric.adoc:162-164``), tied to DECERR
+                    when unused (``hw/sys/sep/doc/port_table.adoc:125``): the
+                    end, STATUS, ERROR_CODE with BUS_ERROR and OPCODE_ERROR and
+                    the AR and AW counts, logged. The controller checks the
+                    configuration before a transfer and may report an error
+                    during one (``programmers_guide.md:102-104``); no text
+                    states which bits a start with both reports. Control
+                    (CTRL-DMA-ERR-PREC, else CTRL-MISSING): the same copy at
+                    OPCODE COPY ends with STATUS.ERROR=1 and
+                    ERROR_CODE.BUS_ERROR=1 ("The bus transfer returned an
+                    error.", ``secure_dma.adoc``, ERROR_CODE) after an AR at
+                    the source.
   OBS-DMA-ALIGN     a copy at width 1 (encoding 0) from a source on a 4-byte
                     boundary to a destination a drawn 1 to 3 bytes past one,
                     both aligned to the width: the end, STATUS.ERROR,
@@ -261,6 +306,9 @@ Checkers:
                     (``CTRL-DMA-REGWEN-CLR``, else CTRL-MISSING): in each L5
                     tied-off trial, with BUSY=1 just before the ABORT,
                     CFG_REGWEN reads False.
+  OBS-DMA-REGWEN-ERR per L2 kind, after ERROR rises and before any STATUS
+                    write: CFG_REGWEN and STATUS.BUSY, logged.
+                    ``dma.hjson:352-353`` states only the idle and busy values.
   CHK-DMA-RANGE-OUT the L3 outside-range copy: DONE=1, ERROR=0,
                     SRC_ADDR_ERROR=0, DST_ADDR_ERROR=0 and the destination
                     equals the source. Control: the zero fill into the same
@@ -308,9 +356,35 @@ Checkers:
                     the ABORT of the ASID 0x7 copy, BUSY and not DONE before
                     it, shows ABORTED=1 inside the same bound and DONE in no
                     read; else CTRL-MISSING.
+  CHK-DMA-CFG-LOCK  per L5 trial, after the control read of BUSY=1 and
+                    CFG_REGWEN False and before the ABORT: each of the 35
+                    CFG_REGWEN-protected words (``dma.hjson``,
+                    ``regwen: "CFG_REGWEN"``: 13 registers and the 11 words
+                    each of INTR_SRC_ADDR and INTR_SRC_WR_VAL) is read, written
+                    with the complement of the value the copy programmed (or
+                    of its reset value) and read back. CFG_REGWEN "Indicates
+                    whether the configuration registers are locked because the
+                    DMA controller is operating." and is False while busy
+                    (``dma.hjson:351-353``). The 31 software-only words read
+                    their pre-write value. SRC_ADDR_LO, SRC_ADDR_HI,
+                    DST_ADDR_LO and DST_ADDR_HI are also written by hardware
+                    (``hwaccess: "hrw"``), so for them the read-back differs
+                    from the written complement; both values are on the line.
+                    Controls (CTRL-DMA-CFG-LOCK-OPEN, else CTRL-MISSING): in
+                    the same window an INTR_ENABLE write lands and is restored
+                    ("The comportable registers ... are NOT locked during the
+                    DMA operation", ``dma.hjson:355``); no pre-write read
+                    equals its complement; STATUS.BUSY reads 1 and CFG_REGWEN
+                    False after the writes; and once per seed, from a cold
+                    reset with CFG_REGWEN True, every complement lands (each
+                    of the four ADDR_SPACE_ID complements in turn).
+  OBS-DMA-CFG-LOCK-RESP per L5 trial: the write response of each refused
+                    protected write, logged; no text states it.
 """
 
 from __future__ import annotations
+
+from itertools import combinations
 
 import cocotb
 import pyuvm
@@ -431,6 +505,23 @@ OPC_INVALID = range(6, _D.field_mask("CONTROL", "opcode") + 1)
 ASID_ALL = _D.field_mask("ADDR_SPACE_ID", "src_asid") >> _D.field_lsb("ADDR_SPACE_ID", "src_asid")
 SRC_ERR_MASK = _D.field_mask("ERROR_CODE", "src_addr_error")
 DST_ERR_MASK = _D.field_mask("ERROR_CODE", "dst_addr_error")
+BUS_ERR_MASK = _D.field_mask("ERROR_CODE", "bus_error")
+# Two-fault starts: every pair of four independent configuration faults, each
+# named as the run that grades its bit alone (``total`` is the L2
+# TOTAL_DATA_SIZE 0 kind). ``total`` comes last, so the first fault of a pair
+# always has a configuration-error copy size.
+MULTI_ERR_BIT = {
+    "opc": OPCODE_ERR_MASK,
+    "asid": ASID_ERR_MASK,
+    "align": DST_ERR_MASK,
+    "total": SIZE_ERR_MASK,
+}
+MULTI_ERR_PAIRS = tuple(combinations(MULTI_ERR_BIT, 2))
+# A source in the AXI extension aperture outside the eFuse shim CSR window: it
+# leaves SEP on the extension port (fabric.adoc, SEP output fabric), which the
+# bench ties to DECERR (port_table.adoc, axi_extension_axi_resp_i).
+EXT_SRC = sym("SEP_EXTERNAL_XIP_REGION_MEM_BASE_ADDR")
+EVENT_INTR = {"done": INTR_DONE, "chunk": INTR_CHUNK_DONE, "error": INTR_ERROR}
 REGWEN_MASK = _D.field_mask("RANGE_REGWEN", "regwen")
 _REGWEN_LSB = _D.field_lsb("RANGE_REGWEN", "regwen")
 _REGWEN_ALL = REGWEN_MASK >> _REGWEN_LSB
@@ -463,6 +554,38 @@ CFG_REGWEN_MASK = _D.field_mask("CFG_REGWEN", "regwen")
 _CFG_REGWEN_LSB = _D.field_lsb("CFG_REGWEN", "regwen")
 CFG_REGWEN_TRUE = (_D.reset32("CFG_REGWEN") & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB
 CFG_REGWEN_FALSE = ~CFG_REGWEN_TRUE & (CFG_REGWEN_MASK >> _CFG_REGWEN_LSB)
+# CFG_REGWEN-protected registers (dma.hjson, ``regwen: "CFG_REGWEN"``) as
+# (name, address, writable mask, reset): 13 registers and one INTR_SRC_ADDR and
+# one INTR_SRC_WR_VAL word per clear source. The four address registers are
+# also written by hardware (dma.hjson ``hwaccess: "hrw"``; secure_dma.rdl
+# ``hw = rw``), so no text fixes their value while BUSY.
+_CLR_SRC = _D.field_mask("CLEAR_INTR_SRC", "source") >> _D.field_lsb("CLEAR_INTR_SRC", "source")
+N_CLEAR_SRC = _CLR_SRC.bit_length()
+CFG_LOCK_HRW = ("SRC_ADDR_LO", "SRC_ADDR_HI", "DST_ADDR_LO", "DST_ADDR_HI")
+CFG_LOCK_WORDS = tuple(
+    (n, _D.addr(n), _D.mask32(n), _D.reset32(n))
+    for n in (
+        *CFG_LOCK_HRW,
+        "ADDR_SPACE_ID",
+        "TOTAL_DATA_SIZE",
+        "CHUNK_DATA_SIZE",
+        "TRANSFER_WIDTH",
+        "SRC_CONFIG",
+        "DST_CONFIG",
+        "HANDSHAKE_INTR_ENABLE",
+        "CLEAR_INTR_SRC",
+        "CLEAR_INTR_BUS",
+    )
+) + tuple(
+    (
+        f"{m}_{i}",
+        sym(f"SECURE_DMA_{m}_0_{i}__REG_ADDR"),
+        _D.mask32(f"{m}_0"),
+        _D.reset_raw(f"{m}_0"),
+    )
+    for m in ("INTR_SRC_ADDR", "INTR_SRC_WR_VAL")
+    for i in range(N_CLEAR_SRC)
+)
 # INTR_TEST release: event -> (INTR_TEST bit, STATUS bit, INTR_STATE bit, PIC source).
 TEST_EVENTS = {
     "done": (_D.field_mask("INTR_TEST", "dma_done"), ST_DONE, INTR_DONE, "src9"),
@@ -616,10 +739,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
     required_evidence = (
         "CHK-DMA-IRQ",
         "CHK-DMA-IRQ-SINGLE",
+        "CHK-DMA-INTR-STATE-UNGATED",
         "CHK-DMA-SIZE-ERR",
         "CHK-DMA-OPCODE-ERR",
         "CHK-DMA-ASID-ERR",
         "CHK-DMA-ALIGN-ERR",
+        "CHK-DMA-ERR-MULTI",
         "CHK-DMA-INTR-RELEASE",
         "CHK-DMA-INTR-RO",
         "CHK-DMA-RO-HOLD",
@@ -629,6 +754,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         "CHK-DMA-RANGE-OUT",
         "CHK-DMA-ASID-TIEOFF",
         "CHK-DMA-TIEOFF-ABORT",
+        "CHK-DMA-CFG-LOCK",
     )
 
     # ---- helpers -----------------------------------------------------------
@@ -689,8 +815,15 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
     # ---- L1 ------------------------------------------------------------------
     async def _l1_trial(
         self, event: str, en: int
-    ) -> tuple[tuple[int, int, int], int, int, DmaStatus]:
-        """One L1 trial; returns (lines, INTR_STATE, STATUS reads with CHUNK_DONE, last STATUS)."""
+    ) -> tuple[tuple[int, int, int], int, tuple[int, str], int, DmaStatus]:
+        """One L1 trial.
+
+        Returns (lines, INTR_STATE at the end, (INTR_STATE of the event, where
+        it was read), STATUS reads with CHUNK_DONE, last STATUS). The event read
+        of the multi-chunk copy is taken at its first CHUNK_DONE stop, before
+        the CHUNK_DONE W1C (``first_chunk_done``); when the copy ends without
+        that stop, and for the other events, it is the read at the end (``end``).
+        """
         c = self.cfg_t
         ops = self.ops
         await self._cold_reset()
@@ -716,16 +849,34 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 )
             go_writes = 1
             chunk_reads = int(st.chunk_done)
+            first_chunk = None
         else:
+            at_chunk = event == "chunk"
             res = await ops.run_to_done(
                 total,
                 busy=self.busy,
                 w1c_chunk_done=True,
                 busy_bound=BUSY_RISE_BOUND,
+                stop_on=lambda s: bool(
+                    s.error or s.aborted or (at_chunk and s.chunk_done and not s.busy)
+                ),
                 tag=f" L1 {event}",
             )
-            st, go_writes = res.status, res.go_writes
-            chunk_reads = sum(s.chunk_done for s in res.statuses)
+            go_writes, statuses = res.go_writes, res.statuses
+            at_stop = at_chunk and not (res.status.done or res.status.error or res.status.aborted)
+            first_chunk = await ops.rd(INTR_STATE) if at_stop else None
+            if at_stop:
+                res = await ops.run_to_done(
+                    total,
+                    busy=self.busy,
+                    w1c_chunk_done=True,
+                    busy_bound=BUSY_RISE_BOUND,
+                    tag=" L1 chunk rest",
+                )
+                go_writes += res.go_writes - 1
+                statuses = statuses + res.statuses
+            st = res.status
+            chunk_reads = sum(s.chunk_done for s in statuses)
         await ClockCycles(cocotb.top.clk_i, POST_WAIT)
         lines = tuple(int(self.irq.any_high_since(m, b)) for b in ("src9", "src10", "src11"))
         istate = await ops.rd(INTR_STATE)
@@ -733,7 +884,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         close_graded_window(self.logger)
         self.logger.info(
             "INFO-L1-TRIAL LOG seed=%d event=%s intr_en=0x%x total=%d chunk=%d go_writes=%d "
-            "src9=%d src10=%d src11=%d intr_state=0x%x error_code=0x%x %s",
+            "src9=%d src10=%d src11=%d intr_state=0x%x intr_state_first_chunk=%s "
+            "error_code=0x%x %s",
             c.seed,
             event,
             en,
@@ -742,20 +894,27 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             go_writes,
             *lines,
             istate,
+            "-" if first_chunk is None else f"0x{first_chunk:x}",
             ecode,
             st.fmt(),
         )
-        return lines, istate, chunk_reads, st
+        ev = (istate, "end") if first_chunk is None else (first_chunk, "first_chunk_done")
+        return lines, istate, ev, chunk_reads, st
 
     async def _leg_l1(self) -> None:
         c = self.cfg_t
         got: dict[tuple[str, int], tuple[int, int, int]] = {}
         ends: dict[tuple[str, int], DmaStatus] = {}
         single: dict[int, tuple[int, int]] = {}
+        ev_state: dict[tuple[str, int], tuple[int, str]] = {}
         for event, en in c.trials:
-            got[(event, en)], istate, chunk_reads, ends[(event, en)] = await self._l1_trial(
-                event, en
-            )
+            (
+                got[(event, en)],
+                istate,
+                ev_state[(event, en)],
+                chunk_reads,
+                ends[(event, en)],
+            ) = await self._l1_trial(event, en)
             if event == "done":
                 single[en] = (istate, chunk_reads)
         for event, en in c.trials:
@@ -775,6 +934,39 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 self._fail("CHK-DMA-IRQ", line)
             self._pass("CHK-DMA-IRQ", line)
         self._grade_single(got, single)
+        self._grade_ungated(got, ev_state)
+
+    def _grade_ungated(
+        self,
+        got: dict[tuple[str, int], tuple[int, int, int]],
+        ev_state: dict[tuple[str, int], tuple[int, str]],
+    ) -> None:
+        """INTR_STATE sets the bit of each event with its INTR_ENABLE bit clear."""
+        c = self.cfg_t
+        for event in EVENTS:
+            en_bit = 1 << EVENT_BIT[event]
+            intr = EVENT_INTR[event]
+            src = EVENTS.index(event)
+            off = next(v for e, v in c.trials if e == event and not v & en_bit)
+            on = next(v for e, v in c.trials if e == event and v & en_bit)
+            state, read_at = ev_state[(event, off)]
+            twin_state, twin_read_at = ev_state[(event, on)]
+            bit = int(bool(state & intr))
+            twin_bit = int(bool(twin_state & intr))
+            twin_line = got[(event, on)][src]
+            line = (
+                f"event={event} intr_en=0x{off:x} intr_state_bit={bit} "
+                f"intr_state=0x{state:x} line={got[(event, off)][src]} "
+                f"control_intr_en=0x{on:x} control_intr_state_bit={twin_bit} "
+                f"control_line={twin_line} read_at={read_at} control_read_at={twin_read_at}"
+            )
+            if (twin_bit, twin_line) != (1, 1):
+                self._ctrl_missing(
+                    "CTRL-DMA-INTR-STATE-UNGATED", f"CHK-DMA-INTR-STATE-UNGATED control: {line}"
+                )
+            if bit != 1:
+                self._fail("CHK-DMA-INTR-STATE-UNGATED", line)
+            self._pass("CHK-DMA-INTR-STATE-UNGATED", line)
 
     def _grade_single(
         self,
@@ -835,6 +1027,18 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         istate = await ops.rd(INTR_STATE)
         await ClockCycles(cocotb.top.clk_i, IRQ_SETTLE)
         src11 = int(self.irq.any_high_since(m, "src11"))
+        self.err_codes[kind] = ecode
+        regwen_err = (await ops.rd(CFG_REGWEN) & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB
+        st_regwen = await ops.read_status()
+        self.logger.info(
+            "OBS-DMA-REGWEN-ERR LOG seed=%d kind=%s cfg_regwen=0x%x busy=%d error=%d %s",
+            c.seed,
+            kind,
+            regwen_err,
+            st_regwen.busy,
+            st_regwen.error,
+            st_regwen.fmt(),
+        )
         await self._intr_ro(kind, "pending", istate, self.irq.level("src11"))
         await self._ro_hold(kind, ecode)
         w0 = kind == c.err_w0_kind
@@ -1043,31 +1247,42 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             await self._obs_intr_test_release(event)
         await self._obs_size_edge()
         await self._leg_cfg_err()
+        await self._leg_multi_err()
+        await self._obs_err_prec()
         await self._obs_align_mismatch()
 
-    async def _cfg_err_run(self, kind: str, bad: bool) -> tuple[DmaStatus, bool, int, int, int]:
-        """One copy with the ``kind`` fault (``bad``) or its legal value.
+    async def _cfg_err_run(
+        self, kinds: tuple[str, ...], bad: bool, *, graded: bool = False
+    ) -> tuple[DmaStatus, bool, int, int, int]:
+        """One copy with the faults of ``kinds`` (``bad``) or their legal values.
 
-        Returns (last STATUS, DONE or ERROR seen, ERROR_CODE, AR beats, AW beats).
+        The copy size is that of the first kind. ``graded`` opens the graded
+        window from the GO write to the ERROR_CODE read. Returns (last STATUS,
+        DONE or ERROR seen, ERROR_CODE, AR beats, AW beats).
         """
         c = self.cfg_t
         ops = self.ops
-        size = c.cfg_err_size[kind]
+        size = c.cfg_err_size[kinds[0]]
         await self._cold_reset()
         await self._base_config(MAX_BYTES // 4)
-        if kind == "asid":
+        if "asid" in kinds:
             asid = c.bad_asid if bad else ASID_OT
             src_asid, dst_asid = (asid, ASID_OT) if c.bad_asid_side == "src" else (ASID_OT, asid)
             await ops.wr(_D.addr("ADDR_SPACE_ID"), asid_word(src_asid, dst_asid))
-        width = 3 if kind == "copy_w3" and bad else 2
-        dst = c.dst + 2 if kind == "align" and bad else c.dst
-        await ops.program_transfer(src=c.src, dst=dst, total=size, chunk=size, width_enc=width)
+        width = 3 if "copy_w3" in kinds and bad else 2
+        dst = c.dst + 2 if "align" in kinds and bad else c.dst
+        total = 0 if "total" in kinds and bad else size
+        await ops.program_transfer(src=c.src, dst=dst, total=total, chunk=size, width_enc=width)
         tap = SepDmaTap().start()
         await ClockCycles(cocotb.top.clk_i, 1)
         m = tap.mark()
-        await ops.go(opcode=c.bad_opcode if kind == "opc" and bad else OP_COPY, initial=1)
+        if graded:
+            open_graded_window(TEST, self.logger)
+        await ops.go(opcode=c.bad_opcode if "opc" in kinds and bad else OP_COPY, initial=1)
         st, ended = await self._poll_end(size)
         ecode = await ops.rd(ERROR_CODE)
+        if graded:
+            close_graded_window(self.logger)
         await ClockCycles(cocotb.top.clk_i, POST_WAIT)
         ev = tap.since(m)
         await tap.stop()
@@ -1080,7 +1295,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         c = self.cfg_t
         for kind in CFG_ERR_KINDS:
             chk = CFG_ERR_CHK[kind]
-            cst, cended, ccode, car, caw = await self._cfg_err_run(kind, bad=False)
+            cst, cended, ccode, car, caw = await self._cfg_err_run((kind,), bad=False)
             ctl_ok = (
                 cended
                 and cst.done
@@ -1104,7 +1319,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                     "CTRL-DMA-CFG-ERR",
                     f"{chk} control: kind={kind} legal run did not complete clean",
                 )
-            st, ended, ecode, n_ar, n_aw = await self._cfg_err_run(kind, bad=True)
+            st, ended, ecode, n_ar, n_aw = await self._cfg_err_run((kind,), bad=True)
+            self.err_codes[kind] = ecode
             if kind == "copy_w3":
                 bit, need_quiet = SIZE_ERR_MASK, False
             elif kind == "opc":
@@ -1132,6 +1348,85 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             if not ok:
                 self._fail(chk, line)
             self._pass(chk, line)
+
+    async def _leg_multi_err(self) -> None:
+        """A start with two configuration faults reports both ERROR_CODE bits and no beat."""
+        c = self.cfg_t
+        for pair in MULTI_ERR_PAIRS:
+            st, ended, ecode, n_ar, n_aw = await self._cfg_err_run(pair, bad=True, graded=True)
+            expect = MULTI_ERR_BIT[pair[0]] | MULTI_ERR_BIT[pair[1]]
+            line = (
+                f"pair={'+'.join(pair)} ended={int(ended)} error={st.error} done={st.done} "
+                f"error_code=0x{ecode:x} expect=0x{expect:x} ar={n_ar} aw={n_aw} "
+                f"size={c.cfg_err_size[pair[0]]} opcode={c.bad_opcode} "
+                f"asid={c.bad_asid_side}:0x{c.bad_asid:x} "
+                + " ".join(f"single_{k}_error_code=0x{self.err_codes[k]:x}" for k in pair)
+            )
+            ok = ended and st.error and (ecode & ERROR_CODE_MASK) == expect
+            if not (ok and n_ar == 0 and n_aw == 0):
+                self._fail("CHK-DMA-ERR-MULTI", line)
+            self._pass("CHK-DMA-ERR-MULTI", line)
+
+    async def _err_prec_run(self, opcode: int) -> tuple[DmaStatus, bool, int, int, int, int]:
+        """A copy from the extension-port source at ``opcode``.
+
+        Returns (last STATUS, DONE or ERROR seen, ERROR_CODE, AR beats, AR beats
+        at the source, AW beats).
+        """
+        c = self.cfg_t
+        ops = self.ops
+        size = c.cfg_err_size["opc"]
+        await self._cold_reset()
+        await self._base_config(MAX_BYTES // 4)
+        await ops.program_transfer(src=EXT_SRC, dst=c.dst, total=size, chunk=size)
+        tap = SepDmaTap().start()
+        await ClockCycles(cocotb.top.clk_i, 1)
+        m = tap.mark()
+        await ops.go(opcode=opcode, initial=1)
+        st, ended = await self._poll_end(size)
+        ecode = await ops.rd(ERROR_CODE)
+        await ClockCycles(cocotb.top.clk_i, POST_WAIT)
+        ev = tap.since(m)
+        await tap.stop()
+        await ops.clean_state()
+        await ops.wr(CONTROL, control_word())
+        at_src = sum(1 for b in ev.ar if b.addr == EXT_SRC)
+        return st, ended, ecode, len(ev.ar), at_src, len(ev.aw)
+
+    async def _obs_err_prec(self) -> None:
+        """A reserved opcode with a source that answers DECERR: ERROR_CODE and the beats, logged."""
+        c = self.cfg_t
+        rst, rended, rcode, rar, rat_src, raw = await self._err_prec_run(OP_COPY)
+        reach = (
+            f"src=0x{EXT_SRC:08x} size={c.cfg_err_size['opc']} ended={int(rended)} "
+            f"error={rst.error} error_code=0x{rcode:x} bus_error={int(bool(rcode & BUS_ERR_MASK))} "
+            f"ar={rar} ar_at_src={rat_src} aw={raw}"
+        )
+        if not (rended and rst.error and rcode & BUS_ERR_MASK and rat_src > 0):
+            self._ctrl_missing(
+                "CTRL-DMA-ERR-PREC", f"OBS-DMA-ERR-PREC control: opcode=COPY {reach}"
+            )
+        self.logger.info("CTRL-DMA-ERR-PREC PASS seed=%d opcode=%d %s", c.seed, OP_COPY, reach)
+        st, ended, ecode, n_ar, at_src, n_aw = await self._err_prec_run(c.bad_opcode)
+        self.logger.info(
+            "OBS-DMA-ERR-PREC LOG seed=%d opcode=%d src=0x%08x ended=%d error=%d done=%d "
+            "error_code=0x%x bus_error=%d opcode_error=%d ar=%d ar_at_src=%d aw=%d %s "
+            "control_error_code=0x%x",
+            c.seed,
+            c.bad_opcode,
+            EXT_SRC,
+            int(ended),
+            st.error,
+            st.done,
+            ecode,
+            int(bool(ecode & BUS_ERR_MASK)),
+            int(bool(ecode & OPCODE_ERR_MASK)),
+            n_ar,
+            at_src,
+            n_aw,
+            st.fmt(),
+            rcode,
+        )
 
     async def _obs_align_mismatch(self) -> None:
         """A width-1 copy whose source and destination differ in 4-byte alignment."""
@@ -1757,7 +2052,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         c = self.cfg_t
         ops = self.ops
         await ops.wr(_D.addr("ADDR_SPACE_ID"), asid)
-        await ops.program_transfer(src=c.src, dst=c.dst, total=c.hi_size, chunk=c.hi_size)
+        written = await ops.program_transfer(src=c.src, dst=c.dst, total=c.hi_size, chunk=c.hi_size)
+        self.l5_written = {"ADDR_SPACE_ID": asid, **written}
         await ops.go(opcode=OP_COPY, initial=1)
         window = ops.done_bound(c.hi_size)
         st, first_done, err_reads = None, None, 0
@@ -1866,6 +2162,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         if tie_active and regwen != CFG_REGWEN_FALSE:
             self._ctrl_missing("CTRL-DMA-REGWEN-CLR", f"CHK-DMA-REGWEN-CLR control: {reg_line}")
         self.logger.info("CTRL-DMA-REGWEN-CLR seed=%d %s", c.seed, reg_line)
+        if tie_active:
+            await self._cfg_lock(side, asid)
         await ops.abort()
         ab, ab_at, _ = await self._wait_aborted()
         # Recovery with no reset, logged only: no text states that the DMA
@@ -1899,6 +2197,103 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"window={window} @@CTRL@@"
         )
         return line, tie_done_at is None, ab_at, tie_active, tie_pre
+
+    def _cfg_lock_plan(self, asid_word_v: int) -> list[tuple[str, int, int, int]]:
+        """(name, address, mask, complement) of each CFG_REGWEN-protected word.
+
+        The complement is that of the value the L5 copy programs, or of the
+        reset value for a register it does not write.
+        """
+        vals = {**self.l5_written, "ADDR_SPACE_ID": asid_word_v}
+        return [(n, a, m, ~vals.get(n, rst) & m) for n, a, m, rst in CFG_LOCK_WORDS]
+
+    async def _cfg_lock(self, side: str, asid: int) -> None:
+        """While the tied-off start holds BUSY, no protected write lands; INTR_ENABLE does."""
+        c = self.cfg_t
+        ops = self.ops
+        ctx = f"side={side} asid=0x{asid:x}"
+        ien_pre = await ops.rd(INTR_ENABLE)
+        ien_new = ~ien_pre & INTR_EN_ALL
+        await ops.wr(INTR_ENABLE, ien_new)
+        ien_rb = await ops.rd(INTR_ENABLE)
+        await ops.wr(INTR_ENABLE, ien_pre)
+        ien_back = await ops.rd(INTR_ENABLE)
+        open_line = (
+            f"leg=busy {ctx} intr_enable_written=0x{ien_new:x} readback=0x{ien_rb:x} "
+            f"restored=0x{ien_back:x}/0x{ien_pre:x}"
+        )
+        if (ien_rb, ien_back) != (ien_new, ien_pre):
+            self._ctrl_missing("CTRL-DMA-CFG-LOCK-OPEN", open_line)
+        self.logger.info("CTRL-DMA-CFG-LOCK-OPEN PASS seed=%d %s", c.seed, open_line)
+        word = self.l5_written["ADDR_SPACE_ID"]
+        got = []
+        for name, addr, mask, comp in self._cfg_lock_plan(word):
+            pre = await ops.rd(addr)
+            if pre & mask == comp:
+                self._ctrl_missing(
+                    "CTRL-DMA-CFG-LOCK-OPEN",
+                    f"CHK-DMA-CFG-LOCK {ctx} reg={name}: the pre-write read 0x{pre:x} "
+                    f"equals the complement, so a landed write would not show",
+                )
+            resp = await self._wr_log(addr, comp)
+            got.append((name, mask, comp, pre, resp, await ops.rd(addr)))
+        st = await ops.read_status()
+        regwen = (await ops.rd(CFG_REGWEN) & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB
+        if not st.busy or regwen != CFG_REGWEN_FALSE:
+            self._ctrl_missing(
+                "CTRL-DMA-CFG-LOCK-OPEN",
+                f"CHK-DMA-CFG-LOCK {ctx}: the start left BUSY or CFG_REGWEN changed during "
+                f"the protected writes cfg_regwen=0x{regwen:x} {st.fmt()}",
+            )
+        self.logger.info(
+            "OBS-DMA-CFG-LOCK-RESP LOG seed=%d %s %s",
+            c.seed,
+            ctx,
+            " ".join(f"{name}={resp}" for name, _, _, _, resp, _ in got),
+        )
+        for name, mask, comp, pre, resp, rb in got:
+            hrw = name in CFG_LOCK_HRW
+            line = (
+                f"{ctx} reg={name} grade={'not_written' if hrw else 'held'} "
+                f"pre=0x{pre & mask:x} written=0x{comp:x} readback=0x{rb & mask:x} "
+                f"mask=0x{mask:x} resp={resp}"
+            )
+            ok = rb & mask != comp if hrw else rb & mask == pre & mask
+            if not ok:
+                self._fail("CHK-DMA-CFG-LOCK", line)
+            self._pass("CHK-DMA-CFG-LOCK", line)
+
+    async def _cfg_lock_landing(self) -> None:
+        """At idle after a cold reset, every complement written by the busy trials lands."""
+        c = self.cfg_t
+        ops = self.ops
+        await self._cold_reset()
+        regwen = (await ops.rd(CFG_REGWEN) & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB
+        plans = [
+            self._cfg_lock_plan(asid_word(a, ASID_OT) if s == "src" else asid_word(ASID_OT, a))
+            for s, a in ASID_TIEOFF
+        ]
+        resets = {n: rst for n, _, _, rst in CFG_LOCK_WORDS}
+        bad = []
+        n_words = 0
+        for i, plan in enumerate(plans):
+            for name, addr, mask, comp in plan:
+                if i and name != "ADDR_SPACE_ID":
+                    continue
+                if comp == resets[name] & mask:
+                    bad.append(f"{name}:complement_equals_reset=0x{comp:x}")
+                await ops.wr(addr, comp)
+                rb = await ops.rd(addr) & mask
+                n_words += 1
+                if rb != comp:
+                    bad.append(f"{name}:written=0x{comp:x}:readback=0x{rb:x}")
+        line = (
+            f"leg=idle cfg_regwen=0x{regwen:x}/0x{CFG_REGWEN_TRUE:x} writes={n_words} "
+            f"words={len(CFG_LOCK_WORDS)} not_landed={','.join(bad) or '-'}"
+        )
+        if regwen != CFG_REGWEN_TRUE or bad:
+            self._ctrl_missing("CTRL-DMA-CFG-LOCK-OPEN", f"CHK-DMA-CFG-LOCK control: {line}")
+        self.logger.info("CTRL-DMA-CFG-LOCK-OPEN PASS seed=%d %s", c.seed, line)
 
     async def _leg_l5(self) -> None:
         ctl_ok, ctl_done_at, ctl_window = await self._l5_control()
@@ -1937,6 +2332,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             if ab_at is None:
                 self._fail("CHK-DMA-TIEOFF-ABORT", ab_line)
             self._pass("CHK-DMA-TIEOFF-ABORT", ab_line)
+        await self._cfg_lock_landing()
 
     # ---- scenario ----------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -1944,12 +2340,18 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self.cfg_t = c = _Cfg(seed)
         self.n_checks = 0
         self.end_fails: list[str] = []
+        self.err_codes: dict[str, int] = {}
         self.logger.info(
             "INFO-PLAN LOG seed=%d L1 6 trials, L2 5 kinds + width-2 control + DONE and CHUNK_DONE "
-            "release + INTR_TEST release (logged), L3 outside copy + zero-fill control + lock from idle and after an error "
+            "release + INTR_TEST release (logged) + 4 configuration errors + %d two-fault pairs + "
+            "extension-port source with a reserved opcode (logged) and at COPY, L3 outside copy + "
+            "zero-fill control + lock from idle and after an error "
             "with 4 unlock attempts each, L4 2 ADDR_HI sides (logged) + ADDR_HI=0 control, L5 4 "
-            "tied-off ASID starts + ASID 0x7 control + ABORT control; every trial from a cold reset",
+            "tied-off ASID starts with %d CFG_REGWEN-protected writes each + ASID 0x7 control + "
+            "ABORT control + idle landing control; every trial from a cold reset",
             seed,
+            len(MULTI_ERR_PAIRS),
+            len(CFG_LOCK_WORDS),
         )
         self.logger.info("INFO-DRAW LOG %s", c.draw_line())
 

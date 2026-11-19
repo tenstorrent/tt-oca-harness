@@ -2075,7 +2075,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             # The window, the noise driver, the monitors and the taps close on
             # every exit.
             close_graded_window(self.logger)
-            noise.cancel()
+            await noise.stop()
             for m in mons:
                 m.cancel()
             if self.pool_task is not None and not self.pool_task.done():

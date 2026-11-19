@@ -18,6 +18,10 @@ Output FIFO):
   * A parity error on a read word, or a pointer-copy mismatch, sets
     ``INTR_STATUS.FIFO_ERROR``, which clears by write-one (architecture.adoc:146;
     entropy_source.adoc:146).
+  * A source whose ``INTR_ENABLE`` bit is 0 raises no interrupt
+    (``hw/ip/entropy_source/regs/entropy_source.rdl``:168-210): with every enable bit 0,
+    PIC source 16 (bit 15 of ``sep_internal_interrupts``, ``hw/sys/sep/doc/interrupts.adoc``
+    :22-24, :109-111) stays 0 while a FIFO overflow or underflow is live.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. The exact-pattern noise
@@ -48,6 +52,14 @@ Checkers:
   CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
                          clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
                          control: CTRL-FIFO-FLAGS sees both at 1 before the clear.
+  CHK-ESRC-LIVE-MASKED   with INTR_ENABLE = 0, PIC source 16 reads 0 after a stream word
+                         is offered while LEVEL reads 64 before and after it (overflow), and
+                         after a FIFO_RDATA read while LEVEL reads 0 before and after it
+                         (underflow). Controls: CTRL-ESRC-LIVE-LINE, after each grade an
+                         INTR_TEST pulse of PERSISTENT_FAILURE with only its enable set
+                         raises source 16 (entropy_source.rdl:193); CTRL-ESRC-LIVE-CAUSE,
+                         the same cause with only its enable set, after a write-one clear,
+                         sets its INTR_STATUS bit (entropy_source.rdl:129, :136).
   CHK-FIFO-STREAM-FULL   with LEVEL held at 64, the stream port (``esrc_compress_vld_o``)
                          carries at least one word in a window of 2 x the longest gap
                          between stream words of the fill, and LEVEL reads 64 after it
@@ -56,7 +68,8 @@ Checkers:
                          ``hw/ip/entropy_source/doc/architecture.adoc``:177-178 "The same
                          words leave on ``entropy_stream_data_o`` whatever the FIFO does.");
                          control: CTRL-FIFO-STREAM-FULL, the fill offered at least two words.
-Logged only: ``OBS-FIFO-PTR-W1C``,
+Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
+cause enabled: the register text does not state which enabled status bits drive source 16),
 ``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
 names no partner for them).
 """
@@ -82,6 +95,7 @@ from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from seq_lib.sep_esrc_alert_seq import IRQ_AGG_IDX
 from seq_lib.sep_esrc_bringup_seq import (
     ESRC_ALERT_THRESHOLD,
     ESRC_CTRL,
@@ -142,6 +156,7 @@ def _status(value: int) -> tuple[int, int, int]:
 INTR_FIFO_ERROR = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_ERROR"]["bm"]
 INTR_FIFO_OVERFLOW = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_OVERFLOW"]["bm"]
 INTR_FIFO_UNDERFLOW = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_UNDERFLOW"]["bm"]
+INTR_PF = ENTROPY_SOURCE.fields("INTR_STATUS")["PERSISTENT_FAILURE"]["bm"]
 
 
 @dataclass(frozen=True)
@@ -254,6 +269,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         "CHK-FIFO-INTEG-W1C",
         "CHK-FIFO-FLAGS-CLEAR",
         "CHK-FIFO-STREAM-FULL",
+        "CHK-ESRC-LIVE-MASKED",
     )
 
     async def run_scenario(self) -> None:
@@ -283,6 +299,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             await self._churn_leg()
         await self._intr_test_ctrl()
         close_graded_window(self.logger)
+        await self._live_cause_leg()
         await self._parity_trial()
         await self._pointer_trial()
         close_graded_window(self.logger)
@@ -642,6 +659,93 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             w1c=clr_v,
             legs=self.noerr_legs,
         )
+
+    # --- live causes with the interrupt masked ------------------------------------------
+    def _pic16(self) -> int:
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
+
+    async def _set_enable(self, value: int) -> int:
+        await self._wr(ESRC_INTR_ENABLE, value)
+        return await self._rd(ESRC_INTR_ENABLE) & INTR_ENABLE_ALL
+
+    async def _overflow(self) -> tuple[bool, dict]:
+        """One stream word offered while LEVEL reads 64 before and after it."""
+        l0 = await self._level()
+        w0 = self.tap.words
+        bound = self._word_bound()
+        t0 = self._now()
+        while self.tap.words == w0 and self._now() - t0 <= bound:
+            await RisingEdge(cocotb.top.clk_i)
+        offered = self.tap.words - w0
+        l1 = await self._level()
+        live = l0 == DEPTH and offered >= 1 and l1 == DEPTH
+        return live, {"level_before": l0, "words_offered": offered, "level_after": l1}
+
+    async def _underflow(self) -> tuple[bool, dict]:
+        """One FIFO_RDATA read while LEVEL reads 0 before and after it."""
+        l0 = await self._level()
+        await self._rd(ESRC_FIFO_RDATA)
+        l1 = await self._level()
+        return l0 == 0 and l1 == 0, {"level_before": l0, "level_after": l1}
+
+    async def _live_line(self, cause: str) -> None:
+        """CTRL-ESRC-LIVE-LINE: INTR_TEST.PERSISTENT_FAILURE with its enable raises source 16."""
+        en = await self._set_enable(INTR_PF)
+        await self._wr(ESRC_INTR_TEST, INTR_PF)
+        st = await self._rd(ESRC_INTR_STATUS)
+        pic = self._pic16()
+        await self._wr(ESRC_INTR_STATUS, INTR_PF)
+        self.chk.ctrl(
+            "ESRC-LIVE-LINE",
+            en == INTR_PF and st & INTR_PF and pic == 1,
+            after=cause,
+            intr_enable=f"0x{en:08x}",
+            intr_status=f"0x{st:08x}",
+            vector_bit15=pic,
+        )
+
+    async def _cause_legs(self, cause: str, bm: int, drive) -> None:
+        en = await self._set_enable(0)
+        live, fields = await drive()
+        pic = self._pic16()
+        self.chk.ok(
+            "ESRC-LIVE-MASKED",
+            live and en == 0 and pic == 0,
+            cause=cause,
+            intr_enable=f"0x{en:08x}",
+            vector_bit15=pic,
+            **fields,
+        )
+        await self._live_line(cause)
+        en = await self._set_enable(bm)
+        await self._wr(ESRC_INTR_STATUS, bm)
+        live, fields = await drive()
+        st = await self._rd(ESRC_INTR_STATUS)
+        pic = self._pic16()
+        self.chk.ctrl(
+            "ESRC-LIVE-CAUSE",
+            live and en == bm and st & bm,
+            cause=cause,
+            intr_enable=f"0x{en:08x}",
+            intr_status=f"0x{st:08x}",
+            **fields,
+        )
+        self.chk.obs("ESRC-LIVE-PIC16", cause=cause, intr_enable=f"0x{en:08x}", vector_bit15=pic)
+
+    async def _live_cause_leg(self) -> None:
+        """Overflow with the producer running into a full FIFO, then underflow once empty."""
+        await self._setup()
+        await self._poll(
+            ESRC_FIFO_STATUS,
+            lambda x: _get(x, "FIFO_STATUS", "LEVEL"),
+            lambda x: x == DEPTH,
+            self._fill_bound(),
+        )
+        await self._cause_legs("FIFO_OVERFLOW", INTR_FIFO_OVERFLOW, self._overflow)
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
+        await self._pop_to_empty()
+        await self._cause_legs("FIFO_UNDERFLOW", INTR_FIFO_UNDERFLOW, self._underflow)
 
     # --- integrity trials (steps 21-28) -------------------------------------------------
     async def _hold(self) -> tuple[bool, int]:
