@@ -79,6 +79,13 @@ module jtag_dmi2axi
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
   typedef logic [DataWidth/8-1:0] strb_t;
+  typedef logic [AXI_ID_WIDTH-1:0] bridge_id_t;
+  typedef logic [AXI_USER_WIDTH-1:0] bridge_user_t;
+
+  // The bridge types of both port variants are at module scope. Not every simulator lets a
+  // struct type declared in a generate block reach another module through a type parameter.
+  `AXI_LITE_TYPEDEF_ALL(bridge_lite, addr_t, data_t, strb_t)
+  `AXI_TYPEDEF_ALL(bridge_full, addr_t, bridge_id_t, data_t, strb_t, bridge_user_t)
 
   localparam data_t ErrSlvReadData = data_t'(64'hBADCAB1E_BADCAB1E);
 
@@ -145,23 +152,21 @@ module jtag_dmi2axi
   // Bridge, security demultiplexer and error slave
   //--------------------------------------------------------------------------
   if (IS_AXI4_LITE) begin : gen_axi_lite
-    `AXI_LITE_TYPEDEF_ALL(bridge, addr_t, data_t, strb_t)
+    `OCAH_ASSERT_STATIC(ReqTypeMatches_A, $bits(bridge_lite_req_t) == $bits(axi_req_t))
+    `OCAH_ASSERT_STATIC(RespTypeMatches_A, $bits(bridge_lite_resp_t) == $bits(axi_resp_t))
 
-    `OCAH_ASSERT_STATIC(ReqTypeMatches_A, $bits(bridge_req_t) == $bits(axi_req_t))
-    `OCAH_ASSERT_STATIC(RespTypeMatches_A, $bits(bridge_resp_t) == $bits(axi_resp_t))
-
-    bridge_req_t        bridge_req;
-    bridge_resp_t       bridge_resp;
-    bridge_req_t  [1:0] demux_req;
-    bridge_resp_t [1:0] demux_resp;
+    bridge_lite_req_t        bridge_req;
+    bridge_lite_resp_t       bridge_resp;
+    bridge_lite_req_t  [1:0] demux_req;
+    bridge_lite_resp_t [1:0] demux_resp;
 
     tdr2axi #(
       .USE_AXI_LITE  (1'b1),
       .AXI_ADDR_WIDTH(AddrWidth),
       .AXI_DATA_WIDTH(DataWidth),
       .AXI_PROT      (AXI_PROT),
-      .axi_req_t     (bridge_req_t),
-      .axi_rsp_t     (bridge_resp_t)
+      .axi_req_t     (bridge_lite_req_t),
+      .axi_rsp_t     (bridge_lite_resp_t)
     ) u_tdr2axi (
       .i_clk            (clk_i),
       .i_arst_n         (rst_ni),
@@ -179,13 +184,13 @@ module jtag_dmi2axi
     assign bridge_requesting = bridge_req.aw_valid || bridge_req.ar_valid;
 
     axi_lite_demux #(
-      .aw_chan_t (bridge_aw_chan_t),
-      .w_chan_t  (bridge_w_chan_t),
-      .b_chan_t  (bridge_b_chan_t),
-      .ar_chan_t (bridge_ar_chan_t),
-      .r_chan_t  (bridge_r_chan_t),
-      .axi_req_t (bridge_req_t),
-      .axi_resp_t(bridge_resp_t),
+      .aw_chan_t (bridge_lite_aw_chan_t),
+      .w_chan_t  (bridge_lite_w_chan_t),
+      .b_chan_t  (bridge_lite_b_chan_t),
+      .ar_chan_t (bridge_lite_ar_chan_t),
+      .r_chan_t  (bridge_lite_r_chan_t),
+      .axi_req_t (bridge_lite_req_t),
+      .axi_resp_t(bridge_lite_resp_t),
       .NoMstPorts(2),
       .MaxTrans  (2)
     ) u_security_demux (
@@ -203,8 +208,8 @@ module jtag_dmi2axi
     prim_axi_lite_err_slv #(
       .AXI_ADDR_WIDTH(AddrWidth),
       .AXI_DATA_WIDTH(DataWidth),
-      .axil_req_t    (bridge_req_t),
-      .axil_resp_t   (bridge_resp_t),
+      .axil_req_t    (bridge_lite_req_t),
+      .axil_resp_t   (bridge_lite_resp_t),
       .RESP          (axi_pkg::RESP_DECERR),
       .RESP_WIDTH    (DataWidth),
       .RESP_DATA     (ErrSlvReadData)
@@ -217,24 +222,19 @@ module jtag_dmi2axi
     );
 
     assign axi_req_o = axi_req_t'(demux_req[DemuxTarget]);
-    assign demux_resp[DemuxTarget] = bridge_resp_t'(axi_resp_i);
+    assign demux_resp[DemuxTarget] = bridge_lite_resp_t'(axi_resp_i);
 
     axi_pkg::cache_t unused_axi_cache;
     assign unused_axi_cache = AXI_CACHE;
   end else begin : gen_axi
-    typedef logic [AXI_ID_WIDTH-1:0] id_t;
-    typedef logic [AXI_USER_WIDTH-1:0] user_t;
+    `OCAH_ASSERT_STATIC(ReqTypeMatches_A, $bits(bridge_full_req_t) == $bits(axi_req_t))
+    `OCAH_ASSERT_STATIC(RespTypeMatches_A, $bits(bridge_full_resp_t) == $bits(axi_resp_t))
 
-    `AXI_TYPEDEF_ALL(bridge, addr_t, id_t, data_t, strb_t, user_t)
-
-    `OCAH_ASSERT_STATIC(ReqTypeMatches_A, $bits(bridge_req_t) == $bits(axi_req_t))
-    `OCAH_ASSERT_STATIC(RespTypeMatches_A, $bits(bridge_resp_t) == $bits(axi_resp_t))
-
-    bridge_req_t        bridge_req;
-    bridge_resp_t       bridge_resp;
-    bridge_req_t  [1:0] demux_req;
-    bridge_resp_t [1:0] demux_resp;
-    bridge_req_t        target_req;
+    bridge_full_req_t        bridge_req;
+    bridge_full_resp_t       bridge_resp;
+    bridge_full_req_t  [1:0] demux_req;
+    bridge_full_resp_t [1:0] demux_resp;
+    bridge_full_req_t        target_req;
 
     tdr2axi #(
       .USE_AXI_LITE  (1'b0),
@@ -242,8 +242,8 @@ module jtag_dmi2axi
       .AXI_DATA_WIDTH(DataWidth),
       .AXI_PROT      (AXI_PROT),
       .AXI_CACHE     (AXI_CACHE),
-      .axi_req_t     (bridge_req_t),
-      .axi_rsp_t     (bridge_resp_t)
+      .axi_req_t     (bridge_full_req_t),
+      .axi_rsp_t     (bridge_full_resp_t)
     ) u_tdr2axi (
       .i_clk            (clk_i),
       .i_arst_n         (rst_ni),
@@ -263,13 +263,13 @@ module jtag_dmi2axi
     axi_demux #(
       .AxiIdWidth (AXI_ID_WIDTH),
       .AtopSupport(1'b0),
-      .aw_chan_t  (bridge_aw_chan_t),
-      .w_chan_t   (bridge_w_chan_t),
-      .b_chan_t   (bridge_b_chan_t),
-      .ar_chan_t  (bridge_ar_chan_t),
-      .r_chan_t   (bridge_r_chan_t),
-      .axi_req_t  (bridge_req_t),
-      .axi_resp_t (bridge_resp_t),
+      .aw_chan_t  (bridge_full_aw_chan_t),
+      .w_chan_t   (bridge_full_w_chan_t),
+      .b_chan_t   (bridge_full_b_chan_t),
+      .ar_chan_t  (bridge_full_ar_chan_t),
+      .r_chan_t   (bridge_full_r_chan_t),
+      .axi_req_t  (bridge_full_req_t),
+      .axi_resp_t (bridge_full_resp_t),
       .NoMstPorts (2),
       .MaxTrans   (2),
       .AxiLookBits(1),
@@ -289,8 +289,8 @@ module jtag_dmi2axi
 
     axi_err_slv #(
       .AxiIdWidth(AXI_ID_WIDTH),
-      .axi_req_t (bridge_req_t),
-      .axi_resp_t(bridge_resp_t),
+      .axi_req_t (bridge_full_req_t),
+      .axi_resp_t(bridge_full_resp_t),
       .Resp      (axi_pkg::RESP_DECERR),
       .RespWidth (DataWidth),
       .RespData  (ErrSlvReadData),
@@ -311,7 +311,7 @@ module jtag_dmi2axi
     end
 
     assign axi_req_o = axi_req_t'(target_req);
-    assign demux_resp[DemuxTarget] = bridge_resp_t'(axi_resp_i);
+    assign demux_resp[DemuxTarget] = bridge_full_resp_t'(axi_resp_i);
   end
 
 endmodule : jtag_dmi2axi
