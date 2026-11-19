@@ -44,7 +44,6 @@
         `uvm_object_utils(efuse_interface_ctrl__EFUSE_PROGRAM_CTRL)
         rand uvm_reg_field efuse_data;
         rand uvm_reg_field efuse_program_go;
-        rand uvm_reg_field efuse_program_read_back;
         rand uvm_reg_field program_busy;
         rand uvm_reg_field program_done;
         rand uvm_reg_field program_status;
@@ -59,8 +58,6 @@
             this.efuse_data.configure(this, 1, 16, "RW", 0, 'h0, 1, 1, 0);
             this.efuse_program_go = uvm_reg_field::type_id::create("efuse_program_go");
             this.efuse_program_go.configure(this, 1, 17, "RW", 1, 'h0, 1, 1, 0);
-            this.efuse_program_read_back = uvm_reg_field::type_id::create("efuse_program_read_back");
-            this.efuse_program_read_back.configure(this, 1, 18, "RW", 0, 'h0, 1, 1, 0);
             this.program_busy = uvm_reg_field::type_id::create("program_busy");
             this.program_busy.configure(this, 1, 24, "RO", 1, 'h0, 1, 1, 0);
             this.program_done = uvm_reg_field::type_id::create("program_done");

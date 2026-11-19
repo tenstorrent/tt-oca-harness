@@ -69,7 +69,6 @@ READ_ADDR_ERROR_CLEAR = _f("EFUSE_INTERFACE_CTRL_STATUS", "EFUSE_READ_ADDR_ERROR
 ERRORS = REQ_ERROR | PROGRAM_ADDR_ERROR | READ_ADDR_ERROR
 PROG_DATA = _f("EFUSE_PROGRAM_CTRL", "EFUSE_DATA")
 PROG_GO = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_GO")
-PROG_RB = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_READ_BACK")
 PROG_EN = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_ENABLE")
 PROG_BUSY = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_BUSY")
 PROG_DONE = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_DONE")
@@ -314,7 +313,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
     async def _program(self, label: str, bit: int) -> int:
         """Program fuse ``bit`` through the program interface; returns PROGRAM_CTRL at done."""
         await self._wr(f"{label}_ADDR", PROGRAM_ADDR, bit)
-        await self._wr(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
+        await self._wr(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
         ctrl = await self._poll(
             f"{label}_DONE", PROGRAM_CTRL, lambda v: bool(v & PROG_DONE) and not v & PROG_BUSY
         )
@@ -324,7 +323,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
     async def _program_start(self, label: str, bit: int) -> tuple[int, int]:
         """Start a program of ``bit``: (EFUSE_INTERFACE_CTRL_STATUS, PROGRAM_CTRL at done)."""
         await self._wr(f"{label}_ADDR", PROGRAM_ADDR, bit)
-        await self._wr(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
+        await self._wr(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
         ctrl = await self._poll(
             f"{label}_DONE", PROGRAM_CTRL, lambda v: bool(v & PROG_DONE) and not v & PROG_BUSY
         )

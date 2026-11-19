@@ -502,14 +502,14 @@ class BankWatchDecodeTest(unittest.TestCase):
         P_ = bw.FUSE_COMMAND_PROGRAM
         R_ = bw.FUSE_COMMAND_READ
         samples = [
-            (1, 0, 0, 0, 0, 0),
-            (2, 1, R_, 0, 0, 255),  # new valid run
-            (3, 1, R_, 0, 0, 255),  # held: no new record
-            (4, 1, R_, 32, 0, 255),  # field change while valid
-            (5, 0, 0, 0, 0, 0),
-            (6, 1, P_, 99, 1, 1),  # program
-            (7, 0, 0, 0, 0, 0),
-            (8, 1, P_, 99, 1, 1),  # re-issue after a response
+            (1, 0, 0, 0, 0),
+            (2, 1, R_, 0, 255),  # new valid run
+            (3, 1, R_, 0, 255),  # held: no new record
+            (4, 1, R_, 32, 255),  # field change while valid
+            (5, 0, 0, 0, 0),
+            (6, 1, P_, 99, 0),  # program
+            (7, 0, 0, 0, 0),
+            (8, 1, P_, 99, 0),  # re-issue after a response
         ]
         cmds = bw.command_edges(samples)
         self.assertEqual([c.clk for c in cmds], [2, 4, 6, 8])

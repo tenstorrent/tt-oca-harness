@@ -748,7 +748,7 @@ def read_addr_word(bit_addr: int) -> int:
     return _fld(_RA, "efuse_addr", bit_addr)
 
 
-def program_ctrl_word(*, data: int = 1, enable: int = 1, go: int = 1, read_back: int = 0) -> int:
+def program_ctrl_word(*, data: int = 1, enable: int = 1, go: int = 1) -> int:
     """``EFUSE_PROGRAM_CTRL`` value with the named fields; every other bit 0.
 
     The go programs the bit at ``EFUSE_PROGRAM_ADDR``; write it first.
@@ -756,7 +756,6 @@ def program_ctrl_word(*, data: int = 1, enable: int = 1, go: int = 1, read_back:
     return (
         _fld(_PG, "efuse_data", data)
         | _fld(_PG, "efuse_program_go", go)
-        | _fld(_PG, "efuse_program_read_back", read_back)
         | _fld(_PG, "program_enable", enable)
     )
 
@@ -788,7 +787,7 @@ async def require_addr_readback(rd: ReadFn, reg_addr: int, want: int) -> int:
 
 
 async def program_go_no_wait(
-    wr: WriteFn, rd: ReadFn, bit_addr: int, *, data: int = 1, read_back: int = 0
+    wr: WriteFn, rd: ReadFn, bit_addr: int, *, data: int = 1
 ) -> int:
     """Write ``EFUSE_PROGRAM_ADDR``, read it back, then write ``EFUSE_PROGRAM_CTRL`` with
     enable, data and go; no poll.
@@ -799,7 +798,7 @@ async def program_go_no_wait(
     addr = program_addr_word(bit_addr)
     await wr(PROGRAM_ADDR_ADDR, addr)
     await require_addr_readback(rd, PROGRAM_ADDR_ADDR, addr)
-    value = program_ctrl_word(data=data, read_back=read_back)
+    value = program_ctrl_word(data=data)
     await wr(PROGRAM_CTRL_ADDR, value)
     return value
 
@@ -1092,7 +1091,7 @@ def _timeout_count(d: SepEfuseDraws, name: str) -> int:
 def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     """Fixed TEST_DEV image; runtime draws in the Randomization order.
 
-    Order: two timeout counts; ``EFUSE_PROGRAM_CTRL`` pattern (bits 18, 16);
+    Order: two timeout counts; ``EFUSE_PROGRAM_CTRL`` pattern (bit 16);
     ``EFUSE_PROGRAM_ADDR`` pattern (31:0); ``EFUSE_READ_ADDR`` pattern (31:0); word
     order of the SIP, CHIPLET and SEC_DIS arrays; seven past-extent offsets; six
     reserved-span addresses (one alias target per zone); control-write word index w.
@@ -1101,9 +1100,7 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=FIXED_SIP_DIS, sys_dis=FIXED_SYS_DIS)
     _timeout_count(d, "read_req_timeout_cycles")
     _timeout_count(d, "program_req_timeout_cycles")
-    pg_mask = EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data") | EFUSE_INTERFACE_CTRL.field_mask(
-        _PG, "efuse_program_read_back"
-    )
+    pg_mask = EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
     pa_mask = EFUSE_INTERFACE_CTRL.field_mask(_PA, "efuse_addr")
     ra_mask = EFUSE_INTERFACE_CTRL.field_mask(_RA, "efuse_addr")
     d.until("program_ctrl_pattern", lambda: d.rng.getrandbits(32) & pg_mask, lambda v: v != 0)
@@ -1859,9 +1856,8 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
             ]
             fname = d.choice(f"round.{rnd}.field", [f for f in fields if zero_bits(ref, f)])
             bit = _pick_bit(d, f"round.{rnd}.bit", ref, fname)
-            rb = d.choice(f"round.{rnd}.read_back", (0, 1))
             ref.words[field_word(fname) + bit["word"]] |= 1 << bit["bit"]
-            chain.append({**bit, "read_back": rb})
+            chain.append(bit)
         leg.update(rounds=chain, version_field=version, index_class=idx_class, version_index=index)
         leg["version_bit"] = {
             "field": version,

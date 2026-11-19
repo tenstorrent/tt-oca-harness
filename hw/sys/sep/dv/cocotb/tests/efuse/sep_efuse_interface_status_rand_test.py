@@ -192,7 +192,6 @@ _M_PG_STATUS = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 # Software-owned (sw=rw, hw=r) fields of each control register: they read back as written.
 _M_LANDED = {
     "EFUSE_PROGRAM_CTRL": _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
     | _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_enable"),
     "EFUSE_READ_CTRL": _IC.field_mask("EFUSE_READ_CTRL", "read_enable"),
     "EFUSE_PROGRAM_ADDR": _IC.mask32("EFUSE_PROGRAM_ADDR"),
@@ -589,11 +588,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
                         1,
                         self.rd(dut.efuse_shim_cmd_command_o),
                         self.rd(dut.efuse_shim_cmd_address_o),
-                        self.rd(dut.efuse_shim_cmd_program_data_o),
                         self.rd(dut.efuse_shim_cmd_len_o),
                     )
                     if valid
-                    else (0, 0, 0, 0, 0)
+                    else (0, 0, 0, 0)
                 )
                 if is_command_edge(prev, cur) and cur[1] in PROGRAM_COMMANDS:
                     win["progs"].append((win["n"], cur[2]))

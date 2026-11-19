@@ -35,7 +35,7 @@ timeout_sec = 900
 tags = ["sram", "memory", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_sram_hex=sep_sram_preload.hex"]
 
 [[tests]]
 # Multi-beat FIXED and WRAP bursts into SEP SRAM answer SLVERR and leave SRAM unchanged
@@ -292,6 +292,22 @@ tags = ["boot", "rom", "cpu", "memory", "subsystem", "sep_spec_log", "grades_spe
 run_modes = ["cpu"]
 args = [
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# Same module with ROM_CTL = 0x1 (rom_endianness_ctrl = 1): every 4-byte and 1-byte load of
+# 16 drawn words with distinct bytes differs from the little-endian image value, and the byte
+# order of each word is logged. Real fuse sense of a PROD image with that ROM_CTL.
+name = "sep_boot_rom_aperture_sweep_test_rom_be"
+module = "cpu.sep_boot_rom_aperture_sweep_test"
+seed = 1
+# No reseed: every leaf runs the whole load set; the seed selects only the words and bytes.
+timeout_sec = 900
+tags = ["boot", "rom", "cpu", "memory", "subsystem", "sep_spec_log"]
+run_modes = ["cpu"]
+args = [
+  "+sep_rom_ctl_be",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_rom_ctl_be.toml",
 ]
 
 [[tests]]
