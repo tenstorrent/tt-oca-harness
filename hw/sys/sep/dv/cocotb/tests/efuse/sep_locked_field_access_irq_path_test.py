@@ -63,7 +63,7 @@ readback equals the read before the write, and the sensed shadow word
 CTRL-SECTM-LATCH logs ``secure_tm_o`` after each sense and requires 0 before
 the control half and 1 before the deny half. A refused write is a write that a
 lock blocks: secure test mode adds a shadow write lock
-(hw/ip/efuse/doc/architecture.adoc:402-403) on the fields that
+(hw/ip/efuse/doc/architecture.adoc:407-408) on the fields that
 otp_fuse_controller.adoc:178-180 lists. So otp_fuse_controller.adoc:110-112
 applies: CHK-LOCK-WR-RESP (``case=sectm``) grades its BRESP as SLVERR, and
 CHK-SECTM-IRQ grades a rise of [33]: low at the clock edge before each refused

@@ -65,9 +65,9 @@ Checkers:
   CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
                     read-interface request on a read-locked field: after the full W
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
-                    (``hw/ip/efuse/doc/architecture.adoc:247-249``: a locked target
+                    (``hw/ip/efuse/doc/architecture.adoc:252-254``: a locked target
                     completes the operation with an error;
-                    ``efuse_interface_ctrl.rdl:143`` ``read_done``, ``:149``
+                    ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:149``
                     ``read_status``). The line prints both values and the expected 1.
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
@@ -130,8 +130,8 @@ Checkers:
                     ``program_done`` 1 and ``program_status`` 0 (No Error). A
                     read-lock blocks reads and a write-lock blocks programming; the
                     two locks act independently (``otp_fuse_controller.adoc:110-111,
-                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:237-239``;
-                    ``efuse_interface_ctrl.rdl:106-107`` ``program_status``). Every
+                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:242-244``;
+                    ``efuse_interface_ctrl.rdl:102-103`` ``program_status``). Every
                     other leaf logs ``CHK-UID-RDLOCK-PROG N/A`` with the reason (the
                     leaf kind, or ``no_unlocked_uid_slot``); a lock leg whose UID
                     field has no 0 bit fails the check.
@@ -151,9 +151,10 @@ absent before its write (``CTRL-LOCK-ORDER-THIRD``); the chain compares all 256
 words after the first sense with the staged image. The JTAG read of the unlocked
 word is the accepted twin of the blocked JTAG read, in the same CHK-LOCK-JTAG-RD
 line; the landed program and the bank gain are the positive probe of
-CHK-LOCK-EXEMPT-PROG. Before CHK-UID-RDLOCK-PROG, the read-lock program lands and
-the ``LOCKS`` word read after the resense holds the read-lock bit
-(``CTRL-UID-RDLOCK-SET``).
+CHK-LOCK-EXEMPT-PROG. Before CHK-UID-RDLOCK-PROG, the read-lock program lands, the
+``LOCKS`` word read after the resense holds the read-lock bit, and a frontdoor read
+of word 0 of the UID field completes with SLVERR and read data ``0xBADCAB1E``, so
+the read-lock is in force (``CTRL-UID-RDLOCK-SET``; ``otp_fuse_controller.adoc:110-114``).
 
 FCOV owner window: a FAIL of any check or control closes the window, and the window
 does not reopen after it. ``x_exempt_write`` holds the resensed ``LC_STATE`` value
@@ -213,6 +214,7 @@ from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
 from env.sep_efuse_plan import (
     DIGEST_FIELDS,
     LOCK_SLOT_FIELD,
+    NARROW_USED,
     PROGRAM_CTRL_ADDR,
     READ_CTRL_ADDR,
     SECRET_FIELDS,
@@ -283,8 +285,8 @@ _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
 # A locked target completes the operation with an error: ``read_done`` 1 and
 # ``read_status`` 1 (Error).
 _READ_DONE_CONTRACT = (
-    "efuse/doc/architecture.adoc:247-249(Hardware_vs_Software_Locks),"
-    "efuse_interface_ctrl.rdl:143,149(EFUSE_READ_CTRL.read_done,read_status)"
+    "efuse/doc/architecture.adoc:252-254(Hardware_vs_Software_Locks),"
+    "efuse_interface_ctrl.rdl:139,145(EFUSE_READ_CTRL.read_done,read_status)"
 )
 
 _KIND_W = ("write", "write_read")
@@ -527,7 +529,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             r["clr_req_err"] = await self._clear_status()
         return r
 
-    async def _program(self, bit_addr: int, *, read_back: int = 0, watch: bool = True) -> dict:
+    async def _program(self, bit_addr: int, *, watch: bool = True) -> dict:
         """Program bit ``bit_addr`` (data 1): clear, go, full W, command tap, bank diff, status.
 
         ``efuse_req_error`` is sticky, so the request clears it and reads it back
@@ -538,7 +540,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
         start = self._pulse_mark() if watch else None
-        await program_go_no_wait(self._wr, bit_addr, read_back=read_back)
+        await program_go_no_wait(self._wr, bit_addr)
         await ClockCycles(cocotb.top.clk_i, self.w)
         progs = self.shim.programs_since(mark) if mark is not None else None
         diff = self.bank.diff_since(snap)
@@ -933,16 +935,26 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         set_shadow_golden(self, self.plan.image, words=list(self.bank.read()))
         await self._sense("CHK-LOCK-CELL")
         locks = await self._rd32(shadow_addr("LOCKS", rb // WORD_BITS))
+        w0 = field_word(name)
+        self._require_not_marker(name, 0, self.bank.read()[w0] & _WORD)
+        seq = await self._rd(shadow_addr(name, 0), blocked=True)
+        rdata = seq.rdata & _WORD
         self._control(
             "UID-RDLOCK-SET",
-            self._landed(lock, lock_addr) and (locks >> (rb % WORD_BITS)) & 1,
+            self._landed(lock, lock_addr)
+            and (locks >> (rb % WORD_BITS)) & 1
+            and not seq.timed_out
+            and seq.resp_code == RESP_SLVERR
+            and rdata == DENY_DATA_MARKER,
             slot=slot,
             lock_addr=lock_addr,
             locks_word=f"0x{locks:08x}",
             pg_flags=f"busy{lock['busy']}/done{lock['done']}/st{lock['prog_status']}",
+            field=name,
+            rd_resp="timeout" if seq.timed_out else resp_name(seq.resp_code),
+            rd_data=f"0x{rdata:08x}",
         )
         bank = self.bank.read()
-        w0 = field_word(name)
         zeros = [
             (k, b)
             for k, used in enumerate(field_used_masks(name))
@@ -1081,7 +1093,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         leg = self.plan.leg
         slot, lk, twin = leg["slot"], leg["lock_kind"], leg["twin_slot"]
         name = LOCK_SLOT_FIELD[slot]
-        own_bit = {"field": name, "word": 0, "bit": 0, "addr": bit_address(name, 0, 0)}
+        used = NARROW_USED[name]
+        lsb = (used & -used).bit_length() - 1
+        own_bit = {"field": name, "word": 0, "bit": lsb, "addr": bit_address(name, 0, lsb)}
         self._reset_twin_counts()
         tag = self._step()
         if lk == "read":
@@ -1452,12 +1466,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
     async def _round(self, k: int, rnd: dict, ref: list[int]) -> None:
         """Step 13 (program, unchanged shadow) and step 14 (resense, model compare)."""
-        name, a, rb = rnd["field"], rnd["addr"], rnd["read_back"]
+        name, a = rnd["field"], rnd["addr"]
         wi = field_word(name) + rnd["word"]
         old = ref[wi]
         tag = self._step()
         pre = await self._rd32(shadow_addr(name, rnd["word"]))
-        r = await self._program(a, read_back=rb, watch=False)
+        r = await self._program(a, watch=False)
         after_prog = await self._rd32(shadow_addr(name, rnd["word"]))
         prog_ok = r["req_err"] == 0 and diff_is_exactly(r["diff"], a)
         new = old | (1 << rnd["bit"])
@@ -1488,7 +1502,6 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             round=k,
             field=name,
             bit_addr=a,
-            rb=rb,
             otp_diff=a if diff_is_exactly(r["diff"], a) else diff_log(r["diff"]),
             req_err=r["req_err"],
             prog_status=r["prog_status"],

@@ -32,21 +32,20 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
   CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
                     secure test mode adds a shadow write lock on the four targets
-                    (``hw/ip/efuse/doc/architecture.adoc:402-403``;
+                    (``hw/ip/efuse/doc/architecture.adoc:407-408``;
                     ``otp_fuse_controller.adoc:178-180``), and a shadow write that a
                     lock blocks completes with SLVERR
                     (``otp_fuse_controller.adoc:110-112``).
   CHK-STM-PROG      no strap-1 program changes its bank bit (direct read in the strap-0
-                    epoch before any program of that epoch) and no ``PROGRAM`` or
-                    ``PROGRAM_READ_BACK`` command reaches ``efuse_shim_command_req_o``
-                    at strap 1.
+                    epoch before any program of that epoch) and no ``PROGRAM`` command
+                    reaches ``efuse_shim_command_req_o`` at strap 1.
   CHK-STM-PROG-STATUS  the first strap-1 program reads ``program_done`` 1 and
                     ``program_status`` 1 (Error) in ``EFUSE_PROGRAM_CTRL`` after
                     ``W_prog``: a program start in secure test mode completes with an
                     error without issuing a command
-                    (``hw/ip/efuse/doc/architecture.adoc:396``;
-                    ``efuse_interface_ctrl.rdl:100-101`` ``program_done``,
-                    ``:106-107`` ``program_status``). Control
+                    (``hw/ip/efuse/doc/architecture.adoc:401``;
+                    ``efuse_interface_ctrl.rdl:96-97`` ``program_done``,
+                    ``:102-103`` ``program_status``). Control
                     (``CTRL-STM-PROG-FRESH``): before that go both bits read their RDL
                     reset value 0. Both bits hold until the next start, and a refused
                     start sets them again in the same clock, so the four later
@@ -109,7 +108,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     access itself (bus timeout).
   CTRL-STM-PROG-ISSUED  after each program go of both straps, the software-owned
                     fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
-                    ``efuse_program_read_back``, ``program_enable``) read back equal to
+                    ``program_enable``) read back equal to
                     the go, so a strap-1 go that did not land fails.
   CTRL-STM-PROG-FRESH  before the first strap-1 go, ``program_done`` and
                     ``program_status`` read their RDL reset value 0, so
@@ -234,7 +233,6 @@ _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse
 _PG_RW = (
     EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
     | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
     | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 )
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
