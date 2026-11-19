@@ -20,9 +20,11 @@ module sep_isolate_rst_seq (
   output logic isolate_req_o,                 // Isolation request to the domain's isolate units,
                                               // active-high; high whenever the domain is draining
                                               // or in reset.
-  output logic gated_rst_no                   // Registered sequenced reset to the domain (active
+  output logic gated_rst_no,                  // Registered sequenced reset to the domain (active
                                               // low); asserted while rst_ni is asserted and only
                                               // after isolated_i.
+  output logic [1:0] state_debug_o            // FSM state for the debug bus: 0 reset, 1 drain,
+                                              // 2 run.
 );
 
   typedef enum logic [1:0] {
@@ -67,6 +69,7 @@ module sep_isolate_rst_seq (
   `OCAH_FF(gated_rst_n_q, ~gated_rst_d, 1'b0, clk_i, rst_ni)
 
   assign gated_rst_no = gated_rst_n_q;
+  assign state_debug_o = state_q;
 
   // The domain reset must never assert while a path is still open.
   `OCAH_ASSERT(ResetOnlyWhenIsolated_A, !gated_rst_no |-> isolated_i, clk_i, !rst_ni)

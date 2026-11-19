@@ -256,7 +256,8 @@ module sep #(
   logic cpu_halt_status_o;
   logic debug_mode_status_o;
   logic cpu_run_ack_o;
-  logic [9:0] sep_efuse_debug;
+  logic [15:0] sep_efuse_debug;
+  logic [13:0] sep_isolate_state_debug;
 
   sep_pkg::remap_debug_t         local_masters_remap_debug;
   logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0]
@@ -1180,7 +1181,8 @@ NumSramDemuxPorts
     .sep_wdt_reset_no           (sep_wdt_reset_n),
     .sep_crypto_isolate_req_o   (sep_crypto_isolate_req),
     .sep_crypto_isolated_i      (sep_crypto_isolated),
-    .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n)
+    .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n),
+    .isolate_state_debug_o      (sep_isolate_state_debug)
   );
 
   ////////////////
@@ -1283,7 +1285,6 @@ NumSramDemuxPorts
       ExtDebugControlLaneWidth_A, $bits
       ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
           ) == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugRemapLaneWidth_A, $bits({6'b0, local_masters_remap_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugOutboundFilterLaneWidth_A, $bits
                       ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
@@ -1344,12 +1345,14 @@ NumSramDemuxPorts
     mpc_debug_run_ack,  // [257]
     mpc_debug_halt_ack,  // [256]
 
-    // [255:240] SEP eFuse debug
-    6'b0,  // [255:250] Reserved padding
-    sep_efuse_debug,  // [249:240]
+    // [255:240] SEP eFuse debug: [255:250] FSM states, [249:240] flags
+    sep_efuse_debug,
 
-    // [239:208] Reserved
-    32'b0,
+    // [239:224] Crypto isolation FSMs, 2 bits per SW_RESET_N domain: 0 reset, 1 drain, 2 run
+    {2'b0, sep_isolate_state_debug},
+
+    // [223:208] Reserved
+    16'b0,
 
     // [207:192] Local masters address-remap hit debug
     6'b0,  // [207:202] Reserved padding
