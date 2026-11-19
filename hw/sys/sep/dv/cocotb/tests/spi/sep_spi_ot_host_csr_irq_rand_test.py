@@ -28,7 +28,7 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   TXEMPTY, RXEMPTY and BYTEORDER are logged only
                   (INFO-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
                   field text (an empty FIFO, the unmodified IP with ByteOrder
-                  1) gives 1; the open question is in SEP_VPLAN.
+                  1) gives 1; not graded; no open specification question.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
   CHK-INTR      : INTR_STATE.ERROR is an Event latch -- INTR_TEST sets it with

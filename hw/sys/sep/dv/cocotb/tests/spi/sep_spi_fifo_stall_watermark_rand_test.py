@@ -599,6 +599,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         return True
 
     def _info_txstall(self, st: SpiStatus, where: str) -> None:
+        chks = []
+        if where == "tx_stall":
+            chks.append("CHK-SPI-TXSTALL")
+        if where == "pre_push" and not st.active:
+            chks.append("CHK-SPI-QD-IDLE")
         self.logger.info(
             "INFO-SPI-TXSTALL seed=%d where=%s txstall=%d active=%d txqd=%d rxqd=%d cs_low=%d%s",
             self.seed,
@@ -608,7 +613,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             st.txqd,
             st.rxqd,
             int(self.pads.cs_low()),
-            " chk=CHK-SPI-TXSTALL" if where == "tx_stall" else "",
+            f" chk={','.join(chks)}" if chks else "",
         )
 
     def _done_read(self, st: SpiStatus, mark, windows: int) -> bool:

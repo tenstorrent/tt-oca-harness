@@ -11,7 +11,8 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   ``CTRL-MISSING <NAME>`` and is recorded as a failure: a check whose control
   did not show the healthy behaviour proves nothing.
 * ``obs(name, **fields)`` logs ``OBS-<NAME> ...``: a DUT value whose golden no
-  specification states yet.
+  specification states yet and that an open specification question asks for,
+  because it changes firmware, integration or security behaviour.
 * ``blocked(check, reason)`` logs ``INFO-BLOCKED CHK-<NAME> reason=<r>``: a
   check that the leaf cannot grade.
 * ``info(name, **fields)`` logs
@@ -25,9 +26,8 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   holds the open question; or no specification states its golden, and no
   open question asks for it because the value changes no firmware,
   integration or security behaviour. The test contract says which values
-  are not graded. A line of this kind can also print a value that a ``CHK-``
-  of the same leaf compares; the line then names that check as
-  ``chk=CHK-<NAME>``, only on the cells that the check compares.
+  are not graded. On the cells where a ``CHK-`` of the same leaf compares the
+  value, the line names that check as ``chk=CHK-<NAME>``.
   ``obs()``, ``blocked()`` and ``info()`` grade nothing.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the

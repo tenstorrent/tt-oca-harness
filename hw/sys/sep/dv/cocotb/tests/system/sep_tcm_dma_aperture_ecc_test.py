@@ -76,8 +76,9 @@ Checkers:
                  "Write Alignment Rules" ``:1203-1204`` and "Misaligned
                  Accesses" ``:422-427``). The spec states no other bit of
                  ERROR_CODE, so the whole code is logged (INFO-TCM-SUBWORD-CODE)
-                 and not graded; on a write the line names CHK-TCM-SUBWORD-WR in
-                 ``chk=`` for its error field. Control: the ICCM and DCCM copies are both
+                 and only its BUS_ERROR bit is graded; that line and the
+                 ``dir=write`` INFO-TCM-SUBWORD line name CHK-TCM-SUBWORD-WR in
+                 ``chk=``. Control: the ICCM and DCCM copies are both
                  graded (count 2), and before each GO, after the STATUS and
                  ``DMA_BUS_ERR_CLEAR`` clears, ERROR_CODE and
                  ``DMA_BUS_ERR_STATUS`` read 0 (CTRL-TCM-SUBWORD-PRE; ERROR_CODE
@@ -841,7 +842,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         code = ecode & EC_MASK
         bus_error = int(bool(code & EC_BUS_ERROR))
         self.logger.info(
-            "INFO-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x",
+            "INFO-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x"
+            " chk=CHK-TCM-SUBWORD-WR",
             mem,
             addr,
             nbytes,

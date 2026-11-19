@@ -138,7 +138,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          GO, read back the alias-form values written.
 
 Logged only: ``INFO-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
-rise (``sep_dma_abort_recovery_rand_test`` grades that contract);
+rise (``sep_dma_abort_recovery_rand_test`` grades that contract), and
+``zero_words``, which CHK-DMA-ZERO-ABORT grades (``chk=CHK-DMA-ZERO-ABORT``);
 ``OBS-DMA-ZF-BASELIM``, STATUS, ERROR_CODE, the AW list (address, WSTRB) and the
 words around BASE after the Leg B fill; ``INFO-DMA-ZERO-LOCK-RESP``, the response
 of the Leg L write of LIMIT + 64 under the lock (no specification text names

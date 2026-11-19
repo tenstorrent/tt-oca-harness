@@ -141,7 +141,7 @@ table of theory_of_operation.md (lines 719-730):
                      728) or 0x80 (Sha3Control, "along with SwCmdSequence ... Can
                      be ignored", line 730).
 
-Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
+Controls and logged values: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
 joins t_clean before the SHA3-128 cell). ``INFO-KMAC-MODE01`` logs the end state of the

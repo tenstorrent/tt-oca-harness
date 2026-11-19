@@ -41,8 +41,7 @@ Controls (a false control logs CTRL-MISSING and fails the leaf):
   CTRL-ABR-VALID-PRE         STATUS.VALID reads 0 at the READY read before each
                     ML-KEM command write, so the VALID wait sees this command.
 
-Observations (not graded; ``SEP_VPLAN.adoc`` Blocked features: the text does
-not state which output windows a combined command fills):
+Logged, not graded; no open specification question:
   INFO-ABR-ENCAPS-STIMULUS     the K and the first ciphertext word of the ENCAPS.
   INFO-ABR-KEYGEN-DECAPS-KEY   word-match counts of MLKEM_ENCAPS_KEY and
                     MLKEM_DECAPS_KEY after KEYGEN+DECAPS against the ACVP ek, dk.

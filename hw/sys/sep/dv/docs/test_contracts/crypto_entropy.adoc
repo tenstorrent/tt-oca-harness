@@ -104,7 +104,7 @@
 |CHK3
 |The seed matches golden.
 |CHK-SEED-SW
-|A CSRNG software-port instantiate (0x901, flag0 false) reaches `SW_CMD_STS.CMD_ACK`, CHK3 records one more seed handshake, and each 32-bit word of that seed equals a conditioner word of the golden that no earlier seed took. A command that is not sent, not acknowledged or that takes no seed fails, and so does a seed word that is not such a conditioner word. Golden: `CMD_RDY` before the write and `CMD_ACK` after it, `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc:188-195`; flag0 false with clen 0 uses only the entropy source seed and requests it on the entropy source interface, `vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md:19`, `:224`; the seed comes only from the conditioner, `hw/ip/entropy_source/doc/architecture.adoc:148`. The position of those words in the conditioner stream is not graded: no text states which conditioner words the seed packer takes once an earlier seed is packed. The seed bits and the next packed seed of the golden are logged as `INFO-SEED-SW-BITS`. The `CMD_STS` code is logged as `OBS-SEED-SW-STS` and not graded: no text states the code of a successful software command (the open question of `OBS-CSRNG-STS`).
+|A CSRNG software-port instantiate (0x901, flag0 false) reaches `SW_CMD_STS.CMD_ACK`, CHK3 records one more seed handshake, and each 32-bit word of that seed equals a conditioner word of the golden that no earlier seed took. A command that is not sent, not acknowledged or that takes no seed fails, and so does a seed word that is not such a conditioner word. Golden: `CMD_RDY` before the write and `CMD_ACK` after it, `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc:188-195`; flag0 false with clen 0 uses only the entropy source seed and requests it on the entropy source interface, `vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md:19`, `:224`; the seed comes only from the conditioner, `hw/ip/entropy_source/doc/architecture.adoc:148`. The position of those words in the conditioner stream is not graded: no text states which conditioner words the seed packer takes once an earlier seed is packed. The seed bits and the next packed seed of the golden are logged as `INFO-SEED-SW-BITS`; `CHK-SEED-SW` grades the seed words in `act`, and `next_golden` is not graded. Evidence: `INFO-SEED-SW-BITS: seed <i> act=0x<seed> next_golden=<0x<seed>\|none> (position not graded) chk=CHK-SEED-SW`. The `CMD_STS` code is logged as `OBS-SEED-SW-STS` and not graded: no text states the code of a successful software command (the open question of `OBS-CSRNG-STS`).
 |CHK4
 |Generated bits match golden. Generate segmentation is `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 |CHK5
@@ -1871,7 +1871,7 @@ tap is graded at the control bit only. The main-FIFO data path with
 |CHK-SEED-PACK-COUNT
 |The packer collects twelve conditioner words into each seed (`hw/sys/sep/doc/trng.adoc`, seed packer; `hw/ip/drbg/doc/architecture.adoc`, seed assembly). A seed push is a rise of `drbg_seed_valid_o`, or a seed handshake (`drbg_seed_valid_o` and `drbg_es_ack_o`) followed by `drbg_seed_valid_o` still high on the next clock. A window runs from one push to the clock before the next. The first window, from the tap start to the first push, is logged but not graded. A word is accepted on a clock with `esrc_compress_vld_o` and `drbg_seed_word_ready_o` high, and dropped when the ready is low. Every later window is graded on accepted words only: exactly 12 words are accepted in the window, and no seed push comes before the 12th accepted word. A dropped word is not counted. The check also needs at least one graded window and no X or Z on a sampled port. A packer that takes fewer or more than twelve words per seed, or pushes a seed early, fails. Ingress has no backpressure and the producer must not supply words faster than the packer takes them (`hw/ip/drbg/doc/architecture.adoc`, Entropy ingress and Seed Assembly), so a dropped word is outside the stated contract and its effect is not stated; the dropped words only appear in `INFO-SEED-PACK-DROP`. Anchor: the seed-port tap. Evidence: `CHK-SEED-PACK-COUNT PASS: graded=<g> xz=0 words_per_seed=12 windows=[<k>:<accepted>, ...]`.
 |INFO-SEED-PACK-DROP
-|Not a graded check. For each closed window, its accepted and dropped word counts; then one summary with the number of graded windows and the total of dropped words. Evidence: `INFO-SEED-PACK-DROP window=<k> accepted=<a> dropped=<d>[ chk=CHK-SEED-PACK-COUNT]` and `INFO-SEED-PACK-DROP graded=<g> dropped=<total> chk=CHK-SEED-PACK-COUNT`.
+|For each closed window, its accepted and dropped word counts; then one summary with the number of graded windows and the total of dropped words. `CHK-SEED-PACK-COUNT` grades the `accepted` count of each window k > 1 and the `graded` count of the summary; the window lines of k > 1 and the summary print `chk=CHK-SEED-PACK-COUNT`. The `dropped` counts and the first window are not graded. Evidence: `INFO-SEED-PACK-DROP window=<k> accepted=<a> dropped=<d>[ chk=CHK-SEED-PACK-COUNT]` and `INFO-SEED-PACK-DROP graded=<g> dropped=<total> chk=CHK-SEED-PACK-COUNT`.
 |OBS-FIFO-ENABLE-LOCKED-RESP
 |The B response code of the locked FIFO_CTRL write and the reserved bits of `FIFO_CTRL` after it. Logged and not graded: no specification states the response of a write to a locked field. No golden.
 |CHK-E2E-SCOREBOARD
@@ -5024,7 +5024,7 @@ A wait that times out in steps 2-7 logs each ML-KEM check not yet graded as FAIL
 
 *Pass Criteria*: Every named checker PASSes and no control is missing. The `INFO-*` lines are not counted and do not fail the leaf. UVM_ERROR == 0.
 
-*Scope limit*: This test grades only the shared key of KEYGEN+DECAPS, and only against the DUT's own ENCAPS. The following are not claimed. The shared key has no independent expected value, because no published vector chains a keyGen output into an encapsulation for the same key pair. Which key windows KEYGEN+DECAPS and KEYGEN+SIGN fill is not stated, so `MLKEM_ENCAPS_KEY`, `MLKEM_DECAPS_KEY` and `MLDSA_PUBKEY` are logged and not graded (see <<sep-vplan-phase3-blocked,Blocked features>>, the ABR combined-command row). The KEYGEN+SIGN signature and its verify are not read here; `sep_abr_command_matrix_rand_test` logs the verify. The park and re-arm of the combined commands belong to `sep_abr_command_matrix_rand_test`. The single-step ENCAPS is stimulus; `sep_abr_mlkem_kat_test` grades ENCAPS against ACVP. A ciphertext for which decapsulation rejects is not driven through KEYGEN+DECAPS. `STATUS.ERROR` is logged and not graded. The key-vault seed path and the ABR interrupt sources are not driven.
+*Scope limit*: This test grades only the shared key of KEYGEN+DECAPS, and only against the DUT's own ENCAPS. The following are not claimed. The shared key has no independent expected value, because no published vector chains a keyGen output into an encapsulation for the same key pair. Which key windows KEYGEN+DECAPS and KEYGEN+SIGN fill is not stated, so `MLKEM_ENCAPS_KEY`, `MLKEM_DECAPS_KEY` and `MLDSA_PUBKEY` are logged and not graded; no open specification question. The KEYGEN+SIGN signature and its verify are not read here; `sep_abr_command_matrix_rand_test` logs the verify. The park and re-arm of the combined commands belong to `sep_abr_command_matrix_rand_test`. The single-step ENCAPS is stimulus; `sep_abr_mlkem_kat_test` grades ENCAPS against ACVP. A ciphertext for which decapsulation rejects is not driven through KEYGEN+DECAPS. `STATUS.ERROR` is logged and not graded. The key-vault seed path and the ABR interrupt sources are not driven.
 
 '''''
 
@@ -5288,12 +5288,13 @@ sequence delivers mu.
 |On each pure (streamed) case, `MLDSA_VERIFY_RES` reads ~c~, the bitwise inverse of the c~ of the signature, right after VERIFYING is accepted and before the message stream: the driver is to "require `MLDSA_VERIFY_RES` to read `~c~`: the accelerator preloads it when it accepts VERIFY" (`hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc:70-72`). tcId 63 is a pure case, so every run grades it. A DUT that leaves the register at 0, at c~ or at another value fails. Anchor: `MLDSA_VERIFY_RES` readback. Evidence: `CHK-HINT-PRELOAD PASS: <case>: MLDSA_VERIFY_RES after VERIFY accept is ~c~`.
 |===
 
-The leaf also logs two lines per reject case that no checker grades.
-`INFO-HINT-REJECT-TIMING` (pure cases) logs `timing=early` when VALID rose
-before `MSG_STREAM_READY` and `timing=late` when the whole message was streamed.
-`INFO-HINT-REJECT-RES` logs the 16 words of `MLDSA_VERIFY_RES` and whether they
-are the inverted c~ (`res=preload`), all zero (`res=zero`) or another value
-(`res=other`).
+The leaf also logs two lines per reject case.
+`INFO-HINT-REJECT-TIMING` (pure cases, not graded) logs `timing=early` when
+VALID rose before `MSG_STREAM_READY` and `timing=late` when the whole message
+was streamed. `INFO-HINT-REJECT-RES` re-logs the value that `CHK-HINT-REJECT`
+compares with c~: the 16 words of `MLDSA_VERIFY_RES` and whether they are the
+inverted c~ (`res=preload`), all zero (`res=zero`) or another value
+(`res=other`). It prints `chk=CHK-HINT-REJECT`.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

@@ -36,7 +36,7 @@ Checks (each asserts an exact value, so a stuck or X reset net fails):
           samples with only the watchdog term low and the ``rst_ni`` pulse of
           [D] samples with ``sep_reset_n`` low; each count must be non-zero.
 
-Observation: ``INFO-WDT-RD-IN-RST`` logs, for ``WDOG_CTRL``, ``WDOG_COUNT`` and
+Logged, not graded: ``INFO-WDT-RD-IN-RST`` logs, for ``WDOG_CTRL``, ``WDOG_COUNT`` and
 ``INTR_STATE`` read while ``wdt_rst_ni`` is low, the response code, the data
 and whether the read timed out (bound: 64 ``clk_wdt_i`` periods per read). The
 specification states the reset domains of the register path (``rst_ni``) and

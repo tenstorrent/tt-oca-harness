@@ -124,7 +124,7 @@ Checks:
                   ports behind it and pairs each response with a request after
                   the release
 
-Observations: INFO-RST-AXI-EXT-RSP (per AXI reset point, with its
+Logged, not graded: INFO-RST-AXI-EXT-RSP (per AXI reset point, with its
 CHK-RST-AXI-NORESP line: the same R and B pairing after the release on the
 crypto engine ports 4-7 and 9, which lead outside the KM
 (``architecture.adoc:180-182`` gives no completion or cancellation guarantee
