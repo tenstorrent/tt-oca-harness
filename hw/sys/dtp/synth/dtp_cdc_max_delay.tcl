@@ -18,6 +18,25 @@
 source [file join $ocah_sdc_dir dtp_cdc_max_delay_generated.tcl]
 
 ################################################################################
+# JTAG2AXI BRIDGES
+################################################################################
+# The CDC elements of the tdr2axi bridges, which the generated file does not list:
+# the DMI request handshake (JTAG_TCK to DTPCLK), the DMI response handshake
+# (DTPCLK to JTAG_TCK) and the reset synchronizer of each clock domain.
+foreach _bridge {
+    gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi/gen_axi_lite.u_tdr2axi
+    gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/gen_axi_lite.u_tdr2axi
+    gen_smc_jtag2axi.u_smc_jtag2axi/gen_axi.u_tdr2axi
+} {
+    set _inst u_jtag_intf_unit/u_jtag_ptap/$_bridge
+    set_cdc_max_delay_cdc_2phase_clearable $_inst/u_dmi_tdr_bridge/u_cdc_req JTAG_TCK DTPCLK
+    set_cdc_max_delay_cdc_2phase_clearable $_inst/u_dmi_tdr_bridge/u_cdc_resp DTPCLK JTAG_TCK
+    set_cdc_max_delay_prim_sync_reset $_inst/u_rst_clk_sync/u_sync_reset DTPCLK
+    set_cdc_max_delay_prim_sync_reset $_inst/u_rst_tck_sync/u_sync_reset JTAG_TCK
+}
+unset -nocomplain _bridge _inst
+
+################################################################################
 # OVERRIDES
 ################################################################################
 # Every proc takes an optional trailing delay in ps that replaces the computed
