@@ -15,6 +15,8 @@ SMN-inbound port (`m_axi_*`), and VeeR EL2 firmware boot on the `cpu` and
 development backends, and VCS runs the graded coverage and the SV-UVM
 realization.
 
+[![SEP testbench architecture](docs/assets/sep_tb_architecture.svg)](docs/SEP_TB_ARCH.adoc#_testbench_hierarchy)
+
 ## Getting Started
 
 ```bash

@@ -508,6 +508,27 @@ def test_spi_read_straddling_a_span_top_fails():
         judges.judge(result, expect=["GO!"], spi_reads=_spans(judges))
 
 
+@pytest.mark.parametrize(
+    "reads, message",
+    [
+        (("0x2000 len=256", "0x2100 len=64", "0x2140 len=12"), None),
+        (("0x2000 len=256", "0x2100 len=64", "0x2140 len=12", "0x2000 len=256"), "served 588"),
+        (("0x2000 len=256", "0x2100 len=64"), "served 320"),
+    ],
+)
+def test_spi_bytes_total_counts_served_bytes_not_reads(reads, message):
+    judges = _judges()
+    result = _device_result(*(f"[spi_flash] Read @ {read}" for read in ("0x1000 len=256", *reads)))
+    payload = judges.SpiReadSpan("primary_payload", 0x2000, 0x41000, total_bytes=332)
+    spans = _spans(judges, primary_payload=payload)
+
+    if message is None:
+        judges.judge(result, expect=["GO!"], spi_reads=spans)
+        return
+    with pytest.raises(judges.JudgeError, match=f"exactly 332 byte.*{message}"):
+        judges.judge(result, expect=["GO!"], spi_reads=spans)
+
+
 def test_spi_read_order_rejects_reversed_first_touch():
     judges = _judges()
     result = _device_result(
