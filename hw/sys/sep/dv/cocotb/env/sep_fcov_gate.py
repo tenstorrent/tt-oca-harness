@@ -232,6 +232,21 @@ def set_kmac_stream_pass(passed: bool, log=None) -> bool:
     return _set_bound("kmac_stream_pass", int(bool(passed)), "FCOV-KMAC-STREAM-PASS", log)
 
 
+def set_kmac_mode_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.kmac_mode_pass`` (1 after a passed cell, or 0).
+
+    The pass label of the cells of the KMAC mode-and-strength leaf in
+    ``sep_kmac_ms_cg`` (``cp_prefix_custom``, ``cp_cell_digest_ok``). The sampler
+    holds the mode, strength and customization class of one cell and samples them
+    only when this value rises; the next ``CMD.start`` and the window close drop
+    them. The leaf writes 1 after the digest check of a cell passed, holds it for
+    at least one clk_i edge, and writes 0 before the next cell starts. Same rules
+    as ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("kmac_mode_pass", int(bool(passed)), "FCOV-KMAC-MODE-PASS", log)
+
+
 # Bits of ``u_sep_fcov.hmac_fifo_pass``: one per held cell of the HMAC FIFO leaf.
 HMAC_FIFO_PASS_LEN_CLASS = 1 << 0  # x_len_class
 HMAC_FIFO_PASS_FIFO_STATE = 1 << 1  # x_fifo_state_mode
@@ -261,19 +276,21 @@ def set_hmac_fifo_pass(bits: int, log=None) -> bool:
 
 
 def set_kmac_unsup_pass(check: int, log=None) -> bool:
-    """Write ``u_sep_fcov.kmac_unsup_pass`` (1 to 3, or 0 for none).
+    """Write ``u_sep_fcov.kmac_unsup_pass`` (1 to 4, or 0 for none).
 
     The pass label of the bins of the KMAC unsupported-configuration leaf: 1 the
     blocked cell passed its blocked-start and error-code checks, 2 its recovery
-    passed, 3 the enabled cell passed its absorb check. The sampler holds a legal
+    passed, 3 the enabled cell passed its absorb check, 4 an error-code leg passed
+    its error-code check (``cp_kmac_err_code_class``). The sampler holds a legal
     outcome as pending at its DUT event and samples it only when this value rises
-    from 0 to the check that grades it; illegal outcomes sample at once. The leaf
+    from 0 to the check that grades it; illegal outcomes sample at once, except a
+    ``cp_kmac_err_code_class`` code, which samples only on the rise to 4. The leaf
     writes the value after that check passes, holds it, then writes 0. Same rules
     as ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
     without the variable is a testbench error.
     """
-    if not 0 <= check <= 3:
-        raise ValueError(f"kmac_unsup_pass {check} is not 0 to 3")
+    if not 0 <= check <= 4:
+        raise ValueError(f"kmac_unsup_pass {check} is not 0 to 4")
     return _set_bound("kmac_unsup_pass", check, "FCOV-KMAC-UNSUP-PASS", log)
 
 
