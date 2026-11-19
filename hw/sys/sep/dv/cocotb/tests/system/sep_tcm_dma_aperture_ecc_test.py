@@ -113,7 +113,8 @@ Checkers:
                  least one DCCM write and fewer DCCM writes than the copy has
                  words when the ABORT write returns, so the copy runs at the
                  abort.
-Logged values, graded only on the cells a ``chk=`` names: INFO-DMA-TCM-SEAM (STATUS, ERROR_CODE,
+Logged values; on a line with ``chk=``, only the values that check compares
+are graded: INFO-DMA-TCM-SEAM (STATUS, ERROR_CODE,
 ``DMA_BUS_ERR_STATUS`` and the four words read back after a 16-byte copy from
 the SRAM to the two last ICCM words and the two first DCCM words; no text
 states a DMA transfer across the ICCM end; the four words hold known values
