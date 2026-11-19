@@ -37947,7 +37947,7 @@ module sep_fcov (
   // words, sense done, secure_tm_i and, for a program go, efuse_req_error
   // known 0. The address, the W data and the target word before the write
   // are the JTAG latches ef_sw_jaw, ef_sw_jw and ef_sw_jpre. A JTAG program
-  // go (OKAY) lands when a program command to its bit address reaches the
+  // go (known B response) lands when a program command to its bit address reaches the
   // shim after its AW; the outcome is taken at the first frontdoor STATUS
   // read with program_busy 0 at least EfReqWait clocks after the B. A JTAG
   // shadow write is compared EfWrSettle clocks after its B; a second JTAG
