@@ -102,11 +102,9 @@ module drbg
                                                             // when a TL-UL response from EDN
                                                             // carries d_error. Held until
                                                             // edn_bus_err_clr_i.
-  input  logic edn_bus_err_clr_i,                           // Clear the EDN bus-fault sticky,
+  input  logic edn_bus_err_clr_i                            // Clear the EDN bus-fault sticky,
                                                             // active-high; a fault in the same
                                                             // cycle still sets it.
-  output logic [5:0] adapter_state_debug_o                  // Register-bridge FSM states for the
-                                                            // debug bus: [2:0] CSRNG, [5:3] EDN.
 );
 
   `include "prim_assert.sv"
@@ -242,8 +240,7 @@ module drbg
     .axil32_rsp_i              (csrng_axil32_rsp),
     .unsupported_access_pulse_o(csrng_bridge_unsupported_pulse),
     .forwarded_read_pulse_o    (csrng_bridge_forwarded_read_pulse),
-    .forwarded_write_pulse_o   (csrng_bridge_forwarded_write_pulse),
-    .state_debug_o             (adapter_state_debug_o[2:0])
+    .forwarded_write_pulse_o   (csrng_bridge_forwarded_write_pulse)
   );
 
   axi_lite_to_tlul #(
@@ -276,8 +273,7 @@ module drbg
     .axil32_rsp_i              (edn_axil32_rsp),
     .unsupported_access_pulse_o(edn_bridge_unsupported_pulse),
     .forwarded_read_pulse_o    (edn_bridge_forwarded_read_pulse),
-    .forwarded_write_pulse_o   (edn_bridge_forwarded_write_pulse),
-    .state_debug_o             (adapter_state_debug_o[5:3])
+    .forwarded_write_pulse_o   (edn_bridge_forwarded_write_pulse)
   );
 
   axi_lite_to_tlul #(

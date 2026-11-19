@@ -146,11 +146,8 @@ module key_manager
   input  logic   test_en_i,   // DFT test-enable, active-high; selects scan_rst_ni for both
                               // conditioned resets and drives the crossbar and mailbox test
                               // inputs.
-  input  logic   scan_rst_ni,  // Scan reset, active-low; replaces both the cold and warm
-                               // conditioned resets while test_en_i is high.
-
-  output logic [3:0] state_debug_o  // Debug bus: [2:0] DRBG sampler DATA-read FSM state,
-                                    // [3] KPV slot eraser busy.
+  input  logic   scan_rst_ni  // Scan reset, active-low; replaces both the cold and warm
+                              // conditioned resets while test_en_i is high.
 );
 
   `include "ocah_assert.svh"
@@ -472,8 +469,7 @@ module key_manager
     .axil_resp_o     (drbg_resp),
     .drbg_axis_req_i (drbg_axis_req_i),
     .drbg_axis_resp_o(drbg_axis_resp_o),
-    .drbg_error_o    (drbg_error),
-    .state_debug_o   (state_debug_o[2:0])
+    .drbg_error_o    (drbg_error)
   );
 
   //=========================================================================
@@ -489,8 +485,7 @@ module key_manager
     .warm_rst_ni    (rst_warm_sync_n),
     .km_axil_req_i  (kpv_req),
     .km_axil_resp_o (kpv_resp),
-    .wipe_pulse_i   (wipe_pulse),
-    .erase_busy_o   (state_debug_o[3])
+    .wipe_pulse_i   (wipe_pulse)
   );
 
   //=========================================================================

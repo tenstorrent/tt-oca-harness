@@ -234,11 +234,6 @@ module sep_crypto #(
 
   output logic                               token_match_fault_o,  // Token Comparator Redundancy
                                                                    // Fault Interrupt.
-  output logic [10:0]                        km_trng_state_debug_o,  // Debug bus: [2:0] KM DRBG
-                                                                     // sampler FSM, [3] KPV eraser
-                                                                     // busy, [4] entropy FIFO push
-                                                                     // FSM, [7:5] CSRNG and [10:8]
-                                                                     // EDN register-bridge FSMs.
 
   output logic                               aes_bus_err_o,  // Sticky AES register-bridge fault;
                                                              // held until aes_bus_err_clr_i.
@@ -483,8 +478,7 @@ module sep_crypto #(
     .csrng_bus_err_o           (csrng_bus_err_o),
     .csrng_bus_err_clr_i       (csrng_bus_err_clr_i),
     .edn_bus_err_o             (edn_bus_err_o),
-    .edn_bus_err_clr_i         (edn_bus_err_clr_i),
-    .state_debug_o             (km_trng_state_debug_o[10:4])
+    .edn_bus_err_clr_i         (edn_bus_err_clr_i)
   );
 
   assign trng_entropy_clear_o = trng_reset_active;
@@ -1108,8 +1102,7 @@ module sep_crypto #(
 
     // Test/DFT
     .test_en_i           (test_en_i),
-    .scan_rst_ni         (scan_rst_ni),
-    .state_debug_o       (km_trng_state_debug_o[3:0])
+    .scan_rst_ni         (scan_rst_ni)
   );
 
   // =========================================================================

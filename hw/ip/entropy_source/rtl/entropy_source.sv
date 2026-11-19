@@ -68,10 +68,8 @@ module entropy_source
                                                      // bypassed.
     output      logic        entropy_stream_vld_o,  // Qualifies entropy_stream_data_o; independent
                                                     // of FIFO_CTRL.ENABLE.
-    output      logic        irq_o,     // Level interrupt: OR of the INTR_STATUS sticky bits masked
+    output      logic        irq_o      // Level interrupt: OR of the INTR_STATUS sticky bits masked
                                         // by INTR_ENABLE.
-    output      logic        fifo_push_state_debug_o  // FIFO push FSM state for the debug bus:
-                                                      // 0 idle, 1 push.
 );
 
     /////////////
@@ -702,7 +700,6 @@ module entropy_source
     `OCAH_FF(fifo_push_stream, fifo_push_stream_next, '0, clk_i, rst_ni)
     `OCAH_FF(fifo_push_count, fifo_push_count_next, 2'd0, clk_i, rst_ni)
     `OCAH_FF(fifo_push_state, fifo_push_state_next, ST_FIFO_PUSH_IDLE, clk_i, rst_ni)
-    assign fifo_push_state_debug_o = fifo_push_state;
 
     // Guard rd_ack with rst_ni: prevents a spurious ack before reg-block initialises
     // its output struct (which would fire assert_bad_ext_rd_ack).

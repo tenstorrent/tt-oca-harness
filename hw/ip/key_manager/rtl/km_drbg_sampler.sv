@@ -45,11 +45,8 @@ module km_drbg_sampler
   output km_drbg_axis_resp_t drbg_axis_resp_o,  // DRBG AXI-Stream TREADY out; high while a DATA
                                                 // read or a prefetch is collecting bytes.
 
-  output logic        drbg_error_o,  // Aggregated error pulse to KMCSR (sets
-                                     // IRQ_STATUS.DRBG_ERR).
-  output logic [2:0]  state_debug_o  // DATA-read FSM state for the debug bus: 0 idle,
-                                     // 1 request, 2 byte assembly, 3 respond, 4 timeout,
-                                     // 5 stream error.
+  output logic        drbg_error_o  // Aggregated error pulse to KMCSR (sets
+                                    // IRQ_STATUS.DRBG_ERR).
 );
 
   `include "prim_assert.sv"
@@ -171,7 +168,6 @@ module km_drbg_sampler
     ST_STREAM_ERR  // AXI-Stream protocol violation: TVALID dropped before TREADY
   } state_e;
   state_e state_q, state_d;
-  assign state_debug_o = state_q;
 
   logic [31:0] word_reg;            // Assembled word (active DATA-read path)
   logic [2:0]  data_bytes_collected; // 0..4 bytes packed so far (active path)

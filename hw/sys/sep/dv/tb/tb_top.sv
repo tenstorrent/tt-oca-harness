@@ -3985,8 +3985,7 @@ module sep_uvm_top
         .axil32_rsp_i              (tbadp_rsp32),
         .unsupported_access_pulse_o(),
         .forwarded_read_pulse_o    (),
-        .forwarded_write_pulse_o   (),
-        .state_debug_o             ()
+        .forwarded_write_pulse_o   ()
     );
     // Post-EXT_TRNG_SRC_SEL-mux: the entropy actually presented to the KM (proves
     // the internal-DRBG leg was selected, not ext_trng). tvalid && tready = the KM

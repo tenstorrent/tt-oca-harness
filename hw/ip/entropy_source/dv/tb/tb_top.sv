@@ -149,8 +149,7 @@ module entropy_source_tb_top (
     .rosc_sample_clk_i     (rosc_sample_clk),
     .entropy_stream_data_o (entropy_stream_data),
     .entropy_stream_vld_o  (entropy_stream_valid),
-    .irq_o                 (irq),
-    .fifo_push_state_debug_o()
+    .irq_o                 (irq)
   );
 
   assign dut_health_status   = u_dut.health_status;
