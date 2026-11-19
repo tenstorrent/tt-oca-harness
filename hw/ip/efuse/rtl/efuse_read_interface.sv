@@ -16,7 +16,7 @@
 
 module efuse_read_interface #(
   parameter type efuse_addr_t = logic,  // Fuse bit-address type.
-  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
   parameter type fuse_command_req_t = logic,  // Fuse-command request type.
   parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
   parameter type efuse_data_t = logic   // Fuse data-word type.
@@ -74,8 +74,6 @@ module efuse_read_interface #(
 
   fuse_command_req_t fuse_command_req_d, fuse_command_req_q;
 
-  efuse_addr_t captured_read_addr;
-
   // Program execution state machine
   typedef enum logic [1:0] {
     ST_READ_IDLE = 2'b01,
@@ -86,15 +84,6 @@ module efuse_read_interface #(
   efuse_read_state_e read_state_q, read_state_d;
 
   assign state_debug_o = read_state_q;
-
-  // Capture read address when idle
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      captured_read_addr <= 'd0;
-    end else if (read_state_q == ST_READ_IDLE) begin
-      captured_read_addr <= read_addr_i;
-    end
-  end
 
   logic read_err_q, read_err_d;
   logic read_done_q, read_done_d;
@@ -149,10 +138,9 @@ module efuse_read_interface #(
             read_busy_d = 1'b1;
             read_err_d = 1'b0;
             fuse_command_req_d.address = read_addr_i;
-            fuse_command_req_d.program_data = '0;
             fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
             fuse_command_req_d.valid = 1'b1;
-            fuse_command_req_d.access_length_words = efuse_word_counter_t'(1);
+            fuse_command_req_d.read_word_count = efuse_word_counter_t'(1);
           end
         end
       end

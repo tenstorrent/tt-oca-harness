@@ -36,9 +36,7 @@ _EFUSE_REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
 
 _EFUSE_DATA_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _EFUSE_PROGRAM_GO_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
-_EFUSE_PROGRAM_READ_BACK_BIT = EFUSE_INTERFACE_CTRL.field_mask(
-    "EFUSE_PROGRAM_CTRL", "efuse_program_read_back"
-)
+_EFUSE_PROGRAM_READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_INTERFACE_READ_DATA")
 _EFUSE_PROGRAM_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 _EFUSE_PROGRAM_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _EFUSE_PROGRAM_ERR_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
@@ -90,7 +88,6 @@ class sep_efuse_otp_program_seq(uvm_sequence):
             _place_addr(self.bit_addr)
             | _EFUSE_DATA_BIT
             | _EFUSE_PROGRAM_GO_BIT
-            | _EFUSE_PROGRAM_READ_BACK_BIT
             | _EFUSE_PROGRAM_ENABLE_BIT
         )
         for attempt in range(1, self.max_attempts + 1):
@@ -118,7 +115,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
                             self.bit_addr,
                         )
                         return
-                    # Read-back mismatch (injected or real): retry this bit.
+                    # Program verify failed (injected or real): retry this bit.
                     self.retry_count += 1
                     break
                 if self.expect_err:
@@ -161,26 +158,27 @@ class sep_efuse_otp_program_seq(uvm_sequence):
 
 
 class sep_efuse_otp_program_once_seq(uvm_sequence):
-    """One frontdoor program of one OTP bit, with the read-back verify on or off.
+    """One frontdoor program of one OTP bit.
 
     No retry and no verdict. The sequence records ``EFUSE_PROGRAM_CTRL`` at
-    ``program_done`` in ``self.status`` and the ``program_status`` bit in
-    ``self.program_err``; the caller grades them. ``program_enable`` is cleared
-    after completion, as for :class:`sep_efuse_otp_program_seq`.
+    ``program_done`` in ``self.status``, the ``program_status`` bit in
+    ``self.program_err`` and ``EFUSE_PROGRAM_INTERFACE_READ_DATA`` read after
+    ``program_done`` in ``self.read_data``; the caller grades them.
+    ``program_enable`` is cleared after completion, as for
+    :class:`sep_efuse_otp_program_seq`.
     """
 
     def __init__(
         self,
         bit_addr: int,
         *,
-        read_back: bool,
         name: str = "sep_efuse_otp_program_once_seq",
     ) -> None:
         super().__init__(name)
         self.bit_addr = bit_addr
-        self.read_back = read_back
         self.status: int | None = None
         self.program_err: bool | None = None
+        self.read_data: int | None = None
 
     async def _access(self, op: SepAxiOp, addr: int, *, data: int = 0, label: str = "axi") -> int:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
@@ -197,7 +195,6 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
             _place_addr(self.bit_addr)
             | _EFUSE_DATA_BIT
             | _EFUSE_PROGRAM_GO_BIT
-            | (_EFUSE_PROGRAM_READ_BACK_BIT if self.read_back else 0)
             | _EFUSE_PROGRAM_ENABLE_BIT
         )
         await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl")
@@ -205,6 +202,9 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
             await ClockCycles(cocotb.top.clk_i, 1)
             status = await self._access(SepAxiOp.READ, _EFUSE_PROGRAM_CTRL, label="program_status")
             if status & _EFUSE_PROGRAM_DONE_BIT:
+                self.read_data = await self._access(
+                    SepAxiOp.READ, _EFUSE_PROGRAM_READ_DATA, label="program_read_data"
+                )
                 await self._access(
                     SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=0, label="program_ctrl_clear"
                 )
@@ -212,6 +212,5 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
                 self.program_err = bool(status & _EFUSE_PROGRAM_ERR_BIT)
                 return
         raise AssertionError(
-            f"OTP program bit {self.bit_addr} (read_back={int(self.read_back)}) never "
-            f"signaled program_done within {_POLL_CYCLES} polls"
+            f"OTP program bit {self.bit_addr} never signaled program_done within {_POLL_CYCLES} polls"
         )

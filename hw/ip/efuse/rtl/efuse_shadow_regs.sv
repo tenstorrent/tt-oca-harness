@@ -45,7 +45,7 @@ module efuse_shadow_regs
 
     parameter type efuse_addr_t = logic,  // Fuse bit-address type.
     parameter type efuse_data_t = logic,  // Fuse data-word type.
-    parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+    parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
     parameter type fuse_command_req_t = logic,  // Fuse-command request type.
     parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
@@ -388,7 +388,6 @@ module efuse_shadow_regs
     end
   end
 
-  efuse_word_counter_t current_word_num_q, current_word_num_d;
   efuse_word_counter_t words_received_q, words_received_d;
   fuse_command_req_t fuse_command_req_d;
 
@@ -472,7 +471,6 @@ module efuse_shadow_regs
     always_comb begin
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
-        current_word_num_d = current_word_num_q;
         fuse_command_req_d = fuse_command_req_o;
 
         unique case (efuse_sense_state_q)
@@ -480,15 +478,13 @@ module efuse_shadow_regs
                 if (rst_ni) begin
                     efuse_sense_state_d = ST_READ;
                     words_received_d = '0;
-                    current_word_num_d = '0;
                 end
             end
 
             ST_READ: begin
-                // .address is a bit address. current_word_num_q is always 0 here, so it is also
-                // bit 0 of word 0.
-                fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
-                fuse_command_req_d.access_length_words =
+                // Sensing reads the whole bank from bit 0.
+                fuse_command_req_d.address = '0;
+                fuse_command_req_d.read_word_count =
                     efuse_word_counter_t'(NumShadowWords);
                 fuse_command_req_d.valid = 1'b1;
                 fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
@@ -504,7 +500,6 @@ module efuse_shadow_regs
                         efuse_sense_state_d = ST_FINISHED;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
-                        current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
                     end
                 end
 
@@ -522,7 +517,6 @@ module efuse_shadow_regs
     end
 
     `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
-    `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
     `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
     `OCAH_FF(fuse_command_req_o, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
 
