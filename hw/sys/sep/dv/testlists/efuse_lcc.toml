@@ -492,6 +492,23 @@ args = [
 ]
 
 [[tests]]
+# Same module with enable 1 and start PROD pinned: the plan comes from plan seed 27,
+# and the preload is that plan's t=0 image. The leaf runs the simultaneous-match leg
+# and the lone SIP and CHIPLET matches after it.
+name = "sep_efuse_transient_rma_rand_test_simul"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=simul",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_transient_rma_simul.toml",
+]
+
+[[tests]]
 # Token match, mismatch shapes, hold, channel independence, no reset of the token
 # arrays, and retention of a SEC_DIS match over cold reset. VCS only: the no-reset check
 # needs X on unreset flops. RAND-REP.
