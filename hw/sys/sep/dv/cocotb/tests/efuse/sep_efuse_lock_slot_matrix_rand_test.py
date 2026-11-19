@@ -107,9 +107,13 @@ Checkers:
                     shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
                     word has one (``no_twin_bit``), the leaf logs ``INFO-BLOCKED
                     CHK-LOCK-JTAG-WR part=shadow_write`` and grades the program part.
-                    Logged, not graded: ``twin_wr_resp`` (the response of the accepted
-                    twin write), ``go_resp`` (the response of the program go write) and
-                    ``pg_flags``; no specification text states them.
+                    The refused program ends with ``program_done`` 1 and ``program_status`` 1
+                    (``hw/ip/efuse/doc/architecture.adoc:247-249``: a locked target completes
+                    the operation with an error; ``efuse_interface_ctrl.rdl:96-107``), the
+                    twin program with ``program_done`` 1 and ``program_status`` 0. Logged, not
+                    graded: ``twin_wr_resp`` (the response of the accepted twin write) and
+                    ``go_resp`` (the response of the program go write); no specification text
+                    states them.
   CHK-LOCK-EXEMPT   exempt cell: ``LC_STATE``, ``LOCKS`` and ``LOCKS_SPARE`` read their
                     staged values with every assigned lock bit burned.
   CHK-LOCK-EXEMPT-PROG exempt cell: a program of ``LC_STATE`` bit 0 or bit 3 (drawn)
@@ -1262,7 +1266,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         pc = r["pulses"]
         ok &= self._grade(
             "LOCK-JTAG-WR",
-            self._refused(r) and pc.valid == 0 and pc.psel == 0,
+            self._refused(r)
+            and pc.valid == 0
+            and pc.psel == 0
+            and r["done"] == 1
+            and r["prog_status"] == 1,
             part="program",
             **f,
         )
@@ -1270,7 +1278,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         pc = r["pulses"]
         ok &= self._control(
             "LOCK-JTAG-WR",
-            self._landed(r, progs[1][1]) and pc.valid >= 1 and pc.psel >= 1,
+            self._landed(r, progs[1][1])
+            and pc.valid >= 1
+            and pc.psel >= 1
+            and r["done"] == 1
+            and r["prog_status"] == 0,
             part="program",
             **f,
         )
