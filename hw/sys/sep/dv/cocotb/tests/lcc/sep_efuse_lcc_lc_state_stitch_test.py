@@ -27,7 +27,10 @@ frontdoor ``test_en_strap_i``, re-senses, and proves the latched
 golden (SECURE_TM does not qualify feature control). The same legs also
 score ``dbg_disable.dft_secure`` against Case 3 of the DTP gating ladder
 (hw/sys/sep/dv/docs/SEP_VPLAN.adoc, "Debug-disable gating ladder"): the strap
-is not a term, so the bit must not follow ``secure_tm``. The strap is then
+is not a term, so the bit must not follow ``secure_tm``. With the strap high,
+two program attempts of the next LC_STATE bit are refused
+(CHK-SECURE-TM-PROG-BLOCK), and each completes with ``program_done`` = 1 and
+``program_status`` = 1 (CHK-STM-PROG-BLOCK-STATUS). The strap is then
 lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE programming
 is not blocked by ``efuse_guard``.
 
@@ -152,14 +155,11 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         self.bit_addr = bit_addr
         self.token_kind = token_kind
         self.max_attempts = max_attempts
-        # Number of injected program failures observed for this bit (each forces
-        # one retry). Read back by the test to prove the retry path was actually
-        # exercised rather than passing vacuously.
+        # Number of attempts that completed with an error (each forces one retry).
         self.retry_count = 0
-        # Last PROGRAM_CTRL status word. The blocked-strap path inspects
-        # PROGRAM_DONE+PROGRAM_ERR here instead of inferring a bank write
-        # from fail-injection credit (that credit re-arms on every rst_ni).
-        self.last_status = 0
+        # PROGRAM_CTRL word at the completion of each attempt, in attempt order.
+        # An attempt that does not complete adds no entry.
+        self.attempt_status: list[int] = []
 
     async def _access(
         self,
@@ -237,9 +237,9 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
             for _ in range(200):
                 await ClockCycles(cocotb.top.clk_i, 1)
                 status = await self._read(_EFUSE_PROGRAM_CTRL, "program_status")
-                self.last_status = status
                 if not (status & _PG_DONE):
                     continue
+                self.attempt_status.append(status)
 
                 await self._write(_EFUSE_PROGRAM_CTRL, 0, "program_ctrl_clear")
                 if (status & _PG_STATUS) == 0:
@@ -524,30 +524,34 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 # from SEP are blocked (hw/sys/sep/doc/lifecycle_controller.adoc,
                 # "secure_tm and the Secure Scan Chain"). Two program attempts must
                 # not succeed, and after the strap drops and the bank is sensed again
-                # the LC_STATE shadow still equals the image without the bit. No spec
-                # sentence states the PROGRAM_CTRL status of a blocked program, so it
-                # is logged. The one-shot injection (percent 0) can fail only the
-                # first bank write after the resense, so it cannot fail both attempts.
+                # the LC_STATE shadow still equals the image without the bit.
+                # CHK-STM-PROG-BLOCK-STATUS: a blocked program start completes with
+                # an error without issuing a command (hw/ip/efuse/doc/architecture.adoc,
+                # Fuse Command Blocking), so each attempt ends with program_done = 1
+                # and program_status = 1 (efuse_interface_ctrl.rdl, EFUSE_PROGRAM_CTRL).
+                # Both errors come from the block: the one-shot injection fails a bank
+                # write, and a blocked start writes nothing to the bank, so the
+                # injection fails the first real program after the strap drops.
                 blocked = _lcc_otp_program_seq(_LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
                 except AssertionError as exc:
-                    status = blocked.last_status
-                    self.logger.info(
-                        "OBS-STM-PROG-BLOCK-STATUS: PROGRAM_DONE=%d PROGRAM_ERR=%d "
-                        "status=0x%08x (%s)",
-                        int(bool(status & _PG_DONE)),
-                        int(bool(status & _PG_STATUS)),
-                        status,
-                        exc,
-                    )
-                    if blocked.retry_count < 1:
+                    done_err = _PG_DONE | _PG_STATUS
+                    ends = [st & done_err for st in blocked.attempt_status]
+                    statuses = ",".join(f"0x{st:08x}" for st in blocked.attempt_status)
+                    if ends != [done_err] * blocked.max_attempts:
                         raise AssertionError(
-                            "CHK-SECURE-TM-PROG-BLOCK FAIL: one PROGRAM_DONE+ERR is "
-                            "the one-shot program-fail injection; the guard "
-                            f"must fail a second attempt (retry_count="
-                            f"{blocked.retry_count})"
+                            "CHK-STM-PROG-BLOCK-STATUS FAIL: each of the "
+                            f"{blocked.max_attempts} blocked attempts must complete with "
+                            f"program_done=1 program_status=1; completed attempts "
+                            f"status=[{statuses}] ({exc})"
                         )
+                    self.logger.info(
+                        "CHK-STM-PROG-BLOCK-STATUS PASS: %d blocked attempts completed "
+                        "with program_done=1 program_status=1 status=[%s]",
+                        blocked.max_attempts,
+                        statuses,
+                    )
                     self._secure_tm_prog_blocked = True
                     blocked_attempts = blocked.retry_count + 1
                 else:

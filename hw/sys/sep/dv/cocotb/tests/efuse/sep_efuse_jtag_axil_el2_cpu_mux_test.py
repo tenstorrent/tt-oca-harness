@@ -38,6 +38,10 @@ Checkers (each logged):
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], via scratch_cold_probe_o) advances across
     the JTAG burst, and the CPU loop checks its token0 seed every iteration while JTAG uses
     token1 and token3, so a stall or cross-port corruption fails.
+
+Controls:
+  * CTRL-SENSE: the SEP output ``sep_fuse_sense_done_o`` reads 1 when CPU_READY is seen,
+    so the CPU loop runs on the sensed PROD image.
 """
 
 from __future__ import annotations
@@ -153,6 +157,11 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         await self.bring_up_cpu_boot(_ICCM_BASE >> 1, pre_reset_hook=_load_tcm)
 
         assert await self._wait_ready(), "EL2 never published CPU_READY (eFuse loop not running)"
+        sense_done = self.rd_known(dut.sep_fuse_sense_done_o) & 1
+        assert sense_done == 1, (
+            f"CTRL-SENSE FAIL: sep_fuse_sense_done_o={sense_done} at CPU_READY, expect 1"
+        )
+        self.logger.info("CTRL-SENSE PASS: sep_fuse_sense_done_o=1 at CPU_READY")
         assert self._scratch(_SCRATCH_ERR) == 0, (
             f"CPU eFuse MMR read error count nonzero before JTAG burst: "
             f"{self._scratch(_SCRATCH_ERR)}"

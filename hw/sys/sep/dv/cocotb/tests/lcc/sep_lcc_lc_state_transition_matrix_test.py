@@ -35,9 +35,9 @@ distinct from RMA "whose state transitions are hardware-ordered", so a demoted
 part must transition exactly like a non-demoted one.
 
 The golden of every graded write cell is the chapter's: ``otp_fuse_controller.adoc``
-(Fuse Fields) gives LC_STATE as SW writable set-only under these rules.
-``sep_efuse_map.rdl`` (register ``LC_STATE``) gives ``lc_state`` as sw = r; the
-two texts disagree, and the advance cells grade the chapter.
+(Fuse Fields) gives LC_STATE as SW writable set-only under these rules, and
+``sep_efuse_map.rdl`` (register ``LC_STATE``) gives ``lc_state`` and ``rsvd`` as
+sw = rw, onwrite = woset.
 
 One sensed starting state per leaf. ``efuse_bank_model`` deposits the OTP image
 in a time-0 ``initial`` and a fuse survives reset, so a test cannot re-sense its
@@ -114,11 +114,26 @@ seeded patterns leave LC_STATE[31:24] clear (``_MARK_POOL``), so every write cel
 of every walk has such a bit on every seed.
 Every leaf with a bus-write cell also writes a second seed-derived [31:8]
 pattern that differs from the first in both directions (a CHK-W1S-NO-CLEAR
-cell), then writes the first pattern again to bytes 1-3 only (WSTRB 0b1110, the
-``LC-B13`` cell). The ``LC-B13`` cell grades nothing: ``CTRL-LC-WR-LANDED``
-requires its bit, its FEAT_CTRL reads are not graded, and its [7:0] and [31:8]
-readback are logged
-(``OBS-LC-WR-NIBBLE word=``, ``OBS-LC-UPPER``).
+cell), then writes the first pattern again to bytes 1-3 only (WSTRB 0b1110),
+with lifecycle bit 3 in the unstrobed byte 0. The VIP drives 0 on an unstrobed
+W lane, so the bench puts that byte on its lane, and ``CTRL-LC-B13-BYTE0``
+requires the s_axi W handshake to carry it with the lane strobe low.
+
+  * CHK-LC-B13-NOSTROBE  the strobed-out byte 0 moves nothing: LC_STATE[7:0],
+                         lc_state_o and FEAT_CTRL keep the state before the
+                         write (AXI IHI 0022 A3.4.3; ``fabric.adoc`` keeps the
+                         strobes as TL-UL byte masks). Bit 3 is ungated, so a
+                         path that takes byte 0 moves the state. Graded in the
+                         PROD, demoted PROD, RMA_SIP and RMA_CHIPLET leaves. In
+                         the PROD_END and transient leaves the state is INVALID
+                         by then, which is terminal, so the cell is not graded
+                         and logs ``CHK-LC-B13-NOSTROBE N/A reason=invalid_terminal``.
+  * CHK-LC-UPPER         at every write cell that no token gate and no terminal
+                         rule refuses, LC_STATE[31:8] reads the prior [31:8] OR
+                         the written [31:8] (``sep_efuse_map.rdl`` ``rsvd``;
+                         ``otp_fuse_controller.adoc`` LC_STATE set-only). The
+                         prior value is the sensed [31:8] for the first write
+                         and the readback of the cell before otherwise.
 ``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
 collapsed comparator code) and ``CTRL-TOKEN-SIP-HELD`` (the SIP match before
 CHK-INVALID-TERM) record the preconditions of the hold cells.
@@ -126,17 +141,15 @@ CHK-INVALID-TERM) record the preconditions of the hold cells.
 (``lcc_security_disable_probe_o``) is 0 after sense, so no FEAT_CTRL check
 passes on the forced all-ones value.
 
-Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
-the RDL gives ``lc_state`` and ``rsvd`` as sw = r and ``rsvd`` as "Unused", and
-the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree);
-every hold cell whose write a token gate or the terminal rule refuses (the
-CHK-GATE-* cells and CHK-INVALID-TERM): ``OBS-LC-WR-REFUSED-RESP`` (the write
-response; no text states the response of a refused write, so the scoreboard
-does not grade it); every write cell: ``OBS-LC-WR-NIBBLE`` (the strobed write
-data and ``wstrb=``, bits [7:4] of the write data and of the readback word, the
-write response ``resp=`` and the readback ``word=``: the specification does not
-state how a write of the complement nibble or of bytes 1-3 acts, nor the
-response of an LC_STATE write).
+Log-only: every hold cell whose write a token gate or the terminal rule
+refuses (the CHK-GATE-* cells and CHK-INVALID-TERM): ``OBS-LC-UPPER``
+(LC_STATE[31:8] written, prior and read; no text states whether the refusal
+covers [31:8]) and ``OBS-LC-WR-REFUSED-RESP`` (the write response; no text
+states the response of a refused write, so the scoreboard does not grade it);
+every write cell: ``OBS-LC-WR-NIBBLE`` (the strobed write data and ``wstrb=``,
+bits [7:4] of the write data and of the readback word, the write response
+``resp=`` and the readback ``word=``: the specification does not state how a
+write of the complement nibble acts, nor the response of an LC_STATE write).
 
 RANDCFG: the tokens and the LC_STATE[23:8] patterns come from the run seed
 (``SepLcTransitionCfg``, masked with ``_MARK_POOL``). The two PROD_END leaves pin the exit with
@@ -151,7 +164,7 @@ from functools import partial
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage, lc_encode
 from env.sep_efuse_test_lib import shadow_word
 from env.sep_lc_transition import SIP_DIS, SYS_DIS, SepLcTransitionCfg
@@ -181,6 +194,7 @@ from seq_lib.sep_efuse_rma_token_seq import (
 )
 from seq_lib.sep_lc_shadow_write_seq import (
     LC_STATE_BYTE_MASK,
+    LC_STATE_SHADOW,
     LC_STATE_UPPER_MASK,
     SepLcShadowWriteSeq,
 )
@@ -210,8 +224,14 @@ _REQUIRED = {
         "CHK-GATE-CHIP-ORD",
         "CHK-GATE-SIP-FAULT",
         "CHK-SIP-ADVANCE",
+        "CHK-LC-B13-NOSTROBE",
     ),
-    "prod-demoted": ("CHK-DEMOTE-OPEN", "CHK-W1S-NO-CLEAR", "CHK-DEMOTE-NO-BLOCK"),
+    "prod-demoted": (
+        "CHK-DEMOTE-OPEN",
+        "CHK-W1S-NO-CLEAR",
+        "CHK-DEMOTE-NO-BLOCK",
+        "CHK-LC-B13-NOSTROBE",
+    ),
     "rma-sip + invalid-reach": (
         "CHK-START-SENSED",
         "CHK-RMA-BIT0",
@@ -219,8 +239,14 @@ _REQUIRED = {
         "CHK-GATE-CHIP-TOK",
         "CHK-CHIP-ADVANCE",
         "CHK-INVALID-REACH",
+        "CHK-LC-B13-NOSTROBE",
     ),
-    "rma-chiplet": ("CHK-START-SENSED", "CHK-RMA-BIT0", "CHK-W1S-NO-CLEAR"),
+    "rma-chiplet": (
+        "CHK-START-SENSED",
+        "CHK-RMA-BIT0",
+        "CHK-W1S-NO-CLEAR",
+        "CHK-LC-B13-NOSTROBE",
+    ),
     "prod-end": (
         "CHK-START-SENSED",
         "CHK-PROD-END-INVALID",
@@ -229,8 +255,9 @@ _REQUIRED = {
     ),
     "transient-rma": ("CHK-TRANSIENT-NO-TOKEN", "CHK-TRANSIENT-INVALID", "CHK-W1S-NO-CLEAR"),
 }
-# Every walk grades the lc_state_o port in every cell.
-_REQUIRED = {walk: (*ids, "CHK-LC-STATE-PORT") for walk, ids in _REQUIRED.items()}
+# Every walk grades the lc_state_o port in every cell and LC_STATE[31:8] in
+# every write cell that is not refused.
+_REQUIRED = {walk: (*ids, "CHK-LC-STATE-PORT", "CHK-LC-UPPER") for walk, ids in _REQUIRED.items()}
 
 
 @pyuvm.test()
@@ -362,6 +389,52 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._demote_1 = 1
         self._demote_2 = 1
 
+    async def _write_strobed_out(self, seq: SepLcShadowWriteSeq, byte0: int) -> None:
+        """Run ``seq`` with ``byte0`` on the LC_STATE byte-0 W lane, strobe low.
+
+        The VIP drives 0 on every unstrobed lane, which a W1S word ignores. The
+        W-channel send of the s_axi master puts ``byte0`` on that lane, and a
+        pin tap of the s_axi W handshakes requires the write's one beat to carry
+        it there with the lane strobe low (``CTRL-LC-B13-BYTE0``).
+        """
+        dut = cocotb.top
+        lane = LC_STATE_SHADOW % (len(dut.s_axi_wdata) // 8)
+        channel = self.env.axi_agent.driver.axi.driver.channels["w_delay"]
+        original = channel.send
+
+        async def send(beat) -> None:
+            if not int(beat.wstrb) >> lane & 1:
+                beat.wdata = int(beat.wdata) | byte0 << 8 * lane
+            await original(beat)
+
+        beats: list[tuple[int, int]] = []
+
+        async def tap() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if dut.s_axi_wvalid.value == 1 and dut.s_axi_wready.value == 1:
+                    beats.append((int(dut.s_axi_wstrb.value), int(dut.s_axi_wdata.value)))
+
+        channel.send = send
+        watch = cocotb.start_soon(tap())
+        try:
+            await self.start_seq(seq)
+        finally:
+            watch.kill()
+            channel.send = original
+        lane_bytes = [(strb >> lane & 1, data >> 8 * lane & 0xFF) for strb, data in beats]
+        assert lane_bytes == [(0, byte0)], (
+            f"CTRL-MISSING LC-B13-BYTE0: expected one s_axi W beat with lane {lane} "
+            f"strobe 0 and data 0x{byte0:02x}, saw (strobe, data) {lane_bytes}"
+        )
+        self.logger.info(
+            "CTRL-LC-B13-BYTE0 LOG lane=%d wstrb=0x%02x lane_data=0x%02x",
+            lane,
+            beats[0][0],
+            byte0,
+        )
+
     # -- one cell ------------------------------------------------------------
     async def _cell(
         self,
@@ -376,9 +449,11 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
     ) -> int:
         """Run one cell; the expected next state comes from the chapter golden.
 
-        ``wstrb`` selects the LC_STATE bytes the write carries. ``grade=False``
-        keeps the reads, ``CTRL-LC-WR-LANDED`` and the OBS lines, and emits no
-        CHK line.
+        ``wstrb`` selects the LC_STATE bytes the write carries. A write with the
+        byte-0 strobe low carries byte 0 of ``wdata`` on its unstrobed lane
+        (``_write_strobed_out``) and expects the state before the write.
+        ``grade=False`` keeps the reads, ``CTRL-LC-WR-LANDED``, CHK-LC-UPPER and
+        the OBS lines, and emits no other CHK line.
         """
         prev = self._cur
         # One [31:8] bit no earlier write or sense set: its readback shows that
@@ -390,11 +465,17 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         if do_write:
             assert mark, f"CTRL-MISSING LC-WR-LANDED {tag}: no unused LC_STATE[31:8] bit left"
             self._upper_seen |= pattern
-            expected = lc_state_next(
-                prev,
-                wdata,
-                sip_match=self._sip_match,
-                chiplet_match=self._chiplet_match,
+            # A byte lane whose strobe is low carries no data (AXI IHI 0022
+            # A3.4.3), so a write without the byte-0 strobe asks for no transition.
+            expected = (
+                lc_state_next(
+                    prev,
+                    wdata,
+                    sip_match=self._sip_match,
+                    chiplet_match=self._chiplet_match,
+                )
+                if wstrb & 1
+                else prev
             )
         else:
             # Readback-only cell: the move was caused by something other than a
@@ -405,7 +486,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # A write that sets a lifecycle bit still 0 and leaves the state where it
         # was is one a token gate or the terminal rule refuses. No text states the
         # response of a refused write, so it is logged (OBS-LC-WR-REFUSED-RESP).
-        refused = do_write and expected == prev and bool(wdata & 0xF & ~prev)
+        refused = do_write and bool(wstrb & 1) and expected == prev and bool(wdata & 0xF & ~prev)
         seq = SepLcShadowWriteSeq(
             full_wdata,
             expected,
@@ -419,7 +500,10 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             graded=grade,
             name=f"lc_w1s_{tag}",
         )
-        await self.start_seq(seq)
+        if do_write and not wstrb & 1:
+            await self._write_strobed_out(seq, full_wdata & LC_STATE_BYTE_MASK)
+        else:
+            await self.start_seq(seq)
         if refused:
             self.logger.info(
                 "OBS-LC-WR-REFUSED-RESP tag=%s prev=%s wdata=0x%08x resp=%s",
@@ -433,9 +517,9 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         assert seq.observed_feat is not None, "sequence did not publish a FEAT_CTRL value"
         dut = cocotb.top
         shadow = self.rd(dut.efuse_shadow_probe_o, allow_unknown=True) >> (32 * LC_WORD_IDX)
+        lanes = int.from_bytes(bytes(0xFF * (wstrb >> i & 1) for i in range(4)), "little")
+        written = full_wdata & lanes
         if do_write and seq.observed_word is not None:
-            lanes = int.from_bytes(bytes(0xFF * (wstrb >> i & 1) for i in range(4)), "little")
-            written = full_wdata & lanes
             self.logger.info(
                 "OBS-LC-WR-NIBBLE tag=%s wdata=0x%08x wstrb=0x%x wdata_hi=0x%x "
                 "observed_hi=0x%x resp=%s word=0x%08x",
@@ -490,20 +574,35 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 mark,
                 got_upper,
             )
-        # LC_STATE[31:8]: the RDL gives ``lc_state`` and ``rsvd`` as sw = r and
-        # ``rsvd`` as "Unused" (sep_efuse_map.rdl, LC_STATE), while the fuse-field
-        # table gives LC_STATE as SW writable set-only (otp_fuse_controller.adoc,
-        # Fuse Fields). The texts disagree, so the readback after a write is logged.
-        self.logger.info(
-            "OBS-LC-UPPER LOG tag=%s wrote=0x%08x prior=0x%08x read=0x%08x "
-            "overwrite=%d or_merge=%d",
-            tag,
-            pattern if do_write else 0,
-            self._upper,
-            got_upper,
-            int(do_write and got_upper == pattern),
-            int(do_write and got_upper == (pattern | self._upper)),
-        )
+        # LC_STATE[31:8] is set-only (sep_efuse_map.rdl ``rsvd``: sw = rw,
+        # onwrite = woset), so a write ORs its strobed bytes into the prior value.
+        # A refused write is logged: no text states whether the refusal covers
+        # [31:8].
+        want_upper = self._upper | (written & LC_STATE_UPPER_MASK)
+        if refused:
+            self.logger.info(
+                "OBS-LC-UPPER LOG tag=%s wrote=0x%08x prior=0x%08x read=0x%08x "
+                "overwrite=%d or_merge=%d",
+                tag,
+                pattern,
+                self._upper,
+                got_upper,
+                int(got_upper == pattern),
+                int(got_upper == want_upper),
+            )
+        elif do_write:
+            assert got_upper == want_upper, (
+                f"CHK-LC-UPPER FAIL: tag={tag} prior=0x{self._upper:08x} "
+                f"wrote=0x{written & LC_STATE_UPPER_MASK:08x} read=0x{got_upper:08x} "
+                f"expect=0x{want_upper:08x}"
+            )
+            self.logger.info(
+                "CHK-LC-UPPER PASS: tag=%s prior=0x%08x wrote=0x%08x read=0x%08x",
+                tag,
+                self._upper,
+                written & LC_STATE_UPPER_MASK,
+                got_upper,
+            )
         self._upper = got_upper
         if grade:
             want_feat = feat_ctrl_expected(
@@ -521,7 +620,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             assert seq.observed_feat == want_feat, (
                 f"{tag} FAIL: FEAT_CTRL 0x{seq.observed_feat:016x} != golden 0x{want_feat:016x}"
             )
-            action = f"write 0x{wdata:x}" if do_write else "no write"
+            action = f"write 0x{wdata:x} wstrb=0x{wstrb:x}" if do_write else "no write"
             self.logger.info(
                 "%s PASS: %s + %s (sip_match=%d chiplet_match=%d demote=%d%d) -> %s",
                 tag,
@@ -538,15 +637,24 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         return int(observed)
 
     async def _prove_upper_write(self) -> None:
-        """A second [31:8] pattern over the first; the readback is OBS-LC-UPPER.
+        """A second [31:8] pattern over the first, then the first to bytes 1-3.
 
-        The two patterns differ in both directions, so the logged readback tells
-        an overwrite from an OR-merge. The nibble cell is a write of 0
-        (CHK-W1S-NO-CLEAR). The ``LC-B13`` cell then writes the first pattern to
-        bytes 1-3 only; it grades nothing, and its readback is logged.
+        The two patterns differ in both directions, so CHK-LC-UPPER fails an
+        overwrite. The nibble cell is a write of 0 (CHK-W1S-NO-CLEAR). The
+        bytes 1-3 cell carries lifecycle bit 3 in the strobed-out byte 0
+        (CHK-LC-B13-NOSTROBE). From INVALID, which is terminal, no byte-0 bit
+        can move the state, so that cell is not graded there.
         """
         await self._cell(0x0, "CHK-W1S-NO-CLEAR", upper=self._nuisance2)
-        await self._cell(0x0, "LC-B13", upper=self._nuisance, wstrb=0xE, grade=False)
+        if is_invalid_lc(self._cur):
+            await self._cell(LC_PROD_END, "LC-B13", upper=self._nuisance, wstrb=0xE, grade=False)
+            self.logger.info(
+                "CHK-LC-B13-NOSTROBE N/A reason=invalid_terminal seed=%d state=%s",
+                self.cfg_lc.seed,
+                lc_state_name(self._cur),
+            )
+        else:
+            await self._cell(LC_PROD_END, "CHK-LC-B13-NOSTROBE", upper=self._nuisance, wstrb=0xE)
 
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:

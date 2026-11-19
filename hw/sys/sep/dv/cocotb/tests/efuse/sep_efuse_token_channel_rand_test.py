@@ -9,7 +9,8 @@ unreset token flops). The image is fixed: TEST_DEV, the RMA digests of
 disable-vector pair (``env/sep_efuse_plan.py``, ``plan_token_channel``). The seed
 draws the order of the walk channels, of the 18 (shape, channel) mismatch cells
 and of the independence channels, the decoy subsets, the flip positions, the swap
-and byte-swap words, and every token word-write order.
+and byte-swap words, the refill channel, word count and words, and every token
+word-write order.
 
 Each channel hashes its eight-word array (index 7 first, no byte swap) on its own
 go bit and shows Idle ``0x00``, Match ``0x15`` or Mismatch ``0x2a`` and no other
@@ -31,7 +32,15 @@ CHK-TOKEN-MULTI-GO grades a fresh Match on the rails and at the frontdoor of eac
 channel: each go bit starts its own lane (``hw/ip/efuse/regs/efuse_mmr.rdl``,
 ``TOKEN_EOP``; ``token_processing.adoc``, one token array, go bit, SHA-256 engine and
 comparator per lane). ``OBS-TOKEN-MULTI-GO`` logs the clocks from the write to each
-verdict. Every graded go starts from a held code other than
+verdict.
+
+Partial refill, last: a drawn channel takes its right token with k drawn words
+(1 <= k < 8) replaced by ``TOKEN_OTHER`` words and settles to Mismatch. The k words
+then take their right-token words with no go between, and one go follows.
+CHK-TOKEN (shape ``refill``) expects the code of the array as it stands, Match: the
+engine streams the array rather than taking a snapshot, and the array has no reset
+and no erasure (``token_processing.adoc``, introduction, Token Submission,
+Matching Logic Countermeasures). Every graded go starts from a held code other than
 its expected final code, so a go that has no effect fails. Two exceptions: the
 second go of the go-while-busy leg, which is written to a busy channel, and the
 re-go after sense of the pre-sense cell, which must read ``0x00`` before its
@@ -121,10 +130,12 @@ from env.sep_efuse_plan import (
     TOKEN_ZERO,
     ReadRun,
     expected_digest,
+    match_code,
     plan,
     poll_code,
     token_go,
     token_words,
+    words_token,
     write_token,
 )
 from env.sep_efuse_test_lib import (
@@ -1147,7 +1158,33 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         )
         close_graded_window(self.logger)
         await self._multi_go()
+        await self._refill_cell()
         self.chk.finish()
+
+    async def _refill_cell(self) -> None:
+        """Rewrite k < 8 words of a settled array, then one graded go on the whole array."""
+        p = self.plan
+        ch = p.draw.choice("refill.ch", CHANNELS)
+        k = p.draw.randrange("refill.k", 1, 8)
+        words = p.draw.sample("refill.words", range(8), k)
+        right = token_words(RIGHT_TOKEN[ch])
+        base = list(right)
+        for i in words:
+            base[i] = token_words(TOKEN_OTHER)[i]
+        settled = await self._settle(ch, words_token(base), CODE_MISMATCH, "refill.base")
+        for i in p.draw.shuffled("refill.order", words):
+            await self._wr(TOKEN_ARRAY_ADDR[ch][i], right[i])
+        exp = match_code(ch, words_token(right), p.image)
+        await self._graded_go(
+            ch,
+            None,
+            exp,
+            "refill",
+            "refill",
+            k=k,
+            words=",".join(str(i) for i in sorted(words)),
+            settled="none" if settled is None else f"0x{settled:02x}",
+        )
 
     async def _multi_go(self) -> None:
         """One ``TOKEN_EOP`` write with the go bits of a drawn channel pair.

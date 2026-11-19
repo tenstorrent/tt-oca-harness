@@ -121,6 +121,20 @@ Checkers:
                     set, and it stays set after a second resense. Every resense
                     of the leaf fails its check unless sense done reads 0 on the
                     last clock of the ``rst_ni`` hold.
+  CHK-UID-RDLOCK-PROG lock leg with a UID slot (``CHIPLET_UID``, ``SIP_UID``,
+                    ``SYS_UID``) that has no lock in the drawn layout, at the end of
+                    the leg: the read-lock alone of that slot is programmed into
+                    ``LOCKS`` and takes effect at a resense, then a program of a 0
+                    bit of the field lands: one program command at the bit address,
+                    the bank gains exactly that bit, ``efuse_req_error`` 0,
+                    ``program_done`` 1 and ``program_status`` 0 (No Error). A
+                    read-lock blocks reads and a write-lock blocks programming; the
+                    two locks act independently (``otp_fuse_controller.adoc:110-111,
+                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:237-239``;
+                    ``efuse_interface_ctrl.rdl:106-107`` ``program_status``). Every
+                    other leaf logs ``CHK-UID-RDLOCK-PROG N/A`` with the reason (the
+                    leaf kind, or ``no_unlocked_uid_slot``); a lock leg whose UID
+                    field has no 0 bit fails the check.
 
 Controls: the unlocked neighbours of the target slot are the accepted read and
 landed program twins of the lock leg (``CTRL-LOCK-CELL-RD-TWIN``,
@@ -137,7 +151,9 @@ absent before its write (``CTRL-LOCK-ORDER-THIRD``); the chain compares all 256
 words after the first sense with the staged image. The JTAG read of the unlocked
 word is the accepted twin of the blocked JTAG read, in the same CHK-LOCK-JTAG-RD
 line; the landed program and the bank gain are the positive probe of
-CHK-LOCK-EXEMPT-PROG.
+CHK-LOCK-EXEMPT-PROG. Before CHK-UID-RDLOCK-PROG, the read-lock program lands and
+the ``LOCKS`` word read after the resense holds the read-lock bit
+(``CTRL-UID-RDLOCK-SET``).
 
 FCOV owner window: a FAIL of any check or control closes the window, and the window
 does not reopen after it. ``x_exempt_write`` holds the resensed ``LC_STATE`` value
@@ -165,12 +181,7 @@ moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``uid_rlock_slot`` and
 ``exempt_prog_bit`` (exempt cell).
 
 Observations: ``OBS-LOCK-CELL-WR-RESP`` and ``OBS-LOCK-ORDER-RESP`` log the response
-of a legal shadow write, which the specification does not state. At the end
-of the lock leg, ``OBS-UID-RDLOCK-PROG`` logs a program of a 0 bit of one UID field
-whose slot had no lock and now has its read-lock alone (programmed into ``LOCKS``,
-then a resense): ``efuse_req_error``, the program commands at the post-guard tap and
-the bank diff. The specification does not state whether a read-lock alone stops that
-program.
+of a legal shadow write, which the specification does not state.
 
 Time: W is ``_W_MULT`` times the sense time measured at the first sense. A program
 or read-interface request waits the full W with no early exit, then reads its
@@ -306,6 +317,11 @@ def _pin(seed: int) -> tuple[str | None, int]:
     if cell not in _PIN:
         raise AssertionError(f"SETUP FAIL seed={seed} reason=unknown sep_pin_cell {cell!r}")
     return cell, int(cocotb.plusargs.get("sep_pin_plan_seed", _PIN[cell][0]))
+
+
+def _free_uid_slots(layout: dict) -> list[int]:
+    """UID slots with no lock in the drawn lock-leg layout."""
+    return [s for s in _UID_SLOTS if layout.get(s, "none") == "none"]
 
 
 def _bit(v: int, m: int) -> int:
@@ -628,6 +644,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             self.required_evidence += ("CHK-LOCK-READ-DONE",)
         if kind == "single_bit" and p.leg["lock_kind"] == "read":
             self.required_evidence += ("CHK-LOCK-READ",)
+        if kind == "lock_leg" and _free_uid_slots(p.leg["layout"]):
+            self.required_evidence += ("CHK-UID-RDLOCK-PROG",)
         self.logger.info(
             "INFO-EVIDENCE seed=%d kind=%s required=%s",
             seed,
@@ -646,6 +664,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         ):
             self.chk.finish()
             return
+        if kind != "lock_leg":
+            self.logger.info("CHK-UID-RDLOCK-PROG N/A seed=%d reason=%s", seed, kind)
         self.plan = p
         self.fd = SepEfuseFd(self)
         check = _KIND_CHECK[kind]
@@ -895,15 +915,15 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     async def _uid_rlock_prog(self) -> None:
         """Read-lock alone on one unlocked UID slot, then a program of a 0 bit of that UID.
 
-        Logged only (``OBS-UID-RDLOCK-PROG``): the specification does not state whether
-        a read-lock alone stops a program of a UID field. The read-lock bit is
-        programmed into ``LOCKS`` and takes effect at the resense; the golden of the
-        resense is the bank content.
+        The read-lock bit is programmed into ``LOCKS`` and takes effect at the resense;
+        the golden of the resense is the bank content. CHK-UID-RDLOCK-PROG: the UID
+        program lands, because a read-lock does not block programming.
         """
-        layout = self.plan.leg["layout"]
-        cands = [s for s in _UID_SLOTS if layout.get(s, "none") == "none"]
+        cands = _free_uid_slots(self.plan.leg["layout"])
         if not cands:
-            self.chk.obs("UID-RDLOCK-PROG", slot="none", reason="no_unlocked_uid_slot")
+            self.logger.info(
+                "CHK-UID-RDLOCK-PROG N/A seed=%d reason=no_unlocked_uid_slot", self.random_seed()
+            )
             return
         slot = self.plan.draw.choice("uid_rlock_slot", cands)
         name = LOCK_SLOT_FIELD[slot]
@@ -912,6 +932,15 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         lock = await self._program(lock_addr)
         set_shadow_golden(self, self.plan.image, words=list(self.bank.read()))
         await self._sense("CHK-LOCK-CELL")
+        locks = await self._rd32(shadow_addr("LOCKS", rb // WORD_BITS))
+        self._control(
+            "UID-RDLOCK-SET",
+            self._landed(lock, lock_addr) and (locks >> (rb % WORD_BITS)) & 1,
+            slot=slot,
+            lock_addr=lock_addr,
+            locks_word=f"0x{locks:08x}",
+            pg_flags=f"busy{lock['busy']}/done{lock['done']}/st{lock['prog_status']}",
+        )
         bank = self.bank.read()
         w0 = field_word(name)
         zeros = [
@@ -921,16 +950,16 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             if (used >> b) & 1 and not (bank[w0 + k] >> b) & 1
         ]
         if not zeros:
-            self.chk.obs("UID-RDLOCK-PROG", slot=slot, field=name, reason="no_zero_bit")
+            self._grade("UID-RDLOCK-PROG", False, slot=slot, field=name, reason="no_zero_bit")
             return
         k, b = self.plan.draw.choice("uid_rlock_bit", zeros)
         a = bit_address(name, k, b)
         r = await self._program(a)
-        self.chk.obs(
+        self._grade(
             "UID-RDLOCK-PROG",
+            self._landed(r, a) and r["prog_status"] == 0,
             slot=slot,
             field=name,
-            lock_landed=int(self._landed(lock, lock_addr)),
             bit_addr=a,
             req_err=r["req_err"],
             shim_cmd=len(r["progs"]),

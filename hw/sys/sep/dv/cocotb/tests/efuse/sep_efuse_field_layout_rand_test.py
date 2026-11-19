@@ -22,7 +22,8 @@ The offset table comes from the RDL-generated register header (``SEP_EFUSE_MAP_*
 of ``regs/gen/py/sep_reg.py``, through ``SepEfuseImage``) and the widths from the
 register sizes of the RDL-generated IP-XACT (``regs/gen/ipxact/sep.xml``); a table that
 does not tile words 0 to 255 with 43 registers fails the leaf before any DUT access
-(``SETUP FAIL reason=table_tile``). The used-bit masks come from the RDL field masks
+(``SETUP FAIL reason=table_tile``); a table that tiles them logs ``CTRL-TABLE-TILE``
+before the first DUT access. The used-bit masks come from the RDL field masks
 (``field_used_masks`` of ``env/sep_efuse_plan.py``).
 
 Checkers:
@@ -143,6 +144,7 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
         for line in p.log_lines():
             self.logger.info("%s", line)
         self.chk = SepChkLog(self, TEST, seed)
+        self.chk.ctrl("TABLE-TILE", True, rows=len(table))
         self.fd = SepEfuseFd(self)
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")

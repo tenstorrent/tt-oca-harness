@@ -40,6 +40,15 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     epoch before any program of that epoch) and no ``PROGRAM`` or
                     ``PROGRAM_READ_BACK`` command reaches ``efuse_shim_command_req_o``
                     at strap 1.
+  CHK-STM-PROG-STATUS  each strap-1 program reads ``program_done`` 1 and
+                    ``program_status`` 1 (Error) in ``EFUSE_PROGRAM_CTRL`` after
+                    ``W_prog``: a program start in secure test mode completes with an
+                    error without issuing a command
+                    (``hw/ip/efuse/doc/architecture.adoc:396``;
+                    ``efuse_interface_ctrl.rdl:100-101`` ``program_done``,
+                    ``:106-107`` ``program_status``). ``INFO-STM-PROG-STATUS`` logs
+                    the word of each strap-0 program; CHK-STM-PROG-CTL grades the
+                    strap-0 outcome at the bank.
   CHK-STM-PROG-CTL  each strap-0 program lands inside ``W_prog`` (direct read) and
                     shows a program command with its address at the tap.
   CHK-STM-SECRET    at strap 1 the four secret fields read 0 at
@@ -110,12 +119,11 @@ CHK-STM-JTAG-BLOCK-RESP line passed. Every other sample of the leaf (``x_prog_bl
 ``cp_state``) is held with the tag of its graded step (``set_ef_hold_tag``) and
 samples only when the leaf writes that tag to the pass label
 (``set_ef_hold_pass``) after every check of the step passed: the strap-1
-programs after CHK-STM-PROG, the strap-0 programs after CHK-STM-PROG-CTL, the
-secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
+programs after CHK-STM-PROG-STATUS and CHK-STM-PROG, the strap-0 programs after
+CHK-STM-PROG-CTL, the secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
 both straps after every CHK-STM-JTAG and CHK-STM-JTAG-CTL line.
 
-The status value of each program (``OBS-STM-PROG-STATUS``) and the response code of
-a strap-0 target write are logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
+The response code of a strap-0 target write is logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
 fields at ``efuse_shadow_probe_o`` at strap 1 and strap 0, against the staged words;
 the specification does not state whether secure test mode masks them) and
 ``OBS-DIGEST-PROG-STATE`` (a strap-0 program of a 0 bit of a drawn digest field: the
@@ -220,6 +228,8 @@ _PG_RW = (
     | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
     | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 )
+_PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
+_PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 _REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )
@@ -234,6 +244,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         "CHK-STM-CTL",
         "CHK-STM-BLOCK-RESP",
         "CHK-STM-PROG",
+        "CHK-STM-PROG-STATUS",
         "CHK-STM-PROG-CTL",
         "CHK-STM-SECRET",
         "CHK-STM-FEAT-DEMOTED",
@@ -459,8 +470,9 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
 
         ``CTRL-STM-PROG-ISSUED`` requires the software-owned fields of
         ``EFUSE_PROGRAM_CTRL`` read back after ``w_prog`` to equal the go, so a go that
-        did not land fails. ``OBS-STM-PROG-STATUS`` logs the whole word: the TT texts
-        disagree on the status of a program blocked in secure test mode.
+        did not land fails. At strap 1, CHK-STM-PROG-STATUS requires ``program_done`` 1
+        and ``program_status`` 1 (Error); at strap 0, ``INFO-STM-PROG-STATUS`` logs the
+        whole word.
         """
         cmds: dict[str, list] = {}
         for cls in STM_PROGRAM_CLASSES:
@@ -480,8 +492,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 wrote=f"0x{go & _PG_RW:08x}",
                 readback=f"0x{status & _PG_RW:08x}",
             )
-            self.chk.obs(
-                "STM-PROG-STATUS",
+            fields = dict(
                 strap=self._strap,
                 cls=cls,
                 field=pr["field"],
@@ -489,8 +500,20 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 bit=pr["bit"],
                 addr=f"0x{pr['addr']:x}",
                 status=f"0x{status:08x}",
+                program_done=int(bool(status & _PG_DONE)),
+                program_status=int(bool(status & _PG_STATUS)),
                 program_cmds=len(cmds[cls]),
             )
+            if self._strap:
+                self._grade(
+                    "STM-PROG-STATUS",
+                    status & (_PG_DONE | _PG_STATUS) == _PG_DONE | _PG_STATUS,
+                    exp_done=1,
+                    exp_status=1,
+                    **fields,
+                )
+            else:
+                self.chk.info("STM-PROG-STATUS", **fields)
         return cmds
 
     async def _strap1_demote_leg(self, state: str) -> None:
