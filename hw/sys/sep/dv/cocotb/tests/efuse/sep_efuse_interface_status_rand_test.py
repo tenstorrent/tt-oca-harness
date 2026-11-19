@@ -599,7 +599,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         # the OTP JTAG port, the master that exists then.
         go = program_ctrl_word(bit, data=1)
         go_resp, _ = await self.jtag_axil_op(write=True, addr=PROGRAM_CTRL_ADDR, wdata=go)
-        sense_at_go = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        sense_at_go = self.rd(dut.sep_fuse_sense_done_o)
         t_go = win["n"]
         await task
         t_sense = win["t_sense"]
@@ -832,11 +832,11 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         r_resp, r_data = await self.jtag_axil_op(write=False, addr=rd["addr"])
         r_data &= M32
         t_rd = None if task.done() else win["n"]
-        s_rd = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        s_rd = self.rd(dut.sep_fuse_sense_done_o)
         go = program_ctrl_word(prog_bit, data=1)
         w_resp, _ = await self.jtag_axil_op(write=True, addr=PROGRAM_CTRL_ADDR, wdata=go)
         t_wr = None if task.done() else win["n"]
-        s_wr = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        s_wr = self.rd(dut.sep_fuse_sense_done_o)
         if not task.done():
             await task
         t_sense = win["t_sense"]
@@ -1289,7 +1289,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             status_before=self._s4(before),
         )
         await self._cold_reset()
-        sense = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        sense = self.rd(dut.sep_fuse_sense_done_o)
         after = await self._flags()
         self._grade(
             "IF-RESET-FLAGS",

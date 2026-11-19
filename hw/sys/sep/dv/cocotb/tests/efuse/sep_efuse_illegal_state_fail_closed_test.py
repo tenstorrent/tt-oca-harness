@@ -1,36 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse read and program FSMs fail closed from an illegal state.
+"""eFuse read and program FSMs after an injected illegal state.
 
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
 state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
 (idle, then waiting for a bank response). No document names the encodings.
-The legal encodings, ``2'b01`` idle and ``2'b10`` wait, are the set the
-state-inject record in ``tb/tb_top.sv`` accepts for this leaf.
-The leaf injects the other two values for one cycle.
-Those two codes have no frontdoor.
+The leaf forces each state register, for one cycle, to the two codes outside
+the set the state-inject record in ``tb/tb_top.sv`` accepts. Those codes have
+no frontdoor. They are stimulus only: no graded term uses an encoding.
 
-The recovery this leaf grades is DV-owned:
+Graded after each injection:
 
-* an in-flight read command is withdrawn while the illegal encoding is held;
-* on the next edge the read interface reports done and not busy with the error
-  set, issues no command, and does not hand back the sensed fuse word;
-* an idle program interface recovers to a legal encoding without issuing a
-  bank command. Its retirement status and read-back data are logged
-  (OBS-PROGRAM-FAILCLOSED-STATUS), not graded.
+* the interface reports an error (OCAH-HSR-SEP-011,
+  ``doc/trm/meta/ocah_hsr_table.adoc:38``): ``efuse_<read|program>_error_o``
+  is 1, and so is the field software reads it through,
+  ``EFUSE_READ_CTRL.read_status`` / ``EFUSE_PROGRAM_CTRL.program_status``
+  (``efuse_interface_ctrl.rdl:149``, ``:106``: "1: Error")
+  (CHK-READ-FAILCLOSED-ERR, CHK-PROGRAM-FAILCLOSED);
+* the idle program interface issues no bank command: with no program go and
+  no enable there is no program request (``efuse_interface_ctrl.rdl:82``,
+  ``:112``; CHK-PROGRAM-FAILCLOSED);
+* both interfaces serve a new request after all injections (CHK-READ-ALIVE
+  and CHK-PROGRAM-ALIVE after; OCAH-HSR-SEP-010).
+
+Logged, not graded: no authored text states the FSM encodings or the outputs
+of an interface after an illegal state. The withdrawal of the in-flight read
+command, the recovered state, the bank request after the release, and the
+done, busy and read-back data values are OBS lines (OBS-READ-SUPPRESS,
+OBS-READ-FAILCLOSED, OBS-PROGRAM-FAILCLOSED-STATUS).
 
 The leaf also grades the read-error lifecycle on the same interface:
 
 * a successful read clears read_error_o, a read with the timeout enabled at
   its reset count completes without error and returns the sensed word, a read
   that outlives a short EFUSE_READ_REQ_TIMEOUT retires with the error set, and
-  the next legal request clears it (CHK-READ-ERR-CLEAR-SUCCESS,
-  -TIMEOUT-ARMED, -TIMEOUT, -CLEAR-REQUEST);
+  the next legal read completes with no error and the sensed word
+  (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT-ARMED, -TIMEOUT, -CLEAR-REQUEST);
 * with secure_tm latched, a read retires with the error set and zero data
   (CHK-READ-ERR-BLOCKED).
-
-Failing closed is the point: an FSM that resumed a read from a corrupted state
-could return fuse data it never legitimately fetched.
 
 Every check is on a DUT output. The injections are bracketed by a frontdoor OTP
 read that must move the machine: fuse sense does not use this FSM, so only a
@@ -53,9 +60,9 @@ from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
 # hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting)
-# and no encodings. The legal set below is the one the state-inject
-# record in tb/tb_top.sv accepts. The injection walks its complement, and each
-# recovery must return the state register to a member of it.
+# and no encodings. The set below is the one the state-inject record in
+# tb/tb_top.sv accepts. The injection walks its complement. These constants
+# choose stimulus only; no graded term compares against them.
 _ST_IDLE = 0b01
 _ST_WAIT_RESP = 0b10
 _ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
@@ -90,6 +97,7 @@ _READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_INTERFACE_READ_DATA")
 _RD_BUSY = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_busy")
 _RD_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_done")
 _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_status")
+_PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 
 
 def _place(block, reg: str, field: str, value: int) -> int:
@@ -127,7 +135,7 @@ _PROGRAM_BITS_NEEDED = 2 + len(_ILLEGAL_STATES)
 
 @pyuvm.test()
 class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
-    """Illegal FSM encodings recover legally; an in-flight read fails closed."""
+    """An injected illegal state sets the interface error; both FSMs stay in service."""
 
     required_evidence = (
         "CHK-READ-ALIVE",
@@ -137,21 +145,18 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         "CHK-READ-ERR-TIMEOUT",
         "CHK-READ-ERR-CLEAR-REQUEST",
         "CHK-READ-ERR-BLOCKED",
-        "CHK-READ-HELD",
-        "CHK-READ-SUPPRESS",
-        "CHK-READ-FAILCLOSED",
+        "CHK-READ-FAILCLOSED-ERR",
         "CHK-PROGRAM-FAILCLOSED",
     )
-    min_evidence = 11
+    min_evidence = 9
 
     async def _assert_read_alive(self, tag: str) -> None:
         """Positive control: a frontdoor OTP read presents a bank command.
 
-        Graded on the same signal the suppression checks use, so the control
-        and the check cannot disagree about what "a command" means. Fuse sense
-        does not drive this interface -- it serves the EFUSE_READ_CTRL
-        frontdoor -- so only a real direct read is a control. Without it,
-        "no command issued" holds on an interface that never issues one.
+        Read on the same signal the OBS request terms log. Fuse sense does not
+        drive this interface -- it serves the EFUSE_READ_CTRL frontdoor -- so
+        only a real direct read is a control. After the injections it shows the
+        read FSM still serves a new request.
         """
         seen_active = False
         stop = Event()
@@ -171,8 +176,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         assert seen_active, (
             f"CHK-READ-ALIVE FAIL ({tag}): a frontdoor OTP read presented no command to "
-            "the fuse bank, so the suppression checks would hold on an interface that "
-            "never issues one"
+            "the fuse bank"
         )
         self.logger.info("CHK-READ-ALIVE PASS (%s): a frontdoor OTP read drove a bank command", tag)
 
@@ -208,8 +212,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         raise AssertionError(f"the read interface never asserted read_done within {limit} cycles")
 
     async def _read_error_lifecycle(self) -> None:
-        """read_error_o is set by a failure and cleared by the next request."""
-        # 1. A successful read leaves the error flag clear (ReadSuccessClearsError).
+        """read_error_o is set by a timed-out read; the next legal read completes cleanly."""
+        # 1. A successful read leaves the error flag clear.
         await self.start_seq(sep_efuse_direct_read_seq(self._control_word))
         done, busy, err, _ = await self._read_probe()
         assert (done, busy, err) == (1, 0, 0), (
@@ -224,60 +228,86 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         #    without error and returns the sensed word.
         await self._read_with_reset_timeout()
 
-        # 3. A read that outlives its timeout budget sets the error
-        #    (ReadTimeoutSetsError). The budget is short enough that the SHIM
-        #    cannot answer inside it, so the timeout decides the outcome.
-        await self._csr(
-            SepAxiOp.WRITE,
-            _READ_TIMEOUT,
+        # 3. A read that outlives its timeout budget retires with the error set
+        #    (efuse_interface_ctrl.rdl:149; smc-programming.adoc:1677-1679). The
+        #    budget is short enough that the SHIM cannot answer inside it, and
+        #    the read must present its bank command, so the timeout decides the
+        #    outcome.
+        timeout = (
             _place(
                 EFUSE_INTERFACE_CTRL,
                 "EFUSE_READ_REQ_TIMEOUT",
                 "read_req_timeout_cycles",
                 _TIMEOUT_CYCLES,
             )
-            | _TIMEOUT_EN,
+            | _TIMEOUT_EN
         )
-        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
-        done, busy, err, _ = await self._await_read_done()
-        assert (done, busy, err) == (1, 0, 1), (
-            f"CHK-READ-ERR-TIMEOUT FAIL: a timed-out read reported done={done} "
-            f"busy={busy} error={err}, expected 1/0/1 -- a read that never got a "
-            "response must retire as an error, not hang or report success"
+        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, timeout)
+        timeout_rb = await self._csr(SepAxiOp.READ, _READ_TIMEOUT)
+        assert timeout_rb == timeout, (
+            f"test bug: EFUSE_READ_REQ_TIMEOUT reads {timeout_rb:#010x} after writing "
+            f"{timeout:#010x}, so the short timeout is not armed"
         )
-        self.logger.info(
-            "CHK-READ-ERR-TIMEOUT PASS: a read outliving %d cycles retires with error set",
-            _TIMEOUT_CYCLES,
+        held = await self._kick_and_catch("read", self._control_word * 32)
+        assert held, (
+            "CHK-READ-ERR-TIMEOUT FAIL: the read interface presented no bank command, "
+            "so the read was not accepted and an error could not come from the timeout"
         )
+        done, busy, err, data = await self._await_read_done()
+        ctrl = await self._csr(SepAxiOp.READ, _READ_CTRL)
+        rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
+        rd_done = int(bool(ctrl & _RD_DONE))
+        rd_busy = int(bool(ctrl & _RD_BUSY))
+        rd_status = int(bool(ctrl & _RD_STATUS))
+        fields = (
+            f"t_cycles={_TIMEOUT_CYCLES:#x} t_reg={timeout_rb:#010x} done={done} busy={busy} "
+            f"err={err} read_done={rd_done} read_busy={rd_busy} read_status={rd_status} "
+            f"data={data:#010x} read_data={rd_data:#010x}"
+        )
+        ok = (done, busy, err) == (1, 0, 1) and (rd_done, rd_busy, rd_status) == (1, 0, 1)
+        assert ok, (
+            "CHK-READ-ERR-TIMEOUT FAIL: a read that outlived its timeout budget did not "
+            f"retire with done and the error set: {fields}"
+        )
+        self.logger.info("CHK-READ-ERR-TIMEOUT PASS: %s", fields)
 
-        # 4. Issuing a fresh legal request clears it (ReadRequestClearsError).
-        #    The error from leg 3 is the precondition: without it this holds
-        #    trivially, so the assert above is also this leg's control.
+        # 4. The next legal read after the timed-out one completes with no
+        #    error and the sensed word (efuse_interface_ctrl.rdl:143, :149;
+        #    smc-programming.adoc:1676-1680). The error from leg 3 is the
+        #    precondition. When the flag clears is not stated; it is logged.
         await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
-        # Re-read the flag AFTER the cleanup writes and BEFORE the request. Both
-        # of those writes could clear it, and sampling only after the request
-        # would credit the request for a clear either of them may have done.
-        _, _, err_before_req, _ = await self._read_probe()
-        assert err_before_req == 1, (
-            "CHK-READ-ERR-CLEAR-REQUEST FAIL: read_error_o was already clear before "
-            f"the fresh request was issued (error={err_before_req}) -- dropping the "
-            "timeout budget or the enable cleared it, so a clear observed after the "
-            "request cannot be attributed to the request"
+        _, _, err_after_cleanup, _ = await self._read_probe()
+        held = await self._kick_and_catch("read", self._control_word * 32)
+        assert held, (
+            "CHK-READ-ERR-CLEAR-REQUEST FAIL: the read interface presented no bank "
+            "command for the read after the timed-out one"
         )
-        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
-        await RisingEdge(cocotb.top.clk_i)
-        _, _, err_after_req, _ = await self._read_probe()
-        assert err_after_req == 0, (
-            "CHK-READ-ERR-CLEAR-REQUEST FAIL: read_error_o stayed set after a fresh "
-            "legal request; a stale error would mislabel the next read"
-        )
-        await self._await_read_done()
+        _, _, err_after_go, _ = await self._read_probe()
+        done, busy, err, data = await self._await_read_done()
+        ctrl = await self._csr(SepAxiOp.READ, _READ_CTRL)
+        rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
         self.logger.info(
-            "CHK-READ-ERR-CLEAR-REQUEST PASS: a new legal request cleared the error "
-            "left by the timeout"
+            "INFO-READ-ERR-CLEAR-EDGE err_after_cleanup=%d err_after_go=%d graded=0",
+            err_after_cleanup,
+            err_after_go,
         )
+        sensed = self._sensed_control_word
+        rd_done = int(bool(ctrl & _RD_DONE))
+        rd_busy = int(bool(ctrl & _RD_BUSY))
+        rd_status = int(bool(ctrl & _RD_STATUS))
+        fields = (
+            f"done={done} busy={busy} err={err} read_done={rd_done} read_busy={rd_busy} "
+            f"read_status={rd_status} data={data:#010x} read_data={rd_data:#010x} "
+            f"exp={sensed:#010x}"
+        )
+        ok = (done, busy, err) == (1, 0, 0) and (rd_done, rd_busy, rd_status) == (1, 0, 0)
+        assert ok and data == sensed and rd_data == sensed, (
+            "CHK-READ-ERR-CLEAR-REQUEST FAIL: the read after a timed-out read did not "
+            f"complete with no error and the sensed word: {fields}"
+        )
+        self.logger.info("CHK-READ-ERR-CLEAR-REQUEST PASS: %s", fields)
 
     async def _read_with_reset_timeout(self) -> None:
         """A read with the timeout armed at its reset count completes cleanly.
@@ -386,8 +416,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         assert seen_active, (
             "CHK-PROGRAM-ALIVE FAIL: a frontdoor OTP program presented no command to "
-            "the fuse bank, so the suppression checks below would hold on an "
-            "interface that never issues one"
+            "the fuse bank, so the no-command term of CHK-PROGRAM-FAILCLOSED would "
+            "hold on an interface that never issues one"
         )
         self.logger.info(
             "CHK-PROGRAM-ALIVE PASS: a frontdoor OTP program drove a bank command (SPARE7 bit %d)",
@@ -456,16 +486,15 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def _assert_request_held(self, which: str, bit_addr: int) -> int:
         """Control: measure how many cycles the bank request stays asserted.
 
-        The suppression check injects while that request is high and requires it
-        to drop. That is only evidence if a machine left alone would have KEPT
-        it high across the same edge -- otherwise the request falls on its own,
-        for reasons the injection had nothing to do with, and "no command" holds
-        on any RTL. So measure the hold first, on unforced outputs, and require
-        it to outlast the one cycle the injection costs.
+        OBS-READ-SUPPRESS logs whether the request drops while the illegal code
+        is held. That value means something only if a machine left alone keeps
+        the request high across the same edge, so measure the hold first, on
+        unforced outputs, and require it to outlast the one cycle the injection
+        costs.
         """
         held = await self._kick_and_catch(which, bit_addr)
         assert held, (
-            f"CHK-{which.upper()}-HELD FAIL: the {which} interface never presented a "
+            f"CTRL-{which.upper()}-HELD FAIL: the {which} interface never presented a "
             "command to the fuse bank, so there is no in-flight window to inject into"
         )
         cycles = 1
@@ -478,34 +507,26 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             cycles += 1
         await self._quiesce(which)
         assert cycles >= 2, (
-            f"CHK-{which.upper()}-HELD FAIL: the bank request was asserted for only "
-            f"{cycles} cycle -- it would fall on its own across the injection edge, so "
-            "the suppression check below could not tell a suppressing design from one "
-            "that does nothing"
+            f"CTRL-{which.upper()}-HELD FAIL: the bank request was asserted for only "
+            f"{cycles} cycle, so it would fall on its own across the injection edge"
         )
-        self.logger.info(
-            "CHK-%s-HELD PASS: the %s interface holds its bank request for %d cycles, "
-            "so an injection lands inside a window where a legal machine keeps it high",
-            which.upper(),
-            which,
-            cycles,
-        )
+        self.logger.info("CTRL-%s-HELD cycles=%d", which.upper(), cycles)
         return cycles
 
     async def _inject(
         self, which: str, state: int, bit_addr: int, *, in_flight: bool = True, leg: int = 0
     ) -> None:
-        """Force an illegal encoding while a real command is in flight.
+        """Force an illegal code for one cycle and grade the error it reports.
 
-        Injecting into an idle block would grade a request that is already low,
-        which holds whether or not the design suppresses anything. Here the
-        interface is mid-operation with its request asserted, so the drop to
-        zero is a consequence of the injection and a design that carried the
-        command through a corrupted state fails.
+        The read leg injects while a real read is in flight with its request
+        asserted. The program leg injects into an idle interface: aborting an
+        accepted program parks the example shim's write FSM (see the VPLAN
+        section of this test).
         """
         dut = cocotb.top
         en = getattr(dut, f"efuse_{which}_state_inject_en_i")
         val = getattr(dut, f"efuse_{which}_state_inject_i")
+        tag = which.upper()
 
         if not in_flight and which != "program":
             raise ValueError("test bug: the idle-window injection is a program-interface leg")
@@ -513,11 +534,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             held = await self._kick_and_catch(which, bit_addr)
             assert held, (
                 f"test bug: the {which} interface presented no command, so the injection "
-                "would land in an idle window and grade nothing"
+                "would land in an idle window"
             )
 
-        # error_o is cleared by the next request, not by a status write (the rule
-        # CHK-READ-ERR-CLEAR-REQUEST grades), and _quiesce clears only the
+        # error_o is not cleared by _quiesce, which clears only the
         # interface-level efuse_req_error. An idle interface keeps the error_o
         # of its last retirement into the injection.
         await ReadOnly()
@@ -525,25 +545,20 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
         busy_before = int(getattr(dut, f"efuse_{which}_busy_o").value)
 
-        if in_flight:
-            # A command is mid-operation, so error and done are both low going in
-            # and the 1/1/0 verdict below is a consequence of the injection.
-            assert (err_before, done_before) == (0, 0), (
-                f"{which} error_o={err_before} done_o={done_before} before an "
-                "in-flight injection; the verdict terms must start low or they are "
-                "not attributable to it"
-            )
-        elif leg == 1:
-            # The first idle injection follows a successful program, so
-            # error_o enters it low and any error after the recovery is new.
+        # An error after the injection is attributable to it only where the
+        # error output enters low: every in-flight read leg, and the first idle
+        # program leg, which follows a successful program.
+        if in_flight or leg == 1:
             assert err_before == 0, (
-                f"CTRL-PROGRAM-FAILCLOSED-CLEAN FAIL: error_o={err_before} before the "
-                "first idle program injection, which follows a successful program"
+                f"CTRL-{tag}-FAILCLOSED-CLEAN FAIL: error_o={err_before} before the "
+                f"leg {leg} injection, so an error after it could be a stale one"
             )
             self.logger.info(
-                "CTRL-PROGRAM-FAILCLOSED-CLEAN state=%#04x error_o=%d done_o=%d busy_o=%d "
-                "before the first idle injection",
+                "CTRL-%s-FAILCLOSED-CLEAN state=%#04x leg=%d error_o=%d done_o=%d busy_o=%d "
+                "before the injection",
+                tag,
                 state,
+                leg,
                 err_before,
                 done_before,
                 busy_before,
@@ -554,49 +569,29 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         en.value = 1
         await RisingEdge(dut.clk_i)
 
-        # While the state is illegal, the in-flight command must be withdrawn.
         await ReadOnly()
         observed = int(getattr(dut, f"efuse_{which}_state_o").value)
-        assert observed == state, (
-            f"test bug: {which} state reads {observed:#04x}, expected the injected "
-            f"{state:#04x} -- the force did not reach the register (inject "
-            "confirmation, not fail-closed evidence)"
-        )
-        # Suppression is graded only on the in-flight leg: on an idle interface the
-        # bank request is already low, so requiring it low holds whether or not the
-        # design suppresses anything.
-        req = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
-        if in_flight:
-            assert req == 0, (
-                f"CHK-{which.upper()}-SUPPRESS FAIL: the {which} interface still "
-                f"presented its in-flight command to the fuse bank while "
-                f"{which}_state_q held the illegal encoding {state:#04x}"
+        if observed != state:
+            raise AssertionError(
+                f"CTRL-{tag}-INJECT FAIL: {which} state reads {observed:#04x}, expected "
+                f"the injected {state:#04x}, so the force did not reach the register"
             )
+        req_held = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
+        self.logger.info(
+            "CTRL-%s-INJECT state=%#04x observed=%#04x leg=%d", tag, state, observed, leg
+        )
+        if in_flight:
             self.logger.info(
-                "CHK-%s-SUPPRESS PASS: an accepted bank command was withdrawn within "
-                "one cycle of %s_state_q = %#04x",
-                which.upper(),
-                which,
-                state,
+                "OBS-READ-SUPPRESS state=%#04x leg=%d req=%d graded=0", state, leg, req_held
             )
 
-        # Release, then grade the recovery on the following edge.
+        # Release, then sample the interface on the following edge.
         await NextTimeStep()
         en.value = 0
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         recovered = int(getattr(dut, f"efuse_{which}_state_o").value)
-        assert recovered in (_ST_IDLE, _ST_WAIT_RESP), (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: recovered {which} state "
-            f"{recovered:#04x} is not a legal encoding "
-            f"(idle={_ST_IDLE:#04x} wait={_ST_WAIT_RESP:#04x})"
-        )
-        assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
-            f"command while recovering from {state:#04x}"
-        )
-        # Status and read-back data: graded for an in-flight read, logged for an
-        # idle program interface.
+        req = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
         data_probe = (
             dut.efuse_read_back_data_o if which == "read" else dut.efuse_program_read_back_data_o
         )
@@ -604,38 +599,37 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         done = int(getattr(dut, f"efuse_{which}_done_o").value)
         busy = int(getattr(dut, f"efuse_{which}_busy_o").value)
         data = int(data_probe.value)
-        sensed = self._sensed_control_word
+        ctrl = await self._csr(SepAxiOp.READ, _READ_CTRL if in_flight else _PROGRAM_CTRL)
+        status = int(bool(ctrl & (_RD_STATUS if in_flight else _PG_STATUS)))
+
         if in_flight:
-            assert (err, done, busy) == (1, 1, 0), (
-                f"CHK-{which.upper()}-FAILCLOSED FAIL: recovering from {state:#04x} the "
-                f"{which} interface reported error={err} done={done} busy={busy}, "
-                "expected 1/1/0 -- a machine that recovers silently leaves the caller "
-                "believing its operation is still in flight"
-            )
-            assert data != sensed, (
-                f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
-                f"{data:#010x} recovering from {state:#04x}, which is the sensed "
-                f"control word -- a leaked fuse value the operation never "
-                "legitimately fetched"
-            )
             self.logger.info(
-                "CHK-%s-FAILCLOSED PASS: recovered from %#04x mid-operation "
-                "(state now %#04x), no bank command, error and done set, not busy, "
-                "data 0x%08x is not the sensed control word 0x%08x",
-                which.upper(),
-                state,
-                recovered,
-                data,
-                sensed,
-            )
-        else:
-            pg_ctrl = await self._csr(SepAxiOp.READ, _PROGRAM_CTRL)
-            self.logger.info(
-                "OBS-PROGRAM-FAILCLOSED-STATUS state=%#04x leg=%d err_before=%d "
-                "done_before=%d busy_before=%d err=%d done=%d busy=%d data=%#010x "
-                "pg_ctrl=%#010x graded=0",
+                "OBS-READ-FAILCLOSED state=%#04x leg=%d recovered=%#04x req=%d err=%d "
+                "done=%d busy=%d data=%#010x sensed=%#010x rd_ctrl=%#010x graded=0",
                 state,
                 leg,
+                recovered,
+                req,
+                err,
+                done,
+                busy,
+                data,
+                self._sensed_control_word,
+                ctrl,
+            )
+            fields = f"state={state:#04x} leg={leg} err={err} read_status={status}"
+            assert (err, status) == (1, 1), (
+                f"CHK-READ-FAILCLOSED-ERR FAIL: an illegal read state reported no error: {fields}"
+            )
+            self.logger.info("CHK-READ-FAILCLOSED-ERR PASS: %s", fields)
+        else:
+            self.logger.info(
+                "OBS-PROGRAM-FAILCLOSED-STATUS state=%#04x leg=%d recovered=%#04x "
+                "err_before=%d done_before=%d busy_before=%d err=%d done=%d busy=%d "
+                "data=%#010x pg_ctrl=%#010x graded=0",
+                state,
+                leg,
+                recovered,
                 err_before,
                 done_before,
                 busy_before,
@@ -643,15 +637,17 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 done,
                 busy,
                 data,
-                pg_ctrl,
+                ctrl,
             )
-            self.logger.info(
-                "CHK-%s-FAILCLOSED PASS: recovered from %#04x injected while idle "
-                "(state now %#04x legal, no bank command)",
-                which.upper(),
-                state,
-                recovered,
+            fields = (
+                f"state={state:#04x} leg={leg} req={req} err_before={err_before} err={err} "
+                f"program_status={status}"
             )
+            assert req == 0 and (err, status) == (1, 1), (
+                "CHK-PROGRAM-FAILCLOSED FAIL: an illegal state on the idle program "
+                f"interface issued a bank command or reported no error: {fields}"
+            )
+            self.logger.info("CHK-PROGRAM-FAILCLOSED PASS: %s", fields)
         await self._quiesce(which)
 
     def _pick_pg_bits(self, img) -> list[int]:
@@ -691,38 +687,37 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
-        # Control first: prove the read path is live before grading a refusal.
+        # Controls first: both interfaces issue a bank command when asked.
         await self._assert_read_alive("before")
         await self._assert_program_alive(pg_bits[0])
 
-        # Establish the in-flight window before grading a withdrawal inside it.
+        # Establish the in-flight window before logging a withdrawal inside it.
         await self._assert_request_held("read", self._control_word * 32)
 
         for leg, (state, pg_bit) in enumerate(zip(_ILLEGAL_STATES, pg_bits[2:]), start=1):
-            await self._inject("read", state, self._control_word * 32)
+            await self._inject("read", state, self._control_word * 32, leg=leg)
             # Idle window, not in flight. Aborting an ACCEPTED program parks the
             # example shim's write FSM (see the VPLAN section of this test), and
             # every later leg that resenses would then read a corrupted shadow
-            # word. The read leg is the one that observes a withdrawal.
+            # word. The read leg is the one that logs a withdrawal.
             await self._inject(
                 "program", state, _CONTROL_PROGRAM_WORD * 32 + pg_bit, in_flight=False, leg=leg
             )
 
-        # The block still works afterwards: recovery returned it to service
-        # rather than wedging it.
+        # Both FSMs serve a new request after the injections (OCAH-HSR-SEP-010).
         await self._assert_read_alive("after")
         # A fresh bit: OTP is write-once, so programming pg_bits[0] again would not
         # issue a command and the control would fail for the wrong reason.
         await self._assert_program_alive(pg_bits[1])
 
-        # Error lifecycle on the same interface: set by a failure, cleared by
-        # the next legal request.
+        # Error lifecycle on the same interface: set by a timed-out read, and
+        # the next legal read completes cleanly.
         await self._read_error_lifecycle()
 
         # Last, because it latches secure_tm and a resense does not undo that
         # for the legs above.
         await self._read_blocked_by_secure_tm()
         self.logger.info(
-            "illegal-state fail-closed ALL CHECKS PASS: both FSMs, both illegal "
-            "encodings, read path live before and after"
+            "illegal-state ALL CHECKS PASS: both FSMs, both injected codes, both "
+            "interfaces live before and after"
         )
