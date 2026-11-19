@@ -137,7 +137,6 @@ def sub_block_rows(r: dict) -> list[MapRow]:
         raise ValueError(f"sep_addr.h: no sub-blocks under {prefix}")
     notes = tuple(r["hole_notes"])
     parts = {label: _cell(((label, resp),), notes) for label, resp in r["hole_responses"]}
-    past_part = parts.get("past sub-block registers")
     bases = [defines[f"{prefix}{c}_BASE_ADDR"] for c in children]
     extent_end = r["base"] + r["occupied_size"]
     rows = []
@@ -149,6 +148,7 @@ def sub_block_rows(r: dict) -> list[MapRow]:
             and v > defines.get(n.removesuffix("STRIDE") + "SIZE", v)
             for n, v in defines.items()
         )
+        past_part = parts.get(f"past {c.lower()} registers", parts.get("past sub-block registers"))
         end = next_base - 1 if past_part else base + size - 1
         hole = parts.get("between instances") if padded else None
         rows.append(MapRow(base, end, size, c.lower(), hole, past_part))
