@@ -40,7 +40,9 @@ compressor bypass is set and cleared in ``OBS-COND-BYPASS-MIDGROUP``; after
 those, the feedback-on mask class (few = 1 to 3 bits, half = 4, all = 0xFF) and
 its mask, the lane L of ``CHK-COND-ONE-LANE``, the few (2 or 3) or half lane
 set of ``OBS-COND-LANE-POP-FIFO`` and the start bit of each lane's alternating
-fill before ``CHK-COND-LANES-OFF``.
+fill before ``CHK-COND-LANES-OFF``. The per-lane bit tables of
+``CHK-COND-BYPASS-ORDER`` come from their own stream (``SepSeededRng`` of the
+seed XOR ``ORDER_SALT``), so they move no draw above.
 
 Checkers:
   CHK-COND-MASK        each lane byte == (0xFF if Z[j] else 0x00) AND mask, 16 strobes,
@@ -177,6 +179,38 @@ Checkers:
                        ``esrc_decor_sr_o`` slice changes within RO_OFF_CLKS + 29 clocks and
                        the other 11 slices of both taps, which hold both bit values,
                        stay unchanged.
+  CHK-COND-BYPASS-ORDER  DECORRELATOR_CTRL.BYPASS on all lanes with SAMPLE_CLK_DIV 0 (a
+                       strobe on every clk_i, so the eight stages of a byte hold eight
+                       different words), DECORRELATOR_MASK 0xFF, compressor bypassed,
+                       whitening off, DOWNSAMPLE_RATE ORDER_RATE, each lane driven with
+                       its seeded bit table: every complete output popped in
+                       ORDER_WINDOWS FIFO-closed windows equals, bit for bit, the packing
+                       of the lane bytes in which each byte holds its lane's bits of
+                       eight consecutive words, word u in bit 0 and word u - 7 in bit 7
+                       (architecture.adoc:107, :113, :118; ``SepEntropyGolden`` in
+                       decorrelator bypass, ``decor_sr_word``). The searched offset of u
+                       makes this a grade of eight consecutive stages, newest in bit 0,
+                       the same window on every lane, and the packing; it does not tell
+                       which eight stages of the chain form the window.
+                       Control ``CTRL-COND-BYPASS-ORDER``: the configuration readbacks, a
+                       strobe on every clock of each window (``esrc_decor_valid_o``),
+                       exactly one u per output and one offset of u to the strobe count
+                       at its write clock for all outputs (the noise-to-stage latency,
+                       not a golden value), no popped word triple equal to an output of
+                       the in-byte-reversed golden, at least one graded output,
+                       ``pattern_ok`` (each window's searched words start after the
+                       tables apply) and ``tap_ok`` (the popped words lie at exactly one
+                       position of the words offered on the tap).
+  CHK-COND-BYPASS-STREAM  per window, the K popped words equal one contiguous slice of
+                       the golden word list (outputs u, u + ORDER_RATE + 1, ..., words
+                       0, 1, 2 of each), starting at any word of an output: no dropped,
+                       extra or reordered word. Control ``CTRL-COND-BYPASS-STREAM``:
+                       LEVEL 0 and FIFO_OVERFLOW 0 before FIFO_CTRL.ENABLE = 1,
+                       ORDER_WINDOW_WORDS offered words, ORDER_WINDOW_WORDS <= K <=
+                       FIFO_DEPTH - 1, FIFO_OVERFLOW 0 after the window, LEVEL 0 after
+                       the K pops, exactly one matching slice (entropy_source.rdl
+                       FIFO_CTRL.ENABLE, INTR_STATUS.FIFO_OVERFLOW; architecture.adoc:146,
+                       :150).
 Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
 (entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
@@ -212,6 +246,7 @@ one window with a drawn few or half lane set.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import accumulate
 
 import cocotb
 import pyuvm
@@ -222,6 +257,7 @@ from env.sep_esrc_pattern_noise import (
     NUM_LANES,
     Alternate,
     Balanced,
+    LanePattern,
     SepEsrcPatternNoise,
     Stuck,
     balanced_lanes,
@@ -251,7 +287,7 @@ from env.sep_fcov_gate import (
     set_esrc_cnt_pass,
 )
 from env.sep_seeded_rng import SepSeededRng
-from models.entropy_decorrelator_model import SR_LENGTH
+from models.entropy_decorrelator_model import SAMPLE_SHIFT, SR_LENGTH
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -346,6 +382,19 @@ LANE_POP_PERIODS = 16
 LANE_POP_CLASSES = ("few", "half")
 FEW_LANES = (2, 3)
 HALF_LANES = NUM_LANES // 2
+# Bypass-order leg. At ORDER_RATE an output of 3 words comes every 64 strobes, so a
+# window closed after ORDER_WINDOW_WORDS offered words has 16 words (320 clocks) for the
+# ENABLE = 0 write before the 64-entry FIFO fills. ORDER_PERIOD is the period of each
+# lane's seeded bit table and ORDER_SALT the salt of its stream. ORDER_SEARCH is the
+# words searched before the ENABLE = 1 write for the first output, ORDER_EDGE the clocks
+# a tap row may lie after the ENABLE = 0 write returns.
+ORDER_RATE = 63
+ORDER_WINDOWS = 4
+ORDER_WINDOW_WORDS = 48
+ORDER_PERIOD = 4096
+ORDER_SALT = 0x0B17_0DE5
+ORDER_SEARCH = 4 * (SR_LENGTH + 1)
+ORDER_EDGE = 8
 
 # Bounds. A latency bound is LAT_FACTOR x the clean time of the same operation
 # measured earlier in the same run; the first measurement of a kind uses an
@@ -357,6 +406,7 @@ INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
 _RO_ENABLE = ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["ENABLE"]
 # RING_OSC_ENABLE.ENABLE with every lane enabled (the reset value, entropy_source.adoc:357).
 RO_ENABLE_ALL = _RO_ENABLE["bm"] >> _RO_ENABLE["bp"]
+INTR_FIFO_OVERFLOW = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_OVERFLOW"]["bm"]
 
 
 def _get(value: int, reg: str, field: str) -> int:
@@ -421,6 +471,82 @@ def _class_mask(rng: SepSeededRng, cls: str) -> int:
         return (1 << MASK_BITS) - 1
     k = HALF_MASK_BITS if cls == "half" else rng.randrange(1, FEW_MASK_BITS_MAX + 1)
     return sum(1 << b for b in rng.sample(range(MASK_BITS), k))
+
+
+@dataclass(frozen=True)
+class _SeededBits(LanePattern):
+    """Bit n mod ``period`` of a table drawn from the run seed."""
+
+    table: int
+    period: int
+
+    def bit(self, n: int) -> int:
+        return (self.table >> (n % self.period)) & 1
+
+    def describe(self) -> str:
+        return f"seeded(salt=0x{ORDER_SALT:08x},period={self.period})"
+
+
+def order_lanes(seed: int) -> tuple[_SeededBits, ...]:
+    """The 12 lane tables of the bypass-order leg, from their own seeded stream."""
+    rng = SepSeededRng(seed ^ ORDER_SALT)
+    return tuple(_SeededBits(rng.getrandbits(ORDER_PERIOD), ORDER_PERIOD) for _ in range(NUM_LANES))
+
+
+def _rev8(b: int) -> int:
+    return int(f"{b:08b}"[::-1], 2)
+
+
+def order_bytes(lanes, lo: int, hi: int) -> dict[int, list[int]]:
+    """The 12 lane bytes with word u in stage 21, for u in lo..hi.
+
+    ``SepEntropyGolden`` in decorrelator bypass at SAMPLE_CLK_DIV 0 takes one word
+    per shift; after word v stage s holds word v - s, so ``decor_sr_word`` (stages
+    [28:21], lane j at bits 8j+7:8j) holds word u = v - SAMPLE_SHIFT in bit 0 and
+    word u - 7 in bit 7 (architecture.adoc:107, :113).
+    """
+    golden = SepEntropyGolden(bypass=True, sample_clk_div=0, byte_mask=0xFF, sha_whitening=False)
+    out: dict[int, list[int]] = {}
+    for v in range(lo - MASK_BITS, hi + SAMPLE_SHIFT + 1):
+        golden.feed_noise(sum(p.bit(v) << j for j, p in enumerate(lanes)))
+        if v - SAMPLE_SHIFT >= lo:
+            w = golden.decor_sr_word()
+            out[v - SAMPLE_SHIFT] = [(w >> (8 * j)) & 0xFF for j in range(NUM_LANES)]
+    return out
+
+
+def order_outputs(table: dict[int, list[int]], reverse: bool = False) -> dict[int, tuple[int, ...]]:
+    """The three bypass words of each output u; ``reverse`` flips the bit order of every byte."""
+    return {
+        u: tuple(bypass_pack_words(_rev8(b) if reverse else b for b in lane_bytes))
+        for u, lane_bytes in table.items()
+    }
+
+
+def _index(outputs: dict[int, tuple[int, ...]]) -> dict[tuple[int, ...], list[int]]:
+    at: dict[tuple[int, ...], list[int]] = {}
+    for u, words in outputs.items():
+        at.setdefault(words, []).append(u)
+    return at
+
+
+def stream_matches(words: list[int], outputs: dict[int, tuple[int, ...]]) -> list[tuple[int, int]]:
+    """(u, s) where ``words`` equal the golden word list of outputs u, u + ORDER_RATE + 1, ...
+
+    from word s of output u on.
+    """
+    n = len(words)
+    step = ORDER_RATE + 1
+    out: list[tuple[int, int]] = []
+    for u, first in outputs.items():
+        for s in range(BYPASS_WORDS):
+            k = (s + n + BYPASS_WORDS - 1) // BYPASS_WORDS
+            if not n or first[s] != words[0] or u + (k - 1) * step not in outputs:
+                continue
+            golden = [w for o in range(k) for w in outputs[u + o * step]]
+            if golden[s : s + n] == words:
+                out.append((u, s))
+    return out
 
 
 @dataclass(frozen=True)
@@ -526,6 +652,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-DECOR-MASK",
         "CHK-COND-LANES-OFF",
         "CHK-COND-ONE-LANE",
+        "CHK-COND-BYPASS-ORDER",
+        "CHK-COND-BYPASS-STREAM",
     )
 
     async def run_scenario(self) -> None:
@@ -1087,6 +1215,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                 if not await self._bypass_pass(ctrl_rb, pas):
                     close_graded_window(self.logger)
                     return
+        await self._bypass_order()
         close_graded_window(self.logger)
 
     async def _bypass_pass(self, ctrl_rb: int, pas) -> bool:
@@ -1133,6 +1262,204 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             expect=",".join(f"0x{w:08x}" for w in expect),
         )
         return True
+
+    async def _bypass_order(self) -> None:
+        """CHK-COND-BYPASS-ORDER and CHK-COND-BYPASS-STREAM with the seeded lane tables.
+
+        FIFO_CTRL.ENABLE = 0; CTRL = compressor bypassed, DOWNSAMPLE_RATE ORDER_RATE,
+        whitening off; DECORRELATOR_MASK = 0xFF; SAMPLE_CLK_DIV = 0 by ``_set_div``
+        (feedback bypassed on all lanes). The tables apply from the next strobe, and
+        SR_LENGTH + 1 + ORDER_SEARCH words pass before the first window, so every
+        golden byte holds table bits only. The tap runs over all windows; the strobe
+        count of its rows is the time base of the offset. SAMPLE_CLK_DIV returns to
+        the reset value at the end.
+        """
+        plan = self.plan
+        lanes = order_lanes(plan.seed)
+        ctrl = _val(
+            "CTRL",
+            BYPASS_ENTROPY_COMPRESSOR=1,
+            DOWNSAMPLE_RATE=ORDER_RATE,
+            SHA256_WHITENING_ENABLE=0,
+        )
+        decor = _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=0)
+        mask = _val("DECORRELATOR_MASK", ENTROPY_BYTE_MASK=0xFF)
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
+        await self._wr(ESRC_CTRL, ctrl)
+        await self._wr(ESRC_DECORRELATOR_MASK, mask)
+        await self._set_div(0)
+        rb = {
+            "ctrl": (ctrl, await self._rd(ESRC_CTRL)),
+            "decor": (decor, await self._rd(ESRC_DECORRELATOR_CTRL)),
+            "mask": (mask, await self._rd(ESRC_DECORRELATOR_MASK)),
+        }
+        start = self.noise.mark() + 1
+        self.noise.set_lanes(lanes)
+        settle = SR_LENGTH + 1 + ORDER_SEARCH
+        await self.noise.wait_words(settle, CELL_BOUND_FACTOR * settle)
+        rows: list = []
+        run = [True]
+        task = cocotb.start_soon(self._tap_trace(rows, run))
+        wins = [await self._order_window(rows) for _ in range(ORDER_WINDOWS)]
+        run[0] = False
+        await task
+        await self._set_div(RESET_DIV)
+
+        cum = list(accumulate(r[0] for r in rows))
+        graded = bad = ambiguous = rev_hits = 0
+        offsets: set[int] = set()
+        gaps: set[int] = set()
+        first_bad = "none"
+        pattern_ok = tap_ok = True
+        for w, win in enumerate(wins):
+            words = win["words"]
+            table = order_bytes(lanes, win["lo"], win["hi"])
+            fwd = order_outputs(table)
+            rev_at = _index(order_outputs(table, reverse=True))
+            order_at = _index(fwd)
+            pattern_ok &= win["lo"] - MASK_BITS >= start
+            strobes = [i for i in range(win["i0"], win["i1"]) if rows[i][0]]
+            gaps |= {b - a for a, b in zip(strobes, strobes[1:])}
+            if len(strobes) != win["i1"] - win["i0"]:
+                gaps.add(0)
+            rev_hits += sum(
+                1
+                for i in range(len(words) - BYPASS_WORDS + 1)
+                if tuple(words[i : i + BYPASS_WORDS]) in rev_at
+            )
+            # The tap rows that offered the popped words give each word its write clock.
+            lo_i, hi_i = win["i_wr"], min(len(rows), win["i1"] + ORDER_EDGE)
+            offered = [(i, rows[i][5]) for i in range(lo_i, hi_i) if rows[i][2]]
+            at = [
+                j
+                for j in range(len(offered) - len(words) + 1)
+                if [d for _, d in offered[j : j + len(words)]] == words
+            ]
+            tap_ok &= len(at) == 1 and len(words) > 0
+            hits = [
+                [
+                    (i, order_at.get(tuple(words[i : i + BYPASS_WORDS]), []))
+                    for i in range(s, len(words) - BYPASS_WORDS + 1, BYPASS_WORDS)
+                ]
+                for s in range(BYPASS_WORDS)
+            ]
+            outs = max(hits, key=lambda h: sum(1 for _, us in h if us))
+            for i, us in outs:
+                graded += 1
+                if not us:
+                    bad += 1
+                    if first_bad == "none":
+                        first_bad = f"w{w}:" + ",".join(
+                            f"0x{x:08x}" for x in words[i : i + BYPASS_WORDS]
+                        )
+                    continue
+                ambiguous += int(len(us) > 1)
+                if len(at) == 1:
+                    offsets.add(us[0] - cum[offered[at[0] + i][0]])
+
+            matches = stream_matches(words, fwd)
+            self.chk.ctrl(
+                "COND-BYPASS-STREAM",
+                win["level_before"] == 0
+                and win["ovf_before"] == 0
+                and len(win["offered_rows"]) == ORDER_WINDOW_WORDS
+                and ORDER_WINDOW_WORDS <= len(words) <= FIFO_DEPTH - 1
+                and win["ovf_after"] == 0
+                and win["level_after"] == 0
+                and len(matches) <= 1,
+                window=w,
+                level_before=win["level_before"],
+                ovf_before=win["ovf_before"],
+                offered=len(win["offered_rows"]),
+                popped=len(words),
+                ovf_after=win["ovf_after"],
+                level_after=win["level_after"],
+                slices=len(matches),
+            )
+            self.chk.ok(
+                "COND-BYPASS-STREAM",
+                len(matches) >= 1,
+                window=w,
+                popped=len(words),
+                rate=ORDER_RATE,
+                first_u="none" if not matches else matches[0][0],
+                first_word="none" if not matches else matches[0][1],
+                head=",".join(f"0x{x:08x}" for x in words[:3]),
+            )
+
+        self.chk.ctrl(
+            "COND-BYPASS-ORDER",
+            all(want == got for want, got in rb.values())
+            and gaps == {1}
+            and len(offsets) == 1
+            and ambiguous == 0
+            and rev_hits == 0
+            and graded > 0
+            and pattern_ok
+            and tap_ok,
+            **{f"{k}_rb": f"0x{got:08x}" for k, (_, got) in rb.items()},
+            gaps=sorted(gaps),
+            offsets=sorted(offsets),
+            ambiguous=ambiguous,
+            rev_matches=rev_hits,
+            graded=graded,
+            pattern_start=start,
+            pattern_ok=pattern_ok,
+            tap_ok=tap_ok,
+        )
+        self.chk.ok(
+            "COND-BYPASS-ORDER",
+            graded > 0 and bad == 0,
+            windows=ORDER_WINDOWS,
+            rate=ORDER_RATE,
+            outputs=graded,
+            mismatches=bad,
+            first_bad=first_bad,
+            lanes=lanes[0].describe(),
+        )
+
+    async def _order_window(self, rows: list) -> dict:
+        """One FIFO-closed window of the bypass-order leg.
+
+        FIFO_CTRL.ENABLE is 0: drain to LEVEL 0, write-one clear FIFO_OVERFLOW,
+        ENABLE = 1, wait ORDER_WINDOW_WORDS words of ``esrc_compress_vld_o`` on the
+        tap rows, ENABLE = 0, read FIFO_OVERFLOW and LEVEL, pop LEVEL words, read
+        LEVEL. ``i_wr`` is the tap row before the ENABLE = 1 write is issued, ``i0`` and
+        ``i1`` the tap rows after the two ENABLE writes return, and ``lo``/``hi`` the
+        stage-21 word range searched for its outputs.
+        """
+        await self._drain_fifo("FIFO_STATUS", ESRC_FIFO_RDATA, ESRC_FIFO_STATUS)
+        level_before = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
+        await self._wr(ESRC_INTR_STATUS, INTR_FIFO_OVERFLOW)
+        ovf_before = _get(await self._rd(ESRC_INTR_STATUS), "INTR_STATUS", "FIFO_OVERFLOW")
+        i_wr = len(rows)
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
+        i0 = len(rows)
+        lo = self.noise.mark() - ORDER_SEARCH
+        bound = CELL_BOUND_FACTOR * (ORDER_WINDOW_WORDS // BYPASS_WORDS + 1) * (ORDER_RATE + 1)
+        offered_rows = await self._wait_row(
+            rows, i0, lambda r: r[2], bound, count=ORDER_WINDOW_WORDS
+        )
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
+        i1 = len(rows)
+        hi = self.noise.mark() + ORDER_EDGE
+        ovf_after = _get(await self._rd(ESRC_INTR_STATUS), "INTR_STATUS", "FIFO_OVERFLOW")
+        level = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
+        words = [await self._rd(ESRC_FIFO_RDATA) for _ in range(level)]
+        level_after = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
+        return {
+            "level_before": level_before,
+            "ovf_before": ovf_before,
+            "i_wr": i_wr,
+            "i0": i0,
+            "i1": i1,
+            "lo": lo,
+            "hi": hi,
+            "offered_rows": offered_rows,
+            "ovf_after": ovf_after,
+            "words": words,
+            "level_after": level_after,
+        }
 
     # --- downsample leg ---------------------------------------------------------------
     async def _leg_downsample(self) -> None:
