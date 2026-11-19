@@ -269,8 +269,11 @@ to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -284,8 +287,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>17</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -299,8 +305,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>18</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -314,8 +323,11 @@ Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>19</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1667,10 +1679,14 @@ details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>TSU_DAT</ipxact:name>
-              <ipxact:description>Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-cycles. See Table 11 in the I2C Specification for details. This field is sized
-to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-requirement, assuming a 1 GHz system clock.</ipxact:description>
+              <ipxact:description>Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+cycles: after driving a data or ACK bit, the target holds SCL low for
+`TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+`t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+Specification for details. This field is sized to meet the I2C Standard-mode
+(100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+clock.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
