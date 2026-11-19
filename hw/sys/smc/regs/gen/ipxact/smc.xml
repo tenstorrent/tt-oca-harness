@@ -3232,8 +3232,11 @@ to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3247,8 +3250,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>17</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3262,8 +3268,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>18</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3277,8 +3286,11 @@ Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>19</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3936,8 +3948,9 @@ This would violate the proper protocol for a controller to join a multi-controll
 environment. However, if this controller is known to be the first to join, this
 ordering will enable skipping the idle wait.
 
-When `0`, the bus monitor will report that the bus is always free, so the
-Controller FSM is never blocked from transmitting.</ipxact:description>
+When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+wait after a qualified STOP, so that wait is the only time the Controller FSM
+is blocked from transmitting.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4630,10 +4643,14 @@ details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>TSU_DAT</ipxact:name>
-              <ipxact:description>Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-cycles. See Table 11 in the I2C Specification for details. This field is sized
-to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-requirement, assuming a 1 GHz system clock.</ipxact:description>
+              <ipxact:description>Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+cycles: after driving a data or ACK bit, the target holds SCL low for
+`TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+`t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+Specification for details. This field is sized to meet the I2C Standard-mode
+(100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+clock.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4681,8 +4698,18 @@ minimum requirement, assuming a 1 GHz system clock.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>T_BUF</ipxact:name>
-              <ipxact:description>Global control: specifies the time between a STOP and START condition (`t_BUF`)
-in system clock cycles. See Table 11 in the I²C Specification for details. This
+              <ipxact:description>Global control: specifies the bus free time between a STOP and the following
+START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+Specification for details. The bus monitor starts this wait once SCL has stayed
+high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+holds a START back only while the wait runs. With
+`CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+Otherwise, a START behind the controller's own STOP waits only when that STOP
+is qualified before the controller takes the next FMT FIFO entry: when
+`THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+entry already queued, the START follows the STOP's SDA rise after
+`TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
 field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
 requirement, assuming a 1 GHz system clock.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
@@ -5318,7 +5345,9 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
 pads: while set, the UART owns their data and direction. While clear, the UART
 keeps running, but its pads follow the GPIO data and direction selection like
 any pad without a hardware request, so TX and RTS do not reach the pins unless
-software forces LSIO selection.</ipxact:description>
+software forces LSIO selection. Without that selection, the receive and CTS
+inputs read high, the serial idle level: the receiver sees no start bit and
+`MSR.CTS` reads 0.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -7667,7 +7696,7 @@ HARNESS_LOCKS.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -7693,18 +7722,6 @@ HARNESS_LOCKS.</ipxact:description>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_read_back</ipxact:name>
-            <ipxact:description>When set, trigger a read back after a program</ipxact:description>
-            <ipxact:bitOffset>18</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -7831,12 +7848,12 @@ HARNESS_LOCKS.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</ipxact:description>
+          <ipxact:description>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</ipxact:description>
+            <ipxact:description>Program response data from the adopter SHIM; its meaning is adopter-defined.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -44352,7 +44369,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44364,7 +44381,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44376,7 +44393,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44436,7 +44453,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44448,7 +44465,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44526,7 +44543,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44538,7 +44555,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44550,7 +44567,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44610,7 +44627,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44622,7 +44639,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44700,7 +44717,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44712,7 +44729,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44724,7 +44741,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44784,7 +44801,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44796,7 +44813,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44874,7 +44891,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44886,7 +44903,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44898,7 +44915,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44958,7 +44975,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44970,7 +44987,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45048,7 +45065,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45060,7 +45077,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45072,7 +45089,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45132,7 +45149,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45144,7 +45161,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45222,7 +45239,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45234,7 +45251,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45246,7 +45263,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45306,7 +45323,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45318,7 +45335,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45396,7 +45413,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45408,7 +45425,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45420,7 +45437,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45480,7 +45497,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45492,7 +45509,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45570,7 +45587,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45582,7 +45599,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45594,7 +45611,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45654,7 +45671,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45666,7 +45683,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45780,7 +45797,7 @@ reaches termination value.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>Signal0Select</ipxact:name>
-              <ipxact:description>Define which signal to select for edge detection.</ipxact:description>
+              <ipxact:description>Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45804,7 +45821,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Signal1Select</ipxact:name>
-              <ipxact:description>Define which signal to select for edge detection.</ipxact:description>
+              <ipxact:description>Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45829,7 +45846,7 @@ reaches termination value.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgEapStatus</ipxact:name>
-            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
+            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.</ipxact:description>
             <ipxact:addressOffset>'h188</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -46038,6 +46055,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46050,6 +46068,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>33</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46062,6 +46081,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>34</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46074,6 +46094,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>35</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46086,6 +46107,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>36</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46098,6 +46120,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>37</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46110,6 +46133,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46122,6 +46146,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>39</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46134,6 +46159,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>40</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46146,6 +46172,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>41</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46158,6 +46185,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>42</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46170,6 +46198,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>43</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46182,6 +46211,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46194,6 +46224,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>45</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46206,6 +46237,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>46</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46218,6 +46250,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>47</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46249,7 +46282,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EnableEap</ipxact:name>
-              <ipxact:description>Set Enable EAP to 1 after EAP programming is complete</ipxact:description>
+              <ipxact:description>Set Enable EAP to 1 after EAP programming is complete. Clearing it disables every EAP, and is required before the CDbgEapStatus w2c write that releases a debug interrupt; set it again to re-arm the EAPs</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46261,7 +46294,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EnableCla</ipxact:name>
-              <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</ipxact:description>
+              <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46285,7 +46318,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DisableGlobalClockHalt</ipxact:name>
-              <ipxact:description>If this bit is set, clock halt action is not applied to global clocks</ipxact:description>
+              <ipxact:description>If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46297,7 +46330,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DisableLocalClockHalt</ipxact:name>
-              <ipxact:description>If this bit is set, clock halt action is not applied to local clocks</ipxact:description>
+              <ipxact:description>If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset</ipxact:description>
               <ipxact:bitOffset>15</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46895,7 +46928,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46907,7 +46940,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46919,7 +46952,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46979,7 +47012,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46991,7 +47024,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47069,7 +47102,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47081,7 +47114,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47093,7 +47126,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47153,7 +47186,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47165,7 +47198,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47243,7 +47276,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47255,7 +47288,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47267,7 +47300,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47327,7 +47360,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47339,7 +47372,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47417,7 +47450,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47429,7 +47462,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47441,7 +47474,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47501,7 +47534,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47513,7 +47546,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47591,7 +47624,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47603,7 +47636,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47615,7 +47648,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47675,7 +47708,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47687,7 +47720,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47765,7 +47798,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47777,7 +47810,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47789,7 +47822,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47849,7 +47882,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47861,7 +47894,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47939,7 +47972,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47951,7 +47984,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47963,7 +47996,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48023,7 +48056,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48035,7 +48068,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48113,7 +48146,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48125,7 +48158,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48137,7 +48170,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48197,7 +48230,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48209,7 +48242,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50054,7 +50087,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdsttimestampconfig</ipxact:name>
-              <ipxact:description>DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.</ipxact:description>
+              <ipxact:description>DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.</ipxact:description>
               <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
