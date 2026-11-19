@@ -1077,6 +1077,7 @@ count values, not behaviour.
 |`sep_km_otp_interface_rand_test` |Class of the programmed fuse field outside the KM interface |`sep_km_otp_readout_cg.cp_otp_notkm_class`, seed-dependent
 |`sep_km_sram_scrambler_key_rand_test` |The three lane offsets of the sweep (the first 16 of the 64 stores) |`sep_km_sram_sbox_in_cg` (`cp_data_lane0` to `cp_data_lane7`, `cp_addr_lane0` to `cp_addr_lane3`), all 168 bins on every seed: the offsets move the sweep, and every offset gives every lane value
 |`sep_km_sram_scrambler_key_rand_test` |Keys kA and kB, the other word addresses and words |None: they change data and addresses inside a fixed contract that the checkers read back
+|`sep_km_aes_sideload_kat_test` |SRAM leg plan (block count, window, plaintext and fill words) and the software key of CHK-H |None: they change data inside a fixed contract that the checkers read back
 |===
 
 [[sep-fcov-owners]]
