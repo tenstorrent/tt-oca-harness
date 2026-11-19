@@ -122,8 +122,9 @@ follows:
 
 The cross-trigger network divides its own address map into windows by the same
 rules. The eFuse control registers own 1 KiB in both the SEP and SMC pages,
-because one register block serves both, and the SMC eFuse controller answers
-the next 1 KiB with `SLVERR` and read data `0xBADCAB1E`. The eFuse shadow
+because one register block serves both. In the SEP the next 1 KiB holds the
+security-token registers. The SMC has none, so its eFuse controller answers
+that 1 KiB with `SLVERR` and read data `0xBADCAB1E`. The eFuse shadow
 registers, the external window of each subsystem and the units inside the SMC
 CPU cluster keep their own decode.
 
