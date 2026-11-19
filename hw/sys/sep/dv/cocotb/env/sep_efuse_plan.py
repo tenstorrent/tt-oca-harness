@@ -786,9 +786,7 @@ async def require_addr_readback(rd: ReadFn, reg_addr: int, want: int) -> int:
     return got
 
 
-async def program_go_no_wait(
-    wr: WriteFn, rd: ReadFn, bit_addr: int, *, data: int = 1
-) -> int:
+async def program_go_no_wait(wr: WriteFn, rd: ReadFn, bit_addr: int, *, data: int = 1) -> int:
     """Write ``EFUSE_PROGRAM_ADDR``, read it back, then write ``EFUSE_PROGRAM_CTRL`` with
     enable, data and go; no poll.
 

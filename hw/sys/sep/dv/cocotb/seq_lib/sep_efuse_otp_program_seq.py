@@ -102,11 +102,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
 
     async def body(self) -> None:
         addr = _place_addr(self.bit_addr)
-        wdata = (
-            _EFUSE_DATA_BIT
-            | _EFUSE_PROGRAM_GO_BIT
-            | _EFUSE_PROGRAM_ENABLE_BIT
-        )
+        wdata = _EFUSE_DATA_BIT | _EFUSE_PROGRAM_GO_BIT | _EFUSE_PROGRAM_ENABLE_BIT
         for attempt in range(1, self.max_attempts + 1):
             await _write_program_addr(self, self.bit_addr, addr)
             await self._access(
@@ -214,11 +210,7 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
 
     async def body(self) -> None:
         addr = _place_addr(self.bit_addr)
-        wdata = (
-            _EFUSE_DATA_BIT
-            | _EFUSE_PROGRAM_GO_BIT
-            | _EFUSE_PROGRAM_ENABLE_BIT
-        )
+        wdata = _EFUSE_DATA_BIT | _EFUSE_PROGRAM_GO_BIT | _EFUSE_PROGRAM_ENABLE_BIT
         await _write_program_addr(self, self.bit_addr, addr)
         await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl")
         for _ in range(_POLL_CYCLES):

@@ -215,10 +215,9 @@ _TAG_PROG1, _TAG_PROG0, _TAG_SECRET, _TAG_JTAG = 1, 2, 3, 4
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
 # Software-owned (sw=rw, hw=r) fields of EFUSE_PROGRAM_CTRL: they read back as written.
-_PG_RW = (
-    EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
-)
+_PG_RW = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_PROGRAM_CTRL", "efuse_data"
+) | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 _REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )

@@ -310,9 +310,7 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
             f"(READ_CTRL=0x{ctrl:08x}); with the bit burnt it is 0x{want:08x}"
         )
         await self.csr_write("PLAIN_CHECK_ADDR", PROGRAM_ADDR, plain_bit)
-        await self.csr_write(
-            "PLAIN_CHECK_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN
-        )
+        await self.csr_write("PLAIN_CHECK_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
         ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "PLAIN_CHECK_DONE")
         await self.csr_write("PLAIN_CHECK_IDLE", PROGRAM_CTRL, 0)
         assert not ctrl & PROG_ERR, (
