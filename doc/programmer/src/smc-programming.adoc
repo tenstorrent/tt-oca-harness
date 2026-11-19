@@ -27,8 +27,11 @@ address, which is assigned by the integrator. This must be matched by firmware
 in the `GLOBAL_BASE` register. The global aperture is also of size
 `REGION_SIZE`.
 
-The integrator's assignment of global system addresses to SMCs should be a
-function of each chiplet's Chiplet ID, which can be read from the eFuse block.
+Assigning global system addresses to SMCs is platform policy. A policy that
+keys on the chiplet can use the values the boot ROM forms for the I2C/I3C bus
+addresses: the eFuse `I2C_I3C_ID` slots or, where a slot is unprogrammed, the
+`CHIP_ID` strap in `STRAPS_LO` combined with the `CHIP_CONFIG.CHIP_ID`
+integration constant.
 It is the integrator's responsibility to assign subsystems to global address
 ranges that do not overlap with each other, or with the SMC's local-alias
 aperture.
@@ -72,10 +75,10 @@ RV64GC instruction set, as well as the Zba, Zbb, and Zbs instructions.
 The cores support Machine, Supervisor, and User mode privilege levels.
 
 The CPU cold-reset vector is `0xC004_0000`, corresponding to the start of ROM
-memory -- see the SMC's address map above. Each core's reset vector can be
-modified to a warm-reset (a reset that does not clear SRAM) vector by writing
-the location to the core's `RESET_VECTOR` register, which is part of the CPU
-Control block.
+memory -- see the SMC's address map above. Each core's `RESET_VECTOR` register,
+part of the CPU Control block, sets the address the core fetches from after a
+per-core reset or reset pulse through `RESET_CTRL`. A warm reset ignores the
+programmed vectors and restarts every core at `0xC004_0000`.
 
 During early bring-up, it is advised to allow only one core to perform some
 early initialization procedures. Each core's ID can be read from the `mhartid`
@@ -153,8 +156,8 @@ Their operation is as follows:
 
 `__metal_mbist_early_check` performs the following steps:
 
-. Check the `MEM_BIST_BYPASS` strap (register `STRAPS_HI` bit 54). If set, skip
-MBIST check, otherwise continue.
+. Check the `MEM_BIST_BYPASS` strap (strap 54, RDL `MBIST_BYPASS`, `STRAPS_HI`
+bit 22). If set, skip MBIST check, otherwise continue.
 . Read the DFT Control's `STATUS_SMU` register.
 . Check if the MBIST was performed (register `STATUS_SMU` bit 4). If unset,
 assume the MBIST was not required, and return.
@@ -199,16 +202,17 @@ kill
 
 `__metal_memory_repair_check` performs the following steps:
 
-. Check the `MEM_REPAIR_BYPASS` strap (register `STRAPS_LO` bit 13). If set,
-skip memory repair check, otherwise continue.
+. Check the `MEM_REPAIR_BYPASS` strap (strap 13, RDL `BYPASS_SRAM_REPAIR`,
+`STRAPS_LO` bit 13). If set, skip memory repair check, otherwise continue.
 . Read the DFT Control's `STATUS_SMU` register.
 . Check if memory repair was performed (register `STATUS_SMU` bit 0). If unset,
 assume memory repair was not required, and return.
 . Check if memory repair passed (register `STATUS_SMU` bit 1). If set, return --
 memory repair has passed.
-. Memory repair has failed. If the eFuse `SMC_CONFIG.dft_ignore_error`
-(bit 15) is set, ignore the failure and return.
-. Memory repair has failed -- park the core in a `wfi` loop.
+. Memory repair has failed: record `0xBADC0FFE` in scratch register 15. If the
+eFuse `SMC_CONFIG.dft_ignore_error` (bit 15) is set, ignore the failure and
+return with that code in place.
+. Park the core in a `wfi` loop.
 
 .SMC Boot ROM `__metal_memory_repair_check`.
 [plantuml,ocah-smc-metal-memory-repair-check,svg,width=50.0%,align="center"]
@@ -222,6 +226,7 @@ else (unset)
   else (set)
     if (Check STATUS_SMU bit mem_repair_success) then (set)
     else (unset)
+      : Record failure;
       if (Check eFuse SMC_CONFIG.dft_ignore_error) then (set)
       else (unset)
         : Fail;
@@ -462,10 +467,10 @@ The current value of the timer is stored in the CLINT's `MTIME` register, at
 to each core of the SMC in the CLINT `MTIMECMP` register array, at
 `CLINT_BASE + 0x4000 + (0x8 * hartid)`. Both registers are 64-bits wide.
 
-A timer interrupt becomes pending for a core once `MTIME` exceeds the core's
-corresponding `MTIMECMP` value. To dismiss the interrupt, the timer interrupt
-handler should set the core's corresponding `MTIMECMP` register to a new value
-in the future.
+A timer interrupt becomes pending for a core once `MTIME` is greater than or
+equal to the core's corresponding `MTIMECMP` value. To dismiss the interrupt,
+the timer interrupt handler should set the core's corresponding `MTIMECMP`
+register to a new value in the future.
 
 [WARNING]
 ====
@@ -473,7 +478,7 @@ There may be a delay between writing `MTIMECMP` and the timer interrupt pending
 bit falling, during which a spurious timer interrupt may occur if interrupts are
 enabled again (for example, by returning from the timer interrupt handler).
 For robustness against spurious timer interrupts, the timer interrupt handler
-should verify the interrupt condition (`MTIMECMP > MTIME`) before calling
+should verify the interrupt condition (`MTIME >= MTIMECMP`) before calling
 periodic functions and re-scheduling.
 ====
 
@@ -538,8 +543,8 @@ void write_clint_mtimecmp(uint64_t value) {
 
 Cores can send interrupts to other cores of the SMC by writing a value of `1`
 to the target core's corresponding `MSIP` register, at
-`CLINT_BASE + (0x4 * hartid)`. This writes directly to the target core's
-`MIE.msip` bit.
+`CLINT_BASE + (0x4 * hartid)`. This drives the target core's `mip.MSIP` pending
+bit; the interrupt is taken when `mie.MSIE` and `mstatus.MIE` are set.
 Upon taking a software interrupt, a core may clear its software interrupt
 pending bit by writing `0` to its corresponding `MSIP` register.
 Neither timer nor software interrupts use a PLIC completion write.
@@ -1097,8 +1102,10 @@ are substituted.
 
 The Log Engine is a DMA-based logging peripheral that can efficiently transfer
 log messages from SMC memory to a UART on the CPU's behalf.
-The UART exposes the `txrdy_o` signal directly to the Log Engine which notifies
-it that more bytes can be accepted into the transmit FIFO.
+The UART exposes the `txrdy_o` signal directly to the Log Engine. In DMA mode 0
+the UART raises `txrdy_o` while its transmit FIFO is empty; the Log Engine waits
+for that level before each byte it writes, so the FIFO is refilled only after it
+drains.
 
 Each Log Engine supports up to 16 log entries, which represent a message to be
 transmitted. The Log Engine uses round-robin scheduling for fairness in
@@ -1210,8 +1217,9 @@ void configure(char *log_region, uint32_t log_region_size) {
     write32(LOG_ENGINE_REG_CTRL, LOG_ENGINE_CTRL_DISABLE);
 
     // Write address of log region.
-    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_LO, (uint32_t)log_region);
-    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_HI, (uint32_t)(log_region >> 32));
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_LO, (uint32_t)(uintptr_t)log_region);
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_HI,
+            (uint32_t)((uintptr_t)log_region >> 32));
 
     // Write size of log region.
     write32(LOG_ENGINE_REG_LOG_REGION_SIZE, log_region_size);
@@ -1576,7 +1584,8 @@ constraints of the underlying eFuse implementation.
 Direct read and program operations are performed using the eFuse control
 interface, which can program arbitrary data bits and read whole data words
 (32 bits at a time). Programming operations are not reflected in the shadow
-registers until the next reset.
+registers until the next primary reset; a CPU or warm reset does not re-sense
+the fuses.
 
 [WARNING]
 ====
@@ -1586,13 +1595,15 @@ control interface can *never* be cleared.
 
 The `LOCKS` register can be used to lock read and/or write access to fields
 containing eFuse data words. Bits of the `LOCKS` register cannot be cleared
-once they are set by software, but are reset at reset.
+once they are set by software. A primary reset reloads `LOCKS` from the eFuse
+array, so it clears bits that software set only in the register, but not bits
+programmed into the fuses; a CPU or warm reset keeps them.
 
 Locks cover whole fields of eFuse data, not necessarily individual 32-bit words.
-For example, all 9 `I2C_I3C_ID` data words are controlled by a single lock in
-the `LOCKS` register. Accesses through both the shadow registers and direct
-word-read/bit-write accesses through the control interface are affected by the
-setting of the `LOCKS` register.
+For example, all 18 `I2C_I3C_ID` data words (nine 64-bit entries) are controlled
+by a single lock in the `LOCKS` register. Accesses through both the shadow
+registers and direct word-read/bit-write accesses through the control interface
+are affected by the setting of the `LOCKS` register.
 
 Some fields in the shadow registers may be locked by the hardware integrator.
 In that case, access through the shadow registers is forbidden, regardless of
@@ -2341,3 +2352,15 @@ and its device interface functions (DIF). In addition, set the wrapper's
 `I2C_CTRL.I2C_CONTROLLER_MODE_EN`, which sets the direction of the SMBus alert
 and suspend pads, in agreement with the role selected by `CTRL.ENABLEHOST` or
 `CTRL.ENABLETARGET`. Neither wrapper field enables the core itself.
+
+`TIMING4.T_BUF` does not always separate the controller's own queued transfers.
+Outside multi-controller monitoring, the controller waits `T_BUF` after its
+STOP only when the bus monitor qualifies that STOP before the controller takes
+the next FMT FIFO entry, which for an entry already queued requires
+`TIMING3.THD_DAT` of 0 or 1. With `THD_DAT` of 2 or more and the next transfer
+already queued, the next START follows the STOP's SDA rise after
+`TIMING1.T_R + TIMING2.TSU_STA` plus 7 system clock cycles of input
+synchronisation, controller state steps and output register. To meet the bus's
+`t_BUF` on queued transfers, program `TSU_STA` so that this sum is at least the
+required bus free time. The longer `TSU_STA` also lengthens every repeated
+START setup time.

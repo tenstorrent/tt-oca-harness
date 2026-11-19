@@ -81,8 +81,8 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq extends smu_base_test_seq;
     run_series(target, series_pat);
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
-    mark_step("PASS", "scenario complete");
     finalize_evidence();
+    mark_step("END", "scenario complete");
   endtask
 
   // S1: TAP reset, IDCODE, the gate and the geometry the bridge publishes.
