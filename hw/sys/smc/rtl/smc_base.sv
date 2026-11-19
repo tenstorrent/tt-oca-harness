@@ -9,6 +9,8 @@
 // Exports peripheral AXI-Lite, interrupts, and clock-gate enables to the SMC top.
 // NO_ADDR_REMAP removes the M-mode and Xvisor output remap from the output fabric.
 
+`include "ocah_debug_axi.svh"
+
 module smc_base #(
   parameter bit NO_ADDR_REMAP = 1'b1,   // Removes the M-mode and Xvisor output remap from the
                                         // output fabric, leaving only its AXI ID conversion;
@@ -421,19 +423,19 @@ module smc_base #(
   logic [1023:0] debug_bus;
   logic [7:0]    debug_marker;
 
-  assign debug_bus[16*1-1:16*0]       = `SMC_DEBUG_AXI4_LANE(sys_axi_in_req_i, sys_axi_in_resp_o);
-  assign debug_bus[16*2-1:16*1]       = `SMC_DEBUG_AXI4_LANE(output_axi_req_o, output_axi_resp_i);
-  assign debug_bus[16*3-1:16*2]       = `SMC_DEBUG_AXI4_LANE(cpu_axi_front_port_req_o,
-                                                             cpu_axi_front_port_resp_i);
-  assign debug_bus[16*4-1:16*3]       = `SMC_DEBUG_AXI4_LANE(cpu_axi_mmio_port_req_i,
-                                                             cpu_axi_mmio_port_resp_o);
-  assign debug_bus[16*5-1:16*4]       = `SMC_DEBUG_AXI4_LANE(sep_axi_in_req_i, sep_axi_in_resp_o);
-  assign debug_bus[16*6-1:16*5]       = `SMC_DEBUG_AXI4_LANE(jtag_axi_in_req_i, jtag_axi_in_resp_o);
-  assign debug_bus[16*7-1:16*6]       = `SMC_DEBUG_AXI4_LANE(axi_data_accel_req, axi_data_accel_resp);
-  assign debug_bus[16*8-1:16*7]       = `SMC_DEBUG_AXIL_LANE(axil_peripherals_req_o,
+  assign debug_bus[16*1-1:16*0]       = `OCAH_DEBUG_AXI4_LANE(sys_axi_in_req_i, sys_axi_in_resp_o);
+  assign debug_bus[16*2-1:16*1]       = `OCAH_DEBUG_AXI4_LANE(output_axi_req_o, output_axi_resp_i);
+  assign debug_bus[16*3-1:16*2]       = `OCAH_DEBUG_AXI4_LANE(cpu_axi_front_port_req_o,
+                                                              cpu_axi_front_port_resp_i);
+  assign debug_bus[16*4-1:16*3]       = `OCAH_DEBUG_AXI4_LANE(cpu_axi_mmio_port_req_i,
+                                                              cpu_axi_mmio_port_resp_o);
+  assign debug_bus[16*5-1:16*4]       = `OCAH_DEBUG_AXI4_LANE(sep_axi_in_req_i, sep_axi_in_resp_o);
+  assign debug_bus[16*6-1:16*5]       = `OCAH_DEBUG_AXI4_LANE(jtag_axi_in_req_i, jtag_axi_in_resp_o);
+  assign debug_bus[16*7-1:16*6]       = `OCAH_DEBUG_AXI4_LANE(axi_data_accel_req, axi_data_accel_resp);
+  assign debug_bus[16*8-1:16*7]       = `OCAH_DEBUG_AXIL_LANE(axil_peripherals_req_o,
                                                              axil_peripherals_resp_i);
-  assign debug_bus[16*9-1:16*8]       = `SMC_DEBUG_AXIL_LANE(axil_log_engine_req_i,
-                                                             axil_log_engine_resp_o);
+  assign debug_bus[16*9-1:16*8]       = `OCAH_DEBUG_AXIL_LANE(axil_log_engine_req_i,
+                                                              axil_log_engine_resp_o);
 
   // [9] dma_backend_busy  [8] dma_frontend_busy  [7:6] octs pulse state
   // [5:3] cpu scratch RAM zero-fill state  [2:0] zeroer state

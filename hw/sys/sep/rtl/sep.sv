@@ -16,6 +16,7 @@
 
 `include "axi/assign.svh"
 `include "ocah_assert.svh"
+`include "ocah_debug_axi.svh"
 
 module sep #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for
@@ -226,9 +227,8 @@ module sep #(
   output sep_pkg::sep_ras_t sep_ras_o,        // Error, watchdog and hang indications for chip-level
                                               // RAS aggregation, on clk_i.
 
-  output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits: CPU trace and control status,
-                                              // reset and security status, eFuse, remap and filter
-                                              // debug; bits [351:336], [239:208] and [159:0] are 0.
+  output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits; the lane map is at the
+                                              // ext_debug_bus_o assignment, and unused lanes are 0.
 );
 
   /////////////////////////
@@ -1293,7 +1293,6 @@ NumSramDemuxPorts
                       ({{(16 - 2 * $clog2(sep_pkg::InboundFilterNumFilters)
                        ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug})
                       == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
 
   // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
@@ -1370,8 +1369,27 @@ NumSramDemuxPorts
     inbound_write_filter_hit_debug,
     inbound_read_filter_hit_debug,
 
-    // [159:0] Reserved for future use
-    160'b0
+    // [159:144] SMN inbound, before the inbound filter
+    `OCAH_DEBUG_AXI4_LANE(smn_inbound_axi_req_i, smn_inbound_axi_resp_o),
+    // [143:128] SMN outbound, after the outbound filter
+    `OCAH_DEBUG_AXI4_LANE(smn_outbound_axi_req_o, smn_outbound_axi_resp_i),
+    // [127:112] CPU LSU into the local crossbar
+    `OCAH_DEBUG_AXI4_LANE(lsu_xbar_axi_req, lsu_xbar_axi_resp),
+    // [111:96] CPU IFU fetch from SRAM
+    `OCAH_DEBUG_AXI4_LANE(ifu_sram_axi_req, ifu_sram_axi_resp),
+    // [95:80] CPU IFU fetch from ROM
+    `OCAH_DEBUG_AXI4_LANE(ifu_rom_axi_req, ifu_rom_axi_resp),
+    // [79:64] SEP into the SMC aperture
+    `OCAH_DEBUG_AXI4_LANE(sep_ext_to_smc_axi_req_o, sep_ext_to_smc_axi_resp_i),
+    // [63:48] Secure DMA master
+    `OCAH_DEBUG_AXI4_LANE(dma_axi_req, dma_axi_resp),
+    // [47:32] Crypto subsystem
+    `OCAH_DEBUG_AXI4_LANE(sep_crypto_axi_req, sep_crypto_axi_resp),
+    // [31:16] External aperture
+    `OCAH_DEBUG_AXI4_LANE(sep_external_axi_req_o, sep_external_axi_resp_i),
+
+    // [15:0] Reserved
+    16'b0
   };
 
 endmodule
