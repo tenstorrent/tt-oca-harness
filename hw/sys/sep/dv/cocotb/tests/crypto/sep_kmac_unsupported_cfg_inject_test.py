@@ -44,7 +44,8 @@ Checkers:
   CHK-KMAC-UNSUP     en bit 0, unsupported strength: after CMD.start kmac_err=1,
                      sha3_idle=1, sha3_absorb=0 and kmac_done=0;
                      STATUS still idle and not absorbing after a hold of t_clean.
-                     kmac_err and ERR_CODE read 0 before the start, and the
+                     kmac_err and ERR_CODE read 0 after the CFG_SHADOWED
+                     writes and before the start, and the
                      CFG_SHADOWED readback holds the written mode, kstrength
                      and en bit. INTR_ENABLE.kmac_err reads its reset value 0
                      (kmac.adoc line 67) before the start, and vector bit 22 (KMAC
@@ -106,6 +107,40 @@ Checkers:
                      "the KMAC HWIP proceeds the hashing operation as other
                      combinations does not cause any malfunctions inside the IP."
 
+Error-code legs. Each starts with a KMAC reset, reads ``INTR_STATE.kmac_err`` and
+``ERR_CODE`` (both must read 0), applies one trigger, polls ``kmac_err`` within
+the kmac_err bound from the trigger write and reads ``ERR_CODE``. Bits 23:0 are masked and logged. Each
+leg ends with the recovery of CHK-KMAC-ERRPROC. Codes from the "Error Report"
+table of theory_of_operation.md (lines 719-730):
+  CHK-KMAC-ERR-02    SHA3-256 configuration at idle, one 32-bit ``MSG_FIFO``
+                     write with no ``CMD.start``: kmac_err 1, code 0x02
+                     ("MsgFifo is updated while not being in the Message Feed
+                     state", line 722). The AXI response of the write is logged
+                     in the line, not graded: no text states it.
+  CHK-KMAC-ERR-05    a double write of ``CFG_SHADOWED`` with ``entropy_mode`` =
+                     ``idle_mode`` and ``entropy_ready`` = 1 (SHA3-256,
+                     ``kmac_en`` 0, ``sideload`` 0): kmac_err 1, code 0x05
+                     ("When SW sets `entropy_ready`, the `entropy_mode` is
+                     neither SW nor EDN", line 725; ``idle_mode`` kmac.hjson
+                     lines 510-511). Before its recovery the leg writes
+                     ``CFG_SHADOWED`` with ``entropy_ready`` 0
+                     (programmers_guide.md lines 186-192).
+  CHK-KMAC-ERR-07    keyed run: ``KEY_LEN`` 256, a drawn software key in
+                     ``KEY_SHARE0`` (``KEY_SHARE1`` 0), ``PREFIX`` =
+                     encode_string("") || encode_string("") instead of
+                     encode_string("KMAC") || encode_string(S), read back
+                     word for word, cSHAKE-256 with
+                     ``kmac_en`` 1, then ``CMD.start``: kmac_err 1, code 0x07
+                     (line 727). The error "does not block the hashing
+                     operation" (lines 790-796), so the same line also requires
+                     that one message word and right_encode(256), ``CMD.process``
+                     and ``CMD.done`` reach squeeze and then idle within the
+                     outer limit. The digest is not graded.
+  CHK-KMAC-ERR-08    SHA3-256 configuration at idle, ``CMD`` = process with no
+                     ``CMD.start``: kmac_err 1, code 0x08 (SwCmdSequence, line
+                     728) or 0x80 (Sha3Control, "along with SwCmdSequence ... Can
+                     be ignored", line 730).
+
 Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
@@ -128,15 +163,20 @@ reads and grades the outcome, so the sampler holds each legal outcome as
 pending and samples it only when the pass label ``kmac_unsup_pass`` rises to
 the check that grades it: 1 after CHK-KMAC-UNSUP and CHK-KMAC-ERRCODE of the
 blocked cell pass, 2 after CHK-KMAC-ERRPROC of its recovery passes, 3 after
-CHK-KMAC-UNSUP-EN of the enabled cell passes. The window close drops an
+CHK-KMAC-UNSUP-EN of the enabled cell passes, 4 after the CHK-KMAC-ERR-xx of
+an error-code leg passes (``cp_kmac_err_code_class`` samples the error code of
+that leg). The window close drops an
 outcome no label released; illegal outcomes sample at once. The window closes
 on the first FAIL and stays closed for the rest of the run.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense
 +esrc_noise_force``. RAND-REP: the seed draws the three cell orders, the
-recovery messages and the mode 2'b01 strength and message; the other 21 cells
-are the same on every seed. The mode 2'b01 cell runs first in the blocked group. The SHA3 control and the SHA3-128 cell run after
-the blocked group.
+recovery messages and the mode 2'b01 strength and message, then the
+``MSG_FIFO`` word of CHK-KMAC-ERR-02, the key words of CHK-KMAC-ERR-07 and the
+four recovery messages of the error-code legs; the other 21 cells and the four
+error-code legs are the same on every seed. The mode 2'b01 cell runs first in the blocked group. The SHA3 control and the SHA3-128 cell run after
+the blocked group. The error-code legs run last, in the order 0x02, 0x05,
+0x07, 0x08.
 """
 
 from __future__ import annotations
@@ -147,13 +187,15 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_kmac_unsup_pass
-from env.sep_kmac_golden import encode_string, sha3
+from env.sep_kmac_golden import encode_string, right_encode, sha3
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_kmac_seq import (
     KMAC_CFG_SHADOWED,
     KMAC_CMD,
@@ -162,10 +204,19 @@ from seq_lib.sep_kmac_seq import (
     KMAC_CMD_START,
     KMAC_ERR_CODE,
     KMAC_INTR_STATE,
+    KMAC_KEY_LEN,
+    KMAC_KEY_SHARE0,
+    KMAC_KEY_SHARE1,
+    KMAC_KEY_WORDS,
+    KMAC_KEYED_OUT_BITS,
+    KMAC_KEYLEN,
     KMAC_MODE,
+    KMAC_MSG_FIFO,
+    KMAC_PREFIX,
     KMAC_STATUS,
     KMAC_STRENGTH,
     SepKmac,
+    _hjson_enum,
     build_kmac_cfg,
 )
 
@@ -196,6 +247,12 @@ _CFG_CELL_MASK = (
 # cSHAKE PREFIX of the open helper: empty function name and empty
 # customization string, encode_string("") || encode_string("").
 _CSHAKE_EMPTY_PREFIX = encode_string(b"") + encode_string(b"")
+# PREFIX_0.. read back after that write: little-endian words, unused words 0.
+_PREFIX_IMAGE = _CSHAKE_EMPTY_PREFIX.ljust(4 * len(KMAC_PREFIX), b"\x00")
+_CSHAKE_EMPTY_PREFIX_RD = ":".join(
+    f"{int.from_bytes(_PREFIX_IMAGE[i : i + 4], 'little'):08x}"
+    for i in range(0, len(_PREFIX_IMAGE), 4)
+)
 
 _XOF_MODES = ("shake", "cshake")
 # kmac.adoc CFG_SHADOWED.kstrength (lines 177-181): only 128 and 256 are legal
@@ -221,8 +278,28 @@ _MODE_RSVD = "rsvd1"
 _MODE_CODE = {**KMAC_MODE, _MODE_RSVD: KMAC_MODE_RSVD}
 _DRAW_STRENGTHS = tuple(KMAC_STRENGTH)
 
+# theory_of_operation.md lines 722, 725, 727, 728 and 730: the codes of the
+# error-code legs, and the Sha3Control companion of SwCmdSequence.
+EXP_ERR_SW_PUSHED_MSG_FIFO = 0x02
+EXP_ERR_INCORRECT_ENTROPY_MODE = 0x05
+EXP_ERR_INCORRECT_FUNCTION_NAME = 0x07
+EXP_ERR_SW_CMD_SEQUENCE = 0x08
+EXP_ERR_SHA3_CONTROL = 0x80
+# Leg name -> the codes CHK-KMAC-ERR-<name> accepts, in leg order.
+_ERR_EXPECTED = {
+    "02": (EXP_ERR_SW_PUSHED_MSG_FIFO,),
+    "05": (EXP_ERR_INCORRECT_ENTROPY_MODE,),
+    "07": (EXP_ERR_INCORRECT_FUNCTION_NAME,),
+    "08": (EXP_ERR_SW_CMD_SEQUENCE, EXP_ERR_SHA3_CONTROL),
+}
+_ERR_LEGS = tuple(_ERR_EXPECTED)
+_ENTROPY_MODE = KMAC.field_mask("CFG_SHADOWED", "entropy_mode")
+_ENTROPY_MODE_LSB = KMAC.field_lsb("CFG_SHADOWED", "entropy_mode")
+_ENTROPY_READY = KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
+_IDLE_MODE = _hjson_enum("CFG_SHADOWED", "entropy_mode", ("idle_mode",))["idle_mode"]
+
 # Pass label values of the owned bins (``set_kmac_unsup_pass``).
-PASS_BLOCKED, PASS_RECOVER, PASS_ENABLED = 1, 2, 3
+PASS_BLOCKED, PASS_RECOVER, PASS_ENABLED, PASS_ERRCODE = 1, 2, 3, 4
 # clk_i edges the label stays high, so the sampler sees its rise while the
 # owner window is open.
 _PASS_HOLD_CLK = 2
@@ -242,6 +319,9 @@ class Plan:
     sha3_msg: bytes
     rsvd_strength: int
     rsvd_msg: bytes
+    err02_word: int
+    err07_key: tuple[int, ...]
+    err_msgs: tuple[bytes, ...]  # recovery message of each error-code leg
 
 
 def _draw_message(rng: SepSeededRng, nbytes: int) -> bytes:
@@ -267,6 +347,10 @@ def draw_plan(seed: int) -> Plan:
     sha3_msg = _draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1))
     rsvd_strength = rng.choice(_DRAW_STRENGTHS)
     rsvd_msg = _draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1))
+    # Drawn after the draws above, so their values for a seed stay as they are.
+    err02_word = rng.randrange(1, 1 << 32)
+    err07_key = tuple(rng.randrange(1, 1 << 32) for _ in range(KMAC_KEY_WORDS))
+    err_msgs = tuple(_draw_message(rng, rng.randrange(0, _MSG_MAX_BYTES + 1)) for _ in _ERR_LEGS)
     return Plan(
         tuple(supported),
         tuple(blocked),
@@ -275,6 +359,9 @@ def draw_plan(seed: int) -> Plan:
         sha3_msg,
         rsvd_strength,
         rsvd_msg,
+        err02_word,
+        err07_key,
+        err_msgs,
     )
 
 
@@ -304,6 +391,10 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         "CHK-KMAC-ERRPROC",
         "CHK-KMAC-ERRCODE",
         "CHK-KMAC-MODE01-DONE",
+        "CHK-KMAC-ERR-02",
+        "CHK-KMAC-ERR-05",
+        "CHK-KMAC-ERR-07",
+        "CHK-KMAC-ERR-08",
     )
 
     # --- grading and the coverage window -------------------------------------
@@ -385,21 +476,25 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         if not ok:
             raise AssertionError(f"KMAC not idle after reset (STATUS=0x{status:08x})")
 
-    async def _arm_cell(self, mode: str, strength: int, en_unsup: int) -> tuple[int, int, int]:
-        """Reset, read the reset values, write PREFIX (cSHAKE) and CFG_SHADOWED twice.
-
-        Returns INTR_STATE and ERR_CODE before the writes and the CFG_SHADOWED
-        readback after them.
-        """
+    async def _arm_reset(self) -> tuple[int, int]:
+        """Reset with the window closed, reopen it, and return INTR_STATE and ERR_CODE."""
         close_graded_window()
         await self._reset_kmac()
         self._open_window()
-        pre_intr = await self._rd(KMAC_INTR_STATE)
-        pre_code = await self._rd(KMAC_ERR_CODE)
+        return await self._rd(KMAC_INTR_STATE), await self._rd(KMAC_ERR_CODE)
+
+    async def _arm_cell(self, mode: str, strength: int, en_unsup: int) -> tuple[int, int, int]:
+        """Reset, write PREFIX (cSHAKE) and CFG_SHADOWED twice.
+
+        Returns INTR_STATE and ERR_CODE read after the writes and before the
+        start, and the CFG_SHADOWED readback.
+        """
+        await self._arm_reset()
         if mode == "cshake":
             await self.kmac._write_prefix(_CSHAKE_EMPTY_PREFIX)
         await self._write_cfg(_cfg_word(mode, strength, en_unsup))
-        return pre_intr, pre_code, await self._rd(KMAC_CFG_SHADOWED)
+        cfg_rb = await self._rd(KMAC_CFG_SHADOWED)
+        return await self._rd(KMAC_INTR_STATE), await self._rd(KMAC_ERR_CODE), cfg_rb
 
     # --- scenario -------------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -440,6 +535,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         await self._sha3_cell(seed, plan, t_clean)
         await self._enabled_group(plan, t_clean, blocked_absorb)
         await self._rsvd_enabled_cell(plan, t_clean)
+        await self._err_code_legs(seed, plan, t_clean)
 
         self._graded = False
         close_graded_window()
@@ -814,3 +910,117 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             state=":".join(f"{w:08x}" for w in state),
         )
         await self._reset_kmac()
+
+    async def _err_code_legs(self, seed: int, plan: Plan, t_clean: int) -> None:
+        """CHK-KMAC-ERR-02, -05, -07 and -08 inside the owner window, each with its recovery."""
+        bound = _ERR_BOUND_MULT * t_clean
+        self._graded = True
+        legs = (self._err02, self._err05, self._err07, self._err08)
+        for leg, name, msg in zip(legs, _ERR_LEGS, plan.err_msgs):
+            pre_intr, pre_code = await self._arm_reset()
+            extra = await leg(plan)
+            t0 = self._now_clk()
+            seen, intr, err_clk = await self._poll(KMAC_INTR_STATE, _ERR, t0, bound)
+            code = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
+            expected = _ERR_EXPECTED[name]
+            ok = (
+                seen
+                and (pre_intr & _ERR) == 0
+                and (pre_code & _ERR_CODE_MASK) == 0
+                and _bits(intr, _ERR) == 1
+                and _code(code) in expected
+            )
+            if name == "07":
+                run_ok, run_fields = await self._err07_finish(plan)
+                ok = ok and run_ok and extra["prefix_rd"] == _CSHAKE_EMPTY_PREFIX_RD
+                extra = {**extra, **run_fields}
+            elif name == "05":
+                await self._write_cfg(self._err05_word() & ~_ENTROPY_READY)
+            if self._grade(
+                f"KMAC-ERR-{name}",
+                ok,
+                seed=seed,
+                pre_err=_bits(pre_intr, _ERR),
+                pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
+                err=_bits(intr, _ERR),
+                err_clk=err_clk,
+                bound=bound,
+                code=f"0x{_code(code):02x}",
+                expected="/".join(f"0x{e:02x}" for e in expected),
+                debug=f"0x{code & 0xFF_FFFF:06x}",
+                **extra,
+                **({} if seen else {"reason": "timeout"}),
+            ):
+                await self._passed(PASS_ERRCODE)
+            await self._recover(seed, f"err{name}", _RECOVER_STRENGTH, msg)
+        self._graded = False
+        close_graded_window()
+
+    async def _err02(self, plan: Plan) -> dict:
+        """SHA3-256 configuration at idle, then one 32-bit MSG_FIFO write and no start."""
+        await self._write_cfg(_cfg_word("sha3", 256, 0))
+        seq = SepAxiAccessSeq(
+            "kmac_err02_msg_wr",
+            op=SepAxiOp.WRITE,
+            addr=KMAC_MSG_FIFO,
+            wdata=plan.err02_word,
+            length=4,
+            size=2,
+            allow_unverified_write_resp=True,
+        )
+        await self.start_seq(seq)
+        return {"msg_word": f"0x{plan.err02_word:08x}", "wr_resp": seq.resp_code}
+
+    @staticmethod
+    def _err05_word() -> int:
+        """SHA3-256 configuration with entropy_mode = idle_mode and entropy_ready = 1."""
+        return (_cfg_word("sha3", 256, 0) & ~_ENTROPY_MODE) | (_IDLE_MODE << _ENTROPY_MODE_LSB)
+
+    async def _err05(self, plan: Plan) -> dict:
+        """CFG_SHADOWED with entropy_mode = idle_mode and entropy_ready = 1."""
+        word = self._err05_word()
+        await self._write_cfg(word)
+        return {"cfg": f"0x{word:08x}"}
+
+    async def _err07(self, plan: Plan) -> dict:
+        """Keyed cSHAKE-256 with a PREFIX whose function name is not "KMAC", then start."""
+        await self._wr(KMAC_KEY_LEN, KMAC_KEYLEN[256])
+        await self.kmac._write_prefix(_CSHAKE_EMPTY_PREFIX)
+        prefix_rd = [await self._rd(addr) for addr in KMAC_PREFIX]
+        for i, word in enumerate(plan.err07_key):
+            await self._wr(KMAC_KEY_SHARE0[i], word)
+            await self._wr(KMAC_KEY_SHARE1[i], 0)
+        cfg = build_kmac_cfg(
+            mode=KMAC_MODE["cshake"], kstrength=KMAC_STRENGTH[256], kmac_en=True, sideload=False
+        )
+        await self._write_cfg(cfg)
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        return {
+            "cfg": f"0x{cfg:08x}",
+            "prefix": _CSHAKE_EMPTY_PREFIX.hex(),
+            "prefix_rd": ":".join(f"{w:08x}" for w in prefix_rd),
+        }
+
+    async def _err07_finish(self, plan: Plan) -> tuple[bool, dict]:
+        """One message word and right_encode(256), process, squeeze, done, idle."""
+        msg = plan.err07_key[0].to_bytes(4, "little") + right_encode(KMAC_KEYED_OUT_BITS)
+        await self.kmac._push_msg_bytes(msg)
+        t1 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
+        sq, _, sq_clk = await self._poll(KMAC_STATUS, _SQUEEZE, t1, _OUTER_CLK)
+        idle = False
+        if sq:
+            await self._wr(KMAC_CMD, KMAC_CMD_DONE)
+            idle, _, _ = await self._poll(KMAC_STATUS, _IDLE, self._now_clk(), _OUTER_CLK)
+        return sq and idle, {
+            "run_squeeze": int(sq),
+            "run_squeeze_clk": sq_clk,
+            "run_idle": int(idle),
+            "run_bound": _OUTER_CLK,
+        }
+
+    async def _err08(self, plan: Plan) -> dict:
+        """SHA3-256 configuration at idle, then CMD = process with no start."""
+        await self._write_cfg(_cfg_word("sha3", 256, 0))
+        await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
+        return {"cmd": "process"}

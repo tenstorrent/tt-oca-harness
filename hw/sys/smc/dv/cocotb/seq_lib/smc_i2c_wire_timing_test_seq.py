@@ -26,13 +26,14 @@ adds T_R to every interval it opens on a rise and T_F to every interval it opens
 A2 raises the two fields by different amounts, so each measured phase has to move by the raise
 of the field its opening edge carries, and the SCL period by their sum.
 
-The controller's data setup on the wire equals TLOW - THD_DAT and does not move with TSU_DAT
-(printed as OBS-I2C-WIRE-CTRL-DATA-SETUP; whether the field's description should say so is a
-question for the specification). The field is graded where its effect is observable: I2C0 is
-re-enabled as a target, the bench controller reads one byte from an empty transmit FIFO so the
-target stretches, the byte is written while it stretches, and the time from the target's SDA
-edge to the SCL rise it releases is measured under two TSU_DAT values; the difference equals the
-programmed difference.
+The controller's data setup on the wire is TLOW - THD_DAT, the formula i2c.rdl gives for a
+controller (TSU_DAT is a target-side field): the SDA setup before the SCL rise of every
+transmitted bit whose SDA changes in the low phase, in sets A, B and C, must equal it
+(CHK-I2C-WIRE-CTRL-DATA-SETUP). TSU_DAT is graded
+where the target applies it: I2C0 is re-enabled as a target, the bench controller reads one byte
+from an empty transmit FIFO so the target stretches, the byte is written while it stretches, and
+the time from the target's SDA edge to the SCL rise it releases is measured under two TSU_DAT
+values; the difference equals the programmed difference.
 
 Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 4, every other field 1)
 is a liveness run of transfer Y at the smallest setting the leaf grades: i2c.rdl states THIGH and
@@ -193,6 +194,7 @@ CHK_BY_STEP = {
     "CHK-I2C-WIRE-SCL-PERIOD-DELTA": "S4",
     "CHK-I2C-WIRE-TRTF-DELTA": "S5",
     "CHK-I2C-WIRE-MEASURED-ONLY": "S6",
+    "CHK-I2C-WIRE-CTRL-DATA-SETUP": "S4",
     "CHK-I2C-WIRE-DATA-SETUP-DELTA": "S7",
     "CHK-I2C-WIRE-DATA-HOLD-DELTA": "S4",
     "CHK-I2C-WIRE-NACK-HOLD-DELTA": "S4",
@@ -942,17 +944,22 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         for tag in ("A", "B", "C"):
             seen = self.meas[tag]["setup"]
             assert seen, f"{tag}: no transmitted-bit SDA setup sample"
-            setup_parts.append(
-                f"{tag}: measured setup min={min(seen.values())} max={max(seen.values())} over "
-                f"{len(seen)} bits, programmed TSU_DAT={s[tag]['tsu_dat']} "
-                f"TLOW-THD_DAT={s[tag]['tlow'] - s[tag]['thd_dat']}"
+            want = s[tag]["tlow"] - s[tag]["thd_dat"]
+            off = {n: v for n, v in seen.items() if v != want}
+            assert not off, (
+                f"CHK-I2C-WIRE-CTRL-DATA-SETUP: {tag}: the controller's SDA setup before the SCL "
+                f"rise of transmitted bits {off} is not TLOW - THD_DAT = {want} (TLOW "
+                f"{s[tag]['tlow']}, THD_DAT {s[tag]['thd_dat']}, TSU_DAT {s[tag]['tsu_dat']})"
             )
-        cocotb.log.info(
-            "OBS-I2C-WIRE-CTRL-DATA-SETUP: measured only, nothing compared: the controller's SDA "
-            "setup before the SCL rising edge of a transmitted data bit in cycles, %s; "
-            "the controller's setup equals TLOW - THD_DAT and does not move with TSU_DAT; the "
-            "field is graded on the target",
-            "; ".join(setup_parts),
+            setup_parts.append(
+                f"{tag}: {len(seen)} bits at {want} = TLOW {s[tag]['tlow']} - THD_DAT "
+                f"{s[tag]['thd_dat']} with TSU_DAT {s[tag]['tsu_dat']}"
+            )
+        self._chk(
+            "CHK-I2C-WIRE-CTRL-DATA-SETUP",
+            "the controller's SDA setup before the SCL rise of every transmitted bit whose SDA "
+            "changes in the low phase equals TLOW - THD_DAT in each set (an additive TSU_DAT "
+            "contribution would lengthen it): " + "; ".join(setup_parts),
         )
         lo, hi = TARGET_TSU_DAT
         got = self.target_setup[hi] - self.target_setup[lo]

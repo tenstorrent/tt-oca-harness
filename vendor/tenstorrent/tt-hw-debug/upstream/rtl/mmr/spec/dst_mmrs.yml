@@ -251,7 +251,7 @@ trDstImpl:
     FIELDS_RANGE: '31:31'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: 'DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.'
+    DESCRIPTION: 'DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.'
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''

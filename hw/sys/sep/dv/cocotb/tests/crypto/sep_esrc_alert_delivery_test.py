@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An ESRC persistent failure raises the alert on PIC source 16, and W1C clears it.
 
-no_cpu / +skip_fuse_sense / +esrc_noise_force. RAND-NONE. A short
+no_cpu / +skip_fuse_sense / +esrc_noise_force. A short
 health-test window plus stuck forced noise accumulates one failing
 window and trips ``ALERT_THRESHOLD``. Proves ``MAIN_SM_STATUS.ALERT``,
 ``INTR_STATUS.PERSISTENT_FAILURE``, and ``sep_internal_interrupts[15]``
@@ -17,8 +17,32 @@ so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
 state fault. ``OBS-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
 HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
 and states no value. An opening INTR_TEST sweep, before the trip, drives each interrupt
-source the RDL defines on its own. This proves the aggregate slot per source
-without a real failure.
+source the RDL defines on its own, from ``INTR_STATUS`` = 0 and PIC source 16 at 0.
+Each source must set only its own bit and clear on W1C, which leaves ``INTR_STATUS``
+= 0 and PIC source 16 at 0. While the source is set, PIC source 16 is graded 1 for
+``PERSISTENT_FAILURE`` only and is logged (``OBS-INTR-TEST-PIC16``) for the other
+sources, for the same reason as in the pair walk below.
+
+A pair walk follows the sweep, with every enable set. Each source is a target i once,
+with a partner j != i; one INTR_TEST write sets both. A write of one to i leaves exactly
+j set (``INTR_STATUS`` fields are woclr, ``entropy_source.rdl``:108-166; ``INTR_TEST``
+fields are singlepulse, :212-262), and a write of one to j leaves ``INTR_STATUS`` = 0
+and PIC source 16 at 0. While only j is set, PIC source 16 is graded 1 when j is
+``PERSISTENT_FAILURE`` (the persistent-failure interrupt is source 16,
+``hw/sys/sep/doc/interrupts.adoc``:22-24, :109-111; entropy_source.rdl:193) and is
+logged (``OBS-INTR-PAIR-PIC16``) for any other j: the register text does not state
+which other enabled status bits drive source 16. One pair per seed has
+j = ``PERSISTENT_FAILURE``; the PASS line counts those pairs (``pf_j_pairs``).
+
+``CTRL-ALERT-ARM`` reads back ALERT_THRESHOLD, HEALTH_TEST_WINDOW_SIZE and
+HEALTH_TEST_CTRL after the trip setup writes them; each must hold the written value.
+``CTRL-PF-ENABLE`` reads INTR_ENABLE back as the PERSISTENT_FAILURE bit alone before
+the trip. ``CTRL-MODULE-OFF`` reads CTRL.MODULE_ENABLE back as 0 before the alert
+W1C, and ``CTRL-HT-OFF`` reads HEALTH_TEST_CTRL.ENABLE back as 0 before the
+health-status W1C. A failing control fails the leaf.
+
+Randomization (``SepSeededRng`` from the run seed): the order of the targets, the
+target whose partner is ``PERSISTENT_FAILURE``, and the partner of every other target.
 """
 
 from __future__ import annotations
@@ -26,7 +50,9 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import ENTROPY_SOURCE
 from seq_lib.sep_esrc_alert_seq import (
     ALERT_MASK,
     ANY_FAIL_SLACK,
@@ -36,7 +62,15 @@ from seq_lib.sep_esrc_alert_seq import (
     IRQ_AGG_IDX,
     PF_MASK,
     TRIP_THRESHOLD,
+    TRIP_WINDOW,
     SepEsrcAlert,
+)
+from seq_lib.sep_esrc_bringup_seq import (
+    ESRC_ALERT_THRESHOLD,
+    ESRC_CTRL,
+    ESRC_HEALTH_TEST_CTRL,
+    ESRC_HEALTH_TEST_WINDOW_SIZE,
+    ESRC_INTR_ENABLE,
 )
 
 _TRIP_TIMEOUT_CYCLES = 80_000
@@ -48,6 +82,35 @@ _TRIP_POLL_EVERY = 64
 @pyuvm.test()
 class sep_esrc_alert_delivery_test(sep_base_test):
     """A persistent failure sets ALERT and PIC source 16, and W1C clears both."""
+
+    required_evidence = ("CHK-INTR-PAIR-W1C",)
+
+    async def _check_arm(self, esrc: SepEsrcAlert) -> None:
+        """CTRL-ALERT-ARM: each trip setup register reads back its written value."""
+        want = {
+            "ALERT_THRESHOLD": (ESRC_ALERT_THRESHOLD, TRIP_THRESHOLD),
+            "HEALTH_TEST_WINDOW_SIZE": (ESRC_HEALTH_TEST_WINDOW_SIZE, TRIP_WINDOW),
+            "HEALTH_TEST_CTRL": (
+                ESRC_HEALTH_TEST_CTRL,
+                ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", ENABLE=0x7, REPETITION_LIMIT=5),
+            ),
+        }
+        got = {}
+        for reg, (addr, value) in want.items():
+            mask = ENTROPY_SOURCE.mask(reg)
+            got[reg] = (await esrc._rd(addr) & mask, value & mask)
+        text = " ".join(f"{reg}=0x{rb:08x}/0x{wr:08x}" for reg, (rb, wr) in got.items())
+        assert all(rb == wr for rb, wr in got.values()), f"CTRL-ALERT-ARM FAIL: read/written {text}"
+        self.logger.info("CTRL-ALERT-ARM PASS: read/written %s", text)
+
+    async def _check_field(
+        self, esrc: SepEsrcAlert, tag: str, addr: int, reg: str, field: str, want: int
+    ) -> None:
+        """Read ``reg.field`` back and require ``want``; a mismatch fails the leaf."""
+        meta = ENTROPY_SOURCE.fields(reg)[field]
+        got = (await esrc._rd(addr) & meta["bm"]) >> meta["bp"]
+        assert got == want, f"{tag} FAIL: {reg}.{field} reads 0x{got:x}, expected 0x{want:x}"
+        self.logger.info("%s PASS: %s.%s reads 0x%x", tag, reg, field, got)
 
     def _irq_bit(self) -> int:
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
@@ -77,15 +140,16 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         # state. Sweep before the trip: INTR_STATUS bits are re-driven every cycle
         # from their live cause, so once a real health-test failure is latched the
         # matching bit cannot clear on W1C. From the clean pre-trip state each
-        # source must set only its own bit, raise the aggregate slot, and clear.
+        # source must set only its own bit and clear on W1C. Source 16 is graded 1
+        # for PERSISTENT_FAILURE only; for any other source it is logged.
         await esrc.enable_all_irq()
         proven: list[str] = []
+        pf_sources = 0
         for name, bm in INTR_SOURCES:
-            # Each source starts from a dropped line, so its irq == 1 below is
-            # its own and not one left high by the source before it.
-            assert self._irq_bit() == 0, (
-                f"CHK-INTR-TEST FAIL: sep_internal_interrupts[{IRQ_AGG_IDX}] already high "
-                f"before the {name} pulse"
+            st0 = await esrc.read_intr()
+            assert st0 == 0 and self._irq_bit() == 0, (
+                f"CHK-INTR-TEST FAIL: INTR_STATUS=0x{st0:08x} or "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}] high before the {name} pulse"
             )
             await esrc.pulse_intr_test(bm)
             st = await esrc.read_intr()
@@ -98,30 +162,47 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                 f"CHK-INTR-TEST FAIL: {name} pulse also set 0x{st & ~bm & 0xFFFF_FFFF:08x}; "
                 f"sources are not independent"
             )
-            assert irq == 1, (
-                f"CHK-INTR-TEST FAIL: {name} set INTR_STATUS but "
-                f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
-            )
+            if bm == PF_MASK:
+                pf_sources += 1
+                assert irq == 1, (
+                    f"CHK-INTR-TEST FAIL: {name} set INTR_STATUS with its enable but "
+                    f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
+                )
+            else:
+                self.logger.info("OBS-INTR-TEST-PIC16 %s pic16=%d", name, irq)
             await esrc.w1c_intr_status(bm)
             st_after = await esrc.read_intr()
-            assert (st_after & bm) == 0, (
-                f"CHK-INTR-TEST FAIL: {name} did not clear on W1C "
-                f"(INTR_STATUS=0x{st_after:08x}); a single-pulse source must not re-latch"
-            )
-            assert self._irq_bit() == 0, (
-                f"CHK-INTR-TEST FAIL: {name} cleared INTR_STATUS but "
-                f"sep_internal_interrupts[{IRQ_AGG_IDX}] stayed high"
+            irq_after = self._irq_bit()
+            assert st_after == 0 and irq_after == 0, (
+                f"CHK-INTR-TEST FAIL: {name} W1C left INTR_STATUS=0x{st_after:08x} "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}]={irq_after}, expected both 0; "
+                "a single-pulse source must not re-latch"
             )
             proven.append(name)
+        assert pf_sources == 1, (
+            f"CHK-INTR-TEST FAIL: the sweep graded PERSISTENT_FAILURE {pf_sources} times, "
+            "expected 1"
+        )
         self.logger.info(
-            "CHK-INTR-TEST PASS: all %d INTR_TEST sources set their own INTR_STATUS bit, "
-            "raised PIC source 16 from a dropped line, and dropped it again on W1C: %s",
+            "CHK-INTR-TEST PASS: all %d INTR_TEST sources set only their own INTR_STATUS bit "
+            "and cleared it on W1C with source 16 low; PERSISTENT_FAILURE raised source 16; "
+            "pf_sources=%d: %s",
             len(proven),
+            pf_sources,
             ", ".join(proven),
         )
 
+        await self._pair_walk(esrc)
+
         await esrc.enable_persistent_irq()
+        en = await esrc._rd(ESRC_INTR_ENABLE) & ENTROPY_SOURCE.mask("INTR_ENABLE")
+        assert en == PF_MASK, (
+            f"CTRL-PF-ENABLE FAIL: INTR_ENABLE reads 0x{en:08x}, expected only "
+            f"PERSISTENT_FAILURE 0x{PF_MASK:08x}"
+        )
+        self.logger.info("CTRL-PF-ENABLE PASS: INTR_ENABLE reads 0x%08x", en)
         await esrc.arm_failing_windows()
+        await self._check_arm(esrc)
 
         dut = cocotb.top
         sm = st = 0
@@ -249,6 +330,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
 
         await esrc.leave_alert_hang()
+        await self._check_field(esrc, "CTRL-MODULE-OFF", ESRC_CTRL, "CTRL", "MODULE_ENABLE", 0)
         sm_before_w1c = await esrc.read_main_sm()
         st_before_w1c = await esrc.read_intr()
         assert (sm_before_w1c & ALERT_MASK) and (st_before_w1c & PF_MASK), (
@@ -275,6 +357,9 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         # With every test disabled no fail signal can re-latch a bit, so the latch
         # still holds the trip bits before the write and reads 0 after it.
         await esrc.disable_health_tests()
+        await self._check_field(
+            esrc, "CTRL-HT-OFF", ESRC_HEALTH_TEST_CTRL, "HEALTH_TEST_CTRL", "ENABLE", 0
+        )
         ht_live = await esrc.read_health_status()
         assert (ht_live & ht_status) == ht_status, (
             f"CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS lost trip bits without a write "
@@ -291,4 +376,63 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             "after ENABLE=0, and W1C of every latched bit reads back 0x00",
             ht_status,
             ht_live,
+        )
+
+    async def _pair_walk(self, esrc: SepEsrcAlert) -> None:
+        """CHK-INTR-PAIR-W1C: each target i clears alone from a pair {i, j} set by INTR_TEST."""
+        rng = SepSeededRng(self.random_seed())
+        targets = list(INTR_SOURCES)
+        rng.shuffle(targets)
+        pf = next(src for src in INTR_SOURCES if src[1] == PF_MASK)
+        pf_target = rng.choice([src for src in INTR_SOURCES if src != pf])
+        pairs: list[str] = []
+        pf_j_pairs = 0
+        for i_name, bi in targets:
+            j_name, bj = (
+                pf
+                if (i_name, bi) == pf_target
+                else rng.choice([src for src in INTR_SOURCES if src[1] != bi])
+            )
+            tag = f"i={i_name} j={j_name}"
+            st0 = await esrc.read_intr()
+            assert st0 == 0 and self._irq_bit() == 0, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} INTR_STATUS=0x{st0:08x} or source 16 high "
+                "before the pair"
+            )
+            await esrc.pulse_intr_test(bi | bj)
+            st_pair = await esrc.read_intr()
+            assert st_pair == bi | bj, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} INTR_TEST of both left "
+                f"INTR_STATUS=0x{st_pair:08x}, expected 0x{bi | bj:08x}"
+            )
+            await esrc.w1c_intr_status(bi)
+            st_j = await esrc.read_intr()
+            irq_j = self._irq_bit()
+            assert st_j == bj, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} W1C of i left INTR_STATUS=0x{st_j:08x}, "
+                f"expected only j 0x{bj:08x}"
+            )
+            if bj == PF_MASK:
+                pf_j_pairs += 1
+                assert irq_j == 1, (
+                    f"CHK-INTR-PAIR-W1C FAIL: {tag} PERSISTENT_FAILURE set alone with its enable "
+                    f"but sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
+                )
+            else:
+                self.logger.info("OBS-INTR-PAIR-PIC16 %s pic16=%d", tag, irq_j)
+            await esrc.w1c_intr_status(bj)
+            st_end = await esrc.read_intr()
+            irq_end = self._irq_bit()
+            assert st_end == 0 and irq_end == 0, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} W1C of j left INTR_STATUS=0x{st_end:08x} "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}]={irq_end}, expected both 0"
+            )
+            pairs.append(f"{i_name}/{j_name}")
+        assert pf_j_pairs >= 1, "CHK-INTR-PAIR-W1C FAIL: no pair had j = PERSISTENT_FAILURE"
+        self.logger.info(
+            "CHK-INTR-PAIR-W1C PASS: %d targets each cleared alone from its pair, then the "
+            "partner cleared INTR_STATUS to 0 and dropped source 16; pf_j_pairs=%d pairs=%s",
+            len(pairs),
+            pf_j_pairs,
+            ",".join(pairs),
         )

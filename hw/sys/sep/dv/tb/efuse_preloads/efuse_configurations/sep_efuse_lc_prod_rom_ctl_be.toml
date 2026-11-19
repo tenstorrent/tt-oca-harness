@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle with ROM_CTL selecting big-endian ROM data out.
+#
+# This file is sep_efuse_lc_prod.toml plus ROM_CTL.rom_endianness_ctrl = 1, with
+# ROM_CTL.rom_swap_ctrl left at 0. Used by the sep_boot_rom_aperture_sweep_test_rom_be
+# entry of testlists/memory.toml.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[ROM_CTL]
+  [ROM_CTL.fields.rom_endianness_ctrl]
+  value = 0x1   # 1 -> big endian
+  [ROM_CTL.fields.rom_swap_ctrl]
+  value = 0x0
