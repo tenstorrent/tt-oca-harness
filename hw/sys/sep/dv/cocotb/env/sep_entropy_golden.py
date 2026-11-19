@@ -41,6 +41,9 @@ Inter-stage framing (matches ``SepDrbgScoreboard``):
     beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
     No TT text states this beat order; the golden assumes it, and the
     scoreboard grades the DUT probe against it.
+  - compressor bypass (CTRL.BYPASS_ENTROPY_COMPRESSOR): BIW and SHA are skipped;
+    every (DOWNSAMPLE_RATE+1)th decor sample becomes three 32b words
+    (``bypass_pack_words``) that feed the seed packer.
 """
 
 from collections import deque
@@ -58,6 +61,24 @@ from sep_ctr_drbg_golden import BLOCK_LEN, SEED_LEN, SepCtrDrbgGolden
 
 SEED_WORDS = SEED_LEN // 32  # 12 compressor words make one 384b seed
 KM_BEATS_PER_BLOCK = BLOCK_LEN // 32  # 4 x 32b beats per 128b genbits block
+BYTES_PER_WORD = 4
+
+
+def bypass_pack_words(lane_bytes):
+    """Pack the 12 decorrelator lane bytes of one output into the 3 bypass words.
+
+    Word n carries generators 4n..4n+3, generator 4n+k in bits [8k+7:8k]; the
+    list is in FIFO order, word 0 first (entropy_source.rdl
+    CTRL.BYPASS_ENTROPY_COMPRESSOR; entropy_source architecture.adoc, bypass
+    packing).
+    """
+    lane_bytes = list(lane_bytes)
+    if len(lane_bytes) != MAX_LANES or any(not 0 <= b <= 0xFF for b in lane_bytes):
+        raise ValueError(f"expected {MAX_LANES} byte values, got {lane_bytes!r}")
+    return [
+        sum(lane_bytes[BYTES_PER_WORD * n + k] << (8 * k) for k in range(BYTES_PER_WORD))
+        for n in range(MAX_LANES // BYTES_PER_WORD)
+    ]
 
 
 class SepEntropyGolden:
@@ -91,6 +112,8 @@ class SepEntropyGolden:
         noise_model_mode="unbiased",
         noise_seed_base=0x1234_5678,
         km_word_order="lsw",
+        compressor_bypass=False,
+        downsample_rate=0,
     ):
         self.sample_clk_div = sample_clk_div
         self.byte_mask = byte_mask & 0xFF
@@ -101,6 +124,10 @@ class SepEntropyGolden:
         if km_word_order not in ("lsw", "msw"):
             raise ValueError("km_word_order must be 'lsw' or 'msw'")
         self.km_word_order = km_word_order
+        self.compressor_bypass = bool(compressor_bypass)
+        if downsample_rate < 0:
+            raise ValueError("downsample_rate must be >= 0")
+        self.downsample_rate = downsample_rate
 
         # --- standalone self-test noise source ----------------------------
         self._noise = EntropyNoiseModel()
@@ -203,6 +230,15 @@ class SepEntropyGolden:
         decor_word &= (1 << 96) - 1
         self.expected_decor_bytes.append(decor_word)
         self.n_decor_valid += 1
+
+        # Of the samples fed since construction, outputs N, 2N+1, ... (0-based) are
+        # selected, so the caller builds the chain at the TRNG reset.
+        if self.compressor_bypass:
+            if self.n_decor_valid % (self.downsample_rate + 1) == 0:
+                lane_bytes = [(decor_word >> (8 * lane)) & 0xFF for lane in range(MAX_LANES)]
+                for w in bypass_pack_words(lane_bytes):
+                    self._consume_compress_word(w)
+            return
 
         # BIW compress: 12 lane-bytes -> one 32b word.
         biw_word = EntropyBiwModel.compress_from_packed(decor_word)
@@ -421,6 +457,37 @@ if __name__ == "__main__":
     for i, w in enumerate(km0):  # beat0 -> [31:0]
         recon |= (w & 0xFFFFFFFF) << (32 * i)
     assert recon == blk0, f"KM beats don't reconstruct genbits block: {recon:032x} != {blk0:032x}"
+
+    # ----- (e) compressor bypass: packing order and every (N+1)th sample -----
+    assert bypass_pack_words(range(MAX_LANES)) == [0x03020100, 0x07060504, 0x0B0A0908]
+    for bad in ([0] * (MAX_LANES - 1), [0x100] + [0] * (MAX_LANES - 1)):
+        try:
+            bypass_pack_words(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"bypass_pack_words accepted {bad!r}")
+    RATE = 2
+    bp = SepEntropyGolden(compressor_bypass=True, downsample_rate=RATE, sha_whitening=False)
+    samples = []
+    # One seed: SEED_WORDS / 3 selected outputs of three words each.
+    for i in range(SEED_WORDS // (MAX_LANES // BYTES_PER_WORD) * (RATE + 1)):
+        word = sum(((0x11 * i + lane) & 0xFF) << (8 * lane) for lane in range(MAX_LANES))
+        samples.append(word)
+        bp.feed_decor_sample(word)
+
+    def lanes(word):
+        return [(word >> (8 * k)) & 0xFF for k in range(MAX_LANES)]
+
+    want = [w for s in samples[RATE :: RATE + 1] for w in bypass_pack_words(lanes(s))]
+    assert list(bp.expected_compress_words) == want, "bypass words or downsample phase differ"
+    assert len(want) == SEED_WORDS and bp.n_seeds == 1, f"bypass seeds={bp.n_seeds}"
+    assert bp.expected_seed[0] == sum(w << (32 * i) for i, w in enumerate(want[:SEED_WORDS]))
+    every = SepEntropyGolden(compressor_bypass=True)
+    every.feed_decor_sample(samples[0])
+    assert list(every.expected_compress_words) == bypass_pack_words(lanes(samples[0])), (
+        "downsample_rate=0 must take every sample"
+    )
 
     # ----- reference hexes (fixed seed = EntropyNoiseModel default config) -----
     seed0 = g.expected_seed[0]

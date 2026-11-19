@@ -73,7 +73,7 @@ declares no Xcelium target of its own -- only the shared
 selects.
 
 **Frameworks.** cocotb/PyUVM is the default framework and the one every
-enrolled group runs. Five scenarios also carry a SystemVerilog UVM
+enrolled group runs. Eight scenarios also carry a SystemVerilog UVM
 implementation of the same name, selected with `--framework uvm` on VCS or
 Verilator (see "SystemVerilog UVM framework" below); the SV-UVM view shares the sim
 config, the testlist and the testbench top with the cocotb flow.
@@ -197,9 +197,15 @@ the figures are reported and none is gated. The bench architecture is in
 `docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
 conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
-Five scenarios are bound, each covering a different class of SMU behaviour,
+Eight scenarios are bound, each covering a different class of SMU behaviour,
 and each judged by an always-on scoreboard feature whose reference model is
-independent of the sequence that drove the stimulus:
+independent of the sequence that drove the stimulus. The mailbox and watchdog
+scenarios also grade the register contract with named `CHK-*` records of their
+sequence, each with its own negative plusarg. A bound scenario grades the checkers
+of its cocotb procedure except those `docs/SMU_VPLAN.adoc` ("SV-UVM bound scenarios")
+names as cocotb-only: for `smu_ext_boot_seq_gate_test` the SEP reset and re-gate
+checkers, for `smu_jtag_reset_override_test` the staged, SS/SEP walk and SEP-domain
+checkers, and for `smu_dtp_jtag_smoke_test` the step-order fence.
 
 | Scenario | Aspect | Scoreboard feature | Negative plusarg |
 |---|---|---|---|
@@ -208,6 +214,9 @@ independent of the sequence that drove the stimulus:
 | `smu_smc_dtp_jtag2axi_smoke_test` | SMC-fabric JTAG2AXI: CAPS, SINGLE_OP 32- and 64-bit write/readback, series INCR write/readback | the embedded DTP's `jtag2axi_req` (passive monitor on the DTP's SMC debug port) and `jtag2axi_status` | `+SMU_J2A_SCOREBOARD_NEGATIVE` |
 | `smu_boot_stall_jtag_cold_reset_matrix_test` | DEBUG_CONTROL boot stall across cold reset, TRST and the GPIO pad, on the real eFuse sense | `debug_control_tdr`, `boot_gate` | `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE`, `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` |
 | `smu_ext_boot_seq_gate_test` | the external boot-sequence gate on the SMC fuse-reset release | `boot_gate` | `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` |
+| `smu_smc_mailbox_sanity_test` | SMC outbound mailbox 0 over the SMC-fabric JTAG2AXI bridge: idle STATUS and ERROR_FLAGS, IRQEN write, readback and clear | the embedded DTP's `ir_decode`, `jtag2axi_req`, `jtag2axi_status` | `+SMU_MBX_JTAG_READY_NEGATIVE`, `+SMU_MBX_STATUS_NEGATIVE`, `+SMU_MBX_ERR_FLAGS_NEGATIVE`, `+SMU_MBX_IRQEN_NEGATIVE`, `+SMU_MBX_IRQEN_CLR_NEGATIVE`, `+SMU_J2A_SCOREBOARD_NEGATIVE` |
+| `smu_smc_wdt_sanity_test` | SMC CORE0 watchdog over the SMC-fabric JTAG2AXI bridge: CMP reset value, locked CTRL write, KEY unlock, CMP programming, restore of CMP and CTRL | the embedded DTP's `ir_decode`, `jtag2axi_req`, `jtag2axi_status` | `+SMU_WDT_SANITY_GATE_OPEN_NEGATIVE`, `+SMU_WDT_CMP_DEFAULT_NEGATIVE`, `+SMU_WDT_CTRL_LOCKED_NEGATIVE`, `+SMU_WDT_KEY_UNLOCKED_NEGATIVE`, `+SMU_WDT_CTRL_UNLOCKED_NEGATIVE`, `+SMU_WDT_UNLOCK_NEGATIVE`, `+SMU_WDT_RESTORE_NEGATIVE`, `+SMU_J2A_SCOREBOARD_NEGATIVE` |
+| `smu_smc_wdt_timeout_irq_test` | SMC CORE0 watchdog first timeout over the SMC-fabric JTAG2AXI bridge: WDOGIP0 sets and holds with no software clear, restore of CMP, CTRL and COUNT | the embedded DTP's `ir_decode`, `jtag2axi_req`, `jtag2axi_status` | `+SMU_WDT_TO_GATE_OPEN_NEGATIVE`, `+SMU_WDT_TO_CMP_NEGATIVE`, `+SMU_WDT_TO_IP0_PRE_NEGATIVE`, `+SMU_WDT_TO_EN_NEGATIVE`, `+SMU_WDT_IP0_NEGATIVE`, `+SMU_WDT_TO_RESTORE_NEGATIVE`, `+SMU_J2A_SCOREBOARD_NEGATIVE` |
 
 Every scenario runs at least 16 seeded passes in one simulation
 (`ocah_test.MinDefaultLoops`) and hands the DUT back as it found it. The
@@ -243,6 +252,9 @@ waits and named evidence through `attach_evidence` / `check_evidence` /
 `include`s to `smu_seq_lib_pkg.sv` and `smu_tests.sv`, and give the
 testlist entry a `uvm` binding. A scenario whose claim no existing feature
 judges adds a reference model and a feature to `smu_scoreboard` first.
+The outbound SMN responder's test-facing handle is
+`p_sequencer.m_axi_out_slave_seq` (memory backdoor, one-shot error injection,
+back-pressure and burst counts); no bound scenario uses it.
 
 ## Layout
 

@@ -327,7 +327,7 @@ tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
 [[tests]]
-# BP_COOL_RESET_N_O (pad 62) is driven low while the FLR cool reset is
+# BP_COOL_RESET_N_O (GPIO 64) is driven low while the FLR cool reset is
 # asserted and released otherwise, on every sample of a short and a long
 # FLR leg; ISOLATE_REQ_VIS follows the isolation pin with no isolation
 # request and reads its cool-reset bits at the released level.
@@ -337,7 +337,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
-args = ["+smc_reset_sva_need_flr_fall", "+smc_reset_sva_need_pad62_low"]
+args = ["+smc_reset_sva_need_flr_fall", "+smc_reset_sva_need_cool_pad_low"]
 
 [[groups]]
 name = "reset"
