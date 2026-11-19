@@ -38001,7 +38001,7 @@ module sep_fcov (
         pa = 16'(ef_sw_jw & EfPgAddrMask);
         s = ef_slot_of({1'b0, pa[12:3]});
         // Program go with program_enable and data 1 to a fuse bit of a field.
-        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && (jtag_resp_i.b.resp === AxiOkay) &&
+        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && !$isunknown(jtag_resp_i.b.resp) &&
             !$isunknown(ef_sw_jw) && ((ef_sw_jw & EfPgGoMask) != 32'h0) &&
             ((ef_sw_jw & EfPgEnMask) != 32'h0) && ((ef_sw_jw & EfPgDataMask) != 32'h0) &&
             (pa < 16'(EfFuseBits)) && (s != EfNoSlot) && (s != 6'd0)) begin
