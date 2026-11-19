@@ -1304,7 +1304,7 @@ NumSramDemuxPorts
   assign axi_debug[4] = `OCAH_DEBUG_AXI4_LANE(ifu_rom_axi_req, ifu_rom_axi_resp);
   assign axi_debug[3] = `OCAH_DEBUG_AXI4_LANE(sep_ext_to_smc_axi_req_o, sep_ext_to_smc_axi_resp_i);
   assign axi_debug[2] = `OCAH_DEBUG_AXI4_LANE(dma_axi_req, dma_axi_resp);
-  assign axi_debug[1] = `OCAH_DEBUG_AXI4_LANE(sep_crypto_axi_req, sep_crypto_axi_resp);
+  assign axi_debug[1] = 16'b0;
   assign axi_debug[0] = `OCAH_DEBUG_AXI4_LANE(sep_external_axi_req_o, sep_external_axi_resp_i);
 
   // External debug bus assignment (24 lanes, 16 bits per lane)
