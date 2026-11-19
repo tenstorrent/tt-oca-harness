@@ -40,7 +40,7 @@ Checkers:
                     sensed-shadow output equals the staged words (the sense ignores
                     locks); an unlocked frontdoor read equals them; a frontdoor read
                     of a read-locked field returns no word equal to its non-zero
-                    staged word (``otp_fuse_controller.adoc:108-109``: a read-lock
+                    staged word (``otp_fuse_controller.adoc:110-111``: a read-lock
                     blocks software reads of the shadow; ``CHK-LOCK-READ`` grades
                     its response and data); a read-interface
                     request on a read-locked field sets ``efuse_req_error`` from 0
@@ -55,13 +55,13 @@ Checkers:
                     blocked under a write-lock and ORs the new bit without one.
                     ``CHK-LOCK-CELL-WR-RESP`` grades the response of a shadow write
                     that a write-lock blocks as SLVERR
-                    (``otp_fuse_controller.adoc:110-112``);
+                    (``otp_fuse_controller.adoc:112-114``);
                     ``OBS-LOCK-CELL-WR-RESP`` logs the response of an unlocked
                     shadow write: no TT text states it.
   CHK-LOCK-READ     lock leg, single-bit image with a read-lock and exempt cell
                     (``CLASS_KEY``), one line per word of a frontdoor read that a
                     read-lock blocks: the read completes with SLVERR and read
-                    data ``0xBADCAB1E`` (``otp_fuse_controller.adoc:110-112``).
+                    data ``0xBADCAB1E`` (``otp_fuse_controller.adoc:112-114``).
   CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
                     read-interface request on a read-locked field: after the full W
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
@@ -82,11 +82,34 @@ Checkers:
                     32-bit word, and a JTAG read of a drawn word of a read-locked
                     slot does not return the staged word, while the sensed-shadow
                     output holds the staged word and the staged word is not 0
-                    (``otp_fuse_controller.adoc:108-109``: a read-lock blocks JTAG
+                    (``otp_fuse_controller.adoc:110-111``: a read-lock blocks JTAG
                     reads of the shadow; ``lifecycle_controller.adoc:714-719``: in
                     TEST_DEV the JTAG path reaches the whole shadow map). The
                     locked read completes with SLVERR and read data ``0xBADCAB1E``
-                    (``otp_fuse_controller.adoc:110-112``).
+                    (``otp_fuse_controller.adoc:112-114``).
+  CHK-LOCK-JTAG-WR  lock leg, two lines (``part=shadow_write``, ``part=program``),
+                    TEST_DEV JTAG writes after CHK-LOCK-JTAG-RD
+                    (``otp_fuse_controller.adoc:110-114``, ``:121-125``, ``:135-137``;
+                    ``lifecycle_controller.adoc:714-719``: in TEST_DEV the JTAG path
+                    reaches the shadow map and the program controls, enforcement is
+                    per-field ``LOCKS``). Shadow write: a JTAG write of the shadow word
+                    with one drawn used 0 bit set, to a drawn word of a write-locked
+                    shadow-write field, completes with SLVERR and the sensed-shadow
+                    word is unchanged ``_WR_SETTLE`` clocks after the B. Program: a
+                    JTAG ``EFUSE_PROGRAM_CTRL`` go (enable, data 1) of a drawn used 0
+                    bit of a drawn write-locked slot sets ``efuse_req_error`` from 0
+                    (cleared and read back before the go) and the write-one clear
+                    returns it to 0, with no bank bit change, no program command at
+                    the post-guard tap and no valid or ``psel`` pulse from the go to the
+                    disable write (``efuse_interface_ctrl.rdl:24, 43, 82``;
+                    ``hw/ip/efuse/doc/architecture.adoc:247-249``). The status reads,
+                    the clears and the disable write are frontdoor. When no write-locked
+                    shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
+                    word has one (``no_twin_bit``), the leaf logs ``INFO-BLOCKED
+                    CHK-LOCK-JTAG-WR part=shadow_write`` and grades the program part.
+                    Logged, not graded: ``twin_wr_resp`` (the response of the accepted
+                    twin write), ``go_resp`` (the response of the program go write) and
+                    ``pg_flags``; no specification text states them.
   CHK-LOCK-EXEMPT   exempt cell: ``LC_STATE``, ``LOCKS`` and ``LOCKS_SPARE`` read their
                     staged values with every assigned lock bit burned.
   CHK-LOCK-EXEMPT-PROG exempt cell: a program of ``LC_STATE`` bit 0 or bit 3 (drawn)
@@ -104,7 +127,7 @@ Checkers:
                     survives a write of 0 to ``LOCKS``, a later write of a third bit
                     leaves the shadow unchanged. ``CHK-LOCK-ORDER-RESP`` grades the
                     response of every field write after the lock as SLVERR
-                    (``otp_fuse_controller.adoc:110-112``). No TT text states the
+                    (``otp_fuse_controller.adoc:112-114``). No TT text states the
                     response code of the legal writes (the field writes before the
                     lock, the lock write and the zero writes to ``LOCKS``), so
                     ``OBS-LOCK-ORDER-RESP`` logs them.
@@ -137,7 +160,13 @@ absent before its write (``CTRL-LOCK-ORDER-THIRD``); the chain compares all 256
 words after the first sense with the staged image. The JTAG read of the unlocked
 word is the accepted twin of the blocked JTAG read, in the same CHK-LOCK-JTAG-RD
 line; the landed program and the bank gain are the positive probe of
-CHK-LOCK-EXEMPT-PROG.
+CHK-LOCK-EXEMPT-PROG. ``CTRL-LOCK-JTAG-WR`` (one line per part) is the twin of
+CHK-LOCK-JTAG-WR: the same JTAG write to a drawn word of a shadow-write field without
+a write-lock (a read-lock does not block it) sets the bit at the sensed-shadow output,
+and the same JTAG program of a drawn used 0 bit of a slot without a write-lock (not a
+UID, ``SIP_DIS``, ``SYS_DIS``, token-digest or ``CLASS_KEY`` field) lands exactly its
+bit with one program command at its address and valid and ``psel`` on at least one
+edge.
 
 FCOV owner window: a FAIL of any check or control closes the window, and the window
 does not reopen after it. ``x_exempt_write`` holds the resensed ``LC_STATE`` value
@@ -152,15 +181,19 @@ twin control, the exempt reads after the three CHK-LOCK-EXEMPT lines, the exempt
 program after CHK-LOCK-EXEMPT-PROG, the order cell after CHK-LOCK-ORDER, each chain
 round after its CHK-PROG-ROUND line, the version round after CHK-PROG-VERSION, and
 the second JTAG read pair (issued only after the first pair passed with the window
-closed) after its own CHK-LOCK-JTAG-RD line. An event outside a graded step is
-dropped.
+closed) after its own CHK-LOCK-JTAG-RD line, and the JTAG writes and programs after
+every CHK-LOCK-JTAG-WR and CTRL-LOCK-JTAG-WR line of the step passed. An event outside
+a graded step is dropped.
 
 Seed-dependent kinds: the plan draws one kind per seed (lock leg 6, single bit 1,
 exempt 1, order 2, chain 2 of 12). Seed 2 draws the lock leg, seed 3 the order cell,
 seed 44 and seed 50 the exempt cell (``LC_STATE`` bit 3 and bit 0).
 
 Draws appended to the plan stream after ``plan`` (no earlier draw or staged value
-moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``uid_rlock_slot`` and
+moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``jtag_wlock_sw_locked``,
+``jtag_wlock_sw_bit``, ``jtag_wlock_sw_twin`` and ``jtag_wlock_sw_twin_bit`` (only when
+the shadow-write part runs), ``jtag_wlock_prog_locked``, ``jtag_wlock_prog_locked_bit``,
+``jtag_wlock_prog_twin``, ``jtag_wlock_prog_twin_bit``, ``uid_rlock_slot`` and
 ``uid_rlock_bit`` (lock leg),
 ``exempt_prog_bit`` (exempt cell).
 
@@ -214,7 +247,7 @@ from env.sep_efuse_plan import (
     field_used_masks,
     field_word,
     plan,
-    program_go_no_wait,
+    program_ctrl_word,
     read_ctrl_word,
     read_lock_bit,
     shadow_addr,
@@ -281,10 +314,19 @@ _KIND_R = ("read", "write_read")
 _SHADOW_WRITE_FIELDS = ("SIP_DIS", "SYS_DIS", "REQUIRED_SIGNERS", "REQUIRED_ALGS")
 # Lock slots of CHIPLET_UID, SIP_UID and SYS_UID (otp_fuse_controller.adoc, Fuse Fields).
 _UID_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID"))
+# Fields a landed JTAG twin program never targets: feature control, the token digests,
+# the UIDs (``_uid_rlock_prog`` draws a 0 bit of one) and the class key.
+_JTAG_PROG_TWIN_SKIP = frozenset(("SIP_DIS", "SYS_DIS", *DIGEST_FIELDS, *SECRET_FIELDS))
 
 # Checks per leaf kind (checkers table of the entry). No check runs on every seed.
 _EVIDENCE = {
-    "lock_leg": ("CHK-LOCK-CELL", "CHK-LOCK-READ", "CHK-GUARD-NOPULSE", "CHK-LOCK-JTAG-RD"),
+    "lock_leg": (
+        "CHK-LOCK-CELL",
+        "CHK-LOCK-READ",
+        "CHK-GUARD-NOPULSE",
+        "CHK-LOCK-JTAG-RD",
+        "CHK-LOCK-JTAG-WR",
+    ),
     "single_bit": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE"),
     "exempt": ("CHK-LOCK-EXEMPT", "CHK-LOCK-READ", "CHK-LOCK-EXEMPT-PROG"),
     "order": ("CHK-LOCK-ORDER", "CHK-LOCK-ORDER-RESP", "CHK-LOCK-SLOT0-STORE"),
@@ -420,7 +462,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     async def _fd_locked(self, slot: int, name: str) -> bool:
         """Frontdoor read of a read-locked field: True when no word returns its non-zero
         staged value. CHK-LOCK-READ grades each word: SLVERR and read data
-        ``0xBADCAB1E`` (``otp_fuse_controller.adoc:110-112``).
+        ``0xBADCAB1E`` (``otp_fuse_controller.adoc:112-114``).
         """
         w0 = field_word(name)
         ok = True
@@ -511,18 +553,23 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             r["clr_req_err"] = await self._clear_status()
         return r
 
-    async def _program(self, bit_addr: int, *, read_back: int = 0, watch: bool = True) -> dict:
+    async def _program(
+        self, bit_addr: int, *, read_back: int = 0, watch: bool = True, wr: Any = None
+    ) -> dict:
         """Program bit ``bit_addr`` (data 1): clear, go, full W, command tap, bank diff, status.
 
         ``efuse_req_error`` is sticky, so the request clears it and reads it back
         before the go (``pre_req_err``); a refused program graded on a flag that
-        was already set cannot pass.
+        was already set cannot pass. ``wr`` issues the go write (default: the
+        frontdoor); ``go_resp`` is its response code. Every other access is frontdoor.
         """
         pre = await self._clear_status()
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
         start = self._pulse_mark() if watch else None
-        await program_go_no_wait(self._wr, bit_addr, read_back=read_back)
+        go_resp = await (wr or self._wr)(
+            PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, read_back=read_back)
+        )
         await ClockCycles(cocotb.top.clk_i, self.w)
         progs = self.shim.programs_since(mark) if mark is not None else None
         diff = self.bank.diff_since(snap)
@@ -539,6 +586,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "diff": diff,
             "progs": progs,
             "clr_req_err": "na",
+            "go_resp": go_resp,
         }
         if r["req_err"]:
             r["clr_req_err"] = await self._clear_status()
@@ -890,6 +938,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                 blocked=self.blocked_writes,
             )
         await self._jtag_rlock()
+        await self._jtag_wlock()
         await self._uid_rlock_prog()
 
     async def _uid_rlock_prog(self) -> None:
@@ -980,7 +1029,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         return {"twin": twin_r, "locked": locked_r}
 
     def _jtag_grade(self, r: dict, phase: str) -> bool:
-        """CHK-LOCK-JTAG-RD on one read pair (``otp_fuse_controller.adoc:108-112``)."""
+        """CHK-LOCK-JTAG-RD on one read pair (``otp_fuse_controller.adoc:110-114``)."""
         t, lk = r["twin"], r["locked"]
         twin_ok = (
             t is not None
@@ -1045,6 +1094,186 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self._open_window()
         tag = self._step()
         ok = self._jtag_grade(await self._jtag_pair(twin, locked), "binned")
+        await self._pass(tag, ok)
+        close_graded_window(self.logger)
+
+    # --- JTAG shadow write and JTAG program under a write-lock (lock leg) ----------
+    async def _jtag_wr(self, addr: int, data: int) -> int:
+        """One JTAG AXI-Lite write; returns its response code."""
+        resp, _ = await self.jtag_axil_op(write=True, addr=addr, wdata=data & _WORD)
+        return resp
+
+    def _lock_kind(self, slot: int) -> str:
+        return self.plan.leg["layout"].get(slot, "none")
+
+    def _sw_zero_bits(self, name: str, word: int) -> list[int]:
+        """Used bits of ``name`` word ``word`` that read 0 at the sensed-shadow output."""
+        used, now = field_used_masks(name)[word], self._probe(name)[word]
+        return [b for b in range(WORD_BITS) if (used >> b) & 1 and not (now >> b) & 1]
+
+    def _sw_words(self, *, locked: bool) -> list[tuple[str, int]]:
+        """(field, word) of the shadow-write fields with (``locked``) or without a
+        write-lock whose shadow word has a used 0 bit. A field leaves out the words
+        that took the slot-loop shadow write while it has another candidate word."""
+        written = {(f, b["word"]) for f, b in self.plan.leg["shadow_write_bits"].items()}
+        out = []
+        for name in _SHADOW_WRITE_FIELDS:
+            if (self._lock_kind(SLOT_OF_FIELD[name]) in _KIND_W) != locked:
+                continue
+            words = [k for k in range(field_n_words(name)) if self._sw_zero_bits(name, k)]
+            fresh = [k for k in words if (name, k) not in written]
+            out += [(name, k) for k in fresh or words]
+        return out
+
+    def _prog_slots(self, *, locked: bool) -> list[int]:
+        """Slots 3 to 40 with (``locked``) or without a write-lock whose field has a
+        used bit that reads 0 in the bank; a slot without one skips
+        ``_JTAG_PROG_TWIN_SKIP``."""
+        out = []
+        for slot in range(3, 41):
+            name = LOCK_SLOT_FIELD[slot]
+            if (self._lock_kind(slot) in _KIND_W) != locked:
+                continue
+            if (locked or name not in _JTAG_PROG_TWIN_SKIP) and self._bank_zeros(name):
+                out.append(slot)
+        return out
+
+    def _bank_zeros(self, name: str) -> list[int]:
+        """Bit addresses of the used bits of ``name`` that read 0 in the bank."""
+        bank, w0 = self.bank.read(), field_word(name)
+        return [
+            bit_address(name, k, b)
+            for k, used in enumerate(field_used_masks(name))
+            for b in range(WORD_BITS)
+            if (used >> b) & 1 and not (bank[w0 + k] >> b) & 1
+        ]
+
+    async def _jtag_sw(self, name: str, word: int, bit: int) -> tuple[int, dict]:
+        """JTAG write of the shadow word with ``bit`` set; returns the response and the
+        log fields (``data`` is the write, ``after`` the word ``_WR_SETTLE`` clocks
+        after the B)."""
+        before = self._probe(name)[word]
+        data = before | (1 << bit)
+        resp = await self._jtag_wr(shadow_addr(name, word), data)
+        await ClockCycles(cocotb.top.clk_i, _WR_SETTLE)
+        after = self._probe(name)[word]
+        slot = SLOT_OF_FIELD[name]
+        f = {
+            "slot": slot,
+            "field": name,
+            "lock_kind": self._lock_kind(slot),
+            "word": word,
+            "bit": bit,
+            "before": f"0x{before:08x}",
+            "data": f"0x{data:08x}",
+            "after": f"0x{after:08x}",
+        }
+        return resp, f
+
+    async def _jtag_prog(self, slot: int, bit_addr: int) -> tuple[dict, dict]:
+        """JTAG program go of ``bit_addr``; returns the ``_program`` result and the log
+        fields."""
+        r = await self._program(bit_addr, wr=self._jtag_wr)
+        pc: PulseCount = r["pulses"]
+        f = {
+            "slot": slot,
+            "field": LOCK_SLOT_FIELD[slot],
+            "lock_kind": self._lock_kind(slot),
+            "bit_addr": bit_addr,
+            "pre_req_err": r["pre_req_err"],
+            "req_err": r["req_err"],
+            "clr_req_err": r["clr_req_err"],
+            "otp_diff": "none"
+            if not r["diff"]
+            else (bit_addr if diff_is_exactly(r["diff"], bit_addr) else "other"),
+            "shim_cmd": len(r["progs"]),
+            "edges": pc.edges,
+            "valid_pulses": pc.valid,
+            "psel_pulses": pc.psel,
+            "pg_flags": f"busy{r['busy']}/done{r['done']}/st{r['prog_status']}",
+            "go_resp": resp_name(r["go_resp"]),
+        }
+        return r, f
+
+    async def _jtag_wlock(self) -> None:
+        """JTAG shadow write and JTAG program of a write-locked field, each with a twin
+        on a field without a write-lock (``otp_fuse_controller.adoc:110-114``,
+        ``:135-137``; ``lifecycle_controller.adoc:714-719``).
+
+        A layout with no write-locked shadow-write word that has a used 0 bit
+        (``no_wlocked_field``) or no twin word that has one (``no_twin_bit``) logs the
+        shadow-write part as INFO-BLOCKED; the program part always runs.
+        The step samples only after every CHK and CTRL line of it passed.
+        """
+        draw = self.plan.draw
+        lockeds, twins = self._sw_words(locked=True), self._sw_words(locked=False)
+        sw = None
+        if lockeds and twins:
+            lk = draw.choice("jtag_wlock_sw_locked", lockeds)
+            lk_bit = draw.choice("jtag_wlock_sw_bit", self._sw_zero_bits(*lk))
+            tw = draw.choice("jtag_wlock_sw_twin", twins)
+            tw_bit = draw.choice("jtag_wlock_sw_twin_bit", self._sw_zero_bits(*tw))
+            sw = ((*lk, lk_bit), (*tw, tw_bit))
+        progs = []
+        for role in ("locked", "twin"):
+            slots = self._prog_slots(locked=role == "locked")
+            if not slots:
+                self._grade("LOCK-JTAG-WR", False, part="program", role=role, reason="no_slot")
+                return
+            slot = draw.choice(f"jtag_wlock_prog_{role}", slots)
+            zeros = self._bank_zeros(LOCK_SLOT_FIELD[slot])
+            progs.append((slot, draw.choice(f"jtag_wlock_prog_{role}_bit", zeros)))
+
+        self._open_window()
+        tag = self._step()
+        ok = True
+        if sw is None:
+            kinds = ",".join(
+                f"{f}:{self._lock_kind(SLOT_OF_FIELD[f])}" for f in _SHADOW_WRITE_FIELDS
+            )
+            reason = "no_twin_bit" if lockeds else "no_wlocked_field"
+            self.logger.info(
+                "INFO-BLOCKED CHK-LOCK-JTAG-WR part=shadow_write reason=%s seed=%d kinds=%s",
+                reason,
+                self.random_seed(),
+                kinds,
+            )
+        else:
+            resp, f = await self._jtag_sw(*sw[0])
+            ok &= self._grade(
+                "LOCK-JTAG-WR",
+                resp == RESP_SLVERR and f["after"] == f["before"],
+                part="shadow_write",
+                **f,
+                exp_after=f["before"],
+                resp=resp_name(resp),
+                exp_resp="SLVERR",
+            )
+            resp, f = await self._jtag_sw(*sw[1])
+            ok &= self._control(
+                "LOCK-JTAG-WR",
+                f["after"] == f["data"],
+                part="shadow_write",
+                **f,
+                exp_after=f["data"],
+                twin_wr_resp=resp_name(resp),
+            )
+        r, f = await self._jtag_prog(*progs[0])
+        pc = r["pulses"]
+        ok &= self._grade(
+            "LOCK-JTAG-WR",
+            self._refused(r) and pc.valid == 0 and pc.psel == 0,
+            part="program",
+            **f,
+        )
+        r, f = await self._jtag_prog(*progs[1])
+        pc = r["pulses"]
+        ok &= self._control(
+            "LOCK-JTAG-WR",
+            self._landed(r, progs[1][1]) and pc.valid >= 1 and pc.psel >= 1,
+            part="program",
+            **f,
+        )
         await self._pass(tag, ok)
         close_graded_window(self.logger)
 
