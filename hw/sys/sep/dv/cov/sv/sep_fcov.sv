@@ -34529,6 +34529,10 @@ module sep_fcov (
       bins program_req_timeout_rd = {4'd7};
       bins program_if_read_data_rd = {4'd8};
       bins read_if_read_data_rd = {4'd9};
+      bins program_addr_rd = {4'd10};
+      bins program_addr_wr = {4'd11};
+      bins read_addr_rd = {4'd12};
+      bins read_addr_wr = {4'd13};
     }
     // The TOKEN_MATCH_FAULT read is not declared.
     x_token_blk_op: coverpoint s.tb iff (s.tb_v) {
@@ -36408,6 +36412,8 @@ module sep_fcov (
         EfPgTmo: if (!wr) ef_geo(5, 6'd7);
         EfPgData: if (!wr) ef_geo(5, 6'd8);
         EfRdData: if (!wr) ef_geo(5, 6'd9);
+        EfPgAddr: ef_geo(5, wr ? 6'd11 : 6'd10);
+        EfRdAddr: ef_geo(5, wr ? 6'd13 : 6'd12);
         default: ;
       endcase
       if (in_win(a, EfTokSip, EfTokChip)) ef_geo(6, wr ? 6'd1 : 6'd0);
@@ -42822,9 +42828,9 @@ module sep_fcov (
   logic [13:0] km_pg_cnt = '0;
   logic km_pg_host = 1'b0, km_pg_tm = 1'b0, km_pg_busy_seen = 1'b0;
   logic [2:0] km_pg_tgt = '0;
-  // Mirror of EFUSE_PROGRAM_ADDR, written by the KM path or the host: a go
-  // programs the last address written before it. An address above 16 bits
-  // saturates to 16'hFFFF, which is in no field.
+  // Mirror of EFUSE_PROGRAM_ADDR, written by an OKAY write of the KM path or
+  // the host: a go programs the last address written before it. An address
+  // above 16 bits saturates to 16'hFFFF, which is in no field.
   logic [31:0] km_pg_addr_q = '0;
   wire [15:0] km_pg_addr16 = (km_pg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(km_pg_addr_q);
   logic km_pg_err_seen = 1'b0;
@@ -42870,7 +42876,8 @@ module sep_fcov (
         end
       end else km_pg_cnt <= km_pg_cnt + 14'd1;
     end
-    if (kw_ev && (kw_addr == KmEfCtrlBase + (KmEfPgAddr - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)))
+    if (kw_ev && (kw_resp == KmOkay) &&
+        (kw_addr == KmEfCtrlBase + (KmEfPgAddr - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)))
       km_pg_addr_q <= (kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
           EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
     else if (wr_ev && (aw_addr_q == KmEfPgAddr))
