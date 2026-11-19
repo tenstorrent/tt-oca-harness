@@ -96,6 +96,18 @@ module smc_peripherals_cdc #(
                                                                         // bit to clk_smc_i, so
                                                                         // bits are not coherent
                                                                         // with each other.
+  input  logic [smc_config_pkg::NumI2c-1:0][11:0] i2c_fsm_state_debug_periph_clk_i,  // I2C FSM
+                                                                                     // states on the
+                                                                                     // peripheral
+                                                                                     // clock.
+  output logic [smc_config_pkg::NumI2c-1:0][11:0] i2c_fsm_state_debug_smc_clk_o,  // I2C FSM states
+                                                                                  // synchronized bit
+                                                                                  // by bit like
+                                                                                  // i2c_debug_smc_clk_o;
+                                                                                  // a sample taken
+                                                                                  // during a state
+                                                                                  // change can mix
+                                                                                  // old and new bits.
 
   input  smc_pkg::smc_axil_32_32_req_t  axil_uart_req_smc_clk_i,  // UART register request from
                                                                   // the SMC-clock crossbar.
@@ -400,7 +412,8 @@ module smc_peripherals_cdc #(
   logic                                avsbus_irq_periph_clk_flopped;
   logic                                i2c_intg_err_periph_clk_flopped;
   logic                                uart_intg_err_periph_clk_flopped;
-  logic [smc_config_pkg::NumI2c-1:0][3:0]                          i2c_debug_periph_clk_flopped;
+  logic [smc_config_pkg::NumI2c-1:0][15:0]                         i2c_debug_periph_clk_flopped;
+  logic [smc_config_pkg::NumI2c-1:0][15:0]                         i2c_debug_smc_clk;
 
   `OCAH_FFNR(i2c_enable_periph_clk_flopped, i2c_enable_periph_clk_i, clk_periph_i)
   `OCAH_FFNR(i2c_irqs_periph_clk_flopped, i2c_irqs_periph_clk_i, clk_periph_i)
@@ -412,7 +425,9 @@ module smc_peripherals_cdc #(
   `OCAH_FFNR(avsbus_irq_periph_clk_flopped, avsbus_irq_periph_clk_i, clk_periph_i)
   `OCAH_FFNR(i2c_intg_err_periph_clk_flopped, |i2c_intg_err_periph_clk_i, clk_periph_i)
   `OCAH_FFNR(uart_intg_err_periph_clk_flopped, |uart_err_periph_clk_i, clk_periph_i)
-  `OCAH_FFNR(i2c_debug_periph_clk_flopped, i2c_debug_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(i2c_debug_periph_clk_flopped,
+             {i2c_fsm_state_debug_periph_clk_i, i2c_debug_periph_clk_i}, clk_periph_i)
+  assign {i2c_fsm_state_debug_smc_clk_o, i2c_debug_smc_clk_o} = i2c_debug_smc_clk;
 
   ///////////////////////////////////////////
   // Clock Gate Enable Synchronizers       //
@@ -454,12 +469,12 @@ module smc_peripherals_cdc #(
 
     // I2C Debug Bus (per-bit sync; visibility-only path)
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NumI2c * 4)
+      .Width(smc_config_pkg::NumI2c * 16)
     ) u_i2c_debug_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
       .d_i   (i2c_debug_periph_clk_flopped),
-      .q_o   (i2c_debug_smc_clk_o)
+      .q_o   (i2c_debug_smc_clk)
     );
 
     // UART Enable
@@ -585,11 +600,11 @@ module smc_peripherals_cdc #(
 
     // I2C Debug Bus (per-bit sync; visibility-only path)
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NumI2c * 4)
+      .WIDTH(smc_config_pkg::NumI2c * 16)
     ) u_i2c_debug_sync (
       .clk_i (clk_smc_i),
       .d_i   (i2c_debug_periph_clk_flopped),
-      .q_o   (i2c_debug_smc_clk_o)
+      .q_o   (i2c_debug_smc_clk)
     );
 
     // UART Enable

@@ -422,7 +422,8 @@ module sep_efuse_wrapper #(
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 
-    .token_match_fault_o                (token_match_fault_o)
+    .token_match_fault_o                (token_match_fault_o),
+    .fsm_state_debug_o                  ()
   );
 
   axi_cut #(
