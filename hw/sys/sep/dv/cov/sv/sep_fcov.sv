@@ -2417,11 +2417,18 @@ module sep_fcov (
   // DMA master AR and AW handshakes after the alias remap (dma_req_i).
   wire dm_ar = !in_reset && (dma_req_i.ar_valid === 1'b1) && (dma_resp_i.ar_ready === 1'b1);
   wire dm_aw = !in_reset && (dma_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1);
-  // Interrupt clear write of source 0 on the DMA host port (CLEAR_INTR_BUS
-  // bit 0 = 1): a DMA master AW to INTR_SRC_ADDR_0 with CLEAR_INTR_SRC bit 0 set.
-  wire dma_intr_clr_aw = dm_aw && (dma_reg2hw_i.clear_intr_src.q[0] === 1'b1) &&
-      (dma_reg2hw_i.clear_intr_bus.q[0] === 1'b1) &&
-      (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[0].q);
+  // Interrupt clear write of source i on the DMA host port (CLEAR_INTR_BUS
+  // bit i = 1): a DMA master AW to INTR_SRC_ADDR_i with CLEAR_INTR_SRC bit i
+  // set (dma.hjson CLEAR_INTR_SRC, NumIntClearSources).
+  localparam int unsigned DmaNumClr = $bits(secure_dma_reg_pkg::dma_reg2hw_clear_intr_src_reg_t);
+  logic [DmaNumClr-1:0] dma_intr_clr_aw;
+  always_comb begin
+    for (int i = 0; i < DmaNumClr; i++) begin
+      dma_intr_clr_aw[i] = dm_aw && (dma_reg2hw_i.clear_intr_src.q[i] === 1'b1) &&
+          (dma_reg2hw_i.clear_intr_bus.q[i] === 1'b1) &&
+          (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[i].q);
+    end
+  end
   // Pass label of sep_spi_dma_handshake_rand_test: bit 0 releases the held
   // cp_hs_mask cell, bit 1 the held cp_intr_clear cell, bit 2 the other held
   // cells of that leaf (hr_pend_q, SPI and DMA section). The leaf writes 0 at
@@ -2430,12 +2437,15 @@ module sep_fcov (
   // the window with the label 0; a window close or a reset drops the held
   // cells. It gates a sample; it is never a DUT value and drives nothing.
   int unsigned hs_mask_pass = 0;
-  logic ic_pend_q = 1'b0, ic_pass_q = 1'b0;
-  wire ic_rel = own_spi_dma_hs && ic_pend_q && ((hs_mask_pass & 32'h2) != 0) && !ic_pass_q;
+  logic [DmaNumClr-1:0] ic_pend_q = '0;
+  logic ic_pass_q = 1'b0;
+  // The held clear sources at the rise of bit 1, else 0.
+  wire ic_rel_ev = own_spi_dma_hs && ((hs_mask_pass & 32'h2) != 0) && !ic_pass_q;
+  wire [DmaNumClr-1:0] ic_rel = ic_rel_ev ? ic_pend_q : '0;
   always @(posedge clk_i) begin
     ic_pass_q <= ((hs_mask_pass & 32'h2) != 0);
-    if (in_reset || !own_spi_dma_hs || ic_rel) ic_pend_q <= 1'b0;
-    else if (dma_intr_clr_aw) ic_pend_q <= 1'b1;
+    if (in_reset || !own_spi_dma_hs || ic_rel_ev) ic_pend_q <= '0;
+    else ic_pend_q <= ic_pend_q | dma_intr_clr_aw;
   end
   // CFG_REGWEN read response with the busy probe at that clock.
   wire [4:0] dma_cfg_rw = {d_busy, rd_data[3:0]};
@@ -2466,6 +2476,18 @@ module sep_fcov (
   wire        dr_status = rd_ev && rhit4(ar_addr_q, ar_size_q, DmaStatus);
   wire [31:0] dr_status_d = word4(lsu_r_data_i, DmaStatus);
   wire        dr_ist = rd_ev && rhit4(ar_addr_q, ar_size_q, DmaIntrState);
+  wire [31:0] dr_ist_d = word4(lsu_r_data_i, DmaIntrState);
+  // Per event {ERROR, CHUNK_DONE, DONE} of an INTR_STATE read: the bit reads 1
+  // with its INTR_ENABLE bit 0 and its STATUS bit 1. The STATUS bit leaves out
+  // a bit that only INTR_TEST set.
+  wire [2:0]  dr_ist_ungated = {
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_ERROR_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_error.q === 1'b0) && d_err,
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_CHUNK_DONE_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_chunk_done.q === 1'b0) && d_chunk,
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_DONE_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_done.q === 1'b0) && d_done
+  };
 
   // --- Secure DMA: latched fields ----------------------------------------
   logic [31:0] d_src_q, d_dst_q, d_total_q, d_chunk_q, d_base_q, d_limit_q;
@@ -2545,6 +2567,113 @@ module sep_fcov (
       (wr_data != rl_old_q) && (d_limit_now == rl_old_q);
   wire dl_valid = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRangeValid) &&
       (dl_valid_wd != rvv_old_q) && (d_valid_now == rvv_old_q);
+
+  // The registers that dma.hjson marks regwen "CFG_REGWEN", locked while the
+  // DMA is busy (CFG_REGWEN description). cl_reg is the cp_locked_write_refused
+  // value of each: 4 to 7 the address registers that hardware also writes
+  // (hwaccess "hrw"), 8 to 18 the others; 0 is any other address.
+  localparam logic [31:0] DmaSrcHi = SECURE_DMA_SRC_ADDR_HI_REG_ADDR;
+  localparam logic [31:0] DmaDstHi = SECURE_DMA_DST_ADDR_HI_REG_ADDR;
+  localparam logic [31:0] DmaAsid = SECURE_DMA_ADDR_SPACE_ID_REG_ADDR;
+  localparam logic [31:0] DmaHsIntrEn = SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR;
+  localparam logic [31:0] DmaClrSrc = SECURE_DMA_CLEAR_INTR_SRC_REG_ADDR;
+  localparam logic [31:0] DmaClrBus = SECURE_DMA_CLEAR_INTR_BUS_REG_ADDR;
+  localparam logic [31:0] DmaClrAddr0 = SECURE_DMA_INTR_SRC_ADDR_0_0__REG_ADDR;
+  localparam logic [31:0] DmaClrAddrEnd = SECURE_DMA_INTR_SRC_ADDR_0_10__REG_ADDR + 32'd4;
+  localparam logic [31:0] DmaClrVal0 = SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR;
+  localparam logic [31:0] DmaClrValEnd = SECURE_DMA_INTR_SRC_WR_VAL_0_10__REG_ADDR + 32'd4;
+  function automatic logic [4:0] cl_reg(input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return 5'd17;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return 5'd18;
+    case (a)
+      DmaSrcLo:    return 5'd4;
+      DmaSrcHi:    return 5'd5;
+      DmaDstLo:    return 5'd6;
+      DmaDstHi:    return 5'd7;
+      DmaAsid:     return 5'd8;
+      DmaTotal:    return 5'd9;
+      DmaChunk:    return 5'd10;
+      DmaWidth:    return 5'd11;
+      DmaSrcCfg:   return 5'd12;
+      DmaDstCfg:   return 5'd13;
+      DmaHsIntrEn: return 5'd14;
+      DmaClrSrc:   return 5'd15;
+      DmaClrBus:   return 5'd16;
+      default:     return 5'd0;
+    endcase
+  endfunction
+  // The writable fields of the register at `a`, at their register positions.
+  function automatic logic [31:0] cl_mask(input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return SECURE_DMA_INTR_SRC_ADDR_0_ADDR_0_MASK;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return SECURE_DMA_INTR_SRC_WR_VAL_0_WR_VAL_0_MASK;
+    case (a)
+      DmaSrcLo:    return SECURE_DMA_SRC_ADDR_LO_SRC_ADDR_LO_MASK;
+      DmaSrcHi:    return SECURE_DMA_SRC_ADDR_HI_SRC_ADDR_HI_MASK;
+      DmaDstLo:    return SECURE_DMA_DST_ADDR_LO_DST_ADDR_LO_MASK;
+      DmaDstHi:    return SECURE_DMA_DST_ADDR_HI_DST_ADDR_HI_MASK;
+      DmaAsid:
+      return SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_MASK | SECURE_DMA_ADDR_SPACE_ID_DST_ASID_MASK;
+      DmaTotal:    return SECURE_DMA_TOTAL_DATA_SIZE_DATA_SIZE_MASK;
+      DmaChunk:    return SECURE_DMA_CHUNK_DATA_SIZE_DATA_SIZE_MASK;
+      DmaWidth:    return SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_MASK;
+      DmaSrcCfg:   return SECURE_DMA_SRC_CONFIG_INCREMENT_MASK | SECURE_DMA_SRC_CONFIG_WRAP_MASK;
+      DmaDstCfg:   return SECURE_DMA_DST_CONFIG_INCREMENT_MASK | SECURE_DMA_DST_CONFIG_WRAP_MASK;
+      DmaHsIntrEn: return SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_MASK;
+      DmaClrSrc:   return SECURE_DMA_CLEAR_INTR_SRC_SOURCE_MASK;
+      DmaClrBus:   return SECURE_DMA_CLEAR_INTR_BUS_BUS_MASK;
+      default:     return 32'h0;
+    endcase
+  endfunction
+  // The stored value of the register at `a` (reg2hw), at its register positions.
+  function automatic logic [31:0] cl_val(input secure_dma_reg_pkg::dma_reg2hw_t r,
+                                         input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return r.intr_src_addr[4'((a-DmaClrAddr0)>>2)].q;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return r.intr_src_wr_val[4'((a-DmaClrVal0)>>2)].q;
+    case (a)
+      DmaSrcLo:    return r.src_addr_lo.q;
+      DmaSrcHi:    return r.src_addr_hi.q;
+      DmaDstLo:    return r.dst_addr_lo.q;
+      DmaDstHi:    return r.dst_addr_hi.q;
+      DmaAsid:
+      return (32'(r.addr_space_id.src_asid.q) << SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_SHIFT) |
+          (32'(r.addr_space_id.dst_asid.q) << SECURE_DMA_ADDR_SPACE_ID_DST_ASID_SHIFT);
+      DmaTotal:    return r.total_data_size.q;
+      DmaChunk:    return r.chunk_data_size.q;
+      DmaWidth:
+      return 32'(r.transfer_width.q) << SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_SHIFT;
+      DmaSrcCfg:
+      return (32'(r.src_config.increment.q) << SECURE_DMA_SRC_CONFIG_INCREMENT_SHIFT) |
+          (32'(r.src_config.wrap.q) << SECURE_DMA_SRC_CONFIG_WRAP_SHIFT);
+      DmaDstCfg:
+      return (32'(r.dst_config.increment.q) << SECURE_DMA_DST_CONFIG_INCREMENT_SHIFT) |
+          (32'(r.dst_config.wrap.q) << SECURE_DMA_DST_CONFIG_WRAP_SHIFT);
+      DmaHsIntrEn:
+      return 32'(r.handshake_intr_enable.q) << SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_SHIFT;
+      DmaClrSrc:
+      return 32'(r.clear_intr_src.q) << SECURE_DMA_CLEAR_INTR_SRC_SOURCE_SHIFT;
+      DmaClrBus:   return 32'(r.clear_intr_bus.q) << SECURE_DMA_CLEAR_INTR_BUS_BUS_SHIFT;
+      default:     return 32'h0;
+    endcase
+  endfunction
+  // A full-word write to a protected register, issued and answered (any
+  // response: none is stated for a locked write) while BUSY is 1, that did not
+  // land. Hardware also writes the address registers, so for those the stored
+  // value differs from the written one; for the others it is the value before
+  // the write, and the write carried another value.
+  logic [31:0] cl_pre_q;
+  logic        cl_busy_q;
+  wire         wr_done_any = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
+  wire  [4:0]  cl_lw = cl_reg(aw_addr_q);
+  wire  [31:0] cl_wd = wr_data & cl_mask(aw_addr_q);
+  wire  [31:0] cl_now = cl_val(dma_reg2hw_i, aw_addr_q);
+  wire         cl_refused = wr_done_any && (cl_lw != 5'd0) && (wr_strb == 4'hF) && cl_busy_q &&
+      d_busy && ((cl_lw <= 5'd7) ? (cl_now != cl_wd) : ((cl_wd != cl_pre_q) && (cl_now == cl_pre_q)));
+  always_ff @(posedge clk_i) begin
+    if (wr_issue) begin
+      cl_pre_q  <= cl_val(dma_reg2hw_i, wi_addr);
+      cl_busy_q <= d_busy;
+    end
+  end
 
   // Position of a region against the range: 0 at BASE, 1 interior,
   // 2 at LIMIT (last byte at LIMIT), 3 other.
@@ -2858,7 +2987,8 @@ module sep_fcov (
         uc_v_q <= 1'b0;
       end
 
-      // Interrupt trial: lines held from the GO issue to the INTR_STATE read.
+      // Interrupt trial: lines held from the GO issue to the INTR_STATE read
+      // at its end.
       if (di_go && di_init && (di_op == DmaOpCopy)) begin
         it_on_q  <= 1'b1;
         it_en_q  <= d_ien_q;
@@ -2866,7 +2996,9 @@ module sep_fcov (
         it_cls_q <= (d_total_q == 32'h0) ? 2'd2 : (d_single ? 2'd0 : (d_multi ? 2'd1 : 2'd3));
       end else if (it_on_q) begin
         it_l_q <= it_l_q | {irq_d_err, irq_d_chunk, irq_d_done};
-        if (dr_ist) begin
+        // A read at a CHUNK_DONE stop before DONE or ERROR is not the end of
+        // the trial.
+        if (dr_ist && !(d_chunk && !d_done && !d_err)) begin
           it_on_q           <= 1'b0;
           dma_irq_cell_q    <= {it_en_q, it_cls_q};
           dma_irq_cell_ev_q <= own_dma_irq && (it_cls_q != 2'd3) &&
@@ -4479,10 +4611,21 @@ module sep_fcov (
     cp_cfg_regwen: coverpoint dmx_crw_cv iff (dmx_crw_rv) {
       bins busy_false = {5'b1_1001}; bins idle_true = {5'b0_0110};
     }
-    // Interrupt clear write of source 0 on the DMA host port, in the window of
-    // its owner, held until hs_mask_pass bit 1 rises.
+    // Interrupt clear write of source 0 (clear_wr_host) and of each source 1 to
+    // 10 (clear_wr_host_idx<i>) on the DMA host port, in the window of its
+    // owner, held until hs_mask_pass bit 1 rises.
     cp_intr_clear: coverpoint ic_rel {
-      bins clear_wr_host = {1'b1};
+      wildcard bins clear_wr_host = {11'b???_????_???1};
+      wildcard bins clear_wr_host_idx1 = {11'b???_????_??1?};
+      wildcard bins clear_wr_host_idx2 = {11'b???_????_?1??};
+      wildcard bins clear_wr_host_idx3 = {11'b???_????_1???};
+      wildcard bins clear_wr_host_idx4 = {11'b???_???1_????};
+      wildcard bins clear_wr_host_idx5 = {11'b???_??1?_????};
+      wildcard bins clear_wr_host_idx6 = {11'b???_?1??_????};
+      wildcard bins clear_wr_host_idx7 = {11'b???_1???_????};
+      wildcard bins clear_wr_host_idx8 = {11'b??1_????_????};
+      wildcard bins clear_wr_host_idx9 = {11'b?1?_????_????};
+      wildcard bins clear_wr_host_idx10 = {11'b1??_????_????};
     }
   endgroup
 
@@ -9759,7 +9902,9 @@ module sep_fcov (
       logic cc_v,
       logic cdc_v,
       logic [1:0] cd,
-      logic cd_v
+      logic cd_v,
+      logic [2:0] ist,
+      logic ist_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_completion_cg";
@@ -9789,6 +9934,14 @@ module sep_fcov (
       bins single_chunk_wrap1 = {2'b01};
       bins multi_exact_wrap0 = {2'b10};
       bins multi_exact_wrap1 = {2'b11};
+    }
+    // INTR_STATE read with the bit of an event 1, its INTR_ENABLE bit 0 and its
+    // STATUS bit 1, per event {ERROR, CHUNK_DONE, DONE} (secure_dma.adoc
+    // INTR_STATE, INTR_ENABLE): the enable gates the line, not the state bit.
+    cp_intr_state_seen: coverpoint ist iff (ist_v) {
+      wildcard bins dma_done = {3'b??1};
+      wildcard bins dma_chunk_done = {3'b?1?};
+      wildcard bins dma_error = {3'b1??};
     }
   endgroup
 
@@ -9923,12 +10076,37 @@ module sep_fcov (
     }
   endgroup
 
-  covergroup sep_dma_error_terminal_cg with function sample (logic ea_v, logic ao_v, logic aq_v);
+  // ERROR_CODE bits of the configuration faults that a start can carry together
+  // (programmers_guide.md, Error Condition: all detected errors are reported).
+  localparam logic [7:0] DmaEcOpcode = 8'(SECURE_DMA_ERROR_CODE_OPCODE_ERROR_MASK);
+  localparam logic [7:0] DmaEcAsid = 8'(SECURE_DMA_ERROR_CODE_ASID_ERROR_MASK);
+  localparam logic [7:0] DmaEcSize = 8'(SECURE_DMA_ERROR_CODE_SIZE_ERROR_MASK);
+  localparam logic [7:0] DmaEcDst = 8'(SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_MASK);
+  localparam logic [7:0] DmaEcOpcAsid = DmaEcOpcode | DmaEcAsid;
+  localparam logic [7:0] DmaEcOpcSize = DmaEcOpcode | DmaEcSize;
+  localparam logic [7:0] DmaEcOpcDst = DmaEcOpcode | DmaEcDst;
+  localparam logic [7:0] DmaEcAsidSize = DmaEcAsid | DmaEcSize;
+  localparam logic [7:0] DmaEcAsidDst = DmaEcAsid | DmaEcDst;
+  localparam logic [7:0] DmaEcSizeDst = DmaEcSize | DmaEcDst;
+
+  covergroup sep_dma_error_terminal_cg with function sample (
+      logic ea_v, logic ao_v, logic aq_v, logic [7:0] me, logic me_v
+  );
     option.per_instance = 1;
     option.name = "sep_dma_error_terminal_cg";
     cp_error_x_aggregate: coverpoint ea_v {bins size_error_status_and_intr_state = {1'b1};}
     cp_abort_outcome: coverpoint ao_v {bins aborted_set = {1'b1};}
     cp_abort_quiet: coverpoint aq_v {bins no_beat_after_aborted = {1'b1};}
+    // ERROR_CODE at the STATUS.ERROR rise, equal to exactly two of the
+    // OPCODE_ERROR, ASID_ERROR, SIZE_ERROR and DST_ADDR_ERROR bits.
+    cp_error_multi_class: coverpoint me iff (me_v) {
+      bins opcode_asid = {DmaEcOpcAsid};
+      bins opcode_size = {DmaEcOpcSize};
+      bins opcode_dst_addr = {DmaEcOpcDst};
+      bins asid_size = {DmaEcAsidSize};
+      bins asid_dst_addr = {DmaEcAsidDst};
+      bins size_dst_addr = {DmaEcSizeDst};
+    }
   endgroup
 
   // --- Secure DMA: zero fill ---------------------------------------------
@@ -10033,10 +10211,12 @@ module sep_fcov (
   // Range lock (sep-programming.adoc, zero fill procedure; dma.adoc, Zero
   // Fill). Every bin of the range-lock coverpoints is a BASE, LIMIT or
   // RANGE_VALID write after the lock write (dl_locked) that leaves the register
-  // value unchanged. cp_dma_lock_recovery is sampled by the memory, boot and
+  // value unchanged. The configuration lock bins of cp_locked_write_refused are
+  // a write to a CFG_REGWEN-protected register while BUSY is 1 that did not
+  // land (cl_refused). cp_dma_lock_recovery is sampled by the memory, boot and
   // reset owner.
   covergroup sep_dma_containment_cg with function sample (
-      logic [1:0] lw,
+      logic [4:0] lw,
       logic lw_v,
       logic [1:0] iv,
       logic iv_v,
@@ -10049,9 +10229,28 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_dma_containment_cg";
     // The register of a refused write; regwen_true is a refused write after an
-    // unlock write of True to RANGE_REGWEN.
+    // unlock write of True to RANGE_REGWEN. 4 to 18: the register of a write
+    // refused by the configuration lock (dma.hjson regwen "CFG_REGWEN").
     cp_locked_write_refused: coverpoint lw iff (lw_v) {
-      bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2}; bins regwen_true = {2'd3};
+      bins base = {5'd0};
+      bins limit = {5'd1};
+      bins valid = {5'd2};
+      bins regwen_true = {5'd3};
+      bins cfg_src_addr_lo = {5'd4};
+      bins cfg_src_addr_hi = {5'd5};
+      bins cfg_dst_addr_lo = {5'd6};
+      bins cfg_dst_addr_hi = {5'd7};
+      bins cfg_addr_space_id = {5'd8};
+      bins cfg_total_data_size = {5'd9};
+      bins cfg_chunk_data_size = {5'd10};
+      bins cfg_transfer_width = {5'd11};
+      bins cfg_src_config = {5'd12};
+      bins cfg_dst_config = {5'd13};
+      bins cfg_handshake_intr_enable = {5'd14};
+      bins cfg_clear_intr_src = {5'd15};
+      bins cfg_clear_intr_bus = {5'd16};
+      bins cfg_intr_src_addr = {5'd17};
+      bins cfg_intr_src_wr_val = {5'd18};
     }
     // A refused write after an unlock write of that value to RANGE_REGWEN.
     cp_regwen_invalid_value: coverpoint iv iff (iv_v) {
@@ -10612,8 +10811,8 @@ module sep_fcov (
         gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd, cd_v
       })] = 1;
     else
-      u_sep_dma_completion_cg.sample(gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd,
-                                     cd_v);
+      u_sep_dma_completion_cg.sample(gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd, cd_v,
+                                     3'd0, 1'b0);
   endfunction
   function automatic void dmx_range_config(logic rv_v, logic bl_v, logic [2:0] ip, logic ip_v,
                                            logic [1:0] uw, logic uw_v);
@@ -10639,7 +10838,7 @@ module sep_fcov (
   endfunction
   function automatic void dmx_completion_rel(dmx_completion_t k);
     u_sep_dma_completion_cg.sample(k.gl, k.gl_v, k.bp, k.bp_v, k.ds, k.ds_v, k.dcp_v, k.cc, k.cc_v,
-                                   k.cdc_v, k.cd, k.cd_v);
+                                   k.cdc_v, k.cd, k.cd_v, 3'd0, 1'b0);
   endfunction
   function automatic void dmx_range_config_rel(dmx_range_config_t k);
     u_sep_dma_range_config_cg.sample(k.rv_v, k.bl_v, k.ip, k.ip_v, k.uw, k.uw_v);
@@ -11578,13 +11777,25 @@ module sep_fcov (
       end
 
       // ---- DMA faults, errors and abort ----
+      // The size-zero kind and the aggregate cell need SIZE_ERROR alone in
+      // ERROR_CODE; a start with a second configuration fault is a multi-error
+      // class.
       if (d_size_err && !size_err_q)
-        u_sep_dma_config_fault_cg.sample(szk_q, own_dma_irq && szk_v_q, hwf_q,
-                                         own_dma_irq && hwf_v_q, 2'd0, 1'b0, 3'd0, 1'b0);
-      if (ea_v_q && d_err && d_ist_err) u_sep_dma_error_terminal_cg.sample(own_dma_irq, 1'b0, 1'b0);
-      if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
+        u_sep_dma_config_fault_cg.sample(szk_q,
+                                         own_dma_irq && szk_v_q && (dma_err_code_i == DmaEcSize),
+                                         hwf_q, own_dma_irq && hwf_v_q, 2'd0, 1'b0, 3'd0, 1'b0);
+      if (ea_v_q && d_err && d_ist_err)
+        u_sep_dma_error_terminal_cg.sample(own_dma_irq && (dma_err_code_i == DmaEcSize), 1'b0, 1'b0,
+                                           8'd0, 1'b0);
+      if (d_aborted && !aborted_q)
+        u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0, 8'd0, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
-        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
+        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort, 8'd0, 1'b0);
+      if (d_err && !dma_err_q)
+        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, 1'b0, dma_err_code_i, own_dma_irq);
+      if (dr_ist && (dr_ist_ungated != 3'b000))
+        u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0, 1'b0,
+                                       2'd0, 1'b0, dr_ist_ungated, own_dma_irq);
       // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
       if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(
@@ -11604,15 +11815,18 @@ module sep_fcov (
     // Refused BASE, LIMIT and RANGE_VALID writes after the lock write, each
     // with the latest unlock value written before it.
     if (dl_base || dl_limit || dl_valid) begin
-      u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
+      u_sep_dma_containment_cg.sample(dl_base ? 5'd0 : (dl_limit ? 5'd1 : 5'd2), own_dma_irq,
                                       lk_last_q[1] ? 2'd0 : (lk_last_q[2] ? 2'd1 : 2'd2),
                                       own_dma_irq && (lk_last_q[3:1] != 3'b000),
                                       own_dma_irq && (lk_try_q == 4'hF), d_err,
                                       own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
       if (lk_last_q[0])
-        u_sep_dma_containment_cg.sample(2'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
+        u_sep_dma_containment_cg.sample(5'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
                                         1'b0);
     end
+    // A write the configuration lock refused while the DMA was busy.
+    if (cl_refused)
+      u_sep_dma_containment_cg.sample(cl_lw, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
 
     // ---- Held cells of the DMA handshake leaf ----
     hr_pass_q <= hr_pass;
@@ -11626,11 +11840,11 @@ module sep_fcov (
       for (int g = 3; g <= 5; g++) begin
         if (hr_pend_q[g])
           u_sep_dma_completion_cg.sample(3'(g - 1), 1'b1, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0,
-                                         1'b0, 2'd0, 1'b0);
+                                         1'b0, 2'd0, 1'b0, 3'd0, 1'b0);
       end
       if (hr_pend_q[6])
         u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd2, 1'b1, 1'b0,
-                                       2'd0, 1'b0);
+                                       2'd0, 1'b0, 3'd0, 1'b0);
       hr_pend_q <= '0;
     end
   end
@@ -20014,10 +20228,10 @@ module sep_fcov (
     // or a cold reset, then the next read.
     if (rd_ev && (di == MrDmaRegwen)) begin
       if (mr_rg_pulse && (rd_data[3:0] == 4'h0) && mr_own_ret) begin
-        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
+        u_sep_dma_containment_cg.sample(5'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
       end
       if (mr_rg_cold && (rd_data[3:0] == 4'h6) && mr_own_ret) begin
-        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
+        u_sep_dma_containment_cg.sample(5'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
       end
       mr_rg_pulse   <= 1'b0;
       mr_rg_cold    <= 1'b0;
