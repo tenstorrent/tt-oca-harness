@@ -1297,6 +1297,18 @@ NumSramDemuxPorts
                        ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug})
                       == 16)
 
+  // axi_debug[i] is ext_debug_bus_o[16*i+31:16*i+16].
+  logic [8:0][15:0] axi_debug;
+  assign axi_debug[8] = `OCAH_DEBUG_AXI4_LANE(smn_inbound_axi_req_i, smn_inbound_axi_resp_o);
+  assign axi_debug[7] = `OCAH_DEBUG_AXI4_LANE(smn_outbound_axi_req_o, smn_outbound_axi_resp_i);
+  assign axi_debug[6] = `OCAH_DEBUG_AXI4_LANE(lsu_xbar_axi_req, lsu_xbar_axi_resp);
+  assign axi_debug[5] = `OCAH_DEBUG_AXI4_LANE(ifu_sram_axi_req, ifu_sram_axi_resp);
+  assign axi_debug[4] = `OCAH_DEBUG_AXI4_LANE(ifu_rom_axi_req, ifu_rom_axi_resp);
+  assign axi_debug[3] = `OCAH_DEBUG_AXI4_LANE(sep_ext_to_smc_axi_req_o, sep_ext_to_smc_axi_resp_i);
+  assign axi_debug[2] = `OCAH_DEBUG_AXI4_LANE(dma_axi_req, dma_axi_resp);
+  assign axi_debug[1] = `OCAH_DEBUG_AXI4_LANE(sep_crypto_axi_req, sep_crypto_axi_resp);
+  assign axi_debug[0] = `OCAH_DEBUG_AXI4_LANE(sep_external_axi_req_o, sep_external_axi_resp_i);
+
   // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
     // [383:368] CPU trace valid and exception
@@ -1318,7 +1330,7 @@ NumSramDemuxPorts
 
     // [351:336] [2:0] KM DRBG sampler FSM, [3] KPV eraser busy, [4] entropy FIFO push FSM,
     // [7:5] CSRNG and [10:8] EDN register-bridge FSMs
-    {5'b0, km_trng_state_debug},
+    16'(km_trng_state_debug),
 
     // [335:320] Reset and security status
     sep_reset_n,
@@ -1352,7 +1364,7 @@ NumSramDemuxPorts
     sep_efuse_debug,
 
     // [239:224] Crypto isolation FSMs, 2 bits per SW_RESET_N domain: 0 reset, 1 drain, 2 run
-    {2'b0, sep_isolate_state_debug},
+    16'(sep_isolate_state_debug),
 
     // [223:208] Reserved
     16'b0,
@@ -1375,24 +1387,8 @@ NumSramDemuxPorts
     inbound_write_filter_hit_debug,
     inbound_read_filter_hit_debug,
 
-    // [159:144] SMN inbound, before the inbound filter
-    `OCAH_DEBUG_AXI4_LANE(smn_inbound_axi_req_i, smn_inbound_axi_resp_o),
-    // [143:128] SMN outbound, after the outbound filter
-    `OCAH_DEBUG_AXI4_LANE(smn_outbound_axi_req_o, smn_outbound_axi_resp_i),
-    // [127:112] CPU LSU into the local crossbar
-    `OCAH_DEBUG_AXI4_LANE(lsu_xbar_axi_req, lsu_xbar_axi_resp),
-    // [111:96] CPU IFU fetch from SRAM
-    `OCAH_DEBUG_AXI4_LANE(ifu_sram_axi_req, ifu_sram_axi_resp),
-    // [95:80] CPU IFU fetch from ROM
-    `OCAH_DEBUG_AXI4_LANE(ifu_rom_axi_req, ifu_rom_axi_resp),
-    // [79:64] SEP into the SMC aperture
-    `OCAH_DEBUG_AXI4_LANE(sep_ext_to_smc_axi_req_o, sep_ext_to_smc_axi_resp_i),
-    // [63:48] Secure DMA master
-    `OCAH_DEBUG_AXI4_LANE(dma_axi_req, dma_axi_resp),
-    // [47:32] Crypto subsystem
-    `OCAH_DEBUG_AXI4_LANE(sep_crypto_axi_req, sep_crypto_axi_resp),
-    // [31:16] External aperture
-    `OCAH_DEBUG_AXI4_LANE(sep_external_axi_req_o, sep_external_axi_resp_i),
+    // [159:16] AXI handshakes, see axi_debug
+    axi_debug,
 
     // [15:0] Reserved
     16'b0

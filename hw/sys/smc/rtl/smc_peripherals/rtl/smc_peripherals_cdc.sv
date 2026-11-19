@@ -412,6 +412,7 @@ module smc_peripherals_cdc #(
   logic                                avsbus_irq_periph_clk_flopped;
   logic                                i2c_intg_err_periph_clk_flopped;
   logic                                uart_intg_err_periph_clk_flopped;
+  logic [smc_config_pkg::NumI2c-1:0][15:0]                         i2c_debug_periph_clk;
   logic [smc_config_pkg::NumI2c-1:0][15:0]                         i2c_debug_periph_clk_flopped;
   logic [smc_config_pkg::NumI2c-1:0][15:0]                         i2c_debug_smc_clk;
 
@@ -425,8 +426,8 @@ module smc_peripherals_cdc #(
   `OCAH_FFNR(avsbus_irq_periph_clk_flopped, avsbus_irq_periph_clk_i, clk_periph_i)
   `OCAH_FFNR(i2c_intg_err_periph_clk_flopped, |i2c_intg_err_periph_clk_i, clk_periph_i)
   `OCAH_FFNR(uart_intg_err_periph_clk_flopped, |uart_err_periph_clk_i, clk_periph_i)
-  `OCAH_FFNR(i2c_debug_periph_clk_flopped,
-             {i2c_fsm_state_debug_periph_clk_i, i2c_debug_periph_clk_i}, clk_periph_i)
+  assign i2c_debug_periph_clk = {i2c_fsm_state_debug_periph_clk_i, i2c_debug_periph_clk_i};
+  `OCAH_FFNR(i2c_debug_periph_clk_flopped, i2c_debug_periph_clk, clk_periph_i)
   assign {i2c_fsm_state_debug_smc_clk_o, i2c_debug_smc_clk_o} = i2c_debug_smc_clk;
 
   ///////////////////////////////////////////

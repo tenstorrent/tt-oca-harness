@@ -444,7 +444,7 @@ module smc_base #(
                                           cpu_mem_zero_state_debug_i, zeroer_state_debug};
   // One lane per I2C: [11:10] bus monitor  [9:5] target FSM  [4:0] controller FSM
   for (genvar i = 0; i < smc_config_pkg::NumI2c; i++) begin : gen_i2c_fsm_debug
-    assign debug_bus[16*(10+i)+:16]   = {4'h0, i2c_fsm_state_debug_i[i]};
+    assign debug_bus[16*(10+i)+:16] = {4'h0, i2c_fsm_state_debug_i[i]};
   end
   // [5:4] fuse sense  [3:2] program  [1:0] read
   assign debug_bus[16*(10+smc_config_pkg::NumI2c)+:16] = {10'h0, efuse_fsm_state_debug_i};
