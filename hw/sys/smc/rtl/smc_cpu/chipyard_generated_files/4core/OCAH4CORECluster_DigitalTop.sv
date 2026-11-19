@@ -87,6 +87,8 @@
 
 
 module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/DigitalTop.scala:50:7]
+  input  test_en_i,
+  input  scan_rst_ni,
   output chipyard_4core_mem_pkg::rom_tilelink_req_t rom_intf_req,
   input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t rom_intf_rsp,
   output chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req [32-1:0],
@@ -5758,6 +5760,8 @@ module OCAH4CORECluster_DigitalTop (	// @[generators/chipyard/src/main/scala/Dig
     .auto_clock_in_reset        (_mbus_auto_fixedClockNode_anon_out_32_reset)	// @[generators/rocket-chip/src/main/scala/subsystem/MemoryBus.scala:30:26]
   );
   OCAH4CORECluster_ChipyardPRCICtrlClockSinkDomain chipyard_prcictrl_domain (	// @[generators/rocket-chip/src/main/scala/tilelink/BusWrapper.scala:89:28]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .auto_resetSynchronizer_in_member_allClocks_uncore_clock  (auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_clock),
     .auto_resetSynchronizer_in_member_allClocks_uncore_reset  (auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_reset),
     .auto_resetSynchronizer_in_member_allClocks_core_3_clock  (auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_clock),
