@@ -3,26 +3,37 @@
 """eFuse read and program FSMs fail closed from an illegal state.
 
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
-state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
-(idle, then waiting for a bank response). No document names the encodings.
-The legal encodings, ``2'b01`` idle and ``2'b10`` wait, are the set the
-state-inject record in ``tb/tb_top.sv`` accepts for this leaf.
-The leaf injects the other two values for one cycle.
-Those two codes have no frontdoor.
+state. ``hw/ip/efuse/doc/architecture.adoc`` (State Machine Architecture) says
+the read FSM "operates in a simple two-state sequence, transitioning from idle
+to waiting for a response"; no document names the encodings or the states of
+the program FSM. The leaf takes the encodings each machine shows on its state
+probe during the live control operation before any injection (idle and in
+flight). CTRL-READ-STATES requires exactly two for the read machine;
+CTRL-PROGRAM-STATES requires at least two and fewer than four for the program
+machine. The leaf injects every other two-bit value for one cycle. Those codes
+have no frontdoor. No document states which encoding a machine takes after an
+encoding outside its states, so OBS-READ-RECOVER-STATE and
+OBS-PROGRAM-RECOVER-STATE log the recovered encoding without a verdict.
 
 The recovery this leaf grades is DV-owned:
 
 * an in-flight read command is withdrawn while the illegal encoding is held;
 * on the next edge the read interface reports done and not busy with the error
   set, issues no command, and does not hand back the sensed fuse word;
-* an idle program interface recovers to a legal encoding without issuing a
-  bank command. Its pre-settled retirement status is not graded.
+* an idle program interface issues no bank command after the release. Its
+  pre-settled retirement status is not graded.
 
 The leaf also grades the read-error lifecycle on the same interface:
 
-* a successful read clears read_error_o, a read that outlives
-  EFUSE_READ_REQ_TIMEOUT retires with the error set, and the next legal request
-  clears it (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT, -CLEAR-REQUEST);
+* a successful read retires with read_error_o clear, a read that outlives
+  EFUSE_READ_REQ_TIMEOUT retires with the error set, and the next legal read
+  after it retires with the error clear (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT,
+  -CLEAR-REQUEST). ``efuse_interface_ctrl.rdl`` (``EFUSE_READ_CTRL``):
+  ``read_done`` "the read has completed, the status of which is in
+  read_status", and ``read_status`` is "Set when read_go is asserted while read
+  is not enabled, the address is out of bounds, or the read request times
+  out". No text states the clock on which the flag of the earlier read clears,
+  so OBS-READ-ERR-REQUEST-EDGE logs it one edge after the go;
 * with secure_tm latched, a read retires with the error set and zero data
   (CHK-READ-ERR-BLOCKED).
 
@@ -49,13 +60,9 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
-# hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting)
-# and no encodings. The legal set below is the one the state-inject
-# record in tb/tb_top.sv accepts. The injection walks its complement, and each
-# recovery must return the state register to a member of it.
-_ST_IDLE = 0b01
-_ST_WAIT_RESP = 0b10
-_ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
+# Two-bit state probes; each machine shows at least two encodings live.
+_STATE_CODES = tuple(range(4))
+_MAX_UNSEEN = len(_STATE_CODES) - 2
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -110,9 +117,9 @@ _REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
 _SETTLE_LIMIT = 400
 _SETTLE_CYCLES = 64
 
-# SPARE7 bits the program legs consume: two live controls and one per illegal
+# SPARE7 bits the program legs consume: two live controls and one per injected
 # encoding.
-_PROGRAM_BITS_NEEDED = 2 + len(_ILLEGAL_STATES)
+_PROGRAM_BITS_NEEDED = 2 + _MAX_UNSEEN
 
 
 @pyuvm.test()
@@ -144,13 +151,15 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         """
         seen_active = False
         stop = Event()
+        dut = cocotb.top
 
         async def _watch() -> None:
             nonlocal seen_active
             while not stop.is_set():
-                await RisingEdge(cocotb.top.clk_i)
+                await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                if int(cocotb.top.efuse_read_cmd_req_valid_o.value):
+                self._seen_states["read"].add(int(dut.efuse_read_state_o.value))
+                if int(dut.efuse_read_cmd_req_valid_o.value):
                     seen_active = True
 
         task = cocotb.start_soon(_watch())
@@ -236,9 +245,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             _TIMEOUT_CYCLES,
         )
 
-        # 3. Issuing a fresh legal request clears it (ReadRequestClearsError).
-        #    The error from leg 2 is the precondition: without it this holds
-        #    trivially, so the assert above is also this leg's control.
+        # 3. The next legal read retires with the error clear. The error from
+        #    leg 2 is the precondition: without it this holds trivially, so the
+        #    assert above is also this leg's control.
         await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
         # Re-read the flag AFTER the cleanup writes and BEFORE the request. Both
@@ -253,16 +262,24 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         )
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
         await RisingEdge(cocotb.top.clk_i)
-        _, _, err_after_req, _ = await self._read_probe()
-        assert err_after_req == 0, (
-            "CHK-READ-ERR-CLEAR-REQUEST FAIL: read_error_o stayed set after a fresh "
-            "legal request; a stale error would mislabel the next read"
-        )
-        await self._await_read_done()
-        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        _, _, err_edge, _ = await self._read_probe()
         self.logger.info(
-            "CHK-READ-ERR-CLEAR-REQUEST PASS: a new legal request cleared the error "
-            "left by the timeout"
+            "OBS-READ-ERR-REQUEST-EDGE: read_error_o=%d one edge after the go of the "
+            "read that follows the timed-out read (pre_request_error=%d)",
+            err_edge,
+            err_before_req,
+        )
+        done, busy, err, _ = await self._await_read_done()
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        assert (done, busy, err) == (1, 0, 0), (
+            f"CHK-READ-ERR-CLEAR-REQUEST FAIL: the legal read after the timed-out read "
+            f"retired with done={done} busy={busy} error={err}, expected 1/0/0 -- a "
+            "stale error would mislabel the next read"
+        )
+        self.logger.info(
+            "CHK-READ-ERR-CLEAR-REQUEST PASS: the legal read after the timed-out read "
+            "retired with done=1 busy=0 error=0 (pre_request_error=%d)",
+            err_before_req,
         )
 
     async def _read_blocked_by_secure_tm(self) -> None:
@@ -303,13 +320,15 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         """
         seen_active = False
         stop = Event()
+        dut = cocotb.top
 
         async def _watch() -> None:
             nonlocal seen_active
             while not stop.is_set():
-                await RisingEdge(cocotb.top.clk_i)
+                await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                if int(cocotb.top.efuse_program_cmd_req_valid_o.value):
+                self._seen_states["program"].add(int(dut.efuse_program_state_o.value))
+                if int(dut.efuse_program_cmd_req_valid_o.value):
                     seen_active = True
 
         task = cocotb.start_soon(_watch())
@@ -449,11 +468,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "would land in an idle window and grade nothing"
             )
 
-        # error_o is cleared by the next request, not by a status write (the rule
-        # CHK-READ-ERR-CLEAR-REQUEST grades), and _quiesce clears only the
-        # interface-level efuse_req_error. On the first injection of an interface
-        # the error term starts low and is asserted; on a later one the latch carries
-        # over from the previous leg, so that leg rests on done and the data mismatch.
+        # _quiesce clears only the interface-level efuse_req_error, so on a later
+        # idle injection error_o can still hold the previous leg's error; that leg
+        # rests on the state report and the bank request.
         await ReadOnly()
         err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
         done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
@@ -525,10 +542,14 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         recovered = int(getattr(dut, f"efuse_{which}_state_o").value)
-        assert recovered in (_ST_IDLE, _ST_WAIT_RESP), (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: recovered {which} state "
-            f"{recovered:#04x} is not a legal encoding "
-            f"(idle={_ST_IDLE:#04x} wait={_ST_WAIT_RESP:#04x})"
+        seen = sorted(self._seen_states[which])
+        self.logger.info(
+            "OBS-%s-RECOVER-STATE: injected=%#04x recovered=%#04x live_states=%s in_live_set=%d",
+            which.upper(),
+            state,
+            recovered,
+            ",".join(f"{v:#04x}" for v in seen),
+            int(recovered in seen),
         )
         assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
             f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
@@ -548,7 +569,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # when the injection landed mid-operation (they start 0/0). An idle
         # interface already reports a retired command, so those compares hold
         # whether or not the illegal encoding did anything. Idle grades the
-        # recovered legal encoding above.
+        # bank request above.
         if in_flight:
             assert (err, done, busy) == (1, 1, 0), (
                 f"CHK-{which.upper()}-FAILCLOSED FAIL: recovering from {state:#04x} the "
@@ -574,14 +595,42 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             )
         else:
             self.logger.info(
-                "CHK-%s-FAILCLOSED PASS: recovered from %#04x injected while idle "
-                "(state now %#04x legal, no bank command); 1/1/0 and data are "
+                "CHK-%s-FAILCLOSED PASS: released from %#04x injected while idle "
+                "(state now %#04x), no bank command; 1/1/0 and data are "
                 "pre-settled on an idle interface and are not graded",
                 which.upper(),
                 state,
                 recovered,
             )
         await self._quiesce(which)
+
+    def _unseen_states(self, which: str) -> list[int]:
+        """CTRL-<WHICH>-STATES: the encodings the live control showed; returns the rest.
+
+        architecture.adoc (State Machine Architecture) gives the read machine a
+        two-state sequence, so the read probe must show exactly two encodings.
+        No text counts the program machine's states, so its probe must show at
+        least two (idle and in flight) and fewer than all four. A probe that
+        never moved fails here, before any injection.
+        """
+        seen = sorted(self._seen_states[which])
+        if which == "read":
+            ok = len(seen) == 2
+        else:
+            ok = 2 <= len(seen) < len(_STATE_CODES)
+        tag = f"CTRL-{which.upper()}-STATES"
+        assert ok, (
+            f"{tag} FAIL: the live {which} operation showed the encodings "
+            f"{','.join(f'{v:#04x}' for v in seen) or 'none'}"
+        )
+        unseen = [v for v in _STATE_CODES if v not in seen]
+        self.logger.info(
+            "%s PASS: live_states=%s injected=%s",
+            tag,
+            ",".join(f"{v:#04x}" for v in seen),
+            ",".join(f"{v:#04x}" for v in unseen),
+        )
+        return unseen
 
     def _pick_pg_bits(self, img) -> list[int]:
         """SPARE7 bit indices to use as program stimulus, taken from the image.
@@ -621,18 +670,22 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
         # Control first: prove the read path is live before grading a refusal.
+        # The live operations also record the encodings each machine shows.
+        self._seen_states: dict[str, set[int]] = {"read": set(), "program": set()}
         await self._assert_read_alive("before")
         await self._assert_program_alive(pg_bits[0])
+        injected = {w: self._unseen_states(w) for w in ("read", "program")}
 
         # Establish the in-flight window before grading a withdrawal inside it.
         await self._assert_request_held("read", self._control_word * 32)
 
-        for state, pg_bit in zip(_ILLEGAL_STATES, pg_bits[2:]):
+        for state in injected["read"]:
             await self._inject("read", state, self._control_word * 32)
-            # Idle window, not in flight. Aborting an ACCEPTED program parks the
-            # example shim's write FSM (see the VPLAN section of this test), and
-            # every later leg that resenses would then read a corrupted shadow
-            # word. The read leg is the one that observes a withdrawal.
+        # Idle window, not in flight. Aborting an ACCEPTED program parks the
+        # example shim's write FSM (see the VPLAN section of this test), and
+        # every later leg that resenses would then read a corrupted shadow
+        # word. The read leg is the one that observes a withdrawal.
+        for state, pg_bit in zip(injected["program"], pg_bits[2:]):
             await self._inject(
                 "program", state, _CONTROL_PROGRAM_WORD * 32 + pg_bit, in_flight=False
             )
@@ -652,6 +705,6 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # for the legs above.
         await self._read_blocked_by_secure_tm()
         self.logger.info(
-            "illegal-state fail-closed ALL CHECKS PASS: both FSMs, both illegal "
-            "encodings, read path live before and after"
+            "illegal-state fail-closed ALL CHECKS PASS: both FSMs, every encoding "
+            "outside the live states, read path live before and after"
         )

@@ -70,15 +70,18 @@ status bits, as the refused program leaves them W clocks after the go and
 before ``efuse_req_error_clear``. No check reads the record.
 
 Last step, starts PROD and TEST_DEV without leg B: a program of bit 2 with RMA_CHIPLET
-matched (CTRL-PROG-LC-ORDER-MATCH) and bit 1 clear is logged as OBS-PROG-LC-ORDER
-(the OTP word, the program commands within W and the status bits), not graded:
-the specification texts disagree on whether that program needs bit 1 in the
-pre-write state. It runs with the graded coverage window closed. After each resense the shadow byte is
-``{~r, r}`` with r the raw nibble OR the programmed bit (``otp_fuse_controller.adoc``,
-sections Fuse Programming and RMA Authorization, Shadow Register Updates and
-Test-Mode Protection). Every match and mismatch go of leg B must reach its code
-(``0x15`` or ``0x2a``) inside the bounded poll; a go that does not fails
-CHK-PROG-LC and ends the leaf before the program it sets up is graded.
+matched (CTRL-PROG-LC-ORDER-MATCH) and bit 1 clear is refused (CHK-PROG-LC-ORDER): after
+the full W the OTP ``LC_STATE`` word equals the staged word and no program command
+reaches the post-guard port. Setting bit 2 requires bit 1 in the pre-write state
+(``otp_fuse_controller.adoc``, row ``LC_STATE``; ``lifecycle_controller.adoc``,
+Lifecycle States). CTRL-PROG-LC-ORDER-GO: the request fields of ``EFUSE_PROGRAM_CTRL``
+read back as the go wrote them, so the go reached the DUT. It runs with the graded
+coverage window closed. After each resense the shadow byte is ``{~r, r}`` with r the raw
+nibble OR the programmed bit (``otp_fuse_controller.adoc``, sections Fuse Programming
+and RMA Authorization, Shadow Register Updates and Test-Mode Protection). Every match
+and mismatch go of leg B must reach its code (``0x15`` or ``0x2a``) inside the bounded
+poll; a go that does not fails CHK-PROG-LC and ends the leaf before the program it sets
+up is graded.
 
 Time: the window W is a multiple of the sense time the leaf measures, at least
 256 clocks. Every program wait lasts the full W with no early exit. The window
@@ -88,11 +91,12 @@ channel before the next cold reset. In leg A a CHIPLET match also ends before
 a later SIP step; leg S holds it on purpose.
 
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
-leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
+leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B); CHK-PROG-LC-ORDER (last
+step). Controls: CTRL-WINDOW-CTL,
 CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
-enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-GO (leg B: after each
-refused program, ``efuse_data`` and ``program_enable`` of
-``EFUSE_PROGRAM_CTRL`` read back as the go wrote them), CTRL-RMA-LEGB (with
+enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-ORDER-GO,
+CTRL-PROG-LC-GO (leg B: after each refused program, ``efuse_data`` and
+``program_enable`` of ``EFUSE_PROGRAM_CTRL`` read back as the go wrote them), CTRL-RMA-LEGB (with
 ``+sep_rma_require_legb`` only: the plan drew leg B and both refused programs
 issued a go write that returned a response). A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
@@ -504,14 +508,14 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "go_resp": go_resp,
         }
 
-    def _go_issued(self, bit: int, bit_addr: int, res: dict) -> bool:
+    def _go_issued(self, bit: int, bit_addr: int, res: dict, name: str = "PROG-LC-GO") -> bool:
         """The request fields of a refused program read back as the go wrote them.
 
         ``efuse_data`` is 0 before the go write and 1 in it, so a lost go write fails.
         """
         exp = program_ctrl_word(go=0)
         return self._ctrl(
-            "PROG-LC-GO",
+            name,
             res["pctl"] & _PG_REQ == exp,
             bit=bit,
             program_ctrl=f"0x{res['pctl']:08x}",
@@ -597,6 +601,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         if leg_b:
             self.required_evidence = (*type(self).required_evidence, "CHK-PROG-LC")
+        if self._order_runs(p.lc_raw & _LC_RAW_MASK, leg_b):
+            self.required_evidence = (*self.required_evidence, "CHK-PROG-LC-ORDER")
         if leg_s:
             self.required_evidence = (
                 *type(self).required_evidence,
@@ -744,30 +750,41 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         await self.shim.stop()
         self.chk.finish()
 
-    async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
-        """OBS-PROG-LC-ORDER: a program of bit 2 with RMA_CHIPLET matched and bit 1 clear.
+    def _order_runs(self, raw0: int, leg_b: bool) -> bool:
+        """The last step runs from PROD and TEST_DEV with bit 1 clear and no leg B."""
+        return not leg_b and self.start in (ST_PROD, ST_TEST_DEV) and not (raw0 >> _LC_SIP_BIT) & 1
 
-        Logged, not graded: the specification does not settle whether the OTP program
-        of bit 2 needs bit 1 in the pre-write state. ``otp_fuse_controller.adoc`` (row
-        ``LC_STATE``) and ``lifecycle_controller.adoc`` say bit 2 requires bit 1;
-        ``token_processing.adoc`` (Post Token Matching Handling) and
-        ``otp_fuse_controller.adoc`` (Fuse Programming and RMA Authorization) gate
-        the fuse program on the token match only. The line logs the OTP word, the
-        program commands within W and the status bits. CTRL-PROG-LC-ORDER-MATCH
-        shows the RMA_CHIPLET match. It runs last, with the graded window closed,
-        because a landed bit changes every later state. It runs from PROD and
-        TEST_DEV (bit 1 clear, a legal state); a leg-B leaf has set bit 1 by then
-        and logs ``INFO-PROG-LC-ORDER-SKIP``.
+    async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
+        """CHK-PROG-LC-ORDER: refuses a bit-2 program with RMA_CHIPLET matched and bit 1 clear.
+
+        ``otp_fuse_controller.adoc`` (row ``LC_STATE``): "Setting bit 2 also requires
+        bit 1 to be set in the pre-write state; one write cannot establish both RMA
+        stages." ``lifecycle_controller.adoc`` (Lifecycle States): "Setting LC_STATE[2]
+        requires an RMA_CHIPLET token match and a state that already has LC_STATE[1]
+        set." After the full W the OTP ``LC_STATE`` word equals the staged word and no
+        program command, to any address, reaches the post-guard port.
+        CTRL-PROG-LC-ORDER-MATCH shows the RMA_CHIPLET match, and
+        CTRL-PROG-LC-ORDER-GO shows the go write reached ``EFUSE_PROGRAM_CTRL``, so
+        a refused program is not a lost one. The status bits and the go response
+        have no golden and stay logged in the line. The step runs last, with the
+        graded window closed, because a landed bit changes every later state. A
+        leaf that does not run it logs ``INFO-PROG-LC-ORDER-SKIP``.
         """
-        if leg_b or self.start not in (ST_PROD, ST_TEST_DEV) or (raw0 >> _LC_SIP_BIT) & 1:
+        if not self._order_runs(raw0, leg_b):
             self.chk.info("PROG-LC-ORDER-SKIP", start=self.start, leg_b=int(leg_b))
             return
         code = await self._match(CH_CHIPLET, "o.chp")
         self._ctrl("PROG-LC-ORDER-MATCH", code == CODE_MATCH, chp_code=_hex2(code))
-        r = await self._program(_LC_BIT2)
+        r = await self._program(_LC_BIT2, go_by_readback=True)
+        go = self._go_issued(2, _LC_BIT2, r, name="PROG-LC-ORDER-GO")
         end = await self._mismatch(CH_CHIPLET, "o.chp_end")
-        self.chk.obs(
+        self._grade(
             "PROG-LC-ORDER",
+            go
+            and code == CODE_MATCH
+            and r["cmd"] == 0
+            and r["cmd_all"] == 0
+            and r["word"] == staged_word,
             start=self.start,
             bit=2,
             chp_code=_hex2(code),
@@ -781,6 +798,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             done=r["done"],
             req_err=r["req_err"],
             program_status=r["pstatus"],
+            go_resp=r["go_resp"],
             chp_end=_hex2(end),
         )
 

@@ -18,7 +18,11 @@ resample at an event reads 0), C (a strap change 1 to 0 and 0 to 1 after a captu
 (early-capture control, no match), E (late ``SEC_DIS``: the token arrives after
 sensing with no later cold reset) and D (early capture with the match present,
 strap 1, then strap 0). The ``SEC_DIS`` token is presented over the JTAG
-AXI-Lite port ``j_axi`` with the token whose digest ``tb_top`` binds. A match
+AXI-Lite port ``j_axi`` with the token whose digest ``tb_top`` binds, with the
+strap at 0: the ``TEST_EN`` strap drives ``secure_tm_req_i``
+(``test_mode.adoc``, Entry and Exit) and test enable freezes the retained digest
+latches (``token_processing.adoc``, Token Matching Mechanism), so a go with the
+strap at 1 need not form a match. The strap rises after the match. A match
 survives ``rst_ni`` (``security_disable.adoc``, Reset Persistence), so the
 cold resets of leg D boot with the match present and no fuse sense runs.
 
@@ -83,9 +87,12 @@ Checkers:
   CHK-STM-CLEAR    with ``rst_ni`` low and the strap at 1, ``secure_tm_o`` reads 0
                    on every ``clk_i`` edge from the first edge with ``rst_ni`` low
                    to the release. Control: it reads 1 before the reset.
-  CHK-STM-LATE     in leg E, with no match at the boot, ``secure_tm_o`` stays 0
-                   after the strap rises and the ``SEC_DIS`` token matches.
-                   Control: leg D shows the early capture to 1.
+  CHK-STM-LATE     in leg E, with no match at the boot, the ``SEC_DIS`` token
+                   matches with the strap at 0, then the strap rises to 1 and
+                   ``secure_tm_o`` stays 0 on every sample of the hold
+                   (``test_mode.adoc``: asserting ``SEC_DIS`` later does not
+                   itself sample the strap). The recorded strap reads 1 on every
+                   sample of the hold. Control: leg D shows the early capture to 1.
   CHK-STM-SECDIS-FEAT
                    in leg D with the match present and ``secure_tm_o`` = 1,
                    ``FEAT_CTRL`` (``lcc_feat_ctrl_probe_o``) reads all ones on
@@ -811,8 +818,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         self.logger.info("INFO-LEG-E match_present=0 (sense completed at sample %d)", sense)
         open_graded_window(TEST, self.logger)
         await self._edge()
-        dut.test_en_strap_i.value = 1
-        e0 = self._now()
+        t0 = self._now()
         code = await self._present_sec_dis()
         sec_dis = self.rd(dut.lcc_security_disable_probe_o)
         assert code == TOKEN_MATCH and sec_dis == 1, (
@@ -821,18 +827,31 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         await self._edge()
         tok = self._now()
+        tok_straps = self._window(t0, tok - 1, "strap")
+        assert all(v == 0 for v in tok_straps), (
+            "leg E precondition FAIL: test_en_strap_i did not read 0 during the SEC_DIS token go"
+        )
+        dut.test_en_strap_i.value = 1
+        e0 = self._now()
         e1 = await self._hold()
         late = self._window(e0, e1 - 1)
+        late_straps = self._window(e0, e1 - 1, "strap")
+        assert all(v == 1 for v in late_straps), (
+            f"CHK-STM-LATE FAIL: leg=E: test_en_strap_i did not read 1 at samples "
+            f"{[e0 + i for i, v in enumerate(late_straps) if v != 1][:8]}"
+        )
         assert all(v == 0 for v in late), (
             f"CHK-STM-LATE FAIL: match_present=0 strap=1 SEC_DIS late: secure_tm_o left 0 at "
             f"samples {[e0 + i for i, v in enumerate(late) if v != 0][:8]}"
         )
         self.logger.info(
-            "CTRL-STM-E-TOKEN seen: code=0x%02x secdis=%d strap_rise=%d matched_by=%d hold_end=%d",
+            "CTRL-STM-E-TOKEN seen: code=0x%02x secdis=%d strap_at_go=0 go_start=%d "
+            "matched_by=%d strap_rise=%d hold_end=%d",
             code,
             sec_dis,
-            e0,
+            t0,
             tok,
+            e0,
             e1,
         )
 
@@ -959,8 +978,9 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         for line in captures + zero_caps:
             self.logger.info("CHK-STM-SENSE-CAPTURE PASS: %s", line)
         self.logger.info(
-            "CHK-STM-LATE PASS: match_present=0 strap=1 SEC_DIS late secure_tm_o=0 cycles=%d "
-            "control_legD=1",
+            "CHK-STM-LATE PASS: match_present=0 strap_at_go=0 strap=1 SEC_DIS late "
+            "secure_tm_o=0 cycles=%d strap_samples=%d control_legD=1",
             len(late),
+            len(late_straps),
         )
         self.result_pass(TEST, seed, len(self.required_evidence))

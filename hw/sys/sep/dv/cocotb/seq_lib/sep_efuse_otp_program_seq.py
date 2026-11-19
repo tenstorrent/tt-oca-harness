@@ -13,8 +13,8 @@ Parameterize ``bit_addr`` (global fuse bit index = word*32 + bit).
 ``retry_count`` records how many injected program failures forced a retry, so a
 test can prove the retry path was exercised rather than passing vacuously.
 ``expect_err`` is the write-lock / token-gate path: one attempt, require
-PROGRAM_ERR, then W1C the sticky ``efuse_req_error`` so a later command is
-not starved.
+PROGRAM_ERR, record ``EFUSE_INTERFACE_CTRL_STATUS`` in ``req_status_at_done``,
+then W1C the sticky ``efuse_req_error`` so a later command is not starved.
 """
 
 from __future__ import annotations
@@ -89,6 +89,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
         self.expect_err = expect_err
         self.retry_count = 0
         self.saw_err = False
+        self.req_status_at_done: int | None = None
 
     async def _access(self, op: SepAxiOp, addr: int, *, data: int = 0, label: str = "axi") -> int:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
@@ -129,6 +130,9 @@ class sep_efuse_otp_program_seq(uvm_sequence):
                 if status & _EFUSE_PROGRAM_ERR_BIT:
                     self.saw_err = True
                     if self.expect_err:
+                        self.req_status_at_done = await self._access(
+                            SepAxiOp.READ, _EFUSE_IFACE_STATUS, label="iface_status_at_done"
+                        )
                         await self._clear_req_error()
                         cocotb.log.info(
                             "[efuse] OTP bit[%d] rejected (PROGRAM_ERR) as expected",

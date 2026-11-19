@@ -133,7 +133,10 @@ twin slot; the exempt cell has the ``CLASS_KEY`` blocked request (read interface
 frontdoor read, the frontdoor read graded as in CHK-LOCK-CELL) and the ``LOCKS``
 accepted request (``CTRL-LOCK-EXEMPT-RL``, ``CTRL-LOCK-EXEMPT-TWIN``); the order cell
 has a control write on a second slot (``CTRL-LOCK-ORDER-PATH``) and the third bit
-absent before its write (``CTRL-LOCK-ORDER-THIRD``); the chain compares all 256
+absent before its write (``CTRL-LOCK-ORDER-THIRD``); each write of 0 to ``LOCKS`` that
+CHK-LOCK-ORDER and CHK-LOCK-SLOT0-STORE grade as leaving the bits set returns a B
+response code at the port (``CTRL-LOCK-ZERO-WR-REACH``, ``step=order`` and
+``step=slot0``), so a write that never reached the DUT fails; the chain compares all 256
 words after the first sense with the staged image. The JTAG read of the unlocked
 word is the accepted twin of the blocked JTAG read, in the same CHK-LOCK-JTAG-RD
 line; the landed program and the bank gain are the positive probe of
@@ -1299,6 +1302,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         # Step 11: a zero write to LOCKS keeps the lock; a third-bit write is blocked.
         for k in range(2):
             zero_resps.append(await self._wr(shadow_addr("LOCKS", k), 0, shadow=True))
+        self._control(
+            "LOCK-ZERO-WR-REACH",
+            all(0 <= r <= 3 for r in zero_resps),
+            step="order",
+            zero_wr_resp="/".join(resp_name(r) for r in zero_resps),
+        )
         locks_after = await self._locks()
         lock_after_zero = (locks_after >> lock_bit) & 1
         before_c = self._probe(name)
@@ -1362,6 +1371,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         set_resp = await self._wr(shadow_addr("LOCKS", 0), slot0, shadow=True)
         after_set = await self._locks()
         zero_resp = await self._wr(shadow_addr("LOCKS", 0), 0, shadow=True)
+        self._control(
+            "LOCK-ZERO-WR-REACH",
+            0 <= zero_resp <= 3,
+            step="slot0",
+            zero_wr_resp=resp_name(zero_resp),
+        )
         after_zero = await self._locks()
         self._grade(
             "LOCK-SLOT0-STORE",
