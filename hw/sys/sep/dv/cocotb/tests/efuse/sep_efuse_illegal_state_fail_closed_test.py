@@ -46,8 +46,10 @@ The leaf also grades the read-error lifecycle on the same interface:
   (CTRL-READ-ERR-PRE). No text states the clock on which the flag of the
   earlier read clears, so OBS-READ-ERR-REQUEST-EDGE logs it one edge after the
   go;
-* with secure_tm latched, a read retires with the error set and zero data
-  (CHK-READ-ERR-BLOCKED).
+* with secure_tm latched, a read retires with the error set, and its data is
+  zero (``hw/ip/efuse/doc/architecture.adoc:408-409``) and not the staged word
+  (CHK-READ-ERR-BLOCKED). The re-sense before it resets the read data to 0, so
+  the error flag, not the zero data, shows the refusal.
 
 Every check is on a DUT output. The injections are bracketed by a frontdoor OTP
 read that must move the machine: fuse sense does not use this FSM, so only a
@@ -343,7 +345,13 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         )
 
     async def _read_blocked_by_secure_tm(self) -> None:
-        """A read refused by the guard retires as an error with zero data."""
+        """A read refused by the guard retires as an error, never with the staged word.
+
+        The re-sense that latches secure_tm resets the read-data register to 0, so
+        the zero data alone does not show the refusal; the error flag does. The
+        zero value is the blocked-command response of
+        ``hw/ip/efuse/doc/architecture.adoc:408-409``.
+        """
         cocotb.top.test_en_strap_i.value = 1
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         assert int(cocotb.top.secure_tm_o.value) & 1 == 1, (
@@ -360,14 +368,18 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"CHK-READ-ERR-BLOCKED FAIL: a guard-blocked read reported done={done} "
             f"busy={busy} error={err}, expected 1/0/1"
         )
-        assert data == 0, (
+        staged = self._sensed_control_word & 0xFFFF_FFFF
+        assert data == 0 and data != staged, (
             f"CHK-READ-ERR-BLOCKED FAIL: a blocked read returned {data:#010x}, expected "
-            "zero -- a refused read must not hand back fuse content"
+            f"zero and not the staged word {staged:#010x} -- a refused read must not "
+            "hand back fuse content"
         )
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
         self.logger.info(
             "CHK-READ-ERR-BLOCKED PASS: a read refused while secure_tm is latched "
-            "retires with error set and zero data"
+            "retires with done=1 busy=0 error=1 data=%#010x (staged word %#010x)",
+            data,
+            staged,
         )
 
     async def _assert_program_alive(self, bit_offset: int) -> None:

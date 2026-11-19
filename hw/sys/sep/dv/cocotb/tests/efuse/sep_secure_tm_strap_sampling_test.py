@@ -75,7 +75,7 @@ Checkers:
                    windows does; ``:26`` the cold-reset clear). The strap is
                    ``secure_tm_req_i`` (``test_mode.adoc:16-17``,
                    ``port_table.adoc:122``), driven by the bench pin
-                   ``test_en_strap_i`` (``tb_top.sv:681``). The text gives no
+                   ``test_en_strap_i`` (``tb_top.sv:686``). The text gives no
                    capture edge, so the edge is not graded. The strap at the
                    rise must read 1, so the captured value differs from the
                    cleared value; the line prints the strap, the expected
@@ -324,7 +324,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"bound={_STM_BOUND} "
             f"zero_before_rise={sum(1 for v in pre if v == 0)}/{len(pre)} "
             f"held={sum(1 for v in held if v == strap)}/{len(held)} next_rst_fall={nxt} "
-            f"strap_pin=secure_tm_req_i(tb_top.sv:681 test_en_strap_i) {_SENSE_CAPTURE_CONTRACT}"
+            f"strap_pin=secure_tm_req_i(tb_top.sv:686 test_en_strap_i) {_SENSE_CAPTURE_CONTRACT}"
         )
         assert (
             strap == 1

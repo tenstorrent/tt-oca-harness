@@ -67,7 +67,7 @@ Checkers:
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
                     (``hw/ip/efuse/doc/architecture.adoc:247-249``: a locked target
                     completes the operation with an error;
-                    ``efuse_interface_ctrl.rdl:143`` ``read_done``, ``:149``
+                    ``efuse_interface_ctrl.rdl:131-132`` ``read_done``, ``:137-138``
                     ``read_status``). The line prints both values and the expected 1.
                     Control CTRL-LOCK-READ-PRE: an accepted read of ``LOCKS`` runs
                     first, and ``EFUSE_READ_CTRL`` read before the go shows
@@ -284,7 +284,7 @@ _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
 # ``read_status`` 1 (Error).
 _READ_DONE_CONTRACT = (
     "efuse/doc/architecture.adoc:247-249(Hardware_vs_Software_Locks),"
-    "efuse_interface_ctrl.rdl:143,149(EFUSE_READ_CTRL.read_done,read_status)"
+    "efuse_interface_ctrl.rdl:131-132,137-138(EFUSE_READ_CTRL.read_done,read_status)"
 )
 
 _KIND_W = ("write", "write_read")
