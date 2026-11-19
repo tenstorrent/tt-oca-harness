@@ -15,10 +15,13 @@ elsewhere, so a push that ignores the strobe or lands the byte on another lane r
 wrong; then it pushes a byte with a 1-byte write at offset 3 and an all-ones word, and pops
 them with a 1-byte read at offset 3, which must return the byte, and a 64-bit read. The FIFOs
 hold two entries, so pushes and pops alternate in pairs. An all-zero word is pushed, `STATUS`
-must report the FIFO not empty, and the word pops as 0. Last it reads the reader aperture at
-offset 0x780, which no register occupies: `SLVERR` inside the unit's address span (`memmap.adoc`,
-a read past the last register), `DECERR` where the offset lies past `SMC_TOP_SMC_MAILBOX_SIZE`
-(the inbound aperture of pair 31); `STATUS` then reports the FIFO empty.
+must report the FIFO not empty, and the word pops as 0. Last it pushes one word and, with that
+word queued, reads the reader aperture at offset 0x780, which no register occupies: `SLVERR`
+with read data 0 inside the unit's address span (`memmap.adoc`, a read past the last
+register), `DECERR` where the offset lies past `SMC_TOP_SMC_MAILBOX_SIZE` (the inbound aperture
+of pair 31). The read must not pop: `STATUS` still reports the FIFO not empty, the word then
+pops intact from `READ_DATA`, and `STATUS` reports the FIFO empty. A decoder that aliased 0x780
+onto `READ_DATA` would pop the word there and fail.
 """
 
 from __future__ import annotations
@@ -54,8 +57,11 @@ AXI_RESP_SLVERR = 2
 AXI_RESP_DECERR = 3
 STROBED_LANES = (1, 2)
 # Accesses per direction: three byte pushes and three pops, the all-ones and all-zero words
-# with their pops and the not-empty STATUS read, the high-offset read and the STATUS read.
-DIRECTION_ACCESSES = 3 + 3 + 2 + 2 + 1 + 2
+# with their pops and the not-empty STATUS read, then the queued word's push, the high-offset
+# read, the not-empty STATUS read, the word's pop and the empty STATUS read.
+DIRECTION_ACCESSES = 3 + 3 + 2 + 2 + 1 + 5
+# The word queued under the high-offset read; differs per pair and direction.
+HELD_WORD = 0x0123_4567_89AB_C000
 CG_ACCESSES = 3
 PLANNED_ACCESSES = CG_ACCESSES + NUM_PAIRS * len(DIRECTIONS) * DIRECTION_ACCESSES
 TERMS = ("SETUP", "BYTES", "WORDS", "OFFSET")
@@ -143,8 +149,10 @@ class smc_mailbox_lane_offset_walk_test_seq(SmcCsrSeq):
         await self.csr_read(f"{tag}_RZERO", _addr(reader, pair, "READ_DATA"), expected=0, length=8)
         self.words_ok += 1
 
-    async def _offset(self, reader: str, pair: int) -> None:
+    async def _offset(self, writer: str, reader: str, pair: int) -> None:
         tag = f"{reader[0]}{pair}"
+        word = HELD_WORD | (pair << 1) | (1 if reader == "INBOUND" else 0)
+        await self.csr_write(f"{tag}_WHELD", _addr(writer, pair, "WRITE_DATA"), word, length=8)
         base = _addr(reader, pair, "WRITE_DATA")
         high = await self._observe_read(f"{tag}_HIGH", base + HIGH_OFFSET)
         want = AXI_RESP_DECERR if base + HIGH_OFFSET >= MAILBOX_END else AXI_RESP_SLVERR
@@ -153,7 +161,20 @@ class smc_mailbox_lane_offset_walk_test_seq(SmcCsrSeq):
             f"{high.resp_code}, expected {want} ({'past' if want == AXI_RESP_DECERR else 'inside'}"
             f" the mailbox span ending at {MAILBOX_END:#x})"
         )
+        if want == AXI_RESP_SLVERR:
+            assert high.rdata == 0, (
+                f"{reader} pair {pair} read at {base + HIGH_OFFSET:#x} answered SLVERR with data "
+                f"{high.rdata:#x} while {word:#x} was queued; an unmapped offset returns 0"
+            )
         self.high_resps[high.resp_code] = self.high_resps.get(high.resp_code, 0) + 1
+        held = await self.csr_read(f"{tag}_HELD", _addr(reader, pair, "STATUS"), length=8)
+        assert held & STATUS_EMPTY == 0, (
+            f"{reader} pair {pair} STATUS reads {held:#x} after the read at offset "
+            f"{HIGH_OFFSET:#x}; the queued word must still be there, so empty must read 0"
+        )
+        await self.csr_read(
+            f"{tag}_RHELD", _addr(reader, pair, "READ_DATA"), expected=word, length=8
+        )
         status = await self.csr_read(f"{tag}_STATUS", _addr(reader, pair, "STATUS"), length=8)
         assert status & STATUS_FLAGS == STATUS_EMPTY, (
             f"{reader} pair {pair} STATUS reads {status:#x} after the pops; the FIFO is empty "
@@ -193,15 +214,16 @@ class smc_mailbox_lane_offset_walk_test_seq(SmcCsrSeq):
         )
 
         for pair in range(NUM_PAIRS):
-            for _writer, reader in DIRECTIONS:
-                await self._offset(reader, pair)
+            for writer, reader in DIRECTIONS:
+                await self._offset(writer, reader, pair)
         self._mark("OFFSET", self.offsets_ok)
         resps = ", ".join(f"resp {r}: {n}" for r, n in sorted(self.high_resps.items()))
         self._chk(
             "CHK-MBXWALK-HIGH-OFFSET-STATUS",
-            f"{self.offsets_ok}/{NUM_PAIRS * len(DIRECTIONS)} apertures: the read at offset "
-            f"{HIGH_OFFSET:#x} answered SLVERR inside the mailbox span and DECERR past it "
-            f"({resps}) and STATUS then read empty",
+            f"{self.offsets_ok}/{NUM_PAIRS * len(DIRECTIONS)} apertures: with one word queued "
+            f"the read at offset {HIGH_OFFSET:#x} answered SLVERR with data 0 inside the "
+            f"mailbox span and DECERR past it ({resps}), STATUS then read not empty, the word "
+            f"popped intact and STATUS read empty",
         )
 
         assert tuple(t for t, _c, _s in self._stamps) == TERMS, f"fence {self._stamps}"

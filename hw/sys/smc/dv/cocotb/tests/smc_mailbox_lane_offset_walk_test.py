@@ -6,8 +6,9 @@ Every one of the 64 mailbox apertures pushes a byte on lane 1 and on lane 2 with
 64-bit writes whose other lanes carry the complement and pops each as the byte on its lane with
 zeros elsewhere, pushes a byte at offset 3 and pops it with a 1-byte read there, pops an
 all-ones word intact, pushes an all-zero word that `STATUS` reports queued and pops it as 0, and
-is read at an offset no register occupies (SLVERR inside the mailbox span, DECERR past it)
-before `STATUS` reports the FIFO empty.
+with one word queued is read at an offset no register occupies (SLVERR with data 0 inside the
+mailbox span, DECERR past it), after which `STATUS` still reports the word queued, the word
+pops intact and `STATUS` reports the FIFO empty.
 
 Run:
     python3 tools/dv/run_dv.py --dut smc --items smc_mailbox_lane_offset_walk_test --tool vcs

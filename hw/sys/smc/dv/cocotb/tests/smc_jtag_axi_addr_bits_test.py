@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG AXI port: address bits above the SMC map and bit 27 falling after a set.
 
-Reads and writes on the JTAG AXI port with address bits [36:34], [39:38] and [55:41] set above
-the unimplemented word below the M-mode region leave the SMC on the output port at the driven
+Reads and writes on the JTAG AXI port with each address bit from 32 to 55 set alone above the
+unimplemented word below the M-mode region leave the SMC on the output port at the driven
 56-bit address and answer OKAY, while the access with those bits clear answers DECERR inside;
 a read of the CLINT `MTIME` address, which sets bit 27 and lies beyond the local aperture at
 reset, leaves on the output port the same way, and a scratch register whose address clears
-bit 27 is then written and read back.
+bit 27 is then written and read back with no transfer on the output port.
 
 Run:
     python3 tools/dv/run_dv.py --dut smc --items smc_jtag_axi_addr_bits_test --tool vcs

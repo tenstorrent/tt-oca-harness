@@ -2005,8 +2005,8 @@ burst, and never has a descriptor waiting behind another.
 set `HC_CONTROL.BUS_ENABLE`, but none queues a command, so those controllers never drive their
 buses.
 |`smc_jtag_axi_shape_test` |3 |The third inbound manager of the input fabric carries the same burst and error-response shapes the
-|`smc_jtag_axi_addr_bits_test` |3 |JTAG AXI address bits above the map leave on the output port intact; bit 27 falls after a CLINT-address read sets it.
 SEP_IN and SYS_IN shape leaves establish.
+|`smc_jtag_axi_addr_bits_test` |3 |JTAG AXI address bits above the map leave on the output port intact; bit 27 falls after a CLINT-address read sets it.
 |`smc_i2c_window_landing_test` |3 |Place I2C0 `CTRL` writes, and a second timeout, on I2C clocks where a bus-monitor or target decision
 rests on a one- or two-clock condition. No other leaf times a register write to the I2C clock.
 |`smc_uart_window_landing_test` |3 |Place UART0 register writes on the clock the transmit FIFO empties and on the clock the receive
@@ -51755,9 +51755,9 @@ response and expected read value; the bench nets `tb_fuse_sense_done`, `tb_fuse_
 *Objective*: On every mailbox port a byte pushed on lane 1 or 2 by a lane-strobed write whose
 other lanes carry its complement pops as that byte on its lane with zeros elsewhere, a byte
 written at offset 3 pops from a 1-byte read at offset 3, an all-ones word pops intact, an
-all-zero word is reported queued by `STATUS` and pops as 0, and a read at an offset no register
-occupies answers SLVERR inside the mailbox span and DECERR past it before `STATUS` reports the
-FIFO empty.
+all-zero word is reported queued by `STATUS` and pops as 0, and with one word queued a read at
+an offset no register occupies answers SLVERR with data 0 inside the mailbox span and DECERR past
+it without popping the word, which then pops intact before `STATUS` reports the FIFO empty.
 
 *Test Coverage*:
 
@@ -51771,11 +51771,14 @@ FIFO empty.
   returning all ones. The FIFOs hold two entries, so pushes and pops alternate in pairs.
 * A 64-bit all-zero word written after the all-ones word leaves `STATUS` reading `empty` 0 and
   pops as 0 on every port.
-* A 64-bit read at offset 0x780 of every aperture, past the last register at 0x48, answers
-  SLVERR where the offset lies inside the mailbox span (`memmap.adoc`: a read past the last
-  register of a unit) and DECERR where it lies past `SMC_TOP_SMC_MAILBOX_SIZE` (the inbound
-  aperture of pair 31). `STATUS` then reads with `empty` 1 and `full` and both threshold flags 0.
-* The sequence issues exactly the planned 835 SEP_IN accesses.
+* One 64-bit word is pushed through the writer side, then a 64-bit read at offset 0x780 of the
+  reader aperture, past the last register at 0x48, answers SLVERR with read data 0 where the
+  offset lies inside the mailbox span (`memmap.adoc`: a read past the last register of a unit)
+  and DECERR where it lies past `SMC_TOP_SMC_MAILBOX_SIZE` (the inbound aperture of pair 31).
+  `STATUS` then reads `empty` 0, the word pops intact from `READ_DATA`, and `STATUS` reads with
+  `empty` 1 and `full` and both threshold flags 0, so a decoder that aliased 0x780 onto
+  `READ_DATA` (a pop) fails.
+* The sequence issues exactly the planned 1027 SEP_IN accesses.
 
 *Test Procedure*:
 
@@ -51788,14 +51791,15 @@ Drive `smc_mailbox_lane_offset_walk_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-MBXWALK-BYTE-LANES` |On all 64 ports the lane-strobed pushes on lanes 1 and 2 popped as the byte on its lane with zeros elsewhere, the byte written at offset 3 popped from the 1-byte read at offset 3, and the all-ones word popped intact after it
 |`CHK-MBXWALK-WORDS` |On all 64 ports `STATUS` read `empty` 0 with the all-zero word pushed, and the word popped as 0
-|`CHK-MBXWALK-HIGH-OFFSET-STATUS` |On all 64 apertures the read at offset 0x780 answered SLVERR inside the mailbox span and DECERR past it, and `STATUS` then read `empty` 1 with `full` and the threshold flags 0
+|`CHK-MBXWALK-HIGH-OFFSET-STATUS` |On all 64 apertures, with one word queued, the read at offset 0x780 answered SLVERR with data 0 inside the mailbox span and DECERR past it, `STATUS` then read `empty` 0, the word popped intact, and `STATUS` read `empty` 1 with `full` and the threshold flags 0
 |`CHK-NONVAC` |Ordered fence SETUP < BYTES < WORDS < OFFSET, each term with a non-zero count and a later sim time than the one before
 |===
 
-*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds; the sequence issues exactly the planned 835 SEP_IN accesses. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds; the sequence issues exactly the planned 1027 SEP_IN accesses. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The data an erroring read returns is not compared. Interrupts, thresholds and the
-full-FIFO error are the subject of the other mailbox leaves.
+*Scope limit*: The data of the DECERR read past the mailbox span is not compared; the SLVERR
+reads inside it must return 0. Interrupts, thresholds and the full-FIFO error are the subject of
+the other mailbox leaves.
 
 '''''
 
@@ -51810,7 +51814,8 @@ full-FIFO error are the subject of the other mailbox leaves.
 
 *BFM / Model*: JTAG AXI driver (the third inbound manager, 56-bit address) for 4-byte reads and
 writes; the SYS_OUT responder, which answers every address presented on the output port; the
-output AXI monitor's last AR and AW address (`tb_output_axi_araddr`, `tb_output_axi_awaddr`); the
+output AXI monitor's last AR and AW address (`tb_output_axi_araddr`, `tb_output_axi_awaddr`) and
+its completed R beat and B response counts; the
 bench nets `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the bring-up
 wait.
 
@@ -51821,26 +51826,29 @@ wait.
 *Randomization*: RAND-NONE: directed, every address is pinned by the sequence.
 
 *Objective*: A JTAG AXI access whose address sets bits above the SMC's 32-bit map is routed out
-of the SMC with those bits intact: with bits [36:34], [39:38] or [55:41] set above the
-unimplemented word below the M-mode region the read, and with bit 36 or bits [55:41] set the
-write, leave on the output port at the driven 56-bit address and answer OKAY from the system
-responder, while the access with them clear decodes inside and answers DECERR; a read of the
-CLINT `MTIME` address, which sets bit 27 and at the reset `REGION_SIZE` lies beyond the local
-aperture, leaves on the output port the same way, and `SCRATCH_COLD_SCRATCH[0]`, whose address
-clears bit 27, is then written and read back.
+of the SMC with those bits intact: with each address bit from 32 to 55 set alone above the
+unimplemented word below the M-mode region, one bit per access, the read and the write leave on
+the output port at the driven 56-bit address and answer OKAY from the system responder, while
+the access with them clear decodes inside and answers DECERR; a read of the CLINT `MTIME`
+address, which sets bit 27 and at the reset `REGION_SIZE` lies beyond the local aperture, leaves
+on the output port the same way, and `SCRATCH_COLD_SCRATCH[0]`, whose address clears bit 27, is
+then written and read back inside the SMC with no transfer completing on the output port.
 
 *Test Coverage*:
 
 * The CLINT `MTIME` address, which sets bit 27 and lies beyond the local aperture at the reset
   `REGION_SIZE`, read over the JTAG port answers OKAY with the output port's last AR address
   equal to it; `SCRATCH_COLD_SCRATCH[0]`, whose address clears bit 27, then takes a pattern and
-  reads it back.
-* Reads of that word with address bits [36:34], [39:38] and [55:41] set in turn answer OKAY and
-  the output port's last AR address equals the driven 56-bit address; the read with them clear
-  answers DECERR.
-* Writes of that word with address bit 36 and with bits [55:41] set answer OKAY and the output
-  port's last AW address equals the driven address; the write with them clear answers DECERR.
-* The sequence issues exactly the planned 10 JTAG accesses.
+  reads it back while the output port's R beat and B response counts and last AR and AW
+  addresses stay unchanged, so a bit 27 that stayed set (that address lies outside both windows
+  and would reach the system responder, which stores and returns the pattern) fails.
+* 24 reads of that word, each with one address bit from 32 to 55 set alone, answer OKAY and the
+  output port's last AR address equals the driven 56-bit address, so a swapped or shorted pair
+  of bits changes the address of one read; the read with them clear answers DECERR.
+* 24 writes of that word, each with one address bit from 32 to 55 set alone, answer OKAY and the
+  output port's last AW address equals the driven address; the write with them clear answers
+  DECERR.
+* The sequence issues exactly the planned 53 JTAG accesses.
 
 *Test Procedure*:
 
@@ -51851,12 +51859,12 @@ Drive `smc_jtag_axi_addr_bits_test_seq`. Each checker below is a named compare t
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-JTAGADDR-BIT27-FALLS` |The CLINT `MTIME` address read (bit 27 set, beyond the local aperture at reset) left on the output port at that address and answered OKAY, and the scratch register (bit 27 clear) then took the written pattern and read it back
-|`CHK-JTAGADDR-READ-HIGH-BITS` |Reads with address bits [36:34], [39:38] and [55:41] set above the unimplemented word each left on the output port at the driven address and answered OKAY; the read with them clear answered DECERR
-|`CHK-JTAGADDR-WRITE-HIGH-BITS` |Writes with address bit 36 and with bits [55:41] set above the unimplemented word each left on the output port at the driven address and answered OKAY; the write with them clear answered DECERR
+|`CHK-JTAGADDR-BIT27-FALLS` |The CLINT `MTIME` address read (bit 27 set, beyond the local aperture at reset) left on the output port at that address and answered OKAY, and the scratch register (bit 27 clear) then took the written pattern and read it back with no R beat, B response or address change on the output port
+|`CHK-JTAGADDR-READ-HIGH-BITS` |24 reads, each with one address bit from 32 to 55 set alone above the unimplemented word, each left on the output port at the driven address and answered OKAY; the read with them clear answered DECERR
+|`CHK-JTAGADDR-WRITE-HIGH-BITS` |24 writes, each with one address bit from 32 to 55 set alone above the unimplemented word, each left on the output port at the driven address and answered OKAY; the write with them clear answered DECERR
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds; the sequence issues exactly the planned 10 JTAG accesses. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds; the sequence issues exactly the planned 53 JTAG accesses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The responder's data for an address outside the SMC map is not compared. Bursts,
 stalls and the filter refusal are the subject of `smc_jtag_axi_shape_test`.

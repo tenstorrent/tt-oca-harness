@@ -7,13 +7,15 @@ access the other JTAG leaves issue sits inside the SMC's 32-bit map with bit 27 
 once, so the address bits above bit 31 never rise on the port and bit 27 never falls. This
 sequence takes the unimplemented word below the M-mode region, which the fabric's error slave
 answers with DECERR inside the SMC (`smc_jtag_axi_shape_test`), and reads and writes it with
-address bits [36:34], [39:38] and [55:41] set in turn: an address outside the SMC map leaves on
-the output port (`fabric.adoc`, every other address goes straight through), so each such access
-must complete OKAY from the system responder with the output port carrying the driven 56-bit
-address, while the access with the bits clear decodes inside and answers DECERR. A read of the
-CLINT `MTIME` address, which sets bit 27 and at the reset `REGION_SIZE` lies beyond the local
-aperture, leaves on the output port the same way; a scratch register whose address clears bit
-27 is then written and read back.
+each address bit from 32 to 55 set alone, one bit per access: an address outside the SMC map
+leaves on the output port (`fabric.adoc`, every other address goes straight through), so each
+such access must complete OKAY from the system responder with the output port carrying the
+driven 56-bit address, while the access with the bits clear decodes inside and answers DECERR.
+A read of the CLINT `MTIME` address, which sets bit 27 and at the reset `REGION_SIZE` lies
+beyond the local aperture, leaves on the output port the same way; a scratch register whose
+address clears bit 27 is then written and read back with no transfer completing on the output
+port, so a bit 27 that stayed set (the scratch address with it set lies outside both windows
+and would reach the system responder) fails.
 """
 
 from __future__ import annotations
@@ -33,13 +35,9 @@ SCRATCH_PATTERN = 0x5A3C_0F96
 assert CLINT_MTIME & BIT27 and not SCRATCH_COLD_0 & BIT27 and not UNIMPLEMENTED_ADDR & BIT27, (
     "CLINT MTIME must carry address bit 27; the scratch register and the unimplemented word must not"
 )
-# Address bit groups above the SMC's 32-bit map, each set on its own access.
-HIGH_GROUPS = (
-    ("36:34", sum(1 << b for b in range(34, 37))),
-    ("39:38", sum(1 << b for b in range(38, 40))),
-    ("55:41", sum(1 << b for b in range(41, 56))),
-)
-WRITE_GROUPS = (("36", 1 << 36), ("55:41", sum(1 << b for b in range(41, 56))))
+# Address bits above the SMC's 32-bit map, each set alone on its own read and its own write,
+# so a swap or short between two of them changes the output address of one access.
+HIGH_BITS = tuple(range(32, 56))
 AXI_RESP_OKAY = 0
 AXI_RESP_DECERR = 3
 PROT_UNPRIV = 0
@@ -48,7 +46,7 @@ CHECKERS = (
     "CHK-JTAGADDR-READ-HIGH-BITS",
     "CHK-JTAGADDR-WRITE-HIGH-BITS",
 )
-PLANNED_ACCESSES = 3 + len(HIGH_GROUPS) + 1 + len(WRITE_GROUPS) + 1
+PLANNED_ACCESSES = 3 + len(HIGH_BITS) + 1 + len(HIGH_BITS) + 1
 
 
 class _OneShot(pyuvm.uvm_sequence):
@@ -101,47 +99,61 @@ class smc_jtag_axi_addr_bits_test_seq(SmcCsrSeq):
             f"{seen if seen is None else f'{seen:#016x}'}"
         )
 
+    def _output_state(self) -> tuple[int, int, int | None, int | None]:
+        """The output port's completed R beats and B responses and its last AR and AW address."""
+        monitor = self.env.output_axi_monitor
+        return monitor.r_beats, monitor.b_resps, monitor.last_araddr, monitor.last_awaddr
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
-        high_addrs = [UNIMPLEMENTED_ADDR | bits for _n, bits in HIGH_GROUPS]
-        write_addrs = [UNIMPLEMENTED_ADDR | bits for _n, bits in WRITE_GROUPS]
+        bit_names = f"{HIGH_BITS[0]} to {HIGH_BITS[-1]}"
 
         await self._jtag("bit27_set_rd", SmcSysAxiOp.READ, CLINT_MTIME)
         self._output_addr(SmcSysAxiOp.READ, CLINT_MTIME)
+        before = self._output_state()
         await self._jtag("bit27_clear_wr", SmcSysAxiOp.WRITE, SCRATCH_COLD_0, SCRATCH_PATTERN)
         back = await self._jtag("bit27_clear_rd", SmcSysAxiOp.READ, SCRATCH_COLD_0)
+        after = self._output_state()
         assert back.rdata == SCRATCH_PATTERN, (
             f"scratch register {SCRATCH_COLD_0:#010x} read {back.rdata:#x} over the JTAG port "
             f"after a write of {SCRATCH_PATTERN:#x}"
+        )
+        assert after == before, (
+            f"the scratch write and read at {SCRATCH_COLD_0:#010x} (bit 27 clear) moved the "
+            f"output port (R beats, B responses, last AR, last AW) from {before} to {after}; "
+            f"they must decode inside the SMC"
         )
         self._chk(
             "CHK-JTAGADDR-BIT27-FALLS",
             f"read of the CLINT MTIME address {CLINT_MTIME:#010x} (bit 27 set, beyond the local "
             f"aperture at reset) left on the output port at that address and answered OKAY, "
             f"then {SCRATCH_COLD_0:#010x} (bit 27 clear) took {SCRATCH_PATTERN:#x} and read it "
-            f"back",
+            f"back with no R beat, B response or address change on the output port "
+            f"(R {after[0]}, B {after[1]})",
         )
 
-        for (name, _bits), addr in zip(HIGH_GROUPS, high_addrs):
-            await self._jtag(f"high{name}_rd", SmcSysAxiOp.READ, addr)
+        for bit in HIGH_BITS:
+            addr = UNIMPLEMENTED_ADDR | (1 << bit)
+            await self._jtag(f"high{bit}_rd", SmcSysAxiOp.READ, addr)
             self._output_addr(SmcSysAxiOp.READ, addr)
         await self._jtag("high_clear_rd", SmcSysAxiOp.READ, UNIMPLEMENTED_ADDR, decerr=True)
         self._chk(
             "CHK-JTAGADDR-READ-HIGH-BITS",
-            f"reads with address bits {', '.join(n for n, _b in HIGH_GROUPS)} set above the "
-            f"unimplemented word each left on the output port at the driven address and "
+            f"{len(HIGH_BITS)} reads, each with one address bit of {bit_names} set above the "
+            f"unimplemented word, each left on the output port at the driven address and "
             f"answered OKAY; the read with them clear answered DECERR inside the SMC",
         )
 
-        for (name, _bits), addr in zip(WRITE_GROUPS, write_addrs):
-            await self._jtag(f"high{name}_wr", SmcSysAxiOp.WRITE, addr, 0xDEAD_0000)
+        for bit in HIGH_BITS:
+            addr = UNIMPLEMENTED_ADDR | (1 << bit)
+            await self._jtag(f"high{bit}_wr", SmcSysAxiOp.WRITE, addr, 0xDEAD_0000 | bit)
             self._output_addr(SmcSysAxiOp.WRITE, addr)
         await self._jtag(
             "high_clear_wr", SmcSysAxiOp.WRITE, UNIMPLEMENTED_ADDR, 0xDEAD_0000, decerr=True
         )
         self._chk(
             "CHK-JTAGADDR-WRITE-HIGH-BITS",
-            f"writes with address bits {', '.join(n for n, _b in WRITE_GROUPS)} set above the "
-            f"unimplemented word each left on the output port at the driven address and "
+            f"{len(HIGH_BITS)} writes, each with one address bit of {bit_names} set above the "
+            f"unimplemented word, each left on the output port at the driven address and "
             f"answered OKAY; the write with them clear answered DECERR inside the SMC",
         )
