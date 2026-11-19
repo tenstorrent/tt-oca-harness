@@ -199,9 +199,11 @@ def _sub_block_row(wrapper: str, child: str) -> dict:
 
     Its window runs to the next sub-block's base, or to the end of the wrapper's
     aperture, and an access past its registers gets the wrapper row's
-    ``past sub-block registers`` response.
+    ``past <child> registers`` response, or its ``past sub-block registers``
+    response when the wrapper gives one for every sub-block.
     """
     outer = _component_row(wrapper)
+    holes = dict(outer["hole_responses"])
     prefix = f"SMC_TOP_{wrapper.upper()}_"
     base = smc_addr(f"{prefix}{child.upper()}_BASE_ADDR")
     bases = set(smc_addr_symbols(rf"{prefix}\w+_BASE_ADDR"))
@@ -217,7 +219,9 @@ def _sub_block_row(wrapper: str, child: str) -> dict:
         "base": base,
         "end": min(later) - 1 if later else outer["end"],
         "occupied_size": smc_addr(f"{prefix}{child.upper()}_SIZE"),
-        "past_response": dict(outer["hole_responses"]).get("past sub-block registers"),
+        "past_response": holes.get(
+            f"past {child} registers", holes.get("past sub-block registers")
+        ),
     }
 
 
