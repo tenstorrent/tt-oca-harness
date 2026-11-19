@@ -41595,7 +41595,7 @@ is measured and printed.
 * Measured and logged only: the absolute intervals of every run, the measured difference of each
   pair next to the programmed difference, each bus-free time next to the programmed `T_BUF` (a
   value below it is printed, not compared), the bytes the repeated-START reads return, and the
-  order of the `T_BUF` pair (graded by `smc_i2c_tbuf_bus_free_test`,
+  equality of the `T_BUF` pair with `T_R + TSU_STA + 7` (graded by `smc_i2c_tbuf_bus_free_test`,
   <<sec-570-smc_i2c_tbuf_bus_free_test>>).
 
 *Test Procedure*:
@@ -41685,6 +41685,95 @@ address write, so the repeated-START shape at `THIGH` 2 is not run. The exact-di
 `smc_i2c_p0_timeout_test` and is the hosted counterpart of the firmware leaves
 `smc_i2c_bus_corners_test` (285) and `smc_i2c_controller_sda_interference_test` (229), which stay
 enrolled.
+
+'''''
+
+[[sec-570-smc_i2c_tbuf_bus_free_test]]
+===== 570 `smc_i2c_tbuf_bus_free_test`
+
+*Phase*: 3
+
+*Area*: I2C
+
+*Status*: implemented
+
+*Source Module*: `smc_i2c_tbuf_bus_free_test`
+
+*BFM / Model*: the bench of entry 568 (<<sec-568-smc_i2c_timing_set_rand_test>>):
+`SmcI2cEepromSlave` (0x50) on `tb_i2c0_scl` / `tb_i2c0_sda`; the clock-sampled measurer of
+`smc_i2c_timing_set_rand_test_seq`, which reads both pad nets on every `clk_periph_i` rising edge
+and keeps each edge as a cycle count; ocah_axi_vip (AXI) on SEP_IN for the I2C0 registers of
+entry 568; every draw from a `random.Random` stream seeded from `RANDOM_SEED`, logged at the draw
+
+*Run mode*: one testlist entry in `testlists/i2c.toml`; groups `i2c`, `all` and `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `i2c`; seed 1, reseed 3, as entry 568.
+
+*Randomization*: RAND-REP; the draw of entry 568 at the leaf's seed: one base timing set
+(`THD_DAT` 25 to 32, `T_BUF` 30 to 60) and the seven one-parameter pairs, the `T_BUF` pair with a
+drawn sign and size of change (1 to 24 cycles) and a drawn transfer shape; logged at the draw and
+carried in every checker line.
+
+*Objective*: With `THD_DAT` of 2 or more and the next transfer queued, every bus-free time of the
+`T_BUF` pair, from the STOP SDA rise of a transfer to the START SDA fall of the transfer queued
+behind it, equals `T_R` plus `TSU_STA` plus 7 cycles in both runs and does not move with `T_BUF`.
+
+*Test Coverage*:
+
+* Bus-free time before a queued START (`hw/ip/i2c/regs/i2c.rdl`, `TIMING4.T_BUF`: outside
+  multi-controller monitoring, with `THD_DAT` of 2 or more and the next entry already queued, "the
+  START follows the STOP's SDA rise after `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this
+  field holds"): three bus-free times per run, for the base run and the second run of the `T_BUF`
+  pair, each compared with `T_R + TSU_STA + 7`, and the second run's compared with the base run's
+  at every common sample; every other measured run of the draw with `THD_DAT` of 2 or more (the
+  two base runs and the other pairs) has its bus-free times compared with its own
+  `T_R + TSU_STA + 7`, so a `TSU_STA` pair lowered below `T_BUF` shows a bus-free time below the
+  programmed `T_BUF`.
+* Arm leg: the six other pairs of entry 568 are graded first (`CHK-ITS-ORDER`), so the measurer is
+  shown to follow a field change of the same run before the `T_BUF` pair is graded.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smc_i2c_timing_set_rand_test_seq` with `grade_tbuf_bus_free`: steps 1 to 4 of entry 568
+(draw, base runs, the seven pairs, the order of the six graded pairs and `CHK-ITS-ORDER`).
+. Grade the `T_BUF` pair: the drawn `T_BUF` differs between the runs and `THD_DAT` is at least 2;
+every bus-free time of each run equals `T_R + TSU_STA + 7`, at least two common samples, and the
+second run's equals the base run's at every common sample; every other measured run with `THD_DAT`
+of 2 or more has every bus-free time equal to its own `T_R + TSU_STA + 7`; print
+`CHK-ITS-TBUF-BUS-FREE` with the graded runs, the skipped runs and the largest `T_BUF` above the
+expected time among the graded runs, or
+raise `CHK-ITS-TBUF-BUS-FREE FAIL` with both runs' bus-free times, both programmed values, the
+expected time and the faults.
+. Steps 5 and 6 of entry 568 (`THIGH` 2, restore, `CHK-ITS-COMPLETE`, `CHK-TIMEOUT-PATHS`,
+`CHK-NONVAC`, the fence expecting the `CHK-ITS-TBUF-BUS-FREE` line after `CHK-ITS-ORDER`).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ITS-TBUF-BUS-FREE` |The graded leg: every bus-free time of the base run and of the second run
+of the `T_BUF` pair equals `T_R + TSU_STA + 7` of the base set, and at every common sample (at
+least two) the second run's equals the base run's, although `T_BUF` moved; every other measured
+run with `THD_DAT` of 2 or more matches its own `T_R + TSU_STA + 7`. A bus-free time that
+waits `T_BUF`, or any other value, fails it with a message beginning `CHK-ITS-TBUF-BUS-FREE FAIL`.
+|`CHK-ITS-ORDER` |As entry 568, the arm leg: the six pairs other than `T_BUF` ordered at every
+common sample.
+|`CHK-ITS-MIN-THIGH` |As entry 568.
+|`CHK-ITS-COMPLETE` |As entry 568.
+|`CHK-NONVAC` |As entry 568, with the `CHK-ITS-TBUF-BUS-FREE` line expected after `CHK-ITS-ORDER`.
+|`CHK-TIMEOUT-PATHS` |As entry 568.
+|===
+
+*Pass Criteria*: The six tokens above are all printed. Enrolled in: `all`, `hosted`, `i2c`.
+
+*Scope limit*: The `T_BUF` pair of the entry 568 draw only, with `THD_DAT` 25 to 32 and the next
+transfer queued; `smc_i2c_wire_timing_test` set A covers the `T_BUF` wait with `THD_DAT` 1. A
+queued START with `THD_DAT` 2 or 3, an FMT FIFO empty at the STOP, and multi-controller monitoring
+are not run here. A bus-free time that waits `T_BUF` adds to `T_R + TSU_STA + 7` and fails the
+equality; a model that instead holds a floor near `T_BUF` is caught only by a graded run whose
+`T_BUF` exceeds its `T_R + TSU_STA + 7`, which the line prints as the largest margin (24 cycles at
+seed 1, from the lowered `TSU_STA` pair) and which some reseeded draws do not reach.
 
 '''''
 
@@ -54843,95 +54932,6 @@ fixed and the leaf moves to its feature testlist. The members are the
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
 the wrong reason.
-
-[[sec-570-smc_i2c_tbuf_bus_free_test]]
-===== 570 `smc_i2c_tbuf_bus_free_test`
-
-*Phase*: 3
-
-*Area*: I2C
-
-*Status*: implemented
-
-*Source Module*: `smc_i2c_tbuf_bus_free_test`
-
-*BFM / Model*: the bench of entry 568 (<<sec-568-smc_i2c_timing_set_rand_test>>):
-`SmcI2cEepromSlave` (0x50) on `tb_i2c0_scl` / `tb_i2c0_sda`; the clock-sampled measurer of
-`smc_i2c_timing_set_rand_test_seq`, which reads both pad nets on every `clk_periph_i` rising edge
-and keeps each edge as a cycle count; ocah_axi_vip (AXI) on SEP_IN for the I2C0 registers of
-entry 568; every draw from a `random.Random` stream seeded from `RANDOM_SEED`, logged at the draw
-
-*Run mode*: one testlist entry in `testlists/i2c.toml`; groups `i2c`, `all` and `hosted`;
-`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `i2c`; seed 1, reseed 3, as entry 568.
-
-*Randomization*: RAND-REP; the draw of entry 568 at the leaf's seed: one base timing set
-(`THD_DAT` 25 to 32, `T_BUF` 30 to 60) and the seven one-parameter pairs, the `T_BUF` pair with a
-drawn sign and size of change (1 to 24 cycles) and a drawn transfer shape; logged at the draw and
-carried in every checker line.
-
-*Objective*: With `THD_DAT` of 2 or more and the next transfer queued, every bus-free time of the
-`T_BUF` pair, from the STOP SDA rise of a transfer to the START SDA fall of the transfer queued
-behind it, equals `T_R` plus `TSU_STA` plus 7 cycles in both runs and does not move with `T_BUF`.
-
-*Test Coverage*:
-
-* Bus-free time before a queued START (`hw/ip/i2c/regs/i2c.rdl`, `TIMING4.T_BUF`: outside
-  multi-controller monitoring, with `THD_DAT` of 2 or more and the next entry already queued, "the
-  START follows the STOP's SDA rise after `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this
-  field holds"): three bus-free times per run, for the base run and the second run of the `T_BUF`
-  pair, each compared with `T_R + TSU_STA + 7`, and the second run's compared with the base run's
-  at every common sample; every other measured run of the draw with `THD_DAT` of 2 or more (the
-  two base runs and the other pairs) has its bus-free times compared with its own
-  `T_R + TSU_STA + 7`, so a `TSU_STA` pair lowered below `T_BUF` shows a bus-free time below the
-  programmed `T_BUF`.
-* Arm leg: the six other pairs of entry 568 are graded first (`CHK-ITS-ORDER`), so the measurer is
-  shown to follow a field change of the same run before the `T_BUF` pair is graded.
-
-*Test Procedure*:
-
-[arabic]
-. Drive `smc_i2c_timing_set_rand_test_seq` with `grade_tbuf_bus_free`: steps 1 to 4 of entry 568
-(draw, base runs, the seven pairs, the order of the six graded pairs and `CHK-ITS-ORDER`).
-. Grade the `T_BUF` pair: the drawn `T_BUF` differs between the runs and `THD_DAT` is at least 2;
-every bus-free time of each run equals `T_R + TSU_STA + 7`, at least two common samples, and the
-second run's equals the base run's at every common sample; every other measured run with `THD_DAT`
-of 2 or more has every bus-free time equal to its own `T_R + TSU_STA + 7`; print
-`CHK-ITS-TBUF-BUS-FREE` with the graded runs, the skipped runs and the largest `T_BUF` above the
-expected time among the graded runs, or
-raise `CHK-ITS-TBUF-BUS-FREE FAIL` with both runs' bus-free times, both programmed values, the
-expected time and the faults.
-. Steps 5 and 6 of entry 568 (`THIGH` 2, restore, `CHK-ITS-COMPLETE`, `CHK-TIMEOUT-PATHS`,
-`CHK-NONVAC`, the fence expecting the `CHK-ITS-TBUF-BUS-FREE` line after `CHK-ITS-ORDER`).
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-ITS-TBUF-BUS-FREE` |The graded leg: every bus-free time of the base run and of the second run
-of the `T_BUF` pair equals `T_R + TSU_STA + 7` of the base set, and at every common sample (at
-least two) the second run's equals the base run's, although `T_BUF` moved; every other measured
-run with `THD_DAT` of 2 or more matches its own `T_R + TSU_STA + 7`. A bus-free time that
-waits `T_BUF`, or any other value, fails it with a message beginning `CHK-ITS-TBUF-BUS-FREE FAIL`.
-|`CHK-ITS-ORDER` |As entry 568, the arm leg: the six pairs other than `T_BUF` ordered at every
-common sample.
-|`CHK-ITS-MIN-THIGH` |As entry 568.
-|`CHK-ITS-COMPLETE` |As entry 568.
-|`CHK-NONVAC` |As entry 568, with the `CHK-ITS-TBUF-BUS-FREE` line expected after `CHK-ITS-ORDER`.
-|`CHK-TIMEOUT-PATHS` |As entry 568.
-|===
-
-*Pass Criteria*: The six tokens above are all printed. Enrolled in: `all`, `hosted`, `i2c`.
-
-*Scope limit*: The `T_BUF` pair of the entry 568 draw only, with `THD_DAT` 25 to 32 and the next
-transfer queued; `smc_i2c_wire_timing_test` set A covers the `T_BUF` wait with `THD_DAT` 1. A
-queued START with `THD_DAT` 2 or 3, an FMT FIFO empty at the STOP, and multi-controller monitoring
-are not run here. A bus-free time that waits `T_BUF` adds to `T_R + TSU_STA + 7` and fails the
-equality; a model that instead holds a floor near `T_BUF` is caught only by a graded run whose
-`T_BUF` exceeds its `T_R + TSU_STA + 7`, which the line prints as the largest margin (24 cycles at
-seed 1, from the lowered `TSU_STA` pair) and which some reseeded draws do not reach.
-
-'''''
 
 [[sec-573-smc_flr_hold_edge_requeue_test]]
 ===== 573 `smc_flr_hold_edge_requeue_test`
