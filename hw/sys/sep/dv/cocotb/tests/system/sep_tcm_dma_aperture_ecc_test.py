@@ -49,7 +49,8 @@ Checkers:
                  the ID of that AR answers SLVERR or DECERR, the DMA transfer
                  ends with STATUS.error at 1, and ``host_path_err`` is set.
                  No text states STATUS.done on an error, so done is logged
-                 (OBS-TCM-DBE-DONE) and not graded. Control: the clean read of the same
+                 (INFO-TCM-DBE-DONE) and not graded; that line names CHK-TCM-DBE
+                 in ``chk=`` for its error field. Control: the clean read of the same
                  word is one AR on PR-XBAR-TCM answered OKAY, the flag reads 0
                  after the clear and after that clean read, and the stored word
                  differs from the written word in the two flipped bits.
@@ -74,8 +75,9 @@ Checkers:
                  tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``,
                  "Write Alignment Rules" ``:1203-1204`` and "Misaligned
                  Accesses" ``:422-427``). The spec states no other bit of
-                 ERROR_CODE, so the whole code is logged (OBS-TCM-SUBWORD-CODE)
-                 and not graded. Control: the ICCM and DCCM copies are both
+                 ERROR_CODE, so the whole code is logged (INFO-TCM-SUBWORD-CODE)
+                 and not graded; on a write the line names CHK-TCM-SUBWORD-WR in
+                 ``chk=`` for its error field. Control: the ICCM and DCCM copies are both
                  graded (count 2), and before each GO, after the STATUS and
                  ``DMA_BUS_ERR_CLEAR`` clears, ERROR_CODE and
                  ``DMA_BUS_ERR_STATUS`` read 0 (CTRL-TCM-SUBWORD-PRE; ERROR_CODE
@@ -110,17 +112,17 @@ Checkers:
                  least one DCCM write and fewer DCCM writes than the copy has
                  words when the ABORT write returns, so the copy runs at the
                  abort.
-Observations (not graded): OBS-DMA-TCM-SEAM (STATUS, ERROR_CODE,
+Observations (not graded): INFO-DMA-TCM-SEAM (STATUS, ERROR_CODE,
 ``DMA_BUS_ERR_STATUS`` and the four words read back after a 16-byte copy from
 the SRAM to the two last ICCM words and the two first DCCM words; no text
 states a DMA transfer across the ICCM end; the four words hold known values
 before the copy; CTRL-TCM-SEAM-ADJ requires the ICCM end to equal the DCCM
-base), OBS-TCM-EXCL (whether the other memory's clock-enable
+base), INFO-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
-OBS-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
-and its bits other than BUS_ERROR), OBS-TCM-DBE-DONE (STATUS.done and
+INFO-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
+and its bits other than BUS_ERROR), INFO-TCM-DBE-DONE (STATUS.done and
 STATUS.error after each double-bit read),
-OBS-TCM-SUBWORD (done, staging word and the word read back after the 1- or
+INFO-TCM-SUBWORD (done, staging word and the word read back after the 1- or
 2-byte copy into one drawn word of each memory, and every field of the copy out
 of it; the word is not a flip target of the single- or double-bit legs, so it
 holds a clean code word; it runs after CHK-TCM-CLEAN).
@@ -691,7 +693,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
                 )
         close_graded_window(self.logger)
         for mem in MEMS:
-            self.logger.info("OBS-TCM-EXCL: mem=%s other_tap_rose=%d", mem, int(other[mem]))
+            self.logger.info("INFO-TCM-EXCL: mem=%s other_tap_rose=%d", mem, int(other[mem]))
         line = (
             f"iccm_words={per_mem['ICCM']} dccm_words={per_mem['DCCM']} aliases={len(aliases)} "
             f"control_each_tap_rose={int(not miss_tap)} copies={2 * len(rows)}"
@@ -786,7 +788,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         clean_okay = int(bool(clean_resp) and all(r == RESP_OKAY for r in clean_resp))
         dma_err = int(bool(st.error))
         self.logger.info(
-            "OBS-TCM-DBE-DONE: mem=%s addr=0x%08x k1=%d k2=%d done=%d error=%d",
+            "INFO-TCM-DBE-DONE: mem=%s addr=0x%08x k1=%d k2=%d done=%d error=%d chk=CHK-TCM-DBE",
             mem,
             addr,
             a,
@@ -839,7 +841,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         code = ecode & EC_MASK
         bus_error = int(bool(code & EC_BUS_ERROR))
         self.logger.info(
-            "OBS-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x",
+            "INFO-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x",
             mem,
             addr,
             nbytes,
@@ -872,10 +874,10 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
                 wst, _, wberr = await self._sub_copy(addr, rb, WORD_BYTES, 2)
                 word = (await self.mem.read(rb, 1))[0]
                 self.logger.info(
-                    "OBS-TCM-SUBWORD: mem=%s dir=%s addr=0x%08x bytes=%d enc=%d done=%d "
+                    "INFO-TCM-SUBWORD: mem=%s dir=%s addr=0x%08x bytes=%d enc=%d done=%d "
                     "error=%d error_code=0x%x dma_bus_err_status=0x%x staging=0x%08x "
                     "word_read_done=%d word_read_error=%d word_read_bus_err=0x%x word=0x%08x "
-                    "src_word=0x%08x",
+                    "src_word=0x%08x%s",
                     mem,
                     direction,
                     addr + off,
@@ -891,6 +893,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
                     wberr,
                     word,
                     data,
+                    " chk=CHK-TCM-SUBWORD-WR" if direction == "write" else "",
                 )
         if self.n_sub_wr != len(MEMS):
             msg = f"CTRL-MISSING CHK-TCM-SUBWORD-WR: graded={self.n_sub_wr} expect={len(MEMS)}"
@@ -986,7 +989,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             await self._clear_bus_err()
 
     async def _seam(self) -> None:
-        """OBS-DMA-TCM-SEAM: a 16-byte copy from the SRAM over the ICCM end."""
+        """INFO-DMA-TCM-SEAM: a 16-byte copy from the SRAM over the ICCM end."""
         c = self.plan
         iccm_base, iccm_sz = MEMS["ICCM"]
         seam = iccm_base + iccm_sz
@@ -1021,7 +1024,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             )
             await self._clear_bus_err()
         self.logger.info(
-            "OBS-DMA-TCM-SEAM LOG %s error_code=0x%x dma_bus_err_status=0x%x words=%s",
+            "INFO-DMA-TCM-SEAM LOG %s error_code=0x%x dma_bus_err_status=0x%x words=%s",
             st.fmt(),
             ecode,
             berr,

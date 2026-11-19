@@ -241,7 +241,7 @@ Observation probe groups:
   else the two-flop capture of `wdt_rst_ni`; owner
   `sep_scan_reset_override_test`; user
   `sep_clock_uvm_wdt_rst_input_reset_path_test` (cocotb leaf: the release edge
-  of CHK-WDT-RST-SYNC, and the control of OBS-WDT-RD-IN-RST).
+  of CHK-WDT-RST-SYNC, and the control of INFO-WDT-RD-IN-RST).
   `wdt_alert_probe_o` and `wdt_bark_probe_o`,
   the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
   at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`
@@ -252,7 +252,7 @@ Observation probe groups:
   CTRL-WDT-ALERT-REACH, and has no other rise, CHK-WDT-NO-SPURIOUS);
   users `sep_nmi_vector_bark_rand_test` (CTRL-NMI-NESTED: the bark clocks
   while the NMI handler runs) and `sep_wdt_aon_timer_internals_test` (the bark
-  line in OBS-WDT-COUNT-WRAP, logged only, and its set-up precondition).
+  line in INFO-WDT-COUNT-WRAP, logged only, and its set-up precondition).
   `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
@@ -272,7 +272,7 @@ Observation probe groups:
   `dmi_active_probe_o`, the wrapper output `dmi_active`. No register shows
   it. Read-only; owner `sep_debug_master_target_matrix_test`, which counts
   its rises and high clocks while the DTM is on and logs them
-  (OBS-DMI-ACTIVE).
+  (INFO-DMI-ACTIVE).
 * Watchdog count tap (`wdt_wdog_count_o`): the `WDOG_COUNT` register of the
   watchdog AON timer (`u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q`),
   clocked by `clk_wdt_i`. A bus read of `WDOG_COUNT` needs `clk_i`, so no
@@ -285,7 +285,7 @@ Observation probe groups:
   (`u_sep_wdt_wrap.u_wdt_aon_timer.u_core`), clocked by `clk_wdt_i`. No bus
   read shows the count on the clock the request rises. Read-only. Owner:
   `sep_wdt_aon_timer_internals_test`, which logs the count at the first
-  `clk_wdt_i` edge with the request high (OBS-WKUP-EXPIRE-COUNT).
+  `clk_wdt_i` edge with the request high (INFO-WKUP-EXPIRE-COUNT).
 * `TIMEOUT_INTERRUPT` read-source tap (`timeout_interrupt_probe_o`): the
   hardware input `sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next` of
   the `SEP_CPU_CTRL` register block in `u_sep_system_csr`. The field has no
@@ -443,7 +443,7 @@ Observation probe groups:
    `sep_km_cpu_protect_rand_test`, `sep_km_command_protocol_rand_test`,
    `sep_km_key_transfer_rand_test`, `sep_km_handover_rand_test`,
    `sep_km_fault_inject_rand_test`, `sep_km_kpv_rand_test` (CHK-WIPE-SCOPE),
-   `sep_km_sideload_share_walk_test` (CHK-REFUSE-KEEP, OBS-ABR-ZEROIZE-KM-VALID).
+   `sep_km_sideload_share_walk_test` (CHK-REFUSE-KEEP, INFO-ABR-ZEROIZE-KM-VALID).
 ** KM-KPV (`km_kpv_ctrl_o`, `km_kpv_words_o`): the 64 KPV `CTRL` registers
    (`CTRL[s]` at `[4*s +: 4]`, register bit order) and the 1024 stored KPV
    words in stored order. The stored words have no reset. Users:
@@ -540,7 +540,7 @@ Observation probe groups:
   ready both 1), the R and B valids, and the R and B handshakes. Read only, on
   every clock. Users: `sep_km_boot_reset_rand_test` (all outputs:
   CHK-RST-AXI-VALID, CHK-RST-AXI-NORESP, CTRL-RST-AXI-HANDSHAKE,
-  CTRL-RST-AXI-RSP-LIVE, OBS-RST-AXI-EXT-RSP), `sep_km_fault_inject_rand_test` and
+  CTRL-RST-AXI-RSP-LIVE, INFO-RST-AXI-EXT-RSP), `sep_km_fault_inject_rand_test` and
   `sep_km_kmcsr_reset_rand_test` and `sep_km_command_set_rand_test`
   (`km_cpu_rst_n_o` only, in CTRL-BOOT-FETCH-DECODE).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
@@ -625,8 +625,8 @@ Observation probe groups:
   alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owners:
   `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX),
   `sep_kmac_mode_strength_rand_test` (receivers 5 and 6: CHK-KMAC-ALERT-QUIET,
-  CTRL-KMAC-ALERT-LIVE, OBS-KMAC-ALERT-BIT) and
-  `sep_crypto_per_ip_reset_isolation_test` (OBS-KMAC-ALERT-RST).
+  CTRL-KMAC-ALERT-LIVE, INFO-KMAC-ALERT-BIT) and
+  `sep_crypto_per_ip_reset_isolation_test` (INFO-KMAC-ALERT-RST).
 * External stream response monitor (`ext_trng_tready_o`, with the stream as
   the `sep` port sees it: `ext_trng_tvalid_o`, `ext_trng_tdata_o`,
   `ext_trng_tstrb_o`): `ext_trng_axis_rsp_o[i].tready` and
@@ -1043,10 +1043,10 @@ Exceptions (a closed set):
   Software cannot put the state machine in an undefined state, so the
   illegal-state error has no frontdoor. The encodings come from the design
   package because no .adoc or RDL lists them, so the leg logs `ERR` after the
-  force (`OBS-SM-ILLEGAL`) and grades nothing. VCS only: the flops are not
+  force (`INFO-SM-ILLEGAL`) and grades nothing. VCS only: the flops are not
   public under Verilator, and the leaf logs `INFO-SM-ILLEGAL-SKIP`.
   `MAIN_SM_STATUS` and `INTR_STATUS` stay frontdoor. Users: the ESRC
-  persistent-alert entry of the crypto and entropy area (OBS-SM-ILLEGAL).
+  persistent-alert entry of the crypto and entropy area (INFO-SM-ILLEGAL).
 * *Crypto alert sender inject* — while `crypto_alert_inject_i` is 1, the alert
   pair (`alert_p`, `alert_n`) at the input of crypto alert receiver
   `crypto_alert_inject_idx_i` (0 to 10, the index order of
@@ -1460,7 +1460,7 @@ Exceptions (a closed set):
   `sep_outbound_stall_saturation_test` for `smn_outbound_resp_hold_i` (every
   checker of each leaf, listed with the request-side hooks below), and
   `sep_dma_transfer_matrix_rand_test` for `smn_outbound_resp_hold_i`
-  (OBS-DMA-BEAT-HOLD, one logged run).
+  (INFO-DMA-BEAT-HOLD, one logged run).
   Request-side hooks, both 0 by default: `smn_outbound_ready_stall_i`
   (3 bits) holds AW READY (bit 0), W READY (bit 1) and AR READY (bit 2) of the
   responder low while the bit is high, and `smn_outbound_rd_addr_data_i`
@@ -2113,7 +2113,7 @@ them.
 |`CTRL-<NAME>`, `CTRL-MISSING <NAME>` |A control: proof that the stimulus of a check reached its case, so that the check can fail. A missing control fails the leaf. |yes
 |`OBS-<NAME>` |A DUT value whose golden no specification states yet. It prints the value and grades nothing; it becomes a `CHK-` when a specification states the value. |no
 |`INFO-BLOCKED CHK-<NAME>` |A check that this run could not grade, with the reason. |no
-|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states a bench record. `INFO-` also covers a re-log of a DUT value that a named `CHK-` grades, in the same leaf or in another leaf; that line names its `CHK-`, and its leaf when the check is in another leaf. `INFO-` also covers a DUT value that no check of the leaf grades and that no open specification question asks for: the specification states its golden but this leaf does not grade it, or an `OBS-` line of another leaf holds the open question. The test contract says that the value is not graded. |no
+|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states a bench record. `INFO-` also covers a re-log of a DUT value that a named `CHK-` grades, in the same leaf or in another leaf; that line names its `CHK-`, and its leaf when the check is in another leaf. `INFO-` also covers a DUT value that no check of the leaf grades and that no open specification question asks for: the specification states its golden but this leaf does not grade it; an `OBS-` line of another leaf holds the open question; or no specification states its golden, and no open question asks for it because the value changes no firmware, integration or security behaviour. The test contract says which values are not graded. A line of this kind can also print a value that a `CHK-` of the same leaf compares; the line then names that check as `chk=CHK-<NAME>`, only on the cells that the check compares. |no
 |===
 
 A bench wait that runs past its bound before a check can grade fails the

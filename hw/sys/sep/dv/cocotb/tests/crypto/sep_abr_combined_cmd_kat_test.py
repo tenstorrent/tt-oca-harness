@@ -43,10 +43,10 @@ Controls (a false control logs CTRL-MISSING and fails the leaf):
 
 Observations (not graded; ``SEP_VPLAN.adoc`` Blocked features: the text does
 not state which output windows a combined command fills):
-  OBS-ABR-ENCAPS-STIMULUS     the K and the first ciphertext word of the ENCAPS.
-  OBS-ABR-KEYGEN-DECAPS-KEY   word-match counts of MLKEM_ENCAPS_KEY and
+  INFO-ABR-ENCAPS-STIMULUS     the K and the first ciphertext word of the ENCAPS.
+  INFO-ABR-KEYGEN-DECAPS-KEY   word-match counts of MLKEM_ENCAPS_KEY and
                     MLKEM_DECAPS_KEY after KEYGEN+DECAPS against the ACVP ek, dk.
-  OBS-ABR-KEYGEN-SIGN-KEY     word-match count of MLDSA_PUBKEY after one
+  INFO-ABR-KEYGEN-SIGN-KEY     word-match count of MLDSA_PUBKEY after one
                     ML-DSA-87 KEYGEN+SIGN on the ACVP keyGen seed against the
                     ACVP pk. The signature is not checked.
 
@@ -246,7 +246,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
             return
         ct = await self.abr.read_words(MLKEM_CIPHERTEXT, KEM_CT_WORDS)
         k_enc = await self.abr.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
-        self.chk.obs(
+        self.chk.info(
             "ABR-ENCAPS-STIMULUS",
             ek="acvp_keygen",
             m="acvp_encaps",
@@ -305,7 +305,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
         # Step 4: key windows after KEYGEN+DECAPS, logged only.
         ek = await self.abr.read_words(MLKEM_ENCAPS_KEY, KEM_EK_WORDS)
         dk = await self.abr.read_words(MLKEM_DECAPS_KEY, KEM_DK_WORDS)
-        self.chk.obs(
+        self.chk.info(
             "ABR-KEYGEN-DECAPS-KEY",
             ek_match=f"{_match_count(ek, NIST_KEM_KG_EK)}/{KEM_EK_WORDS}",
             dk_match=f"{_match_count(dk, NIST_KEM_KG_DK)}/{KEM_DK_WORDS}",
@@ -361,7 +361,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
         """One KEYGEN+SIGN with the inputs of the sep_abr_command_matrix_rand_test cell; logged."""
         st_pre = await self._poll(ABR_STATUS, ST_READY, READY_POLLS, READY_GAP)
         if st_pre is None:
-            self.chk.obs("ABR-KEYGEN-SIGN-KEY", pk_match="n/a", reason="ready_timeout")
+            self.chk.info("ABR-KEYGEN-SIGN-KEY", pk_match="n/a", reason="ready_timeout")
             await self._recover("keygen_sign/ready")
             return
         await self.abr.write_words(ABR_SEED, list(NIST_KG_SEED))
@@ -370,11 +370,11 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
         await self.abr.wr32(ABR_CTRL, CMD_KEYGEN_SIGN | CTRL_EXTERNAL_MU)
         st = await self._poll(ABR_STATUS, ST_VALID | ST_ERROR, VALID_POLLS, VALID_GAP)
         if st is None:
-            self.chk.obs("ABR-KEYGEN-SIGN-KEY", pk_match="n/a", reason="valid_timeout")
+            self.chk.info("ABR-KEYGEN-SIGN-KEY", pk_match="n/a", reason="valid_timeout")
             await self._recover("keygen_sign/valid")
             return
         pk = await self.abr.read_words(ABR_PUBKEY, PK_WORDS)
-        self.chk.obs(
+        self.chk.info(
             "ABR-KEYGEN-SIGN-KEY",
             pk_match=f"{_match_count(pk, NIST_KG_PK)}/{PK_WORDS}",
             pk_nonzero=int(any(pk)),

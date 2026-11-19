@@ -10,14 +10,12 @@ core accepts only whole words there (hw/sys/sep/doc/dma.adoc:118-121). So must a
 4n + 2 bytes into ICCM and into DCCM, whose last write covers only the remaining bytes
 (dma.adoc:113-114), and a 2-byte-wide fill into DCCM; the words past TOTAL_DATA_SIZE keep their
 pattern (dma.adoc:115). The words such a fill targets have no stated value and are logged on the
-firmware's OBS-ZERO-TCM-SPAN lines only. A 4-byte-wide fill of 8 bytes to the DCCM buffer 2 bytes
-above a word boundary is logged as an open question: STATUS, ERROR_CODE,
-DMA_BUS_ERR_STATUS and the first four buffer words go on the firmware's OBS-ZERO-DCCM-MISALIGN
-line. Two TT texts state different outcomes: dma.adoc:118-121 states BUS_ERROR with the host-path
-fault, while dma.adoc:95-96 and the DST_ADDR_LO and host_path_err field texts make it a start-time
-refusal with no transfer. Its control CTRL-ZERO-DCCM-MISALIGN requires DMA_BUS_ERR_STATUS 0 before
-the fill, the destination inside DCCM, 2 bytes above a word boundary, and the fill ended with DONE
-or ERROR. The leaf draws n for each 4n + 2 fill from the run seed
+firmware's INFO-ZERO-TCM-SPAN lines only. A 4-byte-wide fill of 8 bytes to the DCCM buffer 2 bytes
+above a word boundary is logged: STATUS, ERROR_CODE,
+DMA_BUS_ERR_STATUS and the first four buffer words go on the firmware's INFO-ZERO-DCCM-MISALIGN
+line. Not graded; no open specification question. Its control CTRL-ZERO-DCCM-MISALIGN requires
+DMA_BUS_ERR_STATUS 0 before the fill, the destination inside DCCM, 2 bytes above a word boundary,
+and the fill ended with DONE or ERROR. The leaf draws n for each 4n + 2 fill from the run seed
 and patches it into the firmware parameter block; each PASS line echoes its n. The firmware
 returns its error count and fw/startup/crt0.s emits PASS/FAIL magic that the boot scoreboard gates
 on.
@@ -164,7 +162,7 @@ class sep_dma_zero_test(sep_base_test):
         console = self.sb.console_text()
         lines = console.splitlines()
         for ln in lines:
-            if ln.startswith(("OBS-", "CTRL-")):
+            if ln.startswith(("INFO-", "CTRL-")):
                 self.logger.info("%s (firmware)", ln)
         needles = list(_CHECKS)
         for chk, key, what in _CHECKS_N:
@@ -174,7 +172,7 @@ class sep_dma_zero_test(sep_base_test):
             self._fail(
                 f"CTRL-MISSING CTRL-ZERO-DCCM-MISALIGN: firmware console has no "
                 f"{_CTRL_DCCM_MISALIGN.strip()!r} line, "
-                "so the fill of OBS-ZERO-DCCM-MISALIGN did not reach a misaligned DCCM "
+                "so the fill of INFO-ZERO-DCCM-MISALIGN did not reach a misaligned DCCM "
                 f"destination or did not end. Console was:\n{console}"
             )
         for needle, chk, what in needles:

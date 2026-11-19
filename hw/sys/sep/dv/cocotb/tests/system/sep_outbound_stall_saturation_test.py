@@ -58,14 +58,14 @@ specification states the outstanding limit, so a DUT that accepts all 20
 requests is not wrong, but this leaf cannot hold a request at its stop.
   CTRL-OUT-STOP     for writes and for reads, the LSU master stalls (AW or AR
                     stall cycles > 0) with fewer than its 20 issued requests
-                    accepted. The accepted count is logged (OBS-LIMIT).
+                    accepted. The accepted count is logged (INFO-LIMIT).
   CTRL-XBAR-HELD-STOP
                     the one extra LSU write of a held session at that count
                     stalls and is not accepted before a release.
   CTRL-CHAIN-STOP   the same stop with the DMA and the SMN inbound master
                     issuing alongside, for writes, for reads, and for the
                     writes-and-reads hold. The port totals are logged
-                    (OBS-CHAIN-LIMIT).
+                    (INFO-CHAIN-LIMIT).
 
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 ``CHK-<NAME> PASS`` once every comparison of that checker is done):
@@ -703,7 +703,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 f"stall_cycles={stall} stall_other_cycles={other}",
             )
             self.logger.info(
-                "OBS-LIMIT: mst_%s_accepted_before_stall=%d stall_cycles=%d "
+                "INFO-LIMIT: mst_%s_accepted_before_stall=%d stall_cycles=%d "
                 "stall_other_cycles=%d port_accepted=%d (value logged: the stop of the "
                 "outbound path at the LSU master; no specification states its count)",
                 op,
@@ -737,7 +737,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 sys_n,
             )
             self.logger.info(
-                "OBS-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s "
+                "INFO-LIMIT: session=%s accepted_at_port=%d demand=%d per_init=%s "
                 "(value logged: the LSU and DMA total at the port; the DMA issues one "
                 "write at a time on its held B, so this stop is the DMA's issue policy, not "
                 "a slave-port limit)",
@@ -925,7 +925,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             acc[op] = n
             lsu_acc[op] = (m_acc, m_stall)
             self.logger.info(
-                "OBS-CHAIN-LIMIT: %s_accepted=%d demand=%d per_init=%s "
+                "INFO-CHAIN-LIMIT: %s_accepted=%d demand=%d per_init=%s "
                 "lsu_stall_other_cycles=%d (the port count is printed, not compared)",
                 op,
                 n,

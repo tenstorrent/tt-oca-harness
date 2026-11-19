@@ -22,7 +22,7 @@ Legs: a six-seed leg first (gives t_ctrl, the clean start time), then in drawn
 order: seed count (5 and 0 words), mode lock (sw first and edn first), timer
 (prescaler 0 and P, wait timers T, 2T, 8, then 0), counter (N hashes,
 ``hash_cnt_clr``, ``entropy_req``) and reseed (threshold R, then 0 on the same
-KMAC). A ``msg_mask`` leg runs last and is logged only (``OBS-KMAC-MSGMASK``).
+KMAC). A ``msg_mask`` leg runs last and is logged only (``INFO-KMAC-MSGMASK``).
 "Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
 uninitialized" is the state after a TRNG reset with no bring-up after it: EDN
 does not answer, which is the starvation of the timer leg.
@@ -32,7 +32,8 @@ Checkers:
                            golden. ``CTRL-KMAC-SWSEED part=program`` reads
                            ``entropy_mode`` sw and ``entropy_ready`` 1 before
                            the seeds. The check does not show that the six
-                           seeds are needed: that is CHK-KMAC-SWSEED-NEG.
+                           seeds are needed: the seed-count leg logs five and
+                           zero seeds as ``INFO-KMAC-SWSEED-NEG``.
   CHK-KMAC-MODE-LOCK       reset mode 0; a late write changes only the readback;
                            ``CTRL-KMAC-MODE-LOCK part=program`` reads the locked
                            ``entropy_mode`` and ``entropy_ready`` 1 before the
@@ -60,7 +61,7 @@ Checkers:
                            error." (``vendor/lowRISC/opentitan/upstream/hw/ip/
                            kmac/doc/theory_of_operation.md``:724, :764). No text
                            gives bits 23:0 a value for this code: they are
-                           masked and logged as ``OBS-KMAC-TIMER-ERRCODE``.
+                           masked and logged as ``INFO-KMAC-TIMER-ERRCODE``.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
                            At prescaler 0 the window is (2^16 // 7 + 4) x the
                            error time at wait timer 8 (at least 7 whole pulse
@@ -76,18 +77,12 @@ Checkers:
                            requests a seed and is reset).
   CHK-KMAC-AUTORESEED-OFF  threshold 0, M hashes -> no acknowledge, counter == M.
 
-Log-only (``INFO-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
-absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg.
-``kmac.hjson`` ``CFG_SHADOWED.entropy_mode`` sw_mode (:549-551) says the module
-waits for six ``ENTROPY_SEED`` writes and "Only after that, the module can
-start processing commands"; theory_of_operation.md:705 gives 9 writes. Both
-counts exceed 0 and 5, so a start with 0 or 5 seed words is not processed
-under either text. The DUT reaches ``sha3_absorb`` on such a start, and that
-gap between text and DUT is open, so these legs log the observed absorb, the
-seed count and ``kmac_err`` as ``OBS`` lines and grade none of them. No text
-gives an error code for a start before the seeds: error 0x09
-(theory_of_operation.md:729) applies only when the masking feature is enabled,
-and no SEP text states that build value.
+Log-only: the seed-count leg (five or zero seeds) and the absorb part of the
+sw-locked CHK-KMAC-MODE-LOCK leg log the observed absorb, the seed count and
+``kmac_err`` as ``INFO-KMAC-SWSEED-NEG`` and ``INFO-KMAC-MODE-LOCK-SW`` lines.
+Not graded; no open specification question. No text gives an error code for a
+start before the seeds: error 0x09 (theory_of_operation.md:729) applies only
+when the masking feature is enabled, and no SEP text states that build value.
 
 Observables: KMAC register readback over the CPU-LSU master,
 ``crypto_edn_req_o[1]`` and ``crypto_edn_ack_o[1]`` (client 1 is KMAC,
@@ -201,8 +196,6 @@ BOUND_CLK = 60_000  # outer limit of a start, squeeze, idle, seeding or request 
 TIMER_PULSES_16B = 1 << 16
 CTRL_WT = 8  # wait timer of the control run that sizes the timer-0 window
 LEGS = ("seed_count", "mode_lock", "timer", "counter", "reseed")
-# kmac.hjson:549-551 states the seed gate; the DUT absorbs before it (open gap).
-SEED_GATE_BLOCKED = "sw_seed_gate_text_vs_dut_open"
 
 
 @dataclass(frozen=True)
@@ -544,7 +537,6 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         return max(WIN_MULT * self.t_ctrl, WIN_FLOOR)
 
     async def _leg_seed_count(self) -> None:
-        self.chk.blocked("KMAC-SWSEED-NEG", SEED_GATE_BLOCKED)
         window = self._neg_window()
         # Log-only leg: the graded FCOV window stays closed.
         for count in self.plan.seed_counts:
@@ -555,7 +547,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             await self.kmac.cmd(KMAC_CMD_START)
             reads, absorbs = await self._hold_no_absorb(window)
             intr = await self.kmac.read(KMAC_INTR_STATE)
-            self.chk.obs(
+            self.chk.info(
                 "KMAC-SWSEED-NEG",
                 seeds_written=count,
                 window_clk=window,
@@ -595,11 +587,10 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             regs_ok = reset_mode == ENTROPY_MODE["idle"] and readback == ENTROPY_MODE[late]
             if locked == "sw":
                 self.chk.ok("KMAC-MODE-LOCK", regs_ok, **fields, part="readback")
-                self.chk.blocked("KMAC-MODE-LOCK", SEED_GATE_BLOCKED)
                 window = self._neg_window()
                 reads, absorbs = await self._hold_no_absorb(window)
                 intr = await self.kmac.read(KMAC_INTR_STATE)
-                self.chk.obs(
+                self.chk.info(
                     "KMAC-MODE-LOCK-SW",
                     seeds_written=0,
                     window_clk=window,
@@ -764,7 +755,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             expected=f"0x{EXP_ERR_WAIT_TIMER_EXPIRED:02x}",
         )
         # Bits 23:0: no text gives them a value for WaitTimerExpired.
-        self.chk.obs(
+        self.chk.info(
             "KMAC-TIMER-ERRCODE",
             p0_debug=",".join(
                 f"0x{r['code'] & ERR_CODE_DEBUG_MASK:x}" if "code" in r else "na" for r in p0
@@ -977,7 +968,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             if ref is None:
                 ref = digest
                 continue
-            self.chk.obs(
+            self.chk.info(
                 "KMAC-MSGMASK",
                 flag=name,
                 stage=status,

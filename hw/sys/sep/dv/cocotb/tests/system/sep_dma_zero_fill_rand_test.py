@@ -123,7 +123,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-ZERO-WIN-LOCK  RANGE_REGWEN reads other than True after it is written
                          False and LIMIT keeps its value through a later write
                          of LIMIT + 64 (its response is logged as
-                         ``OBS-DMA-ZERO-LOCK-RESP``, not graded);
+                         ``INFO-DMA-ZERO-LOCK-RESP``, not graded);
                          a fill past LIMIT then ends in DST_ADDR_ERROR with
                          the AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for
                          the beats up to LIMIT and no beat beyond it.
@@ -137,10 +137,10 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          value, and BASE, LIMIT and DST_ADDR_LO, read before
                          GO, read back the alias-form values written.
 
-Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
+Logged only: ``INFO-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract);
 ``OBS-DMA-ZF-BASELIM``, STATUS, ERROR_CODE, the AW list (address, WSTRB) and the
-words around BASE after the Leg B fill; ``OBS-DMA-ZERO-LOCK-RESP``, the response
+words around BASE after the Leg B fill; ``INFO-DMA-ZERO-LOCK-RESP``, the response
 of the Leg L write of LIMIT + 64 under the lock (no specification text names
 the response of a write to a locked register).
 
@@ -1141,7 +1141,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         z = next((i for i, w in enumerate(img1) if w != 0), len(img1))
         prefix_ok = all(w == 0 for w in img1[:z]) and img1[z:] == sentinel[z:]
         self.logger.info(
-            "OBS-DMA-ZERO-ABORT ar_after=%d aw_after=%d zero_words=%d",
+            "INFO-DMA-ZERO-ABORT ar_after=%d aw_after=%d zero_words=%d chk=CHK-DMA-ZERO-ABORT",
             len(after.ar),
             len(after.aw),
             z,
@@ -1352,7 +1352,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         limit_resp = int(seq.resp_code)
         limit_rb = await ops.rd(RANGE_LIMIT)
         self.logger.info(
-            "OBS-DMA-ZERO-LOCK-RESP seed=%d limit_wr=0x%08x limit_wr_resp=%d",
+            "INFO-DMA-ZERO-LOCK-RESP seed=%d limit_wr=0x%08x limit_wr_resp=%d",
             self.seed,
             limit_wr,
             limit_resp,

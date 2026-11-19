@@ -29105,7 +29105,7 @@ module sep_fcov (
       bins ones_status_bit_3_apt_high_total = {2'd3};
     }
     // Not graded (docs/SEP_FCOV.adoc, crypto and entropy, Bins not graded):
-    // the owner logs the repetition count after the disable on OBS-HT-REPCOUNT-AFTER,
+    // the owner logs the repetition count after the disable on INFO-HT-REPCOUNT-AFTER,
     // so no value of it is a bin.
     // verilator lint_off COVERIGN
     cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
@@ -29475,7 +29475,7 @@ module sep_fcov (
       bins hw_port0_acknowledged = {2'd2};
     }
     // CMD_RDY after the acknowledge is not stated (csrng.adoc SW_CMD_STS: polled
-    // before a command); the owner logs it (OBS-CSRNG-RDY-AFTER-ACK): not scored.
+    // before a command); the owner logs it (INFO-CSRNG-RDY-AFTER-ACK): not scored.
     cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
       bins cmd_rdy_before = {2'd0};
       bins cmd_ack_after = {2'd1};

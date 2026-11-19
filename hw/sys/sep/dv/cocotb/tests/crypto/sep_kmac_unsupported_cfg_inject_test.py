@@ -144,7 +144,7 @@ table of theory_of_operation.md (lines 719-730):
 Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
-joins t_clean before the SHA3-128 cell). ``OBS-KMAC-MODE01`` logs the end state of the
+joins t_clean before the SHA3-128 cell). ``INFO-KMAC-MODE01`` logs the end state of the
 mode 2'b01 run with ``en_unsupported_modestrength`` = 1 after ``kmac_done``:
 ``kmac_err``, ``ERR_CODE``, ``STATUS`` and four ``STATE`` words. Mode 2'b01 is a
 reserved value, so no text gives its digest (theory_of_operation.md:788 "The SW
@@ -898,7 +898,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         code = await self._rd(KMAC_ERR_CODE)
         status = await self._rd(KMAC_STATUS)
         state = await self.kmac.read_digest(4)
-        self.chk.obs(
+        self.chk.info(
             "KMAC-MODE01",
             mode_code=KMAC_MODE_RSVD,
             kstrength=plan.rsvd_strength,
