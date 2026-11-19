@@ -469,6 +469,17 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 break
         await ClockCycles(dut.clk_i, _SETTLE_CYCLES)
 
+    async def _count_cmd_req(self, which: str, stop: Event) -> int:
+        """Count the clocks on which the interface's bank request is high until ``stop``."""
+        dut = cocotb.top
+        req = getattr(dut, f"efuse_{which}_cmd_req_valid_o")
+        cycles = 0
+        while not stop.is_set():
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            cycles += int(req.value)
+        return cycles
+
     async def _kick_and_catch(self, which: str, bit_addr: int, limit: int = 400) -> bool:
         """Start an operation and return on the cycle its bank request is up.
 
@@ -576,6 +587,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             busy_before,
         )
 
+        req_stop = Event()
+        req_count = None
+        if not in_flight:
+            req_count = cocotb.start_soon(self._count_cmd_req(which, req_stop))
         await NextTimeStep()
         val.value = state
         en.value = 1
@@ -651,15 +666,21 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 data,
                 ctrl,
             )
+            # The request is counted on every clock from the force edge until
+            # the interface settles, not only on the release edge.
+            await self._quiesce(which)
+            req_stop.set()
+            req_cycles = await req_count
             fields = (
-                f"state={state:#04x} leg={leg} req={req} err_before={err_before} err={err} "
-                f"program_status={status}"
+                f"state={state:#04x} leg={leg} req_cycles={req_cycles} "
+                f"err_before={err_before} err={err} program_status={status}"
             )
-            assert req == 0 and (err, status) == (1, 1), (
+            assert req_cycles == 0 and (err, status) == (1, 1), (
                 "CHK-PROGRAM-FAILCLOSED FAIL: an illegal state on the idle program "
                 f"interface issued a bank command or reported no error: {fields}"
             )
             self.logger.info("CHK-PROGRAM-FAILCLOSED PASS: %s", fields)
+            return
         await self._quiesce(which)
 
     def _pick_pg_bits(self, img) -> list[int]:
