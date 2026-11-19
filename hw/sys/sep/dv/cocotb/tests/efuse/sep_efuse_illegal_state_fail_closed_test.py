@@ -717,7 +717,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             if leg > 1:
                 # The leg before left program_status at 1. A cold reset returns
                 # it to its reset value 0 (efuse_interface_ctrl.rdl:107), so this
-                # leg's error is set by its own injection.
+                # leg's error is set by its own injection. The alive check ends
+                # in ReadOnly; leave it before the reset drives rst_ni.
+                await RisingEdge(cocotb.top.clk_i)
                 await self.resense(max_cycles=_MAX_SENSE_CYCLES)
             # Idle window, not in flight. Aborting an ACCEPTED program parks the
             # example shim's write FSM (see the VPLAN section of this test), and
