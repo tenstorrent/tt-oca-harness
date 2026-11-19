@@ -5,7 +5,7 @@
 Sources: smc_efuse_map.rdl (address map), smc.rdl (smc_efuse_map ocah_past_extent_resp).
 
 Every expected word is ``image.words[n]`` of the generated image. The past-extent responder
-answers read DECERR with data 0xBADCAB1E and write SLVERR; the items carry ``resp_code`` and
+answers read SLVERR with data 0xBADCAB1E and write SLVERR; the items carry ``resp_code`` and
 ``rdata`` for the compare.
 """
 
@@ -30,8 +30,10 @@ _SENSE_BOUND_CYCLES = 200_000
 _AXI_OKAY = 0
 _AXI_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
 _PAST_RRESP, _PAST_BRESP = generated_past_extent_resp("smc_efuse_wrap.smc_efuse_map")
-_PAST_DATA = _component_row("smc_efuse_wrap.smc_efuse_map")["past_response"]["rdata"]
-_PAST_OFFSETS = (0x400, 0xFFC)
+_MAP_ROW = _component_row("smc_efuse_wrap.smc_efuse_map")
+_PAST_DATA = _MAP_ROW["past_response"]["rdata"]
+# The first word past the extent and the last word of the window.
+_PAST_OFFSETS = (_MAP_ROW["occupied_size"], _MAP_ROW["end"] - 3 - _MAP_ROW["base"])
 _CHK_STEP = {
     "CHK-EMAP-LAYOUT-JPI-I2C": "S2",
     "CHK-EMAP-LAYOUT-CFG-OCCP": "S3",
@@ -306,10 +308,11 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._done("S9")
         self._chk(
             "CHK-EMAP-PAST-READ",
-            "0x3FC read marker word 255 0x%08x with OKAY; 0x400 and 0xFFC each answered "
+            "0x3FC read marker word 255 0x%08x with OKAY; 0x%X and 0x%X each answered "
             "resp=%s(%d) with rdata 0x%08x / 0x%08x (smc.rdl smc_efuse_map "
             "ocah_past_extent_resp)",
             edge,
+            *_PAST_OFFSETS,
             _PAST_RRESP,
             _AXI_CODES[_PAST_RRESP],
             past[0],
@@ -327,9 +330,11 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._done("S10")
         self._chk(
             "CHK-EMAP-PAST-WRITE",
-            "0x400 bresp=%d 0xFFC bresp=%d; smc.rdl smc_efuse_map ocah_past_extent_resp declares "
+            "0x%X bresp=%d 0x%X bresp=%d; smc.rdl smc_efuse_map ocah_past_extent_resp declares "
             "%s (%d); the bresp values show which one was returned",
+            _PAST_OFFSETS[0],
             resps[0],
+            _PAST_OFFSETS[1],
             resps[1],
             _PAST_BRESP,
             _AXI_CODES[_PAST_BRESP],

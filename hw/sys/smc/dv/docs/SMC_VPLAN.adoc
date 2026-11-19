@@ -31468,9 +31468,9 @@ draws nothing from the seed.
 * The 64-bit registers read correctly as separate 32-bit halves and as one 64-bit access, with the
   high word above the low word, and `SMC_CONFIG` is read as one 32-bit access in a single beat
   (`smc_efuse_map.rdl`, reg `SMC_CONFIG`).
-* Reads past the 0x400-byte map inside the 0x1000-byte aperture are answered by the past-extent
-  responder with a read response of DECERR and data 0xBADCAB1E (`hw/sys/smc/regs/smc.rdl`,
-  `smc_efuse_map` past-extent response). The specification does not state the extent of the range.
+* Reads past the 0x400-byte map inside its 0x800-byte window are answered with a read response
+  of SLVERR and data 0xBADCAB1E (`hw/sys/smc/regs/gen/adoc/memory_map.adoc`, SMC eFuse Wrapper
+  row).
 * Writes past the map are refused with an error response; `smc.rdl` declares SLVERR for them, and
   the leaf accepts either error code (the response must be above OKAY) and prints both response
   codes beside the declared name and code, so the printed codes show which one was returned. The
@@ -31495,10 +31495,10 @@ draws nothing from the seed.
 . Read `LOCKS` and `OCCP_TRANSPORT_TIMEOUT` as single 64-bit accesses and require the high and low
   marker words in order.
 . Read 0x70 as one 32-bit item and require one beat, four transfer bytes, OKAY and marker word 28.
-. Error injection. Point: offsets 0x400 and 0xFFC over SEP_IN, past the 0x400-byte map inside the
-  0x1000-byte aperture. Kind: past-extent reads. Expected response: DECERR with data 0xBADCAB1E on
+. Error injection. Point: offsets 0x400 and 0x7FC over SEP_IN, past the 0x400-byte map inside its
+  0x800-byte window. Kind: past-extent reads. Expected response: SLVERR with data 0xBADCAB1E on
   each. Before them, read 0x3FC and require marker word 255.
-. Error injection. Point: offsets 0x400 and 0xFFC over SEP_IN. Kind: past-extent writes of
+. Error injection. Point: offsets 0x400 and 0x7FC over SEP_IN. Kind: past-extent writes of
   0xFFFF_FFFF. Expected response: an error response on each (SLVERR or DECERR).
 . Read all 256 words again and require the marker words, then read `LOCKS` and require 0x0 and
   0x4000_0000.
@@ -31527,9 +31527,9 @@ and the two halves differ.
 read of `OCCP_TRANSPORT_TIMEOUT` returns word 31 above word 30.
 |`CHK-EMAP-WIDTH-CFG` |The 32-bit read of 0x70 completes as one item with one beat, four transfer
 bytes, OKAY and marker word 28.
-|`CHK-EMAP-PAST-READ` |0x3FC reads marker word 255 with OKAY, and 0x400 and 0xFFC each answer with
-a DECERR read response and data 0xBADCAB1E.
-|`CHK-EMAP-PAST-WRITE` |A write of 0xFFFF_FFFF to 0x400 and to 0xFFC completes with an error
+|`CHK-EMAP-PAST-READ` |0x3FC reads marker word 255 with OKAY, and 0x400 and 0x7FC each answer with
+a SLVERR read response and data 0xBADCAB1E.
+|`CHK-EMAP-PAST-WRITE` |A write of 0xFFFF_FFFF to 0x400 and to 0x7FC completes with an error
 response (SLVERR or DECERR, any response above OKAY); the leaf prints the two response codes
 beside the declared response name and code from the generated memory map, so the printed codes
 show which one was returned; the exact code is not compared.
