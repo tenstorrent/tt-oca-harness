@@ -478,7 +478,7 @@ There may be a delay between writing `MTIMECMP` and the timer interrupt pending
 bit falling, during which a spurious timer interrupt may occur if interrupts are
 enabled again (for example, by returning from the timer interrupt handler).
 For robustness against spurious timer interrupts, the timer interrupt handler
-should verify the interrupt condition (`MTIMECMP > MTIME`) before calling
+should verify the interrupt condition (`MTIME >= MTIMECMP`) before calling
 periodic functions and re-scheduling.
 ====
 
