@@ -140,7 +140,7 @@ if { ![info exists PREFIX] } {
 # ${LINT_TOP} is the module lint reports package-function hits against (the lint top). It defaults
 # to ${PREFIX}sep; a consumer linting from another top sets ::LINT_TOP.
 proc apply_prefix { filter } {
-    set top [expr {[info exists ::LINT_TOP] ? $::LINT_TOP : "${::PREFIX}sep"}]
+    set top [expr { [info exists ::LINT_TOP] ? $::LINT_TOP : "${::PREFIX}sep" }]
     return [string map [list {${PREFIX}} $::PREFIX {${LINT_TOP}} $top] $filter]
 }
 
