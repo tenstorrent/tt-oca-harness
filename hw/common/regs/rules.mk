@@ -262,14 +262,15 @@ $(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_param_deps,$(block)),$(e
 #
 # The address widths classify.mk includes are remade on the same goals only. The
 # generator rewrites them only when they change, so make restarts, and the
-# regblocks rebuild, only for a real change.
+# regblocks rebuild, only for a real change. The top-level Makefile's aliases
+# name the same goals without the ocah- prefix.
 OCAH_REGEN_DEP_GOALS := \
   ocah-regen-regs ocah-regen-regs-sv ocah-regen-regs-h ocah-regen-regs-addrpkg \
   ocah-regen-regs-svh ocah-regen-regs-py ocah-regen-regs-ral ocah-regen-regs-json \
   ocah-regen-regs-ipxact ocah-regen-regs-adoc ocah-regen-regs-html
 OCAH_REG_WINDOWS_STAMP := $(OCAH_ROOT)/hw/common/regs/build/windows.generated
 OCAH_REG_WINDOWS_DEP := $(OCAH_ROOT)/hw/common/regs/build/windows.d
-ifneq ($(filter $(OCAH_REGEN_DEP_GOALS),$(MAKECMDGOALS)),)
+ifneq ($(filter $(OCAH_REGEN_DEP_GOALS) $(OCAH_REGEN_DEP_GOALS:ocah-%=%),$(MAKECMDGOALS)),)
 -include $(OCAH_REGEN_REG_DEPS) $(OCAH_REG_WINDOWS_DEP)
 
 $(OCAH_REG_WINDOWS_STAMP): $(foreach t,$(OCAH_REG_WINDOW_TOPS),$(call ocah_reg_rdl,$(t))) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/hw/common/regs/classify.mk $(OCAH_ROOT)/tools/regs/rdlwindows.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)

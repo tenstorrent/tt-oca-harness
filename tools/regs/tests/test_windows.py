@@ -57,6 +57,56 @@ class WindowSizerTest(unittest.TestCase):
         _, errors = self._size("addrmap top { small alone @0x1800; };")
         self.assertEqual(errors, ["top.alone: starts at 0x1800, not on a 4 KiB boundary"])
 
+    def test_a_stated_aperture_widens_a_page_child(self) -> None:
+        top = _compile(
+            """
+            addrmap top {
+                small alone @0x2000;
+            `ifdef OCAH_DOC_MEMORY_MAP
+                alone->ocah_aperture_size = 0x2000;
+            `endif
+            };
+            """
+        )
+        sizer = WindowSizer(REGBLOCKS, WRAPPERS)
+        package = render_window_pkg(top, sizer.add_top(top, True))
+        self.assertEqual(sizer.widths(), {"small": 13})
+        self.assertEqual(sizer.errors, [])
+        self.assertIn("localparam longint unsigned TOP_ALONE_WINDOW_SIZE = 64'h2000;", package)
+
+    def test_a_stated_aperture_off_its_own_alignment_fails(self) -> None:
+        _, errors = self._size(
+            """
+            addrmap top {
+                small alone @0x1000;
+            `ifdef OCAH_DOC_MEMORY_MAP
+                alone->ocah_aperture_size = 0x2000;
+            `endif
+            };
+            """
+        )
+        self.assertEqual(
+            errors,
+            [
+                "top.alone: owns 0x2000 bytes at 0x1000, but a register block decodes a "
+                "power-of-two window whose base is a multiple of its size"
+            ],
+        )
+
+    def test_pages_that_reach_the_next_child_fail(self) -> None:
+        _, errors = self._size(
+            """
+            addrmap top {
+                small low @0x0;
+                wide high @0x1000;
+            `ifdef OCAH_DOC_MEMORY_MAP
+                low->ocah_aperture_size = 0x2000;
+            `endif
+            };
+            """
+        )
+        self.assertEqual(errors, ["top.low: its pages end at 0x1FFF, past high at 0x1000"])
+
     def test_wrapper_children_own_the_space_to_the_next_child(self) -> None:
         widths, errors = self._size(
             "addrmap wrap { small low @0x0; wide high @0x100; }; addrmap top { wrap shared @0x0; };"
