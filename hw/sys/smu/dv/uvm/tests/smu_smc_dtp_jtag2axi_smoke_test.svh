@@ -21,8 +21,6 @@ class smu_smc_dtp_jtag2axi_smoke_test extends smu_base_test;
     cfg.require_feature(dtp_env_pkg::DtpFeatureJtag2axiReq);
     cfg.require_feature(dtp_env_pkg::DtpFeatureJtag2axiStatus);
     cfg.require_jtag_ids('{"CHK-TAP-STATE", "CHK-TAP-RESET-TLR"});
-    // An SMC JTAG2AXI SERIES write parks in BUSY under a tck/smu ratio below 4.
-    cfg.min_tck_smu_ratio = 4;
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();

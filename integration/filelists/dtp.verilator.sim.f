@@ -328,7 +328,6 @@ hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
 hw/sys/dtp/rtl/dtp.sv
 
 hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv
-hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv
 hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv
 hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv
 hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv
@@ -340,7 +339,6 @@ hw/sys/dtp/dv/tb/dtp_tb_if.sv
 hw/sys/dtp/dv/tb/dtp_scan_if.sv
 hw/sys/dtp/dv/tb/dtp_xtrig_if.sv
 hw/sys/dtp/dv/cov/sv/dtp_fcov.sv
-hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv
 hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv
 hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv
 hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv

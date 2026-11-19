@@ -35,11 +35,6 @@ class smu_test_cfg extends ocah_test_cfg;
   constraint tck_c {tck_period_ns inside {32, 40, 48};}
   // Above the cold-reset extender (255 ref cycles) plus deglitch margin.
   constraint settle_c {post_reset_settle_cycles inside {[500 : 700]};}
-  // An SMC JTAG2AXI SERIES write returns zeros or parks in BUSY whenever
-  // tck/smu is under 4 (cocotb smu_base_test.min_jtag_smu_ratio); a scenario
-  // that issues one raises this floor in configure_test_cfg().
-  int unsigned min_tck_smu_ratio = 0;
-  constraint tck_ratio_c {tck_period_ns >= min_tck_smu_ratio * smu_clk_period_ns;}
 
   // --- bring-up bounds (cocotb smu_base_test.bring_up parity) -------------
   // Ref-clock cycles from clock start to power-good, and from power-good to

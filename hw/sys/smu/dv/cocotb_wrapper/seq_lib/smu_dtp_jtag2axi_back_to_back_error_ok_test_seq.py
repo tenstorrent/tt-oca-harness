@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import cocotb
+from dtp_types import DTP_EXPECTED_DTMCS, unpack_dtmcs
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -14,11 +15,12 @@ from seq_lib.smu_addr_map import (
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
+    axi64_pack32,
+    axi64_unpack32,
     jtag2axi_single_read,
     jtag2axi_single_write,
     make_smu_jtag_tap,
@@ -64,14 +66,15 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             poll_limit=OTP_POLL,
             require_complete=True,
         )
-        return st, int(rdata) & 0xFFFF_FFFF
+        return st, axi64_unpack32(addr, rdata)
 
     async def _wr32(self, jtag, addr: int, data: int) -> int:
+        wstrb, beat = axi64_pack32(addr, data)
         st, _ = await jtag2axi_single_write(
             jtag,
             addr,
-            data,
-            wstrb=0x0F,
+            beat,
+            wstrb=wstrb,
             size=SMC_DBG_AXSIZE_4B,
             poll_limit=OTP_POLL,
             require_complete=True,
@@ -96,18 +99,16 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
-        caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
-        require_jtag_tdo_resolved("SMC J2A CAPS")
-        if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
-            raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
-            )
+        dtmcs = int(await jtag.read("SMC_DTMCS"))
+        require_jtag_tdo_resolved("SMC J2A DTMCS")
+        if dtmcs != DTP_EXPECTED_DTMCS:
+            raise AssertionError(f"SMC J2A DTMCS=0x{dtmcs:08x} want 0x{DTP_EXPECTED_DTMCS:08x}")
         self.s1_ok = True
-        self._log(f"CHK-B2B-GATE-OPEN disable={gate} caps=0x{caps:04x}")
+        self._log(f"CHK-B2B-GATE-OPEN disable={gate} dtmcs=0x{dtmcs:08x}")
         sb.expect_eq(
             "CHK-B2B-GATE-OPEN",
-            (gate, caps),
-            (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            (gate, dtmcs),
+            (0, DTP_EXPECTED_DTMCS),
             evidence="CHK-B2B-GATE-OPEN",
         )
 
@@ -167,18 +168,13 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             evidence="CHK-B2B-WR-DECERR",
         )
 
-        capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved("SMC SINGLE_OP sticky")
-        sticky = int(capt) & 0x3
-        if sticky == J2A_STATUS_BUSY:
-            raise AssertionError("SINGLE_OP sticky BUSY after b2b")
-        if sticky != J2A_STATUS_SUCCESS:
-            raise AssertionError(
-                f"SINGLE_OP sticky status={sticky} want SUCCESS={J2A_STATUS_SUCCESS}"
-            )
+        sticky = unpack_dtmcs(int(await jtag.read("SMC_DTMCS")))["dmistat"]
+        require_jtag_tdo_resolved("SMC DTMCS dmistat")
+        if sticky != 0:
+            raise AssertionError(f"SMC DTMCS dmistat={sticky} after b2b, want 0")
         self.s5_ok = True
-        self._log("CHK-B2B-STICKY status=SUCCESS")
-        sb.expect_eq("CHK-B2B-STICKY", sticky, J2A_STATUS_SUCCESS, evidence="CHK-B2B-STICKY")
+        self._log("CHK-B2B-STICKY dmistat=0")
+        sb.expect_eq("CHK-B2B-STICKY", sticky, 0, evidence="CHK-B2B-STICKY")
 
         self._log(
             f"PASS JTAG2AXI-B2B s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "

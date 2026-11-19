@@ -12,7 +12,6 @@
 // names; the `module` binding map's `uvm` entry equals the scenario name and
 // drives +UVM_TESTNAME.
 
-`include "uvm_macros.svh"
 import ocah_lib_pkg::*;  // ocah_test base and the ocah_sequence hook type
 import dtp_env_pkg::*;
 import dtp_seq_lib_pkg::*;
@@ -41,97 +40,10 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag_trst_por_independence_test.svh"
 `include "dtp_jtag_tlr_reset_test.svh"
 
-// JTAG2AXI single-op scenarios.
-`include "dtp_jtag2axi_smc_otp_axi_single_write_read_test.svh"
+// JTAG2AXI scenarios.
 `include "dtp_jtag2axi_smc_axi_single_write_read_test.svh"
-
-// SMC-fabric JTAG2AXI scenarios.
-`include "dtp_jtag2axi_smc_axi_single_write_test.svh"
-`include "dtp_jtag2axi_smc_axi_single_write_data_verify_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_incr_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_no_incr_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test.svh"
-`include "dtp_jtag2axi_smc_axi_random_ops_test.svh"
-`include "dtp_jtag2axi_smc_axi_write_security_gating_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_read_incr_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test.svh"
-`include "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test.svh"
-`include "dtp_jtag2axi_smc_axi_read_random_ops_test.svh"
-`include "dtp_jtag2axi_smc_axi_read_security_gating_test.svh"
-`include "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_single_write_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_single_read_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_series_incr_write_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_series_incr_read_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test.svh"
-`include "dtp_jtag2axi_smc_axi_error_security_gating_test.svh"
-
-// SMC OTP JTAG2AXI scenarios.
-`include "dtp_jtag2axi_smc_otp_axi_single_write_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_incr_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_random_ops_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_write_security_gating_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_read_random_ops_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_read_security_gating_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_single_write_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_single_read_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test.svh"
-`include "dtp_jtag2axi_smc_otp_axi_error_security_gating_test.svh"
-
-// SEP OTP JTAG2AXI scenarios.
-`include "dtp_jtag2axi_sep_otp_axi_single_write_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_series_write_incr_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_random_ops_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_write_security_gating_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_single_write_read_test.svh"
 `include "dtp_jtag2axi_sep_otp_axi_single_write_read_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_read_random_ops_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_read_security_gating_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_single_write_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_single_read_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test.svh"
-`include "dtp_jtag2axi_sep_otp_axi_error_security_gating_test.svh"
-
-// Cross-bridge JTAG2AXI robustness scenarios (all three bridges).
-`include "dtp_jtag2axi_robustness_base_test.svh"
-`include "dtp_jtag2axi_backpressure_aw_before_w_test.svh"
-`include "dtp_jtag2axi_backpressure_long_stall_test.svh"
-`include "dtp_jtag2axi_backpressure_abort_at_data_w_test.svh"
-`include "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test.svh"
-`include "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test.svh"
-`include "dtp_jtag2axi_decode_error_decerr_write_test.svh"
-`include "dtp_jtag2axi_decode_error_decerr_read_test.svh"
-`include "dtp_jtag2axi_decode_error_mixed_test.svh"
-`include "dtp_jtag2axi_series_corner_all_bridges_test.svh"
-`include "dtp_jtag2axi_series_reprogram_held_read_test.svh"
-`include "dtp_jtag2axi_cdc_jitter_all_bridges_test.svh"
 
 // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
 `include "dtp_jtag_tmp_status_register_smoke_test.svh"
@@ -143,9 +55,6 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test.svh"
 `include "dtp_dbg_ctrl_clk_stop_random_clock_stop_test.svh"
 `include "dtp_dbg_ctrl_boot_stall_test.svh"
-`include "dtp_dbg_smc_jtag2axi_caps_test.svh"
-`include "dtp_dbg_smc_otp_jtag2axi_caps_test.svh"
-`include "dtp_dbg_sep_otp_jtag2axi_caps_test.svh"
 
 // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
 `include "dtp_ijtag_sib_all_off_test.svh"
@@ -162,7 +71,6 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_3dcr_config_hold_test.svh"
 `include "dtp_3dcr_tms_hold_test.svh"
 `include "dtp_scan_dbg_disable_matrix_test.svh"
-`include "dtp_jtag2axi_dbg_disable_matrix_test.svh"
 
 // Cross-trigger scenarios (XTRIG CSR / CTP protocols / CTM routing).
 `include "dtp_xtrig_base_test.svh"

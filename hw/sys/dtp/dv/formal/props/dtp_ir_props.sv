@@ -18,9 +18,9 @@
 // of an unsized literal it casts is 32 bits wide and the model decodes an opcode above 0x1E to
 // zero or to a sign-extended pattern. The ir tasks bound the opcode an Update-IR loads to 0x1E
 // (dtp_ir_sby_env.sv) and the opcode covers span that range, so on the open path no instruction
-// from 0x1F up is loaded and no clause over one is checked: the SMC OTP series data instructions
-// 0x1F and 0x20, the SEP OTP and SMC capability and bridge instructions, the undefined opcodes from
-// 0x2D, ZERO_LENGTH_BYPASS, INV_BYPASS and BYPASS.
+// from 0x1F up is loaded and no clause over one is checked: the SMC fabric bridge's DTMCS and DMI
+// instructions 0x1F and 0x20, the undefined opcodes from 0x21, ZERO_LENGTH_BYPASS, INV_BYPASS and
+// BYPASS.
 
 `include "ocah_fv_macros.svh"
 
@@ -58,12 +58,12 @@ module dtp_ir_props
   input logic                      ic_reset_scan_out_i,  // ic_reset_reg_scan_out
   input logic                      debug_ctrl_scan_out_i,// debug_ctrl_reg_scan_out
   input logic                      caps_scan_out_i,      // caps_reg_scan_out
-  input logic                      smc_otp_caps_scan_out_i, // smc_otp_2axi_caps_reg_scan_out
-  input logic                      sep_otp_caps_scan_out_i, // sep_otp_2axi_caps_reg_scan_out
-  input logic                      smc_caps_scan_out_i,  // smc_2axi_caps_reg_scan_out
-  input logic                      smc_otp_j2a_scan_out_i, // smc_otp_jtag2axi_scan_out
-  input logic                      sep_otp_j2a_scan_out_i, // sep_otp_jtag2axi_scan_out
-  input logic                      smc_j2a_scan_out_i,   // smc_jtag2axi_scan_out
+  input logic                      smc_otp_dtmcs_scan_out_i, // smc_otp_jtag2axi_dtmcs_scan_out
+  input logic                      smc_otp_dmi_scan_out_i,   // smc_otp_jtag2axi_scan_out
+  input logic                      sep_otp_dtmcs_scan_out_i, // sep_otp_jtag2axi_dtmcs_scan_out
+  input logic                      sep_otp_dmi_scan_out_i,   // sep_otp_jtag2axi_scan_out
+  input logic                      smc_dtmcs_scan_out_i, // smc_jtag2axi_dtmcs_scan_out
+  input logic                      smc_dmi_scan_out_i,   // smc_jtag2axi_scan_out
   input logic                      bsr_scan_in_i,        // bsr_host_scan_in_i
   input logic                      ijtag_scan_in_i,      // ijtag_host_scan_in_i
   // TDR select terms
@@ -75,12 +75,12 @@ module dtp_ir_props
   input logic                      ic_reset_sel_i,       // ic_reset_reg_scan_ctrl.select
   input logic                      debug_ctrl_sel_i,     // debug_ctrl_reg_scan_ctrl.select
   input logic                      caps_sel_i,           // caps_reg_scan_ctrl.select
-  input logic                      smc_otp_caps_sel_i,   // smc_otp_2axi_caps_reg_scan_ctrl.select
-  input logic                      sep_otp_caps_sel_i,   // sep_otp_2axi_caps_reg_scan_ctrl.select
-  input logic                      smc_caps_sel_i,       // smc_2axi_caps_reg_scan_ctrl.select
-  input logic                      smc_otp_j2a_sel_i,    // smc_otp_jtag2axi_scan_ctrl.select
-  input logic                      sep_otp_j2a_sel_i,    // sep_otp_jtag2axi_scan_ctrl.select
-  input logic                      smc_j2a_sel_i,        // smc_jtag2axi_scan_ctrl.select
+  input logic                      smc_otp_dtmcs_sel_i,  // smc_otp_jtag2axi_dtmcs_scan_ctrl.select
+  input logic                      smc_otp_dmi_sel_i,    // smc_otp_jtag2axi_scan_ctrl.select
+  input logic                      sep_otp_dtmcs_sel_i,  // sep_otp_jtag2axi_dtmcs_scan_ctrl.select
+  input logic                      sep_otp_dmi_sel_i,    // sep_otp_jtag2axi_scan_ctrl.select
+  input logic                      smc_dtmcs_sel_i,      // smc_jtag2axi_dtmcs_scan_ctrl.select
+  input logic                      smc_dmi_sel_i,        // smc_jtag2axi_scan_ctrl.select
   input logic                      bsr_sel_i,            // bsr_host_scan_ctrl_o.select
   input logic                      ijtag_sel_i,          // ijtag_host_scan_ctrl_o.select
   // Read-only captures
@@ -93,11 +93,11 @@ module dtp_ir_props
   localparam logic [DecodedIrWidth-1:0] AllOnesLowByte = {8{1'b1}};
 
   // Opcodes with no register of their own: 0x0F, the RISC-V reserved block 0x10 to 0x17, and
-  // 0x2D to 0x3C. Each selects the bypass register.
+  // 0x21 to 0x3C. Each selects the bypass register.
   localparam logic [DecodedIrWidth-1:0] UndefinedMask =
       (DecodedIrWidth'(1) << UNDEFINED_BYPASS_0F_INSTR) |
       (AllOnesLowByte << RISCV_RESERVED_0_INSTR) |
-      (DecodedIrWidth'(16'hFFFF) << UNDEFINED_BYPASS_2D_INSTR);
+      (DecodedIrWidth'(28'hFFF_FFFF) << UNDEFINED_BYPASS_21_INSTR);
 
   // Opcodes whose DR scan reads the bypass register at TDO; ZERO_LENGTH_BYPASS reads it there
   // outside the shift states, where TDI takes over while the 3DCR STAP-select bit is clear.
@@ -121,21 +121,6 @@ module dtp_ir_props
   localparam logic [DecodedIrWidth-1:0] IjtagMask =
       SELECT_IJTAG_INSTR_DECODED | RUNBIST_INSTR_DECODED;
 
-  localparam logic [DecodedIrWidth-1:0] SmcOtpAxiMask =
-      SMC_OTP_AXI_SINGLE_OP_INSTR_DECODED | SMC_OTP_AXI_SERIES_CTRL_INSTR_DECODED |
-      SMC_OTP_AXI_SERIES_DATA_INCR_INSTR_DECODED | SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED |
-      SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED;
-
-  localparam logic [DecodedIrWidth-1:0] SepOtpAxiMask =
-      SEP_OTP_AXI_SINGLE_OP_INSTR_DECODED | SEP_OTP_AXI_SERIES_CTRL_INSTR_DECODED |
-      SEP_OTP_AXI_SERIES_DATA_INCR_INSTR_DECODED | SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED |
-      SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED;
-
-  localparam logic [DecodedIrWidth-1:0] SmcAxiMask =
-      SMC_AXI_SINGLE_OP_INSTR_DECODED | SMC_AXI_SERIES_CTRL_INSTR_DECODED |
-      SMC_AXI_SERIES_DATA_INCR_INSTR_DECODED | SMC_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED |
-      SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED;
-
   logic [DecodedIrWidth-1:0] inst_bits;
   assign inst_bits = inst_i;
 
@@ -149,12 +134,12 @@ module dtp_ir_props
     ic_reset_sel_i,
     debug_ctrl_sel_i,
     caps_sel_i,
-    smc_otp_caps_sel_i,
-    sep_otp_caps_sel_i,
-    smc_caps_sel_i,
-    smc_otp_j2a_sel_i,
-    sep_otp_j2a_sel_i,
-    smc_j2a_sel_i,
+    smc_otp_dtmcs_sel_i,
+    smc_otp_dmi_sel_i,
+    sep_otp_dtmcs_sel_i,
+    sep_otp_dmi_sel_i,
+    smc_dtmcs_sel_i,
+    smc_dmi_sel_i,
     bsr_sel_i,
     ijtag_sel_i
   };
@@ -170,12 +155,12 @@ module dtp_ir_props
     else if (inst_i[IC_RESET_INSTR]) tdr_route = ic_reset_scan_out_i;
     else if (inst_i[DEBUG_CONTROL_INSTR]) tdr_route = debug_ctrl_scan_out_i;
     else if (inst_i[JTAG_CAPS_INSTR]) tdr_route = caps_scan_out_i;
-    else if (inst_i[SMC_OTP_JTAG2AXI_CAPS_INSTR]) tdr_route = smc_otp_caps_scan_out_i;
-    else if (inst_i[SEP_OTP_JTAG2AXI_CAPS_INSTR]) tdr_route = sep_otp_caps_scan_out_i;
-    else if (inst_i[SMC_JTAG2AXI_CAPS_INSTR]) tdr_route = smc_caps_scan_out_i;
-    else if (|(inst_bits & SmcOtpAxiMask)) tdr_route = smc_otp_j2a_scan_out_i;
-    else if (|(inst_bits & SepOtpAxiMask)) tdr_route = sep_otp_j2a_scan_out_i;
-    else if (|(inst_bits & SmcAxiMask)) tdr_route = smc_j2a_scan_out_i;
+    else if (inst_i[SMC_OTP_DTMCS_INSTR]) tdr_route = smc_otp_dtmcs_scan_out_i;
+    else if (inst_i[SMC_OTP_DMI_INSTR]) tdr_route = smc_otp_dmi_scan_out_i;
+    else if (inst_i[SEP_OTP_DTMCS_INSTR]) tdr_route = sep_otp_dtmcs_scan_out_i;
+    else if (inst_i[SEP_OTP_DMI_INSTR]) tdr_route = sep_otp_dmi_scan_out_i;
+    else if (inst_i[SMC_DTMCS_INSTR]) tdr_route = smc_dtmcs_scan_out_i;
+    else if (inst_i[SMC_DMI_INSTR]) tdr_route = smc_dmi_scan_out_i;
     else if (|(inst_bits & BsrMask)) tdr_route = bsr_scan_in_i;
     else tdr_route = ijtag_scan_in_i;
   end
@@ -192,13 +177,13 @@ module dtp_ir_props
       tmp_status_sel_i   == (dr_select_i && inst_i[TMP_STATUS_INSTR]) &&
       ic_reset_sel_i     == (dr_select_i && inst_i[IC_RESET_INSTR]) &&
       debug_ctrl_sel_i   == (dr_select_i && inst_i[DEBUG_CONTROL_INSTR]) &&
-      caps_sel_i         == (dr_select_i && inst_i[JTAG_CAPS_INSTR]) &&
-      smc_otp_caps_sel_i == (dr_select_i && inst_i[SMC_OTP_JTAG2AXI_CAPS_INSTR]) &&
-      sep_otp_caps_sel_i == (dr_select_i && inst_i[SEP_OTP_JTAG2AXI_CAPS_INSTR]) &&
-      smc_caps_sel_i     == (dr_select_i && inst_i[SMC_JTAG2AXI_CAPS_INSTR]) &&
-      smc_otp_j2a_sel_i  == (dr_select_i && |(inst_bits & SmcOtpAxiMask))    &&
-      sep_otp_j2a_sel_i  == (dr_select_i && |(inst_bits & SepOtpAxiMask))    &&
-      smc_j2a_sel_i      == (dr_select_i && |(inst_bits & SmcAxiMask)) &&
+      caps_sel_i          == (dr_select_i && inst_i[JTAG_CAPS_INSTR]) &&
+      smc_otp_dtmcs_sel_i == (dr_select_i && inst_i[SMC_OTP_DTMCS_INSTR]) &&
+      smc_otp_dmi_sel_i   == (dr_select_i && inst_i[SMC_OTP_DMI_INSTR]) &&
+      sep_otp_dtmcs_sel_i == (dr_select_i && inst_i[SEP_OTP_DTMCS_INSTR]) &&
+      sep_otp_dmi_sel_i   == (dr_select_i && inst_i[SEP_OTP_DMI_INSTR]) &&
+      smc_dtmcs_sel_i     == (dr_select_i && inst_i[SMC_DTMCS_INSTR]) &&
+      smc_dmi_sel_i       == (dr_select_i && inst_i[SMC_DMI_INSTR]) &&
       bsr_sel_i          == (dr_select_i && |(inst_bits & BsrMask)) &&
       ijtag_sel_i        == (dr_select_i && |(inst_bits & IjtagMask));
 
@@ -261,7 +246,8 @@ module dtp_ir_props
                  byp_sel_i && inst_i[RISCV_RESERVED_0_INSTR] && dr_shift_en_i,
                  tck_i, jtag_trst_ni)
   `OCAH_FV_COVER(cov_caps_read, caps_sel_i && dr_capture_en_i, tck_i, jtag_trst_ni)
-  `OCAH_FV_COVER(cov_smc_otp_caps_read, smc_otp_caps_sel_i && dr_capture_en_i, tck_i, jtag_trst_ni)
+  `OCAH_FV_COVER(cov_smc_otp_dtmcs_read, smc_otp_dtmcs_sel_i && dr_capture_en_i, tck_i,
+                 jtag_trst_ni)
   `OCAH_FV_COVER(cov_debug_control_shift, debug_ctrl_sel_i && dr_shift_en_i, tck_i, jtag_trst_ni)
   // verilog_format: on
 

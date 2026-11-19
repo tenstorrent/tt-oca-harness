@@ -454,7 +454,7 @@ class smu_lc_secure_tm_scope_prod_test_seq(smu_lc_sec_dis_over_sigint_prod_test_
             (SECURE_TM_SET, True, [0], [SECURE_TM_CLEAR]),
         )
 
-        await self._mark("AFTER THE RESET: fabric SINGLE_OP read and write, DFT secure SIB")
+        await self._mark("AFTER THE RESET: fabric JTAG2AXI read and write, DFT secure SIB")
         await self._primary_released()
         await self._tlr()
         start, end, delta = await self._fabric_deltas(launches=True, tag="_after_reset")

@@ -166,7 +166,7 @@ PATHS = tuple(PATH_CASE)
 OPEN = "open"
 SHUT = "shut"
 
-#: A SINGLE_OP read launches one AR and a write one AW and one B (hw/sys/dtp/doc/jtag.adoc).
+#: A JTAG2AXI read launches one AR and a write one AW and one B (hw/sys/dtp/doc/jtag.adoc).
 FABRIC_OPEN_DELTA = (1, 1, 1)
 FABRIC_SHUT_DELTA = (0, 0, 0)
 STEP_CLOCK_GAP = 2

@@ -57,6 +57,7 @@ from contextlib import ExitStack
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from dtp_types import DMI_LEN, DTP_DMI_SETTLE_TCK
 from env.smu_axi_monitor import expected_decerr
 from ocah_axi_vip import PROT_NONSECURE, AxiTimingProfile, clear_profile
 
@@ -155,7 +156,6 @@ from seq_lib.smu_dtp_sep_ic_reset_effect_test_seq import (
 from seq_lib.smu_filter_helpers import PASS_ALL_END, PASS_RW_CONFIG, SMC_APERTURE_LOCAL_BASE
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     DTP_IR_TAP_3DCR,
     J2A_OP_READ,
     J2A_OP_WRITE,
@@ -163,10 +163,11 @@ from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_SLVERR,
     J2A_STATUS_SUCCESS,
     PTAP_3DCR_WIDTH,
-    SMC_DBG_SINGLE_OP_LEN,
-    pack_single_op,
+    Jtag2AxiScanPort,
+    dtp_ir_opcode,
+    jtag2axi_arm,
+    jtag2axi_status,
     ptap_3dcr_value,
-    unpack_single_op,
 )
 from seq_lib.smu_sep_lsu_fabric_test_seq import (
     A0,
@@ -647,30 +648,22 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
     async def _j2a_with_dmi(
         self, op: int, addr: int, data: int, dmi_addr: int, dmi_data: int, *, label: str
     ) -> tuple[int, int]:
-        """One scan updates a JTAG2AXI operation and a DMI write together; both complete."""
-        size = 3
-        wstrb = 0xFF if op == J2A_OP_WRITE else 0
-        raw = pack_single_op(op, addr, data, wstrb=wstrb, size=size)
+        """One scan starts a JTAG2AXI access and updates a DMI write together; both complete."""
+        port = Jtag2AxiScanPort(self._ptap_scan, self.jtag)
         self.j2a_count += 1
+        access, start = await jtag2axi_arm(port, op, addr, data)
         await self._dr(
-            DTP_IR_SMC_AXI_SINGLE_OP,
-            raw,
-            SMC_DBG_SINGLE_OP_LEN,
+            dtp_ir_opcode("SMC_DMI"),
+            start,
+            DMI_LEN,
             f"{label}_issue",
             sep_request=pack_dmi(dmi_addr, dmi_data, op=DMI_OP_WRITE),
-            idle=DMI_IDLE_TCKS,
+            idle=max(DMI_IDLE_TCKS, DTP_DMI_SETTLE_TCK),
         )
         await self._dmi_collect(dmi_addr, f"{label}_dmi")
         used = 0
         while True:
-            captured, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=False,
-            )
-            status, rdata = unpack_single_op(captured)
+            status, rdata = await jtag2axi_status(port, access)
             used += 1
             if status != J2A_STATUS_BUSY:
                 break

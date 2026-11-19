@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_single_write_read_test — the `single_write_read` SMC
-// fabric JTAG2AXI scenario: one write, a write to the neighbouring beat, and a
-// readback of the first word through SMC_AXI_SINGLE_OP. The shared passive
-// AXI env compares every observed transaction with the stimulus intents; the
+// dtp_jtag2axi_smc_axi_single_write_read_test: on the SMC fabric bridge a
+// System Bus Access write, a write to the neighbouring beat, and a read-back
+// of the first word complete with the written word. The shared passive AXI
+// env compares every observed transaction with the stimulus intents; the
 // required evidence IDs make a silent no-op run fail at finalization.
 
 class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
@@ -28,13 +28,15 @@ class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
                             "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
-                            "CHK-J2A-BUS-REQ"
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-FAULT-STATUS"
                         });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
-    dtp_jtag2axi_smc_axi_rd_test_seq seq = dtp_jtag2axi_smc_axi_rd_test_seq::type_id::create("seq");
-    seq.scenario = "single_write_read";
+    dtp_jtag2axi_single_write_read_test_seq seq;
+    seq = dtp_jtag2axi_single_write_read_test_seq::type_id::create("seq");
+    seq.target = "smc_axi";
     return seq;
   endfunction
 

@@ -69,12 +69,10 @@ from seq_lib.smu_jtag_helpers import (
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
     axi64_pack32,
-    jtag2axi_single_read,
-    jtag2axi_single_write,
+    jtag2axi_poll,
+    jtag2axi_start,
+    jtag2axi_status,
     make_smu_jtag_tap,
-    pack_single_op,
-    require_jtag_tdo_resolved,
-    unpack_single_op,
 )
 from seq_lib.smu_tb_pins import smc_primary_reset
 
@@ -575,6 +573,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         self.fence: list[tuple[str, int, int, int]] = []
         self.j2a_count = 0
         self.j2a_polls = 0
+        self.j2a_access = None
         self.ref: dict[str, tuple] = {}
         self.ref_ok: dict[str, bool] = {}
         self.done = False
@@ -623,40 +622,23 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         self._info(f"INFO-G2A-STEP: {term} t={_now()}ns count={count} planned={planned}")
 
     # ---------------- JTAG2AXI ----------------
-    def _count_polls(self) -> None:
-        """Count every SMC_AXI_SINGLE_OP capture the JTAG2AXI helpers issue."""
-        read = self.jtag.read
-
-        async def counted(reg, *args, **kwargs):
-            if reg == "SMC_AXI_SINGLE_OP":
-                self.j2a_polls += 1
-            return await read(reg, *args, **kwargs)
-
-        self.jtag.read = counted
+    async def _j2a(self, op: int, addr: int, data: int, *, size: int, wstrb: int | None):
+        name = "j2a_write" if op == J2A_OP_WRITE else "j2a_read"
+        self.j2a_count += 1
+        access = await jtag2axi_start(self.jtag, op, addr, data, wstrb=wstrb, size=size)
+        st, rdata, polls = await jtag2axi_poll(self.jtag, access, poll_limit=J2A_POLL_LIMIT)
+        self.j2a_polls += polls
+        if st == J2A_STATUS_BUSY:
+            self._expire(name, J2A_POLL_LIMIT, "polls", "dtp_dbg", f"{name} @0x{addr:x}")
+        self._bounded(name, J2A_POLL_LIMIT, "polls", polls, f"status={st}")
+        return st, int(rdata)
 
     async def _j2a_wr(self, addr: int, data: int, *, size: int = SMC_DBG_AXSIZE_8B, wstrb=0xFF):
-        self.j2a_count += 1
-        p0 = self.j2a_polls
-        st, _ = await jtag2axi_single_write(
-            self.jtag, addr, data, wstrb=wstrb, size=size, poll_limit=J2A_POLL_LIMIT
-        )
-        require_jtag_tdo_resolved(f"J2A WR @0x{addr:x}")
-        if st == J2A_STATUS_BUSY:
-            self._expire("j2a_write", J2A_POLL_LIMIT, "polls", "dtp_dbg", f"J2A WR @0x{addr:x}")
-        self._bounded("j2a_write", J2A_POLL_LIMIT, "polls", self.j2a_polls - p0, f"status={st}")
+        st, _ = await self._j2a(J2A_OP_WRITE, addr, data, size=size, wstrb=wstrb)
         return st
 
     async def _j2a_rd(self, addr: int, *, size: int = SMC_DBG_AXSIZE_8B):
-        self.j2a_count += 1
-        p0 = self.j2a_polls
-        st, rdata = await jtag2axi_single_read(
-            self.jtag, addr, size=size, poll_limit=J2A_POLL_LIMIT
-        )
-        require_jtag_tdo_resolved(f"J2A RD @0x{addr:x}")
-        if st == J2A_STATUS_BUSY:
-            self._expire("j2a_read", J2A_POLL_LIMIT, "polls", "dtp_dbg", f"J2A RD @0x{addr:x}")
-        self._bounded("j2a_read", J2A_POLL_LIMIT, "polls", self.j2a_polls - p0, f"status={st}")
-        return st, int(rdata)
+        return await self._j2a(J2A_OP_READ, addr, 0, size=size, wstrb=None)
 
     async def _wr32(self, addr: int, data: int) -> int:
         wstrb, beat = axi64_pack32(addr, data)
@@ -802,7 +784,6 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
     async def _setup(self) -> None:
         dut = self.dut
         self.jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
-        self._count_polls()
         await self.jtag.reset_tap()
         await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
@@ -961,12 +942,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         )
         # JTAG2AXI toward ext_out; the responder answers at its default delay.
         t_j = _now()
-        if j2a_op == J2A_OP_WRITE:
-            raw = pack_single_op(J2A_OP_WRITE, EXT_LOAD, 0xD7D7_0000_0000_00AA, wstrb=0xFF)
-        else:
-            raw = pack_single_op(J2A_OP_READ, EXT_LOAD, 0, wstrb=0)
-        await self.jtag.write("SMC_AXI_SINGLE_OP", raw)
-        require_jtag_tdo_resolved(f"{leg} J2A load issue")
+        self.j2a_access = await jtag2axi_start(self.jtag, j2a_op, EXT_LOAD, 0xD7D7_0000_0000_00AA)
         self.j2a_count += 1
         chan = ("aw",) if j2a_op == J2A_OP_WRITE else ("ar",)
         await self._wait_count(
@@ -1083,9 +1059,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         polls = 0
         status = J2A_STATUS_BUSY
         for polls in range(1, J2A_HELD_POLLS + 1):
-            capt = await self.jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
-            require_jtag_tdo_resolved(f"{leg} J2A status after release")
-            status, _ = unpack_single_op(capt)
+            status, _ = await jtag2axi_status(self.jtag, self.j2a_access)
             if status != J2A_STATUS_BUSY:
                 break
             await ClockCycles(dut.clk_smu_i, 512)
@@ -1485,9 +1459,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         word = 0xD7D7_0000_0000_00BB
         mem.set_response_delay(iter([RESP_HOLD_CYCLES]), read=False, write=True)
         t_j = _now()
-        raw = pack_single_op(J2A_OP_WRITE, EXT_LOAD, word, wstrb=0xFF)
-        await self.jtag.write("SMC_AXI_SINGLE_OP", raw)
-        require_jtag_tdo_resolved("S9 J2A held write issue")
+        self.j2a_access = await jtag2axi_start(self.jtag, J2A_OP_WRITE, EXT_LOAD, word)
         self.j2a_count += 1
         # The responder stores the beat before it queues the B, so the word in
         # its memory means the B is in its hold.

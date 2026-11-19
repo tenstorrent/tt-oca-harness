@@ -110,14 +110,6 @@ class smu_base_test(uvm_test):
     #: a sequence ``EVIDENCE`` tuple -- a boot scoreboard or the leaf itself.
     required_evidence: tuple[str, ...] = ()
 
-    #: Minimum jtag_period_ns / smu_clk_period_ns this leaf will run at, or
-    #: None to take whatever randomize_timing drew for the JTAG period.
-    #:
-    #: Only the SMC-fabric SERIES-write leaves set it: an SMC JTAG2AXI SERIES
-    #: write returns zeros or parks in BUSY whenever that ratio is under 4. The
-    #: clamp is per leaf; randomize_timing itself is not clamped.
-    min_jtag_smu_ratio: float | None = None
-
     #: Set by a leaf whose checks compare clk_ref_i against clk_smu_i at the
     #: boundary. With +pll_sys_period_ns=10 both domains run at the reference
     #: period, and an equality observation cannot then tell one clock from the
@@ -196,18 +188,6 @@ class smu_base_test(uvm_test):
         self.cfg = SmuEnvCfg("cfg")
         self.cfg.resolve_pll_timing()
         self.cfg.randomize_timing(self.random_seed())
-        if self.min_jtag_smu_ratio is not None:
-            needed = self.min_jtag_smu_ratio * self.cfg.smu_clk_period_ns
-            if self.cfg.jtag_period_ns < needed:
-                raised = int(-(-needed // 1))  # ceil, keeping an integer period
-                self.logger.warning(
-                    "jtag_period_ns %s -> %d to hold jtag/smu >= %s "
-                    "(SMC JTAG2AXI SERIES-write clamp)",
-                    self.cfg.jtag_period_ns,
-                    raised,
-                    self.min_jtag_smu_ratio,
-                )
-                self.cfg.jtag_period_ns = raised
         if self.require_distinct_ref_smu and self.cfg.ref_clk_period_ns == (
             self.cfg.smu_clk_period_ns
         ):

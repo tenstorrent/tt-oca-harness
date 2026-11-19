@@ -9,8 +9,8 @@ covers the DTP gate alone. Here all three subsystems act:
   SEP   firmware (sep_smu_lcc_flow) sets DEMOTE_1/2 -- the one LCC input
         software owns -- which in PROD opens feat_ctrl[15:0] and clears
         dbg_disable.
-  DTP   is asked for a JTAG2AXI single-op read of that SMC scratch address; the
-        bridge only launches it when dbg_disable.smc_jtag2axi is clear.
+  DTP   is asked for a JTAG2AXI read of that SMC scratch address; the bridge
+        only launches it when dbg_disable.smc_jtag2axi is clear.
   SMC   answers, and the value that comes back up the scan chain is compared
         against what the SMC is actually holding.
 
@@ -43,18 +43,19 @@ from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.sep_fw_common import addr_of, load_syms
 from seq_lib.smu_addr_map import smc_indexed_addr
+from seq_lib.smu_jtag_helpers import (
+    J2A_OP_READ,
+    J2A_STATUS_NAME,
+    J2A_STATUS_SUCCESS,
+    SMC_DBG_AXSIZE_4B,
+    jtag2axi_start,
+    jtag2axi_status,
+)
 from seq_lib.smu_lifecycle_table import lc_raw_from_shadow_preload, lc_state_name, posture
 from seq_lib.wrapper_jtag import (
-    J2A_OP_READ,
-    J2A_SIZE_4B,
-    J2A_ST_OKAY,
-    J2A_STATUS_NAME,
     PTAP_DEFAULT_IDCODE,
     make_wrapper_ptap,
     require_tdo_resolved,
-    single_op_payload,
-    single_op_rdata,
-    single_op_status,
 )
 
 # SMC CPU_CTRL scratch0, SMC-local. The SMC arm firmware writes its marker here,
@@ -203,18 +204,12 @@ class SmuDtpSepSmcChainSeq:
         assert idcode == PTAP_DEFAULT_IDCODE, f"TAP not answering (0x{idcode:08x})"
 
         before_ar = self._rd(self.dut.dtp_smc_dbg_ar_count_o, "dtp_smc_dbg_ar_count_o")
-        await jtag.write(
-            "SMC_AXI_SINGLE_OP",
-            single_op_payload(J2A_OP_READ, SMC_SCRATCH0_ADDR, size=J2A_SIZE_4B),
-        )
+        access = await jtag2axi_start(jtag, J2A_OP_READ, SMC_SCRATCH0_ADDR, size=SMC_DBG_AXSIZE_4B)
         await ClockCycles(self.dut.clk_smu_i, 4000)
         after_ar = self._rd(self.dut.dtp_smc_dbg_ar_count_o, "dtp_smc_dbg_ar_count_o")
 
         # 4. SMC: capture whatever came back.
-        captured = int(await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0))
-        require_tdo_resolved("SINGLE_OP capture")
-        status = single_op_status(captured)
-        rdata = single_op_rdata(captured)
+        status, rdata = await jtag2axi_status(jtag, access)
         launched = after_ar > before_ar
         self.log.info(
             "JTAG2AXI read of 0x%08x: launched=%s (AR %d->%d) status=%s rdata=0x%016x",
@@ -232,7 +227,7 @@ class SmuDtpSepSmcChainSeq:
                     "debug should be open after the SEP demote, but the bridge "
                     "launched nothing on the DTP->SMC port"
                 )
-            elif status != J2A_ST_OKAY:
+            elif status != J2A_STATUS_SUCCESS:
                 errors.append(
                     f"the read reached the SMC but came back {J2A_STATUS_NAME.get(status, status)}"
                 )
