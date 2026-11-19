@@ -523,7 +523,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_interface_status_rand_test"
 module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
-# No reseed: every run walks the eight cases; the seed selects only order, slots and values.
+# No reseed: every run walks the nine cases; the seed selects only order, slots and values.
 timeout_sec = 900
 tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks", "logs_open_spec_value"]
 run_modes = ["no_cpu"]

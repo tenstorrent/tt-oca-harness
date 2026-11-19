@@ -35819,7 +35819,7 @@ module sep_fcov (
   endgroup
 
   typedef struct packed {
-    logic [2:0] ca;
+    logic [3:0] ca;
     logic ca_v;  // cp_case
     logic [3:0] fl;
     logic fl_v;  // cp_flags: {read_status, read_addr, program_addr, req}
@@ -35843,14 +35843,15 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_if_status_cg";
     cp_case: coverpoint s.ca iff (s.ca_v) {
-      bins pre_sense_prog = {3'd0};
-      bins read_no_enable = {3'd1};
-      bins read_oob = {3'd2};
-      bins prog_oob = {3'd3};
-      bins prog_wlocked = {3'd4};
-      bins read_rlocked = {3'd5};
-      bins both_enables = {3'd6};
-      bins prog_data0 = {3'd7};
+      bins pre_sense_prog = {4'd0};
+      bins read_no_enable = {4'd1};
+      bins read_oob = {4'd2};
+      bins prog_oob = {4'd3};
+      bins prog_wlocked = {4'd4};
+      bins read_rlocked = {4'd5};
+      bins both_enables = {4'd6};
+      bins prog_data0 = {4'd7};
+      bins prog_no_enable = {4'd9};
     }
     // Sampled for read_no_enable, read_oob, prog_oob, prog_wlocked and the
     // accepted twins.
@@ -36879,7 +36880,7 @@ module sep_fcov (
     e = '0;
     case (which)
       0: begin
-        e.ca = v[2:0];
+        e.ca = v[3:0];
         e.ca_v = 1'b1;
       end
       1: begin
@@ -37456,15 +37457,16 @@ module sep_fcov (
 
   // Case of a request (efuse_interface_ctrl.adoc): 0 pre_sense_prog,
   // 1 read_no_enable, 2 read_oob, 3 prog_oob, 4 prog_wlocked, 5
-  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 15 none.
+  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 9
+  // prog_no_enable (data 1, program_enable 0), 15 none.
   function automatic logic [3:0] ef_pg_case(input logic [15:0] a, input logic d, input logic en,
                                             input logic sensed);
     if (!sensed) return 4'd0;
     if (a >= 16'(EfFuseBits)) return 4'd3;
     if (ef_wlock(ef_slot_of(11'(a[12:3])))) return 4'd4;
     if (!d) return 4'd7;
-    if (en) return 4'd8;
-    return 4'd15;
+    if (!en) return 4'd9;
+    return 4'd8;
   endfunction
   function automatic logic [3:0] ef_rg_case(input logic [15:0] a, input logic en, input logic pen);
     if (!en) return 4'd1;
@@ -37636,7 +37638,8 @@ module sep_fcov (
               end
             end else begin
               ef_ifs(0, 7'(ef_pg_cs));
-              if (ef_pg_clean) begin
+              // x_case_flags has no prog_no_enable cell: its case field is three bits.
+              if (ef_pg_clean && (ef_pg_cs != 4'd9)) begin
                 ef_ifs(2, {ef_pg_cs[2:0], ef_flags});
                 if (ef_pg_cs inside {4'd3, 4'd4}) ef_ifs(1, 7'(ef_flags));
               end
