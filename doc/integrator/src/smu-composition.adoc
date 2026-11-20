@@ -384,7 +384,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |DTP IP major version
+|`JTAG_OCH_VER` |`8'h01` |Yes |DTP IP major version
 |===
 
 === Cross Trigger Parameters

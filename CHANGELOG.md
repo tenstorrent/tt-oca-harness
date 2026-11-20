@@ -29,6 +29,10 @@ minor release it updates.
   of `dbg_disable_i` are synchronized to `clk_i`.
 - The JTAG2AXI bridges reset from `rst_n_i` only; TRST and Test-Logic-Reset
   reset their DTMCS and DMI registers.
+- The default of `JTAG_OCH_VER`, which the `och_ver` field of JTAG_CAPS
+  reports, is `8'h01`. This value identifies the PTAP instruction map with the
+  DTMCS and DMI instructions of the JTAG2AXI bridges. The instruction map
+  before it has `8'h00`.
 
 ### Removed
 

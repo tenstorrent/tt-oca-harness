@@ -41,7 +41,7 @@ module jtag_caps_reg
     parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Internal cross-trigger count (0..63); bits
                                                     // [59:54].
 
-    parameter logic [7:0]   OCH_VER = 8'h00  // DTP IP major version number; bits [7:0].
+    parameter logic [7:0]   OCH_VER = 8'h01  // DTP IP major version number; bits [7:0].
 ) (
     /* verilator lint_off UNUSEDSIGNAL */
     input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
