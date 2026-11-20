@@ -214,7 +214,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import pic_vector_watch
-from env.sep_decode_resp import sep_map_row
+from env.sep_decode_resp import expected_unbacked, sep_map_row
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -1042,7 +1042,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._pass("CHK-OR", orl)
             await self._release()
 
-    async def _info_hole(self, init: str, block: str, addr: int, access) -> tuple[int, int]:
+    async def _info_hole(
+        self, init: str, block: str, addr: int, access, expect: str = ""
+    ) -> tuple[int, int]:
         """INFO-BRIDGE-HOLE: one unbacked-word read and the fault latch state around it.
 
         No line states whether a fault in a block outside the seven
@@ -1061,7 +1063,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             pulse |= v
         self.logger.info(
             "INFO-BRIDGE-HOLE init=%s block=%s addr=0x%08x resp=%s rdata=0x%08x "
-            "periph_status=0x%x vec42=%d err_pulse=0x%x%s",
+            "periph_status=0x%x vec42=%d err_pulse=0x%x%s%s",
             init,
             block,
             addr,
@@ -1070,6 +1072,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             st & PERIPH_MASK,
             self._b(vec, 42),
             pulse,
+            f" map={expect}" if expect else "",
             " chk=CHK-BRIDGE-HOLE-SI" if init == "si" else "",
         )
         new = st & PERIPH_MASK & ~before
@@ -1085,15 +1088,20 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.ras.suspend(hole_off)
         mon = self.env.axi_monitor
         for name, (_kind, addr) in self.c.other.items():
+            exp = expected_unbacked(addr, "r")
 
-            async def _lsu(addr: int = addr) -> tuple[int, int]:
-                mon.arm_expected_decerr(1)
+            # A DECERR credit only where the map states DECERR, so a DECERR
+            # elsewhere fails on the bus monitor.
+            async def _lsu(addr: int = addr, decerr: bool = exp.resp == RESP_DECERR):
+                if decerr:
+                    mon.arm_expected_decerr(1)
                 resp, rdata = await self._acc(SepAxiOp.READ, addr)
-                if resp != RESP_DECERR:
+                if decerr and resp != RESP_DECERR:
                     mon.release_expected_decerr(1)
                 return resp, rdata
 
-            await self._info_hole("lsu", name, addr, _lsu)
+            expect = f"{RESP_NAME[exp.resp]}/0x{exp.rdata:08x}"
+            await self._info_hole("lsu", name, addr, _lsu, expect)
         ibank = SepFilterBank(self, "in")
         await ibank.program(
             0,

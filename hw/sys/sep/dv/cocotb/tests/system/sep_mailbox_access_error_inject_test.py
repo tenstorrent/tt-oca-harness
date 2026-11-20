@@ -20,7 +20,8 @@ Mailbox Wrapper row; ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.ad
   (the live registers hold non-zero values that the written word would change)
   and the queued word pops unchanged.
 * K4 and K5: a 32-bit access inside an aperture from offset 0x50 up, or past
-  the wrapper extent (0x10A0_7850 to 0x10A0_7FFF), answers SLVERR with data
+  the registers of the last mailbox (0x10A0_7850 to 0x10A0_7FFF, the mailbox
+  wrapper row's "past sub-block registers" cell), answers SLVERR with data
   0x0 and changes no live register and no FIFO.
 * K6 (control): the same hole access answers SLVERR with the window open and
   DECERR with the window closed.
@@ -119,7 +120,7 @@ PEER = {"out": "in", "in": "out"}
 FIELD = {
     r: MBX_REGS.mask32(r) for r in ("STATUS", "IRQS", "IRQEN", "WIRQT", "RIRQT", "ERROR_FLAGS")
 }
-# Aperture, pair and wrapper-extent edges from the generated SEP address map.
+# Aperture, pair and past-last-mailbox edges from the generated SEP address map.
 # K4/K5 offsets step in 8-byte words, so the last word of a range starts 8 bytes
 # before its end.
 _MBX = "SEP_TOP_AXIL_MAILBOX"

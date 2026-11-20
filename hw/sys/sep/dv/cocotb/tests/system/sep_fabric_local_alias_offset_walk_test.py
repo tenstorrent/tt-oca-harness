@@ -41,11 +41,12 @@ start <= addr < end (end is non-inclusive).
 Carry. One region's offset sends the source page to the cold scratch page, a
 page below it, so the page sum carries out of bit 55. With the carry discarded
 the beat goes to the cold scratch page plus the source's low 12 bits, an
-unbacked word of the Reserved row 0x108020C0-0x10802FFF; every address below
-0x1_0000_0000 returns to the peripheral crossbar (``hw/sys/sep/doc/fabric.adoc:181-182``),
-whose ``SEP_LOCAL`` initiator uses the same decode as inbound traffic
-(``fabric.adoc:138-143``). The memory map gives that row DECERR, 0xBADCAB1E
-(``hw/sys/sep/regs/gen/adoc/memory_map.adoc:47``; the column is the inbound
+unbacked word of the scratch page past the two banks (0x10802100-0x10802FFF); every
+address below 0x1_0000_0000 returns to the peripheral crossbar
+(``hw/sys/sep/doc/fabric.adoc:179-187``), whose ``SEP_LOCAL`` initiator uses the same
+decode as inbound traffic (``fabric.adoc:138-143``). The memory map gives that span
+DECERR, 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:44``, Past Extent of the
+SEP Scratch Wrapper row; the column is the inbound
 answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``). The expected row and cell come
 from the generated memory map (``env/sep_decode_resp.py``).
 

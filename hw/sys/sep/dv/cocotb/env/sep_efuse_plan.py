@@ -60,6 +60,7 @@ from sep_reg_meta import (
 
 # isort: split
 import sep_reg  # noqa: E402
+from sep_decode_resp import sep_map_row, sep_map_rows  # noqa: E402
 from sep_efuse_image import (  # noqa: E402
     LC_PROD,
     LC_PROD_END,
@@ -1073,9 +1074,14 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     rest = d.sample("past_extent_rest", [c for c in cands if c != alias], 6)
     offsets = d.shuffled("past_extent_offsets", [alias, *rest])
     rw_offs = {field_offset(n) + 4 * w for n in SHADOW_RW_FIELDS for w in range(field_n_words(n))}
-    pinned = {0x600, 0xC1C, 0xFFFC}
-    zone1 = [a for a in range(0x604, 0x1000, 4) if a not in pinned]
-    zone2 = [a for a in range(0x1000, 0xFFFC, 4) if a not in pinned]
+    # Zone 1: the words of the eFuse wrapper page past each sub-block's register
+    # extent (SLVERR); zone 2: the Reserved row past the page (DECERR). The
+    # pinned words are the last word of the page and both ends of zone 2.
+    page = [r for r in sep_map_rows() if r.base >> 12 == SHADOW_BASE >> 12]
+    gap = sep_map_row(page[-1].end + 1)
+    pinned = (page[-1].end - 3, gap.base, gap.end - 3)
+    zone1 = [a for r in page for a in range(r.base + r.extent, r.end, 4) if a not in pinned]
+    zone2 = [a for a in range(gap.base, gap.end, 4) if a not in pinned]
     a1 = d.choice("rsvd_alias_zone1", [a for a in zone1 if a & 0x3FF in rw_offs])
     a2 = d.choice("rsvd_alias_zone2", [a for a in zone2 if a & 0x3FF in rw_offs])
     more = d.sample("rsvd_rest", [a for a in zone1 + zone2 if a not in (a1, a2)], 4)
@@ -1085,7 +1091,8 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
         "past_extent_addrs": [
             EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS") + o for o in offsets
         ],
-        "rsvd_addrs": [SHADOW_BASE + a for a in rsvd],
+        "rsvd_pinned": list(pinned),
+        "rsvd_addrs": rsvd,
         "ctl_word_addr": shadow_addr("SYS_DIS", w),
         "rw_shadow_offsets": sorted(rw_offs),
     }
