@@ -508,13 +508,16 @@ def check_axfield(
     expect: int,
     width: int,
     cite: str,
+    *,
+    expect_count: int | None = None,
 ) -> list[str]:
     """Grade one AXI field of every beat a master drove on one channel against ``expect``.
 
     Logs one ``<chk> PASS|FAIL`` line per beat with the channel, field, beat
     index, address (when the tap carries it), value and expected value, then
     one summary line. Returns the failure lines: one per beat that holds X, Z
-    or a value other than ``expect``, and one when the channel carried no beat.
+    or a value other than ``expect``, and one when the channel carried no beat
+    or, when ``expect_count`` is given, a beat count other than ``expect_count``.
     The caller fails the leaf when the list is not empty; collecting instead of
     raising lets one call per field report every field of a batch. Raises
     ``MonitorLifeError`` when the tap task ended without ``stop``.
@@ -541,13 +544,18 @@ def check_axfield(
             msg = f"{chk} FAIL: {line} ({cite})"
             logger.error(msg)
             fails.append(msg)
-    if not beats:
-        msg = f"{chk} FAIL: master={master} ch={ch} field={field} count=0 expect={want} ({cite})"
+    head = f"master={master} ch={ch} field={field} count={len(beats)}"
+    want_n = "" if expect_count is None else f" expect_count={expect_count}"
+    if expect_count is not None and len(beats) != expect_count:
+        msg = f"{chk} FAIL: {head}{want_n} ({cite})"
+        logger.error(msg)
+        fails.append(msg)
+    elif not beats:
+        msg = f"{chk} FAIL: {head} expect={want} ({cite})"
         logger.error(msg)
         fails.append(msg)
     logger.info(
-        f"{chk} {'FAIL' if fails else 'PASS'}: master={master} ch={ch} field={field} "
-        f"count={len(beats)} failures={len(fails)} expect={want}"
+        f"{chk} {'FAIL' if fails else 'PASS'}: {head}{want_n} failures={len(fails)} expect={want}"
     )
     return fails
 

@@ -149,8 +149,8 @@ Checks:
                        AxBURST 0b01, AxLOCK 0, AxQOS 0b0000, AWCACHE 0b1111 and
                        ARCACHE 0b0000. Read on the PR-DBG-IN-ATTR tap (the
                        debug master before the fabric): one line per beat and a
-                       summary per field and channel; a channel with no beat
-                       fails.
+                       summary per field and channel; a channel whose beat
+                       count differs from the number of (a) accesses fails.
   CHK-TDOEN-SHIFT    : ``jtag_tdoEn_o`` reads 1 at every TDO sample that the
                        JTAG driver takes in Shift-DR and in Shift-IR, over every
                        scan of the leaf (port_table.adoc:33: JTAG test data out
@@ -1753,7 +1753,16 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 else:
                     try:
                         fails = check_axfield(
-                            self.logger, chk, tap, "debug", ch, fld, exp, width, DBG_ATTR_CITE
+                            self.logger,
+                            chk,
+                            tap,
+                            "debug",
+                            ch,
+                            fld,
+                            exp,
+                            width,
+                            DBG_ATTR_CITE,
+                            expect_count=len(SBA_ACCESSES),
                         )
                     except AssertionError as exc:
                         fails = [f"{chk} FAIL: master=debug ch={ch} field={fld} {exc}"]

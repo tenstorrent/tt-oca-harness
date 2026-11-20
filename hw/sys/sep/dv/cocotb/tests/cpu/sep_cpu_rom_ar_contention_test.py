@@ -12,7 +12,8 @@ ARVALID keeps it high, with the AR payload stable, until that cycle. The boot-RO
 mux serves the VeeR EL2 instruction-fetch (IFU) and load/store (LSU) AXI ports
 from one ROM interface, so one master sees ARREADY low while the other is
 served. The test makes both masters present AR there, proves that each saw
-ARVALID high with ARREADY low, and grades the data every load returned.
+ARVALID high with ARREADY low while the other master requested the ROM, and
+grades the data every load returned.
 
 Stimulus. ``+sep_boot_rom_hex=rom_ar_contention_rom.hex`` preloads the boot ROM.
 ``fw/tests/rom_ar_contention_test/gen_rom_ar_contention_rom.py`` generates that
@@ -40,17 +41,26 @@ Records:
                       initial hash).
   CTRL-ROM-AR-WINDOW: the console holds one BEGIN/END pair for each routine
                       k = 0, 1, 2, in order, with no nested BEGIN.
-  CTRL-ROM-AR-STALL : the bench counts, on ``clk_i`` after ReadOnly and only
-                      between a BEGIN and its END marker, the clocks with
-                      ``pr_cpu_ifu_arvalid_o`` = 1 and ``pr_cpu_ifu_arready_o``
-                      = 0, and the clocks with ``pr_cpu_lsu_arvalid_o`` = 1,
-                      ``pr_cpu_lsu_arready_o`` = 0 and ``pr_cpu_lsu_araddr_o``
-                      in the boot ROM. These taps read the raw CPU request
-                      and the raw response ready before any remap. Both totals
-                      must be at least 1, or the leaf fails with CTRL-MISSING.
-                      The per-routine counts are logged.
-  INFO-ROM-AR-TRAFFIC : per routine, the IFU and LSU-to-ROM AR handshakes and
-                      the clocks with both ARVALIDs high (logged, not graded).
+  CTRL-ROM-AR-STALL : the bench samples, on ``clk_i`` after ReadOnly and only
+                      between a BEGIN and its END marker, which master
+                      requests the boot ROM: the IFU when
+                      ``pr_cpu_ifu_arvalid_o`` = 1 and ``pr_ifu_araddr_o``
+                      (PR-IFU, the same AR after the combinational alias
+                      remap) is in the boot ROM; the LSU when
+                      ``pr_cpu_lsu_arvalid_o`` = 1 and ``pr_cpu_lsu_araddr_o``
+                      is in the boot ROM. It counts the contended stall
+                      clocks: the IFU requests the ROM with
+                      ``pr_cpu_ifu_arready_o`` = 0 while the LSU requests the
+                      ROM, and the converse with ``pr_cpu_lsu_arready_o``.
+                      The valid and ready taps read the raw CPU request and
+                      response before any remap. Both totals must be at
+                      least 1, or the leaf fails with CTRL-MISSING. The
+                      per-routine counts are logged.
+  INFO-ROM-AR-TRAFFIC : per routine, the IFU and LSU-to-ROM AR handshakes, the
+                      clocks with both masters requesting the ROM, the
+                      contended stall clocks, and the stall clocks of each
+                      port with or without the other master (logged, not
+                      graded).
   CHK-ROM-AR-SUM    : firmware, one line per routine and pass
                       (``routine=<k> pass=<p> got= want=``). Host side: the
                       console holds the twelve PASS lines, one per (k, p), and
@@ -153,6 +163,8 @@ class _ArStallSampler:
         n = _GEN.ROUTINES
         self.ifu_stall = [0] * n
         self.lsu_stall = [0] * n
+        self.ifu_contend = [0] * n
+        self.lsu_contend = [0] * n
         self.ifu_hs = [0] * n
         self.lsu_rom_hs = [0] * n
         self.both_valid = [0] * n
@@ -189,20 +201,22 @@ class _ArStallSampler:
         ifu_r = rd(dut.pr_cpu_ifu_arready_o)
         lsu_v = rd(dut.pr_cpu_lsu_arvalid_o)
         lsu_r = rd(dut.pr_cpu_lsu_arready_o)
+        ifu_rom = ifu_v and _ROM_BASE <= rd(dut.pr_ifu_araddr_o, mask=_MASK32) < _ROM_END
+        lsu_rom = lsu_v and _ROM_BASE <= rd(dut.pr_cpu_lsu_araddr_o, mask=_MASK32) < _ROM_END
         if ifu_v:
             if ifu_r:
                 self.ifu_hs[k] += 1
             else:
                 self.ifu_stall[k] += 1
-        if lsu_v:
-            addr = rd(dut.pr_cpu_lsu_araddr_o, mask=_MASK32)
-            if _ROM_BASE <= addr < _ROM_END:
-                if lsu_r:
-                    self.lsu_rom_hs[k] += 1
-                else:
-                    self.lsu_stall[k] += 1
-        if ifu_v and lsu_v:
+        if lsu_rom:
+            if lsu_r:
+                self.lsu_rom_hs[k] += 1
+            else:
+                self.lsu_stall[k] += 1
+        if ifu_rom and lsu_rom:
             self.both_valid[k] += 1
+            self.ifu_contend[k] += not ifu_r
+            self.lsu_contend[k] += not lsu_r
 
     async def run(self) -> None:
         clk = self.dut.clk_i
@@ -290,24 +304,28 @@ class sep_cpu_rom_ar_contention_test(sep_base_test):
     def _check_stall(self, s: _ArStallSampler) -> None:
         for k in range(_GEN.ROUTINES):
             self.logger.info(
-                "INFO-ROM-AR-TRAFFIC k=%d ifu_ar=%d lsu_rom_ar=%d both_arvalid_clk=%d "
+                "INFO-ROM-AR-TRAFFIC k=%d ifu_ar=%d lsu_rom_ar=%d both_rom_arvalid_clk=%d "
+                "ifu_contend_stall_clk=%d lsu_contend_stall_clk=%d "
                 "ifu_stall_clk=%d lsu_stall_clk=%d",
                 k,
                 s.ifu_hs[k],
                 s.lsu_rom_hs[k],
                 s.both_valid[k],
+                s.ifu_contend[k],
+                s.lsu_contend[k],
                 s.ifu_stall[k],
                 s.lsu_stall[k],
             )
-        ifu, lsu = sum(s.ifu_stall), sum(s.lsu_stall)
+        ifu, lsu = sum(s.ifu_contend), sum(s.lsu_contend)
         text = (
-            f"ifu_stall_clk={ifu} lsu_stall_clk={lsu} floor=1 each "
-            f"per_k_ifu={s.ifu_stall} per_k_lsu={s.lsu_stall}"
+            f"ifu_contend_stall_clk={ifu} lsu_contend_stall_clk={lsu} floor=1 each "
+            f"per_k_ifu={s.ifu_contend} per_k_lsu={s.lsu_contend}"
         )
         if ifu < 1 or lsu < 1:
             raise AssertionError(
                 f"CTRL-MISSING CTRL-ROM-AR-STALL: {text}; a port that never saw ARVALID=1 "
-                "with ARREADY=0 inside a ROM loop window leaves its AR hold rule ungraded"
+                "with ARREADY=0 to the boot ROM while the other master requested the ROM "
+                "inside a ROM loop window leaves the contended AR hold ungraded"
             )
         self.logger.info("CTRL-ROM-AR-STALL: %s", text)
 

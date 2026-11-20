@@ -807,7 +807,8 @@ Observation probe groups:
    AxSIZE) and the response the demux returns (R `resp`, `id`, `last`,
    DECERR of the error responder included); tied to 0 on the CPU stub build.
    Owners: `sep_cpu_reset_entry_test`, `sep_cpu_demux_unmapped_fetch_test`,
-   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (AxLEN, CHK-IFU-SINGLE-BEAT).
+   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (AxLEN, CHK-IFU-SINGLE-BEAT),
+   `sep_cpu_rom_ar_contention_test` (AR address, CTRL-ROM-AR-STALL).
 ** PR-IFU-XBAR (`pr_ifu_xbar_*`): the IFU demux port to the local crossbar
    (`sep.sv` `ifu_sram_axi_req`, with its response): AR address, ID, AxLEN,
    AxSIZE and R `resp`, `id`, `last`. Every IFU fetch that the demux sends
