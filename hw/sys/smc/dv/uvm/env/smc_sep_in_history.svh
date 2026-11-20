@@ -16,7 +16,11 @@ class smc_sep_in_history extends ocah_subscriber #(ocah_axi_item);
     else if (t.direction == OCAH_AXI_DIR_WRITE) m_write_count++;
   endfunction
 
-  function int unsigned count(bit is_read);
-    return is_read ? m_read_count : m_write_count;
+  function int unsigned read_count();
+    return m_read_count;
+  endfunction
+
+  function int unsigned write_count();
+    return m_write_count;
   endfunction
 endclass : smc_sep_in_history
