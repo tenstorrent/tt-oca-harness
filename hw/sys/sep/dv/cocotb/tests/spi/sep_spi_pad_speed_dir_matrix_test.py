@@ -30,7 +30,7 @@ short name ``ToO`` below):
   so the leaf grades the order-free part: one ``SepSpiByteOrder``
   (``env/sep_spi_lane_responder.py``) per leaf, every TX and RX data word in
   one order, the same order for every word of the leaf. The order seen is
-  logged once on OBS-SPI-BYTEORDER with STATUS.BYTEORDER ("The value of the
+  logged once on INFO-SPI-BYTEORDER with STATUS.BYTEORDER ("The value of the
   ByteOrder parameter",
   ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124``).
   At the end of a TX segment the unused bytes of its last TXDATA word are
@@ -50,9 +50,9 @@ short name ``ToO`` below):
   segment only when its four output enables are exactly the segment's lanes
   (x1 0001, x2 0011, x4 1111), so CHK-SPI-SB-FRAME fails a TX segment that
   drives lane 2 or 3 at x1 or x2. An
-  x1 dummy segment is logged as OBS-SPI-OE-DUMMY: ``ToO:29`` ("for
-  Standard-mode commands `SD[0]` is always configured as an output") and
-  ``ToO:63`` give different patterns. An x1 RX-only segment is logged as
+  x1 dummy segment is logged as INFO-SPI-OE-DUMMY: OT ToO:29 and :63 give
+  different x1 dummy patterns (``ToO:29``: "for Standard-mode commands
+  `SD[0]` is always configured as an output"). An x1 RX-only segment is logged as
   INFO-SPI-OE-X1RX: ``ToO:29`` gives lane 0 driven in Standard mode, while
   ``ToO:31-33`` allows half-duplex Standard-mode commands and no text names
   the x1 RX-only segment. Not graded; no open specification question.
@@ -120,8 +120,8 @@ Checks:
 * CHK-SPI-OE-SEG: in each graded frame, the data lane output enables at every
   sample edge of a segment equal the pattern of that segment. Control: every
   pattern row (x1 TX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX, x2
-  dummy, x4 dummy) is graded. x1 RX-only segments are logged as INFO lines and
-  x1 dummy segments as OBS lines.
+  dummy, x4 dummy) is graded. x1 RX-only and x1 dummy segments are logged as
+  INFO lines.
 * CHK-SPI-ILLEGAL: each of the 5 graded illegal cells sets ERROR_STATUS to
   CMDINVAL only, and a legal control command after the SPI clean state runs
   on the pad (one chip-select-low window of LEN+1 sck cycles) and reads
@@ -136,7 +136,7 @@ Checks:
   wire monitor and the responder are stopped for this leg, so it runs at the
   cost of the sampler alone.
 * CHK-SPI-WIRE: the wire checks of ``SepSpiWireMonitor`` over the leaf.
-* OBS-SPI-BYTEORDER: one line at the end of the leaf: the in-word byte order
+* INFO-SPI-BYTEORDER: one line at the end of the leaf: the in-word byte order
   the data words carried, the compare that fixed it, the word counts and
   STATUS.BYTEORDER. Logged, not graded.
 
@@ -218,7 +218,7 @@ LONG_DUMMY_CYCLES = LONG_DUMMY_LEN + 1
 LEGS = ("_single_cells", "_dummy_fifo_leg", "_chain_leg", "_illegal_leg")
 
 # Output-enable pattern rows the leaf must grade. The x1 RX-only and x1 dummy rows
-# are logged as INFO-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
+# are logged as INFO-SPI-OE-X1RX and INFO-SPI-OE-DUMMY.
 OE_ROWS = ("x1_tx", "x1_bidir", "x2_tx", "x2_rx", "x4_tx", "x4_rx", "x2_dummy", "x4_dummy")
 
 # Bounds. Each expiry fails the check that the wait feeds.
@@ -610,8 +610,8 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             exp = oe_expect(seg.speed, seg.direction)
             seen = {b[1] for b in seg_beats}
             if exp is None:
-                obs = "OBS-SPI-OE-DUMMY" if seg.direction == DIR_DUMMY else "INFO-SPI-OE-X1RX"
-                self.logger.info("%s seed=%s %s seg=%d oe=%s", obs, seed, label, i, _fmt_oe(seen))
+                rec = "INFO-SPI-OE-DUMMY" if seg.direction == DIR_DUMMY else "INFO-SPI-OE-X1RX"
+                self.logger.info("%s seed=%s %s seg=%d oe=%s", rec, seed, label, i, _fmt_oe(seen))
                 oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/obs")
             else:
                 exp_oe, used = exp
@@ -1144,7 +1144,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             await self.pads.stop()
             await self.wire.finish(self.logger, seed=self.seed)
             self.ran.add("CHK-SPI-WIRE")
-            self.order.log_obs(
+            self.order.log_info(
                 self.logger, self.seed, status_byteorder=self.ops.status_log[-1].byteorder
             )
         finally:

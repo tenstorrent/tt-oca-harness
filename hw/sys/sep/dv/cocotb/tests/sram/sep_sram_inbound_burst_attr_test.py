@@ -74,10 +74,13 @@ label of ``sep_sram_access_cg.cp_xmaster_pair`` (``set_sram_access_pass``).
 
 Logged, not graded: after the cross-master legs, one SRAM word in the window takes an
 exclusive read and then a write with AWLOCK 1 and the same ID and address. No
-SEP document states the result. CTRL-SRAM-IN-ATTR: the AR handshake of the
-read and the AW handshake of the write on the m_axi port carried lock 1, the
-drawn ID and the word address. OBS-SRAM-IN-EXCL-WR logs the response of each
-access and the word before and after, read by the CPU-LSU master. The
+SEP document states whether the SRAM target has an exclusive monitor, and AXI4
+(Arm IHI 0022) gives a different result for each case: OKAY with the write
+landed without one, EXOKAY or OKAY with no write with one. CTRL-SRAM-IN-ATTR:
+the AR handshake of the read and the AW handshake of the write on the m_axi
+port carried lock 1, the drawn ID and the word address. INFO-SRAM-IN-EXCL-WR
+logs the response of each access and the word before and after, read by the
+CPU-LSU master. The
 cross-master legs and this leg run in the coverage window of this leaf.
 
 CHK-SRAM-CONC-DATA: after the coverage window closes, one inbound INCR burst
@@ -519,7 +522,7 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         self.logger.info(
-            "OBS-SRAM-IN-EXCL-WR addr=0x%08x id=0x%x excl_read_resp=%s rdata=%s "
+            "INFO-SRAM-IN-EXCL-WR addr=0x%08x id=0x%x excl_read_resp=%s rdata=%s "
             "write_resp=%s bid=%s wdata=%s before=%s after=%s",
             word,
             axi_id,

@@ -15,13 +15,13 @@
 * ``outbound_ns`` and ``outbound_user``: AxPROT[1] of a request as it leaves on
   the SMU, AP or STEE path, and the whole AxUSER of the AP and STEE paths
   (``hw/sys/sep/doc/fabric.adoc``, ``sep-outbound-attributes-table``).
+* ``SEP_SOURCE_ID``: SEP's source ID on the SMU path, 0xF
+  (``doc/integrator/src/smu-composition.adoc``, outbound attributes table).
 * ``SepSrcIdGrade`` and ``draw_src_users``: the grade of the SMU-path source
-  ID, and the issued AxUSER pair that makes it visible. The specification
-  names the ID SEP's ID (``SepSourceId`` in ``hw/sys/sep/doc/cpu.adoc``) and gives
-  no number, so no check compares it with a number. The grade reads
-  AxUSER[3:0] under the "Source ID carrier" record
-  (``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, ``sep-standin-src-id-carrier``);
-  AxUSER[11:4] of these beats has no stated value and is logged.
+  ID against ``SEP_SOURCE_ID``, and the issued AxUSER pair that shows the
+  replacement. The grade reads AxUSER[3:0] under the "Source ID carrier"
+  record (``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``,
+  ``sep-standin-src-id-carrier``); AxUSER[11:4] of these beats is not graded.
 """
 
 from __future__ import annotations
@@ -78,6 +78,9 @@ SRC_ID_MASK: int = 0xF
 # OTHERS is AxUSER zero, every bit of the field (hw/sys/sep/doc/fabric.adoc,
 # Transaction Routing).
 OTHERS_SOURCE_ID: int = 0
+# SEP's source ID on the SMU path (doc/integrator/src/smu-composition.adoc:200,
+# the SEP row of the outbound attributes table).
+SEP_SOURCE_ID: int = 0xF
 
 
 def outbound_ns(path: str, addr: int) -> int:
@@ -96,8 +99,8 @@ def outbound_user(path: str) -> int:
     """The whole AxUSER of a request leaving on ``path`` ("ap" or "stee").
 
     Both paths set ``OTHERS``, AxUSER zero, so a check compares every AxUSER
-    bit with it. The SMU path sets SEP's ID, which has no stated number: grade
-    it with ``SepSrcIdGrade``.
+    bit with it. The SMU path sets SEP's ID only in AxUSER[3:0]: grade it with
+    ``SepSrcIdGrade``.
     """
     if path in ("ap", "stee"):
         return OTHERS_SOURCE_ID
@@ -105,31 +108,30 @@ def outbound_user(path: str) -> int:
 
 
 class SepSrcIdGrade:
-    """AxUSER[3:0] of the SMU-path beats of one leaf, graded without a number.
+    """AxUSER[3:0] of the SMU-path beats of one leaf, graded against ``SEP_SOURCE_ID``.
 
     ``hw/sys/sep/doc/fabric.adoc`` (``sep-outbound-attributes-table``) states
-    that the SMU path replaces the initiator's source ID with SEP's ID, and no
-    specification or RDL gives that number. The grade is:
+    that the SMU path replaces the initiator's source ID with SEP's ID, and
+    ``doc/integrator/src/smu-composition.adoc`` gives SEP's ID as 0xF. The
+    grade is:
 
-    * per beat (``note``): AxUSER[3:0] is known and is not OTHERS (0);
+    * per beat (``note``): AxUSER[3:0] is known, is not OTHERS (0) and equals
+      ``SEP_SOURCE_ID``;
     * per leaf (``finish``): every beat carries the same AxUSER[3:0], and the
       issued AxUSER[3:0] of the beats show the replacement. A constant output
       over two distinct issued values differs from at least one of them, so it
-      is a replacement and not a pass-through; at most one issued value can
-      equal SEP's ID, so no draw has to avoid an unknown number. An issued
-      OTHERS (0) shows the replacement on its own, because the output is not 0.
+      is a replacement and not a pass-through. An issued OTHERS (0) shows the
+      replacement on its own, because the output is not 0.
 
     The source ID is AxUSER[3:0] (the "Source ID carrier" record,
-    ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). The specification states no value
-    for AxUSER[11:4] on the SMU path. The observed number and AxUSER[11:4] of
-    the beats are logged by ``obs_line`` and never graded.
+    ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). AxUSER[11:4] is not graded.
+    ``chk_line`` gives the ``CHK-<tag>-SRC-ID`` line with the observed value.
     """
 
     def __init__(self, tag: str) -> None:
         self.tag = tag
         self.observed: list[int] = []
         self.issued: set[int] = set()
-        self.upper: set[int] = set()
 
     def note(self, user: int | None, issued: int | None = None) -> str | None:
         """Record one beat; returns the failure reason, or None when the beat passes.
@@ -141,11 +143,12 @@ class SepSrcIdGrade:
             return "AxUSER is X or Z"
         sid = user & SRC_ID_MASK
         self.observed.append(sid)
-        self.upper.add(user >> 4)
         if issued is not None:
             self.issued.add(issued & SRC_ID_MASK)
         if sid == OTHERS_SOURCE_ID:
             return f"AxUSER[3:0]=0x{sid:x} is OTHERS; the SMU path sets SEP's ID"
+        if sid != SEP_SOURCE_ID:
+            return f"AxUSER[3:0]=0x{sid:x}; SEP's ID is 0x{SEP_SOURCE_ID:x}"
         return None
 
     def value(self) -> int | None:
@@ -182,11 +185,14 @@ class SepSrcIdGrade:
             f"not_others=1 issued_src_ids={_hexset(self.issued)}"
         )
 
-    def obs_line(self) -> str:
-        v = self.value()
+    def chk_line(self) -> str:
+        """``CHK-<tag>-SRC-ID``: PASS when every graded beat carries ``SEP_SOURCE_ID``."""
+        vals = sorted(set(self.observed))
+        ok = vals == [SEP_SOURCE_ID]
+        sid = f"0x{vals[0]:x}" if len(vals) == 1 else _hexset(vals)
         return (
-            f"OBS-{self.tag}-SRC-ID: smu_path_src_id={'none' if v is None else f'0x{v:x}'} "
-            f"beats={len(self.observed)} user_11_4={_hexset(self.upper)} (value logged)"
+            f"CHK-{self.tag}-SRC-ID {'PASS' if ok else 'FAIL'}: path=smu src_id={sid} "
+            f"expected=0x{SEP_SOURCE_ID:x} beats={len(self.observed)}"
         )
 
 

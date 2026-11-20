@@ -27,7 +27,8 @@ RDL agrees:
   writes.
 
 The TRNG window has no past-extent response in ``sep.rdl`` (see below); for it
-the OBS-DEADSPACE-CODE line logs the code and read data of every probe.
+the INFO-DEADSPACE-CODE line logs the code and read data of every probe, which
+CHK-TRNG-UNOWNED grades.
 
 Allocated size comes from the generated export (or the OT/IP header for
 CSRNG / EDN / entropy_source). Window end comes from
@@ -801,7 +802,7 @@ class SepDeadspace:
             self.last_expected = f"{exp.resp}, 0x{exp.rdata:08x}"
         if win.adopter:
             self.log.info(
-                "OBS-DEADSPACE-CODE: %s %s 0x%08x resp=%s rdata=%s",
+                "INFO-DEADSPACE-CODE: %s %s 0x%08x resp=%s rdata=%s chk=CHK-TRNG-UNOWNED",
                 win.name,
                 item.op,
                 item.addr,

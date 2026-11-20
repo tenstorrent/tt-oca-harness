@@ -17,8 +17,11 @@
 //                    a limit below the base raises base_limit_error alone; then a
 //                    full valid range is locked, one-way until reset, and a range
 //                    write is rejected.
-//   CHK-CFG-REGWEN : the config lock engages while BUSY, so a config write is
-//                    rejected; it releases when idle, and the write then lands.
+//   CHK-CFG-REGWEN : the config lock engages while BUSY, so a config write does
+//                    not land: SRC_ADDR_LO does not read the written 0xDEADBEEF
+//                    (hardware also writes SRC_ADDR_LO, so no other readback is
+//                    stated; the PASS line prints it). The lock releases when
+//                    idle, and the write then lands.
 //   CHK-COPY-MODE  : data integrity per address mode with a per-mode expected
 //                    image and an untouched neighbor: INCR linear, FIXED-src
 //                    replicates, FIXED-dst overwrites one location, WRAP (chunk <
@@ -325,10 +328,11 @@ static int chk_cfg_regwen(void) {
         sep_mbx_putc('\n');
         e++;
     }
-    // A config write while locked must be rejected (SRC_ADDR_LO holds src_base).
+    // A config write while locked does not land. Hardware also writes
+    // SRC_ADDR_LO, so only the written value is a failing readback.
     wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
     uint32_t after = rd(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR);
-    if (after != src_base) {
+    if (after == 0xDEADBEEFu) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN config write not rejected while locked, got ");
         sep_mbx_puthex(after);
         sep_mbx_putc('\n');
@@ -355,8 +359,9 @@ static int chk_cfg_regwen(void) {
         e++;
     }
     if (!e) {
-        sep_mbx_puts("CHK-CFG-REGWEN PASS: locked 0x9 while BUSY (write rejected), "
-                     "unlocked 0x6 when idle (write lands)\n");
+        sep_mbx_puts("CHK-CFG-REGWEN PASS: locked 0x9 while BUSY, SRC_ADDR_LO busy readback ");
+        sep_mbx_puthex(after);
+        sep_mbx_puts(" not the written 0xDEADBEEF; unlocked 0x6 when idle (write lands)\n");
     }
     return e;
 }

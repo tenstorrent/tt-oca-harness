@@ -103,12 +103,14 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     PR-OUT request at its address, and no PR-OUT request is
                     left unmatched: graded == issued, none lost, none extra.
                     Each matched request has AxLEN 0, AxPROT bits 0 and 2 as
-                    issued with NS 1, and AxUSER[3:0] known and not OTHERS (0);
+                    issued with NS 1, and AxUSER[3:0] equal to SEP's ID, 0xF;
                     AxUSER[3:0] is the same on every request of the leaf,
                     although the LSU alternates two distinct non-zero values
                     and the DMA issues OTHERS: the SMU path sets SEP's ID. A
                     hold session also fails its own checker on such a request.
-                    The number is logged (OBS-SAT-SRC-ID), with AxUSER[11:4].
+  CHK-SAT-SRC-ID    that AxUSER[3:0] equals SEP's ID, 0xF
+                    (``doc/integrator/src/smu-composition.adoc``, SEP row); the
+                    line gives the value seen and the request count.
   CHK-NONVAC        the ordered fence of the phases.
   CHK-TIMEOUT-PATHS each bounded wait (a transaction, a DMA DONE wait, a
                     one-beat release loop) logs its bound and raises on
@@ -233,7 +235,7 @@ class _Cfg:
 class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
     """Delays, hold-then-release and limit saturation toward the outbound port."""
 
-    required_evidence = CHECKS
+    required_evidence = CHECKS + ("CHK-SAT-SRC-ID",)
 
     @staticmethod
     def _now_ps() -> int:
@@ -1133,7 +1135,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         why = g.finish(min_nonzero_issued=2)
         if why is not None:
             self._fail("CHK-ATTR-USER", why)
-        self.logger.info("%s", g.obs_line())
+        self.logger.info("%s", g.chk_line())
         c = self.c
         self._emit(
             "CHK-ATTR-USER",

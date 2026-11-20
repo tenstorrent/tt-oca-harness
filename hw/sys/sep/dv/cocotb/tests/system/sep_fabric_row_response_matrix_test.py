@@ -42,7 +42,11 @@ CTRL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 CHK-ROW-NOALIAS: a reset-control gap or tail write and an HMAC or KMAC hole
 write leave the live reference register (``SW_RESET_N``, HMAC ``CFG``, a KMAC
 ``PREFIX`` word) unchanged; an in-extent write to the same register changes it
-(control, run before the draws of that register).
+(control, run before the draws of that register). The response code of each
+AxSIZE 0, 1 and 3 reset-control gap write is logged (``INFO-ROW-NOALIAS-RESP``):
+no register backs the gap, so no RDL access type states it, and
+``hw/sys/sep/doc/memory_map.adoc`` states the unbacked-offset responses for
+32-bit accesses only.
 
 CHK-ROW-CACHE: an OTBN register access answers OKAY with AxCACHE[1] = 0 and 1 on
 both channels (``hw/sys/sep/doc/otbn.adoc``, OCAH Modifications). The AxCACHE of
@@ -112,6 +116,18 @@ owns", gets a TL-UL error and "the faulting access also received SLVERR
 synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
 write and the other sub-word targets are logged (``INFO-REG-SUBWORD``).
+
+CHK-REG-SUBWORD-KEEP: after each AxSIZE 0 and AxSIZE 1 LSU write to a sub-word
+target, the bytes of the target word that the write strobe does not enable read
+back as they read before the write. AXI4 (Arm IHI 0022, the bus protocol named in
+``hw/sys/sep/doc/fabric.adoc``) gives WSTRB the meaning that a deasserted strobe
+lane is not updated. The two eFuse targets are not graded: ``EFUSE_PROGRAM_CTRL``
+holds fields that hardware writes (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``,
+``program_busy`` and the other ``hw = w`` status fields), and the shadow map takes
+its access from the fuse lock rules, not from its RDL properties
+(``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``). Whether the strobed
+lanes take the written value is register-specific and is logged only
+(``INFO-REG-SUBWORD``).
 
 CHK-OTBN-IMEM-SUBWORD-CRC: OTBN ``LOAD_CHECKSUM`` reads the same value before and
 after each AxSIZE 0 and AxSIZE 1 write to the ``otbn_imem`` word: "Writes that are
@@ -294,6 +310,9 @@ SUBWORD_TARGETS = (
 # answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
 # the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
 SUBWORD_GRADED = "wdt_wkup_thold_lo"
+# Sub-word targets whose unstrobed lanes are not graded: the word holds fields
+# that hardware writes, or the RDL properties do not state the access.
+SUBWORD_KEEP_UNGRADED = frozenset(("efuse_shadow", "efuse_program_ctrl"))
 OTBN_LOAD_CHECKSUM = sep_reg.OTBN_LOAD_CHECKSUM_REG_ADDR
 # LOAD_CHECKSUM record byte orders: theory_of_operation.md:449-453 fixes the 48b
 # layout, not the order.
@@ -398,6 +417,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-FABRIC-CSR",
         "CHK-OTBN-IMEM-SUBWORD-CRC",
         "CHK-ROW-SIZE3",
+        "CHK-REG-SUBWORD-KEEP",
     )
 
     # ------------------------------------------------------------------ access
@@ -758,7 +778,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 else:
                     self.logger.info("INFO-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d", a, size)
                     self.logger.info(
-                        "OBS-ROW-NOALIAS-RESP LOG: seed=%d addr=0x%08x size=%d resp=%s",
+                        "INFO-ROW-NOALIAS-RESP LOG: seed=%d addr=0x%08x size=%d resp=%s",
                         self.random_seed(),
                         a,
                         size,
@@ -1922,6 +1942,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     else:
                         self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
                 _r, rb = await self._lsu(SepAxiOp.READ, addr)
+                rb &= 0xFFFF_FFFF
+                keep = name not in SUBWORD_KEEP_UNGRADED
+                chks = [c for c, on in (("WDT", name == SUBWORD_GRADED), ("KEEP", keep)) if on]
                 self.logger.info(
                     "INFO-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
                     "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x%s",
@@ -1933,9 +1956,20 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     _RN.get(wr_resp),
                     wv,
                     cur,
-                    rb & 0xFFFF_FFFF,
-                    " chk=CHK-REG-SUBWORD-WDT" if name == SUBWORD_GRADED else "",
+                    rb,
+                    (" chk=" + ",".join(f"CHK-REG-SUBWORD-{c}" for c in chks)) if chks else "",
                 )
+                if keep:
+                    unstrobed = 0xFFFF_FFFF & ~(mask << (8 * off))
+                    line = (
+                        f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"unstrobed_mask=0x{unstrobed:08x} word_before=0x{cur:08x} "
+                        f"word_after=0x{rb:08x} expect=0x{cur & unstrobed:08x}"
+                    )
+                    if rb & unstrobed == cur & unstrobed:
+                        self.logger.info("CHK-REG-SUBWORD-KEEP PASS: %s", line)
+                    else:
+                        self._fail("CHK-REG-SUBWORD-KEEP", line)
                 if name == SUBWORD_GRADED:
                     line = (
                         f"target={name} addr=0x{addr + off:08x} size={size} "

@@ -23,9 +23,11 @@ continuous knobs come from the run seed (patched into the firmware param block).
 Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
 the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which
 the boot scoreboard gates on. The firmware self-checks (each with a positive PASS
-line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock),
-CHK-RANGE-REGWEN (an unconfigured range raises range_valid_error alone, an
-inverted range base_limit_error alone, then the rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
+line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock:
+while BUSY, SRC_ADDR_LO does not read the written 0xDEADBEEF, and the PASS line
+prints the readback, since hardware also writes SRC_ADDR_LO), CHK-RANGE-REGWEN
+(an unconfigured range raises range_valid_error alone, an inverted range
+base_limit_error alone, then the rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
 expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
 raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG

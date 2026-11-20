@@ -1729,7 +1729,12 @@ master to the admitted or refused source ID; and the SMU-path source-ID grade
 `sep_fabric_filter_match_priority_rand_test`,
 `sep_fabric_outbound_route_attr_test`, `sep_fabric_dma_endpoint_matrix_test`,
 `sep_outbound_contention_rand_test` and `sep_outbound_stall_saturation_test`,
-which grades AxUSER[3:0] and logs AxUSER[11:4]. A check that compares the
+which grades AxUSER[3:0] of every SMU-path beat against SEP's ID, 0xF
+(`doc/integrator/src/smu-composition.adoc`, SEP row of the outbound attributes
+table, which also names AxUSER[3:0] as the source ID on `smu_axi_out`), and
+prints the `CHK-<tag>-SRC-ID` line of each of those tests (CHK-FILT-SRC-ID,
+CHK-OUT-SRC-ID, CHK-CPU-SRC-ID, CHK-ATTR-SRC-ID, CHK-SAT-SRC-ID). AxUSER[11:4]
+is not graded. A check that compares the
 whole AxUSER with a stated value (OTHERS, AxUSER zero, on the AP and STEE
 paths and from the secure DMA; the initiator's AxUSER on the SMC path) does
 not use this record.

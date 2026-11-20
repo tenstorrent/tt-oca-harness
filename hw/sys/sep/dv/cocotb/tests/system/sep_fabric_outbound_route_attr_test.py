@@ -33,7 +33,7 @@ Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
   the source ID to OTHERS (AxUSER zero, every bit); a STEE region with its valid
   bit clear passes the address unchanged (``output_remap.adoc``, ``valid``) and
   still leaves through the STEE remapper with OTHERS; the SMU path sets SEP's
-  ID, which no specification gives as a number;
+  ID, 0xF (``doc/integrator/src/smu-composition.adoc``, SEP row), in AxUSER[3:0];
 * AxPROT[1] (NS) leaves as 1 on the AP path and as the inverse of bit 55 of the
   outgoing address on the SMU and STEE paths; AxPROT bits 0 and 2 and address
   bit 55 pass unchanged;
@@ -43,7 +43,14 @@ Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
   and the route demux takes the first match in the order SMC, SMU, AP and
   STEE, so an SMU window over an AP region sends the AP word out untranslated
   with SEP's ID; an address that no path matches at or above ``0x4000_0000``
-  answers DECERR.
+  answers DECERR;
+* the AP and STEE windows start at their base words, ``0x1100_0000`` and
+  ``0x1180_0000`` (``hw/sys/sep/regs/sep.rdl``, ``ap_region`` and
+  ``stee_region``); the word ``0x1200_0000`` past the STEE window is in the
+  Reserved range, which no unit claims, so it answers DECERR with read data
+  ``0xBADCAB1E`` (``hw/sys/sep/regs/include/sep_memory_map.rdl``,
+  ``ocah_gap_resp``; ``doc/trm/src/memory_map.adoc``, Decode Response Codes)
+  and never leaves on the outbound port.
 
 Verdict anchor: the LSU response. An admitted request reaches the always-ready
 outbound responder (``tb/sep_outbound_mbx.sv``), which answers OKAY; the
@@ -85,10 +92,14 @@ Checkers:
                     issued address below it
                     (``hw/ip/output_remap/regs/output_remap.rdl:22-25``). An AP
                     pass with offset 0 predicts ``{0, a[18:0]}``.
-                    Logged, not graded (no stated value): the SMU-path number
-                    (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture (graded
-                    as zero on the AP and STEE paths) and the W user of
-                    SMU-path writes (OBS-OUT-WUSER).
+  CHK-OUT-SRC-ID    AxUSER[3:0] of every SMU-path capture equals SEP's ID,
+                    0xF; the line gives the value seen and the beat count.
+                    AxUSER[11:4] of SMU-path captures is logged
+                    (OBS-OUT-USER-HI): ``smu-composition.adoc`` states its
+                    value on ``smu_axi_out`` and not at this port. The W user
+                    of SMU-path writes is logged as INFO-OUT-WUSER: no contract
+                    gives WUSER a meaning (``smu-composition.adoc``, USER
+                    signals).
   CHK-OUT-HIBIT     each path has passing captures in both directions at
                     issued AxPROT[1] 0 and 1 for each address bit 55 value:
                     AP with bit 55 set and clear (NS 1 for both), the SMU
@@ -111,6 +122,17 @@ Checkers:
                     leave once on PR-OUT untranslated, with SEP's ID and NS 1.
                     Positive control: with the reset SMU pair restored, the
                     same accesses leave translated with AxUSER 0 (OTHERS).
+  CHK-OUT-EDGE-BASE with AP region 0 and STEE region 0 valid at the drawn AP
+                    and STEE offsets ``O``, LSU reads and
+                    writes of the base words ``0x1100_0000`` and
+                    ``0x1180_0000`` (word offset 0) answer OKAY and each
+                    leaves once on PR-OUT at ``{O[55:19], 0}`` with the
+                    CHK-OUT-CAPTURE attribute compare (OTHERS, the path NS).
+  CHK-OUT-GAP-DECERR an LSU read and write of ``0x1200_0000`` answer DECERR,
+                    the read returns ``0xBADCAB1E`` on both words (the
+                    memory-map response from ``env/sep_decode_resp.py``), and PR-OUT
+                    takes no beat, while enabled pairs cover the AP and STEE
+                    region 0 base translations and the untranslated word.
 
 Logged, not graded: after CHK-OUT-SMU-MOVED a second moved pair, drawn on its
 own seeded stream, has a size that is not a power of two or a power-of-two size
@@ -129,6 +151,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import expected_unbacked
 from env.sep_fabric_common import (
     FILTER_ADDR_MASK,
     OUTBOUND_MBX_MAGIC,
@@ -245,6 +268,8 @@ PAIR_OVL_LOCAL = (24, 25)
 PAIR_OVL_TRANSLATED = (26, 27)
 PAIR_LOWADDR = (28, 29)
 PAIR_AP_ZERO = (30, 31)
+# The first word of the Reserved range past the STEE window, claimed by no unit.
+GAP_WORD = 0x1200_0000
 # The external row below the local units (memory_map.adoc, "SEP External").
 LOWADDR_HI = 0x0FFF_FFFF
 SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
@@ -293,12 +318,20 @@ HIBIT_CELLS = (
 class _Cls:
     """One remapped class (AP or STEE)."""
 
-    def __init__(self, name: str, region_base: int, csr_base: int, region: int, offset: int):
+    def __init__(
+        self,
+        name: str,
+        region_base: int,
+        csr_base: int,
+        region: int,
+        offset: int,
+        word: int = IN_REGION,
+    ):
         self.name = name
         self.csr_base = csr_base
         self.region = region
         self.offset = offset
-        self.local = region_base + (region << IDX_START) + IN_REGION
+        self.local = region_base + (region << IDX_START) + word
         self.translated = ((offset >> IDX_START) << IDX_START) | (self.local & REGION_MASK)
 
 
@@ -308,7 +341,7 @@ class _Cfg:
         self.seed = seed
         # The LSU alternates two AxUSER values: with two distinct issued
         # AxUSER[3:0], a constant SMU-path output is a visible replacement
-        # whatever SEP's ID is (SepSrcIdGrade).
+        # (SepSrcIdGrade).
         self.users = draw_src_users(rng)
         self.ap = self._draw_class(rng, "ap", AP_REGION_BASE, AP_BASE, bit55=1)
         self.stee = self._draw_class(rng, "stee", STEE_REGION_BASE, STEE_BASE, bit55=0)
@@ -455,6 +488,9 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         "CHK-OUT-HIBIT",
         "CHK-OUT-SMU-MOVED",
         "CHK-OUT-SMU-FIRST",
+        "CHK-OUT-SRC-ID",
+        "CHK-OUT-EDGE-BASE",
+        "CHK-OUT-GAP-DECERR",
     )
 
     # ------------------------------------------------------------------ access
@@ -599,8 +635,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             f"wdata={_hx(seen_w.data) if write else 'na'} wstrb={_hx(seen_w.strb) if write else 'na'}"
         )
         if path == "smu":
-            # SEP's ID has no stated number: per capture it is known and not
-            # OTHERS; constancy and the replacement are graded over the leaf.
+            # Per capture AxUSER[3:0] is SEP's ID; constancy and the
+            # replacement are graded over the leaf.
             why = self.src_grade.note(b.user, user)
             user_ok = why is None
             user_expect = f"SEP's ID ({why})" if why else "SEP's ID"
@@ -634,8 +670,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             )
         if write and path == "smu":
             self.logger.info(
-                "OBS-OUT-WUSER: class=%s dir=W wuser_issued=0x%03x wuser_seen=0x%03x "
-                "awuser_seen=0x%03x (value logged)",
+                "INFO-OUT-WUSER: class=%s dir=W wuser_issued=0x%03x wuser_seen=0x%03x "
+                "awuser_seen=0x%03x (no contract)",
                 cls,
                 user,
                 seen_w.user,
@@ -1315,6 +1351,72 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._pair_enable(PAIR_AP_ZERO, False)
         await self.remap.program(self.tcfg.ap, True)
 
+    async def _edge_leg(self) -> None:
+        """CHK-OUT-EDGE-BASE and CHK-OUT-GAP-DECERR: the window base words and the word past them."""
+        cfg = self.tcfg
+        stee_end = STEE_REGION_BASE + (N_REGIONS << IDX_START)
+        assert GAP_WORD == stee_end, f"stimulus: STEE window ends at 0x{stee_end:x}"
+        edges = (
+            (_Cls("ap", AP_REGION_BASE, AP_BASE, 0, cfg.ap.offset, word=0), PAIR_AP),
+            (_Cls("stee", STEE_REGION_BASE, STEE_BASE, 0, cfg.stee.offset, word=0), PAIR_STEE),
+        )
+        for c, pair in edges:
+            await self.remap.program(c, True)
+            lo, hi = granule8(c.translated)
+            await self._program_pair(pair, lo, hi)
+        n_base = self.n_capture
+        for c, _ in edges:
+            for write in cfg.dirs():
+                await self._cell(
+                    c.name,
+                    c.local,
+                    c.translated,
+                    write=write,
+                    prot=cfg.prot(1),
+                    expect_okay=True,
+                    graded=False,
+                    chk="CHK-OUT-EDGE-BASE",
+                    cap_chk="CHK-OUT-EDGE-BASE",
+                )
+        n_base = self.n_capture - n_base
+        line = (
+            f"ap_base=0x{edges[0][0].local:x}->0x{edges[0][0].translated:x} "
+            f"stee_base=0x{edges[1][0].local:x}->0x{edges[1][0].translated:x} captures={n_base}"
+        )
+        assert n_base == 4, f"CHK-OUT-EDGE-BASE FAIL: {line}"
+        self.logger.info("CHK-OUT-EDGE-BASE PASS: %s", line)
+        lo, hi = granule8(GAP_WORD)
+        await self._program_pair(PAIR_UNTRANSLATED, lo, hi)
+        for write in cfg.dirs():
+            d = "W" if write else "R"
+            user = cfg.users[0]
+            prot = cfg.prot(1)
+            mark = self.out.mark()
+            seq = await self._lsu(
+                GAP_WORD,
+                write=write,
+                expect_okay=False,
+                prot=prot,
+                user=user,
+                wdata=cfg.wdata() if write else 0,
+            )
+            beats = self.out.since(mark)
+            exp = expected_unbacked(GAP_WORD, "w" if write else "r")
+            words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in (0, 1)]
+            data_ok = write or words == [exp.rdata, exp.rdata]
+            rdata = "na" if write else ",".join(f"0x{w:08x}" for w in words)
+            line = (
+                f"dir={d} addr=0x{GAP_WORD:x} prot=0x{prot:x} resp={_rname(seq.resp_code)} "
+                f"expect={_rname(exp.resp)} rdata={rdata} expect_rdata="
+                f"{'na' if write else f'0x{exp.rdata:08x}'} out_seen={len(beats)}"
+            )
+            assert seq.resp_code == exp.resp and data_ok and not beats, (
+                f"CHK-OUT-GAP-DECERR FAIL: {line} beats=" + " ".join(b.fmt() for b in beats)
+            )
+            self.logger.info("CHK-OUT-GAP-DECERR PASS: %s", line)
+        for pair in (PAIR_AP, PAIR_STEE, PAIR_UNTRANSLATED):
+            await self._pair_enable(pair, False)
+
     def _draw_region0(self) -> _Cls:
         """AP region 0 with a drawn offset: bit 55 set, bits 54:19 drawn."""
         rng = self.tcfg.rng
@@ -1376,6 +1478,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._ap_zero_leg()
         close_graded_window(self.logger)
         await self._lowaddr_leg()
+        await self._edge_leg()
         await self.out.stop()
         line = f"captures={self.n_capture} admitted={self.n_expect}"
         assert self.n_expect > 0 and self.n_capture == self.n_expect, (
@@ -1383,7 +1486,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         )
         self.logger.info("INFO-OUT-CAPTURE-SUMMARY LOG: %s", line)
         why = self.src_grade.finish(min_nonzero_issued=2)
-        self.logger.info("%s", self.src_grade.obs_line())
+        self.logger.info("%s", self.src_grade.chk_line())
         assert why is None, f"CHK-OUT-CAPTURE FAIL: path=smu src_id {why}"
         self.logger.info("CHK-OUT-CAPTURE PASS: path=smu src_id %s", self.src_grade.summary())
         self._chk_hibit()

@@ -25,9 +25,10 @@ must answer DECERR. The values are read from the generated
 (``hw/sys/sep/doc/peripheral_subsystem.adoc:43-44``) the prose also states DECERR, and the window build checks that the RDL agrees.
 Every probe uses the CPU-LSU splice (``s_axi``).
 
-OBS-DEADSPACE-CODE (logged only): the response code and read data of every
-TRNG-window probe. ``sep.rdl`` gives that window no past-extent response; its
-code is graded under CHK-TRNG-UNOWNED. A checker that only inspects the
+INFO-DEADSPACE-CODE: the response code and read data of every TRNG-window
+probe, with ``chk=CHK-TRNG-UNOWNED``. ``sep.rdl`` gives that window no
+past-extent response; CHK-TRNG-UNOWNED grades the code and the read word of
+each logged probe. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while still writing
 the register, so every probe reads back the window's live registers as well.
 The past extent is the part of the aperture that no register backs (Decoded
