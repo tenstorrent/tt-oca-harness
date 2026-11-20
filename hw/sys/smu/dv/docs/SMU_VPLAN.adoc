@@ -453,37 +453,48 @@ wrapper. It is not F2 credit.
 
 The SMU boot, from reset until SMC BL1 runs, is specified in the SMU Boot
 Specification (`hw/sys/smu/boot/doc/index.adoc`). Its requirements carry
-`SMU-BOOT-<AREA>-<NNN>` identifiers. The table records, for each requirement, the test that
-checks it and the plan that owns that test. A requirement with no checking test is
-listed as not verified; a test that only exercises it does not count.
+`SMU-BOOT-<AREA>-<NNN>` identifiers. The table records, for each requirement, its status, the
+evidence that exists today, and the testbench that owns closing it with what it still needs.
+A requirement is verified only when a checker fails if it is violated; a test that only reaches
+the path does not count (the specification's "Verification guidance"). *Component* means each
+ROM's own rule is checked on its own testbench; the combined outcome is not.
 
-[cols="2,4,2",options="header",]
+[cols="2,1,3,4",options="header",]
 |===
-|Requirement |Checked by |Plan
-|`SMU-BOOT-HW-010` |not verified |—
-|`SMU-BOOT-HW-020` |`smu_boot_stall_jtag_cold_reset_matrix_test` (sticky stall gates the fuse reset), `smu_ext_boot_seq_gate_test` (boot-sequence done gates it) |this plan, `hosted`
-|`SMU-BOOT-HW-030` |not verified: `smu_sram_auto_init_done_test` and `smu_sram_auto_init_disabled_test` check the sweep and `smc_init_mem_done_o`, not the core hold |—
-|`SMU-BOOT-HW-040` |`smu_smc_cpu_ctrl_boot_state_test` (`RESET_VECTOR[0..3]` and `RESET_CTRL` reset values) |this plan, `hosted`
-|`SMU-BOOT-HW-050` |not verified |—
-|`SMU-BOOT-ROLE-010` to `-030` |not verified |—
-|`SMU-BOOT-LC-010`, `-030` |`sep_rom_lc_state_invalid_0x4_test`, `sep_rom_lc_state_invalid_0x5_test` (SEP side) |SEP ROM plan
-|`SMU-BOOT-LC-010`, `-040` |`smc_rom_invalid_lc_state_test`, `smc_rom_invalid_lc_state_0x4_test`, `smc_rom_invalid_lc_state_0x5_test` (SMC side) |SMC ROM plan
-|`SMU-BOOT-LC-020` |not verified |—
-|`SMU-BOOT-LC-050` |`smc_occp_jump_rejection_test` (secure), `smc_occp_dual_unsecure_boot_test` (non-secure) |SMC ROM plan
-|`SMU-BOOT-SB-010` to `-030` |the "Fuses, lifecycle and secure-boot decision" groups (SEP side) |SEP ROM plan
-|`SMU-BOOT-SB-040` to `-060` |not verified |—
-|`SMU-BOOT-SMC-010` to `-040` |the SMC ROM regression `occp_rom` |SMC ROM plan
-|`SMU-BOOT-SEP-010` to `-050` |the SEP ROM regression |SEP ROM plan
-|`SMU-BOOT-BL1-010` to `-040` |not verified |—
-|`SMU-BOOT-WAIT-010` to `-030` |not verified |—
-|`SMU-BOOT-OBS-010` to `-030` |not verified |—
-|`SMU-BOOT-FAIL-010`, `-020` |not verified |—
-|`SMU-BOOT-FAIL-030` |`CHK-ROM-PARK-ON-HALT`, `CHK-OCCP-PARK-ON-AUTH`, the park interlock group |SMC ROM plan
+|Requirement |Status |Evidence today |Owner: what closes it
+|`SMU-BOOT-HW-010` |not verified |— |This plan: check that the SEP leaves reset on its own fuse sensing and the qualified boot-sequence done, and that boot stall does not hold it
+|`SMU-BOOT-HW-020` |verified |`smu_boot_stall_jtag_cold_reset_matrix_test` (sticky stall gates the fuse reset), `smu_ext_boot_seq_gate_test` (boot-sequence done gates it), `hosted` |This plan
+|`SMU-BOOT-HW-030` |not verified |`smu_sram_auto_init_done_test` and `smu_sram_auto_init_disabled_test` check the sweep and `smc_init_mem_done_o`, not the core hold |This plan: a checker that holds all four SMC core resets asserted for the whole zero-fill
+|`SMU-BOOT-HW-040` |verified |`smu_smc_cpu_ctrl_boot_state_test` (`RESET_VECTOR[0..3]` and `RESET_CTRL` reset values), `hosted` |This plan
+|`SMU-BOOT-HW-050` |not verified |— |This plan, once the expected shadow contents are specified (the specification's known deviations)
+|`SMU-BOOT-ROLE-010` to `-030` |not verified |SEP ROM recovery, `ROTATE_UPDATE` and secondary-chiplet tests reach the SEP side |SEP ROM plan for each SEP rule; this plan for the combined role, with both production ROMs
+|`SMU-BOOT-LC-010`, `-030` |component |`sep_rom_lc_state_invalid_0x4_test`, `sep_rom_lc_state_invalid_0x5_test` |SEP ROM plan; the combined outcome is `SMU-BOOT-SB-050` rows 8 and 9
+|`SMU-BOOT-LC-010`, `-040` |component |`smc_rom_invalid_lc_state_test`, `smc_rom_invalid_lc_state_0x4_test`, `smc_rom_invalid_lc_state_0x5_test` |SMC ROM plan; the combined outcome is `SMU-BOOT-SB-050` rows 8 and 9
+|`SMU-BOOT-LC-020` |not verified |— |SMC ROM plan: a broken-encoding value that must park; this plan: row 10 of the matrix
+|`SMU-BOOT-LC-050` |component |`smc_occp_jump_rejection_test` (secure), `smc_occp_dual_unsecure_boot_test` (non-secure) |SMC ROM plan
+|`SMU-BOOT-SB-010` to `-030` |component |the "Fuses, lifecycle and secure-boot decision" groups, which drive the manifest bit, `SBOOT_DIS`, the debug lock and the lifecycle |SEP ROM plan
+|`SMU-BOOT-SB-040` |not verified |— |This plan: the SMC policy is the same for every manifest bit, `SBOOT_DIS` and debug lock at one lifecycle
+|`SMU-BOOT-SB-050` |not verified |component results only |This plan: one test per matrix row (ten), each checking the SEP and SMC outcome in the same boot. Row 4 asserts that the SMC ROM accepts `ExecuteImage`; row 10 asserts the current asymmetric behaviour
+|`SMU-BOOT-SB-060` |not verified |— |This plan, with SEP BL1: change the manifest's `secure_boot_control` after SEP BL0 records the decision and require `SEP_BL1_ERR_SECURE_STATE_MISMATCH` with hart 0 never released. The lifecycle mismatch needs fault injection, since no configuration produces it
+|`SMU-BOOT-SMC-010` |not verified |`smc_rom_mbist_fail_test`, `smc_rom_mem_repair_fail_test`, `smc_rom_mbist_timeout_test` (eFuse clear: the hart stops) |SMC ROM plan: the `dft_ignore_error = 1` cases, each keeping its scratch 15 code and continuing. #3855 adds the MBIST and repair cases; the abort case is an expected failure until #3608
+|`SMU-BOOT-SMC-020` |not verified |`smc_sep_ring_buffer_test`, `smc_occp_boot_sequence_status_test` reach it |SMC ROM plan: a test whose checker requires the ring offsets, SEP-safe range, `BUFFER_READY` and `SRAM_INIT` before the lifecycle check, for example on an invalid lifecycle
+|`SMU-BOOT-SMC-030` |not verified |`smc_occp_boot_sequence_status_test` reaches it |SMC ROM plan: a test whose checker requires the strap and fuse reads, the lifecycle classification and the PLL hook call when `BL0_PLLCLK` is asserted
+|`SMU-BOOT-SMC-040` |not verified |`CHK-OCCP-PARK-ON-AUTH`, `smc_occp_jump_rejection_test`, `smc_rom_park_request_test` cover parts |SMC ROM plan: one checker per terminal event (accepted `AuthenticateImage`, accepted `ExecuteImage`, park request)
+|`SMU-BOOT-SEP-010` to `-050` |component |the SEP ROM regression |SEP ROM plan
+|`SMU-BOOT-BL1-010` to `-040` |not verified |— |This plan, with SEP BL1 and SMC BL1 on the wrapper; the VP may show the order only
+|`SMU-BOOT-WAIT-010` to `-030` |not verified |the `STATUS_RPT` policy tests check the ring policy, not the hang |SEP ROM plan: one test per wait, with its own watchdog and the last-status classification of the specification's wait table. `-020` also needs a transaction checker: no fuse-shadow read while sensing is incomplete, then a read once it completes
+|`SMU-BOOT-OBS-010` |not verified |— |SEP ROM plan (`cold_scratch`, status ring, `bl0_state`, soft-PCR slots); SMC ROM plan (POST word, status ring, scratch, reset vector, retired PC); this plan (the combined boot). Console output earns no credit
+|`SMU-BOOT-OBS-020` |not verified |— |SEP ROM plan: paired secure and non-secure tests checking `bl0_state.secure_boot` and slot 1; this plan: `SEP_BL1_WARN_NOT_SECURE` in the SEP status ring
+|`SMU-BOOT-OBS-030` |not verified |the POST decoders do not check the security bits |SMC ROM plan: check the exact POST security bits for each lifecycle
+|`SMU-BOOT-FAIL-010` |not verified |— |This plan: one release-interlock checker on every production BL1 test that fails on a hart 0 release before staging, verification and measurement complete
+|`SMU-BOOT-FAIL-020` |not verified |— |SEP ROM plan: one terminal checker that requires the error status and the FAIL verdict on every C-detected SEP BL0 failure, except the three waits
+|`SMU-BOOT-FAIL-030` |verified |`CHK-ROM-PARK-ON-HALT`, `CHK-OCCP-PARK-ON-AUTH`, the park interlock group: POST error phase, `HART0_PARKED` and the retired PC in the park routine |SMC ROM plan
 |===
 
-Every combined-boot requirement is unverified at this boundary. Each needs both production
-ROMs and both BL1 images running on the wrapper, which the firmware groups outside
-`hosted` will provide.
+Only this plan earns credit for the hardware sequence, and every combined-boot requirement is
+unverified here. Each needs both production ROMs and both BL1 images running on the wrapper,
+which the firmware groups outside `hosted` will provide. The current `smu-vp` runs no
+production ROM flow and earns no credit.
 
 === Scenario-Expanded Test Summary
 
