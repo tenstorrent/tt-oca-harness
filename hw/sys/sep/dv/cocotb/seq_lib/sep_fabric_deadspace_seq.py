@@ -4,8 +4,9 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused -- DECERR or SLVERR. Truncating the address, wrapping it onto a live
-register and answering OKAY is what this sequence exists to catch.
+refused with the response the memory map sets. Truncating the address,
+wrapping it onto a live register and answering OKAY is what this sequence
+exists to catch.
 
 Every block window except TRNG has a past-extent response in
 ``hw/sys/sep/regs/include/sep_memory_map.rdl``: ``<unit>->ocah_past_extent_resp``, with no path
@@ -36,15 +37,16 @@ CSRNG / EDN / entropy_source). Window end comes from
 of legality.
 
 Windows cover CSR apertures whose memory-map window is larger than
-``REG_MAP_SIZE`` and whose past-extent cells no other test grades (DMA, WDT,
-AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI). HMAC/KMAC fill
+``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox,
+lifecycle, SPI). HMAC/KMAC fill
 their map window so they have no intra-window dead span here. Remap / filter
 arrays and scratch are owned elsewhere for live programming. These tests grade
 the past-extent cells of the other windows: reset control
 (sep_fabric_row_response_matrix_test); eFuse interface control, eFuse token and
 SEP CPU control (sep_unmapped_access_policy_test); the AXI-Lite mailbox
 (sep_mailbox_access_error_inject_test, sep_unmapped_access_policy_test); the
-entropy pool (sep_entropy_pool_aperture_test).
+entropy pool (sep_entropy_pool_aperture_test); the EL2 PIC
+(sep_pic_reg_rand_test).
 
 The TRNG window is forwarded whole to an adopter endpoint on
 ``ext_trng_axil``; SEP allocates no register in it. With no external TRNG
