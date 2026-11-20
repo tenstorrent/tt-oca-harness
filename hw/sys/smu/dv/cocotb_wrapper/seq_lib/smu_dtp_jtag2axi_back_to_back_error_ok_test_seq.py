@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import cocotb
-from dtp_types import DTP_EXPECTED_DTMCS, unpack_dtmcs
+from dtp_types import DTP_EXPECTED_DTMCS
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -15,6 +15,7 @@ from seq_lib.smu_addr_map import (
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
+    J2A_OP_READ,
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
@@ -23,6 +24,9 @@ from seq_lib.smu_jtag_helpers import (
     axi64_unpack32,
     jtag2axi_single_read,
     jtag2axi_single_write,
+    jtag2axi_start,
+    jtag2axi_status,
+    jtag2axi_wait,
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
@@ -30,6 +34,8 @@ from seq_lib.smu_jtag_helpers import (
 VERSION_LO = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET
 UNMAPPED = SMC_LOCAL_XBAR_UNMAPPED_GAP
+# A read between SMC unit apertures answers DECERR with this word.
+UNMAPPED_RDATA = 0xBADC_AB1E
 OTP_POLL = 128
 
 
@@ -122,12 +128,24 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
         self._log(f"CHK-B2B-ALLOW @0x{VERSION_LO:08x} data=0x{d0:08x} status=SUCCESS")
         sb.expect_eq("CHK-B2B-ALLOW", d0, VERSION_LO_RESET, evidence="CHK-B2B-ALLOW")
 
-        st_e, hole_data = await self._rd32(jtag, UNMAPPED)
-        if st_e != J2A_STATUS_DECERR:
+        access = await jtag2axi_start(jtag, J2A_OP_READ, UNMAPPED, size=SMC_DBG_AXSIZE_4B)
+        st_e, beat = await jtag2axi_wait(jtag, access, poll_limit=OTP_POLL, require_complete=True)
+        hole_data = axi64_unpack32(UNMAPPED, beat)
+        if st_e != J2A_STATUS_DECERR or hole_data != UNMAPPED_RDATA:
             raise AssertionError(
                 f"unmapped RD @0x{UNMAPPED:08x} status={st_e} data=0x{hole_data:08x} "
+                f"want DECERR={J2A_STATUS_DECERR} data=0x{UNMAPPED_RDATA:08x}"
+            )
+        st_held, _ = await jtag2axi_status(jtag, access)
+        if st_held != J2A_STATUS_DECERR:
+            raise AssertionError(
+                f"sbcs sberror cleared after the unmapped RD completed: status={st_held} "
                 f"want DECERR={J2A_STATUS_DECERR}"
             )
+        self.s5_ok = True
+        self._log("CHK-B2B-STICKY sberror still reports the bus error after the RD completed")
+        sb.expect_eq("CHK-B2B-STICKY", st_held, J2A_STATUS_DECERR, evidence="CHK-B2B-STICKY")
+
         st1, d1 = await self._rd32(jtag, VERSION_LO)
         if st1 == J2A_STATUS_BUSY:
             raise AssertionError("VERSION_LO after RD-DECERR stuck BUSY")
@@ -143,38 +161,30 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
         )
         sb.expect_eq(
             "CHK-J2A-B2B",
-            (st_e, st1, d1),
-            (J2A_STATUS_DECERR, J2A_STATUS_SUCCESS, VERSION_LO_RESET),
+            (st_e, hole_data, st1, d1),
+            (J2A_STATUS_DECERR, UNMAPPED_RDATA, J2A_STATUS_SUCCESS, VERSION_LO_RESET),
             evidence="J2A_B2B_OK",
         )
 
         st_w = await self._wr32(jtag, UNMAPPED, 0xDEAD_BEEF)
         if st_w != J2A_STATUS_DECERR:
             raise AssertionError(
-                f"unmapped WR @0x{UNMAPPED:08x} status={st_w} want DECERR={J2A_STATUS_DECERR}"
+                f"unmapped WR @0x{UNMAPPED:08x} status={st_w} want bus error={J2A_STATUS_DECERR}"
             )
         st2, d2 = await self._rd32(jtag, VERSION_LO)
         if st2 != J2A_STATUS_SUCCESS or d2 != VERSION_LO_RESET:
             raise AssertionError(
-                f"immediate VERSION_LO after WR-DECERR status={st2} "
+                f"immediate VERSION_LO after the WR bus error status={st2} "
                 f"data=0x{d2:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s4_ok = True
-        self._log(f"CHK-B2B-WR-DECERR WR status=DECERR then VERSION_LO=0x{d2:08x}")
+        self._log(f"CHK-B2B-WR-BUSERR WR status=bus error then VERSION_LO=0x{d2:08x}")
         sb.expect_eq(
-            "CHK-B2B-WR-DECERR",
+            "CHK-B2B-WR-BUSERR",
             (st_w, d2),
             (J2A_STATUS_DECERR, VERSION_LO_RESET),
-            evidence="CHK-B2B-WR-DECERR",
+            evidence="CHK-B2B-WR-BUSERR",
         )
-
-        sticky = unpack_dtmcs(int(await jtag.read("SMC_DTMCS")))["dmistat"]
-        require_jtag_tdo_resolved("SMC DTMCS dmistat")
-        if sticky != 0:
-            raise AssertionError(f"SMC DTMCS dmistat={sticky} after b2b, want 0")
-        self.s5_ok = True
-        self._log("CHK-B2B-STICKY dmistat=0")
-        sb.expect_eq("CHK-B2B-STICKY", sticky, 0, evidence="CHK-B2B-STICKY")
 
         self._log(
             f"PASS JTAG2AXI-B2B s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "

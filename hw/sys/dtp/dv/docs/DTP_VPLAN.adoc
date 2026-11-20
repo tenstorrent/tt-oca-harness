@@ -3665,7 +3665,7 @@ fixed access policy. Data movement is out (<<dtp-formal-exclusions>>).
 [cols="3,4",options="header",]
 |===
 |Logic |Reason and where the credit lives
-|The JTAG2AXI bridges: the DTMCS and DMI registers, the vendored `tdr2axi` Debug Module and SBA engine, and the debug-disable demultiplexer |No property module binds to them; the scenarios of Test Procedures section 2 check the bridges in simulation, and T2 checks the PTAP selection of the OTP bridges' DTMCS and DMI registers.
+|The JTAG2AXI bridges: the DTMCS and DMI registers and the vendored `tdr2axi` Debug Module and SBA engine |No property module binds to them; the scenarios of Test Procedures section 2 check the DTMCS and DMI registers and OKAY System Bus Access writes and reads in simulation, and T2 checks the PTAP selection of the OTP bridges' DTMCS and DMI registers.
 |Boundary-scan data and the external iJTAG instrument chains |Loopbacks in `tb_top`; the design carries selection and gating only, which T2 and T5 cover.
 |`ctp_pulse_stretcher` at large `STRETCH_MULT` |A 16-bit down counter, up to 65 536 cycles. The T7 proofs assume `STRETCH_MULT <= 4`; the counter's reload and terminal behaviour is one inductive property of its own.
 |The full 26 x 26 cross-trigger matrix |A generate of identical selector slices; one slice with a free select mask stands for the array.
@@ -3683,8 +3683,8 @@ Every label follows the style chapter: `ast_` assertions, `asm_` assumptions,
 marks the properties that need an unbounded proof (`prove`) before any
 release; P1 and P2 sign off on a bounded result at the target's depth
 (<<dtp-formal-depths>>). The P0 set is the security-gating set plus the reset
-hierarchy: every disable field gates exactly its path, and no reset source
-reaches a register the standard reserves for another.
+hierarchy: every scan-side disable field gates exactly its path, and no reset
+source reaches a register the standard reserves for another.
 
 T1 is the property module in `formal/props/dtp_tap_props.sv`, bound to
 `jtag_tap_ctrlr` by `formal/props/dtp_tap_bind.sv`:

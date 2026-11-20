@@ -2019,16 +2019,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the SMC J2A gate reads 0 and SMC_DTMCS reads the expected DTMCS value",
         ),
         ("CHK-B2B-ALLOW", "CHK-B2B-ALLOW", "VERSION_LO reads its reset value over JTAG2AXI"),
-        ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),
         (
-            "CHK-B2B-WR-DECERR",
-            "CHK-B2B-WR-DECERR",
-            "the unmapped write returns DECERR and VERSION_LO still reads its reset value",
+            "CHK-J2A-B2B",
+            "J2A_B2B_OK",
+            "the unmapped read returns DECERR with 0xBADCAB1E, then VERSION_LO reads SUCCESS",
+        ),
+        (
+            "CHK-B2B-WR-BUSERR",
+            "CHK-B2B-WR-BUSERR",
+            "the unmapped write returns a bus error and VERSION_LO still reads its reset value",
         ),
         (
             "CHK-B2B-STICKY",
             "CHK-B2B-STICKY",
-            "DTMCS dmistat reads 0 after the error-then-success pairs",
+            "sbcs sberror still reports the bus error after the unmapped read completes",
         ),
     ],
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [
@@ -2053,9 +2057,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "byte writes on the even and odd lanes merge as WSTRB 0x55/0xAA would",
         ),
         (
-            "CHK-J2A-MATRIX-STICKY",
-            "CHK-J2A-MATRIX-STICKY",
-            "DTMCS dmistat reads 0 and VERSION_LO its reset value after the matrix",
+            "CHK-J2A-MATRIX-CSR-READ",
+            "CHK-J2A-MATRIX-CSR-READ",
+            "a 4-byte VERSION_LO read after the matrix returns its reset value",
         ),
     ],
     "smu_dtp_jtag_smc_cpu_register_test": [

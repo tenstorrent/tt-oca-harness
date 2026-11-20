@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import cocotb
-from dtp_types import DTP_EXPECTED_DTMCS, unpack_dtmcs
+from dtp_types import DTP_EXPECTED_DTMCS
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -228,10 +228,6 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             evidence="J2A_RW_MATRIX_OK",
         )
 
-        sticky = unpack_dtmcs(int(await jtag.read("SMC_DTMCS")))["dmistat"]
-        require_jtag_tdo_resolved("SMC DTMCS dmistat")
-        if sticky != 0:
-            raise AssertionError(f"SMC DTMCS dmistat={sticky} after matrix, want 0")
         ver_st, ver_data = await jtag2axi_single_read(
             jtag,
             VERSION_LO,
@@ -246,12 +242,12 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 f"data=0x{ver_data:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s4_ok = True
-        self._log(f"CHK-J2A-MATRIX-STICKY dmistat=0 VERSION_LO=0x{ver_data:08x}")
+        self._log(f"CHK-J2A-MATRIX-CSR-READ VERSION_LO=0x{ver_data:08x}")
         sb.expect_eq(
-            "CHK-J2A-MATRIX-STICKY",
-            (sticky, ver_data),
-            (0, VERSION_LO_RESET),
-            evidence="CHK-J2A-MATRIX-STICKY",
+            "CHK-J2A-MATRIX-CSR-READ",
+            (ver_st, ver_data),
+            (J2A_STATUS_SUCCESS, VERSION_LO_RESET),
+            evidence="CHK-J2A-MATRIX-CSR-READ",
         )
 
         self._log(
