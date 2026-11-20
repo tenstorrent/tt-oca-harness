@@ -441,7 +441,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
                 for b in beats:
                     self.logger.info(
                         "OBS-LSU-AXCACHE-MRAC: kind=%s access=%s ch=%s addr=0x%08x region=0x%x "
-                        "mrac=0x%08x mrac_bits=0b%02b (side_effect=%d cacheable=%d) "
+                        "mrac=0x%08x mrac_bits=0b%s (side_effect=%d cacheable=%d) "
                         "mrac_restored=0x%08x beat=%d cache=%s region_field=%s. %s",
                         kind,
                         access,
@@ -449,7 +449,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
                         addr,
                         region,
                         mrac,
-                        bits,
+                        f"{bits:02b}",
                         bits >> 1,
                         bits & 1,
                         mrac_rst,
