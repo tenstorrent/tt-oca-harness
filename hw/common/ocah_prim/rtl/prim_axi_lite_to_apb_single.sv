@@ -69,7 +69,9 @@ module prim_axi_lite_to_apb_single #(
     ext_addr_t   end_addr;
   } rule_t;
 
-  localparam rule_t [0:0] ApbRule = '{'{idx: 32'd0, start_addr: {1'b0, ADDR_START}, end_addr: ADDR_END}};
+  localparam rule_t [0:0] ApbRule = '{
+      '{idx: 32'd0, start_addr: {1'b0, ADDR_START}, end_addr: ADDR_END}
+  };
 
   ext_axil_req_t  ext_axil_req;
   ext_axil_resp_t ext_axil_resp;
