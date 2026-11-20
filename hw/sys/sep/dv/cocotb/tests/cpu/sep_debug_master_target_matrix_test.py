@@ -20,7 +20,8 @@ EL2 debug module exists only in the full ``sep_cpu``:
   local-alias legs, then the reset-controller and SPI host targets, the entropy
   pool, the extension port, the boot ROM and ICCM, the AP and STEE remaps, and
   a leg of six targets: an HMAC register in reset and two system registers
-  (graded), and three targets with no stated response (``OBS-DBG-SBA``).
+  (graded), and three targets logged on ``INFO-DBG-SBA``: not graded; no open
+  specification question.
 * Entry S, SEP_DBG observation (``no_cpu`` run mode on the ``default`` target,
   ``sep_debug_master_target_matrix_test_sba_sepdbg_open`` and ``_sepdbg_closed``,
   ``+sep_dbg_gate_obs``): the core is held as in entry S, the fuse sense is real
@@ -30,7 +31,7 @@ EL2 debug module exists only in the full ``sep_cpu``:
   write and one read of SRAM word 0 at 32 bits. CTRL-DBG-SEPDBG-SENSE: sense is
   done, the ``SYS_DIS.sep_debug`` shadow read by the bench LSU master equals the
   plusarg, and SIP_DBG, CHIPLET_DBG and ``SIP_DIS`` read 0. CTRL-DBG-SEPDBG-SBA:
-  both accesses completed and ``sbcs.sbbusy`` reads 0. ``OBS-DBG-SEPDBG-GATE``
+  both accesses completed and ``sbcs.sbbusy`` reads 0. ``INFO-DBG-SEPDBG-GATE``
   logs, per access, ``sberror``, the data, ``dbg_disable_stap_sep_o`` and the raw
   ``FEAT_CTRL``; no check grades the gate result. The SBA matrix and the later
   legs do not run.
@@ -164,7 +165,8 @@ Checks:
                   ICCM word gives a PR-XBAR-TCM AW (the DMA reaches ``cpu_tcm``,
                   ``:98``); each count must be at least 1. The response
                   code, ``sberror`` and read data are logged only
-                  (``OBS-DBG-NOTCONN``): the specification states no response.
+                  (``INFO-DBG-NOTCONN``). Not graded; no open specification
+                  question.
   CHK-DBG-REMAP : (entry S) with AP region i and STEE region j programmed (valid,
                   drawn offset O at or above 4 GiB) and an outbound filter pair
                   over each remapped word, a debug-master 64-bit write and read
@@ -900,10 +902,10 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"control_rd={control_rd} gated_rd_obs=0x{gated_rd:08x} "
             f"dmcontrol_after=0x{after:08x} dmcontrol_control=0x{ctl:08x}",
         )
-        # No spec states when dmi_active is high, so its level over the DMI
-        # requests of steps 2 to 4 is logged.
+        # The dmi_active level over the DMI requests of steps 2 to 4 is logged,
+        # not graded.
         self.logger.info(
-            "OBS-DMI-ACTIVE requests=%d rises=%d high_clk=%d",
+            "INFO-DMI-ACTIVE requests=%d rises=%d high_clk=%d",
             len(self.dtm) - mark,
             self.dmi_act_rises - act_rises,
             self.dmi_act_high - act_high,
@@ -1508,7 +1510,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"probe_pr_rom_beats={live_rom} probe_pr_xbar_tcm_beats={live_tcm}",
                 )
                 self.logger.info(
-                    "OBS-DBG-NOTCONN: target=%s dir=%s resp=%s sberror=%d data=%s",
+                    "INFO-DBG-NOTCONN: target=%s dir=%s resp=%s sberror=%d data=%s",
                     name,
                     d.upper(),
                     _h(rsp[0].resp if rsp else None, 1),
@@ -1574,7 +1576,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             self.failures.append(f"CTRL-MISSING NC-LIVE: {line}")
         return live_rom, live_tcm
 
-    async def _sba_obs_leg(self) -> None:
+    async def _sba_info_leg(self) -> None:
         """Step 21: debug-master read and write of six targets in one instance.
 
         CHK-DBG-AXPROT grades the AR and AW beats of the instance.
@@ -1588,7 +1590,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         returns in ``sbdata`` the bench-LSU value read after a non-zero preload
         (CTRL-DBG-SBA-PRELOAD). The
         R or B beat of all four register accesses answers OKAY and ``sberror``
-        reads 0. PIC_BASE, HOLE and PAST are logged as OBS-DBG-SBA.
+        reads 0. PIC_BASE, HOLE and PAST are logged as INFO-DBG-SBA.
         """
         clk = cocotb.top.clk_i
         hole = HOLE_FIRST + 8 * self.rng.randrange((HOLE_LAST - HOLE_FIRST) // 8 + 1)
@@ -1721,7 +1723,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     )
                 else:
                     self.logger.info(
-                        "OBS-DBG-SBA target=%s dir=%s addr=0x%08x resp=%s sberror=%d data=%s",
+                        "INFO-DBG-SBA target=%s dir=%s addr=0x%08x resp=%s sberror=%d data=%s",
                         name,
                         d.upper(),
                         addr,
@@ -1866,7 +1868,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         await self._ext_leg()
         await self._nc_leg()
         await self._remap_leg()
-        await self._sba_obs_leg()
+        await self._sba_info_leg()
         await self.sb_tap.stop()
         await self.lx_tap.stop()
         await self.din_tap.stop()
@@ -1909,9 +1911,9 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             wval = self.rng.getrandbits(32)
         image = "closed" if self.gate_expect else "open"
 
-        def obs(direction: str, sberror: int | None, data: int | None) -> None:
+        def info(direction: str, sberror: int | None, data: int | None) -> None:
             self.logger.info(
-                "OBS-DBG-SEPDBG-GATE seed=%d image=%s sys_dis_sep_debug=%d stap_sep_dis=%d "
+                "INFO-DBG-SEPDBG-GATE seed=%d image=%s sys_dis_sep_debug=%d stap_sep_dis=%d "
                 "feat_ctrl=0x%016x feat_ctrl_sep_debug=%d target=SRAM_WORD addr=0x%08x dir=%s "
                 "sberror=%s data=%s wval=0x%08x sram_before=0x%08x sram_after=0x%08x",
                 self.random_seed(),
@@ -1940,13 +1942,13 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             sbaddr_wr = await self.dmi.dmi_read(DM_SBADDRESS0)
         except DmiError as exc:
             errors.append(f"wr:{exc}")
-        obs("wr", werr, wval if wr_done else None)
+        info("wr", werr, wval if wr_done else None)
         try:
             rdata, rerr = await self.dmi.sba_read(SRAM_WORD, size=4)
             rd_done = 1
         except DmiError as exc:
             errors.append(f"rd:{exc}")
-        obs("rd", rerr, rdata)
+        info("rd", rerr, rdata)
         sbaddr = None
         try:
             sbcs = await self.dmi.dmi_read(DM_SBCS)
@@ -1985,12 +1987,12 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             dut.dmi_core_enable_i.value = core_en
             await ClockCycles(dut.clk_i, 2)
             low = await self.dmi.dmi_read(DM_DMCONTROL)
-            self.logger.info("OBS-UNCORE-LOW: core_en=%d dmcontrol=0x%08x", core_en, low)
+            self.logger.info("INFO-UNCORE-LOW: core_en=%d dmcontrol=0x%08x", core_en, low)
             for addr in UNCORE_ADDRS:
                 rd = await self.dmi.dmi_read(addr)
                 await self.dmi.dmi_write(addr, self.rng.getrandbits(32))
                 self.logger.info(
-                    "OBS-UNCORE-RD: core_en=%d addr=0x%02x rdata=0x%08x", core_en, addr, rd
+                    "INFO-UNCORE-RD: core_en=%d addr=0x%02x rdata=0x%08x", core_en, addr, rd
                 )
         dut.dmi_core_enable_i.value = 1
         await ClockCycles(dut.clk_i, SETTLE)

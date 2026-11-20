@@ -19,7 +19,7 @@ The cp_partial_narrow outcomes of a probe sample only on the pass label
 pbem_pass, which the leaf raises after the last check of that probe passed.
 
 No specification sentence states the register value after a refused partial
-write, so the leaf logs the read-back of the register as OBS-MISALIGN-REG-KEPT
+write, so the leaf logs the read-back of the register as INFO-MISALIGN-REG-KEPT
 and does not grade it.
 """
 
@@ -178,7 +178,7 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
         # No specification sentence states the register value after a refused
         # partial write, so the read-back is logged only.
         self.logger.info(
-            "OBS-MISALIGN-REG-KEPT: pass=%s block=%s 0x%08x before=%#x after=%#x same=%d",
+            "INFO-MISALIGN-REG-KEPT: pass=%s block=%s 0x%08x before=%#x after=%#x same=%d",
             pass_tag,
             block,
             aligned,

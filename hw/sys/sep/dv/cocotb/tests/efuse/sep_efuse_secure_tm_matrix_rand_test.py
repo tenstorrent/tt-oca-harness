@@ -33,9 +33,9 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
   CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
                     secure test mode adds a shadow write lock on the four targets
                     (``hw/ip/efuse/doc/architecture.adoc:407-408``;
-                    ``otp_fuse_controller.adoc:178-180``), and a shadow write that a
+                    ``otp_fuse_controller.adoc:181-183``), and a shadow write that a
                     lock blocks completes with SLVERR
-                    (``otp_fuse_controller.adoc:110-112``).
+                    (``otp_fuse_controller.adoc:112-114``).
   CHK-STM-PROG      no strap-1 program changes its bank bit (direct read in the strap-0
                     epoch before any program of that epoch) and no ``PROGRAM`` command
                     reaches ``efuse_shim_command_req_o`` at strap 1.

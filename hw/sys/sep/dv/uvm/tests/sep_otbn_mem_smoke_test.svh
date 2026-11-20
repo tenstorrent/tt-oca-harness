@@ -6,7 +6,7 @@
 // per pass. The scenario reads no predicted sep_cpu_ctrl register, so the
 // test requires no scoreboard feature. Its only graded evidence is the
 // STATUS read response (CHK-CSR-RESP) and the STATUS control; the memory
-// results are logged (OBS-OTBN-MEM-BUSY-ACCESS).
+// results are logged (INFO-OTBN-MEM-BUSY-ACCESS).
 
 class sep_otbn_mem_smoke_test extends sep_base_test;
   `uvm_component_utils(sep_otbn_mem_smoke_test)

@@ -53,7 +53,7 @@ AES IV_0..3 and DATA_OUT_0..3 leave the CHK-RESET compare. The RDL declares a
 reset of 0, but aes.hjson:550,563,607,620 and programmers_guide.md:8-11 state
 that the reset also clears these registers with pseudo-random data shortly
 afterwards, so no exact reset read value is stated. Each of the eight rows is
-read and logged as ``OBS-RESET-AES-SCRUB`` with its RDL reset; only its OKAY
+read and logged as ``INFO-RESET-AES-SCRUB`` with its RDL reset; only its OKAY
 response is graded (CHK-RESET).
 CHK-RANDCFG counts them as their own walk.
 
@@ -111,11 +111,11 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
         n_scrub = 0
         for info in cfg.reset_regs:
             if info.addr in AES_SCRUB_ADDRS:
-                bash._mark(info)
                 resp, got = await bash._rd(info.addr, name=f"{info.block}_{info.name}")
                 n_scrub += 1
                 self.logger.info(
-                    "OBS-RESET-AES-SCRUB %s.%s @0x%08x resp=%d read=0x%08x rdl_reset=0x%08x",
+                    "INFO-RESET-AES-SCRUB %s.%s @0x%08x resp=%d read=0x%08x rdl_reset=0x%08x "
+                    "chk=CHK-RESET",
                     info.block,
                     info.name,
                     info.addr,
@@ -134,7 +134,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                 reset_fails.append(miss)
         # Construction guard: the walk holds each AES scrub register exactly once.
         assert n_scrub == len(AES_SCRUB_ADDRS), (
-            f"OBS-RESET-AES-SCRUB matched {n_scrub} walk rows, want {len(AES_SCRUB_ADDRS)}"
+            f"INFO-RESET-AES-SCRUB matched {n_scrub} walk rows, want {len(AES_SCRUB_ADDRS)}"
         )
         if reset_fails:
             for line in reset_fails:
@@ -146,7 +146,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
         self.logger.info(
             "CHK-RESET PASS: %d register(s) matched the exported reset; %d of them "
             "under a mask that drops fields with no RDL reset; %d AES IV/DATA_OUT "
-            "row(s) logged as OBS-RESET-AES-SCRUB",
+            "row(s) logged as INFO-RESET-AES-SCRUB",
             bash.reset_ok,
             bash.reset_masked,
             n_scrub,
@@ -227,18 +227,6 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             bash.touch_ok,
         )
 
-        def _users(vals: set) -> str:
-            known = sorted(u for u in vals if u is not None)
-            text = [f"0x{u:03x}" for u in known] + (["X"] if None in vals else [])
-            return ",".join(text) or "none"
-
-        for block, users in bash.resp_user_by_block().items():
-            self.logger.info(
-                "OBS-LSU-RESP-USER block=%s ruser=%s buser=%s",
-                block,
-                _users(users["R"]),
-                _users(users["B"]),
-            )
         # Completeness (CHK-RANDCFG): the whole seed-built
         # configuration ran in this one invocation. The counts are cfg-computed,
         # so this is not evidence about the DUT -- it is evidence that no part of

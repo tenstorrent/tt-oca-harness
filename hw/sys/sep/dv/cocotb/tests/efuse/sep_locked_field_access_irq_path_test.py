@@ -31,7 +31,7 @@ drops the held samples. The read after the locked write runs with tag 0, so it
 samples nothing. A vector watch on the whole interrupt vector grades
 CHK-SRC34-RISE for each locked access: bit [33] rises after the mark taken
 before the access. No specification sentence states that no other bit moves in
-the clock of that rise, so OBS-SRC34-COINCIDENT logs the other bits that moved,
+the clock of that rise, so INFO-SRC34-COINCIDENT logs the other bits that moved,
 and ``cp_src_exclusive_other[s34]`` compares them in the sampler only.
 
 The specification (hw/sys/sep/doc/otp_fuse_controller.adoc:110-112, Shadow
@@ -64,7 +64,7 @@ CTRL-SECTM-LATCH logs ``secure_tm_o`` after each sense and requires 0 before
 the control half and 1 before the deny half. A refused write is a write that a
 lock blocks: secure test mode adds a shadow write lock
 (hw/ip/efuse/doc/architecture.adoc:407-408) on the fields that
-otp_fuse_controller.adoc:178-180 lists. So otp_fuse_controller.adoc:110-112
+otp_fuse_controller.adoc:181-183 lists. So otp_fuse_controller.adoc:110-112
 applies: CHK-LOCK-WR-RESP (``case=sectm``) grades its BRESP as SLVERR, and
 CHK-SECTM-IRQ grades a rise of [33]: low at the clock edge before each refused
 write and high at a clock edge during it. No
@@ -393,7 +393,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         return pic_vector_watch({"s34": IRQ_LOCKED_FIELD}).start()
 
     def _check_rise(self, vec: SepVecWatch, mark: VecMark, run: int, access: str) -> None:
-        """CHK-SRC34-RISE: bit [33] rises after ``mark``; OBS-SRC34-COINCIDENT logs the rest.
+        """CHK-SRC34-RISE: bit [33] rises after ``mark``; INFO-SRC34-COINCIDENT logs the rest.
 
         interrupts.adoc:23 states bit i of the vector is PIC source i + 1, and
         :190-192 assigns source 34 (bit [33]) to the locked-field access. Each
@@ -412,7 +412,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         first = rises[0]
         moved = vec.smears_since(mark, "s34")
         self.logger.info(
-            "OBS-SRC34-COINCIDENT: %s coincident=%d moved=%s before=0x%011x after=0x%011x",
+            "INFO-SRC34-COINCIDENT: %s coincident=%d moved=%s before=0x%011x after=0x%011x",
             line,
             len(moved),
             [(clk, hex(m)) for clk, m in moved],

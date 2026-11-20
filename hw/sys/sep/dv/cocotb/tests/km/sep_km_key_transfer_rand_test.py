@@ -711,7 +711,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         assert p.s != p.v and not p.s & ~p.v, f"S {_h(p.s)} is not a proper subset of V {_h(p.v)}"
         self.bus.start()
         code_s, arg_s = await self._shred(p.s)
-        self._bus_obs("shred_subset", await self.bus.stop())
+        self._bus_info("shred_subset", await self.bus.stop())
         echo_s = None if arg_s is None else arg_s & 0xFF
         hmac = await self._hmac_read(p.k3)
         aes = await self._aes_read(p.k3, "shred_subset_outside")
@@ -779,13 +779,13 @@ class sep_km_key_transfer_rand_test(sep_base_test):
 
     # ----------------------------------------------------------------- grading
 
-    def _bus_obs(self, leg: str, writes: list[tuple[int, int]]) -> None:
+    def _bus_info(self, leg: str, writes: list[tuple[int, int]]) -> None:
         """Log the KM-BUS AW handshakes of one leg per bank, in clock order."""
         banks = [pl.bank_of(port, addr) for port, addr in writes]
         names = ["unknown" if b is None else pl.BANK_NAME[b] for b in banks]
         counts = {n: names.count(n) for n in dict.fromkeys(names)}
         runs = [n for i, n in enumerate(names) if i == 0 or names[i - 1] != n]
-        self.chk.obs(
+        self.chk.info(
             "KM-BUS-AW",
             leg=leg,
             bank=",".join(f"{n}:{c}" for n, c in counts.items()) or "-",
