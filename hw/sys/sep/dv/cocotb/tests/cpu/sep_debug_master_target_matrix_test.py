@@ -52,6 +52,15 @@ Checks:
                   one read at 0x10, so a write that never leaves the DTM
                   fails. Control: a write of 1 with the enable high reads
                   back 1. The read data with the enable low is logged only.
+  CHK-DMI-ACTIVE: ``dmi_active_o`` (tap ``dmi_active_probe_o``, sampled on
+                  every ``clk_i`` cycle) is high on at least one clock over
+                  the DMI requests of steps 2 to 4 (``hw/sys/sep/doc/port_table.adoc``,
+                  ``dmi_active_o``: "DMI active indicator"). The rise count is
+                  logged only. An X sample fails the leaf. CTRL-DMI-REQUESTS:
+                  the DTM request tap shows at least one request in the same
+                  window (the leaf issues five: a write and a read in step 2,
+                  a read in step 3, a write and a read in step 4); zero fails
+                  the leaf.
   CHK-DBG-SBA   : (entry S) for each of the nine accesses (SRAM word 0 and its
                   local alias at 32 and 64 bits, ``WDOG_BARK_THOLD``, HMAC
                   ``MSG_LENGTH_LOWER``, ``SEP_SW_DEBUG``, cold scratch word 0,
@@ -902,14 +911,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"control_rd={control_rd} gated_rd_obs=0x{gated_rd:08x} "
             f"dmcontrol_after=0x{after:08x} dmcontrol_control=0x{ctl:08x}",
         )
-        # The dmi_active level over the DMI requests of steps 2 to 4 is logged,
-        # not graded.
-        self.logger.info(
-            "INFO-DMI-ACTIVE requests=%d rises=%d high_clk=%d",
-            len(self.dtm) - mark,
-            self.dmi_act_rises - act_rises,
-            self.dmi_act_high - act_high,
-        )
+        requests = len(self.dtm) - mark
+        high_clk = self.dmi_act_high - act_high
+        act_line = f"requests={requests} rises={self.dmi_act_rises - act_rises} high_clk={high_clk}"
+        self._ctrl("DMI-REQUESTS", requests >= 1, act_line)
+        self._grade("CHK-DMI-ACTIVE", requests >= 1 and high_clk >= 1, act_line)
         await self._inst_close(dbg_sba_bits("enable0_core", "enable1_core") if ok else 0)
 
     # ---------------------------------------------------------------- entry S
@@ -2134,7 +2140,13 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.n_checks = 0
         self.axp_tap = None
         if self.entry_c:
-            self.required_evidence = ("CHK-DTMCS", "CHK-DMI-GATE", "CHK-DMI-UNCORE", "CHK-DBG-RST")
+            self.required_evidence = (
+                "CHK-DTMCS",
+                "CHK-DMI-GATE",
+                "CHK-DMI-ACTIVE",
+                "CHK-DMI-UNCORE",
+                "CHK-DBG-RST",
+            )
             entry = "C"
         elif self.gate_obs:
             expect = cocotb.plusargs.get("sep_dbg_gate_expect")
@@ -2143,13 +2155,19 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"+sep_dbg_gate_obs needs +sep_dbg_gate_expect=0 or 1, got {expect!r}"
                 )
             self.gate_expect = int(expect)
-            self.required_evidence = ("CHK-DTMCS", "CHK-DMI-GATE", "CHK-SENSE-BACKDOOR")
+            self.required_evidence = (
+                "CHK-DTMCS",
+                "CHK-DMI-GATE",
+                "CHK-DMI-ACTIVE",
+                "CHK-SENSE-BACKDOOR",
+            )
             entry = "S_SEPDBG"
         else:
             entry = "S"
             self.required_evidence = (
                 "CHK-DTMCS",
                 "CHK-DMI-GATE",
+                "CHK-DMI-ACTIVE",
                 "CHK-DBG-SBA",
                 "CHK-DBG-ALIAS-MOVE",
                 "CHK-DBG-ALIAS-OLD",

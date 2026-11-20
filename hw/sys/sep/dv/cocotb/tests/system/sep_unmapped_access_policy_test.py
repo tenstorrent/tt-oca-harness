@@ -72,6 +72,11 @@ again: they answer the Hole in Extent cell of their row (memory_map.adoc:69,
 SLVERR, 0x0; :79, OKAY, 0x0), so the second read shows the write was
 discarded.
 
+OBS-CPU-CTRL-BASE-CODE: offset 0 of SEP CPU control lies below its first
+register. doc/trm/src/memory_map.adoc:91 states the answer for an offset
+between registers only, so the leaf reads it, writes it and reads it again
+after the graded walk and logs each response and read data with no verdict.
+
 CHK-UNMAPPED-NO-ALIAS: no refused read returns a programmed value, no probe
 write moves a watched live word, and a closing re-read of every live word
 matches the snapshot.
@@ -109,6 +114,7 @@ from seq_lib.sep_unmapped_access_seq import (
     GROUP_SPI,
     GROUP_SYSCSR,
     LITE_WATCHED,
+    PROBE_WDATA,
     REFUSE_GROUPS,
     RESP_NAME,
     RESP_OKAY,
@@ -360,6 +366,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
             )
         verdict["CHK-UNMAPPED-PINS"] = pin_fail
 
+        await self._cpu_ctrl_base_obs(cfg, ua)
         await ua.restore()
 
         # --- verdicts ---------------------------------------------------------
@@ -410,6 +417,32 @@ class sep_unmapped_access_policy_test(sep_base_test):
             else:
                 self.logger.info("%s PASS: %s", chk, counts[chk])
         assert not bad, "unmapped-access checker(s) failed: " + ", ".join(bad)
+
+    async def _cpu_ctrl_base_obs(self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess) -> None:
+        """Log the response of SEP CPU control offset 0; no verdict.
+
+        It runs after the FCOV window closed and after every count the
+        verdicts use, so it releases no sample and changes no graded tally.
+        """
+        addr = cfg.cpu_ctrl_base
+        r_resp, r_data, r_to = await ua.access("r", addr, may_refuse=True)
+        w_resp, _d, w_to = await ua.access("w", addr, wdata=PROBE_WDATA, may_refuse=True)
+        rr_resp, rr_data, rr_to = await ua.access("r", addr, may_refuse=True)
+        self.logger.info(
+            "OBS-CPU-CTRL-BASE-CODE: 0x%08x (SEP CPU control offset 0, below CLOCK_GATE_CTRL) "
+            "read resp=%s rdata=0x%08x timed_out=%s; write 0x%08x resp=%s timed_out=%s; "
+            "re-read resp=%s rdata=0x%08x timed_out=%s",
+            addr,
+            _code(r_resp),
+            r_data,
+            r_to,
+            PROBE_WDATA,
+            _code(w_resp),
+            w_to,
+            _code(rr_resp),
+            rr_data,
+            rr_to,
+        )
 
     async def _probe_walk(self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess, w: _Walk, gate):
         """Every probe in walk order, each graded before the next one starts."""

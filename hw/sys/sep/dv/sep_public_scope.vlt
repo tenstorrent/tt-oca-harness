@@ -41,3 +41,8 @@ public_flat_rw -module "sep_scratch_reg" -var "field_storage"
 // The mailbox FIFO model leaf reads the declared width of the DUT SMC mailbox
 // interrupt port. Read-only access to this one output port adds no write path.
 public_flat_rd -module "sep_wrapper" -var "smc_mailbox_interrupt_o"
+
+// The PIC pending-map leaf reads the entropy-pool status word every clock to
+// condition its idle checks of PIC source 39 and the entropy-pool RAS lane on
+// STATUS.pool_error reading 0. Read-only access adds no write path.
+public_flat_rd -module "sep_entropy_fifo" -var "status_word"
