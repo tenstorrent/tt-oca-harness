@@ -697,8 +697,8 @@ module sep_uvm_top
         .smc_global_base_addr_i       (bh_smc_base),
         .smc_region_size_i            (bh_smc_size),
 `endif
-        .sep_global_base_addr_o       (),
-        .sep_region_size_o            (),
+        .sep_global_base_addr_o       (sep_global_base_addr_probe_o),
+        .sep_region_size_o            (sep_region_size_probe_o),
 
         // External debug bus
         .ext_debug_bus_o              (ext_debug_bus_o),
