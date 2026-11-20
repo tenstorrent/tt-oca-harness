@@ -97,7 +97,7 @@
 <h3 id="ISOLATE_REQ_REG">ISOLATE_REQ_REG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_reg</td><td>RW</td><td>0x0</td><td>Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset</td></tr>
+<tr><td>31:0</td><td>isolate_req_reg</td><td>RW</td><td>0x0</td><td>Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any<br>reset with it; a subsystem that must survive a reset gates its own reset with<br>its isolate_req_o bit.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</h3>
 <table>

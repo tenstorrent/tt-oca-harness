@@ -117,7 +117,9 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset";
+            desc = "Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
+                    reset with it; a subsystem that must survive a reset gates its own reset with
+                    its isolate_req_o bit.";
         } isolate_req_reg [31:0] = 0x0;
     };
 

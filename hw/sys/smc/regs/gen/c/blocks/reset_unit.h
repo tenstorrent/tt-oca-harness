@@ -197,14 +197,18 @@ typedef union {
 } reset_unit__SYNC_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_REG
-// Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset
+// Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
+// reset with it; a subsystem that must survive a reset gates its own reset with
+// its isolate_req_o bit.
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bw 32
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset
+        // Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
+        // reset with it; a subsystem that must survive a reset gates its own reset with
+        // its isolate_req_o bit.
         uint32_t isolate_req_reg :32;
     } f;
     uint32_t w;

@@ -1410,7 +1410,9 @@ cannot be written to again</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>isolate_req_reg</ipxact:name>
-            <ipxact:description>Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset</ipxact:description>
+            <ipxact:description>Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
+reset with it; a subsystem that must survive a reset gates its own reset with
+its isolate_req_o bit.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
