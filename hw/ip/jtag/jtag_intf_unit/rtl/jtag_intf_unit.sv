@@ -14,7 +14,7 @@
 //   standalone elaboration.
 //
 // jtag_ptap receives every parameter. Optional JTAG2AXI bridges in it reach SMC fabric AXI
-// and SMC/SEP OTP AXI-Lite with programmable pipeline depths.
+// and SMC/SEP OTP AXI-Lite.
 //
 // The STAP chain runs from the PTAP STAP scan output through the I/O STAP (TDI lockup latch
 // for the die crossing), the SMC debug STAP, the SEP debug STAP and the additional STAPs to
@@ -22,10 +22,12 @@
 // 0 is bypassed, and its host port drives only TCK with every other output low. The iJTAG chain
 // runs from the PTAP through the secure DFT, non-secure DFT and DFD SIBs back to the PTAP.
 //
-// dbg_disable_i comes from the SEP lifecycle controller. Each bit passes through a two-flop TCK
+// dbg_disable_i comes from the SEP lifecycle controller. Each bit passes through a two-flop
 // synchronizer kept out of scan and reset to 1 (disabled) by pwr_on_rst_ni, and disables one
-// STAP class, SIB, JTAG2AXI bridge or the extended STAP scan interface. pwr_on_rst_ni is also
-// ANDed with TRST inside the PTAP; clk_i and rst_n_i reach only the PTAP's JTAG2AXI bridges.
+// STAP class, SIB, JTAG2AXI bridge or the extended STAP scan interface. The JTAG2AXI bridges
+// apply their disables on the AXI side, so those three bits are synchronized to clk_i; every
+// other bit is synchronized to TCK. pwr_on_rst_ni is also ANDed with TRST inside the PTAP;
+// rst_n_i, test_en_i and scan_rst_ni reach only the PTAP's JTAG2AXI bridges.
 //
 // Exported controls:
 //
@@ -101,49 +103,25 @@ module jtag_intf_unit
   parameter type  smc_otp_axil_resp_t = logic,  // SMC OTP debug AXI-Lite response type.
 
   parameter type  sep_otp_axil_req_t = logic,  // SEP OTP debug AXI-Lite request type.
-  parameter type  sep_otp_axil_resp_t = logic,  // SEP OTP debug AXI-Lite response type.
-
-  parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single
-                                                      // outstanding transaction), reported in
-                                                      // SMC_OTP_JTAG2AXI_CAPS. Also sets the
-                                                      // bridge's largest programmable series
-                                                      // pipeline depth.
-  parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single
-                                                      // outstanding transaction), reported in
-                                                      // SMC_OTP_JTAG2AXI_CAPS only; it does not
-                                                      // configure the bridge.
-  parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single
-                                                      // outstanding transaction), reported in
-                                                      // SEP_OTP_JTAG2AXI_CAPS. Also sets the
-                                                      // bridge's largest programmable series
-                                                      // pipeline depth.
-  parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single
-                                                      // outstanding transaction), reported in
-                                                      // SEP_OTP_JTAG2AXI_CAPS only; it does not
-                                                      // configure the bridge.
-  parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 = single
-                                                      // outstanding transaction), reported in
-                                                      // SMC_JTAG2AXI_CAPS. Also sets the bridge's
-                                                      // largest programmable series pipeline depth.
-  parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3  // SMC fabric write pipeline depth (0 = single
-                                                     // outstanding transaction), reported in
-                                                     // SMC_JTAG2AXI_CAPS only; it does not
-                                                     // configure the bridge.
+  parameter type  sep_otp_axil_resp_t = logic  // SEP OTP debug AXI-Lite response type.
   /* verilator lint_on UNUSEDPARAM */
 ) (
-  input  logic clk_i,                   // System clock for the JTAG2AXI bridges.
+  input  logic clk_i,                   // System clock for the JTAG2AXI bridges and their
+                                        // dbg_disable_i synchronizers.
   input  logic rst_n_i,                 // Active-low system reset for the JTAG2AXI bridges.
   input  logic test_en_i,               // DFT test-mode enable, active-high, for the JTAG2AXI
                                         // bridges.
+  input  logic scan_rst_ni,             // Scan reset, active-low, that resets the JTAG2AXI
+                                        // bridges while test_en_i is high.
 
   input  logic pwr_on_rst_ni,           // Active-low power-on reset, ANDed with TRST for the PTAP
                                         // and STAPs; sets the dbg_disable_i synchronizers to
                                         // disabled.
 
   input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,  // Active-high per-path lifecycle
-                                                                // disables, synchronized to TCK
-                                                                // inside this module; all disabled
-                                                                // out of reset.
+                                                                // disables, synchronized inside
+                                                                // this module; all disabled out
+                                                                // of reset.
 
   input  jtag_tap_ctrl_t  ptap_client_tap_ctrl_i,  // PTAP client TAP-control bundle: TCK, TMS, and
                                                    // active-low TRST.
@@ -309,15 +287,31 @@ module jtag_intf_unit
   assign dbg_disable_bits = dbg_disable_i;
   assign dbg_disable_q    = sep_lifecycle_ctrl_pkg::dbg_disable_t'(dbg_disable_bits_q_n0_scan);
 
+  localparam sep_lifecycle_ctrl_pkg::dbg_disable_t DbgDisableOnSysClk = '{
+      smc_jtag2axi: 1'b1,
+      smc_otp_jtag2axi: 1'b1,
+      sep_otp_jtag2axi: 1'b1,
+      default: 1'b0
+  };
+  localparam logic [DbgDisableWidth-1:0] DbgDisableOnSysClkBits = DbgDisableOnSysClk;
+
   // These synchronizers are downstream of the Class 1 LC_STATE, SIP_DIS, and
   // SYS_DIS fields and directly control JTAG/test enablement. Both stages
   // must therefore remain outside scan.
   for (genvar i = 0; i < DbgDisableWidth; i++) begin : gen_dbg_disable_sync_n0_scan
+    logic sync_clk;
+
+    if (DbgDisableOnSysClkBits[i]) begin : gen_sys_clk
+      assign sync_clk = clk_i;
+    end else begin : gen_tck
+      assign sync_clk = ptap_client_tap_ctrl_i.tck;
+    end
+
     prim_flop_2sync #(
       .Width(1),
       .ResetValue(1'b1)
     ) u_dbg_disable_sync_n0_scan (
-      .clk_i  (ptap_client_tap_ctrl_i.tck),
+      .clk_i  (sync_clk),
       .rst_ni (pwr_on_rst_ni),
       .d_i    (dbg_disable_bits[i]),
       .q_o    (dbg_disable_bits_q_n0_scan[i])
@@ -358,13 +352,7 @@ module jtag_intf_unit
     .smc_otp_axil_req_t  (smc_otp_axil_req_t),
     .smc_otp_axil_resp_t (smc_otp_axil_resp_t),
     .sep_otp_axil_req_t  (sep_otp_axil_req_t),
-    .sep_otp_axil_resp_t (sep_otp_axil_resp_t),
-    .SMC_OTP_RD_PL_DEPTH (SMC_OTP_RD_PL_DEPTH),
-    .SMC_OTP_WR_PL_DEPTH (SMC_OTP_WR_PL_DEPTH),
-    .SEP_OTP_RD_PL_DEPTH (SEP_OTP_RD_PL_DEPTH),
-    .SEP_OTP_WR_PL_DEPTH (SEP_OTP_WR_PL_DEPTH),
-    .SMC_RD_PL_DEPTH     (SMC_RD_PL_DEPTH),
-    .SMC_WR_PL_DEPTH     (SMC_WR_PL_DEPTH)
+    .sep_otp_axil_resp_t (sep_otp_axil_resp_t)
   ) u_jtag_ptap (
     // Standard JTAG input interface
     .client_tap_ctrl_i              (ptap_client_tap_ctrl_i),
@@ -408,15 +396,16 @@ module jtag_intf_unit
     .boot_stall_ovrd_o              (boot_stall_ovrd_o),
     .boot_stall_o                   (boot_stall_o),
 
-    // System clock and reset (for jtag2axi modules)
+    // System clock and resets (for the JTAG2AXI bridges)
     .clk_i                          (clk_i),
     .rst_n_i                        (rst_n_i),
     .test_en_i                      (test_en_i),
+    .scan_rst_ni                    (scan_rst_ni),
 
     // Power-on reset (for JTAG logic)
     .pwr_on_rst_ni                  (pwr_on_rst_ni),
 
-    // Per-bridge debug-disable bits (TCK-synced, active-high)
+    // Per-bridge debug-disable bits (clk_i-synced, active-high)
     .smc_jtag2axi_security_disable_i     (dbg_disable_q.smc_jtag2axi),
     .smc_otp_jtag2axi_security_disable_i (dbg_disable_q.smc_otp_jtag2axi),
     .sep_otp_jtag2axi_security_disable_i (dbg_disable_q.sep_otp_jtag2axi),

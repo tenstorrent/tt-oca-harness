@@ -1,528 +1,557 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// JTAG2AXI bridge model: the JTAG-visible state of the three bridges (SMC
-// OTP, SEP OTP, SMC fabric), rebuilt from the decoded DR scans on the
-// primary TAP and the AXI completions the passive monitors observed, after
-// the jtag2axi update, capture, and completion rules:
+// JTAG2AXI bridge model: the JTAG-visible state of the three tdr2axi bridges.
 //
-//   SINGLE_OP    Update-DR with op READ/WRITE launches one transaction with
-//                the host-packed address, strobes, and data, and the size
-//                limited to one full beat, unless an operation is still
-//                pending (then it is rejected: status BUSY_OR_FULL, sticky
-//                full). Capture-DR presents BUSY_OR_FULL while pending,
-//                else the last completion status, and the last read data
-//                after a read.
-//   SERIES_CTRL  Update-DR with op != NOP latches op, size (limited to one
-//                full beat), pipeline depth and address and restarts the
-//                read budget; the reset bit clears the sticky status.
-//                Capture-DR presents the sticky status: BUSY_OR_FULL while
-//                full, else the first series error since the reset bit,
-//                else SUCCESS; a system reset that discarded a series
-//                operation counts as a DECERR error. SINGLE_OP completions
-//                do not reach it.
-//   SERIES_DATA  Update-DR launches one transaction at the series address
-//                on the byte lanes that address selects; a read is issued
-//                only within the budget of pipeline_depth + 1 per CTRL
-//                programming. INCR (or the with-status increment bit)
-//                advances the address by the transfer size on completion.
-//                The scan is refused, setting the sticky full flag, while
-//                pipeline_depth + 1 series requests wait behind the
-//                transaction in flight, or for a read while pipeline_depth
-//                + 1 series reads are in flight; a refused with-status scan
-//                also sets the SINGLE_OP status to BUSY_OR_FULL. A read past
-//                the budget that is not refused is dropped silently; one
-//                that is refused leaves the SERIES_CTRL status, and for a
-//                with-status scan the SINGLE_OP status, without a contract
-//                until the status is next set, since the PTAP document does
-//                not say whether such a scan reports BUSY_OR_FULL.
+// Each bridge is a DTMCS TDR and a DMI TDR in front of a RISC-V Debug Module
+// whose System Bus Access drives the bridge port
+// (hw/ip/jtag/jtag_ptap/doc/architecture.adoc, "PTAP JTAG2AXI Support"). The
+// model rebuilds every bridge from the decoded DR scans on the primary TAP and
+// the transactions the passive monitors observe on its port:
 //
-// A gated update (the lifecycle disable of the bridge asserted) changes
-// nothing but clears the read budget, and a completion while the disable is
-// asserted leaves the bridge idle and disabled, which drops every request
-// queued behind it (DTP JTAG document, "Debug Disable": buffered requests
-// are dropped). A TAP reset resets the JTAG-visible state and leaves the
-// bridge's AXI side running: every request launched before it and not yet
-// completed stays on the fabric, and the AXI side consumes its response, so
-// that completion changes no state and pairs with no later request.
-// Completions are applied at the capture or update time that follows them,
-// so a capture during a shift sees the state of its own Capture-DR. Plain
-// class held by dtp_jtag2axi_req_ref_model and
-// dtp_jtag2axi_status_ref_model; no reporting. Not modelled: the series
-// read-data FIFO a SERIES_DATA capture returns (and so the DECERR a system
-// reset reports for its unread entries). The oldest outstanding transaction
-// is the one in flight, and the series requests behind it wait in the request
-// queue. The cocotb twin is env/dtp_jtag2axi_model.py.
+//   DMI update   Without a sticky error, an update loads the scanned address
+//                and data; op 1 reads and op 2 writes that Debug Module
+//                register. Op 3 clears the sticky error; while the error is
+//                set the bridge ignores every other update.
+//   DMI capture  {address, data, status}: the last loaded address, the last
+//                loaded data or the read response, and the sticky status. A
+//                busy response from the Debug Module sets the status to BUSY
+//                and, for a read, the data to 0xB051B051.
+//   DTMCS        Capture: version 1, abits 7, idle 7, and the DMI sticky
+//                status in dmistat. An update with dmireset gives the DMI an
+//                op-3 update carrying its own address and data.
+//   dmcontrol    While dmactive is 0 the Debug Module holds sbcs at its reset
+//                value (sbaccess 2, sbversion and sbasize 0) and sbaddress and
+//                sbdata at 0; a write of sbdata0 in that state starts a bus
+//                write of 0 at address 0.
+//   sbcs         A write sets sbreadonaddr, sbaccess, sbautoincrement and
+//                sbreadondata and clears sbbusyerror and sberror where it
+//                writes 1. sbversion, sbasize and the sbaccess* bits publish
+//                the bridge's geometry.
+//   sbaddress    An sbaddress0 write with sbreadonaddr starts a read. The
+//                address holds sbasize bits; the bits above it read 0.
+//   sbdata       An sbdata0 write starts a write; an sbdata0 read returns the
+//                data and, with sbreadondata, then starts a read. An sbaddress
+//                or sbdata access while sbbusyerror is set is a busy response
+//                that leaves the register unchanged.
+//   bus access   Starts only while sberror is 0. An sbaccess above the beat
+//                width sets sberror 4 and an address not aligned to it sets 3,
+//                without a transaction. Otherwise one beat of 2**sbaccess
+//                bytes on the lanes the address selects; SLVERR or DECERR set
+//                sberror 2. A completed read loads sbdata with the beat
+//                shifted down to the address; a completed write loads it with
+//                the read-data lanes, which carry no contract.
+//                sbautoincrement advances the address by the size on every
+//                completion. With the bridge's lifecycle disable asserted the
+//                access completes as DECERR without reaching the port, and a
+//                read returns 0xBADCAB1E per word.
+//
+// A system reset returns every bridge to its reset state; a TAP reset leaves
+// them unchanged. A DMI operation is applied on the TCK cycle that leaves its
+// Update-DR, and a bus completion at the first update at least one TCK cycle
+// after the port handshake. The model predicts a bridge only where no DMI
+// operation is in flight and no bus access races a Debug Module access: every
+// DMI capture or update falls DtpDmiSettleTck TCK cycles or more after the
+// last read or write update, and only sbcs is accessed while a bus access is
+// outstanding. A scan outside that scope is a UVM error and carries no
+// prediction. dtp_jtag2axi_tracker applies the scan, event and port streams
+// to one model for each JTAG2AXI reference model. The cocotb twin is
+// env/dtp_jtag2axi_model.py.
 
 class dtp_jtag2axi_model;
 
   typedef struct {
-    bit          single;       // from the SINGLE_OP buffer, else a series entry
     bit          is_read;
-    bit          incr;         // series: advance the address on completion
-    bit          with_status;  // series: SERIES_DATA_WITH_STATUS entry
     int unsigned size;
-  } issued_t;
+    int unsigned offset;
+  } access_t;
 
   typedef struct {
-    bit              single_pending;
-    dtp_j2a_status_e last_single_status;
-    bit              last_single_was_read;
-    bit [63:0]       last_read_data;
-    dtp_j2a_op_e     series_op;
-    int unsigned     series_size;
-    int unsigned     series_pipeline_depth;
-    bit [63:0]       series_addr;
-    int unsigned     series_reads_pushed;
-    dtp_j2a_status_e sticky_status;
-    bit              sticky_full;
-    // The SINGLE_OP or SERIES_CTRL status carries no contract until it is
-    // next set.
-    bit              single_uncertain;
-    bit              series_uncertain;
-    // SINGLE_OP may read DECERR with a zero data field, or SERIES_CTRL
-    // DECERR, in place of the status the model holds, until a capture shows
-    // which.
-    bit              single_alt;
-    bit              series_alt;
-    bit              completion_seen;
-    time             last_completion;
-    // TCK edges counted when the newest applied completion reached the
-    // port, whether it set the SINGLE_OP or the series status, and the
-    // series status before it.
-    int unsigned     last_completion_tck;
-    bit              last_completion_single;
-    bit              last_completion_series;
-    dtp_j2a_status_e sticky_before_completion;
-    // Completions the AXI side consumes after a TAP reset, indexed by is_read.
-    int unsigned     orphans[2];
+    // DMI TDR bridge.
+    bit [6:0]    address;
+    bit [31:0]   data;
+    bit [31:0]   data_mask;
+    bit [1:0]    error;
+    bit          op_seen;
+    int unsigned last_op_tck;
+    // Debug Module. `ctrl` holds the sbcs fields a write or an access sets.
+    bit          dmactive;
+    bit          ndmreset;
+    dtp_sbcs_t   ctrl;
+    bit [63:0]   sbaddr;
+    bit [63:0]   sbdata;
+    bit [63:0]   sbdata_mask;
+    bit          inflight_valid;
+    access_t     inflight;
+    // Completions due for accesses a system reset discarded.
+    int unsigned orphans;
   } bridge_t;
 
-  // CDC window after a completion during which a capture carries no
-  // contract (set by the holder from the TCK period).
-  time settle_window = 0;
+  typedef struct {
+    bit [31:0] data;
+    bit [31:0] data_mask;
+    bit        busy;
+  } dm_response_t;
 
-  // TCK edges from a system reset to the edge on which its CDC clear aborts
-  // the bridges' operations: two through the clear synchronizer, then the
-  // abort.
-  localparam int unsigned ClearAbortTck = 3;
-  // TCK edges after a response handshake at a bridge port before the
-  // bridge's state machine has certainly taken the response: three through
-  // the CDC pointer synchronizer, one into the destination spill register,
-  // one for the state machine's handshake, and one for the crossing's phase.
-  localparam int unsigned CdcResponseTck = 6;
-  protected int unsigned m_abort_in;
-  // TCK cycle count that stamps each completion and system reset.
-  int unsigned tck;
+  localparam bit [31:0] DataBusy = 32'hB051_B051;
+  localparam bit [31:0] ErrSlaveWord = 32'hBADC_AB1E;
+  localparam bit [2:0] SberrorBus = 3'd2;
+  localparam bit [2:0] SberrorAlign = 3'd3;
+  localparam bit [2:0] SberrorSize = 3'd4;
+  localparam bit [2:0] SbcsResetSbaccess = 3'd2;
 
-  protected bridge_t      m_bridge[string];
-  protected issued_t      m_issued_q[string][$];     // launched, awaiting completion
-  protected ocah_axi_item m_completed_q[string][$];  // observed, not yet applied
-  protected int unsigned  m_completed_tck_q[string][$];  // tck at each completion
+  protected bridge_t      m_bridge     [string];
+  protected ocah_axi_item m_completed_q[string] [$];
 
   function new();
     reset();
   endfunction
 
-  // TAP reset: every bridge back to its TCK-domain reset state. The requests
-  // launched and not yet completed become orphans of their direction: the
-  // AXI side consumes their completions.
+  // System reset: every bridge back to its reset state; accesses in flight
+  // are discarded.
   function void reset();
     string names[3] = '{"smc_otp", "sep_otp", "smc_axi"};
     foreach (names[i]) begin
-      bridge_t      b;
-      issued_t      no_issued[$];
-      ocah_axi_item no_completed[$];
-      foreach (b.orphans[read]) begin
-        b.orphans[read] = m_bridge.exists(names[i]) ?
-            m_bridge[names[i]].orphans[read] + outstanding(names[i], bit'(read)) : 0;
-      end
-      b.single_pending        = 1'b0;
-      b.last_single_status    = DTP_J2A_SUCCESS;
-      b.last_single_was_read  = 1'b0;
-      b.last_read_data        = '0;
-      b.series_op             = DTP_J2A_OP_NOP;
-      b.series_size           = 0;
-      b.series_pipeline_depth = 0;
-      b.series_addr           = '0;
-      b.series_reads_pushed   = 0;
-      b.sticky_status         = DTP_J2A_SUCCESS;
-      b.sticky_full           = 1'b0;
-      b.single_uncertain      = 1'b0;
-      b.series_uncertain      = 1'b0;
-      b.single_alt            = 1'b0;
-      b.series_alt            = 1'b0;
-      b.completion_seen       = 1'b0;
-      b.last_completion       = 0;
-      b.last_completion_tck   = 0;
-      b.last_completion_single = 1'b0;
-      b.last_completion_series = 1'b0;
-      b.sticky_before_completion = DTP_J2A_SUCCESS;
-      m_bridge[names[i]]      = b;
-      m_issued_q[names[i]]    = no_issued;
-      m_completed_q[names[i]] = no_completed;
-      m_completed_tck_q[names[i]].delete();
+      string   n = names[i];
+      bridge_t fresh = new_bridge();
+      if (m_bridge.exists(n))
+        fresh.orphans = m_bridge[n].orphans +
+            int'(m_bridge[n].inflight_valid && m_completed_q[n].size() == 0);
+      m_bridge[n] = fresh;
+      m_completed_q[n] = {};
     end
   endfunction
 
-  // A system reset: its clear aborts the bridges' operations on the third
-  // TCK edge after it, so a scan latched on the first two is aborted with
-  // them.
-  function void system_reset();
-    m_abort_in = ClearAbortTck;
-  endfunction
-
-  // A system reset's clear is on its way to the bridges: a request latched
-  // now never reaches the bus.
-  function bit abort_pending();
-    return m_abort_in != 0;
-  endfunction
-
-  // One TCK cycle, before the scan whose Update-DR it leaves takes effect.
-  function void tck_step();
-    tck++;
-    if (m_abort_in == 0) return;
-    m_abort_in--;
-    if (m_abort_in == 0) abort_in_flight(1'b1, (tck > ClearAbortTck) ? tck - ClearAbortTck : 0);
-  endfunction
-
-  // System reset: every operation launched and not yet completed is
-  // discarded. A discarded single or with-status operation reads DECERR on
-  // SINGLE_OP; a discarded series operation reads DECERR on the sticky
-  // status unless it already holds a series error. Every other status and
-  // the SERIES_CTRL configuration keep their values. The reset also clears
-  // the AXI side, so no orphan of an earlier TAP reset remains. Called on
-  // the TCK edge the reset's clear reaches the bridges, so every queued
-  // completion precedes it. With `timed`, a completion that reached the port
-  // fewer than CdcResponseTck TCK edges before the reset (`reset_tck`) may
-  // not have reached the bridge's state machine, which then discards the
-  // operation: the status it set may read DECERR instead, as a discarded
-  // operation's would, and the next capture of it shows which.
-  function void abort_in_flight(bit timed = 1'b0, int unsigned reset_tck = 0);
-    foreach (m_bridge[n]) begin
-      issued_t no_issued[$];
-      bit      single_lost;
-      bit      series_lost;
-      apply_completions(n, $time);
-      if (timed && m_bridge[n].completion_seen &&
-          (m_bridge[n].last_completion_tck + CdcResponseTck > reset_tck)) begin
-        m_bridge[n].single_alt = m_bridge[n].last_completion_single;
-        m_bridge[n].series_alt = m_bridge[n].last_completion_series &&
-                                 (m_bridge[n].sticky_before_completion == DTP_J2A_SUCCESS);
-      end
-      single_lost = m_bridge[n].single_pending;
-      series_lost = 1'b0;
-      foreach (m_issued_q[n][i]) begin
-        if (m_issued_q[n][i].with_status) single_lost = 1'b1;
-        if (!m_issued_q[n][i].single) series_lost = 1'b1;
-      end
-      m_issued_q[n] = no_issued;
-      m_bridge[n].orphans             = '{0, 0};
-      m_bridge[n].single_pending      = 1'b0;
-      m_bridge[n].series_reads_pushed = 0;
-      if (single_lost) begin
-        m_bridge[n].last_single_status = DTP_J2A_DECERR;
-        m_bridge[n].last_read_data     = '0;
-      end
-      if (series_lost && m_bridge[n].sticky_status == DTP_J2A_SUCCESS) begin
-        m_bridge[n].sticky_status = DTP_J2A_DECERR;
-      end
-    end
-  endfunction
-
-  // A gated update changes nothing; the idle, disabled bridge clears its
-  // series read budget.
-  function void gated(string target);
-    m_bridge[target].series_reads_pushed = 0;
-  endfunction
-
-  // Which JTAG2AXI register a DR scan under instruction `ir` addressed,
-  // and its decoded request; SCAN_NONE when it is none of them or the
-  // scan length does not fit the register.
-  function dtp_j2a_scan_kind_e decode(bit [DtpIrWidth-1:0] ir, ocah_jtag_scan_item scan,
-                                      output dtp_j2a_target_t t, output dtp_j2a_request_t r);
+  // Which bridge register a DR scan under `ir` addressed; SCAN_NONE when the
+  // length does not fit it.
+  static function dtp_j2a_scan_kind_e classify(bit [DtpIrWidth-1:0] ir, ocah_jtag_scan_item scan,
+                                               output dtp_j2a_target_t t);
     dtp_j2a_scan_kind_e kind = dtp_j2a_classify_instr(ir, t);
-    r.kind = DTP_J2A_SCAN_NONE;
-    case (kind)
-      DTP_J2A_SCAN_SINGLE_OP: begin
-        if (scan.bit_count != dtp_j2a_single_op_len(t)) return DTP_J2A_SCAN_NONE;
-        dtp_j2a_decode_single_op(t, scan.tdi_bits, r);
-      end
-      DTP_J2A_SCAN_SERIES_CTRL: begin
-        if (scan.bit_count != dtp_j2a_series_ctrl_len(t)) return DTP_J2A_SCAN_NONE;
-        dtp_j2a_decode_series_ctrl(t, scan.tdi_bits, r);
-      end
-      DTP_J2A_SCAN_SERIES_DATA_INCR,
-            DTP_J2A_SCAN_SERIES_DATA_NO_INCR,
-            DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS: begin
-        int unsigned size = m_bridge[t.name].series_size;
-        if (scan.bit_count != dtp_j2a_series_data_len(kind, size)) return DTP_J2A_SCAN_NONE;
-        dtp_j2a_decode_series_data(kind, size, scan.tdi_bits, r);
-      end
-      default: return DTP_J2A_SCAN_NONE;
-    endcase
+    if (kind == DTP_J2A_SCAN_NONE || scan.bit_count != dtp_j2a_scan_len(kind))
+      return DTP_J2A_SCAN_NONE;
     return kind;
   endfunction
 
-  // Update-DR of a decoded request at `update_time`. Returns 1 and fills
-  // `exp` (direction, address, size, data, strobes) when the bridge
-  // launches an AXI transaction for it.
-  function bit update(dtp_j2a_target_t t, dtp_j2a_request_t r, time update_time,
-                      output ocah_axi_item exp);
-    apply_completions(t.name, update_time);
-    case (r.kind)
-      DTP_J2A_SCAN_SINGLE_OP:   return update_single_op(t, r, exp);
-      DTP_J2A_SCAN_SERIES_CTRL: begin
-                update_series_ctrl(t, r);
-                return 1'b0;
-            end
-      DTP_J2A_SCAN_SERIES_DATA_INCR,
-            DTP_J2A_SCAN_SERIES_DATA_NO_INCR,
-            DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS:
-                return update_series_data(t, r, exp);
-      default: return 1'b0;
-    endcase
-  endfunction
-
-  // An AXI completion observed on a bridge port, applied at the next
-  // capture or update that follows it in time. An orphan of a TAP reset is
-  // consumed and changes nothing. `disabled`: the bridge's lifecycle
-  // disable is asserted, so the requests issued behind the observed
-  // completions are dropped.
-  function void complete(string target, ocah_axi_item obs, bit disabled = 1'b0);
-    bit is_read = (obs.direction == OCAH_AXI_DIR_READ);
-    if (m_bridge[target].orphans[is_read] > 0) begin
-      m_bridge[target].orphans[is_read]--;
-      return;
-    end
-    m_completed_q[target].push_back(obs);
-    m_completed_tck_q[target].push_back(tck);
-    if (!disabled) return;
-    while (m_issued_q[target].size() > m_completed_q[target].size())
-    void'(m_issued_q[target].pop_back());
-  endfunction
-
-  // Expected capture of a SINGLE_OP or SERIES_CTRL scan whose Capture-DR
-  // happened at `capture_time`; a completion inside settle_window before
-  // it has not crossed into the TCK domain yet, so the capture carries no
-  // contract. Where a completion reached the port fewer than CdcResponseTck
-  // (six) TCK edges before a system reset, the prediction reads the DUT's
-  // captured status, `observed_status`, bounded to two values: the
-  // completion's status or DECERR. The first compared capture of that status
-  // settles the race, DECERR taking the discarded operation's status and any
-  // other value held to the completion's, so a reset at offset five from the
-  // handshake still accepts DECERR.
-  function void predict_capture(dtp_j2a_target_t t, dtp_j2a_scan_kind_e kind, time capture_time,
-                                dtp_j2a_status_e observed_status, dtp_jtag2axi_status_item exp);
-    string n = t.name;
-    bit decerr = (observed_status == DTP_J2A_DECERR);
-    apply_completions(n, capture_time);
-    exp.target  = n;
-    exp.kind    = kind;
+  // Expected Capture-DR of a DTMCS or DMI scan on TCK cycle `tck`, into
+  // `exp`; 0 when the capture is outside the model's scope.
+  function bit predict_capture(dtp_j2a_target_t t, dtp_j2a_scan_kind_e kind, int unsigned tck,
+                               dtp_jtag2axi_status_item exp);
+    bridge_t b = m_bridge[t.name];
+    if (!check_settled(t, tck, "capture")) return 1'b0;
     exp.compare = 1'b1;
-    if (m_bridge[n].completion_seen &&
-            ((capture_time - m_bridge[n].last_completion) < settle_window))
-      exp.compare = 1'b0;
-    if (kind == DTP_J2A_SCAN_SINGLE_OP) begin
-      if (m_bridge[n].single_uncertain) exp.compare = 1'b0;
-      if (exp.compare && m_bridge[n].single_alt && !m_bridge[n].single_pending) begin
-        m_bridge[n].single_alt = 1'b0;
-        exp.context_s = {exp.context_s, " (or DECERR: the response raced a system reset)"};
-        if (decerr) begin
-          m_bridge[n].last_single_status = DTP_J2A_DECERR;
-          m_bridge[n].last_read_data     = '0;
-        end
-      end
-      exp.status = m_bridge[n].single_pending ? DTP_J2A_BUSY_OR_FULL
-                                                    : m_bridge[n].last_single_status;
-      exp.compare_rdata = !m_bridge[n].single_pending && m_bridge[n].last_single_was_read &&
-                                (m_bridge[n].last_single_status == DTP_J2A_SUCCESS);
-      exp.rdata_mask = ocah_rng::bit_mask(t.data_width);
-      exp.rdata      = m_bridge[n].last_read_data & exp.rdata_mask;
-      return;
-    end
-    if (m_bridge[n].series_uncertain) exp.compare = 1'b0;
-    if (exp.compare && m_bridge[n].series_alt && !m_bridge[n].sticky_full) begin
-      m_bridge[n].series_alt = 1'b0;
-      exp.context_s = {exp.context_s, " (or DECERR: the response raced a system reset)"};
-      if (decerr) m_bridge[n].sticky_status = DTP_J2A_DECERR;
-    end
-    exp.status = m_bridge[n].sticky_full ? DTP_J2A_BUSY_OR_FULL : m_bridge[n].sticky_status;
-    exp.compare_rdata = 1'b0;
-  endfunction
-
-  // ------------------------------------------------------------------
-  // Update rules.
-  // ------------------------------------------------------------------
-
-  protected function bit update_single_op(dtp_j2a_target_t t, dtp_j2a_request_t r,
-                                          output ocah_axi_item exp);
-    string   n = t.name;
-    issued_t e;
-    if (r.op != DTP_J2A_OP_READ && r.op != DTP_J2A_OP_WRITE) return 1'b0;
-    if (m_bridge[n].single_pending) begin
-      // Rejected: the prior operation still completes and then
-      // overwrites this status.
-      m_bridge[n].sticky_full        = 1'b1;
-      m_bridge[n].last_single_status = DTP_J2A_BUSY_OR_FULL;
-      m_bridge[n].single_pending     = 1'b0;
-      return 1'b0;
-    end
-    m_bridge[n].single_pending       = 1'b1;
-    m_bridge[n].single_uncertain     = 1'b0;
-    m_bridge[n].single_alt           = 1'b0;
-    m_bridge[n].last_single_was_read = (r.op == DTP_J2A_OP_READ);
-    e.single      = 1'b1;
-    e.is_read     = (r.op == DTP_J2A_OP_READ);
-    e.incr        = 1'b0;
-    e.with_status = 1'b0;
-    e.size        = dtp_j2a_axsize(t, r.size);
-    m_issued_q[n].push_back(e);
-    exp = make_item(t, e.is_read ? OCAH_AXI_DIR_READ : OCAH_AXI_DIR_WRITE, r.addr, e.size);
-    if (!e.is_read) begin
-      exp.data_words.push_back(r.data & ocah_rng::bit_mask(t.data_width));
-      exp.strobes.push_back(r.wstrb & 8'(ocah_rng::bit_mask(t.wstrb_bits)));
+    exp.target  = t.name;
+    exp.kind    = kind;
+    if (kind == DTP_J2A_SCAN_DTMCS) begin
+      exp.expected = 64'(DtpExpectedDtmcs | (32'(b.error) << DtpDtmcsDmistatLsb));
+      exp.mask     = 64'hFFFF_FFFF;
+    end else begin
+      exp.expected = dtp_j2a_pack_dmi(b.address, b.data, b.error);
+      exp.mask     = dtp_j2a_pack_dmi('1, b.data_mask, '1);
     end
     return 1'b1;
   endfunction
 
-  protected function void update_series_ctrl(dtp_j2a_target_t t, dtp_j2a_request_t r);
-    string n = t.name;
-    if (r.op != DTP_J2A_OP_NOP) begin
-      m_bridge[n].series_op             = r.op;
-      m_bridge[n].series_size           = dtp_j2a_axsize(t, r.size);
-      // Series read requests one CTRL programming may enqueue: pl_depth + 1,
-      // where pl_depth ranges up to the bridge's rd_pl_depth (PTAP document,
-      // "*_AXI_SERIES_CTRL").
-      m_bridge[n].series_pipeline_depth = (r.pipeline_depth > t.rd_pl_depth)
-                                                ? t.rd_pl_depth : r.pipeline_depth;
-      m_bridge[n].series_addr           = r.addr & ocah_rng::bit_mask(t.addr_width);
-      m_bridge[n].series_reads_pushed   = 0;
+  // Update-DR of a DTMCS or DMI scan on TCK cycle `tck`; 1 with `launched`
+  // the bus transaction it starts. Completions at or before `visible` have
+  // reached the Debug Module; `gated` is the bridge's lifecycle disable.
+  function bit update(dtp_j2a_target_t t, dtp_j2a_scan_kind_e kind, bit [63:0] tdi,
+                      int unsigned tck, time visible, bit gated, output ocah_axi_item launched);
+    string        n = t.name;
+    dtp_dmi_t     dmi;
+    dm_response_t rsp;
+    launched = null;
+    if (kind == DTP_J2A_SCAN_DTMCS) begin
+      if (!tdi[DtpDtmcsDmiresetBit]) return 1'b0;
+      dmi = '{address: m_bridge[n].address, data: m_bridge[n].data, op: DTP_DMI_OP_CLEAR};
+    end else dmi = dtp_j2a_unpack_dmi(tdi);
+    if (!check_settled(t, tck, "update")) return 1'b0;
+    apply_completions(t, visible);
+    if (m_bridge[n].error != DTP_DMI_SUCCESS) begin
+      if (dmi.op == DTP_DMI_OP_CLEAR) m_bridge[n].error = DTP_DMI_SUCCESS;
+      return 1'b0;
     end
-    if (r.series_reset) begin
-      m_bridge[n].sticky_status    = DTP_J2A_SUCCESS;
-      m_bridge[n].sticky_full      = 1'b0;
-      m_bridge[n].series_uncertain = 1'b0;
-      m_bridge[n].series_alt       = 1'b0;
+    m_bridge[n].address   = dmi.address;
+    m_bridge[n].data      = dmi.data;
+    m_bridge[n].data_mask = '1;
+    if (dmi.op != DTP_DMI_OP_READ && dmi.op != DTP_DMI_OP_WRITE) return 1'b0;
+    m_bridge[n].op_seen     = 1'b1;
+    m_bridge[n].last_op_tck = tck;
+    if (dmi.op == DTP_DMI_OP_READ) begin
+      rsp = dm_read(t, dmi.address, gated, launched);
+      m_bridge[n].data      = rsp.data;
+      m_bridge[n].data_mask = rsp.data_mask;
+    end else rsp = dm_write(t, dmi.address, dmi.data, gated, launched);
+    if (rsp.busy) begin
+      m_bridge[n].error = DTP_DMI_BUSY;
+      if (dmi.op == DTP_DMI_OP_READ) begin
+        m_bridge[n].data      = DataBusy;
+        m_bridge[n].data_mask = '1;
+      end
     end
+    return launched != null;
   endfunction
 
-  protected function bit update_series_data(dtp_j2a_target_t t, dtp_j2a_request_t r,
-                                            output ocah_axi_item exp);
-    string       n    = t.name;
-    int unsigned size = m_bridge[n].series_size;
-    bit [63:0]   addr = m_bridge[n].series_addr;
-    int unsigned entries = m_bridge[n].series_pipeline_depth + 1;
-    int unsigned queued = 0;
-    bit          is_read = (m_bridge[n].series_op == DTP_J2A_OP_READ);
-    int unsigned reads_in_flight;
-    issued_t     e;
-    e.single      = 1'b0;
-    e.incr        = r.incr;
-    e.with_status = (r.kind == DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS);
-    e.size        = size;
-    if (m_bridge[n].series_op != DTP_J2A_OP_READ && m_bridge[n].series_op != DTP_J2A_OP_WRITE)
-      return 1'b0;
-    foreach (m_issued_q[n][i]) if (i > 0 && !m_issued_q[n][i].single) queued++;
-    reads_in_flight = int'((m_issued_q[n].size() > 0) && !m_issued_q[n][0].single &&
-                           m_issued_q[n][0].is_read);
-    if (queued >= entries || (is_read && reads_in_flight >= entries)) begin
-      if (is_read && m_bridge[n].series_reads_pushed >= entries) begin
-        m_bridge[n].series_uncertain = 1'b1;
-        if (e.with_status) m_bridge[n].single_uncertain = 1'b1;
-        return 1'b0;
-      end
-      m_bridge[n].sticky_full = 1'b1;
-      if (e.with_status) m_bridge[n].last_single_status = DTP_J2A_BUSY_OR_FULL;
-      return 1'b0;
+  // A transaction observed on a bridge port, applied at a later update.
+  function void complete(string target, ocah_axi_item observed);
+    if (m_bridge[target].orphans != 0) begin
+      m_bridge[target].orphans--;
+      return;
     end
-    if (m_bridge[n].series_op == DTP_J2A_OP_WRITE) begin
-      e.is_read = 1'b0;
-      m_issued_q[n].push_back(e);
-      exp = make_item(t, OCAH_AXI_DIR_WRITE, addr, size);
-      exp.data_words.push_back(dtp_j2a_series_wdata(t, r.data, addr, size));
-      exp.strobes.push_back(dtp_j2a_series_wstrb(t, addr, size));
-      return 1'b1;
-    end
-    if (m_bridge[n].series_op == DTP_J2A_OP_READ) begin
-      // Past the budget the bridge drops the push silently.
-      if (m_bridge[n].series_reads_pushed >= entries) return 1'b0;
-      if (!e.with_status) m_bridge[n].series_reads_pushed++;
-      e.is_read = 1'b1;
-      m_issued_q[n].push_back(e);
-      exp = make_item(t, OCAH_AXI_DIR_READ, addr, size);
-      return 1'b1;
-    end
+    m_completed_q[target].push_back(observed);
+  endfunction
+
+  // ------------------------------------------------------------------
+  // Debug Module.
+  // ------------------------------------------------------------------
+
+  protected static function dtp_sbcs_t sbcs_reset();
+    dtp_sbcs_t s = '0;
+    s.sbaccess = SbcsResetSbaccess;
+    return s;
+  endfunction
+
+  protected static function bridge_t new_bridge();
+    bridge_t b;
+    b.address        = '0;
+    b.data           = '0;
+    b.data_mask      = '1;
+    b.error          = DTP_DMI_SUCCESS;
+    b.op_seen        = 1'b0;
+    b.last_op_tck    = 0;
+    b.dmactive       = 1'b0;
+    b.ndmreset       = 1'b0;
+    b.ctrl           = sbcs_reset();
+    b.sbaddr         = '0;
+    b.sbdata         = '0;
+    b.sbdata_mask    = '1;
+    b.inflight_valid = 1'b0;
+    b.inflight       = '{is_read: 1'b0, size: 0, offset: 0};
+    b.orphans        = 0;
+    return b;
+  endfunction
+
+  // The Debug Module's synchronous reset while dmactive is 0.
+  protected function void reset_dm(string n);
+    m_bridge[n].ndmreset    = 1'b0;
+    m_bridge[n].ctrl        = sbcs_reset();
+    m_bridge[n].sbaddr      = '0;
+    m_bridge[n].sbdata      = '0;
+    m_bridge[n].sbdata_mask = '1;
+  endfunction
+
+  protected function void scope_error(dtp_j2a_target_t t, string msg);
+    `uvm_error("dtp_jtag2axi_model", {t.name, ": ", msg})
+  endfunction
+
+  protected function bit check_settled(dtp_j2a_target_t t, int unsigned tck, string what);
+    int unsigned since = tck - m_bridge[t.name].last_op_tck;
+    string       window = $sformatf("inside the %0d-TCK settle window", DtpDmiSettleTck);
+    if (!m_bridge[t.name].op_seen || since >= DtpDmiSettleTck) return 1'b1;
+    scope_error(t, $sformatf("%s %0d TCK after a DMI update, %s", what, since, window));
     return 1'b0;
   endfunction
 
-  // One single-beat expected transaction; the caller adds the write
-  // payload.
-  protected function ocah_axi_item make_item(dtp_j2a_target_t t, ocah_axi_dir_e dir,
-                                             bit [63:0] addr, int unsigned size);
-    ocah_axi_item item = ocah_axi_item::type_id::create("item");
-    item.protocol       = t.protocol;
-    item.direction      = dir;
-    item.address        = addr & ocah_rng::bit_mask(t.addr_width);
-    item.size           = size;
-    item.expected_beats = 1;
+  protected function bit [31:0] sbcs_value(dtp_j2a_target_t t);
+    dtp_sbcs_t s = m_bridge[t.name].ctrl;
+    if (!m_bridge[t.name].dmactive) return 32'(sbcs_reset());
+    s.sbversion  = 3'd1;
+    s.sbbusy     = m_bridge[t.name].inflight_valid;
+    s.sbasize    = 7'(t.addr_width);
+    s.sbaccess64 = (t.data_width >= 64);
+    s.sbaccess32 = 1'b1;
+    s.sbaccess16 = 1'b1;
+    s.sbaccess8  = 1'b1;
+    return 32'(s);
+  endfunction
+
+  // 1 when an sbaddress or sbdata access does not proceed: while sbbusyerror
+  // is set it is a busy response, which `rsp` returns, and while a bus access
+  // is outstanding it is outside the model's scope.
+  protected function bit sba_blocked(dtp_j2a_target_t t, bit [6:0] address,
+                                     inout dm_response_t rsp);
+    if (m_bridge[t.name].inflight_valid) begin
+      scope_error(t, $sformatf("DM register 0x%02h accessed during a bus access", address));
+      return 1'b1;
+    end
+    rsp.busy = m_bridge[t.name].ctrl.sbbusyerror;
+    return rsp.busy;
+  endfunction
+
+  protected function dm_response_t dm_read(dtp_j2a_target_t t, bit [6:0] address, bit gated,
+                                           output ocah_axi_item launched);
+    string        n = t.name;
+    dm_response_t rsp = '{data: '0, data_mask: '0, busy: 1'b0};
+    launched = null;
+    case (address)
+      DTP_DM_DMCONTROL: begin
+        rsp.data      = {30'd0, m_bridge[n].ndmreset, m_bridge[n].dmactive};
+        rsp.data_mask = 32'h3;
+      end
+      DTP_DM_SBCS: begin
+        // An outstanding access may complete before the read reaches the
+        // Debug Module.
+        dtp_sbcs_t unknown = '0;
+        if (m_bridge[n].dmactive && m_bridge[n].inflight_valid) begin
+          unknown.sbbusy  = 1'b1;
+          unknown.sberror = '1;
+        end
+        rsp.data      = sbcs_value(t);
+        rsp.data_mask = ~32'(unknown);
+      end
+      DTP_DM_SBADDRESS0, DTP_DM_SBADDRESS1: begin
+        if (m_bridge[n].inflight_valid) begin
+          scope_error(t, "sbaddress read while a bus access is outstanding");
+          return rsp;
+        end
+        rsp.data      = 32'(m_bridge[n].sbaddr >> ((address == DTP_DM_SBADDRESS0) ? 0 : 32));
+        rsp.data_mask = '1;
+      end
+      DTP_DM_SBDATA0, DTP_DM_SBDATA1: begin
+        int unsigned shift = (address == DTP_DM_SBDATA0) ? 0 : 32;
+        if (sba_blocked(t, address, rsp)) return rsp;
+        rsp.data      = 32'(m_bridge[n].sbdata >> shift);
+        rsp.data_mask = 32'(m_bridge[n].sbdata_mask >> shift);
+        if (address == DTP_DM_SBDATA0 && m_bridge[n].ctrl.sbreadondata &&
+            m_bridge[n].ctrl.sberror == 0)
+          launched = launch(t, 1'b1, gated);
+      end
+      default: ;
+    endcase
+    return rsp;
+  endfunction
+
+  protected function dm_response_t dm_write(dtp_j2a_target_t t, bit [6:0] address, bit [31:0] data,
+                                            bit gated, output ocah_axi_item launched);
+    string        n = t.name;
+    dm_response_t rsp = '{data: '0, data_mask: '0, busy: 1'b0};
+    int unsigned  shift;
+    launched = null;
+    case (address)
+      DTP_DM_DMCONTROL: begin
+        m_bridge[n].ndmreset = m_bridge[n].dmactive && data[1];
+        m_bridge[n].dmactive = data[0];
+        if (!data[0]) reset_dm(n);
+      end
+      DTP_DM_SBCS: begin
+        dtp_sbcs_t w = dtp_sbcs_t'(data);
+        if (m_bridge[n].inflight_valid) begin
+          scope_error(t, "sbcs written while a bus access is outstanding");
+          return rsp;
+        end
+        if (m_bridge[n].dmactive) begin
+          m_bridge[n].ctrl.sbreadonaddr    = w.sbreadonaddr;
+          m_bridge[n].ctrl.sbaccess        = w.sbaccess;
+          m_bridge[n].ctrl.sbautoincrement = w.sbautoincrement;
+          m_bridge[n].ctrl.sbreadondata    = w.sbreadondata;
+          if (w.sbbusyerror) m_bridge[n].ctrl.sbbusyerror = 1'b0;
+          if (w.sberror != 0) m_bridge[n].ctrl.sberror = '0;
+        end
+      end
+      DTP_DM_SBADDRESS0, DTP_DM_SBADDRESS1: begin
+        if (sba_blocked(t, address, rsp) || !m_bridge[n].dmactive) return rsp;
+        shift = (address == DTP_DM_SBADDRESS0) ? 0 : 32;
+        m_bridge[n].sbaddr =
+            ((m_bridge[n].sbaddr & ~(64'hFFFF_FFFF << shift)) | (64'(data) << shift)) &
+            ocah_rng::bit_mask(t.addr_width);
+        if (address == DTP_DM_SBADDRESS0 && m_bridge[n].ctrl.sbreadonaddr &&
+            m_bridge[n].ctrl.sberror == 0)
+          launched = launch(t, 1'b1, gated);
+      end
+      DTP_DM_SBDATA0, DTP_DM_SBDATA1: begin
+        if (sba_blocked(t, address, rsp)) return rsp;
+        shift = (address == DTP_DM_SBDATA0) ? 0 : 32;
+        if (m_bridge[n].dmactive) begin
+          m_bridge[n].sbdata =
+              (m_bridge[n].sbdata & ~(64'hFFFF_FFFF << shift)) | (64'(data) << shift);
+          m_bridge[n].sbdata_mask |= 64'hFFFF_FFFF << shift;
+        end
+        if (address == DTP_DM_SBDATA0 && m_bridge[n].ctrl.sberror == 0)
+          launched = launch(t, 1'b0, gated);
+      end
+      default: ;
+    endcase
+    return rsp;
+  endfunction
+
+  // ------------------------------------------------------------------
+  // System bus access.
+  // ------------------------------------------------------------------
+
+  protected function ocah_axi_item launch(dtp_j2a_target_t t, bit is_read, bit gated);
+    string        n = t.name;
+    int unsigned  size = m_bridge[n].ctrl.sbaccess;
+    access_t      access;
+    bit    [63:0] written;
+    bit    [63:0] wdata;
+    ocah_axi_item item;
+
+    bit [7:0] lanes;
+    // The alignment error takes precedence over the size error.
+    if ((m_bridge[n].sbaddr & ocah_rng::bit_mask(size)) != 0) begin
+      m_bridge[n].ctrl.sberror = SberrorAlign;
+      return null;
+    end
+    if (size > t.default_size) begin
+      m_bridge[n].ctrl.sberror = SberrorSize;
+      return null;
+    end
+    access = '{is_read: is_read, size: size, offset: int'(m_bridge[n].sbaddr % t.beat_bytes)};
+    if (gated) begin
+      finish(t, access, 1'b1, err_slave_beat(t));
+      return null;
+    end
+    lanes   = 8'(dtp_j2a_full_wstrb(size) << access.offset);
+    written = dtp_j2a_strobe_lanes(lanes);
+    if (!is_read && ((m_bridge[n].sbdata_mask << (8 * access.offset)) & written) != written) begin
+      scope_error(t, "bus write of sbdata bits without a contract");
+      return null;
+    end
+    m_bridge[n].inflight_valid = 1'b1;
+    m_bridge[n].inflight       = access;
+    item                       = ocah_axi_item::type_id::create("item");
+    item.protocol              = t.protocol;
+    item.direction             = is_read ? OCAH_AXI_DIR_READ : OCAH_AXI_DIR_WRITE;
+    item.address               = m_bridge[n].sbaddr;
+    item.size                  = size;
+    item.expected_beats        = 1;
+    if (!is_read) begin
+      wdata = (m_bridge[n].sbdata << (8 * access.offset)) & ocah_rng::bit_mask(t.data_width);
+      item.data_words.push_back(wdata);
+      item.strobes.push_back(lanes);
+    end
     return item;
   endfunction
 
-  // ------------------------------------------------------------------
-  // Completion rules.
-  // ------------------------------------------------------------------
-
-  // Launched requests of one direction that no observed completion has
-  // matched.
-  protected function int unsigned outstanding(string n, bit is_read);
-    int unsigned launched = 0;
-    int unsigned landed = 0;
-    foreach (m_issued_q[n][i]) if (m_issued_q[n][i].is_read == is_read) launched++;
-    foreach (m_completed_q[n][i]) begin
-      if ((m_completed_q[n][i].direction == OCAH_AXI_DIR_READ) == is_read) landed++;
-    end
-    return (launched > landed) ? launched - landed : 0;
+  protected static function bit [63:0] err_slave_beat(dtp_j2a_target_t t);
+    return {2{ErrSlaveWord}} & ocah_rng::bit_mask(t.data_width);
   endfunction
 
-  protected function void apply_completions(string n, time before_time);
-    while (m_completed_q[n].size() > 0 && (m_completed_q[n][0].end_time <= before_time)) begin
-      ocah_axi_item obs = m_completed_q[n].pop_front();
-      int unsigned  obs_tck = m_completed_tck_q[n].pop_front();
-      apply_completion(n, obs, obs_tck);
+  protected function void finish(dtp_j2a_target_t t, access_t access, bit resp_error,
+                                 bit [63:0] rdata);
+    string n = t.name;
+    m_bridge[n].inflight_valid = 1'b0;
+    if (!m_bridge[n].dmactive) return;
+    if (resp_error) m_bridge[n].ctrl.sberror = SberrorBus;
+    m_bridge[n].sbdata = (rdata >> (8 * access.offset)) & ocah_rng::bit_mask(t.data_width);
+    m_bridge[n].sbdata_mask = access.is_read ? ocah_rng::bit_mask(t.data_width) : '0;
+    if (m_bridge[n].ctrl.sbautoincrement) begin
+      m_bridge[n].sbaddr += dtp_j2a_size_bytes(access.size);
+      m_bridge[n].sbaddr &= ocah_rng::bit_mask(t.addr_width);
     end
   endfunction
 
-  protected function void apply_completion(string n, ocah_axi_item obs, int unsigned obs_tck);
-    dtp_j2a_target_t t  = dtp_j2a_target_by_name(n);
-    dtp_j2a_status_e st = dtp_j2a_axi_resp_to_status(obs.worst_resp());
-    issued_t         e;
-    m_bridge[n].completion_seen = 1'b1;
-    m_bridge[n].last_completion = obs.end_time;
-    m_bridge[n].last_completion_tck = obs_tck;
-    m_bridge[n].last_completion_single = 1'b0;
-    m_bridge[n].last_completion_series = 1'b0;
-    // A completion nothing launched: the scoreboard reports it as an
-    // unpredicted transaction; the bridge state has no entry to update.
-    if (m_issued_q[n].size() == 0) return;
-    e = m_issued_q[n].pop_front();
-    m_bridge[n].last_completion_single = e.single || e.with_status;
-    m_bridge[n].last_completion_series = !e.single;
-    m_bridge[n].sticky_before_completion = m_bridge[n].sticky_status;
-    if (!e.single && m_bridge[n].sticky_status == DTP_J2A_SUCCESS) m_bridge[n].sticky_status = st;
-    if (e.single || e.with_status) m_bridge[n].last_single_status = st;
-    if (e.single) begin
-      m_bridge[n].single_pending = 1'b0;
-      if (e.is_read)
-        m_bridge[n].last_read_data = obs.first_data() & ocah_rng::bit_mask(t.data_width);
-    end else if (e.with_status && e.is_read)
-      m_bridge[n].last_read_data = dtp_j2a_series_rdata(t, obs.first_data(), obs.address, e.size);
-    if (!e.single && e.incr)
-      m_bridge[n].series_addr = (m_bridge[n].series_addr + dtp_j2a_size_bytes(
-          e.size
-      )) & ocah_rng::bit_mask(
-          t.addr_width
-      );
+  protected function void apply_completions(dtp_j2a_target_t t, time visible);
+    string n = t.name;
+    while (m_completed_q[n].size() > 0 && m_completed_q[n][0].end_time <= visible) begin
+      ocah_axi_item observed = m_completed_q[n].pop_front();
+      // A transaction nothing launched: the scoreboard reports it as
+      // unpredicted.
+      if (m_bridge[n].inflight_valid)
+        finish(t, m_bridge[n].inflight,
+               observed.worst_resp() inside {OCAH_AXI_RESP_SLVERR, OCAH_AXI_RESP_DECERR},
+               (observed.direction == OCAH_AXI_DIR_READ) ? observed.first_data() : '0);
+    end
   endfunction
 
 endclass : dtp_jtag2axi_model
+
+// The scan, TCK-event and port streams applied to one dtp_jtag2axi_model,
+// shared by the two JTAG2AXI reference models: a DR scan addressing a bridge
+// register yields its expected capture when the PTAP 3DCR select is clear,
+// its Update-DR is applied on the TCK cycle that leaves Update-DR, and the
+// transaction it launches is returned from on_event with the bridge's name.
+// The debug disable of the bridge is read from dtp_tb_if at that cycle.
+class dtp_jtag2axi_tracker;
+
+  virtual dtp_tb_if             tb_vif;
+  dtp_jtag_ir_model             ir;
+  dtp_jtag2axi_model            bridges;
+  protected string              m_target_by_source[string];
+  protected bit          [31:0] m_sys_rst_seen;
+  protected int unsigned        m_tck;
+  protected int unsigned        m_capture_tck;
+  protected time                m_prev_step;
+  // The bridge scan waiting for the TAP to leave Update-DR.
+  protected bit                 m_pending;
+  protected dtp_j2a_target_t    m_pending_target;
+  protected dtp_j2a_scan_kind_e m_pending_kind;
+  protected bit          [63:0] m_pending_tdi;
+
+  function new(virtual dtp_tb_if tb_vif);
+    this.tb_vif = tb_vif;
+    ir          = new();
+    bridges     = new();
+  endfunction
+
+  // Name the monitor whose items carry a bridge's transactions.
+  function void bind_port(string target, string source);
+    m_target_by_source[source] = target;
+  endfunction
+
+  // One reconstructed scan; its expected capture, or no contract.
+  function dtp_jtag2axi_status_item on_scan(ocah_jtag_scan_item t);
+    dtp_jtag2axi_status_item exp = dtp_jtag2axi_status_item::type_id::create("exp");
+    dtp_j2a_target_t         target;
+    dtp_j2a_scan_kind_e      kind;
+    exp.compare   = 1'b0;
+    exp.timestamp = t.end_time;
+    sync_reset();
+    if (t.is_ir) begin
+      ir.on_ir_scan(t);
+      return exp;
+    end
+    ir.on_dr_scan(t);
+    if (!ir.ir_known()) return exp;
+    kind = dtp_jtag2axi_model::classify(ir.ir(), t, target);
+    if (kind == DTP_J2A_SCAN_NONE) return exp;
+    m_pending        = 1'b1;
+    m_pending_target = target;
+    m_pending_kind   = kind;
+    m_pending_tdi    = t.tdi_value();
+    if (!ir.ptap_select_clear()) return exp;
+    exp.context_s = $sformatf("%s %s tdi=0x%0h", target.name, kind.name(), m_pending_tdi);
+    void'(bridges.predict_capture(target, kind, m_capture_tck, exp));
+    return exp;
+  endfunction
+
+  // One TCK event; 1 with the bridge and transaction an update on it
+  // launches.
+  function bit on_event(ocah_jtag_event t, output string target, output ocah_axi_item launched);
+    bit started = 1'b0;
+    bit gated;
+    launched = null;
+    sync_reset();
+    if (t.kind == OCAH_JTAG_EV_STEP && t.trst_n) begin
+      m_tck++;
+      if (ir.tap_state() == OCAH_JTAG_CAPTURE_DR) m_capture_tck = m_tck;
+      else if (ir.tap_state() == OCAH_JTAG_UPDATE_DR && m_pending) begin
+        m_pending = 1'b0;
+        target    = m_pending_target.name;
+        gated     = dtp_dbg_path_disabled(tb_vif.dbg_disable, m_pending_target.dbg_path);
+        started   = bridges.update(m_pending_target, m_pending_kind, m_pending_tdi, m_tck,
+                                   m_prev_step, gated, launched);
+      end
+      m_prev_step = t.timestamp;
+    end
+    void'(ir.on_event(t));
+    if (ir.take_tap_reset()) m_pending = 1'b0;
+    return started;
+  endfunction
+
+  function void on_axi(ocah_axi_item t);
+    if (!m_target_by_source.exists(t.source))
+      `uvm_fatal("dtp_jtag2axi_tracker", $sformatf("AXI item from unbound port `%s`", t.source))
+    bridges.complete(m_target_by_source[t.source], t);
+  endfunction
+
+  // Power-on reset resets the TAP; a system reset resets every bridge.
+  protected function void sync_reset();
+    void'(ir.sync_power_on_reset(tb_vif.por_assert_count));
+    if (ir.take_tap_reset()) m_pending = 1'b0;
+    if (tb_vif.sys_rst_assert_count !== m_sys_rst_seen) begin
+      m_sys_rst_seen = tb_vif.sys_rst_assert_count;
+      bridges.reset();
+    end
+  endfunction
+
+endclass : dtp_jtag2axi_tracker

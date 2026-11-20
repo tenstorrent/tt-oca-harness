@@ -88,7 +88,8 @@ the mux inputs is used.
 The elements covered are `prim_flop_2sync`, `prim_sync3/4` and their reset
 variants, the pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
 `avsbus_async_fifo`, `cdc_fifo_gray`, `axi_cdc`, `prim_reg_cdc`,
-`prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`, `dmi_wrapper` and
+`prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`,
+`cdc_2phase_clearable`, `dmi_wrapper` and
 Rocket `AsyncQueue`.
 
 The bound depends on what protects the crossing:
@@ -107,7 +108,7 @@ The bound depends on what protects the crossing:
 
 | Two-phase handshake nets
 | `min(T_src, T_dst)`
-| `cdc_2phase` runs the handshake in both directions, so the tighter domain governs. This is the module's own stated requirement.
+| `cdc_2phase` and `cdc_2phase_clearable` run the handshake in both directions, so the tighter domain governs. This is the module's own stated requirement.
 |===
 
 `T_dst` rather than `min(T_src, T_dst)` in the general case because the gating
@@ -289,16 +290,17 @@ summarises the layout.
 
 | SMC | 365 | 412
 | SEP | 18 | 21
-| DTP | 250 | 270
-| SMU | 758 | 838
+| DTP | 48 | 48
+| SMU | 431 | 481
 |===
 
 SMU is a flat build containing the other three, so its instance paths carry
-`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. The SMU row has more CDC
-elements than the sum of the other three rows because the SMU instantiates a
-larger DTP. The DTP contains three JTAG2AXI bridges in the SMU configuration and
-only two when it is on its own. These configurations give the DTP 375 and 250
-elements, respectively.
+`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. All DTP elements belong to
+its three JTAG2AXI bridges. Each bridge has 16: the DMI request crossing and the
+DMI response crossing, each with its two handshake synchronizers and the four
+synchronizers of its reset controller, and the reset synchronizer of each clock
+domain. `hw/sys/dtp/synth/dtp_cdc_max_delay.tcl` and
+`hw/sys/smu/synth/smu_cdc_max_delay.tcl` list them.
 
 [[cdc-integration-checklist]]
 == Integration checklist

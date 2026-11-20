@@ -104,22 +104,19 @@ from seq_lib.smu_dtp_sep_ic_reset_effect_test_seq import (
     SBA_POLL_LIMIT,
     SEP_HELD,
     SEP_STAGED,
-    WSTRB_FULL,
 )
 from seq_lib.smu_filter_helpers import PASS_ALL_END, PASS_RW_CONFIG
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_IC_RESET,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     J2A_OP_READ,
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
-    SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
     SMU_IC_RESET_LEN,
-    pack_single_op,
-    unpack_single_op,
+    Jtag2AxiScanPort,
+    jtag2axi_start,
+    jtag2axi_status,
 )
 from seq_lib.smu_sep_reset_inflight_test_seq import (
     AARSIZE_32,
@@ -292,21 +289,17 @@ DMA_NOT_DRIVABLE = (
 )
 DTP_NOT_DRIVABLE = (
     "INFO-CELL-NOT-DRIVABLE: LOAD/dtp_dbg JTAG2AXI write and read toward the SEP SRAM outstanding "
-    "at the fall; hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_JTAG2AXI_CAPS rd_pl_depth and "
-    'wr_pl_depth: "0 indicates only a single outstanding transaction allowed at any given time", '
-    'and *_AXI_SINGLE_OP op: "The latest operation was attempted before the previous operation '
-    "completed; the previous AXI request is still in progress. The operation attempted in this "
-    'access will be ignored"; the bridge drives its own BREADY and RREADY, so the bench cannot '
-    "hold its response as it holds the ext_in ones, and the SEP SRAM answers within the S3 "
-    "captures, so the one operation the port takes completes before the two IC_RESET scans that "
-    "lead to the fall"
+    "at the fall; the bridge's System Bus Access holds one access at a time and refuses a start "
+    "while sbcs.sbbusy is set (vendor/pulp-platform/riscv-dbg/upstream/src/dm_csrs.sv); the "
+    "bridge drives its own BREADY and RREADY, so the bench cannot hold its response as it holds "
+    "the ext_in ones, and the SEP SRAM answers within the S3 samples, so the one access the port "
+    "takes completes before the two IC_RESET scans that lead to the fall"
 )
 BRIDGE_HELD = (
     "INFO-CELL-NOT-DRIVABLE: SMC_OUT/to-ext-during JTAG2AXI write and read to ext_out while "
-    'sep_reset_n is low; hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_AXI_SINGLE_OP op: "The '
-    "latest operation was attempted before the previous operation completed; the previous AXI "
-    'request is still in progress. The operation attempted in this access will be ignored"; the '
-    "S4 read into the held SEP stays outstanding (OBS-G2B-RESET-ENDS)"
+    "sep_reset_n is low; the bridge's System Bus Access refuses a start while sbcs.sbbusy is "
+    "set (vendor/pulp-platform/riscv-dbg/upstream/src/dm_csrs.sv); the S4 read into the held "
+    "SEP stays outstanding (OBS-G2B-RESET-ENDS)"
 )
 SMC_APERTURE_ATTRS = (
     "hw/sys/sep/doc/fabric.adoc sep-outbound-attributes-table: SMC aperture, AxUSER the "
@@ -378,6 +371,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         super().__init__(test)
         test.declare_evidence(*EVIDENCE)
         self.mem = None
+        self.j2a_held = None
         self.term = "SETUP"
         self.used: dict[str, Counter] = {t: Counter() for t in FENCE}
         self.config = Counter()
@@ -830,32 +824,32 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "issued_id": len(same),
         }
 
-    async def _j2a_obs(self, op: int, addr: int, data: int, label: str, captures: int) -> dict:
-        """A JTAG2AXI operation whose outcome is observed over ``captures`` status captures.
+    def _j2a_port(self) -> Jtag2AxiScanPort:
+        return Jtag2AxiScanPort(self._ptap_scan, self.jtag)
 
-        An operation attempted while the port holds another is ignored by the
-        bridge (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, AXI_SINGLE_OP op
-        field); the issue scan's capture records the state it met.
+    async def _j2a_held_status(self) -> int:
+        """Status of the last ``_j2a_obs`` access, SUCCESS when there is none."""
+        if self.j2a_held is None:
+            return J2A_STATUS_SUCCESS
+        status, _ = await jtag2axi_status(self._j2a_port(), self.j2a_held)
+        return status
+
+    async def _j2a_obs(self, op: int, addr: int, data: int, label: str, captures: int) -> dict:
+        """A JTAG2AXI access whose outcome is observed over ``captures`` status samples.
+
+        System Bus Access refuses a start while another access is outstanding, so
+        an access met by an outstanding one is not started, and the samples
+        observe the outstanding one. ``met`` is the status the attempt met.
         """
         mks = self._marks()
-        wstrb = WSTRB_FULL if op == J2A_OP_WRITE else 0
-        raw = pack_single_op(op, addr, data, wstrb=wstrb, size=SMC_DBG_AXSIZE_8B)
         issued_at = _now()
-        cap, _ = await self._dr(
-            DTP_IR_SMC_AXI_SINGLE_OP, raw, SMC_DBG_SINGLE_OP_LEN, f"{label}_issue"
-        )
+        met = await self._j2a_held_status()
+        if met != J2A_STATUS_BUSY:
+            self.j2a_held = await jtag2axi_start(self._j2a_port(), op, addr, data)
         self._use("j2a")
-        met, _ = unpack_single_op(cap)
         status, rdata, used = J2A_STATUS_BUSY, 0, 0
         for used in range(1, captures + 1):
-            cap, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=False,
-            )
-            status, rdata = unpack_single_op(cap)
+            status, rdata = await jtag2axi_status(self._j2a_port(), self.j2a_held)
             if status != J2A_STATUS_BUSY:
                 break
             await ClockCycles(self.dut.clk_smu_i, CAPTURE_POLL_CLK)
@@ -882,14 +876,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         """Bounded: the JTAG2AXI port leaves busy before a graded operation is issued."""
         status, used = J2A_STATUS_BUSY, 0
         while True:
-            cap, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=False,
-            )
-            status, _ = unpack_single_op(cap)
+            status = await self._j2a_held_status()
             used += 1
             if status != J2A_STATUS_BUSY or used >= J2A_IDLE_POLLS:
                 break
@@ -1382,10 +1369,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             if label is None:
                 await self._tlr()
                 continue
-            cap, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP, 0, SMC_DBG_SINGLE_OP_LEN, label, counted=False
-            )
-            tlr.append(unpack_single_op(cap)[0])
+            tlr.append(await self._j2a_held_status())
         self._use("dmi", 2)
         dmactive = await self._activate_debug_module("s6")
         await self._halt("s6")

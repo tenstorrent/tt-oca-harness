@@ -3,19 +3,38 @@
 """SMU JTAG / JTAG2AXI helpers.
 
 Every opcode, field position and geometry constant in this module is a
-DV-owned table. The instruction opcodes come from the DTP bench's
-``dtp_types`` module; everything else is transcribed from the PTAP
-architecture document, the SMU design specification and the Integrator
-Guide, cited next to the value.
+DV-owned table. The instruction opcodes, the JTAG2AXI bridge TDR names and
+the DMI and ``sbcs`` encodings come from the DTP bench's ``dtp_types``
+module; everything else is transcribed from the PTAP architecture document,
+the SMU design specification and the Integrator Guide, cited next to the
+value.
+
+A JTAG2AXI access is a RISC-V System Bus Access through the bridge's Debug
+Module, reached by scans of its 41-bit DMI TDR.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional
 
 import cocotb
-from cocotb.triggers import ClockCycles
-from dtp_types import DTP_IR_WIDTH, DtpJtagInstr
+from dtp_types import (
+    DMI_LEN,
+    DTMCS_LEN,
+    DTP_DMI_SETTLE_TCK,
+    DTP_IR_WIDTH,
+    JTAG2AXI_TARGETS,
+    DtpDmiOp,
+    DtpDmiStatus,
+    DtpDmReg,
+    DtpJtag2AxiTargetCfg,
+    DtpJtagInstr,
+    pack_dmi,
+    pack_sbcs,
+    unpack_dmi,
+    unpack_sbcs,
+)
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
 from seq_lib.smu_tb_pins import smu_scope
@@ -37,52 +56,6 @@ def dtp_ir_opcode(name: str) -> int:
 
 # hw/ip/jtag/jtag_ptap/doc/architecture.adoc, "JTAG Capabilities" table.
 DTP_JTAG_CAPS_SEP_DBG_EN_BIT = 42
-
-# Same document, "JTAG2AXI Support" / "*_JTAG2AXI_CAPS" table:
-#   [13:12] rd_pl_depth, [11:10] wr_pl_depth, [9:7] data_size (log2 of the
-#   AxDATA width in bytes), [6:1] addr_size (AxADDR width in bits),
-#   [0] bus_type (0: AXI4, 1: AXI4-Lite).
-JTAG2AXI_CAPS_RD_PL_DEPTH_LSB = 12
-JTAG2AXI_CAPS_WR_PL_DEPTH_LSB = 10
-JTAG2AXI_CAPS_DATA_SIZE_LSB = 7
-JTAG2AXI_CAPS_ADDR_SIZE_LSB = 1
-JTAG2AXI_CAPS_BUS_TYPE_LSB = 0
-JTAG2AXI_CAPS_DATA_SIZE_4B = 2
-JTAG2AXI_CAPS_DATA_SIZE_8B = 3
-JTAG2AXI_CAPS_BUS_AXI4 = 0
-JTAG2AXI_CAPS_BUS_AXI4_LITE = 1
-
-# doc/integrator/src/smu.adoc, "SMU Default Parameters": SMC_OTP_RD/WR_PL_DEPTH
-# and SMC_RD/WR_PL_DEPTH default to 2'h3; the SEP OTP depths are fixed at 3.
-SMU_JTAG2AXI_RD_PL_DEPTH = 3
-SMU_JTAG2AXI_WR_PL_DEPTH = 3
-# doc/integrator/src/smu.adoc, "AXI Interface Configuration": "a 56-bit address
-# space with 64-bit data width".
-# The fabric bridge is the AXI4 instance and the OTP bridges the AXI-Lite
-# instances of the PTAP "Module Hierarchy" table; the OTP word is 32 bits
-# (hw/ip/efuse/doc/interface.adoc) and the eFuse AXI-Lite interface is
-# 32-bit (doc/integrator/src/smu.adoc, "eFuse Interface").
-SMU_FABRIC_J2A_ADDR_BITS = 56
-SMU_OTP_J2A_ADDR_BITS = 32
-
-
-def pack_jtag2axi_caps(
-    *,
-    rd_pl: int,
-    wr_pl: int,
-    data_size: int,
-    addr_size: int,
-    bus_type: int,
-) -> int:
-    """Pack a 14-bit *_JTAG2AXI_CAPS word."""
-    return (
-        (int(rd_pl) << JTAG2AXI_CAPS_RD_PL_DEPTH_LSB)
-        | (int(wr_pl) << JTAG2AXI_CAPS_WR_PL_DEPTH_LSB)
-        | (int(data_size) << JTAG2AXI_CAPS_DATA_SIZE_LSB)
-        | (int(addr_size) << JTAG2AXI_CAPS_ADDR_SIZE_LSB)
-        | (int(bus_type) << JTAG2AXI_CAPS_BUS_TYPE_LSB)
-    )
-
 
 # IDCODE with every JTAG_IDCODE_* parameter at the default given in
 # doc/integrator/src/smu.adoc, "SMU Default Parameters" (MFR_ID 11'h000,
@@ -113,22 +86,11 @@ def stap_3dcr_payload(*, config_hold: int, stap_sel: int, tms_hold: int) -> int:
     return (config_hold & 0x1) | ((stap_sel & 0x1) << 1) | ((tms_hold & 0x1) << 2)
 
 
-DTP_IR_SMC_AXI_SINGLE_OP = dtp_ir_opcode("SMC_AXI_SINGLE_OP")
-DTP_IR_SMC_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_JTAG2AXI_CAPS")
-DTP_IR_SMC_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_AXI_SERIES_CTRL")
-DTP_IR_SMC_AXI_SERIES_DATA_INCR = dtp_ir_opcode("SMC_AXI_SERIES_DATA_INCR")
-DTP_IR_SMC_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_OTP_JTAG2AXI_CAPS")
-DTP_IR_SMC_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SMC_OTP_AXI_SINGLE_OP")
-DTP_IR_SMC_OTP_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_OTP_AXI_SERIES_CTRL")
-DTP_IR_SMC_OTP_AXI_SERIES_DATA_NO_INCR = dtp_ir_opcode("SMC_OTP_AXI_SERIES_DATA_NO_INCR")
-DTP_IR_SEP_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SEP_OTP_JTAG2AXI_CAPS")
-DTP_IR_SEP_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SEP_OTP_AXI_SINGLE_OP")
 DTP_IR_JTAG_CAPS = dtp_ir_opcode("JTAG_CAPS")
 # IEEE 1149.1 all-ones BYPASS encoding; the instruction table also decodes
 # 0x00 as BYPASS.
 DTP_IR_BYPASS = dtp_ir_opcode("BYPASS_3F")
 DTP_DEBUG_CONTROL_LEN = 5
-DTP_JTAG2AXI_CAPS_LEN = 14
 DTP_JTAG_CAPS_LEN = 60
 # Compact OSS BSR loopback model (scan_in <- scan_out); matches DTP OSS.
 DTP_BSR_MODEL_LEN = 8
@@ -218,26 +180,13 @@ def ic_reset_control_bit(port: int) -> int:
     return 2 + 2 * int(port)
 
 
-SMC_DBG_SINGLE_OP_LEN = 132  # OP2|SIZE2|WSTRB8|DATA64|ADDR56
+# Access sizes as AxSIZE and sbcs.sbaccess both encode them: log2 of the bytes.
 SMC_DBG_AXSIZE_8B = 3
 SMC_DBG_AXSIZE_4B = 2
-# SMC fabric SERIES_CTRL: OP2|SIZE2|PL_DEPTH2|ADDR56|RESET1 = 63
-SMC_DBG_SERIES_CTRL_LEN = 63
-# SERIES_DATA_* payload for AxSIZE=8B.
-SMC_DBG_SERIES_DATA_LEN = 64
-# OTP bridge: OP2|SIZE2|WSTRB4|DATA32|ADDR32 = 72
-SMC_OTP_SINGLE_OP_LEN = 72
-# OTP SERIES_CTRL: OP2|SIZE2|PL_DEPTH2|ADDR32|RESET1 = 39
-SMC_OTP_SERIES_CTRL_LEN = 39
-# OTP SERIES_DATA_NO_INCR payload for AxSIZE=4B (default OTP size).
-SMC_OTP_SERIES_DATA_NO_INCR_LEN = 32
 SMC_OTP_AXSIZE_4B = 2
 # hw/ip/efuse/doc/architecture.adoc, "Access Permissions and Security": the
 # eFuse controller's error slave answers with data 0xbadcab1e.
 SMC_OTP_ERR_DECODE_DATA = 0xBADC_AB1E
-# Relative OTP probe (routes to the SHIM when the MAP base is absolute).
-SMC_OTP_DEFAULT_PROBE_ADDR = 0x80
-
 # hw/ip/jtag/jtag_ptap/doc/architecture.adoc Debug Control TDR table:
 # bit 0 boot_stall, bit 1 boot_stall_ovrd (no PeakRDL #define).
 DBG_BOOT_STALL_BIT = 0
@@ -246,29 +195,19 @@ DBG_CLA_CLOCK_STOP_EN_BIT = 2
 DBG_JTAG_CLOCK_STOP_BIT = 3
 DBG_CLA_CLOCK_STOP_BIT = 4  # status readback (CLA / CTN OR)
 
-J2A_OP_NOP = 0
-J2A_OP_READ = 1
-J2A_OP_WRITE = 2
+# Outcome of one JTAG2AXI access as the transports below return it.
+# System Bus Access reports SLVERR and DECERR alike as sberror 2, which
+# returns J2A_STATUS_DECERR, so no access returns J2A_STATUS_SLVERR.
+# J2A_STATUS_BUSY is an access outstanding when the poll budget runs out.
 J2A_STATUS_SUCCESS = 0
 J2A_STATUS_SLVERR = 1
 J2A_STATUS_DECERR = 2
 J2A_STATUS_BUSY = 3
-
-DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS = pack_jtag2axi_caps(
-    rd_pl=SMU_JTAG2AXI_RD_PL_DEPTH,
-    wr_pl=SMU_JTAG2AXI_WR_PL_DEPTH,
-    data_size=JTAG2AXI_CAPS_DATA_SIZE_4B,
-    addr_size=SMU_OTP_J2A_ADDR_BITS,
-    bus_type=JTAG2AXI_CAPS_BUS_AXI4_LITE,
-)
-DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS = DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS
-DTP_EXPECTED_SMC_JTAG2AXI_CAPS = pack_jtag2axi_caps(
-    rd_pl=SMU_JTAG2AXI_RD_PL_DEPTH,
-    wr_pl=SMU_JTAG2AXI_WR_PL_DEPTH,
-    data_size=JTAG2AXI_CAPS_DATA_SIZE_8B,
-    addr_size=SMU_FABRIC_J2A_ADDR_BITS,
-    bus_type=JTAG2AXI_CAPS_BUS_AXI4,
-)
+J2A_STATUS_NAME = {
+    J2A_STATUS_SUCCESS: "OKAY",
+    J2A_STATUS_DECERR: "bus error",
+    J2A_STATUS_BUSY: "BUSY (outstanding)",
+}
 
 
 def pack_ic_reset_ports(
@@ -304,30 +243,6 @@ def pack_debug_control(
     )
 
 
-def pack_single_op(
-    op: int,
-    addr: int,
-    data: int = 0,
-    wstrb: int = 0,
-    size: int = SMC_DBG_AXSIZE_8B,
-) -> int:
-    """Pack SMC_AXI_SINGLE_OP DR (LSB-first): OP|SIZE|WSTRB|DATA|ADDR."""
-    return (
-        (int(op) & 0x3)
-        | ((size & 0x3) << 2)
-        | ((wstrb & 0xFF) << 4)
-        | ((data & ((1 << 64) - 1)) << 12)
-        | ((addr & ((1 << 56) - 1)) << 76)
-    )
-
-
-def unpack_single_op(value: int) -> tuple[int, int]:
-    """Return (status, rdata) from captured SINGLE_OP DR."""
-    status = int(value) & 0x3
-    rdata = (int(value) >> 12) & ((1 << 64) - 1)
-    return status, rdata
-
-
 def apply_axi_wstrb(prev: int, data: int, wstrb: int, nbytes: int) -> int:
     """Merge ``data`` into ``prev`` for each set WSTRB lane in ``nbytes``."""
     out = int(prev)
@@ -338,40 +253,15 @@ def apply_axi_wstrb(prev: int, data: int, wstrb: int, nbytes: int) -> int:
     return out
 
 
-def pack_smc_series_ctrl(
-    op: int,
-    addr: int,
-    *,
-    pipeline_depth: int = 1,
-    size: int = SMC_DBG_AXSIZE_8B,
-    reset: int = 0,
-) -> int:
-    """Pack SMC_AXI_SERIES_CTRL DR: OP|SIZE|PL_DEPTH|ADDR56|RESET."""
-    return (
-        (int(op) & 0x3)
-        | ((size & 0x3) << 2)
-        | ((pipeline_depth & 0x3) << 4)
-        | ((addr & ((1 << 56) - 1)) << 6)
-        | ((reset & 0x1) << 62)
-    )
-
-
-def unpack_smc_series_ctrl(value: int) -> tuple[int, int, int, int, int]:
-    """Return (reset, addr, pipeline_depth, size, status) from SERIES_CTRL."""
-    status = int(value) & 0x3
-    size = (int(value) >> 2) & 0x3
-    pipeline_depth = (int(value) >> 4) & 0x3
-    addr = (int(value) >> 6) & ((1 << 56) - 1)
-    reset = (int(value) >> 62) & 0x1
-    return reset, addr, pipeline_depth, size, status
-
-
-def smc_series_data_mask(size: int = SMC_DBG_AXSIZE_8B) -> int:
-    return (1 << (8 * (1 << size))) - 1
+def add_jtag2axi_regs(device: OcahJtagDevice) -> None:
+    """Register every JTAG2AXI bridge's DTMCS and DMI TDR under its instruction name."""
+    for cfg in JTAG2AXI_TARGETS.values():
+        device.add_reg(cfg.dtmcs_reg, DTMCS_LEN, int(cfg.dtmcs_instr), write=True)
+        device.add_reg(cfg.dmi_reg, DMI_LEN, int(cfg.dmi_instr), write=True)
 
 
 def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagMasterDriver:
-    """Build OcahJtagMasterDriver with DEBUG_CONTROL + SMC JTAG2AXI register map."""
+    """Build OcahJtagMasterDriver with DEBUG_CONTROL + JTAG2AXI register map."""
     device = OcahJtagDevice(
         name="smu_ptap",
         idcode=DTP_DEFAULT_IDCODE,
@@ -384,59 +274,7 @@ def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagMasterDriver:
     device.add_reg("JTAG_CAPS", DTP_JTAG_CAPS_LEN, DTP_IR_JTAG_CAPS)
     device.add_reg("IC_RESET", SMU_IC_RESET_LEN, DTP_IR_IC_RESET, write=True)
     device.add_reg("EXTEST", DTP_BSR_MODEL_LEN, DTP_IR_EXTEST, write=True)
-    device.add_reg("SMC_JTAG2AXI_CAPS", DTP_JTAG2AXI_CAPS_LEN, DTP_IR_SMC_JTAG2AXI_CAPS)
-    device.add_reg(
-        "SMC_AXI_SINGLE_OP",
-        SMC_DBG_SINGLE_OP_LEN,
-        DTP_IR_SMC_AXI_SINGLE_OP,
-        write=True,
-    )
-    device.add_reg(
-        "SMC_AXI_SERIES_CTRL",
-        SMC_DBG_SERIES_CTRL_LEN,
-        DTP_IR_SMC_AXI_SERIES_CTRL,
-        write=True,
-    )
-    device.add_reg(
-        "SMC_AXI_SERIES_DATA_INCR",
-        SMC_DBG_SERIES_DATA_LEN,
-        DTP_IR_SMC_AXI_SERIES_DATA_INCR,
-        write=True,
-    )
-    device.add_reg(
-        "SMC_OTP_JTAG2AXI_CAPS",
-        DTP_JTAG2AXI_CAPS_LEN,
-        DTP_IR_SMC_OTP_JTAG2AXI_CAPS,
-    )
-    device.add_reg(
-        "SMC_OTP_AXI_SINGLE_OP",
-        SMC_OTP_SINGLE_OP_LEN,
-        DTP_IR_SMC_OTP_AXI_SINGLE_OP,
-        write=True,
-    )
-    device.add_reg(
-        "SMC_OTP_AXI_SERIES_CTRL",
-        SMC_OTP_SERIES_CTRL_LEN,
-        DTP_IR_SMC_OTP_AXI_SERIES_CTRL,
-        write=True,
-    )
-    device.add_reg(
-        "SMC_OTP_AXI_SERIES_DATA_NO_INCR",
-        SMC_OTP_SERIES_DATA_NO_INCR_LEN,
-        DTP_IR_SMC_OTP_AXI_SERIES_DATA_NO_INCR,
-        write=True,
-    )
-    device.add_reg(
-        "SEP_OTP_JTAG2AXI_CAPS",
-        DTP_JTAG2AXI_CAPS_LEN,
-        DTP_IR_SEP_OTP_JTAG2AXI_CAPS,
-    )
-    device.add_reg(
-        "SEP_OTP_AXI_SINGLE_OP",
-        SMC_OTP_SINGLE_OP_LEN,
-        DTP_IR_SEP_OTP_AXI_SINGLE_OP,
-        write=True,
-    )
+    add_jtag2axi_regs(device)
     jtag = OcahJtagMasterDriver(
         dut,
         name="smu_ptap",
@@ -599,158 +437,252 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
     return (int(packed) >> bit) & 1
 
 
-def pack_otp_single_op(
+def require_jtag_tdo_resolved(where: str) -> None:
+    """Fail closed if PTAP TDO is X/Z (VIP _logic_int would coerce that to 0)."""
+    pin = getattr(cocotb.top, "jtag_tdo", None)
+    if pin is None:
+        raise AssertionError(f"jtag_tdo unobservable ({where})")
+    val = pin.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z on jtag_tdo during {where}: {val}")
+
+
+_WORD = 0xFFFF_FFFF
+
+
+class Jtag2AxiScanPort:
+    """A bench's own PTAP data-register scan, in the shape the transports below call.
+
+    ``scan(opcode, value, width, label)`` shifts one PTAP data register from
+    Run-Test/Idle back to Run-Test/Idle and returns its capture; it lets a
+    bench whose scans also pass through a selected STAP issue JTAG2AXI
+    accesses. ``jtag`` drives the Run-Test/Idle cycles between scans.
+    """
+
+    _WIDTHS = {
+        reg: width
+        for cfg in JTAG2AXI_TARGETS.values()
+        for reg, width in ((cfg.dtmcs_reg, DTMCS_LEN), (cfg.dmi_reg, DMI_LEN))
+    }
+
+    def __init__(self, scan, jtag: OcahJtagMasterDriver) -> None:
+        self._scan = scan
+        self._jtag = jtag
+
+    async def read(self, reg: str, *, shift_value: int = 0) -> int:
+        return await self._scan(int(DtpJtagInstr[reg]), shift_value, self._WIDTHS[reg], reg)
+
+    async def step_tms(self, tms: int) -> int:
+        return await self._jtag.step_tms(tms)
+
+
+async def _dmi_scan(
+    jtag: OcahJtagMasterDriver,
+    cfg: DtpJtag2AxiTargetCfg,
+    address: int,
+    data: int,
+    op: DtpDmiOp,
+    where: str,
+) -> int:
+    """One DMI scan of ``{address, data, op}``; returns the captured data field.
+
+    The capture carries the status of the previous DMI operation, which stays
+    sticky until a DTMCS dmireset once the bridge refuses an operation, so any
+    status but success fails. A read or write operation needs
+    DTP_DMI_SETTLE_TCK TCK cycles before the next capture to cross into the
+    bridge clock domain and back.
+    """
+    captured = await jtag.read(cfg.dmi_reg, shift_value=pack_dmi(address, data, op))
+    require_jtag_tdo_resolved(f"{cfg.dmi_reg} {where}")
+    _, captured_data, status = unpack_dmi(captured)
+    if status != DtpDmiStatus.SUCCESS:
+        raise AssertionError(
+            f"{cfg.dmi_reg} {where}: captured DMI status {status}; the bridge refused "
+            "the previous DMI operation or had not finished it"
+        )
+    if op != DtpDmiOp.NOP:
+        for _ in range(DTP_DMI_SETTLE_TCK):
+            await jtag.step_tms(0)
+    return captured_data
+
+
+async def _dmi_write(
+    jtag: OcahJtagMasterDriver, cfg: DtpJtag2AxiTargetCfg, address: DtpDmReg, data: int
+) -> None:
+    await _dmi_scan(jtag, cfg, address, data, DtpDmiOp.WRITE, f"write {address.name}")
+
+
+async def _dmi_read(
+    jtag: OcahJtagMasterDriver, cfg: DtpJtag2AxiTargetCfg, address: DtpDmReg
+) -> int:
+    """Read one Debug Module register: the read, then a NOP scan that captures its data."""
+    await _dmi_scan(jtag, cfg, address, 0, DtpDmiOp.READ, f"read {address.name}")
+    return await _dmi_scan(jtag, cfg, 0, 0, DtpDmiOp.NOP, f"fetch {address.name}")
+
+
+@dataclass(frozen=True)
+class Jtag2AxiAccess:
+    """One System Bus Access that ``jtag2axi_start`` launched."""
+
+    target: DtpJtag2AxiTargetCfg
+    addr: int
+    size: int
+    read: bool
+
+    @property
+    def lane(self) -> int:
+        """Byte offset of the access within the bridge's data beat."""
+        return self.addr % self.target.beat_bytes
+
+    @property
+    def mask(self) -> int:
+        return (1 << (8 << self.size)) - 1
+
+
+async def _sba_program(
+    jtag: OcahJtagMasterDriver, access: Jtag2AxiAccess, data: int
+) -> tuple[DtpDmReg, int]:
+    """Program the Debug Module for ``access``; returns the register write that starts it.
+
+    A system reset clears dmactive, so every access sets it. The sbcs write
+    clears sberror and sbbusyerror. With sbreadonaddr the sbaddress0 write
+    starts a read; otherwise the sbdata0 write starts a write of ``data``.
+    """
+    cfg = access.target
+    await _dmi_write(jtag, cfg, DtpDmReg.DMCONTROL, 0x1)
+    sbcs = pack_sbcs(
+        sbbusyerror=1, sberror=0x7, sbreadonaddr=int(access.read), sbaccess=access.size
+    )
+    await _dmi_write(jtag, cfg, DtpDmReg.SBCS, sbcs)
+    if cfg.addr_width > 32:
+        await _dmi_write(jtag, cfg, DtpDmReg.SBADDRESS1, access.addr >> 32)
+    if not access.read and access.size > 2:
+        await _dmi_write(jtag, cfg, DtpDmReg.SBDATA1, data >> 32)
+    if access.read:
+        return DtpDmReg.SBADDRESS0, access.addr & _WORD
+    await _dmi_write(jtag, cfg, DtpDmReg.SBADDRESS0, access.addr & _WORD)
+    return DtpDmReg.SBDATA0, data & _WORD
+
+
+# Direction of a jtag2axi_start access.
+J2A_OP_READ = 1
+J2A_OP_WRITE = 2
+
+
+async def jtag2axi_arm(
+    jtag: OcahJtagMasterDriver,
     op: int,
     addr: int,
     data: int = 0,
-    wstrb: int = 0,
-    size: int = SMC_OTP_AXSIZE_4B,
-) -> int:
-    """Pack SMC_OTP_AXI_SINGLE_OP DR: OP|SIZE|WSTRB|DATA32|ADDR32."""
-    return (
-        (int(op) & 0x3)
-        | ((size & 0x3) << 2)
-        | ((wstrb & 0xF) << 4)
-        | ((data & ((1 << 32) - 1)) << 8)
-        | ((addr & ((1 << 32) - 1)) << 40)
-    )
-
-
-def unpack_otp_single_op(value: int) -> tuple[int, int]:
-    """Return (status, rdata) from captured OTP SINGLE_OP DR."""
-    status = int(value) & 0x3
-    rdata = (int(value) >> 8) & ((1 << 32) - 1)
-    return status, rdata
-
-
-def pack_otp_series_ctrl(
-    op: int,
-    addr: int,
     *,
-    pipeline_depth: int = 1,
-    size: int = SMC_OTP_AXSIZE_4B,
-    reset: int = 0,
-) -> int:
-    """Pack SMC_OTP_AXI_SERIES_CTRL DR: OP|SIZE|PL_DEPTH|ADDR32|RESET."""
-    return (
-        (int(op) & 0x3)
-        | ((size & 0x3) << 2)
-        | ((pipeline_depth & 0x3) << 4)
-        | ((addr & ((1 << 32) - 1)) << 6)
-        | ((reset & 0x1) << 38)
-    )
+    target: str = "smc_axi",
+    wstrb: int | None = None,
+    size: int | None = None,
+) -> tuple[Jtag2AxiAccess, int]:
+    """Program a ``jtag2axi_start`` access up to the DMI scan that starts it.
 
+    Returns the access and that scan's DMI value, for a bench that times the
+    starting Update-DR itself. The scan needs DTP_DMI_SETTLE_TCK TCK cycles
+    before the next DMI capture.
 
-def unpack_otp_series_ctrl(value: int) -> tuple[int, int, int, int, int]:
-    """Return (reset, addr, pipeline_depth, size, status) from SERIES_CTRL."""
-    status = int(value) & 0x3
-    size = (int(value) >> 2) & 0x3
-    pipeline_depth = (int(value) >> 4) & 0x3
-    addr = (int(value) >> 6) & ((1 << 32) - 1)
-    reset = (int(value) >> 38) & 0x1
-    return reset, addr, pipeline_depth, size, status
-
-
-def otp_series_data_mask(size: int = SMC_OTP_AXSIZE_4B) -> int:
-    return (1 << (8 * (1 << size))) - 1
-
-
-async def otp_jtag2axi_series_ctrl(
-    jtag: OcahJtagMasterDriver,
-    op: int,
-    addr: int,
-    *,
-    pipeline_depth: int = 1,
-    size: int = SMC_OTP_AXSIZE_4B,
-    reset: int = 0,
-) -> None:
-    raw = pack_otp_series_ctrl(op, addr, pipeline_depth=pipeline_depth, size=size, reset=reset)
-    await jtag.write("SMC_OTP_AXI_SERIES_CTRL", raw)
-    require_jtag_tdo_resolved(f"OTP SERIES_CTRL issue op={op} @0x{addr:08x}")
-
-
-async def otp_jtag2axi_series_ctrl_status(
-    jtag: OcahJtagMasterDriver,
-    *,
-    size: int = SMC_OTP_AXSIZE_4B,
-    poll_limit: int = 64,
-    require_complete: bool = False,
-) -> tuple[int, int, int, int, int]:
-    """Poll SERIES_CTRL until status leaves BUSY. Returns unpack_otp_series_ctrl."""
-    decoded = (0, 0, 0, size, J2A_STATUS_BUSY)
-    nop = pack_otp_series_ctrl(J2A_OP_NOP, 0, pipeline_depth=0, size=size)
-    for _ in range(poll_limit):
-        capt = await jtag.read("SMC_OTP_AXI_SERIES_CTRL", shift_value=nop)
-        require_jtag_tdo_resolved("OTP SERIES_CTRL poll")
-        decoded = unpack_otp_series_ctrl(capt)
-        if decoded[4] != J2A_STATUS_BUSY:
-            return decoded
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    if require_complete:
-        raise TimeoutError(
-            f"OTP SERIES_CTRL stuck BUSY after {poll_limit} polls status={decoded[4]}"
+    ``target`` is a ``JTAG2AXI_TARGETS`` key and ``size`` defaults to its full
+    beat. A write's ``data`` sits at the access's byte lanes of the beat, as
+    on the AXI W channel. System Bus Access writes whole naturally aligned
+    words, so a write's ``wstrb``, when given, must be the full strobe of
+    those lanes.
+    """
+    cfg = JTAG2AXI_TARGETS[target]
+    size = cfg.data_size if size is None else size
+    if op not in (J2A_OP_READ, J2A_OP_WRITE):
+        raise ValueError(f"JTAG2AXI op {op} is neither J2A_OP_READ nor J2A_OP_WRITE")
+    access = Jtag2AxiAccess(cfg, addr, size, op == J2A_OP_READ)
+    nbytes = 1 << size
+    if nbytes > cfg.beat_bytes or addr % nbytes:
+        raise ValueError(
+            f"{cfg.name}: System Bus Access issues naturally aligned accesses of at most "
+            f"{cfg.beat_bytes} bytes, not {nbytes} bytes at 0x{addr:x}"
         )
-    return decoded
+    strobe = ((1 << nbytes) - 1) << access.lane
+    if not access.read and wstrb is not None and wstrb != strobe:
+        raise ValueError(
+            f"{cfg.name}: a {nbytes}-byte write at 0x{addr:x} carries wstrb 0x{strobe:x}; "
+            f"System Bus Access cannot issue wstrb 0x{wstrb:x}"
+        )
+    reg, value = await _sba_program(jtag, access, (data >> (8 * access.lane)) & access.mask)
+    return access, pack_dmi(reg, value, DtpDmiOp.WRITE)
 
 
-async def otp_jtag2axi_series_data_no_incr(
+async def jtag2axi_start(
     jtag: OcahJtagMasterDriver,
-    data: int,
+    op: int,
+    addr: int,
+    data: int = 0,
     *,
-    size: int = SMC_OTP_AXSIZE_4B,
-) -> int:
-    """Shift OTP SERIES_DATA_NO_INCR; return captured TDO payload."""
-    mask = otp_series_data_mask(size)
-    if 8 * (1 << size) != SMC_OTP_SERIES_DATA_NO_INCR_LEN:
+    target: str = "smc_axi",
+    wstrb: int | None = None,
+    size: int | None = None,
+) -> Jtag2AxiAccess:
+    """Start a ``size`` access of ``addr`` through ``target``'s bridge (``jtag2axi_arm``)."""
+    access, trigger = await jtag2axi_arm(
+        jtag, op, addr, data, target=target, wstrb=wstrb, size=size
+    )
+    reg, value, _ = unpack_dmi(trigger)
+    await _dmi_write(jtag, access.target, DtpDmReg(reg), value)
+    return access
+
+
+async def jtag2axi_status(jtag: OcahJtagMasterDriver, access: Jtag2AxiAccess) -> tuple[int, int]:
+    """Sample ``access`` once.
+
+    Returns ``(J2A_STATUS_BUSY, 0)`` while it is outstanding; otherwise its
+    status and, for a read, the data at its byte lanes of the beat.
+    """
+    cfg = access.target
+    sbcs = unpack_sbcs(await _dmi_read(jtag, cfg, DtpDmReg.SBCS))
+    if sbcs["sbbusy"]:
+        return J2A_STATUS_BUSY, 0
+    if sbcs["sbbusyerror"] or sbcs["sberror"] not in (0, 2):
         raise AssertionError(
-            f"OTP series data width {8 * (1 << size)} != registered "
-            f"{SMC_OTP_SERIES_DATA_NO_INCR_LEN}"
+            f"{cfg.name} access at 0x{access.addr:x}: sbcs sberror={sbcs['sberror']} "
+            f"sbbusyerror={sbcs['sbbusyerror']}, a request the bridge refused"
         )
-    capt = await jtag.read("SMC_OTP_AXI_SERIES_DATA_NO_INCR", shift_value=data & mask)
-    require_jtag_tdo_resolved("OTP SERIES_DATA_NO_INCR")
-    return int(capt) & mask
+    status = J2A_STATUS_DECERR if sbcs["sberror"] else J2A_STATUS_SUCCESS
+    if not access.read:
+        return status, 0
+    rdata = await _dmi_read(jtag, cfg, DtpDmReg.SBDATA0)
+    if access.size > 2:
+        rdata |= (await _dmi_read(jtag, cfg, DtpDmReg.SBDATA1)) << 32
+    return status, (rdata & access.mask) << (8 * access.lane)
 
 
-async def otp_jtag2axi_series_no_incr_write(
+async def jtag2axi_poll(
+    jtag: OcahJtagMasterDriver, access: Jtag2AxiAccess, *, poll_limit: int
+) -> tuple[int, int, int]:
+    """Sample ``access`` until it completes, at most ``poll_limit`` times.
+
+    Returns the last sample's status and read data, and the samples taken.
+    """
+    status, rdata, polls = J2A_STATUS_BUSY, 0, 0
+    while status == J2A_STATUS_BUSY and polls < poll_limit:
+        status, rdata = await jtag2axi_status(jtag, access)
+        polls += 1
+    return status, rdata, polls
+
+
+async def jtag2axi_wait(
     jtag: OcahJtagMasterDriver,
-    addr: int,
-    data: int,
+    access: Jtag2AxiAccess,
     *,
-    size: int = SMC_OTP_AXSIZE_4B,
-    pipeline_depth: int = 1,
-    poll_limit: int = 64,
-) -> int:
-    """Series NO_INCR write; return SERIES_CTRL status."""
-    mask = otp_series_data_mask(size)
-    await otp_jtag2axi_series_ctrl(
-        jtag, J2A_OP_WRITE, addr, pipeline_depth=pipeline_depth, size=size
-    )
-    await otp_jtag2axi_series_data_no_incr(jtag, data & mask, size=size)
-    await ClockCycles(cocotb.top.clk_smu_i, 64)
-    *_, status = await otp_jtag2axi_series_ctrl_status(
-        jtag, size=size, poll_limit=poll_limit, require_complete=True
-    )
-    return status
-
-
-async def otp_jtag2axi_series_no_incr_read(
-    jtag: OcahJtagMasterDriver,
-    addr: int,
-    *,
-    size: int = SMC_OTP_AXSIZE_4B,
-    pipeline_depth: int = 1,
-    poll_limit: int = 64,
+    poll_limit: int,
+    require_complete: bool = False,
 ) -> tuple[int, int]:
-    """Series NO_INCR read; return (status, rdata)."""
-    await otp_jtag2axi_series_ctrl(
-        jtag, J2A_OP_READ, addr, pipeline_depth=pipeline_depth, size=size
-    )
-    await otp_jtag2axi_series_data_no_incr(jtag, 0, size=size)
-    await ClockCycles(cocotb.top.clk_smu_i, 64)
-    *_, status = await otp_jtag2axi_series_ctrl_status(
-        jtag, size=size, poll_limit=poll_limit, require_complete=True
-    )
-    rdata = await otp_jtag2axi_series_data_no_incr(jtag, 0, size=size)
+    """``jtag2axi_poll`` without the sample count; with ``require_complete`` an
+    access outstanding after the last poll raises TimeoutError."""
+    status, rdata, _ = await jtag2axi_poll(jtag, access, poll_limit=poll_limit)
+    if require_complete and status == J2A_STATUS_BUSY:
+        raise TimeoutError(
+            f"{access.target.name} access at 0x{access.addr:x} outstanding after {poll_limit} polls"
+        )
     return status, rdata
 
 
@@ -764,22 +696,11 @@ async def jtag2axi_single_write(
     poll_limit: int = 128,
     require_complete: bool = False,
 ) -> tuple[int, int]:
-    raw = pack_single_op(J2A_OP_WRITE, addr, data, wstrb=wstrb, size=size)
-    await jtag.write("SMC_AXI_SINGLE_OP", raw)
-    require_jtag_tdo_resolved(f"J2A WR issue @0x{addr:08x}")
-    # Allow AXI fabric latency before first status sample.
-    await ClockCycles(cocotb.top.clk_smu_i, 32)
-    status, rdata = J2A_STATUS_BUSY, 0
-    for _ in range(poll_limit):
-        capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved(f"J2A WR poll @0x{addr:08x}")
-        status, rdata = unpack_single_op(capt)
-        if status != J2A_STATUS_BUSY:
-            break
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(f"JTAG2AXI write stuck BUSY after {poll_limit} polls @ {addr:#x}")
-    return status, rdata
+    """Write through the SMC fabric bridge; returns ``(status, 0)``."""
+    access = await jtag2axi_start(jtag, J2A_OP_WRITE, addr, data, wstrb=wstrb, size=size)
+    return await jtag2axi_wait(
+        jtag, access, poll_limit=poll_limit, require_complete=require_complete
+    )
 
 
 async def jtag2axi_single_read(
@@ -790,121 +711,11 @@ async def jtag2axi_single_read(
     poll_limit: int = 128,
     require_complete: bool = False,
 ) -> tuple[int, int]:
-    raw = pack_single_op(J2A_OP_READ, addr, 0, wstrb=0, size=size)
-    await jtag.write("SMC_AXI_SINGLE_OP", raw)
-    require_jtag_tdo_resolved(f"J2A RD issue @0x{addr:08x}")
-    await ClockCycles(cocotb.top.clk_smu_i, 32)
-    status, rdata = J2A_STATUS_BUSY, 0
-    for _ in range(poll_limit):
-        capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved(f"J2A RD poll @0x{addr:08x}")
-        status, rdata = unpack_single_op(capt)
-        if status != J2A_STATUS_BUSY:
-            break
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(f"JTAG2AXI read stuck BUSY after {poll_limit} polls @ {addr:#x}")
-    return status, rdata
-
-
-async def jtag2axi_series_ctrl(
-    jtag: OcahJtagMasterDriver,
-    op: int,
-    addr: int,
-    *,
-    pipeline_depth: int = 1,
-    size: int = SMC_DBG_AXSIZE_8B,
-    reset: int = 0,
-) -> None:
-    raw = pack_smc_series_ctrl(op, addr, pipeline_depth=pipeline_depth, size=size, reset=reset)
-    await jtag.write("SMC_AXI_SERIES_CTRL", raw)
-    require_jtag_tdo_resolved(f"SMC SERIES_CTRL issue op={op} @0x{addr:08x}")
-
-
-async def jtag2axi_series_ctrl_status(
-    jtag: OcahJtagMasterDriver,
-    *,
-    size: int = SMC_DBG_AXSIZE_8B,
-    poll_limit: int = 64,
-    require_complete: bool = False,
-) -> tuple[int, int, int, int, int]:
-    decoded = (0, 0, 0, size, J2A_STATUS_BUSY)
-    nop = pack_smc_series_ctrl(J2A_OP_NOP, 0, pipeline_depth=0, size=size)
-    for _ in range(poll_limit):
-        capt = await jtag.read("SMC_AXI_SERIES_CTRL", shift_value=nop)
-        require_jtag_tdo_resolved("SMC SERIES_CTRL poll")
-        decoded = unpack_smc_series_ctrl(capt)
-        if decoded[4] != J2A_STATUS_BUSY:
-            return decoded
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    if require_complete:
-        raise TimeoutError(
-            f"SMC SERIES_CTRL stuck BUSY after {poll_limit} polls status={decoded[4]}"
-        )
-    return decoded
-
-
-async def jtag2axi_series_data_incr(
-    jtag: OcahJtagMasterDriver,
-    data: int,
-    *,
-    size: int = SMC_DBG_AXSIZE_8B,
-) -> int:
-    mask = smc_series_data_mask(size)
-    if 8 * (1 << size) != SMC_DBG_SERIES_DATA_LEN:
-        raise AssertionError(
-            f"SMC series data width {8 * (1 << size)} != registered {SMC_DBG_SERIES_DATA_LEN}"
-        )
-    capt = await jtag.read("SMC_AXI_SERIES_DATA_INCR", shift_value=data & mask)
-    require_jtag_tdo_resolved("SMC SERIES_DATA_INCR")
-    return int(capt) & mask
-
-
-async def jtag2axi_series_incr_write(
-    jtag: OcahJtagMasterDriver,
-    addr: int,
-    data: int,
-    *,
-    size: int = SMC_DBG_AXSIZE_8B,
-    pipeline_depth: int = 1,
-    poll_limit: int = 64,
-) -> int:
-    mask = smc_series_data_mask(size)
-    await jtag2axi_series_ctrl(jtag, J2A_OP_WRITE, addr, pipeline_depth=pipeline_depth, size=size)
-    await jtag2axi_series_data_incr(jtag, data & mask, size=size)
-    await ClockCycles(cocotb.top.clk_smu_i, 64)
-    *_, status = await jtag2axi_series_ctrl_status(
-        jtag, size=size, poll_limit=poll_limit, require_complete=True
+    """Read through the SMC fabric bridge; returns ``(status, beat)``."""
+    access = await jtag2axi_start(jtag, J2A_OP_READ, addr, size=size)
+    return await jtag2axi_wait(
+        jtag, access, poll_limit=poll_limit, require_complete=require_complete
     )
-    return status
-
-
-async def jtag2axi_series_incr_read(
-    jtag: OcahJtagMasterDriver,
-    addr: int,
-    *,
-    size: int = SMC_DBG_AXSIZE_8B,
-    pipeline_depth: int = 1,
-    poll_limit: int = 64,
-) -> tuple[int, int]:
-    await jtag2axi_series_ctrl(jtag, J2A_OP_READ, addr, pipeline_depth=pipeline_depth, size=size)
-    await jtag2axi_series_data_incr(jtag, 0, size=size)
-    await ClockCycles(cocotb.top.clk_smu_i, 64)
-    *_, status = await jtag2axi_series_ctrl_status(
-        jtag, size=size, poll_limit=poll_limit, require_complete=True
-    )
-    rdata = await jtag2axi_series_data_incr(jtag, 0, size=size)
-    return status, rdata
-
-
-def require_jtag_tdo_resolved(where: str) -> None:
-    """Fail closed if PTAP TDO is X/Z (VIP _logic_int would coerce that to 0)."""
-    pin = getattr(cocotb.top, "jtag_tdo", None)
-    if pin is None:
-        raise AssertionError(f"jtag_tdo unobservable ({where})")
-    val = pin.value
-    if not val.is_resolvable:
-        raise AssertionError(f"X/Z on jtag_tdo during {where}: {val}")
 
 
 async def otp_jtag2axi_single_read(
@@ -915,21 +726,11 @@ async def otp_jtag2axi_single_read(
     poll_limit: int = 64,
     require_complete: bool = False,
 ) -> tuple[int, int]:
-    raw = pack_otp_single_op(J2A_OP_READ, addr, 0, wstrb=0, size=size)
-    await jtag.write("SMC_OTP_AXI_SINGLE_OP", raw)
-    require_jtag_tdo_resolved(f"OTP J2A WR issue @0x{addr:08x}")
-    await ClockCycles(cocotb.top.clk_smu_i, 32)
-    status, rdata = J2A_STATUS_BUSY, 0
-    for _ in range(poll_limit):
-        capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved(f"OTP J2A RD poll @0x{addr:08x}")
-        status, rdata = unpack_otp_single_op(capt)
-        if status != J2A_STATUS_BUSY:
-            break
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(f"OTP JTAG2AXI read stuck BUSY after {poll_limit} polls @ {addr:#x}")
-    return status, rdata
+    """Read through the SMC OTP bridge; returns ``(status, rdata)``."""
+    access = await jtag2axi_start(jtag, J2A_OP_READ, addr, target="smc_otp", size=size)
+    return await jtag2axi_wait(
+        jtag, access, poll_limit=poll_limit, require_complete=require_complete
+    )
 
 
 async def otp_jtag2axi_single_write(
@@ -942,21 +743,13 @@ async def otp_jtag2axi_single_write(
     poll_limit: int = 64,
     require_complete: bool = False,
 ) -> tuple[int, int]:
-    raw = pack_otp_single_op(J2A_OP_WRITE, addr, data, wstrb=wstrb, size=size)
-    await jtag.write("SMC_OTP_AXI_SINGLE_OP", raw)
-    require_jtag_tdo_resolved(f"OTP J2A WR issue @0x{addr:08x}")
-    await ClockCycles(cocotb.top.clk_smu_i, 32)
-    status, rdata = J2A_STATUS_BUSY, 0
-    for _ in range(poll_limit):
-        capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved(f"OTP J2A WR poll @0x{addr:08x}")
-        status, rdata = unpack_otp_single_op(capt)
-        if status != J2A_STATUS_BUSY:
-            break
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(f"OTP JTAG2AXI write stuck BUSY after {poll_limit} polls @ {addr:#x}")
-    return status, rdata
+    """Write through the SMC OTP bridge; returns ``(status, 0)``."""
+    access = await jtag2axi_start(
+        jtag, J2A_OP_WRITE, addr, data, target="smc_otp", wstrb=wstrb, size=size
+    )
+    return await jtag2axi_wait(
+        jtag, access, poll_limit=poll_limit, require_complete=require_complete
+    )
 
 
 async def sep_otp_jtag2axi_single_read(
@@ -966,18 +759,21 @@ async def sep_otp_jtag2axi_single_read(
     size: int = SMC_OTP_AXSIZE_4B,
     poll_limit: int = 32,
 ) -> tuple[int, int]:
-    """Issue a SEP OTP SINGLE_OP read and poll its status."""
-    raw = pack_otp_single_op(J2A_OP_READ, addr, 0, wstrb=0, size=size)
-    await jtag.write("SEP_OTP_AXI_SINGLE_OP", raw)
-    await ClockCycles(cocotb.top.clk_smu_i, 32)
-    status, rdata = J2A_STATUS_BUSY, 0
-    for _ in range(poll_limit):
-        capt = await jtag.read("SEP_OTP_AXI_SINGLE_OP", shift_value=0)
-        status, rdata = unpack_otp_single_op(capt)
-        if status != J2A_STATUS_BUSY:
-            break
-        await ClockCycles(cocotb.top.clk_smu_i, 16)
-    return status, rdata
+    """Read through the SEP OTP bridge; returns ``(status, rdata)``."""
+    access = await jtag2axi_start(jtag, J2A_OP_READ, addr, target="sep_otp", size=size)
+    return await jtag2axi_wait(jtag, access, poll_limit=poll_limit)
+
+
+async def sep_otp_jtag2axi_single_write(
+    jtag: OcahJtagMasterDriver,
+    addr: int,
+    data: int,
+    *,
+    poll_limit: int = 32,
+) -> tuple[int, int]:
+    """Write a word through the SEP OTP bridge; returns ``(status, 0)``."""
+    access = await jtag2axi_start(jtag, J2A_OP_WRITE, addr, data, target="sep_otp")
+    return await jtag2axi_wait(jtag, access, poll_limit=poll_limit)
 
 
 # PeakRDL wdt.h has no KEY-magic #define. Literal is the SPEC table in

@@ -102,7 +102,6 @@ class DtpEnv(uvm_env):
             source = target_cfg.monitor_name
             req.bind_port(target, source)
             status.bind_port(target, source)
-            sb.bind_port(target, source)
             port = self.axi_agent.port_aps[target]
             port.connect(req.axi_export)
             port.connect(status.axi_export)

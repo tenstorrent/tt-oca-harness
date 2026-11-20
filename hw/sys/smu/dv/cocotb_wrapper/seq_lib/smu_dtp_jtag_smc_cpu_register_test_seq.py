@@ -4,7 +4,7 @@
 
 S1: After TCK sync, ``tb_smc_jtag2axi_security_disable`` is 0.
 S2: DEBUG_CONTROL boot_stall=1 / ovrd=1 so ROM cannot race the mailbox.
-S3: SINGLE_OP 32b write/readback of SCRATCH_15 with two distinct patterns.
+S3: 32b write/readback of SCRATCH_15 with two distinct patterns.
     SCRATCH_0 is the live boot ROM PASS mailbox; do not use it.
 
 Addresses from ``smc_addr.h``. No Force.
@@ -15,12 +15,12 @@ Not claimed: SPM; series modes; Force-closed gate; OTP J2A.
 from __future__ import annotations
 
 import cocotb
+from dtp_types import DTP_EXPECTED_DTMCS
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
@@ -106,18 +106,16 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
-        caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
-        require_jtag_tdo_resolved("SMC J2A CAPS")
-        if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
-            raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
-            )
+        dtmcs = int(await jtag.read("SMC_DTMCS"))
+        require_jtag_tdo_resolved("SMC J2A DTMCS")
+        if dtmcs != DTP_EXPECTED_DTMCS:
+            raise AssertionError(f"SMC J2A DTMCS=0x{dtmcs:08x} want 0x{DTP_EXPECTED_DTMCS:08x}")
         self.s1_ok = True
-        self._log(f"CHK-CPU-REG-GATE-OPEN disable={gate} caps=0x{caps:04x}")
+        self._log(f"CHK-CPU-REG-GATE-OPEN disable={gate} dtmcs=0x{dtmcs:08x}")
         sb.expect_eq(
             "CHK-CPU-REG-GATE-OPEN",
-            (gate, caps),
-            (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            (gate, dtmcs),
+            (0, DTP_EXPECTED_DTMCS),
             evidence="CHK-CPU-REG-GATE-OPEN",
         )
 

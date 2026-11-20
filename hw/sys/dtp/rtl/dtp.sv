@@ -85,19 +85,6 @@ module dtp
   parameter type  sep_otp_axil_resp_t = dtp_axil_32_32_resp_t,  // SEP OTP debug AXI-Lite response
                                                                 // type.
 
-  parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth; 0 = single
-                                                      // outstanding.
-  parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth; 0 = single
-                                                      // outstanding.
-  parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth; 0 = single
-                                                      // outstanding.
-  parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth; 0 = single
-                                                      // outstanding.
-  parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth; 0 = single
-                                                      // outstanding.
-  parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3,  // SMC fabric write pipeline depth; 0 = single
-                                                      // outstanding.
-
   parameter type  xtrig_axil_req_t = dtp_pkg::dtp_axil_32_32_req_t,  // Cross-trigger CSR AXI-Lite request type.
   parameter type  xtrig_axil_resp_t = dtp_pkg::dtp_axil_32_32_resp_t  // Cross-trigger CSR AXI-Lite response type.
 ) (
@@ -238,9 +225,10 @@ module dtp
 
   input  logic  test_en_i,                      // DFT test-mode enable, active-high, for the
                                                 // JTAG2AXI bridges and the CTN CSR crossbar.
-  input  logic  scan_rst_ni                     // DFT scan reset, active-low; unused. DTP has no
-                                                // reset synchronizer, so rst_n_i must arrive
-                                                // scan-controlled.
+  input  logic  scan_rst_ni                     // DFT scan reset, active-low; resets the JTAG2AXI
+                                                // bridges while test_en_i is high. No other DTP
+                                                // logic has a reset synchronizer, so rst_n_i
+                                                // must arrive scan-controlled.
 );
 
   //--------------------------------------------------------------------------
@@ -285,17 +273,12 @@ module dtp
     .smc_otp_axil_req_t  (smc_otp_axil_req_t),
     .smc_otp_axil_resp_t (smc_otp_axil_resp_t),
     .sep_otp_axil_req_t  (sep_otp_axil_req_t),
-    .sep_otp_axil_resp_t (sep_otp_axil_resp_t),
-    .SMC_OTP_RD_PL_DEPTH (SMC_OTP_RD_PL_DEPTH),
-    .SMC_OTP_WR_PL_DEPTH (SMC_OTP_WR_PL_DEPTH),
-    .SEP_OTP_RD_PL_DEPTH (SEP_OTP_RD_PL_DEPTH),
-    .SEP_OTP_WR_PL_DEPTH (SEP_OTP_WR_PL_DEPTH),
-    .SMC_RD_PL_DEPTH     (SMC_RD_PL_DEPTH),
-    .SMC_WR_PL_DEPTH     (SMC_WR_PL_DEPTH)
+    .sep_otp_axil_resp_t (sep_otp_axil_resp_t)
   ) u_jtag_intf_unit (
     .clk_i                       (clk_i),
     .rst_n_i                     (rst_n_i),
     .test_en_i                   (test_en_i),
+    .scan_rst_ni                 (scan_rst_ni),
     .pwr_on_rst_ni               (pwr_on_rst_ni),
     .dbg_disable_i               (dbg_disable_i),
     .ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl_i),

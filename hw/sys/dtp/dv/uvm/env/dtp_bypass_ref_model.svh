@@ -81,7 +81,7 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
                (ir == UNDEFINED_BYPASS_0F_INSTR) ||
                (ir >= RISCV_RESERVED_0_INSTR &&
                 ir <= RISCV_RESERVED_7_INSTR) ||
-               (ir >= UNDEFINED_BYPASS_2D_INSTR &&
+               (ir >= UNDEFINED_BYPASS_21_INSTR &&
                 ir <= UNDEFINED_BYPASS_3C_INSTR);
   endfunction
 

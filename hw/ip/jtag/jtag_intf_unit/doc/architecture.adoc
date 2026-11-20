@@ -85,10 +85,17 @@ resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.
 ==== Debug Disable Synchronization
 
 `dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is in the system clock
-domain and must be synchronized to TCK before use. The interface unit
-synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
-The synchronized fields gate STAP and SIB selection and are forwarded to the
-PTAP for the JTAG2AXI bridges.
+domain. The interface unit synchronizes each bit through a 2-FF chain whose
+reset value is 1 (fail-closed). The STAP and SIB fields are synchronized to TCK
+and gate STAP and SIB selection. The three JTAG2AXI fields are synchronized to
+`clk_i`, the clock of the AXI side of the bridges, and are forwarded to the PTAP,
+where each one directs the AXI requests of its bridge to an error slave
+ifdef::backend-html5[]
+(xref:ip:jtag_ptap/doc/index.adoc#ptap-debug-disable[PTAP Debug Disable]).
+endif::backend-html5[]
+ifdef::backend-pdf[]
+(<<ptap-debug-disable,PTAP Debug Disable>>).
+endif::backend-pdf[]
 
 Each field is active-high (1 = path disabled).
 
@@ -209,16 +216,18 @@ Integrator-defined debug instruments are attached to this port.
 
 === JTAG2AXI Interfaces
 
-The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a set
-of PTAP TDRs selected by its own instructions and gated by its own
-`dbg_disable_i` field (<<jiu-debug-disable-fields-table>>); no bridge is reached
-through the iJTAG network.
+The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a
+DTMCS TDR and a DMI TDR of the PTAP, selected by their own instructions, in
+front of a RISC-V Debug Module whose System Bus Access registers issue the AXI
+transfers. Each bridge has its own `dbg_disable_i` field
+(<<jiu-debug-disable-fields-table>>); no bridge is reached through the iJTAG
+network.
 
-* *SMC JTAG2AXI TDRs*: This set of TDRs provide a mechanism to inject AXI
+* *SMC JTAG2AXI TDRs*: This pair of TDRs provides a mechanism to inject AXI
   transactions onto the SMC AXI local interconnect.
-* *SMC Fuse JTAG2AXIL TDRs*: This set of TDRs provide a mechanism to interact
+* *SMC Fuse JTAG2AXIL TDRs*: This pair of TDRs provides a mechanism to interact
   directly with the SMC fuse controller. The JTAG2AXIL interface connects to the
   fuse controller CSRs through an AXI4-lite-to-APB bridge.
-* *SEP Fuse JTAG2AXIL TDRs*: This set of TDRs provide a mechanism to interact
+* *SEP Fuse JTAG2AXIL TDRs*: This pair of TDRs provides a mechanism to interact
   directly with the SEP fuse controller. The JTAG2AXIL interface connects to the
   fuse controller CSRs through an AXI4-lite-to-APB bridge.

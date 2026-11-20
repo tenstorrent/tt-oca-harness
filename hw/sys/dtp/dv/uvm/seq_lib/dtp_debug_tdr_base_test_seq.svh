@@ -14,8 +14,8 @@
 //     cla_clock_stop status bit;
 //   * IC_RESET[6:0]: reset_hold plus one {enable, control} pair per
 //     default slice in EXT, SEP, SMC order;
-//   * JTAG_CAPS[59:0] / *_JTAG2AXI_CAPS[13:0]: read-only capability TDRs
-//     compared against the bench's DTP configuration (dtp_dv_cfg_pkg);
+//   * JTAG_CAPS[59:0]: read-only capability TDR compared against the
+//     bench's DTP configuration (dtp_dv_cfg_pkg);
 //   * pin observables through dtp_tb_if (stop_clks, cla_clock_stop_en,
 //     boot-stall pair, flattened IC_RESET slices) with a bounded poll
 //     (stop_clks is a clk_i register, so clock-stop checks poll until it
@@ -33,13 +33,12 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   // Register sizes: DEBUG_CONTROL from the interface-unit instruction table;
   // IC_RESET is reset_hold plus one {enable, control} pair per port
   // ("IC_RESET Support" table), one SMC, one SEP, and one external port in
-  // the bench's DTP configuration; JTAG_CAPS[59:0] ("JTAG Capabilities"
-  // table) and *_JTAG2AXI_CAPS[13:0] from the PTAP document.
+  // the bench's DTP configuration; JTAG_CAPS[59:0] from the "JTAG
+  // Capabilities" table.
   localparam int unsigned DebugControlLen = 5;
   localparam int unsigned IcResetPorts = DtpNumSmcIcReset + DtpNumSepIcReset + DtpNumExtIcReset;
   localparam int unsigned IcResetLen = 2 * IcResetPorts + 1;
   localparam int unsigned JtagCapsLen = 60;
-  localparam int unsigned Jtag2AxiCapsLen = DtpJtag2AxiCapsLen;
   localparam int unsigned NumClkStopReq = DtpNumClkStopReq;
 
   // DEBUG_CONTROL bit positions.
@@ -172,17 +171,6 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     | 64'(DtpOchVer);  // och_ver
   endfunction
 
-  static function bit [63:0] expected_jtag2axi_caps(
-      bit bus_type, int unsigned addr_width, int unsigned data_width_bits, int unsigned rd_pl_depth,
-      int unsigned wr_pl_depth);
-    int unsigned size_enc = $clog2(data_width_bits / 8);
-    return (64'(rd_pl_depth) << 12)
-             | (64'(wr_pl_depth) << 10)
-             | (64'(size_enc)    << 7)
-             | (64'(addr_width & 'h3F) << 1)
-             | 64'(bus_type);
-  endfunction
-
   task read_caps_tdr(input bit [IrWidth-1:0] instr, input int unsigned width,
                      output bit [63:0] observed);
     read_tdr(instr, width, observed);
@@ -223,40 +211,6 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
       family_check("CHK-CAPS-RO", {label, " read-only"}, observed, expected, $sformatf(
                    "pattern=0x%0h", patterns[idx]));
     end
-  endtask
-
-  // Common JTAG2AXI_CAPS flow for one bridge of the dtp_types geometry table:
-  // value/field compare, multi-read stability, read-only sweep, and
-  // instruction-switch re-reads.
-  task check_jtag2axi_caps(input dtp_j2a_target_t t, input string label);
-    bit [IrWidth-1:0] instr = IrWidth'(t.caps_instr);
-    bit bus_type = t.bus_type;
-    int unsigned addr_width = t.addr_width;
-    int unsigned data_width_bits = t.data_width;
-    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits,
-                                                 t.rd_pl_depth, t.wr_pl_depth);
-    bit [63:0] value, reread;
-    read_caps_tdr(instr, Jtag2AxiCapsLen, value);
-    `uvm_info(
-        get_type_name(),
-        $sformatf("%s raw=0x%04h rd_pl=%0d wr_pl=%0d size=%0d addr_w=%0d bus_type=%0d", label,
-                  value, value[13:12], value[11:10], value[9:7], value[6:1], value[0]), UVM_LOW)
-    family_check("CHK-CAPS", label, value, expected, "packed value");
-    family_check("CHK-CAPS", {label, ".bus_type"}, 64'(value[0]), 64'(bus_type));
-    family_check("CHK-CAPS", {label, ".addr_width"}, 64'(value[6:1]), 64'(addr_width & 'h3F));
-    family_check("CHK-CAPS", {label, ".data_size"}, 64'(value[9:7]), 64'($clog2(data_width_bits / 8
-                 )));
-    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(t.wr_pl_depth));
-    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(t.rd_pl_depth));
-    check_caps_multi_read(instr, Jtag2AxiCapsLen, value, label);
-    check_caps_read_only_patterns(instr, Jtag2AxiCapsLen, value, label);
-    // Instruction switches must not disturb the stored capability value.
-    load_ir(6'(IDCODE_INSTR));
-    read_caps_tdr(instr, Jtag2AxiCapsLen, reread);
-    family_check("CHK-CAPS", {label, " after IDCODE"}, reread, value);
-    load_ir(6'(BYPASS_INSTR));
-    read_caps_tdr(instr, Jtag2AxiCapsLen, reread);
-    family_check("CHK-CAPS", {label, " after BYPASS"}, reread, value);
   endtask
 
   // --- pin observables through dtp_tb_if -----------------------------------

@@ -5,9 +5,8 @@
 //
 // Two tiers, one readable flow per scenario:
 //   * reusable operation sequences: the embedded DTP's own (`dtp_jtag_<op>_seq`,
-//     `dtp_jtag2axi_single_*_seq`, from dtp_seq_lib_pkg), each one operation
-//     on the primary TAP agent, started by the scenario layer on the virtual
-//     sequencer's JTAG handle;
+//     from dtp_seq_lib_pkg), each one operation on the primary TAP agent,
+//     started by the scenario layer on the virtual sequencer's JTAG handle;
 //   * scenario virtual sequences (`smu_<scenario>_test_seq`) on
 //     smu_virtual_sequencer: smu_base_test_seq carries the operation
 //     wrappers, the TDR and JTAG2AXI accesses, the TAP-state checks, the
@@ -31,7 +30,7 @@ package smu_seq_lib_pkg;
   import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
   import ocah_jtag_uvm_pkg::*;
   import smu_env_pkg::*;  // bench constants, cfgs, scoreboard, virtual sequencer
-  import dtp_seq_lib_pkg::*;  // reusable JTAG and JTAG2AXI operation sequences
+  import dtp_seq_lib_pkg::*;  // reusable JTAG operation sequences
 
   // Scenario layer: the base virtual sequence, then the scenarios.
   `include "smu_base_test_seq.svh"

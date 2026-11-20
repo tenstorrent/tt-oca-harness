@@ -5,10 +5,9 @@
 //
 // Owns the expected-response arming table — the single source of truth that
 // classifies EXPECTED versus UNEXPECTED non-OKAY responses. A sequence that
-// injects an error into a responder arms the same beat-aligned address here
-// (see the DTP dtp_jtag2axi_base_test_seq arm_target_error helper); the reference
-// model consumes the one-shot when predicting, and the scoreboard reports the
-// consumed expectation as CHK-AXI-ERR-INJ evidence.
+// injects an error into a responder arms the same beat-aligned address here;
+// the reference model consumes the one-shot when predicting, and the
+// scoreboard reports the consumed expectation as CHK-AXI-ERR-INJ evidence.
 
 class ocah_axi_config extends uvm_object;
   `uvm_object_utils(ocah_axi_config)

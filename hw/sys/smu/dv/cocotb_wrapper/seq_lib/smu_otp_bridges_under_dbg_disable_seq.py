@@ -28,9 +28,9 @@ observes an OTP bridge completing while the fabric bridge is shut.
 This anchor runs with the PROD_END SEP shadow image, where
 seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
 
-* shows the fabric bridge really is shut -- a SINGLE_OP read on the primary
-  TAP launches nothing on the DTP -> SMC debug AXI port, and the bridge's own
-  SINGLE_OP capture shows the update was never latched;
+* shows the fabric bridge really is shut -- a JTAG2AXI read on the primary
+  TAP launches nothing on the DTP -> SMC debug AXI port, and the bridge
+  completes it with a bus error instead;
 * drives both OTP bridges to completion over the same TAP in that state, and
   compares what comes back against a value the image or the RDL fixes:
   the SEP eFuse MAP LC_STATE word must read the PROD_END encoding the image
@@ -52,47 +52,33 @@ with the error slave's 0xbadcab1e, or with a stale capture, fails here.
 The fabric deny (CHK-OTP-FABRIC-BLOCKED) grades a reach step, which shows that
 the probe's scan path selects the bridge, and four observations of one probe:
 
-* with SMC_AXI_SINGLE_OP in the IR, a non-zero 132-bit pattern and then its
-  complement, each followed by 132 zeros, come back on TDO after exactly 132
-  bits. hw/ip/jtag/jtag_ptap/doc/architecture.adoc:588 -- "The single-operation
-  TDR has `2 + S + D/8 + D + A` bits", which is 2 + 2 + 8 + 64 + 56 = 132 for
-  the 56-bit address and 64-bit data of the SMC fabric bridge
-  (hw/sys/dtp/doc/jtag.adoc:89-92); hw/sys/dtp/doc/jtag.adoc:175-176 -- "For
-  a JTAG2AXI bridge, disabling means TDR update registers are not latched", so
-  the shift path stays usable while the bridge is disabled. BYPASS returns the
-  pattern after one bit, another register after its own length, and a
-  deselected bridge returns nothing, so none of them passes; IDCODE shows the
-  TAP is alive, not that this instruction selects this register. The zeros
-  leave op 0 in the shift register at Update-DR, which architecture.adoc:619
-  defines as "Ignore data and address (nop) Don't send anything over AXI
-  during Update-DR", so the scan launches nothing even on an open bridge;
+* with SMC_DMI in the IR, a non-zero 41-bit pattern and then its complement,
+  each followed by 41 zeros, come back on TDO after exactly 41 bits, the width
+  of the RISC-V dmi register with abits 7 that
+  hw/ip/jtag/jtag_ptap/rtl/jtag_dmi2axi.sv gives the DMI TDR. The zeros leave
+  op 0 (nop) in the register at Update-DR, so the scan starts nothing even on
+  an open bridge. BYPASS returns the pattern after one bit, another register
+  after its own length, and a deselected bridge returns nothing, so none of
+  them passes; IDCODE shows the TAP is alive, not that this instruction
+  selects this register;
 * the bridge's disable input in the PTAP reads 1 before and after the probe.
-  hw/ip/jtag/jtag_ptap/doc/architecture.adoc:851-852 -- "when it is 1, the
-  corresponding `jtag2axi` instance blocks AXI transaction generation";
+  jtag_dmi2axi.sv: security_disable_i "steers every request of the bridge to
+  an error slave that completes it with DECERR, so no transfer reaches
+  axi_req_o while the bridge is disabled";
 * the AW and AR handshake counters on the DTP -> SMC debug port do not move,
   sampled with X/Z failing;
 * AWVALID, WVALID and ARVALID on that port are sampled with X/Z failing on
   every clk_smu_i edge from before the probe to the end of the settle window,
   and none is ever high, so a counter that is not wired to the port cannot
-  pass;
-* the SINGLE_OP capture taken after the window reads op 0 and address 0.
-  hw/sys/dtp/doc/jtag.adoc:175-176 -- "For a JTAG2AXI bridge, disabling means
-  TDR update registers are not latched"; hw/ip/jtag/jtag_ptap/doc/architecture.adoc
-  :615 gives the address field reset 0 and "On a Capture-DR, this field holds
-  the previous value"; :619 gives op codes 1 and 2 to a completed AXI
-  response and 3 to a request still in progress. A bridge that latched the
-  probe captures its non-zero address instead.
+  pass; and the System Bus Access read completes with sberror set, the error
+  slave's DECERR.
 
 PROD_END leaves no open path onto the DTP -> SMC debug port, so the live
-control is linked, not in this run. smu_jtag2axi_access_matrix_rand_test
-drives this bridge with the gate open through the same driver and encoder
-(make_smu_jtag_tap and pack_single_op), waits for the AR and B counters of the
-same port to move, and grades the address, size, strobes and data it sees on
-the port (CHK-J2AMX-ADDR and its siblings). smu_sep_dbg_gating_test_dev_test
-issues an SMC_AXI_SINGLE_OP read with the TEST_DEV image and requires the same
-AW/AR counters to move (CHK-SEP-DBG-OPEN); it builds its scan through the
-wrapper JTAG driver, so it shows the port opens with the posture, not that
-this sequence's encoder reaches the bridge.
+control is linked, not in this run. smu_sep_dbg_gating_test_dev_test issues the
+same JTAG2AXI read (jtag2axi_start) with the TEST_DEV image and requires the
+same AW/AR counters to move (CHK-SEP-DBG-OPEN); it scans through the wrapper
+JTAG driver, so it shows the port opens with the posture through the same
+transport.
 """
 
 from __future__ import annotations
@@ -101,28 +87,25 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from dtp_types import DMI_LEN
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import c_header_u32, smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     J2A_OP_READ,
-    J2A_OP_WRITE,
-    J2A_STATUS_BUSY,
+    J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
-    SMC_DBG_SINGLE_OP_LEN,
-    SMC_OTP_AXSIZE_4B,
+    dtp_ir_opcode,
+    jtag2axi_start,
+    jtag2axi_status,
     make_smu_jtag_tap,
     otp_jtag2axi_single_read,
     otp_jtag2axi_single_write,
-    pack_otp_single_op,
-    pack_single_op,
     require_jtag_tdo_resolved,
     sep_otp_jtag2axi_single_read,
-    unpack_otp_single_op,
-    unpack_single_op,
+    sep_otp_jtag2axi_single_write,
 )
 from seq_lib.smu_lifecycle_table import (
     LC_STATE_PRESENSE,
@@ -173,16 +156,12 @@ SHIM_INIT_TIME_PATTERN = 0x0000_0040
 
 OTP_POLL = 128
 FABRIC_SETTLE_CYCLES = 4000
-#: SMC_AXI_SINGLE_OP address field: bit 76 up, 56 bits (hw/sys/dtp/doc/jtag.adoc:89-92,
-#: 56-bit address and 64-bit data).
-SINGLE_OP_ADDR_LSB = 76
-SINGLE_OP_ADDR_MASK = (1 << 56) - 1
 FABRIC_VALIDS = ("dtp_smc_dbg_aw_valid_o", "dtp_smc_dbg_w_valid_o", "dtp_smc_dbg_ar_valid_o")
 POSTURE_TIMEOUT_CYCLES = 60000
-#: Shift-through pattern for the SINGLE_OP register: bits 0 and 131 set, so a
+#: Shift-through pattern for the SMC DMI register: bits 0 and 40 set, so a
 #: register one bit shorter or longer loses an end bit.
-SINGLE_OP_REACH_MASK = (1 << SMC_DBG_SINGLE_OP_LEN) - 1
-SINGLE_OP_REACH_PATTERN = (1 << 131) | (0xA5C3_961E_0FF0_3CC3_5A96_E187_D24B_7E81 << 2) | 1
+DMI_REACH_MASK = (1 << DMI_LEN) - 1
+DMI_REACH_PATTERN = (1 << (DMI_LEN - 1)) | (0x25_A5C3_961E << 1) | 1
 
 
 class SmuOtpBridgesUnderDbgDisableSeq:
@@ -224,18 +203,18 @@ class SmuOtpBridgesUnderDbgDisableSeq:
             elif any(int(v) for v in values):
                 tally["valid"] += 1
 
-    async def _single_op_shift_through(self, jtag, pattern: int) -> int:
-        """Shift ``pattern`` then SINGLE_OP-length zeros; return the bits after the first 132.
+    async def _dmi_shift_through(self, jtag, pattern: int) -> int:
+        """Shift ``pattern`` then DMI-length zeros; return the bits after the first 41.
 
         The zeros are what the register holds at Update-DR, so the scan
         writes op 0 (nop) whatever the gate does.
         """
-        await jtag.shift_ir(DTP_IR_SMC_AXI_SINGLE_OP, back_to_rti=False)
-        out = await jtag.shift_dr(pattern, 2 * SMC_DBG_SINGLE_OP_LEN, back_to_rti=True)
-        require_jtag_tdo_resolved("SMC_AXI_SINGLE_OP shift-through")
+        await jtag.shift_ir(dtp_ir_opcode("SMC_DMI"), back_to_rti=False)
+        out = await jtag.shift_dr(pattern, 2 * DMI_LEN, back_to_rti=True)
+        require_jtag_tdo_resolved("SMC_DMI shift-through")
         for _ in range(2):
             await jtag.step_tms(0)
-        return (int(out) >> SMC_DBG_SINGLE_OP_LEN) & SINGLE_OP_REACH_MASK
+        return (int(out) >> DMI_LEN) & DMI_REACH_MASK
 
     async def _await_posture_settled(self) -> None:
         """Block until the LCC reflects the shadow image rather than its pre-sense word."""
@@ -263,19 +242,7 @@ class SmuOtpBridgesUnderDbgDisableSeq:
         return value
 
     async def _sep_otp_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        """SEP OTP SINGLE_OP write; polls the capture until the status leaves BUSY."""
-        raw = pack_otp_single_op(J2A_OP_WRITE, addr, data, wstrb=0xF, size=SMC_OTP_AXSIZE_4B)
-        await jtag.write("SEP_OTP_AXI_SINGLE_OP", raw)
-        require_jtag_tdo_resolved(f"SEP OTP J2A WR issue {name}")
-        await ClockCycles(self.dut.clk_smu_i, 32)
-        status = None
-        for _ in range(OTP_POLL):
-            capt = await jtag.read("SEP_OTP_AXI_SINGLE_OP", shift_value=0)
-            require_jtag_tdo_resolved(f"SEP OTP J2A WR poll {name}")
-            status, _ = unpack_otp_single_op(capt)
-            if status != J2A_STATUS_BUSY:
-                break
-            await ClockCycles(self.dut.clk_smu_i, 16)
+        status, _ = await sep_otp_jtag2axi_single_write(jtag, addr, data, poll_limit=OTP_POLL)
         if status != J2A_STATUS_SUCCESS:
             raise AssertionError(
                 f"SEP OTP J2A WR {name} @0x{addr:08x} status={status} "
@@ -355,42 +322,33 @@ class SmuOtpBridgesUnderDbgDisableSeq:
 
         # The fabric bridge is shut. Without this the OTP results below would be
         # equally consistent with a posture that never closed anything.
-        if not FABRIC_PROBE_ADDR & SINGLE_OP_ADDR_MASK:
-            raise AssertionError("the fabric probe address must differ from the capture reset 0")
-        if SINGLE_OP_REACH_PATTERN.bit_length() != SMC_DBG_SINGLE_OP_LEN:
-            raise AssertionError("the reach pattern must set bit 131 of the SINGLE_OP register")
+        if DMI_REACH_PATTERN.bit_length() != DMI_LEN:
+            raise AssertionError("the reach pattern must set bit 40 of the DMI register")
         gate_before = self._rd("tb_smc_jtag2axi_security_disable")
         before_aw, before_ar = self._dbg_counts()
         tally = {"edges": 0, "valid": 0, "xz": 0}
         watcher = cocotb.start_soon(self._watch_fabric_valids(self._fabric_valid_pins(), tally))
         # The complement scan fails a TDO bit the VIP read as 0 from X/Z.
-        reach_in = (SINGLE_OP_REACH_PATTERN, SINGLE_OP_REACH_PATTERN ^ SINGLE_OP_REACH_MASK)
-        reach_out = [await self._single_op_shift_through(jtag, p) for p in reach_in]
-        reach_in_hex = tuple(f"0x{p:033x}" for p in reach_in)
-        reach_out_hex = tuple(f"0x{p:033x}" for p in reach_out)
+        reach_in = (DMI_REACH_PATTERN, DMI_REACH_PATTERN ^ DMI_REACH_MASK)
+        reach_out = [await self._dmi_shift_through(jtag, p) for p in reach_in]
+        reach_in_hex = tuple(f"0x{p:011x}" for p in reach_in)
+        reach_out_hex = tuple(f"0x{p:011x}" for p in reach_out)
         self.log.info(
-            "SMC_AXI_SINGLE_OP shift-through after %d bits: in %s out %s",
-            SMC_DBG_SINGLE_OP_LEN,
+            "SMC_DMI shift-through after %d bits: in %s out %s",
+            DMI_LEN,
             reach_in_hex,
             reach_out_hex,
         )
-        await jtag.write(
-            "SMC_AXI_SINGLE_OP",
-            pack_single_op(J2A_OP_READ, FABRIC_PROBE_ADDR, size=SMC_DBG_AXSIZE_4B),
-        )
-        require_jtag_tdo_resolved("SMC_AXI_SINGLE_OP probe")
+        access = await jtag2axi_start(jtag, J2A_OP_READ, FABRIC_PROBE_ADDR, size=SMC_DBG_AXSIZE_4B)
         await ClockCycles(self.dut.clk_smu_i, FABRIC_SETTLE_CYCLES)
         watcher.cancel()
         after_aw, after_ar = self._dbg_counts()
-        capt = int(await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0))
-        require_jtag_tdo_resolved("SMC_AXI_SINGLE_OP capture")
+        status, rdata = await jtag2axi_status(jtag, access)
         gate_after = self._rd("tb_smc_jtag2axi_security_disable")
-        capt_op, capt_data = unpack_single_op(capt)
-        capt_addr = (capt >> SINGLE_OP_ADDR_LSB) & SINGLE_OP_ADDR_MASK
         self.log.info(
-            "DTP->SMC debug AXI after a SINGLE_OP read of 0x%08x: gate %d->%d AW %d->%d "
+            "DTP->SMC debug AXI after a JTAG2AXI read of 0x%08x: gate %d->%d AW %d->%d "
             "AR %d->%d; %d clk_smu_i edges, %d with a VALID high, %d with a VALID at X/Z; "
-            "capture op=%d addr=0x%x data=0x%x",
+            "status=%d data=0x%x",
             FABRIC_PROBE_ADDR,
             gate_before,
             gate_after,
@@ -401,14 +359,13 @@ class SmuOtpBridgesUnderDbgDisableSeq:
             tally["edges"],
             tally["valid"],
             tally["xz"],
-            capt_op,
-            capt_addr,
-            capt_data,
+            status,
+            rdata,
         )
         sb.expect_eq(
-            "SMC fabric bridge refuses the SINGLE_OP while the posture blocks it: "
+            "SMC fabric bridge refuses the JTAG2AXI read while the posture blocks it: "
             f"(shift-through out for in {reach_in_hex}, gate before, gate after, AW delta, "
-            "AR delta, VALID edges, X/Z edges, window covered, capture op, capture addr)",
+            "AR delta, VALID edges, X/Z edges, window covered, status)",
             (
                 reach_out_hex,
                 gate_before,
@@ -418,10 +375,9 @@ class SmuOtpBridgesUnderDbgDisableSeq:
                 tally["valid"],
                 tally["xz"],
                 tally["edges"] >= FABRIC_SETTLE_CYCLES,
-                capt_op,
-                capt_addr,
+                status,
             ),
-            (reach_in_hex, 1, 1, 0, 0, 0, 0, True, J2A_STATUS_SUCCESS, 0),
+            (reach_in_hex, 1, 1, 0, 0, 0, 0, True, J2A_STATUS_DECERR),
             evidence="CHK-OTP-FABRIC-BLOCKED",
         )
 

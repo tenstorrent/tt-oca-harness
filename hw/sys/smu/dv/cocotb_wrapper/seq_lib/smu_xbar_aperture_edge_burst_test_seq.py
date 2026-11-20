@@ -78,16 +78,15 @@ from seq_lib.smu_dtp_sep_ic_reset_effect_test_seq import CAPTURE_POLL_CLK, CAPTU
 from seq_lib.smu_filter_helpers import SMC_APERTURE_LOCAL_BASE
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
     WDT_KEY_MAGIC,
-    pack_single_op,
-    unpack_single_op,
+    Jtag2AxiScanPort,
+    jtag2axi_start,
+    jtag2axi_status,
 )
 from seq_lib.smu_tb_pins import smc_primary_reset
 from seq_lib.smu_xbar_decerr_burst_response_test_seq import (
@@ -353,19 +352,12 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
         return {"port": (_hx(base), _hx(size)), "readback": (_hx(base), _hx(size))}
 
     async def _fabric_sized(self, addr: int, data: int, size: int, wstrb: int, label: str) -> int:
-        """One JTAG2AXI SINGLE_OP write; captures until it leaves busy, bounded."""
-        raw = pack_single_op(J2A_OP_WRITE, addr, data, wstrb=wstrb, size=size)
-        await self._dr(DTP_IR_SMC_AXI_SINGLE_OP, raw, SMC_DBG_SINGLE_OP_LEN, f"{label}_issue")
+        """One JTAG2AXI write; samples it until it leaves busy, bounded."""
+        port = Jtag2AxiScanPort(self._ptap_scan, self.jtag)
+        access = await jtag2axi_start(port, J2A_OP_WRITE, addr, data, wstrb=wstrb, size=size)
         used = 0
         while True:
-            captured, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=used == 0,
-            )
-            status, _ = unpack_single_op(captured)
+            status, _ = await jtag2axi_status(port, access)
             used += 1
             if status != J2A_STATUS_BUSY:
                 break

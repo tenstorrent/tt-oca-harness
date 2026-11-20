@@ -6,8 +6,8 @@ S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
     J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC
     word of ``seq_lib.smu_lifecycle_table`` (not PROD), so the eFuse JTAG
     demux stays off err_slv.
-S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the 14-bit packing of
-    ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``.
+S2: ``SMC_OTP_DTMCS`` reads the DTMCS value with no sticky DMI status
+    (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``).
 S3: Write PATTERN_A to MAP SPARE[0], readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
@@ -20,12 +20,12 @@ SEP OTP; series NO_INCR.
 from __future__ import annotations
 
 import cocotb
+from dtp_types import DTP_EXPECTED_DTMCS
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
     J2A_STATUS_SUCCESS,
     make_smu_jtag_tap,
     otp_jtag2axi_single_read,
@@ -120,19 +120,17 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         self._log(f"CHK-OTP-SMC-MAP-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}")
         sb.expect_eq("CHK-OTP-SMC-MAP-GATE-OPEN", gate, 0, evidence="CHK-OTP-SMC-MAP-GATE-OPEN")
 
-        caps = int(await jtag.read("SMC_OTP_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
-        require_jtag_tdo_resolved("OTP CAPS")
-        if caps != DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS:
-            raise AssertionError(
-                f"OTP CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS:04x}"
-            )
+        dtmcs = int(await jtag.read("SMC_OTP_DTMCS"))
+        require_jtag_tdo_resolved("OTP DTMCS")
+        if dtmcs != DTP_EXPECTED_DTMCS:
+            raise AssertionError(f"OTP DTMCS=0x{dtmcs:08x} want 0x{DTP_EXPECTED_DTMCS:08x}")
         self.s2_ok = True
-        self._log(f"CHK-OTP-SMC-MAP-CAPS caps=0x{caps:04x} spare0=0x{SPARE0:08x}")
+        self._log(f"CHK-OTP-SMC-MAP-DTMCS dtmcs=0x{dtmcs:08x} spare0=0x{SPARE0:08x}")
         sb.expect_eq(
-            "CHK-OTP-SMC-MAP-CAPS",
-            caps,
-            DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
-            evidence="CHK-OTP-SMC-MAP-CAPS",
+            "CHK-OTP-SMC-MAP-DTMCS",
+            dtmcs,
+            DTP_EXPECTED_DTMCS,
+            evidence="CHK-OTP-SMC-MAP-DTMCS",
         )
 
         await self._otp_wr(jtag, SPARE0, PATTERN_A, "SPARE0-A")

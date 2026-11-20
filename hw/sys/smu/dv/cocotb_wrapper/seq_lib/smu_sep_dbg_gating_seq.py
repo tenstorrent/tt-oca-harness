@@ -7,10 +7,10 @@ the signal, not the effect. This anchor closes the gap: it issues a real JTAG2AX
 transaction over the primary TAP and counts whether the bridge launched it on the
 DTP -> SMC debug AXI port.
 
-Per jtag2axi.sv the bridge's update is gated by `!security_disable_i`, and
-jtag_intf_unit.sv wires that from `dbg_disable.smc_jtag2axi`. So with debug
-disabled the transaction must never reach AXI at all -- not merely be answered
-with an error.
+Per jtag_dmi2axi.sv the bridge's `security_disable_i` steers every request to an
+error slave, and jtag_intf_unit.sv wires that from `dbg_disable.smc_jtag2axi`. So
+with debug disabled the transaction must never reach AXI at all -- not merely be
+answered with an error.
 
 Both polarities are needed and each entry states its own:
   +dbg_expect_gated=0  the eFuse image leaves debug open; the transaction must
@@ -40,6 +40,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 
 from seq_lib.smu_addr_map import smc_indexed_addr
+from seq_lib.smu_jtag_helpers import J2A_OP_READ, SMC_DBG_AXSIZE_4B, jtag2axi_start
 from seq_lib.smu_lifecycle_table import (
     LC_STATE_PRESENSE,
     lc_raw_from_shadow_preload,
@@ -47,12 +48,9 @@ from seq_lib.smu_lifecycle_table import (
     posture,
 )
 from seq_lib.wrapper_jtag import (
-    J2A_OP_READ,
-    J2A_SIZE_4B,
     PTAP_DEFAULT_IDCODE,
     make_wrapper_ptap,
     require_tdo_resolved,
-    single_op_payload,
 )
 
 # SMC CPU_CTRL scratch0, SMC-local. A benign, always-mapped read target: the
@@ -175,19 +173,18 @@ class SmuSepDbgGatingSeq:
         idcode = await jtag.read_idcode()
         require_tdo_resolved("IDCODE")
         assert idcode == PTAP_DEFAULT_IDCODE, f"TAP not answering: IDCODE 0x{idcode:08x}"
-        caps = await jtag.read("SMC_JTAG2AXI_CAPS")
-        self.log.info("TAP answering: IDCODE=0x%08x JTAG2AXI CAPS=0x%04x", idcode, caps)
+        dtmcs = await jtag.read("SMC_DTMCS")
+        self.log.info("TAP answering: IDCODE=0x%08x JTAG2AXI DTMCS=0x%08x", idcode, dtmcs)
 
         before_aw, before_ar = self._counts()
 
-        payload = single_op_payload(J2A_OP_READ, J2A_READ_ADDR, size=J2A_SIZE_4B)
-        await jtag.write("SMC_AXI_SINGLE_OP", payload)
+        await jtag2axi_start(jtag, J2A_OP_READ, J2A_READ_ADDR, size=SMC_DBG_AXSIZE_4B)
         await ClockCycles(self.dut.clk_smu_i, SETTLE_CYCLES)
 
         after_aw, after_ar = self._counts()
         launched = (after_ar > before_ar) or (after_aw > before_aw)
         self.log.info(
-            "debug AXI after a SINGLE_OP read of 0x%08x: AW %d->%d AR %d->%d (launched=%s)",
+            "debug AXI after a JTAG2AXI read of 0x%08x: AW %d->%d AR %d->%d (launched=%s)",
             J2A_READ_ADDR,
             before_aw,
             after_aw,

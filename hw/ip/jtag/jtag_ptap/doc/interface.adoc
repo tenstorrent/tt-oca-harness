@@ -44,33 +44,20 @@ register lengths.
 |0x18 |DEBUG_CONTROL |5 |Debug and clock stop control
 |0x19 |JTAG_CAPS |60 |Capabilities readback
 |0x1A |SELECT_IJTAG |Variable |iJTAG network selection
-|0x1B |SMC_OTP_JTAG2AXI_CAPS |14 |SMC OTP bridge capabilities readback
-|0x1C |SMC_OTP_AXI_SINGLE_OP |Variable |SMC OTP bridge single transaction
-|0x1D |SMC_OTP_AXI_SERIES_CTRL |Variable |SMC OTP bridge series control
-|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR |Variable |SMC OTP bridge series data, incrementing address
-|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR |Variable |SMC OTP bridge series data, fixed address
-|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC OTP bridge series data with error status
-|0x21 |SEP_OTP_JTAG2AXI_CAPS |14 |SEP OTP bridge capabilities readback
-|0x22 |SEP_OTP_AXI_SINGLE_OP |Variable |SEP OTP bridge single transaction
-|0x23 |SEP_OTP_AXI_SERIES_CTRL |Variable |SEP OTP bridge series control
-|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR |Variable |SEP OTP bridge series data, incrementing address
-|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR |Variable |SEP OTP bridge series data, fixed address
-|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SEP OTP bridge series data with error status
-|0x27 |SMC_JTAG2AXI_CAPS |14 |SMC fabric bridge capabilities readback
-|0x28 |SMC_AXI_SINGLE_OP |Variable |SMC fabric bridge single transaction
-|0x29 |SMC_AXI_SERIES_CTRL |Variable |SMC fabric bridge series control
-|0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |SMC fabric bridge series data, incrementing address
-|0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |SMC fabric bridge series data, fixed address
-|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC fabric bridge series data with error status
+|0x1B |SMC_OTP_DTMCS |32 |SMC OTP bridge DTM control and status
+|0x1C |SMC_OTP_DMI |41 |SMC OTP bridge Debug Module Interface access
+|0x1D |SEP_OTP_DTMCS |32 |SEP OTP bridge DTM control and status
+|0x1E |SEP_OTP_DMI |41 |SEP OTP bridge Debug Module Interface access
+|0x1F |SMC_DTMCS |32 |SMC fabric bridge DTM control and status
+|0x20 |SMC_DMI |41 |SMC fabric bridge Debug Module Interface access
 |0x3D |ZERO_LENGTH_BYPASS |0, or 1 |TDI to TDO with no register; BYPASS, with its 1-bit register, while the TAP_3DCR STAP-select bit is set
 |0x3E |INV_BYPASS | |
 |0x3F |BYPASS |1 |IEEE 1149.1, Section 8.4
 |===
 
-The length of each variable-length JTAG2AXI register follows from the bridge's
-address width, data width and pipeline depth, and for the series data registers
-from the size last written to `*_AXI_SERIES_CTRL`. <<ptap-jtag2axi-support>>
-defines each layout.
+<<ptap-jtag2axi-support>> defines the layouts of the JTAG2AXI registers. An
+instruction of a bridge that its enable parameter leaves out maps to the BYPASS
+instruction.
 
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.
@@ -92,6 +79,8 @@ endif::backend-html5[]
 The PTAP depends on the following components:
 
 * https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/ocah_prim[`hw/common/ocah_prim`] — Primitive cells (synchronizers, clock gating)
+* `vendor/pulp-platform/riscv-dbg` — `tdr2axi` with the Debug Module registers and the System Bus Access engine (JTAG2AXI bridges)
+* `vendor/pulp-platform/axi` and `vendor/pulp-platform/common_cells` — AXI manager, demultiplexers, error slave and clock-domain crossings of the JTAG2AXI bridges
 ifdef::backend-html5[]
 * xref:ip:jtag_stap/doc/index.adoc[`hw/ip/jtag/jtag_stap`] — Secondary TAP (when 3DIC support enabled)
 endif::backend-html5[]

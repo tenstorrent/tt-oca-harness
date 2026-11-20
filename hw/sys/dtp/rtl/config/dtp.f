@@ -33,7 +33,7 @@ $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
-$OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
+$OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_dmi2axi.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
 
 # JTAG STAP module

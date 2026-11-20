@@ -128,11 +128,6 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("xbar_route_cg", "filter", "reprogram_shrink"),
         ("xbar_route_cg", "filter", "config_clear_deny"),
     ],
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test": [
-        ("reg_access_cg", "path", "jtag2axi_fabric"),
-        ("reg_access_cg", "outcome", "success"),
-        ("dtp_debug_cg", "jtag2axi", "wstrb_neighbor"),
-    ],
     "smu_dtp_jtag2axi_back_to_back_error_ok_test": [
         ("reg_access_cg", "outcome", "decerr_poison"),
         ("reg_access_cg", "outcome", "success"),
@@ -160,10 +155,6 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("reg_access_cg", "path", "jtag2axi_fabric"),
         ("reg_access_cg", "outcome", "success"),
         ("dtp_debug_cg", "jtag2axi", "rw_matrix"),
-    ],
-    "smu_dtp_jtag2axi_smc_error_path_test": [
-        ("reg_access_cg", "outcome", "decerr_poison"),
-        ("dtp_debug_cg", "jtag2axi", "error_path"),
     ],
     "smu_dtp_jtag_smc_cpu_register_test": [
         ("reg_access_cg", "path", "jtag2axi_fabric"),

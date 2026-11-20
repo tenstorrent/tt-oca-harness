@@ -34,10 +34,3 @@ if { [info procs apply_prefix] eq "" } {
 # CDC_COHERENCY_RECONV_COMB : Combinational convergence of synchronized signals from the same source domain
 # CDC_COHERENCY_RECONV_SEQ  : Sequential convergence of synchronized signals from the same source domain
 #=======================================================================================================================
-# The PULP axi_cdc_clearable / cdc_fifo_gray_clearable / cdc_reset_ctrlr primitives implement a clearable
-# asynchronous FIFO with gray-coded read/write pointers and a 4-phase reset-coordination handshake. The CDC
-# tool does not model this clearable-handshake protocol and reports the gray-pointer multi-bit reconvergence
-# pattern as unsynchronized data / coherency violations. These are battle-tested 3rd-party CDC primitives;
-# no RTL change is appropriate. Same justification pattern as the W146_cdc_fifo_gray_* lint waivers in
-# hw/sys/dtp/lint/dtp.vclint.opensource_ip.waiver.tcl.
-#=======================================================================================================================

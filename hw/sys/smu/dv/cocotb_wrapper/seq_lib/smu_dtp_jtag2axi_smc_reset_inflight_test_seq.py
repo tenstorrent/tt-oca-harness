@@ -17,10 +17,10 @@ watchdog second timeout asserts warm reset and not the primary reset).
 
 An access issued inside a reset may never complete; its outcome is an ``OBS-`` line
 and only its launch inside the window is graded. A launch is the TCK falling edge in
-Update-DR of the SMC_AXI_SINGLE_OP scan. The warm-reset read is shifted in and held in
-Pause-DR until the warm probe reads 0, then updated.
+Update-DR of the SMC_DMI scan that starts the System Bus Access. The warm-reset read's
+starting scan is shifted in and held in Pause-DR until the warm probe reads 0, then updated.
 
-S1 SETUP: TAP reset, IDCODE, JTAG2AXI gate and CAPS; sampling starts.
+S1 SETUP: TAP reset, IDCODE, JTAG2AXI gate and DTMCS; sampling starts.
 S2 BASELINE: RESET_VECTOR[0] read; ISOLATE_REQ_REG and SS_CONFIG written and read back.
 S3 DURING_COOL: RESET_VECTOR[0] read and SCRATCH[0] write inside a pin cool reset released
    20000 clk_ref after the hold starts, then inside an FLR-timed cool reset (counters 0 / 4096).
@@ -29,7 +29,7 @@ S5 POST: SS_CONFIG and ISOLATE_REQ_REG.
 S6 FRESH: SCRATCH[0] write and read, RESET_VECTOR[0] read.
 S7 DURING_WARM: SS_CONFIG pattern, CORE0 watchdog armed with WDOGRSTEN, SS_CONFIG read
    launched while the warm probe reads 0.
-S8 TIMEOUT: every capture poll, reset level wait and warm wait is bounded and logged.
+S8 TIMEOUT: every status poll, reset level wait and warm wait is bounded and logged.
 """
 
 from __future__ import annotations
@@ -40,29 +40,27 @@ from collections import Counter
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
-from dtp_types import DTP_IR_WIDTH
+from dtp_types import DMI_LEN, DTP_DMI_SETTLE_TCK, DTP_EXPECTED_DTMCS, DTP_IR_WIDTH
 from ocah_jtag_vip import OcahJtagMasterDriverError, OcahJtagState
 
 from seq_lib.smu_addr_map import cpu_ctrl_bm, reset_unit_u32, smc_addr, smc_indexed_addr, wdt_u32
 from seq_lib.smu_compose_helpers import hier
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     J2A_OP_READ,
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
     WDT_KEY_MAGIC,
     axi64_pack32,
     axi64_unpack32,
+    dtp_ir_opcode,
+    jtag2axi_arm,
+    jtag2axi_status,
     make_smu_jtag_tap,
-    pack_single_op,
     require_jtag_tdo_resolved,
-    unpack_single_op,
 )
 from seq_lib.smu_tb_pins import smu_scope
 
@@ -96,12 +94,13 @@ SCRATCH_FRESH = 0x5C0F_2E55
 FLR_COUNTER_VALUE = 0
 FLR_HOLD_REF = 4096
 
-# Bench bounds. The capture poll is the jtag2axi_single_* poll: 32 clk_smu, then up to 128
-# captures 16 clk_smu apart.
+# Bench bounds. The status poll: 32 clk_smu, then up to 128 status samples 16 clk_smu apart.
 POLL_LIMIT = 128
 FIRST_POLL_GAP_SMU = 32
 POLL_GAP_SMU = 16
-IDLE_TCK = 2
+# TCK of one DMI scan from Run-Test/Idle and its settle; a status sample and a launch
+# take up to six each.
+DMI_SCAN_TCK = DTP_IR_WIDTH + DMI_LEN + 12 + DTP_DMI_SETTLE_TCK
 COOL_HOLD_REF = 20000
 ASSERT_BOUND_REF = 128
 RELEASE_BOUND_REF = 8192
@@ -111,8 +110,8 @@ MID_OFFSETS_TCK = (0, 8, 32)
 STEP_CLOCK_GAP = 2
 
 TERMS = ("SETUP", "BASELINE", "DURING_COOL", "MID_RELEASE", "POST", "FRESH", "DURING_WARM")
-# Wait sites per kind, from the step list: graded capture polls (S2 5, S3 FLR counters 2,
-# S5 2, S6 3, S7 arming 5), in-reset capture polls (S3 4, S4 3, S7 1), reset level waits
+# Wait sites per kind, from the step list: graded status polls (S2 5, S3 FLR counters 2,
+# S5 2, S6 3, S7 arming 5), in-reset status polls (S3 4, S4 3, S7 1), reset level waits
 # (S3 2 + 2, S4 3 x 2) and warm waits (fall, rise).
 EXPECTED_SITE_KINDS = {"capture": 17, "obs_capture": 8, "reset": 10, "warm": 2}
 
@@ -131,7 +130,7 @@ def _now_ps() -> int:
 
 
 class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
-    """JTAG2AXI SINGLE_OP accesses into the SMC fabric across SMC cool, FLR and warm resets."""
+    """JTAG2AXI accesses into the SMC fabric across SMC cool, FLR and warm resets."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -247,7 +246,7 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
     # ---- JTAG2AXI ----------------------------------------------------------------------
 
     async def _open_tap(self) -> None:
-        """S1 bring-up: TAP reset, IDCODE, gate closed-check, SMC JTAG2AXI CAPS."""
+        """S1 bring-up: TAP reset, IDCODE, gate closed-check, SMC JTAG2AXI DTMCS."""
         self.jtag = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
         await self.jtag.reset_tap()
         await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
@@ -259,12 +258,10 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
         gate = self._bit("tb_smc_jtag2axi_security_disable")
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
-        caps = int(await self.jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
-        require_jtag_tdo_resolved("SMC J2A CAPS")
-        if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
-            raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
-            )
+        dtmcs = int(await self.jtag.read("SMC_DTMCS"))
+        require_jtag_tdo_resolved("SMC J2A DTMCS")
+        if dtmcs != DTP_EXPECTED_DTMCS:
+            raise AssertionError(f"SMC J2A DTMCS=0x{dtmcs:08x} want 0x{DTP_EXPECTED_DTMCS:08x}")
         self.counts[self.term] += 1
 
     async def _ensure_tap(self, leg: str, last_complete: bool) -> None:
@@ -292,14 +289,15 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
         if reasons:
             await self._open_tap()
 
-    async def _launch(self, op: int, addr: int, data: int, wstrb: int, size: int, park=None):
-        """Shift one SMC_AXI_SINGLE_OP; return at the TCK falling edge in Update-DR."""
+    async def _launch(self, op: int, addr: int, data: int, size: int, park=None):
+        """Program one access and shift its starting SMC_DMI scan; return at the TCK falling
+        edge in Update-DR."""
         jtag = self.jtag
-        raw = pack_single_op(op, addr, data, wstrb=wstrb, size=size)
-        await jtag.shift_ir(DTP_IR_SMC_AXI_SINGLE_OP, width=DTP_IR_WIDTH, back_to_rti=False)
+        access, raw = await jtag2axi_arm(jtag, op, addr, data, size=size)
+        await jtag.shift_ir(dtp_ir_opcode("SMC_DMI"), width=DTP_IR_WIDTH, back_to_rti=False)
         await jtag.goto_state(OcahJtagState.SHIFT_DR)
-        for i in range(SMC_DBG_SINGLE_OP_LEN):
-            await jtag.step(1 if i == SMC_DBG_SINGLE_OP_LEN - 1 else 0, (raw >> i) & 1)
+        for i in range(DMI_LEN):
+            await jtag.step(1 if i == DMI_LEN - 1 else 0, (raw >> i) & 1)
         if park is not None:
             cond, bound, label = park
             await jtag.step_tms(0)  # EXIT1_DR -> PAUSE_DR
@@ -323,6 +321,7 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
         await jtag.step_tms(1)  # -> UPDATE_DR; the step ends on the updating falling edge
         self.counts[self.term] += 1
         return {
+            "access": access,
             "op": op,
             "addr": addr,
             "t_upd": _now_ps(),
@@ -341,20 +340,19 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
                 action()
 
     async def _poll(self, rec: dict, label: str, graded: bool, deadline_ps=None) -> dict:
-        """Bounded SINGLE_OP capture poll; graded expiry fails, in-reset expiry is an outcome."""
+        """Bounded status poll; graded expiry fails, in-reset expiry is an outcome."""
         await ClockCycles(self.clk, FIRST_POLL_GAP_SMU)
-        scan_ps = (DTP_IR_WIDTH + SMC_DBG_SINGLE_OP_LEN + 12) * self.tck_ps
-        reserve_ps = 2 * scan_ps + (FIRST_POLL_GAP_SMU + POLL_GAP_SMU) * self.smu_ps
+        scan_ps = DMI_SCAN_TCK * self.tck_ps
+        reserve_ps = 12 * scan_ps + (FIRST_POLL_GAP_SMU + POLL_GAP_SMU) * self.smu_ps
         status, rdata, used, resolved = J2A_STATUS_BUSY, 0, 0, True
         while used < POLL_LIMIT:
             if deadline_ps is not None and _now_ps() + reserve_ps > deadline_ps:
                 break
-            capt = await self.jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
+            status, rdata = await jtag2axi_status(self.jtag, rec["access"])
             used += 1
             resolved = _level(self.dut.jtag_tdo) >= 0
             if graded:
                 require_jtag_tdo_resolved(f"J2A poll {label} @0x{rec['addr']:08x}")
-            status, rdata = unpack_single_op(capt)
             if status != J2A_STATUS_BUSY:
                 break
             await ClockCycles(self.clk, POLL_GAP_SMU)
@@ -378,12 +376,9 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
     async def _access(
         self, op, addr, data=0, *, size=SMC_DBG_AXSIZE_4B, label, graded=True, deadline_ps=None
     ) -> dict:
-        if size == SMC_DBG_AXSIZE_4B:
-            wstrb, beat = axi64_pack32(addr, data) if op == J2A_OP_WRITE else (0, 0)
-        else:
-            wstrb, beat = (0xFF, data) if op == J2A_OP_WRITE else (0, 0)
-        rec = await self._launch(op, addr, beat, wstrb, size)
-        await self._idle(1 + IDLE_TCK)
+        beat = axi64_pack32(addr, data)[1] if size == SMC_DBG_AXSIZE_4B else data
+        rec = await self._launch(op, addr, beat, size)
+        await self._idle(DTP_DMI_SETTLE_TCK)
         rec = await self._poll(rec, label, graded, deadline_ps)
         if graded:
             require_jtag_tdo_resolved(f"J2A {label} @0x{addr:08x}")
@@ -585,8 +580,8 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
         for offset in MID_OFFSETS_TCK:
             self.dut.tb_cool_reset_pin.value = 1
             await self._wait_obs(0, ASSERT_BOUND_REF, f"s4 off{offset} assert")
-            rec = await self._launch(J2A_OP_READ, RV0, 0, 0, SMC_DBG_AXSIZE_8B)
-            await self._idle(max(offset, 1 + IDLE_TCK), at=offset, action=self._release_now)
+            rec = await self._launch(J2A_OP_READ, RV0, 0, SMC_DBG_AXSIZE_8B)
+            await self._idle(max(offset, DTP_DMI_SETTLE_TCK), at=offset, action=self._release_now)
             t_rel = self.pin_release_ps
             rec = await self._poll(rec, f"s4_off{offset}", graded=False)
             rec["value"] = rec["rdata"] & RV_BM
@@ -677,11 +672,10 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
             J2A_OP_READ,
             SS_CONFIG,
             0,
-            0,
             SMC_DBG_AXSIZE_4B,
             park=(lambda: _level(self.warm) == 0, bound, "s7 warm fall (Pause-DR)"),
         )
-        await self._idle(1 + IDLE_TCK)
+        await self._idle(DTP_DMI_SETTLE_TCK)
         rec = await self._poll(rec, "s7_warm_rd", graded=False)
         rec["value"] = axi64_unpack32(SS_CONFIG, rec["rdata"])
         self.log.info(
@@ -755,7 +749,7 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
         self.dut.tb_cfg_flr_pf_active.value = 0
         await self._open_tap()
         monitor = cocotb.start_soon(self._monitor())
-        await self._mark("SETUP", "TAP reset, IDCODE, JTAG2AXI gate open, CAPS; sampling on")
+        await self._mark("SETUP", "TAP reset, IDCODE, JTAG2AXI gate open, DTMCS; sampling on")
         await self._baseline()
         await self._during_cool()
         await self._mid_release()

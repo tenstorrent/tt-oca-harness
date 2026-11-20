@@ -12,7 +12,7 @@ as one for the local window and never leaves on ``smc_out``. The SMC master
 the bench drives without firmware is the JTAG2AXI bridge.
 
 With the outbound filter passing everything and GLOBAL_BASE and REGION_SIZE at
-their reset values, a SINGLE_OP read at GLOBAL_BASE plus the VERSION_LO offset
+their reset values, a JTAG2AXI read at GLOBAL_BASE plus the VERSION_LO offset
 answers SUCCESS with the VERSION_LO reset value, a write there answers SUCCESS,
 and the crossbar's ``smc_out`` port (``smc_smn_out_*_count_o``) and the
 ``smc_in``, ``sep_in`` and ``ext_out`` taps do not move: the crossbar's
@@ -210,7 +210,7 @@ class smu_xbar_self_route_smc_test_seq:
             subordinate,
         )
         sb.expect_eq(
-            f"CHK-XBAR-SELF-SMC-LOCAL the SINGLE_OP write and read at 0x{SELF_ADDR:08x} in the "
+            f"CHK-XBAR-SELF-SMC-LOCAL the JTAG2AXI write and read at 0x{SELF_ADDR:08x} in the "
             "SMC's own global window answer SUCCESS, the read returns the VERSION_LO reset value, "
             "and neither reaches the crossbar's smc_out port nor the smc_in, sep_in and ext_out "
             "taps",
