@@ -264,6 +264,14 @@ SPI_EVENT_ENABLE = sep_reg.SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR
 SPI_CROSS_STARTS = (SPI_ERROR_STATUS, SPI_EVENT_ENABLE)
 SPI_INSIDE_START = SPI_ERROR_ENABLE
 SPI_MAX_PAST_BEATS = 8
+# First past beat that lies beyond the extent rounded up to a power of two, so a
+# decode that rounds the extent up does not cover it. Each direction of each seed
+# runs one crossing burst with at least this many past beats.
+_SPI_EXTENT = SPI_END - SPI_BASE
+SPI_DEEP_PAST_BEATS = ((1 << (_SPI_EXTENT - 1).bit_length()) - _SPI_EXTENT) // 4 + 1
+assert SPI_DEEP_PAST_BEATS <= SPI_MAX_PAST_BEATS
+# Separates the deep-burst choice from the cell walk stream of the same seed.
+_SPI_DEEP_SALT = 0x5350_4450
 AXI_SIZE_32 = 2
 # A pinned PROD image whose SIP_DIS and SYS_DIS keep the inbound filter active.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
@@ -1507,11 +1515,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         else:
             self._fail("CHK-ROW-SPI-BURST-CONTROL", line)
 
-    async def _spi_cross(self, op: SepAxiOp, start: int) -> None:
-        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end."""
+    async def _spi_cross(self, op: SepAxiOp, start: int, deep_past: int | None = None) -> int:
+        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end.
+
+        ``deep_past`` replaces the drawn past-beat count. Returns the past-beat
+        count of the address handshake on the m_axi pins, 0 when none was seen.
+        """
         d = "R" if op is SepAxiOp.READ else "W"
         n_in = (SPI_END - start) // 4
-        nbeats = n_in + self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        past = self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        if deep_past is not None:
+            past = deep_past
+        nbeats = n_in + past
         addrs = [start + 4 * i for i in range(nbeats)]
         assert (start & ~0xFFF) == ((addrs[-1] + 3) & ~0xFFF), "burst crosses a 4 KB page"
         live = self._spi_live_set()
@@ -1598,16 +1613,41 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             await self._release()
         else:
             self._fail("CHK-ROW-SPI-BURST", line)
+        return ax["len"] + 1 - n_in if ax is not None else 0
 
     async def _spi_leg(self) -> None:
-        """SPI host extent: staging and control with the window closed, then the crossing bursts."""
+        """SPI host extent: staging and control with the window closed, then the crossing bursts.
+
+        Per direction, one start drawn from a stream of its own carries a
+        past-beat count drawn from SPI_DEEP_PAST_BEATS to SPI_MAX_PAST_BEATS.
+        """
         await self._spi_stage()
         await self._spi_control()
         starts = list(SPI_CROSS_STARTS)
         self.rng.shuffle(starts)
+        deep_rng = SepSeededRng(self.random_seed() ^ _SPI_DEEP_SALT)
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+            d = "R" if op is SepAxiOp.READ else "W"
+            forced = deep_rng.choice(starts)
+            deep_past = deep_rng.randrange(SPI_DEEP_PAST_BEATS, SPI_MAX_PAST_BEATS + 1)
+            self.logger.info(
+                "INFO-ROW-SPI-DEEP-BURST LOG: dir=%s start=0x%08x past_beats=%d",
+                d,
+                forced,
+                deep_past,
+            )
+            seen = {}
             for start in starts:
-                await self._spi_cross(op, start)
+                seen[start] = await self._spi_cross(
+                    op, start, deep_past if start == forced else None
+                )
+            self._ctrl(
+                "ROW-SPI-DEEP-BURST",
+                max(seen.values()) >= SPI_DEEP_PAST_BEATS,
+                f"dir={d} past_beats_on_m_axi="
+                + " ".join(f"0x{a:08x}:{n}" for a, n in seen.items())
+                + f" need>={SPI_DEEP_PAST_BEATS}",
+            )
 
     # -------------------------------------------------------- open-value legs
     def _draw_attrs(self, *, lock: int | None = None) -> dict[str, int]:
