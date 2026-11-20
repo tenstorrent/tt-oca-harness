@@ -597,7 +597,7 @@ module sep_uvm_top
         .jtag_tdi_i                   (jtag_core_tdi),
         .jtag_trst_ni                 (jtag_core_trst_n),
         .jtag_tdo_o                   (jtag_tdo_o),
-        .jtag_tdoEn_o                 (),
+        .jtag_tdoEn_o                 (jtag_tdoEn_o),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
 
 `ifdef SEP_JTAG_AXIL_LIVE
@@ -2261,6 +2261,7 @@ module sep_uvm_top
     assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
     assign pr_inflt_aruser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.user;
     // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
+    // PR-CPU-LSU-ATTR: address and side-band fields of the same raw LSU AW and AR.
 `ifndef SEP_CPU_STUB
     assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;
     assign pr_cpu_lsu_awready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.aw_ready;
@@ -2271,6 +2272,18 @@ module sep_uvm_top
     assign pr_cpu_ifu_arvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar_valid;
     assign pr_cpu_ifu_arready_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw.ar_ready;
     assign pr_cpu_ifu_arprot_o  = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar.prot;
+    assign pr_cpu_lsu_awaddr_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.addr;
+    assign pr_cpu_lsu_awburst_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.burst;
+    assign pr_cpu_lsu_awlock_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.lock;
+    assign pr_cpu_lsu_awcache_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.cache;
+    assign pr_cpu_lsu_awqos_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.qos;
+    assign pr_cpu_lsu_awregion_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.region;
+    assign pr_cpu_lsu_araddr_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.addr;
+    assign pr_cpu_lsu_arburst_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.burst;
+    assign pr_cpu_lsu_arlock_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.lock;
+    assign pr_cpu_lsu_arcache_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.cache;
+    assign pr_cpu_lsu_arqos_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.qos;
+    assign pr_cpu_lsu_arregion_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.region;
 `else
     assign pr_cpu_lsu_awvalid_o = 1'b0;
     assign pr_cpu_lsu_awready_o = 1'b0;
@@ -2281,6 +2294,18 @@ module sep_uvm_top
     assign pr_cpu_ifu_arvalid_o = 1'b0;
     assign pr_cpu_ifu_arready_o = 1'b0;
     assign pr_cpu_ifu_arprot_o  = '0;
+    assign pr_cpu_lsu_awaddr_o   = '0;
+    assign pr_cpu_lsu_awburst_o  = '0;
+    assign pr_cpu_lsu_awlock_o   = 1'b0;
+    assign pr_cpu_lsu_awcache_o  = '0;
+    assign pr_cpu_lsu_awqos_o    = '0;
+    assign pr_cpu_lsu_awregion_o = '0;
+    assign pr_cpu_lsu_araddr_o   = '0;
+    assign pr_cpu_lsu_arburst_o  = '0;
+    assign pr_cpu_lsu_arlock_o   = 1'b0;
+    assign pr_cpu_lsu_arcache_o  = '0;
+    assign pr_cpu_lsu_arqos_o    = '0;
+    assign pr_cpu_lsu_arregion_o = '0;
 `endif
     // PR-DMA-RAW: AxPROT of the raw secure DMA master request.
     assign pr_dma_raw_awvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw_valid;
@@ -2519,6 +2544,7 @@ module sep_uvm_top
     assign pr_dbg_sb_rlast_o = `SEP_CORE.dbg_axi_resp.r.last;
     // PR-DBG-IN / PR-DBG-OUT: the debug-module system-bus request at the input
     // and output of u_dbg_local_alias_remap. The CPU stub has no debug module.
+    // PR-DBG-IN-ATTR: AxBURST, AxLOCK, AxCACHE and AxQOS of the same input request.
 `ifndef SEP_CPU_STUB
     assign pr_dbg_in_awvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw_valid;
     assign pr_dbg_in_awready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw.aw_ready;
@@ -2532,6 +2558,14 @@ module sep_uvm_top
     assign pr_dbg_out_arvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.ar_valid;
     assign pr_dbg_out_arready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_i.ar_ready;
     assign pr_dbg_out_araddr_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.ar.addr;
+    assign pr_dbg_in_awburst_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.burst;
+    assign pr_dbg_in_awlock_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.lock;
+    assign pr_dbg_in_awcache_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.cache;
+    assign pr_dbg_in_awqos_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.qos;
+    assign pr_dbg_in_arburst_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.burst;
+    assign pr_dbg_in_arlock_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.lock;
+    assign pr_dbg_in_arcache_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.cache;
+    assign pr_dbg_in_arqos_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.qos;
 `else
     assign pr_dbg_in_awvalid_o = 1'b0;
     assign pr_dbg_in_awready_o = 1'b0;
@@ -2545,6 +2579,14 @@ module sep_uvm_top
     assign pr_dbg_out_arvalid_o = 1'b0;
     assign pr_dbg_out_arready_o = 1'b0;
     assign pr_dbg_out_araddr_o = '0;
+    assign pr_dbg_in_awburst_o = '0;
+    assign pr_dbg_in_awlock_o = 1'b0;
+    assign pr_dbg_in_awcache_o = '0;
+    assign pr_dbg_in_awqos_o = '0;
+    assign pr_dbg_in_arburst_o = '0;
+    assign pr_dbg_in_arlock_o = 1'b0;
+    assign pr_dbg_in_arcache_o = '0;
+    assign pr_dbg_in_arqos_o = '0;
 `endif
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
@@ -5645,9 +5687,10 @@ module sep_uvm_top
 
     // AW and AR handshakes each checker graded. A test that names a port with
     // +axi_sva_need_<lsu|ifu|sb|tcm> fails when that count is zero. With
-    // +cpu_boot, a run that never arms the system-bus checker fails. Both run
-    // on VCS only, as the checkers do (the SEP Verilator targets pass no
-    // --assert).
+    // +cpu_boot, a run that never arms the system-bus checker fails. Both
+    // checks are in the final block below, which Verilator does not compile.
+    // The checkers' two-state rules run on both simulators; their X-hygiene
+    // rules need a four-state simulator (ocah_axi_sva.sv header).
     int unsigned cpu_axi_hs_lsu, cpu_axi_hs_ifu, cpu_axi_hs_sb, cpu_axi_hs_tcm;
     always_ff @(posedge clk_i) begin
         if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.lsu_axi_req_raw,
@@ -5747,8 +5790,8 @@ module sep_uvm_top
     );
 
     // AW and AR handshakes each checker graded. A test that names a port with
-    // +axi_sva_need_<dma|smn|smc|ext> fails when that count is zero (VCS only,
-    // as the checkers).
+    // +axi_sva_need_<dma|smn|smc|ext> fails when that count is zero (VCS only:
+    // the final block below is not compiled on Verilator).
     int unsigned axi_hs_dma, axi_hs_smn, axi_hs_smc, axi_hs_ext;
     always_ff @(posedge clk_i) begin
         if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(`SEP_CORE.dma_axi_req, `SEP_CORE.dma_axi_resp))

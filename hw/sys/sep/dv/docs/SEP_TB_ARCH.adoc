@@ -309,6 +309,12 @@ Observation probe groups:
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.
+* Core TAP TDO enable (`jtag_tdoEn_o`): the `sep_wrapper` output
+  `jtag_tdoEn_o` on one monitor output of `tb_top`. It is monitor-only: it
+  drives nothing and adds no force. It is in the `jtag_tck_i` domain; a leaf
+  samples it at the TDO sample point of its JTAG driver (TCK low phase,
+  read-only). The CPU stub drives it to 0. Owner: `sep_cpu_reset_entry_test`
+  (CHK-TDOEN-SHIFT; INFO-TDOEN-IDLE logged).
 * Test-pin walk (read-only): the leaf reads, through the cocotb hierarchy
   handle, the `test_en_i` and `test_i` inputs of the consumers of the `sep`
   input `test_en_i`: the clock gater `u_sep_dma_wrap.u_secure_dma.dma_clk_gate`
@@ -838,6 +844,13 @@ Observation probe groups:
    `dbg_axi_req_raw` and `dbg_axi_req_o` with the AW and AR ready of their
    responses): AW and AR valid, ready and address; tied to 0 on the CPU stub
    build. Owner: `sep_debug_master_target_matrix_test`.
+** PR-DBG-IN-ATTR (`pr_dbg_in_{aw,ar}{burst,lock,cache,qos}_o`, with the
+   PR-DBG-IN valid, ready and address): AxBURST, AxLOCK, AxCACHE and AxQOS of
+   the same `dbg_axi_req_raw` AW and AR. Monitor only; sampled on `clk_i`;
+   tied to 0 on the CPU stub build. Graded against the core-complex port table
+   of the EL2 Programmer's Reference Manual that
+   `hw/sys/sep/doc/cpu.adoc` names. Owner: `sep_cpu_reset_entry_test`
+   (CHK-DBG-AXBURST, CHK-DBG-AXLOCK, CHK-DBG-AXQOS, CHK-DBG-AXCACHE).
 ** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
    (`dma_csr_req`), AW and AR address. Owner:
    `sep_fabric_dma_endpoint_matrix_test`.
@@ -855,7 +868,20 @@ Observation probe groups:
    before any remap; tied to 0 on the CPU stub build. Graded against
    `hw/sys/sep/doc/cpu.adoc` (`sep-cpu-axprot-table`). Owners:
    `sep_cpu_lsu_alias_window_twin_test` (LSU, CHK-CPU-AXPROT; IFU logged),
-   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (IFU, CHK-IFU-AXPROT).
+   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (IFU, CHK-IFU-AXPROT),
+   `sep_cpu_rom_ar_contention_test` (IFU and LSU AR valid and ready,
+   CTRL-ROM-AR-STALL).
+** PR-CPU-LSU-ATTR (`pr_cpu_lsu_{aw,ar}{addr,burst,lock,cache,qos,region}_o`,
+   with the PR-CPU LSU valid and ready): address, AxBURST, AxLOCK, AxCACHE,
+   AxQOS and AxREGION of the same raw `lsu_axi_req_raw` AW and AR, before the
+   alias remap. Monitor only; sampled on `clk_i`; tied to 0 on the CPU stub
+   build. AxBURST, AxLOCK and AxQOS are graded against the core-complex port
+   table of the EL2 Programmer's Reference Manual that
+   `hw/sys/sep/doc/cpu.adoc` names; AxCACHE and AxREGION are logged only.
+   Owner: `sep_cpu_lsu_alias_window_twin_test` (CHK-CPU-AXBURST,
+   CHK-CPU-AXLOCK, CHK-CPU-AXQOS; OBS-LSU-AXCACHE-MRAC logged),
+   `sep_cpu_rom_ar_contention_test` (AR address, to count ROM stalls for
+   CTRL-ROM-AR-STALL).
 ** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
    (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Graded against
    `hw/sys/sep/doc/cpu.adoc` (`sep-cpu-axprot-table`). Owner:

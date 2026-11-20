@@ -27,6 +27,8 @@ PR-TRNG-   ``pr_trng``      b: resp; r: resp data (the PR-TRNG replies, after
 RSP                         the bench TRNG responder force)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
 PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
+PR-CPU-    ``pr_cpu_lsu``   aw, ar: addr burst lock cache qos region (the same
+LSU-ATTR                    raw LSU request; 0 on the CPU stub build)
 PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; graded)
 PR-DMA-RAW ``pr_dma_raw``   aw, ar: prot (raw DMA master request; graded)
 PR-INFLT   ``pr_inflt``     aw, ar: addr user (global, out of the inbound filter)
@@ -60,6 +62,8 @@ PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus aw, ar prot, w data and r data
                             remap)
 PR-DBG-IN  ``pr_dbg_in``    aw, ar: addr (debug-module system-bus master before
                             its local alias remap; 0 on the CPU-stub build)
+PR-DBG-IN- ``pr_dbg_in``    aw, ar: addr burst lock cache qos (the same request
+ATTR                        as PR-DBG-IN; 0 on the CPU-stub build)
 PR-DBG-OUT ``pr_dbg_out``   aw, ar: addr (the same master after the remap)
 ========== ================ ==================================================
 
@@ -116,6 +120,8 @@ _AXI_PORT = {
     "b": ("resp", "id"),
     "r": ("resp", "id", "last"),
 }
+_AXI_ATTR_DBG = ("addr", "burst", "lock", "cache", "qos")
+_AXI_ATTR_LSU = (*_AXI_ATTR_DBG, "region")
 _TCM_REQ = ("clken", "wren", "addr", "wdata", "wecc")
 _TCM_RSP = ("rdata", "recc")
 
@@ -138,6 +144,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-TRNG-RSP": ("pr_trng", {"b": ("resp",), "r": ("resp", "data")}, "axi"),
     "PR-DMACSR": ("pr_dmacsr", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-CPU-LSU": ("pr_cpu_lsu", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
+    "PR-CPU-LSU-ATTR": ("pr_cpu_lsu", {"aw": _AXI_ATTR_LSU, "ar": _AXI_ATTR_LSU}, "axi"),
     "PR-CPU-IFU": ("pr_cpu_ifu", {"ar": ("prot",)}, "axi"),
     "PR-DMA-RAW": ("pr_dma_raw", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
     "PR-INFLT": ("pr_inflt", {"aw": ("addr", "user"), "ar": ("addr", "user")}, "axi"),
@@ -179,6 +186,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
         "axi",
     ),
     "PR-DBG-IN": ("pr_dbg_in", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
+    "PR-DBG-IN-ATTR": ("pr_dbg_in", {"aw": _AXI_ATTR_DBG, "ar": _AXI_ATTR_DBG}, "axi"),
     "PR-DBG-OUT": ("pr_dbg_out", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
 }
 
@@ -488,6 +496,60 @@ def check_axprot(logger, chk: str, tap: "SepFabricTap", master: str, ch: str, ex
     logger.info(
         f"{chk} PASS: master={master} ch={ch} prot={seen} count={len(vals)} expect=0b{expect:03b}"
     )
+
+
+def check_axfield(
+    logger,
+    chk: str,
+    tap: "SepFabricTap",
+    master: str,
+    ch: str,
+    field: str,
+    expect: int,
+    width: int,
+    cite: str,
+) -> list[str]:
+    """Grade one AXI field of every beat a master drove on one channel against ``expect``.
+
+    Logs one ``<chk> PASS|FAIL`` line per beat with the channel, field, beat
+    index, address (when the tap carries it), value and expected value, then
+    one summary line. Returns the failure lines: one per beat that holds X, Z
+    or a value other than ``expect``, and one when the channel carried no beat.
+    The caller fails the leaf when the list is not empty; collecting instead of
+    raising lets one call per field report every field of a batch. Raises
+    ``MonitorLifeError`` when the tap task ended without ``stop``.
+    """
+    tap.check_life()
+
+    def fmt(v: int | None) -> str:
+        return "X" if v is None else f"0b{v:0{width}b}"
+
+    want = fmt(expect)
+    beats = [b for b in tap.beats if b.ch == ch]
+    fails: list[str] = []
+    for b in beats:
+        v = b.fields[field]
+        addr = b.fields.get("addr")
+        line = (
+            f"master={master} ch={ch} field={field} beat={b.seq} t={b.t_ps}ps"
+            + ("" if "addr" not in b.fields else f" addr={'X' if addr is None else f'0x{addr:x}'}")
+            + f" value={fmt(v)} expect={want}"
+        )
+        if v == expect:
+            logger.info(f"{chk} PASS: {line}")
+        else:
+            msg = f"{chk} FAIL: {line} ({cite})"
+            logger.error(msg)
+            fails.append(msg)
+    if not beats:
+        msg = f"{chk} FAIL: master={master} ch={ch} field={field} count=0 expect={want} ({cite})"
+        logger.error(msg)
+        fails.append(msg)
+    logger.info(
+        f"{chk} {'FAIL' if fails else 'PASS'}: master={master} ch={ch} field={field} "
+        f"count={len(beats)} failures={len(fails)} expect={want}"
+    )
+    return fails
 
 
 def start_taps(*names: str, dut=None) -> dict[str, SepFabricTap]:
