@@ -48,7 +48,7 @@ registers of the alias and output-remap slots carry a drawn AxPROT and an
 AxCACHE other than the VIP default 0b0011, on a seeded stream of their own so
 the sweep draws keep their values. No specification states an AxPROT or AxCACHE
 rule at these registers. CTRL-SLOT-PROT: the s_axi handshake of each access
-carried the drawn AxPROT and AxCACHE. OBS-SLOT-PROT: the response of each access
+carried the drawn AxPROT and AxCACHE. INFO-SLOT-PROT: the response of each access
 and the value a read with the default attributes returns after the write.
 
 FCOV: owner window of this leaf (sep_filter_match_cg.cp_locked_range_write)
@@ -343,4 +343,4 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         for text in obs:
-            self.logger.info("OBS-SLOT-PROT %s", text)
+            self.logger.info("INFO-SLOT-PROT %s", text)

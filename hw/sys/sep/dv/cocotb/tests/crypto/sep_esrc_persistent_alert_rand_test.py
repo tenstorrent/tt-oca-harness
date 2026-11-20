@@ -70,7 +70,7 @@ Checkers:
                   ALERT = 1, and the word and window of that poll relative to
                   the end of window T. Logged, not graded: no text states the
                   trip latency.
-  OBS-PF-BOOT-DONE-TRIP  every trip, after the burst: MAIN_SM_STATUS
+  INFO-PF-BOOT-DONE-TRIP  every trip, after the burst: MAIN_SM_STATUS
                   BOOT_PHASE_DONE and ALERT. Logged, not graded: no text states
                   whether BOOT_PHASE_DONE drops at the trip.
   CHK-PF-NOTRIP   an exact burst of T - 1 failing windows, then clean noise:
@@ -127,7 +127,7 @@ Checkers:
                   whatever the write did, and only a reset ends the error (which
                   also clears ERR). No state with ERR 1 and the cause gone
                   exists in which a write of 0 could fail.
-  OBS-SM-ERR-CAUSE-W1C  a write of 1 to ERR while the integrity error
+  INFO-SM-ERR-CAUSE-W1C  a write of 1 to ERR while the integrity error
                   persists, then ERR at the next read. Logged, not graded: no
                   text states whether a write of 1 clears ERR while its cause
                   persists. Both OBS writes run with the coverage window closed.
@@ -141,7 +141,7 @@ Checkers:
   CHK-SM-ERR-W1C  then a write of 1 to ERR, and ERR reads 0 (``entropy_source.rdl``
                   ERR: "Write one or reset the block to clear"). The leaf then
                   clears PERSISTENT_FAILURE, which the inject also set.
-  OBS-SM-ILLEGAL  VCS only, after the ERR leg, when ERR reads 0 (logged in
+  INFO-SM-ILLEGAL  VCS only, after the ERR leg, when ERR reads 0 (logged in
                   the OBS line): the leaf forces a drawn encoding
                   outside the state set of the main state machine design
                   package on its state flops for 2 clocks and releases it; after
@@ -151,7 +151,7 @@ Checkers:
                   The leg cannot fail the leaf: under Verilator (the state
                   flops are not public), with no handle, or with ERR not 0
                   before the force it logs ``INFO-SM-ILLEGAL-SKIP`` and ends.
-  OBS-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
+  INFO-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
                   Logged, not graded: the RDL names a health-test failure or a
                   counter error for it, not an illegal state.
   CHK-PIC16       every trip that ends by a MODULE_ENABLE cycle, once ALERT
@@ -326,7 +326,7 @@ M_STATE, _ = _fm("MAIN_SM_STATUS", "STATE")
 STATE_BITS = M_STATE.bit_length()
 # Stimulus of an OBS leg only: the encodings of the main state machine, from
 # vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
-# (state_e). No .adoc or RDL lists them, so OBS-SM-ILLEGAL, which forces a value
+# (state_e). No .adoc or RDL lists them, so INFO-SM-ILLEGAL, which forces a value
 # outside this set, grades nothing.
 MAIN_SM_ENCODINGS = frozenset(
     (
@@ -1193,7 +1193,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             **reason,
         )
         sm = await self._rd(ESRC_MAIN_SM_STATUS)
-        self.chk.obs(
+        self.chk.info(
             "PF-BOOT-DONE-TRIP",
             thr=thr,
             alert=int(bool(sm & M_ALERT)),
@@ -1699,7 +1699,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
 
     # --- MAIN_SM_STATUS.ERR leg ------------------------------------------------------
     async def _sm_illegal_leg(self) -> None:
-        """OBS-SM-ILLEGAL and OBS-SM-ILLEGAL-PF, after the ERR leg (VCS only).
+        """INFO-SM-ILLEGAL and INFO-SM-ILLEGAL-PF, after the ERR leg (VCS only).
 
         Logged, not graded: no .adoc or RDL lists the legal encodings of
         MAIN_SM_STATUS.STATE (entropy_source.rdl: "sparse-encoded"), so no
@@ -1737,7 +1737,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         await self._clocks_wait(SM_ERR_WAIT_CLKS)
         err1, w1 = await self._err_read()
         pf1 = await self._pf_read()
-        self.chk.obs(
+        self.chk.info(
             "SM-ILLEGAL",
             state_forced=f"0x{illegal:03x}",
             flops_forced=len(flops),
@@ -1747,7 +1747,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             err=err1,
             word=f"0x{w1:08x}",
         )
-        self.chk.obs("SM-ILLEGAL-PF", state_forced=f"0x{illegal:03x}", pf=pf1)
+        self.chk.info("SM-ILLEGAL-PF", state_forced=f"0x{illegal:03x}", pf=pf1)
 
     async def _err_read(self) -> tuple[int, int]:
         """One MAIN_SM_STATUS read: (the ERR field, the whole word)."""
@@ -1834,7 +1834,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         )
         await self._wr(ESRC_MAIN_SM_STATUS, M_ERR)
         err3, w3 = await self._err_read()
-        self.chk.obs(
+        self.chk.info(
             "SM-ERR-CAUSE-W1C",
             err_before=err2,
             wr=f"0x{M_ERR:08x}",

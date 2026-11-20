@@ -116,7 +116,7 @@ Logged, not graded: after CHK-OUT-SMU-MOVED a second moved pair, drawn on its
 own seeded stream, has a size that is not a power of two or a power-of-two size
 with a base that is not size-aligned. The RDL gives the two registers no
 description and no legal-value rule. CTRL-SMU-MOVED: both registers read back
-the drawn pair (RDL field compare). OBS-SMU-MOVED: the response and the PR-OUT
+the drawn pair (RDL field compare). INFO-SMU-MOVED: the response and the PR-OUT
 captures of an LSU read of the first and the last word of that window.
 
 Every access that a graded window covers is first issued and graded with the
@@ -767,7 +767,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 mon.release_expected_decerr(1)
             ch = "aw" if write else "ar"
             self.logger.info(
-                "OBS-OUT-LOWADDR dir=%s addr=0x%08x resp=%s pr_out=%s pr_smc=%s",
+                "INFO-OUT-LOWADDR dir=%s addr=0x%08x resp=%s pr_out=%s pr_smc=%s",
                 "W" if write else "R",
                 word,
                 _rname(seq.resp_code),
@@ -1222,7 +1222,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 self.env.axi_monitor.release_expected_decerr(1)
             caps = [b for b in self.out.since(mark) if b.ch == "ar"]
             self.logger.info(
-                "OBS-SMU-MOVED kind=%s base=0x%x size=0x%x word=%s addr=0x%x resp=%s "
+                "INFO-SMU-MOVED kind=%s base=0x%x size=0x%x word=%s addr=0x%x resp=%s "
                 "out_ar=%d out_addrs=%s",
                 kind,
                 base,

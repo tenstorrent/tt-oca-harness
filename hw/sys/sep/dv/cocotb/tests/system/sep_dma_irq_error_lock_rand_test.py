@@ -79,7 +79,7 @@ INTR_ENABLE all set, a write of 1 to its INTR_TEST bit forces INTR_STATE
 1 to the matching STATUS bit, write 0 to INTR_TEST, no write) run in a drawn
 order. No text states which step releases a forced bit, so INTR_STATE, PIC
 sources 9, 10 and 11, STATUS and the write responses after each step are logged
-(``OBS-DMA-INTR-TEST-RELEASE``). Control, else CTRL-MISSING: the bit and its
+(``INFO-DMA-INTR-TEST-RELEASE``). Control, else CTRL-MISSING: the bit and its
 line read 1 after the INTR_TEST write.
 
 Leg L3, range lock (``sep-programming.adoc``, zero fill procedure: write MuBi4
@@ -105,7 +105,7 @@ kMultiBitBool4False" (``secure_dma.rdl:149``, 0x9) and the programmer guide
 writes 0x9 to it (``doc/programmer/src/sep-programming.adoc:781-782``). After a
 cold reset the leaf also writes a drawn value that is neither MuBi4 value to
 RANGE_REGWEN, reads it back and writes RANGE_BASE; the read-back and whether
-BASE took the write are logged (``OBS-DMA-REGWEN-NONMUBI``), because
+BASE took the write are logged (``INFO-DMA-REGWEN-NONMUBI``), because
 no TT text states the read-back of a non-MuBi4 write or whether such a value
 locks. Control, else CTRL-MISSING: RANGE_REGWEN reads 0x6 before the write and
 BASE before the write differs from the value written. An outside-range copy runs
@@ -132,10 +132,10 @@ non-zero DST_ADDR_HI. L4 has no graded value, because no document defines the
 ADDR_HI rule for the SEP DMA route: whether the copy ends with DONE or ERROR in
 a bounded number of STATUS reads, the destination footprint at DST_ADDR_LO (the
 destination words and its guards, read when the copy ends and again after the
-recovery writes), STATUS.ERROR and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``).
+recovery writes), STATUS.ERROR and ERROR_CODE are logged (``INFO-DMA-HI-ADDR``).
 After each non-zero trial, with no reset, a write of 1 to STATUS.ERROR and a
 clean state precede a legal copy; whether it completes with the destination
-equal to the source is also logged (``OBS-DMA-HI-ADDR``), not graded: no
+equal to the source is also logged (``INFO-DMA-HI-ADDR``), not graded: no
 document states how the non-zero ADDR_HI copy ends, and every trial starts
 from a cold reset, so no later trial needs the recovery. Control, else
 CTRL-MISSING: the same copy with both ADDR_HI at 0 completes and the
@@ -172,7 +172,7 @@ STATUS read once after GO (BUSY=1, DONE=0, ABORTED=0), then CONTROL.ABORT; a
 read inside the same bound shows ABORTED=1 and no read shows DONE, else
 CTRL-MISSING. Then the leaf writes the DMA clean state and ADDR_SPACE_ID 0x77
 and runs the same copy. Whether that copy completes with the source data is
-logged (``OBS-DMA-ASID-TIEOFF``), not graded: no text states that the DMA
+logged (``INFO-DMA-ASID-TIEOFF``), not graded: no text states that the DMA
 accepts a new copy after the abort, and every trial starts from a cold reset.
 STATUS.BUSY after the ABORT, STATUS.ERROR and ERROR_CODE of each trial are
 also logged: no document states which ERROR_CODE bit, if any, a tied-off
@@ -247,7 +247,7 @@ Checkers:
                     of the same seed (CHK-DMA-OPCODE-ERR, CHK-DMA-ASID-ERR,
                     CHK-DMA-ALIGN-ERR and CHK-DMA-SIZE-ERR kind total) are the
                     live control of each bit; the line logs their ERROR_CODE.
-  OBS-DMA-ERR-PREC  a copy with the drawn reserved opcode from a source in the
+  INFO-DMA-ERR-PREC  a copy with the drawn reserved opcode from a source in the
                     AXI extension aperture outside the eFuse shim CSR window,
                     which "leaves SEP on the AXI extension port"
                     (``hw/sys/sep/doc/fabric.adoc:162-164``), tied to DECERR
@@ -262,7 +262,7 @@ Checkers:
                     ERROR_CODE.BUS_ERROR=1 ("The bus transfer returned an
                     error.", ``secure_dma.adoc``, ERROR_CODE) after an AR at
                     the source.
-  OBS-DMA-ALIGN     a copy at width 1 (encoding 0) from a source on a 4-byte
+  INFO-DMA-ALIGN     a copy at width 1 (encoding 0) from a source on a 4-byte
                     boundary to a destination a drawn 1 to 3 bytes past one,
                     both aligned to the width: the end, STATUS.ERROR,
                     ERROR_CODE, the AR, AW and W counts and whether the
@@ -306,7 +306,7 @@ Checkers:
                     (``CTRL-DMA-REGWEN-CLR``, else CTRL-MISSING): in each L5
                     tied-off trial, with BUSY=1 just before the ABORT,
                     CFG_REGWEN reads False.
-  OBS-DMA-REGWEN-ERR per L2 kind, after ERROR rises and before any STATUS
+  INFO-DMA-REGWEN-ERR per L2 kind, after ERROR rises and before any STATUS
                     write: CFG_REGWEN and STATUS.BUSY, logged.
                     ``dma.hjson:352-353`` states only the idle and busy values.
   CHK-DMA-RANGE-OUT the L3 outside-range copy: DONE=1, ERROR=0,
@@ -332,7 +332,7 @@ Checkers:
                     and STATUS.ERROR read 1.
   OBS-DMA-LOCK-READBACK per L3 lock write and unlock attempt, in both
                     contexts: the RANGE_REGWEN read-back, logged.
-  OBS-DMA-REGWEN-NONMUBI after a cold reset, the read-back of a first
+  INFO-DMA-REGWEN-NONMUBI after a cold reset, the read-back of a first
                     RANGE_REGWEN write of a drawn value that is neither 0x6
                     nor 0x9 and whether a following BASE write lands, logged
                    . Control: RANGE_REGWEN reads 0x6 before the write
@@ -378,7 +378,7 @@ Checkers:
                     False after the writes; and once per seed, from a cold
                     reset with CFG_REGWEN True, every complement lands (each
                     of the four ADDR_SPACE_ID complements in turn).
-  OBS-DMA-CFG-LOCK-RESP per L5 trial: the write response of each refused
+  INFO-DMA-CFG-LOCK-RESP per L5 trial: the write response of each refused
                     protected write, logged; no text states it.
 """
 
@@ -1031,7 +1031,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         regwen_err = (await ops.rd(CFG_REGWEN) & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB
         st_regwen = await ops.read_status()
         self.logger.info(
-            "OBS-DMA-REGWEN-ERR LOG seed=%d kind=%s cfg_regwen=0x%x busy=%d error=%d %s",
+            "INFO-DMA-REGWEN-ERR LOG seed=%d kind=%s cfg_regwen=0x%x busy=%d error=%d %s",
             c.seed,
             kind,
             regwen_err,
@@ -1244,12 +1244,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         for event in RELEASE_EVENTS:
             await self._release_trial(event)
         for event in TEST_EVENTS:
-            await self._obs_intr_test_release(event)
+            await self._info_intr_test_release(event)
         await self._obs_size_edge()
         await self._leg_cfg_err()
         await self._leg_multi_err()
-        await self._obs_err_prec()
-        await self._obs_align_mismatch()
+        await self._info_err_prec()
+        await self._info_align_mismatch()
 
     async def _cfg_err_run(
         self, kinds: tuple[str, ...], bad: bool, *, graded: bool = False
@@ -1393,7 +1393,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         at_src = sum(1 for b in ev.ar if b.addr == EXT_SRC)
         return st, ended, ecode, len(ev.ar), at_src, len(ev.aw)
 
-    async def _obs_err_prec(self) -> None:
+    async def _info_err_prec(self) -> None:
         """A reserved opcode with a source that answers DECERR: ERROR_CODE and the beats, logged."""
         c = self.cfg_t
         rst, rended, rcode, rar, rat_src, raw = await self._err_prec_run(OP_COPY)
@@ -1404,12 +1404,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         if not (rended and rst.error and rcode & BUS_ERR_MASK and rat_src > 0):
             self._ctrl_missing(
-                "CTRL-DMA-ERR-PREC", f"OBS-DMA-ERR-PREC control: opcode=COPY {reach}"
+                "CTRL-DMA-ERR-PREC", f"INFO-DMA-ERR-PREC control: opcode=COPY {reach}"
             )
         self.logger.info("CTRL-DMA-ERR-PREC PASS seed=%d opcode=%d %s", c.seed, OP_COPY, reach)
         st, ended, ecode, n_ar, at_src, n_aw = await self._err_prec_run(c.bad_opcode)
         self.logger.info(
-            "OBS-DMA-ERR-PREC LOG seed=%d opcode=%d src=0x%08x ended=%d error=%d done=%d "
+            "INFO-DMA-ERR-PREC LOG seed=%d opcode=%d src=0x%08x ended=%d error=%d done=%d "
             "error_code=0x%x bus_error=%d opcode_error=%d ar=%d ar_at_src=%d aw=%d %s "
             "control_error_code=0x%x",
             c.seed,
@@ -1428,7 +1428,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             rcode,
         )
 
-    async def _obs_align_mismatch(self) -> None:
+    async def _info_align_mismatch(self) -> None:
         """A width-1 copy whose source and destination differ in 4-byte alignment."""
         c = self.cfg_t
         ops = self.ops
@@ -1478,7 +1478,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         self.logger.info(
-            "OBS-DMA-ALIGN seed=%d %s done=%d error=%d error_code=0x%x ar=%d aw=%d w=%d "
+            "INFO-DMA-ALIGN seed=%d %s done=%d error=%d error_code=0x%x ar=%d aw=%d w=%d "
             "dst_equals_src=%d",
             c.seed,
             line,
@@ -1491,7 +1491,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             int(copied),
         )
 
-    async def _obs_intr_test_release(self, event: str) -> None:
+    async def _info_intr_test_release(self, event: str) -> None:
         """INTR_TEST forces an INTR_STATE bit; each step of the drawn order is logged."""
         c = self.cfg_t
         ops = self.ops
@@ -1515,7 +1515,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         if not (istate & intr_bit and self.irq.level(src) == 1):
             self._ctrl_missing(
                 "CTRL-DMA-INTR-TEST-RELEASE",
-                f"OBS-DMA-INTR-TEST-RELEASE control: event={event} not forced: {forced}",
+                f"INFO-DMA-INTR-TEST-RELEASE control: event={event} not forced: {forced}",
             )
         steps = [forced]
         for step in order:
@@ -1527,7 +1527,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 resp = "-"
             steps.append(await sample(step, resp))
         self.logger.info(
-            "OBS-DMA-INTR-TEST-RELEASE seed=%d event=%s order=%s %s",
+            "INFO-DMA-INTR-TEST-RELEASE seed=%d event=%s order=%s %s",
             c.seed,
             event,
             ",".join(order),
@@ -1671,7 +1671,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         sent = _word(c.sentinel)
         moved = sum(1 for w in foot if w != sent)
         self.logger.info(
-            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x ended=%d status_reads_bound=%d "
+            "INFO-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x ended=%d status_reads_bound=%d "
             "error=%d done=%d src_err=%d dst_err=%d error_code=0x%x %s",
             c.seed,
             side,
@@ -1698,7 +1698,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         # No document states where a non-zero ADDR_HI copy writes, so the
         # footprint at DST_ADDR_LO is logged and not graded.
         self.logger.info(
-            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x footprint_words=%d "
+            "INFO-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x footprint_words=%d "
             "footprint_changed=%d footprint_changed_late=%d sentinel=0x%08x "
             "changed=%s changed_late=%s",
             c.seed,
@@ -1716,7 +1716,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         mism, guard_bad = self._hi_image_ok(rec)
         rec_ok = rended and rst.done and not rst.error and mism == 0 and guard_bad == 0
         self.logger.info(
-            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x lo_dst=0x%08x size=%d "
+            "INFO-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x lo_dst=0x%08x size=%d "
             "recovery_done=%d recovery_mismatch=%d recovery_guard_bad=%d",
             c.seed,
             side,
@@ -1951,9 +1951,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await self._grade_l3_outside()
         await self._l3_lock("idle")
         await self._l3_lock("after_error")
-        await self._obs_regwen_nonmubi()
+        await self._info_regwen_nonmubi()
 
-    async def _obs_regwen_nonmubi(self) -> None:
+    async def _info_regwen_nonmubi(self) -> None:
         """RANGE_REGWEN after a first non-MuBi4 write, and whether RANGE_BASE then takes a write."""
         c = self.cfg_t
         ops = self.ops
@@ -1972,8 +1972,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"base_landed={int(base == nb)}"
         )
         if regwen_pre != REGWEN_TRUE or base_pre == nb:
-            self._ctrl_missing("CTRL-DMA-REGWEN-NONMUBI", f"OBS-DMA-REGWEN-NONMUBI control: {line}")
-        self.logger.info("OBS-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
+            self._ctrl_missing(
+                "CTRL-DMA-REGWEN-NONMUBI", f"INFO-DMA-REGWEN-NONMUBI control: {line}"
+            )
+        self.logger.info("INFO-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
 
     async def _obs_size_edge(self) -> None:
         """A copy of 4k+2 bytes at width encoding 2: ERROR_CODE, the last WSTRB and the destination footprint."""
@@ -2176,7 +2178,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         close_graded_window(self.logger)
         rec_ok = rec_done_at is not None and not rst.error and rec_mism == 0
         self.logger.info(
-            "OBS-DMA-ASID-TIEOFF seed=%d side=%s asid=0x%x error_reads=%d error_code=0x%x "
+            "INFO-DMA-ASID-TIEOFF seed=%d side=%s asid=0x%x error_reads=%d error_code=0x%x "
             "aborted_read=%s busy_after_abort=%d abort_reads_bound=%d "
             "recovery_done=%d recovery_mismatch=%d last[%s] after_abort[%s]",
             c.seed,
@@ -2246,7 +2248,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"the protected writes cfg_regwen=0x{regwen:x} {st.fmt()}",
             )
         self.logger.info(
-            "OBS-DMA-CFG-LOCK-RESP LOG seed=%d %s %s",
+            "INFO-DMA-CFG-LOCK-RESP LOG seed=%d %s %s",
             c.seed,
             ctx,
             " ".join(f"{name}={resp}" for name, _, _, _, resp, _ in got),

@@ -88,7 +88,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     only way the bit returns to 1 here.
   * CHK-KMAC-POSTRST-DIGEST  the SHA3-256 hash run after KMAC's own pulse
                     equals the FIPS 202 golden (``env/sep_kmac_golden.py``).
-  * OBS-KMAC-ALERT-RST  rises of bits 5 and 6 of ``crypto_alert_pulse_probe_o``
+  * INFO-KMAC-ALERT-RST  rises of bits 5 and 6 of ``crypto_alert_pulse_probe_o``
                     (the KMAC alert receivers) from before KMAC's own pulse to
                     at least ``_ALERT_RST_TAIL_CLK`` clocks after its gated reset
                     rose.
@@ -202,14 +202,14 @@ Isolation proof (both directions, then the remaining isolated bits):
                     due acknowledge inside that window, so it is logged
                     only. The KMAC trials grade CHK-KMAC-DRAIN-ORDER on
                     their reset edge. The bus of a cancelled endpoint has no stated
-                    value and is logged (OBS-EDN-CANCEL-BUS).
+                    value and is logged (INFO-EDN-CANCEL-BUS).
   * CHK-EDN-DISCARD  a word committed to an endpoint and not yet
                     acknowledged on the cycle before its cancel started is
                     never acknowledged to any client afterwards. At least
                     one such word is required. OTBN trials walk the cancel
                     start over every phase of one URND acknowledge period
                     from a fresh URND burst. A word an endpoint held at the
-                    reset request is logged only (OBS-EDN-HELD-AT-REQUEST).
+                    reset request is logged only (INFO-EDN-HELD-AT-REQUEST).
   * CHK-EDN-HOLD / CHK-EDN-HOLD-KEEP  a KMAC software reset must leave a URND
                     word unchanged when the previous cycle had not already
                     acknowledged it, and that word is the one URND is
@@ -431,7 +431,7 @@ _EDN_DROP_CYCLES = 2_000
 # KMAC alert receivers [6:5] of crypto_alert_pulse_probe_o (crypto.adoc alert
 # routing table; hw/sys/sep/doc/kmac.adoc).
 _KMAC_ALERT_IDX = {"a5": 5, "a6": 6}
-# Clocks after the KMAC gated reset rose that OBS-KMAC-ALERT-RST still counts.
+# Clocks after the KMAC gated reset rose that INFO-KMAC-ALERT-RST still counts.
 # A testbench window, not a spec value.
 _ALERT_RST_TAIL_CLK = 64
 _KMAC_CFG_REGWEN = KMAC.addr("CFG_REGWEN")
@@ -1661,7 +1661,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         The spec states the cancel, not the bus value of a cancelled endpoint
         (hw/sys/sep/doc/reset_controller.adoc:161-165), so ``edn_bus`` and
-        ``edn_fips`` are logged as ``OBS-EDN-CANCEL-BUS`` and not graded.
+        ``edn_fips`` are logged as ``INFO-EDN-CANCEL-BUS`` and not graded.
         """
         if snap["ack"]:
             raise AssertionError(
@@ -1669,7 +1669,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 f"(ack={int(snap['ack'])} bus=0x{snap['bus']:08x})"
             )
         self.logger.info(
-            "OBS-EDN-CANCEL-BUS: %s KMAC endpoint %s: edn_bus=0x%08x edn_fips=%d (no stated value)",
+            "INFO-EDN-CANCEL-BUS: %s KMAC endpoint %s: edn_bus=0x%08x edn_fips=%d (no stated value)",
             tag,
             where,
             snap["bus"],
@@ -1822,7 +1822,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         walks one measured acknowledge period. On the falling edge of the
         KMAC gated reset the KMAC endpoint gives no acknowledge, and URND may
         acknowledge its own word. The KMAC bus on the edge has no stated value
-        and is logged as ``OBS-EDN-CANCEL-BUS``. A URND word that reads 0 on
+        and is logged as ``INFO-EDN-CANCEL-BUS``. A URND word that reads 0 on
         the edge with ``edn_ack`` low must be the last word acknowledged to
         URND before the edge (the pop of a delivered word), and URND must be
         acknowledged again within ``_EDN_KEEP_CYCLES`` while the KMAC reset is
@@ -2009,7 +2009,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     log_bus=True,
                 )
                 self.logger.info(
-                    "OBS-EDN-CANCEL-BUS: %s KMAC edn_bus non-zero on %d of the %d "
+                    "INFO-EDN-CANCEL-BUS: %s KMAC edn_bus non-zero on %d of the %d "
                     "quiet-window cycles (no stated value)",
                     tag,
                     bus_live,
@@ -2339,8 +2339,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         cancel start, and that no client was acknowledged with before, is a
         word committed and not yet acknowledged; it joins the CHK-EDN-DISCARD
         set. The words the endpoints held at the request are logged as
-        ``OBS-EDN-HELD-AT-REQUEST``. The bus of a cancelled endpoint has no
-        stated value and is logged as ``OBS-EDN-CANCEL-BUS``.
+        ``INFO-EDN-HELD-AT-REQUEST``. The bus of a cancelled endpoint has no
+        stated value and is logged as ``INFO-EDN-CANCEL-BUS``.
 
         With ``graded`` the reset runs inside the graded window. With ``iso``
         (the host and Key Manager isolate-completion probes of the domain), the
@@ -2435,7 +2435,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "open" if graded else "closed",
         )
         self.logger.info(
-            "OBS-EDN-CANCEL-BUS: %s %s trial: edn_bus %s on the cancel start, "
+            "INFO-EDN-CANCEL-BUS: %s %s trial: edn_bus %s on the cancel start, "
             "non-zero on %d of %d cancel-window cycles (no stated value)",
             tag,
             eng.name,
@@ -2803,7 +2803,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         such word is required, so the discard is graded.
 
         The words the endpoints held at each reset request are logged as
-        ``OBS-EDN-HELD-AT-REQUEST``, with any acknowledge of the same word
+        ``INFO-EDN-HELD-AT-REQUEST``, with any acknowledge of the same word
         after the request. EDN keeps serving the engine while it drains
         (reset_controller.adoc:163), and no text states whether a word on the
         endpoint bus before the paths isolate is committed, so they are not
@@ -2812,7 +2812,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         for at, bit, word in self._edn_held:
             later = [(t, c) for t, c, w in self._edn_acked if w == word and t > at]
             self.logger.info(
-                "OBS-EDN-HELD-AT-REQUEST: endpoint %d word 0x%08x on the bus at the "
+                "INFO-EDN-HELD-AT-REQUEST: endpoint %d word 0x%08x on the bus at the "
                 "reset request (cycle %d); acknowledged after it %s (no stated value)",
                 bit,
                 word,
@@ -2965,7 +2965,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 f"under field mask 0x{AES_CTRL_FIELD_MASK:08x}",
             )
         self.logger.info(
-            "OBS-AES-CTRL-RESERVED: CTRL_SHADOWED reserved bits 0x%08x after the pulse "
+            "INFO-AES-CTRL-RESERVED: CTRL_SHADOWED reserved bits 0x%08x after the pulse "
             "(no stated value)",
             ctrl_post & ~AES_CTRL_FIELD_MASK & 0xFFFF_FFFF,
         )
@@ -3173,13 +3173,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 f"0x{KMAC_STATUS_RDL_RESET:08x} under mask 0x{KMAC_STATUS_RDL_MASK:08x}",
             )
         self.logger.info(
-            "OBS-KMAC-STATUS-UNSTATED: STATUS sha3_absorb/sha3_squeeze/fifo_depth/"
+            "INFO-KMAC-STATUS-UNSTATED: STATUS sha3_absorb/sha3_squeeze/fifo_depth/"
             "fifo_full bits 0x%08x under mask 0x%08x after the pulse (no stated reset value)",
             kmac_status & KMAC_STATUS_UNSTATED_MASK,
             KMAC_STATUS_UNSTATED_MASK,
         )
         self.logger.info(
-            "OBS-KMAC-STATUS-RESERVED: STATUS reserved bits 0x%08x after the pulse "
+            "INFO-KMAC-STATUS-RESERVED: STATUS reserved bits 0x%08x after the pulse "
             "(no stated value)",
             kmac_status & KMAC_STATUS_RESERVED_MASK,
         )
@@ -3193,10 +3193,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"CFG_REGWEN.en {regwen_post} on the first read after KMAC's own SW_RESET_N "
             f"pulse equals the register-map reset {regwen_rst} (0 before the pulse)",
         )
-        await self._wait_gated_rst(ENG_KMAC.rst_bit, 1, "OBS-KMAC-ALERT-RST")
+        await self._wait_gated_rst(ENG_KMAC.rst_bit, 1, "INFO-KMAC-ALERT-RST")
         await ClockCycles(cocotb.top.clk_i, _ALERT_RST_TAIL_CLK)
         self.logger.info(
-            "OBS-KMAC-ALERT-RST a5_rises=%d a6_rises=%d window_clk=%d tail_clk=%d window=reset",
+            "INFO-KMAC-ALERT-RST a5_rises=%d a6_rises=%d window_clk=%d tail_clk=%d window=reset",
             alert.rises_since(alert_mark, "a5"),
             alert.rises_since(alert_mark, "a6"),
             alert.clk - alert_mark.clk,

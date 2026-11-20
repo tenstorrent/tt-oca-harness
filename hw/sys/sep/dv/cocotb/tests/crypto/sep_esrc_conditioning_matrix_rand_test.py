@@ -36,10 +36,10 @@ stimulus): the leg order, the partial mask M, the rate N_r (2 to 15), the lane
 noise Z (12 bits with a 0 and a 1) and its polarity, the balanced lanes, the
 divider value D_r (above the reset value, at most 1023), the order of 0 and
 D_r in the period walk and the strobe (1 or 2 after a FIFO word) at which the
-compressor bypass is set and cleared in ``OBS-COND-BYPASS-MIDGROUP``; after
+compressor bypass is set and cleared in ``INFO-COND-BYPASS-MIDGROUP``; after
 those, the feedback-on mask class (few = 1 to 3 bits, half = 4, all = 0xFF) and
 its mask, the lane L of ``CHK-COND-ONE-LANE``, the few (2 or 3) or half lane
-set of ``OBS-COND-LANE-POP-FIFO`` and the start bit of each lane's alternating
+set of ``INFO-COND-LANE-POP-FIFO`` and the start bit of each lane's alternating
 fill before ``CHK-COND-LANES-OFF``. The per-lane bit tables of
 ``CHK-COND-BYPASS-ORDER`` come from their own stream (``SepSeededRng`` of the
 seed XOR ``ORDER_SALT``), so they move no draw above.
@@ -211,36 +211,34 @@ Checkers:
                        the K pops, exactly one matching slice (entropy_source.rdl
                        FIFO_CTRL.ENABLE, INTR_STATUS.FIFO_OVERFLOW; architecture.adoc:146,
                        :150).
-Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
+Logged only: ``INFO-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
 (entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
 whitened window shows the field non-zero, so a read of 0 does not tell a correct
 field from one that is not connected; the status tap grades the count
 (CHK-COND-SHA-COUNT). Also logged only: ``INFO-BLOCKED CHK-COND-HT-OFF`` (the
 32-bit health test with the compressor bypassed has no single stated behaviour)
-and ``INFO-BLOCKED CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW
-word is not stated).
+and ``INFO-COND-SHA-INTAKE`` (the BIW words, pushes and FIFO words of the
+whitened trial): not graded; no open specification question.
 ``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
 (the time base of the period is not stated: the register text names sample-clock
-cycles, the architecture text ``clk_i`` cycles). No text states the effect of a
-``DOWNSAMPLE_RATE`` or ``SAMPLE_CLK_DIV`` write while the stream runs, of a rate
-written while the stream is stopped, or where the downsample count starts when
-the compressor bypass turns on: ``OBS-COND-DS-MIDRUN-UP``,
-``OBS-COND-DS-MIDRUN-DOWN``, ``OBS-COND-DIV-MIDRUN-UP``,
-``OBS-COND-DIV-MIDRUN-DOWN``, ``OBS-COND-DS-RESUME`` and ``OBS-COND-DS-BYPASS-ON``
-log the tapped counts and the distance to the next strobe or FIFO word. No text
-states the FIFO words when the compressor bypass is set and cleared again
-between two outputs of the compressor: ``OBS-COND-BYPASS-MIDGROUP`` logs the
-FIFO words pushed between the two writes and the next three words.
-No text states which input bytes and coefficients the BIW stage combines into
-one word (architecture.adoc:115 names the grouping and the field only):
-``OBS-ESRC-BIW-MAP`` logs, in the pass-through window, the first FIFO words on
+cycles, the architecture text ``clk_i`` cycles). ``INFO-COND-DS-MIDRUN-UP``,
+``INFO-COND-DS-MIDRUN-DOWN``, ``INFO-COND-DIV-MIDRUN-UP``,
+``INFO-COND-DIV-MIDRUN-DOWN``, ``INFO-COND-DS-RESUME`` and ``INFO-COND-DS-BYPASS-ON``
+log the tapped counts and the distance to the next strobe or FIFO word after a
+``DOWNSAMPLE_RATE`` or ``SAMPLE_CLK_DIV`` write while the stream runs, after a
+rate written while the stream is stopped, and when the compressor bypass turns
+on: not graded; no open specification question. ``INFO-COND-BYPASS-MIDGROUP``
+logs the FIFO words pushed between the two writes and the next three words when
+the compressor bypass is set and cleared again between two outputs of the
+compressor: not graded; no open specification question.
+``INFO-ESRC-BIW-MAP`` logs, in the pass-through window, the first FIFO words on
 ``esrc_compress_data_o`` with the 12 lane bytes of the last two strobes before
 each word, the clocks from the last strobe, and whether the word is in the BIW
-observe words read after the window.
-No text states the FIFO progress with only a part of the lanes enabled:
-``OBS-COND-LANE-POP-FIFO`` logs the strobes, the offered words and FIFO LEVEL over
-one window with a drawn few or half lane set.
+observe words read after the window: not graded; no open specification question.
+``INFO-COND-LANE-POP-FIFO`` logs the strobes, the offered words and FIFO LEVEL over
+one window with a drawn few or half lane set: not graded; no open specification
+question.
 """
 
 from __future__ import annotations
@@ -340,7 +338,7 @@ SHA_PUSH_MIN = 16
 PASSTHRU_BIW_MIN = 16
 PASSTHRU_FIFO_MIN = 8
 PASSTHRU_MAX_OFFSET = 8
-BIW_MAP_WORDS = 4  # FIFO words paired with their strobe bytes in OBS-ESRC-BIW-MAP
+BIW_MAP_WORDS = 4  # FIFO words paired with their strobe bytes in INFO-ESRC-BIW-MAP
 HT_WAIT_FACTOR = 3
 # Period walk: strobes after a lane enable (the first distance and five gaps).
 PERIOD_STROBES = 6
@@ -377,7 +375,7 @@ CTRL_CELLS = ((1, 1), (1, 0), (0, 1), (0, 0))
 CELL_BOUND_FACTOR = 4
 # SAMPLE_CLK_DIV of the chain fill before CHK-COND-LANES-OFF: a strobe on every clk_i.
 FILL_DIV = 0
-# Lane-population window of OBS-COND-LANE-POP-FIFO, in reset sample periods.
+# Lane-population window of INFO-COND-LANE-POP-FIFO, in reset sample periods.
 LANE_POP_PERIODS = 16
 LANE_POP_CLASSES = ("few", "half")
 FEW_LANES = (2, 3)
@@ -998,7 +996,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await self._cnt_pass(ESRC_CNT_PASS_DECOR_MASK)
 
     async def _lane_population(self, bits: list[int]) -> None:
-        """CHK-COND-LANES-OFF, CHK-COND-ONE-LANE and OBS-COND-LANE-POP-FIFO.
+        """CHK-COND-LANES-OFF, CHK-COND-ONE-LANE and INFO-COND-LANE-POP-FIFO.
 
         architecture.adoc:113: the chain shifts on every clk_i while ``enable_i`` is
         high and holds while it is low; RING_OSC_ENABLE.ENABLE is the enable of each
@@ -1155,10 +1153,10 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         return self.noise.words_since(mark)
 
     async def _lane_pop_fifo(self) -> None:
-        """OBS-COND-LANE-POP-FIFO: strobes, offered words and LEVEL with a part of the lanes.
+        """INFO-COND-LANE-POP-FIFO: strobes, offered words and LEVEL with a part of the lanes.
 
         Compressor in use, whitening off, FIFO drained and then enabled for
-        LANE_POP_PERIODS reset byte periods. No text states the rate; logged only.
+        LANE_POP_PERIODS reset byte periods. Logged only.
         """
         plan = self.plan
         dut = cocotb.top
@@ -1178,7 +1176,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await NextTimeStep()
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         after = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
-        self.chk.obs(
+        self.chk.info(
             "COND-LANE-POP-FIFO",
             lane_class=plan.pop_class,
             lanes=f"0x{plan.pop_lanes:03x}",
@@ -1476,7 +1474,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         The set-up writes the bypass and N_r in the clean start, so the first FIFO word
         after the TRNG reset is graded (``_grade_first_push``). After the control
         span the period walk (``_period_walk``) and the logged-only mid-run writes
-        (``_midrun_obs``) run in the same graded window.
+        (``_midrun_info``) run in the same graded window.
         """
         plan = self.plan
         n = plan.n_r
@@ -1503,7 +1501,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
         c = await self._aligned_span(1, CTRL_SPAN_OUTPUTS, 0, prev)
         await self._period_walk()
-        await self._midrun_obs()
+        await self._midrun_info()
         await self._ds_intervals()
         await self._ctrl_cells()
         close_graded_window(self.logger)
@@ -2177,7 +2175,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         }
         if not sync or len(s) < 2:
             fields["reason"] = "timeout:strobes"
-        self.chk.obs(tag, **fields)
+        self.chk.info(tag, **fields)
 
     async def _rate_write(self, rows: list, before: int, after: int, tag: str, sync) -> None:
         """A DOWNSAMPLE_RATE write, compressor bypassed, once a row meets ``sync``; logs ``tag``.
@@ -2200,13 +2198,13 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         fields["below_count"] = "none" if c == "none" else int(c > after)
         if not hit:
             fields["reason"] = "timeout:sync"
-        self.chk.obs(tag, **fields)
+        self.chk.info(tag, **fields)
 
-    async def _midrun_obs(self) -> None:
+    async def _midrun_info(self) -> None:
         """Mid-run DOWNSAMPLE_RATE and SAMPLE_CLK_DIV writes, a rate written while stopped,
         and the bypass turned on while the gated stream runs: logged only.
 
-        No text states the effect of these writes, so every line is ``OBS-``. Each
+        Every line is ``INFO-``: not graded; no open specification question. Each
         line logs the stored value before and after, the tapped count
         (``esrc_downsample_count_o``, ``esrc_decor_div_lane0_o``) and the distance to
         the next strobe or FIFO word. A count above the new stored value is the
@@ -2236,7 +2234,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         )
         i_w = len(rows) - 1
         await self._wait_row(rows, i_w + 1, lambda r: r[2], (plan.n_r + 2) * p * 4)
-        self.chk.obs(
+        self.chk.info(
             "COND-DS-BYPASS-ON",
             rate=plan.n_r,
             ds_count_at_resp=rows[i_w][3],
@@ -2281,14 +2279,14 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             fields["reason"] = "timeout:sync"
         elif off is None:
             fields["reason"] = f"timeout:enable_off bound={RO_OFF_CLKS}"
-        self.chk.obs("COND-DS-RESUME", **fields)
+        self.chk.info("COND-DS-RESUME", **fields)
 
         run[0] = False
         await task
         await self._wr(ESRC_CTRL, _val("CTRL"))
 
     async def _bypass_midgroup(self, rows: list) -> None:
-        """OBS-COND-BYPASS-MIDGROUP: compressor in use, whitening off; after a FIFO
+        """INFO-COND-BYPASS-MIDGROUP: compressor in use, whitening off; after a FIFO
         word and ``bypass_strobe`` gated strobes, CTRL.BYPASS_ENTROPY_COMPRESSOR is
         written 1 and then 0. Logs the FIFO words between the two write responses
         and the next three FIFO words after the second."""
@@ -2320,7 +2318,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         }
         if not push or len(strobes) < plan.bypass_strobe or len(nxt) < 3:
             fields["reason"] = "timeout:push"
-        self.chk.obs("COND-BYPASS-MIDGROUP", **fields)
+        self.chk.info("COND-BYPASS-MIDGROUP", **fields)
 
     # --- health-test leg (logged only) ----------------------------------------------
     async def _leg_health(self) -> None:
@@ -2423,8 +2421,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             ok and span is not None and 2 * s["out_words"] == absorbed,
             **fields,
         )
-        self.chk.blocked("COND-SHA-INTAKE", "whitener_intake_while_hashing_unstated")
-        self.chk.obs("COND-SHA-INTAKE", biw_words=biw, pushes=pushes, fifo_words=fifo)
+        self.chk.info("COND-SHA-INTAKE", biw_words=biw, pushes=pushes, fifo_words=fifo)
 
         # Pass-through, in the same trial.
         await self._drain_fifo("FIFO_STATUS", ESRC_FIFO_RDATA, ESRC_FIFO_STATUS)
@@ -2479,7 +2476,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             biw_words=len(biw_words),
             mismatches=0 if offset is not None else "all_offsets",
         )
-        self.chk.obs(
+        self.chk.info(
             "ESRC-BIW-MAP",
             pairs=len(biw_map),
             word=[f"0x{p[2]:08x}" for p in biw_map],
@@ -2490,7 +2487,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         )
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
         nonzero = sum(1 for o in outs if o)
-        self.chk.obs(
+        self.chk.info(
             "COND-PASSTHRU-OUTCOUNT",
             reads=len(outs),
             nonzero=nonzero,

@@ -19,17 +19,22 @@ holds (two repeated, three after a STOP), four STOP setups and three bus-free ti
 runs once per shape; each of the six graded pairs compares the drawn parameter's interval of its
 second set with that of the base run of the same shape at every common sample. The `T_BUF` pair
 runs and is printed, not compared: its bus-free times before and after the change beside both
-programmed values, the programmed direction and the measured direction at each sample. Absolute
+programmed values, the programmed direction and the measured direction at each sample (i2c.rdl
+TIMING4.T_BUF: with `THD_DAT` of 2 or more and the next FMT entry already queued, the START follows
+the STOP's SDA rise after `T_R + TSU_STA + 7` cycles whatever `T_BUF` holds). Absolute
 intervals and the measured differences are printed, not compared. A pair out of order fails the
 test after the `THIGH` 2 run, so that leg still reports. A set with `THIGH` 2 and the other fields
 of the base set runs one START, address-write and STOP transfer on every seed.
 
-With `grade_tbuf_bus_free` (the `smc_i2c_tbuf_bus_free_test` reproducer) the same draw runs and,
-once the six pairs are in order, the `T_BUF` pair is graded under `CHK-ITS-TBUF-BUS-FREE`: every
-bus-free time of each run is at least that run's programmed `T_BUF` and the second run's moved the
-way `T_BUF` moved at every common sample (i2c.rdl TIMING4.T_BUF: "specifies the time between a
-STOP and START condition (t_BUF) in system clock cycles"); a fault raises
-`CHK-ITS-TBUF-BUS-FREE FAIL`.
+With `grade_tbuf_bus_free` (`smc_i2c_tbuf_bus_free_test`) the same draw runs and, once the six
+pairs are in order, the `T_BUF` pair is graded under `CHK-ITS-TBUF-BUS-FREE` against i2c.rdl
+TIMING4.T_BUF: outside multi-controller monitoring, with `THD_DAT` of 2 or more and the next entry
+already queued, "the START follows the STOP's SDA rise after `TIMING1.T_R + TIMING2.TSU_STA + 7`
+cycles whatever this field holds". Every bus-free time of both runs equals `T_R + TSU_STA + 7`,
+so the second run's equals the base run's at every common sample although `T_BUF` moved; a fault
+raises `CHK-ITS-TBUF-BUS-FREE FAIL`. Every other measured run with `THD_DAT` of 2 or more is graded
+the same way against its own `T_R + TSU_STA + 7`; the line prints the largest margin by which a
+graded run's `T_BUF` exceeds its expected time, the margin by which a wait of `T_BUF` would show.
 """
 
 from __future__ import annotations
@@ -135,6 +140,11 @@ BASE_RANGE = {
 }
 CHANGE_MIN, CHANGE_MAX = 1, 24
 RDL_MIN_THIGH = 2
+#: i2c.rdl TIMING4.T_BUF: the fixed cycles a queued START adds to `T_R + TSU_STA` after the STOP's
+#: SDA rise (input synchronisation, controller state steps and output register).
+QUEUED_START_EXTRA = 7
+#: i2c.rdl TIMING4.T_BUF: the smallest `THD_DAT` for which a queued START skips the `T_BUF` wait.
+QUEUED_START_MIN_THD_DAT = 2
 REDRAW_BOUND = 64
 
 #: Transfers Y (START, address write, STOP) queued behind transfer X in every measured run, so
@@ -197,7 +207,8 @@ CHK_STEPS = (
     ("CHK-ITS-MIN-THIGH", "S5"),
     ("CHK-ITS-COMPLETE", "S6"),
 )
-#: The `T_BUF` grade of the reproducer; its line follows `CHK-ITS-ORDER` after the S3 stamp.
+#: The `T_BUF` grade of `smc_i2c_tbuf_bus_free_test`; its line follows `CHK-ITS-ORDER` after the
+#: S3 stamp.
 TBUF_CHK = "CHK-ITS-TBUF-BUS-FREE"
 
 
@@ -237,35 +248,27 @@ def draw_plan(rng: random.Random, widths: dict[str, int] | None = None) -> tuple
     return base, pairs, attempt
 
 
-def grade_tbuf_bus_free(
-    m0: dict[int, int], m1: dict[int, int], expected0: int, expected1: int
-) -> list[str]:
+def grade_tbuf_bus_free(m0: dict[int, int], m1: dict[int, int], expected: int) -> list[str]:
     """Faults of the `T_BUF` pair: a bus-free time of the base run (`m0`) or the second run
-    (`m1`) below that run's expected time, fewer than two common samples, or a common sample
-    where the second run's time did not move the way the expected time moved."""
+    (`m1`) other than `expected` (`T_R + TSU_STA + QUEUED_START_EXTRA`, the same in both runs),
+    fewer than two common samples, or a common sample where the second run's time differs from
+    the base run's."""
     faults = []
-    for label, m, expected in (("base", m0, expected0), ("second", m1, expected1)):
-        short = [(k, x) for k, x in sorted(m.items()) if x < expected]
-        if short:
+    for label, m in (("base", m0), ("second", m1)):
+        off = [(k, x) for k, x in sorted(m.items()) if x != expected]
+        if off:
             faults.append(
-                f"{label} run bus-free time below its T_BUF {expected} at {len(short)} of "
-                f"{len(m)} samples {short}"
+                f"{label} run bus-free time not T_R + TSU_STA + {QUEUED_START_EXTRA} = {expected} "
+                f"at {len(off)} of {len(m)} samples {off}"
             )
     keys = sorted(set(m0) & set(m1))
     if len(keys) < 2:
         faults.append(f"{len(keys)} bus-free sample(s) common to the two runs, want 2")
-    if expected1 != expected0:
-        way = "longer" if expected1 > expected0 else "shorter"
-        wrong = [
-            (k, m0[k], m1[k])
-            for k in keys
-            if not (m1[k] > m0[k] if expected1 > expected0 else m1[k] < m0[k])
-        ]
-        if wrong:
-            faults.append(
-                f"T_BUF {expected0} -> {expected1} but the bus-free time was not {way} at "
-                f"{len(wrong)} of {len(keys)} samples {wrong}"
-            )
+    moved = [(k, m0[k], m1[k]) for k in keys if m1[k] != m0[k]]
+    if moved:
+        faults.append(
+            f"bus-free time moved with T_BUF at {len(moved)} of {len(keys)} samples {moved}"
+        )
     return faults
 
 
@@ -705,25 +708,55 @@ class smc_i2c_timing_set_rand_test_seq(SmcCsrSeq):
             self._grade_tbuf()
 
     def _grade_tbuf(self) -> None:
-        """The reproducer's compare: the `T_BUF` pair's bus-free times against both programmed
-        values and the programmed direction."""
+        """Bus-free times against `T_R + TSU_STA + 7`, the queued START timing i2c.rdl
+        TIMING4.T_BUF gives for `THD_DAT` of 2 or more: the `T_BUF` pair in both runs and
+        unmoved between them, and every other measured run with `THD_DAT` of 2 or more."""
         v = self.pairs["t_buf"]
         m0 = metric(self.base_meas[v["shape"]], "t_buf")
         m1 = metric(self.pair_meas["t_buf"], "t_buf")
         t0, t1 = self.base["t_buf"], v["set"]["t_buf"]
-        faults = grade_tbuf_bus_free(m0, m1, t0, t1)
+        thd_dat, t_r, tsu_sta = self.base["thd_dat"], self.base["t_r"], self.base["tsu_sta"]
+        assert t1 != t0, f"{TBUF_CHK} FAIL: the T_BUF pair did not change T_BUF ({t0})"
+        assert thd_dat >= QUEUED_START_MIN_THD_DAT, (
+            f"{TBUF_CHK} FAIL: THD_DAT {thd_dat} below {QUEUED_START_MIN_THD_DAT}, where the "
+            f"queued START waits T_BUF"
+        )
+        expected = t_r + tsu_sta + QUEUED_START_EXTRA
+        faults = grade_tbuf_bus_free(m0, m1, expected)
+        runs = [(f"BASE_{shape}", self.base, meas) for shape, meas in self.base_meas.items()]
+        runs += [(f"PAIR_{p}", self.pairs[p]["set"], meas) for p, meas in self.pair_meas.items()]
+        graded, skipped, margin = [], [], None
+        for label, prog, meas in runs:
+            if prog["thd_dat"] < QUEUED_START_MIN_THD_DAT:
+                skipped.append(f"{label} (THD_DAT {prog['thd_dat']})")
+                continue
+            exp = prog["t_r"] + prog["tsu_sta"] + QUEUED_START_EXTRA
+            got = metric(meas, "t_buf")
+            assert got, f"{TBUF_CHK} FAIL: {label} has no bus-free sample"
+            off = [x for x in got.values() if x != exp]
+            if off:
+                faults.append(f"{label} bus-free time {list(got.values())} not {exp}")
+            graded.append(f"{label} {exp}")
+            gap = prog["t_buf"] - exp
+            margin = gap if margin is None else max(margin, gap)
         seen = (
             f"T_BUF {t0} -> {t1} ({v['shape']}), bus-free time {list(m0.values())} -> "
-            f"{list(m1.values())} clk_periph_i cycles (THD_DAT {self.base['thd_dat']}, T_R "
-            f"{self.base['t_r']}, TSU_STA {self.base['tsu_sta']})"
+            f"{list(m1.values())} clk_periph_i cycles (THD_DAT {thd_dat}, T_R {t_r}, TSU_STA "
+            f"{tsu_sta}, T_R + TSU_STA + {QUEUED_START_EXTRA} = {expected})"
         )
         assert not faults, f"{TBUF_CHK} FAIL: {seen}: " + "; ".join(faults) + f"; {self._drawn()}"
         self._chk(
             "S3",
             TBUF_CHK,
-            f"{seen}: every bus-free time at least its programmed T_BUF and the second run's "
-            f"{'longer' if t1 > t0 else 'shorter'} at every common sample (i2c.rdl "
-            f"TIMING4.T_BUF: the time between a STOP and START condition); {self._drawn()}",
+            f"{seen}: every bus-free time of both runs equals T_R + TSU_STA + "
+            f"{QUEUED_START_EXTRA} and does not move with T_BUF at any of "
+            f"{len(set(m0) & set(m1))} common samples; every bus-free time of the "
+            f"{len(graded)} measured runs with THD_DAT of 2 or more equals its own T_R + TSU_STA "
+            f"+ {QUEUED_START_EXTRA} ({', '.join(graded)}); not graded, THD_DAT below "
+            f"{QUEUED_START_MIN_THD_DAT}: {', '.join(skipped) or 'none'}; largest T_BUF above "
+            f"the expected time in a graded run: {margin} cycles (i2c.rdl TIMING4.T_BUF: with "
+            f"THD_DAT of 2 or more and the next entry queued, the START follows the STOP's SDA "
+            f"rise after T_R + TSU_STA + 7 cycles whatever T_BUF holds); {self._drawn()}",
         )
 
     def _tbuf_observation(self, m0: dict[int, int], m1: dict[int, int], v: dict) -> str:
@@ -741,8 +774,8 @@ class smc_i2c_timing_set_rand_test_seq(SmcCsrSeq):
             f"{list(m0.values())} -> {list(m1.values())} (THD_DAT {self.base['thd_dat']}): "
             f"longer at {moved['longer']}, shorter at {moved['shorter']}, equal at "
             f"{moved['equal']} of {len(keys)} samples, below the programmed T_BUF at {below} of "
-            f"{len(m0) + len(m1)} (i2c.rdl TIMING4.T_BUF: the time between a STOP and START "
-            f"condition; "
+            f"{len(m0) + len(m1)} (i2c.rdl TIMING4.T_BUF: a queued START with THD_DAT of 2 or more "
+            f"follows the STOP after T_R + TSU_STA + 7 whatever T_BUF holds; "
             + (
                 f"compared by {TBUF_CHK})"
                 if self.grade_tbuf_bus_free

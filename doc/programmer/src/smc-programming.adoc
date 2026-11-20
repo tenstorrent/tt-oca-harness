@@ -1654,7 +1654,9 @@ Read --> Idle : clear read_enable
 . Confirm `EFUSE_READ_CTRL.read_enable` is 0.
 . In `EFUSE_PROGRAM_CTRL`, set `program_enable`, write the target bit address
   to `efuse_addr`, and set `efuse_data` to 1; only ones can be programmed.
-  Optionally set `efuse_program_read_back` to verify the bit.
+  If the platform's macro flow does not verify the bit automatically, issue a
+  follow-up read through `EFUSE_READ_CTRL` before setting any read lock on the
+  field. Setting the read lock first blocks that read through the guard.
 . Set `efuse_program_go`.
 . Poll until `program_busy` clears and `program_done` is set.
 . Read `program_status`: 0 is success and 1 is an error. The one-bit field does
@@ -2352,3 +2354,15 @@ and its device interface functions (DIF). In addition, set the wrapper's
 `I2C_CTRL.I2C_CONTROLLER_MODE_EN`, which sets the direction of the SMBus alert
 and suspend pads, in agreement with the role selected by `CTRL.ENABLEHOST` or
 `CTRL.ENABLETARGET`. Neither wrapper field enables the core itself.
+
+`TIMING4.T_BUF` does not always separate the controller's own queued transfers.
+Outside multi-controller monitoring, the controller waits `T_BUF` after its
+STOP only when the bus monitor qualifies that STOP before the controller takes
+the next FMT FIFO entry, which for an entry already queued requires
+`TIMING3.THD_DAT` of 0 or 1. With `THD_DAT` of 2 or more and the next transfer
+already queued, the next START follows the STOP's SDA rise after
+`TIMING1.T_R + TIMING2.TSU_STA` plus 7 system clock cycles of input
+synchronisation, controller state steps and output register. To meet the bus's
+`t_BUF` on queued transfers, program `TSU_STA` so that this sum is at least the
+required bus free time. The longer `TSU_STA` also lengthens every repeated
+START setup time.

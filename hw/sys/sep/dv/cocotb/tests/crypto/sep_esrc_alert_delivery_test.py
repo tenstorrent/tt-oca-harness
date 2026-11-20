@@ -14,7 +14,7 @@ failing windows, ALERT_FAIL_COUNTS attributes the trip to the repetition lane,
 HEALTH_TEST_STATUS and every per-generator status byte latch bit 0
 (repetition; every lane is held at 0), and MAIN_SM_STATUS.ERR must stay 0
 so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
-state fault. ``OBS-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
+state fault. ``INFO-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
 HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
 and states no value. An opening INTR_TEST sweep, before the trip, drives each interrupt
 source the RDL defines on its own, from ``INTR_STATUS`` = 0 and PIC source 16 at 0.
@@ -308,7 +308,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
         gen_health = await esrc.read_generator_health()
         self.logger.info(
-            "OBS-HT-RSVD graded=0 ht_rsvd=0x%02x gen_rsvd=%s",
+            "INFO-HT-RSVD graded=0 ht_rsvd=0x%02x gen_rsvd=%s",
             ht_status & HEALTH_RSVD_MASK,
             [f"0x{v & HEALTH_RSVD_MASK:02x}" for v in gen_health],
         )

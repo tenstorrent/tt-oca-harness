@@ -29105,7 +29105,7 @@ module sep_fcov (
       bins ones_status_bit_3_apt_high_total = {2'd3};
     }
     // Not graded (docs/SEP_FCOV.adoc, crypto and entropy, Bins not graded):
-    // the owner logs the repetition count after the disable on OBS-HT-REPCOUNT-AFTER,
+    // the owner logs the repetition count after the disable on INFO-HT-REPCOUNT-AFTER,
     // so no value of it is a bin.
     // verilator lint_off COVERIGN
     cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
@@ -29475,7 +29475,7 @@ module sep_fcov (
       bins hw_port0_acknowledged = {2'd2};
     }
     // CMD_RDY after the acknowledge is not stated (csrng.adoc SW_CMD_STS: polled
-    // before a command); the owner logs it (OBS-CSRNG-RDY-AFTER-ACK): not scored.
+    // before a command); the owner logs it (INFO-CSRNG-RDY-AFTER-ACK): not scored.
     cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
       bins cmd_rdy_before = {2'd0};
       bins cmd_ack_after = {2'd1};
@@ -35423,16 +35423,16 @@ module sep_fcov (
     logic sp_v;  // x_slot_prog: {bad, (slot - 1) * 2 + write-lock}
     logic [7:0] sr;
     logic sr_v;  // x_slot_read: {bad, (slot - 1) * 2 + read-lock}
-    logic [3:0] ko;
-    logic ko_v;  // x_kind_op: {bad, kind * 2 + op}
+    logic [4:0] ko;
+    logic ko_v;  // x_kind_op: {bad, source, kind * 2 + op}
     logic [1:0] nf;
     logic nf_v;  // x_neighbor_free: {0 previous / 1 next, 0 program / 1 read}
     logic [1:0] ex;
     logic ex_v;  // x_exempt: 0 LC_STATE, 1 LOCKS, 2 LOCKS_SPARE
     logic sl;
     logic sl_v;  // cp_sense_fills_locked: 0 secret, 1 other
-    logic [3:0] sw;
-    logic sw_v;  // x_shadow_write_lock: {bad, field * 2 + write-lock}
+    logic [4:0] sw;
+    logic sw_v;  // x_shadow_write_lock: {bad, source, field * 2 + write-lock}
     logic [1:0] lo;
     logic lo_v;  // cp_lock_order
     logic pv;
@@ -35459,9 +35459,16 @@ module sep_fcov (
     x_slot_read: coverpoint s.sr iff (s.sr_v) {
       bins cells[] = {[8'd0 : 8'd79]}; illegal_bins wrong_outcome = {[8'd128 : 8'd207]};
     }
-    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read.
+    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read;
+    // source 0 frontdoor, 1 JTAG. The JTAG cells are the programs of the
+    // write-lock kinds; a JTAG read or a JTAG program of a kind without a
+    // write-lock is not a cell.
     x_kind_op: coverpoint s.ko iff (s.ko_v) {
-      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+      bins cells[] = {[5'd0 : 5'd7]};
+      bins jtag_cells[] = {5'd10, 5'd14};
+      ignore_bins jtag_other = {5'd8, 5'd9, 5'd11, 5'd12, 5'd13, 5'd15, 5'd25, 5'd27, 5'd29, 5'd31};
+      illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
+      illegal_bins jtag_wrong_outcome = {5'd24, 5'd26, 5'd28, 5'd30};
     }
     x_neighbor_free: coverpoint s.nf iff (s.nf_v) {
       bins previous_program = {2'b0_0};
@@ -35476,9 +35483,13 @@ module sep_fcov (
       bins secret_field = {1'b0}; bins other_field = {1'b1};
     }
     // Field 0 SIP_DIS, 1 SYS_DIS, 2 REQUIRED_SIGNERS, 3 REQUIRED_ALGS: lock
-    // clear changes the shadow (OR), lock set leaves it unchanged.
+    // clear changes the shadow (OR), lock set leaves it unchanged. Source 0
+    // frontdoor (cells), 1 JTAG (jtag_cells).
     x_shadow_write_lock: coverpoint s.sw iff (s.sw_v) {
-      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+      bins cells[] = {[5'd0 : 5'd7]};
+      bins jtag_cells[] = {[5'd8 : 5'd15]};
+      illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
+      illegal_bins jtag_wrong_outcome = {[5'd24 : 5'd31]};
     }
     cp_lock_order: coverpoint s.lo iff (s.lo_v) {
       bins write_before_lock_lands = {2'd0};
@@ -35819,7 +35830,7 @@ module sep_fcov (
   endgroup
 
   typedef struct packed {
-    logic [2:0] ca;
+    logic [3:0] ca;
     logic ca_v;  // cp_case
     logic [3:0] fl;
     logic fl_v;  // cp_flags: {read_status, read_addr, program_addr, req}
@@ -35843,14 +35854,15 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_if_status_cg";
     cp_case: coverpoint s.ca iff (s.ca_v) {
-      bins pre_sense_prog = {3'd0};
-      bins read_no_enable = {3'd1};
-      bins read_oob = {3'd2};
-      bins prog_oob = {3'd3};
-      bins prog_wlocked = {3'd4};
-      bins read_rlocked = {3'd5};
-      bins both_enables = {3'd6};
-      bins prog_data0 = {3'd7};
+      bins pre_sense_prog = {4'd0};
+      bins read_no_enable = {4'd1};
+      bins read_oob = {4'd2};
+      bins prog_oob = {4'd3};
+      bins prog_wlocked = {4'd4};
+      bins read_rlocked = {4'd5};
+      bins both_enables = {4'd6};
+      bins prog_data0 = {4'd7};
+      bins prog_no_enable = {4'd9};
     }
     // Sampled for read_no_enable, read_oob, prog_oob, prog_wlocked and the
     // accepted twins.
@@ -36079,14 +36091,11 @@ module sep_fcov (
     return 1'b0;
   endfunction
 
-  // Post-guard shim command (READ 2'b00, PROGRAM 2'b01, PROGRAM_READ_BACK
-  // 2'b10, interface.adoc Fuse Command Protocol) and response.
+  // Post-guard shim command (READ 1'b0, PROGRAM 1'b1, interface.adoc Fuse
+  // Command Protocol) and response.
   wire ef_cmd_v = (shim_cmd_i.valid === 1'b1);
   wire ef_cmd_rd = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_READ);
-  // A program command is PROGRAM or PROGRAM_READ_BACK: the read-back flag of
-  // EFUSE_PROGRAM_CTRL selects the second, and both burn the bit.
-  wire ef_cmd_pg = ef_cmd_v && ((shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) ||
-                                (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK));
+  wire ef_cmd_pg = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM);
   wire [12:0] ef_cmd_addr = 13'(shim_cmd_i.address);
   wire ef_resp_v = (shim_resp_i.valid === 1'b1);
 
@@ -36368,13 +36377,13 @@ module sep_fcov (
       e.sr_v = 1'b0;
       e.sr = '0;
     end
-    if (e.ko_v && e.ko[3]) begin
+    if (e.ko_v && e.ko[4]) begin
       ill.ko = e.ko;
       ill.ko_v = 1'b1;
       e.ko_v = 1'b0;
       e.ko = '0;
     end
-    if (e.sw_v && e.sw[3]) begin
+    if (e.sw_v && e.sw[4]) begin
       ill.sw = e.sw;
       ill.sw_v = 1'b1;
       e.sw_v = 1'b0;
@@ -36733,7 +36742,7 @@ module sep_fcov (
         e.sr_v = 1'b1;
       end
       2: begin
-        e.ko = v[3:0];
+        e.ko = v[4:0];
         e.ko_v = 1'b1;
       end
       3: begin
@@ -36749,7 +36758,7 @@ module sep_fcov (
         e.sl_v = 1'b1;
       end
       6: begin
-        e.sw = v[3:0];
+        e.sw = v[4:0];
         e.sw_v = 1'b1;
       end
       7: begin
@@ -36879,7 +36888,7 @@ module sep_fcov (
     e = '0;
     case (which)
       0: begin
-        e.ca = v[2:0];
+        e.ca = v[3:0];
         e.ca_v = 1'b1;
       end
       1: begin
@@ -37456,15 +37465,16 @@ module sep_fcov (
 
   // Case of a request (efuse_interface_ctrl.adoc): 0 pre_sense_prog,
   // 1 read_no_enable, 2 read_oob, 3 prog_oob, 4 prog_wlocked, 5
-  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 15 none.
+  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 9
+  // prog_no_enable (data 1, program_enable 0), 15 none.
   function automatic logic [3:0] ef_pg_case(input logic [15:0] a, input logic d, input logic en,
                                             input logic sensed);
     if (!sensed) return 4'd0;
     if (a >= 16'(EfFuseBits)) return 4'd3;
     if (ef_wlock(ef_slot_of(11'(a[12:3])))) return 4'd4;
     if (!d) return 4'd7;
-    if (en) return 4'd8;
-    return 4'd15;
+    if (!en) return 4'd9;
+    return 4'd8;
   endfunction
   function automatic logic [3:0] ef_rg_case(input logic [15:0] a, input logic en, input logic pen);
     if (!en) return 4'd1;
@@ -37507,7 +37517,7 @@ module sep_fcov (
       wl = ef_wlock(s);
       rl = ef_rlock(s);
       ef_lk(0, {landed == wl, 7'((s - 6'd1) * 2) + 7'(wl)});
-      ef_lk(2, 8'({landed == wl, rl, wl, 1'b0}));
+      ef_lk(2, 8'({landed == wl, 1'b0, rl, wl, 1'b0}));
       if (!wl && !rl && landed) begin
         if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd0);
         sn = s + 6'd1;
@@ -37636,7 +37646,8 @@ module sep_fcov (
               end
             end else begin
               ef_ifs(0, 7'(ef_pg_cs));
-              if (ef_pg_clean) begin
+              // x_case_flags has no prog_no_enable cell: its case field is three bits.
+              if (ef_pg_clean && (ef_pg_cs != 4'd9)) begin
                 ef_ifs(2, {ef_pg_cs[2:0], ef_flags});
                 if (ef_pg_cs inside {4'd3, 4'd4}) ef_ifs(1, 7'(ef_flags));
               end
@@ -37705,7 +37716,8 @@ module sep_fcov (
               )) begin
             // Refused only on a known efuse_req_error of 1.
             ef_lk(1, {(rd_data & EfReqErrMask) !== EfReqErrMask, 7'((s - 6'd1) * 2 + 1)});
-            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b1, ef_wlock(s), 1'b1}));
+            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b0, 1'b1, ef_wlock(s), 1'b1
+                  }));
           end
         end
         if (ef_rg_idle_open && (((ef_rg_cnt >= EfReqWait) && ef_idle && (ef_rg_cs != 4'd6)) ||
@@ -37809,7 +37821,7 @@ module sep_fcov (
           bad = (rd_data != ef_word(off[9:0]));
           if (bad || (ef_word(off[9:0]) != 32'h0)) begin
             ef_lk(1, {bad, 7'((s - 6'd1) * 2)});
-            ef_lk(2, 8'({bad, 1'b0, ef_wlock(s), 1'b1}));
+            ef_lk(2, 8'({bad, 1'b0, 1'b0, ef_wlock(s), 1'b1}));
             if (!ef_wlock(s) && !bad) begin
               if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd1);
               sn = s + 6'd1;
@@ -37929,6 +37941,121 @@ module sep_fcov (
     end
   end
 
+  // ---------------------------------------------------------------------
+  // JTAG source of x_kind_op (program) and x_shadow_write_lock, lock leaf
+  // only. A JTAG write is qualified by the state at its JTAG AW: the LOCKS
+  // words, sense done, secure_tm_i and, for a program go, efuse_req_error
+  // known 0. The address, the W data and the target word before the write
+  // are the JTAG latches ef_sw_jaw, ef_sw_jw and ef_sw_jpre. A JTAG program
+  // go (known B response) lands when a program command to its bit address reaches the
+  // shim after its AW; the outcome is taken at the first frontdoor STATUS
+  // read with program_busy 0 at least EfReqWait clocks after the B. A JTAG
+  // shadow write is compared EfWrSettle clocks after its B; a second JTAG
+  // write that completes inside the settle drops the first.
+  // ---------------------------------------------------------------------
+  logic [95:0] ef_ja_locks = '0;  // {LOCKS_SPARE, LOCKS} at the JTAG AW
+  logic ef_ja_ok = 1'b0;  // sense done and secure_tm_i known 0
+  logic ef_ja_rqe = 1'b0;  // efuse_req_error not known 0
+  logic ef_ja_pcmd_v = 1'b0;  // a program command reached the shim since the JTAG AW
+  logic [12:0] ef_ja_pcmd_addr = '0;
+  logic ef_jg_v = 1'b0, ef_jg_seen = 1'b0, ef_jg_wl = 1'b0, ef_jg_rl = 1'b0;
+  logic [15:0] ef_jg_addr = '0;
+  int unsigned ef_jg_cnt = 0;
+  logic ef_jsw_v = 1'b0, ef_jsw_wl = 1'b0;
+  logic [1:0] ef_jsw_f = '0;
+  logic [9:0] ef_jsw_off = '0;
+  logic [31:0] ef_jsw_pre = '0, ef_jsw_data = '0;
+  int unsigned ef_jsw_cnt = 0;
+
+  function automatic logic ef_ja_lock(input logic [95:0] l, input logic [5:0] s, input logic r);
+    if (s < 6'd32) return l[2*s+r];
+    if (s < 6'(EfSlots)) return l[64+2*(s-6'd32)+r];
+    return 1'b0;
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic j_b, wl;
+    logic [5:0] s;
+    logic [10:0] off;
+    logic [15:0] pa;
+    logic [31:0] now;
+    if ((jtag_req_i.aw_valid === 1'b1) && (jtag_resp_i.aw_ready === 1'b1)) begin
+      ef_ja_locks <= {ef_locks_sp, ef_locks};
+      ef_ja_ok <= (fuse_sense_done_i === 1'b1) && (secure_tm_i === 1'b0);
+      ef_ja_rqe <= (req_err_i !== 1'b0);
+      ef_ja_pcmd_v <= ef_cmd_pg;
+      ef_ja_pcmd_addr <= ef_cmd_addr;
+    end else if (ef_cmd_pg) begin
+      ef_ja_pcmd_v <= 1'b1;
+      ef_ja_pcmd_addr <= ef_cmd_addr;
+    end
+    j_b = (jtag_resp_i.b_valid === 1'b1) && (jtag_req_i.b_ready === 1'b1);
+    if (in_reset) begin
+      ef_jg_v <= 1'b0;
+      ef_jsw_v <= 1'b0;
+    end else if (j_b) begin
+      ef_jg_v <= 1'b0;
+      ef_jsw_v <= 1'b0;
+      if (ef_own_lock && ef_ja_ok) begin
+        pa = 16'(ef_sw_jw & EfPgAddrMask);
+        s = ef_slot_of({1'b0, pa[12:3]});
+        // Program go with program_enable and data 1 to a fuse bit of a field.
+        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && !$isunknown(
+                jtag_resp_i.b.resp
+            ) && !$isunknown(
+                ef_sw_jw
+            ) && ((ef_sw_jw & EfPgGoMask) != 32'h0) && ((ef_sw_jw & EfPgEnMask) != 32'h0) &&
+                ((ef_sw_jw & EfPgDataMask) != 32'h0) && (pa < 16'(EfFuseBits)) && (s != EfNoSlot) &&
+                (s != 6'd0)) begin
+          ef_jg_v <= 1'b1;
+          ef_jg_addr <= pa;
+          ef_jg_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
+          ef_jg_rl <= ef_ja_lock(ef_ja_locks, s, 1'b1);
+          ef_jg_seen <= ef_ja_pcmd_v && (16'(ef_ja_pcmd_addr) == pa);
+          ef_jg_cnt <= 0;
+        end
+        // Shadow write of a new bit to SIP_DIS, SYS_DIS, REQUIRED_SIGNERS or
+        // REQUIRED_ALGS.
+        off = 11'(ef_sw_jaw - EfMapBase);
+        s = ef_slot_of(off);
+        if ((ef_win(
+                ef_sw_jaw
+            ) == EfWShadow) && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
+                !$isunknown(
+                {ef_sw_jw, ef_sw_jpre}
+            ) && ((ef_sw_jw & ~ef_sw_jpre) != 32'h0)) begin
+          ef_jsw_v <= 1'b1;
+          ef_jsw_cnt <= 0;
+          ef_jsw_off <= off[9:0];
+          ef_jsw_pre <= ef_sw_jpre;
+          ef_jsw_data <= ef_sw_jw;
+          ef_jsw_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
+          ef_jsw_f <= (s == EfSlotSipDis) ? 2'd0 : (s == EfSlotSysDis) ? 2'd1 :
+              (s == EfSlotSigners) ? 2'd2 : 2'd3;
+        end
+      end
+    end else begin
+      if (ef_jg_v) begin
+        if (ef_cmd_pg && (16'(ef_cmd_addr) == ef_jg_addr)) ef_jg_seen <= 1'b1;
+        if (ef_jg_cnt < EfReqWait) ef_jg_cnt <= ef_jg_cnt + 1;
+        if (ef_status_rd && (efuse_program_busy_i === 1'b0) && (ef_jg_cnt >= EfReqWait)) begin
+          ef_jg_v <= 1'b0;
+          ef_lk(2, 8'({ef_jg_seen == ef_jg_wl, 1'b1, ef_jg_rl, ef_jg_wl, 1'b0}));
+        end
+      end
+      if (ef_jsw_v && (ef_jsw_cnt < EfWrSettle)) begin
+        ef_jsw_cnt <= ef_jsw_cnt + 1;
+      end else if (ef_jsw_v) begin
+        ef_jsw_v <= 1'b0;
+        now = ef_word(ef_jsw_off);
+        wl = ef_jsw_wl;
+        ef_lk(6, 8'({
+              wl ? (now !== ef_jsw_pre) : (now !== (ef_jsw_pre | ef_jsw_data)), 1'b1, ef_jsw_f, wl
+              }));
+      end
+    end
+  end
+
   // cp_sense_fills_locked and cp_round_count at sense done. The previous
   // sensed copy survives the cold reset between two senses.
   logic [EfFuseBits-1:0] ef_rc_prev = '0;
@@ -38027,7 +38154,7 @@ module sep_fcov (
                 ef_pw_data
             ) && ((ef_pw_data & ~pre) != 32'h0)) begin
           wr_ok = wl ? (now === pre) : (now === (pre | ef_pw_data));
-          ef_lk(6, 8'({!wr_ok, f, wl}));
+          ef_lk(6, 8'({!wr_ok, 1'b0, f, wl}));
           if (!wl && wr_ok) ef_lk(7, 8'd0);
           if (wl && wr_ok) ef_lk(7, 8'd1);
         end
