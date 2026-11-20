@@ -1111,11 +1111,11 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 with_rise=len(hits) - len(missed),
                 missed=[n.replace(" ", "_") for n in missed[:6]] or "none",
             )
-            self.ras_chk.obs(
+            self.ras_chk.info(
                 f"RAS-{fld.upper()}-COUNT",
                 rises_per_window=[f"{n.replace(' ', '_')}:{c}" for n, c in hits],
             )
-            self.ras_chk.obs(
+            self.ras_chk.info(
                 f"RAS-{fld.upper()}-DELAY",
                 debug_bit=dbg,
                 clocks_from_pulse_to_rise=[d.replace(" ", "_") for d in delays],

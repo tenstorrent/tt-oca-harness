@@ -139,14 +139,14 @@ Checkers:
                  1 after it; ``edn_cmd_req_done`` and vector bit 27 read 0 before
                  the command, and 1 (a rise of bit 27) after it. ``CMD_RDY`` in the
                  read that shows ``CMD_ACK`` is logged only
-                 (``OBS-EDN-RDY-AFTER-ACK``): the text states only that firmware
+                 (``INFO-EDN-RDY-AFTER-ACK``): the text states only that firmware
                  polls ``CMD_RDY`` before a command.
   CHK-EDN-INVSEQ the second instantiate through EDN sets CSRNG bit 14, bit 14 still
                  reads 1 before the clear, and a write of 0 clears it. Control: bit
                  14 reads 0 after the first command.
   CHK-CSRNG-SW   the same handshake for the CSRNG software instance (vector bit
                  23; ``CMD_RDY`` at the acknowledge logged as
-                 ``OBS-CSRNG-RDY-AFTER-ACK``), and bit 14 on the second command; that command also
+                 ``INFO-CSRNG-RDY-AFTER-ACK``), and bit 14 on the second command; that command also
                  completes, so ``cs_cmd_req_done`` and vector bit 23 read 0
                  before it and 1 (a rise of bit 23) after it
                  (theory_of_operation.md:286, :421). Control: bit 14 reads 0
@@ -174,7 +174,7 @@ Checkers:
                  doesn't represent a valid operation." (``csrng.hjson``:415-416).
                  The command goes after an EDN disable and enable: an ack with a
                  non-zero status (the second instantiate) holds the software
-                 port (``OBS-EDN-PORT-HELD``). Control: after a write of 0 and
+                 port (``INFO-EDN-PORT-HELD``). Control: after a write of 0 and
                  before the command, the bit reads 0.
   CHK-EDN-ACMD-INV  after the ack of that reserved acmd, CSRNG bit 13 reads 1
                  ("When sending an unsupported or illegal command,
@@ -198,18 +198,23 @@ Checkers:
                  (see the 3-bit decode note above).
   CHK-CSRNG-FLAG0  an instantiate with an invalid value in flag0 [11:8] sets
                  bit 4; after an uninstantiate and an instantiate with flag0 0x9
-                 (the field back to a legal value), a write of 0 clears it.
-                 Control: bit 4 reads 0 after an instantiate with flag0 0x9 and
-                 after one with flag0 0x6. The write-0 readback at the ack of the
-                 invalid instantiate is logged only (``OBS-CSRNG-FLAG0-HELD``):
-                 the text does not say whether a write of 0 clears the bit while
-                 the field still holds the invalid value.
+                 (the field back to a legal value) that acknowledges with
+                 ``CMD_STS`` 0, bit 4 still reads 1 and a write of 0 clears it.
+                 No write of 0 to bit 4 comes between the invalid instantiate
+                 and that read: the live probe writes 1 to bit 4, which leaves
+                 it set. Control: bit 4 reads 0 after an instantiate with
+                 flag0 0x9 and after one with flag0 0x6. After the graded clear,
+                 an uninstantiate and a repeat of the invalid instantiate, a write
+                 of 0 at its ack and the readback are logged only
+                 (``INFO-CSRNG-FLAG0-HELD``): the text does not say whether a write
+                 of 0 clears the bit while the field still holds the invalid
+                 value.
   CHK-CSRNG-FLAG0-ACK  the invalid-flag0 instantiate acknowledges (``CMD_ACK``
                  = 1: a command completes "successfully or unsuccessfully",
                  theory_of_operation.md:286), and bit 4 still reads 1 at that
                  ack, before any write ("Writing a zero resets this status bit.",
                  csrng.rdl:371-373). Its ``CMD_STS`` is logged only
-                 (``OBS-CSRNG-FLAG0-HELD``): the code table has no flag0 entry.
+                 (``INFO-CSRNG-FLAG0-HELD``): the code table has no flag0 entry.
   CHK-CSRNG-UNINST-RESET  the instantiate after each Uninstantiate of the
                  header leg (after the reserved acmd, flag0 0x6; after the
                  invalid-flag0 instantiate, flag0 0x9) leaves bit 14 at 0: the
@@ -397,7 +402,7 @@ Checkers:
                  OTP read gate (csrng.hjson:560-563), whose SEP value and the
                  software instance index are not stated, so a 0 read does not show
                  the zeroing.
-  OBS-EDN-ENDPOINT  per EDN mode, the endpoint pushes on
+  INFO-EDN-ENDPOINT  per EDN mode, the endpoint pushes on
                  ``drbg_adapter_push_o`` (count per endpoint, the order of the
                  first sixteen): boot, from the EDN enable of the reference boot to
                  the first pool handshake; auto, the large-N trial from the
@@ -417,14 +422,14 @@ Open-value legs (logged, not graded; each control fails the leaf):
                  Uninstantiate and an Instantiate between them) give two 4-word
                  blocks equal to the golden block, both acknowledge with
                  ``CMD_STS`` = 0, and ``RECOV_ALERT_STS`` bit 12 reads 0 after a
-                 write of 0 before the second Generate. ``OBS-CSRNG-BUS-CMP`` logs
+                 write of 0 before the second Generate. ``INFO-CSRNG-BUS-CMP`` logs
                  bit 12 after the second Generate: it is set when the value equals
                  "the prior valid value on the bus" (csrng.hjson:655-656), and no
                  text states whether that value survives an Uninstantiate.
   CTRL-CSRNG-VCTR-WRAP  an Instantiate (flag0 True, clen 12) whose seed sets
                  V[31:0] to 0xfffffffe, then a Generate with glen 2: block 1
                  (V[31:0] = 0xffffffff) equals the golden block and the Generate
-                 acknowledges with ``CMD_STS`` = 0. ``OBS-CSRNG-VCTR-WRAP`` logs
+                 acknowledges with ``CMD_STS`` = 0. ``INFO-CSRNG-VCTR-WRAP`` logs
                  block 2 with the ctr_len 32 and ctr_len 128 candidates (SP 800-90A
                  10.2.1.2) and ``match=<32|128|none>``: no document states ctr_len.
 
@@ -456,7 +461,6 @@ from env.sep_fcov_gate import (
 from env.sep_reg_meta import CSRNG, EDN, SEP_CPU_CTRL, sym
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, wait_until
-from models.entropy_noise_model import EntropyNoiseModel
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_drbg_mode_bringup_seq import drbg_bring_up
@@ -620,7 +624,7 @@ AUTO_N_BIG_LO = 64
 AUTO_N_BIG_HI = 128
 # Clocks between pool STATUS reads while the pool level reads 0.
 POOL_EMPTY_WAIT = 16
-# Endpoint pushes whose order OBS-EDN-ENDPOINT logs.
+# Endpoint pushes whose order INFO-EDN-ENDPOINT logs.
 EP_SEQ_LEN = 16
 # Headers after the instantiate that the MAX_NUM_REQS_BETWEEN_RESEEDS = 0 trial reads.
 # The first-command trial sees its generate as the first of them.
@@ -808,33 +812,6 @@ class _Reg(SepAxiRegDriver):
 
 def _field(value: int, meta: dict[str, int]) -> int:
     return (value & meta["bm"]) >> meta["bp"]
-
-
-class _NoiseDrive:
-    """Raw-noise driver of ``start_esrc_noise_driver`` with a cooperative stop.
-
-    ``stop`` clears the run flag and waits for the loop to leave at its next clock
-    edge, so no trigger is cancelled while it is pending.
-    """
-
-    def __init__(self) -> None:
-        self._gen = EntropyNoiseModel()
-        self._gen.configure("unbiased", seed_base=0x1234_5678)
-        self._run = True
-        self._task = cocotb.start_soon(self._drive())
-
-    async def _drive(self) -> None:
-        dut = cocotb.top
-        while self._run:
-            await RisingEdge(dut.clk_i)
-            if not self._run:
-                break
-            await NextTimeStep()
-            dut.esrc_noise_ext_i.value = self._gen.step_all()
-
-    async def stop(self) -> None:
-        self._run = False
-        await self._task
 
 
 class _SeedIngress:
@@ -1228,11 +1205,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         return bit14
 
     async def _main_sm(self, step: str) -> None:
-        """OBS-DRBG-MAIN-SM: the CSRNG and EDN ``MAIN_SM_STATE`` readbacks at ``step``.
+        """INFO-DRBG-MAIN-SM: the CSRNG and EDN ``MAIN_SM_STATE`` readbacks at ``step``.
         No text states the encoding of either state machine."""
         for unit, addr in (("csrng", CSRNG_MAIN_SM_STATE), ("edn", EDN_MAIN_SM_STATE)):
             state = await self.reg._rd(addr)
-            self.chk.obs("DRBG-MAIN-SM", unit=unit, step=step, state=f"0x{state:x}")
+            self.chk.info("DRBG-MAIN-SM", unit=unit, step=step, state=f"0x{state:x}")
 
     def _grade(self, name: str, cond: bool, **fields) -> bool:
         """Grade one check inside a coverage window: a FAIL is logged, then the window closes."""
@@ -1386,7 +1363,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         ``RESEED_INTERVAL`` first (``CTRL-EDN-AUTO-INTERVAL``), records the pool
         port and the endpoint pushes from the instantiate up to and including the
         clock edge that takes the last header (``CHK-DRBG-FIPS-PROV`` leg
-        ``edn_auto``, ``OBS-EDN-ENDPOINT`` mode ``auto``), and pops the pool from the
+        ``edn_auto``, ``INFO-EDN-ENDPOINT`` mode ``auto``), and pops the pool from the
         instantiate write to the last header.
         """
         dut = cocotb.top
@@ -1481,7 +1458,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             return
         await tap.stop()
         self._fips_pool_grade("edn_auto", fips_pre, tap, FIPS_FLAG0_FALSE, **extra)
-        self.chk.obs("EDN-ENDPOINT", mode="auto", **tap.endpoint_fields())
+        self.chk.info("EDN-ENDPOINT", mode="auto", **tap.endpoint_fields())
 
     async def _auto_trial(self, kind: str, max_reqs: int) -> tuple[int, int]:
         """One auto-mode session. Returns (AUTO_MODE before the instantiate, HW_CMD_STS)."""
@@ -1646,10 +1623,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         # The TRNG reset stops the scoreboard and its noise driver, and this leg runs
         # no scoreboard, so it drives the raw noise itself; with a static noise port
         # ESRC never fills a seed after the generators go on.
-        # The driver ends on its own at a clock edge and the leg waits for it. On
-        # Verilator a cancel of this driver makes the next AXI write time out one
-        # time step after it starts.
-        noise = _NoiseDrive()
+        noise = self.start_esrc_noise_driver()
         try:
             await self.assert_noise_force_active()
             await self._inst_seed_body(hold)
@@ -1785,7 +1759,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         return clk, sts, on, ctrl_rb
 
     async def _boot_pool_grade(self, tap: _EdnTap, fips_pre: dict, booted: bool) -> None:
-        """CHK-DRBG-FIPS-PROV leg ``edn_boot`` and OBS-EDN-ENDPOINT mode ``boot``.
+        """CHK-DRBG-FIPS-PROV leg ``edn_boot`` and INFO-EDN-ENDPOINT mode ``boot``.
 
         After the reference boot read ``BOOT_MODE``, wait at most FIRST_CAP clocks
         for the first pool handshake; every pool handshake from the EDN enable to
@@ -1803,7 +1777,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         if not tap.pool_hs:
             extra["reason"] = f"timeout:pool_handshake bound={FIRST_CAP}"
         self._fips_pool_grade("edn_boot", fips_pre, tap, FIPS_FLAG0_TRUE, **extra)
-        self.chk.obs("EDN-ENDPOINT", mode="boot", **tap.endpoint_fields())
+        self.chk.info("EDN-ENDPOINT", mode="boot", **tap.endpoint_fields())
 
     async def _boot_group(self) -> None:
         await self._clean_start("boot_ref")
@@ -1889,14 +1863,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hs["ack_done"] = int(bool(done & ED_STS_ACK))
             # No sentence states CMD_RDY after the acknowledge (edn.adoc
             # SW_CMD_STS: firmware polls it before a command), so it is logged.
-            self.chk.obs("EDN-RDY-AFTER-ACK", cmd_rdy=int(bool(done & ED_STS_RDY)))
+            self.chk.info("EDN-RDY-AFTER-ACK", cmd_rdy=int(bool(done & ED_STS_RDY)))
             state = await r._rd(EDN_INTR_STATE)
             hs["edn_done"] = int(bool(state & ED_DONE))
             vclk = await self._wait_vec(m, "edn_done", VEC_CAP)
             hs["vec27"] = 1
             hs["vec_clk"] = vclk
             self._edn_first_sts = _field(done, ED_STS_STS)
-            self.chk.obs("EDN-VEC", vec23=self.vec.level("cs_done"))
+            self.chk.info("EDN-VEC", vec23=self.vec.level("cs_done"))
             await r._wr(EDN_INTR_STATE, ED_DONE)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
@@ -1956,7 +1930,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         # The second instantiate acked with a non-zero status, so the software port
         # does not take a command until EDN is disabled; disable and enable it.
         held = await r._rd(EDN_SW_CMD_STS)
-        self.chk.obs("EDN-PORT-HELD", cmd_rdy=int(bool(held & ED_STS_RDY)))
+        self.chk.info("EDN-PORT-HELD", cmd_rdy=int(bool(held & ED_STS_RDY)))
         await r._wr(EDN_CTRL, _edn_ctrl(boot=False, auto=False, enable=False))
         await r._wr(EDN_CTRL, _edn_ctrl(boot=False, auto=False, enable=True))
         await r._wr(EDN_RECOV_ALERT_STS, 0)
@@ -2186,7 +2160,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hs["ack"] = int(bool(done & CS_STS_ACK))
             # CMD_RDY after the acknowledge is not stated (csrng.adoc SW_CMD_STS:
             # firmware polls it before a command), so it is logged.
-            self.chk.obs("CSRNG-RDY-AFTER-ACK", cmd_rdy=int(bool(done & CS_STS_RDY)))
+            self.chk.info("CSRNG-RDY-AFTER-ACK", cmd_rdy=int(bool(done & CS_STS_RDY)))
             state = await r._rd(CSRNG_INTR_STATE)
             hs["done"] = int(bool(state & CS_DONE))
             ent = int(bool(state & CS_ENTROPY_REQ))
@@ -2455,6 +2429,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         flag0 = {"word": f"0x{cmd_word(ACMD_INSTANTIATE, flag0=plan.bad_flag0):x}"}
         flag0["alert_set"] = 0
         flag0_ack: dict = {"word": flag0["word"], "cmd_ack": "na", "held_at_ack": "na"}
+        ack_sts: object = "na"
         uni: dict = {}
         reason = ""
         try:
@@ -2508,7 +2483,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
             flag0["alert_set"] = 1
             sts = await r._rd(CSRNG_SW_CMD_STS)
-            self.chk.obs(
+            self.chk.info(
                 "CSRNG-FLAG0-CMD",
                 cmd_ack=int(bool(sts & CS_STS_ACK)),
                 cmd_sts=_field(sts, CS_STS_STS),
@@ -2519,10 +2494,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             ack_recov = await r._rd(CSRNG_RECOV_ALERT_STS)
             flag0_ack["held_at_ack"] = int(bool(ack_recov & CS_FLAG0_INV))
             flag0_ack["recov"] = f"0x{ack_recov:x}"
-            held = await self._clear_bit(CS_FLAG0_INV)
-            self.chk.obs(
-                "CSRNG-FLAG0-HELD", cmd_sts=_field(sts, CS_STS_STS), cleared_after_ack=held
-            )
+            ack_sts = _field(sts, CS_STS_STS)
             # An instantiate with a legal flag0 sets the field back to a legal value.
             step = "live_f9b"
             await self._live_probe(uni, "f9b", bound)
@@ -2535,10 +2507,15 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), bound, step)
             uni["post_f9b"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
             self.chk.obs("CSRNG-HDR-INS", flag0="0x9", cmd_sts=sts, after="ins_fbad")
+            flag0["legal_ins_sts"] = sts
+            recov = await r._rd(CSRNG_RECOV_ALERT_STS)
+            flag0["set_before_clear"] = int(bool(recov & CS_FLAG0_INV))
             flag0["cleared_by_write0"] = await self._clear_bit(CS_FLAG0_INV)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound} step={step}"
         close_graded_window(self.logger)
+        flag0.setdefault("legal_ins_sts", "na")
+        flag0.setdefault("set_before_clear", 0)
         for fields in (acmd, flag0):
             fields.setdefault("cleared_by_write0", 0)
             if reason:
@@ -2553,7 +2530,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         self.chk.ok(
             "CSRNG-FLAG0",
-            not reason and flag0["alert_set"] == 1 and flag0["cleared_by_write0"] == 1,
+            not reason
+            and flag0["alert_set"] == 1
+            and flag0["legal_ins_sts"] == STS_SUCCESS
+            and flag0["set_before_clear"] == 1
+            and flag0["cleared_by_write0"] == 1,
             **flag0,
         )
         for fields in (flag0_ack, uni):
@@ -2580,6 +2561,29 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             **uni,
             expected_post=0,
         )
+        # A write of 0 while flag0 holds the invalid value runs on a repeat of the
+        # invalid instantiate after the graded clear, so no graded read follows it.
+        held: dict = {"cmd_sts": ack_sts, "repeat_cmd_sts": "na", "cleared_after_ack": "na"}
+        if reason:
+            held["reason"] = reason
+        else:
+            try:
+                step = "uninst4"
+                _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
+                self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="flag0_clear")
+                step = "ins_fbad2"
+                await self._sw_cmd(word, bound, step, wait_ack=False)
+                await self._wait(
+                    CSRNG_RECOV_ALERT_STS, CS_FLAG0_INV, CS_FLAG0_INV, bound, "flag0_alert2"
+                )
+                _, sts = await self._wait(
+                    CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, bound, "fbad2_ack"
+                )
+                held["repeat_cmd_sts"] = _field(sts, CS_STS_STS)
+                held["cleared_after_ack"] = await self._clear_bit(CS_FLAG0_INV)
+            except TrialTimeout as exc:
+                held["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        self.chk.info("CSRNG-FLAG0-HELD", **held)
         await self._release()
 
     async def _live_probe(self, uni: dict, leg: str, bound: int) -> None:
@@ -3188,7 +3192,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         self.chk.obs("CSRNG-ACMD-HI", **hi)
 
     async def _enable_order_leg(self) -> None:
-        """OBS-DRBG-ENABLE-ORDER: EDN on first, then CSRNG, then ESRC, and one EDN
+        """INFO-DRBG-ENABLE-ORDER: EDN on first, then CSRNG, then ESRC, and one EDN
         software instantiate. No text states the result of this order, so the status
         registers are logged."""
         close_graded_window(self.logger)
@@ -3197,7 +3201,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         f: dict = {"ack_seen": 0}
         # The TRNG reset stops the scoreboard and its noise driver; this leg drives
         # the raw noise itself, as the instantiate-seed leg does.
-        noise = _NoiseDrive()
+        noise = self.start_esrc_noise_driver()
         try:
             await self.assert_noise_force_active()
             await r._wr(EDN_CTRL, _edn_ctrl(False, False, True))
@@ -3220,7 +3224,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             f["csrng_err_code"] = f"0x{await r._rd(CSRNG_ERR_CODE):x}"
             f["edn_recov"] = f"0x{await r._rd(EDN_RECOV_ALERT_STS):x}"
             f["csrng_recov"] = f"0x{await r._rd(CSRNG_RECOV_ALERT_STS):x}"
-            self.chk.obs("DRBG-ENABLE-ORDER", **f)
+            self.chk.info("DRBG-ENABLE-ORDER", **f)
             await r._wr(EDN_CTRL, _edn_ctrl(False, False, False))
         finally:
             await noise.stop()
@@ -3233,7 +3237,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         set_open_value_leg_pass(None, self.logger)
 
     async def _bus_cmp_leg(self) -> None:
-        """CTRL-CSRNG-BUS-CMP and OBS-CSRNG-BUS-CMP: two known-answer Generates with
+        """CTRL-CSRNG-BUS-CMP and INFO-CSRNG-BUS-CMP: two known-answer Generates with
         the same seed put two equal consecutive blocks on the software port.
 
         ``RECOV_ALERT_STS`` is written 0 between the second Instantiate and the second
@@ -3277,7 +3281,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         except TrialTimeout as exc:
             f["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
         if self.chk.ctrl("CSRNG-BUS-CMP", ok, **f):
-            self.chk.obs(
+            self.chk.info(
                 "CSRNG-BUS-CMP",
                 bit12=int(bool(recov & CS_BUS_CMP)),
                 recov=f"0x{recov:x}",
@@ -3287,7 +3291,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await self._leg_cov("csrng_bus_cmp_replay")
 
     async def _vctr_wrap_leg(self) -> None:
-        """CTRL-CSRNG-VCTR-WRAP and OBS-CSRNG-VCTR-WRAP: a Generate of two blocks
+        """CTRL-CSRNG-VCTR-WRAP and INFO-CSRNG-VCTR-WRAP: a Generate of two blocks
         across the wrap of V[31:0].
 
         With flag0 True and clen 12 the seed alone sets the instance
@@ -3381,7 +3385,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 expect="block2!=block1",
             )
             match = next((str(n) for n, c in cands.items() if c == blk2), "none")
-            self.chk.obs(
+            self.chk.info(
                 "CSRNG-VCTR-WRAP",
                 block2=_txt(blk2),
                 cand_ctr32=_txt(cands[32]),

@@ -15,17 +15,18 @@ S4: a read at bit address 0, and at the middle of the array with each address
     bit set in turn, completes with ``read_done`` and no ``read_status`` error.
     The middle of the array is spare space no lock field in the shadow
     preloads covers.
-S5: programs of bits of the fuse word at the middle of the array, with and
-    without read-back, complete without error, and a read of that word returns
-    every bit programmed; a program with ``efuse_data`` 0, which the description says is
-    ignored, changes nothing. ``program_enable`` is cleared before the read-back:
-    while it is set the controller gives the fuse-command port to the program
-    interface (``efuse_interface_controller.sv``).
+S5: programs of bits of the fuse word at the middle of the array complete
+    without error, and a read of that word returns every bit programmed; a
+    program with ``efuse_data`` 0, which the description says is ignored, changes
+    nothing. ``program_enable`` is cleared before the read: while it is set the
+    controller gives the fuse-command port to the program interface
+    (``efuse_interface_controller.sv``).
 S6: a read and a program one bit past the array complete with an error, set
     the sticky address errors, and the clear strobes clear them.
 S7 (before S5): the bank model fails the first program after reset
-    (``+*_efuse_prog_fail_count=1``); a program with read-back of a fresh bit
-    reports the error and the bit reads clear.
+    (``+*_efuse_prog_fail_count=1``); every program ends with the SHIM's verify
+    read of the word, so a program of a fresh bit reports the error and the bit
+    reads clear.
 S8 (before S6): every bit of one more word is programmed; the word reads back
     all ones and the unprogrammed word after it all zeros.
 """
@@ -65,7 +66,6 @@ READ_DONE = _f("EFUSE_READ_CTRL__READ_DONE_bm")
 READ_ERROR = _f("EFUSE_READ_CTRL__READ_STATUS_bm")
 PROGRAM_ENABLE = _f("EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 PROGRAM_GO = _f("EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-PROGRAM_READ_BACK = _f("EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm")
 PROGRAM_DATA = _f("EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 PROGRAM_DONE = _f("EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 PROGRAM_ERROR = _f("EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
@@ -113,10 +113,8 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         status = await self._command(jtag, ctrl, READ_CTRL, READ_ENABLE | READ_GO | bit, READ_DONE)
         return int(bool(status & READ_ERROR)), await self._rd(jtag, ctrl + READ_DATA)
 
-    async def _program(self, jtag, ctrl: int, bit: int, *, data: int = 1, read_back: bool = False):
+    async def _program(self, jtag, ctrl: int, bit: int, *, data: int = 1):
         value = PROGRAM_ENABLE | PROGRAM_GO | bit | (PROGRAM_DATA if data else 0)
-        if read_back:
-            value |= PROGRAM_READ_BACK
         status = await self._command(jtag, ctrl, PROGRAM_CTRL, value, PROGRAM_DONE)
         return int(bool(status & PROGRAM_ERROR))
 
@@ -135,10 +133,11 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
 
         # The bank model fails the first program after reset (the testlist's
-        # +*_efuse_prog_fail_count=1): the bit stays clear, so only a program
-        # with read-back reports it (efuse_bank_model.sv, efuse_interface_shim.sv).
+        # +*_efuse_prog_fail_count=1): the bit stays clear, and the verify read
+        # every program ends with reports it (efuse_bank_model.sv,
+        # efuse_interface_shim.sv).
         failed_bit = word + WORD_BITS + 1
-        fail_err = await self._program(jtag, ctrl, failed_bit, read_back=True)
+        fail_err = await self._program(jtag, ctrl, failed_bit)
         await self._sb_ok(jtag, ctrl + PROGRAM_CTRL, 2, 0)
         _, failed_word = await self._read(jtag, ctrl, failed_bit - 1)
         self._log(f"CHK-EFUSE-CMD-PROGRAM-FAIL {name} error={fail_err} word=0x{failed_word:08x}")
@@ -150,13 +149,10 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
 
         _, before = await self._read(jtag, ctrl, word)
-        programs = {
-            bit: await self._program(jtag, ctrl, word + bit, read_back=bool(i & 1))
-            for i, bit in enumerate(PROGRAM_BITS)
-        }
+        programs = {bit: await self._program(jtag, ctrl, word + bit) for bit in PROGRAM_BITS}
         zero = await self._program(jtag, ctrl, word + 1, data=0)
         # A set program enable holds the fuse-command port for the program
-        # interface, so it is cleared before the read-back.
+        # interface, so it is cleared before the read.
         await self._sb_ok(jtag, ctrl + PROGRAM_CTRL, 2, 0)
         err, after = await self._read(jtag, ctrl, word)
         mask = sum(1 << bit for bit in PROGRAM_BITS)

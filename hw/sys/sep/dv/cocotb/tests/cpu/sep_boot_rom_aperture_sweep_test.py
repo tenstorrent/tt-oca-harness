@@ -34,7 +34,7 @@ Checks:
                      beat with the strobe of the stored bytes and one B beat
                      per store (rom.adoc: stores receive a response and do not
                      modify the ROM). The B code is logged
-                     (OBS-ROM-STORE-RESP).
+                     (INFO-ROM-STORE-RESP).
                      Back-to-back pairs: at the first 8 store points, 4 pairs load the
                      word and then store to it (read_before_store) and 4 pairs
                      store and then load (store_before_read), with only a
@@ -93,12 +93,12 @@ Checks:
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
 
-Logged only (OBS-ROM-PAST-EXTENT-RESP): for each past-extent load, the
+Logged only (INFO-ROM-PAST-EXTENT-RESP): for each past-extent load, the
 PR-LSU-XBAR R response code, the loaded value, the NMI count between the load
 and the next one, and the NMI ``mcause`` and ``mdseac``. No TT text states the
 response of that range to the SEP CPU.
 
-Logged only (OBS-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
+Logged only (INFO-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
 closed, a set-up ``rst_ni`` pulse and the same anchor, ``wdt_rst_ni`` falls at
 the same offset o and is released after RST_HOLD cycles. The ``wdt_rst_ni``
 reset lowers the CPU reset and not the reset of the boot ROM interface
@@ -151,6 +151,35 @@ preload holds a non-zero ``ROM_CTL``, so the testlist entry stages the PROD
 configuration ``sep_efuse_lc_prod.toml`` (every field other than the life cycle
 state is 0) with real fuse sense; the leaf checks that the golden image holds
 ``ROM_CTL`` = 0 before it boots.
+
+ROM_CTL big-endian entry (``+sep_rom_ctl_be``): the testlist entry stages
+``sep_efuse_lc_prod_rom_ctl_be.toml``, the PROD configuration with ``ROM_CTL``
+= 0x1 (``rom_endianness_ctrl`` = 1, ``rom_swap_ctrl`` = 0), with real fuse
+sense; the leaf checks that the golden image holds that value before it boots.
+After the draws of the plan, the bench draws 16 distinct words in 16 to 8191
+and writes 8 distinct bytes into each image word, so the little-endian read
+and every byte reversal of a word differ at every load. The routine reads
+``ROM_CTL`` and then makes, for each probed word, the 4-byte loads at offsets
+0 and 4 and the 1-byte loads at offsets 0 to 7. The entry runs no other leg and
+opens no graded window. The boot stub runs from the same image, and the entry
+assumes that ``ROM_CTL`` leaves the stub fetch path unchanged.
+
+  CTRL-ROM-CTL-BE  : the ``ROM_CTL`` read holds ``rom_endianness_ctrl`` = 1 and
+                     ``rom_swap_ctrl`` = 0 on its RDL field bits, else the leaf
+                     fails before any load is graded (set-up failure).
+  CHK-ROM-CTL-BE   : the ten probe loads of each probed word match one
+                     big-endian byte order of the image word, a byte reversal
+                     in each 32-bit half or a byte reversal of the 64-bit word
+                     (sep_efuse_map.rdl ``ROM_CTL.rom_endianness_ctrl``: 1
+                     selects big-endian ROM data out). The RDL does not state
+                     the granularity, so either order passes; the word bytes
+                     are distinct, so the little-endian read and any other
+                     value fail. Records out of the planned order fail.
+
+Logged only (OBS-ROM-CTL-BE-ORDER): for each probed word, the image bytes, the
+bytes and words the loads returned, and whether they match the little-endian
+order, a byte reversal in each 32-bit half or a byte reversal of the 64-bit
+word. The RDL does not state the granularity of the big-endian order.
 
 Every expected value comes from the test-owned image and the drawn plan; no
 expected value is read from the DUT. Bounds are environment choices and are
@@ -243,6 +272,8 @@ _EFUSE = RegBlock("SEP_EFUSE_MAP")
 _OUTF = RegBlock("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
 ROM_CTL_ADDR = _EFUSE.addr("ROM_CTL")
 ROM_CTL_MASK = _EFUSE.mask32("ROM_CTL")
+# Staged ROM_CTL of the big-endian entry: rom_endianness_ctrl = 1, rom_swap_ctrl = 0.
+ROM_CTL_BE = _EFUSE.field_mask("ROM_CTL", "rom_endianness_ctrl")
 NMI_VEC_ADDR = _CPU_CTRL.addr("SEP_NMI_VEC")
 
 # Outbound mailbox (tb/sep_outbound_mbx.sv, the SMU_GLOBAL_BASE_ADDR reset value).
@@ -317,6 +348,15 @@ N_FLIP1 = N_FLIP2 = 8
 SIZES = (1, 2, 4)
 BLOCK_REGS = tuple(range(5, 21))  # x5..x20
 TAG_REG = 21
+N_BE = 16  # probed words of the big-endian entry
+BE_LOADS = ((4, 0), (4, 4)) + tuple((1, off) for off in range(8))  # (size, byte offset)
+# Byte order of a word: load byte i is image byte perm[i].
+BYTE_ORDERS = {
+    "le": (0, 1, 2, 3, 4, 5, 6, 7),
+    "swap32": (3, 2, 1, 0, 7, 6, 5, 4),
+    "swap64": (7, 6, 5, 4, 3, 2, 1, 0),
+}
+BE_ORDERS = ("swap32", "swap64")
 
 CRT0 = Path(__file__).resolve().parents[3] / "fw" / "startup" / "crt0.s"
 
@@ -368,7 +408,7 @@ def _tag(addr: int, size: int) -> int:
 class _Plan:
     """The seed-drawn stimulus, in the contract draw order."""
 
-    def __init__(self, rng: SepSeededRng) -> None:
+    def __init__(self, rng: SepSeededRng, rom_be: bool = False) -> None:
         # Image.
         self.img = SepRomImage(stub=self._stub())
         self.img.randomize(rng, first=16, last=TOP_WORD)
@@ -430,6 +470,16 @@ class _Plan:
         self.order = [(ORDERS[k // N_ORDER], *self.stores[k]) for k in range(len(ORDERS) * N_ORDER)]
         # Past-extent loads; the drawn word is the last draw of the plan.
         self.past = [PAST_BASE, PAST_BASE + 4 * (1 + rng.randrange(PAST_SPAN // 4 - 1))]
+        # Big-endian entry: words outside the boot stub, each rewritten to 8
+        # distinct bytes, drawn after every other draw.
+        self.be_words: list[int] = []
+        if rom_be:
+            while len(self.be_words) < N_BE:
+                w = 16 + rng.randrange(ROM_WORDS - 16)
+                if w not in self.be_words:
+                    self.be_words.append(w)
+            for w in self.be_words:
+                self.img.set_word(w, int.from_bytes(bytes(rng.sample(range(256), 8)), "little"))
 
     @staticmethod
     def _stub() -> list[int]:
@@ -451,6 +501,10 @@ class _Plan:
         """Table-driven loads (steps 7 to 10)."""
         return self.top + self.walk + self.seeded + self.seq
 
+    def be_loads(self) -> list[tuple[int, int]]:
+        """(addr, size) of the big-endian entry loads, in program order."""
+        return [(ROM_BASE + 8 * w + off, s) for w in self.be_words for s, off in BE_LOADS]
+
 
 def _mark(a: Asm, off: int) -> None:
     a.op(FENCE, sw(ZERO, GP, off), FENCE)
@@ -460,9 +514,8 @@ def _fail(a: Asm, code: int) -> None:
     a.li(T0, code).op(sw(T0, GP, OFF_FAIL), FENCE).j("halt")
 
 
-def build_code(p: _Plan) -> Asm:
-    """The SRAM routine of steps 4 to 13."""
-    a = Asm(FW_BASE)
+def _preamble(a: Asm) -> None:
+    """mrac, the mailbox filter entry, the vectors, the mrac record and the ROM_CTL record."""
     a.li(T0, MRAC_SEP).op(csrw(CSR_MRAC, T0))
     a.li(GP, MBX)
     for reg, val in (
@@ -476,8 +529,42 @@ def build_code(p: _Plan) -> Asm:
     a.la(T0, "trap").op(csrw(CSR_MTVEC, T0), addi(S11, ZERO, 0), FENCE)
     # The mailbox store comes after the outbound filter entry that admits it.
     a.op(csrr(T0, CSR_MRAC), sw(T0, GP, OFF_MRAC), FENCE)
-    # Step 4: ROM_CTL; any field bit set stops the routine.
     a.li(T0, ROM_CTL_ADDR).op(lw(A0, T0, 0), sw(A0, GP, OFF_ROMCTL), FENCE)
+
+
+def _handlers(a: Asm) -> None:
+    """The halt loop, the trap handler and the NMI handler."""
+    a.label("halt").j("halt")
+    # Trap handler: log mcause, count, resume after the trapping instruction.
+    a.align(64).label("trap")
+    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_TRAP), addi(S11, S11, 1))
+    a.op(csrr(T6, CSR_MEPC), addi(T6, T6, 4), csrw(CSR_MEPC, T6), FENCE, MRET)
+    # NMI handler: log mcause and the D-bus error address, unlock it, return.
+    a.align(64).label("nmi")
+    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_NMI), csrr(T6, CSR_MDSEAC))
+    a.op(sw(T6, GP, OFF_NMI_ADDR), csrw(CSR_MDEAU, ZERO), FENCE, MRET)
+    if FW_BASE + a.nbytes > TABLE:
+        raise RuntimeError(f"the generated code ({a.nbytes} bytes) overlaps the probe table")
+
+
+def build_code_be(p: _Plan) -> Asm:
+    """The SRAM routine of the big-endian entry: ROM_CTL, then the probe loads."""
+    a = Asm(FW_BASE)
+    _preamble(a)
+    _mark(a, OFF_SWEEP_B)
+    for addr, s in p.be_loads():
+        a.li(S0, addr).op(load(s, A0, S0, 0))
+        a.li(T3, _tag(addr, s)).op(sw(T3, GP, OFF_LA), sw(A0, GP, OFF_LV), FENCE)
+    _mark(a, OFF_SWEEP_E)
+    _handlers(a)
+    return a
+
+
+def build_code(p: _Plan) -> Asm:
+    """The SRAM routine of steps 4 to 13."""
+    a = Asm(FW_BASE)
+    _preamble(a)
+    # Step 4: ROM_CTL; any field bit set stops the routine.
     a.op(andi(A1, A0, ROM_CTL_MASK)).br("beq", A1, ZERO, "ctl_ok")
     _fail(a, FAIL_ROMCTL)
     a.label("ctl_ok")
@@ -566,17 +653,7 @@ def build_code(p: _Plan) -> Asm:
         a.li(T3, w).op(sw(T3, GP, OFF_RA), sw(A0, GP, OFF_RV), sw(A1, GP, OFF_RV + 4), FENCE)
     a.op(FENCE, sw(S11, GP, OFF_TCNT2))
     _mark(a, OFF_DONE2)
-    a.label("halt").j("halt")
-    # Trap handler: log mcause, count, resume after the trapping instruction.
-    a.align(64).label("trap")
-    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_TRAP), addi(S11, S11, 1))
-    a.op(csrr(T6, CSR_MEPC), addi(T6, T6, 4), csrw(CSR_MEPC, T6), FENCE, MRET)
-    # NMI handler: log mcause and the D-bus error address, unlock it, return.
-    a.align(64).label("nmi")
-    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_NMI), csrr(T6, CSR_MDSEAC))
-    a.op(sw(T6, GP, OFF_NMI_ADDR), csrw(CSR_MDEAU, ZERO), FENCE, MRET)
-    if FW_BASE + a.nbytes > TABLE:
-        raise RuntimeError(f"the generated code ({a.nbytes} bytes) overlaps the probe table")
+    _handlers(a)
     return a
 
 
@@ -670,7 +747,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     def _draw(self) -> None:
         seed = self.random_seed()
         self.logger.info("INFO-SEED seed=%d", seed)
-        p = self.plan = _Plan(SepSeededRng(seed))
+        p = self.plan = _Plan(SepSeededRng(seed), rom_be=self.rom_be)
         digest = hashlib.sha256(b"".join(w.to_bytes(8, "little") for w in p.img.words))
         self.logger.info(
             "INFO-DRAW image sha256=%s word16=0x%016x word%d=0x%016x",
@@ -696,6 +773,11 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         self.logger.info("INFO-DRAW flips=%s", " ".join(f"{w}/0x{m:x}" for w, m in p.flips))
         self.logger.info("INFO-DRAW u_o=%d/65536", p.u)
+        if self.rom_be:
+            self.logger.info(
+                "INFO-DRAW rom_be_words=%s",
+                " ".join(f"{w}/0x{p.img.word(w):016x}" for w in p.be_words),
+            )
         self.logger.info(
             "INFO-ENV rst_hold=%d romctl_bound=%d sweep_bound=%d store_bound=%d flip_poll=%d "
             "leg_bound=%d cpu_low_bound=%d release_bound=%d anchor_bound=%d "
@@ -716,12 +798,15 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     def _fuse_image(self) -> None:
         image = self.select_efuse_image()
         rom_ctl = image.field_int("ROM_CTL")
-        if rom_ctl != 0:
+        need = ROM_CTL_BE if self.rom_be else 0
+        if rom_ctl != need:
             raise AssertionError(
-                f"the staged fuse image holds ROM_CTL=0x{rom_ctl:x}; the run mode needs 0x0"
+                f"the staged fuse image holds ROM_CTL=0x{rom_ctl:x}; the run mode needs 0x{need:x}"
             )
         self.logger.info(
-            "INFO-CFG fuse image ROM_CTL=0x0 lc_raw=0x%x (real fuse sense)", image.lc_raw()
+            "INFO-CFG fuse image ROM_CTL=0x%x lc_raw=0x%x (real fuse sense)",
+            rom_ctl,
+            image.lc_raw(),
         )
         self.write_efuse_image(image)
 
@@ -749,18 +834,22 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.failures: list[str] = []
         self.n_checks = 0
+        self.rom_be = "sep_rom_ctl_be" in cocotb.plusargs
+        if self.rom_be:
+            self.required_evidence = ("CHK-ROM-CTL-BE",)
         self._draw()
         self._fuse_image()
         p = self.plan
-        code = build_code(p)
+        code = build_code_be(p) if self.rom_be else build_code(p)
         table = b"".join(a.to_bytes(4, "little") + s.to_bytes(4, "little") for a, s in p.table())
         self.logger.info(
-            "INFO-CFG code=0x%08x+%d table=0x%08x+%d loads=%d",
+            "INFO-CFG mode=%s code=0x%08x+%d table=0x%08x+%d loads=%d",
+            "rom_ctl_be" if self.rom_be else "rom_ctl_0",
             FW_BASE,
             code.nbytes,
             TABLE,
             len(table),
-            len(p.sweep()),
+            len(p.be_loads()) if self.rom_be else len(p.sweep()),
         )
         self.out = SepFabricTap("PR-OUT")
         self.rom = SepFabricTap("PR-ROM")
@@ -787,7 +876,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         # Steps 1 to 3: stage, release, calibration boot.
         await self.bring_up_cpu_boot(0, pre_reset_hook=_stage)
         try:
-            await self._legs()
+            await (self._legs_be() if self.rom_be else self._legs())
         finally:
             close_graded_window(self.logger)
             for t in self.taps:
@@ -798,16 +887,38 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             raise AssertionError("; ".join(self.failures))
         self.result_pass(TEST, self.random_seed(), self.n_checks)
 
-    async def _legs(self) -> None:
-        p = self.plan
-        mbx = self.mbx
-        await self._calibrate()
-        mrac = await mbx.wait(OFF_MRAC, ROMCTL_BOUND, what="mrac record")
+    async def _check_mrac(self, what: str = "mrac record") -> None:
+        mrac = await self.mbx.wait(OFF_MRAC, ROMCTL_BOUND, what=what)
         line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
         if mrac.val != MRAC_SEP:
             self.logger.error("CTRL-ROM-MRAC FAIL: %s", line)
             raise AssertionError(f"CTRL-ROM-MRAC FAIL: {line}")
         self.logger.info("CTRL-ROM-MRAC: %s", line)
+
+    async def _legs_be(self) -> None:
+        """Big-endian entry: CTRL-ROM-CTL-BE, then the probe loads; no graded window."""
+        await self._calibrate()
+        await self._check_mrac(
+            what="mrac record (the boot stub executes from the ROM with ROM_CTL = 0x1; "
+            "the entry assumes that ROM_CTL leaves the instruction fetch unchanged)"
+        )
+        ctl = await self.mbx.wait(OFF_ROMCTL, ROMCTL_BOUND, what="ROM_CTL record")
+        fc = field_compare(ctl.val, ROM_CTL_BE, ROM_CTL_MASK)
+        line = f"rom_ctl_{fc.fields().replace(' ', ' rom_ctl_')}"
+        if not fc.ok:
+            self.logger.error("CTRL-ROM-CTL-BE FAIL: %s", line)
+            self.failures.append(f"CTRL-ROM-CTL-BE: {line}")
+            raise AssertionError(f"CTRL-ROM-CTL-BE FAIL: {line}")
+        self.logger.info("CTRL-ROM-CTL-BE PASS: %s", line)
+        await self.mbx.wait(OFF_SWEEP_E, SWEEP_BOUND, what="big-endian probe end")
+        await self._check_fail()
+        self._grade_be()
+
+    async def _legs(self) -> None:
+        p = self.plan
+        mbx = self.mbx
+        await self._calibrate()
+        await self._check_mrac()
         # Step 4.
         ctl = await mbx.wait(OFF_ROMCTL, ROMCTL_BOUND, what="ROM_CTL record")
         await self._check_fail()
@@ -1058,6 +1169,62 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             + ("" if not mismatches else " first=" + "; ".join(m for m in mismatches if m)),
         )
 
+    def _grade_be(self) -> None:
+        """CHK-ROM-CTL-BE over every probe load, and OBS-ROM-CTL-BE-ORDER per probed word."""
+        p = self.plan
+        plan = p.be_loads()
+        got = self._sweep_records()
+        bad = []
+        if [(a, s) for a, s, _v in got] != plan:
+            bad.append(f"records={len(got)} expected={len(plan)} in the planned address order")
+        le_equal = []
+        for a, s, v in got:
+            le = p.img.read(a, s)
+            if v == le:
+                le_equal.append(f"0x{a:08x}/{s} value=0x{v:x} le=0x{le:x}")
+        not_be = []
+        orders: Counter = Counter()
+        n = len(BE_LOADS)
+        for k, w in enumerate(p.be_words):
+            base = ROM_BASE + 8 * w
+            obs = {(a - base, s): v for a, s, v in got[n * k : n * (k + 1)]}
+            img = p.img.word(w).to_bytes(8, "little")
+            match = [
+                name
+                for name, perm in BYTE_ORDERS.items()
+                if all(
+                    obs.get((off, s))
+                    == int.from_bytes(bytes(img[perm[off + i]] for i in range(s)), "little")
+                    for s, off in BE_LOADS
+                )
+            ]
+            order = match[0] if match else "none"
+            orders[order] += 1
+            if order not in BE_ORDERS:
+                not_be.append(f"word={w} order={order}")
+            self.logger.info(
+                "OBS-ROM-CTL-BE-ORDER word=%d image_bytes=%s load_bytes=%s load_w0=%s load_w4=%s "
+                "order=%s",
+                w,
+                ",".join(f"{b:02x}" for b in img),
+                ",".join(
+                    "x" if obs.get((i, 1)) is None else f"{obs[(i, 1)]:02x}" for i in range(8)
+                ),
+                "x" if obs.get((0, 4)) is None else f"0x{obs[(0, 4)]:08x}",
+                "x" if obs.get((4, 4)) is None else f"0x{obs[(4, 4)]:08x}",
+                order,
+            )
+        self._grade(
+            "CHK-ROM-CTL-BE",
+            not bad and not not_be,
+            f"words={len(p.be_words)} be_words={len(p.be_words) - len(not_be)}/{len(p.be_words)} "
+            f"loads={len(got)}/{len(plan)} sizes=4,1 le_equal_loads={len(le_equal)} "
+            f"orders={','.join(f'{o}:{orders[o]}' for o in (*BYTE_ORDERS, 'none'))}"
+            + ("" if not bad else " " + "; ".join(bad))
+            + ("" if not not_be else " not_be=" + "; ".join(not_be[:4]))
+            + ("" if not le_equal else " first_le=" + "; ".join(le_equal[:4])),
+        )
+
     def _grade_port(self) -> None:
         plan = self.plan.sweep()
         t0, t1 = self._marker_t(OFF_SWEEP_B), self._marker_t(OFF_SWEEP_E)
@@ -1183,7 +1350,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                     f"exp_word={hex(addr >> 3)} strb={w.strb} exp_strb=0x{exp_strb:02x}"
                 )
         self.logger.info(
-            "OBS-ROM-STORE-RESP n_stores=%d bresp=%s",
+            "INFO-ROM-STORE-RESP n_stores=%d bresp=%s",
             N_STORES,
             ",".join("X" if b.resp is None else str(b.resp) for b in b_beats),
         )
@@ -1289,7 +1456,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             )
 
     def _grade_past(self) -> None:
-        """CHK-ROM-PAST-EXTENT per load, and OBS-ROM-PAST-EXTENT-RESP."""
+        """CHK-ROM-PAST-EXTENT per load, and INFO-ROM-PAST-EXTENT-RESP."""
         p = self.plan
         t_end = self._marker_t(OFF_PX_E)
         recs = self.mbx.records()
@@ -1353,7 +1520,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             nmi = [r.val for r in rl if r.off == OFF_NMI]
             mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
             self.logger.info(
-                "OBS-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
+                "INFO-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
                 "mdseac=%s traps=%d",
                 addr,
                 "X" if rresp is None else str(rresp),
@@ -1727,7 +1894,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         first_word = None if first is None or first.addr is None else first.addr >> 3
         self.logger.info(
-            "OBS-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
+            "INFO-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
             "macro_after_fall=req%s/addr%s/memif_rst_n%s "
             "cpu_low_rom_req=%d[%s] cpu_low_rom_rsp=%d[%s] cpu_low_macro_req=%d[%s] "
             "anchor_rsp_c=%s anchor_rsp_is_word1=%s first_req_word=%s first_req_c=%s "

@@ -8,11 +8,11 @@
 // main() returns the error count; startup/crt0.s turns it into the PASS/FAIL
 // magic on the mailbox. Every checker logs a positive PASS line, because the
 // absence of a FAIL line is not evidence. Each ERROR_CODE compare grades the
-// named fields; bits 31:8 have no stated value and print on OBS-ERR-RSVD.
+// named fields.
 //
 // Checks:
 //   CHK-RESET      : DMA config registers read their documented reset values
-//                    (named fields; reserved bits print on OBS-RESET-RSVD).
+//                    (named fields).
 //   CHK-RANGE-REGWEN: an unconfigured range raises range_valid_error alone, and
 //                    a limit below the base raises base_limit_error alone; then a
 //                    full valid range is locked, one-way until reset, and a range
@@ -87,17 +87,14 @@ static inline void wr(uint32_t a, uint32_t v) {
 }
 
 // The named ERROR_CODE fields (secure_dma.h). Bits 31:8 are reserved with no
-// stated reset, so no check grades them: rd_err() returns the named fields and
-// collects the other bits for the OBS-ERR-RSVD line that main() prints.
+// stated reset, so no check grades them: rd_err() returns the named fields.
 #define DMA_ERROR_CODE_FIELDS \
     (SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm | SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm | \
      SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bm | SECURE_DMA__ERROR_CODE__SIZE_ERROR_bm | \
      SECURE_DMA__ERROR_CODE__BUS_ERROR_bm | SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm | \
      SECURE_DMA__ERROR_CODE__RANGE_VALID_ERROR_bm | SECURE_DMA__ERROR_CODE__ASID_ERROR_bm)
-static uint32_t g_err_rsvd;
 static uint32_t rd_err(void) {
     uint32_t v = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-    g_err_rsvd |= v & ~(uint32_t)DMA_ERROR_CODE_FIELDS;
     return v & (uint32_t)DMA_ERROR_CODE_FIELDS;
 }
 
@@ -222,8 +219,7 @@ static void clear_dst_words(uint32_t n, uint32_t sentinel) {
 // Named-field mask of each multi-field register: the OR of its generated field
 // masks. Bits outside the named fields are reserved with no stated reset
 // (vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/registers.md, "Reset mask"
-// of each register), so CHK-RESET grades the named fields and prints the rest
-// on OBS-RESET-RSVD.
+// of each register), so CHK-RESET grades the named fields.
 #define DMA_CONTROL_FIELDS \
     (SECURE_DMA__CONTROL__OPCODE_bm | SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm | \
      SECURE_DMA__CONTROL__DIGEST_SWAP_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm | \
@@ -275,11 +271,9 @@ static int chk_reset(void) {
         {"CHUNK_DATA_SIZE", SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR,
          SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_reset, SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bm},
     };
-    uint32_t rsvd = 0;
     for (unsigned i = 0; i < sizeof(regs) / sizeof(regs[0]); i++) {
         uint32_t raw = rd(regs[i].addr);
         uint32_t got = raw & regs[i].fields;
-        rsvd |= raw & ~regs[i].fields;
         if (got != regs[i].exp) {
             sep_mbx_puts("FAIL: CHK-RESET ");
             sep_mbx_puts(regs[i].name);
@@ -291,9 +285,6 @@ static int chk_reset(void) {
             e++;
         }
     }
-    sep_mbx_puts("OBS-RESET-RSVD: reserved bits of the reset reads, OR over all registers = ");
-    sep_mbx_puthex(rsvd);
-    sep_mbx_putc('\n');
     if (!e) {
         sep_mbx_puts("CHK-RESET PASS: DMA config registers, named fields at documented reset "
                      "values\n");
@@ -1281,10 +1272,6 @@ int main(void) {
     errors += chk_iccm_copy();
     errors += chk_host_intg();
     errors += chk_host_fabric();
-
-    sep_mbx_puts("OBS-ERR-RSVD: ERROR_CODE bits 31:8, OR of every checked read = ");
-    sep_mbx_puthex(g_err_rsvd);
-    sep_mbx_putc('\n');
 
     if (errors == 0) {
         sep_mbx_puts("PASS: DMA basic -- reset/cfg-regwen/range-regwen/copy-mode/"

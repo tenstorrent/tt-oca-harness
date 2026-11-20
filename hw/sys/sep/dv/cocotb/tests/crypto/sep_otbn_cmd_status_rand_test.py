@@ -29,8 +29,18 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              instructions, each run after an OTBN reset.
   done line  two EXECUTE runs (enable 1 and enable 0, drawn order), then the
              ``INTR_TEST`` sub-leg.
-  busy write an ``RND`` read held by the TRNG reset keeps ``STATUS`` at 0x01;
-             k ``CTRL`` writes and j ``CMD`` = SEC_WIPE_DMEM writes.
+  busy write first the ``unimp`` program with ``CTRL.software_errs_fatal`` = 0,
+             outside the graded window, which leaves ``ERR_BITS.illegal_insn``
+             set; then an ``RND`` read held by the TRNG reset keeps ``STATUS`` at
+             0x01; k ``CTRL`` writes, j ``CMD`` = SEC_WIPE_DMEM writes, one write
+             of a drawn non-zero value with ``illegal_insn`` clear to
+             ``ERR_BITS``, then an ``ERR_BITS`` read and a ``STATUS`` read. Then,
+             with the chain up, a program of two nested ``loopi`` loops (drawn
+             outer count 16 to 32, inner count 128 to 255, inner body 1 to 4
+             NOPs): ``INSN_CNT`` read until non-zero and ``STATUS``, one write of
+             a drawn value W (above the instruction count of the program) to
+             ``INSN_CNT``, ``INSN_CNT`` and ``STATUS`` again, then ``INSN_CNT``
+             and ``ERR_BITS`` at IDLE.
   integrity  the compute program twice under ``+sep_otbn_intg_flip``: once with one
              drawn bit (0 to 38) of every IMEM word that the core fetches inverted,
              once with one drawn bit of a DMEM word that a ``lw`` of the program
@@ -80,7 +90,7 @@ Checkers:
                        secure wipe of internal state (ToO:136) and no sentence
                        states whether ``STATUS`` shows BUSY_SEC_WIPE_INT then, so
                        the check accepts 0x04 for EXECUTE and
-                       ``OBS-OTBN-STATUS-SEQ`` logs the codes.
+                       ``INFO-OTBN-STATUS-SEQ`` logs the codes.
   CHK-OTBN-INSN        ``INSN_CNT`` reads 0 after a reset, equals the length of
                        each straight-line program (``ecall`` included), differs
                        by b - a for the two programs, each DMEM result equals the
@@ -150,7 +160,7 @@ Checkers:
                        ``wdata`` the 32b word (ToO:451-453). The text does not
                        state the byte order of a record, so the check accepts
                        the little-endian and the big-endian 6-byte record and
-                       ``OBS-OTBN-CKSUM-ORDER`` logs which one matched.
+                       ``INFO-OTBN-CKSUM-ORDER`` logs which one matched.
   CHK-OTBN-LOCKED-HOLD a ``CMD`` = EXECUTE write (B response logged, not graded) at LOCKED leaves ``STATUS`` at
                        0xFF for 4 x t_cmd and ``FATAL_ALERT_CAUSE`` unchanged;
                        after an OTBN reset the probe shows 0x04 then 0x00 and
@@ -177,6 +187,31 @@ Checkers:
                        tag is tied high (``otbn.adoc`` :67-69). Bit 6 is set when
                        two EDN words are equal (ToO:246-251), a chance outcome,
                        so it is logged only.
+  CHK-OTBN-INSNCNT-BUSYWR  the ``INSN_CNT`` write at 0x01 during the nested-loop
+                       program is ignored: the read after it, with ``STATUS``
+                       still 0x01, is at least c0 (the non-zero read before the
+                       write) and differs from W; at IDLE ``INSN_CNT`` equals the
+                       instruction count of the program and ``ERR_BITS`` reads 0.
+                       "Write attempts while OTBN is running are ignored."
+                       (``otbn.hjson`` :738-739); "Returns the number of
+                       instructions executed in the current or last operation"
+                       (:728-729); a loop "Repeats a sequence of code multiple
+                       times", ``iterations`` times (``base-insns.yml`` :617-619).
+                       The count is 1 + n1 x (n2 x b + 2) + 1: the outer
+                       ``loopi`` once; per outer iteration the inner ``loopi``,
+                       n2 x b body NOPs and the NOP that ends the outer body; and
+                       ``ecall``. A stored write leaves a final count of at least W,
+                       above the program count; a write that clears the counter
+                       leaves a final count below it.
+  CHK-OTBN-ERRBITS-BUSYWR  the ``ERR_BITS`` write at 0x01 is ignored: the
+                       ``ERR_BITS`` read after it, with ``STATUS`` still 0x01,
+                       equals the value P that the ``unimp`` run left. The
+                       written value has ``illegal_insn`` clear and P has it set,
+                       so a stored write differs from P. Writes to
+                       ``ERR_BITS`` are ignored while OTBN is busy (``otbn.hjson``
+                       :562-563); ``ERR_BITS`` is set at the end of the run
+                       (ToO:137), and no text changes it when EXECUTE starts
+                       (ToO:128-137).
   CHK-OTBN-CMDIGN-ERR  the unrecognised ``CMD`` at IDLE leaves ``ERR_BITS`` at its
                        value before the write (non-zero). "Unrecognized commands
                        are ignored." (``otbn.hjson`` :464); ``ERR_BITS`` is set at
@@ -248,6 +283,10 @@ Checkers:
                        :672-673).
 
 Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
+``CTRL-OTBN-INSNCNT-BUSYWR-LIVE`` (``INSN_CNT`` reads non-zero before the write
+and the ``STATUS`` read after it shows 0x01, so the counter runs at the write),
+``CTRL-OTBN-ERRBITS-BUSYWR-PRE`` (P has ``illegal_insn`` set, so it differs from 0,
+which an accepted busy write would leave),
 ``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
 (a recognised command of the same seed sets ``done``), ``CTRL-OTBN-INITDONE``
 (after the power-on wipe ``STATUS`` reads 0x00 and the probe holds 0x00 up to the
@@ -266,34 +305,34 @@ read response reached the integrity check), ``CTRL-OTBN-SWERR-KIND`` (the same
 program with a legal instruction in place of the faulting one ends at IDLE with
 ``ERR_BITS`` = 0), ``CTRL-OTBN-ILLEGAL-BUS`` (the same host read at IDLE returns the
 non-zero staged word).
-Log-only: ``OBS-OTBN-STATUS-SEQ`` (the polled and the probe codes of each command:
-no sentence states whether EXECUTE shows BUSY_SEC_WIPE_INT during its end-of-run
-wipe); ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
+Logged: ``INFO-OTBN-STATUS-SEQ`` (the polled and the probe codes of each command;
+graded by ``CHK-OTBN-STATUS-SEQ`` when the command reaches IDLE, and the line then
+names it in ``chk=``). Log-only: ``INFO-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
 after the post-reset wipe: no sentence states its value); ``INFO-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
-program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
+program, a chance outcome); ``INFO-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
 than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
-``OBS-OTBN-INTG-ALERT-IDX`` (the high clocks of each index of ``[2:1]`` after the
+``INFO-OTBN-INTG-ALERT-IDX`` (the high clocks of each index of ``[2:1]`` after the
 ``CMD`` write and the rises of each index in the LOCKED window: no sentence names the
 fatal index or the repeat period), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
 error", ToO:186, does not fix the other bits); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
-clean RND run, a chance outcome); ``OBS-OTBN-SWERR-KIND-CAUSE`` (the full
+clean RND run, a chance outcome); ``INFO-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
 other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` at LOCKED, and the response code of the host read: no
-sentence states the code); ``OBS-OTBN-CKSUM-ORDER`` (the record byte order that
+sentence states the code); ``INFO-OTBN-CKSUM-ORDER`` (the record byte order that
 ``CHK-OTBN-LOAD-CKSUM`` matched: no sentence states it); ``OBS-OTBN-WIPE-MEM`` (two words of the wiped memory
 read after each SEC_WIPE command: the wipe makes the stored data unusable (ToO,
 ``registers.md`` ``CMD``) but no sentence states the value a read returns, and
 ``hw/sys/sep/doc/otbn.adoc`` ties the OTP scramble-key handshake to fixed values);
-``OBS-OTBN-RSVD`` (the raw word, the mask of the bits outside every field and those
+``INFO-OTBN-RSVD`` (the raw word, the mask of the bits outside every field and those
 bits, of each ``INTR_STATE`` and ``STATUS`` read before a command and each
 ``INTR_STATE``, ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` read after it in the command
 leg, and of the last ``STATUS`` read and the end reads of ``INTR_STATE``,
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of each sw-kind and MAI run: ``registers.md``
 :36, :157, :198, :207, :239 mark these bits reserved and state no read value; the
-checks grade the masked words); ``OBS-OTBN-MAI-STUB-ERR`` (the raw ``ERR_BITS`` with
+checks grade the masked words); ``INFO-OTBN-MAI-STUB-ERR`` (the raw ``ERR_BITS`` with
 ``mai_software_error`` (bit 8) and ``illegal_insn`` (bit 3) named, ``STATUS`` and
 ``FATAL_ALERT_CAUSE`` after the MAI program: with ``FeatStubMai`` = 1 MAI is not
 present (``otbn.hjson`` :117-123) and no sentence states the outcome of the write).
@@ -537,6 +576,11 @@ class Plan:
     iba_dmem_val: int
     seq3: tuple[int, ...]
     gaps3: tuple[int, ...]
+    errbits_v: int
+    loop_outer: int
+    loop_inner: int
+    loop_body: int
+    insn_w: int
 
     def line(self, seed: int) -> str:
         return (
@@ -551,7 +595,11 @@ class Plan:
             f"iba_imem_idx={self.iba_imem_idx} iba_dmem_idx={self.iba_dmem_idx} "
             f"iba_dmem_val=0x{self.iba_dmem_val:08x} "
             f"seq3={','.join(f'0x{c:02x}' for c in self.seq3)} "
-            f"gaps3={','.join(map(str, self.gaps3))}"
+            f"gaps3={','.join(map(str, self.gaps3))} "
+            f"errbits_v=0x{self.errbits_v:08x} loop_outer={self.loop_outer} "
+            f"loop_inner={self.loop_inner} loop_body={self.loop_body} "
+            f"loop_insn={loop_insn_count(self.loop_outer, self.loop_inner, self.loop_body)} "
+            f"insn_w=0x{self.insn_w:08x}"
         )
 
 
@@ -589,6 +637,17 @@ def draw_plan(seed: int) -> Plan:
     # The command leg of shard 3: EXECUTE only.
     seq3 = (CMD_EXECUTE,) * rng.randrange(3, 6)
     gaps3 = tuple(rng.randrange(0, 201) for _ in seq3)
+    # Busy write of ERR_BITS: illegal_insn clear, so the value differs from P, which
+    # has illegal_insn set.
+    errbits_v = 0
+    while not errbits_v:
+        errbits_v = rng.randrange(1, 1 << 32) & ~M_ERR_ILLEGAL
+    # The nested-loop program of the INSN_CNT busy write, and the written value W,
+    # above the instruction count of that program.
+    loop_outer = rng.randrange(16, 33)
+    loop_inner = rng.randrange(128, 256)
+    loop_body = rng.randrange(1, 5)
+    insn_w = rng.randrange(loop_insn_count(loop_outer, loop_inner, loop_body) + 1, 1 << 32)
     return Plan(
         tuple(seq),
         gaps,
@@ -613,7 +672,32 @@ def draw_plan(seed: int) -> Plan:
         iba_dmem_val,
         seq3,
         gaps3,
+        errbits_v,
+        loop_outer,
+        loop_inner,
+        loop_body,
+        insn_w,
     )
+
+
+def loop_prog(outer: int, inner: int, body: int) -> tuple[int, ...]:
+    """Two nested ``loopi`` loops, then ``ecall``.
+
+    The outer body is the inner ``loopi``, its ``body`` NOPs and one NOP, so the two
+    loops end on different instructions (OT otbn ``doc/developers_guide.md`` :150).
+    """
+    return (loopi(outer, body + 2), loopi(inner, body)) + (NOP,) * (body + 1) + (ECALL,)
+
+
+def loop_insn_count(outer: int, inner: int, body: int) -> int:
+    """Instructions that ``loop_prog`` executes, ``ecall`` included.
+
+    A loop repeats its body ``iterations`` times (``base-insns.yml`` :617-619), and
+    ``INSN_CNT`` counts each executed instruction (``otbn.hjson`` :728-729): the outer
+    ``loopi`` once, per outer iteration the inner ``loopi``, ``inner`` x ``body``
+    NOPs and one NOP, then ``ecall``.
+    """
+    return 1 + outer * (1 + inner * body + 1) + 1
 
 
 def prog_with_extra(op: str, k: int) -> tuple[int, ...]:
@@ -653,6 +737,8 @@ _EXEC_LEG_CHECKS = (
     "CHK-OTBN-BUSYWR-ERR",
     "CHK-OTBN-CMDIGN-ERR",
     "CHK-OTBN-LOAD-CKSUM",
+    "CHK-OTBN-INSNCNT-BUSYWR",
+    "CHK-OTBN-ERRBITS-BUSYWR",
 )
 
 
@@ -681,6 +767,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         "CHK-OTBN-IMEM-INTG",
         "CHK-OTBN-DMEM-INTG",
         "CHK-OTBN-LOAD-CKSUM",
+        "CHK-OTBN-INSNCNT-BUSYWR",
+        "CHK-OTBN-ERRBITS-BUSYWR",
     )
 
     # ------------------------------------------------------------- helpers
@@ -718,10 +806,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     async def _rd(self, addr: int, mask: int = 0xFFFF_FFFF) -> int:
         return (await self.otbn._rd(addr)) & mask
 
-    def _obs_rsvd(self, seed: int, site: str, reg: str, raw: int) -> None:
+    def _info_rsvd(self, seed: int, site: str, reg: str, raw: int) -> None:
         """Log the raw word of one ``reg`` read and its bits outside every field."""
         rsvd_mask = ~OTBN.mask32(reg) & 0xFFFF_FFFF
-        self.chk.obs(
+        self.chk.info(
             "OTBN-RSVD",
             seed=seed,
             site=site,
@@ -732,9 +820,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         )
 
     async def _rd_rsvd(self, seed: int, site: str, reg: str, mask: int) -> int:
-        """Read ``reg`` once, log ``OBS-OTBN-RSVD``, return the word masked with ``mask``."""
+        """Read ``reg`` once, log ``INFO-OTBN-RSVD``, return the word masked with ``mask``."""
         raw = await self.otbn._rd(OTBN.addr(reg))
-        self._obs_rsvd(seed, site, reg, raw)
+        self._info_rsvd(seed, site, reg, raw)
         return raw & mask
 
     async def _wr(self, addr: int, val: int) -> None:
@@ -857,7 +945,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             want_le=f"0x{want['little']:08x}",
             want_be=f"0x{want['big']:08x}",
         )
-        self.chk.obs("OTBN-CKSUM-ORDER", order=match[0] if match else "none")
+        self.chk.info("OTBN-CKSUM-ORDER", order=match[0] if match else "none")
         return golden
 
     def _line(self) -> int:
@@ -1007,7 +1095,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         # No sentence states INTR_STATE.done after the post-reset wipe.
         init_done = await self._rd(A_INTR_STATE, M_DONE)
         after = await self._clear_done()
-        self.chk.obs(
+        self.chk.info(
             "OTBN-INITDONE-DONE",
             seed=seed,
             done=init_done,
@@ -1040,13 +1128,14 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     break
                 arc.append(c.value)
             arc_s = ",".join("X" if v is None else f"0x{v:02x}" for v in arc) or "-"
-            self.chk.obs(
+            self.chk.info(
                 "OTBN-STATUS-SEQ",
                 seed=seed,
                 idx=idx,
                 cmd=f"0x{cmd:02x}",
                 polled=_runs(vals),
                 probe=arc_s,
+                **({"chk": "CHK-OTBN-STATUS-SEQ"} if ok else {}),
             )
             if self._grade(
                 "OTBN-CMD-BUSY",
@@ -1416,10 +1505,23 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
 
     # -------------------------------------------------------- busy-write leg
     async def _busy_write_leg(self, seed: int) -> bool:
-        """Steps 17-22. Returns True when STATUS read 0x01 before the busy writes."""
+        """Steps 17-23. Returns True when STATUS read 0x01 before the busy writes."""
         p = self.plan
         dut = cocotb.top
         await self._reset_otbn("busywr")
+        # A recoverable error run leaves ERR_BITS non-zero for the busy ERR_BITS write.
+        close_graded_window(self.logger)
+        _, _, pre_vals, _ = await self._run_unimp(0)
+        err_pre = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        self._open_window()
+        self._ctrl(
+            "OTBN-ERRBITS-BUSYWR-PRE",
+            bool(err_pre & M_ERR_ILLEGAL),
+            seed=seed,
+            status=_runs(pre_vals),
+            err_bits=f"0x{err_pre:x}",
+            illegal_insn=int(bool(err_pre & M_ERR_ILLEGAL)),
+        )
         await self._clear_done()
         ctrl_pre = await self._rd(A_CTRL, M_CTRL_SWERR)
         await self.otbn.load_program(OTBN_RND_PROG)
@@ -1462,6 +1564,19 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 bresp=",".join(bresps),
             ):
                 await self._pass_label(OTBN_CMD_PASS_IGNORE)
+            err_bresp = await self._wr_b(A_ERR_BITS, p.errbits_v, refused=True)
+            err_busy = await self._rd(A_ERR_BITS, M_ERR_BITS)
+            st_err_busy = await self._rd(A_STATUS, M_STATUS)
+            self._grade(
+                "OTBN-ERRBITS-BUSYWR",
+                err_busy == err_pre and st_err_busy == ST_BUSY_EXECUTE,
+                seed=seed,
+                written=f"0x{p.errbits_v:08x}",
+                bresp=err_bresp,
+                err_bits_busy=f"0x{err_busy:x}",
+                expect=f"0x{err_pre:x}",
+                status_after_read=f"0x{st_err_busy:02x}",
+            )
 
         # Steps 21-22: release the TRNG reset, bring the chain up, finish.
         await self.swrst.release("trng")
@@ -1474,6 +1589,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             "OTBN-BUSYWR-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
         )
         err_graded = err & ~M_ERR_RND_REP
+        if not busy:
+            self._grade(
+                "OTBN-ERRBITS-BUSYWR", False, seed=seed, reason="timeout", bound=self.idle_bound
+            )
         self._grade(
             "OTBN-BUSYWR-ERR",
             idle and err_graded == 0,
@@ -1522,8 +1641,63 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             )
             if busywr_ok:
                 await self._pass_label(OTBN_CMD_PASS_BUSYWR)
+        await self._insn_cnt_busy_write(seed)
         await self._reset_otbn("busywr-end")
         return busy
+
+    async def _insn_cnt_busy_write(self, seed: int) -> None:
+        """Write W to ``INSN_CNT`` while the nested-loop program executes.
+
+        The control proves the counter is live (non-zero, ``STATUS`` 0x01) before the
+        write. A stored write leaves a count of at least W, above the program count;
+        a write that clears the counter leaves a final count below it.
+        """
+        p = self.plan
+        prog = loop_prog(p.loop_outer, p.loop_inner, p.loop_body)
+        n_exec = loop_insn_count(p.loop_outer, p.loop_inner, p.loop_body)
+        await self.otbn.load_program(prog)
+        await self._wr(A_CMD, CMD_EXECUTE)
+        start = self._clk()
+        c0 = 0
+        while not c0 and self._clk() - start <= self.idle_bound:
+            c0 = await self._rd(A_INSN_CNT, M_INSN)
+        st0 = await self._rd(A_STATUS, M_STATUS)
+        live = self._ctrl(
+            "OTBN-INSNCNT-BUSYWR-LIVE",
+            c0 >= 1 and st0 == ST_BUSY_EXECUTE,
+            seed=seed,
+            insn_cnt_before_write=c0,
+            status_after_read=f"0x{st0:02x}",
+            bound=self.idle_bound,
+        )
+        bresp = await self._wr_b(A_INSN_CNT, p.insn_w, refused=True)
+        c1 = await self._rd(A_INSN_CNT, M_INSN)
+        st1 = await self._rd(A_STATUS, M_STATUS)
+        idle, vals, clks = await self._wait_idle(_OUTER_CLK, gap=4)
+        final = await self._rd(A_INSN_CNT, M_INSN)
+        err = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        self._grade(
+            "OTBN-INSNCNT-BUSYWR",
+            live
+            and st1 == ST_BUSY_EXECUTE
+            and c1 >= c0
+            and c1 != p.insn_w
+            and idle
+            and final == n_exec
+            and err == 0,
+            seed=seed,
+            written=f"0x{p.insn_w:08x}",
+            bresp=bresp,
+            c0=c0,
+            c1=c1,
+            status_after_c1=f"0x{st1:02x}",
+            idle=int(idle),
+            final=final,
+            expect=n_exec,
+            err_bits=f"0x{err:x}",
+            status=_runs(vals),
+            clk=clks,
+        )
 
     # ------------------------------------------------------- RND-clean leg
     async def _rnd_clean_leg(self, seed: int) -> None:
@@ -1707,7 +1881,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             await self._pass_label(
                 OTBN_CMD_PASS_IMEM_INTG if mem == FLIP_IMEM else OTBN_CMD_PASS_DMEM_INTG
             )
-        self.chk.obs(
+        self.chk.info(
             "OTBN-INTG-ALERT-IDX",
             seed=seed,
             mem=tag,
@@ -1838,7 +2012,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         if recov_ok:
             await self._pass_label(OTBN_CMD_PASS_SWERR_RECOV)
         # No sentence states the other ERR_BITS bits, or FATAL_ALERT_CAUSE, here.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-SWERR-CAUSE", seed=seed, err_bits=f"0x{rerr:x}", fatal_cause=f"0x{rfatal:x}"
         )
         self._ctrl(
@@ -1922,7 +2096,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         check except ``ERR_BITS`` is read before the ``ERR_BITS`` read; when one of
         them fails, the window closes before that read. The last ``STATUS`` read and
         the end reads of ``INTR_STATE``, ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` each
-        log ``OBS-OTBN-RSVD`` with site ``tag``.
+        log ``INFO-OTBN-RSVD`` with site ``tag``.
         """
         arc_ok, arc = await self._reset_otbn(tag)
         await self._clear_done()
@@ -1935,7 +2109,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         met, vals, clks = await self._poll_status(
             lambda s: s in (ST_IDLE, ST_LOCKED), self.idle_bound
         )
-        self._obs_rsvd(seed, tag, "STATUS", self.status_raw)
+        self._info_rsvd(seed, tag, "STATUS", self.status_raw)
         done = await self._rd_rsvd(seed, tag, "INTR_STATE", M_DONE)
         pre_ok = (
             arc_ok
@@ -1949,7 +2123,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         if graded and not pre_ok:
             close_graded_window(self.logger)
         err_raw = await self._rd(A_ERR_BITS)
-        self._obs_rsvd(seed, tag, "ERR_BITS", err_raw)
+        self._info_rsvd(seed, tag, "ERR_BITS", err_raw)
         fatal = await self._rd_rsvd(seed, tag, "FATAL_ALERT_CAUSE", M_FATAL)
         return {
             "pre_ok": pre_ok,
@@ -2010,7 +2184,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, _PASS_LABEL_CLK)
             set_otbn_sw_err_pass(0, self.logger)
         # No sentence states the other ERR_BITS bits, or FATAL_ALERT_CAUSE, here.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-SWERR-KIND-CAUSE",
             seed=seed,
             kind=SW_KINDS[kind],
@@ -2021,7 +2195,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         # samples. No sentence states the outcome with MAI not present.
         close_graded_window(self.logger)
         m = await self._run_sw_prog(seed, OTBN_MAI_PROG, "mai", graded=False)
-        self.chk.obs(
+        self.chk.info(
             "OTBN-MAI-STUB-ERR",
             seed=seed,
             csr=f"0x{CSR_MAI_CTRL:x}",

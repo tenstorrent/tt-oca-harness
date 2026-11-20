@@ -116,26 +116,38 @@ extern "C" {
 #define I2C__INTR_STATE__SMBALERT_bp 15
 #define I2C__INTR_STATE__SMBALERT_bw 1
 #define I2C__INTR_STATE__SMBALERT_reset 0x0
-// Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-// error. Write `1` to clear.
+// Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+// integrity error: a parity mismatch on the entry at its head, or a pointer
+// mismatch in its hardened counter. The parity error clears once that entry is
+// read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+// clear; the field stays set while the error persists.
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bm 0x10000
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bp 16
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_reset 0x0
-// Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-// error. Write `1` to clear.
+// Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+// integrity error: a parity mismatch on the entry at its head, or a pointer
+// mismatch in its hardened counter. The parity error clears once that entry is
+// read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+// clear; the field stays set while the error persists.
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bm 0x20000
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bp 17
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_reset 0x0
-// Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-// Write `1` to clear.
+// Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+// error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+// hardened counter. The parity error clears once that entry is read; the pointer
+// error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+// stays set while the error persists.
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bm 0x40000
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bp 18
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_reset 0x0
-// Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-// Write `1` to clear.
+// Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+// error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+// hardened counter. The parity error clears once that entry is read; the pointer
+// error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+// stays set while the error persists.
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bm 0x80000
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bp 19
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bw 1
@@ -195,17 +207,29 @@ typedef union {
         // Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
         // to clear.
         uint32_t SMBALERT :1;
-        // Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-        // error. Write `1` to clear.
+        // Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+        // integrity error: a parity mismatch on the entry at its head, or a pointer
+        // mismatch in its hardened counter. The parity error clears once that entry is
+        // read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+        // clear; the field stays set while the error persists.
         uint32_t CONTROLLER_TX_FIFO_ERROR :1;
-        // Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-        // error. Write `1` to clear.
+        // Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+        // integrity error: a parity mismatch on the entry at its head, or a pointer
+        // mismatch in its hardened counter. The parity error clears once that entry is
+        // read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+        // clear; the field stays set while the error persists.
         uint32_t CONTROLLER_RX_FIFO_ERROR :1;
-        // Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-        // Write `1` to clear.
+        // Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+        // error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+        // hardened counter. The parity error clears once that entry is read; the pointer
+        // error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+        // stays set while the error persists.
         uint32_t TARGET_TX_FIFO_ERROR :1;
-        // Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-        // Write `1` to clear.
+        // Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+        // error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+        // hardened counter. The parity error clears once that entry is read; the pointer
+        // error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+        // stays set while the error persists.
         uint32_t TARGET_RX_FIFO_ERROR :1;
         uint32_t :12;
     } f;
@@ -601,8 +625,9 @@ typedef union {
 // This would violate the proper protocol for a controller to join a multi-controller
 // environment. However, if this controller is known to be the first to join, this
 // ordering will enable skipping the idle wait.
-// When `0`, the bus monitor will report that the bus is always free, so the
-// Controller FSM is never blocked from transmitting.
+// When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+// wait after a qualified STOP, so that wait is the only time the Controller FSM
+// is blocked from transmitting.
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bm 0x20
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bp 5
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bw 1
@@ -689,8 +714,9 @@ typedef union {
         // This would violate the proper protocol for a controller to join a multi-controller
         // environment. However, if this controller is known to be the first to join, this
         // ordering will enable skipping the idle wait.
-        // When `0`, the bus monitor will report that the bus is always free, so the
-        // Controller FSM is never blocked from transmitting.
+        // When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+        // wait after a qualified STOP, so that wait is the only time the Controller FSM
+        // is blocked from transmitting.
         uint32_t MULTI_CONTROLLER_MONITOR_EN :1;
         // Target mode control: enables the Software TX Stretch Control Mechanism. If this
         // bit is:
@@ -1224,10 +1250,14 @@ typedef union {
 
 // reg - i2c::TIMING3
 // Data Setup and Hold Times Register
-// Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-// cycles. See Table 11 in the I2C Specification for details. This field is sized
-// to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-// requirement, assuming a 1 GHz system clock.
+// Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+// cycles: after driving a data or ACK bit, the target holds SCL low for
+// `TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+// not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+// `t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+// Specification for details. This field is sized to meet the I2C Standard-mode
+// (100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+// clock.
 #define I2C__TIMING3__TSU_DAT_bm 0x1ff
 #define I2C__TIMING3__TSU_DAT_bp 0
 #define I2C__TIMING3__TSU_DAT_bw 9
@@ -1242,10 +1272,14 @@ typedef union {
 #define I2C__TIMING3__THD_DAT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-        // cycles. See Table 11 in the I2C Specification for details. This field is sized
-        // to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-        // requirement, assuming a 1 GHz system clock.
+        // Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+        // cycles: after driving a data or ACK bit, the target holds SCL low for
+        // `TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+        // not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+        // `t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+        // Specification for details. This field is sized to meet the I2C Standard-mode
+        // (100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+        // clock.
         uint32_t TSU_DAT :9;
         uint32_t :7;
         // Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in
@@ -1268,8 +1302,18 @@ typedef union {
 #define I2C__TIMING4__TSU_STO_bp 0
 #define I2C__TIMING4__TSU_STO_bw 13
 #define I2C__TIMING4__TSU_STO_reset 0x0
-// Global control: specifies the time between a STOP and START condition (`t_BUF`)
-// in system clock cycles. See Table 11 in the I²C Specification for details. This
+// Global control: specifies the bus free time between a STOP and the following
+// START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+// Specification for details. The bus monitor starts this wait once SCL has stayed
+// high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+// holds a START back only while the wait runs. With
+// `CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+// Otherwise, a START behind the controller's own STOP waits only when that STOP
+// is qualified before the controller takes the next FMT FIFO entry: when
+// `THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+// entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+// entry already queued, the START follows the STOP's SDA rise after
+// `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
 // field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
 // requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING4__T_BUF_bm 0x1fff0000
@@ -1284,8 +1328,18 @@ typedef union {
         // minimum requirement, assuming a 1 GHz system clock.
         uint32_t TSU_STO :13;
         uint32_t :3;
-        // Global control: specifies the time between a STOP and START condition (`t_BUF`)
-        // in system clock cycles. See Table 11 in the I²C Specification for details. This
+        // Global control: specifies the bus free time between a STOP and the following
+        // START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+        // Specification for details. The bus monitor starts this wait once SCL has stayed
+        // high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+        // holds a START back only while the wait runs. With
+        // `CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+        // Otherwise, a START behind the controller's own STOP waits only when that STOP
+        // is qualified before the controller takes the next FMT FIFO entry: when
+        // `THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+        // entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+        // entry already queued, the START follows the STOP's SDA rise after
+        // `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
         // field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
         // requirement, assuming a 1 GHz system clock.
         uint32_t T_BUF :13;
