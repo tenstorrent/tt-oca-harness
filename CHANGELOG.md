@@ -10,6 +10,11 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- CSRNG `HW_EXC_STS` cleared one cycle after a hardware instance exception,
+  so software read 0 (#3733).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added
