@@ -11,7 +11,7 @@
 
 schema_version = 1
 dut = "dtp"
-scope_epoch = "dtp-fcov-v2"
+scope_epoch = "dtp-fcov-v3"
 
 [[holes]]
 id = "sva-smc-axi-aw-multi-beat"

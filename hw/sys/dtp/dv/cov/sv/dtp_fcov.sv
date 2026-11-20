@@ -13,17 +13,9 @@
 // every cross is the full product of its coverpoints, and a combination that
 // must not occur is an illegal bin of a coverpoint.
 //
-// These modules add a labeled `OCAH_FCOV_COVER cover-property point only for
-// a condition that no covergroup bin records; under Verilator such a point is
-// a coverage.dat user point (--coverage-user).
-//
-// CONVENTION: a cover-property body is a single continuous-assign wire. The
-// localization pass (V3Localize) of Verilator 5.050 hits an internal error on
-// compound expressions or flop references inside a cover-property body.
-//
-// JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
-// cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The
-// shared event decode comes first.
+// JTAG-core coverage lives here; debug TDR, scan/STAP, and cross-trigger
+// coverage live in the sibling dtp_*_fcov.sv modules. The shared event decode
+// comes first.
 
 module dtp_fcov (
   input wire        tck_i,
@@ -142,12 +134,12 @@ module dtp_fcov (
   localparam logic [63:0] CatDebug = 64'h0000_0000_0300_3000;
   // 0x1A SELECT_IJTAG
   localparam logic [63:0] CatIjtag = 64'h0000_0000_0400_0000;
-  // 0x1B-0x2C JTAG2AXI caps/single-op/series TDRs (SMC OTP, SEP OTP, SMC fabric)
-  localparam logic [63:0] CatJtag2axi = 64'h0000_1FFF_F800_0000;
+  // 0x1B-0x20 JTAG2AXI DTMCS and DMI TDRs (SMC OTP, SEP OTP, SMC fabric)
+  localparam logic [63:0] CatJtag2axi = 64'h0000_0001_F800_0000;
   // 0x10-0x17 RISCV_RESERVED
   localparam logic [63:0] CatReserved = 64'h0000_0000_00FF_0000;
-  // 0x0F, 0x2D-0x3C UNDEFINED_BYPASS
-  localparam logic [63:0] CatUndefined = 64'h1FFF_E000_0000_8000;
+  // 0x0F, 0x21-0x3C UNDEFINED_BYPASS
+  localparam logic [63:0] CatUndefined = 64'h1FFF_FFFE_0000_8000;
 
   localparam logic [63:0] CatAll = CatMandatory | CatOptional | CatIeee1838 | CatDebug
       | CatIjtag | CatJtag2axi | CatReserved | CatUndefined;
@@ -169,12 +161,12 @@ module dtp_fcov (
 
   // Instructions whose data register a dbg_disable_t field gates. A gated
   // instruction decodes as itself and keeps its register on the scan path:
-  // a bridge field blocks that bridge's TDR updates and AXI traffic, and a
-  // SIB field holds its SIB closed in the iJTAG network that SELECT_IJTAG
-  // and RUNBIST select.
-  localparam logic [63:0] SmcJtag2axiOps = 64'h0000_1F00_0000_0000;  // 0x28-0x2C
-  localparam logic [63:0] SmcOtpJtag2axiOps = 64'h0000_0001_F000_0000;  // 0x1C-0x20
-  localparam logic [63:0] SepOtpJtag2axiOps = 64'h0000_007C_0000_0000;  // 0x22-0x26
+  // a bridge field completes that bridge's bus accesses with a decode error
+  // and no port transaction, and a SIB field holds its SIB closed in the
+  // iJTAG network that SELECT_IJTAG and RUNBIST select.
+  localparam logic [63:0] SmcJtag2axiOps = 64'h0000_0001_8000_0000;  // 0x1F-0x20
+  localparam logic [63:0] SmcOtpJtag2axiOps = 64'h0000_0000_1800_0000;  // 0x1B-0x1C
+  localparam logic [63:0] SepOtpJtag2axiOps = 64'h0000_0000_6000_0000;  // 0x1D-0x1E
   localparam logic [63:0] SelectIjtag = 64'h0000_0000_0400_0000;  // 0x1A
   localparam logic [63:0] Runbist = 64'h0000_0000_0000_0004;  // 0x02
 
@@ -410,7 +402,7 @@ module dtp_fcov (
       bins clamp_hold = {7'h0A};
       bins clamp_release = {7'h0B};
       bins reserved = {[7'h10 : 7'h17]};
-      bins undefined = {7'h0F, [7'h2D : 7'h3C]};
+      bins undefined = {7'h0F, [7'h21 : 7'h3C]};
       bins zero_length_bypass = {7'h3D};
       bins inv_bypass = {7'h3E};
       bins bypass = {7'h3F};

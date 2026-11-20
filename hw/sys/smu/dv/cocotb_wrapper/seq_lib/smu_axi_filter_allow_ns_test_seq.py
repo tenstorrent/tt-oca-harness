@@ -183,8 +183,8 @@ class smu_axi_filter_allow_ns_test_seq:
         sb = self.test.env.scoreboard
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         # feat_ctrl is 2-flop synced on TCK (ResetValue=0). Without TCK activity
-        # smc_jtag2axi_security_disable stays 1 and SINGLE_OP silently no-ops
-        # (capture stays SUCCESS/rdata=0).
+        # smc_jtag2axi_security_disable stays 1 and every JTAG2AXI access
+        # completes with DECERR without reaching the fabric.
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):

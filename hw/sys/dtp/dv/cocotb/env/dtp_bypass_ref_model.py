@@ -5,7 +5,7 @@
 Every DR scan of at most 64 bits while a bypass-class instruction is active
 and the PTAP 3DCR select is clear returns TDI delayed by one TCK (the
 one-bit bypass register: both IEEE encodings, every opcode with no register
-of its own, 0x0F, 0x10-0x17 and 0x2D-0x3C, and each boundary-scan
+of its own, 0x0F, 0x10-0x17 and 0x21-0x3C, and each boundary-scan
 instruction the build disables, which behaves as BYPASS ("Boundary Scan
 Support", PTAP document)), INV_BYPASS the inverted delayed image behind a
 captured 1, and ZERO_LENGTH_BYPASS TDI itself. Consumes the reconstructed
@@ -39,7 +39,7 @@ _ONE_BIT_BYPASS = frozenset(
         int(DtpJtagInstr.BYPASS_3F),
         int(DtpJtagInstr.UNDEFINED_BYPASS_0F),
         *range(int(DtpJtagInstr.RISCV_RESERVED_0), int(DtpJtagInstr.RISCV_RESERVED_7) + 1),
-        *range(int(DtpJtagInstr.UNDEFINED_BYPASS_2D), int(DtpJtagInstr.UNDEFINED_BYPASS_3C) + 1),
+        *range(int(DtpJtagInstr.UNDEFINED_BYPASS_21), int(DtpJtagInstr.UNDEFINED_BYPASS_3C) + 1),
     ]
 )
 # Each boundary-scan instruction with the TB-interface enables that must all

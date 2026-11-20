@@ -15,8 +15,7 @@
 
 `verilator_config
 
-// The bench: tb_top, its TB interfaces, its protocol checkers and the
-// observation module it binds into every JTAG2AXI bridge.
+// The bench: tb_top, its TB interfaces and its protocol checkers.
 coverage_off -file "*hw/sys/dtp/dv/tb/*"
 
 // The SV-UVM environment, sequences and tests.

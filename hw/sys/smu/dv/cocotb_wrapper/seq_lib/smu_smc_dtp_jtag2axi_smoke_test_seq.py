@@ -1,47 +1,40 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC fabric JTAG2AXI smoke: gate open, CAPS, SCRATCH_15, SPM, series INCR.
+"""SMC fabric JTAG2AXI smoke: gate open, DTMCS, SCRATCH_15, SPM.
 
 S1: After TCK sync, ``tb_smc_jtag2axi_security_disable`` is 0 and
-    ``SMC_JTAG2AXI_CAPS`` matches the RTL 14-bit packing.
-S2: SINGLE_OP 32b write/readback of CPU_CTRL SCRATCH_15 (not SCRATCH_0 —
+    ``SMC_DTMCS`` reads the DTMCS value with no sticky DMI status.
+S2: 32b write/readback of CPU_CTRL SCRATCH_15 (not SCRATCH_0 —
     that mailbox is the live boot ROM PASS magic).
-S3: SINGLE_OP 64b write/readback of SPM base.
-S4: Series DATA_INCR write then readback at SPM+0x40 — data match.
+S3: 64b write/readback of SPM base.
 
 Addresses from ``smc_addr.h``. No Force.
 
-Not claimed: Force-closed gate; OTP J2A; unmapped DECERR; NO_INCR /
-WITH_ERROR_STATUS series modes.
+Not claimed: Force-closed gate; OTP J2A; unmapped DECERR.
 """
 
 from __future__ import annotations
 
 import cocotb
+from dtp_types import DTP_EXPECTED_DTMCS
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
-    jtag2axi_series_incr_read,
-    jtag2axi_series_incr_write,
     jtag2axi_single_read,
     jtag2axi_single_write,
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
-    smc_series_data_mask,
 )
 
 SCRATCH_15 = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 15)
 SPM = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR")
-SERIES_ADDR = SPM + 0x40
 SCRATCH_PAT = 0xDEAD_BEEF
 SPM_PAT = 0x5A17_C0DE_CAFE_1234
-SERIES_PAT = 0x0102_0304_0506_0708
 OTP_POLL = 128
 
 
@@ -55,7 +48,6 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         self.s1_ok = False
         self.s2_ok = False
         self.s3_ok = False
-        self.s4_ok = False
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -150,18 +142,16 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
-        caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
-        require_jtag_tdo_resolved("SMC J2A CAPS")
-        if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
-            raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
-            )
+        dtmcs = int(await jtag.read("SMC_DTMCS"))
+        require_jtag_tdo_resolved("SMC J2A DTMCS")
+        if dtmcs != DTP_EXPECTED_DTMCS:
+            raise AssertionError(f"SMC J2A DTMCS=0x{dtmcs:08x} want 0x{DTP_EXPECTED_DTMCS:08x}")
         self.s1_ok = True
-        self._log(f"CHK-JTAG2AXI-SMOKE-GATE-OPEN disable={gate} caps=0x{caps:04x}")
+        self._log(f"CHK-JTAG2AXI-SMOKE-GATE-OPEN disable={gate} dtmcs=0x{dtmcs:08x}")
         sb.expect_eq(
             "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
-            (gate, caps),
-            (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            (gate, dtmcs),
+            (0, DTP_EXPECTED_DTMCS),
             evidence="CHK-JTAG2AXI-SMOKE-GATE-OPEN",
         )
 
@@ -183,40 +173,8 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         self._log(f"CHK-JTAG2AXI-SMOKE-SPM @0x{SPM:08x} data=0x{got_m:016x}")
         sb.expect_eq("CHK-JTAG2AXI-SMOKE-SPM", got_m, SPM_PAT, evidence="CHK-JTAG2AXI-SMOKE-SPM")
 
-        mask = smc_series_data_mask(SMC_DBG_AXSIZE_8B)
-        want = SERIES_PAT & mask
-        wr_st = await jtag2axi_series_incr_write(jtag, SERIES_ADDR, want, poll_limit=OTP_POLL)
-        if wr_st != J2A_STATUS_SUCCESS:
-            raise AssertionError(
-                f"SMC series INCR WR @0x{SERIES_ADDR:08x} status={wr_st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
-            )
-        rd_st, got_ser = await jtag2axi_series_incr_read(jtag, SERIES_ADDR, poll_limit=OTP_POLL)
-        got_ser &= mask
-        if rd_st != J2A_STATUS_SUCCESS:
-            raise AssertionError(
-                f"SMC series INCR RD @0x{SERIES_ADDR:08x} status={rd_st} "
-                f"want SUCCESS={J2A_STATUS_SUCCESS}"
-            )
-        if got_ser != want:
-            raise AssertionError(
-                f"SMC series INCR mismatch @0x{SERIES_ADDR:08x}: "
-                f"want 0x{want:016x} got 0x{got_ser:016x}"
-            )
-        self.s4_ok = True
-        self._log(
-            f"CHK-JTAG2AXI-SMOKE-SERIES-INCR @0x{SERIES_ADDR:08x} "
-            f"data=0x{got_ser:016x} status=SUCCESS"
-        )
-        sb.expect_eq(
-            "CHK-JTAG2AXI-SMOKE-SERIES-INCR",
-            got_ser,
-            want,
-            evidence="CHK-JTAG2AXI-SMOKE-SERIES-INCR",
-        )
-
         self._log(
             f"PASS JTAG2AXI-SMOKE s1={self.s1_ok} s2={self.s2_ok} "
-            f"s3={self.s3_ok} s4={self.s4_ok} scratch=0x{SCRATCH_15:08x} "
+            f"s3={self.s3_ok} scratch=0x{SCRATCH_15:08x} "
             f"spm=0x{SPM:08x}"
         )

@@ -168,26 +168,12 @@ function automatic bit [SmuDebugControlLen-1:0] smu_debug_control_image(
 endfunction
 
 // ---------------------------------------------------------------------------
-// SMC-fabric JTAG2AXI bridge as the SMU configures it (doc/integrator/src/
-// smu.adoc "SMU Default Parameters": SMC_RD_PL_DEPTH and SMC_WR_PL_DEPTH
-// default to 2'h3; "AXI Interface Configuration": a 56-bit address space
-// with 64-bit data width, AXI4). *_JTAG2AXI_CAPS (PTAP document) packs
-// [13:12] rd_pl_depth, [11:10] wr_pl_depth, [9:7] data_size (log2 bytes),
-// [6:1] addr_size, [0] bus_type (0 = AXI4).
+// SMC-fabric JTAG2AXI bridge port as the SMU configures it (doc/integrator/
+// src/smu.adoc "AXI Interface Configuration": a 56-bit address space with
+// 64-bit data width, AXI4).
 // ---------------------------------------------------------------------------
-localparam bit [1:0] SmuSmcJ2aRdPlDepth = 2'h3;
-localparam bit [1:0] SmuSmcJ2aWrPlDepth = 2'h3;
 localparam int unsigned SmuSmcJ2aAddrBits = 56;
 localparam int unsigned SmuSmcJ2aDataBits = 64;
-localparam bit SmuSmcJ2aBusAxi4 = 1'b0;
-localparam bit [13:0] SmuExpectedSmcJ2aCaps = {
-  SmuSmcJ2aRdPlDepth,
-  SmuSmcJ2aWrPlDepth,
-  3'($clog2(SmuSmcJ2aDataBits / 8)),
-  6'(SmuSmcJ2aAddrBits),
-  SmuSmcJ2aBusAxi4
-};
-localparam int unsigned SmuJ2aCapsLen = 14;
 
 // SMC registers and memory the JTAG2AXI scenario reaches through the bridge
 // (generated smc_top_addrmap_pkg): CPU_CTRL SCRATCH_15 (SCRATCH_0 is the live

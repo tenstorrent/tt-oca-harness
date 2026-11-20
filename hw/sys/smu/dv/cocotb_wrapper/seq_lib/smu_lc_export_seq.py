@@ -21,7 +21,7 @@ feature control: ``lcc_feat_ctrl_o`` equals the state's word.
 lane: ``lcc_dbg_disable_smc_jtag2axi_o`` equals the state's value.
 control: while the fabric bridge is shut, a write of a non-zero word to SEC_DISABLE_TOKEN_I[7]
     and its read back (PROD), or an LC_STATE read (PROD_END), complete over the SEP OTP bridge.
-fabric: one SMC fabric SINGLE_OP read and write launch AR, AW and B at the DTP-to-SMC debug AXI
+fabric: one SMC fabric JTAG2AXI read and write launch AR, AW and B at the DTP-to-SMC debug AXI
     port, or launch nothing.
 stap: with the PTAP selecting the secondary chain, the SEP STAP host TMS stays parked.
 ijtag: under SELECT_IJTAG the three SIBs stay closed.
@@ -59,14 +59,12 @@ from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_SUCCESS,
     PTAP_3DCR_WIDTH,
     SMC_DBG_AXSIZE_4B,
-    SMC_OTP_AXSIZE_4B,
+    jtag2axi_poll,
+    jtag2axi_start,
+    jtag2axi_wait,
     make_smu_jtag_tap,
-    pack_otp_single_op,
-    pack_single_op,
     ptap_3dcr_value,
     require_jtag_tdo_resolved,
-    sep_otp_jtag2axi_single_read,
-    unpack_otp_single_op,
 )
 from seq_lib.smu_lifecycle_table import (
     LC_RAW,
@@ -102,7 +100,7 @@ LANE_DISABLED = 1
 
 #: hw/sys/sep/doc/lifecycle_controller.adoc, "DTP path feature gates": the SMC fabric JTAG2AXI
 #: path is Case 2 (SIP_DBG & CHIPLET_DBG), which TEST_DEV, RMA_SIP and RMA_CHIPLET leave enabled.
-#: One SINGLE_OP read launches one AR; one SINGLE_OP write launches one AW and returns one B
+#: One JTAG2AXI read launches one AR; one JTAG2AXI write launches one AW and returns one B
 #: (hw/sys/dtp/doc/jtag.adoc, SMC fabric bridge).
 LAUNCHED_AR_AW_B = (1, 1, 1)
 NOT_LAUNCHED = (0, 0, 0)
@@ -207,21 +205,6 @@ class ExportSpec:
 #: Scans of the SEP STAP leg: TAP_3DCR IR, PTAP select, open SIB, write 3DCR, capture 3DCR,
 #: PTAP deselect.
 STAP_SCANS = 6
-
-
-class _ReadCounter:
-    """Counts the register reads a polling helper makes."""
-
-    def __init__(self, tap) -> None:
-        self._tap = tap
-        self.reads = 0
-
-    async def write(self, *args, **kwargs):
-        return await self._tap.write(*args, **kwargs)
-
-    async def read(self, *args, **kwargs):
-        self.reads += 1
-        return await self._tap.read(*args, **kwargs)
 
 
 class smu_lc_export_seq:
@@ -376,21 +359,14 @@ class smu_lc_export_seq:
         self.tap = raw
         self.jtag = OcahJtagMasterSequence(raw)
 
-    async def _sep_otp_write(self, addr: int, data: int, name: str) -> int:
+    async def _j2a_op(self, target: str, op: int, addr: int, data: int = 0) -> tuple[int, int, int]:
+        """One ``target`` bridge access: its status, read data and status samples taken."""
         await self._ensure_tap()
-        raw = pack_otp_single_op(J2A_OP_WRITE, addr, data, wstrb=0xF, size=SMC_OTP_AXSIZE_4B)
-        await self.tap.write("SEP_OTP_AXI_SINGLE_OP", raw)
-        require_jtag_tdo_resolved(f"SEP OTP J2A WR issue {name}")
-        await ClockCycles(self.dut.clk_smu_i, 32)
-        status, polls = J2A_STATUS_BUSY, 0
-        for _ in range(OTP_POLL_BOUND):
-            capt = await self.tap.read("SEP_OTP_AXI_SINGLE_OP", shift_value=0)
-            polls += 1
-            require_jtag_tdo_resolved(f"SEP OTP J2A WR poll {name}")
-            status, _ = unpack_otp_single_op(capt)
-            if status != J2A_STATUS_BUSY:
-                break
-            await ClockCycles(self.dut.clk_smu_i, 16)
+        access = await jtag2axi_start(self.tap, op, addr, data, target=target)
+        return await jtag2axi_poll(self.tap, access, poll_limit=OTP_POLL_BOUND)
+
+    async def _sep_otp_write(self, addr: int, data: int, name: str) -> int:
+        status, _, polls = await self._j2a_op("sep_otp", J2A_OP_WRITE, addr, data)
         last = f"status={status} data=0x{data:08x}"
         self._record(
             "otp_write",
@@ -404,20 +380,17 @@ class smu_lc_export_seq:
         return status
 
     async def _sep_otp_read(self, addr: int, name: str) -> tuple[int, int]:
-        await self._ensure_tap()
-        counter = _ReadCounter(self.tap)
-        status, rdata = await sep_otp_jtag2axi_single_read(counter, addr, poll_limit=OTP_POLL_BOUND)
-        require_jtag_tdo_resolved(f"SEP OTP J2A RD {name}")
+        status, rdata, polls = await self._j2a_op("sep_otp", J2A_OP_READ, addr)
         last = f"status={status} rdata=0x{int(rdata) & 0xFFFF_FFFF:08x}"
         self._record(
             "otp_read",
             OTP_POLL_BOUND,
-            counter.reads,
+            polls,
             "polls",
             last,
             expired=(status == J2A_STATUS_BUSY),
         )
-        self._log(f"CELL sep_otp_read {name} @0x{addr:08x} {last} polls={counter.reads}")
+        self._log(f"CELL sep_otp_read {name} @0x{addr:08x} {last} polls={polls}")
         return status, int(rdata) & 0xFFFF_FFFF
 
     def _counts(self) -> tuple[int, int, int]:
@@ -488,17 +461,28 @@ class smu_lc_export_seq:
     async def _fabric_op(
         self, label: str, op: int, key: int, *, launches: bool | None = None, tag: str = ""
     ) -> None:
-        """One SINGLE_OP issue, then ``FABRIC_BOUND_CYCLES`` of counter watching."""
+        """One JTAG2AXI access, ``FABRIC_BOUND_CYCLES`` of counter watching, then its completion."""
         launches = self.spec.launches if launches is None else launches
         await self._ensure_tap()
-        clk = self.dut.clk_smu_i
         before = self._counts()
         data, wstrb = (FABRIC_WRITE_DATA, FABRIC_WRITE_WSTRB) if op == J2A_OP_WRITE else (0, 0)
-        await self.tap.write(
-            "SMC_AXI_SINGLE_OP",
-            pack_single_op(op, FABRIC_PROBE_ADDR, data, wstrb=wstrb, size=SMC_DBG_AXSIZE_4B),
+        access = await jtag2axi_start(
+            self.tap, op, FABRIC_PROBE_ADDR, data, wstrb=wstrb, size=SMC_DBG_AXSIZE_4B
         )
-        require_jtag_tdo_resolved(f"SMC fabric SINGLE_OP issue {label}")
+        await self._fabric_watch(label, op, key, before, launches=launches, tag=tag)
+        await jtag2axi_wait(self.tap, access, poll_limit=OTP_POLL_BOUND)
+
+    async def _fabric_watch(
+        self,
+        label: str,
+        op: int,
+        key: int,
+        before: tuple[int, int, int],
+        *,
+        launches: bool,
+        tag: str,
+    ) -> None:
+        clk = self.dut.clk_smu_i
         if not launches:
             await ClockCycles(clk, FABRIC_BOUND_CYCLES)
             after = self._counts()
@@ -534,7 +518,7 @@ class smu_lc_export_seq:
     async def _fabric_deltas(
         self, *, launches: bool | None = None, tag: str = ""
     ) -> tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]:
-        """One SINGLE_OP read then write: the AR/AW/B counts before, after and their deltas."""
+        """One JTAG2AXI read then write: the AR/AW/B counts before, after and their deltas."""
         start = self._counts()
         await self._fabric_op("read", J2A_OP_READ, 0, launches=launches, tag=tag)
         await self._fabric_op("write", J2A_OP_WRITE, 2, launches=launches, tag=tag)
@@ -799,9 +783,7 @@ class smu_lc_export_seq:
                 )
                 await self._step_control()
             elif name == "fabric":
-                await self._mark(
-                    "SMC fabric SINGLE_OP read then write, DTP-to-SMC AR/AW/B counters"
-                )
+                await self._mark("SMC fabric JTAG2AXI read then write, DTP-to-SMC AR/AW/B counters")
                 await self._step_fabric()
             elif name == "stap":
                 await self._mark("SEP STAP select write while the PTAP TMS toggles")

@@ -4223,7 +4223,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 |`CHK-B2B-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-B2B-ALLOW` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2A-B2B` |Evidence token, emitted only after the compares it names have held
-|`CHK-B2B-WR-DECERR` |Evidence token, emitted only after the compares it names have held
+|`CHK-B2B-WR-BUSERR` |Evidence token, emitted only after the compares it names have held
 |`CHK-B2B-STICKY` |Evidence token, emitted only after the compares it names have held
 |assertion |jtag2axi_b2b incomplete s1=<value> s2=<value>
 |===
@@ -4320,7 +4320,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 |`CHK-J2A-MATRIX-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2A-WSTRB-WIDTH` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2A-RW-MATRIX` |Evidence token, emitted only after the compares it names have held
-|`CHK-J2A-MATRIX-STICKY` |Evidence token, emitted only after the compares it names have held
+|`CHK-J2A-MATRIX-CSR-READ` |Evidence token, emitted only after the compares it names have held
 |`CHK-AXI-SVA-DTP-DBG` |the `ocah_axi_sva` rules (reset, handshake, X, burst, ID and response) hold on the DTP JTAG2AXI port into the SMC fabric (`dtp_axi_smc_dbg_req` / `dtp_axi_smc_dbg_resp`) for every AW and AR handshake the leaf drives; `+axi_sva_need_dtp_dbg` fails the leaf on VCS when no handshake was graded; protocol, not data
 |assertion |jtag2axi_rw_matrix incomplete s1=<value> s2=<value>
 |===

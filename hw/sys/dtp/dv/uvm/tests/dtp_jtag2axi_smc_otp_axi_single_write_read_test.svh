@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_single_write_read_test — JTAG2AXI single-op
-// write-plus-readback traffic on the SMC OTP AXI-Lite port through the shared
-// ocah_axi_vip passive env and slave agent: the written word must read back
-// exactly after a write to the neighbouring word, with the observed bus
-// transactions matching the stimulus intents.
+// dtp_jtag2axi_smc_otp_axi_single_write_read_test: on the SMC OTP bridge a
+// System Bus Access write, a write to the neighbouring beat, and a read-back
+// of the first word complete with the written word. The shared passive AXI
+// env compares every observed transaction with the stimulus intents; the
+// required evidence IDs make a silent no-op run fail at finalization.
 
 class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_otp_axi_single_write_read_test)
@@ -28,16 +28,15 @@ class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
                             "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
-                            "CHK-J2A-BUS-REQ"
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-FAULT-STATUS"
                         });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
-    dtp_jtag2axi_otp_axi_test_seq seq = dtp_jtag2axi_otp_axi_test_seq::type_id::create(
-        "smc_otp_single_write_read_seq"
-    );
-    seq.target_name = "smc_otp";
-    seq.scenario    = "single_write_read";
+    dtp_jtag2axi_single_write_read_test_seq seq;
+    seq = dtp_jtag2axi_single_write_read_test_seq::type_id::create("seq");
+    seq.target = "smc_otp";
     return seq;
   endfunction
 

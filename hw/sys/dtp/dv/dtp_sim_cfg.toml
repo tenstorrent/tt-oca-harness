@@ -43,7 +43,6 @@ incdirs = ["hw/common/assert"]
 # interfaces and checkers from the VIP manifests and repeats the DTP entries.
 sources = [
   "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
-  "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
   "hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv",
   "hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv",
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
@@ -55,7 +54,6 @@ sources = [
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
-  "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
@@ -153,8 +151,8 @@ flags = [
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
-# (the dtp_jtag2axi_fcov cover-property points); toggle instrumentation stays
-# off to keep per-test databases lean. Replaces the simulator-default
+# (the coverage modules' points); toggle instrumentation stays off to keep
+# per-test databases lean. Replaces the simulator-default
 # `--coverage` (which enables all forms including toggle).
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
@@ -240,11 +238,9 @@ incdirs = [
 ]
 sources = [
   "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
-  "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
   "hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv",
   "hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
-  "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",

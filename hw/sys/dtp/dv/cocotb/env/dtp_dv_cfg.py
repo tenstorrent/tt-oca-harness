@@ -27,14 +27,8 @@ import cross_trigger_network_reg as _ctn_reg
 from .dtp_types import (
     DTP_OTP_AXIL_ADDR_WIDTH,
     DTP_OTP_AXIL_DATA_WIDTH,
-    DTP_SEP_OTP_RD_PL_DEPTH,
-    DTP_SEP_OTP_WR_PL_DEPTH,
     DTP_SMC_AXI_ADDR_WIDTH,
     DTP_SMC_AXI_DATA_WIDTH,
-    DTP_SMC_OTP_RD_PL_DEPTH,
-    DTP_SMC_OTP_WR_PL_DEPTH,
-    DTP_SMC_RD_PL_DEPTH,
-    DTP_SMC_WR_PL_DEPTH,
 )
 
 __all__ = [
@@ -63,14 +57,8 @@ __all__ = [
     "DTP_OTP_AXIL_ADDR_WIDTH",
     "DTP_OTP_AXIL_DATA_WIDTH",
     "DTP_RUNBIST_ENABLE",
-    "DTP_SEP_OTP_RD_PL_DEPTH",
-    "DTP_SEP_OTP_WR_PL_DEPTH",
     "DTP_SMC_AXI_ADDR_WIDTH",
     "DTP_SMC_AXI_DATA_WIDTH",
-    "DTP_SMC_OTP_RD_PL_DEPTH",
-    "DTP_SMC_OTP_WR_PL_DEPTH",
-    "DTP_SMC_RD_PL_DEPTH",
-    "DTP_SMC_WR_PL_DEPTH",
     "DTP_SEP_DBG_ENABLE",
     "DTP_SMC_DBG_ENABLE",
     "DTP_STAP_IO_ENABLE",
@@ -165,10 +153,4 @@ DV_CFG_PARITY: dict[str, int] = {
     "cfg_smc_axi_data_width": DTP_SMC_AXI_DATA_WIDTH,
     "cfg_otp_axil_addr_width": DTP_OTP_AXIL_ADDR_WIDTH,
     "cfg_otp_axil_data_width": DTP_OTP_AXIL_DATA_WIDTH,
-    "cfg_smc_otp_rd_pl_depth": DTP_SMC_OTP_RD_PL_DEPTH,
-    "cfg_smc_otp_wr_pl_depth": DTP_SMC_OTP_WR_PL_DEPTH,
-    "cfg_sep_otp_rd_pl_depth": DTP_SEP_OTP_RD_PL_DEPTH,
-    "cfg_sep_otp_wr_pl_depth": DTP_SEP_OTP_WR_PL_DEPTH,
-    "cfg_smc_rd_pl_depth": DTP_SMC_RD_PL_DEPTH,
-    "cfg_smc_wr_pl_depth": DTP_SMC_WR_PL_DEPTH,
 }

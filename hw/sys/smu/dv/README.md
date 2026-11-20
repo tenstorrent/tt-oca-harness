@@ -205,7 +205,7 @@ independent of the sequence that drove the stimulus:
 |---|---|---|---|
 | `smu_dtp_jtag_smoke_test` | primary TAP: IDCODE, BYPASS latency, TRST and power-on reset back to Test-Logic-Reset | the embedded DTP's `ir_decode`, `idcode`, `bypass` | `+SMU_PTAP_IDCODE_NEGATIVE` |
 | `smu_jtag_reset_override_test` | IC_RESET TDR: the external and SMC cold-reset slices overridden one at a time, readback of the 155-bit register | `ic_reset_tdr` | `+SMU_IC_RESET_SCOREBOARD_NEGATIVE` |
-| `smu_smc_dtp_jtag2axi_smoke_test` | SMC-fabric JTAG2AXI: CAPS, SINGLE_OP 32- and 64-bit write/readback, series INCR write/readback | the embedded DTP's `jtag2axi_req` (passive monitor on the DTP's SMC debug port) and `jtag2axi_status` | `+SMU_J2A_SCOREBOARD_NEGATIVE` |
+| `smu_smc_dtp_jtag2axi_smoke_test` | SMC-fabric JTAG2AXI: DTMCS, 32- and 64-bit System Bus Access write/readback | the embedded DTP's `jtag2axi_req` (passive monitor on the DTP's SMC debug port) and `jtag2axi_status` | `+SMU_J2A_SCOREBOARD_NEGATIVE` |
 | `smu_boot_stall_jtag_cold_reset_matrix_test` | DEBUG_CONTROL boot stall across cold reset, TRST and the GPIO pad, on the real eFuse sense | `debug_control_tdr`, `boot_gate` | `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE`, `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` |
 | `smu_ext_boot_seq_gate_test` | the external boot-sequence gate on the SMC fuse-reset release | `boot_gate` | `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` |
 

@@ -9,8 +9,7 @@ opcodes are the interface-unit instruction table
 (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`, "Instruction Encodings"); the
 register sizes are the TDR layouts in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`
 and, for the instructions that document does not lay out, the interface-unit
-table's "Register Size" column; the JTAG2AXI TDR sizes derive from the bridge
-geometries in ``dtp_types.JTAG2AXI_TARGETS``.
+table's "Register Size" column.
 """
 
 from __future__ import annotations
@@ -39,23 +38,19 @@ from .dtp_dv_cfg import (
     DTP_STAP_IO_ENABLE,
     DTP_TMP_ENABLE,
 )
-from .dtp_types import DTP_IR_WIDTH, JTAG2AXI_TARGETS, DtpJtag2AxiTargetCfg, DtpJtagInstr
+from .dtp_types import DMI_LEN, DTMCS_LEN, DTP_IR_WIDTH, JTAG2AXI_TARGETS, DtpJtagInstr
 
 __all__ = [
     "DTP_BSR_MODEL_LEN",
     "DTP_DEBUG_CONTROL_LEN",
     "DTP_DEFAULT_IDCODE",
-    "DTP_EXPECTED_JTAG2AXI_CAPS",
     "DTP_EXPECTED_JTAG_CAPS",
     "DTP_IC_RESET_LEN",
     "DTP_IC_RESET_PORTS",
-    "DTP_JTAG2AXI_CAPS_LEN",
     "DTP_JTAG_CAPS_LEN",
     "DTP_TMP_STATUS_LEN",
     "dtp_tap_device",
-    "pack_jtag2axi_caps",
     "pack_jtag_caps",
-    "unpack_jtag2axi_caps",
 ]
 
 # Register sizes of the interface-unit instruction table.
@@ -67,21 +62,13 @@ DTP_TAP_3DCR_LEN = 2
 # ("IC_RESET Support" table) over the bench configuration's slices.
 DTP_IC_RESET_PORTS = DTP_NUM_SMC_IC_RESET + DTP_NUM_SEP_IC_RESET + DTP_NUM_EXT_IC_RESET
 DTP_IC_RESET_LEN = (2 * DTP_IC_RESET_PORTS) + 1
-# JTAG_CAPS[59:0] ("JTAG Capabilities" table) and *_JTAG2AXI_CAPS[13:0]
-# ("*_JTAG2AXI_CAPS" table).
+# JTAG_CAPS[59:0] ("JTAG Capabilities" table).
 DTP_JTAG_CAPS_LEN = 60
-DTP_JTAG2AXI_CAPS_LEN = 14
 # SELECT_IJTAG: one bit per SIB of the DTP iJTAG network
 # (dtp_ijtag_sib_model.IJTAG_SIB_ORDER).
 DTP_SELECT_IJTAG_MIN_LEN = 3
 # The bench models the boundary-scan register as an 8-bit loopback (DtpScanModel).
 DTP_BSR_MODEL_LEN = 8
-
-
-def _data_width_to_size_encoding(width_bits: int) -> int:
-    """Return the JTAG2AXI CAPS data-size encoding for a power-of-two data width."""
-    byte_width = width_bits // 8
-    return byte_width.bit_length() - 1
 
 
 def pack_jtag_caps() -> int:
@@ -109,47 +96,7 @@ def pack_jtag_caps() -> int:
     )
 
 
-def pack_jtag2axi_caps(
-    *,
-    bus_type: int,
-    addr_width: int,
-    data_width: int,
-    rd_pl_depth: int,
-    wr_pl_depth: int,
-) -> int:
-    """Pack a *_JTAG2AXI_CAPS value ("*_JTAG2AXI_CAPS" table, bits 13:0)."""
-    return (
-        ((rd_pl_depth & 0x3) << 12)
-        | ((wr_pl_depth & 0x3) << 10)
-        | ((_data_width_to_size_encoding(data_width) & 0x7) << 7)
-        | ((addr_width & 0x3F) << 1)
-        | (bus_type & 0x1)
-    )
-
-
-def unpack_jtag2axi_caps(value: int) -> dict[str, int]:
-    """Fields of a *_JTAG2AXI_CAPS value by the table's names."""
-    return {
-        "rd_pl_depth": (value >> 12) & 0x3,
-        "wr_pl_depth": (value >> 10) & 0x3,
-        "data_size": (value >> 7) & 0x7,
-        "addr_size": (value >> 1) & 0x3F,
-        "bus_type": value & 0x1,
-    }
-
-
 DTP_EXPECTED_JTAG_CAPS = pack_jtag_caps()
-# Expected *_JTAG2AXI_CAPS value per CAPS register name, from the geometry table.
-DTP_EXPECTED_JTAG2AXI_CAPS: dict[str, int] = {
-    cfg.caps_reg: pack_jtag2axi_caps(
-        bus_type=cfg.bus_type,
-        addr_width=cfg.addr_width,
-        data_width=cfg.data_width,
-        rd_pl_depth=cfg.rd_pl_depth,
-        wr_pl_depth=cfg.wr_pl_depth,
-    )
-    for cfg in JTAG2AXI_TARGETS.values()
-}
 
 
 # A TDR entry: its shift length in bits, its IR opcode, and, for a register
@@ -184,24 +131,16 @@ def _fixed_registers() -> dict[str, _TapRegister]:
     }
 
 
-def _jtag2axi_registers(cfg: DtpJtag2AxiTargetCfg) -> dict[str, _TapRegister]:
-    """One bridge's CAPS, SINGLE_OP, and SERIES_CTRL TDRs at its geometry."""
-    return {
-        cfg.caps_reg: (DTP_JTAG2AXI_CAPS_LEN, int(DtpJtagInstr[cfg.caps_reg])),
-        cfg.single_op_reg: (cfg.single_op_len, int(DtpJtagInstr[cfg.single_op_reg]), True),
-        cfg.series_ctrl_reg: (cfg.series_ctrl_len, int(DtpJtagInstr[cfg.series_ctrl_reg]), True),
-    }
-
-
 def dtp_tap_device(idle_delay: int = 0) -> OcahJtagDevice:
     """DTP primary TAP with the TDRs the tests exercise.
 
-    ``idle_delay`` is the idle TCK cycles after every register access (the
-    JTAG2AXI CDC and AXI round trip).
+    ``idle_delay`` is the idle TCK cycles after every register access, in
+    which a DMI operation crosses to the Debug Module and back.
     """
     registers = _fixed_registers()
     for cfg in JTAG2AXI_TARGETS.values():
-        registers.update(_jtag2axi_registers(cfg))
+        registers[cfg.dtmcs_reg] = (DTMCS_LEN, int(cfg.dtmcs_instr), True)
+        registers[cfg.dmi_reg] = (DMI_LEN, int(cfg.dmi_instr), True)
     return OcahJtagDevice.from_registers(
         name="dtp",
         idcode=DTP_DEFAULT_IDCODE,

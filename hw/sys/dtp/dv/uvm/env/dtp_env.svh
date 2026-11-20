@@ -341,7 +341,6 @@ class dtp_env extends ocah_env;
     string source = port_env.m_monitor.get_full_name();
     m_jtag2axi_req_ref_model.bind_port(target, source);
     m_jtag2axi_status_ref_model.bind_port(target, source);
-    m_scoreboard.bind_port(target, source);
     port_env.item_ap.connect(m_jtag2axi_req_ref_model.axi_export);
     port_env.item_ap.connect(m_jtag2axi_status_ref_model.axi_export);
     port_env.item_ap.connect(m_scoreboard.jtag2axi_req_observed_export);

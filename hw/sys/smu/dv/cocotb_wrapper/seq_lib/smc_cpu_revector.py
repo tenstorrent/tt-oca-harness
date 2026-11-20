@@ -18,14 +18,9 @@ hw/sys/smc/dv does the same thing through its CSR agent
 writes go over the DTP's JTAG2AXI, which reaches SMC addresses directly and is a
 product path rather than a testbench override.
 
-SINGLE_OP is pipelined: a shift launches one transaction and captures the
-PREVIOUS one's status. Checking the status of the same shift that launched a
-write therefore reports the op before it, and issuing writes back to back leaves
-no time for the AXI transaction to retire, so later ones come back BUSY and are
-dropped. Every access here launches, waits, then shifts again to capture -- the
-pattern smu_dtp_sep_smc_chain_seq.py uses. The DTP AW counter says whether the
-bridge launched anything at all, which separates a closed debug gate from a
-transaction the SMC refused.
+Each write waits for its System Bus Access to complete before the next one
+starts. The DTP AW counter says whether the bridge launched anything at all,
+which separates a closed debug gate from a transaction the SMC refused.
 """
 
 from __future__ import annotations
@@ -33,15 +28,10 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from seq_lib.wrapper_jtag import (
-    J2A_OP_WRITE,
-    J2A_SIZE_8B,
-    J2A_ST_BUSY,
-    J2A_ST_OKAY,
+from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_NAME,
-    single_op_payload,
-    single_op_rdata,
-    single_op_status,
+    J2A_STATUS_SUCCESS,
+    jtag2axi_single_write,
 )
 
 # smc_reg.py: SMC_CPU_CTRL_*__REG_ADDR.
@@ -59,14 +49,8 @@ RESET_CTRL_PULSE_ALL = 0x0000_01FF
 
 NUM_CORES = 4
 
-#: Cycles between launching a SINGLE_OP and capturing its result. The bridge
-#: crosses into the SMC clock domain and back, so this is generous rather than
-#: tuned; smu_dtp_sep_smc_chain_seq.py uses the same figure.
-SETTLE_CYCLES = 4000
-#: BUSY is the bridge saying "ask again", so it is polled rather than waited out
-#: with a longer fixed delay: one settle window does not always cover a
-#: transaction that crossed into a busy SMC.
-BUSY_RETRIES = 20
+#: Status samples a JTAG2AXI write may take to complete.
+J2A_POLLS = 20
 
 #: Bound on waiting for the SMC to leave reset, in clk_smu cycles.
 SMC_RESET_TIMEOUT_CYCLES = 200_000
@@ -76,39 +60,19 @@ SMC_BOOT_SETTLE_CYCLES = 2_000
 SMC_BOOT_SETTLE_POLLS = 200
 
 
-async def _single_op(jtag, payload: int, *, settle: int = SETTLE_CYCLES):
-    """Launch one SINGLE_OP and capture its result with a second shift.
-
-    The capture is a separate shift because CAPTURE-DR presents the PREVIOUS
-    transaction's result: reading the status out of the shift that launched the
-    op reports the op before it.
-    """
-    await jtag.write("SMC_AXI_SINGLE_OP", payload)
-    for _ in range(BUSY_RETRIES):
-        await ClockCycles(cocotb.top.clk_smu_i, settle)
-        captured = int(await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0))
-        status = single_op_status(captured)
-        if status != J2A_ST_BUSY:
-            return status, single_op_rdata(captured)
-    return J2A_ST_BUSY, 0
-
-
 def _aw_count() -> int:
     return int(cocotb.top.dtp_smc_dbg_aw_count_o.value)
 
 
 async def _write64(jtag, addr: int, value: int, what: str) -> None:
     before = _aw_count()
-    status, _ = await _single_op(
-        jtag,
-        single_op_payload(J2A_OP_WRITE, addr, size=J2A_SIZE_8B, data=value, wstrb=0xFF),
-    )
+    status, _ = await jtag2axi_single_write(jtag, addr, value, poll_limit=J2A_POLLS)
     assert _aw_count() > before, (
         f"{what}: the DTP bridge launched no write for 0x{addr:08x} "
         f"(AW count stayed at {before}); SMC JTAG2AXI is gated off in this "
         "lifecycle state, so the cores cannot be re-vectored over it"
     )
-    assert status == J2A_ST_OKAY, (
+    assert status == J2A_STATUS_SUCCESS, (
         f"{what}: JTAG2AXI write of 0x{value:016x} to 0x{addr:08x} returned "
         f"{J2A_STATUS_NAME.get(status, status)}; the cores cannot be re-vectored "
         "without it"

@@ -5,8 +5,7 @@
 // write and read the shared AXI monitor completes on that port and keeps the
 // newest item of each direction, so a scenario can wait for the transaction
 // an operation put on the port, judge it and prove that no other one
-// appeared (CHK-J2A-BUS-REQ), and compare an errored read beat with its
-// capture (CHK-J2A-ERR-RDATA). The mark holds the counts the last ledgered
+// appeared (CHK-J2A-BUS-REQ). The mark holds the counts the last ledgered
 // pass closed with. Publishes nothing and checks nothing. The cocotb twin is
 // env/dtp_axi_port_history.py.
 

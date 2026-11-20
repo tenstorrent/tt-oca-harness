@@ -4,7 +4,7 @@
 // SMU SV-UVM sequence library package (`<DUT>_seq_lib_pkg` convention).
 //
 // Two tiers, one readable flow per scenario:
-//   * reusable operation sequences (`smu_jtag_<op>_seq`, `smu_jtag2axi_*_seq`):
+//   * reusable operation sequences (`smu_jtag_<op>_seq`):
 //     one operation on the embedded DTP's primary TAP agent, built from the
 //     VIP sequence API, started by the scenario layer on the virtual
 //     sequencer's JTAG handle;
@@ -41,8 +41,6 @@ package smu_seq_lib_pkg;
   `include "smu_jtag_ir_scan_seq.svh"
   `include "smu_jtag_dr_scan_seq.svh"
   `include "smu_jtag_dr_scan_wide_seq.svh"
-  `include "smu_jtag2axi_single_op_seq.svh"
-  `include "smu_jtag2axi_single_status_seq.svh"
 
   // Scenario layer: the base virtual sequence, then the scenarios.
   `include "smu_base_test_seq.svh"

@@ -7,7 +7,7 @@
 
 Bring-up is ``smu_dtp_sep_dm_dmi_test`` (TEST_DEV posture, SEP STAP, dmactive). With the SEP STAP
 selected every PTAP scan is composed over the STAP network (``smu_dtp_sep_ic_reset_effect_test``),
-so the SMC_AXI_SINGLE_OP (JTAG2AXI) scans carry a DMI NOP in the SEP segment.
+so the SMC_DMI (JTAG2AXI) scans carry a DMI NOP in the SEP segment.
 
 Expected values come from ``hw/sys/smc/doc/clk_rst.adoc`` (the reset equations; the CPU control
 registers, ``SS_CONFIG`` and ``SS_COLD_RESET_N`` on the primary reset and kept across warm; the
@@ -148,7 +148,6 @@ from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
 from seq_lib.smu_filter_helpers import PASS_ALL_END, PASS_RW_CONFIG
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     DTP_IR_TAP_3DCR,
     DTP_IR_WIDTH,
     J2A_OP_READ,
@@ -156,12 +155,12 @@ from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
     WDT_KEY_MAGIC,
+    Jtag2AxiScanPort,
     dtp_ir_opcode,
-    pack_single_op,
+    jtag2axi_start,
+    jtag2axi_status,
     require_jtag_tdo_resolved,
-    unpack_single_op,
 )
 from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
@@ -370,6 +369,7 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self.period = float(self.cfg.smu_clk_period_ns)
         self.smu = smu_scope(self.dut)
         self.warm_net = hier(self.smu, WARM_RESET_PATH)
+        self.j2a_access = None
         self.pulse_done = hier(self.smu, PULSE_DONE_PATH)
         self.pulse_low: int | None = None
         self.primary = smc_primary_reset(self.dut)
@@ -817,31 +817,35 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         out["primary"] = (before, self._p())
         return out
 
+    async def _ptap_dr(self, opcode: int, value: int, width: int, label: str) -> int:
+        """One composed PTAP data-register scan; returns the PTAP register's capture."""
+        await self._ir(opcode)
+        word, total = self._scan(value, width)
+        raw = await self.jtag.shift_dr(word, total, back_to_rti=True)
+        require_jtag_tdo_resolved(f"DR {label}")
+        return self._ptap(raw, width)
+
+    def _j2a_port(self) -> Jtag2AxiScanPort:
+        return Jtag2AxiScanPort(self._ptap_dr, self.jtag)
+
     async def _j2a_issue(self, op: int, addr: int, data: int, wstrb: int) -> None:
-        """One SINGLE_OP issue; every access is AXSIZE 8 at an 8-byte aligned address."""
+        """Start one JTAG2AXI access; every access is AXSIZE 8 at an 8-byte aligned address."""
         if addr & 0x7:
             raise AssertionError(f"JTAG2AXI address 0x{addr:x} is not 8-byte aligned")
-        await self._ir(DTP_IR_SMC_AXI_SINGLE_OP)
-        word, total = self._scan(
-            pack_single_op(op, addr, data, wstrb=wstrb, size=SMC_DBG_AXSIZE_8B),
-            SMC_DBG_SINGLE_OP_LEN,
+        self.j2a_access = await jtag2axi_start(
+            self._j2a_port(), op, addr, data, wstrb=wstrb, size=SMC_DBG_AXSIZE_8B
         )
-        await self.jtag.shift_dr(word, total, back_to_rti=True)
-        require_jtag_tdo_resolved(f"J2A issue @0x{addr:x}")
         self.j2a_sizes.append((addr, SMC_DBG_AXSIZE_8B))
         self._count()
 
     async def _j2a_capture(self, label: str, *, obs: str | None = None) -> tuple:
-        """Capture SINGLE_OP until it leaves BUSY, bounded."""
-        await self._ir(DTP_IR_SMC_AXI_SINGLE_OP)
-        word, total = self._scan(0, SMC_DBG_SINGLE_OP_LEN)
+        """Sample the last started access until it leaves BUSY, bounded."""
+        port = self._j2a_port()
         used = 0
         status, rdata = J2A_STATUS_BUSY, 0
         while used < J2A_POLLS:
-            raw = await self.jtag.shift_dr(word, total, back_to_rti=True)
-            require_jtag_tdo_resolved(f"J2A capture {label}")
+            status, rdata = await jtag2axi_status(port, self.j2a_access)
             used += 1
-            status, rdata = unpack_single_op(self._ptap(raw, SMC_DBG_SINGLE_OP_LEN))
             if status != J2A_STATUS_BUSY:
                 break
         with self._within(obs or self.ctx):
