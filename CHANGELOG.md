@@ -10,6 +10,11 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- CSRNG CTR_DRBG V counter saturated at V[31:0] = `0xFFFFFFFF` instead of
+  wrapping, so a Generate repeated its last block (#3732).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added
