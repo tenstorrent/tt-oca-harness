@@ -61,12 +61,17 @@ The reset hierarchy within the SMU proceeds as follows:
 . *Isolation sequence.* A rising edge on `isolate_sequence_trigger_i`, for
   example on a PCIe Function Level Reset (FLR), isolates subsystems through
   `isolate_req_o`, waits for their `isolate_req_ack_i` acknowledges or a
-  timeout, then asserts a chip-wide cool reset.
+  timeout, then asserts a cool reset.
 +
-The SMC does not hold the cool reset off an isolated subsystem; each subsystem
-alone is responsible for surviving it. Gate the reset the subsystem receives
-with its `isolate_req_o` bit, so that the subsystem stays out of reset while
-the bit is high and the bit falls only after the cool reset has released.
+A cool reset exists only inside the SMU: it is the SMC's primary reset with
+the `ISOLATE_REQ_*` registers left intact, so that isolation outlasts it.
+Outside the SMU there is no cool reset. The primary reset clears
+`SS_COLD_RESET_N`, so every subsystem sees its `ss_reset_ctrl_o` cold reset
+assert exactly as on a chip cold reset. The SMC does not hold that reset off
+an isolated subsystem; each subsystem alone is responsible for surviving it.
+Gate the reset the subsystem receives with its `isolate_req_o` bit, so that the
+subsystem stays out of reset while the bit is high and the bit falls only after
+the reset has released.
 
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
   override the fuse, cold, cool, warm, and per-subsystem reset domains

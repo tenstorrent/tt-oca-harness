@@ -231,8 +231,12 @@ synchronised isolation pin or `ISOLATE_REQ_SMC` is set.
 `u_reset_unit_reg` is reset by `rst_primary_smc_clk_no`, as are the
 `SS_CONFIG` and `SS_COLD_RESET_N` registers in `u_smc_subsystem_resets`;
 the isolation registers and FLR counters are reset only by the stable cold
-reset, so they survive a cool reset. The per-subsystem cold and warm resets
-leave `ss_reset_ctrl_o` unsynchronised, and each subsystem synchronises them.
+reset, so they survive a cool reset. A cool reset therefore exists only
+inside the SMU: it clears `SS_COLD_RESET_N`, so every subsystem sees its cold
+reset assert as it does on a chip cold reset, and an isolated subsystem
+survives only if it gates that reset with its `isolate_req_o` bit. The
+per-subsystem cold and warm resets leave `ss_reset_ctrl_o` unsynchronised, and
+each subsystem synchronises them.
 In test mode, `scan_rst_ni` replaces the stretched powergood, the
 de-glitched cold reset, the stretched watchdog reset and every synchroniser
 output.
