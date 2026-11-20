@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="828" viewBox="0 0 1040 828" role="img" aria-labelledby="title desc">
 <title id="title">SMC-driven FLR isolation</title>
-<desc id="desc">Highlighted: SMC software on the primary chiplet writes ISOLATE_REQ_REG, whose bits pass the isolation OR to isolate_req_o[31:0] and isolate the chiplet tiles. No cool reset is generated. Two chiplets, primary above secondary, each with a BP_COOL_RESET_N_I pin on its top edge and an SMC holding the CPU, u_smc_reset_unit and u_smc_padring. In u_smc_reset_unit, cfg_flr_pf_active_i from a tile passes a synchroniser and edge detector into the FLR counters; an OR gate combines ISOLATE_REQ_REG written by the CPU, the PINEN bits qualified by the GPIO 53 ISOLATE_REQ pad and the SMCEN bits qualified by ISOLATE_REQ_SMC into isolate_req_o[31:0] to the chiplet tiles; an AND gate forms the primary reset from rst_cool_ni, which the BP_COOL_RESET_N_I pin drives, the FLR cool reset and the cold reset BP_RESET_N. The FLR cool reset also drives the GPIO 62 BP_COOL_RESET_N_O pad. The board drives BP_RESET_N to both chiplets and ISOLATE_REQ to the primary chiplet. The primary chiplet's BP_COOL_RESET_N_O connects to the secondary chiplet's BP_COOL_RESET_N_I pin; the primary chiplet's BP_COOL_RESET_N_I and the secondary chiplet's BP_COOL_RESET_N_O are not connected, and the secondary chiplet ties cfg_flr_pf_active_i and ISOLATE_REQ low and leaves isolate_req_o unconnected.</desc>
+<desc id="desc">Highlighted: SMC software on the primary chiplet writes ISOLATE_REQ_REG, whose bits pass the isolation OR to isolate_req_o[31:0] and isolate the chiplet tiles. No cool reset is generated. Two chiplets, primary above secondary, each with a BP_COOL_RESET_N_I pin on its top edge and an SMC holding the CPU, u_smc_reset_unit and u_smc_padring. In u_smc_reset_unit, cfg_flr_pf_active_i from a tile passes a synchroniser and edge detector into the FLR counters; an OR gate combines ISOLATE_REQ_REG written by the CPU, the PINEN bits qualified by the GPIO 53 ISOLATE_REQ pad and the SMCEN bits qualified by ISOLATE_REQ_SMC into isolate_req_o[31:0] to the chiplet tiles; an AND gate forms the primary reset from rst_cool_ni, which the BP_COOL_RESET_N_I pin drives, the FLR cool reset and the cold reset BP_RESET_N. The FLR cool reset also drives the GPIO 64 BP_COOL_RESET_N_O pad. The board drives BP_RESET_N to both chiplets and ISOLATE_REQ to the primary chiplet. The primary chiplet's BP_COOL_RESET_N_O connects to the secondary chiplet's BP_COOL_RESET_N_I pin; the primary chiplet's BP_COOL_RESET_N_I and the secondary chiplet's BP_COOL_RESET_N_O are not connected, and the secondary chiplet ties cfg_flr_pf_active_i and ISOLATE_REQ low and leaves isolate_req_o unconnected.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -131,7 +131,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="389" y="271" text-anchor="middle">GPIO 53</text>
 <text class="s" x="389" y="287" text-anchor="middle">ISOLATE_REQ</text>
 <rect class="core" x="306" y="298" width="166" height="36" rx="4"/>
-<text class="s" x="389" y="313" text-anchor="middle">GPIO 62</text>
+<text class="s" x="389" y="313" text-anchor="middle">GPIO 64</text>
 <text class="s" x="389" y="329" text-anchor="middle">BP_COOL_RESET_N_O</text>
 <path class="sigplain" d="M472,274 L546,274"/>
 <path class="sigo" d="M546,274 L546,212 L563.554,212"/>
@@ -184,7 +184,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="389" y="655" text-anchor="middle">GPIO 53</text>
 <text class="s" x="389" y="671" text-anchor="middle">ISOLATE_REQ</text>
 <rect class="core" x="306" y="682" width="166" height="36" rx="4"/>
-<text class="s" x="389" y="697" text-anchor="middle">GPIO 62</text>
+<text class="s" x="389" y="697" text-anchor="middle">GPIO 64</text>
 <text class="s" x="389" y="713" text-anchor="middle">BP_COOL_RESET_N_O</text>
 <path class="sigplain" d="M472,658 L546,658"/>
 <path class="sigo" d="M546,658 L546,596 L563.554,596"/>
