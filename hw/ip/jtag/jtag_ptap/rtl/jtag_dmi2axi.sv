@@ -76,6 +76,11 @@ module jtag_dmi2axi
   localparam int unsigned AddrWidth = $bits(axi_req_o.aw.addr);
   localparam int unsigned DataWidth = $bits(axi_req_o.w.data);
 
+  // tdr2axi and its Debug Module sources accept only these widths.
+  `OCAH_ASSERT_STATIC(ValidDataWidth_A, DataWidth == 32 || DataWidth == 64)
+  `OCAH_ASSERT_STATIC(ValidAddrWidth_A, AddrWidth >= $unsigned($clog2(DataWidth / 8))
+                      && AddrWidth <= 64)
+
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
   typedef logic [DataWidth/8-1:0] strb_t;
