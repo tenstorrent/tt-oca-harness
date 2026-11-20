@@ -20,6 +20,10 @@ below:
 * Leg B: single-chunk totals 4 bytes and a drawn 64 to 4096 bytes, 16384 bytes
   as four 4096-byte chunks and two drawn multi-chunk transfers, back to back
   with no software clear of STATUS.DONE between them.
+* Narrow-width and large copies: one copy at width encoding 0 and one at
+  width encoding 1, each 1028 to 16384 bytes, and one copy at width encoding
+  2 of 16388 to 65536 bytes. Each is INCREMENT on both sides in equal chunks
+  of at most 4096 bytes, drawn on a separate seed stream.
 * Leg C: ENABLED_MEMORY_RANGE_BASE and LIMIT exactly on the region edges (low,
   high, both, and both with a guard outside the range at the low end, the
   high end and both ends). Each cell runs two zero fills, the operation the
@@ -69,7 +73,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       width (AMBA AXI protocol specification (IHI 0022),
                       narrow transfers). AxADDR[1:0] at widths 1 and 2, and
                       ARSIZE and AWSIZE at every width, are logged only in
-                      ``OBS-DMA-ADDR-LOW``.
+                      ``INFO-DMA-ADDR-LOW``.
   CHK-DMA-WDATA-LANE  per Leg A cell, alias-form copy, width-1 one-byte-chunk
                       copy and Leg B transfer: the W beat count equals
                       TOTAL/width, and on W beat k the bytes of lanes
@@ -121,16 +125,27 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       destination under the same range stops at LIMIT with
                       ERROR_CODE.DST_ADDR_ERROR (``dma.adoc:98-104``).
 
-Logged only (no stated value): OBS-DMA-CHUNK1-W4 (width 4 with
-CHUNK_DATA_SIZE 1), OBS-DMA-BASELIM-COPY (a copy with BASE = LIMIT),
+Logged only (no stated value): INFO-DMA-CHUNK1-W4 (width 4 with
+CHUNK_DATA_SIZE 1), INFO-DMA-BASELIM-COPY (a copy with BASE = LIMIT),
 OBS-DMA-SHORT-LAST-CHUNK (TOTAL_DATA_SIZE not a multiple of CHUNK_DATA_SIZE),
 OBS-DMA-CSR-64 (64-bit m_axi read, write and half-strobe write of a DMA
-register pair) and OBS-DMA-BEAT-HOLD (a DMA read whose response the outbound
-responder holds for 20000 clocks). A logged run that has not ended after its
-GO cap or poll bound is aborted and must reach BUSY=0.
-  CHK-DMA-GEOM        per Leg B transfer: DONE=1, BUSY=0, GO=0, ERROR=0,
-                      destination equals source, guards intact. Control: a
-                      CONTROL read with GO=1 while ``dma_busy_probe_o`` is 1.
+register pair), INFO-DMA-BEAT-HOLD (a DMA read whose response the outbound
+responder holds for 20000 clocks) and OBS-DMA-SIZE-LARGE (the width-2 copy
+above 16384 bytes: how it ended, STATUS, ERROR_CODE, AW and W counts against
+TOTAL/4, destination mismatch words and guards; no text states a maximum
+TOTAL_DATA_SIZE, ``secure_dma.rdl:176``). A logged run that has not ended
+after its GO cap or poll bound is aborted and must reach BUSY=0.
+  CHK-DMA-GEOM        per Leg B transfer and per narrow-width copy (line
+                      ``leg=N width_enc=<0|1>``): DONE=1, BUSY=0, GO=0,
+                      ERROR=0, ERROR_CODE=0, destination equals the model
+                      image of the source (``secure_dma.rdl:199``, transactions
+                      of the width until TOTAL_DATA_SIZE bytes), guards
+                      intact. On ``leg=N`` also the DMA master tap: AR, AW
+                      and W counts equal TOTAL_DATA_SIZE / width, with the
+                      model addresses and WSTRB lanes of each transaction
+                      (as CHK-DMA-ADDR). Control: a CONTROL read with GO=1 while
+                      ``dma_busy_probe_o`` is 1 (Leg B); the destination
+                      is filled with the sentinel before GO.
   CHK-DMA-CFG-REGWEN  Leg B totals of 1024 bytes or more: a CFG_REGWEN read
                       that runs entirely at ``dma_busy_probe_o`` = 1 shows
                       REGWEN = kMultiBitBool4False (0x9), and the read after
@@ -250,7 +265,7 @@ GO value during a transfer is not graded.
                       DONE rise. A
                       seed that draws GO=0 logs ``INFO-DMA-CTRL-BUSY-SKIP``
                       with the same fields; seed 1
-                      draws GO=1. ``OBS-DMA-CTRL-BUSY`` logs the CONTROL value
+                      draws GO=1. ``INFO-DMA-CTRL-BUSY`` logs the CONTROL value
                       read right after the write and after DONE, STATUS,
                       ERROR_CODE and the destination compare.
 
@@ -287,8 +302,9 @@ asserts ``rst_ni``; Verilator and VCS. Graded-window owner code from
 ``tb/sep_fcov_owner_codes.svh``. The graded window opens at the GO write of
 each graded transfer (at the range writes of a Leg C cell) and closes after
 the checks of that transfer; setup, memory fills, the stale-digest read, the
-scrub runs and the control runs run with it closed. A FAIL closes the window
-before it raises. The sampler holds every cell of this owner and samples the
+scrub runs, the control runs and the narrow-width and large copies run with
+it closed, so the graded narrow-width copies add no cell to the sampler. A
+FAIL closes the window before it raises. The sampler holds every cell of this owner and samples the
 held cells only when the pass label ``dma_matrix_pass``
 (``env/sep_fcov_gate.set_dma_matrix_pass``) rises; the leaf writes 0 before
 setup and 1 after every check of the run passed.
@@ -406,6 +422,16 @@ M32 = 0xFFFF_FFFF
 # Draws added after the first stream come from a second stream on the same
 # seed, so every value of the first stream keeps its seed mapping.
 SALT = 0x5A17_C0DE
+# The narrow-width and large copies draw from a third stream, so every value of
+# the first two streams keeps its seed mapping.
+SIZE_SALT = 0x51CE_D4A7
+# Copy sizes of the narrow-width and large copies. Graded totals stay at or
+# below NARROW_TOTAL_MAX; no text states a maximum TOTAL_DATA_SIZE, so the
+# large copy (above NARROW_TOTAL_MAX, up to LARGE_TOTAL_MAX) is logged only.
+NARROW_TOTAL_MIN = 1028
+NARROW_TOTAL_MAX = 16384
+LARGE_TOTAL_MAX = 65536
+CHUNK_MAX = 4096
 # DMA register block, admitted to m_axi by one inbound filter entry.
 DMA_CSR_BASE = sym("SECURE_DMA_REG_MAP_BASE_ADDR")
 DMA_CSR_LAST = DMA_CSR_BASE + sym("SECURE_DMA_REG_MAP_SIZE") - 1
@@ -687,6 +713,7 @@ class Plan:
         self._leg_d_cont(rng)
         self._logged(rng)
         self._salted(SepSeededRng(seed ^ SALT))
+        self._sized(SepSeededRng(seed ^ SIZE_SALT))
 
     def _logged(self, rng: SepSeededRng) -> None:
         """Logged runs, drawn after every graded leg so the graded draws keep their values."""
@@ -796,6 +823,32 @@ class Plan:
             f"range_limit=0x{self.range_limit:08x} csr64_pair={self.csr64[0][0]} "
             f"csr64_strb=0x{self.csr64[3]:02x} hold_src=0x{hold_src:08x} hold_dst=0x{hold_dst:08x}"
         )
+
+    def _sized(self, rng: SepSeededRng) -> None:
+        """Width 0 and width 1 copies above 1 KB, and one width-2 copy above 16 KB.
+
+        Every copy is INCREMENT on both sides in n equal chunks of at most
+        CHUNK_MAX bytes, so TOTAL_DATA_SIZE is a multiple of CHUNK_DATA_SIZE.
+        """
+        self.narrow: list[CopyXfer] = []
+        for enc in (0, 1):
+            n = rng.randrange(1, 17)
+            cmin = -(-NARROW_TOTAL_MIN // (4 * n))
+            cmax = min(CHUNK_MAX, NARROW_TOTAL_MAX // n) // 4
+            chunk = 4 * rng.randrange(cmin, cmax + 1)
+            self.narrow.append(
+                self._copy(rng, dict(total=n * chunk, chunk=chunk, width_enc=enc), order=False)
+            )
+        n = rng.randrange(NARROW_TOTAL_MAX // CHUNK_MAX + 1, LARGE_TOTAL_MAX // CHUNK_MAX + 1)
+        cmin = -(-(NARROW_TOTAL_MAX + 4) // (4 * n))
+        chunk = 4 * rng.randrange(cmin, CHUNK_MAX // 4 + 1)
+        self.large = self._copy(rng, dict(total=n * chunk, chunk=chunk, width_enc=2), order=False)
+        for name, c in [("N", c) for c in self.narrow] + [("large", self.large)]:
+            self.lines.append(
+                f"DRAW leg={name} width_enc={c.x.width_enc} total={c.x.total} "
+                f"chunk={c.x.chunk} n={c.x.n_chunks} src=0x{c.x.src_base:08x} "
+                f"dst=0x{c.x.dst_base:08x} sentinel=0x{c.sentinel:02x}"
+            )
 
     # Leg A ---------------------------------------------------------------
     def _copy(
@@ -1258,17 +1311,19 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._obs_fixed_chunk(plan)
             await self._leg_b(plan)
             self._wdata_reach()
-            await self._obs_ctrl_busy(plan)
+            await self._info_ctrl_busy(plan)
             await self._leg_c(plan)
             await self._leg_d(plan)
             await self._leg_d_cont(plan)
             await self._nogo(plan)
             await self._range_copy(plan)
-            await self._obs_chunk1_w4(plan)
-            await self._obs_baselim_copy(plan)
+            await self._info_chunk1_w4(plan)
+            await self._info_baselim_copy(plan)
             await self._obs_short_last_chunk(plan)
             await self._obs_csr64(plan)
-            await self._obs_beat_hold(plan)
+            await self._info_beat_hold(plan)
+            await self._narrow_copies(plan)
+            await self._obs_size_large(plan)
             self._close()
             await self._release_matrix()
         finally:
@@ -1373,7 +1428,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         ok_count = (r == 0) if n == 1 else (n - 1 <= r <= n)
         ok = ok_count and hw_falls >= need and sw == 0
         self.logger.info(
-            "OBS-DMA-LAST-CHUNKDONE seed=%d n=%d rises=%d last_rise_exempt=%d %s",
+            "INFO-DMA-LAST-CHUNKDONE seed=%d n=%d rises=%d last_rise_exempt=%d %s "
+            "chk=CHK-DMA-CHUNKRISE",
             self.seed,
             n,
             r,
@@ -1422,7 +1478,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._ctrl_missing(chk, f"no run with SHA2_DIGEST_VALID=1 before the GO: {line}")
         self.logger.info("CTRL-DMA-DV-FALL-REACH seen seed=%d %s", self.seed, line)
 
-    def _obs_edge_order(self, ev: DmaTapEvents, clk0: int, tag: str) -> None:
+    def _info_edge_order(self, ev: DmaTapEvents, clk0: int, tag: str, chk: str) -> None:
         """STATUS edge clocks and the last B of one transfer, relative to its GO."""
 
         def rel(clks: list[int]) -> str:
@@ -1430,8 +1486,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
 
         last_b = max((x.clk for x in ev.b), default=None)
         self.logger.info(
-            "OBS-DMA-EDGE-ORDER seed=%d %s busy_rise=%s chunk_done_rise=%s done_rise=%s "
-            "done_fall=%s digest_valid_rise=%s digest_valid_fall=%s last_b=%s",
+            "INFO-DMA-EDGE-ORDER seed=%d %s busy_rise=%s chunk_done_rise=%s done_rise=%s "
+            "done_fall=%s digest_valid_rise=%s digest_valid_fall=%s last_b=%s chk=%s",
             self.seed,
             tag,
             rel(ev.rises("busy")),
@@ -1441,6 +1497,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             rel(ev.rises("sha2_digest_valid")),
             rel(ev.falls("sha2_digest_valid")),
             "-" if last_b is None else str(last_b - clk0),
+            chk,
         )
 
     def _check_go_chunks(self, rec: XferRecord, x: DmaXfer, tag: str) -> int:
@@ -1708,7 +1765,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 )
             )
         self.logger.info(
-            "OBS-DMA-ADDR-LOW LOG seed=%d enc=%d width_bytes=%d beats=%d low_eq_model=%s "
+            "INFO-DMA-ADDR-LOW LOG seed=%d enc=%d width_bytes=%d beats=%d low_eq_model=%s "
             "arsize=%s awsize=%s cell=%s",
             self.seed,
             cd.enc,
@@ -1869,6 +1926,49 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.logger.error(msg)
         raise DmaTimeout(msg)
 
+    async def _grade_geom(
+        self,
+        c: CopyXfer,
+        st: DmaStatus,
+        err: int,
+        ctl: int,
+        go_writes: int,
+        cgb: str,
+        lead: str,
+        ev: DmaTapEvents | None = None,
+    ) -> None:
+        """CHK-DMA-GEOM: DONE=1 BUSY=0 ERROR=0, GO=0, ERROR_CODE=0, model image, guards intact.
+
+        With ``ev`` (the DMA master tap events of the run), also the model AR,
+        AW and W counts of TOTAL_DATA_SIZE / width transactions, their
+        addresses and each W beat's WSTRB lanes (``secure_dma.rdl:199``).
+        """
+        x = c.x
+        beat_ok, beats = True, ""
+        if ev is not None:
+            addr_mm, strb_mm, _ = self._beat_mm(x, ev)
+            beat_ok = x.n_txn > 0 and addr_mm == 0 and strb_mm == 0
+            beats = (
+                f"ar={len(ev.ar)} aw={len(ev.aw)} w={len(ev.w)} expect_txn={x.n_txn} "
+                f"addr_mismatch={addr_mm} strb_lane_mismatch={strb_mm} "
+            )
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        exp = c.expected_dst()
+        mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
+        sw = sentinel_word(c.sentinel)
+        guard_ok = got[0] == sw and got[-1] == sw
+        fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
+        fgo = field_compare(ctl, 0, GO_MASK)
+        fer = field_compare(err, 0, ERROR_CODE_MASK)
+        self._pass(
+            "CHK-DMA-GEOM",
+            fst.ok and fgo.ok and fer.ok and mism == 0 and guard_ok and beat_ok,
+            f"{lead}total={x.total} chunk={x.chunk} n={x.n_chunks} go_writes={go_writes} {beats}"
+            f"done={st.done} busy={st.busy} go={int(bool(ctl & GO_MASK))} error={st.error} "
+            f"mem_mismatch={mism} control_go_busy={cgb} guard_ok={int(guard_ok)} "
+            f"{ff('status', fst)} {ff('control', fgo)} {ff('error_code', fer)}",
+        )
+
     async def _leg_b(self, plan: Plan) -> None:
         ops = self.ops
         single_runs: list[tuple[int, int, int]] = []  # (total, n, polls_with_chunk_done)
@@ -1899,7 +1999,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             )
             rec = self._record(m_tap, m_irq, go_writes, [s for s, _ in reads])
             wd = self.wdata.since(m_wd)
-            self._obs_edge_order(rec.ev, rec.clk0, f"leg=B {tag}")
+            self._info_edge_order(
+                rec.ev, rec.clk0, f"leg=B {tag}", "CHK-DMA-CHUNKRISE,CHK-DMA-DONE-ORDER"
+            )
             busy_trace = (
                 f"rises={self.busy.rise_clks_since(m_busy)} "
                 f"falls={self.busy.fall_clks_since(m_busy)} from_clk={m_busy.clk}"
@@ -1914,26 +2016,10 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             st2, err, ctl = await self._read_regs()
             if x.total >= LONG_TOTAL:
                 regwen_graded += await self._check_cfg_regwen(regwen_busy, tag)
-            got = await self.mem.read(c.dst_region, c.dst_region_words)
-            exp = c.expected_dst()
-            mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
-            sw = sentinel_word(c.sentinel)
-            guard_ok = got[0] == sw and got[-1] == sw
-            fst = field_compare(st2.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
-            fgo = field_compare(ctl, 0, GO_MASK)
-            fer = field_compare(err, 0, ERROR_CODE_MASK)
             if x.total >= LONG_TOTAL and ctrl_go == 1:
                 ctrl_go_busy_seen = True
             cgb = "1" if (x.total >= LONG_TOTAL and ctrl_go == 1) else "-"
-            ok = fst.ok and fgo.ok and fer.ok and mism == 0 and guard_ok
-            self._pass(
-                "CHK-DMA-GEOM",
-                ok,
-                f"total={x.total} chunk={x.chunk} n={n} go_writes={go_writes} done={st2.done} "
-                f"busy={st2.busy} go={int(bool(ctl & GO_MASK))} error={st2.error} "
-                f"mem_mismatch={mism} control_go_busy={cgb} guard_ok={int(guard_ok)} "
-                f"{ff('status', fst)} {ff('control', fgo)} {ff('error_code', fer)}",
-            )
+            await self._grade_geom(c, st2, err, ctl, go_writes, cgb, "")
             if i > 0 and x.total >= LONG_TOTAL:
                 if pre_go_done != 1:
                     self._ctrl_missing("CHK-DMA-DONE-CLR", f"{tag} pre_go_done={pre_go_done}")
@@ -2034,7 +2120,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 
-    async def _obs_ctrl_busy(self, plan: Plan) -> None:
+    async def _info_ctrl_busy(self, plan: Plan) -> None:
         """A CONTROL write with a drawn GO bit while BUSY=1, during a long single-chunk copy."""
         ops = self.ops
         c, x = plan.busy_copy, plan.busy_copy.x
@@ -2064,9 +2150,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         exp = c.expected_dst()
         mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
         self.logger.info(
-            "OBS-DMA-CTRL-BUSY seed=%d go=%d control=0x%08x busy_through_write=%d ar=%d aw=%d "
+            "INFO-DMA-CTRL-BUSY seed=%d go=%d control=0x%08x busy_through_write=%d ar=%d aw=%d "
             "n_txn=%d %s error_code=0x%x dst_mismatch=%d control_after_write=0x%08x "
-            "control_after_done=0x%08x",
+            "control_after_done=0x%08x%s",
             self.seed,
             plan.busy_go,
             value,
@@ -2079,6 +2165,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             mism,
             ctrl_wr,
             ctrl_done,
+            " chk=CHK-DMA-CTRL-BUSY" if plan.busy_go else "",
         )
         # Tap clocks: the STATUS.BUSY rise of this copy, the write, and the
         # first STATUS.DONE rise after the write.
@@ -2383,11 +2470,13 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         st, err, _ = await self._read_regs()
         words = await ops.read_digest(n_words)
         if split:
-            self._obs_edge_order(self.tap.since(m_tap), m_tap.clk, f"leg=D {tag}")
+            self._info_edge_order(
+                self.tap.since(m_tap), m_tap.clk, f"leg=D {tag}", "CHK-DMA-HASH-VALID"
+            )
         if n_words < DIGEST_WORDS:
             rest = (await ops.read_digest(DIGEST_WORDS))[n_words:]
             self.logger.info(
-                "OBS-DMA-DIGEST-UNUSED seed=%d %s first_unused=%d words=%s",
+                "INFO-DMA-DIGEST-UNUSED seed=%d %s first_unused=%d words=%s",
                 self.seed,
                 tag,
                 n_words,
@@ -3052,6 +3141,71 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
         await self._set_range(SRAM_BASE, SRAM_LIMIT, "restore")
 
+    # ---- narrow-width and large copies -----------------------------------------
+    async def _narrow_copies(self, plan: Plan) -> None:
+        """Width 0 and width 1 copies above 1 KB, graded as CHK-DMA-GEOM with the window closed.
+
+        The transaction count, addresses and WSTRB lanes on the DMA master tap
+        depend on TRANSFER_WIDTH; the destination image does not.
+        """
+        ops = self.ops
+        for c in plan.narrow:
+            x = c.x
+            lead = f"leg=N width_enc={x.width_enc} "
+            tag = f"{lead}total={x.total} chunk={x.chunk}"
+            await self._fill_copy(c)
+            await self._program(c)
+            await ops.wr(STATUS, ST_CHUNK_DONE)
+            m_tap, m_busy = self.tap.mark(), self.busy.mark()
+            await ops.go(opcode=OP_COPY, initial=1)
+            # The poll bound scales with the transaction count, as in Leg A.
+            _, go_writes, reads, _, _ = await self._poll_b(4 * x.n_txn, m_busy, False, tag)
+            self.logger.info(
+                "LEGN %s go_writes=%d reads=%s",
+                tag,
+                go_writes,
+                rle([f"b{s.busy}d{s.done}c{s.chunk_done}p{p}" for s, p in reads]),
+            )
+            st, err, ctl = await self._read_regs()
+            await self._grade_geom(c, st, err, ctl, go_writes, "-", lead, self.tap.since(m_tap))
+
+    async def _obs_size_large(self, plan: Plan) -> None:
+        """A width-2 COPY above 16 KB; no text states the maximum TOTAL_DATA_SIZE."""
+        ops = self.ops
+        c, x = plan.large, plan.large.x
+        # The narrow-width copies leave DONE=1; _logged_run ends on the first DONE=1 read.
+        await ops.clean_state()
+        await self._fill_copy(c)
+        await self._program(c)
+        m_tap = self.tap.mark()
+        st, go_clks, ended = await self._logged_run(x.total, x.n_chunks + 1, "size-large")
+        ev = self.tap.since(m_tap)
+        err = await ops.rd(ERROR_CODE)
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        exp = c.expected_dst()
+        mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
+        sw = sentinel_word(c.sentinel)
+        self.logger.info(
+            "OBS-DMA-SIZE-LARGE seed=%d total=%d chunk=%d n=%d width_enc=%d ended=%s "
+            "go_writes=%d %s error_code=0x%x aw=%d w=%d expect_txn=%d dst_mismatch_words=%d "
+            "guard_ok=%d",
+            self.seed,
+            x.total,
+            x.chunk,
+            x.n_chunks,
+            x.width_enc,
+            ended,
+            len(go_clks),
+            st.fmt(),
+            err,
+            len(ev.aw),
+            len(ev.w),
+            x.n_txn,
+            mism,
+            int(got[0] == sw and got[-1] == sw),
+        )
+        await ops.clean_state()
+
     # ---- logged runs (open questions) -----------------------------------------
     async def _logged_run(
         self, n_bytes: int, go_cap: int, tag: str
@@ -3093,7 +3247,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             )
         return st, go_clks, ended
 
-    async def _obs_chunk1_w4(self, plan: Plan) -> None:
+    async def _info_chunk1_w4(self, plan: Plan) -> None:
         """Width 4 with CHUNK_DATA_SIZE 1, total 8 (no text relates the two)."""
         ops = self.ops
         src, dst, s, words = plan.chunk1_w4
@@ -3106,7 +3260,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         err = await ops.rd(ERROR_CODE)
         got = await self.mem.read(dst, 2)
         self.logger.info(
-            "OBS-DMA-CHUNK1-W4 seed=%d ended=%s %s error_code=0x%x ar=%d aw=%d w=%d wstrb=%s "
+            "INFO-DMA-CHUNK1-W4 seed=%d ended=%s %s error_code=0x%x ar=%d aw=%d w=%d wstrb=%s "
             "go_writes=%d dst=%s src=%s",
             self.seed,
             ended,
@@ -3122,7 +3276,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
         await ops.clean_state()
 
-    async def _obs_baselim_copy(self, plan: Plan) -> None:
+    async def _info_baselim_copy(self, plan: Plan) -> None:
         """A 16-byte SRAM copy with ENABLED_MEMORY_RANGE_BASE = LIMIT inside the source."""
         ops = self.ops
         c, x = plan.baselim, plan.baselim.x
@@ -3136,7 +3290,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         err = await ops.rd(ERROR_CODE)
         got = await self.mem.read(c.dst_region, c.dst_region_words)
         self.logger.info(
-            "OBS-DMA-BASELIM-COPY seed=%d base=limit=0x%08x ended=%s %s error_code=0x%x "
+            "INFO-DMA-BASELIM-COPY seed=%d base=limit=0x%08x ended=%s %s error_code=0x%x "
             "ar=%d aw=%d expect_beats=%d dst_eq_model=%d dst=%s",
             self.seed,
             word,
@@ -3263,7 +3417,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.logger.info("OBS-DMA-CSR-64 seed=%d %s", self.seed, line)
 
     # ---- held outbound response -------------------------------------------------
-    async def _obs_beat_hold(self, plan: Plan) -> None:
+    async def _info_beat_hold(self, plan: Plan) -> None:
         """A DMA read from the outbound window while the responder holds its R response.
 
         ``smn_outbound_resp_hold_i`` holds the response for HOLD_CLKS clocks;
@@ -3300,7 +3454,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         bus = await ops.rd(DMA_BUS_ERR_STATUS)
         got = await self.mem.read(dst, 2)
         self.logger.info(
-            "OBS-DMA-BEAT-HOLD seed=%d hold_clks=%d src=0x%08x at_bound: ar=%d aw=%d b=%d "
+            "INFO-DMA-BEAT-HOLD seed=%d hold_clks=%d src=0x%08x at_bound: ar=%d aw=%d b=%d "
             "busy=%d error=%d done=%d error_code=0x%x after_release: "
             "ar=%d aw=%d b=%d %s error_code=0x%x dma_bus_err_status=0x%x dst=%s",
             self.seed,

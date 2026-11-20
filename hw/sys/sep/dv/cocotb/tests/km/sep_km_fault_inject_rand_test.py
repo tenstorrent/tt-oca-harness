@@ -1475,7 +1475,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             graded_by=graded_by,
         )
         if state:
-            self.chk.obs("QUIET-WINDOW-STATE", point=point, **state)
+            self.chk.info("QUIET-WINDOW-STATE", point=point, **state)
         return pre
 
     def _shred_first(self, pre: _Pre, watch: _FatalWatch, point: str) -> None:
@@ -1696,7 +1696,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 hmac_after=hmac_after,
                 msg_changed=1,
             )
-            self.chk.obs("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
+            self.chk.info("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
             # The wipe pulse clears both shares and KEY_VALID of the AES
             # sideload block (architecture.adoc, "Wipe State"), and an
             # automatic-mode AES starts only with a valid sideload key (OT aes
@@ -1724,7 +1724,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             err_o=int(rose),
         )
         self.chk.info("REAL-WIPE", W=p.wipe_w)
-        self.chk.obs(
+        self.chk.info(
             "REAL-WIPE-STATUS",
             W=p.wipe_w,
             err_o_end=b_end,

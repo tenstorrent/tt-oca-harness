@@ -1806,7 +1806,8 @@ args = [
 
 [[tests]]
 name = "smu_smc_mailbox_sanity_test"
-module = "smu_smc_mailbox_sanity_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smu_smc_mailbox_sanity_test", uvm = "smu_smc_mailbox_sanity_test" }
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
@@ -1814,12 +1815,15 @@ timeout_sec = 1800
 tags = ["depth", "mailbox", "no_sep", "smc", "tier_c"]
 run_modes = ["sep_rtl"]
 args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # The preload images by their c_compile output path: the SV-UVM simulation of this
+  # scenario runs from its own item directory without the cocotb staging copy, and the
+  # time-zero loaders of tb_wrapper_top.sv are fatal on a missing image.
+  "+rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "+sep_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "+sep_dtcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
   # +skip_fuse_sense: no OTP/eFuse data is read.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
@@ -2082,7 +2086,8 @@ args = [
 
 [[tests]]
 name = "smu_smc_wdt_sanity_test"
-module = "smu_smc_wdt_sanity_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smu_smc_wdt_sanity_test", uvm = "smu_smc_wdt_sanity_test" }
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
@@ -2090,12 +2095,15 @@ timeout_sec = 1800
 tags = ["depth", "no_sep", "smc", "tier_c", "wdt"]
 run_modes = ["sep_rtl"]
 args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # The preload images by their c_compile output path: the SV-UVM simulation of this
+  # scenario runs from its own item directory without the cocotb staging copy, and the
+  # time-zero loaders of tb_wrapper_top.sv are fatal on a missing image.
+  "+rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "+sep_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "+sep_dtcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
   # +skip_fuse_sense: no OTP/eFuse data is read.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
@@ -2104,7 +2112,8 @@ args = [
 
 [[tests]]
 name = "smu_smc_wdt_timeout_irq_test"
-module = "smu_smc_wdt_timeout_irq_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smu_smc_wdt_timeout_irq_test", uvm = "smu_smc_wdt_timeout_irq_test" }
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
@@ -2112,17 +2121,25 @@ timeout_sec = 1800
 tags = ["depth", "no_sep", "smc", "tier_c", "wdt"]
 run_modes = ["sep_rtl"]
 args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # The preload images by their c_compile output path: the SV-UVM simulation of this
+  # scenario runs from its own item directory without the cocotb staging copy, and the
+  # time-zero loaders of tb_wrapper_top.sv are fatal on a missing image.
+  "+rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "+sep_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "+sep_dtcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
   # +skip_fuse_sense: no OTP/eFuse data is read.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
+
+[tests.overrides.uvm]
+# The SV-UVM view runs at least sixteen passes of the scenario and the cocotb view one;
+# a pass takes about 100 s, so the SV-UVM view needs the longer budget.
+timeout_sec = 3600
 
 [[tests]]
 name = "smu_system_timer_octs_test"
@@ -2797,7 +2814,7 @@ args = [
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
   # +skip_fuse_sense: the shadow registers come from the preloads below.
-  # The bank models fail the first program after reset, for the read-back leg.
+  # The bank models fail the first program after reset, for the program-fail leg.
   "+sep_efuse_prog_fail_count=1",
   "+smc_efuse_prog_fail_count=1",
   "+skip_fuse_sense",

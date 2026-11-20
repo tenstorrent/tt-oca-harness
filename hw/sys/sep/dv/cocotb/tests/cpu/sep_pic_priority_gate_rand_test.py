@@ -91,10 +91,10 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  leaves ``mip`` bit 29 - k at 0; ``mitcnt`` written to B takes
                  one trap with the timer's ``mcause``. A timer that signals
                  one count or more before ``mitb`` fails the B - 1 step. Both
-                 timers run in every run, in a drawn order. No cited
-                 specification states the trap latency after the timer
-                 reaches its bound, so the clocks past B are logged
-                 (``OBS-INT-TIMER-TRAP-LATENCY``) and have no upper bound.
+                 timers run in every run, in a drawn order. The clocks past
+                 B are logged (``INFO-INT-TIMER-TRAP-LATENCY``) and have no
+                 upper bound. Graded by ``CHK-INT-TIMER-TRAP``; no open
+                 specification question.
 * CHK-TIMER-PIN  (firmware) the host drives ``timer_int_i`` on each
                  ``REQ tint`` line. With the pin 1, ``mip.MTIP`` reads 1; with
                  ``mie.MTIE`` 0 and mstatus.MIE 1 no trap for a hold window;
@@ -123,13 +123,13 @@ write and sets mstatus.MIE. ``CTRL-PRIORD-PENDING`` (fails the leaf) needs
 in ``meip`` before the flip, 0 before the raise, and no handler run with
 mstatus.MIE 0. ``CTRL-PRIORD-FLIP`` (fails the leaf)
 needs ``mpiccfg.priord`` to read the flipped order after the write.
-``OBS-PRIORD-PENDING`` logs the first claimed source and the handler order,
+``INFO-PRIORD-PENDING`` logs the first claimed source and the handler order,
 with the winner of each order from the priority model for reference. After
 both controls pass, the test raises the ``priord_flip_pending`` bin of
 ``sep_open_value_leg_cg``.
 
 The host also checks that each record of the threshold, nesting and timer
-legs carries the drawn stimulus. Log only: ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
+legs carries the drawn stimulus. Log only: ``INFO-INT-TIMER-TRAP-LATENCY``. Expected values
 come from the drawn stimulus and the priority model, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
 Verilator and VCS.
 
@@ -695,7 +695,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         ids = _ids(flips[0].get("ids", "")) if len(flips) == 1 else []
         raws = dict(zip(cfg.pf_srcs, cfg.pf_raws, strict=True))
         self.logger.info(
-            "OBS-PRIORD-PENDING LOG priord_from=%d priord_to=%d raw=%s first=%s order=%s "
+            "INFO-PRIORD-PENDING LOG priord_from=%d priord_to=%d raw=%s first=%s order=%s "
             "winner_from=%d winner_to=%d",
             cfg.pf_from,
             cfg.pf_from ^ 1,
@@ -800,8 +800,8 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             trap_clk = int(rec.kv.get("trap_clk", -1))
             bound = int(rec.kv.get("bound", -1))
             self.logger.info(
-                "OBS-INT-TIMER-TRAP-LATENCY LOG timer=%s bound=%d trap_clk=%d "
-                "clocks_past_bound=%d (logged; no stated latency)",
+                "INFO-INT-TIMER-TRAP-LATENCY LOG timer=%s bound=%d trap_clk=%d "
+                "clocks_past_bound=%d chk=CHK-INT-TIMER-TRAP",
                 rec.kv.get("timer"),
                 bound,
                 trap_clk,

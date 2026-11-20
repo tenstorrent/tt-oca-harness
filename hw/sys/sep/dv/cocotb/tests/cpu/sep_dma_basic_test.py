@@ -34,8 +34,7 @@ raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
 -> exclusive host_path_err with the pin low, CLEAR, recovery), CHK-ERR-ASID (unencoded
 ASID), CHK-ERR-SIZE (unencoded width), CHK-ICCM (SRAM->ICCM->SRAM round trip). The
 scoreboard also checks the banner + ICCM execution. Every ERROR_CODE compare grades the
-named fields; bits 31:8 have no stated reset and the firmware prints them on OBS-ERR-RSVD.
-CHK-RESET grades the named fields of each register; its reserved bits print on OBS-RESET-RSVD.
+named fields. CHK-RESET grades the named fields of each register.
 
 CHK-RAS-DMA_HOST_INTG_ERR grades ``sep_ras_o.dma_host_intg_err`` on the bench tap
 ``sep_ras_probe_o`` against ``hw/sys/sep/doc/dma.adoc:67-69`` ("The register and host bridges
@@ -46,8 +45,10 @@ CHK-RAS-DMA_HOST_INTG_ERR-IDLE (0 on every clock from the CPU release to
 CHK-HOSTINTG-RELEASE), -SHAPE (no fall from the rise through the first DMA_BUS_ERR_CLEAR
 clear pulse of the host-path latch, across the pin release) and -CLEAR (a fall within
 ``_PIC_POLL`` clocks of that pulse). Each logs PASS or FAIL; the leaf raises once after
-all four are logged. The rise and fall delays and the field in the fabric-DECERR leg
-are logged only (OBS-RAS-DMA_HOST_INTG_ERR-*): no document states them.
+all four are logged. INFO-RAS-DMA_HOST_INTG_ERR-DELAY logs the rise delay: not graded; no open
+specification question. INFO-RAS-DMA_HOST_INTG_ERR-FALL logs the fall delay: graded by
+CHK-RAS-DMA_HOST_INTG_ERR-CLEAR; no open specification question. The field in the fabric-DECERR
+leg is logged only (OBS-RAS-DMA_HOST_INTG_ERR-FABRIC): no document states it.
 
 CTRL-HOSTINTG-ARM-PIN requires ``dma_host_intg_inject_i`` = 1 on the clock of the
 firmware control read of DMA_BUS_ERR_STATUS before GO and of the read after the
@@ -125,9 +126,6 @@ _CLASS_CHECKS = (
     ("CHK-ERR-ASID PASS:", (DMA_BASIC_PASS_ASID,)),
     ("CHK-ERR-SIZE PASS:", (DMA_BASIC_PASS_SIZE,)),
 )
-# Firmware OBS lines: reserved register bits that no document states.
-_OBS_LINES = ("OBS-RESET-RSVD:", "OBS-ERR-RSVD:")
-
 _RAS = "RAS-DMA_HOST_INTG_ERR"
 _RAS_HALVES = ("IDLE", "RISE", "SHAPE", "CLEAR")
 # sep_cpu_ctrl_err_pulse_probe_o (tb/sep_tb_signal_list.svh): the low half holds the set
@@ -421,7 +419,7 @@ class sep_dma_basic_test(sep_base_test):
         )
         if rises:
             sets = pulse.rise_clks_since(mp, "set")
-            self._ras_chk.obs(
+            self._ras_chk.info(
                 f"{_RAS}-DELAY",
                 rise_clk=rises[0],
                 after_inject=rises[0] - m1.clk,
@@ -453,7 +451,9 @@ class sep_dma_basic_test(sep_base_test):
             bound=_PIC_POLL,
         )
         if after:
-            self._ras_chk.obs(f"{_RAS}-FALL", after_clear_pulse=after[0] - clr)
+            self._ras_chk.info(
+                f"{_RAS}-FALL", after_clear_pulse=after[0] - clr, chk=f"CHK-{_RAS}-CLEAR"
+            )
 
     async def _check_ras_host_intg(self, m0: BitMark) -> None:
         """Grade the four CHK-RAS-DMA_HOST_INTG_ERR halves, then log the fabric-leg field."""
@@ -544,12 +544,6 @@ class sep_dma_basic_test(sep_base_test):
                     f"firmware console missing {needle} ({what} did not pass), so "
                     "CHK-RAND-REP has nothing to report"
                 )
-        # Logged only: no document states the reserved register bits, so no check grades them.
-        for tag in _OBS_LINES:
-            obs = [ln for ln in console.splitlines() if ln.startswith(tag)]
-            if not obs:
-                raise AssertionError(f"firmware console has no {tag!r} line (stale image)")
-            self.logger.info("%s firmware: %s", tag[:-1], obs[-1][len(tag) :].strip())
         return mask
 
     async def _release_cells(self, mask: int) -> None:

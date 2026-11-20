@@ -101,14 +101,15 @@ check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
   Control ``CTRL-RAS-<FIELD>-PRE``: in each fatal-alert cell, the field of the
   unit has no high clock from the end of the set-up to the ERR_CODE_TEST write,
   so RISE and MODE2 count only the pulses that follow the write of that cell.
-  The text does not name the reset that stops the repeat, so the field in each
-  cell window after a TRNG reset is logged (OBS-RAS-<FIELD>-RESET-STOP, from the
-  end of the set-up to the ERR_CODE_TEST write). CTRL-RAS-<FIELD>-PRE needs the
-  same window quiet, so a repeat still running there fails the leaf instead of
+  The field in each cell window after a TRNG reset is logged
+  (INFO-RAS-<FIELD>-RESET-STOP, from the end of the set-up to the ERR_CODE_TEST
+  write): not graded; no open specification question. CTRL-RAS-<FIELD>-PRE needs
+  the same window quiet, so a repeat still running there fails the leaf instead of
   being credited to the next cell. Also logged only: the rise
-  delay (OBS-RAS-<FIELD>-DELAY), the repeat intervals (OBS-RAS-<FIELD>-REPEAT)
-  and the field in the FIFO-error cells and the EDN FIFO trials
-  (OBS-RAS-<FIELD>-FIFO). ALERT_TEST is not written in this leaf.
+  delay (INFO-RAS-<FIELD>-DELAY) and the repeat intervals (INFO-RAS-<FIELD>-REPEAT):
+  not graded; no open specification question. The field in the FIFO-error cells
+  and the EDN FIFO trials is logged only (OBS-RAS-<FIELD>-FIFO). ALERT_TEST is not
+  written in this leaf.
 
 FCOV (owner of the graded window, ``env/sep_fcov_gate.py``): each source-bit
 cell and each FIFO trial opens the window after its set-up and sets the pass
@@ -597,7 +598,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
                 "high_clocks": self.ras.high_clocks_since(mark, f),
             }
             if self.ras_faulted:
-                self.chk.obs(f"RAS-{name}-RESET-STOP", after_trng_reset=1, **fields)
+                self.chk.info(f"RAS-{name}-RESET-STOP", after_trng_reset=1, **fields)
             else:
                 self._ok(f"RAS-{name}-IDLE", fields["high_clocks"] == 0, **fields)
 
@@ -638,7 +639,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             rose=int(rise is not None),
         )
         if rise is not None:
-            self.chk.obs(f"RAS-{name}-DELAY", unit=unit.name, bit=bit, clocks=rise - m_wrote.clk)
+            self.chk.info(f"RAS-{name}-DELAY", unit=unit.name, bit=bit, clocks=rise - m_wrote.clk)
         late = await self._ras_rise_by(m_w1c, m_w1c.clk + bound, f)
         rises = self.ras.rise_clks_since(m_err, f)
         self._ok(
@@ -650,7 +651,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             rise_after_w1c=int(late is not None),
             bound=bound,
         )
-        self.chk.obs(
+        self.chk.info(
             f"RAS-{name}-REPEAT",
             unit=unit.name,
             bit=bit,
@@ -771,12 +772,12 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
                 t_ref=self.t_ref,
             )
         else:
-            self.chk.obs("DRBG-ALERT", unit=unit.name, bit=bit, pic33_high_cycles=alert_cycles)
+            self.chk.info("DRBG-ALERT", unit=unit.name, bit=bit, pic33_high_cycles=alert_cycles)
 
         if fifo_bit:
             self._ctrl("DRBG-STICKY", s_before == 1, unit=unit.name, bit=bit, state_before=s_before)
         else:
-            self.chk.obs(
+            self.chk.info(
                 "DRBG-STATE-AFTER-W1C", unit=unit.name, bit=bit, before=s_before, after=s_after
             )
         edn0 = unit.name == "edn" and bit == 0

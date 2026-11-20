@@ -108,7 +108,7 @@ Checks (anchor):
   CHK-REMAP-BUS   ``efuse_req_o`` after the remap keeps bits [11:0] of the KM
                   offset and holds one constant [31:12] (``KM-BUS`` tap)
 
-Logged only (no verdict): ``OBS-XBAR-UNSTATED`` (the first word of the mailbox
+Logged only (no verdict): ``INFO-XBAR-UNSTATED`` (the first word of the mailbox
 and the DRBG sampler, which have no stated read response, and the response class
 of the first word of the five key windows, whose read data CHK-XBAR-SHARE-ZERO
 grades),
@@ -372,7 +372,7 @@ class Cell:
     win: str
     addr: int
     kind: str
-    chk: str  # CHK-XBAR, CHK-XBAR-RSV, CHK-XBAR-EFUSE, SIZE (clean read) or OBS
+    chk: str  # CHK-XBAR, CHK-XBAR-RSV, CHK-XBAR-EFUSE, SIZE (clean read) or INFO
     d: str = "rd"  # "rd" or "wr"
     resp: str = "OKAY"
     rdata: int | None = None  # None: data not graded
@@ -437,7 +437,7 @@ def _row_cells(row: dict, rng: SepSeededRng, draws: dict[str, int]) -> list[Cell
             out += _both(win, addr, kind, chk, resp, rdata)
         return out
     occupied = row["occupied_size"]
-    first_chk = "OBS" if key in _FIRST_UNSTATED else "SIZE"
+    first_chk = "INFO" if key in _FIRST_UNSTATED else "SIZE"
     out.append(Cell(win, base, "first", first_chk))
     out.append(Cell(win, base + occupied - 4, "last_decoded", "SIZE"))
     holes = [h for _, h in row["hole_responses"] if h["rresp"] != "FORWARD"]
@@ -537,13 +537,13 @@ _ROW_BY_SHORT = {_short(r["key"]): r for r in _ROWS}
 def _fcov_xbar_masks(walk: _Walk) -> tuple[int, int]:
     """(cell mask, window mask) of the graded walk cells, for set_km_xbar_pass.
 
-    A cell counts when the walk grades it (not OBS, not a control). A word that
+    A cell counts when the walk grades it (not INFO, not a control). A word that
     is also the last word of its row's span is class 4 as well.
     """
     cells = 0
     wins = 0
     for cell, _res in walk.cells:
-        if cell.chk == "OBS" or cell.control:
+        if cell.chk == "INFO" or cell.control:
             continue
         wins |= 1 << _FCOV_WIN[cell.win]
         row = _FCOV_ROW.get(cell.win)
@@ -591,7 +591,7 @@ def _fcov_outcome_mask(walk: _Walk, vrom: list[tuple[Cell, kp.PokeResult]], rd1:
     """
     mask = 0b11 << 8
     for cell, _res in walk.cells:
-        if cell.chk == "OBS" or cell.control:
+        if cell.chk == "INFO" or cell.control:
             continue
         wr = int(cell.d == "wr")
         dec = _FCOV_DEC_CLASS.get(cell.chk)
@@ -1074,12 +1074,18 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             d = cell.d
             rd_txt = f"0x{res.value:08x}" if res.known else "X"
             tag = f"win={cell.win} off=0x{cell.addr:05x} kind={cell.kind} dir={d}"
-            if cell.chk == "OBS":
+            if cell.chk == "INFO":
                 first_last_logged += 1
+                graded = cell.win in share_zero_wins
                 self.logger.info(
-                    "OBS-XBAR-UNSTATED %s rd=%s slv=%d dec=%d", tag, rd_txt, res.slv, res.dec
+                    "INFO-XBAR-UNSTATED %s rd=%s slv=%d dec=%d%s",
+                    tag,
+                    rd_txt,
+                    res.slv,
+                    res.dec,
+                    " chk=CHK-XBAR-SHARE-ZERO" if graded else "",
                 )
-                if cell.win in share_zero_wins:
+                if graded:
                     line = f"contract={_SHARE_ZERO_CONTRACT} {tag} rd={rd_txt} exp=0x00000000"
                     if res.known and res.value == 0:
                         passes["CHK-XBAR-SHARE-ZERO"].append(f"seed={seed} {line}")

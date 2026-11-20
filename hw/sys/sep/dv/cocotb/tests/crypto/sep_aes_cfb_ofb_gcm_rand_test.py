@@ -579,7 +579,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
             await self._write_block(plan.len_block())
             tag = await self._read_out()
             st = await self.aes._rd(AES_STATUS)
-            self.chk.obs(
+            self.chk.info(
                 "AES-GCM-TAG-STATUS", status=f"0x{st:08x}", idle=(st >> AES_STATUS_IDLE) & 1
             )
         except AssertionError as exc:  # a bounded STATUS wait expired

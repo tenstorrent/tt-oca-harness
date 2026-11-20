@@ -126,8 +126,10 @@ class smu_base_test_seq extends ocah_sequence;
     ));
   endfunction
 
-  // One named TB-interface pin against a level, four-state: X or Z is
-  // neither level, so a floating export cannot pass a zero expectation.
+  // One named TB-interface pin against a level. On a four-state simulator X
+  // or Z is neither level, so a floating export cannot pass a zero
+  // expectation; on a two-state simulator X reads as 0 and a zero expectation
+  // cannot tell a floating export from a driven low.
   function void check_pin(string check_id, string name, string which, bit level,
                           string context_s = "");
     logic observed = pin(which);
@@ -240,7 +242,7 @@ class smu_base_test_seq extends ocah_sequence;
   endfunction
 
   task tap_reset_op();
-    smu_jtag_tap_reset_seq op = smu_jtag_tap_reset_seq::type_id::create("tap_reset");
+    dtp_jtag_tap_reset_seq op = dtp_jtag_tap_reset_seq::type_id::create("tap_reset");
     run_jtag_op(op);
   endtask
 
@@ -256,7 +258,7 @@ class smu_base_test_seq extends ocah_sequence;
 
   // Raw TMS/TDI walk returning the TDO of every cycle.
   task raw_walk(input bit tms_bits[], input bit tdi_bits[], output bit tdo_bits[]);
-    smu_jtag_tms_walk_seq op = smu_jtag_tms_walk_seq::type_id::create("tms_walk");
+    dtp_jtag_tms_walk_seq op = dtp_jtag_tms_walk_seq::type_id::create("tms_walk");
     op.tms_bits = tms_bits;
     op.tdi_bits = tdi_bits;
     run_jtag_op(op);
@@ -277,13 +279,13 @@ class smu_base_test_seq extends ocah_sequence;
   endtask
 
   task goto_state(ocah_jtag_tap_state_e target);
-    smu_jtag_goto_state_seq op = smu_jtag_goto_state_seq::type_id::create("goto_state");
+    dtp_jtag_goto_state_seq op = dtp_jtag_goto_state_seq::type_id::create("goto_state");
     op.target_state = target;
     run_jtag_op(op);
   endtask
 
   task ir_scan(input bit [63:0] value, input int unsigned width, output bit [63:0] captured);
-    smu_jtag_ir_scan_seq op = smu_jtag_ir_scan_seq::type_id::create("ir_scan");
+    dtp_jtag_ir_scan_seq op = dtp_jtag_ir_scan_seq::type_id::create("ir_scan");
     op.value = value;
     op.width = width;
     run_jtag_op(op);
@@ -291,7 +293,7 @@ class smu_base_test_seq extends ocah_sequence;
   endtask
 
   task dr_scan(input bit [63:0] pattern, input int unsigned width, output bit [63:0] observed);
-    smu_jtag_dr_scan_seq op = smu_jtag_dr_scan_seq::type_id::create("dr_scan");
+    dtp_jtag_dr_scan_seq op = dtp_jtag_dr_scan_seq::type_id::create("dr_scan");
     op.pattern = pattern;
     op.width   = width;
     run_jtag_op(op);
@@ -299,15 +301,16 @@ class smu_base_test_seq extends ocah_sequence;
   endtask
 
   task dr_scan_wide(input bit pattern[], output bit observed[]);
-    smu_jtag_dr_scan_wide_seq op = smu_jtag_dr_scan_wide_seq::type_id::create("dr_scan_wide");
-    op.pattern = pattern;
+    dtp_jtag_dr_scan_seq op = dtp_jtag_dr_scan_seq::type_id::create("dr_scan_wide");
+    if (pattern.size() == 0) `uvm_fatal(get_type_name(), "empty wide DR scan")
+    op.pattern_bits = pattern;
     run_jtag_op(op);
-    observed = op.observed;
+    observed = op.observed_bits;
   endtask
 
   // Hand the tracked state to an operation, start it on the JTAG agent
   // sequencer, and take the landing state back.
-  protected task run_jtag_op(smu_jtag_op_seq op);
+  protected task run_jtag_op(dtp_jtag_op_seq op);
     if (p_sequencer.m_jtag_seqr == null)
       `uvm_fatal(get_type_name(), "smu_virtual_sequencer.m_jtag_seqr is null")
     op.entry_state = m_tap_state;
@@ -413,7 +416,7 @@ class smu_base_test_seq extends ocah_sequence;
   // trst_n is low whatever TMS is; TMS=0 under an asserted TRST leaves the
   // controller nothing but the reset to reach Test-Logic-Reset by.
   task set_trst(bit value, int unsigned cycles = 1, bit tms = 1'b1);
-    smu_jtag_trst_seq op = smu_jtag_trst_seq::type_id::create("set_trst");
+    dtp_jtag_trst_seq op = dtp_jtag_trst_seq::type_id::create("set_trst");
     op.asserted   = (value == 1'b0);
     op.tck_cycles = cycles > 0 ? cycles : 1;
     op.tms        = tms;
@@ -425,7 +428,7 @@ class smu_base_test_seq extends ocah_sequence;
   // Release TRST held by set_trst(0): no TCK activity while the DTP TAP
   // settles, then the tracked state is Test-Logic-Reset.
   task release_trst();
-    smu_jtag_trst_seq op = smu_jtag_trst_seq::type_id::create("release_trst");
+    dtp_jtag_trst_seq op = dtp_jtag_trst_seq::type_id::create("release_trst");
     op.asserted   = 1'b0;
     op.tck_cycles = 0;
     run_jtag_op(op);
@@ -595,6 +598,36 @@ class smu_base_test_seq extends ocah_sequence;
       dmi_read(t, dtp_env_pkg::DTP_DM_SBDATA1, {label, ".sbdata1"}, word);
       rdata[63:32] = word;
     end
+  endtask
+
+  // write_j2a whose sberror is graded zero under `check_id`. `data` and
+  // `wstrb` are the beat lanes of the AXI W channel. System Bus Access writes
+  // whole naturally aligned words, so `wstrb` is the full strobe of the
+  // access's lanes.
+  task write_j2a_checked(dtp_env_pkg::dtp_j2a_target_t t, string check_id, string name,
+                         bit [63:0] addr, bit [63:0] data, bit [7:0] wstrb, int unsigned size,
+                         string label);
+    int unsigned lane = int'(addr % t.beat_bytes);
+    bit [2:0] sberror;
+    if (wstrb != dtp_env_pkg::dtp_j2a_full_wstrb(size) << lane)
+      `uvm_error(get_type_name(), $sformatf(
+                 "%s %s: System Bus Access cannot issue wstrb 0x%02h", t.name, label, wstrb))
+    write_j2a(t, addr, (data >> (8 * lane)) & dtp_env_pkg::dtp_j2a_data_mask(size), size, label,
+              sberror);
+    check_evidence(check_id, {name, " write sberror"}, 64'(sberror), 64'd0, $sformatf(
+                   "addr=0x%0h", addr));
+  endtask
+
+  // read_j2a whose sberror is graded zero under `check_id`; `rdata` holds the
+  // read data at the access's byte lanes of the beat.
+  task read_j2a_checked(input dtp_env_pkg::dtp_j2a_target_t t, input string check_id,
+                        input string name, input bit [63:0] addr, input int unsigned size,
+                        input string label, output bit [63:0] rdata);
+    bit [2:0] sberror;
+    read_j2a(t, addr, size, label, sberror, rdata);
+    check_evidence(check_id, {name, " read sberror"}, 64'(sberror), 64'd0, $sformatf(
+                   "addr=0x%0h", addr));
+    rdata = (rdata & dtp_env_pkg::dtp_j2a_data_mask(size)) << (8 * (addr % t.beat_bytes));
   endtask
 
   // ------------------------------------------------------------------

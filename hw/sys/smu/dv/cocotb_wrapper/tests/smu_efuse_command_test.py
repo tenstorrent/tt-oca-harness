@@ -3,8 +3,9 @@
 """smu_efuse_command_test - SEP and SMC eFuse read and program commands.
 
 The SEP debug module's system bus drives the SEP and SMC efuse_interface_ctrl
-blocks: a read at every fuse address bit, programs of the middle fuse word with
-and without read-back, and out-of-range commands with their sticky errors.
+blocks: a read at every fuse address bit, programs of the middle fuse word, each
+verified by the SHIM's read of the word, and out-of-range commands with their
+sticky errors.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_efuse_command_test --target compile_smu_chiplet

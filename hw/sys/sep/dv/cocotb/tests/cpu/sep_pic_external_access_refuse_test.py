@@ -467,7 +467,7 @@ class sep_pic_external_access_refuse_test(sep_base_test):
                         if (a.target.idle_mask >> (src % 32)) & 1 and src < 32
                     )
                     self.logger.info(
-                        "OBS-IDLE-UNSTATED LOG regime=%s target=%s %s", regime, a.target.name, srcs
+                        "INFO-IDLE-UNSTATED LOG regime=%s target=%s %s", regime, a.target.name, srcs
                     )
                 assert (a.rdata & keep) != (a.target.armed & keep), f"CHK-NO-LEAK FAIL {line}"
                 self.logger.info("CHK-NO-LEAK PASS %s", line)

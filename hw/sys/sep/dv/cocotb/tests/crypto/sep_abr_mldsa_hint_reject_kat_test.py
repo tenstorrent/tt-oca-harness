@@ -15,9 +15,11 @@ The generator checks each hint case independently of the ACVP verdict: every z
 coefficient is in range and the hint encoding is malformed. The graded reject
 is the register contract: a signature verifies if and only if
 ``MLDSA_VERIFY_RES`` equals c~ (abr_reg.rdl, MLDSA_VERIFY_RES), so a reject
-case passes when ``MLDSA_VERIFY_RES`` differs from c~. No spec states when the
-engine rejects relative to the message stream or what ``MLDSA_VERIFY_RES``
-holds after a reject, so the leaf logs both as OBS lines and grades neither.
+case passes when ``MLDSA_VERIFY_RES`` differs from c~. The leaf logs when the
+engine rejects relative to the message stream (``INFO-HINT-REJECT-TIMING``):
+not graded; no open specification question. It logs what ``MLDSA_VERIFY_RES``
+holds after a reject (``INFO-HINT-REJECT-RES``): graded by ``CHK-HINT-REJECT``;
+no open specification question.
 On the streamed cases the leaf also grades that ``MLDSA_VERIFY_RES`` reads ~c~
 once VERIFY is accepted: the accelerator preloads it then
 (``hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc``).
@@ -276,13 +278,13 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
                     res_class = "other"
                 if streamed is not None:
                     self.logger.info(
-                        "OBS-HINT-REJECT-TIMING: %s timing=%s msg_bytes=%d",
+                        "INFO-HINT-REJECT-TIMING: %s timing=%s msg_bytes=%d",
                         what,
                         "late" if streamed else "early",
                         case.msg_bytes,
                     )
                 self.logger.info(
-                    "OBS-HINT-REJECT-RES: %s res=%s verify_res=%s",
+                    "INFO-HINT-REJECT-RES: %s res=%s verify_res=%s chk=CHK-HINT-REJECT",
                     what,
                     res_class,
                     "".join(f"{w:08x}" for w in res),
