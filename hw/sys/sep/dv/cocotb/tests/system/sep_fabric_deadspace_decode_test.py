@@ -62,6 +62,14 @@ DECERR response. The leaf reads code and word from that note through the
 generated ``regs/gen/py/sep_memory_map.py`` and checks that the code agrees with
 ``memory_map.adoc:86-88``.
 
+CTRL-TRNG-ALIAS-ARMED (bench control, after the snapshot): a directed TRNG
+write anchor sits at the offset of the ESRC read-write register
+``HEALTH_TEST_WINDOW_SIZE``, which an access that drops address bit 12
+reaches, and that register is armed in the TRNG window's change compare
+(readable, not hardware-updating, with a read-write field). A refused TRNG
+write that still stores then moves it. A missing anchor or an unarmed register
+fails the leaf (CTRL-MISSING).
+
 Row cells (FCOV window). The probe walk and its checks above run with the FCOV
 window closed. After they pass, the leaf issues one cell probe per block
 window (a read of the first word past the extent, and a write there in the SPI
@@ -171,6 +179,8 @@ from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
+    TRNG_ALIAS_OFFSET,
+    TRNG_ALIAS_REG,
     WRITE_PATTERNS,
     DeadProbe,
     SepDeadspace,
@@ -339,6 +349,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 ones,
                 zeros,
             )
+        self._ctrl_trng_alias_armed(cfg, snaps["trng"])
 
         refused = 0
         aliased = 0
@@ -609,6 +620,24 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             " ".join(f"{n}={anchor[n]}" for n in sorted(anchor)),
             op_text,
         )
+
+    def _ctrl_trng_alias_armed(self, cfg: SepDeadspaceCfg, snap: dict[int, int]) -> None:
+        """CTRL-TRNG-ALIAS-ARMED: a TRNG write anchor lands on the bit-12 alias of
+        an ESRC register that the change compare can see a store on."""
+        win = cfg.windows["trng"]
+        addr = win.base + TRNG_ALIAS_OFFSET
+        alias = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR") + TRNG_ALIAS_OFFSET
+        anchor = DeadProbe("trng", addr, "w", True) in cfg.probes
+        armed = alias in snap and alias not in win.hw_updating and alias in win.store_visible
+        line = (
+            f"trng w 0x{addr:08x} alias=esrc+0x{TRNG_ALIAS_OFFSET:03x} {TRNG_ALIAS_REG} "
+            f"anchor={int(anchor)} armed={int(armed)}"
+        )
+        if not (anchor and armed):
+            msg = f"CTRL-TRNG-ALIAS-ARMED FAIL: CTRL-MISSING {line}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-TRNG-ALIAS-ARMED PASS: %s", line)
 
     @staticmethod
     def _trng_unowned_fail(op: str, addr: int, resp: int, rdata: int | None) -> str:

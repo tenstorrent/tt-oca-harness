@@ -395,6 +395,12 @@ _AES = sym("AES_REG_MAP_BASE_ADDR")
 _OTBN = sym("OTBN_REG_MAP_BASE_ADDR")
 _LIFECYCLE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
 
+# ESRC register with a software read-write field and no hardware write. A TRNG
+# write anchor sits at its offset, which an access that drops address bit 12
+# reaches, so a refused TRNG write that still stores moves it.
+TRNG_ALIAS_REG = "HEALTH_TEST_WINDOW_SIZE"
+TRNG_ALIAS_OFFSET = dict(ot_reg_offsets("entropy_source"))[TRNG_ALIAS_REG]
+
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("km_mailbox", _KM_MBOX + 0x414, "w"),
@@ -421,13 +427,15 @@ DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("otbn", _OTBN + block_size("OTBN"), "w"),
     ("lifecycle", _LIFECYCLE + block_size("SEP_LIFECYCLE_CTRL"), "w"),
     ("lifecycle", _KM_MBOX - 4, "w"),
-    # First, middle and last word of the adopter TRNG window, read and write.
+    # First, middle and last word of the adopter TRNG window, read and write,
+    # and a write at the alias offset of TRNG_ALIAS_REG.
     ("trng", _TRNG + 0x000, "r"),
     ("trng", _TRNG + 0x000, "w"),
     ("trng", _TRNG + 0x800, "r"),
     ("trng", _TRNG + 0x800, "w"),
     ("trng", _TRNG + 0xFFC, "r"),
     ("trng", _TRNG + 0xFFC, "w"),
+    ("trng", _TRNG + TRNG_ALIAS_OFFSET, "w"),
 )
 
 
