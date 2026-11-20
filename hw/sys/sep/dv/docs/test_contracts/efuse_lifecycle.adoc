@@ -425,7 +425,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 *BFM / Model*: ocah_axi_vip; the OTP bank model drops the first program write after reset with no APB error
 
-*Randomization*: RANDCFG -- the seed selects one spare field and bit A in it, then a second spare field and bit B in it. Every run walks the same four checks.
+*Randomization*: RANDCFG -- the seed selects one spare field and bit A in it, then the READ word of `CHK-VERIFY-DATA-HOLD` among the non-secret data words whose image golden has a bit set that is clear in the held word. Every run walks the same four checks.
 
 *Objective*: The reference SHIM always reads back the programmed word after the write, returns it in `data`, and sets `status` when the bit did not stick (`hw/ip/efuse/doc/architecture.adoc`, Interface SHIM). `program_status` is 0 for no error and 1 for an error, and `EFUSE_PROGRAM_INTERFACE_READ_DATA` holds the data of the last successful program response (`efuse_interface_ctrl.rdl`). A dropped bank write returns no APB error (`hw/ip/efuse/dv/models/README.md`), so only the verify step can report it.
 
@@ -438,7 +438,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 . Program bit A (dropped write).
 . Program bit A again (kept write), and read `EFUSE_PROGRAM_INTERFACE_READ_DATA` after `program_done`.
 . After each program, read the OTP word through `EFUSE_READ_CTRL` and compare it whole against the image golden with the bits that landed.
-. Read the OTP word of B through `EFUSE_READ_CTRL` (golden 0, which differs from the word of A), then read `EFUSE_PROGRAM_INTERFACE_READ_DATA`.
+. From the non-secret data words whose image golden has a bit set that is clear in the held word, the seed selects one. Read it through `EFUSE_READ_CTRL`, then read `EFUSE_PROGRAM_INTERFACE_READ_DATA`. If no such word exists, the test fails.
 
 *Checkers*:
 
@@ -452,7 +452,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-VERIFY-DATA
 |After the kept program, `EFUSE_PROGRAM_INTERFACE_READ_DATA` equals the OTP word golden with bit A set. The field is 0 in the image, so 0 or the pre-program word fails here.
 |CHK-VERIFY-DATA-HOLD
-|After one READ command of the OTP word of B, which returns its golden 0, `EFUSE_PROGRAM_INTERFACE_READ_DATA` still equals the word of the kept program (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl:156`: held until the next successful program). A DUT that loads the read data or clears the register on a READ fails, because the word of B differs from the held word. Anchor: the frontdoor readback of the register. Evidence: `CHK-VERIFY-DATA-HOLD PASS: after a READ of OTP word <w> = 0x<v>, EFUSE_PROGRAM_INTERFACE_READ_DATA = 0x<v> (held)`.
+|After one READ command of the selected word, which returns its image golden, `EFUSE_PROGRAM_INTERFACE_READ_DATA` still equals the word of the kept program (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl:156`: held until the next successful program). The golden of the READ word is non-zero and has a bit set that is clear in the held word, so a DUT that loads the read data, ORs it in, loads it only when non-zero, or clears the register on a READ fails. Anchor: the frontdoor readback of the register. Evidence: `CHK-VERIFY-DATA-HOLD PASS: after a READ of OTP word <w> = 0x<v> (golden 0x<v>, bits 0x<v> clear in the held word), EFUSE_PROGRAM_INTERFACE_READ_DATA = 0x<v> (held 0x<v>)`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
