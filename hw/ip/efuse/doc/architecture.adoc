@@ -95,8 +95,9 @@ be altered once set. It issues a single `FUSE_COMMAND_PROGRAM` to the SHIM
 and fully blocks any unauthorized overwrites to maintain data integrity.
 Whether to verify the programmed bit is the adopter's decision: the SHIM
 implements the foundry-specific program flow, including any mandatory verify
-step, and reports the outcome in `status`. Any data returned by the SHIM in the
-program response is stored in `EFUSE_PROGRAM_INTERFACE_READ_DATA`.
+step, and reports the outcome in `status`. Data from a successful program
+response is stored in `EFUSE_PROGRAM_INTERFACE_READ_DATA`; after an error the
+register keeps its previous value, which is not valid.
 
 *Read-data Capture Behavior:*
 
@@ -208,7 +209,7 @@ are exposed through the SHIM Control CSRs, accessed over the
 === eFuse Bank Model
 
 The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only
-stand-in for the real foundry OTP macro. It is a 3KB (768 x 32-bit word) store
+stand-in for the real foundry OTP macro. It is a 4 KB (1024 x 32-bit word) store
 fronted by a standard APB interface, and it emulates the set-once behavior of
 real OTP so the controller and SHIM can be exercised end-to-end without
 silicon. In a production integration it is replaced by the actual foundry
@@ -375,7 +376,7 @@ blocked, JTAG_PUBLIC_IDENTITY included
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
-returns an SLVERR response with data value `0xbadcab1e`.
+returns an SLVERR response with data value `0xBADCAB1E`.
 
 *SMC exception for JTAG_PUBLIC_IDENTITY:*
 

@@ -423,9 +423,9 @@ The SHIM implements two operations, reads and programs:
 * *Reads.* If a request has `command` set to `FUSE_COMMAND_READ` and
 `read_word_count` set to _N_, respond with _N_ `valid` strobes, each
 carrying one `WORD_WIDTH` word in `data`, reading consecutive words starting
-at `address`. _N_ is one for a firmware read and `NumShadowWords`, the whole
-bank, for fuse sensing, as described below; the controller issues no other
-value.
+at `address`. _N_ is one for a firmware read and, for fuse sensing, the whole
+bank: `NumShadowWords`, plus `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` in the SMC, as
+described below. The controller issues no other value.
 * *Programs.* If a request has `command` set to `FUSE_COMMAND_PROGRAM`, program
 the single bit at `address` using the foundry's native program flow and respond
 with one `valid` strobe when done. The bit is always programmed to 1, and
@@ -547,7 +547,7 @@ the adopter's `smc_external` map, anywhere it does not overlap another block,
 and regenerate the register collateral. `WORDS` may not exceed 65535.
 * *Configure it.* Set `CFG.SMC_SUPPLEMENTARY_FUSE`: the window offset `BASE`
 in `smc_external`, at or above `CFG.SMC_EFUSE_SHIM_SIZE` and usually in the
-slot, the size `WORDS` and the lock region ends
+slot, the size `WORDS` and the lock region end offsets
 `LOCK_REGION_END`. `WORDS = 0`, the SMU
 default, removes the region. The reference `smu_wrapper` and `smc_wrapper`
 enable the example in `smc_supplementary_fuse_example_pkg`; `smu_wrapper` turns it
@@ -556,8 +556,8 @@ off with `SUPPLEMENTARY_FUSE_EXAMPLE = 0`.
 supplementary fuses at bit 2048 onward. They may sit in further macros behind the
 same SMC SHIM.
 * *Size the SHIM for the slot.* The request's `address` and word count are
-sized for 64 harness words plus a region that fills the slot, whatever `WORDS`
-is. With the 16 KB open slot they are 18 and 13 bits wide; a larger slot
+sized for 64 harness words plus the full slot, regardless of `WORDS`. With
+the 16 KB open slot they are 18 and 13 bits wide; a larger slot
 widens them.
 * *Return the boot READ in linear order.* Fuse sensing is still one READ of
 64 + `WORDS` words from bit 0. When the bank spans several macros, the SHIM

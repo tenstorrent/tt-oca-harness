@@ -95,7 +95,8 @@ The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
 technology- and vendor-specific implementations of memory-mapped blocks. The
 window is split into two regions (see `smc_external.rdl`). Apart from the
-eFuse SHIM control block described below, hardware treats both identically;
+eFuse SHIM control block and the optional supplementary fuse window described
+below, hardware treats both identically;
 the split is purely organizational:
 
 * *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.

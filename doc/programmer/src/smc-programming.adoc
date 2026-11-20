@@ -1583,9 +1583,10 @@ constraints of the underlying eFuse implementation.
 
 Direct read and program operations are performed using the eFuse control
 interface, which can program arbitrary data bits and read whole data words
-(32 bits at a time). Programming operations are not reflected in the shadow
-registers until the next primary reset; a CPU or warm reset does not re-sense
-the fuses.
+(32 bits at a time). The eFuse control registers are 32-bit registers; access
+them with 32-bit reads and writes. Programming operations are not reflected in
+the shadow registers until the next primary reset; a CPU or warm reset does not
+re-sense the fuses.
 
 [WARNING]
 ====
