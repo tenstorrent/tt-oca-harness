@@ -625,7 +625,9 @@ of the vendored `riscv-dbg` package, and a demultiplexer with an error slave
 that applies the debug disable (<<ptap-debug-disable>>). `tdr2axi` contains the
 Debug Module registers, the SBA engine and the AXI manager. Its Debug Module has
 one hart, which always reports unavailable, so only the SBA registers have a
-function.
+function. The bridge with an AXI4 manager port also has a register slice on
+every channel of that port, after the demultiplexer; the figure does not show
+it.
 
 [[ptap-jtag2axi-bridge-figure]]
 .JTAG2AXI bridge structure
@@ -779,6 +781,10 @@ endif::backend-pdf[]
 A bridge has one AXI transfer in progress at a time, and each transfer has one
 beat. <<ptap-jtag2axi-axi-attributes-table>> gives the attributes of the
 transfers.
+
+No combinational path runs from the inputs of a manager port to its outputs.
+On the AXI4 port, the register slice gives this property: without it, the
+demultiplexer derives BREADY and RREADY from BVALID and RVALID.
 
 [[ptap-jtag2axi-axi-attributes-table]]
 [width="100%",cols="<25%,<75%",options="header"]
