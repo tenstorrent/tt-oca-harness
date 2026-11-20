@@ -1116,9 +1116,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         dut.esrc_fifo_ptr_bit_i.value = plan.ptr_bit
         dut.esrc_fifo_ptr_inject_i.value = 1
         await ClockCycles(dut.clk_i, 2)
-        # The held copy mismatches its partner until a pointer moves, so the cause
-        # persists through the write-one clear only before the first pop or push.
-        # The relatch is graded only when FIFO_ERROR sets before any operation.
+        # The relatch is graded only when FIFO_ERROR sets before any FIFO operation.
         bound = LAT_FACTOR * clean_pop
         held_set, _, set_clk = await self._poll(
             ESRC_INTR_STATUS, lambda v: _get(v, "INTR_STATUS", "FIFO_ERROR"), bool, bound
