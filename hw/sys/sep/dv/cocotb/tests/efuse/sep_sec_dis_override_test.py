@@ -883,12 +883,11 @@ class sep_sec_dis_override_test(sep_base_test):
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
-          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. Every
-          text leaves that word unchanged: ``lc_state`` is ``sw = r``
-          (sep_efuse_map.rdl:573-577); "LC_STATE bits can only be set" and an
+          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. The
+          lifecycle text leaves that word unchanged: "LC_STATE bits can only be set" and an
           INVALID encoding is "permanent" (lifecycle_controller.adoc:87, :90),
           and raw 4'b1111 has no bit left to set; "Invalid lifecycle encodings
-          are terminal" (otp_fuse_controller.adoc:220-224). CHK-SECDIS-LC-WR
+          are terminal" (otp_fuse_controller.adoc:228-229). CHK-SECDIS-LC-WR
           grades the JTAG readback after the write as the RDL reset word
           0x0000000f. No text states the JTAG write response, so
           OBS-SECDIS-LC-WR logs it without a verdict.
