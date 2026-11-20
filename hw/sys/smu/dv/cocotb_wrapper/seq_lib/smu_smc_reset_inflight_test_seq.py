@@ -915,7 +915,7 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             sample(self.dut.sep_global_base_o, "sep_global_base_o"),
             sample(self.dut.sep_region_size_o, "sep_region_size_o"),
         )
-        # The SEP debug path after an SMC primary reset is itself unstated (SF-029): its
+        # The SEP debug path after an SMC primary reset is itself unstated: its
         # bounded waits are OBS-SMCRST-NONSMC-PATHS windows and a failure leaves the SEP legs
         # of the rest of the leaf unissued rather than failing the SMC legs.
         with self._within("OBS-SMCRST-NONSMC-PATHS"):
@@ -1062,7 +1062,7 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         ar = await self._wait_hs("ar", [h["id"] for h in held], mark, f"s3_{src}_ar")
         if src == "bite":
             await self._dmi(self.jtag, SBDATA0_ADDR, WDOG_ENABLE, DMI_OP_WRITE)
-        # The bite's warm fall is seed-dependent (SF-006): its wait is an observation window.
+        # The bite's warm fall is seed-dependent: its wait is an observation window.
         with self._within("OBS-SMCRST-BITE-NO-WARM" if src == "bite" else None):
             fall, fell, used = await self._wait_level(
                 f"s3_{src}_warm_fall", self.warm_net, WARM_RESET_PATH, 0, WARM_FALL_BOUND
@@ -1390,7 +1390,7 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             f"s5_t{k}_primary_fall", self.primary, "rst_primary_smc_clk_n_o", 0, RESET_LEVEL_BOUND
         )
         # During the hold only system-bus accesses; nothing is issued on ext_in while its link
-        # is in reset. A lost SEP debug path (SF-029) stops the remaining accesses.
+        # is in reset. A lost SEP debug path stops the remaining accesses.
         sep_path = self.selected
         hold = []
         for name, addr, data, obs in (
@@ -1874,7 +1874,7 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             await self._rd_val(WDT[0]["COUNT"], "s9_core0_count_after") & WDT_COUNT_MASK,
         )
         self.log.info("INFO-S9 CORE0 wdt before=%s after uncore=%s", wdt_before, wdt_after)
-        # The mode-1 and timeout-0 held trials are out of this milestone (SF-009).
+        # The mode-1 and timeout-0 held trials are out of this milestone.
         trial = await self._held_trial(base, held)
         rc_value, rel_applied = trial["release"][1], trial["release"][2]
         self.log.info("INFO-S9 idle=%s held trial=%s", (idle_on[1], idle_off[1]), trial)
@@ -1882,8 +1882,8 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             "CHK-SMC-SW-UNCORE",
             f"CHK-SMC-SW-UNCORE: idle applied 1->0; held mode0 ar_accepted="
             f"{trial['ar_accepted']}/{TRAIN} undrained={trial['undrained']} "
-            f"(value OBS SF-009); unresolved R samples={trial['r_xz']}; train answered "
-            f"{trial['answered']}/{TRAIN} (OBS SF-009); applied={trial['applied']}; release rc="
+            f"(value OBS); unresolved R samples={trial['r_xz']}; train answered "
+            f"{trial['answered']}/{TRAIN} (OBS); applied={trial['applied']}; release rc="
             f"{'-' if rc_value is None else hex(rc_value)} applied={rel_applied}; wdt cleared",
             (
                 (idle_on[1], idle_off[1]),

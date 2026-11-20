@@ -13,8 +13,7 @@ W handshakes, because the bench item carries one merged response code. Every bea
 read burst that starts in a gap is graded DECERR (memmap.adoc, a burst routed by its start
 address); the straddling scratchpad below the REGION_SIZE limit is graded OKAY with its
 word landed. Values the contract leaves open (second words, other burst beats, narrow
-lanes, merged split-slot answers) are printed as OBS lines that name their finding and are
-never compared.
+lanes, merged split-slot answers) are printed as OBS lines and are never compared.
 """
 
 from __future__ import annotations
@@ -234,7 +233,6 @@ class Family:
     key: str
     chk: str
     obs: str
-    sfs: str
     ports: tuple[str, ...]
     code: int
     word_stated: bool
@@ -277,7 +275,6 @@ def _families() -> list[Family]:
         "OUTSIDE",
         "CHK-ERRC-OUTSIDE",
         "OBS-ERRC-OUTSIDE",
-        "SF-002,SF-004,SF-005,SF-006,SF-027",
         INBOUND_PORTS,
         DECERR,
         False,
@@ -302,7 +299,6 @@ def _families() -> list[Family]:
         "REGIONSIZE",
         "CHK-ERRC-REGIONSIZE",
         "OBS-ERRC-REGIONSIZE",
-        "SF-003,SF-004,SF-005,SF-006",
         INBOUND_PORTS,
         DECERR,
         False,
@@ -333,7 +329,6 @@ def _families() -> list[Family]:
         "GAP",
         "CHK-ERRC-GAP",
         "OBS-ERRC-GAP",
-        "SF-004,SF-005,SF-006,SF-020",
         PORTS,
         DECERR,
         True,
@@ -346,7 +341,6 @@ def _families() -> list[Family]:
         "DEBUGWIN",
         "CHK-ERRC-DEBUGWIN",
         "OBS-ERRC-DEBUGWIN",
-        "SF-004,SF-005",
         PORTS,
         DECERR,
         True,
@@ -357,7 +351,7 @@ def _families() -> list[Family]:
         full6,
     )
 
-    def _past_family(key, units, sfs) -> Family:
+    def _past_family(key, units) -> Family:
         locs = []
         for cell, unit in units:
             past, last_slot, end = _past_extent(unit)
@@ -371,7 +365,6 @@ def _families() -> list[Family]:
             key,
             f"CHK-ERRC-{key}",
             f"OBS-ERRC-{key}",
-            sfs,
             PORTS,
             DECERR,
             True,
@@ -390,12 +383,10 @@ def _families() -> list[Family]:
             ("ib_filter", "smc_inbound_filter_ctrl_wrap"),
             ("ob_filter", "smc_outbound_filter_ctrl_wrap"),
         ),
-        "SF-004,SF-005,SF-006",
     )
     pastext32 = _past_family(
         "PASTEXT32",
         (("reset_unit", "smc_reset_unit"), ("misc_wrap", "smc_misc_wrap")),
-        "SF-004,SF-005,SF-006,SF-010",
     )
 
     misc_base = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
@@ -407,7 +398,6 @@ def _families() -> list[Family]:
         "MISCHOLE",
         "CHK-ERRC-MISCHOLE",
         "OBS-ERRC-MISCHOLE",
-        "SF-004,SF-005,SF-010",
         PORTS,
         DECERR,
         True,
@@ -421,7 +411,6 @@ def _families() -> list[Family]:
         "GPIOPAST",
         "CHK-ERRC-GPIOPAST",
         "OBS-ERRC-GPIOPAST",
-        "SF-004,SF-005,SF-006",
         PORTS,
         DECERR,
         True,
@@ -451,7 +440,6 @@ def _families() -> list[Family]:
         "CLKGATE",
         "CHK-ERRC-CLKGATE",
         "OBS-ERRC-CLKGATE",
-        "SF-004,SF-005,SF-006",
         PORTS,
         SLVERR,
         True,
@@ -662,7 +650,6 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
             "SPLITSLOT",
             "CHK-ERRC-SPLITSLOT",
             "OBS-ERRC-SPLITSLOT",
-            "SF-004,SF-010",
             PORTS,
             DECERR,
             True,
@@ -854,14 +841,13 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                 j += 1
             span = f"{i}" if i == j else f"{i}-{j}"
             cocotb.log.info(
-                "%s: cell=%s addr=0x%x rresp=%s rdata=%s beat=%s sf=%s",
+                "%s: cell=%s addr=0x%x rresp=%s rdata=%s beat=%s",
                 fam.obs,
                 cell,
                 addr,
                 _rname(r[i].resp),
                 _hl(r[i].data),
                 span,
-                fam.sfs,
             )
             i = j + 1
 
@@ -1105,7 +1091,9 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                     "INFO-PATH: %s periph AXI-Lite link AW/AR handshakes during the read: %s (%s)",
                     where,
                     delta,
-                    "SF-020" if fam.key == "GAP" else "SF-010",
+                    "open: which crossbar answers each reserved gap"
+                    if fam.key == "GAP"
+                    else "open: the answer of a 64-bit access through the 32-bit converter",
                 )
             self._cell(fam, kind, cell)
             return 1
@@ -1184,7 +1172,7 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                 if r and r[0].data is not None:
                     lanes = (r[0].data >> (8 * off)) & ((1 << (8 * length)) - 1)
                 cocotb.log.info(
-                    "%s: cell=%s/size=%d addr=0x%x rresp=%s lanes=%s bus=%s sf=%s",
+                    "%s: cell=%s/size=%d addr=0x%x rresp=%s lanes=%s bus=%s",
                     fam.obs,
                     cell,
                     size,
@@ -1192,7 +1180,6 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                     _rname(r[0].resp) if r else "none",
                     "X" if lanes is None else f"0x{lanes:0{2 * length}x}",
                     _hl(r[0].data) if r else "none",
-                    fam.sfs,
                 )
                 n += 1
             self._cell(fam, kind, f"{cell}/size=0")
@@ -1396,7 +1383,7 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                 )
                 fam.cells[f"S4 {base}/wr"] = 1
                 cocotb.log.info(
-                    "OBS-ERRC-SPLITSLOT: cell=%s rresp=%s rdata=%s bresp=%s plus0_after=%s sf=%s",
+                    "OBS-ERRC-SPLITSLOT: cell=%s rresp=%s rdata=%s bresp=%s plus0_after=%s",
                     base,
                     _rname(r[0].resp) if r else "none",
                     _hl(r[0].data) if r else "none",
@@ -1404,7 +1391,6 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                     f"0x{after[0].data & 0xFFFF_FFFF:08x}"
                     if after and after[0].data is not None
                     else "X",
-                    fam.sfs,
                 )
                 n += 5
                 if reset is None:
@@ -1468,7 +1454,7 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
         ):
             await self.csr_read(f"INBOUND0_{name}_RB", addr, expected=value, length=8)
         item, hs = await self._issue("SYS_IN", "ADMIT", LOCAL_BASE_REG, write=False)
-        admit = Family("ADMIT", "", "", "", ("SYS_IN",), OKAY, False, (), {})
+        admit = Family("ADMIT", "", "", ("SYS_IN",), OKAY, False, (), {})
         r = self._check_read(admit, "CTRL-M9-ADMIT", "SYS_IN", item, hs, 1, OKAY)
         assert not admit.findings and r and r[0].data == LOCAL_BASE_RESET, (
             f"SYS_IN read of LOCAL_BASE through inbound entry 0 answered "

@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from env.sep_chk_log import word_digest
+from env.sep_km_img_h import KPV_SLOT_WORDS, KPV_SLOTS, SRAM_REGION_BYTES
 
 WORD = 0xFFFF_FFFF
 
@@ -54,9 +55,8 @@ def _load_km_reg():
 
 KM = _load_km_reg()
 
-# km_kpv.adoc, "Key and Policy Vault (KM Port)": KEY_ENTRY[64].WORD[16].
-N_SLOTS = 64
-N_WORDS = 16
+N_SLOTS = KPV_SLOTS
+N_WORDS = KPV_SLOT_WORDS
 N_KPV_WORDS = N_SLOTS * N_WORDS
 KPV_BASE = int(KM.KPV_REG_MAP_BASE_ADDR)
 KPV_DATA_END = KPV_BASE + N_KPV_WORDS * 4
@@ -66,9 +66,9 @@ IRQ_STATUS = int(KM.KMCSR_IRQ_STATUS_REG_ADDR)
 HMAC_KEY_CTRL = int(KM.HMAC_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
 SRAM_BASE = int(KM.SRAM_MEM_BASE_ADDR)
 SRAM_SIZE = int(KM.SRAM_MEM_SIZE)
-# SRAM region 0 (0x8000-0x83FF) holds the POKE op buffer and result words; a
-# test SRAM word is drawn from region 1 up.
-SRAM_TEST_BASE = SRAM_BASE + 0x400
+# SRAM region 0 holds the POKE op buffer and result words; a test SRAM word is
+# drawn from region 1 up.
+SRAM_TEST_BASE = SRAM_BASE + SRAM_REGION_BYTES
 
 _WORD_ADDR = tuple(
     tuple(int(getattr(KM, f"KPV_KEY_ENTRY_{s}__WORD_{w}__REG_ADDR")) for w in range(N_WORDS))

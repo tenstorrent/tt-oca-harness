@@ -45,7 +45,7 @@ short name ``ToO`` below):
   segment drives neither of lanes 1:0 and an x4 dummy segment no lane (a
   dummy segment "Holds the bus in a high-impedance state for some number of
   "dummy" clock cycles (neither side transmits)", ``ToO:63``). No source
-  states lanes 3:2 at x1 or x2; the leaf logs them as OBS-SPI-OE-UNUSED, and
+  states lanes 3:2 at x1 or x2; the leaf logs them as INFO-SPI-OE-UNUSED, and
   CHK-SPI-OE-SEG does not grade them. The SPI data scoreboard decodes a TX
   segment only when its four output enables are exactly the segment's lanes
   (x1 0001, x2 0011, x4 1111), so CHK-SPI-SB-FRAME fails a TX segment that
@@ -53,9 +53,9 @@ short name ``ToO`` below):
   x1 dummy segment is logged as OBS-SPI-OE-DUMMY: ``ToO:29`` ("for
   Standard-mode commands `SD[0]` is always configured as an output") and
   ``ToO:63`` give different patterns. An x1 RX-only segment is logged as
-  OBS-SPI-OE-X1RX: ``ToO:29`` gives lane 0 driven in Standard mode, while
+  INFO-SPI-OE-X1RX: ``ToO:29`` gives lane 0 driven in Standard mode, while
   ``ToO:31-33`` allows half-duplex Standard-mode commands and no text names
-  the x1 RX-only segment; the lane pattern is an open specification question.
+  the x1 RX-only segment. Not graded; no open specification question.
 
 The leaf walks the 10 legal SPEED x DIRECTION cells as single segments, a dummy
 segment between FIFO reads, CSAAT chains that change speed or direction, the
@@ -91,7 +91,7 @@ Checks:
   31:24, ``ToO:486``). Every seed draws at least one Rx cell whose LEN+1 is
   not a multiple of 4; ``CTRL-SPI-RX-PAD`` logs the count of graded
   segments, and a count of 0 fails the leaf.
-* OBS-SPI-RX-PAD: per such segment, the pad position (``upper`` or
+* INFO-SPI-RX-PAD: per such segment, the pad position (``upper`` or
   ``lower`` bytes) and STATUS.BYTEORDER, logged, not graded: no SEP text
   states the byte order.
 * CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1
@@ -120,8 +120,8 @@ Checks:
 * CHK-SPI-OE-SEG: in each graded frame, the data lane output enables at every
   sample edge of a segment equal the pattern of that segment. Control: every
   pattern row (x1 TX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX, x2
-  dummy, x4 dummy) is graded. x1 RX-only and x1 dummy segments are logged as
-  OBS lines.
+  dummy, x4 dummy) is graded. x1 RX-only segments are logged as INFO lines and
+  x1 dummy segments as OBS lines.
 * CHK-SPI-ILLEGAL: each of the 5 graded illegal cells sets ERROR_STATUS to
   CMDINVAL only, and a legal control command after the SPI clean state runs
   on the pad (one chip-select-low window of LEN+1 sck cycles) and reads
@@ -218,7 +218,7 @@ LONG_DUMMY_CYCLES = LONG_DUMMY_LEN + 1
 LEGS = ("_single_cells", "_dummy_fifo_leg", "_chain_leg", "_illegal_leg")
 
 # Output-enable pattern rows the leaf must grade. The x1 RX-only and x1 dummy rows
-# are logged as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
+# are logged as INFO-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
 OE_ROWS = ("x1_tx", "x1_bidir", "x2_tx", "x2_rx", "x4_tx", "x4_rx", "x2_dummy", "x4_dummy")
 
 # Bounds. Each expiry fails the check that the wait feeds.
@@ -610,7 +610,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             exp = oe_expect(seg.speed, seg.direction)
             seen = {b[1] for b in seg_beats}
             if exp is None:
-                obs = "OBS-SPI-OE-DUMMY" if seg.direction == DIR_DUMMY else "OBS-SPI-OE-X1RX"
+                obs = "OBS-SPI-OE-DUMMY" if seg.direction == DIR_DUMMY else "INFO-SPI-OE-X1RX"
                 self.logger.info("%s seed=%s %s seg=%d oe=%s", obs, seed, label, i, _fmt_oe(seen))
                 oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/obs")
             else:
@@ -619,12 +619,13 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 oe_ok = oe_ok and {v & used for v in seen} == {exp_oe}
                 if used != 0b1111:
                     self.logger.info(
-                        "OBS-SPI-OE-UNUSED seed=%s %s seg=%d row=%s lanes_3_2=%s",
+                        "INFO-SPI-OE-UNUSED seed=%s %s seg=%d row=%s lanes_3_2=%s%s",
                         seed,
                         label,
                         i,
                         seg.oe_row,
                         ",".join(sorted({f"{(v >> 2) & 3:02b}" for v in seen})),
+                        " chk=CHK-SPI-SB-FRAME" if seg.is_tx else "",
                     )
             if seg.direction == DIR_DUMMY:
                 continue
@@ -816,7 +817,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         self.ran.update(("CHK-SPI-CELL", "CHK-SPI-RXCNT", "CHK-SPI-RX-PAD"))
 
     def _grade_rx_pad(self, seg: Seg, nbytes: int, last_word: int, byteorder: int) -> None:
-        """CHK-SPI-RX-PAD (zero pad at the leaf order) and OBS-SPI-RX-PAD (pad position)."""
+        """CHK-SPI-RX-PAD (zero pad at the leaf order) and INFO-SPI-RX-PAD (pad position)."""
         seed = self.seed
         data_bytes = nbytes % 4
         pad_bytes = 4 - data_bytes
@@ -831,7 +832,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         orders = [self.order.order] if self.order.order else list(masks)
         zero = [o for o in orders if not last_word & masks[o]]
         self.logger.info(
-            "OBS-SPI-RX-PAD seed=%d speed=%d dir=%d bytes=%d last_word=0x%08x pad_bytes=%s "
+            "INFO-SPI-RX-PAD seed=%d speed=%d dir=%d bytes=%d last_word=0x%08x pad_bytes=%s "
             "byteorder=%d",
             seed,
             seg.speed,

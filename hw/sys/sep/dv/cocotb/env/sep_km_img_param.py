@@ -30,6 +30,7 @@ import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from sep_km_img_h import KM_SRAM_BASE, KM_SRAM_SIZE, SRAM_REGION_BYTES
 from sep_seeded_rng import SepSeededRng
 
 T_SCR = "sep_km_sram_scrambler_key_rand_test"
@@ -47,11 +48,10 @@ BLOCK_SCR = 0x1
 BLOCK_MBOX_KM = 0x2
 
 WORD_MASK = 0xFFFF_FFFF
-# KM SRAM byte window of the drawn stores: regions 1 to 31, word aligned. Region
-# 0 holds the image data and is never a drawn address.
-SRAM_DRAW_LO = 0x8400
-SRAM_DRAW_HI = 0xFFFC
-SRAM_REGION_BYTES = 0x400
+# KM SRAM byte window of the drawn stores: every SRAM_LOCK region but region 0,
+# word aligned. Region 0 holds the image data and is never a drawn address.
+SRAM_DRAW_LO = KM_SRAM_BASE + SRAM_REGION_BYTES
+SRAM_DRAW_HI = KM_SRAM_BASE + KM_SRAM_SIZE - 4
 MBOX_DEPTH = 16
 
 # A draw that cannot find a fresh value in this many tries is a generator bug.
@@ -87,6 +87,20 @@ def _key_pair(rng: SepSeededRng) -> tuple[int, int]:
     raise RuntimeError("no key pair with every byte different")
 
 
+def scr_round_key(word_index: int, key: int) -> int:
+    """``Rkey`` of the KM SRAM scrambler data path for one 13-bit word index.
+
+    ``Rkey = scrambler_key[31:0] ^ {addr, addr, addr[12:7]}``
+    (``hw/ip/scrambler/doc/architecture.adoc``, "Address Tweaking" and the
+    13-bit row of "SRAM scrambler address expansion"). The data-path S-box
+    input of a store of ``W`` at that index is ``W ^ Rkey``.
+    """
+    if not 0 <= word_index < KM_SRAM_SIZE // 4:
+        raise ValueError(f"KM SRAM word index {word_index:#x} is out of range")
+    tweak = (word_index << 19) | (word_index << 6) | (word_index >> 7)
+    return (key ^ tweak) & WORD_MASK
+
+
 def word_parity(w: int) -> int:
     """Per-byte odd parity nibble of a KM ROM word (tests/km_fw/gen_parhex.py)."""
     p = 0
@@ -110,6 +124,7 @@ class ScrPlan:
     data64: list[int]
     addrs_lock: list[int]
     data_lock: list[int]
+    data_ep: list[int]
 
     # Payload offsets (words from the start of the payload).
     OFF_KA = 0
@@ -121,7 +136,8 @@ class ScrPlan:
     OFF_DATA64 = 83
     OFF_ADDRS_LOCK = 147
     OFF_DATA_LOCK = 149
-    PAYLOAD_WORDS = 151
+    OFF_DATA_EP = 151
+    PAYLOAD_WORDS = 175
 
     def payload(self) -> list[int]:
         order = 0
@@ -136,6 +152,7 @@ class ScrPlan:
             + self.data64
             + self.addrs_lock
             + self.data_lock
+            + self.data_ep
         )
         if len(words) != self.PAYLOAD_WORDS:
             raise RuntimeError(f"IMG-SCR payload has {len(words)} words")
@@ -241,12 +258,36 @@ def _scr_plan(seed: int) -> ScrPlan:
     data8 = [p, p] + [_fresh(rng, taken_data) for _ in range(6)]
     order8 = list(range(8))
     rng.shuffle(order8)
-    addrs64 = [_fresh_addr(rng, taken_addr) for _ in range(64)]
-    taken64: set[int] = set()
-    data64 = [_fresh(rng, taken64) for _ in range(64)]
+    # The first 16 of the 64 stores take every S-box input value under kA. Store
+    # i has word index bits [12:9] = i and the lanes [8:6], [5:3], [2:0] at
+    # (i + r) % 8, and its word makes every data nibble of W ^ Rkey equal i.
+    # The draw window starts above region 0, so store 0 needs [8:6] >= r1_lo.
+    r1_lo = ((SRAM_DRAW_LO - KM_SRAM_BASE) // 4) >> 6
+    for _ in range(_DRAW_TRIES):
+        r1, r2, r3 = rng.randrange(r1_lo, 8), rng.randrange(8), rng.randrange(8)
+        idx = [i << 9 | ((i + r1) % 8) << 6 | ((i + r2) % 8) << 3 | (i + r3) % 8 for i in range(16)]
+        sweep_addrs = [KM_SRAM_BASE + 4 * x for x in idx]
+        sweep_data = [(i * 0x1111_1111) ^ scr_round_key(x, ka) for i, x in enumerate(idx)]
+        if (
+            taken_addr.isdisjoint(sweep_addrs)
+            and 0 not in sweep_data
+            and len(set(sweep_data)) == len(sweep_data)
+        ):
+            break
+    else:
+        raise RuntimeError("no S-box sweep with fresh addresses and distinct non-zero words")
+    taken_addr.update(sweep_addrs)
+    addrs64 = sweep_addrs + [_fresh_addr(rng, taken_addr) for _ in range(64 - len(idx))]
+    taken64: set[int] = set(sweep_data)
+    data64 = sweep_data + [_fresh(rng, taken64) for _ in range(64 - len(idx))]
     addrs_lock = [_fresh_addr(rng, taken_addr) for _ in range(2)]
     taken_lock: set[int] = set()
     data_lock = [_fresh(rng, taken_lock) for _ in range(2)]
+    # The words of the three phase 5 epochs (keys 0, 0xFFFF_FFFF and kB, 8 each).
+    # They differ from every other drawn word, so a read that returns a word of
+    # another phase cannot match.
+    taken_ep = set(data8) | set(data64) | set(data_lock)
+    data_ep = [_fresh(rng, taken_ep) for _ in range(24)]
     return ScrPlan(
         seed=seed,
         ka=ka,
@@ -258,6 +299,7 @@ def _scr_plan(seed: int) -> ScrPlan:
         data64=data64,
         addrs_lock=addrs_lock,
         data_lock=data_lock,
+        data_ep=data_ep,
     )
 
 

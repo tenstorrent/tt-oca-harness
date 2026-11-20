@@ -32,7 +32,7 @@ Checks:
                        that vector and the marker is the one planted there.
                        ``A2`` arrives in a 64-bit scan whose low word is
                        ~``A2``; the TDO samples of that scan are logged as
-                       OBS-RSTVEC-SHIFT (cpu.adoc states no TDR length).
+                       INFO-RSTVEC-SHIFT (cpu.adoc states no TDR length).
   CHK-RSTVEC-PERSIST : after a ``wdt_rst_ni`` CPU reset the first retired PC is
                        ``A1`` again.
   CHK-RSTVEC-PERSIST-DBG : after a ``dbg_rstb_i`` pulse of the drawn width and
@@ -105,7 +105,7 @@ Checks:
                        to the pair after the write's B, and an R beat that
                        carries the written value. No TT text states the BRESP
                        or RRESP code of these accesses, so the codes are logged
-                       (OBS-WDT-STORE-RESP) and not graded.
+                       (INFO-WDT-STORE-RESP) and not graded.
                        Graded last, after every other check.
   CHK-MEMIF-WDT-RST  : on every ``clk_i`` cycle of each ``wdt_rst_ni`` CPU
                        reset, the reset inputs of the SRAM and boot ROM memory
@@ -121,7 +121,7 @@ Checks:
                        Signals: 0 starts the core in Debug Mode halted).
                        Control: CTRL-RUNREQ shows a retirement inside W_obs
                        with run request 1.
-  OBS-RUNREQ0-FETCH  : logged, not graded: the ``ifu_req`` cycles within W_obs
+  INFO-RUNREQ0-FETCH  : logged, not graded: the ``ifu_req`` cycles within W_obs
                        of the tap rise in that reset.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
@@ -1109,7 +1109,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         states that ``mpc_reset_run_req`` 0 starts the core in Debug Mode
         halted, so no instruction retires in the W_obs window after the tap
         rise. No spec states the instruction fetch of a halted core, so the
-        PR-IFU request cycles are logged (OBS-RUNREQ0-FETCH). The run request
+        PR-IFU request cycles are logged (INFO-RUNREQ0-FETCH). The run request
         returns to 1 after the window.
         """
         dut = cocotb.top
@@ -1138,7 +1138,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             f"retired_in_window={ep.retired_in_window} window={W_OBS} "
             f"rise={'none' if ep.rise_clk is None else 'seen'}",
         )
-        self.logger.info("OBS-RUNREQ0-FETCH ifu_req_clk=%d window=%d", ep.ifu_req_in_window, W_OBS)
+        self.logger.info("INFO-RUNREQ0-FETCH ifu_req_clk=%d window=%d", ep.ifu_req_in_window, W_OBS)
         dut.mpc_reset_run_req.value = 1
         self._stop = True
         await ClockCycles(dut.clk_i, 2)
@@ -1261,7 +1261,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         TDR of 31 or 32 bits, and the following CPU reset grades that vector
         (CHK-RSTVEC). cpu.adoc (Reset Vector) states the stored address bits
         [31:1] and bit 0 at zero, not the length of the TDR, so the TDO samples
-        are logged and not graded (OBS-RSTVEC-SHIFT): the head and tail words,
+        are logged and not graded (INFO-RSTVEC-SHIFT): the head and tail words,
         whether the tail equals the head (a 32-bit TDR), and the smallest TDR
         length that the TDO samples fit.
         """
@@ -1279,7 +1279,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             None,
         )
         self.logger.info(
-            "OBS-RSTVEC-SHIFT: IR=0x%02x bits=%d tdi_head=0x%08x tdo_tail=0x%08x "
+            "INFO-RSTVEC-SHIFT: IR=0x%02x bits=%d tdi_head=0x%08x tdo_tail=0x%08x "
             "tail_eq_head=%d tdr_len_fit=%s vector=0x%08x (value logged)",
             IR_RSTVEC,
             bits,
@@ -1848,7 +1848,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         An (a) read-back counts only from the bus: an AR to the pair after the
         write's B, size 8, and an R beat whose data is the written value and is
         what ``sbdata1``/``sbdata0`` return. The BRESP and RRESP codes are
-        logged (OBS-WDT-STORE-RESP), not graded.
+        logged (INFO-WDT-STORE-RESP), not graded.
         """
 
         def h(v, width=8):
@@ -1910,7 +1910,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             if row["kind"] == "a" and row["r"] is not None:
                 rresp = row["r"].resp
             self.logger.info(
-                "OBS-WDT-STORE-RESP access=(%s) reg=%s bresp=%s rresp=%s",
+                "INFO-WDT-STORE-RESP access=(%s) reg=%s bresp=%s rresp=%s",
                 row["kind"],
                 row["reg"],
                 "X" if resp is None else resp,

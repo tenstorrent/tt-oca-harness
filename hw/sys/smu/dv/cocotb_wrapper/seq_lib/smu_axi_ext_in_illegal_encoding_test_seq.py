@@ -631,7 +631,9 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             f"[0x{smc_base:x},+0x{smc_size:x}) sep_s1=0x{SEP_S1:x} smc_s1=0x{self.smc_s1:x} "
             f"neither=0x{NEITHER:x} smc_inbound_filter0=[0x0,0x{PASS_ALL_END:x}] "
             f"cfg=0x{PASS_RW_CONFIG:x}(jtag2axi) smc_aperture=local_alias sep_filter=debug-open(TEST_DEV) membership={inside}; "
-            f"waits on SF-023, SF-018, never compared"
+            f"waits on open spec questions (which addresses and filter entries reach the SEP SRAM "
+            f"and SMC scratchpad; how an illegal burst encoding on smu_axi_in is answered), never "
+            f"compared"
         )
         if not neither or not all(i[1] != i[2] for i in inside):
             raise AssertionError(
@@ -856,18 +858,20 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             self._info(
                 f"OBS-G11-WRAP-STRB: link=smu_in burst=WRAP awlen={length} start={addr} "
                 f"wstrb_per_beat={lanes} beat_addrs=wrapped-in-{(length + 1) * 8}B; "
-                f"waits on SF-030, never compared"
+                f"waits on an open spec question (whether a WRAP write-strobe lane rule applies on "
+                f"the SMU links), never compared"
             )
         for burst, length, data in rdata_obs:
             xs = any(isinstance(d, str) and not d.startswith("0x") for d in data)
             if xs:
                 self._info(
                     f"INFO-CLASSIFY: kind=rdata-x class=checker-side burst={burst} len={length} "
-                    f"the RDATA of an error beat is the open finding SF-021"
+                    f"whether the RDATA of an error beat must be resolved is an open spec question"
                 )
             self._info(
                 f"OBS-G11-SLVERR-RDATA: link=smu_in burst={'FIXED' if burst == 0 else 'WRAP'} "
-                f"arlen={length} rdata_first_beats={data}; waits on SF-021, never compared"
+                f"arlen={length} rdata_first_beats={data}; waits on an open spec question (whether "
+                f"RDATA must be resolved on error beats), never compared"
             )
         res["bad"] = bad
         res["accesses"] = n
@@ -970,7 +974,9 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             f"{obs[family]}: link=smu_in target={target} {kind} id=0x{ident:x} addr=0x{addr:x} "
             f"burst={burst} len={length} {desc} other_id_responses={len(stray)} "
             f"memory_changed={changed} "
-            f"response_time_ns={t_resp}; waits on SF-018, SF-020, never compared"
+            f"response_time_ns={t_resp}; waits on open spec questions (how an illegal burst "
+            f"encoding on smu_axi_in is answered; the READY-wait bound on each SMU link), never "
+            f"compared"
         )
         # fresh legal write and read to the S1 word of the request's target
         s1_target = "smc" if target == "smc" else "sep"
@@ -1044,7 +1050,9 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
             self._info(
                 f"OBS-G11-HOOK: id=0x{ident:x} {info['family']} {info['target']} {info['kind']} "
                 f"checker_inputs={by_id.get(ident, [])} masked={rules}; every other rule grades it; "
-                f"a fire on the masked field is bench-side by construction; waits on SF-019, never compared"
+                f"a fire on the masked field is bench-side by construction; waits on an open spec "
+                f"question (which checker provides the illegal-request injection hook), never "
+                f"compared"
             )
 
     def _beat_check(self) -> dict:
@@ -1230,7 +1238,8 @@ class smu_axi_ext_in_illegal_encoding_test_seq(smu_axi_in_sep_aperture_test_seq)
         self._info(
             f"OBS-G11-ATOP-FIELD: smu_axi_in request type carries aw.atop (6 bits, field present) "
             f"bench_tie=assign smu_axi_in_req.aw.atop='0 sampled_at_aw={sorted(self.atop)}; "
-            f"waits on SF-017, never compared"
+            f"waits on an open spec question (whether the fabric carries ATOP and how an atomic "
+            f"request is answered), never compared"
         )
         live = self._rules_live()
         self._mark("DECODE_RULES", live["families"] + len(live["sim_instances"]), 16)

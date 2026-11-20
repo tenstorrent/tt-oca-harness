@@ -176,7 +176,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         level_task = cocotb.start_soon(
             _high_times(dut.tb_octs_sync_load_from_dut, clk, _OCTS_PRIMARY_WAIT)
         )
-        # The response to a SECONDARY START write is not stated (SF-028); it is
+        # The response to a SECONDARY START write is not stated; it is
         # measured and logged, not compared.
         bresp = await self.csr_write(
             "OCTS_TIMER_START_SEC", _OCTS_TIMER_START, _OCTS_START, allow_error=True
@@ -219,7 +219,8 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
             f"PRESET 0x{_OCTS_SEC_PRESET_HI:x}_{_OCTS_PRESET_VAL:08x}, COUNT 0x{count_before:x}"
             f"->0x{count_after:x}, RUNNING=0 (STATUS=0x{status:08x}), TIMER_START rb="
             f"{start_rb & _OCTS_START}, sync_load edges={sync_edges} unresolved="
-            f"{sec_unresolved} over {_OCTS_PRIMARY_WAIT} clk_smc_i, BRESP={bresp} (LINKED-ISSUE SF-028, logged), PRESET_HI restored "
+            f"{sec_unresolved} over {_OCTS_PRIMARY_WAIT} clk_smc_i, BRESP={bresp} (LINKED-ISSUE: "
+            "the response and readback of a secondary START write, logged), PRESET_HI restored "
             f"0x{preset_hi:x}",
         )
         self._stamp("S3")
@@ -417,13 +418,14 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
             f"OCTS pad55 sync_load unresolvable on {unresolved} of {_OCTS_PRIMARY_WAIT} samples"
         )
         # The pulse width is counted in clk_smc_i; the timer clock that
-        # PULSE_WIDTH counts is not stated (SF-027), so it is logged only.
+        # PULSE_WIDTH counts is not stated, so it is logged only.
         self._chk(
             "CHK-OCTS-PRI-START",
             f"COUNT reload 0x{count_reloaded:x} in [0x{_OCTS_PRESET_VAL:x},"
             f"0x{_OCTS_PRESET_VAL + _OCTS_RELOAD_SLACK:x}], RUNNING=1 (STATUS=0x{status_pri:08x}), "
             f"pulses={sync_edges}>=1, high_time={high_times} clk_smc_i (open at window end="
-            f"{open_run}) vs PULSE_WIDTH={_OCTS_PULSE_WIDTH} (LINKED-ISSUE SF-027, logged)",
+            f"{open_run}) vs PULSE_WIDTH={_OCTS_PULSE_WIDTH} (LINKED-ISSUE: which timer clock "
+            "PULSE_WIDTH counts, logged)",
         )
         self.chk_seen.add("CHK-OCTS-DUAL-SYNC")
         self._stamp("S5")

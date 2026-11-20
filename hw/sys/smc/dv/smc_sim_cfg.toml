@@ -621,8 +621,6 @@ sources = [
   # must stay empty.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_dec.sv",

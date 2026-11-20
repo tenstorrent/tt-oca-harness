@@ -11,7 +11,7 @@ window and response. So an endpoint must answer a request the same whatever
 AxPROT, AxUSER, AxREGION, AxQOS, AxLOCK, AxCACHE, AxLEN or AxID it carries.
 
 The check set holds one register per endpoint: every internal-crossbar target
-but the DTP CSR port, which has no responder below the SMU (SF-040),
+but the DTP CSR port, which has no responder below the SMU,
 each of the 32 filter entries, one mailbox port, every peripheral-crossbar
 target, the data-accelerator control windows and the DFD/CLA window. Each probe
 is a plain read-write register, checked against the generated contract before
@@ -77,7 +77,7 @@ SEED_PATTERN = 0x9E37_79B9_7F4A_7C15
 RESET_UNIT_PROBE = "smc_reset_unit/ISOLATE_REQ_FLR_COUNTER_VALUE"
 
 PROT_VALUES = (0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x0)
-# Which AxUSER bits carry the source ID is open (SF-005), so the sweep walks a
+# Which AxUSER bits carry the source ID is open, so the sweep walks a
 # one over all twelve.
 USER_VALUES = (0xFFF, *(1 << bit for bit in range(12)), 0x000)
 REGION_VALUES = (0x1, 0x2, 0x4, 0x8, 0xF, 0x0)
@@ -934,7 +934,8 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
         else:
             self._measure(
                 f"SHIM 0x{ep.addr:08x}: rd1 {_resp(rd1.resp_code)} 0x{v1:x}, "
-                f"wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:x} (SF-041)"
+                f"wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:x} (open: the "
+                f"response and side effects of the first eFuse SHIM word)"
             )
         line = (
             f"rd 0x{ep.addr:08x} resp={_resp(rd1.resp_code)} data=0x{v1:016x}, "

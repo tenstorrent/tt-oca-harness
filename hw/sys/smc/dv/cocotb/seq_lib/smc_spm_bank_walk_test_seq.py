@@ -242,7 +242,7 @@ class smc_spm_bank_walk_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-SPM-WALK-POW2: |LP|=%d x 1 pass + LX non-zero offsets %d x %d passes, "
             "%d/%d readback==written, resp OKAY; the per-bank entry count behind the "
-            "offsets is inferred (LINKED-ISSUE SF-017)",
+            "offsets is inferred (LINKED-ISSUE: the entry count of each scratchpad bank)",
             len(lp),
             len(self.lx_nonzero),
             L0_PASSES,

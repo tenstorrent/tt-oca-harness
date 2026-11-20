@@ -8,7 +8,8 @@
 // preloads the boot ROM with rom_sanity_rom.hex, which holds seven small
 // hand-assembled functions packed as 64-bit little-endian words. The firmware
 // runs from ICCM and calls each one through a function pointer, so the body is
-// fetched from ROM, and checks the exact return value:
+// fetched from ROM, and checks the exact return value. The seven calls run
+// ROM_CALL_ITERATIONS times, and every call of every iteration is checked:
 //
 //   Func0  addi a0,zero,42 ; ret                       -> 42      (I-type)
 //   Func1  addi a0,zero,100; addi a0,a0,23 ; ret        -> 123     (multi-insn)
@@ -18,7 +19,9 @@
 //   Func5  nop x4 ; addi a0,zero,77 ; ret               -> 77      (NOP sled)
 //   Func6  add a0,a0,a1 ; ret                           -> a0+a1   (R-type)
 //
-// main() returns the error count; crt0.s reports it as the PASS/FAIL verdict.
+// Each check prints one CHK-IFU-TYPES line with the function name and the
+// iteration number k (1..ROM_CALL_ITERATIONS). main() returns the error count;
+// crt0.s reports it as the PASS/FAIL verdict.
 
 #include <stdint.h>
 
@@ -36,15 +39,33 @@
 #define ROM_FUNC5 (ROM_BASE + 0x38)
 #define ROM_FUNC6 (ROM_BASE + 0x50)
 
+#define ROM_FUNCS 7u
+#define ROM_CALL_ITERATIONS 3u
+
 typedef int32_t (*func_void_t)(void);
 typedef int32_t (*func_i32_t)(int32_t);
 typedef int32_t (*func_i32_i32_t)(int32_t, int32_t);
 
+static void put_dec(uint32_t v) {
+    char buf[10];
+    int n = 0;
+    do {
+        buf[n++] = (char)('0' + v % 10u);
+        v /= 10u;
+    } while (v != 0u);
+    while (n > 0) {
+        sep_mbx_putc(buf[--n]);
+    }
+}
+
 // Compare a ROM function's return value to the expected value and log a
-// CHK-IFU-TYPES PASS/FAIL line naming the function and the observed value.
-static int check(const char *name, int32_t got, int32_t want) {
+// CHK-IFU-TYPES PASS/FAIL line naming the function, the iteration and the
+// observed value.
+static int check(const char *name, uint32_t k, int32_t got, int32_t want) {
     sep_mbx_puts(got == want ? "CHK-IFU-TYPES PASS: " : "CHK-IFU-TYPES FAIL: ");
     sep_mbx_puts(name);
+    sep_mbx_puts(" k=");
+    put_dec(k);
     sep_mbx_puts(" got=");
     sep_mbx_puthex((uint32_t)got);
     sep_mbx_puts(" want=");
@@ -61,17 +82,25 @@ int main(void) {
     sep_mbx_puts("SEP ROM IFU sanity test\n");
 
     // Each call drives the IFU to fetch the function body from boot-ROM.
-    errors += check("IFU simple return (I-type)", ((func_void_t)ROM_FUNC0)(), 42);
-    errors += check("IFU multi-instruction", ((func_void_t)ROM_FUNC1)(), 123);
-    errors += check("IFU arg passthrough", ((func_i32_t)ROM_FUNC2)(99), 100);
-    errors += check("IFU LUI+ADDI (U-type)", ((func_void_t)ROM_FUNC3)(), (int32_t)0xDEADBEEF);
-    errors += check("IFU jump (J-type JAL)", ((func_void_t)ROM_FUNC4)(), 55);
-    errors += check("IFU NOP sled", ((func_void_t)ROM_FUNC5)(), 77);
-    errors += check("IFU two-arg add (R-type)", ((func_i32_i32_t)ROM_FUNC6)(30, 12), 42);
+    for (uint32_t k = 1u; k <= ROM_CALL_ITERATIONS; k++) {
+        errors += check("IFU simple return (I-type)", k, ((func_void_t)ROM_FUNC0)(), 42);
+        errors += check("IFU multi-instruction", k, ((func_void_t)ROM_FUNC1)(), 123);
+        errors += check("IFU arg passthrough", k, ((func_i32_t)ROM_FUNC2)(99), 100);
+        errors +=
+            check("IFU LUI+ADDI (U-type)", k, ((func_void_t)ROM_FUNC3)(), (int32_t)0xDEADBEEF);
+        errors += check("IFU jump (J-type JAL)", k, ((func_void_t)ROM_FUNC4)(), 55);
+        errors += check("IFU NOP sled", k, ((func_void_t)ROM_FUNC5)(), 77);
+        errors += check("IFU two-arg add (R-type)", k, ((func_i32_i32_t)ROM_FUNC6)(30, 13), 43);
+    }
 
     if (errors == 0) {
-        sep_mbx_puts("PASS: 7/7 boot-ROM IFU functions fetched+executed "
-                     "(I/U/R/J/NOP)\n");
+        sep_mbx_puts("PASS: ");
+        put_dec(ROM_FUNCS * ROM_CALL_ITERATIONS);
+        sep_mbx_putc('/');
+        put_dec(ROM_FUNCS * ROM_CALL_ITERATIONS);
+        sep_mbx_puts(" boot-ROM IFU calls fetched+executed (I/U/R/J/NOP), iterations=");
+        put_dec(ROM_CALL_ITERATIONS);
+        sep_mbx_putc('\n');
     }
     return errors;
 }

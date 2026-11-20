@@ -9,7 +9,7 @@ Field layout (`alias_remap.adoc`): `region_start.start_addr` and
 `region_end.end_addr` are [55:12] RW, reset 0; `region_attrs` has `valid` [63],
 `cacheable` [59:56] and `offset` [55:12], all RW, reset 0. `output_remap.adoc`:
 `region_attrs` has `valid` [63] and `offset` [55:0], RW, reset 0. Reserved bits
-read back are logged only (SF-001 is open).
+read back are logged only.
 
 From SEP_IN the sequence reads every remap register at its reset, walks all-ones,
 zero and a walking one through every address field of the 8 alias entries and
@@ -329,7 +329,7 @@ class smc_remap_region_offset_walk_test_seq(SmcCsrSeq):
             "CHK-REMAP-RESET",
             f"first-reads alias/mmode/xvisor OKAY fields=0, {len(ALL_REGS)}/40 registers "
             f"fields=0x0; reserved bits observed OR=0x{self._reserved['reset']:016x} "
-            "(LINKED-ISSUE SF-001, logged only)",
+            "(LINKED-ISSUE: whether reserved register bits read 0 and ignore writes; logged only)",
         )
 
     async def _alias_walk(self) -> None:
@@ -351,7 +351,7 @@ class smc_remap_region_offset_walk_test_seq(SmcCsrSeq):
             "CHK-REMAP-ALIAS-ADDR-WALK",
             f"8 entries x 3 regs x 46 words, {compares}/1104 [55:12] match, resp OKAY; "
             f"reserved [63:56]/[11:0] observed OR=0x{self._reserved['alias-walk']:016x} "
-            "(LINKED-ISSUE SF-001, logged only)",
+            "(LINKED-ISSUE: whether reserved register bits read 0 and ignore writes; logged only)",
         )
 
     async def _alias_attr(self) -> None:
@@ -414,7 +414,8 @@ class smc_remap_region_offset_walk_test_seq(SmcCsrSeq):
                 f"CHK-REMAP-{table}-WALK",
                 f"8 entries x 58 words {offsets}/464 offset match, valid 1->0 x{valids // 2}; "
                 f"{offsets + valids}/480 compares; reserved [62:56] observed OR=0x{reserved:016x} "
-                "(LINKED-ISSUE SF-001, logged only)",
+                "(LINKED-ISSUE: whether reserved register bits read 0 and ignore writes; "
+                "logged only)",
             )
 
     async def _alias_xlate(self, mem) -> None:

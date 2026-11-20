@@ -58,7 +58,7 @@ write is logged (OBS-SECDIS-SHADOW-WR). The
 (CHK-SECDIS-LC-WR): the held word is the INVALID encoding, which is terminal.
 Its JTAG write response has no golden and is logged (OBS-SECDIS-LC-WR). The
 external debug bus is watched around those writes and in a quiet window on each
-side of them and logged (OBS-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
+side of them and logged (INFO-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
 
 Before sense and before any token, on the first ``clk_i`` edge with ``rst_ni``
 high, ``lc_state_o`` reads the ``LC_STATE`` reset value 0x0F, the INVALID
@@ -78,7 +78,7 @@ After a later full sense, a fresh match on the PROD image opens
 feature-control probe are all ones and ``secure_tm_o`` is 0.
 
 Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR,
-OBS-SECDIS-SHADOW-WR, OBS-SECDIS-DBG-BUS and OBS-DTP-PORT-LEVEL are log lines):
+OBS-SECDIS-SHADOW-WR, INFO-SECDIS-DBG-BUS and OBS-DTP-PORT-LEVEL are log lines):
 
   CHK-LC-STATE-PORT      first clk_i edge after the rst_ni release, sense open:
                          lc_state_o == LC_STATE reset value 0x0F (INVALID)
@@ -913,7 +913,7 @@ class sep_sec_dis_override_test(sep_base_test):
         two write responses stay logged only.
 
         No specification puts eFuse state on ``ext_debug_bus_o``
-        (port_table.adoc names the port only), so OBS-SECDIS-DBG-BUS logs the
+        (port_table.adoc names the port only), so INFO-SECDIS-DBG-BUS logs the
         bits that change while the two JTAG writes run and in a quiet window
         before them and one after them, without a verdict. The writable shadow
         keeps its new bit
@@ -1034,7 +1034,7 @@ class sep_sec_dis_override_test(sep_base_test):
         )
 
         self.logger.info(
-            "OBS-SECDIS-DBG-BUS: event edges=%d changed_bits=%d mask=0x%x; "
+            "INFO-SECDIS-DBG-BUS: event edges=%d changed_bits=%d mask=0x%x; "
             "quiet pre edges=%d mask=0x%x, post edges=%d mask=0x%x",
             event.edges,
             bin(event.changed).count("1"),

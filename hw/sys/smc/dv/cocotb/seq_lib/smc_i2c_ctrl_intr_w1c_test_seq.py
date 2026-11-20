@@ -1336,7 +1336,8 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"target I2C{k} TIMEOUT_CTRL VAL={val}: bench held SCL low {hold_ns} ns after data "
             f"bit 7 (read {bit7}); TARGET_EVENTS=0x{seen[0]:08x} {fired} ns into the hold; "
             f"written 0x2 -> TARGET_EVENTS=0x{after:08x}; TX_STRETCH logged, not compared "
-            f"(LINKED-ISSUE gate T_impl_i2c_w1c-s8-dut, SF-040): with BUS_TIMEOUT set "
+            f"(LINKED-ISSUE: the TX_STRETCH state after a target bus "
+            f"timeout): with BUS_TIMEOUT set "
             f"INTR_STATE=0x{intr:08x} TX_STRETCH={int(bool(intr & I2C_INTR_STATE_TX_STRETCH))}, "
             f"after the written 0x2 INTR_STATE=0x{after_intr:08x} TX_STRETCH="
             f"{int(bool(after_intr & I2C_INTR_STATE_TX_STRETCH))}"
@@ -1396,7 +1397,8 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"0x{ARB_ADDR[k]:02x}; ARBITRATION_LOST controller(s) {lost}; I2C0 events="
             f"0x{state['ev0']:08x} I2C{c} events=0x{state[f'ev{c}']:08x}; target "
             f"TARGET_EVENTS=0x{tgt:08x} ARBITRATION_LOST={int(bool(tgt & TGT_ARB_LOST))} "
-            f"(not specified, measured, SF-017); {cleared}; wire {frames}"
+            f"(not specified whether a target sets ARBITRATION_LOST in a lost arbitration, "
+            f"measured); {cleared}; wire {frames}"
         )
 
     async def _s8_tgt_abnormal(self) -> None:
@@ -1457,7 +1459,8 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             await self._leg_end(f"{label}_END", (c, k))
             rows.append(
                 f"target I2C{k} / controller I2C{c}: RCONT=1 STOP=1 read {early}; INTR_STATE="
-                f"0x{intr:08x} UNEXP_STOP={bit} (not specified, measured, SF-007); ACQDATA {acq}; "
+                f"0x{intr:08x} UNEXP_STOP={bit} (not specified whether an early STOP sets "
+                f"UNEXP_STOP and which ACQ entries it leaves, measured); ACQDATA {acq}; "
                 f"written 0x2000 -> 0x{after:08x}; normal read {normal}; INTR_STATE=0x{intr_n:08x} "
                 f"UNEXP_STOP=0; ACQDATA {acq_n}"
             )
@@ -1612,7 +1615,8 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             observed = (
                 f"INTR_STATE=0x{first:08x} and 0x{second:08x} {IRQ_SAMPLE_GAP_CYCLES} cycles "
                 f"apart (SMBALERT=0); SMBUS_STATUS=0x{status:08x} SMBALERT="
-                f"{int(bool(status & I2C_SMBUS_STATUS_SMBALERT))} (not specified, measured, SF-012)"
+                f"{int(bool(status & I2C_SMBUS_STATUS_SMBALERT))} (not specified what "
+                f"SMBUS_STATUS.SMBALERT reads while SMBUS_EN is clear, measured)"
             )
         wire = await self._address_target(1, HOLDER_TARGET_ADDR, label, configure=False)
         holder = await self._rd(f"{label}_H0_SMBUS_CTRL", "SMBUS_CTRL", 0)

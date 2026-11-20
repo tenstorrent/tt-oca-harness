@@ -45,7 +45,9 @@ def _define(header: str, name: str) -> int:
 
 KM_SRAM_BASE = _define("key_manager_addr.h", "KEY_MANAGER_SRAM_BASE_ADDR")
 KM_SRAM_SIZE = _define("key_manager_addr.h", "KEY_MANAGER_SRAM_SIZE")
-SRAM_REGION_BYTES = 1024  # km_csr.adoc, SRAM_LOCK: one bit per 1 KB region
+# SRAM_LOCK holds one lock bit per equal region of the KM SRAM.
+SRAM_LOCK_REGIONS = _define("km_csr.h", "KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw")
+SRAM_REGION_BYTES = KM_SRAM_SIZE // SRAM_LOCK_REGIONS
 KPV_SLOTS = _define("key_manager_addr.h", "KEY_MANAGER_KPV_CTRL_NUM")
 KPV_SLOT_WORDS = _define("key_manager_addr.h", "KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM")
 AXI_SLVERR = _define("km_csr.h", "KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm")

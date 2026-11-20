@@ -63,11 +63,10 @@ external stream 0 input sees ``tready`` 1 on every clock it holds ``tvalid`` 1
 stream 0 held ``tvalid`` 1 on at least one clock of the leg. Graded only on the
 passes whose s has bit 0 clear, so it is not in ``required_evidence``.
 
-Logged only (no stated outcome): ``OBS-SEL-READY0`` when bit 0 is set (no text
-states when the Key Manager sink lowers ready); ``OBS-EXT-WITHDRAW`` when a source drops a beat it
-holds at the end of a leg: the held word, tready at the drop and the next word that
-completes at that port. ``OBS-EXT-NOSRC`` in the same step: the data of the pop (no
-text states the data of a SLVERR pop), with the levels of CHK-EXT-NOSRC-LEVEL.
+Logged only (no stated outcome): ``INFO-SEL-READY0`` when bit 0 is set (no text
+states when the Key Manager sink lowers ready). ``INFO-EXT-NOSRC`` in the same step:
+the data of the pop (no text states the data of a SLVERR pop), with the levels of
+CHK-EXT-NOSRC-LEVEL.
 
 Coverage gate: a FAIL closes the graded window and keeps it closed for the rest of
 the leaf. The sampler holds the cells of the external beats, the external stalls,
@@ -670,37 +669,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _drop_source(self, *streams: int) -> None:
         """End of a leg: the source drops whatever it still holds or queues."""
-        dut = cocotb.top
         for i in streams:
             if self.ext.pending(i):
-                tvalid = _bit(_known(dut.ext_trng_tvalid_o), i)
-                tready = _bit(_known(dut.ext_trng_tready_o), i)
-                held = _word(_known(dut.ext_trng_tdata_o), i) if tvalid == 1 else None
                 await self.ext.source_reset(i)
-                if held is not None:
-                    cocotb.start_soon(self._withdraw_obs(i, held, tready))
-
-    async def _withdraw_obs(self, i: int, held: int, tready: int | None) -> None:
-        """The next word that completes at port ``i`` after a source drops a held beat."""
-        dut = cocotb.top
-        nxt = None
-        for _ in range(SETTLE_CAP):
-            await FallingEdge(dut.clk_i)
-            await ReadOnly()
-            if (
-                _bit(_known(dut.ext_trng_tvalid_o), i) == 1
-                and _bit(_known(dut.ext_trng_tready_o), i) == 1
-            ):
-                nxt = _word(_known(dut.ext_trng_tdata_o), i)
-                break
-        self.chk.obs(
-            "EXT-WITHDRAW",
-            stream=i,
-            held=f"0x{held:08x}",
-            tready_at_drop=tready if tready is not None else "x",
-            next="none" if nxt is None else f"0x{nxt:08x}",
-            next_eq_held=int(nxt == held),
-        )
 
     async def _settle_pairs(self, stream: int, target: int, bound: int) -> int | None:
         """Wait until ``target`` beats completed at port ``stream`` since the counter
@@ -803,7 +774,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self.trace.begin()
         if i == 1:
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
-            self.chk.obs("EXT-AES-REQ", crypto_edn_req0=self.rd(dut.crypto_edn_req_o, 1))
+            self.chk.info("EXT-AES-REQ", crypto_edn_req0=self.rd(dut.crypto_edn_req_o, 1))
         bound = len(sp.xfer_words) * (RANDOM_GAP_MAX + LONG_GAP + 16) + SETTLE_CAP
         done = await self._feed(i, sp.xfer_words, sp.xfer_gaps, sp.gap_pattern, bound)
         await self._clocks(8)
@@ -1043,9 +1014,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
         close_graded_window(self.logger)
         await self._drop_source(2)
-        await self._no_source_obs()
+        await self._no_source_info()
 
-    async def _no_source_obs(self) -> None:
+    async def _no_source_info(self) -> None:
         """Pool STATUS and one DATA pop with stream 2 external and no beat offered."""
         old = await self.reg._rd(SEL_ADDR) & SEL_MASK
         sel = await self._sel(old | 1 << 2)
@@ -1093,7 +1064,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             settle_reads > 0 and level1 == level0 and xfers == 0 and acks == 0,
             **fields,
         )
-        self.chk.obs(
+        self.chk.info(
             "EXT-NOSRC",
             sel=f"0x{sel:x}",
             pending=self.ext.pending(2),
@@ -1101,6 +1072,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             level_before=level0,
             level_after=level1,
             rdata=f"0x{(seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF:016x}",
+            chk="CHK-EXT-NOSRC-LEVEL",
         )
 
     async def _ready_leg(self, sp: StreamPlan) -> None:
@@ -1133,7 +1105,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             "tready_low_clk": sum(1 for v in s0 if v == 0),
         }
         if got & 1:
-            self.chk.obs("SEL-READY0", **ready0)
+            self.chk.info("SEL-READY0", **ready0)
         else:
             self._ctrl("SEL-READY0", len(s0) >= 1, **ready0)
             self._grade("SEL-READY0", ready0["tready_low_clk"] == 0, **ready0)

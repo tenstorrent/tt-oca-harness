@@ -52,7 +52,6 @@ READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_AD
 
 PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-PROG_RB = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm")
 PROG_EN = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 PROG_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
@@ -129,7 +128,7 @@ SPARE27_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_bm")
 
 #: Bit addresses of SMC_COV_B4_010: 0xFFFF is out of range under every reading;
 #: 0x2000 and 0x6000 are measured only, and 0x1FFF is the last bit of the
-#: 8192-bit reading (SF-025).
+#: 8192-bit reading; which bit addresses the bank accepts as in range is open.
 OOR_ADDR = 0xFFFF
 OOR_EXTRA = (0x2000, 0x6000)
 LAST_IN_RANGE = 0x1FFF
@@ -250,7 +249,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("STATUS_CLR0", STATUS, 0)
 
     async def _program(self, label: str, idle: bool = True) -> int:
-        cmd = _BIT | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
+        cmd = _BIT | PROG_DATA | PROG_GO | PROG_EN
         await self.csr_write(f"{label}_GO", PROGRAM_CTRL, cmd)
         st = await self._wait_mask(PROGRAM_CTRL, PROG_DONE, f"{label}_DONE")
         if idle:
@@ -765,7 +764,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "STEP S2: program 0x%x -> STATUS=0x%x PROGRAM_CTRL=0x%x program_status=%d "
-            "program_done=%d (measured, SF-027)",
+            "program_done=%d (measured; open: the program status and done of an out-of-range "
+            "program)",
             OOR_ADDR,
             st,
             pctrl,
@@ -804,7 +804,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             await self.csr_write(f"S2_PROG_{addr:x}_IDLE", PROGRAM_CTRL, 0)
         cocotb.log.info(
             "CHK-EFUSE-OOR-PROG: addr 0x%04X err=1; clear -> 0; in-range -> 0; %s logged "
-            "(measured, LINKED-ISSUE SF-025/SF-027; 0xFFFF PROGRAM_CTRL=0x%x)",
+            "(measured, LINKED-ISSUE: which bit addresses the bank accepts as in range and the "
+            "program status and done of an out-of-range program; 0xFFFF PROGRAM_CTRL=0x%x)",
             OOR_ADDR,
             " ".join(
                 f"0x{a:04X} err={e} (STATUS=0x{s:x} CTRL=0x{c:x})" for a, e, s, c in extra_prog
@@ -853,7 +854,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             await self.csr_write(f"S4_READ_{addr:x}_IDLE", READ_CTRL, 0)
         cocotb.log.info(
             "CHK-EFUSE-OOR-READ: addr 0x%04X err=1 read_status=1; clear -> 0; in-range -> 0; "
-            "%s logged (measured, LINKED-ISSUE SF-025)",
+            "%s logged (measured, LINKED-ISSUE: which bit addresses the bank accepts as in "
+            "range)",
             OOR_ADDR,
             " ".join(
                 f"0x{a:04X} err={e} (STATUS=0x{s:x} CTRL=0x{c:x})" for a, e, s, c in extra_read
@@ -871,7 +873,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-EFUSE-LAST-IN-RANGE: addr 0x%04X program err=%d read err=%d, both completed "
             "(PROGRAM_CTRL=0x%x STATUS=0x%x; READ_CTRL=0x%x STATUS=0x%x; measured, "
-            "LINKED-ISSUE SF-025)",
+            "LINKED-ISSUE: which bit addresses the bank accepts as in range)",
             LAST_IN_RANGE,
             int(bool(pst & PROG_ADDR_ERR)),
             int(bool(rst & READ_ADDR_ERR)),
@@ -904,7 +906,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         assert dout2 == dout, f"S7: READ_DATA re-read 0x{dout2:08x} differs from 0x{dout:08x}"
         cocotb.log.info(
             "CHK-EFUSE-RDATA-UPPER-ONES: dout=0x%08x [31:29]=0b%s, re-read identical "
-            "(word bit address 0x%x, READ_CTRL=0x%x; bits per read and alignment SF-031)",
+            "(word bit address 0x%x, READ_CTRL=0x%x; open: the bits per read and the "
+            "read-address alignment)",
             dout,
             format((dout >> UPPER_ONES[0]) & 0b111, "03b"),
             ONES_WORD_BIT,
@@ -931,7 +934,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "CHK-EFUSE-GUARD-HI-WRITE: lock bits %d/%d set=1, after write 0 still 1; "
             "req_error after SPARE4 program=%d (bit address 0x%x, PROGRAM_CTRL=0x%x "
             "STATUS=0x%x, after clear 0x%x; LOCKS 0x%016x / 0x%016x; measured, "
-            "LINKED-ISSUE SF-028)",
+            "LINKED-ISSUE: whether a program into a write-locked slot sets efuse_req_error)",
             SPARE4_WLOCK.bit_length() - 1,
             SPARE27_WLOCK.bit_length() - 1,
             int(bool(st & REQ_ERR)),
@@ -954,7 +957,9 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         sp27 = await self._shadow_read("S9_SPARE27", SPARE27_ADDR)
         cocotb.log.info(
             "CHK-EFUSE-GUARD-HI-READ: read locks %d/%d = 1; SPARE4 resp=%d data=0x%08x; "
-            "SPARE27 resp=%d data=0x%08x (LOCKS 0x%016x; measured, LINKED-ISSUE SF-029/SF-028)",
+            "SPARE27 resp=%d data=0x%08x (LOCKS 0x%016x; measured, LINKED-ISSUE: the response "
+            "and data of a read of a read-locked word and whether a program into a "
+            "write-locked slot sets efuse_req_error)",
             SPARE4_RLOCK.bit_length() - 1,
             SPARE27_RLOCK.bit_length() - 1,
             sp4.resp_code,

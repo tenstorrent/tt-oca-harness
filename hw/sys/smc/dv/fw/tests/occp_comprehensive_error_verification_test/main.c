@@ -8,9 +8,11 @@
  * invalid addresses, zero-length and oversized transfers, invalid JUMP and
  * VALIDATE_AND_BOOT targets, unknown commands) and scans the status ring buffer
  * for error reports; these steps only log, and no specific error code is
- * checked. The test fails when a wrapping or edge-address write, a read with an
- * oversized count, a zero-length write or a 255-byte write succeeds, or when a
- * written pattern does not read back byte-reversed.
+ * checked. With the STATUS_RPT_DISABLE strap set, the scan stops at the first
+ * GET_SMC_STATUS, which must return Unsupported_StatusID. The test fails when a
+ * wrapping or edge-address write, a read with an oversized count, a zero-length
+ * write or a 255-byte write succeeds, or when a written pattern does not read
+ * back byte-reversed.
  */
 
 #include "occp_test_common.h"
@@ -353,8 +355,13 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
         uint32_t status = 0;
         int result =
             occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        if (result != OCCP_SUCCESS) {
+            simputs("FAIL: GET_SMC_STATUS failed\n");
+            test_passed = false;
+            break;
+        }
 
-        if (result == OCCP_SUCCESS && status != 0) {
+        if (status != 0) {
             uint32_t fw_id = (status >> 28) & 0xF;
             uint32_t msg_type = (status >> 24) & 0xF;
             uint32_t msg_value = status & 0xFFFFFF;
@@ -369,7 +376,7 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
                     simputs("\n");
                 }
             }
-        } else if (status == 0) {
+        } else {
             break;
         }
     }

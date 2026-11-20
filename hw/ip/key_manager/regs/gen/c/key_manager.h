@@ -916,7 +916,11 @@ typedef struct __attribute__ ((__packed__)) {
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_reset 0x0
 
 // addrmap - sep_efuse_map
-// Per-field write-lock and read-lock registers for the SEP eFuse map.
+// Shadow registers of the SEP eFuse fields and their per-field write-lock and
+// read-lock registers. The access properties of each field state the
+// software access to its shadow register when the field's locks are clear;
+// a set write lock, a set read lock or secure test mode further restricts
+// it as the LOCKS register describes.
 typedef struct __attribute__ ((__packed__)) {
     uint64_t LOCKS;
     uint32_t LOCKS_SPARE;
@@ -1001,7 +1005,7 @@ typedef struct __attribute__ ((__packed__)) {
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
-// eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
+// eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.
 // Bit address to program
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
@@ -1017,11 +1021,6 @@ typedef struct __attribute__ ((__packed__)) {
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bp 17
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_reset 0x0
-// When set, trigger a read back after a program
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm 0x40000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bp 18
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_reset 0x0
 // When set, the program is in progress
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm 0x1000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bp 24
@@ -1077,8 +1076,8 @@ typedef struct __attribute__ ((__packed__)) {
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_INTERFACE_READ_DATA
-// Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
-// Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
+// Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.
+// Program response data from the adopter SHIM; its meaning is adopter-defined.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bw 32

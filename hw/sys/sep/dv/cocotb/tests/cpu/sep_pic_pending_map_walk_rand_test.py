@@ -133,8 +133,10 @@ if any failed:
   ``aw<k>``..``ae<k>``; every high run there is one clock; exactly one rise
   there ("ALERT_TEST sends one").
 
-Logged, not graded: ``OBS-RAS-<FIELD>-DELAY`` (clocks from the opening mark to
-the first rise, and the pulse count), ``OBS-RAS-DMA_ALERT-MODE2`` (the field
+``INFO-RAS-<FIELD>-DELAY`` logs the clocks from the opening mark to the first
+rise, and the pulse count: not graded; no open specification question.
+
+Logged, not graded: ``OBS-RAS-DMA_ALERT-MODE2`` (the field
 under the alert pair force: the rise after the first forced clock, the high
 clocks to the release mark ``di1`` and any fall before it; ``port_table.adoc:130``
 calls ``dma_alert`` a one-cycle pulse, while the ``sep_ras_t`` field comment it
@@ -145,7 +147,7 @@ pulses can be adjacent) and
 ``INFO-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
 adapter fault in this leaf).
 
-Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
+Logged, not graded: ``INFO-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
 masked in every compare), ``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks
 and rises of each source line over the single-source walk, and the source 12
 latency and shape) and the boundary source index. Bench records:
@@ -1344,7 +1346,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             exp_width=1,
             bad_width=bad_w or "none",
         )
-        self.ras_chk.obs(
+        self.ras_chk.info(
             f"RAS-{field.upper()}-DELAY",
             windows=rise,
             open_to_first_rise_clk=delays,
@@ -1379,7 +1381,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _chk_ras(self) -> None:
-        """The CHK-RAS-<FIELD>-<HALF> checks of ``RAS_HALVES``, then the OBS-RAS lines.
+        """The CHK-RAS-<FIELD>-<HALF> checks of ``RAS_HALVES``, then the INFO-RAS and OBS-RAS lines.
 
         Each IDLE half covers every window of the leaf in which the cited text
         sends nothing on that field: the DMA alert is source 12 and no crypto
@@ -1656,7 +1658,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )
         finally:
             await self.con.stop()
-            noise.cancel()
+            await noise.stop()
             for t in tasks:
                 t.cancel()
             await self.w.stop()

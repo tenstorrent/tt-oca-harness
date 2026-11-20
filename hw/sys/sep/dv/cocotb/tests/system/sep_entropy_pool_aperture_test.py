@@ -6,12 +6,12 @@ no_cpu host-AXI. The pool fills from the native EDN endpoint after the
 shared entropy bring-up. Empty-pop SLVERR is taken only after at least one
 accepted pop. Bit [36] must equal STATUS pool_low at every graded read; the
 low watermark is not stated, so the pool_low value at empty is logged only
-(OBS-POOL-LOW-EMPTY, OBS-POOL-LOW-REHIGH). CHK-POOL-FILL claims that pool_low
+(INFO-POOL-LOW-EMPTY, INFO-POOL-LOW-REHIGH). CHK-POOL-FILL claims that pool_low
 clears only when pool_low and [36] read 1 together at empty; otherwise it claims
 only that both read 0 at a level above 0. Bit [37] is the first fill-stall
 after ESRC disable plus EDN_ENABLE=False with the pool not full: the stall
 threshold is not stated, so STATUS is polled up to STALL_POLL_CAP clocks and
-the time to the flag is logged (OBS-POOL-STALL-TIME). CHK-STALL-DURATION holds
+the time to the flag is logged (INFO-POOL-STALL-TIME). CHK-STALL-DURATION holds
 the same stall STALL_THRESH * 3 clocks after the flag rose and requires [37]
 and the fill-stall cause to stay set. Drain-under-fill is not claimed.
 
@@ -34,8 +34,8 @@ read that must show the armed level.
 
 IRQ_CAUSE values: the RDL names the fields and gives no description, and no
 document states whether the register is live or latched or what bits 63:3
-read. Each value is logged only (OBS-POOL-CAUSE-EMPTY, OBS-POOL-CAUSE-IDLE,
-OBS-POOL-CAUSE-STALL, OBS-POOL-CAUSE-HELD) and no check depends on it. The
+read. Each value is logged only (INFO-POOL-CAUSE-EMPTY, INFO-POOL-CAUSE-IDLE,
+INFO-POOL-CAUSE-STALL, INFO-POOL-CAUSE-HELD) and no check depends on it. The
 graded part of an IRQ_CAUSE read is its OKAY response and that it does not
 move fifo_level (CHK-POOL-LEVEL-STEP).
 
@@ -60,7 +60,7 @@ at the end of the graded body:
          ``pool_edn_ack_o`` 1 after the EDN re-enable.
   CLEAR  0 at most STALL_RAS_CLEAR_LAG (2) clocks after that acknowledge.
 The field before the first fill (OBS-RAS-ENTROPY_FILL_STALL-BRINGUP), the rise
-delay and the fall delay (OBS-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
+delay and the fall delay (INFO-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
 
 RANDCFG: extra accepted pops come from the run seed. Every seed walks the
 high-bit mirrors of the live registers (the offsets that catch a truncated
@@ -285,10 +285,11 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             fall_clk=clear,
             bound=STALL_RAS_CLEAR_LAG,
         )
-        self._ras_lines.obs(
+        self._ras_lines.info(
             "RAS-ENTROPY_FILL_STALL-DELAY",
             fall_after_ack=None if clear is None else clear - ack_clk,
             enable_to_ack=None if ack_clk is None else ack_clk - m_en.clk,
+            chk="CHK-RAS-ENTROPY_FILL_STALL-CLEAR",
         )
 
     async def _arm_not_full_no_ack(self, pool: SepEntropyPool) -> int:
@@ -519,7 +520,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         irq0 = await self._irq(IRQ_POOL_LOW)
         cause0 = await pool.irq_cause()
         self.logger.info(
-            "OBS-POOL-LOW-EMPTY level=0 status=0x%x pool_low=%d irq36=%d cause=0x%x",
+            "INFO-POOL-LOW-EMPTY level=0 status=0x%x pool_low=%d irq36=%d cause=0x%x "
+            "chk=CHK-POOL-LOW-HIGH",
             st0,
             low0,
             irq0,
@@ -534,7 +536,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             irq0,
             st0,
         )
-        self.logger.info("OBS-POOL-CAUSE-EMPTY cause=0x%x status=0x%x", cause0, st0)
+        self.logger.info("INFO-POOL-CAUSE-EMPTY cause=0x%x status=0x%x", cause0, st0)
         self._step = _LevelStep(self._pool_beats)
         pool.step = self._step
         open_graded_window(TEST, self.logger)
@@ -592,7 +594,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         claim = (
             "pool_low and [36] read 1 at level 0, then 0"
             if high_at_empty
-            else "no clear claimed: pool_low read 0 at level 0 (OBS-POOL-LOW-EMPTY)"
+            else "no clear claimed: pool_low read 0 at level 0 (INFO-POOL-LOW-EMPTY)"
         )
         assert level_fill > 0 and low_fill == 0 and irq_fill == 0, (
             f"CHK-POOL-FILL FAIL: fifo_level={level_fill} pool_low={low_fill} [36]={irq_fill} "
@@ -609,7 +611,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         cause = await pool.irq_cause()
         self.logger.info(
-            "OBS-POOL-CAUSE-IDLE cause=0x%x empty_cause=0x%x status=0x%x",
+            "INFO-POOL-CAUSE-IDLE cause=0x%x empty_cause=0x%x status=0x%x",
             cause,
             cause0,
             st_fill,
@@ -761,12 +763,13 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             rises=len(ras_rises),
             polled_clocks=waited,
         )
-        self._ras_lines.obs(
+        self._ras_lines.info(
             "RAS-ENTROPY_FILL_STALL-DELAY",
             rise_after_edn_disable=ras_rises[0] - m_dis.clk if ras_rises else None,
         )
         self.logger.info(
-            "OBS-POOL-STALL-TIME ns=%d polled_clocks=%d fill_stall=%d level=%d",
+            "INFO-POOL-STALL-TIME ns=%d polled_clocks=%d fill_stall=%d level=%d "
+            "chk=CHK-STALL-ASSERT",
             get_sim_time("ns") - t_stall0,
             waited,
             fill_stall,
@@ -785,7 +788,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             pool_level(st_stall),
         )
         cause_stall = await pool.irq_cause()
-        self.logger.info("OBS-POOL-CAUSE-STALL cause=0x%x status=0x%x", cause_stall, st_stall)
+        self.logger.info("INFO-POOL-CAUSE-STALL cause=0x%x status=0x%x", cause_stall, st_stall)
 
         # The flag reports a fill request that is still outstanding, so holding the
         # same stall for STALL_THRESH * 3 more clocks (a DV-chosen hold) must leave
@@ -802,7 +805,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             STALL_THRESH * 3,
         )
         cause_held = await pool.irq_cause()
-        self.logger.info("OBS-POOL-CAUSE-HELD cause=0x%x", cause_held)
+        self.logger.info("INFO-POOL-CAUSE-HELD cause=0x%x", cause_held)
 
         # Stall phase: EDN is disabled and the pool is not full, so no fill can
         # enter. The two IRQ_CAUSE reads above must leave fifo_level at the armed
@@ -896,7 +899,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         drain = self._edge_trace[drain_mark:]
         first_low = next((lv for lv, lo in drain if lo == 1), None)
         self.logger.info(
-            "OBS-POOL-LOW-LEVEL drain_first_low_level=%s fill_clear_level=%d "
+            "INFO-POOL-LOW-LEVEL drain_first_low_level=%s fill_clear_level=%d "
             "fill_last_low_level=%s drain_trace=%s",
             first_low,
             self._fill_level,
@@ -907,7 +910,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # (CHK-POOL-LOW-EDGE); the pool_low value at empty is not stated.
         st_empty = await pool.status()
         self.logger.info(
-            "OBS-POOL-LOW-REHIGH level=%d pool_low=%d irq36=%d",
+            "INFO-POOL-LOW-REHIGH level=%d pool_low=%d irq36=%d",
             pool_level(st_empty),
             pool_flag(st_empty, ST_POOL_LOW),
             await self._irq(IRQ_POOL_LOW),

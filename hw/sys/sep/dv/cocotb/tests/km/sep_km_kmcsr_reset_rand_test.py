@@ -64,7 +64,7 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-RST-SOFT-MBOX after SOFT the mailbox word survives: the restarted image reads it
                     as its list header and stops in ERROR with ERR_HDR and the word's
                     low 24 bits
-  OBS-KMCSR-READ-RESP   the error flags of each read of a virtual UART or testbench
+  INFO-KMCSR-READ-RESP  the error flags of each read of a virtual UART or testbench
                     word (no TT text states the response code of these reads)
   CHK-KMCSR-RESET-READ  VUART_TX, TB_RESULT, TB_SIGNATURE, TB_ERRCODE, TB_SUBTEST and
                     TB_CMD_ARG (sw = rw, hw = r, no writer in this leaf) read their
@@ -96,7 +96,7 @@ on ``s_axi_aw*``. The first PARK uses the largest W and gives the fall delay and
 the AW latency that time the shorter holds; the leaf logs the measured W of
 every PARK and records a missed W as a missing control.
 
-Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, the AXI
+Logged only (no register text states them): ``INFO-KMCSR-ACCESS``, the AXI
 response of the IRQ_SET read and of each read-only register write, and the
 data of the hardware-driven virtual UART and testbench words other than
 VUART_STATUS.
@@ -357,7 +357,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         await self._irq_walk()
         close_graded_window(self.logger)
         await self._real_cause()
-        await self._access_obs()
+        await self._access_info()
         open_graded_window(TEST, self.logger)
         await self._irq_set_masks()
         await self._irq_enable_cases()
@@ -618,7 +618,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 rose=rose or "none",
             )
 
-    async def _access_obs(self) -> None:
+    async def _access_info(self) -> None:
         """Log each response no register text states; grade the stated data.
 
         The error responses set the sticky IRQ_STATUS.AXI_SLVERR, so the step ends
@@ -632,10 +632,17 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 self._grade_vuart_status(slot)
             slot += x.op.slots
             if reg == "IRQ_SET":
-                self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
+                self.chk.info(
+                    "KMCSR-ACCESS",
+                    reg=reg,
+                    op="rd",
+                    rdata=rdata,
+                    axi_slverr=x.slv,
+                    chk="CHK-CSR-SET-READ",
+                )
                 self.chk.ok("CSR-SET-READ", x.known and x.value == 0, rdata=rdata, golden=_h(0))
                 continue
-            self.chk.obs(
+            self.chk.info(
                 "KMCSR-READ-RESP",
                 reg=reg,
                 axi_slverr=x.slv,
@@ -653,7 +660,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                     golden=_h(golden),
                 )
             else:
-                self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata)
+                self.chk.info("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata)
         for reg, a in pl.OBS_RO_WRITES:
             before = (await self._run([kp.rd(a, raw=True)]))[0].value
             wr_val = ~before & pl.WORD_MASK
@@ -676,13 +683,14 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 axi_slverr=wr.slv,
                 twin_soft_rst_code=_h(twin.value),
             )
-            self.chk.obs(
+            self.chk.info(
                 "KMCSR-ACCESS",
                 reg=reg,
                 op="wr",
                 before=_h(before),
                 rdata=_h(rd.value),
                 axi_slverr=wr.slv,
+                chk="CHK-CSR-RO",
             )
             self.chk.ok(
                 "CSR-RO",
@@ -1224,7 +1232,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             for a in rnd.addrs
         ]
         await self._run_items(items)
-        r31_locked = bool((rnd.lock >> 31) & 1)
+        r31_locked = bool((rnd.lock >> pl.LAST_REGION) & 1)
         r31: dict[int, bool] = {}
         await self._run_items([self._store_item(rnd, a, r31_locked, r31) for a in pl.R31_FIXED])
         if r31_locked:
@@ -1599,7 +1607,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         iso_or = tuple(
             int(any(s.iso[i] for s in self.watch.rec if s.iso[i] is not None)) for i in range(3)
         )
-        self.chk.obs("RST-COLD-ISO", round=k, iso_seen=iso_or)
+        self.chk.info("RST-COLD-ISO", round=k, iso_seen=iso_or)
         post, rsvd = await self._readback(w, names, allow_unknown=True)
         warm = self._warm_fields(post)
         warm["cfg"] = post["cfg"] == pl.CFG_RESET
@@ -1616,7 +1624,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             not_cleared=[n for n, v in warm.items() if not v] or "none",
             rsvd={n: _h(v) for n, v in rsvd.items() if v} or "none",
         )
-        self.chk.obs(
+        self.chk.info(
             "RST-COLD-SRAM",
             round=k,
             words=[_h(post[f"sram{i}"]) for i in range(len(w.sram))],

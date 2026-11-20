@@ -190,3 +190,6 @@ localparam int unsigned FcovOwnSepKmHandoverTest = 776;
 localparam int unsigned FcovOwnSepKmCrcPcpiKatTest = 777;
 localparam int unsigned FcovOwnSepKmRomWriteErrTest = 778;
 localparam int unsigned FcovOwnSepEfuseKmPublicIdTest = 779;
+localparam int unsigned FcovOwnSepKmacModeStrengthRandTest = 787;
+localparam int unsigned FcovOwnSepOtbnLoadChecksumReadTest = 788;
+localparam int unsigned FcovOwnSepSramDatapathBreadthTest = 789;

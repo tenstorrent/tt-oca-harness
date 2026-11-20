@@ -6,8 +6,11 @@
  *
  * Verifies that the target ROM's SEP status ring buffer answers one successful GET_SEP_STATUS
  * for each entry it retains of those the testbench wrote, at most one less than its capacity,
- * and that further reads report an empty buffer. The entry values are logged, not compared.
- * The testbench selects the overflow or nominal case by the number of entries it writes.
+ * and that further reads report an empty buffer. occp_send_get_sep_status_command compares each
+ * entry, in FIFO order, with the shadow the testbench mirrors into controller SRAM. With the
+ * STATUS_RPT_DISABLE strap set, every GET_SEP_STATUS must return Unsupported_StatusID instead,
+ * and neither the entry values nor the empty buffer are checked. The testbench selects the
+ * overflow or nominal case by the number of entries it writes.
  */
 
 #include "occp_test_common.h"
@@ -79,6 +82,9 @@ static bool read_and_validate_sep_status_buffer(test_context_t *ctx) {
             simputshex32("  Entry index: ", i);
             ctx->overall_result = false;
             return false;
+        } else if (ctx->status_reporting_disabled) {
+            simputs("GET_SEP_STATUS rejected as expected under STATUS_RPT_DISABLE\n");
+            simputshex32("  Entry index: ", i);
         } else {
             simputs("GET_SEP_STATUS command passed\n");
             simputshex32("  Entry index: ", i);
@@ -92,7 +98,9 @@ static bool read_and_validate_sep_status_buffer(test_context_t *ctx) {
     for (int i = 0; i < 10; i++) {
         int result = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_after);
 
-        if (result == OCCP_SUCCESS && status_after == 0) {
+        if (result == OCCP_SUCCESS && ctx->status_reporting_disabled) {
+            simputs("GET_SEP_STATUS rejected as expected under STATUS_RPT_DISABLE\n");
+        } else if (result == OCCP_SUCCESS && status_after == 0) {
             simputs("PASS: Buffer empty after reading all entries\n");
         } else {
             simputs("FAIL: Buffer not empty\n");
