@@ -626,12 +626,11 @@ that applies the debug disable (<<ptap-debug-disable>>). `tdr2axi` contains the
 Debug Module registers, the SBA engine and the AXI manager. Its Debug Module has
 one hart, which always reports unavailable, so only the SBA registers have a
 function. The bridge with an AXI4 manager port also has a register slice on
-every channel of that port, after the demultiplexer; the figure does not show
-it.
+every channel of that port, after the demultiplexer.
 
 [[ptap-jtag2axi-bridge-figure]]
 .JTAG2AXI bridge structure
-image::ptap-jtag2axi-bridge.svg[alt="One JTAG2AXI bridge: the DTMCS and DMI registers in the TCK domain, tdr2axi with its TDR bridge, Debug Module registers and SBA engine with AXI manager, and the demultiplexer that passes the AXI request to the manager port or to the DECERR error slave under security_disable_i",width=100%,pdfwidth=100%]
+image::ptap-jtag2axi-bridge.svg[alt="One JTAG2AXI bridge: the DTMCS and DMI registers in the TCK domain, tdr2axi with its TDR bridge, Debug Module registers and SBA engine with AXI manager, and the demultiplexer that passes the AXI request to the manager port or to the DECERR error slave under security_disable_i, and the register slice in front of an AXI4 manager port",width=100%,pdfwidth=100%]
 
 Blue lines carry scan data, grey lines carry control and dark lines carry AXI.
 The two registers are in the TCK domain. The TDR bridge inside `tdr2axi` carries
