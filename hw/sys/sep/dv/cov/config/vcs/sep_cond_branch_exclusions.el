@@ -15,9 +15,6 @@
 //     condition vectors that need a stall, and the stall-else arms of the
 //     AXI4-Lite request dispatch. Blocks whose stall follows external_pending
 //     (efuse_mmr_reg, entropy_source_reg, km_kpv_reg) are NOT listed.
-//   - Regblocks that decode no error: the pslverr vectors with a 1 operand
-//     (APB), and the error-response lines and branches of sep_cpu_ctrl_reg
-//     and entropy_source_reg (AXI-Lite).
 //   - Regblock load_next nets that the generator assigns '1 in both arms: the
 //     implicit else of the load_next branch (sep_cpu_ctrl_reg,
 //     filter_ctrl_reg).
@@ -377,18 +374,6 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 
-CHECKSUM: "937729671 1625737755"
-MODULE: efuse_interface_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv:78 (s_apb_pslverr), :633 cpuif_wr_err=0, :688 readback_err=0, :693 cpuif_rd_err=readback_err; the block sets is_valid_addr/is_valid_rw to '1 (no address or RW check), so both operands of cpuif_rd_err | cpuif_wr_err are constant 0 and the vectors with a 1 operand cannot occur."
-Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
-Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
-
-CHECKSUM: "3827308321 2896595"
-MODULE: efuse_mmr_reg
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv:78 (s_apb_pslverr), :320 cpuif_wr_err=0, :394 readback_err=0, :400 cpuif_rd_err=readback_err; the block sets is_valid_addr/is_valid_rw to '1 (no address or RW check), so both operands of cpuif_rd_err | cpuif_wr_err are constant 0 and the vectors with a 1 operand cannot occur."
-Condition 32 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
-Condition 32 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
-
 CHECKSUM: "2137400323 2929689567"
 MODULE: picorv32_wrapper
 ANNOTATION: "KM-VROM-NOT-DECODED: without the simulation-only OCAH_KM_VROM define (not set by SEP DV, and rejected with $error under SYNTHESIS/EMULATION, hw/ip/key_manager/rtl/picorv32_wrapper.sv:323-339) hw/ip/key_manager/rtl/picorv32_wrapper.sv:344-345 tie is_vrom_addr and is_la_vrom_addr to 1'b0 and hw/ip/key_manager/rtl/picorv32_wrapper.sv:597 ties vrom_mem_ready to 1'b0. A term that needs one of these to be 1 (or !is_vrom_addr to be 0) cannot occur. NOT waived: the ROM, SRAM and peripheral decode terms."
@@ -640,16 +625,6 @@ Condition 1 "3834167469" "(push_i & ((~full_prim)) & ((~counter_err)) & ((~clr_i
 Condition 2 "750180934" "(pop_i & ((~empty_prim)) & ((~counter_err)) & ((~clr_i))) 1 -1" (4 "1110")
 Condition 3 "3059300984" "(push_i & full_prim & ((~clr_i))) 1 -1" (3 "110")
 Condition 4 "1666963403" "(pop_i & empty_prim & ((~clr_i))) 1 -1" (3 "110")
-
-CHECKSUM: "560690602 2370236681"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_source_reg
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Block 66 "4057615334" "s_axil.BRESP = 2'b10;"
-
-CHECKSUM: "560690602 2636490419"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_source_reg
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Branch 8 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
 CHECKSUM: "3497888529 4220762321"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan

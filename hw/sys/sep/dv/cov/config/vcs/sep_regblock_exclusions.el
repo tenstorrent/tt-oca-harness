@@ -23,12 +23,6 @@
 // cpuif_rd_err=readback_err (e.g. filter_ctrl_reg.sv). With the response
 // buffer never loading a 1, s_axil_bresp/s_axil_rresp hold 2'b00 OKAY.
 //
-// The same A2 reasoning holds for an APB cpuif: s_apb_pslverr is
-// cpuif_rd_err | cpuif_wr_err (efuse_interface_ctrl_reg.sv), so it holds 0.
-// A block whose cpuif is an interface port (entropy_source_reg, axi4lite_intf)
-// gets A2 on its internal error nets only; the interface bresp/rresp are not
-// listed.
-//
 // A2 does not hold for the *_wrapper_key_reg blocks or the KM
 // km_csr/km_drbg_sampler/km_mailbox_* blocks. Those blocks decode errors:
 //   decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req
@@ -45,20 +39,19 @@
 //   - sep_scratch_reg address bits [2:0] and data bits [63:32], which its
 //     cpuif builds from literal zeros.
 //
-// Two non-regblock entries carry an A2 response one level up:
-//   - efuse_token_processing apb_resp_o.pslverr, which is efuse_mmr_reg
-//     s_apb_pslverr.
-//   - The fuse_bank_ctrl_resp_o B/R resp outputs of the efuse_interface_shim
-//     instance, which come from efuse_shim_ctrl_reg. Only the shim outputs are
-//     listed. The copies of this response inside u_sep come in through an
-//     integrator input port, so they stay graded.
+// One non-regblock entry carries an A2 response one level up: the
+// fuse_bank_ctrl_resp_o B/R resp outputs of the efuse_interface_shim instance,
+// which come from efuse_shim_ctrl_reg. Only the shim outputs are listed. The
+// copies of this response inside u_sep come in through an integrator input
+// port, so they stay graded.
 //
 // SEP returns SLVERR from the fabric -- the prim_axil_addr_demux miss
 // responders, the locked-filter error slaves (u_err_slv in sep_system_csr.sv),
 // the axi_filter datapath and the xbar decode error slave -- and
-// sep_axi_map_refuse_test grades those. The sep_scratch_reg, sep_reset_ctrl_reg
-// and sep_cpu_ctrl_reg blocks check the address and answer SLVERR past their
-// registers, so their error nets are not listed. This file does not waive them.
+// sep_axi_map_refuse_test grades those. The sep_scratch_reg, sep_reset_ctrl_reg,
+// sep_cpu_ctrl_reg, sep_lifecycle_ctrl_reg, efuse_interface_ctrl_reg,
+// efuse_mmr_reg and entropy_source_reg blocks check the address and answer
+// SLVERR past their registers, so their error nets are not listed. This file does not waive them.
 //==================================================
 
 
@@ -117,16 +110,10 @@ Toggle decoded_err "logic decoded_err"
 Toggle readback_err "logic readback_err"
 
 CHECKSUM: "1174471060 2756314957"
-ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see."
 MODULE: sep_lifecycle_ctrl_reg
-Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
-Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
 
 CHECKSUM: "2125860950 1425039785"
 ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. A2 is NOT claimed here: this block decodes real errors and its SLVERR path is reachable."
@@ -159,15 +146,10 @@ Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
 
 CHECKSUM: "937729671 786261837"
-ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the APB s_apb_pslverr (cpuif_rd_err | cpuif_wr_err) holds 0."
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see."
 MODULE: efuse_interface_ctrl_reg
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
-Toggle s_apb_pslverr "logic s_apb_pslverr"
 
 CHECKSUM: "775763348 3636628729"
 ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
@@ -176,23 +158,6 @@ Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
-
-CHECKSUM: "3827308321 220422702"
-ANNOTATION: "A1 is NOT claimed: this block has external registers and drives stall from external_pending. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the APB s_apb_pslverr (cpuif_rd_err | cpuif_wr_err) holds 0."
-MODULE: efuse_mmr_reg
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
-Toggle s_apb_pslverr "logic s_apb_pslverr"
-
-CHECKSUM: "3063145569 4245126038"
-ANNOTATION: "A1 is NOT claimed: this block has external registers and drives stall from external_pending. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low. Its response leaves through the axi4lite_intf port, which is not listed."
-MODULE: entropy_source_reg
 Toggle cpuif_rd_err "logic cpuif_rd_err"
 Toggle cpuif_wr_err "logic cpuif_wr_err"
 Toggle decoded_err "logic decoded_err"
@@ -286,16 +251,6 @@ Toggle decoded_addr [2:0] "logic decoded_addr[5:0]"
 Toggle rd_mux_addr [2:0] "logic rd_mux_addr[5:0]"
 Toggle readback_data [63:32] "logic readback_data[63:0]"
 
-CHECKSUM: "760587158 1635514154"
-MODULE: sep_lifecycle_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv:167, :177, :182 load axil_resp_buffer_err only from cpuif_rd_err/cpuif_wr_err, which are literal 0 (:466, :496, :501), so the error-response statements at :210-211 never execute. NOT waived: the OKAY response statements at :213-214."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
-CHECKSUM: "760587158 718520331"
-MODULE: sep_lifecycle_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv:167, :177, :182 load axil_resp_buffer_err only from cpuif_rd_err/cpuif_wr_err, which are literal 0 (:466, :496, :501), so the true arm of the branch at :209 never executes. NOT waived: the false (OKAY) arm of that branch."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
 CHECKSUM: "775763348 326083122"
 MODULE: efuse_shim_ctrl_reg
 ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv:166, :176, :181 load axil_resp_buffer_err only from cpuif_rd_err/cpuif_wr_err, which are literal 0 (:307, :327, :332), so the error-response statements at :209-210 never execute. NOT waived: the OKAY response statements at :212-213."
@@ -305,11 +260,6 @@ CHECKSUM: "775763348 2181345026"
 MODULE: efuse_shim_ctrl_reg
 ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv:166, :176, :181 load axil_resp_buffer_err only from cpuif_rd_err/cpuif_wr_err, which are literal 0 (:307, :327, :332), so the true arm of the branch at :208 never executes. NOT waived: the false (OKAY) arm of that branch."
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
-CHECKSUM: "1800326492 1617644716"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/rtl/efuse_token_processing.sv:136 drives apb_resp_o.pslverr from efuse_mmr_reg s_apb_pslverr = cpuif_rd_err | cpuif_wr_err (hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv:78), and both are literal 0 (:320, :394, :400). NOT waived: apb_resp_o.pready and apb_resp_o.prdata."
-Toggle apb_resp_o.pslverr "logic apb_resp_o.pslverr"
 
 CHECKSUM: "1712882665 601168459"
 INSTANCE: sep_uvm_top.u_dut.u_sep_ip_integration.u_efuse_interface_shim

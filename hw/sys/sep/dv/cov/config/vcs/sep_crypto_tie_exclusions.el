@@ -302,12 +302,6 @@ Toggle csrng_axil_resp_o.b.resp [0] "logic csrng_axil_resp_o.b.resp[1:0]"
 Toggle edn_axil_resp_o.r.resp [0] "logic edn_axil_resp_o.r.resp[1:0]"
 Toggle edn_axil_resp_o.b.resp [0] "logic edn_axil_resp_o.b.resp[1:0]"
 
-CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
-Toggle esrc_axil_resp_o.r.resp "logic esrc_axil_resp_o.r.resp[1:0]"
-Toggle esrc_axil_resp_o.b.resp "logic esrc_axil_resp_o.b.resp[1:0]"
-
 CHECKSUM: "251540385 1629975084"
 ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
@@ -395,12 +389,6 @@ Toggle edn_axis_o[0].tstrb "logic edn_axis_o[0].tstrb[3:0]"
 Toggle edn_axis_o[1].tstrb "logic edn_axis_o[1].tstrb[3:0]"
 Toggle edn_axis_o[2].tstrb "logic edn_axis_o[2].tstrb[3:0]"
 
-CHECKSUM: "3295933835 1628216908"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
-Toggle s_axil_bresp_o "logic s_axil_bresp_o[1:0]"
-Toggle s_axil_rresp_o "logic s_axil_rresp_o[1:0]"
-
 CHECKSUM: "3536466054 1976754700"
 ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
@@ -449,12 +437,6 @@ Toggle abr_mem_req_o.mem_inst1.waddr [10:6] "logic abr_mem_req_o.mem_inst1.waddr
 Toggle abr_mem_req_o.mem_inst1.raddr [10:6] "logic abr_mem_req_o.mem_inst1.raddr[10:0]"
 Toggle abr_mem_req_o.mem_inst1_masked.waddr [10:6] "logic abr_mem_req_o.mem_inst1_masked.waddr[10:0]"
 Toggle abr_mem_req_o.mem_inst1_masked.raddr [10:6] "logic abr_mem_req_o.mem_inst1_masked.raddr[10:0]"
-
-CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
-Toggle esrc_axil_isolated_resp.r.resp "logic esrc_axil_isolated_resp.r.resp[1:0]"
-Toggle esrc_axil_isolated_resp.b.resp "logic esrc_axil_isolated_resp.b.resp[1:0]"
 
 CHECKSUM: "3536466054 1976754700"
 ANNOTATION: "SEP-DRBG-RESP-BIT0: drbg_axil64_lane_adapter returns AXI_RESP_OKAY, AXI_RESP_SLVERR or the axi_lite_to_tlul response, and axi_lite_to_tlul returns only 2'b00 or 2'b10, so resp bit 0 holds 0. hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv:44-45,112,158-159,214,229,250,280,258,287; hw/common/axi/axi_lite_to_tlul.sv:54-55,128-129,195,234"
@@ -750,12 +732,6 @@ CHECKSUM: "3661006289 2996815061"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_fifo
 ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties clr_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:414) on this entropy_fifo instance, so this input port holds 0. NOT waived: entropy_churn_enable_i, which follows the FIFO_CTRL CSR; the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
 Toggle clr_i "logic clr_i"
-
-CHECKSUM: "3264199385 4205087039"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.s_axil
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Toggle BRESP "logic BRESP[1:0]"
-Toggle RRESP "logic RRESP[1:0]"
 
 CHECKSUM: "1095994296 3660477044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_sha256_whitener

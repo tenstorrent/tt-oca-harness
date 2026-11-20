@@ -476,9 +476,7 @@ Toggle wdt_alert_rx[0].ping_n "logic wdt_alert_rx[0].ping_n"
 
 CHECKSUM: "828256374 178008815"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io
-ANNOTATION: "SEP-A2A-RESP-USER-TIED: the B/R user leaving axi_to_axi_lite is 0 on every source: axi_to_axi_lite.sv:157-170 default '0, axi_atop_filter.sv:220 and :287 inject '0, axi_err_slv.sv:142 and :193 inject '0; the 64-to-32 axi_dw_downsizer copies it (axi_dw_downsizer.sv:594, :737) or starts from '0 (:386, :561). Its resp[0] is 0 because the bridge below returns OKAY or SLVERR only (axi_lite_to_tlul.sv:54-55) and the injected errors are SLVERR. NOT waived: the resp at the downsizer output, which axi_dw_downsizer.sv:408 and :491 seed with EXOKAY."
-Toggle axil_resps[0].r.resp [0] "logic axil_resps[0].r.resp[1:0]"
-Toggle axil_resps[0].b.resp [0] "logic axil_resps[0].b.resp[1:0]"
+ANNOTATION: "SEP-A2A-RESP-USER-TIED: the B/R user leaving axi_to_axi_lite is 0 on every source: axi_to_axi_lite.sv:157-170 default '0, axi_atop_filter.sv:220 and :287 inject '0, axi_err_slv.sv:142 and :193 inject '0; the 64-to-32 axi_dw_downsizer copies it (axi_dw_downsizer.sv:594, :737) or starts from '0 (:386, :561)."
 Toggle axi_resp.r.user "logic axi_resp.r.user[11:0]"
 Toggle axi_resp.b.user "logic axi_resp.b.user[11:0]"
 Toggle sep_io_axi_resp_o.r.user "logic sep_io_axi_resp_o.r.user[11:0]"
