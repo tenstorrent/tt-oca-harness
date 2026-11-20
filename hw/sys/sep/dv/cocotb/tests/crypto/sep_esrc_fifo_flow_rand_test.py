@@ -65,9 +65,11 @@ Checkers:
   CHK-FIFO-INTEG-PARITY  0 after the intact pop; 1 after the pop of the corrupted entry,
                          and that pop lowers LEVEL by 1. The value before that pop is
                          logged (OBS-FIFO-INTEG-PARITY-PRE-POP).
-  CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error;
-                         the FIFO is first filled to 64 and popped down to H, so a
-                         misaddressed pop reads an entry with a matching parity.
+  CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error,
+                         one write (at least one stream word offered with ENABLE = 1)
+                         and one pop; the FIFO is first filled to 64 and popped down
+                         to H, so a misaddressed pop reads an entry with a matching
+                         parity.
   CHK-FIFO-INTEG-W1C     the parity trial bit reads 1, then 0 after the write-one clear.
   CHK-FIFO-PTR-W1C       with the pointer-copy inject held and no pointer moved since it
                          rose, FIFO_ERROR reads 1 after its write-one clear. Graded only
@@ -79,7 +81,10 @@ Checkers:
                          the graded branch FIFO_ERROR reads 0 before the inject. In both
                          branches the same write also clears FIFO_UNDERFLOW, set just
                          before by INTR_TEST with no FIFO_RDATA read: it reads 1 before
-                         and 0 after, so the write landed.
+                         and 0 after, so the write landed. FIFO_CTRL.ENABLE reads 0
+                         before the inject, and FIFO_STATUS (LEVEL, WPTR, RPTR) reads
+                         the same just after the inject and after the clear, so no
+                         pointer moved in the window.
   CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
                          clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
                          control: CTRL-FIFO-FLAGS sees both at 1 before the clear.
@@ -1137,11 +1142,14 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._rd(ESRC_FIFO_RDATA)
         clean_pop = max(1, self._now() - t0)
         e1 = await self._fifo_error()
+        enable_rb = _get(await self._rd(ESRC_FIFO_CTRL), "FIFO_CTRL", "ENABLE")
         open_graded_window(TEST, self.logger)
         dut.esrc_fifo_ptr_sel_i.value = (POINTERS.index(plan.pointer) << 1) | plan.copy
         dut.esrc_fifo_ptr_bit_i.value = plan.ptr_bit
         dut.esrc_fifo_ptr_inject_i.value = 1
         await ClockCycles(dut.clk_i, 2)
+        # Both reads are under the inject: the status may show the forced copy.
+        st_inject = _status(await self._rd(ESRC_FIFO_STATUS))
         # The relatch is graded only when FIFO_ERROR sets before any FIFO operation.
         bound = LAT_FACTOR * clean_pop
         held_set, _, set_clk = await self._poll(
@@ -1155,10 +1163,12 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         after = await self._rd(ESRC_INTR_STATUS)
         relatch = _get(after, "INTR_STATUS", "FIFO_ERROR")
         udf_after = _get(after, "INTR_STATUS", "FIFO_UNDERFLOW")
+        st_clear = _status(await self._rd(ESRC_FIFO_STATUS))
         landed = udf_set == 1 and udf_after == 0
+        still = enable_rb == 0 and st_clear == st_inject
         self.chk.ctrl(
             "FIFO-PTR-W1C",
-            (e1 == 0 or not held_set) and landed,
+            (e1 == 0 or not held_set) and landed and still,
             branch="at_once" if held_set else "not_set",
             pre_inject_error=e1,
             set_under_inject=int(held_set),
@@ -1166,6 +1176,9 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             bound=bound,
             udf_set=udf_set,
             udf_after_w1c=udf_after,
+            enable_rb=enable_rb,
+            status_inject=list(st_inject),
+            status_clear=list(st_clear),
         )
         w1c = {
             "set_under_inject": int(held_set),
@@ -1176,7 +1189,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             "bit": plan.ptr_bit,
         }
         if held_set:
-            self.chk.ok("FIFO-PTR-W1C", relatch == 1 and landed, **w1c)
+            self.chk.ok("FIFO-PTR-W1C", relatch == 1 and landed and still, **w1c)
         else:
             self.chk.info(
                 "FIFO-PTR-W1C",
@@ -1212,7 +1225,9 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         }
         if not detect:
             fields["reason"] = "timeout"
-        self.chk.ok("FIFO-INTEG-PTR", ok and detect and e0 == 0 and e1 == 0, **fields)
+        self.chk.ok(
+            "FIFO-INTEG-PTR", ok and detect and word_passed and e0 == 0 and e1 == 0, **fields
+        )
         await self._err_alert_obs("pointer")
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
         close_graded_window(self.logger)
