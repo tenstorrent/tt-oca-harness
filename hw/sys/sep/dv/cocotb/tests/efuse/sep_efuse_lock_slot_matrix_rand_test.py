@@ -65,9 +65,9 @@ Checkers:
   CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
                     read-interface request on a read-locked field: after the full W
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
-                    (``hw/ip/efuse/doc/architecture.adoc:252-254``: a locked target
+                    (``hw/ip/efuse/doc/architecture.adoc:255-257``: a locked target
                     completes the operation with an error;
-                    ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
+                    ``efuse_interface_ctrl.rdl:127`` ``read_done``, ``:145``
                     ``read_status``). The line prints both values and the expected 1.
                     Control CTRL-LOCK-READ-PRE: an accepted read of ``LOCKS`` runs
                     first, and ``EFUSE_READ_CTRL`` read before the go shows
@@ -106,7 +106,7 @@ Checkers:
                     (cleared and read back before the go) and the write-one clear
                     returns it to 0, with no bank bit change, no program command at
                     the post-guard tap and no valid or ``psel`` pulse from the go to the
-                    disable write (``efuse_interface_ctrl.rdl:24, 43, 82``;
+                    disable write (``efuse_interface_ctrl.rdl:24, 43, 76``;
                     ``hw/ip/efuse/doc/architecture.adoc:247-249``). The status reads,
                     the clears and the disable write are frontdoor. When no write-locked
                     shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
@@ -116,7 +116,7 @@ Checkers:
                     ``program_status`` 0; the refused program then moves ``program_status`` from 0
                     to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:247-249``:
                     a locked target completes the operation with an error;
-                    ``efuse_interface_ctrl.rdl:96-107``; the field is read-only and holds its value
+                    ``efuse_interface_ctrl.rdl:90-101``; the field is read-only and holds its value
                     until the next program completes, so ``pre_status`` is read before the go). Logged, not
                     graded: ``twin_wr_resp`` (the response of the accepted twin write) and
                     ``go_resp`` (the response of the program go write); no specification text
@@ -164,8 +164,8 @@ Checkers:
                     ``program_done`` 1 and ``program_status`` 0 (No Error). A
                     read-lock blocks reads and a write-lock blocks programming; the
                     two locks act independently (``otp_fuse_controller.adoc:110-111,
-                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:242-244``;
-                    ``efuse_interface_ctrl.rdl:102-103`` ``program_status``). Every
+                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:245-247``;
+                    ``efuse_interface_ctrl.rdl:96-97`` ``program_status``). Every
                     other leaf logs ``CHK-UID-RDLOCK-PROG N/A`` with the reason (the
                     leaf kind, or ``no_unlocked_uid_slot``); a lock leg whose UID
                     field has no 0 bit fails the check.
@@ -337,8 +337,8 @@ _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
 # A locked target completes the operation with an error: ``read_done`` 1 and
 # ``read_status`` 1 (Error).
 _READ_DONE_CONTRACT = (
-    "efuse/doc/architecture.adoc:252-254(Hardware_vs_Software_Locks),"
-    "efuse_interface_ctrl.rdl:139,145(EFUSE_READ_CTRL.read_done,read_status)"
+    "efuse/doc/architecture.adoc:255-257(Hardware_vs_Software_Locks),"
+    "efuse_interface_ctrl.rdl:127,133(EFUSE_READ_CTRL.read_done,read_status)"
 )
 
 _KIND_W = ("write", "write_read")

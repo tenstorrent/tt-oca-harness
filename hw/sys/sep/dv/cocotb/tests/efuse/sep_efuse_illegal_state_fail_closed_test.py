@@ -15,10 +15,10 @@ Graded after each injection:
   ``doc/trm/meta/ocah_hsr_table.adoc:38``): ``efuse_<read|program>_error_o``
   is 1, and so is the field software reads it through,
   ``EFUSE_READ_CTRL.read_status`` / ``EFUSE_PROGRAM_CTRL.program_status``
-  (``efuse_interface_ctrl.rdl:145``, ``:102``: "1: Error")
+  (``efuse_interface_ctrl.rdl:133``, ``:102``: "1: Error")
   (CHK-READ-FAILCLOSED-ERR, CHK-PROGRAM-FAILCLOSED);
 * the idle program interface issues no bank command: with no program go and
-  no enable there is no program request (``efuse_interface_ctrl.rdl:82``,
+  no enable there is no program request (``efuse_interface_ctrl.rdl:76``,
   ``:112``; CHK-PROGRAM-FAILCLOSED);
 * the read interface serves a new request after both injections, and the
   program interface after each one (CHK-READ-ALIVE and CHK-PROGRAM-ALIVE
@@ -27,7 +27,7 @@ Graded after each injection:
 Each injection enters with the error output at 0, and on the program interface
 with ``program_status`` at 0 (CTRL-<READ|PROGRAM>-FAILCLOSED-CLEAN). The second
 program leg follows a cold reset, which returns ``program_status`` to its reset
-value 0 (``efuse_interface_ctrl.rdl:103``).
+value 0 (``efuse_interface_ctrl.rdl:97``).
 
 Logged, not graded: no authored text states the FSM encodings or the outputs
 of an interface after an illegal state. The withdrawal of the in-flight read
@@ -240,7 +240,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await self._read_with_reset_timeout()
 
         # 3. A read that outlives its timeout budget retires with the error set
-        #    (efuse_interface_ctrl.rdl:145; smc-programming.adoc:1679-1681). The
+        #    (efuse_interface_ctrl.rdl:133; smc-programming.adoc:1690-1692). The
         #    budget is short enough that the SHIM cannot answer inside it, and
         #    the read must present its bank command, so the timeout decides the
         #    outcome.
@@ -283,8 +283,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         self.logger.info("CHK-READ-ERR-TIMEOUT PASS: %s", fields)
 
         # 4. The next legal read after the timed-out one completes with no
-        #    error and the sensed word (efuse_interface_ctrl.rdl:139, :145;
-        #    smc-programming.adoc:1678-1682). The error from leg 3 is the
+        #    error and the sensed word (efuse_interface_ctrl.rdl:127, :133;
+        #    smc-programming.adoc:1725-1729). The error from leg 3 is the
         #    precondition. When the flag clears is not stated; it is logged.
         await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
@@ -749,7 +749,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         ):
             if leg > 1:
                 # The leg before left program_status at 1. A cold reset returns
-                # it to its reset value 0 (efuse_interface_ctrl.rdl:103), so this
+                # it to its reset value 0 (efuse_interface_ctrl.rdl:97), so this
                 # leg's error is set by its own injection. The alive check ends
                 # in ReadOnly; leave it before the reset drives rst_ni.
                 await RisingEdge(cocotb.top.clk_i)

@@ -12,7 +12,7 @@ interface controller's AXI-Lite mux.
 
 The OTP image is real-sensed at LC_STATE=PROD, which restricts the JTAG path: MMR token accesses
 are allowed, and shadow-map and interface-CSR accesses get the SLVERR response that
-``hw/ip/efuse/doc/architecture.adoc:351-353`` (JTAG Access Control Based on LC_STATE) states
+``hw/ip/efuse/doc/architecture.adoc:355-357`` (JTAG Access Control Based on LC_STATE) states
 for SEP.
 One PROD image covers both the allowed coexistence and the LC-gated deny without forcing
 lc_state.

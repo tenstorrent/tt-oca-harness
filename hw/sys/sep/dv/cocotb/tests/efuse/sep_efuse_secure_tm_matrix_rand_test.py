@@ -32,7 +32,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
   CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
                     secure test mode adds a shadow write lock on the four targets
-                    (``hw/ip/efuse/doc/architecture.adoc:407-408``;
+                    (``hw/ip/efuse/doc/architecture.adoc:411-412``;
                     ``otp_fuse_controller.adoc:181-183``), and a shadow write that a
                     lock blocks completes with SLVERR
                     (``otp_fuse_controller.adoc:112-114``).
@@ -43,8 +43,8 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``program_status`` 1 (Error) in ``EFUSE_PROGRAM_CTRL`` after
                     ``W_prog``: a program start in secure test mode completes with an
                     error without issuing a command
-                    (``hw/ip/efuse/doc/architecture.adoc:401``;
-                    ``efuse_interface_ctrl.rdl:96-97`` ``program_done``,
+                    (``hw/ip/efuse/doc/architecture.adoc:405``;
+                    ``efuse_interface_ctrl.rdl:90-91`` ``program_done``,
                     ``:102-103`` ``program_status``). Control
                     (``CTRL-STM-PROG-FRESH``): before that go both bits read their RDL
                     reset value 0. Both bits hold until the next start, and a refused
