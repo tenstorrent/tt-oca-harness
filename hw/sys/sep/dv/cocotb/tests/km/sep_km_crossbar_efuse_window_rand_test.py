@@ -75,7 +75,7 @@ Checks (anchor):
   CHK-EFW-TM      in secure test mode no fuse command is issued, read and
                   program starts complete without issuing a command, and a
                   blocked read returns all-zero data
-                  (``hw/ip/efuse/doc/architecture.adoc:389-391, 399-400``):
+                  (``hw/ip/efuse/doc/architecture.adoc:400-402, 410-411``):
                   on each path (KM, host) each read go and each program go
                   lands (only the go write carries efuse_addr, and the path
                   reads it back after the go), raises 0 command requests at
@@ -90,9 +90,9 @@ Checks (anchor):
                   results, program_status results and write responses are
                   equal; after each program go, program_status read back
                   through the path is 1 (the start completes with an error,
-                  ``architecture.adoc:389-391``, and program_done states that
+                  ``architecture.adoc:400-402``, and program_done states that
                   the status of the program is in program_status,
-                  ``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:100``,
+                  ``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:96``,
                   ``efuse_interface_ctrl.adoc:50``); each KM eFuse write
                   leaves on efuse_req_o in order, and each target shadow word
                   equals the model word (path readback, ``KM-BUS`` write
@@ -1748,7 +1748,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         # Control of CHK-EFW-TM: with secure_tm_o = 0 a program go triggers a
         # program and a read go a read to efuse (efuse_interface_ctrl.adoc,
         # efuse_program_go, efuse_read_go), so each go raises one request. Each
-        # start completes (architecture.adoc:389-391), so after the goes done
+        # start completes (architecture.adoc:400-402), so after the goes done
         # is 1 and busy is 0 on both interfaces.
         tm = self.rd(dut.secure_tm_o)
         for path in ("km", "host"):
@@ -2103,14 +2103,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             if r["req_err_before"]:
                 problems.append(f"path={path}: efuse_req_error read 1 after its clear (control)")
         # In secure test mode no fuse command is issued, and read and program
-        # starts complete without issuing a command (architecture.adoc:389-391);
-        # a blocked read returns all-zero data (architecture.adoc:399-400).
+        # starts complete without issuing a command (architecture.adoc:400-402);
+        # a blocked read returns all-zero data (architecture.adoc:410-411).
         # CTRL-EFW-TM shows that the same goes raise one request each with
         # secure_tm_o = 0, and the staged word is not 0, so a read that issued
         # its request would load other data.
         if not all(prog[p]["ctrl_seen"] for p in ("km", "host")):
             problems.append("control: CTRL-EFW-TM was not seen in boot one")
-        # Each start completes (architecture.adoc:389-391). done is set when the
+        # Each start completes (architecture.adoc:400-402). done is set when the
         # operation has completed and resets to 0 (efuse_interface_ctrl.adoc,
         # EFUSE_READ_CTRL read_done, EFUSE_PROGRAM_CTRL program_done). The goes
         # of each path follow a cold reset of their own, and no start runs on
@@ -2191,8 +2191,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     "expected the default all-zero response"
                 )
             # A blocked program start completes with an error
-            # (architecture.adoc:389-391), and the status of a completed program
-            # is in program_status, 1 = Error (efuse_interface_ctrl.rdl:100,
+            # (architecture.adoc:400-402), and the status of a completed program
+            # is in program_status, 1 = Error (efuse_interface_ctrl.rdl:102,
             # program_status). Each path reads EFUSE_PROGRAM_CTRL after its go.
             if r["status"] != 1:
                 problems.append(
