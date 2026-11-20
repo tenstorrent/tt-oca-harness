@@ -127,7 +127,7 @@ Checkers:
                   doc/programmers_guide.md:34``). The
                   text states no clock for the clear, so GO and DONE read as
                   soon as the destination holds the total are logged only
-                  (OBS-HS-GO-TOTAL). Controls: the normal-mode copy ends with
+                  (INFO-HS-GO-TOTAL). Controls: the normal-mode copy ends with
                   GO=0 and raises PIC source 9, a poll of the handshake run
                   before the total reads DONE=0, INTR_ENABLE reads back with
                   DMA_DONE=1, and the tap saw the destination writes.
@@ -179,7 +179,7 @@ Checkers:
                   probe reads 0 before the TX_WATERMARK write. The clocks from
                   the TX_WATERMARK write to the rise and from the last
                   TXDATA write to the fall are logged
-                  (``OBS-HS-TRIG-TX-LAT``): the text states a registered OR and
+                  (``INFO-HS-TRIG-TX-LAT``): the text states a registered OR and
                   no clock count, so the rise and the fall are graded inside
                   TRIG_RISE_CLKS only.
   CHK-HS-LANE-RX  lane reads: the RXDATA words of each read carry the seeded
@@ -215,7 +215,7 @@ Checkers:
                   (CLEAR_INTR_SRC = 0 from reset) moves its chunks with no AW to
                   that address. The clock of each clear write, the count of clear
                   writes and the WSTRB of the paired W beat are logged
-                  (``OBS-HS-CLR``): the text says only "when ... lsio_trigger
+                  (``INFO-HS-CLR``): the text says only "when ... lsio_trigger
                   becomes set".
   CHK-HS-CLR-IDX  interrupt-clear and complement runs (``run=``, ``idx=``),
                   per source i = 1..10, each with CLEAR_INTR_BUS bit i = 1:
@@ -246,7 +246,7 @@ Checkers:
                   after their fill and before GO, and the trigger probe is
                   high in the window; else
                   ``CTRL-MISSING CTRL-HS-CLR-IDX``.
-  OBS-HS-CLR      interrupt-clear and complement runs: the source 0 summary
+  INFO-HS-CLR     interrupt-clear and complement runs: the source 0 summary
                   (clear AW count, clocks, AxSIZE, WSTRB) and, per source
                   i = 0..10, the AW count, the clock of each AW from the tap
                   mark and the WSTRB of its first W beat (``idx<i>_aw``,
@@ -275,7 +275,7 @@ Checkers:
                   source read follows the clear stage), so the engine took the
                   trigger; else ``CTRL-MISSING CHK-DMA-CLR-BUS0``. BUSY and GO
                   levels are logged.
-  OBS-DMA-CLR-RANGE clear-range and clear-bus runs (``variant=``): the AWs
+  INFO-DMA-CLR-RANGE clear-range and clear-bus runs (``variant=``): the AWs
                   of the DMA master tap at INTR_SRC_ADDR_0 and their B
                   responses, that SRAM word after the run, the chunks moved,
                   STATUS, ERROR_CODE and CONTROL.GO, logged. The range check
@@ -944,7 +944,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         clr_idx = aw_at[0]
         clr_rb, clr_val = words[0], plan.val[0]
         self.logger.info(
-            "OBS-HS-CLR LOG seed=%d run=%s clear_aw=%d aw_total=%d clear_aw_clks=%s "
+            "INFO-HS-CLR LOG seed=%d run=%s clear_aw=%d aw_total=%d clear_aw_clks=%s "
             "clear_aw_size=%s clear_w_strb=%s go_tap_clk=%d last_word_clks_after_go=%d %s",
             cfg.seed,
             run,
@@ -1182,7 +1182,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
     async def _clear_obs_run(
         self, variant: str, range_base: int, bus: int, leg: str, rng: SepSeededRng, t_fill: int
     ) -> None:
-        """OBS-DMA-CLR-RANGE: the handshake copy with a clear write the text does not cover."""
+        """INFO-DMA-CLR-RANGE: the handshake copy with a clear write the text does not cover."""
         cfg = self.cfg_
         dma = self.dma
         nw = cfg.n * cfg.cw
@@ -1269,9 +1269,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         set_open_value_leg_pass(None, self.logger)
         close_graded_window(self.logger)
         self.logger.info(
-            "OBS-DMA-CLR-RANGE LOG seed=%d variant=%s clear_addr=0x%08x range_base=0x%08x "
+            "INFO-DMA-CLR-RANGE LOG seed=%d variant=%s clear_addr=0x%08x range_base=0x%08x "
             "clear_bus=%d clear_aw=%d clear_b_resp=%s aw_total=%d clear_word=0x%08x "
-            "clear_wr_val=0x%08x pre=0x%08x chunks_moved=%d/%d go=%d error_code=0x%x %s",
+            "clear_wr_val=0x%08x pre=0x%08x chunks_moved=%d/%d go=%d error_code=0x%x %s%s",
             cfg.seed,
             variant,
             CLR_ADDR,
@@ -1288,6 +1288,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             go,
             ecode,
             st.fmt(),
+            " chk=CHK-DMA-CLR-BUS0" if variant == "bus0" else "",
         )
         await dma.wr(DMA_CONTROL, dma.last_control & ~GO_MASK)
         await self.dtap.stop()
@@ -1376,7 +1377,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         lat_rise = None if t_edge["rise"] is None else t_edge["rise"] - t_wr
         lat_fall = None if None in (t_edge["fall"], t_last) else t_edge["fall"] - t_last
         self.logger.info(
-            "OBS-HS-TRIG-TX-LAT LOG seed=%d wm=%d rise_clks_after_wm_write=%s "
+            "INFO-HS-TRIG-TX-LAT LOG seed=%d wm=%d rise_clks_after_wm_write=%s "
             "fall_clks_after_last_word=%s",
             cfg.seed,
             w,
@@ -1678,7 +1679,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         ):
             self._ctrl_missing("CHK-HS-GO", line)
         self.logger.info(
-            "OBS-HS-GO-TOTAL seed=%d go_at_total=%d done_at_total=%d control_at_total=0x%08x "
+            "INFO-HS-GO-TOTAL seed=%d go_at_total=%d done_at_total=%d control_at_total=0x%08x "
             "t_fill=%d",
             cfg.seed,
             go_at_total,
@@ -1889,7 +1890,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         wait_st = DmaStatus(await self.dma.rd(DMA_STATUS))
         wait_regwen = await self.dma.rd(DMA_CFG_REGWEN)
         self.logger.info(
-            "OBS-DMA-HS-WAIT LOG seed=%d busy=%d cfg_regwen=0x%x busy_probe=%s",
+            "INFO-DMA-HS-WAIT LOG seed=%d busy=%d cfg_regwen=0x%x busy_probe=%s",
             cfg.seed,
             wait_st.busy,
             wait_regwen,

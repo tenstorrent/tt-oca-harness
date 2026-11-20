@@ -36,7 +36,7 @@ Stall legs, in the drawn block order:
 During each hold the master that does not hold reads ``TIMEOUT_INTERRUPT``
 back to back (the SMN master through an inbound filter entry). The spec does
 not state that a read completes while the other response is held, so a hold in
-which no read completes prints ``OBS-TO-INERT ... status=not_sampled``. Each
+which no read completes prints ``INFO-TO-INERT ... status=not_sampled``. Each
 read that completes in the hold is a sample: it must answer OKAY with
 ``TIMEOUT_INTERRUPT`` 0, and any other response fails CHK-TO-INERT. The vector
 (``sep_internal_interrupts_probe_o``, the six excluded idle sources masked) is
@@ -431,14 +431,14 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         in_hold = [r for r in poll["reads"] if r[0]]
         if not in_hold:
             self.logger.info(
-                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=during_hold status=not_sampled",
+                "INFO-TO-INERT LOG seed=%d block=%s dir=%s sample=during_hold status=not_sampled",
                 self.c.seed,
                 block,
                 d,
             )
         for _, resp, v in (r for r in poll["reads"] if not r[0]):
             self.logger.info(
-                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=after_release_late value=0x%x "
+                "INFO-TO-INERT LOG seed=%d block=%s dir=%s sample=after_release_late value=0x%x "
                 "resp=%s",
                 self.c.seed,
                 block,

@@ -76,12 +76,12 @@ path while words reach the DRBG seed port:
   words faster than the packer takes them (hw/ip/drbg/doc/architecture.adoc,
   Entropy ingress and Seed Assembly), so a word offered while the packer is not
   ready is outside the stated contract: it is not counted and is logged in
-  OBS-SEED-PACK-DROP. Every window from one push
+  INFO-SEED-PACK-DROP. Every window from one push
   to the clock before the next push is graded: it holds exactly 12 accepted words,
   so no push comes before the 12th accepted word. A clock without the conditioner
   valid counts no word. The check also needs at least one graded window and no X
   or Z on a sampled port. The window from the tap start to the first push is not
-  bounded by two pushes and is not graded. OBS-SEED-PACK-DROP logs the accepted
+  bounded by two pushes and is not graded. INFO-SEED-PACK-DROP logs the accepted
   and dropped words of each closed window, and a summary with the graded window
   count and the dropped-word total.
 
@@ -527,7 +527,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         golden that no earlier seed took: the CSRNG seed comes only from the
         conditioner (entropy_source architecture.adoc:148). Which of those words
         the seed packer takes once an earlier seed is packed is stated nowhere,
-        so the seed bits are logged as OBS-SEED-SW-BITS, next to the next packed
+        so the seed bits are logged as INFO-SEED-SW-BITS, next to the next packed
         seed of the golden, and their position is not graded.
         The CMD_STS code is logged, not graded: no text states the code of a
         successful software command.
@@ -570,7 +570,8 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         )
         for idx, exp, act in self.drbg_sb.observed["CHK3_seed"]:
             self.logger.info(
-                "OBS-SEED-SW-BITS: seed %d act=0x%096x next_golden=%s (logged, not graded)",
+                "INFO-SEED-SW-BITS: seed %d act=0x%096x next_golden=%s (position not graded) "
+                "chk=CHK-SEED-SW",
                 idx,
                 act,
                 "none" if exp is None else f"0x{exp:096x}",
@@ -663,14 +664,22 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         )
 
     async def _check_seed_pack_count(self, tap: _SeedPortTap) -> None:
-        """CHK-SEED-PACK-COUNT over the push-to-push windows; OBS-SEED-PACK-DROP per window."""
+        """CHK-SEED-PACK-COUNT over the push-to-push windows; INFO-SEED-PACK-DROP per window."""
         windows = list(tap.windows)
         xz = tap.xz
         for k, acc, drop in windows:
-            self.logger.info("OBS-SEED-PACK-DROP window=%d accepted=%d dropped=%d", k, acc, drop)
+            self.logger.info(
+                "INFO-SEED-PACK-DROP window=%d accepted=%d dropped=%d%s",
+                k,
+                acc,
+                drop,
+                " chk=CHK-SEED-PACK-COUNT" if k > 1 else "",
+            )
         graded = [(k, acc) for k, acc, _ in windows if k > 1]
         dropped = sum(drop for _, _, drop in windows)
-        self.logger.info("OBS-SEED-PACK-DROP graded=%d dropped=%d", len(graded), dropped)
+        self.logger.info(
+            "INFO-SEED-PACK-DROP graded=%d dropped=%d chk=CHK-SEED-PACK-COUNT", len(graded), dropped
+        )
         bad = [f"{k}:{acc}" for k, acc in graded if acc != SEED_WORDS]
         listing = ",".join(f"{k}:{acc}" for k, acc in graded)
         line = f"graded={len(graded)} xz={xz} words_per_seed={SEED_WORDS} windows=[{listing}]"

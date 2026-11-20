@@ -110,7 +110,7 @@ aperture). Besides the drawn offsets, every run issues a read and a write at
 the first word (offset 0x000), the last word (0xFFC) and one drawn interior
 word, each code once per direction.
 
-OBS-TRNG-PORT-ADDR (logged only): the port address bits above the window
+INFO-TRNG-PORT-ADDR (logged only): the port address bits above the window
 offset of each single-beat access. The specification states forwarding, not
 those bits.
 
@@ -122,7 +122,7 @@ CHK-TRNG-BURST: a read burst and a write burst (AxLEN above 0) with the port set
 to answer OKAY answer DECERR on every R beat and on the B, and no handshake of
 any channel occurs on the port.
 
-OBS-TRNG-SPLIT-PREC (logged only): the code the initiator receives for a 64-bit
+INFO-TRNG-SPLIT-PREC (logged only): the code the initiator receives for a 64-bit
 write whose last fragment errs and for a 64-bit read whose two halves answer
 different codes. The specification does not state that code.
 
@@ -843,7 +843,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             return [f"{tag} port reply carries X/Z: {rep.fmt()}"]
         port_addr = c["addr_beats"][0].addr
         self.logger.info(
-            "OBS-TRNG-PORT-ADDR: %s port address bits above the window offset=%s",
+            "INFO-TRNG-PORT-ADDR: %s port address bits above the window offset=%s",
             tag,
             "X" if port_addr is None else f"0x{port_addr & ~_TRNG_OFF_MASK:08x}",
         )
@@ -1108,7 +1108,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # One more graded instance of each sampled shape inside the FCOV window.
         await self._trng_window_pass(edge_plan + [split_spec, burst_rd_spec, burst_wr_spec])
 
-        # OBS-TRNG-SPLIT-PREC: halves that differ in a way the spec does not resolve.
+        # INFO-TRNG-SPLIT-PREC: halves that differ in a way the spec does not resolve.
         wr_pair = rng.choice(_SPLIT_PREC_WR)
         rd_pair = rng.choice(_SPLIT_PREC_RD)
         obs = [
@@ -1131,7 +1131,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         ]
         for c in obs:
             self.logger.info(
-                "OBS-TRNG-SPLIT-PREC: %s driven=[%s] port=[%s] port_beats=%d init=%s",
+                "INFO-TRNG-SPLIT-PREC: %s driven=[%s] port=[%s] port_beats=%d init=%s",
                 self._trng_tag(c),
                 ",".join(_rname(x) for x in c["codes"]),
                 ",".join(_rname(b.resp) for b in c["rep"]),

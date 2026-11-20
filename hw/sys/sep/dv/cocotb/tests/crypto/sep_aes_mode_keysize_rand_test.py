@@ -55,11 +55,11 @@ Checkers (CHK-CELL carries the ciphertext, round-trip and no-alert checks on one
                      The cell is outside the nine-cell walk and CHK-RAND-REP.
 
 Logged only (no stated value):
-  OBS-AES-RESET-SCRUB  after the power-on reseed, with STATUS.IDLE = 1 and an AES
+  INFO-AES-RESET-SCRUB  after the power-on reseed, with STATUS.IDLE = 1 and an AES
                        EDN beat seen (bounded wait, no raise): IV_0..3,
                        DATA_OUT_0..3, STATUS and the AES EDN request/acknowledge
                        taps. Read before the first DATA_OUT_CLEAR trigger.
-  OBS-AES-WO-READ      response code and read data of KEY_SHARE0_0, DATA_IN_0 and
+  INFO-AES-WO-READ      response code and read data of KEY_SHARE0_0, DATA_IN_0 and
                        TRIGGER after a non-zero write (write-only registers).
 """
 
@@ -171,10 +171,10 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         self.rng_extra = SepSeededRng(seed ^ EXTRA_STREAM_TAG)
         self.iv_chain_n = 0
         self.logger.info("AES mode x key-size breadth: seed=%d", seed)
-        await self._obs_reset_scrub()
+        await self._info_reset_scrub()
         await self.aes.trigger_prng_reseed()  # seed the masking PRNG from EDN
         await self._chk_iv_rw()
-        await self._obs_wo_read()
+        await self._info_wo_read()
 
         # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
         # output. Distinct results also show the nine cells programmed nine different
@@ -221,7 +221,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
     async def _read_iv(self) -> list[int]:
         return [await self.aes._rd(addr) for addr in AES_IV]
 
-    async def _obs_reset_scrub(self) -> None:
+    async def _info_reset_scrub(self) -> None:
         """Log IV, DATA_OUT and the AES EDN taps after the power-on reseed (no grade)."""
         dut = cocotb.top
         st = 0
@@ -242,7 +242,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             for name in EDN_TAPS
         )
         self.logger.info(
-            "OBS-AES-RESET-SCRUB iv=%s data_out=%s status=0x%08x %s aes_beats=%d "
+            "INFO-AES-RESET-SCRUB iv=%s data_out=%s status=0x%08x %s aes_beats=%d "
             "ack_seen=%d bound_polls=%d",
             _hex_words(iv),
             _hex_words(out),
@@ -274,7 +274,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             _hex_words(pre),
         )
 
-    async def _obs_wo_read(self) -> None:
+    async def _info_wo_read(self) -> None:
         """Log the read of each write-only register after a non-zero write (no grade)."""
         writes = (
             ("KEY_SHARE0_0", AES_KEY_SHARE0[0], self.rng_extra.randrange(1, WORD_MOD)),
@@ -294,7 +294,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             )
             await self.start_seq(seq)
             self.logger.info(
-                "OBS-AES-WO-READ reg=%s addr=0x%08x wrote=0x%08x resp=%d rdata=0x%08x",
+                "INFO-AES-WO-READ reg=%s addr=0x%08x wrote=0x%08x resp=%d rdata=0x%08x",
                 name,
                 addr,
                 value,

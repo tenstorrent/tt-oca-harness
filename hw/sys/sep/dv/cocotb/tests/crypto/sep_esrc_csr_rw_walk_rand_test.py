@@ -546,7 +546,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             r3 = await self._rd(reg)
             self.chk.obs("RO-RESP", reg=reg, resp=RESP_NAME.get(resp, str(resp)))
             if r3 & ~mask & 0xFFFF_FFFF:
-                self.chk.obs("RO-RSVD", reg=reg, rsvd=f"0x{r3 & ~mask & 0xFFFF_FFFF:08x}")
+                self.chk.info("RO-RSVD", reg=reg, rsvd=f"0x{r3 & ~mask & 0xFFFF_FFFF:08x}")
             rows.append(
                 {
                     "reg": reg,

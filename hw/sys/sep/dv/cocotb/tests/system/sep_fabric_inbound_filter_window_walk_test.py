@@ -347,7 +347,7 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         await filt.set_enabled(wb_entry, True)
         resp, data = await self._ext_read(X)
         self.logger.info(
-            "OBS-FILTER-INVERTED entry=%d start=0x%014x end=0x%014x addr=0x%08x resp=%d "
+            "INFO-FILTER-INVERTED entry=%d start=0x%014x end=0x%014x addr=0x%08x resp=%d "
             "rdata=0x%08x",
             wb_entry,
             inv[0],

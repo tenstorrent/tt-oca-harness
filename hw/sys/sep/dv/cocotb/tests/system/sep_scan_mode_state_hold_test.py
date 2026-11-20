@@ -112,7 +112,7 @@ specification does not state that every Class-1 word carries the name),
 OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
 shadow write with ``test_en_i`` = 1 at strap 0, after the control write), OBS-SCAN-SECRET0 (per strap-0
 session, the samples on which the secret shadow outputs equal the staged words),
-OBS-SCAN-KM-COPY (the three Key Manager OTP copy signals through each session)
+INFO-SCAN-KM-COPY (the three Key Manager OTP copy signals through each session)
 and OBS-SCAN-SECDIS-GO (a mismatch SEC_DIS go with ``test_en_i`` = 1, after the
 last session). ``INFO-SCAN-FEAT-ORIENT`` prints the PROD profile words of DEMOTE
 0/0 and 1/1 (model values) for orientation. The
@@ -674,7 +674,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         km = ("km_rlock", "km_rlock_cold", "km_chg")
         self.logger.info(
-            "OBS-SCAN-KM-COPY: leg=%s strap=%d before %s; samples=%d moved %s; during %s; last %s",
+            "INFO-SCAN-KM-COPY: leg=%s strap=%d before %s; samples=%d moved %s; during %s; last %s",
             leg,
             strap,
             " ".join(f"{k}={_hex(base[k], 3)}" for k in km),

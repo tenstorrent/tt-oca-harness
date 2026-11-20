@@ -125,8 +125,8 @@ Checkers:
   "not meaningful if MANUAL_OPERATION=0"); its value is logged.
 Vector bits 36 and 37 (entropy pool sources) are logged as ``OBS-POOL-VEC``.
 OUTPUT_VALID after each word of the first DATA_OUT read that the streams make
-word by word is logged as ``OBS-AES-OV-PARTIAL``.
-``OBS-AES-EARLY-READ``: in automatic ECB-256, one block is written; the access right
+word by word is logged as ``INFO-AES-OV-PARTIAL``.
+``INFO-AES-EARLY-READ``: in automatic ECB-256, one block is written; the access right
 after the last DATA_IN write reads DATA_OUT_0 while the block is in progress, and the
 next access reads STATUS. Only one DATA_OUT word is read before it, so OUTPUT_VALID = 0
 in that STATUS read shows that the block was still in progress at the DATA_OUT_0 read.
@@ -681,14 +681,14 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         """DATA_OUT read word by word with a STATUS read after each word.
 
         No text states OUTPUT_VALID after a read of only some DATA_OUT words, so the
-        four values are logged as OBS-AES-OV-PARTIAL.
+        four values are logged as INFO-AES-OV-PARTIAL.
         """
         out: list[int] = []
         ov_after: list[int] = []
         for k in range(4):
             out.append(await self.aes._rd(AES_DATA_OUT[k]))
             ov_after.append(int(bool(await self.aes._rd(AES_STATUS) & ST_OV)))
-        self.chk.obs("AES-OV-PARTIAL", mode=mode, block=i, ov_after=ov_after)
+        self.chk.info("AES-OV-PARTIAL", mode=mode, block=i, ov_after=ov_after)
         return out
 
     # --- streams ------------------------------------------------------------------
@@ -989,7 +989,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
 
     # --- DATA_OUT read before OUTPUT_VALID ------------------------------------------------
     async def _early_read_leg(self) -> None:
-        """OBS-AES-EARLY-READ: DATA_OUT_0 read while the block is in progress.
+        """INFO-AES-EARLY-READ: DATA_OUT_0 read while the block is in progress.
 
         aes.hjson DATA_OUT and STATUS.OUTPUT_VALID state when the output is valid, not
         what a read before that returns or does. The STATUS read after the early read
@@ -1025,7 +1025,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         def hexw(w: int) -> str:
             return f"0x{w:08x}" if w >= 0 else "none"
 
-        self.chk.obs(
+        self.chk.info(
             "AES-EARLY-READ",
             clk_write=clk_write,
             clk_read=clk_read,
