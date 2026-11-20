@@ -77,7 +77,7 @@ module efuse_shadow_reg_access_control #(
     return in_range;
   endfunction
 
-  `OCAH_OT_ASSERT_INIT(EfuseFieldMapIdxInRange_A, field_map_idx_in_range())
+  `OCAH_OT_ASSERT_INIT_NET(EfuseFieldMapIdxInRange_A, field_map_idx_in_range())
 
   ////////////////////////////////////////////////////////////////////////////
   // Lock Decode
