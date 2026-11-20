@@ -214,13 +214,15 @@ Checkers:
   CHK-COND-HT-OFF      with ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1 the 32-bit health test
                        is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63):
                        HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a write
-                       of 0xFF and still reads 0 after WINDOW + 64 constant-zero
-                       strobes (WINDOW = 2048, the health-test window), a span that
-                       holds a window wrap. Controls: ``CTRL-COND-HT-CTRL``, the same
-                       constant zero with the compressor in use sets
-                       HEALTH_TEST_STATUS bit 0 within WINDOW + 256 strobes;
-                       ``CTRL-COND-HT-OFF``, CTRL reads back the bypass 1 and at least
-                       WINDOW strobes are counted in the wait.
+                       of 0xFF and still reads 0 after max(WINDOW, t_ctrl) + 64
+                       constant-zero strobes (WINDOW = 2048, the health-test window;
+                       t_ctrl the strobes the control trial took to trip), a span
+                       that holds a window wrap and the control's trip time.
+                       Controls: ``CTRL-COND-HT-CTRL``, the same constant zero with
+                       the compressor in use sets HEALTH_TEST_STATUS bit 0 within
+                       WINDOW + 256 strobes; ``CTRL-COND-HT-OFF``, CTRL reads back the
+                       bypass 1 and at least max(WINDOW, t_ctrl) strobes are counted
+                       in the wait.
 Logged only: ``INFO-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
 (entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
@@ -348,7 +350,7 @@ PASSTHRU_BIW_MIN = 16
 PASSTHRU_FIFO_MIN = 8
 PASSTHRU_MAX_OFFSET = 8
 BIW_MAP_WORDS = 4  # FIFO words paired with their strobe bytes in INFO-ESRC-BIW-MAP
-# Strobes past one window in the bypass wait, so the wait spans a window wrap.
+# Strobes past one window, and past the control trial's trip, in the bypass wait.
 HT_OFF_EXTRA_STROBES = 64
 # Period walk: strobes after a lane enable (the first distance and five gaps).
 PERIOD_STROBES = 6
@@ -2360,7 +2362,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await self._rd(ESRC_HEALTH_TEST_STATUS), "HEALTH_TEST_STATUS", "HEALTH_STATUS"
         )
         self.noise.set_lanes([Stuck(0)] * NUM_LANES)
-        strobes = WINDOW + HT_OFF_EXTRA_STROBES
+        t_ctrl_strobes = -(-t_ctrl // self._period())
+        strobes = max(WINDOW, t_ctrl_strobes) + HT_OFF_EXTRA_STROBES
         mark = self.noise.mark()
         try:
             await self.noise.wait_words(strobes, (strobes + WINDOW) * self._period())
@@ -2381,9 +2384,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         )
         self.chk.ctrl(
             "COND-HT-OFF",
-            bypass == 1 and words >= WINDOW,
+            bypass == 1 and words >= max(WINDOW, t_ctrl_strobes),
             bypass=bypass,
             words=words,
+            wait_strobes=strobes,
+            t_ctrl_strobes=t_ctrl_strobes,
             window=WINDOW,
         )
         self.chk.ok(
@@ -2394,6 +2399,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             ht_status=f"0x{s_after:02x}",
             expect="0x00",
             t_ctrl_clk=t_ctrl,
+            t_ctrl_strobes=t_ctrl_strobes,
+            wait_strobes=strobes,
             words=words,
         )
 
