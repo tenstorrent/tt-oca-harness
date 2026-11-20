@@ -611,6 +611,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+smc_reset_sva_need_iso_l2_blocked"]
 
 [[tests]]
 name = "smc_spm_bank_formula_test"

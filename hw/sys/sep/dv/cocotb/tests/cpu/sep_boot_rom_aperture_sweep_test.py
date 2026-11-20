@@ -34,7 +34,7 @@ Checks:
                      beat with the strobe of the stored bytes and one B beat
                      per store (rom.adoc: stores receive a response and do not
                      modify the ROM). The B code is logged
-                     (OBS-ROM-STORE-RESP).
+                     (INFO-ROM-STORE-RESP).
                      Back-to-back pairs: at the first 8 store points, 4 pairs load the
                      word and then store to it (read_before_store) and 4 pairs
                      store and then load (store_before_read), with only a
@@ -93,12 +93,12 @@ Checks:
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
 
-Logged only (OBS-ROM-PAST-EXTENT-RESP): for each past-extent load, the
+Logged only (INFO-ROM-PAST-EXTENT-RESP): for each past-extent load, the
 PR-LSU-XBAR R response code, the loaded value, the NMI count between the load
 and the next one, and the NMI ``mcause`` and ``mdseac``. No TT text states the
 response of that range to the SEP CPU.
 
-Logged only (OBS-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
+Logged only (INFO-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
 closed, a set-up ``rst_ni`` pulse and the same anchor, ``wdt_rst_ni`` falls at
 the same offset o and is released after RST_HOLD cycles. The ``wdt_rst_ni``
 reset lowers the CPU reset and not the reset of the boot ROM interface
@@ -1350,7 +1350,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                     f"exp_word={hex(addr >> 3)} strb={w.strb} exp_strb=0x{exp_strb:02x}"
                 )
         self.logger.info(
-            "OBS-ROM-STORE-RESP n_stores=%d bresp=%s",
+            "INFO-ROM-STORE-RESP n_stores=%d bresp=%s",
             N_STORES,
             ",".join("X" if b.resp is None else str(b.resp) for b in b_beats),
         )
@@ -1456,7 +1456,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             )
 
     def _grade_past(self) -> None:
-        """CHK-ROM-PAST-EXTENT per load, and OBS-ROM-PAST-EXTENT-RESP."""
+        """CHK-ROM-PAST-EXTENT per load, and INFO-ROM-PAST-EXTENT-RESP."""
         p = self.plan
         t_end = self._marker_t(OFF_PX_E)
         recs = self.mbx.records()
@@ -1520,7 +1520,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             nmi = [r.val for r in rl if r.off == OFF_NMI]
             mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
             self.logger.info(
-                "OBS-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
+                "INFO-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
                 "mdseac=%s traps=%d",
                 addr,
                 "X" if rresp is None else str(rresp),
@@ -1894,7 +1894,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         first_word = None if first is None or first.addr is None else first.addr >> 3
         self.logger.info(
-            "OBS-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
+            "INFO-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
             "macro_after_fall=req%s/addr%s/memif_rst_n%s "
             "cpu_low_rom_req=%d[%s] cpu_low_rom_rsp=%d[%s] cpu_low_macro_req=%d[%s] "
             "anchor_rsp_c=%s anchor_rsp_is_word1=%s first_req_word=%s first_req_c=%s "

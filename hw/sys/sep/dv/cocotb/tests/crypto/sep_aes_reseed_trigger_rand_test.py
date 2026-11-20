@@ -59,9 +59,8 @@ not a check. The leaf logs ``INFO-BLOCKED CHK-AES-CLEAR-OUT`` and
 ``OBS-AES-CLEAR-OUT`` and grades nothing there. The IV after the clear is logged
 as ``OBS-AES-CLEAR-IV``.
 
-The count of EDN requests and acknowledges per reseed trigger has no stated
-value, so it is logged, not graded:
-  OBS-AES-RESEED-SRC      one line per event: the AES reset pulse, the CTRL
+The count of EDN requests and acknowledges per reseed trigger is logged:
+  INFO-AES-RESEED-SRC     one line per event: the AES reset pulse, the CTRL
                           write and the key write of the trigger leg, the
                           PRNG_RESEED trigger, DATA_OUT_CLEAR and
                           KEY_IV_DATA_IN_CLEAR. Fields: the rises of
@@ -69,8 +68,12 @@ value, so it is logged, not graded:
                           from the write to the STATUS.IDLE return, that window
                           in clocks, the PRNG_RESEED_RATE value the leaf last
                           committed (the field reset after a pulse) and where.
-  OBS-AES-RATE-RUN        per rate run: the acknowledge count of
+                          Not graded; no open specification question.
+  INFO-AES-RATE-RUN       per rate run: the acknowledge count of
                           CHK-AES-RESEED-RATE and the request count beside it.
+                          Graded by CHK-AES-RESEED-RATE (per1, per64, per8k)
+                          or CHK-AES-RESEED-INVALID (zero, multi); no open
+                          specification question.
 ``crypto_edn_req_o[0]`` is the AES request tap of the same approved probe
 family as the acknowledge; the leaf only samples it.
 """
@@ -307,7 +310,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         if not ok:
             raise AssertionError(f"AES STATUS.IDLE not 1 after the reset pulse bound={WAIT_LIMIT}")
         self.rate = RATE_RESET
-        self._obs_src("reset", where, src)
+        self._info_src("reset", where, src)
 
     async def _poll(self, mask: int, want: int, bound: int) -> tuple[bool, list[tuple[int, int]]]:
         """Back-to-back STATUS reads until (STATUS & mask) == want or bound clocks pass."""
@@ -326,10 +329,10 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         """Request mark, acknowledge mark and clock at the write of a reseed source event."""
         return self.req.mark(), self.ack.mark(), self._now()
 
-    def _obs_src(self, event: str, where: str, src: tuple) -> None:
+    def _info_src(self, event: str, where: str, src: tuple) -> None:
         """Log the AES EDN request and acknowledge rises since ``src`` (no grade)."""
         req_mark, ack_mark, t0 = src
-        self.chk.obs(
+        self.chk.info(
             "AES-RESEED-SRC",
             event=event,
             rate=f"0b{self.rate:03b}",
@@ -420,13 +423,14 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         count = self.ack.rises_since(mark, "aes")
         req_rises = self.req.rises_since(req_mark, "aes")
         close_graded_window(self.logger)
-        self.chk.obs(
+        self.chk.info(
             "AES-RATE-RUN",
             run=run,
             value=f"0b{value:03b}",
             acks=count,
             req_rises=req_rises,
             mismatches=bad,
+            chk="CHK-AES-RESEED-RATE" if run in LEGAL_RATE else "CHK-AES-RESEED-INVALID",
         )
         return count, bad
 
@@ -479,11 +483,11 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             src = self._src_mark()
             await self._ctrl(self._ctrl_word(LEGAL_RATE[plan.trig_rate]))
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_ctrl")
-            self._obs_src("ctrl", "trigger_leg", src)
+            self._info_src("ctrl", "trigger_leg", src)
             src = self._src_mark()
             await self.aes.write_key(plan.key)
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_key")
-            self._obs_src("key", "trigger_leg", src)
+            self._info_src("key", "trigger_leg", src)
             pre = await self.aes._rd(AES_STATUS)
             idle_before = bool(pre & ST_IDLE)
             src = self._src_mark()
@@ -493,7 +497,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             t_resp = self.ack.clk
             samples = await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_reseed")
             close_graded_window(self.logger)
-            self._obs_src("prng_reseed", "trigger_leg", src)
+            self._info_src("prng_reseed", "trigger_leg", src)
             n_status = len(samples)
             busy = sum(1 for _, st in samples[:-1] if not (st & ST_IDLE))
             rises = self.ack.rise_clks_since(m, "aes")
@@ -561,7 +565,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
             await ClockCycles(cocotb.top.clk_i, CLEAR_WAIT_FACTOR * (self.t_blk or 1))
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "clear_out_idle_after")
-            self._obs_src("data_out_clear", "clear_trial", src)
+            self._info_src("data_out_clear", "clear_trial", src)
             after = await self._read_out()
         except TrialTimeout as exc:
             self.chk.obs("AES-CLEAR-OUT", reason=f"timeout:{exc.what}", bound=exc.bound)
@@ -598,7 +602,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             await self.aes._wr(AES_TRIGGER, TRIG_KEY_IV_CLEAR)
             await ClockCycles(cocotb.top.clk_i, CLEAR_WAIT_FACTOR * (self.t_blk or 1))
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_key_iv_clear")
-            self._obs_src("key_iv_data_in_clear", "clear_trial", src)
+            self._info_src("key_iv_data_in_clear", "clear_trial", src)
             iv_after = await self._read_iv()
             await self.aes.write_key(reload_key)
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_reload")

@@ -263,6 +263,7 @@ tests = [
     "smc_i2c_p0_fifo_test",
     "smc_i2c_p0_timeout_test",
     "smc_i2c_timing_set_rand_test",
+    "smc_i2c_tbuf_bus_free_test",
     "smc_i2c_p0_stretch_test",
     "smc_i2c_p0_cfifo_test",
     "smc_i2c_p0_conti_test",
@@ -709,6 +710,18 @@ args = ["+smc_i2c_shared_bus"]
 [[tests]]
 name = "smc_i2c_timing_set_rand_test"
 module = "smc_i2c_timing_set_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+# The smc_i2c_timing_set_rand_test draw with the T_BUF pair graded: with
+# THD_DAT 25 to 32 and transfers queued, every bus-free time equals
+# T_R + TSU_STA + 7 whatever TIMING4.T_BUF holds (i2c.rdl TIMING4.T_BUF).
+name = "smc_i2c_tbuf_bus_free_test"
+module = "smc_i2c_tbuf_bus_free_test"
 seed = 1
 reseed = 3
 timeout_sec = 1800

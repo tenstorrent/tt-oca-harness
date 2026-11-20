@@ -12,7 +12,7 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 * CHK-RESET    (firmware) every PIC field reads its RDL reset value before the
                first PIC write;
                ``meip`` with the six excluded idle bits masked
-               (``OBS-IDLE-UNSTATED``).
+               (``INFO-IDLE-UNSTATED``).
 * CHK-RESET-X  (host, VCS) no reset read returns X: ``pic_rd_data_probe_o``
                samples each reset read, its count per group equals the
                firmware read count, and at the ``CHK-RW`` read-backs the probe
@@ -37,7 +37,7 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
                no other graded bit (else the store is not issued and the
                check fails), and the read after the store equals it, with
                the six excluded idle bits masked. The store response (trap
-               or not) is logged as ``OBS-PIC-MEIP-WR``. The
+               or not) is logged as ``INFO-PIC-MEIP-WR``. The
                ``cp_group_x_dir[meip_wr]`` sample is the same compare: read
                after == read before, non-zero, idle bits masked.
 * CHK-MEIP-WR-STORE (host) each CHK-MEIP-WR instance has exactly one PIC
@@ -585,7 +585,7 @@ class sep_pic_reg_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-HOLE FAIL: firmware addresses {holes} != drawn {self.tcfg.holes}"
             )
-        for name in ("OBS-IDLE-UNSTATED", "OBS-PIC-MEIP-WR"):
+        for name in ("INFO-IDLE-UNSTATED", "INFO-PIC-MEIP-WR"):
             for rec in self.con.records(name):
                 self.logger.info("%s", rec.text)
         n_host = self._chk_reset_x(four_state)

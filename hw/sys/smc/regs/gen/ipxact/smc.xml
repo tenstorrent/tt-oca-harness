@@ -3948,8 +3948,9 @@ This would violate the proper protocol for a controller to join a multi-controll
 environment. However, if this controller is known to be the first to join, this
 ordering will enable skipping the idle wait.
 
-When `0`, the bus monitor will report that the bus is always free, so the
-Controller FSM is never blocked from transmitting.</ipxact:description>
+When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+wait after a qualified STOP, so that wait is the only time the Controller FSM
+is blocked from transmitting.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4697,8 +4698,18 @@ minimum requirement, assuming a 1 GHz system clock.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>T_BUF</ipxact:name>
-              <ipxact:description>Global control: specifies the time between a STOP and START condition (`t_BUF`)
-in system clock cycles. See Table 11 in the I²C Specification for details. This
+              <ipxact:description>Global control: specifies the bus free time between a STOP and the following
+START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+Specification for details. The bus monitor starts this wait once SCL has stayed
+high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+holds a START back only while the wait runs. With
+`CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+Otherwise, a START behind the controller's own STOP waits only when that STOP
+is qualified before the controller takes the next FMT FIFO entry: when
+`THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+entry already queued, the START follows the STOP's SDA rise after
+`TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
 field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
 requirement, assuming a 1 GHz system clock.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
@@ -7448,7 +7459,7 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -7486,18 +7497,6 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_read_back</ipxact:name>
-            <ipxact:description>When set, trigger a read back after a program</ipxact:description>
-            <ipxact:bitOffset>18</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -7636,12 +7635,12 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</ipxact:description>
+          <ipxact:description>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</ipxact:description>
+            <ipxact:description>Program response data from the adopter SHIM; its meaning is adopter-defined.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

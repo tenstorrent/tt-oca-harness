@@ -65,7 +65,7 @@ Checkers:
   CHK-HMAC-CTX        split, stop, save, restore, continue == single pass (DUT against
                       DUT, word for word) and == golden in the big-endian read
   CHK-HMAC-STOP       after hash_stop: hmac_done reads 1 (STATUS.hmac_idle is logged as
-                      OBS-HMAC-STOP-IDLE; the register text does not state it)
+                      INFO-HMAC-STOP-IDLE; the register text does not state it)
   CHK-HMAC-SHAOFF     sha_en 1 -> 0 after a finished hash: every DIGEST word reads 0
   CHK-HMAC-DONE-LINE  at a graded completion with the enable set: bit 17 reads 0 before the
                       ending command, state reads 1, and bit 17 rises at or after the lower
@@ -569,7 +569,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         if graded:
             post = (await self._rd(HMAC_INTR_STATE)) & HMAC_INTR_DONE
             await ClockCycles(self.dut.clk_i, 2)
-            self.chk.obs(
+            self.chk.info(
                 "HMAC-DONE-FALL",
                 event=idx,
                 state_after_w1c=int(post != 0),
@@ -762,7 +762,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             )
             # The register text states hmac_done after hash_stop, not STATUS.hmac_idle.
             st_stop = await self._rd(HMAC_STATUS)
-            self.chk.obs(
+            self.chk.info(
                 "HMAC-STOP-IDLE", tag=tag, part=i, idle=int(bool(st_stop & HMAC_STATUS_IDLE))
             )
             # Precondition of the context save: the engine is idle.

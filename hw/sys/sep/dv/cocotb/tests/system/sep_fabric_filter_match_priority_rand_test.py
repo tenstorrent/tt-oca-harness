@@ -389,9 +389,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         vals = self._dbg_hist[max(0, m - 1) :]
         return ",".join("X" if x is None else f"0x{x:08x}" for x in vals) or "none"
 
-    def _obs_dbg(self, p: Probe, m: int, resp: int | None) -> None:
+    def _info_dbg(self, p: Probe, m: int, resp: int | None) -> None:
         self.logger.info(
-            "OBS-DBG-FILTER-HIT inst=%s cls=%s dir=%s addr=0x%08x resp=%s lane_191_160=%s",
+            "INFO-DBG-FILTER-HIT inst=%s cls=%s dir=%s addr=0x%08x resp=%s lane_191_160=%s",
             p.inst,
             p.cls,
             p.dir,
@@ -404,7 +404,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         """Run one probe and grade it against the model. Returns the evidence."""
         dm = self._dbg_mark()
         r = await self._run_graded(p)
-        self._obs_dbg(p, dm, r.resp)
+        self._info_dbg(p, dm, r.resp)
         return r
 
     async def _run_graded(self, p: Probe) -> Result:
@@ -1519,13 +1519,13 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
     # Legs after the graded window: group_id against AxUSER[11:4], first probe
     # after the entry write
     # ------------------------------------------------------------------
-    async def _obs_si_read(self, p: Probe) -> tuple[int, int, int]:
+    async def _info_si_read(self, p: Probe) -> tuple[int, int, int]:
         """One SI read of ``p``: (resp, PR-INFLT AR count, PR-XEXT/PR-CSR AR count)."""
         mark = self._target_mark()
         mf = self.taps["PR-INFLT"].mark()
         dm = self._dbg_mark()
         seq = await self._si(p)
-        self._obs_dbg(p, dm, seq.resp_code)
+        self._info_dbg(p, dm, seq.resp_code)
         return seq.resp_code, self.taps["PR-INFLT"].count(mf, "ar"), self._seen(mark, p)[0]
 
     async def _group_leg(self) -> None:
@@ -1557,16 +1557,16 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             )
         await self._clear("in")
 
-    async def _obs_write_to_use(self) -> None:
+    async def _info_write_to_use(self) -> None:
         """Program one entry without the read-back and probe right after its last B."""
         await self._clear("in")
         idx = self.rng.randrange(self.inb.n)
         p = self._p_in("sram", False, self.rng.getrandbits(1))
         await self.inb.program(idx, self._entry(p, self._cover(p, False)), check=False)
         self.used["in"] = {idx}
-        resp, inflt, seen = await self._obs_si_read(p)
+        resp, inflt, seen = await self._info_si_read(p)
         self.logger.info(
-            "OBS-FILT-WRITE-TO-USE inst=in entry=%d addr=0x%08x resp=%s pr_inflt_ar=%d target_ar=%d",
+            "INFO-FILT-WRITE-TO-USE inst=in entry=%d addr=0x%08x resp=%s pr_inflt_ar=%d target_ar=%d",
             idx,
             p.addr,
             _RESP.get(resp),
@@ -1597,9 +1597,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self.start_seq(seq)
         if seq.resp_code != RESP_DECERR:
             mon.release_expected_decerr(1)
-        self._obs_dbg(p, dm, seq.resp_code)
+        self._info_dbg(p, dm, seq.resp_code)
         self.logger.info(
-            "OBS-FILT-WRITE-TO-USE inst=out entry=%d addr=0x%08x resp=%s pr_out_ar=%d",
+            "INFO-FILT-WRITE-TO-USE inst=out entry=%d addr=0x%08x resp=%s pr_out_ar=%d",
             idx,
             p.addr,
             _RESP.get(seq.resp_code),
@@ -1670,7 +1670,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._leg4()
         close_graded_window(self.logger)
         await self._group_leg()
-        await self._obs_write_to_use()
+        await self._info_write_to_use()
 
         for inst in ("in", "out"):
             s = self.stats[inst]

@@ -134,16 +134,16 @@ Checkers:
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
 Log only: INFO-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
-erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
+erase fill is not stated), ``INFO-KPV-ERASE-FILL LOG``, ``INFO-KSCR-COLD LOG``
 (KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
-``INFO-KPV-RACE``, and ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
+``INFO-KPV-RACE``, and ``INFO-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
 ``OBS-KPV-ERASE-WARM``: a warm reset during a latched erase is not stated; the
 line logs the slots with the erase bit set and the changed stored words at the
 reset fall, and after release and boot the CTRL and the changed stored words of
 each slot. CTRL after the boot is not graded: the erase bit clears when the
 erase ends, so a CTRL of 0 does not show that the reset acted on it.
 
-Log only, not stated: ``OBS-KPV-ACCESS``, a word read and write issued right
+Log only, not stated: ``INFO-KPV-ACCESS``, a word read and write issued right
 after an erase write, each with the erase bit of a CTRL read right after that
 access, and a KPV_SCRAMBLER_KEY read after the lock.
 """
@@ -846,7 +846,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                         rewrite_ok=rewrite_ok,
                     )
                     self.logger.info(
-                        "OBS-KPV-ERASE-FILL LOG slot=%d state=%s words_same=%d", s, st, same
+                        "INFO-KPV-ERASE-FILL LOG slot=%d state=%s words_same=%d", s, st, same
                     )
 
             # Sealed state, then the erase that retires the slot.
@@ -1073,7 +1073,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             "KPV-NEIGH", changes == 0, ops=ops, slots=len(by_slot), neighbor_changes=changes
         )
 
-    async def _access_obs(self, ops: list[kp.PokeOp]) -> list[kp.PokeResult]:
+    async def _access_info(self, ops: list[kp.PokeOp]) -> list[kp.PokeResult]:
         """Logged-only accesses; their data stays out of the stored-word compare count."""
         return await self.poke.run(ops, allow_unknown=True)
 
@@ -1085,7 +1085,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         # access shows whether the erase was still in flight when it completed.
         s0 = p.scr_slots[0]
         ca, wa = m.ctrl_addr(s0), m.word_addr(s0, 0)
-        r = await self._access_obs(
+        r = await self._access_info(
             [
                 kp.wr(ca, m.ERASE),
                 kp.rd(wa),
@@ -1097,7 +1097,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         )
         self._erase_done(r, s0)
         for case, x, c in (("erase_rd", r[1], r[2]), ("erase_wr", r[3], r[4])):
-            self.chk.obs(
+            self.chk.info(
                 "KPV-ACCESS",
                 case=case,
                 slot=s0,
@@ -1146,8 +1146,8 @@ class sep_km_kpv_rand_test(sep_base_test):
             scr_ctrl=_h(self.scr_pre),
             lock_timing="before" if p.lock_before else "after",
         )
-        key = (await self._access_obs([kp.rd(m.SCR_KEY)]))[0]
-        self.chk.obs(
+        key = (await self._access_info([kp.rd(m.SCR_KEY)]))[0]
+        self.chk.info(
             "KPV-ACCESS",
             case="scr_key_locked",
             rdata=_hk(key.value) if key.known else "X",
@@ -1244,7 +1244,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             cells_ok=self.cells_warm,
             cold_ctrl=f"0x{cold_scr:x}",
         )
-        self.logger.info("OBS-KSCR-COLD LOG cells_ne=%d", cells_ne)
+        self.logger.info("INFO-KSCR-COLD LOG cells_ne=%d", cells_ne)
 
     def _erase_slots_set(self, slots: list[int]) -> int:
         """Bit i set when the KM-KPV CTRL tap shows the erase bit of ``slots[i]``."""
@@ -1436,7 +1436,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         await ReadOnly()
         vec = self.rd(cocotb.top.sep_internal_interrupts_probe_o, 1 << _PIC_KM_UNREC)
         await RisingEdge(cocotb.top.clk_i)
-        self.chk.obs("KPV-WIPE-ERR-O", err_o=(vec >> _PIC_KM_UNREC) & 1)
+        self.chk.info("KPV-WIPE-ERR-O", err_o=(vec >> _PIC_KM_UNREC) & 1)
         kv_wipe = self._key_valid()
         depth_post = await self._mbox_depth()
         if not (self.poke.state() == (kp.ST_RUN, ha.tag) and self.poke.progress()[0] == last):

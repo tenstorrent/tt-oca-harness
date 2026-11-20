@@ -59,6 +59,13 @@ Checkers:
                     ``program_done`` inside the window (``CHK-HOOK FAIL`` otherwise). The
                     command request stays valid while the response is withheld, so the tap
                     shows one command.
+  CHK-PROG-RESET    ``EFUSE_PROGRAM_CTRL`` read after the ``rst_ni`` that follows the
+                    control program equals its RDL reset value on every field
+                    (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``, ``EFUSE_PROGRAM_CTRL``).
+                    Control (``CTRL-PROG-RESET-PRE``): after the control program the
+                    leaf clears ``program_enable`` and keeps ``efuse_addr`` and
+                    ``efuse_data`` 1, and the read right before that ``rst_ni`` shows
+                    ``efuse_data`` 1, so a register that the reset does not clear fails.
 
   CHK-SENSE-STATUS-CTRLWORD  a last sense with the status bit on the response of a
                     control word, drawn from shadow words 0 to 9 whose staged value
@@ -87,8 +94,8 @@ passed. Every sample of the leaf (``cp_sense_status_word``, ``cp_sense_shape``,
 ``x_prog_lifecycle``) is held with the tag of its graded step (``set_ef_hold_tag``)
 and samples only when the leaf writes that tag to the pass label
 (``set_ef_hold_pass``) after the check of that instance passed: CHK-SENSE-STATUS of
-the second injected sense, and CHK-PROG-LIFE with its hook control for the held
-program. The first failed check or missing control closes the window and keeps it
+the second injected sense, and CHK-PROG-RESET with its control and CHK-PROG-LIFE
+with its hook control for the held program. The first failed check or missing control closes the window and keeps it
 closed for the rest of the leaf.
 """
 
@@ -140,6 +147,9 @@ _M_SENSE_DONE = _IC.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_sense_done"
 _M_PG_BUSY = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_busy")
 _M_PG_DONE = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _M_PG_STATUS = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
+_M_PG_DATA = _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
+_M_PG_FIELDS = _IC.mask32("EFUSE_PROGRAM_CTRL")
+_PG_RESET = _IC.reset32("EFUSE_PROGRAM_CTRL")
 # One shadow word per 32-bit register of the MAP window.
 _N_WORDS = sym("SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
 # READ commands of one sense: ST_READ issues a single READ command for all shadow
@@ -245,7 +255,12 @@ class _SenseRec:
 class sep_efuse_shim_response_fault_test(sep_base_test):
     """Sense status bit on one word; program lifecycle with a withheld shim response."""
 
-    required_evidence = ("CHK-SENSE-STATUS", "CHK-PROG-LIFE", "CHK-SENSE-STATUS-CTRLWORD-FEAT")
+    required_evidence = (
+        "CHK-SENSE-STATUS",
+        "CHK-PROG-LIFE",
+        "CHK-PROG-RESET",
+        "CHK-SENSE-STATUS-CTRLWORD-FEAT",
+    )
 
     async def _rd(self, addr: int) -> int:
         return await self.fd.rd(addr)
@@ -545,11 +560,11 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
         ctl_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, read_back=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1))
         pg = await self._poll_pg(_M_PG_DONE, poll_bound)
         ctl_clks = self.clk - ctl_go if pg is not None else None
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
-        await self._wr(PROGRAM_CTRL_ADDR, 0)
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, enable=0, go=0))
         ctl_word_a, ctl_bit = await self._direct_bit(a)
         ctl_done = pg is not None and _b(pg, _M_PG_DONE) == 1
         ctl_clean = pg is not None and _b(pg, _M_PG_STATUS) == 0 and _b(pg, _M_PG_BUSY) == 0
@@ -566,8 +581,23 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         self._set_golden()
 
         # Steps 7-9: held program of b.
+        pg_pre = await self._rd(PROGRAM_CTRL_ADDR)
+        self._ctrl(
+            "PROG-RESET-PRE",
+            _b(pg_pre, _M_PG_DATA) == 1,
+            pg=f"0x{pg_pre:08x}",
+            efuse_data=_b(pg_pre, _M_PG_DATA),
+            program_done=_b(pg_pre, _M_PG_DONE),
+        )
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         pg_reset = await self._rd(PROGRAM_CTRL_ADDR)
+        self._grade(
+            "PROG-RESET",
+            pg_reset & _M_PG_FIELDS == _PG_RESET & _M_PG_FIELDS,
+            pg=f"0x{pg_reset:08x}",
+            exp=f"0x{_PG_RESET & _M_PG_FIELDS:08x}",
+            field_mask=f"0x{_M_PG_FIELDS:08x}",
+        )
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
         cmds = SepShimCmdMonitor(dut).start()
         m_go = cmds.mark()
@@ -671,7 +701,6 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             word_read=f"0x{word_b:08x}",
             ctl_done=int(ctl_done),
             ctl_bit_read=ctl_bit,
-            pg_after_reset=f"0x{pg_reset:08x}",
         )
         await self._release(_TAG_LIFE, ok and hook)
         close_graded_window(self.logger)
@@ -703,9 +732,32 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         cw = int(p.leg["ctrl_word"])
         dut.efuse_sense_status_word_i.value = cw
         dut.efuse_sense_status_inject_i.value = 1
+        cw_rec = _SenseRec()
+        cw_task = cocotb.start_soon(self._sense_mon(cw_rec))
         await rst_pulse(self, hold=_RST_HOLD)
         n = await clocks_to_sense(self, sense_bound, started=True)
         await ClockCycles(dut.clk_i, 20)
+        cw_done = cw_task.done()
+        if not cw_done:
+            cw_task.cancel()
+        await cw_rec.stop()
+        # The inject reached the drawn word: exactly one response of the sense
+        # carries status 1, at word cw, with the staged data.
+        cw_err = [k for k, (st, _d) in enumerate(cw_rec.resp) if st]
+        cw_resp = cw_rec.resp[cw] if len(cw_rec.resp) > cw else None
+        self._ctrl(
+            "SENSE-STATUS-CTRLWORD-INJ",
+            cw_done
+            and len(cw_rec.resp) == _N_WORDS
+            and cw_err == [cw]
+            and cw_resp is not None
+            and cw_resp[1] == staged[cw],
+            word=cw,
+            n_resp=len(cw_rec.resp),
+            err_idx=cw_err[:4],
+            data="none" if cw_resp is None else f"0x{cw_resp[1]:08x}",
+            staged=f"0x{staged[cw]:08x}",
+        )
         await ReadOnly()
         shadow = self._probe_words()[cw]
         done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)

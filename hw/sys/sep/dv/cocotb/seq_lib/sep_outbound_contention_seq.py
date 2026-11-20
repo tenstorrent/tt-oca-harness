@@ -903,9 +903,6 @@ class OutboundLeaf:
         self._line(chk, line)
         self._pass(chk)
 
-    def _obs_row(self, tag: str, line: str) -> None:
-        self.logger.info("OBS-%s: %s", tag.removeprefix("CHK-"), line)
-
     def _info_row(self, tag: str, line: str) -> None:
         self.logger.info("INFO-%s: %s", tag, line)
 
