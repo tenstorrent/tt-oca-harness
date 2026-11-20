@@ -62,7 +62,9 @@ Checkers:
   CHK-FIFO-ORDER         64 popped words == 64 consecutive stream words at one d in 0..8.
   CHK-FIFO-CHURN         w_k XOR w_(k-32) == C for k = 32..63; control: churn off, every word == C.
   CHK-FIFO-NOERR         FIFO_ERROR reads 0 after each leg; control: INTR_TEST sets it.
-  CHK-FIFO-INTEG-PARITY  0 after the intact pop, 1 after the pop of the corrupted entry.
+  CHK-FIFO-INTEG-PARITY  0 after the intact pop; 1 after the pop of the corrupted entry,
+                         and that pop lowers LEVEL by 1. The value before that pop is
+                         logged (OBS-FIFO-INTEG-PARITY-PRE-POP).
   CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error;
                          the FIFO is first filled to 64 and popped down to H, so a
                          misaddressed pop reads an entry with a matching parity.
@@ -113,7 +115,9 @@ Checkers:
                          BOOT_PHASE_DONE = 0 and FIFO_CTRL.ENABLE = 1 (its reset value)
                          after it.
 Logged only: ``INFO-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
-names no partner for them), ``OBS-FIFO-ERR-ALERT`` (after the parity and the pointer
+names no partner for them), ``OBS-FIFO-INTEG-PARITY-PRE-POP`` (FIFO_ERROR with the parity
+error forced and before the pop of that entry: the text states parity verification on
+reads and no check before the read), ``OBS-FIFO-ERR-ALERT`` (after the parity and the pointer
 trial, with FIFO_ERROR as read: the ESRC interrupt line, and LEVEL and WPTR before and
 after the stream offers a word with ENABLE = 1; no text states an alert or a write stop
 for a FIFO error, and the entropy source has no alert output at the SEP boundary, so the
@@ -1087,21 +1091,35 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         dut.esrc_fifo_parity_bit_i.value = plan.parity_bit
         dut.esrc_fifo_parity_inject_i.value = 1
         await ClockCycles(dut.clk_i, 2)
+        # No text states whether the parity check waits for the read, so the value
+        # before the pop is logged and not graded.
+        self.chk.obs(
+            "FIFO-INTEG-PARITY-PRE-POP",
+            fifo_error=await self._fifo_error(),
+            reason="time_of_parity_check_before_read_not_stated",
+        )
+        level_before = await self._level()
         await self._rd(ESRC_FIFO_RDATA)
         e2 = await self._fifo_error()
+        level_after = await self._level()
         dut.esrc_fifo_parity_inject_i.value = 0
         await ClockCycles(dut.clk_i, 2)
+        popped = level_after == level_before - 1
         fields = {
             "held": held,
             "parity_bit": plan.parity_bit,
             "pre_error": e0,
             "intact_pop_error": e1,
             "parity_pop_error": e2,
+            "level_before_pop": level_before,
+            "level_after_pop": level_after,
         }
         if not ok:
             fields["reason"] = f"timeout:held bound={self._fill_bound()}"
         self.chk.ctrl("FIFO-INTEG-PARITY", e2 == 1, parity_pop_error=e2)
-        self.chk.ok("FIFO-INTEG-PARITY", ok and e0 == 0 and e1 == 0 and e2 == 1, **fields)
+        self.chk.ok(
+            "FIFO-INTEG-PARITY", ok and e0 == 0 and e1 == 0 and e2 == 1 and popped, **fields
+        )
         await self._err_alert_obs("parity")
         before = await self._fifo_error()
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
