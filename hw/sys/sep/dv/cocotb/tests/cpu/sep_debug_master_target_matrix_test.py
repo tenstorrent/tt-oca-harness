@@ -160,7 +160,7 @@ Checks:
                   and ARSIZE 3, or AW and one W beat with the written data and
                   all strobes) (``hw/sys/sep/doc/fabric.adoc:162-164``), and the
                   PR-DBG-SB R or B beat carries the code the port returned, and
-                  the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:86``
+                  the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:80``
                   "Adopter-defined", ``doc/trm/src/memory_map.adoc:111-112``: the
                   adopter's implementation answers). ``sberror`` is 0 for OKAY
                   and not 0 for SLVERR; an OKAY read returns the word in

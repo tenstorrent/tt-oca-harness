@@ -1209,7 +1209,7 @@ rest of the register. Inside the register map, an access to a word that no
 register or memory window owns returns no bus error: the vendored register
 block has no address check (`adams_bridge.adoc:107-108`). The response codes and
 the read data of such a hole word are the "Hole in Extent" cell of the ABR row
-of the generated SEP memory map (`hw/sys/sep/regs/gen/adoc/memory_map.adoc:66`,
+of the generated SEP memory map (`hw/sys/sep/regs/gen/adoc/memory_map.adoc:62`,
 "OKAY, 0x0 / OKAY"), which the default hole response of the SEP register
 description generates (`hw/sys/sep/regs/include/sep_memory_map.rdl`, `ocah_hole_resp`); a
 difference between it and the specification is a specification question and not
@@ -1290,13 +1290,13 @@ lands past the end and inside the window, and two seeded words.
 |CHK-ABR-SIZE-RD-NARROW-RW
 |Byte and halfword reads of the counter return the addressed bytes of its seeded value, and every other byte lane of the R beat reads zero.
 |CHK-ABR-UNPOP-RD
-|A 32-bit read at every dead word past the register map answers the response code and read data the SEP memory map's Past Extent column states, while every read-write register holds a nonzero value, so an aliased read returns data. Where the map states OKAY, every byte lane of the R beat also reads zero. `adams_bridge.adoc` (aperture-decode paragraph): the crypto demux refuses every access past the register map.
+|A 32-bit read at every dead word past the register map answers the response code and read data the SEP memory map's Past Extent column states, while every read-write register holds a nonzero value, so an aliased read returns data. Where the map states OKAY, every byte lane of the R beat also reads zero. `adams_bridge.adoc` (aperture-decode paragraph): the ABR wrapper refuses every access past the register map.
 |CHK-ABR-UNPOP-WR
 |An all-ones word write at every dead word answers the map's write code, the word reads back as the map states, and all five read-write registers and eight identity words read their primed or captured values afterwards.
 |CHK-ABR-UNPOP-PARTIAL
 |A byte, a halfword and a three-byte write at the first dead word past the map and at the last word of the window are each refused with the map's write code and leave every graded register unchanged. Where the map answers a word write OKAY, the write reaches ABR and the expected refusal is SLVERR (`hw/sys/sep/doc/adams_bridge.adoc`, "ABR access size").
 |CHK-ABR-INMAP-HOLE
-|At each of the two in-extent hole words the read answers the response code, the read data (0) and the whole R beat that the "Hole in Extent" cell of the SEP memory map states, both writes answer the write code of that cell, the readback returns the same code and data, exactly two AW handshakes at the word appear on the `s_axi` pins, and no graded register moves. A DUT that answers an error inside the extent, returns non-zero data or non-zero byte lanes, stores the written value, or aliases the word onto a graded register fails. The response class is `hw/sys/sep/doc/adams_bridge.adoc:107-108`; the codes and the data are `hw/sys/sep/regs/gen/adoc/memory_map.adoc:66`, accepted as the golden by decision (see Objective). The leaf logs, per word, the response, the data and the R beat of the read, both write responses, the readback, the AW count and the moved registers.
+|At each of the two in-extent hole words the read answers the response code, the read data (0) and the whole R beat that the "Hole in Extent" cell of the SEP memory map states, both writes answer the write code of that cell, the readback returns the same code and data, exactly two AW handshakes at the word appear on the `s_axi` pins, and no graded register moves. A DUT that answers an error inside the extent, returns non-zero data or non-zero byte lanes, stores the written value, or aliases the word onto a graded register fails. The response class is `hw/sys/sep/doc/adams_bridge.adoc:107-108`; the codes and the data are `hw/sys/sep/regs/gen/adoc/memory_map.adoc:62`, accepted as the golden by decision (see Objective). The leaf logs, per word, the response, the data and the R beat of the read, both write responses, the readback, the AW count and the moved registers.
 |CHK-ABR-SIZE-RESTORE
 |Every register written reads back its entry value.
 |CHK-ABR-AHB-HRESP

@@ -138,7 +138,7 @@ Checkers:
   CHK-BRIDGE-HOLE-SI
                   an SI 32-bit read of a drawn unbacked HMAC word, through an
                   inbound entry that allows it, answers SLVERR with 0xFFFFFFFF
-                  (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:52``, HMAC row,
+                  (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:50``, HMAC row,
                   Hole in Extent "SLVERR, 0xFFFFFFFF / SLVERR"; the column is
                   the answer at the inbound AXI port,
                   ``hw/sys/sep/doc/memory_map.adoc:66-69``). The read runs with
@@ -259,7 +259,7 @@ from seq_lib.sep_irq_aggregator_seq import (
 TEST = "sep_cpu_bridge_fault_matrix_rand_test"
 RESP_OKAY, RESP_SLVERR, RESP_DECERR = 0, 2, 3
 # Hole in Extent cell of the HMAC row: "SLVERR, 0xFFFFFFFF / SLVERR"
-# (hw/sys/sep/regs/gen/adoc/memory_map.adoc:52).
+# (hw/sys/sep/regs/gen/adoc/memory_map.adoc:50).
 SI_HOLE_RDATA = 0xFFFF_FFFF
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 

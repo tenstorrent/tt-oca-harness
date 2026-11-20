@@ -11,11 +11,12 @@ sep_internal_interrupts_probe_o mirror.
 Also issues one in-window unmapped 32-bit read through the Secure DMA adapter
 and one through each of the HMAC, KMAC and OTBN adapters. Those complete
 SLVERR and latch DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive
-aggregator bits [40] and [42]. A dead-space beat past an adapter window is
-DECERR and never sets err_o, so the probes stay inside each routed extent.
-AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
-beat there is past the rule and DECERRs. Their PERIPH_BUS_ERR_STATUS bits are
-unreachable here, which is why periph_holes() names three blocks and not seven.
+aggregator bits [40] and [42]. The probes stay inside each routed extent.
+AES, CSRNG, EDN and WDT have no hole between registers: their bits latch only
+on an access past the last register, up to the offset the Past Extent note of
+the row states (hw/sys/sep/regs/gen/adoc/memory_map.adoc:89-92). This
+sequence makes no such access, which is why periph_holes() names three blocks
+and not seven.
 
 OpenTitan interrupt registers (per IP):
   INTR_STATE   Event: RW1C; Status: RO

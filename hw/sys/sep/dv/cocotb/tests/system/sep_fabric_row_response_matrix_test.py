@@ -234,7 +234,7 @@ POOL_UNMAPPED_RDATA = 0x0
 # SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-46): the local crossbar
 # sends only the SPI host register extent to sep_io, and the error responder of
 # sep_io answers only the beats of a burst that run past the extent. The extent
-# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:81).
+# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:75).
 SPI_BASE = sep_reg.SPI_CONTROLLER_REG_MAP_BASE_ADDR
 SPI_END = SPI_BASE + sep_reg.SPI_CONTROLLER_REG_MAP_SIZE
 SPI_CSID = sep_reg.SPI_CONTROLLER_CSID_REG_ADDR

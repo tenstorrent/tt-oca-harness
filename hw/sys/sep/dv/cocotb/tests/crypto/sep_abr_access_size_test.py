@@ -44,9 +44,9 @@ read-write register in each half, and the 32-bit ``error_internal_intr_count_r``
 counter, whose upper neighbour owns no register. Every register written here is
 restored to the value it held on entry.
 
-``[[abr-aperture-decode]]`` states how the 64 KB window decodes past the
+``[[abr-aperture-decode]]`` states how the ABR aperture decodes past the
 register map: the map ends 4 bytes past the last register ``abr_reg.rdl``
-places, and the crypto demux refuses every access past that end. The SEP
+places, and the ABR wrapper refuses every access past that end. The SEP
 memory map (``hw/sys/sep/regs/gen/py/sep_memory_map.py``, read through
 ``env/sep_decode_resp.py``) states the response for a word access there, and
 ``CHK-ABR-UNPOP-RD`` / ``-WR`` grade against it. ``CHK-ABR-UNPOP-PARTIAL``
@@ -945,7 +945,7 @@ class sep_abr_access_size_test(sep_base_test):
         # and the read data (0x0) are the default hole response of the SEP
         # register description, hw/sys/sep/regs/include/sep_memory_map.rdl (ocah_hole_resp),
         # generated into the "Hole in Extent" cell of the ABR row of
-        # hw/sys/sep/regs/gen/adoc/memory_map.adoc:66 and read through
+        # hw/sys/sep/regs/gen/adoc/memory_map.adoc:62 and read through
         # env/sep_decode_resp.py. Each word is read, written with all ones (the readback
         # shows no storage at the word), written with zero (an aliased write
         # clears bits of a primed register), read back, and every graded

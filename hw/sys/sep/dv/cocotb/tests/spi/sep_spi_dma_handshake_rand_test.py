@@ -391,7 +391,8 @@ TEST = "sep_spi_dma_handshake_rand_test"
 M32 = 0xFFFF_FFFF
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
-# Handshake range: the SRAM base to the end of the SPI window (memory_map.adoc).
+# Handshake range: the SRAM base to 0x10BF_FFFF, which holds the SPI host page
+# and the SRAM destination (memory_map.adoc).
 HS_RANGE_BASE = SRAM_BASE
 HS_RANGE_LIMIT = 0x10BF_FFFF
 # Normal-mode range: the SEP SRAM.

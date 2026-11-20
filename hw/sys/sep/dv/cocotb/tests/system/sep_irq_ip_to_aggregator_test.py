@@ -44,8 +44,9 @@ each HMAC / KMAC / OTBN CSR gap:
   CHK-BUSERR-DMA-WR a write to the DMA hole is BRESP SLVERR; exclusive
                     reg_path_err; [40]=1, then cleared (CHK-BUSERR-DMA-WR-CLR)
 
-A beat past an adapter window is DECERR and never sets err_o. AES, CSRNG,
-EDN and WDT windows are packed to the last register. This leaf does not
+AES, CSRNG, EDN and WDT have no hole between registers; their bits latch only
+on an access past the last register (memory_map.adoc Past Extent notes), which
+this leaf does not make. This leaf does not
 start a DMA transfer, so it does not prove host_path_err / bit 41.
 Lockstep punch-through has no frontdoor.
 
