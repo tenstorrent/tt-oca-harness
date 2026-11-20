@@ -54,8 +54,9 @@ Checkers:
                         ID answer as CHK-SRAM-REFUSE grades them: one B beat with
                         SLVERR and the words read back unchanged, then N R beats,
                         each SLVERR, RLAST on beat N only. The master drops the
-                        abandoned burst, and no R or B beat with its ID appears
-                        on ``m_axi`` after the reset (``hw/sys/sep/doc/fabric.adoc``,
+                        abandoned burst, and no R or B beat with an ID the bench
+                        did not issue after the reset appears on ``m_axi``
+                        (``hw/sys/sep/doc/fabric.adoc``,
                         lines 62-65).
   CHK-SRAM-STRB         over a word written in full, one single-beat 8-byte
                         inbound write for each WSTRB 0x00 to 0x0F in a seeded
@@ -1490,10 +1491,14 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             post_b, v["rsize"], "CHK-SRAM-OTF-REFUSE", graded=False
         )
         await ClockCycles(top.clk_i, QUIET_CYCLES)
+        # After the fall the bench issues on m_axi only post_b.axi_id (background
+        # writes, reads and the refused pair), so an R or B beat with any other
+        # ID answers no request.
+        issued = {post_b.axi_id}
         stale = [
-            (x.ch, x.clk)
+            (x.ch, x.axi_id, x.clk)
             for x in mon.since(mark)
-            if x.ch in ("r", "b") and x.axi_id == b.axi_id and x.clk > fall_clk
+            if x.ch in ("r", "b") and x.clk > fall_clk and x.axi_id not in issued
         ]
         bresp = [x.resp for x in bs]
         rresp = [x.resp for x in rs]
@@ -1512,7 +1517,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             f"bresp={'/'.join(RESP_NAME.get(r, str(r)) for r in bresp) or 'none'} "
             f"unchanged={int(not changed)} rbeats={len(rs)} "
             f"{'all_SLVERR' if rresp and all(r == SLVERR for r in rresp) else 'rresp=' + str(rresp)} "
-            f"rlast={[x.last for x in rs]} stale_beats={len(stale)} abandoned_id={b.axi_id} "
+            f"rlast={[x.last for x in rs]} stale_beats={len(stale)} issued_ids={sorted(issued)} abandoned_id={b.axi_id} "
             f"post_id={post_b.axi_id} wsize={post_b.size} rsize={v['rsize']} "
             f"start=0x{post_b.addr:08x} dropped_in_master={int(dropped)} reset_low_clks={low} "
             f"release_clks={rel} quiet={QUIET_CYCLES}"
