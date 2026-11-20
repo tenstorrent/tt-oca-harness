@@ -20,6 +20,10 @@ Checkers:
               KM pull order is firmware-driven, so KM is scored by membership, not order.
   CHK-CONCUR  KM and AES beat counts both advance during the fork. This shows overlap, not
               same-cycle arbiter contention.
+  CHK-AXIS1-RESIDUAL
+              at the end, AXIS1 words the tap accepted and no crypto client took are at
+              most the 4-entry staging FIFO plus one entry per crypto client
+              (hw/sys/sep/doc/assets/sep-trng-distribution.svg); it fails with no AXIS1 beat.
   CSRNG/EDN error and recoverable-alert registers stay zero; AES STATUS shows no alert.
 
 Boot follows the KAT recipe (real fuse-sense, PROD OTP image, rom_main built with
@@ -177,8 +181,9 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         await self.check_entropy_alerts_zero()
         # Strict report runs the genbits-chain membership tally + per-sink checks and
         # raises on: CHK1..CHK4 mismatch, CHK5_aes routing mismatch / AXIS1 underrun,
-        # any AXIS1 or KM word not in the genbits golden, or a starved sink.
-        assert self.drbg_sb.report()
+        # any AXIS1 or KM word not in the genbits golden, a starved sink, or more
+        # AXIS1 words left untaken than the staging and per-client FIFOs hold.
+        assert self.drbg_sb.report(axis1_residual=True)
         self.logger.info(
             "CHK1..CHK4 bit-exact + CHK5_aes per-sink ROUTING (AES==AXIS1) + CHK5_km/"
             "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact)"

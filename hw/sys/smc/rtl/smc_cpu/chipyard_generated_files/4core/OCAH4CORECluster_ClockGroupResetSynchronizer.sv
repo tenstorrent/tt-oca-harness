@@ -86,6 +86,8 @@
 `endif // not def SYNTHESIS
 
 module OCAH4CORECluster_ClockGroupResetSynchronizer(	// @[generators/rocket-chip/src/main/scala/prci/ResetSynchronizer.scala:75:9]
+  input  test_en_i,
+  input  scan_rst_ni,
   input  auto_in_member_allClocks_uncore_clock,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  auto_in_member_allClocks_uncore_reset,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  auto_in_member_allClocks_core_3_clock,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -109,26 +111,36 @@ module OCAH4CORECluster_ClockGroupResetSynchronizer(	// @[generators/rocket-chip
 );
 
   OCAH4CORECluster_ResetCatchAndSync_d3 nodeOut_member_allClocks_core_0_reset_catcher (	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:39:28]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .clock         (auto_in_member_allClocks_core_0_clock),
     .reset         (auto_in_member_allClocks_core_0_reset),
     .io_sync_reset (auto_out_member_allClocks_core_0_reset)
   );
   OCAH4CORECluster_ResetCatchAndSync_d3 nodeOut_member_allClocks_core_1_reset_catcher (	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:39:28]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .clock         (auto_in_member_allClocks_core_1_clock),
     .reset         (auto_in_member_allClocks_core_1_reset),
     .io_sync_reset (auto_out_member_allClocks_core_1_reset)
   );
   OCAH4CORECluster_ResetCatchAndSync_d3 nodeOut_member_allClocks_core_2_reset_catcher (	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:39:28]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .clock         (auto_in_member_allClocks_core_2_clock),
     .reset         (auto_in_member_allClocks_core_2_reset),
     .io_sync_reset (auto_out_member_allClocks_core_2_reset)
   );
   OCAH4CORECluster_ResetCatchAndSync_d3 nodeOut_member_allClocks_core_3_reset_catcher (	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:39:28]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .clock         (auto_in_member_allClocks_core_3_clock),
     .reset         (auto_in_member_allClocks_core_3_reset),
     .io_sync_reset (auto_out_member_allClocks_core_3_reset)
   );
   OCAH4CORECluster_ResetCatchAndSync_d3 nodeOut_member_allClocks_uncore_reset_catcher (	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:39:28]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .clock         (auto_in_member_allClocks_uncore_clock),
     .reset         (auto_in_member_allClocks_uncore_reset),
     .io_sync_reset (auto_out_member_allClocks_uncore_reset)

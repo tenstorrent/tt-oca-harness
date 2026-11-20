@@ -14,7 +14,7 @@ in Extent and Past Extent columns, through ``env.sep_decode_resp``), the
 allocation of the generated IP-XACT (``seq_lib.sep_row_response_seq``). The
 table states each cell for a 32-bit access at the inbound AXI port, so every
 graded single beat uses AxSIZE 2 in both halves of the 64-bit data bus; an
-AxSIZE 3 access is logged (``OBS-ROW-SIZE3``) and not graded, except the
+AxSIZE 3 access is logged (``INFO-ROW-SIZE3``) and not graded, except the
 straddle cell below. The reset-control rows state what the
 SEP CPU sees, so the reset-control cells are graded from the LSU.
 
@@ -74,7 +74,7 @@ carries none of the staged non-zero register values. A write burst lands its
 in-extent beats, answers a B response other than OKAY, and changes no other
 stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``: the
 error responder of ``sep_io`` answers only the beats past the extent). The
-exact past-beat code and data are logged as ``OBS-ROW-SPI-BURST-CODE``.
+exact past-beat code and data are logged as ``INFO-ROW-SPI-BURST-CODE``.
 CHK-ROW-SPI-BURST-CONTROL: the same burst shape wholly inside the extent answers
 OKAY on every beat and lands every beat.
 
@@ -102,7 +102,7 @@ logged, not graded)
 (``hw/sys/sep/doc/fabric.adoc``, Fabric Topology: the inbound crossbar reaches
 the system CSRs; ``hw/sys/sep/doc/memory_map.adoc``, Units Unreachable from the
 Inbound Port). The AP and STEE remap ``ATTRS`` words are logged
-(``OBS-ROW-FABRIC-CSR``).
+(``INFO-ROW-FABRIC-CSR``).
 
 CHK-REG-SUBWORD-WDT: an LSU AxSIZE 0 read at byte offset 1 and an AxSIZE 1 read
 at byte offset 2 of the watchdog ``WKUP_THOLD_LO`` word answer OKAY, and the
@@ -111,7 +111,7 @@ returns OKAY"; a partial write, "a byte strobe that misses a byte the register
 owns", gets a TL-UL error and "the faulting access also received SLVERR
 synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
-write and the other sub-word targets are logged (``OBS-REG-SUBWORD``).
+write and the other sub-word targets are logged (``INFO-REG-SUBWORD``).
 
 CHK-OTBN-IMEM-SUBWORD-CRC: OTBN ``LOAD_CHECKSUM`` reads the same value before and
 after each AxSIZE 0 and AxSIZE 1 write to the ``otbn_imem`` word: "Writes that are
@@ -126,7 +126,7 @@ follows the writes to that memory.
 After the graded window closes, each live word is read again from SI with the
 AxPROT[2], AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell;
 the table states one cell per row for any attributes, so CHK-ROW grades the read
-as at the default-attribute read. OBS-ROW-ATTR: SI accesses with attributes that
+as at the default-attribute read. INFO-ROW-ATTR: SI accesses with attributes that
 no specification gives a response for: exclusive
 reads with drawn attributes of the pool ``STATUS`` (one 64-bit access), an ABR
 register, the SPI host ``CSID`` and the DMA live word; an SI write of ``CSID``
@@ -134,7 +134,7 @@ with drawn AW attributes and WUSER. The line logs the response, the read data or
 grades nothing. CTRL-ROW-ATTR: the SI address handshake (and the W beat) carried
 the drawn attributes, address and size; every live row has its drawn read.
 
-OBS-ROW-NARROW: 1- and 2-byte SI reads and writes to a drawn Reserved, Past
+INFO-ROW-NARROW: 1- and 2-byte SI reads and writes to a drawn Reserved, Past
 Extent and Hole in Extent cell; the table states the cells for 32-bit accesses
 only. CTRL-ROW-NARROW: the SI address handshake carried AxSIZE 0 or 1 at the
 drawn address.
@@ -147,7 +147,7 @@ SLVERR past its last register, "a 64-bit access to the last register of a
 block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:93-96``).
 The leaf derives the cell from the generated register allocation and fails
 when that extent is not 4 mod 8. The 64-bit read data has no stated value and
-is logged on ``OBS-ROW-SIZE3 kind=straddle``, as is an AES straddle read at its
+is logged on ``INFO-ROW-SIZE3 kind=straddle``, as is an AES straddle read at its
 last register: the AES block is bridged to TL-UL, not generated from
 SystemRDL, so no line states its response. The straddle cells run after the
 hole and live cells and fill no FCOV bin.
@@ -245,6 +245,14 @@ SPI_EVENT_ENABLE = sep_reg.SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR
 SPI_CROSS_STARTS = (SPI_ERROR_STATUS, SPI_EVENT_ENABLE)
 SPI_INSIDE_START = SPI_ERROR_ENABLE
 SPI_MAX_PAST_BEATS = 8
+# First past beat that lies beyond the extent rounded up to a power of two, so a
+# decode that rounds the extent up does not cover it. Each direction of each seed
+# runs one crossing burst with at least this many past beats.
+_SPI_EXTENT = SPI_END - SPI_BASE
+SPI_DEEP_PAST_BEATS = ((1 << (_SPI_EXTENT - 1).bit_length()) - _SPI_EXTENT) // 4 + 1
+assert SPI_DEEP_PAST_BEATS <= SPI_MAX_PAST_BEATS
+# Separates the deep-burst choice from the cell walk stream of the same seed.
+_SPI_DEEP_SALT = 0x5350_4450
 AXI_SIZE_32 = 2
 # A pinned PROD image whose SIP_DIS and SYS_DIS keep the inbound filter active.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
@@ -581,14 +589,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         )
         self._walk(row, kind, d, init)
 
-    def _log_size3(self, row: str, kind: str, resp: int, rdata: int, d: str) -> None:
+    def _log_size3(
+        self, row: str, kind: str, resp: int, rdata: int, d: str, chk: str | None = None
+    ) -> None:
         self.logger.info(
-            "OBS-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=0",
+            "INFO-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=%d%s",
             row,
             kind,
             d,
             _RN.get(resp),
             rdata,
+            chk is not None,
+            "" if chk is None else f" chk={chk}",
         )
 
     def _expect_reg(self, addr: int) -> int:
@@ -1079,7 +1091,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 wd = rng.getrandbits(64) if op is SepAxiOp.WRITE else 0
                 s = await self._si(op, a, size=3, wdata=wd)
                 if op is SepAxiOp.READ:
-                    self._log_size3(key, "straddle", s.resp_code, s.rdata, d)
+                    self._log_size3(key, "straddle", s.resp_code, s.rdata, d, "CHK-ROW-SIZE3")
                 line = (
                     f"row={key} kind=straddle init=SI dir={d} size=3 addr=0x{a:08x} "
                     f"wdata={'na' if op is SepAxiOp.READ else f'0x{wd:016x}'} "
@@ -1475,11 +1487,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         else:
             self._fail("CHK-ROW-SPI-BURST-CONTROL", line)
 
-    async def _spi_cross(self, op: SepAxiOp, start: int) -> None:
-        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end."""
+    async def _spi_cross(self, op: SepAxiOp, start: int, deep_past: int | None = None) -> int:
+        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end.
+
+        ``deep_past`` replaces the drawn past-beat count. Returns the past-beat
+        count of the address handshake on the m_axi pins, 0 when none was seen.
+        """
         d = "R" if op is SepAxiOp.READ else "W"
         n_in = (SPI_END - start) // 4
-        nbeats = n_in + self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        past = self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        if deep_past is not None:
+            past = deep_past
+        nbeats = n_in + past
         addrs = [start + 4 * i for i in range(nbeats)]
         assert (start & ~0xFFF) == ((addrs[-1] + 3) & ~0xFFF), "burst crosses a 4 KB page"
         live = self._spi_live_set()
@@ -1536,7 +1555,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 f"live_set={[hex(v) for v in live_words]} ax={ax}"
             )
             self.logger.info(
-                "OBS-ROW-SPI-BURST-CODE: dir=R start=0x%08x past_resp=%s past_data=%s",
+                "INFO-ROW-SPI-BURST-CODE: dir=R start=0x%08x past_resp=%s past_data=%s "
+                "chk=CHK-ROW-SPI-BURST",
                 start,
                 [_RN.get(r, r) for r in past_resp],
                 [hex(v) for v in past_data],
@@ -1555,7 +1575,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 f"diff={diff} ax={ax}"
             )
             self.logger.info(
-                "OBS-ROW-SPI-BURST-CODE: dir=W start=0x%08x bresp=%s",
+                "INFO-ROW-SPI-BURST-CODE: dir=W start=0x%08x bresp=%s chk=CHK-ROW-SPI-BURST",
                 start,
                 _RN.get(s.resp_code, s.resp_code),
             )
@@ -1565,16 +1585,41 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             await self._release()
         else:
             self._fail("CHK-ROW-SPI-BURST", line)
+        return ax["len"] + 1 - n_in if ax is not None else 0
 
     async def _spi_leg(self) -> None:
-        """SPI host extent: staging and control with the window closed, then the crossing bursts."""
+        """SPI host extent: staging and control with the window closed, then the crossing bursts.
+
+        Per direction, one start drawn from a stream of its own carries a
+        past-beat count drawn from SPI_DEEP_PAST_BEATS to SPI_MAX_PAST_BEATS.
+        """
         await self._spi_stage()
         await self._spi_control()
         starts = list(SPI_CROSS_STARTS)
         self.rng.shuffle(starts)
+        deep_rng = SepSeededRng(self.random_seed() ^ _SPI_DEEP_SALT)
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+            d = "R" if op is SepAxiOp.READ else "W"
+            forced = deep_rng.choice(starts)
+            deep_past = deep_rng.randrange(SPI_DEEP_PAST_BEATS, SPI_MAX_PAST_BEATS + 1)
+            self.logger.info(
+                "INFO-ROW-SPI-DEEP-BURST LOG: dir=%s start=0x%08x past_beats=%d",
+                d,
+                forced,
+                deep_past,
+            )
+            seen = {}
             for start in starts:
-                await self._spi_cross(op, start)
+                seen[start] = await self._spi_cross(
+                    op, start, deep_past if start == forced else None
+                )
+            self._ctrl(
+                "ROW-SPI-DEEP-BURST",
+                max(seen.values()) >= SPI_DEEP_PAST_BEATS,
+                f"dir={d} past_beats_on_m_axi="
+                + " ".join(f"0x{a:08x}:{n}" for a, n in seen.items())
+                + f" need>={SPI_DEEP_PAST_BEATS}",
+            )
 
     # -------------------------------------------------------- open-value legs
     def _draw_attrs(self, *, lock: int | None = None) -> dict[str, int]:
@@ -1658,7 +1703,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         only pool access shape the pool states, with no LSU reads (``fifo_level``
         moves while the pool fills). ``graded``: the word is a live row cell, and
         CHK-ROW grades the read against the table as at its default-attribute
-        read; otherwise the read is logged (OBS-ROW-ATTR)."""
+        read; otherwise the read is logged (INFO-ROW-ATTR)."""
         if reg is None:
             a, size, mask = addr, 3, (1 << 64) - 1
             lsu_b = lsu_a = None
@@ -1689,7 +1734,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             )
             return ctrl and ok
         self.logger.info(
-            "OBS-ROW-ATTR LOG: row=%s dir=R size=%d addr=0x%08x attrs=[%s] resp=%s "
+            "INFO-ROW-ATTR LOG: row=%s dir=R size=%d addr=0x%08x attrs=[%s] resp=%s "
             "rdata=0x%x lsu_before=%s lsu_after=%s field_mask=0x%x graded=0",
             row,
             size,
@@ -1745,7 +1790,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         s, seen = await self._si_attrs(SepAxiOp.WRITE, SPI_CSID, drawn, wdata=wd, wuser=wuser)
         _r, back = await self._lsu(SepAxiOp.READ, SPI_CSID)
         self.logger.info(
-            "OBS-ROW-ATTR LOG: row=spi_host dir=W size=2 addr=0x%08x reg=CSID attrs=[%s] "
+            "INFO-ROW-ATTR LOG: row=spi_host dir=W size=2 addr=0x%08x reg=CSID attrs=[%s] "
             "wuser=%s bresp=%s wdata=0x%08x before=0x%08x readback=0x%08x graded=0",
             SPI_CSID,
             _attr_txt(drawn),
@@ -1792,7 +1837,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     s = await self._si(op, a, size=size, wdata=wd or 0, rng=r)
                     seen = take_handshake(hs)
                     self.logger.info(
-                        "OBS-ROW-NARROW LOG: cell=%s kind=%s dir=%s size=%d addr=0x%08x resp=%s "
+                        "INFO-ROW-NARROW LOG: cell=%s kind=%s dir=%s size=%d addr=0x%08x resp=%s "
                         "rdata=%s wdata=%s graded=0",
                         row,
                         kind,
@@ -1817,7 +1862,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
 
     async def _open_value_legs(self) -> None:
         """Window closed: the attribute and narrow legs, whose results no
-        specification states, log OBS lines behind their CTRL lines."""
+        specification states, log INFO lines behind their CTRL lines."""
         await self._attr_read_leg()
         await self._attr_cell_leg()
         await self._attr_write_leg()
@@ -1828,7 +1873,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     async def _burst_past_leg(self) -> None:
         """A 2-beat SI INCR burst from the last register word of a non-crypto row.
 
-        The response codes and data are logged (``OBS-ROW-BURST``); the response ID
+        The response codes and data are logged (``INFO-ROW-BURST``); the response ID
         of each burst is graded by ``CHK-SI-ID-ECHO`` in ``_si``.
         """
         mon = self.env.ext_axi_monitor
@@ -1851,7 +1896,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             finally:
                 self.cfg.axi_timeout_ns = saved
             self.logger.info(
-                "OBS-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
+                "INFO-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
                 "rdata=0x%016x lsu_before=0x%08x lsu_after=0x%08x",
                 name,
                 last,
@@ -1918,8 +1963,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
                 _r, rb = await self._lsu(SepAxiOp.READ, addr)
                 self.logger.info(
-                    "OBS-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
-                    "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x",
+                    "INFO-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
+                    "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x%s",
                     name,
                     addr + off,
                     size,
@@ -1929,6 +1974,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     wv,
                     cur,
                     rb & 0xFFFF_FFFF,
+                    " chk=CHK-REG-SUBWORD-WDT" if name == SUBWORD_GRADED else "",
                 )
                 if name == SUBWORD_GRADED:
                     line = (
@@ -1954,7 +2000,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         START word and of ``FEAT_CTRL`` returns the staged value or the bring-up
         golden. No TT text states the response code of these reads; it is logged in
         the same line. The AP and STEE remap words are logged
-        (``OBS-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
+        (``INFO-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
         regions as unreachable from the inbound port.
         """
         targets = (
@@ -1976,7 +2022,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 f"si_rdata=0x{s.rdata & 0xFFFF_FFFF:08x}"
             )
             if name in ("ap_attrs", "stee_attrs"):
-                self.logger.info("OBS-ROW-FABRIC-CSR %s", line)
+                self.logger.info("INFO-ROW-FABRIC-CSR %s", line)
             elif (s.rdata & 0xFFFF_FFFF) == staged:
                 self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s expect=staged", line)
             else:

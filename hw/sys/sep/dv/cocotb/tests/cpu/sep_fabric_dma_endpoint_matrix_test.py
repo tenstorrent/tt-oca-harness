@@ -60,7 +60,7 @@ model of the staged data and the fabric taps:
                   CTRL-DMA-POOL-PRE); so the leg shows its DMA read on the DMA
                   master tap, keeps its staged SRAM word, and the level after
                   the run equals the level before the GO. The end state
-                  (STATUS and ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP;
+                  (STATUS and ERROR_CODE) is logged as INFO-DMA-NOTCONN-RESP;
                   the PIC base as a source is logged the same way. The boot ROM
                   legs (source and destination) show no PR-ROM handshake between
                   the GO and the DMA interrupt; the LSU read of the boot ROM
@@ -97,20 +97,18 @@ input reads 1 at the end. In both entries the firmware reads
 before the GO of each extension-port leg; CTRL-DMA-EXT-LEN fails the leaf
 unless both equal the copy length. ``ext_port_rsp_on_o`` reads 1 in that
 entry and 0 in the other (a failed precondition otherwise). The entry samples
-no coverage cell. OBS-DMA-BEATS-AFTER-ERR logs, per leg, the PR-EXT requests
+no coverage cell. INFO-DMA-BEATS-AFTER-ERR logs, per leg, the PR-EXT requests
 and W beats before and after the first error reply, the DMA master requests,
 W beats and B responses of the leg, STATUS, ERROR_CODE and the destination
-words of the read leg; no text states whether the DMA issues beats after a bus
-error.
+words of the read leg. STATUS and ERROR_CODE are graded by ``CHK-DMA-PAIR``; no
+open specification question.
 
 OBS-DMA-KM-MBOX-ACCESS logs a DMA write and a DMA read of the Key Manager
 mailbox ``SEP_IRQ_ENABLE`` word (end state, interrupt, ERROR_CODE and the
 word before, written, read back and restored, or the CPU value and the copied
 value); no text states the DMA access policy of the mailbox.
 
-Two lines grade nothing. OBS-FILTER-RANGE gives, per out_setup filter entry,
-the time of the START and END write on the system-CSR AXI-Lite port and of
-the first read of the same register after it. OBS-DMA-RESP-USER gives, per
+One line grades nothing. OBS-DMA-RESP-USER gives, per
 leg, the B and R USER values the DMA master receives (secure DMA response
 USER tap).
 
@@ -241,8 +239,6 @@ EXT_TOP_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
 _DMA_B_VALID, _DMA_B_READY = (
     lsb for name, lsb, _w in DMA_PROBE_FIELDS if name in ("b_valid", "b_ready")
 )
-# Outbound filter entries the out_setup leg programs (firmware out_entry 1..8).
-OUT_SETUP_ENTRIES = range(1, 9)
 # The console word the bench responder decodes (tb/sep_outbound_mbx.sv, StdoutAddr).
 STDOUT = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 # Region index bits of the AP output remap (generated map, sep_outbound_remap_seq).
@@ -964,8 +960,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 r["ec"],
             )
 
-    def _obs_beats_after_err(self) -> None:
-        """OBS-DMA-BEATS-AFTER-ERR: the beats of each extension-port leg after the first error reply."""
+    def _info_beats_after_err(self) -> None:
+        """INFO-DMA-BEATS-AFTER-ERR: the beats of each extension-port leg after the first error reply."""
         for d, leg, ch, rch in (("R", "ext_r", "ar", "r"), ("W", "ext_w", "aw", "b")):
             leg_i = self._leg_index(leg)
             _, r, _ = self._one("EXT", dir=d)
@@ -978,9 +974,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             ev = self._dma_ev(leg_i)
             words = " ".join(f"{k}=0x{r[k]:08x}" for k in ("d0", "d1", "d2", "d3") if k in r)
             self.logger.info(
-                "OBS-DMA-BEATS-AFTER-ERR leg=%s len=%d ext_%s=%d ext_axlen=%s ext_w=%d "
+                "INFO-DMA-BEATS-AFTER-ERR leg=%s len=%d ext_%s=%d ext_axlen=%s ext_w=%d "
                 "first_err_ps=%s ext_%s_after_err=%d ext_w_after_err=%d dma_ar=%d dma_aw=%d "
-                "dma_w=%d dma_b=%d dma_status=0x%08x error_code=0x%08x %s",
+                "dma_w=%d dma_b=%d dma_status=0x%08x error_code=0x%08x %s chk=CHK-DMA-PAIR",
                 leg,
                 r["len"],
                 ch,
@@ -1056,8 +1052,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("alias_ext_top")
         self.logger.info(
-            "OBS-DMA-ALIAS-LATER: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
-            "dma_status=0x%08x error_code=0x%08x",
+            "INFO-DMA-ALIAS-LATER: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
+            "dma_status=0x%08x error_code=0x%08x chk=CHK-DMA-ALIAS",
             [hex(b.addr) if b.addr is not None else "X" for b in aws[1:]],
             len(rep),
             r["st"],
@@ -1103,10 +1099,6 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         stee_word = [(r[f"stee_{x}_hi"] << 32) | r[f"stee_{x}_lo"] for x in ("w", "r")]
         stee = [w & stee_fields for w in stee_word]
         want_stee = [self.ep.stee_attrs(x) for x in ("w", "r")]
-        self.logger.info(
-            "OBS-STEE-ATTRS-RSVD: bits outside offset and valid=%s (logged)",
-            [hex(w & ~stee_fields & ((1 << 64) - 1)) for w in stee_word],
-        )
         assert r["rng_diff"] == 0, (
             f"CHK-DMA-FILT-RANGE FAIL: out_setup START/END read-back differences="
             f"{r['rng_diff']}; expected 0"
@@ -1611,11 +1603,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 self._chk_km_src(leg_i, r, end, text)
                 km_seen = True
                 continue
-            # No DMA path reaches these targets; no spec sentence states the DMA
-            # outcome of such a request, so the end state is logged.
+            # No DMA path reaches these targets; the end state is logged.
             self.logger.info(
-                "OBS-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x "
-                "dst=0x%08x src_v=%s",
+                "INFO-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x "
+                "dst=0x%08x src_v=%s%s",
                 tgt,
                 end,
                 int(self._bus_error(r)),
@@ -1623,6 +1614,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 r["ec"],
                 r["dst"],
                 f"0x{r['src_v']:08x}" if "src_v" in r else "-",
+                " chk=CHK-DMA-NOTCONN" if tgt in ("rom_src", "dma_csr_src", "pool_src") else "",
             )
             if tgt in logged:
                 logged_seen.add(tgt)
@@ -1708,7 +1700,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             f"CHK-DMA-NOTCONN FAIL: {graded} not-connected runs graded, expected {len(names)}"
         )
         assert logged_seen == set(logged), (
-            f"OBS-DMA-NOTCONN-RESP: records for {sorted(logged_seen)}, expected {sorted(logged)}"
+            f"INFO-DMA-NOTCONN-RESP: records for {sorted(logged_seen)}, expected {sorted(logged)}"
         )
         assert km_seen, "CHK-DMA-KM-SRC FAIL: no km_src record"
         assert km_mbox_seen == set(km_mbox), (
@@ -1783,8 +1775,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         The firmware reads the level until it is stable. A DATA read pops one
         word (entropy_pool.adoc:31), and nothing fills the pool, so the level
         after the run equals the level before the GO. The caller grades the
-        DMA interrupt and logs the end state (OBS-DMA-NOTCONN-RESP); no spec
-        sentence states it, so this check does not grade it.
+        DMA interrupt and logs the end state (INFO-DMA-NOTCONN-RESP), which this
+        check does not grade; no open specification question.
         """
         _, pr, _ = self._one("POOL")
         _, er, _ = self._one("ENTROPY")
@@ -1912,58 +1904,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 self.logger.error(msg)
                 raise AssertionError(msg)
             self.logger.info("CHK-DMA-FILT-WR PASS: %s", line)
-            self.logger.info(
-                "OBS-FILT-WR-RSVD: leg=%s readback bits outside the START_ADDR field=0x%08x (logged)",
-                leg,
-                r["rb"] & ~mask & 0xFFFF_FFFF,
-            )
         self._recovery_after("filt_wr_lock")
-
-    def _obs_filter_range(self) -> None:
-        """OBS-FILTER-RANGE: when START/END of an out_setup entry is read after its write.
-
-        Each entry is programmed as [a, a + 7] with ``allow_burst`` 0, so START
-        and END share one granule and hardware writes the rounded pair back
-        (``hw/ip/axi_filter/regs/filter_ctrl.rdl``, start_addr). No document
-        states on which clock that write-back lands. Per entry the line gives
-        the time of the START and END AW on the system-CSR AXI-Lite port, the
-        time of the first AR of the same register after it, the Lite
-        handshakes between the two, and the firmware read-back difference
-        count of the leg (CHK-DMA-FILT-RANGE grades the count).
-        """
-        leg_i = self._leg_index("out_setup")
-        _, r, _ = self._one("OUTSET")
-        beats = sorted(
-            self._beats("PR-CSR", leg_i, "aw") + self._beats("PR-CSR", leg_i, "ar"),
-            key=lambda b: b.seq,
-        )
-        for i in OUT_SETUP_ENTRIES:
-            ent = RegBlock(f"OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{i}_")
-            parts = []
-            for reg in ("START_ADDR", "END_ADDR"):
-                addr = ent.addr(reg)
-                wr = next((b for b in beats if b.ch == "aw" and b.addr == addr), None)
-                rd = None
-                if wr is not None:
-                    rd = next(
-                        (b for b in beats if b.seq > wr.seq and b.ch == "ar" and b.addr == addr),
-                        None,
-                    )
-                between = (
-                    sum(1 for b in beats if wr.seq < b.seq < rd.seq)
-                    if wr is not None and rd is not None
-                    else None
-                )
-                parts.append(
-                    f"{reg.lower()}=0x{addr:08x} wr_ps={None if wr is None else wr.t_ps} "
-                    f"rd_ps={None if rd is None else rd.t_ps} lite_between={between}"
-                )
-            self.logger.info(
-                "OBS-FILTER-RANGE leg=out_setup entry=%d %s rng_diff=%d",
-                i,
-                " ".join(parts),
-                r["rng_diff"],
-            )
 
     def _obs_dma_resp_user(self) -> None:
         """OBS-DMA-RESP-USER: the USER of the DMA master response beats, per leg.
@@ -2043,7 +1984,6 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             "PR-SMC",
             "PR-ROM",
             "PR-DMACSR",
-            "PR-CSR",
         )
         # CHK-DMA-AXPROT: the AxPROT the DMA master drives, before its window remap.
         self.dma_raw = SepFabricTap("PR-DMA-RAW").start()
@@ -2075,7 +2015,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             # The window, the noise driver, the monitors and the taps close on
             # every exit.
             close_graded_window(self.logger)
-            noise.cancel()
+            await noise.stop()
             for m in mons:
                 m.cancel()
             if self.pool_task is not None and not self.pool_task.done():
@@ -2116,7 +2056,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
         if self.slverr:
             self._chk_ext(RESP_SLVERR, "SLVERR")
-            self._obs_beats_after_err()
+            self._info_beats_after_err()
             return
         self._chk_pairs()
         self._chk_alias()
@@ -2127,6 +2067,5 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self._chk_smc()
         self._chk_notconn()
         self._chk_filt_wr()
-        self._obs_filter_range()
         self._obs_dma_resp_user()
         await self._release_labels()

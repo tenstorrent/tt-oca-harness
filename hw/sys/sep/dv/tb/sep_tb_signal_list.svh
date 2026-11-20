@@ -128,9 +128,8 @@
 // carries pslverr = 1. Data and ready are not forced.
 `SEP_TB_IN(logic, efuse_sense_status_inject_i)
 `SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
-// eFuse shim response hold. Default 0. While 1 and a PROGRAM or
-// PROGRAM_READ_BACK command is at the post-guard port, the valid of the shim
-// response at the sep input efuse_shim_command_resp_i is forced to 0.
+// eFuse shim response hold. Default 0. While 1 and a PROGRAM command is at
+// the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i is forced to 0.
 `SEP_TB_IN(logic, efuse_shim_resp_hold_i)
 // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
 // broken codeword onto the host-adapter command-integrity decoder input
@@ -1626,6 +1625,10 @@
 // observation-only. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [55:0], smc_base_probe_o)
 `SEP_TB_OUT(logic [55:0], smc_size_probe_o)
+// SEP aperture outputs of the DUT (sep_global_base_addr_o, sep_region_size_o),
+// observation-only.
+`SEP_TB_OUT(logic [55:0], sep_global_base_addr_probe_o)
+`SEP_TB_OUT(logic [55:0], sep_region_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -1671,7 +1674,6 @@
 `SEP_TB_OUT(logic, efuse_shim_cmd_valid_o)
 `SEP_TB_OUT(efuse_pkg::fuse_command_e, efuse_shim_cmd_command_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_addr_bit_t, efuse_shim_cmd_address_o)
-`SEP_TB_OUT(logic, efuse_shim_cmd_program_data_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_word_counter_t, efuse_shim_cmd_len_o)
 // Shim response at the sep input efuse_shim_command_resp_i: valid, status and
 // data. Read-only taps.

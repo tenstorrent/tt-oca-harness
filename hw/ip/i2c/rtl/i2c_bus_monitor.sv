@@ -40,7 +40,9 @@ module i2c_bus_monitor
 
   output logic        bus_free_o,                           // Bus free for a new transfer; outside
                                                             // multi-controller mode low only during
-                                                            // the t_buf_i wait after a STOP.
+                                                            // the t_buf_i wait, which starts when
+                                                            // the STOP is qualified, so it stays
+                                                            // high for the thd_dat_i cycles before.
   output logic        start_detect_o,                       // One-cycle pulse on a qualified START
                                                             // or repeated START.
   output logic        stop_detect_o,                        // One-cycle pulse on a qualified STOP.

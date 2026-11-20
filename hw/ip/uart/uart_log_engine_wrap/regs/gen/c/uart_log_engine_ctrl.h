@@ -19,7 +19,9 @@ extern "C" {
 // pads: while set, the UART owns their data and direction. While clear, the UART
 // keeps running, but its pads follow the GPIO data and direction selection like
 // any pad without a hardware request, so TX and RTS do not reach the pins unless
-// software forces LSIO selection.
+// software forces LSIO selection. Without that selection, the receive and CTS
+// inputs read high, the serial idle level: the receiver sees no start bit and
+// `MSR.CTS` reads 0.
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm 0x1
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bp 0
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bw 1
@@ -30,7 +32,9 @@ typedef union {
         // pads: while set, the UART owns their data and direction. While clear, the UART
         // keeps running, but its pads follow the GPIO data and direction selection like
         // any pad without a hardware request, so TX and RTS do not reach the pins unless
-        // software forces LSIO selection.
+        // software forces LSIO selection. Without that selection, the receive and CTS
+        // inputs read high, the serial idle level: the receiver sees no start bit and
+        // `MSR.CTS` reads 0.
         uint32_t UART_EN :1;
         uint32_t :31;
     } f;

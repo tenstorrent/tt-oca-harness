@@ -871,7 +871,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 )
                 self.logger.info("INFO-WO-READ LOG seed=%d %s", self.seed, txt)
                 self.logger.info(
-                    "OBS-MBX-DATA-HI seed=%d mbox=%d port=%s check=WO-READ data_hi=0x%08x",
+                    "INFO-MBX-DATA-HI seed=%d mbox=%d port=%s check=WO-READ data_hi=0x%08x",
                     self.seed,
                     m,
                     p,

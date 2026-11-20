@@ -865,7 +865,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 except BitWatchTimeout:
                     t_rise = None
             self.t_rise[src.name] = t_rise
-            self.chk.obs(
+            self.chk.info(
                 "INTR-TRISE",
                 src=src.name,
                 t_rise="timeout" if t_rise is None else t_rise,
@@ -1157,7 +1157,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         """INTR_STATUS and INTR_ENABLE; the bits outside the defined fields are logged only."""
         st = await self.irq.read32(ESRC_STATUS)
         en = await self.irq.read32(ESRC_ENABLE)
-        self.chk.obs(
+        self.chk.info(
             "ESRC-RSVD",
             case=case,
             run=self._run_tag,

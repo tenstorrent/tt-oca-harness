@@ -47,7 +47,7 @@ per-initiator counts.
 Printed as measured and never compared: the completion order of same-ID
 writes, the completion latency of each phase, the outbound ID encoding, the
 AxID of LSU and DMA requests outstanding at the port together
-(OBS-ATTR-ID-SHARE; no spec sentence states whether they must differ), and
+(INFO-ATTR-ID-SHARE; no spec sentence states whether they must differ), and
 the acceptance point of a request the filters answer themselves.
 
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
@@ -811,7 +811,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
                     f"same_id_reads_outstanding_max={depth}: no two same-ID reads were "
                     "outstanding at the port at once, so their order is not exercised",
                 )
-            self._obs_row(
+            self._info_row(
                 "ID-ORDER",
                 f"id={c.same_id} inits={'+'.join(inits)} writes_completion_index="
                 + _listfmt(sorted(range(len(plan_w["lsu"])), key=lambda i: plan_w["lsu"][i].c1))
@@ -920,7 +920,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             )
         # No spec sentence states whether concurrent LSU and DMA requests carry
         # distinct AxIDs after the outbound ID widening; logged only.
-        self._obs_row(
+        self._info_row(
             "ATTR-ID-SHARE",
             f"lsu_dma_outstanding_pairs={pairs} same_id_pairs={collisions} "
             f"lsu_ids={_setfmt(ids['lsu'])} dma_ids={_setfmt(ids['dma'])} "

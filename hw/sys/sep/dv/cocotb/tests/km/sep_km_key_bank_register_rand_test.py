@@ -554,7 +554,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                     resp_dec += f.dec
         # The specification states the read data of a share word (0) and not its
         # response, so the response is logged and not graded.
-        self.chk.obs(
+        self.chk.info(
             "SHARE-READ-RESP",
             reads=zero + nonzero,
             resp_flagged=resp_err,
