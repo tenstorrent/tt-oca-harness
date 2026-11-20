@@ -1427,7 +1427,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         close_graded_window(self.logger)
         ck = await self._read_if(leg["class_key_bit"]["addr"])
         lk = await self._read_if(leg["locks_bit"]["addr"])
-        ck_fd = await self._fd_locked(7, "CLASS_KEY")
+        ck_fd = await self._fd_locked(SLOT_OF_FIELD["CLASS_KEY"], "CLASS_KEY")
         ctl_rl = (
             ck["pre_req_err"] == 0
             and ck["req_err"] == 1
