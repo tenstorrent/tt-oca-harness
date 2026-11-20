@@ -50,8 +50,8 @@ create_reset -name KM_COLD_RESET_N [cdc_inst "u_sep_crypto/u_key_manager_s3c_sca
 create_reset -name KM_WARM_RESET_N [cdc_inst "u_sep_crypto/u_key_manager_s3c_scan/u_reset_conditioner/rst_warm_sync_no"] -both -type reset -value low -disable_assertions_db
 
 # Reference-counter reset syncs into SEPCLK and REFCLK domains
-create_reset -name SEP_RESET_N_REFCNT_SEP_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_wr_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
-create_reset -name SEP_RESET_N_REFCNT_REF_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_rd_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name SEP_RESET_N_REFCNT_SEP_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_wr_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_o"] -both -type reset -value low -disable_assertions_db
+create_reset -name SEP_RESET_N_REFCNT_REF_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_rd_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_o"] -both -type reset -value low -disable_assertions_db
 
 ##############################
 # RESET ASSERTION SEQUENCES
