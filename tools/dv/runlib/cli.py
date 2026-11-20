@@ -82,6 +82,7 @@ from .duts import (
     load_duts,
     load_formal_views,
     resolve_dut,
+    tree_dut_names,
     unavailable_sim_views,
 )
 from .executors import (
@@ -258,7 +259,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     common.add_argument(
         "--dut",
         metavar="NAME",
-        help="DUT name from hw/common/dv/configs/duts.toml or the hw/** convention",
+        help="DUT name from hw/common/dv/configs/duts.toml, the hw/** convention, "
+        "or a site layer `root` declaration",
     )
     common.add_argument(
         "--mode",
@@ -941,7 +943,7 @@ def load_registries(root: Path) -> Registries:
     site = load_site_layer(root)
     merged = merged_simulators(simulators, site)
     if site is not None:
-        validate_site_duts(site, list_dut_names(root))
+        validate_site_duts(site, list_dut_names(root), tree_dut_names(root))
         validate_site_dut_tools(site, merged)
     return Registries(
         simulators=merged,

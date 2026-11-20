@@ -75,7 +75,8 @@ Every other section of this page assumes these meanings:
 DUT::
 The named unit under verification together with its checked-in DV environment
 (`<dut>_sim_cfg.toml`, testlists, and sources). `--dut` selects one by
-registry alias (`hw/common/dv/configs/duts.toml`) or by directory convention.
+registry alias (`hw/common/dv/configs/duts.toml`), by directory convention, or
+by a site layer's `[duts.<name>] root` declaration (<<runner-site-layer>>).
 
 Flow::
 One DUT resolved for one mode into a runnable configuration: simulator
@@ -441,13 +442,16 @@ python3 tools/dv/run_dv.py --help
 `hw/common/dv/configs/duts.toml` first, then the bounded conventions
 `hw/<name>/dv`, `hw/sys/<name>/dv`, `hw/ip/<name>/dv`,
 `hw/comp/<name>/dv`, `hw/periph/<name>/dv`, and
-`hw/common/prim/<name>/dv`.
+`hw/common/prim/<name>/dv`. Last comes the DV root that a site layer's
+`[duts.<name>] root` declares for a name neither of those resolves
+(<<runner-site-layer>>).
 
 Each mode loads the first config named by the site layer's `[duts.<name>]`
 pointer (<<runner-site-layer>>), the registry's override of the same name, or
-the naming convention. Simulation mode, the default, reads `sim_cfg` and then
+the naming convention under the resolved DV root, including a declared
+`root`. Simulation mode, the default, reads `sim_cfg` and then
 `<name>_sim_cfg.toml`; formal mode reads `formal_cfg` and then
-`<name>_formal_cfg.toml` beside the sim config:
+`<name>_formal_cfg.toml` in the DV root:
 
 [source,bash]
 ----
@@ -458,8 +462,10 @@ A selectable DUT that one of those names is also a _formal view_: `--list`
 shows it as a `fv` row and `--validate-configs` validates it as
 `<name> (formal)`. A site-named file that is absent leaves the view
 unavailable in both listings and is an error only when selected; a registry
-`formal_cfg` that is absent fails validation. A DV root that carries a formal
-config and no sim config is not a DUT. <<runner-formal>> is the contributor's
+`formal_cfg` that is absent fails validation. A convention DV root that
+carries a formal config and no sim config is not a DUT. A declared `root`
+is one, and its simulation view is unavailable unless the entry's `sim_cfg`
+names a file that exists. <<runner-formal>> is the contributor's
 route through formal mode. A site-named simulation config that is absent
 leaves the DUT's simulation view unavailable the same way, and selecting the
 DUT in simulation mode is the error.
@@ -1304,6 +1310,19 @@ VIP, is reached without editing `duts.toml`. The path, the validation, and
 the `unavailable` state follow `formal_cfg`; an absent file is an error only
 when the DUT is selected in simulation mode.
 
+|`[duts.<dut>]` `root = "path"`
+|adds
+|A DUT the registry and the directory conventions do not resolve, with
+`path` as its DV root: `--dut <dut>` selects it, and `--list` and
+`--validate-configs` show its views. Each mode reads
+`<dut>_<mode>_cfg.toml` there unless the same entry sets that mode's
+pointer, `sim_cfg` or `formal_cfg`. A `root` on a name the tree resolves
+fails validation, even one whose DV root holds no sim config: declare such a
+DUT under another name, or replace a selectable DUT's views with `sim_cfg`
+and `formal_cfg`. The path is repo-relative or absolute. While the simulation config the
+DUT reads is absent, the simulation view is `unavailable` as for `sim_cfg`;
+a formal view exists only when its file exists or `formal_cfg` names one.
+
 |`[duts.<dut>]` `tools = ["<tool>", ...]`
 |appends
 |Simulation tools added to that DUT's `tools` allowlist. Each joins the views
@@ -1324,7 +1343,7 @@ config-owned drop, and applies to every target. A formal view is unaffected.
 |===
 
 Any other key fails validation, as does a `[duts.<dut>]` table that sets none
-of the four, or a checked-in registry that carries `launcher`, `extra_env`,
+of the five, or a checked-in registry that carries `launcher`, `extra_env`,
 or `setup_hook`. Inside one command the stage's own
 variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
 their values; below them the `setup_hook` exports win over `extra_env`,
@@ -3943,8 +3962,8 @@ The following behaviors are not part of the runner contract:
   despite running no tests; the record says so (`tests.completed = false`,
   `leaves_run = 0`, `pass_rate = null`). Use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
-* A DV root that carries a formal config and no sim config is not a DUT;
-  formal views attach to selectable DUTs.
+* A convention DV root that carries a formal config and no sim config is not
+  a DUT; formal views attach to selectable DUTs.
 * Hosted CI runs no formal job and no formal result reaches the dashboard;
   formal mode is a developer-host flow (<<runner-formal>>).
 * Formal results have no waiver mechanism; coverage waivers apply to

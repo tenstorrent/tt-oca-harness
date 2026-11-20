@@ -62,6 +62,15 @@ argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
 # sim_cfg = "companion/hw/sys/smc/dv/smc_sim_cfg.toml"
 # tools = ["xcelium"]
 
+# A DUT the registry and the directory conventions do not resolve, declared by its DV root.
+# Each mode reads `<name>_<mode>_cfg.toml` there unless the entry also sets that mode's
+# pointer, `sim_cfg` or `formal_cfg`. The path resolves like the pointers above. A `root` on a
+# name the tree already resolves fails validation. While the simulation config the DUT reads
+# is absent, its simulation view is unavailable; a formal view appears only when
+# `<name>_formal_cfg.toml` exists there or `formal_cfg` names one.
+# [duts.newdut]
+# root = "path/to/newdut/dv"
+
 # A cluster executor the registry declares takes per-key overrides: the site's queue and
 # resource defaults, its coordinator limits, the hook that puts the scheduler commands on
 # PATH, and a whole argv template when the site's scheduler wants other flags or units. A

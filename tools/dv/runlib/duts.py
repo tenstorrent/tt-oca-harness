@@ -8,8 +8,10 @@ A run selects its device-under-test with ``--dut <name>``. The name is resolved 
 directory convention (``hw/<name>/dv``, ``hw/{sys,ip,comp,periph}/<name>/dv``, or
 ``hw/common/prim/<name>/dv`` under the active DV root). Either way the resolved DUT DV root must contain
 a ``<name>_sim_cfg.toml``, which is loaded (and merged with its ``profile``) into a :class:`Dut`.
-The active site layer may name a DUT's simulation or formal config in its place, and may add
-simulation tools to the DUT's allowlist (see :func:`resolve_dut`).
+The active site layer may name a DUT's simulation or formal config in its place, may add
+simulation tools to the DUT's allowlist (see :func:`resolve_dut`), and may declare with ``root``
+the DV root of a DUT neither the registry nor the convention resolves; such a DUT stays
+selectable while its sim config is absent, with that view unavailable.
 
 A registry entry may instead carry ``alias_of = "<canonical>"``, which makes the
 name a second way to select an existing DUT rather than a DUT of its own: the
@@ -116,8 +118,16 @@ def discover_dut_roots(root: Path) -> dict[str, Path]:
 
 
 # Where a config path came from: the site layer's `[duts.<name>]` pointer, the registry's
-# `sim_cfg`/`formal_cfg` override, or the `<name>_<mode>_cfg.toml` naming convention.
-_SOURCE_LABEL = {"site": "the site layer", "registry": "duts.toml", "convention": "convention"}
+# `sim_cfg`/`formal_cfg` override, the `<name>_<mode>_cfg.toml` naming convention, or that
+# convention under a site-declared `root`, which only the simulation view takes.
+_SOURCE_LABEL = {
+    "site": "the site layer",
+    "site_root": "the site layer's `root`",
+    "registry": "duts.toml",
+    "convention": "convention",
+}
+# Sources that leave a simulation view unavailable, not fatal, while their file is absent.
+_SITE_SOURCES = {"site", "site_root"}
 
 
 @dataclass(frozen=True)
@@ -151,6 +161,7 @@ def _cfg_for(
     entry: dict,
     root: Path,
     site_cfg: str | None = None,
+    declared: bool = False,
 ) -> tuple[Path, str]:
     """(config path, source) for ``mode``; the path may not exist."""
     if mode not in {"sim", "formal"}:
@@ -162,11 +173,17 @@ def _cfg_for(
     if override:
         return dv_path(root, override), "registry"
     suffix = "formal_cfg" if mode == "formal" else "sim_cfg"
-    return dv_root / f"{name}_{suffix}.toml", "convention"
+    source = "site_root" if declared and mode == "sim" else "convention"
+    return dv_root / f"{name}_{suffix}.toml", source
 
 
-def _locate(root: Path, name: str) -> tuple[str, Path, dict]:
-    """(canonical name, DUT DV root, registry entry) for a selectable DUT name."""
+def tree_dut_names(root: Path) -> set[str]:
+    """Every name the registry or the convention resolves, with or without a sim config."""
+    return set(load_dut_registry(root)) | set(discover_dut_roots(root))
+
+
+def _locate(root: Path, name: str, site: SiteLayer | None = None) -> tuple[str, Path, dict, bool]:
+    """(canonical name, DUT DV root, registry entry, declared by the site) for a selectable name."""
     registry = load_dut_registry(root)
     # An `alias_of` entry is a second selectable name for one DUT, not a second
     # DUT: it resolves to the canonical config and identity, so the two names
@@ -175,12 +192,15 @@ def _locate(root: Path, name: str) -> tuple[str, Path, dict]:
     canonical = str(registry.get(name, {}).get("alias_of") or name)
     if name in registry:
         entry = registry[name]
-        return canonical, dv_path(root, entry["root"]), entry
+        return canonical, dv_path(root, entry["root"]), entry, False
     discovered = discover_dut_roots(root)
-    if name not in discovered:
-        known = ", ".join(sorted(set(registry) | set(discovered))) or "<none>"
-        raise ConfigError(f"unknown DUT `{name}` (known: {known})")
-    return canonical, discovered[name], {}
+    if name in discovered:
+        return canonical, discovered[name], {}, False
+    declared_root = site.dut_root(name) if site is not None else None
+    if declared_root:
+        return name, dv_path(root, declared_root), {}, True
+    known = set(registry) | set(discovered) | (site.declared_duts if site else set())
+    raise ConfigError(f"unknown DUT `{name}` (known: {', '.join(sorted(known)) or '<none>'})")
 
 
 def _site_cfg(site: SiteLayer | None, names: tuple[str, str], mode: str) -> str | None:
@@ -217,7 +237,7 @@ def resolve_dut(
     adopter_overlay: Path | None = None,
     site: SiteLayer | None = None,
 ) -> Dut:
-    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention).
+    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry, convention, site ``root``).
 
     ``framework`` is the CLI ``--framework`` request; ``None`` selects the DUT's default.
     ``adopter_overlay`` is the resolved ``--overlay``/``OCAH_DV_OVERLAY`` path applied on top
@@ -228,9 +248,10 @@ def resolve_dut(
     only where it serves the view's framework) and its ``exclude_files`` append to
     ``[build].exclude_files`` so a site can drop sources its layered bender graph adds.
     """
-    canonical, dv_root, entry = _locate(root, name)
+    canonical, dv_root, entry, declared = _locate(root, name, site)
     names = (name, canonical)
-    cfg, source = _cfg_for(dv_root, canonical, mode, entry, root, _site_cfg(site, names, mode))
+    site_cfg = _site_cfg(site, names, mode)
+    cfg, source = _cfg_for(dv_root, canonical, mode, entry, root, site_cfg, declared)
     if not cfg.is_file():
         named = "" if source == "convention" else f" (named by {_SOURCE_LABEL[source]})"
         raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}{named}")
@@ -262,13 +283,17 @@ def resolve_dut(
     return flow
 
 
-def list_dut_names(root: Path) -> list[str]:
-    """All selectable DUT names: registry entries plus convention roots that carry a sim_cfg."""
+def list_dut_names(root: Path, site: SiteLayer | None = None) -> list[str]:
+    """All selectable DUT names: registry entries, convention roots that carry a sim_cfg, and
+    the site's declared DUTs whose names neither the registry nor the convention resolves."""
     registry = load_dut_registry(root)
+    discovered = discover_dut_roots(root)
     names = set(registry)
-    for name, dv_root in discover_dut_roots(root).items():
+    for name, dv_root in discovered.items():
         if (dv_root / f"{name}_sim_cfg.toml").is_file():
             names.add(name)
+    if site is not None:
+        names.update(site.declared_duts - set(registry) - set(discovered))
     return sorted(names)
 
 
@@ -277,19 +302,20 @@ def config_view(
 ) -> ConfigView | None:
     """The ``mode`` view of one selectable DUT, or None when nothing names a config for it.
 
-    A site or registry pointer yields a view whether or not its file exists; the naming
-    convention yields one only for a file that exists.
+    A site or registry pointer, or the simulation config under a site-declared ``root``, yields
+    a view whether or not its file exists; the naming convention otherwise yields one only for
+    a file that exists.
     """
-    canonical, dv_root, entry = _locate(root, name)
+    canonical, dv_root, entry, declared = _locate(root, name, site)
     site_cfg = _site_cfg(site, (name, canonical), mode)
-    path, source = _cfg_for(dv_root, canonical, mode, entry, root, site_cfg)
+    path, source = _cfg_for(dv_root, canonical, mode, entry, root, site_cfg, declared)
     if source == "convention" and not path.is_file():
         return None
     return ConfigView(name=name, mode=mode, path=path, source=source)
 
 
 def unavailable_sim_views(root: Path, site: SiteLayer | None = None) -> dict[str, ConfigView]:
-    """Simulation views whose site-named config is absent.
+    """Simulation views whose config, named by a site pointer or under a site ``root``, is absent.
 
     The site file may point into a checkout this machine lacks, so such a view is listed as
     unavailable and is an error only when its DUT is selected.
@@ -297,9 +323,9 @@ def unavailable_sim_views(root: Path, site: SiteLayer | None = None) -> dict[str
     if site is None:
         return {}
     views: dict[str, ConfigView] = {}
-    for name in list_dut_names(root):
+    for name in list_dut_names(root, site):
         view = config_view(root, name, "sim", site)
-        if view is not None and view.source == "site" and not view.available:
+        if view is not None and view.source in _SITE_SOURCES and not view.available:
             views[name] = view
     return views
 
@@ -314,7 +340,7 @@ def load_duts(root: Path, site: SiteLayer | None = None) -> dict[str, Dut]:
     absent = unavailable_sim_views(root, site)
     return {
         name: resolve_dut(root, name, site=site)
-        for name in list_dut_names(root)
+        for name in list_dut_names(root, site)
         if name not in absent
     }
 
@@ -327,7 +353,7 @@ def formal_view(root: Path, name: str, site: SiteLayer | None = None) -> ConfigV
 def discover_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, ConfigView]:
     """Every selectable DUT's formal view, unloaded (used by --validate-configs)."""
     views: dict[str, ConfigView] = {}
-    for name in list_dut_names(root):
+    for name in list_dut_names(root, site):
         view = formal_view(root, name, site)
         if view is not None:
             views[name] = view

@@ -12,6 +12,7 @@ Run from the repository root:
 from __future__ import annotations
 
 import io
+import json
 import os
 import shutil
 import sys
@@ -29,7 +30,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import test_coverage_closure as closure  # noqa: E402
 from runlib import cli, site, stages  # noqa: E402
 from runlib.config import load_executors, load_simulators  # noqa: E402
-from runlib.duts import resolve_dut  # noqa: E402
+from runlib.duts import (  # noqa: E402
+    formal_view,
+    list_dut_names,
+    resolve_dut,
+    tree_dut_names,
+    unavailable_sim_views,
+)
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
 from runlib.results import result_payload  # noqa: E402
 from runlib.site import (  # noqa: E402
@@ -46,6 +53,13 @@ from runlib.site import (  # noqa: E402
     tool_launch,
     tool_source,
     validate_site_duts,
+)
+from test_formal_views import (  # noqa: E402
+    FORMAL_CFG,
+    FORMAL_TESTLIST,
+    SIM_CFG,
+    SIM_TESTLIST,
+    TempRepo,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -172,9 +186,14 @@ class SiteFileValidationTest(SiteCase):
         self.rejects('[simulators.sby]\nargv = ["{binary}", "{nope}"]\n', "nope")
 
     def test_dut_entry_keys_and_target(self) -> None:
-        self.rejects('[duts.dtp]\nroot = "x"\n', "unsupported key(s): root")
+        layer = self.load('[duts.dtp]\nroot = "x"\n')
+        with self.assertRaises(ConfigError) as ctx:
+            validate_site_duts(layer, list_dut_names(REPO_ROOT), tree_dut_names(REPO_ROOT))
+        self.assertIn("`root` declares DUT(s) the tree already resolves: dtp;", str(ctx.exception))
+        self.rejects('[duts.dtp]\nbogus = "x"\n', "[duts.dtp]", "unsupported key(s): bogus")
         self.rejects(
-            "[duts.dtp]\n", "[duts.dtp] sets none of: exclude_files, formal_cfg, sim_cfg, tools"
+            "[duts.dtp]\n",
+            "[duts.dtp] sets none of: exclude_files, formal_cfg, root, sim_cfg, tools",
         )
         self.rejects("[duts.dtp]\nformal_cfg = 1\n", "formal_cfg must be a non-empty path")
         self.rejects('[duts.dtp]\nsim_cfg = ""\n', "sim_cfg must be a non-empty path")
@@ -187,6 +206,11 @@ class SiteFileValidationTest(SiteCase):
             "[duts.dtp]\nexclude_files = []\n",
             "exclude_files must be a non-empty list of filelist patterns",
         )
+
+    def test_root_must_be_a_non_empty_path(self) -> None:
+        self.rejects('[duts.sitedut]\nroot = ""\n', "[duts.sitedut].root must be a non-empty path")
+        self.rejects("[duts.sitedut]\nroot = 1\n", "[duts.sitedut].root must be a non-empty path")
+        self.assertEqual(self.load('[duts.sitedut]\nroot = "x"\n').dut_root("sitedut"), "x")
 
     def test_site_exclude_files_append_to_the_build_drops(self) -> None:
         layer = self.load('[duts.dtp]\nexclude_files = ["site_vendor_only.sv", "meta/models/x"]\n')
@@ -708,6 +732,55 @@ class CliViewsTest(SiteCase):
         self.assertIn("named by the site layer", text)
         self.assertNotIn("unknown DUT", text)
 
+    def run_main(self, argv: list[str], site_toml: str) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.dict(os.environ, self.site_env(site_toml)),
+            redirect_stdout(out),
+            redirect_stderr(err),
+        ):
+            rc = cli.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_selecting_a_declared_dut_whose_root_is_absent_names_the_root(self) -> None:
+        absent = self.tmp / "absent"
+        rc, out, err = self.run_main(
+            ["--dut", "sitedut", "--items", "smoke", "--dry-run"],
+            f'[duts.sitedut]\nroot = "{absent}"\n',
+        )
+        text = out + err
+        self.assertEqual(rc, 2, text)
+        self.assertIn(f"sim config not found: {absent}/sitedut_sim_cfg.toml", text)
+        self.assertIn("named by the site layer's `root`", text)
+        self.assertNotIn("unknown DUT", text)
+
+    def test_a_declared_dut_lists_from_its_root_only_while_declared(self) -> None:
+        root = self.tmp / "sitedut"
+        self.write("sitedut/sitedut_sim_cfg.toml", SIM_CFG.format(name="sitedut"))
+        self.write("sitedut/testlists/all.toml", SIM_TESTLIST.format(name="sitedut"))
+        site_toml = f'[duts.sitedut]\nroot = "{root}"\n'
+        rc, out, err = self.run_main(["--list", "--json"], site_toml)
+        self.assertEqual(rc, 0, err)
+        entries = [e for e in json.loads(out)["duts"] if e["name"] == "sitedut"]
+        self.assertEqual(
+            [(e["mode"], e["available"], e["root"]) for e in entries], [("sim", True, str(root))]
+        )
+        rc, out, err = self.run_main(["--list", "--json"], "schema_version = 1\n")
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("sitedut", [e["name"] for e in json.loads(out)["duts"]])
+
+    def test_a_formal_only_declared_dut_is_selectable_in_formal_mode(self) -> None:
+        root = self.tmp / "sitedut"
+        self.write("sitedut/sitedut_formal_cfg.toml", FORMAL_CFG.format(name="sitedut"))
+        self.write("sitedut/formal_testlist.toml", FORMAL_TESTLIST.format(name="sitedut"))
+        with mock.patch.object(cli, "run_flow", return_value=0) as run_flow:
+            rc, out, err = self.run_main(
+                ["--dut", "sitedut", "--mode", "formal", "--items", "sitedut_fpv", "--dry-run"],
+                f'[duts.sitedut]\nroot = "{root}"\n',
+            )
+        self.assertEqual(rc, 0, out + err)
+        self.assertEqual(run_flow.call_args.kwargs["flow"].path, root / "sitedut_formal_cfg.toml")
+
     def test_doctor_names_the_site_file_and_probes_the_launcher(self) -> None:
         rc, out = self.run_doctor(
             "sby",
@@ -866,6 +939,161 @@ class ResolveDutTest(SiteCase):
         flow = resolve_dut(REPO_ROOT, "smu_wrapper", site=layer)
         self.assertEqual(flow.tools[-1], "simtool")
         self.assertEqual(flow.name, "smu")
+
+
+class DeclaredRootTest(TempRepo):
+    """`[duts.sitedut] root` declares a DUT the temporary tree does not carry, outside `hw/`.
+
+    The tree holds `widget` (convention) and `gizmo` (registry), each with a simulation view,
+    and `widget`'s formal view.
+    """
+
+    ROOT = "companion/sitedut"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(
+            "hw/common/dv/configs/duts.toml",
+            'schema_version = 1\n[duts.gizmo]\nroot = "hw/sys/gizmo/dv"\n',
+        )
+
+    def write_sim(self, rel: str) -> Path:
+        cfg = self.write(rel, SIM_CFG.format(name="sitedut"))
+        self.write(
+            str(Path(rel).parent / "testlists/all.toml"), SIM_TESTLIST.format(name="sitedut")
+        )
+        return cfg
+
+    def declare(self, *modes: str, extra: str = "") -> Path:
+        """Declare `sitedut` at ROOT, which holds the config of each of ``modes``."""
+        if "sim" in modes:
+            self.write_sim(f"{self.ROOT}/sitedut_sim_cfg.toml")
+        if "formal" in modes:
+            self.write_formal("sitedut", f"{self.ROOT}/sitedut_formal_cfg.toml")
+        self.write_site(f'[duts.sitedut]\nroot = "{self.ROOT}"\n{extra}')
+        return self.root / self.ROOT
+
+    def validate(self) -> tuple[int, str, list[str]]:
+        """The exit code, the output, and the `sitedut` rows of `--validate-configs`."""
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = cli.cmd_validate_configs(self.root)
+        text = out.getvalue()
+        rows = [line.strip() for line in text.splitlines()]
+        return rc, text, [row for row in rows if row.startswith("sitedut")]
+
+    def listings(self) -> tuple[list[str], list[dict]]:
+        """The `sitedut` rows of `--list` and its `--list --json` entries."""
+        duts, registries, views = cli.validate_all(self.root)
+        absent = unavailable_sim_views(self.root, registries.site)
+        table, entries = io.StringIO(), io.StringIO()
+        with redirect_stdout(table):
+            cli.list_flows(duts, registries.simulators, views, absent, self.root, registries.site)
+        with redirect_stdout(entries):
+            cli.list_flows_json(self.root, duts, views, absent, registries.site)
+        rows = [line for line in table.getvalue().splitlines() if line.startswith("sitedut ")]
+        mine = [e for e in json.loads(entries.getvalue())["duts"] if e["name"] == "sitedut"]
+        return rows, mine
+
+    def test_root_on_a_name_the_tree_resolves_is_rejected(self) -> None:
+        self.write("hw/ip/bare/dv/models/README", "a DV root without a sim config\n")
+        self.assertEqual(list_dut_names(self.root), ["gizmo", "widget"])
+        self.assertIn("bare", tree_dut_names(self.root))
+        for name in ("gizmo", "widget", "bare"):
+            self.write_site(f'[duts.{name}]\nroot = "{self.ROOT}"\n')
+            with self.assertRaises(ConfigError) as ctx:
+                cli.load_registries(self.root)
+            self.assertIn(
+                f"`root` declares DUT(s) the tree already resolves: {name};", str(ctx.exception)
+            )
+
+    def test_unknown_name_without_root_stays_rejected(self) -> None:
+        self.declare("sim", extra='[duts.sitedut_typo]\nsim_cfg = "x_sim_cfg.toml"\n')
+        with self.assertRaises(ConfigError) as ctx:
+            cli.load_registries(self.root)
+        self.assertIn("[duts] names unknown DUT(s): sitedut_typo (known:", str(ctx.exception))
+        self.declare("sim")
+        self.assertIsNotNone(cli.load_registries(self.root).site)
+
+    def test_declared_root_resolves_and_lists_only_with_the_site_layer(self) -> None:
+        root = self.declare("sim")
+        site = self.site()
+        self.assertEqual(list_dut_names(self.root), ["gizmo", "widget"])
+        self.assertEqual(list_dut_names(self.root, site), ["gizmo", "sitedut", "widget"])
+        flow = resolve_dut(self.root, "sitedut", site=site)
+        self.assertEqual(flow.path, root / "sitedut_sim_cfg.toml")
+        self.assertEqual((flow.name, flow.root), ("sitedut", self.ROOT))
+        with self.assertRaises(ConfigError) as ctx:
+            resolve_dut(self.root, "sitedut")
+        self.assertIn("unknown DUT `sitedut`", str(ctx.exception))
+
+    def test_sim_only_root_has_an_available_sim_view_and_no_formal_view(self) -> None:
+        self.declare("sim")
+        rc, out, rows = self.validate()
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(rows, ["sitedut          OK"])
+        self.assertIn("3 DUT(s), 4 view(s): 4 OK, 0 FAILED", out)
+        table, entries = self.listings()
+        self.assertEqual(len(table), 1, table)
+        self.assertNotIn("unavailable", table[0])
+        self.assertEqual(
+            [(e["mode"], e["available"], e["root"]) for e in entries], [("sim", True, self.ROOT)]
+        )
+
+    def test_root_serves_formal_mode_and_an_entry_pointer_wins(self) -> None:
+        pointer = self.write_sim("companion/pointer/sitedut_sim_cfg.toml")
+        root = self.declare("sim", "formal", extra=f'sim_cfg = "{pointer}"\n')
+        site = self.site()
+        self.assertEqual(resolve_dut(self.root, "sitedut", site=site).path, pointer)
+        view = formal_view(self.root, "sitedut", site)
+        assert view is not None
+        formal = root / "sitedut_formal_cfg.toml"
+        self.assertEqual((view.source, view.path, view.available), ("convention", formal, True))
+        self.assertEqual(resolve_dut(self.root, "sitedut", mode="formal", site=site).path, formal)
+        other = self.write_formal("sitedut", "companion/pointer/sitedut_formal_cfg.toml")
+        self.declare("sim", "formal", extra=f'formal_cfg = "{other}"\n')
+        site = self.site()
+        self.assertEqual(resolve_dut(self.root, "sitedut", mode="formal", site=site).path, other)
+        self.assertEqual(
+            resolve_dut(self.root, "sitedut", site=site).path, root / "sitedut_sim_cfg.toml"
+        )
+
+    def test_absent_root_is_unavailable_and_has_no_formal_view(self) -> None:
+        self.write_site('[duts.sitedut]\nroot = "companion/absent"\n')
+        rc, out, rows = self.validate()
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(len(rows), 1, rows)
+        self.assertIn("UNAVAILABLE: sim config not found", rows[0])
+        self.assertIn("named by the site layer's `root`", rows[0])
+        self.assertIn("3 DUT(s), 4 view(s): 3 OK, 0 FAILED, 1 unavailable", out)
+        table, entries = self.listings()
+        self.assertEqual(len(table), 1, table)
+        self.assertIn("unavailable: sim config not found", table[0])
+        self.assertEqual(
+            [(e["mode"], e["available"], e["path"]) for e in entries],
+            [("sim", False, "companion/absent/sitedut_sim_cfg.toml")],
+        )
+        self.assertIsNone(formal_view(self.root, "sitedut", self.site()))
+        with self.assertRaises(ConfigError) as ctx:
+            resolve_dut(self.root, "sitedut", site=self.site())
+        self.assertIn("named by the site layer's `root`", str(ctx.exception))
+
+    def test_formal_only_root_lists_an_unavailable_sim_view_and_its_formal_view(self) -> None:
+        root = self.declare("formal")
+        rc, out, rows = self.validate()
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(len(rows), 2, rows)
+        self.assertIn("UNAVAILABLE: sim config not found", rows[0])
+        self.assertRegex(rows[1], r"^sitedut \(formal\)\s+OK$")
+        table, entries = self.listings()
+        self.assertEqual(len(table), 2, table)
+        self.assertIn("unavailable: sim config not found", table[0])
+        self.assertIn(" fv ", table[1])
+        self.assertEqual(
+            [(e["mode"], e["available"]) for e in entries], [("sim", False), ("formal", True)]
+        )
+        flow = resolve_dut(self.root, "sitedut", mode="formal", site=self.site())
+        self.assertEqual(flow.path, root / "sitedut_formal_cfg.toml")
 
 
 class ResultRecordingTest(SiteCase):

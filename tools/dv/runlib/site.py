@@ -6,9 +6,10 @@
 One git-ignored ``hw/common/dv/configs/site.local.toml``, or the file named by ``OCAH_DV_SITE``,
 merges over ``simulators.toml`` and ``executors.toml``: a deployment renames a tool binary,
 wraps every tool command in a launcher (a container), sources an environment hook before the
-tool starts, adds a tool table the checked-in registry lacks, or names a DUT's formal config
-that lives outside this checkout. ``runlib.cli.load_registries`` applies the layer once, so
-``--validate-configs``, ``--doctor``, ``--dry-run``, and the run path resolve one merged view.
+tool starts, adds a tool table the checked-in registry lacks, names a DUT's formal config
+that lives outside this checkout, or declares the DV root of a DUT this checkout lacks.
+``runlib.cli.load_registries`` applies the layer once, so ``--validate-configs``,
+``--doctor``, ``--dry-run``, and the run path resolve one merged view.
 Nothing but the site file itself, or the environment variable, activates the layer.
 
 Layout of a site file::
@@ -73,7 +74,7 @@ SITE_TOP_KEYS = {"schema_version", "description", "simulators", "executors", "du
 SITE_TOOL_KEYS = {"binary", "launcher", "argv", "license_env", "extra_env", "setup_hook"}
 # Every data key of an executor table; `kind` stays with the registry.
 SITE_EXECUTOR_KEYS = (CLUSTER_EXECUTOR_KEYS | CLUSTER_EXECUTOR_V1_KEYS) - {"kind"}
-SITE_DUT_KEYS = {"formal_cfg", "sim_cfg", "tools", "exclude_files"}
+SITE_DUT_KEYS = {"formal_cfg", "sim_cfg", "tools", "exclude_files", "root"}
 SETUP_HOOK_TIMEOUT_SEC = 120
 # Shell bookkeeping a sourced hook changes without exporting anything.
 _HOOK_NOISE_VARS = {"_", "SHLVL", "PWD", "OLDPWD"}
@@ -124,6 +125,16 @@ class SiteLayer:
     def dut_exclude_files(self, names: Iterable[str]) -> list[str]:
         """The filelist drops the site adds for the first DUT name in ``names`` that lists any."""
         return list(self._dut_value(names, "exclude_files") or [])
+
+    def dut_root(self, name: str) -> str | None:
+        """The DV root ``[duts.<name>]`` declares for a DUT the tree does not carry."""
+        value = self._dut_value([name], "root")
+        return str(value) if value is not None else None
+
+    @property
+    def declared_duts(self) -> frozenset[str]:
+        """The DUT names a ``root`` declares."""
+        return frozenset(name for name, entry in self.duts.items() if "root" in entry)
 
 
 @dataclass(frozen=True)
@@ -240,7 +251,7 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
         validate_allowed_keys(entry, SITE_DUT_KEYS, entry_where)
         if not entry:
             raise ConfigError(f"{entry_where} sets none of: {', '.join(sorted(SITE_DUT_KEYS))}")
-        for key in ("formal_cfg", "sim_cfg"):
+        for key in ("formal_cfg", "sim_cfg", "root"):
             text = entry.get(key, "")
             if key in entry and (not isinstance(text, str) or not text):
                 raise ConfigError(f"{entry_where}.{key} must be a non-empty path")
@@ -257,10 +268,23 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
     return SiteLayer(path=path, label=label, simulators=simulators, executors=executors, duts=duts)
 
 
-def validate_site_duts(site: SiteLayer, known: Iterable[str]) -> None:
-    """Every ``[duts.<name>]`` entry names a selectable DUT."""
+def validate_site_duts(site: SiteLayer, known: Iterable[str], tree: Iterable[str] = ()) -> None:
+    """A ``[duts.<name>]`` entry without ``root`` names a selectable DUT; one with ``root``
+    names no DUT the tree resolves.
+
+    ``known`` holds the tree's selectable names; ``tree`` adds the names DUT location also
+    resolves ahead of a declared root, such as a convention DV root without a sim config.
+    """
     names = set(known)
-    unknown = sorted(name for name in site.duts if name not in names)
+    declared = site.declared_duts
+    shadowing = sorted(declared & (names | set(tree)))
+    if shadowing:
+        raise ConfigError(
+            f"{site.where}: [duts] `root` declares DUT(s) the tree already resolves: "
+            f"{', '.join(shadowing)}; declare a new DUT under a name the tree does not resolve, "
+            "or point a selectable DUT at other configs with `sim_cfg` or `formal_cfg`"
+        )
+    unknown = sorted(set(site.duts) - names - declared)
     if unknown:
         raise ConfigError(
             f"{site.where}: [duts] names unknown DUT(s): {', '.join(unknown)} "

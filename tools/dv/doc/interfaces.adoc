@@ -119,11 +119,12 @@ the overlay targets.
 |The deployment, outside version control
 |Runner registry loading, `--doctor`, `--list`, the run path
 |Active exactly when the file exists; a companion checkout beside the tree
-changes nothing. Only the keys the runner page lists are accepted, and each
-either replaces a registry value or adds a complete tool, executor, or
-formal-config entry. The active file is recorded as `site` in
-`result.json`. Checked by `--validate-configs`, which reports the merged
-registries, and by the site-layer tests.
+changes nothing. Only the keys the runner page lists are accepted. Each
+replaces or extends a registry value, adds a complete tool, executor, or
+formal-config entry, or, as `[duts.<name>] root`, declares a DUT that DUT location reaches
+after the registry and the directory conventions. The active file is
+recorded as `site` in `result.json`. Checked by `--validate-configs`, which
+reports the merged registries, and by the site-layer tests.
 
 |Leaf manifest: `<run>/stages/regress/jobs/<task>.json`, its
 `<task>.done.json` completion record, and the coordinator's
