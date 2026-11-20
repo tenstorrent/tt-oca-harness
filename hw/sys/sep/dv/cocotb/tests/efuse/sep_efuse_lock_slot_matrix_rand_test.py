@@ -73,11 +73,14 @@ Checkers:
                     completes the operation with an error;
                     ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
                     ``read_status``). The line prints both values, the expected 1,
-                    both values read before the go and whether that pre-go state
-                    was fresh (not done 1 with status 1). Every request is
-                    graded, whatever its pre-go state.
-                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one request with a
-                    fresh pre-go state.
+                    both values read before the go and ``fresh=1`` when the
+                    pre-go ``read_done`` is 0. Every request is graded, whatever
+                    its pre-go state. ``CTRL-LOCK-READ-DONE-FRESH`` needs at least
+                    one request with ``fresh=1``: only that request shows that the
+                    blocked go set ``read_done``. The lock leg runs the first
+                    read-locked slot with a read bit ahead of the first unlocked
+                    one, so its first read-interface request is a blocked one
+                    (``INFO-LOCK-READ-ORDER`` logs the move).
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -387,6 +390,17 @@ def _pin(seed: int) -> tuple[str | None, int]:
 def _free_uid_slots(layout: dict) -> list[int]:
     """UID slots with no lock in the drawn lock-leg layout."""
     return [s for s in _UID_SLOTS if layout.get(s, "none") == "none"]
+
+
+def _blocked_read_first(order: list[int], layout: dict, read_bits: dict) -> list[int]:
+    """Move the first read-locked slot with a read bit ahead of the first slot with one."""
+    reads = [s for s in order if s in read_bits]
+    blocked = [s for s in reads if layout.get(s, "none") in _KIND_R]
+    if not blocked or reads[0] == blocked[0]:
+        return list(order)
+    out = [s for s in order if s != blocked[0]]
+    out.insert(out.index(reads[0]), blocked[0])
+    return out
 
 
 def _bit(v: int, m: int) -> int:
@@ -782,7 +796,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             await self._chain()
 
         if "CHK-LOCK-READ-DONE" in self.required_evidence:
-            # A done 1 after a fresh pre-go state can only come from the request.
+            # A done 1 after a pre-go done 0 can only come from the request.
             self._control(
                 "LOCK-READ-DONE-FRESH",
                 self.fresh_read_done >= 1,
@@ -863,7 +877,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
-                fresh = not (r["pre_done"] == 1 and r["pre_status"] == 1)
+                fresh = r["pre_done"] == 0
                 self.read_done_requests += 1
                 self.fresh_read_done += int(fresh)
                 self._grade(
@@ -968,7 +982,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         neighbours = sorted(n for n in (target - 1, target + 1) if 1 <= n <= 40)
         self._reset_twin_counts()
         blocked_reads = blocked_progs = 0
-        for slot in leg["slot_order"]:
+        order = _blocked_read_first(leg["slot_order"], layout, leg["read_bits"])
+        if order != list(leg["slot_order"]):
+            moved = next(s for s, t in zip(order, leg["slot_order"]) if s != t)
+            self.chk.info("LOCK-READ-ORDER", moved=moved, before=order[order.index(moved) + 1])
+        for slot in order:
             kind = layout.get(slot, "none")
             name = LOCK_SLOT_FIELD[slot]
             tag = self._step()
