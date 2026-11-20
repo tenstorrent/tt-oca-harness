@@ -337,7 +337,7 @@ module smc #(
   input  logic        isolate_sequence_trigger_i,  // Isolation sequence trigger, active-high, from any
                                                    // cause such as a PCIe function-level reset; its
                                                    // rising edge starts the reset unit's isolation
-                                                   // and cool reset sequence.
+                                                   // and reset sequence.
   input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset
                                           // unit; end its FLR wait early.
   output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset

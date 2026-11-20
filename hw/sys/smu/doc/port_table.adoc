@@ -135,7 +135,7 @@
 
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NumMailboxes-1:0]` |External mailbox interrupt outputs. |External targets |N/A
 
-|`isolate_sequence_trigger_i` |`logic` |Input |1 |Isolation sequence trigger; a rising edge starts the isolation and cool reset sequence, for example on a PCIe function-level reset. |PCIe / system |Tie to '0 if unused
+|`isolate_sequence_trigger_i` |`logic` |Input |1 |Isolation sequence trigger; a rising edge starts the isolation and reset sequence, for example on a PCIe function-level reset. |PCIe / system |Tie to '0 if unused
 |`isolate_req_ack_i` |`logic` |Input |`[31:0]` |Isolation acknowledge from 32 subsystems; bit i high ends the FLR wait for subsystem i. Lower it before `isolate_req_o[i]` falls. |Subsystems |Tie to '0 if unused
 |`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Subsystems |N/A
 |`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |Subsystems |32'hFFFFFFFF

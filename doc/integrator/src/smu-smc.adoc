@@ -690,8 +690,8 @@ testing (unless disabled), and system health checks. The `smc_init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-A rising edge on `isolate_sequence_trigger_i` starts the isolation and cool
-reset sequence, for example on a PCIe Function Level Reset (FLR). The SMC raises
+A rising edge on `isolate_sequence_trigger_i` starts the isolation and reset
+sequence, for example on a PCIe Function Level Reset (FLR). The SMC raises
 the `isolate_req_o` bits enabled in `ISOLATE_REQ_SMCEN_REG`, then asserts the cool
 reset once every one of those subsystems raises its `isolate_req_ack_i` bit, or
 once `ISOLATE_REQ_FLR_COUNTER_VALUE` expires, whichever is first.

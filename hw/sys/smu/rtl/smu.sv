@@ -257,7 +257,7 @@ module smu #(
 
   output logic [smc_pkg::NumMailboxes-1:0]  smc_ext_mailbox_interrupts_o,  // Mailbox interrupts toward the SMC.
 
-  input  logic  isolate_sequence_trigger_i,    // Starts the SMC isolation and cool reset sequence on its rising edge.
+  input  logic  isolate_sequence_trigger_i,    // Starts the SMC isolation and reset sequence on its rising edge.
   input  logic [31:0]  isolate_req_ack_i,       // Per-subsystem isolate acknowledges.
   output logic [31:0]  isolate_req_o,           // Per-subsystem isolate requests.
   input  logic [31:0]  ss_reset_complete_i,     // Per-subsystem reset-complete status.
