@@ -6546,17 +6546,17 @@ module sep_fcov (
       bins out_fallthrough_allow = {4'b1_100};
       bins out_no_match = {4'b1_101};
     }
-    // A DECERR write to FILTER_CONFIG of a locked inbound entry, then a read
+    // A SLVERR write to FILTER_CONFIG of a locked inbound entry, then a read
     // that equals the value read before the write (owner
     // sep_fabric_inbound_filter_rule_matrix_test).
     cp_locked_write: coverpoint fx_locked_write iff (fx_locked_write != 2'd0) {
-      bins in_cfg_lo_decerr_kept = {2'd1}; bins in_cfg_hi_decerr_lock_kept = {2'd2};
+      bins in_cfg_lo_slverr_kept = {2'd1}; bins in_cfg_hi_slverr_lock_kept = {2'd2};
     }
     // The same for START_ADDR and END_ADDR of a locked entry (owner
     // sep_fabric_slot_csr_strobe_rand_test), sampled on the rise of
     // slot_lock_pass.
     cp_locked_range_write: coverpoint fx_locked_range iff (fx_locked_range != 2'd0) {
-      bins start_decerr_kept = {2'd1}; bins end_decerr_kept = {2'd2};
+      bins start_slverr_kept = {2'd1}; bins end_slverr_kept = {2'd2};
     }
   endgroup
 
@@ -6841,7 +6841,7 @@ module sep_fcov (
     cp_filter_csr_write: coverpoint fx_filter_csr_write iff (fx_filter_csr_write != 2'd0) {
       bins unlocked_lo_lands = {2'd1};
       bins unlocked_hi_lands = {2'd2};
-      bins locked_decerr_unchanged = {2'd3};
+      bins locked_slverr_unchanged = {2'd3};
     }
     // {write, latched TRANSFER_WIDTH} of each DMA AR and AW handshake with
     // AxLEN = 0.
@@ -8752,7 +8752,7 @@ module sep_fcov (
         else if ((fx_dwp_resp_q == FRespOkay) && ((fx_rl & fx_dwp_s_q & 8'hF0) != 8'h00) &&
                  ((lq_rdata[63:32] & m[63:32]) == (fx_dwp_d_q[63:32] & m[63:32])))
           c_filter_csr_write = 2'd2;
-        else if ((fx_dwp_resp_q == FRespDecerr) && fx_dwp_lock_q && ((fx_rl & fx_dwp_s_q) != 8'h00) &&
+        else if ((fx_dwp_resp_q == FRespSlverr) && fx_dwp_lock_q && ((fx_rl & fx_dwp_s_q) != 8'h00) &&
                  ((lq_rdata & m) == ({8'h00, fx_dwp_snap_q} & m)))
           c_filter_csr_write = 2'd3;
       end
@@ -9037,7 +9037,7 @@ module sep_fcov (
           end
           // Filter register writes.
           if (fx_f.v) begin
-            if ((lq_resp == FRespDecerr) && fx_lr_v_q && (fx_lr_w_q == lq_a[31:3]) &&
+            if ((lq_resp == FRespSlverr) && fx_lr_v_q && (fx_lr_w_q == lq_a[31:3]) &&
                 ((fx_f.r != 2'd0) || fx_f.out || filt_locked_i[fx_f.idx[3:0]])) begin
               fx_lk_v_q   <= 1'b1;
               fx_lk_f_q   <= fx_f;
@@ -34814,15 +34814,17 @@ module sep_fcov (
   localparam int unsigned EfProgN = 64;  // x_prog_lifecycle N
   localparam int unsigned EfLatchWin = 4096;  // digest replacement after release
 
-  // Windows of 0x1093_0000 to 0x1093_FFFF (memory_map.adoc): shadow map,
-  // interface control, its unused tail, token registers, the span between the
-  // token registers and 0x1093_0600 (not declared), reserved.
+  // Windows of 0x1093_0000 to 0x1093_FFFF (memory_map.adoc): the eFuse
+  // wrapper page holds the interface control, the token registers and the
+  // shadow map, each with the words past its register extent; the Reserved row
+  // runs from the end of that 4 KiB page to the ABR aperture.
   localparam logic [2:0] EfWShadow = 3'd0;
   localparam logic [2:0] EfWCtrlIn = 3'd1;
   localparam logic [2:0] EfWCtrlPast = 3'd2;
   localparam logic [2:0] EfWTokIn = 3'd3;
-  localparam logic [2:0] EfWTokGap = 3'd4;
+  localparam logic [2:0] EfWTokPast = 3'd4;
   localparam logic [2:0] EfWRsvd = 3'd5;
+  localparam logic [2:0] EfWMapPast = 3'd6;
   localparam logic [2:0] EfWNone = 3'd7;
   localparam logic [31:0] EfMapBase = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR;
   localparam logic [31:0] EfMapEnd = EfMapBase + SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE;
@@ -34830,16 +34832,16 @@ module sep_fcov (
   localparam logic [31:0] EfCtrlEnd = EfCtrlBase + SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_SIZE;
   localparam logic [31:0] EfMmrBase = SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR;
   localparam logic [31:0] EfMmrEnd = EfMmrBase + SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_SIZE;
-  localparam logic [31:0] EfRsvdBase = EfMapBase + 32'h0000_0600;
-  localparam logic [31:0] EfRsvdHigh = EfMapBase + 32'h0000_1000;
-  localparam logic [31:0] EfWinEnd = EfMapBase + 32'h0001_0000;
+  localparam logic [31:0] EfRsvdBase = EfCtrlBase + 32'h0000_1000;
+  localparam logic [31:0] EfWinEnd = 32'(SEP_TOP_ABR_BASE_ADDR);
 
   function automatic logic [2:0] ef_win(input logic [31:0] a);
     if (in_win(a, EfMapBase, EfMapEnd)) return EfWShadow;
     if (in_win(a, EfCtrlBase, EfCtrlEnd)) return EfWCtrlIn;
     if (in_win(a, EfCtrlEnd, EfMmrBase)) return EfWCtrlPast;
     if (in_win(a, EfMmrBase, EfMmrEnd)) return EfWTokIn;
-    if (in_win(a, EfMmrEnd, EfRsvdBase)) return EfWTokGap;
+    if (in_win(a, EfMmrEnd, EfMapBase)) return EfWTokPast;
+    if (in_win(a, EfMapEnd, EfRsvdBase)) return EfWMapPast;
     if (in_win(a, EfRsvdBase, EfWinEnd)) return EfWRsvd;
     return EfWNone;
   endfunction
@@ -35110,7 +35112,7 @@ module sep_fcov (
     logic [2:0] wn;
     logic wn_v;  // cp_window: window class
     logic rz;
-    logic rz_v;  // cp_rsvd_zone: 0 low, 1 high
+    logic rz_v;  // cp_rsvd_zone: 0 page past extent, 1 Reserved row
     logic [5:0] wr;
     logic wr_v;  // x_win_op_resp: {ignored, window, 0 rd / 1 wr, OKAY}
     logic [3:0] sf;
@@ -35128,15 +35130,16 @@ module sep_fcov (
   covergroup sep_efuse_map_geometry_cg with function sample (ef_geo_t s);
     option.per_instance = 1;
     option.name = "sep_efuse_map_geometry_cg";
-    // The span between the token registers and 0x1093_0600 is not declared.
     cp_window: coverpoint s.wn iff (s.wn_v) {
       bins shadow = {EfWShadow};
       bins ctrl_in = {EfWCtrlIn};
       bins ctrl_past = {EfWCtrlPast};
       bins tok_in = {EfWTokIn};
+      bins tok_past = {EfWTokPast};
+      bins map_past = {EfWMapPast};
       bins rsvd = {EfWRsvd};
     }
-    cp_rsvd_zone: coverpoint s.rz iff (s.rz_v) {bins low = {1'b0}; bins high = {1'b1};}
+    cp_rsvd_zone: coverpoint s.rz iff (s.rz_v) {bins page_past = {1'b0}; bins rsvd_row = {1'b1};}
     // Sampled with fuse_sense_done_i high, for the in-extent windows only.
     // The ignored accesses are those whose response no source states: a
     // shadow write, a read-locked shadow read, a STATUS write, a write to an
@@ -37050,7 +37053,7 @@ module sep_fcov (
     off = 11'(a - EfMapBase);
     if (ef_own_win) begin
       ef_geo(0, 6'(w));
-      if (w == EfWRsvd) ef_geo(1, 6'(a >= EfRsvdHigh));
+      if (w inside {EfWCtrlPast, EfWTokPast, EfWMapPast, EfWRsvd}) ef_geo(1, 6'(w == EfWRsvd));
       if ((fuse_sense_done_i === 1'b1) && (w inside {EfWShadow, EfWCtrlIn, EfWTokIn})) begin
         ign = ((w == EfWShadow) && wr) || ((w == EfWShadow) && !wr && ef_rlock(ef_slot_of(off))) ||
             (wr && (a == EfStatus)) || (wr && (a inside {EfPgData, EfRdData, EfMatchSip,
