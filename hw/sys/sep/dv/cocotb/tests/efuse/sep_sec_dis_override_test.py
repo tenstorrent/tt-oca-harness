@@ -924,9 +924,15 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_addr = SepEfuseImage.field("LC_STATE").shadow_addr
         _width, rs_fields = register_fields(rs_addr)
         rs_field = next(f for f in rs_fields if f.name == "required_signers")
-        assert rs_field.access == "read-write" and rs_field.reset is not None, (
-            "test bug: REQUIRED_SIGNERS.required_signers is not software-writable with a reset "
-            "in the RDL"
+        # rs_pre | (1 << rs_bit) sets the bit under plain read-write and under
+        # write-1-to-set; any other write modifier makes the control meaningless.
+        assert (
+            rs_field.access == "read-write"
+            and rs_field.write_modifier in (None, "oneToSet")
+            and rs_field.reset is not None
+        ), (
+            "test bug: REQUIRED_SIGNERS.required_signers is not plain read-write or "
+            "write-1-to-set with a reset in the RDL"
         )
         rs_reset = sum((f.reset or 0) << f.lsb for f in rs_fields)
         free = rs_field.mask & ~rs_reset
