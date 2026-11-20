@@ -352,7 +352,7 @@ JTAG_CAPS.
 |10 |extest_pulse_en |R |The EXTEST_PULSE instruction is enabled.
 |9 |extest_train_en |R |The EXTEST_TRAIN instruction is enabled.
 |8 |bsr_inst_en |R |All mandatory boundary scan instructions are enabled.
-|7:0 |och_ver |R |The MAJOR version number of the DTP IP. The default is 1, which identifies the instruction map with the DTMCS and DMI instructions of the JTAG2AXI bridges.
+|7:0 |och_ver |R |The MAJOR version number of the DTP IP.
 |===
 
 Bits shifted into the JTAG_CAPS TDR are ignored. The Programmer's Guide gives the
