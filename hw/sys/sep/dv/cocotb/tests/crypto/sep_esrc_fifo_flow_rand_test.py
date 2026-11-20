@@ -84,8 +84,9 @@ Checkers:
                          (underflow). Controls: CTRL-ESRC-LIVE-LINE, after each grade an
                          INTR_TEST pulse of PERSISTENT_FAILURE with only its enable set
                          raises source 16 (entropy_source.rdl:193); CTRL-ESRC-LIVE-CAUSE,
-                         the same cause with only its enable set, after a write-one clear,
-                         sets its INTR_STATUS bit (entropy_source.rdl:129, :136).
+                         the same cause with only its enable set, after a write-one clear
+                         (for underflow read back 0), sets its INTR_STATUS bit
+                         (entropy_source.rdl:129, :136).
   CHK-ESRC-LIVE-PIC16    in that same state (only the live cause's enable bit set),
                          PIC source 16 reads 1, for FIFO_OVERFLOW and FIFO_UNDERFLOW.
   CHK-FIFO-STREAM-FULL   with LEVEL held at 64, the stream port (``esrc_compress_vld_o``)
@@ -931,14 +932,18 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._live_line(cause)
         en = await self._set_enable(bm)
         await self._wr(ESRC_INTR_STATUS, bm)
+        # Underflow has no cause between the clear and the next FIFO_RDATA read; the
+        # producer can overflow the full FIFO again before this read.
+        cleared = await self._rd(ESRC_INTR_STATUS) & bm
         live, fields = await drive()
         st = await self._rd(ESRC_INTR_STATUS)
         pic = self._pic16()
         self.chk.ctrl(
             "ESRC-LIVE-CAUSE",
-            live and en == bm and st & bm,
+            live and en == bm and st & bm and (bm != INTR_FIFO_UNDERFLOW or cleared == 0),
             cause=cause,
             intr_enable=f"0x{en:08x}",
+            cleared=int(bool(cleared)),
             intr_status=f"0x{st:08x}",
             **fields,
         )

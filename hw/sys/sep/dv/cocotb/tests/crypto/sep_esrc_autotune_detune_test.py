@@ -41,12 +41,12 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): lane k, the window W (256, 512 or 2048), the three clean gaps (2, 3
 or 4 windows), the non-zero masks m1 != m2, the non-zero mask m3 that is not
 all ones (its complement m3c is non-zero), the ``balanced`` masks and
-permutation, the order of the divide values 0 to 5, one divide value of 6 to
-the field maximum, the one enable (module or ring) of the one-enable step and
-its new divide value (0 to 5, at a ratio other than that of the last value), and
-the divide value of the guide step (0 to 5, at a ratio other than that of the
-one-enable value and of the value before it, so the guide ratio differs from the
-lane ratio before the guide write).
+permutation, the order of the divide values 0 to 5 (the divide-by-4 value never
+last), one divide value of 6 to the field maximum, the one enable (module or
+ring) of the one-enable step and its new divide value (0 to 5, at a ratio other
+than that of the last value), and the divide value of the guide step (0 to 5, at
+a ratio other than that of the one-enable value and of the value before it, so
+the guide ratio differs from the lane ratio before the guide write).
 
 Checkers:
   CHK-TUNE-MANUAL   probe == DETUNE readback == written mask for 0, m1, m2; with
@@ -351,6 +351,10 @@ def draw_plan(seed: int) -> Plan:
     balanced = tuple(balanced_lanes(rng))
     div_order = list(range(len(DIV_RATIOS)))
     rng.shuffle(div_order)
+    # The value before div_other is not at DIV_OTHER_RATIO, so a lane that keeps its
+    # last divide on an out-of-range value fails CHK-SCLK-DIV.
+    if DIV_RATIOS[div_order[-1]] == DIV_OTHER_RATIO:
+        div_order.insert(0, div_order.pop())
     div_other = rng.randrange(len(DIV_RATIOS), DIVIDE_MAX + 1)
     one_enable = rng.choice(ONE_ENABLES)
     div_v2 = rng.choice(
