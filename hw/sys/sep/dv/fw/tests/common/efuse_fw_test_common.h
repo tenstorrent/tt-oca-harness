@@ -35,11 +35,16 @@
  * cumulative, and a stale literal does not fail to compile.
  */
 #define EFUSE_FW_BIT0(field_base_addr) \
-    (((uint32_t)(field_base_addr) - (uint32_t)SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR) * 8u)
+    (((uint32_t)(field_base_addr) - \
+      (uint32_t)SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR) * \
+     8u)
 
-#define EFUSE_FW_CLASS_KEY_BIT0 EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR)
-#define EFUSE_FW_BL1_VERSION_BIT0 EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR)
-#define EFUSE_FW_CHIPLET_UID_BIT0 EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR)
+#define EFUSE_FW_CLASS_KEY_BIT0 \
+    EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR)
+#define EFUSE_FW_BL1_VERSION_BIT0 \
+    EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR)
+#define EFUSE_FW_CHIPLET_UID_BIT0 \
+    EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR)
 
 typedef struct {
     uint32_t completed;
@@ -51,8 +56,8 @@ typedef struct {
 
 static inline int efuse_wait_sense_done(void) {
     for (int i = 0; i < EFUSE_FW_POLL_TIMEOUT; i++) {
-        uint32_t status =
-            READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(
+            SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR);
         if ((status & EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm) !=
             0) {
             return 0;
@@ -185,11 +190,12 @@ static inline int efuse_read_word_raw(uint32_t bit_addr, efuse_fw_read_result_t 
     result->completed = 1;
     result->read_status = (rb & EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm) >>
                           EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bp;
-    result->data_word =
-        READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR);
+    result->data_word = READ_REG(
+        SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR);
     result->bit_value = (result->data_word >> (bit_addr & 31u)) & 1u;
     result->req_error =
-        (READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR) &
+        (READ_REG(
+             SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR) &
          EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm) >>
         EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bp;
 

@@ -42497,7 +42497,9 @@ module sep_fcov (
         km_dec_cls <= 2'd0;
         km_dec_wr <= kw_ev;
       end else if ((gap != 2'd0) && ((kw_ev ? kw_resp : kr_resp) == KmSlverr) &&
-                   (kw_ev || (kr_data == km_ef_gap_data(gap)))) begin
+                   (kw_ev || (kr_data == km_ef_gap_data(
+              gap
+          )))) begin
         km_dec_pend <= 1'b1;
         km_dec_cls <= 2'd2;
         km_dec_wr <= kw_ev;

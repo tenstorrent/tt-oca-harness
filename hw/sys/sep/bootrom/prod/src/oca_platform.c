@@ -224,7 +224,8 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
     }
 
     uint8_t secret[OCA_CLASS_KEY_BYTES];
-    fuse_read_bytes(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret, OCA_CLASS_KEY_BYTES);
+    fuse_read_bytes(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret,
+                    OCA_CLASS_KEY_BYTES);
 
     // An erased CLASS_KEY bank is all zeroes. Deriving from it would produce a
     // deterministic key and "successfully" decrypt to garbage, which then fails

@@ -171,16 +171,20 @@ _Static_assert(EXTAXI_SMC_SCRATCH9_GLOBAL ==
 
 #if defined(SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR)
 _Static_assert(EXTAXI_SEP_COLD0_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)),
+                   (EXTAXI_SEP_GLOBAL_BASE +
+                    SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)),
                "SEP cold scratch0 global address drift");
 _Static_assert(EXTAXI_SEP_COLD4_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)),
+                   (EXTAXI_SEP_GLOBAL_BASE +
+                    SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)),
                "SEP cold scratch4 global address drift");
 _Static_assert(EXTAXI_SEP_COLD5_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)),
+                   (EXTAXI_SEP_GLOBAL_BASE +
+                    SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)),
                "SEP cold scratch5 global address drift");
 _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)),
+                   (EXTAXI_SEP_GLOBAL_BASE +
+                    SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)),
                "SEP cold scratch7 global address drift");
 #endif
 
