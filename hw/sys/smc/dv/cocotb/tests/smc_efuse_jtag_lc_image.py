@@ -144,19 +144,19 @@ def write_unlocked_image() -> EfuseImage:
     for name, base, count, word_of in (
         (
             "JTAG_PUBLIC_IDENTITY",
-            smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
             _IDENTITY_WORDS,
             identity_word,
         ),
         (
             "I2C_I3C_ID",
-            smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
             _I2C_I3C_ID_WORDS,
             fill_word,
         ),
         (
             "SPARE",
-            smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
             _SPARE_WORDS,
             fill_word,
         ),
