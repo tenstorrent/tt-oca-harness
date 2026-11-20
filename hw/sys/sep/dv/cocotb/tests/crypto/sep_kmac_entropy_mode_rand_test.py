@@ -22,7 +22,7 @@ Legs: a six-seed leg first (gives t_ctrl, the clean start time), then in drawn
 order: seed count (5 and 0 words), mode lock (sw first and edn first), timer
 (prescaler 0 and P, wait timers T, 2T, 8, then 0), counter (N hashes,
 ``hash_cnt_clr``, ``entropy_req``) and reseed (threshold R, then 0 on the same
-KMAC). A ``msg_mask`` leg runs last and is logged only (``OBS-KMAC-MSGMASK``).
+KMAC). A ``msg_mask`` leg runs last and is logged only (``INFO-KMAC-MSGMASK``).
 "Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
 uninitialized" is the state after a TRNG reset with no bring-up after it: EDN
 does not answer, which is the starvation of the timer leg.
@@ -60,7 +60,7 @@ Checkers:
                            error." (``vendor/lowRISC/opentitan/upstream/hw/ip/
                            kmac/doc/theory_of_operation.md``:724, :764). No text
                            gives bits 23:0 a value for this code: they are
-                           masked and logged as ``OBS-KMAC-TIMER-ERRCODE``.
+                           masked and logged as ``INFO-KMAC-TIMER-ERRCODE``.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
                            At prescaler 0 the window is (2^16 // 7 + 4) x the
                            error time at wait timer 8 (at least 7 whole pulse
@@ -764,7 +764,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             expected=f"0x{EXP_ERR_WAIT_TIMER_EXPIRED:02x}",
         )
         # Bits 23:0: no text gives them a value for WaitTimerExpired.
-        self.chk.obs(
+        self.chk.info(
             "KMAC-TIMER-ERRCODE",
             p0_debug=",".join(
                 f"0x{r['code'] & ERR_CODE_DEBUG_MASK:x}" if "code" in r else "na" for r in p0
@@ -977,7 +977,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             if ref is None:
                 ref = digest
                 continue
-            self.chk.obs(
+            self.chk.info(
                 "KMAC-MSGMASK",
                 flag=name,
                 stage=status,

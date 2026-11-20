@@ -29,7 +29,10 @@ the leaf writes that tag as the pass label (``set_ef_hold_pass``) after every
 check of the step passed. A FAIL closes the window before it is raised, which
 drops the held samples. The read after the locked write runs with tag 0, so it
 samples nothing. A vector watch on the whole interrupt vector grades
-CHK-SRC34-EXCL at every rise of bit [33]: no other bit moves in that clock.
+CHK-SRC34-RISE for each locked access: bit [33] rises after the mark taken
+before the access. No specification sentence states that no other bit moves in
+the clock of that rise, so INFO-SRC34-COINCIDENT logs the other bits that moved,
+and ``cp_src_exclusive_other[s34]`` compares them in the sampler only.
 
 The specification (hw/sys/sep/doc/otp_fuse_controller.adoc:110-112, Shadow
 Register and JTAG Access Control) states that a shadow write or read that a
@@ -60,8 +63,8 @@ readback equals the read before the write, and the sensed shadow word
 CTRL-SECTM-LATCH logs ``secure_tm_o`` after each sense and requires 0 before
 the control half and 1 before the deny half. A refused write is a write that a
 lock blocks: secure test mode adds a shadow write lock
-(hw/ip/efuse/doc/architecture.adoc:402-403) on the fields that
-otp_fuse_controller.adoc:178-180 lists. So otp_fuse_controller.adoc:110-112
+(hw/ip/efuse/doc/architecture.adoc:407-408) on the fields that
+otp_fuse_controller.adoc:181-183 lists. So otp_fuse_controller.adoc:110-112
 applies: CHK-LOCK-WR-RESP (``case=sectm``) grades its BRESP as SLVERR, and
 CHK-SECTM-IRQ grades a rise of [33]: low at the clock edge before each refused
 write and high at a clock edge during it. No
@@ -72,8 +75,9 @@ The strap-low half is the positive control: without it a DUT whose
 shadow writes never work at all would pass the deny half. LOCKS and
 LOCKS_SPARE are one field-map entry, so LOCKS_SPARE carries their shared
 positive control, and LOCKS takes its own on the slot-31 write-lock bit.
-LC_STATE is written in bytes [31:8], which OR-merge as ordinary shadow bytes
-and leave the lifecycle nibble alone.
+LC_STATE is written in bytes [31:8], which leave the lifecycle nibble alone.
+The sensed LC_STATE[31:8] is 0, so CHK-SECTM-CONTROL shows that the payload
+landed there and grades no other rule for those bits.
 """
 
 from __future__ import annotations
@@ -83,7 +87,7 @@ from typing import NoReturn
 import cocotb
 import pyuvm
 from cocotb.triggers import Event, NextTimeStep, ReadOnly, RisingEdge
-from env.sep_bit_watch import SepVecWatch, VecMark, VecWatchNoRiseError, pic_vector_watch
+from env.sep_bit_watch import SepVecWatch, VecMark, pic_vector_watch
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_efuse_test_lib import shadow_word
 from env.sep_fabric_common import RESP_SLVERR, resp_name
@@ -388,39 +392,35 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         return pic_vector_watch({"s34": IRQ_LOCKED_FIELD}).start()
 
-    def _check_excl(self, vec: SepVecWatch, mark: VecMark, run: int, access: str) -> None:
-        """CHK-SRC34-EXCL: at each rise of bit [33] every other bit keeps its value.
+    def _check_rise(self, vec: SepVecWatch, mark: VecMark, run: int, access: str) -> None:
+        """CHK-SRC34-RISE: bit [33] rises after ``mark``; INFO-SRC34-COINCIDENT logs the rest.
 
         interrupts.adoc:23 states bit i of the vector is PIC source i + 1, and
-        :190-192 assigns source 34 (bit [33]) to the locked-field access alone,
-        so no other bit moves at its rise. The six bits with an unstated idle
-        level are not compared (pic_vector_watch). The locked access raises no
-        other source, so no bit is exempt for the same clock. Each locked
-        access is the first one after a reset, with [33] low before it
-        (CTRL-IRQ-IDLE), so a run with no rise after the mark fails.
+        :190-192 assigns source 34 (bit [33]) to the locked-field access. Each
+        locked access is the first one after a reset, with [33] low before it
+        (CTRL-IRQ-IDLE), so a run with no rise after the mark fails. The other
+        bits that moved in the clock of a rise are logged, not graded. The six
+        bits with an unstated idle level are not compared (pic_vector_watch).
         """
         try:
             rises = vec.rises_since(mark, "s34")
-            smears = vec.smears_since(mark, "s34")
-        except VecWatchNoRiseError as exc:
-            self._fail("SRC34-EXCL", f"run={run} access={access} {exc}")
+        except AssertionError as exc:
+            self._fail("SRC34-RISE", f"run={run} access={access} {exc}")
+        line = f"run={run} access={access} rises={len(rises)} rise_clks={[r.clk for r in rises]}"
+        if not rises:
+            self._fail("SRC34-RISE", line)
         first = rises[0]
-        self._grade(
-            "SRC34-EXCL",
-            not smears,
-            f"run={run} access={access} rises={len(rises)} "
-            f"moved={[(c, hex(m)) for c, m in smears]} "
-            f"before=0x{first.before:011x} after=0x{first.after:011x}",
-        )
+        moved = vec.smears_since(mark, "s34")
         self.logger.info(
-            "CHK-SRC34-EXCL PASS: run=%d access=%s rises=%d rise_clk=%s "
-            "before=0x%011x after=0x%011x moved=0x0 (idle bits not compared)",
-            run,
-            access,
-            len(rises),
-            [r.clk for r in rises],
+            "INFO-SRC34-COINCIDENT: %s coincident=%d moved=%s before=0x%011x after=0x%011x",
+            line,
+            len(moved),
+            [(clk, hex(m)) for clk, m in moved],
             first.before,
             first.after,
+        )
+        self.logger.info(
+            "CHK-SRC34-RISE PASS: %s before=0x%011x after=0x%011x", line, first.before, first.after
         )
 
     def _read_staged(self, cfg: SepLockedFieldIrqCfg, run: int) -> int:
@@ -564,7 +564,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             cfg.write_field,
             resp_name(wr.resp_code),
         )
-        self._check_excl(vec, mark, run, "write_lock")
+        self._check_rise(vec, mark, run, "write_lock")
         await self._release(tag)
 
     async def _read_lock(
@@ -616,7 +616,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             DENY_DATA_MARKER,
             stored,
         )
-        self._check_excl(vec, mark, run, "read_lock")
+        self._check_rise(vec, mark, run, "read_lock")
         await self._release(tag)
 
     async def _graded_run(
@@ -660,7 +660,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             "CHK-WRITE-LOCK",
             "CHK-LOCK-WR-RESP",
             "CHK-READ-LOCK",
-            "CHK-SRC34-EXCL",
+            "CHK-SRC34-RISE",
         )
         img = self.select_efuse_image(lc_raw=LC_PROD, fixed=cfg.image_fixed())
         assert img.lc_raw() == LC_PROD, "test bug: image LC_STATE is not PROD"

@@ -2950,12 +2950,17 @@ module sep_uvm_top
     assign efuse_program_busy_o = `EFUSE_PG.program_busy_o;
     assign efuse_program_read_back_data_o = `EFUSE_PG.program_read_back_data_o;
     // ------------------------------------------------------------------
-    // One-cycle force of the eFuse read and program interface state registers
-    // to an encoding the frontdoor cannot reach. Scope: the two state
-    // registers named below, for one cycle at a time; the error, done, busy,
-    // data and request outputs are never forced. Seeing the injected encoding
-    // on *_state_o confirms the force landed. The leaf takes the live
-    // encodings from *_state_o and injects their complement. Owner:
+    // Only legal encodings of these two FSMs are 2'b01 and 2'b10, and the
+    // sense and frontdoor paths can never present another, so the fail-closed
+    // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
+    // stimulus. Scope: the two state registers named below, for one cycle at
+    // a time. Seeing the injected encoding on *_state_o confirms the force
+    // landed; it is not fail-closed evidence. The owner grades the error
+    // output and status field after each release; the recovered encoding,
+    // the in-flight command withdraw and the done/busy/data values are
+    // logged, not graded. The legal encodings 2'b01 idle and 2'b10 wait are
+    // the design's state encoding in efuse_read_interface.sv and
+    // efuse_program_interface.sv; the inject uses their complement. Owner:
     // sep_efuse_illegal_state_fail_closed_test.
     //
     // The registers are enum-typed and the injected encodings are not members

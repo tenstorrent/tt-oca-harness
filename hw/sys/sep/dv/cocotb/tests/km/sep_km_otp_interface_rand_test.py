@@ -423,7 +423,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.rst_ni.value = 1
         pre_sense = cocotb.start_soon(self._sample_presense())
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
-        self.chk.obs("OTP-PRESENSE", boot=boot, **(await pre_sense))
+        self.chk.info("OTP-PRESENSE", boot=boot, **(await pre_sense))
         rel = await self._wait_sep_reset_release()
         self.cfg.reset_done.set()
         await ReadOnly()

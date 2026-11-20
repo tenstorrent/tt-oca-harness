@@ -451,7 +451,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         offset = None if fall_n is None else fall_n - 1
         self.cell_offset = offset
         self.logger.info(
-            "OBS-OP-INFLIGHT LOG seed=%d op=%s resp_valid=%d valid_clocks_at_hs=%d result=%s "
+            "INFO-OP-INFLIGHT LOG seed=%d op=%s resp_valid=%d valid_clocks_at_hs=%d result=%s "
             "release_clks=%d",
             c.seed,
             c.op,

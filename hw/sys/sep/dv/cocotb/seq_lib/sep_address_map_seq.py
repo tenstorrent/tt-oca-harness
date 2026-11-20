@@ -385,7 +385,7 @@ class sep_address_map_seq(uvm_sequence):
         self.test_ctrl_reads = (v0, v0b, v1)
         self.test_ctrl_wr_resp = wr.resp_code
         cocotb.log.info(
-            "OBS-SEP-TEST-CTRL-WR wdata=0x%08x resp=%d resp_ok=%d unfielded_before=0x%07x "
+            "INFO-SEP-TEST-CTRL-WR wdata=0x%08x resp=%d resp_ok=%d unfielded_before=0x%07x "
             "unfielded_after=0x%07x",
             wdata,
             wr.resp_code,
@@ -414,7 +414,7 @@ class sep_address_map_seq(uvm_sequence):
                 # No spec states the strap values this bench presents, so the
                 # fields are logged.
                 cocotb.log.info(
-                    "OBS-SEP-TEST-CTRL value=0x%08x fast_spi_en=%d fast_iccm_en=%d "
+                    "INFO-SEP-TEST-CTRL value=0x%08x fast_spi_en=%d fast_iccm_en=%d "
                     "fast_dccm_en=%d fast_sram_en=%d fast_pka_en=%d sep_standalone=%d",
                     value,
                     (value >> 31) & 1,

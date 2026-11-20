@@ -41,7 +41,7 @@ sticky ``TOKEN_MATCH_FAULT`` bits and stays asserted;
 reset). The level before the inject is 0 (graded by CHK-FAULT-CELL) and no reset
 lies in the window, so a second rise needs a fall the specification forbids. A
 cell with no rise of bit 39 fails. The other bits of ``sep_internal_interrupts``
-that moved in the clock of the rise are logged (OBS-SRC40-COINCIDENT), with no
+that moved in the clock of the rise are logged (INFO-SRC40-COINCIDENT), with no
 bit exempt for the same clock and the six bits with an unstated idle level left
 out (``env/sep_bit_watch.pic_vector_watch``); no document states that no other
 source moves.
@@ -75,7 +75,7 @@ samples at the event. ``sep_sec_dis_activation_cg.x_verdict_out`` (error) sample
 at the event: its compare is the compare of its check.
 ``sep_pic_source_map_cg.cp_src_exclusive_other`` (s40) also samples at the event;
 its exclusivity compare is the sampler's own, since CHK-SRC40-RISE grades the rise
-and OBS-SRC40-COINCIDENT only logs the other bits. The first FAIL closes the window and keeps it
+and INFO-SRC40-COINCIDENT only logs the other bits. The first FAIL closes the window and keeps it
 closed for the rest of the leaf.
 """
 
@@ -291,7 +291,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     def _check_src40(
         self, vec: SepVecWatch, mark: VecMark, ch: str, kind: str, copy: int | None
     ) -> bool:
-        """CHK-SRC40-RISE: bit 39 rises exactly once after ``mark``; OBS-SRC40-COINCIDENT.
+        """CHK-SRC40-RISE: bit 39 rises exactly once after ``mark``; INFO-SRC40-COINCIDENT.
 
         The OBS line logs the other bits that moved in the clock of each rise: the
         whole vector except bit 39 and the six bits with an unstated idle level, no
@@ -307,7 +307,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
             moved = 0
             for _clk, m in smears:
                 moved |= m
-            self.chk.obs(
+            self.chk.info(
                 "SRC40-COINCIDENT",
                 **cell,
                 rises=len(rises),

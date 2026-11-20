@@ -88,6 +88,15 @@ OR-merged with the writes of the leaf).
                     register differs from the undemoted reference pair and an
                     undemoted register keeps it, and each lock probe equals the lock
                     bit of the register.
+  CHK-DEMOTE-PAIR-LEVEL
+                    each ``lcc_demote_state_<n>_probe_o`` pair is ``{~v, v}`` of the
+                    demotion flag v of its register (key manager
+                    ``architecture.adoc``, OTP_DEMOTION_STATE, which takes the flags
+                    directly): 2'b10 undemoted, 2'b01 demoted. Graded once per register and level: both registers
+                    undemoted at the first leg A read and DEMOTE_1 demoted after the
+                    leg A SEC_DIS demotion on every seed, DEMOTE_2 demoted in leg C
+                    and in leg B when it demotes DEMOTE_2. A required cell that the
+                    leaf does not reach is a FAIL line (``reason=not_reached``).
   CHK-DEMOTE-RESET  leg B: after each cold reset both registers read 0, and
                     ``FEAT_CTRL`` and both pairs equal the undemoted reference.
   CHK-DEMOTE-OTP    leg B: the ``LC_STATE`` shadow word equals the staged byte
@@ -123,9 +132,7 @@ OR-merged with the writes of the leaf).
 
 Logged, not graded: ``OBS-LCC-WR-RESP`` gives the response of every DEMOTE write with
 ``applied=0`` for a write the RW1S golden leaves without effect (no document states the
-response of a write the block does not apply); ``OBS-DEMOTE-PAIR-LEVEL`` gives, once
-per register and leaf, the undemoted and the demoted ``lcc_demote_state_<n>_probe_o``
-level (no document states which level means demoted).
+response of a write the block does not apply).
 
 ``secure_tm_req_i`` is s in leg A and 0 in every follow-on leg. The leg E walk sets
 the five named bits in the drawn order; the plan draws a permutation of the bits
@@ -281,6 +288,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         "CHK-LC-STATE-PORT",
         "CHK-SDIS-DEMOTE-SET",
         "CHK-DEMOTE-MARK",
+        "CHK-DEMOTE-PAIR-LEVEL",
     )
 
     # -- samples and model ---------------------------------------------------
@@ -288,17 +296,20 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     def _pair(self, reg: int) -> int:
         return self.rd_known(getattr(cocotb.top, f"lcc_demote_state_{reg}_probe_o")) & 0x3
 
-    def _pair_level(self, reg: int, pair: int) -> None:
-        """Log the demoted and undemoted output pair level of ``reg`` once per leaf."""
-        if reg in self.pair_level_logged or self.ref_pairs is None:
+    def _pair_level(self, reg: int, demoted: int, pair: int) -> None:
+        """Grade the output pair of ``reg`` against ``{~v, v}`` once per (reg, level)."""
+        if (reg, demoted) in self.pair_level_graded:
             return
-        self.pair_level_logged.add(reg)
-        self.chk.obs(
+        self.pair_level_graded.add((reg, demoted))
+        want = (demoted ^ 1) << 1 | demoted
+        self.chk.ok(
             "DEMOTE-PAIR-LEVEL",
+            pair == want,
             reg=reg,
             state=self.state,
-            undemoted=f"0b{self.ref_pairs[reg]:02b}",
-            demoted=f"0b{pair:02b}",
+            demoted=demoted,
+            pair=f"0b{pair:02b}",
+            exp=f"0b{want:02b}",
         )
 
     def _golden(self):
@@ -399,8 +410,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         if self.ref_pairs is None and exp[1] == exp[2] == 0:
             self.ref_pairs = dict(pairs)
         for r in (1, 2):
-            if exp[r] & DEMOTE_BIT:
-                self._pair_level(r, pairs[r])
+            self._pair_level(r, int(bool(exp[r] & DEMOTE_BIT)), pairs[r])
         self.chk.ok(
             "LC-STATE-PORT",
             port == lcw & LC_FIELD_MASK == lc_encode(self.raw),
@@ -605,8 +615,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         )
         for r in (1, 2):
             demoted = bool(got[r] & DEMOTE_BIT)
-            if demoted:
-                self._pair_level(r, pairs[r])
+            self._pair_level(r, int(demoted), pairs[r])
             comp = pairs[r] in (0b01, 0b10)
             distinct = pairs[r] != self.ref_pairs[r]
             self.chk.ok(
@@ -1191,7 +1200,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.rsvd = {1: 0, 2: 0}
         self.sdis = 0
         self.ref_pairs = None
-        self.pair_level_logged: set[int] = set()
+        self.pair_level_graded: set[tuple[int, int]] = set()
         self.mark_rng = SepSeededRng(seed ^ _MARK_SALT)
 
         self.write_efuse_image(p.image)
@@ -1210,5 +1219,8 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             await self._leg_d_walk()
         else:
             await self._leg_e()
+        need = {(1, 0), (2, 0), (1, 1)} | ({(2, 1)} if leg == LEG_C else set())
+        for reg, demoted in sorted(need - self.pair_level_graded):
+            self.chk.ok("DEMOTE-PAIR-LEVEL", False, reg=reg, demoted=demoted, reason="not_reached")
         close_graded_window(self.logger)
         self.chk.finish(f" leg={leg} raw=0x{self.raw:x}")
