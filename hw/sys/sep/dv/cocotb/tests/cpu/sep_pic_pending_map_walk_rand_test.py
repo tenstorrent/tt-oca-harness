@@ -45,7 +45,10 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    to zero; ``hw/sys/sep/doc/entropy_pool.adoc``: the PIC line
                    follows ``pool_error``; both readings give 0 there).
                    ``CTRL-POOL-ERROR``: the number of those clocks; 0 clocks,
-                   or an X on ``pool_error`` on any clock, fails the leaf.
+                   an X on ``pool_error`` on any clock, or ``pool_error`` = 1
+                   on any clock fails the leaf. The leaf injects no pool
+                   fault, and ``pool_error`` reports only a FIFO integrity
+                   fault (``entropy_pool.adoc``; RDL ``STATUS.pool_error``).
                    ``pool_error`` is read every clock by a monitor-only
                    hierarchy read of the status word the pool returns on a
                    ``STATUS`` read (``hw/sys/sep/rtl/sep_entropy_fifo.sv``,
@@ -698,8 +701,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         """Per clock: ``STATUS.pool_error``, vector bit 38 and the ``entropy_pool_err`` level.
 
         Vector bit 38 and the RAS level are counted only on clocks where
-        ``pool_error`` reads 0; a clock with an X on ``pool_error`` is counted
-        apart and grades nothing.
+        ``pool_error`` reads 0; a clock with ``pool_error`` X or 1 is counted
+        apart, and CTRL-POOL-ERROR fails on it.
         """
         status = self.pool_status
         vec = self.dut.sep_internal_interrupts_probe_o
@@ -731,8 +734,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             f"pool_error0_clk={pe['clk']} pool_error1_clk={pe['pool_error_1']} "
             f"pool_error_x_clk={pe['pool_error_x']}"
         )
-        if pe["clk"] == 0 or pe["pool_error_x"]:
-            raise AssertionError(f"CTRL-MISSING POOL-ERROR seed={self.wc.seed} {ctrl}")
+        if pe["clk"] == 0 or pe["pool_error_x"] or pe["pool_error_1"]:
+            raise AssertionError(f"CTRL-POOL-ERROR FAIL seed={self.wc.seed} {ctrl}")
         self.logger.info("CTRL-POOL-ERROR seed=%d %s", self.wc.seed, ctrl)
         self._ras(
             pe["ras_high"] == 0 and pe["ras_x"] == 0,

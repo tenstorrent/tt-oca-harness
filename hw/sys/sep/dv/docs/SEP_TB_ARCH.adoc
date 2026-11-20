@@ -273,7 +273,8 @@ Observation probe groups:
   `dmi_active_probe_o`, the wrapper output `dmi_active`. No register shows
   it. Read-only; owner `sep_debug_master_target_matrix_test`, which counts
   its rises and high clocks while the DTM is on and grades the high clocks
-  (CHK-DMI-ACTIVE).
+  (CHK-DMI-ACTIVE) and the low clocks before the first DMI request
+  (CHK-DMI-ACTIVE-IDLE).
 * Watchdog count tap (`wdt_wdog_count_o`): the `WDOG_COUNT` register of the
   watchdog AON timer (`u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q`),
   clocked by `clk_wdt_i`. A bus read of `WDOG_COUNT` needs `clk_i`, so no

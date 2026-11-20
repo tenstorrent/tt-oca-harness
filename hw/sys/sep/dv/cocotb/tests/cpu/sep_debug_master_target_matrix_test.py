@@ -61,6 +61,10 @@ Checks:
                   window (the leaf issues five: a write and a read in step 2,
                   a read in step 3, a write and a read in step 4); zero fails
                   the leaf.
+  CHK-DMI-ACTIVE-IDLE: ``dmi_active_o`` is 0 on at least one ``clk_i``
+                  cycle from the ``dtmcs`` read of step 1 to the clock of the
+                  first DMI request, when no DMI access is in progress (same
+                  golden). An X sample fails the leaf.
   CHK-DBG-SBA   : (entry S) for each of the nine accesses (SRAM word 0 and its
                   local alias at 32 and 64 bits, ``WDOG_BARK_THOLD``, HMAC
                   ``MSG_LENGTH_LOWER``, ``SEP_SW_DEBUG``, cold scratch word 0,
@@ -668,6 +672,9 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 self.dmi_act_high += act == 1
                 self.dmi_act_rises += self.prev_act == 0 and act == 1
                 self.prev_act = act
+                if not self.dtm:
+                    self.dmi_idle_clk += 1
+                    self.dmi_idle_low += act == 0
             if self.dtm_on and self.rd(dut.dmi_req_probe_o, DTM_EN):
                 req = self.rd(dut.dmi_req_probe_o)
                 self.dtm.append(
@@ -916,6 +923,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         act_line = f"requests={requests} rises={self.dmi_act_rises - act_rises} high_clk={high_clk}"
         self._ctrl("DMI-REQUESTS", requests >= 1, act_line)
         self._grade("CHK-DMI-ACTIVE", requests >= 1 and high_clk >= 1, act_line)
+        self._grade(
+            "CHK-DMI-ACTIVE-IDLE",
+            self.dmi_idle_low >= 1,
+            f"pre_request_clk={self.dmi_idle_clk} low_clk={self.dmi_idle_low}",
+        )
         await self._inst_close(dbg_sba_bits("enable0_core", "enable1_core") if ok else 0)
 
     # ---------------------------------------------------------------- entry S
@@ -2132,6 +2144,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.dtm_on = False
         self.dtm: list[_DtmReq] = []
         self.dmi_act_high = self.dmi_act_rises = 0
+        self.dmi_idle_clk = self.dmi_idle_low = 0
         self.prev_act = None
         self.uncore_ctl = None
         self.never_cycles = self.never_en = self.never_wr = 0
@@ -2144,6 +2157,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DTMCS",
                 "CHK-DMI-GATE",
                 "CHK-DMI-ACTIVE",
+                "CHK-DMI-ACTIVE-IDLE",
                 "CHK-DMI-UNCORE",
                 "CHK-DBG-RST",
             )
@@ -2159,6 +2173,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DTMCS",
                 "CHK-DMI-GATE",
                 "CHK-DMI-ACTIVE",
+                "CHK-DMI-ACTIVE-IDLE",
                 "CHK-SENSE-BACKDOOR",
             )
             entry = "S_SEPDBG"
@@ -2168,6 +2183,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DTMCS",
                 "CHK-DMI-GATE",
                 "CHK-DMI-ACTIVE",
+                "CHK-DMI-ACTIVE-IDLE",
                 "CHK-DBG-SBA",
                 "CHK-DBG-ALIAS-MOVE",
                 "CHK-DBG-ALIAS-OLD",

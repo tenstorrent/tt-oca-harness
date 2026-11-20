@@ -615,14 +615,27 @@ class _Cfg:
             words = words_of(beat_addrs(burst, start, beats, wsize), wsize)
             k_lo, k_hi = OTF_REFUSE_K[p]
             k = rng.randrange(k_lo, k_hi + 1)
-            n_data = beats * size if p == "WR" else 0
+            bg = [uniq64() for _ in words]
+            data = b""
+            if p == "WR":
+                # Each byte of the abandoned write differs from its background
+                # byte and from 0x00 and 0xFF, so a byte it lands shows.
+                held = {
+                    w + i: (v >> (8 * i)) & 0xFF for w, v in zip(words, bg) for i in range(WORD)
+                }
+                data = bytes(
+                    0x5A if held[a + i] in (0x00, 0xFF) else ~held[a + i] & 0xFF
+                    for a in beat_addrs(burst, start, beats, size)
+                    for i in range(size)
+                )
             self.otf_refuse[p] = {
                 "b": _Burst(f"Z{p}", p[0], burst, start, beats, size, abandon),
                 "k": k,
-                "data": bytes(rng.getrandbits(8) for _ in range(n_data)),
+                "data": data,
                 "post": _Burst(f"Z{p}post", "W", burst, start, beats, wsize, post_id),
                 "rsize": rsize,
-                "bg": [uniq64() for _ in words],
+                "bg": bg,
+                "words": words,
             }
 
     def draw_lines(self) -> list[str]:
@@ -1429,6 +1442,8 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         top = cocotb.top
         mon = self.mon_m
         rch, dch = ("ar", "r") if path == "RD" else ("aw", "w")
+        for w, bg in zip(v["words"], v["bg"]):
+            await self._write_word("inbound", w, bg, WORD, post_b.axi_id)
         mark = mon.mark()
         ev = self._issue(
             "inbound",
@@ -1473,19 +1488,34 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             + " ".join(f"{n}={'X' if x is None else x}" for n, x in held.items())
             + f" held_in_err_slv={int(in_slave)}"
         )
-        if not (req and 1 <= n_before < b.beats and not ended and in_slave):
-            msg = (
+        # A reach failure is raised after the CHK grade below, so a refused write
+        # that lands in the SRAM still shows in the abandoned-word read-back.
+        fails: list[str] = []
+        if req and 1 <= n_before < b.beats and not ended and in_slave:
+            self.logger.info("CTRL-SRAM-OTF-REFUSE: %s", ctrl)
+        else:
+            fails.append(
                 f"CTRL-SRAM-OTF-REFUSE FAIL: {ctrl}; rst_ni did not land while the burst "
                 "error slave held the burst"
             )
-            self.logger.error(msg)
-            raise AssertionError(msg)
-        self.logger.info("CTRL-SRAM-OTF-REFUSE: %s", ctrl)
+            self.logger.error(fails[-1])
         await self._filter()
-        words = words_of(
-            beat_addrs(post_b.burst, post_b.addr, post_b.beats, post_b.size), post_b.size
-        )
-        for w, bg in zip(words, v["bg"]):
+        # Read back the words the abandoned write covered, before anything writes
+        # them again. A byte it landed reads its write data; a word that matches
+        # the byte model also kept its value across the reset (logged only).
+        landed: list[int] = []
+        retained = 0
+        if path == "WR":
+            after = {w: await self._read_word("inbound", w, post_b.axi_id) for w in v["words"]}
+            retained = sum(after[w] == self.model.word(w) for w in v["words"])
+            addrs = beat_addrs(b.burst, b.addr, b.beats, b.size)
+            for j, a in enumerate(addrs):
+                for i in range(b.size):
+                    x = a + i
+                    got = (after[x - x % WORD] >> (8 * (x % WORD))) & 0xFF
+                    if got == v["data"][j * b.size + i] and x not in landed:
+                        landed.append(x)
+        for w, bg in zip(v["words"], v["bg"]):
             await self._write_word("inbound", w, bg, WORD, post_b.axi_id)
         bs, rs, changed, pre, post = await self._refused_pair(
             post_b, v["rsize"], "CHK-SRAM-OTF-REFUSE", graded=False
@@ -1511,9 +1541,13 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             and all(r == SLVERR for r in rresp)
             and [x.last for x in rs] == [0] * (n - 1) + [1]
             and not stale
+            and not landed
         )
+        n_ab = len(v["words"]) if path == "WR" else 0
         line = (
             f"path={path} type={BURST_NAME[b.burst]} len={n} landed_after_beat={n_before} "
+            f"abandoned_words={n_ab} abandoned_landed_bytes={len(landed)} "
+            f"abandoned_retained={retained}/{n_ab} "
             f"bresp={'/'.join(RESP_NAME.get(r, str(r)) for r in bresp) or 'none'} "
             f"unchanged={int(not changed)} rbeats={len(rs)} "
             f"{'all_SLVERR' if rresp and all(r == SLVERR for r in rresp) else 'rresp=' + str(rresp)} "
@@ -1524,9 +1558,13 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         )
         if not ok:
             detail = "; ".join(f"@0x{w:08x} pre={_w(pre[w])} post={_w(post[w])}" for w in changed)
-            msg = f"CHK-SRAM-OTF-REFUSE FAIL: {line} stale={stale} {detail}"
-            self.logger.error(msg)
-            raise AssertionError(msg)
+            landed_at = ",".join(f"0x{x:08x}" for x in landed[:8])
+            fails.append(
+                f"CHK-SRAM-OTF-REFUSE FAIL: {line} stale={stale} landed=[{landed_at}] {detail}"
+            )
+            self.logger.error(fails[-1])
+        if fails:
+            raise AssertionError(" | ".join(fails))
         self.logger.info("CHK-SRAM-OTF-REFUSE PASS: %s", line)
         self.n_checks += 1
 
