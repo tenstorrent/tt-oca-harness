@@ -16,7 +16,11 @@ first word past the AES and OTBN maps and at the first and last word of the
 lifecycle dead span give those windows a write every seed.
 
 A write or read past a block's allocated size must answer the past-extent
-response of its unit, and no live register in that block may change.
+response of its unit, and no live register in that block may change. Each write
+probe is issued with all ones and then all zeros, and each issue is graded on
+its own, so a refused write that stores shows on a read-write bit whatever that
+bit holds. INFO-DEADSPACE-PATTERN logs, per window, the armed registers and how
+many of them hold all ones or all zeros on their read-write bits (not graded).
 CHK-DEADSPACE-REFUSE grades the response exactly in every window except TRNG:
 ``hw/sys/sep/regs/include/sep_memory_map.rdl`` sets ``<unit>->ocah_past_extent_resp`` to
 ``OCAH_SEP_DECERR`` (``sep_memory_map.rdl:10``: DECERR, ``0xBADCAB1E`` / DECERR) for
@@ -86,10 +90,10 @@ CHK-DEADSPACE-BEAT: the bus monitor's per-beat RRESP vector of every read
 burst is DECERR on every beat, inside the extent as well as past it.
 
 CHK-DEADSPACE-BURST: no read-burst beat returns the value of a live register
-in the window snapshot, the write burst answers DECERR, and no armed register
-moves. A burst that times out fails. At least one window must answer a single
-beat at a burst address OKAY, which shows the refusal is the burst rule and
-not a dead address.
+in the window snapshot, the write burst, issued with all ones and then all
+zeros, answers DECERR each time, and no armed register moves. A burst that
+times out fails. At least one window must answer a single beat at a burst
+address OKAY, which shows the refusal is the burst rule and not a dead address.
 
 TRNG window passthrough. Every check above runs with the reference DECERR slave
 on the TRNG AXI-Lite port. After them the bench TRNG responder answers that port
@@ -167,6 +171,7 @@ from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
+    WRITE_PATTERNS,
     DeadProbe,
     SepDeadspace,
     SepDeadspaceCfg,
@@ -326,6 +331,14 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 hw_updating,
                 armed,
             )
+            ones, zeros = win.rw_pattern(snap)
+            self.logger.info(
+                "INFO-DEADSPACE-PATTERN: %s armed=%d rw_all_ones=%d rw_all_zeros=%d",
+                win.name,
+                armed,
+                ones,
+                zeros,
+            )
 
         refused = 0
         aliased = 0
@@ -430,21 +443,28 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                         break
             if any(sresp == RESP_OKAY for sresp, _ in singles):
                 controlled.append(win.name)
-            bresp, wr_timed_out, moved = await dead.burst_write(win, start, snaps[win.name])
-            self.logger.info(
-                "deadspace burst-audit: %s write burst 0x%08x BRESP=%s",
-                win.name,
-                start,
-                _RESP_NAME.get(bresp, str(bresp)),
-            )
-            if wr_timed_out:
-                burst_fails.append(f"{win.name} write burst at 0x{start:08x} timed out")
-            elif bresp != RESP_DECERR:
-                burst_fails.append(
-                    f"{win.name} write burst at 0x{start:08x} answered "
-                    f"{_RESP_NAME.get(bresp, str(bresp))}; the crypto demux answers DECERR"
+            for word in WRITE_PATTERNS:
+                bresp, wr_timed_out, moved = await dead.burst_write(
+                    win, start, snaps[win.name], word
                 )
-            burst_fails.extend(moved)
+                self.logger.info(
+                    "deadspace burst-audit: %s write burst 0x%08x wdata=0x%08x BRESP=%s",
+                    win.name,
+                    start,
+                    word,
+                    _RESP_NAME.get(bresp, str(bresp)),
+                )
+                if wr_timed_out:
+                    burst_fails.append(
+                        f"{win.name} write burst at 0x{start:08x} wdata=0x{word:08x} timed out"
+                    )
+                    break
+                if bresp != RESP_DECERR:
+                    burst_fails.append(
+                        f"{win.name} write burst at 0x{start:08x} wdata=0x{word:08x} answered "
+                        f"{_RESP_NAME.get(bresp, str(bresp))}; the crypto demux answers DECERR"
+                    )
+                burst_fails.extend(moved)
 
         # Config report. An anchor whose window is absent from the map raises when
         # the config is built.

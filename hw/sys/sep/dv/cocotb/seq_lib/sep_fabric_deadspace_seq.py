@@ -82,6 +82,11 @@ RESP_DECERR = 3
 # window.
 RDL_REF = "hw/sys/sep/regs/include/sep_memory_map.rdl (ocah_past_extent_resp)"
 
+# Data of the two issues of every write probe and write burst. The words are
+# complementary, so a stored write differs from the snapshot of any read-write
+# bit it lands on in one of the two issues, whatever that bit holds.
+WRITE_PATTERNS = (0xFFFF_FFFF, 0x0000_0000)
+
 # Watch-list names that pop a FIFO or fire a trigger. Snapshotting them
 # is a side effect, so they are not part of the no-alias compare.
 # `RDATA` covers the entropy_source auto-incrementing read ports (FIFO_RDATA,
@@ -152,6 +157,17 @@ class DeadWindow:
     def armed(self, snap: dict[int, int]) -> int:
         """Snapshot registers the change compare reads that can show a store."""
         return sum(1 for a in snap if a not in self.hw_updating and a in self.store_visible)
+
+    def rw_pattern(self, snap: dict[int, int]) -> tuple[int, int]:
+        """Armed registers whose snapshot is all ones / all zeros on their RW bits."""
+        ones = zeros = 0
+        for addr, val in snap.items():
+            if addr in self.hw_updating or addr not in self.store_visible:
+                continue
+            mask = sum(f.mask for f in register_fields(addr)[1] if f.access == "read-write")
+            ones += val & mask == mask
+            zeros += val & mask == 0
+        return ones, zeros
 
     @property
     def dead_lo(self) -> int:
@@ -615,13 +631,14 @@ class SepDeadspace:
         return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
     async def burst_write(
-        self, win, start: int, snap: dict[int, int]
+        self, win, start: int, snap: dict[int, int], word: int
     ) -> tuple[int, bool, list[str]]:
         """Write a four-beat INCR burst at ``start``; return BRESP, timeout and changes.
 
-        Every beat carries all ones, so a beat that reached a writable register
-        moves it. One BRESP covers the burst, and the change compare is what
-        shows whether any beat landed.
+        Every beat carries ``word``. The caller issues the burst once with each
+        ``WRITE_PATTERNS`` word, so a beat that reached a read-write bit moves
+        it in one of the two. One BRESP covers the burst, and the change
+        compare is what shows whether any beat landed.
         """
         beats = 4
         mon = self.test.env.axi_monitor
@@ -630,7 +647,7 @@ class SepDeadspace:
             f"dead_burst_wr_0x{start:08x}",
             op=SepAxiOp.WRITE,
             addr=start,
-            wdata=(1 << (32 * beats)) - 1,
+            wdata=sum(word << (32 * i) for i in range(beats)),
             length=4 * beats,
             size=2,
             expect_error=True,
@@ -642,7 +659,8 @@ class SepDeadspace:
             mon.release_expected_decerr(1)
         if seq.timed_out:
             return resp, True, []
-        return resp, False, await self.changed_registers(win, snap, f"write burst 0x{start:08x}")
+        label = f"write burst 0x{start:08x} wdata=0x{word:08x}"
+        return resp, False, await self.changed_registers(win, snap, label)
 
     async def snapshot(self, win) -> dict[int, int]:
         """Read every watched address twice; return the stable values.
@@ -764,7 +782,32 @@ class SepDeadspace:
         write the RDL ``bresp``. The adopter (TRNG) window has no such
         response; the caller grades its code, and this method fails it on OKAY
         and on a read word equal to a live register value.
+
+        A write is issued once with each ``WRITE_PATTERNS`` word, all ones then
+        all zeros. Each issue gets its own response grade and its own change
+        compare, and the two issues must answer the same code. ``last_resp``
+        holds the code of the second issue.
         """
+        if item.op != "w":
+            return await self._probe_once(win, item, snap, None)
+        fails: list[str] = []
+        codes = []
+        for word in WRITE_PATTERNS:
+            fails.extend(await self._probe_once(win, item, snap, word))
+            codes.append(self.last_resp)
+        if codes[0] != codes[1]:
+            fails.append(
+                f"{win.name} w 0x{item.addr:08x} answered code {codes[0]} with "
+                f"wdata=0x{WRITE_PATTERNS[0]:08x} and code {codes[1]} with "
+                f"wdata=0x{WRITE_PATTERNS[1]:08x}"
+            )
+        return fails
+
+    async def _probe_once(
+        self, win, item: DeadProbe, snap: dict[int, int], wdata: int | None
+    ) -> list[str]:
+        """Issue ``item`` once (``wdata`` for a write, None for a read) and grade it."""
+        what = f"{item.op} 0x{item.addr:08x}" + ("" if wdata is None else f" wdata=0x{wdata:08x}")
         fails: list[str] = []
         rdata: int | None = None
         exp = None
@@ -785,7 +828,7 @@ class SepDeadspace:
             resp, _rd, timed_out = await self._access(
                 SepAxiOp.WRITE,
                 item.addr,
-                wdata=0xFFFF_FFFF,
+                wdata=wdata,
                 expect_error=True,
             )
         else:
@@ -826,21 +869,20 @@ class SepDeadspace:
                 "n/a" if rdata is None or timed_out else f"0x{rdata:08x}",
             )
         if timed_out:
-            fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
+            fails.append(f"{win.name} {what} timed out")
             return fails
         got = f"code {resp}" + ("" if rdata is None else f" rdata 0x{rdata:08x}")
         if exp is None:
             if resp == RESP_OKAY:
                 fails.append(
-                    f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
-                    f"expected refuse (no register in the window)"
+                    f"{win.name} {what} resp=OKAY, expected refuse (no register in the window)"
                 )
         elif resp != exp.resp or (exp.rdata is not None and rdata != exp.rdata):
             want = f"code {exp.resp}" + ("" if exp.rdata is None else f" rdata 0x{exp.rdata:08x}")
             # "resp=OKAY" marks an accepted probe in the caller's tally.
             accepted = " resp=OKAY" if resp == RESP_OKAY else ""
             fails.append(
-                f"{win.name} {item.op} 0x{item.addr:08x} answered {got}, expected "
+                f"{win.name} {what} answered {got}, expected "
                 f"{want} ({RDL_REF}, {exp.row} Past Extent, allocated ends at "
                 f"+0x{win.alloc:x}){accepted}"
             )
@@ -862,5 +904,5 @@ class SepDeadspace:
         # `snap` for the read-alias compare above. Every `sw = rw` register
         # stays armed, so an access that aliases onto a control register is
         # still caught -- at that control register, where it lands.
-        fails.extend(await self.changed_registers(win, snap, f"{item.op} 0x{item.addr:08x}"))
+        fails.extend(await self.changed_registers(win, snap, what))
         return fails

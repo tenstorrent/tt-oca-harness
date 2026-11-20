@@ -86,8 +86,10 @@ Checks:
   pad position of the leaf's in-word byte order (most significant bytes for
   the first byte in bits 7:0, least significant for the first byte in bits
   31:24, ``ToO:486``). Every seed draws at least one Rx cell whose LEN+1 is
-  not a multiple of 4; ``CTRL-SPI-RX-PAD`` logs the count of graded
-  segments, and a count of 0 fails the leaf.
+  greater than 4 and not a multiple of 4, with no zero byte in the RXDATA word
+  before the last, so a pad byte that keeps stale data does not read 0;
+  ``CTRL-SPI-RX-PAD`` logs the count of graded segments and of those longer
+  than 4 bytes, and a count of 0 longer ones fails the leaf.
 * INFO-SPI-RX-PAD: per such segment, the pad position (``upper`` or
   ``lower`` bytes) and STATUS.BYTEORDER, logged, not graded: no SEP text
   states the byte order.
@@ -257,6 +259,11 @@ def oe_expect(speed: int, direction: int) -> tuple[int, int] | None:
     return (0b0011, 0b0011)
 
 
+def _long_partial(seg) -> bool:
+    """Rx data segment of more than 4 bytes whose last RXDATA word is padded."""
+    return seg.nbytes > 4 and seg.nbytes % 4 != 0
+
+
 def _swap_lanes_23(byte: int) -> int:
     """``byte`` with lanes 2 and 3 of each x4 nibble swapped."""
     return (byte & 0x33) | ((byte & 0x44) << 1) | ((byte & 0x88) >> 1)
@@ -412,10 +419,29 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             seg.len_field = self._draw_len(rng, cls, direction == DIR_DUMMY)
             ck_cls, clkdiv = self._draw_clkdiv(rng)
             self._fill_data(rng, seg)
-            if MUT_X4_RX_LANE_SWAP and (speed, direction) == (2, DIR_RX):
-                # Byte 0 has lane 2 != lane 3, so the swap changes it.
-                seg.rx_bytes = bytes([(seg.rx_bytes[0] & ~0x0C) | 0x04]) + seg.rx_bytes[1:]
             self.cells.append((seg, ck_cls, clkdiv))
+        # One Rx cell with LEN+1 > 4 and not a multiple of 4, so CHK-SPI-RX-PAD
+        # grades a padded word that follows a full word of the same segment on
+        # every seed. Every byte of that earlier word is non-zero, so a pad
+        # byte that keeps stale data does not read 0.
+        rx_segs = [seg for seg, _ck, _cd in self.cells if seg.direction == DIR_RX]
+        if not any(_long_partial(seg) for seg in rx_segs):
+            keep = next(seg for seg in rx_segs if seg.len_class == "word_multiple")
+            seg = rng.choice([s for s in rx_segs if s is not keep])
+            seg.len_class = "non_multiple"
+            seg.len_field = int(rng.choice([v for v in range(4, 64) if (v + 1) % 4]))
+            self._fill_data(rng, seg)
+        seg = next(seg for seg in rx_segs if _long_partial(seg))
+        lo = 4 * (seg.nbytes // 4 - 1)
+        seg.rx_bytes = (
+            seg.rx_bytes[:lo]
+            + bytes(b or 0x5A for b in seg.rx_bytes[lo : lo + 4])
+            + seg.rx_bytes[lo + 4 :]
+        )
+        if MUT_X4_RX_LANE_SWAP:
+            seg = next(seg for seg in rx_segs if seg.speed == 2)
+            # Byte 0 has lane 2 != lane 3, so the swap changes it.
+            seg.rx_bytes = bytes([(seg.rx_bytes[0] & ~0x0C) | 0x04]) + seg.rx_bytes[1:]
 
         dcls = self._draw_class(rng)
         self.dummy_seg = Seg(rng.randrange(3), DIR_DUMMY, 0, 0, dcls)
@@ -786,10 +812,12 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"non-Rx controls {len(nonrx_rxqd)}"
             )
         partial = 0
+        long_partial = 0
         for seg, in_seg, rxqd, drained, last_word, byteorder in rx_rows:
             nbytes = seg.len_field + 1
             if nbytes % 4:
                 partial += 1
+                long_partial += _long_partial(seg)
                 self._grade_rx_pad(seg, nbytes, last_word, byteorder)
             words = in_seg + drained
             row = (
@@ -804,10 +832,16 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             if drained != rxqd or words != exp or in_seg + rxqd != exp:
                 raise AssertionError(f"CHK-SPI-RXCNT FAIL {line}")
             self.logger.info("CHK-SPI-RXCNT PASS %s", line)
-        self.logger.info("CTRL-SPI-RX-PAD LOG seed=%d partial_segments=%d", seed, partial)
-        if not partial:
+        self.logger.info(
+            "CTRL-SPI-RX-PAD LOG seed=%d partial_segments=%d long_partial=%d",
+            seed,
+            partial,
+            long_partial,
+        )
+        if not long_partial:
             raise AssertionError(
-                f"CTRL-MISSING seed={seed} CHK-SPI-RX-PAD: no Rx cell whose LEN+1 is not "
+                f"CTRL-MISSING seed={seed} CHK-SPI-RX-PAD: partial_segments={partial} "
+                "long_partial=0, no graded Rx cell whose LEN+1 is greater than 4 and not "
                 "a multiple of 4"
             )
         self.ran.update(("CHK-SPI-CELL", "CHK-SPI-RXCNT", "CHK-SPI-RX-PAD"))
