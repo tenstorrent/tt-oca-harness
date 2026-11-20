@@ -293,7 +293,7 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 . Read OTBN `STATUS` once. Require its status field to be BUSY_SEC_WIPE_INT (`CTRL-OTBN-MEM-PRECOND`); otherwise the leaf logs `CTRL-MISSING` and fails.
 . Write a known word to the OTBN instruction memory base; read it back.
 . Write a known word to the OTBN data memory base; read it back.
-. Read the instruction and data memory request and write counters, and log them with the responses and readbacks (`OBS-OTBN-MEM-BUSY-ACCESS`).
+. Read the instruction and data memory request and write counters, and log them with the responses and readbacks (`INFO-OTBN-MEM-BUSY-ACCESS`).
 
 *Checkers*:
 
@@ -301,12 +301,12 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 |===
 |Checker |Contract
 |CTRL-OTBN-MEM-PRECOND
-|Bench-state control, not a DUT check. The `STATUS` read before the memory accesses reports BUSY_SEC_WIPE_INT, the state that `OBS-OTBN-MEM-BUSY-ACCESS` describes. Any other value logs `CTRL-MISSING` and fails the leaf, so a configuration that leaves the internal wipe is not logged as this state. The `STATUS` read response is graded OKAY by the shared scoreboard.
+|Bench-state control, not a DUT check. The `STATUS` read before the memory accesses reports BUSY_SEC_WIPE_INT, the state that `INFO-OTBN-MEM-BUSY-ACCESS` describes. Any other value logs `CTRL-MISSING` and fails the leaf, so a configuration that leaves the internal wipe is not logged as this state. The `STATUS` read response is graded OKAY by the shared scoreboard.
 |===
 
 *Pass Criteria*: `CTRL-OTBN-MEM-PRECOND` is seen, no access times out, and the shared scoreboard rejects no graded access. UVM_ERROR == 0. The leaf has no CHK record of its own and is listed in `_EvidenceFilter.NO_OWN_EVIDENCE` (`cocotb/tests/sep_base_test.py`).
 
-*Evidence*: `CTRL-OTBN-MEM-PRECOND seen: status=0x<raw word> status_code=0x04 expect=0x04` (`cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`), or `CTRL-MISSING OTBN-MEM-PRECOND: ...` and a failed leaf. One `OBS-OTBN-MEM-BUSY-ACCESS status=0x<raw word> imem_wr_resp=<code> imem_rd_resp=<code> imem_written=0x<word> imem_readback=0x<word> imem_reqs=<n> imem_writes=<n>` line with the same fields for `dmem` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). The memory accesses carry no expected value, and their responses are not graded.
+*Evidence*: `CTRL-OTBN-MEM-PRECOND seen: status=0x<raw word> status_code=0x04 expect=0x04` (`cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`), or `CTRL-MISSING OTBN-MEM-PRECOND: ...` and a failed leaf. One `INFO-OTBN-MEM-BUSY-ACCESS status=0x<raw word> imem_wr_resp=<code> imem_rd_resp=<code> imem_written=0x<word> imem_readback=0x<word> imem_reqs=<n> imem_writes=<n>` line with the same fields for `dmem` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). The memory accesses carry no expected value, and their responses are not graded.
 
 *Scope limit*: OTBN sits in BUSY_SEC_WIPE_INT (`0x04`) for the whole of this
 test -- leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
@@ -339,7 +339,7 @@ accepted exception below.
   OTBN IMEM and DMEM windows of `sep_axi_strobe_window_test`, only while
   `STATUS` reads BUSY_SEC_WIPE_INT, which `CTRL-OTBN-MEM-PRECOND` requires
   before the accesses. These accesses are logged as
-  `OBS-OTBN-MEM-BUSY-ACCESS` and not graded. The exception ends when a SEP
+  `INFO-OTBN-MEM-BUSY-ACCESS` and not graded. The exception ends when a SEP
   sentence or the upstream text states the result in this state; the leaves
   then grade that result.
 * Approver: the SEP DV owner (GitHub `yenhenglai`), 2026-11-06.
@@ -650,7 +650,7 @@ write carries a seeded random word. Adds an OKAY check on every other access (CH
 (`+SEP_TEST_LOOPS`, `+SEP_CRYPTO_TEST_LOOPS`, `+SEP_OTBN_MEM_SMOKE_TEST_LOOPS`).
 Adds `+SEP_RANDOM_COUNT` seeded
 random words per memory (five by default) after the directed word, each written
-and read back at the memory base. Each pass logs one `OBS-OTBN-MEM-BUSY-ACCESS`
+and read back at the memory base. Each pass logs one `INFO-OTBN-MEM-BUSY-ACCESS`
 line per memory with the counter increments of the pass and each word's
 responses and readback; none is graded. `CTRL-OTBN-MEM-PRECOND` is a
 `uvm_info` line, and `CTRL-MISSING` is a UVM_ERROR. The STATUS read response is

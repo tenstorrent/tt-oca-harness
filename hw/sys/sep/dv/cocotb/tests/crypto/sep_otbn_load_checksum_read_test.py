@@ -65,7 +65,7 @@ Checks:
   CHK-OTBN-DMEM-EDGE        the same for DMEM (``otbn.hjson`` :811-829).
 
 Log-only:
-  OBS-OTBN-MEM-64B          the response code and the 64-bit data of the 64-bit
+  INFO-OTBN-MEM-64B          the response code and the 64-bit data of the 64-bit
                             read, the two 32-bit words written there, and
                             ``STATUS`` after it. IMEM and DMEM are windows of
                             32-bit words (``otbn.hjson`` :788-829), and
@@ -254,7 +254,7 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
                 expect=f"0x{wdata:08x}",
             )
 
-    async def _mem_64b_obs(self, rng: SepSeededRng, w0: int) -> None:
+    async def _mem_64b_info(self, rng: SepSeededRng, w0: int) -> None:
         """One 64-bit read of IMEM words 0 and 1; no text states its outcome."""
         w1 = draw_word(rng)
         await self.otbn._wr(OTBN_IMEM_BASE + WORD_BYTES, w1)
@@ -269,7 +269,7 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
         await self.start_seq(seq)
         data = seq.rdata & ((1 << (8 * BEAT_BYTES)) - 1)
         status = (await self.otbn._rd(OTBN_ADDR_STATUS)) & M_STATUS
-        self.chk.obs(
+        self.chk.info(
             "OTBN-MEM-64B",
             addr=f"0x{OTBN_IMEM_BASE:08x}",
             resp=seq.resp_code,
@@ -325,7 +325,7 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
             close_graded_window(self.logger)
 
         imem_word0 = (await self.otbn._rd(OTBN_IMEM_BASE)) & 0xFFFF_FFFF
-        await self._mem_64b_obs(rng, imem_word0)
+        await self._mem_64b_info(rng, imem_word0)
 
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()

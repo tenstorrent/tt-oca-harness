@@ -44,7 +44,7 @@ Checkers:
   CHK-SCAN-REPLACE  test_en_i=1: the 15 nets are low on every clk_i edge
                     while scan_rst_ni is low and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
-                    clk_wdt_i edge. Other rise offsets: OBS-SCAN-OFFSET.
+                    clk_wdt_i edge. Other rise offsets: INFO-SCAN-OFFSET.
   CHK-STRAP-INDEP   secure_tm_o does not move across the test_en_i toggles, at
                     strap 1 and at strap 0.
 
@@ -501,7 +501,7 @@ class sep_scan_reset_override_test(sep_base_test):
                 continue
             r = b["rises"][name]
             self.logger.info(
-                "OBS-SCAN-OFFSET: net=%s rise_t=%s offset_ps=%s",
+                "INFO-SCAN-OFFSET: net=%s rise_t=%s offset_ps=%s",
                 name,
                 r,
                 None if r is None else r - t_rise,

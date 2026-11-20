@@ -1617,6 +1617,7 @@ IF_CASES = (
     "lock_read",
     "both_enables",
     "data0",
+    "prog_go_no_enable",
 )
 
 
@@ -1625,8 +1626,9 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
 
     Order: case order; out-of-range address in 8193..65534; write-lock slot
     (1..39); read-lock slot (1..39, not 11, 13, 15, not the write-lock slot); the
-    four spare fields of the pre-sense program, its twin, the lock twin and the data-0
-    program (pairwise different, none a lock-slot field), each with a zero bit; the
+    six spare fields of the pre-sense program, its twin, the lock twin, the data-0
+    program, the program go with ``program_enable`` 0 and the program after the
+    flag reset (pairwise different, none a lock-slot field), each with a zero bit; the
     zero bit of the lock-blocked program; the bit of the lock-blocked read; the
     unlocked read bits of the case frame, the read-go case, the lock-read twin and
     the both-enables case.
@@ -1640,9 +1642,19 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
     locks = (1 << write_lock_bit(wl)) | (1 << read_lock_bit(rl))
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_, lock_bits=locks)
     locked = {LOCK_SLOT_FIELD[wl], LOCK_SLOT_FIELD[rl]}
-    spares = d.sample("program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], 4)
+    roles = (
+        "pre_sense",
+        "pre_sense_twin",
+        "lock_twin",
+        "data0",
+        "prog_go_no_enable",
+        "reset_flags",
+    )
+    spares = d.sample(
+        "program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], len(roles)
+    )
     progs = {}
-    for role, f in zip(("pre_sense", "pre_sense_twin", "lock_twin", "data0"), spares):
+    for role, f in zip(roles, spares):
         progs[role] = _pick_bit(d, f"program.{role}", img, f)
     lock_prog = _pick_bit(d, "program.lock_blocked", img, LOCK_SLOT_FIELD[wl])
     lock_read = _pick_bit(d, "read.lock_blocked", img, LOCK_SLOT_FIELD[rl], zero=False)

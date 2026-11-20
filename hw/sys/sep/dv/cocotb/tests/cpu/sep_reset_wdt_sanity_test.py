@@ -71,11 +71,12 @@ below logs its own PASS or FAIL line, and the leaf fails once at its end if any 
   CHK-RAS-WDT_BITE-RISE   high within ``_BITE_POLL_CYCLES`` of ``wdt_timer_rst_req_o``
                           reading 1; no rise, or a first rise later than that, fails.
   CHK-RAS-WDT_BITE-SHAPE  no fall for ``_RAS_BITE_HOLD`` clocks after the rise.
-Log only: ``OBS-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write to each
-rise), ``OBS-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the fall),
-``OBS-RAS-WDT_BARK-BARK2`` (the field after the second bark, whose clear the leaf does not
-grade: the watchdog stays enabled toward the bite), ``OBS-RAS-WDT_BITE-DELAY`` (clocks from
-``wdt_timer_rst_req_o`` to the rise) and ``INFO-RAS-WDT_BITE-CLEAR`` (the leaf drives no
+Logged: ``INFO-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write to each
+rise; not graded), ``INFO-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the
+fall; graded by ``CHK-RAS-WDT_BARK-SHAPE``), ``OBS-RAS-WDT_BARK-BARK2`` (the field after the
+second bark, whose clear the leaf does not grade: the watchdog stays enabled toward the bite),
+``INFO-RAS-WDT_BITE-DELAY`` (clocks from ``wdt_timer_rst_req_o`` to the rise; graded by
+``CHK-RAS-WDT_BITE-RISE``) and ``INFO-RAS-WDT_BITE-CLEAR`` (the leaf drives no
 ``wdt_rst_ni``, so the field is held to the end of the window). The leaf opens its FCOV
 graded window from the CPU release to the end of the bite hold.
 
@@ -451,7 +452,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         )
         for bark, rises, lo in ((1, r1, bad.clk), (2, r2, pet.clk)):
             en = self._write_after("wdog_ctrl", lo, rises[0]) if rises else None
-            self.ras_chk.obs(
+            self.ras_chk.info(
                 "RAS-WDT_BARK-DELAY",
                 bark=bark,
                 clocks_from_wdog_ctrl_write_to_rise=rises[0] - en.clk if en is not None else "none",
@@ -481,11 +482,12 @@ class sep_reset_wdt_sanity_test(sep_base_test):
                     first_fall_clk=first_fall if first_fall is not None else "none",
                     exp="no_fall_before_write",
                 )
-                self.ras_chk.obs(
+                self.ras_chk.info(
                     "RAS-WDT_BARK-FALL",
                     clocks_from_intr_state_write_to_fall=(
                         first_fall - wr.clk if first_fall is not None else "none"
                     ),
+                    chk=f"CHK-RAS-{fld.upper()}-SHAPE",
                 )
         nr = len(self._span(fld, "rise", bad.clk, clr.clk))
         nf = len(self._span(fld, "fall", bad.clk, clr.clk))
@@ -551,8 +553,10 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         if not rises:
             self._ras(fld, "SHAPE", False, rise_clk="none")
             return
-        self.ras_chk.obs(
-            "RAS-WDT_BITE-DELAY", clocks_from_wdt_timer_rst_req_o_to_rise=rises[0] - req.clk
+        self.ras_chk.info(
+            "RAS-WDT_BITE-DELAY",
+            clocks_from_wdt_timer_rst_req_o_to_rise=rises[0] - req.clk,
+            chk=f"CHK-RAS-{fld.upper()}-RISE",
         )
         for _ in range(_RAS_BITE_HOLD + 2):
             if self.ras.clk >= rises[0] + _RAS_BITE_HOLD:

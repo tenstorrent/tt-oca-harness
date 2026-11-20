@@ -65,11 +65,11 @@ Checkers:
                  indices [6:5]. This is the control of CHK-KMAC-ALERT-QUIET: the
                  same watcher sees each of the two receivers live.
 
-Log-only: ``OBS-KMAC-ALERT-BIT`` logs, per ``ALERT_TEST`` field, the rises and
+Log-only: ``INFO-KMAC-ALERT-BIT`` logs, per ``ALERT_TEST`` field, the rises and
 high clocks of bit 5 and bit 6 in the ``_ALERT_LIVE_CLK`` window after the write,
 and for ``fatal_fault_err`` also the rises up to the end of the KMAC reset that
 follows it. No text states which receiver index each field reaches, or whether
-the fatal sender repeats. ``OBS-KMAC-KEYLEN-UNDEF``, one KMAC-256 run after the walk with ``KEY_LEN``
+the fatal sender repeats. ``INFO-KMAC-KEYLEN-UNDEF``, one KMAC-256 run after the walk with ``KEY_LEN``
 drawn from the undefined codes 5 to 7 and a 512-bit software key: kmac_err,
 ERR_CODE and whether the digest equals the 512-bit-key golden. No text states the
 outcome of these codes.
@@ -166,7 +166,7 @@ KMAC_ALERT_IDX = {"a5": 5, "a6": 6}
 _ALERT_TEST = KMAC.addr("ALERT_TEST")
 _ALERT_FIELDS = ("recov_operation_err", "fatal_fault_err")
 # Clocks after an ALERT_TEST write in which a receiver pulse must rise, and the
-# OBS-KMAC-ALERT-BIT window. A testbench bound, not a spec value.
+# INFO-KMAC-ALERT-BIT window. A testbench bound, not a spec value.
 _ALERT_LIVE_CLK = 256
 _RESET_EDGE_CLK = 200
 # clk_i edges the pass label stays 1: the edge that registers the write and one
@@ -330,7 +330,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.logger.info("CHK-KMAC-ALERT-QUIET PASS: %s", fields)
 
     async def _alert_live_leg(self) -> None:
-        """CTRL-KMAC-ALERT-LIVE and OBS-KMAC-ALERT-BIT for each ALERT_TEST field.
+        """CTRL-KMAC-ALERT-LIVE and INFO-KMAC-ALERT-BIT for each ALERT_TEST field.
 
         A KMAC reset follows the fatal_fault_err write, so the entropy and
         routing checks after this leg see no KMAC sender still active.
@@ -362,7 +362,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
                     f" a6_rises_to_reset={alert.rises_since(mark, 'a6')}"
                 )
             self.logger.info(
-                "OBS-KMAC-ALERT-BIT field=%s a5_rises=%d a6_rises=%d a5_high_clk=%d "
+                "INFO-KMAC-ALERT-BIT field=%s a5_rises=%d a6_rises=%d a5_high_clk=%d "
                 "a6_high_clk=%d window_clk=%d%s",
                 field,
                 len(a5),
@@ -434,7 +434,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         code = await kmac._rd(KMAC_ERR_CODE)
         golden = kmac_family_words(**cfg.golden_kwargs())
         self.logger.info(
-            "OBS-KMAC-KEYLEN-UNDEF key_len=%d squeeze=%d kmac_err=%d err_code=0x%08x "
+            "INFO-KMAC-KEYLEN-UNDEF key_len=%d squeeze=%d kmac_err=%d err_code=0x%08x "
             "digest_eq_512=%d digest0=%s",
             key_len,
             squeeze,

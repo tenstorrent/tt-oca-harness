@@ -40,18 +40,18 @@
 //                         the core.
 //   CHK-ZERO-DCCM-NARROW: a 2-byte-wide fill into the DCCM buffer, graded as
 //                         CHK-ZERO-DCCM-4N2.
-//   OBS-ZERO-DCCM-MISALIGN: a 4-byte-wide fill of 8 bytes to the DCCM buffer
+//   INFO-ZERO-DCCM-MISALIGN: a 4-byte-wide fill of 8 bytes to the DCCM buffer
 //                         2 bytes above a word boundary; STATUS, ERROR_CODE,
 //                         DMA_BUS_ERR_STATUS and the first four buffer words
-//                         are logged, not graded: two TT texts state
-//                         different outcomes. Its control
+//                         are logged. Not graded; no open specification
+//                         question. Its control
 //                         CTRL-ZERO-DCCM-MISALIGN requires DMA_BUS_ERR_STATUS
 //                         0 before the fill, the destination inside DCCM, 2
 //                         bytes above a word boundary, and the fill ended
 //                         with DONE or ERROR inside the poll bound.
 // The host draws n for each 4n + 2 fill and patches it into g_zero_params.
 // The words a rejected fill targets have no stated value: they are logged on
-// an OBS-ZERO-TCM-SPAN line and not graded.
+// an INFO-ZERO-TCM-SPAN line and not graded.
 
 #include <stdint.h>
 
@@ -422,7 +422,7 @@ static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t wi
     for (uint32_t i = 0; i < span; i++) {
         zeroed += (w[i] == 0u);
     }
-    sep_mbx_puts("OBS-ZERO-TCM-SPAN LOG chk=");
+    sep_mbx_puts("INFO-ZERO-TCM-SPAN LOG leg=");
     sep_mbx_puts(chk);
     sep_mbx_puts(" span_words=");
     sep_mbx_puthex(span);
@@ -511,7 +511,7 @@ static int chk_zero_tcm_partial(void) {
 #define DCCM_MISALIGN_BYTES 8u
 #define DCCM_MISALIGN_OFFSET 2u
 
-static int obs_zero_dccm_misalign(void) {
+static int info_zero_dccm_misalign(void) {
     const uint32_t base = (uint32_t)(uintptr_t)dccm_buf;
     const uint32_t dst = base + DCCM_MISALIGN_OFFSET;
     int e = 0;
@@ -542,7 +542,7 @@ static int obs_zero_dccm_misalign(void) {
     const uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     const uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
     __asm__ volatile("fence" ::: "memory");
-    sep_mbx_puts("OBS-ZERO-DCCM-MISALIGN LOG STATUS=");
+    sep_mbx_puts("INFO-ZERO-DCCM-MISALIGN LOG STATUS=");
     sep_mbx_puthex(st);
     sep_mbx_puts(" ERROR_CODE=");
     sep_mbx_puthex(err);
@@ -577,7 +577,7 @@ int main(void) {
     errors += chk_zero_iccm();
     errors += chk_zero_tcm_narrow();
     errors += chk_zero_tcm_partial();
-    errors += obs_zero_dccm_misalign();
+    errors += info_zero_dccm_misalign();
 
     sep_mbx_puts(errors ? "DMA zero fill test FAILED\n" : "DMA zero fill test PASSED\n");
     return errors;

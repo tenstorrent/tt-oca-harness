@@ -18,9 +18,8 @@ Checkers:
                       profile) while sep_fuse_sense_done_o is 0 (base test).
   CHK-SENSE-SHADOW    after sense-done every shadow word matches the image
                       golden. The sep_fuse_sense_done field of
-                      SEP_FUSE_SENSE_STATUS (OBS-SENSE-STATUS-DONE) and the
-                      reserved bits (OBS-SENSE-STATUS-RSVD) have no stated value
-                      and are logged.
+                      SEP_FUSE_SENSE_STATUS (OBS-SENSE-STATUS-DONE) has no stated
+                      value and is logged. The reserved bits are not graded.
   CHK-PRE-SENSE-OPEN  FEAT_CTRL reads the fail-closed zero before sense-done and
                       the image golden after it.
   CHK-OTP-DIRECT      the burned bits read 1 in a direct OTP read before the resense.
@@ -144,8 +143,8 @@ class sep_efuse_image_test(sep_base_test):
 
         No specification line states the value of the ``sep_fuse_sense_done`` field
         of ``SEP_FUSE_SENSE_STATUS`` after sense-done, so it is logged
-        (OBS-SENSE-STATUS-DONE). The reserved bits have no stated reset, so they are
-        logged (OBS-SENSE-STATUS-RSVD). Neither is graded.
+        (OBS-SENSE-STATUS-DONE). The reserved bits have no stated reset. Neither is
+        graded.
         """
         seq = _ShadowStatusSeq(img)
         mark = self.sb_mark()
@@ -172,11 +171,6 @@ class sep_efuse_image_test(sep_base_test):
             done,
             judged,
             shadow_reads,
-        )
-        self.logger.info(
-            "OBS-SENSE-STATUS-RSVD: %s SEP_FUSE_SENSE_STATUS reserved bits 31:1 = 0x%08x",
-            chk,
-            seq.status & ~_SENSE_DONE_MASK & 0xFFFF_FFFF,
         )
 
     async def _log_otp_plain(self, img: SepEfuseImage) -> None:
