@@ -74,7 +74,10 @@ Checkers:
                          INFO-FIFO-PTR-W1C logs set_under_inject=0 and the read after
                          the clear (no text states when a pointer-copy mismatch sets
                          FIFO_ERROR). Control: CTRL-FIFO-PTR-W1C logs the branch, and in
-                         the graded branch FIFO_ERROR reads 0 before the inject.
+                         the graded branch FIFO_ERROR reads 0 before the inject. In both
+                         branches the same write also clears FIFO_UNDERFLOW, set just
+                         before by INTR_TEST with no FIFO_RDATA read: it reads 1 before
+                         and 0 after, so the write landed.
   CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
                          clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
                          control: CTRL-FIFO-FLAGS sees both at 1 before the clear.
@@ -1126,26 +1129,36 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         held_set, _, set_clk = await self._poll(
             ESRC_INTR_STATUS, lambda v: _get(v, "INTR_STATUS", "FIFO_ERROR"), bool, bound
         )
-        await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
-        relatch = await self._fifo_error()
+        # FIFO_UNDERFLOW sets only on a FIFO_RDATA read of the empty FIFO, and none is
+        # issued before the clear, so it reads 0 after the clear only if the clear landed.
+        await self._wr(ESRC_INTR_TEST, INTR_FIFO_UNDERFLOW)
+        udf_set = _get(await self._rd(ESRC_INTR_STATUS), "INTR_STATUS", "FIFO_UNDERFLOW")
+        await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR | INTR_FIFO_UNDERFLOW)
+        after = await self._rd(ESRC_INTR_STATUS)
+        relatch = _get(after, "INTR_STATUS", "FIFO_ERROR")
+        udf_after = _get(after, "INTR_STATUS", "FIFO_UNDERFLOW")
+        landed = udf_set == 1 and udf_after == 0
         self.chk.ctrl(
             "FIFO-PTR-W1C",
-            e1 == 0 or not held_set,
+            (e1 == 0 or not held_set) and landed,
             branch="at_once" if held_set else "not_set",
             pre_inject_error=e1,
             set_under_inject=int(held_set),
             set_clk=set_clk if held_set else "none",
             bound=bound,
+            udf_set=udf_set,
+            udf_after_w1c=udf_after,
         )
         w1c = {
             "set_under_inject": int(held_set),
             "after_w1c": relatch,
+            "udf_after_w1c": udf_after,
             "pointer": plan.pointer,
             "copy": plan.copy,
             "bit": plan.ptr_bit,
         }
         if held_set:
-            self.chk.ok("FIFO-PTR-W1C", relatch == 1, **w1c)
+            self.chk.ok("FIFO-PTR-W1C", relatch == 1 and landed, **w1c)
         else:
             self.chk.info(
                 "FIFO-PTR-W1C",
