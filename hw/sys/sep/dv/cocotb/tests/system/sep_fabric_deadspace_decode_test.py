@@ -66,8 +66,10 @@ CTRL-TRNG-ALIAS-ARMED (bench control, after the snapshot): a directed TRNG
 write anchor sits at the offset of the ESRC read-write register
 ``HEALTH_TEST_WINDOW_SIZE``, which an access that drops address bit 12
 reaches, and that register is armed in the TRNG window's change compare
-(readable, not hardware-updating, with a read-write field). A refused TRNG
-write that still stores then moves it. A missing anchor or an unarmed register
+(readable, not hardware-updating, with a read-write field) and writable:
+the ESRC ``FIPS_LOCK.LOCK`` bit in the snapshot is 0, since a set lock makes
+the register ignore software writes. A refused TRNG write that still stores
+then moves it. A missing anchor, an unarmed register or a set or unread lock
 fails the leaf (CTRL-MISSING).
 
 Row cells (FCOV window). The probe walk and its checks above run with the FCOV
@@ -171,7 +173,7 @@ from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import register_fields, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_deadspace_seq import (
     CRYPTO_HI,
@@ -179,6 +181,7 @@ from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
+    TRNG_ALIAS_LOCK_OFFSET,
     TRNG_ALIAS_OFFSET,
     TRNG_ALIAS_REG,
     WRITE_PATTERNS,
@@ -626,14 +629,18 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         an ESRC register that the change compare can see a store on."""
         win = cfg.windows["trng"]
         addr = win.base + TRNG_ALIAS_OFFSET
-        alias = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR") + TRNG_ALIAS_OFFSET
+        esrc = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
+        alias = esrc + TRNG_ALIAS_OFFSET
         anchor = DeadProbe("trng", addr, "w", True) in cfg.probes
         armed = alias in snap and alias not in win.hw_updating and alias in win.store_visible
+        lock_addr = esrc + TRNG_ALIAS_LOCK_OFFSET
+        lock_mask = next(f.mask for f in register_fields(lock_addr)[1] if f.name == "LOCK")
+        lock = "unread" if lock_addr not in snap else int(bool(snap[lock_addr] & lock_mask))
         line = (
             f"trng w 0x{addr:08x} alias=esrc+0x{TRNG_ALIAS_OFFSET:03x} {TRNG_ALIAS_REG} "
-            f"anchor={int(anchor)} armed={int(armed)}"
+            f"anchor={int(anchor)} armed={int(armed)} fips_lock={lock}"
         )
-        if not (anchor and armed):
+        if not (anchor and armed and lock == 0):
             msg = f"CTRL-TRNG-ALIAS-ARMED FAIL: CTRL-MISSING {line}"
             self.logger.error(msg)
             raise AssertionError(msg)

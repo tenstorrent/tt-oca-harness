@@ -147,10 +147,10 @@ class DeadWindow:
     def store_visible(self) -> frozenset[int]:
         """Watched addresses on which a stored write can show.
 
-        A register qualifies when the generated IP-XACT gives it at least one
-        ``read-write`` field. A ``read-only`` field has no bus write path and a
-        ``write-only`` field reads back nothing, so a register made only of
-        those is compared but cannot show a store.
+        A 32-bit word qualifies when the generated IP-XACT gives it at least one
+        ``read-write`` bit. A ``read-only`` field has no bus write path and a
+        ``write-only`` field reads back nothing, so a word made only of those is
+        compared but cannot show a store.
         """
         return _store_visible(self.watch)
 
@@ -164,7 +164,7 @@ class DeadWindow:
         for addr, val in snap.items():
             if addr in self.hw_updating or addr not in self.store_visible:
                 continue
-            mask = sum(f.mask for f in register_fields(addr)[1] if f.access == "read-write")
+            mask = _word_rw_mask(addr)
             ones += val & mask == mask
             zeros += val & mask == 0
         return ones, zeros
@@ -179,9 +179,25 @@ class DeadWindow:
 
 
 def _store_visible(watch: tuple[int, ...]) -> frozenset[int]:
-    return frozenset(
-        addr for addr in watch if any(f.access == "read-write" for f in register_fields(addr)[1])
-    )
+    return frozenset(addr for addr in watch if _word_rw_mask(addr))
+
+
+def _word_rw_mask(addr: int) -> int:
+    """Read-write bits of the watched 32-bit word at ``addr``.
+
+    Word ``k`` of a register wider than 32 bits sits ``4 * k`` above the
+    register address and holds its bits ``[32k+31:32k]``.
+    """
+    for word in range(addr // 4 + 1):
+        try:
+            width, fields = register_fields(addr - 4 * word)
+        except KeyError:
+            continue
+        if 32 * word >= width:
+            break
+        rw = sum(f.mask for f in fields if f.access == "read-write")
+        return (rw >> (32 * word)) & 0xFFFF_FFFF
+    raise KeyError(f"0x{addr:08x} is not a word of a register in the IP-XACT")
 
 
 def _watch_skip(name: str) -> bool:
@@ -189,10 +205,13 @@ def _watch_skip(name: str) -> bool:
 
 
 def _sep_watch(base: int, alloc: int) -> tuple[int, ...]:
+    """Every 32-bit word of the allocated registers, so a store into the upper
+    word of a 64-bit register shows in the change compare."""
     addrs = [
-        addr
+        addr + 4 * word
         for _block, name, addr in iter_addrs()
         if base <= addr < base + alloc and not _watch_skip(name)
+        for word in range(max(register_fields(addr)[0] // 32, 1))
     ]
     return tuple(sorted(set(addrs)))
 
@@ -400,6 +419,9 @@ _LIFECYCLE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
 # reaches, so a refused TRNG write that still stores moves it.
 TRNG_ALIAS_REG = "HEALTH_TEST_WINDOW_SIZE"
 TRNG_ALIAS_OFFSET = dict(ot_reg_offsets("entropy_source"))[TRNG_ALIAS_REG]
+# While FIPS_LOCK.LOCK is set, software writes to TRNG_ALIAS_REG are ignored
+# (hw/ip/entropy_source/regs/entropy_source.rdl, HEALTH_TEST_WINDOW_SIZE.SIZE).
+TRNG_ALIAS_LOCK_OFFSET = dict(ot_reg_offsets("entropy_source"))["FIPS_LOCK"]
 
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
