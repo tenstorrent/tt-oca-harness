@@ -81,7 +81,7 @@ model of the staged data and the fabric taps:
                   back differs, and every count is 0.
 * CHK-DMA-FILT-WR the DMA writes of an inbound filter START_ADDR: the low and the
                   high word of the unlocked entry read back as written, then,
-                  with the entry locked, the write answers DECERR, the DMA
+                  with the entry locked, the write answers SLVERR, the DMA
                   reports a bus error and the word keeps its value.
 
 Entry ``_slverr`` (``+sep_ext_port_responder``) runs only the extension-port
@@ -1843,7 +1843,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         (fabric.adoc, Transaction Routing). START_ADDR and END_ADDR stay in
         different granules, so the write-back does not fire and the read-back
         returns the programmed value (hw/ip/axi_filter/doc/index.adoc, Address
-        Range Granule). A locked entry answers a write with DECERR and reads
+        Range Granule). A locked entry answers a write with SLVERR and reads
         return the locked configuration (same document, Locking a Filter
         Entry); the DMA reports the error response as a bus error.
         """
@@ -1881,7 +1881,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                     and want == p["filt_v_lo"] & mask
                     and v != r["pre_v"]
                     and len(aws) == 1
-                    and [b.resp for b in bs] == [RESP_DECERR]
+                    and [b.resp for b in bs] == [RESP_SLVERR]
                     and (r["pre"] & ST3) == 0
                     and self._bus_error(r)
                     and (r["rb"] & mask) == want
