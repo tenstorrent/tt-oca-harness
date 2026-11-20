@@ -89,13 +89,15 @@ Checkers:
   CHK-INTR-ALL-ONES PIC source 16 reads 0 in the all-ones corner before the ``INTR_TEST``
                     write, 1 after it, and 0 after the write-one clear of every bit. The
                     1 read is the live control of both 0 reads.
-  CHK-STATUS-E      with the drawn enable mask E and test mask T, and then with ~E and
-                    every defined bit tested, ``INTR_STATUS`` equals the test mask.
+  CHK-STATUS-E      with the drawn enable mask E and test mask T, then with ~E and
+                    every defined bit tested, then with the one-bit mask I tested and
+                    every enable set except I, ``INTR_STATUS`` equals the test mask.
                     Control: CTRL-STATUS-E, some tested bit has its enable clear (true
-                    in the second run by construction).
-  CHK-PIC16-MASK    in the same two runs PIC source 16 reads
+                    in the second and third runs by construction).
+  CHK-PIC16-MASK    in the same three runs PIC source 16 reads
                     ``int(bool(T & E & defined))``: 0 or 1 by seed in the first run, 1 in
-                    the second. CHK-INTR-ALL-ONES reads the same line at 0 and 1.
+                    the second, 0 in the third. CHK-INTR-ALL-ONES reads the same line at
+                    0 and 1.
   CHK-ESRC-COLD-RESET after an ``rst_ni`` pulse, the first reads give ``LEVEL`` = 0,
                     ``INTR_STATUS`` = 0, the twelve ``GENERATOR_k_HEALTH_STATUS`` = 0 and
                     ``CTRL`` = its RDL reset value, with no X bit (VCS). Control:
@@ -665,10 +667,11 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         )
 
         open_graded_window(TEST, self.logger)
-        # Drawn enable mask: (E, T), then (~E, all ones).
+        # Drawn enable mask: (E, T), then (~E, all ones), then the one-bit test mask
+        # with only that bit's enable clear, where source 16 must stay low.
         e_val = intr_value(plan.e8)
         t_val = intr_value(plan.t8)
-        e_runs = ((e_val, t_val), (d & ~e_val, d))
+        e_runs = ((e_val, t_val), (d & ~e_val, d), (d & ~bit_i, bit_i))
         e_ok = True
         e_rb: list[int] = []
         pic16 = []

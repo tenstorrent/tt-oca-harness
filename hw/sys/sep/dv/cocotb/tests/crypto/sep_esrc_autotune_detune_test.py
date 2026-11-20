@@ -542,8 +542,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             and en_rb == M_AUTOTUNE_EN,
             pf_set=int(bool(pf_set)),
             pic16_set=line_set,
-            pf_cleared=int(not pf_clr),
-            pic16_cleared=line_clr,
+            pf_after_clear=int(bool(pf_clr)),
+            pic16_after_clear=line_clr,
             intr_enable=f"0x{en_rb:08x}",
             want_intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
         )
