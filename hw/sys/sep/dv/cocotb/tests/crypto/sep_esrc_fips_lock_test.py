@@ -16,7 +16,7 @@ alpha = 2^-20 is used in all the calculations of that section). Every written co
 H = 0 included, must read back from MIN_ENTROPY_H before its thresholds are read. One
 CHK-REC-THRESH line per sweep counts the codes graded, the matches of each column
 and the readback matches. At H = 0
-neither cutoff has a stated value; the read is logged as OBS-REC-THRESH-H0 and
+neither cutoff has a stated value; the read is logged as INFO-REC-THRESH-H0 and
 not graded.
 Both observe-tap enables are writable before the lock and
 frozen after it: one tap is held at 1 and rejects a clear, the other is held
@@ -44,7 +44,7 @@ same line: no TT text states it. A write the
 lock refuses has no stated B code: its CHK line grades only that a B response
 arrived, so a write that never reached the DUT fails, and logs the code as
 OBS-POST-LOCK-RESP, OBS-ENABLE-LOCKED-RESP or OBS-CTRL-RSVD-LOCKED-RESP.
-The reserved bits of each graded FIPS_LOCK read are logged as OBS-FIPS-LOCK-RSVD
+The reserved bits of each graded FIPS_LOCK read are logged as INFO-FIPS-LOCK-RSVD
 (no stated reset value).
 CHK-RANDCFG grades the (register, field) pairs that the walked targets cover,
 taken from their bus addresses and compare masks, against every field the RDL
@@ -138,9 +138,9 @@ class sep_esrc_fips_lock_test(sep_base_test):
 
     async def _read_lock_word(self, esrc: SepEsrcFipsLock, when: str) -> int:
         """Read FIPS_LOCK; log its reserved bits, which have no reset value in the
-        register table, as OBS-FIPS-LOCK-RSVD."""
+        register table, as INFO-FIPS-LOCK-RSVD."""
         word = await esrc.read_lock_word()
-        self.logger.info("OBS-FIPS-LOCK-RSVD: %s rsvd=0x%08x", when, word & ~LOCK_BIT & WORD_MASK)
+        self.logger.info("INFO-FIPS-LOCK-RSVD: %s rsvd=0x%08x", when, word & ~LOCK_BIT & WORD_MASK)
         return word
 
     async def _check_pre(self, esrc: SepEsrcFipsLock, target) -> None:
@@ -189,7 +189,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
             want_apt = apt_limit_golden(h)
             if want is None:
                 self.logger.info(
-                    "OBS-REC-THRESH-H0: %s MIN_ENTROPY_H=0x%02x RCT_LIMIT=%d APT_LIMIT=%d "
+                    "INFO-REC-THRESH-H0: %s MIN_ENTROPY_H=0x%02x RCT_LIMIT=%d APT_LIMIT=%d "
                     "(no stated RCT or APT value at H = 0)",
                     label,
                     h,

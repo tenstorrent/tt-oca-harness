@@ -410,7 +410,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         )
         self.logger.info("CHK-KEM-KEY-OFFSETS PASS: %s", fields)
 
-    async def _kv_entry_obs(self, kem) -> None:
+    async def _kv_entry_info(self, kem) -> None:
         """One message-lane KV read that names the last vault entry instead of entry 0.
 
         The zeroize before it clears the message lane's data-present latch, which
@@ -429,7 +429,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             ctrl = await kem.rd32(MLKEM_KV_MSG_RD_CTRL)
         await ClockCycles(cocotb.top.clk_i, _POLL_GAP)
         self.logger.info(
-            "OBS-ABR-KV-ENTRY LOG ctrl_wr=0x%08x ctrl=0x%08x mlkem_status=0x%08x kv_rd_status=0x%08x",
+            "INFO-ABR-KV-ENTRY LOG ctrl_wr=0x%08x ctrl=0x%08x mlkem_status=0x%08x kv_rd_status=0x%08x",
             KV_READ_EN | entry,
             ctrl,
             await kem.rd32(MLKEM_STATUS),
@@ -486,7 +486,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         name0 = await kem.rd32(MLKEM_NAME0)
         name1 = await kem.rd32(MLKEM_NAME1)
         self.logger.info(
-            "OBS-ABR-MLKEM-NAME LOG name0=0x%08x name1=0x%08x",
+            "INFO-ABR-MLKEM-NAME LOG name0=0x%08x name1=0x%08x",
             name0,
             name1,
         )
@@ -623,7 +623,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             word_digest(sk_km),
         )
 
-        await self._kv_entry_obs(kem)
+        await self._kv_entry_info(kem)
 
         # --- CHK-KEM-SK-WRITEBACK: kv_write, and its negative control ---------
         # Nothing has armed the write lane yet, so the sideload block's

@@ -75,7 +75,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-SUBSET-COVER  the partition drops every one of the six taps at least once.
   CHK-SWRST-RSVD    after each write with bits 63:7 set a response arrives and
                     the 64-bit readback answers OKAY with bits 6:0 equal to the
-                    written fields (bits 63:7 are logged as ``OBS-SWRST-RSVD``).
+                    written fields.
                     For the earlier writes of a one-write-per-domain step, every
                     field of bits 6:0 is graded on its isolate request and
                     engine reset taps: each tap moves once per write that
@@ -935,9 +935,6 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"hi=0x{hi:x} written_fields=0b{fields:07b} readback_fields=0b{rb & SW_FIELDS:07b} "
                 f"readback_resp=OKAY",
             )
-            self.logger.info(
-                "OBS-SWRST-RSVD: leg=rsvd shape=%s bits63:7=0x%x", shape, rb >> RSVD_LSB
-            )
         await RisingEdge(cocotb.top.clk_i)
         cycles = self.taps.ip_rst[1].clk - m["ip_rst_1"].clk
         edges = sum(
@@ -1095,12 +1092,6 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"responses={len(codes)} ({','.join(RESP_NAME.get(c, str(c)) for c in codes)}) "
                 f"hi={his} written_fields=0b{self.sw:07b} readback_fields=0b{rb & SW_FIELDS:07b}"
                 f"{effect}",
-            )
-            self.logger.info(
-                "OBS-SWRST-RSVD: leg=subset step=%d phase=%s bits63:7=0x%x",
-                st.idx,
-                phase,
-                rb >> RSVD_LSB,
             )
             for d in st.doms:
                 await self._wait_ip(IPRST[d], level, f"step {st.idx} {phase} {d}")
@@ -1568,7 +1559,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             )
             probe_ok = all(ok for v in pd.victims for ok, _ in post_ok[v])
             self.logger.info(
-                "OBS-ISO-PAIR-ORDER: victims=%s falls=%s rises=%s",
+                "INFO-ISO-PAIR-ORDER: victims=%s falls=%s rises=%s",
                 ",".join(pd.victims),
                 ",".join(str(fall[v]) for v in pd.victims),
                 ",".join(str(rel[v][1]) for v in pd.victims),

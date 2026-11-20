@@ -111,15 +111,15 @@ Checkers:
                     MODULE_ENABLE reads 1 while the field is clear, and the
                     DIVIDE readback is the guide value after the restore.
 
-Logged only: OBS-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
+Logged only: INFO-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
 each burst (no text states whether a generator failure counts in it).
 OBS-TUNE-PIC16, PIC source 16 and the whole INTR_STATUS word while AUTOTUNE_FAIL
 is 1 after each autotune burst (no text states that a source other than
 PERSISTENT_FAILURE drives source 16, and the value of a status bit with its
-enable 0 is not stated). OBS-TUNE-DETUNE-AFTER, the probe bit k before each
+enable 0 is not stated). INFO-TUNE-DETUNE-AFTER, the probe bit k before each
 autotune burst and after its clean gap (no text states the detune after the
 failure ends).
-OBS-SCLK-ONE-ENABLE, with the graded window closed: only one of
+INFO-SCLK-ONE-ENABLE, with the graded window closed: only one of
 CTRL.MODULE_ENABLE and RING_OSC_ENABLE.ENABLE bit 0 is cleared, the lane 0 edges
 are counted for four old periods, a new divide is written, the enable is
 restored and the lane periods are logged against the new and old ratio. The
@@ -356,7 +356,7 @@ def draw_plan(seed: int) -> Plan:
         [v for v in range(len(DIV_RATIOS)) if DIV_RATIOS[v] != div_ratio(div_other)]
     )
     # The lane runs at the ratio of div_other or of div_v2 after the one-enable step
-    # (OBS-SCLK-ONE-ENABLE logs which), so the guide ratio differs from both.
+    # (INFO-SCLK-ONE-ENABLE logs which), so the guide ratio differs from both.
     div_guide = rng.choice(
         [
             v
@@ -627,7 +627,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
                 mismatched=m1 - m0,
             )
         t1 = _now_ps()
-        self.chk.obs(
+        self.chk.info(
             "ESRC-ANY-FAIL-GEN",
             leg=what,
             lane=self.plan.lane,
@@ -764,7 +764,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             intr_status=f"0x{intr:08x}",
             intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
         )
-        self.chk.obs(
+        self.chk.info(
             "TUNE-DETUNE-AFTER",
             lane=k,
             burst=i + 1,
@@ -962,7 +962,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         await self._sclk_guide(src_ps)
 
     async def _sclk_one_enable(self, src_ps: int) -> None:
-        """OBS-SCLK-ONE-ENABLE: clear only one generator enable of lane 0, count
+        """INFO-SCLK-ONE-ENABLE: clear only one generator enable of lane 0, count
         the lane edges while it is clear, write a new divide, restore the enable
         and measure the lane period. The graded window is closed."""
         plan = self.plan
@@ -997,7 +997,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             await wr(A_RING_OSC_ENABLE, RING_OSC_ENABLE_RESET)
         v_after = (await rd(A_DIV0) & M_DIVIDE) >> BP_DIVIDE
         periods = _periods(await self._rises(lane, SCLK_DISCARD + SCLK_GRADE + 1))[SCLK_DISCARD:]
-        self.chk.obs(
+        self.chk.info(
             "SCLK-ONE-ENABLE",
             which=plan.one_enable,
             v_before=v_before,

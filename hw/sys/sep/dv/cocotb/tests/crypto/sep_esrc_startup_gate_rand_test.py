@@ -58,9 +58,9 @@ Checkers:
   CHK-BOOT-FALL-KEEP in the same leg, the five counters read after the
                     MODULE_ENABLE = 0 write and before the rise are each at least
                     their value before the fall (no clear at the fall). Control:
-                    CTRL-BOOT-RESTART, REPCNT_TOTAL_FAILS non-zero before. Whether a
-                    counter still counts while MODULE_ENABLE is 0 is not stated: the
-                    values after the fall are also logged as OBS-BOOT-COUNTERS.
+                    CTRL-BOOT-RESTART, REPCNT_TOTAL_FAILS non-zero before. The
+                    values after the fall are also logged as INFO-BOOT-COUNTERS:
+                    graded by CHK-BOOT-FALL-KEEP; no open specification question.
   CHK-BOOT-TOGGLE   per drawn moment (boot, after_boot, bad_pattern): IDLE = 1
                     after the fall; after the rise every counter that read
                     non-zero before the fall reads 0 at once, the first
@@ -68,7 +68,7 @@ Checkers:
                     BOOT_PHASE_DONE returns to 1. Failures after the rise count
                     again by contract (stuck samples still in the pipeline at
                     the bad_pattern moment), so the counters at BOOT_PHASE_DONE
-                    are logged as OBS-BOOT-COUNTERS only. At the bad_pattern
+                    are logged as INFO-BOOT-COUNTERS only. At the bad_pattern
                     moment HEALTH_TEST_CTRL.ENABLE goes 0 then 7 after the fall
                     (it clears the tester run state, RDL :314), so a stale stuck0
                     sample after the rise cannot extend the run past the limit
@@ -97,8 +97,8 @@ Checkers:
                     Control: CTRL-BOOT-TRANSIENT, HEALTH_TEST_STATUS bit 0 reads 0 at a
                     poll before strobe W/4 and 1 at a poll before strobe W/2.
 Every bound is a multiple of a clean time of the same seed and is logged.
-Logged only: OBS-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
-(the state encoding is not stated). OBS-BOOT-CLEAN-COUNT, in the transient leg, the
+Logged only: INFO-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
+(not graded; no open specification question). OBS-BOOT-CLEAN-COUNT, in the transient leg, the
 strobes from the enable to the end of the stuck0 run, to the first HEALTH_TEST_STATUS
 bit 0 read and to the first BOOT_PHASE_DONE 1 read, and the strobes from the end of the
 run to that read (no text fixes the passing windows before BOOT_PHASE_DONE: one window
@@ -335,7 +335,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         state = _fld("MAIN_SM_STATUS", "STATE", sm)
         if state != self._last_state:
             self._last_state = state
-            self.chk.obs(
+            self.chk.info(
                 "ESRC-SM-STATE",
                 state=f"0x{state:03x}",
                 idle=_fld("MAIN_SM_STATUS", "IDLE", sm),
@@ -672,7 +672,12 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         await self._enable(0)
         idle_ok, _, idle_bound = await self._wait_idle("restart_leg")
         after_fall = await self._totals()
-        self.chk.obs("BOOT-COUNTERS", leg="restart", after_fall=self._fmt_totals(after_fall))
+        self.chk.info(
+            "BOOT-COUNTERS",
+            leg="restart",
+            after_fall=self._fmt_totals(after_fall),
+            chk="CHK-BOOT-FALL-KEEP",
+        )
         cleared = [k for k, _ in TOTALS if after_fall[k] < before[k]]
         self.chk.ok(
             "BOOT-FALL-KEEP",
@@ -826,7 +831,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         if not done_ok and not reason:
             reason = f"timeout:boot_done_again bound={done_bound}"
         at_done = await self._totals()
-        self.chk.obs(
+        self.chk.info(
             "BOOT-COUNTERS", leg=f"toggle_{moment}", at_boot_done=self._fmt_totals(at_done)
         )
         self._bytes_end(f"toggle_{moment}", base)

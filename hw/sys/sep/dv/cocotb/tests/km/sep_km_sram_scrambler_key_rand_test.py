@@ -101,10 +101,10 @@ round key of the scrambler description (``ip.scr_round_key``) under kA, the key
 the DUT held at the ready and done messages. The plan makes 16 of the stores take
 every data-lane and address-lane value on every seed.
 
-Logged only: the 8 reads under kB (``OBS-SSCR-KB``), whether each kept data word
-differs from its plaintext (``OBS-SSCR-STORED``), the number of changed rows
-(``OBS-SSCR-ROWS``), and SCRAMBLER_CTRL after a lock written with the enable
-at 0 (``ctrl_rd_logged``).
+Logged only: the 8 reads under kB (``INFO-SSCR-KB``), whether each kept data word
+differs from its plaintext (``INFO-SSCR-STORED``), and SCRAMBLER_CTRL after a lock
+written with the enable at 0 (``ctrl_rd_logged``). ``INFO-SSCR-ROWS`` logs the
+number of changed rows that ``CHK-SSCR-ROWS`` grades.
 """
 
 from __future__ import annotations
@@ -715,7 +715,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
                 kb_landed=int(kb_landed),
                 ka_restored=int(ka_restored),
             )
-            self.chk.obs("SSCR-KB", kb_eq=self._count_ok(g_kb, d8))
+            self.chk.info("SSCR-KB", kb_eq=self._count_ok(g_kb, d8))
             self._stored_checks(cap)
             self._lock_checks(
                 key_pair_ne,
@@ -800,7 +800,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             same_p_pair_ne=same_p_pair_ne,
         )
         plain = [p.data8[0], p.data8[1], p.data8[0], p.data8[p.order8[0]]]
-        self.chk.obs(
+        self.chk.info(
             "SSCR-STORED",
             stored_ne=sum(1 for d, q in zip(data, plain, strict=True) if d != q),
         )
@@ -918,7 +918,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             ready=_h(ready[0]),
             done=_h(done[0]),
         )
-        self.chk.obs("SSCR-ROWS", changed_rows=changed)
+        self.chk.info("SSCR-ROWS", changed_rows=changed, chk="CHK-SSCR-ROWS")
         return ok
 
     # ------------------------------------------------------------ boots 2-4

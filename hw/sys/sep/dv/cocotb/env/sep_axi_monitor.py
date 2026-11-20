@@ -165,9 +165,6 @@ class SepAxiMonitor(uvm_component):
         self.last_buser: int | None = None
         self.last_rid: int | None = None
         self.last_bid: int | None = None
-        # (cycle, "R"/"B", user) of every response handshake while a caller
-        # holds this as a list; None leaves it off.
-        self.resp_user_log: list[tuple[int, str, int | None]] | None = None
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
         # AR handshakes waiting for their R beats, per ARID, in issue order.
@@ -477,8 +474,6 @@ class SepAxiMonitor(uvm_component):
                 rid = _resp(sig["rid"]) if sig["rid"] is not None else None
                 self.last_rid = rid
                 self.last_ruser = _resp(sig["ruser"]) if sig["ruser"] is not None else None
-                if self.resp_user_log is not None:
-                    self.resp_user_log.append((self.cycles, "R", self.last_ruser))
                 if self._beat_capture is not None:
                     self._beat_capture.append(code)
                     rlast = _resp(sig["rlast"]) if sig["rlast"] is not None else None
@@ -501,8 +496,6 @@ class SepAxiMonitor(uvm_component):
                 bcode = _resp(sig["bresp"]) if sig["bresp"] is not None else None
                 self.last_bid = _resp(sig["bid"]) if sig["bid"] is not None else None
                 self.last_buser = _resp(sig["buser"]) if sig["buser"] is not None else None
-                if self.resp_user_log is not None:
-                    self.resp_user_log.append((self.cycles, "B", self.last_buser))
                 if sig["bresp"] is not None and bcode is None:
                     self._fail(f"B beat BRESP={_bits(sig['bresp'])} (X/Z on an accepted beat)")
                 if bcode == 3 and self.fail_decerr:

@@ -120,7 +120,7 @@ The trap cause and value of an unmapped fetch and the cause of an ICCM data
 access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
 ``CHK-IFU-TRAP`` grades. ``INFO-LSU-ICCM`` re-logs the two trap causes, which
 ``CHK-LSU-ICCM-CAUSE`` grades, and the load value. When the load traps, the value holds
-the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
+the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``INFO-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
 no check grades. Every expected value comes from the drawn plan and the staged images; no
 expected value is read from the DUT.
 
@@ -1107,7 +1107,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         dma = [(f"0x{v:08x}", _dma_status_bits(v)) for v in dma_st[:3]]
         dma += [("-", "-")] * (3 - len(dma))
         self.logger.info(
-            "OBS-LSU-ICCM-DMA-STATUS seed=%d "
+            "INFO-LSU-ICCM-DMA-STATUS seed=%d "
             "dma_d1=%s d1_bits=%s dma_d2=%s d2_bits=%s dma_d3=%s d3_bits=%s",
             self.random_seed(),
             *(f for pair in dma for f in pair),
@@ -1148,7 +1148,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             for b in self._beats(tcm, self._win("PAIR_B", "PAIR_E"), ("dccm",))
             if b.wren is not None and b.wren != 0
         )
-        self.logger.info("OBS-DCCM-WE LOG pair_store_dccm_we=%d", dccm_we)
+        self.logger.info("INFO-DCCM-WE LOG pair_store_dccm_we=%d", dccm_we)
         self._grade(
             "CHK-LSU-ICCM-WE",
             we_st == 0 and we_ctl >= 1,

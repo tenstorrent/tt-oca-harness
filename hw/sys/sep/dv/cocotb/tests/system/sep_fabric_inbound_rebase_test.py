@@ -36,7 +36,7 @@ scratch word, a system register, carry a drawn AxPROT with bit 1 at the
 allow_ns of the entry and bits 0 and 2 not both 0, on a seeded stream of their
 own so the other draws keep their values. No specification states an AxPROT[0]
 or AxPROT[2] rule at a SEP target. CTRL-SYSCSR-PROT: the m_axi handshake of
-each access carried the drawn AxPROT. OBS-SYSCSR-PROT: the response, the read
+each access carried the drawn AxPROT. INFO-SYSCSR-PROT: the response, the read
 data, and the LSU read-back of the word after each write.
 
 Run mode: ``no_cpu`` on ``lsu_stub_all_live`` with real PROD fuse sense of a
@@ -380,7 +380,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
         set_open_value_leg_pass(None, self.logger)
         for text in obs:
-            self.logger.info("OBS-SYSCSR-PROT %s", text)
+            self.logger.info("INFO-SYSCSR-PROT %s", text)
 
     async def _sram_control_read(self, cfg: str) -> tuple[int, int]:
         """The live-path control of the unit cells: SI read of M1 through entry 3."""
