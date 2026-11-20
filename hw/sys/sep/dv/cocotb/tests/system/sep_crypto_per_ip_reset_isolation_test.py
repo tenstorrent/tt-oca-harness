@@ -205,10 +205,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     acknowledge of the same arm with no reset and the
                     number of windows that hold it. The stimulus places no
                     due acknowledge inside that window, so it is logged
-                    only. The OTBN URND line carries chk=CHK-EDN-DISCARD,
-                    which always grades a URND word committed at a cancel
-                    start; the KMAC, AES and OTBN RND lines carry
-                    graded=none. The KMAC trials grade CHK-KMAC-DRAIN-ORDER on
+                    only (graded=none). The KMAC trials grade CHK-KMAC-DRAIN-ORDER on
                     their reset edge. The bus of a cancelled endpoint has no stated
                     value and is logged (INFO-EDN-CANCEL-BUS).
   * CHK-EDN-DISCARD  a word committed to an endpoint and not yet
@@ -2636,9 +2633,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         first acknowledge cycle of ``bit`` (counted the same way, up to the
         latest fall), the number of windows that hold it, and the acknowledges
         seen in the cancel windows of this client's attempts. Logged only:
-        the stimulus places no due acknowledge inside a window. Only the
-        OTBN URND line names CHK-EDN-DISCARD, whose committed-word walk always
-        cancels a URND word. The engine is then pulsed back to reset.
+        the stimulus places no due acknowledge inside a window, and no check
+        grades these values. The engine is then pulsed back to reset.
         """
         clk = cocotb.top.clk_i
         bound = max(fall for _c0, fall in windows)
@@ -2664,14 +2660,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         in_window = sum(1 for c0, fall in windows if due is not None and c0 <= due <= fall)
         self.logger.info(
             "INFO-EDN-NOACK-WINDOW client=%s ack_after_req=%s bound=%d windows=%s "
-            "due_in_window=%d window_acks=%d %s",
+            "due_in_window=%d window_acks=%d graded=none",
             name,
             due if due is not None else "none",
             bound,
             windows,
             in_window,
             window_acks,
-            "chk=CHK-EDN-DISCARD" if name == "otbn_urnd" else "graded=none",
         )
         await NextTimeStep()
         await self._pulse_reset(eng.rst_bit)
