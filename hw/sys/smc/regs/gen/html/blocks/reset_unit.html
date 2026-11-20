@@ -30,6 +30,7 @@
 <tr><td>0xC0</td><td><a href="#ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xC4</td><td><a href="#ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xC8</td><td><a href="#ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xCC</td><td><a href="#ISOLATE_REQ_ACK_CAPTURE">ISOLATE_REQ_ACK_CAPTURE</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="SS_CONFIG">SS_CONFIG</h3>
@@ -112,26 +113,29 @@
 <h3 id="ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_smcen_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests</td></tr>
+<tr><td>31:0</td><td>isolate_req_smcen_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG<br>is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it<br>asserts the cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>cool_reset_n_o</td><td>R</td><td>0x1</td><td>Visibility bit for cool reset output</td></tr>
-<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>cool_reset_n_i</td><td>R</td><td>0x1</td><td>Visibility bit for cool reset input</td></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:4</td><td>cool_reset_cause</td><td>R</td><td>0x0</td><td>Cause of the most recent cool reset: 0 none, 1 pin, 2 seq_ack, 3 seq_timeout.<br>Held through the cool reset and overwritten by the next one; cleared only by<br>the cold reset.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>isolate_req_pin</td><td>R</td><td>0x1</td><td>Visibility bit for isolate request pin</td></tr>
+<tr><td>0</td><td>isolate_req_pin</td><td>R</td><td>0x1</td><td>Isolate request pin, synchronized to the SMC clock. The board holds the pin<br>high through a cold reset it asserts to keep the pin-enabled subsystems alive, so<br>a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted</td></tr>
+<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before<br>cool_reset_n is asserted. The sequence asserts it earlier once every subsystem<br>enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>isolate_req_flr_reset_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE&#x27;s value</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_ACK_CAPTURE">ISOLATE_REQ_ACK_CAPTURE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_ack_capture</td><td>R</td><td>0x0</td><td>isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.<br>After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear<br>here are the subsystems that did not acknowledge. Held through the cool reset<br>and overwritten by the next isolation sequence; cleared only by the cold reset.</td></tr>
 </table>
 </div>

@@ -30,6 +30,7 @@ Subsystem reset control, hold and isolation controls, and reset-sequencing statu
 | 0xC0 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_VIS,ISOLATE_REQ_VIS>> | R a| -
 | 0xC4 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_COUNTER_VALUE,ISOLATE_REQ_FLR_COUNTER_VALUE>> | RW a| -
 | 0xC8 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_RESET_COUNTER_VALUE,ISOLATE_REQ_FLR_RESET_COUNTER_VALUE>> | RW a| -
+| 0xCC | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_ACK_CAPTURE,ISOLATE_REQ_ACK_CAPTURE>> | R a| -
 |===
 
 [#reg-{regmap-instance}-reset_unit-SS_CONFIG]
@@ -184,7 +185,9 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `isolate_req_smcen_reg` | RW | 0x0 a| Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests
+| 31:0 | `isolate_req_smcen_reg` | RW | 0x0 a| Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG
+is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it
+asserts the cool reset.
 |===
 
 [#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_VIS]
@@ -193,12 +196,14 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:9 | `Reserved` | - | - a| Reserved
-| 8 | `cool_reset_n_o` | R | 0x1 a| Visibility bit for cool reset output
-| 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `cool_reset_n_i` | R | 0x1 a| Visibility bit for cool reset input
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5:4 | `cool_reset_cause` | R | 0x0 a| Cause of the most recent cool reset: 0 none, 1 pin, 2 seq_ack, 3 seq_timeout.
+Held through the cool reset and overwritten by the next one; cleared only by
+the cold reset.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `isolate_req_pin` | R | 0x1 a| Visibility bit for isolate request pin
+| 0 | `isolate_req_pin` | R | 0x1 a| Isolate request pin, synchronized to the SMC clock. The board holds the pin
+high through a cold reset it asserts to keep the pin-enabled subsystems alive, so
+a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.
 |===
 
 [#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_COUNTER_VALUE]
@@ -207,7 +212,9 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `isolate_req_flr_counter_value` | RW | 0x0 a| Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted
+| 31:0 | `isolate_req_flr_counter_value` | RW | 0x0 a| Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
+enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.
 |===
 
 [#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_RESET_COUNTER_VALUE]
@@ -217,4 +224,16 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_flr_reset_counter_value` | RW | 0x0 a| Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value
+|===
+
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_ACK_CAPTURE]
+=== ISOLATE_REQ_ACK_CAPTURE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `isolate_req_ack_capture` | R | 0x0 a| isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.
+After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear
+here are the subsystems that did not acknowledge. Held through the cool reset
+and overwritten by the next isolation sequence; cleared only by the cold reset.
 |===

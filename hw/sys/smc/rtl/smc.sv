@@ -337,6 +337,8 @@ module smc #(
   input  logic        cfg_flr_pf_active_i,  // PCIe function-level reset request, active-high;
                                             // starts the reset unit's isolation and cool
                                             // reset sequence.
+  input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset
+                                          // unit; end its FLR wait early.
   output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset
                                         // unit.
 
@@ -885,6 +887,7 @@ module smc #(
     .smc_wdt_first_timeout_i               (smc_wdt_first_timeout),
     .smc_wdt_second_timeout_i              (smc_wdt_second_timeout),
     .cfg_flr_pf_active_i                   (cfg_flr_pf_active_i),
+    .isolate_req_ack_i                     (isolate_req_ack_i),
     .isolate_req_o                         (isolate_req_o),
     .skip_mem_repair_o                     (skip_mem_repair_o),
     .ss_reset_complete_i                   (ss_reset_complete_i),

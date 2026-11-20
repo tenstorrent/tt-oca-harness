@@ -139,6 +139,10 @@ if { [sizeof_collection $avs_sdata_intdet_q0_pin] > 0 } {
 #   - DBM observation-only syncs (i2c debug, reset-complete, cool-reset-wrap
 #     handshake, boot-stall): independent single-bit status lanes read through the
 #     debug bus mux and PeakRDL readback OR-trees, one lane selected at a time.
+#   - Isolation acknowledge sync (u_isolate_req_ack_sync_ref): one level per
+#     subsystem, each held high until its isolate request falls. They reconverge in
+#     the FLR wait's all-acknowledged term; a lane that lands a cycle late delays
+#     that term by a cycle and cannot make it true early.
 
 proc _smc_conv_ignore { label pattern } {
     set p [get_pins -quiet [cdc_inst $pattern]]
@@ -177,8 +181,7 @@ _smc_conv_ignore reset_complete {u_smc_peripherals/u_smc_reset_unit/u_smc_subsys
 _smc_conv_ignore cool_isolate_req {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_req_pin_sync/*/q_ddd/Q}
 _smc_conv_ignore cool_flr_smc {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_smc/*/q_ddd/Q}
 _smc_conv_ignore cool_flr_ref {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_ref/*/q_ddd/Q}
-_smc_conv_ignore cool_rst_ni {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_ni_sync_smc/*/q_ddd/Q}
-_smc_conv_ignore cool_rst_no {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_no_sync_smc/*/q_ddd/Q}
+_smc_conv_ignore cool_isolate_ack {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_req_ack_sync_ref/*/q_ddd/Q}
 _smc_conv_ignore i3c_scl_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/scl_synchronizer/u_sync_2/q_o/Q*}
 _smc_conv_ignore i3c_sda_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/sda_synchronizer/u_sync_2/q_o/Q*}
 

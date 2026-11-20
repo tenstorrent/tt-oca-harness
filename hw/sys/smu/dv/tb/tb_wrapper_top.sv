@@ -1704,6 +1704,7 @@ module smu_wrapper_uvm_top
     .smc_ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
     .cfg_flr_pf_active_i (tb_cfg_flr_pf_active),
+    .isolate_req_ack_i ('0),
     .isolate_req_o (isolate_req_w),
     .ss_reset_complete_i (~tb_ss_reset_incomplete),
     .ss_config_o (ss_config_w),

@@ -91,8 +91,16 @@ module smc_reset_unit (
   input  logic                                   rst_cool_ni,  // Cool reset from the pin,
                                                                // active-low; de-glitched over 32
                                                                // reference clock cycles into the
-                                                               // primary reset, and visible in
+                                                               // primary reset, and recorded as the
+                                                               // cool reset cause in
                                                                // ISOLATE_REQ_VIS.
+  input  logic [31:0]                            isolate_req_ack_i,  // Isolation acknowledge, one bit
+                                                                     // per isolate_req_o bit,
+                                                                     // active-high, asynchronous; ends
+                                                                     // the FLR wait early once every
+                                                                     // ISOLATE_REQ_SMCEN-enabled bit is
+                                                                     // high. Must fall before
+                                                                     // isolate_req_o[i] does.
   output logic [31:0]                            isolate_req_o,  // Per-subsystem isolation requests
                                                                  // on the SMC core clock:
                                                                  // ISOLATE_REQ_REG, OR the
@@ -182,6 +190,7 @@ module smc_reset_unit (
 
   logic rst_cold_stable_n;
   logic rst_cold_ref_n, rst_cold_smc_n;
+  logic rst_cool_pin_stable_n;
 
   ///////////////////////////////////
   // Reset Unit Register Interface //
@@ -210,6 +219,7 @@ module smc_reset_unit (
     hwif_in.ISOLATE_REQ_SMCEN_REG               = hwif_in_cool.ISOLATE_REQ_SMCEN_REG;
     hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE       = hwif_in_cool.ISOLATE_REQ_FLR_COUNTER_VALUE;
     hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = hwif_in_cool.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE;
+    hwif_in.ISOLATE_REQ_ACK_CAPTURE             = hwif_in_cool.ISOLATE_REQ_ACK_CAPTURE;
 
     // Fields driven by captured straps
   end
@@ -266,6 +276,7 @@ module smc_reset_unit (
   smc_cool_reset_wrap u_smc_cool_reset_wrap (
     .clk_ref_i              (clk_ref_i),
     .rst_cold_ref_ni        (rst_cold_ref_n),
+    .rst_primary_ref_ni     (rst_primary_ref_clk_no),
     .clk_smc_i              (clk_smc_i),
     .rst_cold_smc_ni        (rst_cold_smc_n),
 
@@ -274,7 +285,8 @@ module smc_reset_unit (
 
     .isolate_req_pin_i      (isolate_req_pin_i),
     .cfg_flr_pf_active_i    (cfg_flr_pf_active_i),
-    .rst_cool_ni            (rst_cool_ni),
+    .isolate_req_ack_i      (isolate_req_ack_i),
+    .rst_cool_pin_stable_ni (rst_cool_pin_stable_n),
 
     .isolate_req_o          (isolate_req_o),
     .skip_mem_repair_o      (skip_mem_repair_o),
@@ -303,6 +315,7 @@ module smc_reset_unit (
 
     .powergood_stable_o         (powergood_stable_o),
     .stable_cold_rst_no         (rst_cold_stable_n),
+    .stable_cool_rst_no         (rst_cool_pin_stable_n),
     .rst_primary_no             (rst_primary_n),
     .rst_warm_no                (rst_warm_n),
     .rst_wdt_no                 (rst_wdt_n),

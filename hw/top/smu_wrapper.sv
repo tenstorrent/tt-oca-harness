@@ -193,6 +193,7 @@ module smu_wrapper #(
 
   // Reset Unit Signals
   input  logic  cfg_flr_pf_active_i,
+  input  logic [31:0]  isolate_req_ack_i,
   output logic [31:0]  isolate_req_o,
   input  logic [31:0]  ss_reset_complete_i,
   output logic [31:0]  ss_config_o,
@@ -461,6 +462,7 @@ module smu_wrapper #(
     .smc_ndmreset_process_o,
     .smc_ext_mailbox_interrupts_o,
     .cfg_flr_pf_active_i,
+    .isolate_req_ack_i,
     .isolate_req_o,
     .ss_reset_complete_i,
     .ss_config_o,

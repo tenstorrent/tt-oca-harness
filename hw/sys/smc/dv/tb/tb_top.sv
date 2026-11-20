@@ -1443,6 +1443,7 @@ module smc_uvm_top
         .smc_ndmreset_process_o     (tb_ndmreset_process),
         .smc_ext_mailbox_interrupts_o (),
         .cfg_flr_pf_active_i        (tb_cfg_flr_pf_active),
+        .isolate_req_ack_i          (tb_isolate_req_ack),
         .isolate_req_o              (tb_isolate_req_o),
         .ss_reset_complete_i        (tb_ss_reset_complete),
         .ss_config_o                (ss_config),
@@ -6180,6 +6181,7 @@ module smc_uvm_top
     assign tb_boot_stall_jtag_val_i  = 1'b0;
     assign tb_sep_wdt_reset_n        = 1'b1;
     assign tb_cfg_flr_pf_active      = 1'b0;
+    assign tb_isolate_req_ack        = '0;
     assign tb_ndmreset_request       = '0;
     assign tb_temp_interrupt_i       = 1'b0;
     assign tb_ext_interrupt_0_i      = 1'b0;
@@ -6400,6 +6402,7 @@ module smc_dual_inst
         .smc_ndmreset_process_o     (),
         .smc_ext_mailbox_interrupts_o (),
         .cfg_flr_pf_active_i        (1'b0),
+        .isolate_req_ack_i          ('0),
         .isolate_req_o              (),
         .ss_reset_complete_i        ('1),
         .ss_config_o                (),

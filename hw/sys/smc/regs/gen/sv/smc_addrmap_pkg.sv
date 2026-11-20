@@ -24,7 +24,7 @@ localparam longint unsigned SMC_TOP_DEBUG_MODULE_BASE_ADDR = 64'hC0001000;
 localparam longint unsigned SMC_TOP_DEBUG_MODULE_SIZE = 64'h868;
 
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_BASE_ADDR = 64'hC0002000;
-localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SIZE = 64'hCC;
+localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SIZE = 64'hD0;
 
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_BASE_ADDR = 64'hC0002800;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SIZE = 64'h20C;
@@ -650,6 +650,7 @@ localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_AD
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_VIS_BASE_ADDR = 64'hC00020C0;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR = 64'hC00020C4;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR = 64'hC00020C8;
+localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_BASE_ADDR = 64'hC00020CC;
 function automatic longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(input int unsigned SCRATCH_idx);
     return 64'hC0002800 + (SCRATCH_idx * 64'h4);
 endfunction
@@ -3000,6 +3001,13 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_PLIC_ENABLE_BASE_ADDR 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_ACCRUED_ENABLE_BASE_ADDR = 64'hC8013020;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_LOCAL_ENABLE_BASE_ADDR = 64'hC8013028;
 
+
+typedef enum logic [1:0] {
+    NONE = 2'd0,
+    PIN = 2'd1,
+    SEQ_ACK = 2'd2,
+    SEQ_TIMEOUT = 2'd3
+} cool_reset_cause_enum_e;
 
 typedef enum logic [2:0] {
     NO_ERROR = 3'd0,

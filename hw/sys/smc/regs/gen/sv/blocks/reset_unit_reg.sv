@@ -249,6 +249,7 @@ module reset_unit_reg (
         logic ISOLATE_REQ_VIS;
         logic ISOLATE_REQ_FLR_COUNTER_VALUE;
         logic ISOLATE_REQ_FLR_RESET_COUNTER_VALUE;
+        logic ISOLATE_REQ_ACK_CAPTURE;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -313,7 +314,9 @@ module reset_unit_reg (
         decoded_reg_strb.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 8'hc8);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hc8);
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc8);
-        is_valid_addr = cpuif_addr < 8'hcc;
+        decoded_reg_strb.ISOLATE_REQ_ACK_CAPTURE = cpuif_req_masked & (cpuif_addr == 8'hcc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hcc);
+        is_valid_addr = cpuif_addr < 8'hd0;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -809,14 +812,16 @@ module reset_unit_reg (
         end
         if(rd_mux_addr == 8'hc0) begin
             readback_data_var[0] = hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.next;
-            readback_data_var[4] = hwif_in.ISOLATE_REQ_VIS.cool_reset_n_i.next;
-            readback_data_var[8] = hwif_in.ISOLATE_REQ_VIS.cool_reset_n_o.next;
+            readback_data_var[5:4] = hwif_in.ISOLATE_REQ_VIS.cool_reset_cause.next;
         end
         if(rd_mux_addr == 8'hc4) begin
             readback_data_var = hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_data;
         end
         if(rd_mux_addr == 8'hc8) begin
             readback_data_var = hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_data;
+        end
+        if(rd_mux_addr == 8'hcc) begin
+            readback_data_var[31:0] = hwif_in.ISOLATE_REQ_ACK_CAPTURE.isolate_req_ack_capture.next;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;

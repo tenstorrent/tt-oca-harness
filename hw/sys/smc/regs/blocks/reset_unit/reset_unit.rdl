@@ -144,35 +144,60 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests";
+            desc = "Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG
+                    is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it
+                    asserts the cool reset.";
         } isolate_req_smcen_reg [31:0] = 0x0;
+    };
+
+    enum cool_reset_cause_enum {
+        none        = 2'd0 { desc = "No cool reset since the last cold reset"; };
+        pin         = 2'd1 { desc = "The cool reset pin"; };
+        seq_ack     = 2'd2 { desc = "The isolation sequence, after every subsystem enabled in
+                                     ISOLATE_REQ_SMCEN_REG acknowledged its isolation request"; };
+        seq_timeout = 2'd3 { desc = "The isolation sequence, when ISOLATE_REQ_FLR_COUNTER_VALUE
+                                     expired. Subsystems set in ISOLATE_REQ_SMCEN_REG and clear in
+                                     ISOLATE_REQ_ACK_CAPTURE had not acknowledged, may have had a
+                                     transaction cut, and must be reset before use"; };
     };
 
     reg ISOLATE_REQ_VIS {
         field {
             sw = r;
             hw = w;
-            desc = "Visibility bit for isolate request pin";
+            desc = "Isolate request pin, synchronized to the SMC clock. The board holds the pin
+                    high through a cold reset it asserts to keep the pin-enabled subsystems alive, so
+                    a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.";
         } isolate_req_pin[0:0] = 0x1;
 
         field {
             sw = r;
             hw = w;
-            desc = "Visibility bit for cool reset input";
-        } cool_reset_n_i[4:4] = 0x1;
+            encode = cool_reset_cause_enum;
+            desc = "Cause of the most recent cool reset: 0 none, 1 pin, 2 seq_ack, 3 seq_timeout.
+                    Held through the cool reset and overwritten by the next one; cleared only by
+                    the cold reset.";
+        } cool_reset_cause[5:4] = 0x0;
+    };
 
+    reg ISOLATE_REQ_ACK_CAPTURE {
         field {
             sw = r;
             hw = w;
-            desc = "Visibility bit for cool reset output";
-        } cool_reset_n_o[8:8] = 0x1;
+            desc = "isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.
+                    After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear
+                    here are the subsystems that did not acknowledge. Held through the cool reset
+                    and overwritten by the next isolation sequence; cleared only by the cold reset.";
+        } isolate_req_ack_capture[31:0] = 0x0;
     };
 
     reg ISOLATE_REQ_FLR_COUNTER_VALUE {
         field {
             sw = rw;
             hw = r;
-            desc = "Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted";
+            desc = "Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+                    cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
+                    enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.";
         } isolate_req_flr_counter_value [31:0] = 0x0;
     };
 
@@ -215,6 +240,8 @@ addrmap reset_unit {
 
     external ISOLATE_REQ_FLR_COUNTER_VALUE           ISOLATE_REQ_FLR_COUNTER_VALUE           @ 0xC4;
     external ISOLATE_REQ_FLR_RESET_COUNTER_VALUE     ISOLATE_REQ_FLR_RESET_COUNTER_VALUE     @ 0xC8;
+
+    ISOLATE_REQ_ACK_CAPTURE         ISOLATE_REQ_ACK_CAPTURE @ 0xCC;
 
 };
 

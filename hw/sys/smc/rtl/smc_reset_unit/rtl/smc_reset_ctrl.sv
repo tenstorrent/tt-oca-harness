@@ -62,6 +62,10 @@ module smc_reset_ctrl (
                                                                       // after the de-glitched
                                                                       // input releases; low while
                                                                       // powergood_stable_o is low.
+  output logic                                   stable_cool_rst_no,  // De-glitched cool-reset
+                                                                      // pin, active-low, on
+                                                                      // clk_ref_i; low while
+                                                                      // powergood_stable_o is low.
   output logic                                   rst_primary_no,  // Primary reset, active-low:
                                                                   // the stable cold, de-glitched
                                                                   // cool-pin and FLR cool resets
@@ -256,6 +260,7 @@ module smc_reset_ctrl (
   assign rst_wdt_no = wdt_reset_stretched_n;
 
   assign stable_cold_rst_no = stable_cold_rst_n;
+  assign stable_cool_rst_no = stable_cool_rst_n;
   assign powergood_stable_o = powergood_stable;
 
 endmodule

@@ -355,8 +355,11 @@ endif::backend-html5[]
 PCIe `cfg_flr_pf_active_i` crosses independently into the SMC and reference
 clock domains. Its synchronized rising edge sets the SMC isolation latch and
 starts the reference-domain reset sequence when enabled by a nonzero hold count.
-The reset state machine has no isolation-complete input: its delay must be
-chosen to accommodate the system's isolation requirements.
+The sequence asserts the cool reset when every subsystem enabled in
+`ISOLATE_REQ_SMCEN_REG` raises `isolate_req_ack_i`, or when
+`ISOLATE_REQ_FLR_COUNTER_VALUE` expires, whichever is first. With no subsystem
+enabled, or the acknowledges tied low, the delay is the full count, so it must
+still cover the system's isolation requirements.
 
 === Isolation Controls
 
@@ -417,7 +420,9 @@ is in the Programmer's Guide.
 
 A zero hold count disables the timed reset sequence, but does not prevent the
 SMC-domain FLR edge from setting the isolation latch. `ISOLATE_REQ_VIS` reports
-synchronized pin and cool-reset levels; it is not an isolation-completion handshake.
+the synchronized pin and the cause of the most recent cool reset, and
+`ISOLATE_REQ_ACK_CAPTURE` the acknowledges seen when the sequence asserted it;
+both are reset only by the cold reset.
 
 `skip_mem_repair_o` is the OR of the synchronized isolation pin and the FLR
 isolation latch. It does not depend on the per-subsystem masks, and a software-only
