@@ -135,8 +135,9 @@ Checkers:
                     region 0 base translations and the untranslated word.
   CHK-OUT-GAP-ALIAS with alias region 0 over the page ``0x11FF_F000`` and
                     offset ``0x1000``, an LSU read and write of
-                    ``0x11FF_F000`` reach the route demux at ``0x1200_0000``,
-                    answer the DECERR of its Reserved memory-map row, and
+                    ``0x11FF_F000`` each leave the alias remap once at
+                    ``0x1200_0000`` (PR-ALIAS output,
+                    ``alias_remap.rdl`` REGION_ATTRS.offset), answer the DECERR of its Reserved memory-map row, and
                     PR-OUT takes no beat (the read data is logged,
                     INFO-OUT-GAP-ALIAS-RDATA). Live control in the same leg:
                     with the offset that remaps the page onto ``0x1180_0000``,
@@ -1436,7 +1437,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         The alias remap runs before the route demux, and the demux returns an
         address outside the SMU, AP and STEE regions to the peripheral crossbar
         (``hw/sys/sep/doc/fabric.adoc``, SEP output fabric), so the remapped
-        access answers the Reserved-row DECERR of GAP_WORD with no PR-OUT beat.
+        access leaves the alias remap once at GAP_WORD (PR-ALIAS output) and
+        answers the Reserved-row DECERR of GAP_WORD with no PR-OUT beat.
         Live control: the same alias page remapped onto the STEE region 0 base
         word leaves on PR-OUT at its translation. The AP and STEE region 0 pairs
         stay open over their translations.
@@ -1460,10 +1462,12 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 cap_chk="CHK-OUT-GAP-ALIAS",
             )
         await alias.program(True, GAP_WORD - page, page=page)
+        alias_tap = SepFabricTap("PR-ALIAS-OUT").start()
         for write in cfg.dirs():
             d = "W" if write else "R"
             prot = cfg.prot(1)
             mark = self.out.mark()
+            amark = alias_tap.mark()
             seq = await self._lsu(
                 page,
                 write=write,
@@ -1473,14 +1477,18 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 wdata=cfg.wdata() if write else 0,
             )
             beats = self.out.since(mark)
+            alias_out = alias_tap.since(amark, "aw" if write else "ar")
             exp = expected_unbacked(GAP_WORD, "w" if write else "r")
             line = (
                 f"dir={d} addr=0x{page:x} alias=0x{page:x}->0x{GAP_WORD:x} prot=0x{prot:x} "
+                f"alias_out={_join_addrs(alias_out)} "
                 f"resp={_rname(seq.resp_code)} expect={_rname(exp.resp)} out_seen={len(beats)}"
             )
-            assert seq.resp_code == exp.resp and not beats, (
-                f"CHK-OUT-GAP-ALIAS FAIL: {line} beats=" + " ".join(b.fmt() for b in beats)
-            )
+            assert (
+                [b.addr for b in alias_out] == [GAP_WORD]
+                and seq.resp_code == exp.resp
+                and not beats
+            ), f"CHK-OUT-GAP-ALIAS FAIL: {line} beats=" + " ".join(b.fmt() for b in beats)
             self.logger.info("CHK-OUT-GAP-ALIAS PASS: %s", line)
             if not write:
                 words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in (0, 1)]
@@ -1490,6 +1498,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                     page,
                     ",".join(f"0x{w:08x}" for w in words),
                 )
+        await alias_tap.stop()
         await alias.program(False)
 
     def _draw_region0(self) -> _Cls:

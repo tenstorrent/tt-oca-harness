@@ -7,8 +7,13 @@ RANDCFG: known wrap-offset anchors every seed, plus seed-selected dead offsets
 inside each block window; the TRNG passthrough legs draw their addresses, data,
 leg order, burst length and split-beat code pairs from the seed.
 CTRL-DEADSPACE-RAND (bench control on the seeded probe plan, before bring-up):
-every window holds its full quota of random probes. The PASS line logs the
-random and anchor probe count of each window; a short window fails the leaf.
+every window holds its full quota of random probes, and every window gets at
+least one read and one write probe from its anchors, random probes and cell
+probes. The PASS line logs the random and anchor probe count and the read and
+write count of each window; a short window, or a window without a read or
+without a write, fails the leaf (CTRL-MISSING). Directed write anchors at the
+first word past the AES and OTBN maps and at the first and last word of the
+lifecycle dead span give those windows a write every seed.
 
 A write or read past a block's allocated size must answer the past-extent
 response of its unit, and no live register in that block may change.
@@ -74,9 +79,8 @@ register region is outside the specification and is not graded. The crypto
 region is the exception: ``crypto.adoc`` ("Single-Beat Access Only") answers
 every access whose AxLEN is non-zero with DECERR on every beat, and no beat
 reaches an accelerator. For each block window in that region the test issues a
-four-beat INCR read burst and, where the window takes writes, a four-beat INCR
-write burst, across the extent where the window allows it and at the window base
-otherwise.
+four-beat INCR read burst and a four-beat INCR write burst, across the extent
+where the window allows it and at the window base otherwise.
 
 CHK-DEADSPACE-BEAT: the bus monitor's per-beat RRESP vector of every read
 burst is DECERR on every beat, inside the extent as well as past it.
@@ -214,6 +218,18 @@ if TRNG_UNOWNED_RESP != {"r": RESP_DECERR, "w": RESP_DECERR}:
 # Windows where the row-cell sampler also takes an LSU write cell (the SPI
 # controller past extent and the TRNG window); elsewhere the cell is a read.
 _CELL_WRITE_WINDOWS = ("spi_controller", "trng")
+
+
+def _cell_items(cfg: SepDeadspaceCfg) -> list[DeadProbe]:
+    """Cell probes: the first dead word of every window, read, and written in
+    the _CELL_WRITE_WINDOWS."""
+    items = []
+    for win in cfg.windows.values():
+        items.append(DeadProbe(win.name, win.dead_lo, "r", True))
+        if win.name in _CELL_WRITE_WINDOWS:
+            items.append(DeadProbe(win.name, win.dead_lo, "w", True))
+    return items
+
 
 TEST = "sep_fabric_deadspace_decode_test"
 # Pass label u_sep_fcov.row_pass: 1 releases the held row cells of a cell probe
@@ -414,22 +430,21 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                         break
             if any(sresp == RESP_OKAY for sresp, _ in singles):
                 controlled.append(win.name)
-            if win.write_ok:
-                bresp, wr_timed_out, moved = await dead.burst_write(win, start, snaps[win.name])
-                self.logger.info(
-                    "deadspace burst-audit: %s write burst 0x%08x BRESP=%s",
-                    win.name,
-                    start,
-                    _RESP_NAME.get(bresp, str(bresp)),
+            bresp, wr_timed_out, moved = await dead.burst_write(win, start, snaps[win.name])
+            self.logger.info(
+                "deadspace burst-audit: %s write burst 0x%08x BRESP=%s",
+                win.name,
+                start,
+                _RESP_NAME.get(bresp, str(bresp)),
+            )
+            if wr_timed_out:
+                burst_fails.append(f"{win.name} write burst at 0x{start:08x} timed out")
+            elif bresp != RESP_DECERR:
+                burst_fails.append(
+                    f"{win.name} write burst at 0x{start:08x} answered "
+                    f"{_RESP_NAME.get(bresp, str(bresp))}; the crypto demux answers DECERR"
                 )
-                if wr_timed_out:
-                    burst_fails.append(f"{win.name} write burst at 0x{start:08x} timed out")
-                elif bresp != RESP_DECERR:
-                    burst_fails.append(
-                        f"{win.name} write burst at 0x{start:08x} answered "
-                        f"{_RESP_NAME.get(bresp, str(bresp))}; the crypto demux answers DECERR"
-                    )
-                burst_fails.extend(moved)
+            burst_fails.extend(moved)
 
         # Config report. An anchor whose window is absent from the map raises when
         # the config is built.
@@ -540,7 +555,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         await self._trng_passthrough(cfg)
 
     def _ctrl_deadspace_rand(self, cfg: SepDeadspaceCfg) -> None:
-        """CTRL-DEADSPACE-RAND: every window holds its full random-probe quota."""
+        """CTRL-DEADSPACE-RAND: every window holds its full random-probe quota and
+        gets at least one read and one write probe (walk and cell pass)."""
         if cfg.short_windows:
             short = " ".join(
                 f"{n}={got}/{want}" for n, (got, want) in sorted(cfg.short_windows.items())
@@ -550,14 +566,28 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             raise AssertionError(msg)
         rand: dict[str, int] = dict.fromkeys(cfg.windows, 0)
         anchor: dict[str, int] = dict.fromkeys(cfg.windows, 0)
+        ops: dict[str, dict[str, int]] = {n: {"r": 0, "w": 0} for n in cfg.windows}
         for p in cfg.probes:
             (anchor if p.anchor else rand)[p.window] += 1
+            ops[p.window][p.op] += 1
+        for p in _cell_items(cfg):
+            ops[p.window][p.op] += 1
+        op_text = " ".join(f"{n}=r{ops[n]['r']}w{ops[n]['w']}" for n in sorted(ops))
+        missing = [n for n in sorted(ops) if not (ops[n]["r"] and ops[n]["w"])]
+        if missing:
+            msg = (
+                f"CTRL-DEADSPACE-RAND FAIL: seed={cfg.seed} CTRL-MISSING window(s) without "
+                f"both a read and a write probe: {' '.join(missing)} ops=[{op_text}]"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
-            "CTRL-DEADSPACE-RAND PASS: seed=%d windows=%d random=[%s] anchors=[%s]",
+            "CTRL-DEADSPACE-RAND PASS: seed=%d windows=%d random=[%s] anchors=[%s] ops=[%s]",
             cfg.seed,
             len(cfg.windows),
             " ".join(f"{n}={rand[n]}" for n in sorted(rand)),
             " ".join(f"{n}={anchor[n]}" for n in sorted(anchor)),
+            op_text,
         )
 
     @staticmethod
@@ -603,11 +633,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             f"responder on={on} before the cell probes, expected 0 (no TRNG fitted)",
             False,
         )
-        items = []
-        for win in cfg.windows.values():
-            items.append(DeadProbe(win.name, win.dead_lo, "r", True))
-            if win.write_ok and win.name in _CELL_WRITE_WINDOWS:
-                items.append(DeadProbe(win.name, win.dead_lo, "w", True))
+        items = _cell_items(cfg)
         for graded in (False, True):
             if graded:
                 open_graded_window(TEST, self.logger)

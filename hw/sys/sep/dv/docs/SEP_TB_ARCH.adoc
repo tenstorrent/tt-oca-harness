@@ -863,7 +863,8 @@ Observation probe groups:
 ** PR-ALIAS (`pr_alias_in_*`, `pr_alias_out_*`): the request at the input and
    at the output of the local-master alias remap
    (`u_local_master_remap_wrap`): address, AxCACHE and AxPROT. Owner:
-   `sep_fabric_alias_remap_attr_rand_test`.
+   `sep_fabric_alias_remap_attr_rand_test`; `sep_fabric_outbound_route_attr_test`
+   reads the output address (CHK-OUT-GAP-ALIAS).
 * Fabric FCOV sampler taps (`cov/sv/sep_fcov.sv`, Phase 2 fabric and remap
   groups): the full request and response structs of the SMN-inbound port, the
   local crossbar `ext` initiator, the CPU LSU before and after its alias remap

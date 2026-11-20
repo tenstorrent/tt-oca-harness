@@ -112,7 +112,6 @@ class DeadWindow:
     window_end: int
     alloc: int
     watch: tuple[int, ...]
-    write_ok: bool = True
     # Watched addresses hardware may change on its own (sep_reg_meta.reg_hw_updating,
     # the same source the bit-bash reset walk uses). Excluded from the per-probe
     # change compare -- see probe(). They stay in the snapshot for the read-alias
@@ -334,7 +333,6 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
                 sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
                 block_size("SEP_LIFECYCLE_CTRL"),
             ),
-            write_ok=False,
         ),
         DeadWindow(
             "spi_controller",
@@ -377,6 +375,9 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
 _TRNG = sym("TRNG_REG_MAP_BASE_ADDR")
 _KM_MBOX = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
 _WDT = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
+_AES = sym("AES_REG_MAP_BASE_ADDR")
+_OTBN = sym("OTBN_REG_MAP_BASE_ADDR")
+_LIFECYCLE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
 
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
@@ -398,6 +399,12 @@ DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("abr", _ABR + block_size("ABR"), "w"),
     ("abr", sym("ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_REG_ADDR") | 0x4000, "w"),
     ("abr", sym("ENTROPY_POOL_REG_MAP_BASE_ADDR") - 4, "w"),
+    # First word past the AES and OTBN maps, and the first and last word of the
+    # lifecycle dead span: these windows get a write every seed.
+    ("aes", _AES + block_size("AES"), "w"),
+    ("otbn", _OTBN + block_size("OTBN"), "w"),
+    ("lifecycle", _LIFECYCLE + block_size("SEP_LIFECYCLE_CTRL"), "w"),
+    ("lifecycle", _KM_MBOX - 4, "w"),
     # First, middle and last word of the adopter TRNG window, read and write.
     ("trng", _TRNG + 0x000, "r"),
     ("trng", _TRNG + 0x000, "w"),
@@ -453,7 +460,7 @@ class SepDeadspaceCfg:
                 addr = rng.randrange(win.dead_lo, win.dead_hi) & ~0x3
                 if addr < win.dead_lo:
                     continue
-                op = "r" if (not win.write_ok or rng.getrandbits(1)) else "w"
+                op = "r" if rng.getrandbits(1) else "w"
                 key = (win.name, addr, op)
                 if key in taken:
                     continue

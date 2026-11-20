@@ -1055,7 +1055,8 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             mark = self.pads.mark()
             ctl_len = self.illegal_ctl_lens[(speed, direction)]
             await self.ops.issue_command(Seg(0, DIR_DUMMY, ctl_len).cmd)
-            ctl_wins = await self.ops.wait_segment_done(self.pads, mark, bound_clks=SEG_BOUND_CLKS)
+            await self.ops.wait_segment_done(self.pads, mark, bound_clks=SEG_BOUND_CLKS)
+            ctl_wins = self.pads.windows_since(mark, complete_only=False)
             ctl_sck = sum(w.leading_edges for w in ctl_wins)
             ctl = field_compare(await self._err_status(), 0, ERR_STATUS_MASK)
             ctl_ran = len(ctl_wins) == 1 and ctl_sck == ctl_len + 1
