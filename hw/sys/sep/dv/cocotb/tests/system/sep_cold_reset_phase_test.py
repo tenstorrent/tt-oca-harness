@@ -56,7 +56,7 @@ assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
 of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
 ``sep_fuse_sense_done_o`` fell, and both levels ``_SEP_BOUND``
 ``clk_i`` cycles after the release; the specification states no minimum
-``rst_ni`` width, so nothing in it is graded. ``OBS-RST-SYNC-EDGES`` logs,
+``rst_ni`` width, so nothing in it is graded. ``INFO-RST-SYNC-EDGES`` logs,
 per pass, the ``clk_i`` rising edges after the last of the release terms (the
 ``rst_ni`` rise, the ``sep_fuse_sense_done_o`` rise after it, or the graded
 pass's ``ext_boot_seq_done_i`` rise) up to and including the edge of the
@@ -477,7 +477,7 @@ class sep_cold_reset_phase_test(sep_base_test):
         t_last = terms[last]
         edges = sum(1 for t in self.edges.edge_times("clk_i") if t_last < t <= t_sr)
         self.logger.info(
-            "OBS-RST-SYNC-EDGES: pass=%s rst_ni rose t=%d sense_done rose t=%s "
+            "INFO-RST-SYNC-EDGES: pass=%s rst_ni rose t=%d sense_done rose t=%s "
             "sense_done_at_release=%s ext_boot_seq_done rose t=%s last_term=%s t=%d "
             "sep_reset_n rose t=%d clk_i_edges=%d",
             pass_name,

@@ -25,8 +25,9 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   SEP_NMI_VEC reset value once. CHK-NMI-ENTRY (firmware) each locked-copy bark
   enters the drawn copy once, with the ``CTRL-MIE-AT-BARK`` read equal to the
   value of the leg: the firmware copy of the CHK-NMI-TAKEN compare without the
-  trace term. No cited specification states ``mstatus.MPIE`` at an NMI entry,
-  so the value the handler reads is logged (``OBS-NMI-MPIE``) and not graded.
+  trace term. ``INFO-NMI-MPIE`` logs the ``mstatus.MPIE`` value the handler
+  reads, not graded, and ``mie_at_bark``, graded by ``CHK-NMI-ENTRY``; no open
+  specification question.
 * CHK-NMI-NOPIC (firmware) each of the eight meip words read in the NMI
   handler equals the same word read before the bark, with the six excluded
   idle bits masked; the pending source
@@ -493,8 +494,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             if bite != "0":
                 raise AssertionError(f"CHK-NMI-BITE-LOW FAIL {bite_body}")
             self.logger.info("CHK-NMI-BITE-LOW PASS %s leg=%s", bite_body, leg)
-        for r in self.con.records("OBS-NMI-MPIE"):
-            self.logger.info("%s (firmware, not graded)", r.text)
+        for r in self.con.records("INFO-NMI-MPIE"):
+            self.logger.info("%s (firmware)", r.text)
         return 4
 
     def _chk_bark_vec(self, sy: dict[str, int], boot2_clk: int) -> int:

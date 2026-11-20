@@ -19532,9 +19532,9 @@ draws nothing from the seed.
   drop the pin, wait for `tb_skip_mem_repair_o` = 0 and read ISOLATE_REQ_VIS expecting the pin bit
   clear again.
 . Start the `clk_ref_i` sampler of `tb_rst_cool_from_flr`, `tb_core2pad_en_o` and `tb_core2pad_o`
-  bit 62. Program the counters 64 and 64, raise the FLR input, wait for the cool fall and rise
-  (bounds 64 + 64 edges each), require one fall and one rise, drop the FLR input, wait for the
-  warm smc-clock reset to fall and come back, clear ISOLATE_REQ_SMC_REG.
+  at the Cool Reset Out index. Program the counters 64 and 64, raise the FLR input, wait for the
+  cool fall and rise (bounds 64 + 64 edges each), require one fall and one rise, drop the FLR
+  input, wait for the warm smc-clock reset to fall and come back, clear ISOLATE_REQ_SMC_REG.
 . Program the counters 4 and 2000, raise the FLR input, wait for the cool fall, make one bounded
   read of ISOLATE_REQ_VIS (5000 ns, timeout and error tolerated, result recorded), wait for the
   cool rise, require one fall and one rise, and recover as in step 3.
@@ -19549,9 +19549,10 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-COOL-RESET-PAD62-OPEN-DRAIN` |On every `clk_ref_i` sample of the two FLR legs
-  `tb_core2pad_en_o[62]` must equal the inverted `tb_rst_cool_from_flr` and `tb_core2pad_o[62]`
-  must be 0 whenever the enable is 1; at least 2064 enabled and 64 released samples must be taken.
+|`CHK-COOL-RESET-PAD-OPEN-DRAIN` |On every `clk_ref_i` sample of the two FLR legs
+  `tb_core2pad_en_o` at the Cool Reset Out index must equal the inverted `tb_rst_cool_from_flr`
+  and `tb_core2pad_o` there must be 0 whenever the enable is 1; at least 2064 enabled and 64
+  released samples must be taken.
 |`CHK-ISOLATE-VIS-LIVE-LEVELS` |ISOLATE_REQ_VIS must read the pin bit 0 with the pin low and 1 with
   it high while ISOLATE_REQ_PINEN_REG is 0 and `tb_isolate_req_o` stays 0 on 32 rises, and must
   read both cool-reset bits 1 before and after the FLR legs; the bounded read during the long hold

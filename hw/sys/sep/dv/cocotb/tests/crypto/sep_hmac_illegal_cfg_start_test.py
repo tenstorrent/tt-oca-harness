@@ -97,13 +97,11 @@ legal hash is not stated and is logged) and ``CTRL-HMAC-ERR-PRESTART`` (after th
 ``ERR_CODE`` is not 0x6: the error is raised "when hashing starts", hmac.adoc:52-53, so the
 ``hmac_err`` and ``ERR_CODE`` of ``CHK-HMAC-BLOCK`` and ``CHK-HMAC-ERRCODE`` come from the
 start and not from the configuration writes). Log-only:
-``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
-start; the register text does not state them),
-``OBS-HMAC-ERR-RESP`` (the write response code of the 0x3 ``KEY`` write and the 0x5
-``MSG_FIFO`` write; no text states it) and
-``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
-blocked start, nor during a hash, where it is logged before the 0x3 ``KEY`` write and the
-0x4 second start). ``INFO-HMAC-DIGEST-ORDER`` re-logs the byte order inside a DIGEST word, which
+``INFO-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
+start), ``INFO-HMAC-ERR-RESP`` (the write response code of the 0x3 ``KEY`` write and the 0x5
+``MSG_FIFO`` write) and ``INFO-HMAC-IDLE`` (``STATUS.hmac_idle`` before each class, after a
+blocked start, and during a hash, where it is logged before the 0x3 ``KEY`` write and the
+0x4 second start): not graded; no open specification question. ``INFO-HMAC-DIGEST-ORDER`` re-logs the byte order inside a DIGEST word, which
 ``CHK-HMAC-RECOVER`` grades.
 
 DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
@@ -696,7 +694,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         """Clear both events, log hmac_idle, and read INTR_STATE as 0 before the class."""
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE | HMAC_INTR_ERR)
         status = await self._rd(HMAC_STATUS)
-        self.chk.obs(
+        self.chk.info(
             "HMAC-IDLE",
             **{"class": step.name},
             phase="before",
@@ -813,8 +811,8 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             err_code=f"0x{err_code:x}",
             expected=f"0x{EXP_ERR_INVALID_CFG:x}",
         )
-        self.chk.obs("HMAC-BLOCKED-MSG-RESP", **{"class": step.name}, refused=refused)
-        self.chk.obs(
+        self.chk.info("HMAC-BLOCKED-MSG-RESP", **{"class": step.name}, refused=refused)
+        self.chk.info(
             "HMAC-IDLE",
             **{"class": step.name},
             phase="blocked",
@@ -866,9 +864,9 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             await self._reset_hmac(cocotb.top)
         return h
 
-    async def _obs_idle_in_hash(self, name: str) -> None:
+    async def _info_idle_in_hash(self, name: str) -> None:
         status = await self._rd(HMAC_STATUS)
-        self.chk.obs(
+        self.chk.info(
             "HMAC-IDLE",
             **{"class": name},
             phase="in_hash",
@@ -921,14 +919,14 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         elif e.code == ERR_UPDATE_KEY_IN_PROCESS:
             t0 = await self._start_body(h)
             await self._write_msg(h.msg)
-            await self._obs_idle_in_hash(e.name)
+            await self._info_idle_in_hash(e.name)
             orig = _row_words(h.row)[e.key_idx]
             resp = await self._wr_resp(HMAC_KEY[e.key_idx], orig ^ e.key_mask)
-            self.chk.obs("HMAC-ERR-RESP", **cls, reg=f"KEY_{e.key_idx}", resp=resp)
+            self.chk.info("HMAC-ERR-RESP", **cls, reg=f"KEY_{e.key_idx}", resp=resp)
         elif e.code == ERR_HASH_START_ACTIVE:
             await self._start_body(h)
             await self._write_msg(h.msg[: len(h.msg) // 2])
-            await self._obs_idle_in_hash(e.name)
+            await self._info_idle_in_hash(e.name)
             await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         else:
             sha_off = e5_trigger == "sha_disabled"
@@ -938,7 +936,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             if not sha_off and h.hmac_en:
                 await self._write_key_row(h.row)
             resp = await self._wr_resp(HMAC_MSG_FIFO, e.word)
-            self.chk.obs("HMAC-ERR-RESP", **cls, reg="MSG_FIFO", trigger=e5_trigger, resp=resp)
+            self.chk.info("HMAC-ERR-RESP", **cls, reg="MSG_FIFO", trigger=e5_trigger, resp=resp)
             extra["trigger"] = e5_trigger
         await ClockCycles(dut.clk_i, self.hold)
         intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS

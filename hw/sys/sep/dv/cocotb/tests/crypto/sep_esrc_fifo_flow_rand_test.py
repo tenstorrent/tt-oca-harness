@@ -96,7 +96,7 @@ Checkers:
                          after it.
 Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
 cause enabled: the register text does not state which enabled status bits drive source 16),
-``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
+``INFO-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
 names no partner for them), ``OBS-FIFO-ERR-ALERT`` (after the parity and the pointer
 trial, with FIFO_ERROR as read: the ESRC interrupt line, and LEVEL and WPTR before and
 after the stream offers a word with ENABLE = 1; no text states an alert or a write stop
@@ -809,7 +809,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             for k in range(CHURN_DISTANCE, DEPTH):
                 pairs += 1
                 bad += (on[k] ^ on[k - CHURN_DISTANCE]) != c
-            self.chk.obs(
+            self.chk.info(
                 "FIFO-CHURN-FIRST32",
                 c=f"0x{c:08x}",
                 words_xor_c=",".join(f"0x{on[k] ^ c:08x}" for k in range(CHURN_DISTANCE)),

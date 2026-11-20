@@ -24,7 +24,7 @@ this order, over the CPU-LSU master on ``s_axi``:
   Bite Reset; ``aon_timer.adoc``). Three ``INTR_TEST`` writes (wakeup bit, bark
   bit, both; drawn order) with both timers counting force exactly their bits,
   clear on a write of 1, and leave both counts advancing with no bite request
-  (CHK-WDT-INTRTEST-COUNT); OBS-WDT-INTRTEST-WKUP-CAUSE logs ``WKUP_CAUSE``
+  (CHK-WDT-INTRTEST-COUNT); INFO-WDT-INTRTEST-WKUP-CAUSE logs ``WKUP_CAUSE``
   after each write. After a bark, a ``WDOG_BARK_THOLD`` raised a drawn 64 to 128
   counts above the count and a clear of the bark bit keep the bark line and
   status at 0 until the count reaches the new threshold (CHK-WDT-BARK-REARM). A
@@ -33,9 +33,9 @@ this order, over the CPU-LSU master on ``s_axi``:
   otherwise), and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 before
   the write and rises within ``SRC13_WINDOW`` ``clk_i`` cycles after it
   (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
-  leaf. OBS-WDT-ALERT-RESP logs the response code, not graded: no
+  leaf. INFO-WDT-ALERT-RESP logs the response code, not graded: no
   specification states the response code of a legal register write. With
-  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, OBS-WDT-PAUSE-RUN logs the
+  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, INFO-WDT-PAUSE-RUN logs the
   count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
   ``clk_wdt_i`` edges between the two count reads; no specification states
   the level of the sleep input of the timer in SEP. Control
@@ -221,7 +221,7 @@ edges in (t0, t1].
   ``wdt_timer_rst_req_o`` reads 1 at the ``clk_i`` edge before the pulse
   (control) and at the first edge of the pulse, reads 0 within the bound, and
   stays 0 over ``BITE_STAY_CLKS`` ``clk_i`` cycles after the release. The
-  ``clk_i`` edge of the fall is logged as OBS-BITE-CLEAR-EDGE and not graded.
+  ``clk_i`` edge of the fall is logged as INFO-BITE-CLEAR-EDGE and not graded.
   The request stays 0 because ``WDOG_CTRL.enable``
   resets to 0 ("When set to 1, the watchdog timer will count.",
   ``<aon_rdl>:73-74``) and a bite needs an enabled timer (``<aon>/README.md:56``).
@@ -356,9 +356,9 @@ CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
 CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP,
 CTRL-WDT-ALERT-REACH, CTRL-WDT-INTRTEST-WKUP-CAUSE.
-Observations (not graded): OBS-WDT-CLKSTOP, OBS-BITE-CLEAR-EDGE,
-OBS-REFCNT-SPACED-LAT, OBS-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
-OBS-WDT-ALERT-RESP, OBS-WDT-INTRTEST-WKUP-CAUSE.
+Observations (not graded): OBS-WDT-CLKSTOP, INFO-BITE-CLEAR-EDGE,
+INFO-REFCNT-SPACED-LAT, INFO-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
+INFO-WDT-ALERT-RESP, INFO-WDT-INTRTEST-WKUP-CAUSE.
 
 The graded window (owner code of this test) opens at leg R and closes for the
 enable control run, the pause-in-sleep run, leg H, the small wakeup control
@@ -788,8 +788,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         for n in range(1, POLL_READS + 1):
             got = await self._rd(addr)
             if (got & mask) == (want & mask):
-                if got & ~mask & M32:
-                    self.logger.info("OBS-WDT-RSVD: reg=%s raw=0x%08x", name, got)
                 return got
             await ClockCycles(cocotb.top.clk_i, POLL_GAP)
         raise AssertionError(
@@ -1133,7 +1131,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         want = v2
         first, polls, e_2, stale = await self._reload_poll(tb2, want, chk)
         self.logger.info(
-            "OBS-REFCNT-SPACED-LAT: pair=%d polls=%d stale_reads=%d E_since_b2=%d",
+            "INFO-REFCNT-SPACED-LAT: pair=%d polls=%d stale_reads=%d E_since_b2=%d",
             idx,
             polls,
             stale,
@@ -1216,7 +1214,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         every edge from the edge before the pulse. A receiver that keeps its state
         over the pulse while its sender resets raises no alert in this window, so
         this clause does not show the receiver reset. The fall edge is logged
-        as OBS-BITE-CLEAR-EDGE. Controls: ``sep_cpu_reset_n_o`` reads 0 in the
+        as INFO-BITE-CLEAR-EDGE. Controls: ``sep_cpu_reset_n_o`` reads 0 in the
         pulse and ``dbg_sep_reset_n_o`` (the SEP reset) stays 1 over the pulse
         and the stay window (clk_rst.adoc:60).
         """
@@ -1263,7 +1261,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         self.n_bite_clear += 1
         self.logger.info(
-            "OBS-BITE-CLEAR-EDGE: seed=%d where=%s n=%d fall_clk_i_edge=%s clk_wdt_i_edges=%d",
+            "INFO-BITE-CLEAR-EDGE: seed=%d where=%s n=%d fall_clk_i_edge=%s clk_wdt_i_edges=%d",
             seed,
             where,
             self.n_bite_clear,
@@ -1395,7 +1393,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             if seen_x is not None:
                 phase, ci_ar = seen_x
                 self.logger.info(
-                    "OBS-WDT-XING-LAT run=%s wdt_phase_clk=%d ar_to_r_clk=%d count=0x%x",
+                    "INFO-WDT-XING-LAT run=%s wdt_phase_clk=%d ar_to_r_clk=%d count=0x%x",
                     chk,
                     phase,
                     self.pins.count["clk_i"] - ci_ar,
@@ -1795,7 +1793,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d write response received", seed)
-        self.logger.info("OBS-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
+        self.logger.info("INFO-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         alert_rises = alert.rises_since(ma)
@@ -1836,7 +1834,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             )
 
     async def _intrtest_count(self, watch, samples: dict) -> None:
-        """CHK-WDT-INTRTEST-COUNT and OBS-WDT-INTRTEST-WKUP-CAUSE.
+        """CHK-WDT-INTRTEST-COUNT and INFO-WDT-INTRTEST-WKUP-CAUSE.
 
         "Each timer increases its count as long as its enable signal ... is set"
         (``<aon>/doc/theory_of_operation.md:4``); an ``INTR_TEST`` field write
@@ -1852,7 +1850,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         ``clk_i`` edge of the step (the watcher of CHK-WDT-INTRTEST).
 
         No line says whether a forced interrupt sets ``WKUP_CAUSE``:
-        OBS-WDT-INTRTEST-WKUP-CAUSE logs it after each write. Control: it reads 0
+        INFO-WDT-INTRTEST-WKUP-CAUSE logs it after each write. Control: it reads 0
         before the first write. The step ends with ``WKUP_CAUSE`` written 0 and
         read 0, and the wakeup timer stopped.
         """
@@ -1903,7 +1901,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             cl = await self._poll_eq("INTR_STATE", INTR_STATE, 0, both, chk)
             cause = await self._rd(WKUP_CAUSE)
             self.logger.info(
-                "OBS-WDT-INTRTEST-WKUP-CAUSE: seed=%d mask=0x%x wkup_cause=0x%x "
+                "INFO-WDT-INTRTEST-WKUP-CAUSE: seed=%d mask=0x%x wkup_cause=0x%x "
                 "wkup_cause_before=0x%x",
                 seed,
                 mask,
@@ -2122,7 +2120,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         st = await self._rd(INTR_STATE)
         await self._wr(WDOG_CTRL, 0)
         self.logger.info(
-            "OBS-WDT-PAUSE-RUN seed=%d wdog_ctrl=0x%x count0=0x%x count1=0x%x dcount=%d "
+            "INFO-WDT-PAUSE-RUN seed=%d wdog_ctrl=0x%x count0=0x%x count1=0x%x dcount=%d "
             "clk_wdt_edges_min=%d clk_wdt_edges_max=%d wait_wdt=%d bark=%d",
             seed,
             ctrl,
@@ -2407,7 +2405,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         # The wakeup request and the wakeup interrupt of the timer have no stated
         # consumer: the internal interrupt vector is logged at the cause read.
         self.logger.info(
-            "OBS-WKUP-CONSUMER wkup_cause=0x%x sep_internal_interrupts=0x%x",
+            "INFO-WKUP-CONSUMER wkup_cause=0x%x sep_internal_interrupts=0x%x",
             cause & CAUSE_FIELD,
             self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True),
         )
@@ -2594,8 +2592,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         for c in ctrl_reads:
             fc = field_compare(c, WDOG_EN, WDOG_CTRL_FIELDS)
             assert fc.ok, f"CHK-WDT-COHERENT FAIL: WDOG_CTRL while counting {fc.fields()}"
-            if c & ~WDOG_CTRL_FIELDS & M32:
-                self.logger.info("OBS-WDT-RSVD: reg=WDOG_CTRL raw=0x%08x", c)
         assert segs[1][0] >= 0x1000, f"CHK-WDT-COHERENT FAIL: first read 0x{segs[1][0]:x} < 0x1000"
         assert inc >= 3, f"CHK-WDT-COHERENT FAIL: only {inc} increases"
         self.logger.info(

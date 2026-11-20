@@ -98,7 +98,7 @@ Open-value leg (logged, not graded): no specification or RDL states the result.
                  the read data of the PR-SRAM tap. Control CTRL-SRAM-FLIP: the
                  macro array holds the written word before the flip and the word
                  with the drawn bit flipped after it.
-  OBS-SRAM-XOUT-DEPTH  the peak count of outstanding requests on each port and on
+  INFO-SRAM-XOUT-DEPTH  the peak count of outstanding requests on each port and on
                  both ports together during CHK-SRAM-XOUT, the overlap clocks and
                  the IDs seen per port; no SEP document states an outstanding
                  limit or an ID-sharing rule.
@@ -1751,7 +1751,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             for p, beats in (("si", m_beats), ("lsu", s_beats))
         }
         self.logger.info(
-            "OBS-SRAM-XOUT-DEPTH seed=%d si_peak=%d lsu_peak=%d both_peak=%d si_ids=%s "
+            "INFO-SRAM-XOUT-DEPTH seed=%d si_peak=%d lsu_peak=%d both_peak=%d si_ids=%s "
             "lsu_ids=%s overlap_clocks=%d clk_offset=%d",
             seed,
             self._depth_peak(m_beats),

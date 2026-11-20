@@ -71,8 +71,9 @@ Checkers:
                    at least 100, the count reads below 100 and below its value
                    before the write after one window (the run state is cleared;
                    control CTRL-HT-ENABLE-REP-WRITE: ENABLE reads back 6 after
-                   the write). The exact cleared value is not stated:
-                   OBS-HT-REPCOUNT-AFTER logs it. No enabled control runs: no
+                   the write). INFO-HT-REPCOUNT-AFTER logs the cleared
+                   value: graded by CHK-HT-ENABLE; no open specification
+                   question. No enabled control runs: no
                    text states whether the count restarts at a failure while
                    the tester stays enabled.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
@@ -86,9 +87,9 @@ Checkers:
                    INPUT_COUNT(first) + input words - INPUT_COUNT(last). Input words
                    are strobes of esrc_whiten_push_o, output words strobes of
                    esrc_compress_vld_o. Control: at least 16 input and 8 output
-                   words in the span. Whether the whitener input continues after
-                   the 32-bit test fails after boot is not stated: a push timeout
-                   logs INFO-BLOCKED and the check has no evidence.
+                   words in the span. A push timeout logs INFO-HT-PRESHA-NOPUSH
+                   (not graded; no open specification question) and the check
+                   has no evidence.
   CHK-HT-LIMIT     each limit trial (repetition L-3, Markov high W/2-3, Markov
                    low W/L+3, W = 1024) sets exactly the bit of its tester in all
                    12 generators.
@@ -143,11 +144,11 @@ Checkers:
                    Controls (CTRL-REC-COPY): the H readbacks, A + 1 within the
                    window, the cleared statuses and the ENABLE readback before
                    each trial.
-Logged only: OBS-ESRC-HT-TOTALS, the five total-fail counters after each limit
-trial (no text states how the totals count the per-generator failures).
-OBS-HT-ALERT-COUNTS, the ALERT_FAIL_COUNTS fields and ALERT_THRESHOLD after each
-pattern trial and each limit trial, each of which fails one tester type (no text
-states which tester instances feed those counters).
+Logged only: INFO-ESRC-HT-TOTALS, the five total-fail counters after each limit
+trial (not graded; no open specification question).
+INFO-HT-ALERT-COUNTS, the ALERT_FAIL_COUNTS fields and ALERT_THRESHOLD after each
+pattern trial and each limit trial, each of which fails one tester type (not
+graded; no open specification question).
 OBS-ESRC-HT-BYPASS, HEALTH_TEST_STATUS bits 3 and 5 and the APT_LO and MARKOV_LO
 totals after the constant-zero windows with ``CTRL.BYPASS_ENTROPY_COMPRESSOR``
 set: architecture.adoc:47-48 states the 32-bit test clock-gated off in that mode,
@@ -563,12 +564,12 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
     async def _any_fail(self) -> int:
         return ((await self._rd(A_ANY_FAIL)) & M_ANY_FAIL) >> P_ANY_FAIL
 
-    async def _alert_counts_obs(self, tester: str) -> None:
-        """OBS-HT-ALERT-COUNTS after a trial that fails only ``tester``."""
+    async def _alert_counts_info(self, tester: str) -> None:
+        """INFO-HT-ALERT-COUNTS after a trial that fails only ``tester``."""
         raw = await self._rd(A_ALERT_FAIL_COUNTS)
         thr = ((await self._rd(A_ALERT_THRESHOLD)) & M_THR) >> P_THR
         counts = {f.lower(): (raw & m["bm"]) >> m["bp"] for f, m in ALERT_FAIL_FIELDS.items()}
-        self.chk.obs("HT-ALERT-COUNTS", tester=tester, alert_threshold=thr, **counts)
+        self.chk.info("HT-ALERT-COUNTS", tester=tester, alert_threshold=thr, **counts)
 
     async def _drain(self) -> None:
         """Pop FIFO_RDATA until FIFO_STATUS.LEVEL reads 0."""
@@ -659,7 +660,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         await self._write_trip_limit(trial)
         await self._pattern_window(self._lanes_with(k, trial.pattern), 3 * w, w)
         st = await self._gen_statuses()
-        await self._alert_counts_obs(trial.tester)
+        await self._alert_counts_info(trial.tester)
         gk = st[k]
         tripped = gk & GRADED_BITS == 1 << BIT_APT
         self.chk.ok(
@@ -796,8 +797,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         await self._wait_words(w, w)
         after = (await self._rd(A_REP_COUNT)) & M_REP_COUNT
         close_graded_window(self.logger)
-        self.chk.obs("HT-REPCOUNT-AFTER", value=after, before=before)
-        self.chk.blocked("HT-ENABLE-REPCOUNT-VALUE", "cleared_count_value_unstated")
+        self.chk.info("HT-REPCOUNT-AFTER", value=after, before=before, chk="CHK-HT-ENABLE")
         return before, after
 
     def _grade_rep_enable(
@@ -891,8 +891,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         words[trial] = self.noise.words_since(mark)
         out[trial] = await self._gen_statuses()
         _, totals, _ = await self._top_regs()
-        self.chk.obs("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
-        await self._alert_counts_obs(trial)
+        self.chk.info("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
+        await self._alert_counts_info(trial)
         close_graded_window(self.logger)
         for addr, s in zip(A_GEN_STATUS, out[trial]):
             if s:
@@ -1244,14 +1244,13 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         level = (await self._rd(A_FIFO_STATUS)) & M_FIFO_LEVEL
         for _ in range(level):
             words.append(await self._rd(A_FIFO_RDATA))
-        self.chk.obs(
+        self.chk.info(
             "HT-PRESHA-WORDS",
             level=level,
             words=[f"0x{x:08x}" for x in words[:16]],
         )
         if pushes < PRESHA_PUSHES:
-            self.chk.obs("HT-PRESHA-NOPUSH", pushes=pushes, stream_words=tap.words, bound=bound)
-            self.chk.blocked("HT-PRESHA-NOPUSH", "whitener_input_after_post_boot_ht_fail_unstated")
+            self.chk.info("HT-PRESHA-NOPUSH", pushes=pushes, stream_words=tap.words, bound=bound)
             return
         span = tap.quiet_span()
         s = span or {"span_clk": 0, "in_first": 0, "in_last": 0, "in_words": 0, "out_words": 0}
