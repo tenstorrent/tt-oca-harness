@@ -117,13 +117,13 @@ set avs_mapped [expr { [cdc_ports_pinned] || ([sizeof_collection $avs_gate_cell]
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 1 \
-    -source [cdc_port_or_pin "clk_ref_i"] \
+    -source [get_ports "clk_ref_i"] \
     [get_pins "${avs_hier}/u_refclk_apbclk_mux/u_clk1_gate/clk_o"]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 1 \
-    -source [cdc_port_or_pin "clk_periph_i"] \
+    -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_refclk_apbclk_mux/u_clk0_gate/clk_o"]
 
 # Raw primaries stop at their gater outputs before the OR
@@ -149,14 +149,14 @@ if { $avs_mapped } {
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
-    -source [cdc_port_or_pin "clk_ref_i"] \
+    -source [get_ports "clk_ref_i"] \
     [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"]
 
 # AVS clock when sourced from PERIPHERALCLK (modes 00/01)
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
-    -source [cdc_port_or_pin "clk_periph_i"] \
+    -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"]
 
 # Same divided-clock intent on `u_clk_div/clk_o` (`pre_testmux_avs_clk`) so downstream
@@ -165,13 +165,13 @@ create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
-    -source [cdc_port_or_pin "clk_ref_i"] \
+    -source [get_ports "clk_ref_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
-    -source [cdc_port_or_pin "clk_periph_i"] \
+    -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
 # Internal `div_clk` net (flop -> prim_clock_buf clk_i): stamped so downstream STA can
@@ -180,13 +180,13 @@ create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 4 \
-    -source [cdc_port_or_pin "clk_ref_i"] \
+    -source [get_ports "clk_ref_i"] \
     [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_i"]
 
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
-    -source [cdc_port_or_pin "clk_periph_i"] \
+    -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_i"]
 
 # Toggle flop output (feeds u_div_clk_buf and u_postdiv_mux clk1_i). See the
@@ -197,13 +197,13 @@ if { [sizeof_collection [get_pins -quiet "${avs_hier}/u_clk_div/div_clk/Q"]] } {
     create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_REFCLK \
         -master_clock REFCLK \
         -divide_by 2 \
-        -source [cdc_port_or_pin "clk_ref_i"] \
+        -source [get_ports "clk_ref_i"] \
         [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
 
     create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
         -master_clock PERIPHERALCLK \
         -divide_by 4 \
-        -source [cdc_port_or_pin "clk_periph_i"] \
+        -source [get_ports "clk_periph_i"] \
         [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
 } else {
     puts "INFO: smc_clocks: u_clk_div/div_clk/Q does not exist yet; AVS_DIV_CLK_Q_FROM_REFCLK\
