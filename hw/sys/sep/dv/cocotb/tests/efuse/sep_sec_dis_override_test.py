@@ -877,7 +877,7 @@ class sep_sec_dis_override_test(sep_base_test):
           ``security_disable_i`` input "skips fuse sensing and opens the shadow
           registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
           writable true"; sep_efuse_map.rdl: ``required_signers`` is
-          ``sw = rw; onwrite = woset`` with reset 0, and the LOCKS bits reset to
+          ``sw = rw`` with reset 0, and the LOCKS bits reset to
           0. These lines state the shadow write after sense; no SEP line states
           it before sense under SEC_DIS.
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
@@ -925,8 +925,9 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_addr = SepEfuseImage.field("LC_STATE").shadow_addr
         _width, rs_fields = register_fields(rs_addr)
         rs_field = next(f for f in rs_fields if f.name == "required_signers")
-        assert rs_field.one_to_set and rs_field.reset is not None, (
-            "test bug: REQUIRED_SIGNERS.required_signers is not woset with a reset in the RDL"
+        assert rs_field.access == "read-write" and rs_field.reset is not None, (
+            "test bug: REQUIRED_SIGNERS.required_signers is not software-writable with a reset "
+            "in the RDL"
         )
         rs_reset = sum((f.reset or 0) << f.lsb for f in rs_fields)
         free = rs_field.mask & ~rs_reset
@@ -951,7 +952,7 @@ class sep_sec_dis_override_test(sep_base_test):
 
         self._require_sense_open("CTRL-SECDIS-SHADOW-WR", sec_dis=1)
         event = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
-        rs_resp, _ = await self.jtag_axil_op(write=True, addr=rs_addr, wdata=1 << rs_bit)
+        rs_resp, _ = await self.jtag_axil_op(write=True, addr=rs_addr, wdata=rs_pre | (1 << rs_bit))
         lc_wdata = (lc_pre & ~LC_FIELD_MASK & _M32) | lc_new
         lc_resp, _ = await self.jtag_axil_op(write=True, addr=lc_addr, wdata=lc_wdata)
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
