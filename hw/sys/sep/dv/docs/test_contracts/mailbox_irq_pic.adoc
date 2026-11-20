@@ -580,7 +580,7 @@ The shared config draws four distinct spares and stages `SIP_DIS` /
 . Stage write-lock and read-lock on two seed-selected spare fields, plus an unlocked spare as contrast, in one OTP image, and sense at `LC_PROD`.
 . Access the shadow aperture for each of the three, watching the interrupt probe on every clock of each access.
 . Each locked access is the first locked access after a SEP reset (`rst_ni` pulse and re-sense), and `[33]` must be low before it (CTRL-IRQ-IDLE). Segment 1 starts after a reset: write and read back the unlocked spare (CHK-UNLOCKED), then read the write-locked spare, write its complement, and read it again (CHK-WRITE-LOCK). Segment 2 starts after its own reset: read the sensed shadow word of the read-locked spare at `efuse_shadow_probe_o` and require the staged pattern (CTRL-READ-STAGED), then read the read-locked spare (CHK-READ-LOCK). The reset restores every shadow from OTP, and the base test compares the shadow with the staged image after each sense.
-. At each rise of `[33]` during a locked access, require every other vector bit to equal its value one clock before (CHK-SRC34-EXCL).
+. After the mark taken before each locked access, require `[33]` to rise (CHK-SRC34-RISE), and log the other vector bits that moved in the clock of the rise (INFO-SRC34-COINCIDENT).
 . Log the `[33]` level after each locked access and during the read that follows the locked write (OBS-LF-IRQ-DEASSERT). No specification sentence states that level.
 . Steps 3 to 5 run twice, with a reset between the runs: run 1 with the coverage window closed, then run 2 inside owner window 754 with the same accesses and checks. Run 2 opens the window for each segment and closes it before the reset. A FAIL in run 1 ends the leaf before the window opens; a FAIL in run 2 closes it first.
 
@@ -601,8 +601,10 @@ The shared config draws four distinct spares and stages `SIP_DIS` /
 |Before each read-locked read, the sensed shadow word of the read-locked spare (`efuse_shadow_probe_o`) equals the staged pattern. The sensing FSM reads a locked fuse into its shadow (`hw/sys/sep/doc/otp_fuse_controller.adoc:109-110`), and the pattern is in the OTP image before every sense of the leaf. A FAIL ends the leaf, because CHK-READ-LOCK would then compare against a value the field never held.
 |CHK-READ-LOCK
 |Bit [33] is high during the read, RRESP is SLVERR and RDATA is `0xBADCAB1E` (`hw/sys/sep/doc/otp_fuse_controller.adoc:110-112`: a shadow read that a lock blocks completes with SLVERR and read data `0xBADCAB1E`), and RDATA differs from the stored field value. The stored value is the shadow word that CTRL-READ-STAGED probed, and the PASS line prints that probed word. The staged pattern never equals `0xBADCAB1E`, so the compare with the marker and the compare with the stored value can both fail; a probed word equal to `0xBADCAB1E` fails the leaf as a test bug.
-|CHK-SRC34-EXCL
-|At each rise of `[33]` (source 34, `interrupts.adoc:190-192`; bit i is source i + 1 at `:23`) during a locked access, every other vector bit equals its value one clock before; the six unstated idle bits are not compared. Each locked access must show a rise. Catches an OR-network smear or alias.
+|CHK-SRC34-RISE
+|For each locked access, bit `[33]` of the interrupt vector rises after the mark taken before the access (source 34, `interrupts.adoc:190-192`; bit i is source i + 1 at `:23`; a blocked access raises the locked-field access interrupt, `otp_fuse_controller.adoc:113-114`). Each locked access must show a rise, so a run with no rise fails.
+|INFO-SRC34-COINCIDENT
+|(Logged, not graded.) For each locked access, the clock of the rise, the other vector bits that moved in the clocks after the mark, and the vector before and after the rise. The six unstated idle bits are not compared. No specification sentence states that no other bit moves, so no check grades it.
 |OBS-LF-IRQ-DEASSERT
 |(Logged, not graded.) The `[33]` level at the clock after each locked access retires, and during the read that follows the locked write. `interrupts.adoc:190-192` names source 34 and `otp_fuse_controller.adoc:107-110` states the locks; neither states whether the line is a pulse or a level, nor how it clears. Open specification question.
 |===
@@ -618,8 +620,9 @@ the sampler holds the legal value of that access, and the exclusive rise of
 source 34, with the tag, and samples them only when the leaf writes the tag to
 `ef_hold_pass` after every check of the access passed (CHK-UNLOCKED for the
 unlocked write and read, CHK-WRITE-LOCK for the pre-read, CHK-WRITE-LOCK and
-CHK-SRC34-EXCL for the locked write, CHK-READ-LOCK and CHK-SRC34-EXCL for the
-locked read). An illegal value samples at the response. The read after the
+CHK-SRC34-RISE for the locked write, CHK-READ-LOCK and CHK-SRC34-RISE for the
+locked read). The compare of the other vector bits in `cp_src_exclusive_other[s34]`
+runs in the sampler only. An illegal value samples at the response. The read after the
 locked write runs with tag 0 and samples nothing. A FAIL closes the window,
 which drops every held sample. The entry `sep_efuse_secure_tm_write_lock_test`
 (`+secure_tm_lock`) opens no window and fills no bin.
@@ -694,13 +697,13 @@ grades the rise on both lock flavours of one seed-selected spare; the
 |===
 |Checker |Contract
 |CHK-SECTM-CONTROL
-|With the strap low, the write lands and the value moves — set-only rows read back the OR-merge of the pre-write value and the payload; `LC_STATE[31:8]` reads back the payload — and `[33]` stays low.
+|With the strap low, the write lands and the value moves — set-only rows read back the OR-merge of the pre-write value and the payload — and `[33]` stays low. For `LC_STATE` the check grades that `[31:8]` reads back the payload: the sensed `[31:8]` is 0, so the line shows that the payload landed and grades no other rule for those bits.
 |CTRL-SECTM-LATCH
 |`secure_tm_o` reads 0 after the first sense with the strap low and 1 after the resense with the strap high (`hw/sys/sep/doc/test_mode.adoc:29`, fuse-sense completion samples the strap). The value is logged on the line. Any other value, or an X, fails the leaf before the half that depends on it.
 |CHK-SECTM-BLOCK
-|With the strap high, the stored value is unchanged: the bus readback equals the read before the write, and the sensed shadow word of the field on `efuse_shadow_probe_o` equals the word staged in the OTP image (the resense reloads every shadow from that image; `otp_fuse_controller.adoc:178-180`). The probe does not use the bus read path, so a read path that returns 0 at `secure_tm` = 1 cannot hide a refused write that reached the shadow.
+|With the strap high, the stored value is unchanged: the bus readback equals the read before the write, and the sensed shadow word of the field on `efuse_shadow_probe_o` equals the word staged in the OTP image (the resense reloads every shadow from that image; `otp_fuse_controller.adoc:181-183`). The probe does not use the bus read path, so a read path that returns 0 at `secure_tm` = 1 cannot hide a refused write that reached the shadow.
 |CHK-LOCK-WR-RESP
-|With the strap high, the BRESP of each refused write is SLVERR (`case=sectm`). Secure test mode adds a shadow write lock on these fields (`hw/ip/efuse/doc/architecture.adoc:402-403`; `otp_fuse_controller.adoc:178-180`), so a refused write is a write that a lock blocks, and `otp_fuse_controller.adoc:110-112` states SLVERR. A FAIL ends the leaf.
+|With the strap high, the BRESP of each refused write is SLVERR (`case=sectm`). Secure test mode adds a shadow write lock on these fields (`hw/ip/efuse/doc/architecture.adoc:407-408`; `otp_fuse_controller.adoc:181-183`), so a refused write is a write that a lock blocks, and `otp_fuse_controller.adoc:110-112` states SLVERR. A FAIL ends the leaf.
 |CHK-SECTM-IRQ
 |With the strap high, `[33]` rises during each refused write: it is low at the clock edge before the write and high at a clock edge during it (`otp_fuse_controller.adoc:110-112`: a blocked write raises the locked-field access interrupt; `interrupts.adoc:190-192` names source 34). The refused writes run back to back, so a `[33]` level still high from the previous refused write fails the check, because the rise of this write cannot be told from it. A FAIL ends the leaf. Evidence: `CHK-SECTM-IRQ PASS: <field>[<word>] refused write: [33] low_before=1 high_during=1`.
 |OBS-SECTM-IRQ
@@ -719,11 +722,12 @@ fuse bit. `LOCKS` and `LOCKS_SPARE` are the two windows of one field, so a
 refusal on either is the same lock. The refused write must not reach the
 shadow, and it completes with SLVERR and raises source 34 during the write
 (CHK-LOCK-WR-RESP, CHK-SECTM-IRQ): secure test mode adds a shadow write lock
-(`hw/ip/efuse/doc/architecture.adoc:402-403`) on the fields that
-`otp_fuse_controller.adoc:178-180` lists, so `otp_fuse_controller.adoc:110-112`
+(`hw/ip/efuse/doc/architecture.adoc:407-408`) on the fields that
+`otp_fuse_controller.adoc:181-183` lists, so `otp_fuse_controller.adoc:110-112`
 applies. `LC_STATE` is
-written in bytes [31:8], which take a plain shadow write and leave the
-lifecycle nibble alone.
+written in bytes [31:8], which leave the lifecycle nibble alone; a read of
+them returns what the fuse word or the last write left (`sep_efuse_map.rdl`
+`rsvd` desc).
 
 *Anti-vacuity*: each field takes the same address and the same payload in both
 conditions within one run, so a write path that never worked would fail the
