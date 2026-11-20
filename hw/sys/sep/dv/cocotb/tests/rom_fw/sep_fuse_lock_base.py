@@ -81,7 +81,7 @@ LOCKED_READ_FIELDS = ("CLASS_KEY", "RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DI
 
 
 def bl1_locked_read_nmi(field: str) -> str:
-    addr = RegBlock("SEP_EFUSE_MAP").addr(field)
+    addr = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").addr(field)
     return (
         f"LOCK_RD_NMI={field} N=0x00000001 MC=0x{MCAUSE_NMI_LOAD_BUS_ERROR:08X} DSEAC=0x{addr:08X}"
     )
