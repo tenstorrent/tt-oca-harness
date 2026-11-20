@@ -75,6 +75,8 @@ Module whose System Bus Access registers issue AXI transfers, one transfer at a
 time and one beat for each transfer. The request and response type parameters
 of a bridge set its bus type, address width and data width; the table lists the
 DTP defaults. `sbcs` of each bridge reports its address width and access sizes.
+No combinational path runs from the inputs of a bridge's manager port to its
+outputs.
 The registers, the transfer attributes, the reset behavior and the limits are in
 ifdef::backend-html5[]
 xref:ip:jtag_ptap/doc/index.adoc#ptap-jtag2axi-support[PTAP JTAG2AXI Support].

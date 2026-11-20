@@ -49,7 +49,7 @@ module dtp
   parameter logic [10:0]  JTAG_IDCODE_MFR_ID   = 11'h000,  // JTAG IDCODE manufacturer ID.
   parameter logic [15:0]  JTAG_IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number.
   parameter logic [3:0]   JTAG_IDCODE_SI_REV   = 4'h0,  // JTAG IDCODE silicon revision.
-  parameter logic [7:0]   JTAG_OCH_VER         = 8'h00,  // DTP IP major version number reported in
+  parameter logic [7:0]   JTAG_OCH_VER         = 8'h01,  // DTP IP major version number reported in
                                                          // JTAG_CAPS.
 
   localparam int unsigned  JtagNumExtraStapPorts = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.

@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="330" viewBox="0 0 1040 330" role="img" aria-labelledby="title desc">
 <title id="title">JTAG2AXI bridge structure</title>
-<desc id="desc">One JTAG2AXI bridge, the module jtag_dmi2axi. The DR scan of the DTMCS instruction reaches the 32-bit DTMCS register and the DR scan of the DMI instruction reaches the 41-bit DMI register; both registers are in the TCK domain. The DMI register exchanges its update and capture values with tdr2axi, and the dmireset bit of the DTMCS register gives tdr2axi a clear of the sticky DMI status. Inside tdr2axi, the TDR bridge carries each DMI request from TCK to clk_i and each response back, the Debug Module registers serve the request, and the System Bus Access engine with the AXI manager issues the AXI transfer. A demultiplexer passes the AXI request to the manager port of the bridge on output 0, or to an error slave that answers DECERR on output 1; security_disable_i selects output 1.</desc>
+<desc id="desc">One JTAG2AXI bridge, the module jtag_dmi2axi. The DR scan of the DTMCS instruction reaches the 32-bit DTMCS register and the DR scan of the DMI instruction reaches the 41-bit DMI register; both registers are in the TCK domain. The DMI register exchanges its update and capture values with tdr2axi, and the dmireset bit of the DTMCS register gives tdr2axi a clear of the sticky DMI status. Inside tdr2axi, the TDR bridge carries each DMI request from TCK to clk_i and each response back, the Debug Module registers serve the request, and the System Bus Access engine with the AXI manager issues the AXI transfer. A demultiplexer passes the AXI request to the manager port of the bridge on output 0, or to an error slave that answers DECERR on output 1; security_disable_i selects output 1. In a bridge with an AXI4 manager port, a register slice on every channel is between output 0 of the demultiplexer and the manager port.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -52,6 +52,10 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="t" x="736" y="198" text-anchor="middle">demux</text>
 <text class="s" x="758" y="176" text-anchor="end">0</text>
 <text class="s" x="758" y="240" text-anchor="end">1</text>
+<rect class="core" x="796" y="147" width="84" height="50" rx="4"/>
+<text class="t" x="838" y="168" text-anchor="middle">register</text>
+<text class="t" x="838" y="187" text-anchor="middle">slice</text>
+<text class="s" x="838" y="140" text-anchor="middle">AXI4 only</text>
 <rect class="external" x="796" y="210" width="84" height="50" rx="4"/>
 <text class="t" x="838" y="231" text-anchor="middle">error slave</text>
 <text class="s" x="838" y="250" text-anchor="middle">DECERR</text>
@@ -67,7 +71,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M500,129 L526,129"/>
 <path class="sigo" d="M592,158 L592,178"/>
 <path class="axi" d="M659,211 L701,211"/>
-<path class="axi" d="M771,172 L1010,172"/>
+<path class="axi" d="M771,172 L792,172"/>
+<path class="axi" d="M884,172 L1010,172"/>
 <text class="s" x="1012" y="162" text-anchor="end">AXI manager port</text>
 <path class="axi" d="M771,236 L792,236"/>
 <path class="sigo" d="M736,312 L736,258"/>

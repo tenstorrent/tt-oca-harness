@@ -79,7 +79,7 @@ module jtag_intf_unit
                                                   // JTAG_CAPS; at most 63.
   parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Number of internal cross triggers reported in
                                                   // JTAG_CAPS; at most 63.
-  parameter logic [7:0]   OCH_VER           = 8'h00,  // DTP IP major version number reported in
+  parameter logic [7:0]   OCH_VER           = 8'h01,  // DTP IP major version number reported in
                                                       // JTAG_CAPS.
 
   localparam int unsigned  NumExtraStapPorts = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,     // Width of the additional-STAP port arrays.

@@ -23,6 +23,7 @@
 // requires; a transfer accepted before the change completes on the port that took it.
 //
 // AXI4 requests leave with AxBURST INCR. They are single-beat, and tdr2axi marks them FIXED.
+// The AXI4 manager port has a register slice on every channel.
 
 module jtag_dmi2axi
   import prim_jtag_pkg::jtag_scan_ctrl_t;
@@ -75,6 +76,11 @@ module jtag_dmi2axi
 
   localparam int unsigned AddrWidth = $bits(axi_req_o.aw.addr);
   localparam int unsigned DataWidth = $bits(axi_req_o.w.data);
+
+  // tdr2axi and its Debug Module sources accept only these widths.
+  `OCAH_ASSERT_STATIC(ValidDataWidth_A, DataWidth == 32 || DataWidth == 64)
+  `OCAH_ASSERT_STATIC(ValidAddrWidth_A, AddrWidth >= $unsigned($clog2(DataWidth / 8))
+                      && AddrWidth <= 64)
 
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
@@ -235,6 +241,7 @@ module jtag_dmi2axi
     bridge_full_req_t  [1:0] demux_req;
     bridge_full_resp_t [1:0] demux_resp;
     bridge_full_req_t        target_req;
+    bridge_full_req_t        cut_req;
 
     tdr2axi #(
       .USE_AXI_LITE  (1'b0),
@@ -310,8 +317,27 @@ module jtag_dmi2axi
       target_req.ar.burst = axi_pkg::BURST_INCR;
     end
 
-    assign axi_req_o = axi_req_t'(target_req);
-    assign demux_resp[DemuxTarget] = bridge_full_resp_t'(axi_resp_i);
+    // The cut registers every channel of the manager port, so no combinational path runs from
+    // the inputs of the port to its outputs. The demultiplexer alone derives BREADY and RREADY
+    // of its target port from BVALID and RVALID.
+    axi_cut #(
+      .aw_chan_t (bridge_full_aw_chan_t),
+      .w_chan_t  (bridge_full_w_chan_t),
+      .b_chan_t  (bridge_full_b_chan_t),
+      .ar_chan_t (bridge_full_ar_chan_t),
+      .r_chan_t  (bridge_full_r_chan_t),
+      .axi_req_t (bridge_full_req_t),
+      .axi_resp_t(bridge_full_resp_t)
+    ) u_target_cut (
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .slv_req_i (target_req),
+      .slv_resp_o(demux_resp[DemuxTarget]),
+      .mst_req_o (cut_req),
+      .mst_resp_i(bridge_full_resp_t'(axi_resp_i))
+    );
+
+    assign axi_req_o = axi_req_t'(cut_req);
   end
 
 endmodule : jtag_dmi2axi
