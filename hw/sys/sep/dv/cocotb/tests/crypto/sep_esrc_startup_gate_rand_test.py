@@ -82,9 +82,7 @@ Checkers:
                     return to ``balanced``, so the run ends before strobe W/2 and only
                     the first window fails. Two grades (architecture.adoc:40-41: the gate
                     passes only after a passing boot window; entropy_source.rdl
-                    BOOT_PHASE_DONE; ``vendor/lowRISC/opentitan/upstream/hw/ip/
-                    entropy_src/doc/theory_of_operation.md``:45: a failure restarts
-                    startup testing and the next window is absorbed):
+                    BOOT_PHASE_DONE):
                     half=closed, from the enable to strobe W: BOOT_PHASE_DONE 0 and
                     FIFO LEVEL 0 at every poll, no strobe on ``esrc_compress_vld_o`` or
                     ``esrc_whiten_push_o``;
@@ -96,13 +94,20 @@ Checkers:
                     BOOT_PHASE_DONE 1.
                     Control: CTRL-BOOT-TRANSIENT, HEALTH_TEST_STATUS bit 0 reads 0 at a
                     poll before strobe W/4 and 1 at a poll before strobe W/2.
+  CHK-BOOT-ONE-WINDOW in the transient leg: BOOT_PHASE_DONE reads 1 no later than
+                    strobe stuck_first + 2W + 64 after the enable. The window that
+                    holds the first stuck0 strobe fails and ends by stuck_first + W,
+                    and the gate opens after one passing boot window
+                    (``hw/ip/entropy_source/doc/architecture.adoc``:40-41; the enable
+                    restarts startup testing, :230-231). The two-window rule of
+                    ``vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/doc/
+                    theory_of_operation.md``:41-46 is the FIPS startup test, which
+                    this block has no register to select. A gate that waits for two
+                    passing windows opens near strobe 3W and fails. The same line
+                    logs the strobes from the end of the stuck0 run to that read.
 Every bound is a multiple of a clean time of the same seed and is logged.
 Logged only: INFO-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
-(not graded; no open specification question). OBS-BOOT-CLEAN-COUNT, in the transient leg, the
-strobes from the enable to the end of the stuck0 run, to the first HEALTH_TEST_STATUS
-bit 0 read and to the first BOOT_PHASE_DONE 1 read, and the strobes from the end of the
-run to that read (no text fixes the passing windows before BOOT_PHASE_DONE: one window
-in architecture.adoc:40-41, two in theory_of_operation.md:43).
+(not graded; no open specification question).
 """
 
 from __future__ import annotations
@@ -194,6 +199,10 @@ HOLD_FACTOR = 3
 TRANSIENT_START = WINDOW // 4
 TRANSIENT_EXTRA = 8
 TRANSIENT_WINDOWS = 4
+# Strobes past stuck_first + 2W allowed for the MAIN_SM_STATUS poll that reads
+# BOOT_PHASE_DONE 1; fewer than the REPETITION_LIMIT + TRANSIENT_EXTRA strobes of
+# the stuck0 run.
+BOOT_DONE_MARGIN = 64
 MAX_POPS = 4 * 64
 PRE_CLEAN_MAX = 16
 
@@ -262,6 +271,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         "CHK-BOOT-FALL-KEEP",
         "CHK-BOOT-TOGGLE",
         "CHK-BOOT-TRANSIENT",
+        "CHK-BOOT-ONE-WINDOW",
     )
 
     async def run_scenario(self) -> None:
@@ -960,11 +970,14 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             last_closed_read_clk=closed_clk,
             first_push_clk=push_clk if push_clk is not None else "none",
         )
-        self.chk.obs(
-            "BOOT-CLEAN-COUNT",
+        upper = stuck_first + 2 * WINDOW + BOOT_DONE_MARGIN
+        self.chk.ok(
+            "BOOT-ONE-WINDOW",
+            done_word is not None and done_word <= upper,
             window=WINDOW,
-            stuck_end_strobe=stuck_end,
-            ht_fail_strobe=ht_word if ht_word is not None else "none",
             done_strobe=done_word if done_word is not None else "none",
+            upper_bound_strobes=upper,
+            stuck_strobes=f"{stuck_first}-{stuck_end}",
+            ht_fail_strobe=ht_word if ht_word is not None else "none",
             strobes_stuck_end_to_done=done_word - stuck_end if done_word is not None else "na",
         )

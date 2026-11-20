@@ -29200,8 +29200,8 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      // While the integrity error persists ERR latches again whatever a write
-      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      // A write of 0 cannot fail while the integrity error persists (INFO-SM-ERR-CAUSE-W0);
+      // a write of 0 with no cause left is in this cell too, graded by CHK-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
       // A write of 1 clears ERR once the state machine error output that set it
       // is gone (CHK-SM-ERR-W1C).

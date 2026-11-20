@@ -21,7 +21,11 @@ Output FIFO):
   * A source whose ``INTR_ENABLE`` bit is 0 raises no interrupt
     (``hw/ip/entropy_source/regs/entropy_source.rdl``:168-210): with every enable bit 0,
     PIC source 16 (bit 15 of ``sep_internal_interrupts``, ``hw/sys/sep/doc/interrupts.adoc``
-    :22-24, :109-111) stays 0 while a FIFO overflow or underflow is live.
+    :22-24, :109-111) stays 0 while a FIFO overflow or underflow is live, and reads 1
+    when only the enable bit of that live cause is set (:183, :188).
+  * ``FIFO_ERROR`` is a ``level intr`` field (entropy_source.rdl:117-123): while a
+    pointer-copy mismatch holds and FIFO_ERROR has set before any pop or push, a
+    write-one clear does not leave it at 0.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. The exact-pattern noise
@@ -63,6 +67,14 @@ Checkers:
                          the FIFO is first filled to 64 and popped down to H, so a
                          misaddressed pop reads an entry with a matching parity.
   CHK-FIFO-INTEG-W1C     the parity trial bit reads 1, then 0 after the write-one clear.
+  CHK-FIFO-PTR-W1C       with the pointer-copy inject held and no pointer moved since it
+                         rose, FIFO_ERROR reads 1 after its write-one clear. Graded only
+                         when FIFO_ERROR reads 1 under the inject within 16 x the clean
+                         pop time, before any pop or push; otherwise
+                         INFO-FIFO-PTR-W1C logs set_under_inject=0 and the read after
+                         the clear (no text states when a pointer-copy mismatch sets
+                         FIFO_ERROR). Control: CTRL-FIFO-PTR-W1C logs the branch, and in
+                         the graded branch FIFO_ERROR reads 0 before the inject.
   CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
                          clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
                          control: CTRL-FIFO-FLAGS sees both at 1 before the clear.
@@ -74,6 +86,8 @@ Checkers:
                          raises source 16 (entropy_source.rdl:193); CTRL-ESRC-LIVE-CAUSE,
                          the same cause with only its enable set, after a write-one clear,
                          sets its INTR_STATUS bit (entropy_source.rdl:129, :136).
+  CHK-ESRC-LIVE-PIC16    in that same state (only the live cause's enable bit set),
+                         PIC source 16 reads 1, for FIFO_OVERFLOW and FIFO_UNDERFLOW.
   CHK-FIFO-STREAM-FULL   with LEVEL held at 64, the stream port (``esrc_compress_vld_o``)
                          carries at least one word in a window of 2 x the longest gap
                          between stream words of the fill, and LEVEL reads 64 after it
@@ -94,9 +108,7 @@ Checkers:
                          word from the end of the reset wait to the graded read,
                          BOOT_PHASE_DONE = 0 and FIFO_CTRL.ENABLE = 1 (its reset value)
                          after it.
-Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
-cause enabled: the register text does not state which enabled status bits drive source 16),
-``INFO-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
+Logged only: ``INFO-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
 names no partner for them), ``OBS-FIFO-ERR-ALERT`` (after the parity and the pointer
 trial, with FIFO_ERROR as read: the ESRC interrupt line, and LEVEL and WPTR before and
 after the stream offers a word with ENABLE = 1; no text states an alert or a write stop
@@ -341,6 +353,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         "CHK-FIFO-FLAGS-CLEAR",
         "CHK-FIFO-STREAM-FULL",
         "CHK-ESRC-LIVE-MASKED",
+        "CHK-ESRC-LIVE-PIC16",
         "CHK-FIFO-TRNG-RESET",
     )
 
@@ -929,7 +942,14 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             intr_status=f"0x{st:08x}",
             **fields,
         )
-        self.chk.obs("ESRC-LIVE-PIC16", cause=cause, intr_enable=f"0x{en:08x}", vector_bit15=pic)
+        self.chk.ok(
+            "ESRC-LIVE-PIC16",
+            pic == 1,
+            cause=cause,
+            intr_enable=f"0x{en:08x}",
+            intr_status=f"0x{st:08x}",
+            vector_bit15=pic,
+        )
 
     async def _live_cause_leg(self) -> None:
         """Overflow with the producer running into a full FIFO, then underflow once empty."""
@@ -1096,6 +1116,39 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         dut.esrc_fifo_ptr_bit_i.value = plan.ptr_bit
         dut.esrc_fifo_ptr_inject_i.value = 1
         await ClockCycles(dut.clk_i, 2)
+        # The held copy mismatches its partner until a pointer moves, so the cause
+        # persists through the write-one clear only before the first pop or push.
+        # The relatch is graded only when FIFO_ERROR sets before any operation.
+        bound = LAT_FACTOR * clean_pop
+        held_set, _, set_clk = await self._poll(
+            ESRC_INTR_STATUS, lambda v: _get(v, "INTR_STATUS", "FIFO_ERROR"), bool, bound
+        )
+        await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
+        relatch = await self._fifo_error()
+        self.chk.ctrl(
+            "FIFO-PTR-W1C",
+            e1 == 0 or not held_set,
+            branch="at_once" if held_set else "not_set",
+            pre_inject_error=e1,
+            set_under_inject=int(held_set),
+            set_clk=set_clk if held_set else "none",
+            bound=bound,
+        )
+        w1c = {
+            "set_under_inject": int(held_set),
+            "after_w1c": relatch,
+            "pointer": plan.pointer,
+            "copy": plan.copy,
+            "bit": plan.ptr_bit,
+        }
+        if held_set:
+            self.chk.ok("FIFO-PTR-W1C", relatch == 1, **w1c)
+        else:
+            self.chk.info(
+                "FIFO-PTR-W1C",
+                **w1c,
+                reason="set_timing_of_pointer_copy_mismatch_not_stated",
+            )
         w0 = self.tap.words
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         wbound = self._word_bound()
@@ -1105,7 +1158,6 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         word_passed = self.tap.words > w0
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._rd(ESRC_FIFO_RDATA)
-        bound = LAT_FACTOR * clean_pop
         detect, _, clocks = await self._poll(
             ESRC_INTR_STATUS, lambda v: _get(v, "INTR_STATUS", "FIFO_ERROR"), bool, bound
         )
@@ -1129,5 +1181,4 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         self.chk.ok("FIFO-INTEG-PTR", ok and detect and e0 == 0 and e1 == 0, **fields)
         await self._err_alert_obs("pointer")
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
-        self.chk.obs("FIFO-PTR-W1C", fifo_error=await self._fifo_error())
         close_graded_window(self.logger)

@@ -1337,13 +1337,12 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             bound=self._LEG_RISE_BOUND,
             hold=4 * tr,
         )
-        # Which register names the contributor of source 16 is an open specification
-        # question: the INTR_STATUS value with the line is logged only.
-        self.chk.obs(
+        self.chk.info(
             "ESRC-CONTRIBUTOR",
             run=self._run_tag,
             line=self.evec.level(),
             intr_status=f"0x{st:08x}",
+            chk="CHK-ESRC-PAIR",
         )
         # Clear one of the two: the line stays high, and the cleared bit drops (probe).
         mc = self.evec.mark()

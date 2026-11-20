@@ -742,7 +742,14 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             reason="ok" if all_clean else "timeout_or_no_error",
         )
 
-        self.chk.obs("KMAC-TIMER-CLK", t=t, p=self.plan.p, p0_err_clk=clks(p0), p_err_clk=clks(pp))
+        self.chk.info(
+            "KMAC-TIMER-CLK",
+            t=t,
+            p=self.plan.p,
+            p0_err_clk=clks(p0),
+            p_err_clk=clks(pp),
+            chk="CHK-KMAC-TIMER",
+        )
 
         def err_code(run: dict) -> int | None:
             return (run["code"] >> ERR_CODE_LSB) & 0xFF if "code" in run else None

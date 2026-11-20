@@ -86,18 +86,16 @@ Checkers:
                      after the recovery sequence, not that err_processed was
                      needed: the blocked start left STATUS idle, and no text
                      states that a start before err_processed is refused.
-                     ``OBS-KMAC-ERRPROC-DONE`` logs ``INTR_STATE.kmac_done`` on
-                     the read after err_processed and the W1C of kmac_err (which
-                     writes bit 2 only).
+                     ``INFO-KMAC-ERRPROC-DONE`` (``chk=CHK-KMAC-ERRPROC``, which
+                     grades kmac_err and sha3_idle of the same read) logs
+                     ``INTR_STATE.kmac_done`` on the read after err_processed and
+                     the W1C of kmac_err (which writes bit 2 only). The bit is
+                     not graded: the blocked start leaves the engine idle, so no
+                     return to ready follows it, and
                      ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/
-                     programmers_guide.md``:202 says "If the error occurred while
-                     the KMAC HW IP was being used from SW ..., the `kmac_done`
-                     IRQ is raised when the KMAC HW IP is ready again."; the TT
-                     RDL text of ``CMD.err_processed`` and
-                     ``en_unsupported_modestrength`` does not say whether a start
-                     that is not propagated leaves a state machine in its error
-                     state. The DUT reads 0 there, and that gap is open, so the
-                     bit is logged, not graded.
+                     programmers_guide.md``:202 ("the `kmac_done` IRQ is raised
+                     when the KMAC HW IP is ready again") does not cover a start
+                     that never left idle.
   CHK-KMAC-MODE01-DONE  mode 2'b01, en bit 1, after the message and
                      ``CMD.process``: ``INTR_STATE.kmac_done`` reads 0 after the
                      start and reads 1 within ``_OUTER_CLK`` clocks of the
@@ -717,14 +715,13 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         status = await self._rd(KMAC_STATUS)
         err_cleared = int(_bits(intr, _ERR) == 0)
         idle = _bits(status, _IDLE)
-        # programmers_guide.md:202 states kmac_done for this case; the DUT reads 0 (open).
-        self.chk.obs(
+        self.chk.info(
             "KMAC-ERRPROC-DONE",
             **fields,
             kmac_done=_bits(intr, _DONE),
-            expected_text=1,
             idle=idle,
             intr=f"0x{intr & _INTR_MASK:x}",
+            chk="CHK-KMAC-ERRPROC",
         )
 
         await self._write_cfg(_cfg_word("sha3", _RECOVER_STRENGTH, 0))
