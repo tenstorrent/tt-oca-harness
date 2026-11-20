@@ -37,7 +37,7 @@ Mechanism and Token Submission):
                     written; a match read of a channel with a go returns the SHA-256
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
                     interface-control access answers SLVERR
-                    (``hw/ip/efuse/doc/architecture.adoc:351-353``), a denied read
+                    (``hw/ip/efuse/doc/architecture.adoc:355-357``), a denied read
                     returns the read data 0xBADCAB1E
                     (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``), and
                     the target reads the same at the frontdoor before and after; the
@@ -63,7 +63,7 @@ Mechanism and Token Submission):
   CHK-JTAG-SHIM-DENY  a JTAG read and a JTAG write of the shim span (every address
                     outside the MAP window to the end of the last register window, which
                     the controller sends to the shim's bank control registers) answer
-                    SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: accesses
+                    SLVERR (``hw/ip/efuse/doc/architecture.adoc:355-357``: accesses
                     outside the MMR space are blocked with an SLVERR response), and
                     the read returns the read data 0xBADCAB1E
                     (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``).
@@ -141,7 +141,7 @@ FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 DBG_MASK = DBG1_MASK | DBG2_MASK
 M32 = 0xFFFF_FFFF
 OKAY = 0
-# hw/ip/efuse/doc/architecture.adoc:351-353: in PROD and RMA_SIP a SEP JTAG access
+# hw/ip/efuse/doc/architecture.adoc:355-357: in PROD and RMA_SIP a SEP JTAG access
 # outside the MMR space is blocked with an SLVERR response.
 DENY_RESP = RESP_SLVERR
 # hw/sys/sep/doc/otp_fuse_controller.adoc:128-131: in PROD and RMA_SIP every JTAG access
@@ -302,7 +302,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
 
     async def _shim_deny(self) -> None:
         """CHK-JTAG-SHIM-DENY: the JTAG read and the JTAG write of the drawn shim-span
-        addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: in PROD
+        addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:355-357``: in PROD
         and RMA_SIP a SEP JTAG access outside the MMR space is blocked with an SLVERR
         response), and the JTAG read returns ``DENY_RDATA``
         (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
@@ -507,7 +507,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         """A frontdoor read and a JTAG read of one shadow word, started on the same clock.
 
         CHK-JTAG-CONCURRENT: the JTAG read answers SLVERR
-        (``hw/ip/efuse/doc/architecture.adoc:351-353``) with the read data ``DENY_RDATA``
+        (``hw/ip/efuse/doc/architecture.adoc:355-357``) with the read data ``DENY_RDATA``
         (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``), and the
         frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
         it shares the word). The frontdoor response code is logged in the same line.
