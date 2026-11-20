@@ -65,10 +65,15 @@ Checkers:
   CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
                     read-interface request on a read-locked field: after the full W
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
-                    (``hw/ip/efuse/doc/architecture.adoc:252-254``: a locked target
+                    (``hw/ip/efuse/doc/architecture.adoc:255-257``: a locked target
                     completes the operation with an error;
-                    ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
+                    ``efuse_interface_ctrl.rdl:127`` ``read_done``, ``:145``
                     ``read_status``). The line prints both values and the expected 1.
+                    Control CTRL-LOCK-READ-PRE: an accepted read of ``LOCKS`` runs
+                    first, and ``EFUSE_READ_CTRL`` read before the go shows
+                    ``read_done`` 1 and ``read_status`` 0, so the Error is set by
+                    this request; the line prints ``pre_read_done`` and
+                    ``pre_read_status``.
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -101,17 +106,17 @@ Checkers:
                     (cleared and read back before the go) and the write-one clear
                     returns it to 0, with no bank bit change, no program command at
                     the post-guard tap and no valid or ``psel`` pulse from the go to the
-                    disable write (``efuse_interface_ctrl.rdl:24, 43, 82``;
-                    ``hw/ip/efuse/doc/architecture.adoc:247-249``). The status reads,
+                    disable write (``efuse_interface_ctrl.rdl:24, 43, 76``;
+                    ``hw/ip/efuse/doc/architecture.adoc:255-257``). The status reads,
                     the clears and the disable write are frontdoor. When no write-locked
                     shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
                     word has one (``no_twin_bit``), the leaf logs ``INFO-BLOCKED
                     CHK-LOCK-JTAG-WR part=shadow_write`` and grades the program part.
                     The twin program runs first and ends with ``program_done`` 1 and
                     ``program_status`` 0; the refused program then moves ``program_status`` from 0
-                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:247-249``:
+                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:255-257``:
                     a locked target completes the operation with an error;
-                    ``efuse_interface_ctrl.rdl:96-107``; the field is read-only and holds its value
+                    ``efuse_interface_ctrl.rdl:90-101``; the field is read-only and holds its value
                     until the next program completes, so ``pre_status`` is read before the go). Logged, not
                     graded: ``twin_wr_resp`` (the response of the accepted twin write) and
                     ``go_resp`` (the response of the program go write); no specification text
@@ -159,8 +164,8 @@ Checkers:
                     ``program_done`` 1 and ``program_status`` 0 (No Error). A
                     read-lock blocks reads and a write-lock blocks programming; the
                     two locks act independently (``otp_fuse_controller.adoc:110-111,
-                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:242-244``;
-                    ``efuse_interface_ctrl.rdl:102-103`` ``program_status``). Every
+                    286-287, 297, 307``; ``hw/ip/efuse/doc/architecture.adoc:245-247``;
+                    ``efuse_interface_ctrl.rdl:96-97`` ``program_status``). Every
                     other leaf logs ``CHK-UID-RDLOCK-PROG N/A`` with the reason (the
                     leaf kind, or ``no_unlocked_uid_slot``); a lock leg whose UID
                     field has no 0 bit fails the check.
@@ -176,7 +181,10 @@ twin slot; the exempt cell has the ``CLASS_KEY`` blocked request (read interface
 frontdoor read, the frontdoor read graded as in CHK-LOCK-CELL) and the ``LOCKS``
 accepted request (``CTRL-LOCK-EXEMPT-RL``, ``CTRL-LOCK-EXEMPT-TWIN``); the order cell
 has a control write on a second slot (``CTRL-LOCK-ORDER-PATH``) and the third bit
-absent before its write (``CTRL-LOCK-ORDER-THIRD``); the chain compares all 256
+absent before its write (``CTRL-LOCK-ORDER-THIRD``); each write of 0 to ``LOCKS`` that
+CHK-LOCK-ORDER and CHK-LOCK-SLOT0-STORE grade as leaving the bits set returns a B
+response code at the port (``CTRL-LOCK-ZERO-WR-REACH``, ``step=order`` and
+``step=slot0``), so a write that never reached the DUT fails; the chain compares all 256
 words after the first sense with the staged image. The JTAG read of the unlocked
 word is the accepted twin of the blocked JTAG read, in the same CHK-LOCK-JTAG-RD
 line; the landed program and the bank gain are the positive probe of
@@ -254,7 +262,9 @@ from env.sep_efuse_plan import (
     DIGEST_FIELDS,
     LOCK_SLOT_FIELD,
     NARROW_USED,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     SECRET_FIELDS,
     SLOT_OF_FIELD,
@@ -266,9 +276,12 @@ from env.sep_efuse_plan import (
     field_used_masks,
     field_word,
     plan,
+    program_addr_word,
     program_ctrl_word,
+    read_addr_word,
     read_ctrl_word,
     read_lock_bit,
+    require_addr_readback,
     shadow_addr,
     write_lock_bit,
 )
@@ -324,8 +337,8 @@ _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
 # A locked target completes the operation with an error: ``read_done`` 1 and
 # ``read_status`` 1 (Error).
 _READ_DONE_CONTRACT = (
-    "efuse/doc/architecture.adoc:252-254(Hardware_vs_Software_Locks),"
-    "efuse_interface_ctrl.rdl:139,145(EFUSE_READ_CTRL.read_done,read_status)"
+    "efuse/doc/architecture.adoc:255-257(Hardware_vs_Software_Locks),"
+    "efuse_interface_ctrl.rdl:127,133(EFUSE_READ_CTRL.read_done,read_status)"
 )
 
 _KIND_W = ("write", "write_read")
@@ -550,16 +563,29 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         await self._wr(STATUS_ADDR, _CLEAR3)
         return await self._req_err_now()
 
-    async def _read_if(self, bit_addr: int) -> dict[str, Any]:
+    async def _read_if(self, bit_addr: int, *, prime: bool = False) -> dict[str, Any]:
         """Read bit ``bit_addr`` through the read interface: go, full W, status, disable.
 
         ``efuse_req_error`` is sticky, so the request reads it before the go
         (``pre_req_err``) and after its own clear (``clr_req_err``); a blocked read
-        graded on a flag that was already set cannot pass.
+        graded on a flag that was already set cannot pass. ``read_done`` and
+        ``read_status`` hold the last request's value, so the request also reads
+        ``EFUSE_READ_CTRL`` before the go (``pre_done``, ``pre_status``). With
+        ``prime`` an accepted read of ``LOCKS`` (no lock slot) runs first, so a
+        blocked request starts from ``read_status`` 0.
         """
+        if prime:
+            await self._wr(READ_ADDR_ADDR, read_addr_word(bit_address("LOCKS")))
+            await self._wr(READ_CTRL_ADDR, read_ctrl_word())
+            await ClockCycles(cocotb.top.clk_i, self.w)
+            await self._wr(READ_CTRL_ADDR, 0)
+        pre_ctrl = await self._rd32(READ_CTRL_ADDR)
         pre = await self._req_err_now()
+        addr = read_addr_word(bit_addr)
+        await self._wr(READ_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd32, READ_ADDR_ADDR, addr)
         start = self._pulse_mark()
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, self.w)
         ctrl = await self._rd32(READ_CTRL_ADDR)
         st = await self._rd32(STATUS_ADDR)
@@ -571,6 +597,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "status": _bit(ctrl, _RD_STATUS),
             "req_err": _bit(st, _REQ_ERR),
             "pre_req_err": pre,
+            "pre_done": _bit(pre_ctrl, _RD_DONE),
+            "pre_status": _bit(pre_ctrl, _RD_STATUS),
             "clr_req_err": "na",
         }
         if r["req_err"] or r["status"]:
@@ -589,7 +617,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
         start = self._pulse_mark() if watch else None
-        go_resp = await (wr or self._wr)(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr))
+        write = wr or self._wr
+        addr = program_addr_word(bit_addr)
+        await write(PROGRAM_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd32, PROGRAM_ADDR_ADDR, addr)
+        go_resp = await write(PROGRAM_CTRL_ADDR, program_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, self.w)
         progs = self.shim.programs_since(mark) if mark is not None else None
         diff = self.bank.diff_since(snap)
@@ -807,7 +839,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             f["rd_pre_req_err"] = "na"
             f["rd_clr_req_err"] = "na"
         else:
-            r = await self._read_if(read_bit["addr"])
+            r = await self._read_if(read_bit["addr"], prime=bool(rl))
             f["rd_if"] = "blocked" if rl else "accepted"
             f["rd_req_err"] = r["req_err"]
             f["rd_pre_req_err"] = r["pre_req_err"]
@@ -822,6 +854,17 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
+                self._control(
+                    "LOCK-READ-PRE",
+                    r["pre_done"] == 1 and r["pre_status"] == 0,
+                    slot=slot,
+                    field=name,
+                    bit_addr=read_bit["addr"],
+                    pre_read_done=r["pre_done"],
+                    exp_pre_read_done=1,
+                    pre_read_status=r["pre_status"],
+                    exp_pre_read_status=0,
+                )
                 self._grade(
                     "LOCK-READ-DONE",
                     r["done"] == 1 and r["status"] == 1,
@@ -829,6 +872,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     slot=slot,
                     field=name,
                     bit_addr=read_bit["addr"],
+                    pre_read_done=r["pre_done"],
+                    pre_read_status=r["pre_status"],
                     read_done=r["done"],
                     exp_read_done=1,
                     read_status=r["status"],
@@ -1580,6 +1625,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         # Step 11: a zero write to LOCKS keeps the lock; a third-bit write is blocked.
         for k in range(2):
             zero_resps.append(await self._wr(shadow_addr("LOCKS", k), 0, shadow=True))
+        self._control(
+            "LOCK-ZERO-WR-REACH",
+            all(0 <= r <= 3 for r in zero_resps),
+            step="order",
+            zero_wr_resp="/".join(resp_name(r) for r in zero_resps),
+        )
         locks_after = await self._locks()
         lock_after_zero = (locks_after >> lock_bit) & 1
         before_c = self._probe(name)
@@ -1643,6 +1694,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         set_resp = await self._wr(shadow_addr("LOCKS", 0), slot0, shadow=True)
         after_set = await self._locks()
         zero_resp = await self._wr(shadow_addr("LOCKS", 0), 0, shadow=True)
+        self._control(
+            "LOCK-ZERO-WR-REACH",
+            0 <= zero_resp <= 3,
+            step="slot0",
+            zero_wr_resp=resp_name(zero_resp),
+        )
         after_zero = await self._locks()
         self._grade(
             "LOCK-SLOT0-STORE",

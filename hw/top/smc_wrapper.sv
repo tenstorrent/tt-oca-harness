@@ -13,9 +13,20 @@
 // The Chipyard CPU ROM/scratch/L1$ macros sit inside smc_ip_integration.sv
 // alongside the rest of the technology-specific IP, so smu_wrapper.sv picks
 // them up from the same module.
+//
+// The supplementary fuse region defaults to the example map in smc_supplementary_fuse_example_pkg.
 //-----------------------------------------------------------------------------
 
-module smc_wrapper (
+module smc_wrapper #(
+  parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '{  // Supplementary fuse
+                                                                              // region.
+      BASE: smc_supplementary_fuse_example_pkg::Base,
+      WORDS: smc_supplementary_fuse_example_pkg::FuseWords,
+      LOCK_REGION_END: smc_supplementary_fuse_example_pkg::LockRegionEnd
+  },
+  localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS)
+) (
   input  logic powergood_i,
   output logic powergood_stable_o,
 
@@ -46,6 +57,7 @@ module smc_wrapper (
   input  smc_pkg::smc_axil_32_32_resp_t axil_dtp_csr_resp_i,
 
   output smc_efuse_pkg::efuse_map_t shadow_regs_o,
+  output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0] supplementary_shadow_regs_o,
 
   // GPIO control (lsio select passed through; per-pin pad I/O replaced by
   // gpio_pad_io below)
@@ -239,7 +251,9 @@ module smc_wrapper (
   // SMC core        //
   /////////////////////
 
-  smc u_smc (
+  smc #(
+    .SUPPLEMENTARY_FUSE(SUPPLEMENTARY_FUSE)
+  ) u_smc (
     .clk_smc_i    (clk_sys),
     .clk_ref_i    (clk_ref),
     .clk_periph_i (clk_periph),
@@ -265,6 +279,7 @@ module smc_wrapper (
     .axil_dtp_csr_req_o,
     .axil_dtp_csr_resp_i,
     .shadow_regs_o,
+    .supplementary_shadow_regs_o,
     .lsio_interface_select_o,
     .rst_cool_n_from_pin_i,
     .spi_enable_i,

@@ -92,7 +92,12 @@ from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_image import WORD_MASK, SepEfuseImage
-from env.sep_efuse_plan import PROGRAM_CTRL_ADDR, program_ctrl_word
+from env.sep_efuse_plan import (
+    PROGRAM_ADDR_ADDR,
+    PROGRAM_CTRL_ADDR,
+    program_addr_word,
+    program_ctrl_word,
+)
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_fuse_plan import OTP_SHADOW_WRITE_FIELDS, T_OTP_IFACE, KmFusePlan, plan
 from env.sep_seeded_rng import SepSeededRng
@@ -1385,9 +1390,12 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     # --- fuse fields outside the KM interface, programmed and sensed ----------------------
 
     async def _program(self, bit_addr: int) -> tuple[bool, int]:
-        """Program one fuse bit through ``EFUSE_PROGRAM_CTRL``; (done and clean, last read)."""
+        """Program one fuse bit: address, then go; (done and clean, last read)."""
         dut = cocotb.top
-        _, wr_ok = await self._host(SepAxiOp.WRITE, PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr))
+        _, addr_ok = await self._host(
+            SepAxiOp.WRITE, PROGRAM_ADDR_ADDR, program_addr_word(bit_addr)
+        )
+        _, wr_ok = await self._host(SepAxiOp.WRITE, PROGRAM_CTRL_ADDR, program_ctrl_word())
         pg, rd_ok = 0, False
         for _ in range(PROGRAM_POLLS):
             pg, rd_ok = await self._host(SepAxiOp.READ, PROGRAM_CTRL_ADDR)
@@ -1395,7 +1403,14 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 break
             await ClockCycles(dut.clk_i, PROGRAM_GAP)
         _, clr_ok = await self._host(SepAxiOp.WRITE, PROGRAM_CTRL_ADDR, 0)
-        ok = wr_ok and rd_ok and clr_ok and bool(pg & _PG_DONE) and not pg & (_PG_BUSY | _PG_STATUS)
+        ok = (
+            addr_ok
+            and wr_ok
+            and rd_ok
+            and clr_ok
+            and bool(pg & _PG_DONE)
+            and not pg & (_PG_BUSY | _PG_STATUS)
+        )
         return ok, pg
 
     async def _program_bits(self, bits: list[FuseBit]) -> tuple[int, list[str]]:

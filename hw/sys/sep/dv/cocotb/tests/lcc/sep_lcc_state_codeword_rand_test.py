@@ -73,8 +73,8 @@ Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
                     under ``jtag_filter_lc_sigint_inject_i``, a JTAG read of a shadow
                     word and of ``EFUSE_PROGRAM_CTRL``, a JTAG write to ``SIP_DIS`` and
                     a JTAG write to ``EFUSE_READ_REQ_TIMEOUT`` answer SLVERR and
-                    change nothing at the frontdoor (``hw/ip/efuse/doc/architecture.adoc:326``:
-                    a decode integrity error is a restricted state, ``:351-353``: a SEP
+                    change nothing at the frontdoor (``hw/ip/efuse/doc/architecture.adoc:330``:
+                    a decode integrity error is a restricted state, ``:355-357``: a SEP
                     JTAG access outside the MMR space in a restricted state is blocked
                     with an SLVERR response); the token word
                     writes, the token word read, the go and the match read answer

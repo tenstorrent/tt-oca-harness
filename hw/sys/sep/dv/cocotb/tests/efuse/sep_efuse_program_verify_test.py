@@ -26,7 +26,7 @@ The first bank write after reset is dropped:
                       golden has a bit set that is clear in the held word, the READ
                       returns its golden and EFUSE_PROGRAM_INTERFACE_READ_DATA still
                       equals the word of the kept program
-                      (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:156``: held until the
+                      (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:144``: held until the
                       next successful program). A register that loads, ORs in, or
                       loads only a non-zero READ result fails.
 

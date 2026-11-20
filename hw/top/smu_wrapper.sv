@@ -29,17 +29,25 @@
 //
 // This is a reference integration example, provided for adopters to
 // substitute with their own vendor IP/macros.
+//
+// With SUPPLEMENTARY_FUSE_EXAMPLE set, the SMC supplementary fuse region is the example map
+// in smc_supplementary_fuse_example_pkg, in place of the region CFG describes.
 //-----------------------------------------------------------------------------
 
 module smu_wrapper #(
   parameter int unsigned CFG_IDX = 0,
   parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
+  parameter bit   SUPPLEMENTARY_FUSE_EXAMPLE = 1'b1,  // Set to replace the CFG supplementary fuse region
+                                                // with the example map.
 
   localparam int unsigned  XtrigNumCtp          = CFG.XTRIG_NUM_CTP,
   localparam int unsigned  XtrigNumIntCt        = CFG.XTRIG_NUM_INT_CT,
   localparam int unsigned  XtrigNumClkStopReq   = CFG.XTRIG_NUM_CLK_STOP_REQ,
-  localparam int unsigned  JtagNumExtraStapPorts = smu_pkg::jtag_num_extra_stap_ports(CFG)
+  localparam int unsigned  JtagNumExtraStapPorts = smu_pkg::jtag_num_extra_stap_ports(CFG),
+  localparam int unsigned  SmcSupplementaryPortWords  = efuse_pkg::supplementary_port_words(
+      SUPPLEMENTARY_FUSE_EXAMPLE ? smc_supplementary_fuse_example_pkg::FuseWords : CFG.SMC_SUPPLEMENTARY_FUSE.WORDS
+  )
 ) (
   // Clock and Reset
   input  logic  rst_cold_ni,
@@ -139,6 +147,8 @@ module smu_wrapper #(
   input  smu_axi_xbar_pkg::axi_out_resp_t     smu_axi_out_resp_i,
 
   output smc_efuse_pkg::efuse_map_t           smc_shadow_regs_o,
+  output logic [SmcSupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]
+                                              smc_supplementary_shadow_regs_o,
 
   // GPIO control (lsio select passed through; per-pin pad I/O replaced by
   // gpio_pad_io below; per-pin CSR path terminated internally, see header)
@@ -365,8 +375,19 @@ module smu_wrapper #(
   // SMU core        //
   /////////////////////
 
+  function automatic smu_pkg::smu_cfg_t with_example_supplementary_fuses(smu_pkg::smu_cfg_t cfg);
+    cfg.SMC_SUPPLEMENTARY_FUSE = '{
+        BASE: smc_supplementary_fuse_example_pkg::Base,
+        WORDS: smc_supplementary_fuse_example_pkg::FuseWords,
+        LOCK_REGION_END: smc_supplementary_fuse_example_pkg::LockRegionEnd
+    };
+    return cfg;
+  endfunction
+
+  localparam smu_pkg::smu_cfg_t SmuCfg = SUPPLEMENTARY_FUSE_EXAMPLE ? with_example_supplementary_fuses(CFG) : CFG;
+
   smu #(
-    .CFG            (CFG),
+    .CFG            (SmuCfg),
     .ic_reset_ext_t (ic_reset_ext_t)
   ) u_smu (
     .clk_smu_i    (clk_sys),
@@ -539,6 +560,7 @@ module smu_wrapper #(
     .smc_efuse_shim_command_req_o  (smc_efuse_shim_command_req),
     .smc_efuse_shim_command_resp_i (smc_efuse_shim_command_resp),
     .smc_shadow_regs_o,
+    .smc_supplementary_shadow_regs_o,
     .sep_efuse_bank_ctrl_req_o     (sep_efuse_bank_ctrl_req),
     .sep_efuse_bank_ctrl_resp_i    (sep_efuse_bank_ctrl_resp),
     .sep_efuse_shim_command_req_o  (sep_efuse_shim_command_req),

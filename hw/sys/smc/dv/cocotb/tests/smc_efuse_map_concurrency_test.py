@@ -4,8 +4,8 @@
 
 Sources: smc_efuse_map.rdl (LOCKS), port_table.adoc axil_smc_otp_jtag, architecture.adoc.
 
-The image is written into the run directory during ``build_phase``: LOCKS 0 and every other
-word a distinct marker word.
+The image is written into the run directory during ``build_phase``: both LOCKS registers 0
+and every other word a distinct marker word.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ _EFUSE_DIR = Path(__file__).resolve().parents[2] / "efuse_preload"
 
 
 def _marker(n: int) -> int:
-    """Word n of the marker image: non-zero and distinct for every n in 2..255."""
+    """Word n of the marker image: non-zero and distinct for every n in 4..63."""
     return 0x5A5A0000 | (n << 8) | (0xA5 ^ n)
 
 
@@ -90,11 +90,11 @@ def write_marker_image() -> Path:
     config = hex_path.with_suffix(".toml")
     config.write_text(
         _CONFIG_TEMPLATE.format(
-            jpi=_field(2, 8),
-            i2c=_field(10, 18),
-            cfg=_field(28, 2),
-            occp=_field(30, 2),
-            spare=_field(32, 224),
+            jpi=_field(4, 8),
+            i2c=_field(12, 18),
+            cfg=_field(30, 2),
+            occp=_field(32, 2),
+            spare=_field(34, 30),
         ),
         encoding="utf-8",
     )
@@ -118,7 +118,7 @@ def write_marker_image() -> Path:
 
 @pyuvm.test()
 class smc_efuse_map_concurrency_test(smc_base_test):
-    """Race SEP_IN and JTAG accesses to one word and keep eight SEP_IN reads outstanding."""
+    """Race SEP_IN and JTAG accesses to one word and issue eight SEP_IN reads as one group."""
 
     required_evidence = (
         "CHK-EMAP-CONC-ALTERNATE",
