@@ -119,18 +119,25 @@ write and the other sub-word targets are logged (``INFO-REG-SUBWORD``).
 
 CHK-REG-SUBWORD-KEEP: after each AxSIZE 0 and AxSIZE 1 LSU write to a sub-word
 target, the bytes of the target word that the write strobe does not enable read
-back as they read before the write. AXI4 (Arm IHI 0022, the bus protocol named in
-``hw/sys/sep/doc/fabric.adoc``) gives WSTRB the meaning that a deasserted strobe
-lane is not updated. Control CTRL-REG-SUBWORD-PRELOAD: each register target that
-takes the complement is first written with a seeded value inside its ``sw = rw``
-fields with the lowest such bit set, and every graded word reads non-zero in the
-unstrobed bytes of both shapes. The two eFuse targets are not graded: ``EFUSE_PROGRAM_CTRL``
-holds fields that hardware writes (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``,
-``program_busy`` and the other ``hw = w`` status fields), and the shadow map takes
-its access from the fuse lock rules, not from its RDL properties
-(``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``). Whether the strobed
-lanes take the written value is register-specific and is logged only
-(``INFO-REG-SUBWORD``).
+back as they read before the write, whether the write landed or was refused. AXI4
+(Arm IHI 0022, the bus protocol named in ``hw/sys/sep/doc/fabric.adoc``) gives
+WSTRB the meaning that a deasserted strobe lane is not updated. The line grades
+only the unstrobed bytes and states the write response and ``landing``:
+``landed`` after CTRL-REG-SUBWORD-LAND, ``refused`` for a non-OKAY write (no text
+states the word after a refused write, so only the unstrobed bytes are graded), ``no_rw_strobed`` where the strobed bytes hold no ``sw = rw`` bit
+(the Key Manager mailbox interrupt-enable word and ``SW_RESET_N``). Control
+CTRL-REG-SUBWORD-LAND: on the scratch word and ``SEP_NMI_VEC`` the write answers
+OKAY and the ``sw = rw`` bits of its strobed bytes read back as the written
+complement, so a dropped write is a recorded failure. Control
+CTRL-REG-SUBWORD-PRELOAD: each register target that takes the complement is first
+written with a seeded value inside its ``sw = rw`` fields with the lowest such bit
+set, and every graded word reads non-zero in the unstrobed bytes of both shapes.
+The two eFuse targets are not graded: ``EFUSE_PROGRAM_CTRL`` holds fields that
+hardware writes (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``, ``program_busy``
+and the other ``hw = w`` status fields), and the shadow map takes its access from
+the fuse lock rules, not from its RDL properties
+(``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``). The responses and
+the strobed bytes of the other targets are logged (``INFO-REG-SUBWORD``).
 
 CHK-OTBN-IMEM-SUBWORD-CRC: OTBN ``LOAD_CHECKSUM`` reads the same value before and
 after each AxSIZE 0 and AxSIZE 1 write to the ``otbn_imem`` word: "Writes that are
@@ -324,6 +331,8 @@ SUBWORD_GRADED = "wdt_wkup_thold_lo"
 # Sub-word targets whose unstrobed lanes are not graded: the word holds fields
 # that hardware writes, or the RDL properties do not state the access.
 SUBWORD_KEEP_UNGRADED = frozenset(("efuse_shadow", "efuse_program_ctrl"))
+# Sub-word targets whose narrow write lands: the strobed bytes hold sw = rw bits.
+SUBWORD_LANDS = frozenset(("scratch", "cpu_ctrl_nmi_vec"))
 # Sub-word access shapes: (AxSIZE, byte offset in the word).
 SUBWORD_SHAPES = ((0, 1), (1, 2))
 # The sub-word preload values come from their own stream, so the draws of the
@@ -1980,7 +1989,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 rw = rr.reg_by_word()[addr].rw_mask(addr)
                 pre = (prng.getrandbits(32) & rw) | (rw & -rw)
                 cur = await self._subword_set(addr, pre, f"{name} sub-word preload")
-            if name not in SUBWORD_KEEP_UNGRADED:
+            keep = name not in SUBWORD_KEEP_UNGRADED
+            if keep:
                 kept = [cur & ~(((1 << (8 << z)) - 1) << (8 * o)) for z, o in SUBWORD_SHAPES]
                 self._ctrl(
                     "REG-SUBWORD-PRELOAD",
@@ -2020,7 +2030,6 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
                 _r, rb = await self._lsu(SepAxiOp.READ, addr)
                 rb &= 0xFFFF_FFFF
-                keep = name not in SUBWORD_KEEP_UNGRADED
                 chks = [c for c, on in (("WDT", name == SUBWORD_GRADED), ("KEEP", keep)) if on]
                 self.logger.info(
                     "INFO-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
@@ -2037,9 +2046,28 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     (" chk=" + ",".join(f"CHK-REG-SUBWORD-{c}" for c in chks)) if chks else "",
                 )
                 if keep:
+                    reg = rr.reg_by_word().get(addr)
+                    rw = reg.rw_mask(addr) & (mask << (8 * off)) if reg else 0
+                    if name in SUBWORD_LANDS:
+                        landed = self._ctrl(
+                            "REG-SUBWORD-LAND",
+                            wr_resp == OKAY and rw != 0 and rb & rw == (wv << (8 * off)) & rw,
+                            f"target={name} addr=0x{addr + off:08x} size={size} "
+                            f"wr_resp={_RN.get(wr_resp)} strobed_rw_mask=0x{rw:08x} "
+                            f"wdata=0x{wv:x} word_after=0x{rb:08x} "
+                            "expect=OKAY,strobed_rw=wdata",
+                        )
+                        landing = "landed" if landed else "missing"
+                    elif wr_resp != OKAY:
+                        landing = "refused"
+                    elif reg and rw == 0:
+                        landing = "no_rw_strobed"
+                    else:
+                        landing = "not_graded"
                     unstrobed = 0xFFFF_FFFF & ~(mask << (8 * off))
                     line = (
                         f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"wr_resp={_RN.get(wr_resp)} landing={landing} "
                         f"unstrobed_mask=0x{unstrobed:08x} word_before=0x{cur:08x} "
                         f"word_after=0x{rb:08x} expect=0x{cur & unstrobed:08x}"
                     )
