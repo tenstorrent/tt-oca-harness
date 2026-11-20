@@ -369,7 +369,7 @@ and a 64-bit write value. The concurrent leg also draws on a stream of its own: 
 |CHK-SRAM-IN-READ
 |Every beat of each burst read answers OKAY (EXOKAY allowed on an exclusive read) and RLAST falls on the last beat and on no other, both sampled per beat on the `m_axi` R channel, RID equals ARID, and every beat equals the byte model.
 |CHK-SRAM-IN-STRB
-|On the overlay's first and last beats, the strobed bytes hold the overlay and the unstrobed bytes keep the burst data.
+|On the overlay's first and last beats, the strobed bytes hold the overlay and the unstrobed bytes keep the burst data. A beat that the overlay covers whole is not a partial-strobe beat and is skipped; at least one partial-strobe beat is graded in the seed, else `CTRL-MISSING SRAM-IN-STRB` fails the leaf. Evidence: `CHK-SRAM-IN-STRB PASS: <n> partial-strobe overlay beats ...` with n > 0.
 |CHK-SRAM-IN-XPATH
 |The CPU-LSU master reads the burst's beats back equal to the model, so the inbound writes landed at the addresses they named; and the inbound burst read returns the words the CPU-LSU master wrote, so the inbound read path returns SRAM content.
 |CHK-SRAM-XMASTER

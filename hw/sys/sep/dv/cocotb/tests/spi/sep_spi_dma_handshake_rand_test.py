@@ -1158,8 +1158,13 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # HARDWARE_HANDSHAKE_ENABLE is sw=rw, hw=r and resets to 0; only the GO
         # write of this run sets it.
         hs_enable = int(bool(control & HS_ENABLE_MASK))
-        go_line = f"run={tag} hs_enable={hs_enable} expect=1 control=0x{control:08x}"
-        if not hs_enable:
+        # MASK bit 0 is clear, so the written mask differs from the reset 0x7FF.
+        mask_rb = await self.dma.rd(HANDSHAKE_INTR_ENABLE) & HS_MASK_FIELD
+        go_line = (
+            f"run={tag} hs_enable={hs_enable} expect=1 control=0x{control:08x} "
+            f"mask_rb=0x{mask_rb:03x} expect_mask=0x{mask & HS_MASK_FIELD:03x}"
+        )
+        if not hs_enable or mask_rb != mask & HS_MASK_FIELD:
             self._ctrl_missing("CTRL-HS-MASKED-GO", go_line)
         self.logger.info("CTRL-HS-MASKED-GO PASS seed=%d %s", cfg.seed, go_line)
         # Negative-control hook: ``go_exp = 0`` for one run; CHK-HS-MASKED fails while

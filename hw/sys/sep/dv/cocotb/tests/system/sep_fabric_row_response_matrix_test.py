@@ -121,7 +121,10 @@ CHK-REG-SUBWORD-KEEP: after each AxSIZE 0 and AxSIZE 1 LSU write to a sub-word
 target, the bytes of the target word that the write strobe does not enable read
 back as they read before the write. AXI4 (Arm IHI 0022, the bus protocol named in
 ``hw/sys/sep/doc/fabric.adoc``) gives WSTRB the meaning that a deasserted strobe
-lane is not updated. The two eFuse targets are not graded: ``EFUSE_PROGRAM_CTRL``
+lane is not updated. Control CTRL-REG-SUBWORD-PRELOAD: each register target that
+takes the complement is first written with a seeded value inside its ``sw = rw``
+fields with the lowest such bit set, and every graded word reads non-zero in the
+unstrobed bytes of both shapes. The two eFuse targets are not graded: ``EFUSE_PROGRAM_CTRL``
 holds fields that hardware writes (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``,
 ``program_busy`` and the other ``hw = w`` status fields), and the shadow map takes
 its access from the fuse lock rules, not from its RDL properties
@@ -313,6 +316,11 @@ SUBWORD_GRADED = "wdt_wkup_thold_lo"
 # Sub-word targets whose unstrobed lanes are not graded: the word holds fields
 # that hardware writes, or the RDL properties do not state the access.
 SUBWORD_KEEP_UNGRADED = frozenset(("efuse_shadow", "efuse_program_ctrl"))
+# Sub-word access shapes: (AxSIZE, byte offset in the word).
+SUBWORD_SHAPES = ((0, 1), (1, 2))
+# The sub-word preload values come from their own stream, so the draws of the
+# later legs keep their seed mapping.
+SUBWORD_PRELOAD_SALT = 0x5357_504C
 OTBN_LOAD_CHECKSUM = sep_reg.OTBN_LOAD_CHECKSUM_REG_ADDR
 # LOAD_CHECKSUM record byte orders: theory_of_operation.md:449-453 fixes the 48b
 # layout, not the order.
@@ -1892,14 +1900,26 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         _r, crc = await self._lsu(SepAxiOp.READ, OTBN_LOAD_CHECKSUM)
         return crc & 0xFFFF_FFFF
 
+    async def _subword_set(self, addr: int, wdata: int, tag: str) -> int:
+        """LSU write and read-back of a sub-word target, with the watchdog CDC bound."""
+        saved = self.cfg.axi_timeout_ns
+        self.cfg.axi_timeout_ns = max(saved, WDT_CDC_CLKS * self.cfg.wdt_clk_period_ns)
+        try:
+            got, _exp, _mask = await self._lsu_write_reg(addr, wdata, tag)
+        finally:
+            self.cfg.axi_timeout_ns = saved
+        return got & 0xFFFF_FFFF
+
     async def _subword_leg(self) -> None:
         """LSU AxSIZE 0 and 1 reads and writes to registers and memories."""
+        prng = SepSeededRng(self.random_seed() ^ SUBWORD_PRELOAD_SALT)
         for name, addr, restore in SUBWORD_TARGETS:
             otbn = name == "otbn_imem"
             if otbn:
-                # A memory word holds a written value before its first read.
+                # A memory word holds a written value before its first read; bit 0
+                # makes its unstrobed lanes non-zero in both shapes.
                 await self._lsu(SepAxiOp.WRITE, OTBN_LOAD_CHECKSUM, wdata=0)
-                wd = self.rng.getrandbits(32)
+                wd = self.rng.getrandbits(32) | 1
                 await self._lsu(SepAxiOp.WRITE, addr, wdata=wd)
                 idx = (addr - sep_reg.OTBN_IMEM_MEM_BASE_ADDR) // 4
                 crc = await self._load_checksum()
@@ -1912,7 +1932,24 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 )
             _r, cur = await self._lsu(SepAxiOp.READ, addr)
             cur &= 0xFFFF_FFFF
-            for size, off in ((0, 1), (1, 2)):
+            orig = cur
+            preload = restore and not otbn
+            if preload:
+                # A seeded value inside the read-write fields, with the lowest such
+                # bit set: byte 0 is unstrobed in both shapes.
+                rw = rr.reg_by_word()[addr].rw_mask(addr)
+                pre = (prng.getrandbits(32) & rw) | (rw & -rw)
+                cur = await self._subword_set(addr, pre, f"{name} sub-word preload")
+            if name not in SUBWORD_KEEP_UNGRADED:
+                kept = [cur & ~(((1 << (8 << z)) - 1) << (8 * o)) for z, o in SUBWORD_SHAPES]
+                self._ctrl(
+                    "REG-SUBWORD-PRELOAD",
+                    all(kept),
+                    f"target={name} addr=0x{addr:08x} preload={int(preload)} "
+                    f"word=0x{cur:08x} unstrobed_bits="
+                    + ",".join(f"0x{k & 0xFFFF_FFFF:08x}" for k in kept),
+                )
+            for size, off in SUBWORD_SHAPES:
                 mask = (1 << (8 << size)) - 1
                 old = (cur >> (8 * off)) & mask
                 wv = (~old & mask) if restore else old
@@ -1982,6 +2019,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         self._fail("CHK-REG-SUBWORD-WDT", line)
                 if restore:
                     await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+            if preload:
+                await self._subword_set(addr, orig, f"{name} sub-word restore")
 
     async def _fabric_csr_leg(self) -> None:
         """SI reads of fabric CSRs that the LSU staged, and of FEAT_CTRL.

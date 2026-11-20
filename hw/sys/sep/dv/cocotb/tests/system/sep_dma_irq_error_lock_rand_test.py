@@ -1365,9 +1365,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 line += f" side={c.bad_asid_side} asid=0x{c.bad_asid:x}"
             if kind == "align":
                 line += " dst_offset=2"
-                ok = ended and st.error and (ecode & ERROR_CODE_MASK) == bit
-            else:
-                ok = ended and st.error and ecode & bit
+            ok = ended and st.error and (ecode & ERROR_CODE_MASK) == bit
             if need_quiet:
                 ok = ok and n_ar == 0 and n_aw == 0
             if not ok:

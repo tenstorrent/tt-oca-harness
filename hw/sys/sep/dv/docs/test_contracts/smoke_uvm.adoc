@@ -193,7 +193,7 @@
 . Bring up in `no_cpu` mode.
 . Read the target location before any write; it must answer `OKAY` with a word other than the 64-bit pattern.
 . Write a 64-bit pattern; read it back.
-. Write a 32-bit pattern to the upper half; read the full 64 bits back.
+. Write a 32-bit pattern to the upper half with `AxSIZE=2`, capturing the AW handshake on the testbench port; read the full 64 bits back.
 
 *Checkers*:
 
@@ -204,15 +204,17 @@
 |A read of the target location before any write answers `OKAY` with a word other than the 64-bit pattern, so CHK-STORE cannot pass on a word that was already there. The `OKAY` is required because a refused read returns 0, which also differs from the pattern. The read data is logged and not graded: the macro has no array reset, and the value comes from simulator memory initialisation. A miss logs `CTRL-MISSING SRAM-PRE` and fails the leaf.
 |CHK-STORE
 |A 64-bit write stores and reads back exactly.
+|CTRL-SRAM-NARROW
+|The AW handshake of the upper-half write, captured on the testbench port, carries the upper-half address and `AxSIZE=2` (a 4-byte beat, AMBA AXI, Arm IHI 0022, AxSIZE encoding), so CHK-LANE grades a genuine 4-byte beat and not a full-width beat with narrowed strobes. A miss, or no handshake, logs `CTRL-MISSING SRAM-NARROW` and fails the leaf. Evidence: `CTRL-SRAM-NARROW seen: addr=0x<a> awaddr=0x<a> awsize=2 expect=2`.
 |CHK-LANE
-|A genuine 4-byte beat (`AxSIZE=2`) to the upper half changes only those lanes; the lower four survive.
+|A genuine 4-byte beat (`AxSIZE=2`, control CTRL-SRAM-NARROW) to the upper half changes only those lanes; the lower four survive.
 |INFO-RESP
 |Logged, not graded: the response code of every access of the sequence. The shared scoreboard (`cocotb/env/sep_scoreboard.py`) rejects a non-OKAY response of any access that does not opt out, and no access of this sequence opts out, so a non-OKAY code logs `SCOREBOARD FAIL` and fails the leaf. The line carries `chk=SCOREBOARD`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `cocotb/seq_lib/sep_sram_smoke_seq.py` logs `CTRL-SRAM-PRE seen` (the read before any write, with its response and read data), then `CHK-STORE PASS` (64-bit write and readback) and `CHK-LANE PASS` (the 4-byte beat at `size=2`), each with the address and the 64-bit read data. `cocotb/tests/sram/sep_sram_smoke_test.py` logs `INFO-RESP accesses=5 <op>@0x<a>=<resp> ... chk=SCOREBOARD`. The leaf names the two `CHK-` records in `required_evidence`, so a missing record fails it.
+*Evidence*: `cocotb/seq_lib/sep_sram_smoke_seq.py` logs `CTRL-SRAM-PRE seen` (the read before any write, with its response and read data), then `CHK-STORE PASS` (64-bit write and readback), `CTRL-SRAM-NARROW seen` (the AW address and AxSIZE of the 4-byte write) and `CHK-LANE PASS` (the 4-byte beat at `size=2`), each with the address and the 64-bit read data. `cocotb/tests/sram/sep_sram_smoke_test.py` logs `INFO-RESP accesses=5 <op>@0x<a>=<resp> ... chk=SCOREBOARD`. The leaf names the two `CHK-` records in `required_evidence`, so a missing record fails it.
 
 '''''
 

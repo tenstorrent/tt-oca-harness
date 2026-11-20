@@ -125,7 +125,8 @@ class SepSrcIdGrade:
 
     The source ID is AxUSER[3:0] (the "Source ID carrier" record,
     ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). AxUSER[11:4] is not graded.
-    ``chk_line`` gives the ``CHK-<tag>-SRC-ID`` line with the observed value.
+    ``chk_line`` gives the ``CHK-<tag>-SRC-ID`` PASS line with the observed
+    value, and raises the FAIL line.
     """
 
     def __init__(self, tag: str) -> None:
@@ -186,14 +187,21 @@ class SepSrcIdGrade:
         )
 
     def chk_line(self) -> str:
-        """``CHK-<tag>-SRC-ID``: PASS when every graded beat carries ``SEP_SOURCE_ID``."""
+        """``CHK-<tag>-SRC-ID``: the PASS line when every graded beat carries
+        ``SEP_SOURCE_ID``; otherwise logs the FAIL line at ERROR and raises it."""
+        import logging
+
         vals = sorted(set(self.observed))
         ok = vals == [SEP_SOURCE_ID]
         sid = f"0x{vals[0]:x}" if len(vals) == 1 else _hexset(vals)
-        return (
+        line = (
             f"CHK-{self.tag}-SRC-ID {'PASS' if ok else 'FAIL'}: path=smu src_id={sid} "
             f"expected=0x{SEP_SOURCE_ID:x} beats={len(self.observed)}"
         )
+        if not ok:
+            logging.getLogger("cocotb").error("%s", line)
+            raise AssertionError(line)
+        return line
 
 
 def draw_src_users(rng) -> tuple[int, int]:

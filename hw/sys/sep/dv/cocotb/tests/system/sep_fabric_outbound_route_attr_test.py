@@ -133,6 +133,15 @@ Checkers:
                     memory-map response from ``env/sep_decode_resp.py``), and PR-OUT
                     takes no beat, while enabled pairs cover the AP and STEE
                     region 0 base translations and the untranslated word.
+  CHK-OUT-GAP-ALIAS with alias region 0 over the page ``0x11FF_F000`` and
+                    offset ``0x1000``, an LSU read and write of
+                    ``0x11FF_F000`` reach the route demux at ``0x1200_0000``,
+                    answer the DECERR of its Reserved memory-map row, and
+                    PR-OUT takes no beat (the read data is logged,
+                    INFO-OUT-GAP-ALIAS-RDATA). Live control in the same leg:
+                    with the offset that remaps the page onto ``0x1180_0000``,
+                    the same accesses answer OKAY and leave once on PR-OUT at
+                    the STEE region 0 translation.
 
 Logged, not graded: after CHK-OUT-SMU-MOVED a second moved pair, drawn on its
 own seeded stream, has a size that is not a power of two or a power-of-two size
@@ -245,6 +254,8 @@ BIT55 = 1 << 55
 _ALIAS = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0
 ALIAS_PAGE = SMU_MID + 0x1000
 ALIAS_VALID_FIELD = _ALIAS.field_mask("REGION_REGION_ATTRS", "valid")
+ALIAS_OFFSET_FIELD = _ALIAS.field_mask("REGION_REGION_ATTRS", "offset")
+ALIAS_GRANULE = 1 << _ALIAS.field_lsb("REGION_REGION_START", "start_addr")
 ALIAS_FIELDS = {
     ALIAS_START: _ALIAS.field_mask("REGION_REGION_START", "start_addr"),
     ALIAS_END: _ALIAS.field_mask("REGION_REGION_END", "end_addr"),
@@ -423,14 +434,14 @@ class _Remap(SepAxiRegDriver):
 
 
 class _Alias(SepAxiRegDriver):
-    """Program alias region 0 over ALIAS_PAGE (``offset`` added); RDL-field read-back."""
+    """Program alias region 0 over ``page`` (``offset`` added); RDL-field read-back."""
 
     _DRIVER_TAG = "ALIASREG"
 
-    async def program(self, valid: bool, offset: int = BIT55) -> None:
+    async def program(self, valid: bool, offset: int = BIT55, page: int = ALIAS_PAGE) -> None:
         words = {
-            ALIAS_START: ALIAS_PAGE,
-            ALIAS_END: ALIAS_PAGE + 0x1000,
+            ALIAS_START: page,
+            ALIAS_END: page + ALIAS_GRANULE,
             ALIAS_ATTRS: (offset | ALIAS_VALID_FIELD) if valid else 0,
         }
         for off, word in words.items():
@@ -491,6 +502,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         "CHK-OUT-SRC-ID",
         "CHK-OUT-EDGE-BASE",
         "CHK-OUT-GAP-DECERR",
+        "CHK-OUT-GAP-ALIAS",
     )
 
     # ------------------------------------------------------------------ access
@@ -1414,8 +1426,71 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 f"CHK-OUT-GAP-DECERR FAIL: {line} beats=" + " ".join(b.fmt() for b in beats)
             )
             self.logger.info("CHK-OUT-GAP-DECERR PASS: %s", line)
+        await self._gap_alias(edges[1][0])
         for pair in (PAIR_AP, PAIR_STEE, PAIR_UNTRANSLATED):
             await self._pair_enable(pair, False)
+
+    async def _gap_alias(self, stee0: _Cls) -> None:
+        """CHK-OUT-GAP-ALIAS: a STEE word that alias region 0 remaps onto GAP_WORD.
+
+        The alias remap runs before the route demux, and the demux returns an
+        address outside the SMU, AP and STEE regions to the peripheral crossbar
+        (``hw/sys/sep/doc/fabric.adoc``, SEP output fabric), so the remapped
+        access answers the Reserved-row DECERR of GAP_WORD with no PR-OUT beat.
+        Live control: the same alias page remapped onto the STEE region 0 base
+        word leaves on PR-OUT at its translation. The AP and STEE region 0 pairs
+        stay open over their translations.
+        """
+        cfg = self.tcfg
+        page = GAP_WORD - ALIAS_GRANULE
+        alias = _Alias(self)
+        # The offset is added modulo 2^44 to address bits [55:12] (alias_remap.rdl,
+        # REGION_ATTRS.offset), so a lower target takes the two's complement.
+        await alias.program(True, (stee0.local - page) & ALIAS_OFFSET_FIELD, page=page)
+        for write in cfg.dirs():
+            await self._cell(
+                "stee",
+                page,
+                stee0.translated,
+                write=write,
+                prot=cfg.prot(1),
+                expect_okay=True,
+                graded=False,
+                chk="CHK-OUT-GAP-ALIAS",
+                cap_chk="CHK-OUT-GAP-ALIAS",
+            )
+        await alias.program(True, GAP_WORD - page, page=page)
+        for write in cfg.dirs():
+            d = "W" if write else "R"
+            prot = cfg.prot(1)
+            mark = self.out.mark()
+            seq = await self._lsu(
+                page,
+                write=write,
+                expect_okay=False,
+                prot=prot,
+                user=cfg.users[0],
+                wdata=cfg.wdata() if write else 0,
+            )
+            beats = self.out.since(mark)
+            exp = expected_unbacked(GAP_WORD, "w" if write else "r")
+            line = (
+                f"dir={d} addr=0x{page:x} alias=0x{page:x}->0x{GAP_WORD:x} prot=0x{prot:x} "
+                f"resp={_rname(seq.resp_code)} expect={_rname(exp.resp)} out_seen={len(beats)}"
+            )
+            assert seq.resp_code == exp.resp and not beats, (
+                f"CHK-OUT-GAP-ALIAS FAIL: {line} beats=" + " ".join(b.fmt() for b in beats)
+            )
+            self.logger.info("CHK-OUT-GAP-ALIAS PASS: %s", line)
+            if not write:
+                words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in (0, 1)]
+                self.logger.info(
+                    "INFO-OUT-GAP-ALIAS-RDATA addr=0x%x rdata=%s (not graded; no open "
+                    "specification question)",
+                    page,
+                    ",".join(f"0x{w:08x}" for w in words),
+                )
+        await alias.program(False)
 
     def _draw_region0(self) -> _Cls:
         """AP region 0 with a drawn offset: bit 55 set, bits 54:19 drawn."""

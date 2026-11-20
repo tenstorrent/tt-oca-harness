@@ -46,10 +46,7 @@ short name ``ToO`` below):
   dummy segment "Holds the bus in a high-impedance state for some number of
   "dummy" clock cycles (neither side transmits)", ``ToO:63``). No source
   states lanes 3:2 at x1 or x2; the leaf logs them as INFO-SPI-OE-UNUSED, and
-  CHK-SPI-OE-SEG does not grade them. The SPI data scoreboard decodes a TX
-  segment only when its four output enables are exactly the segment's lanes
-  (x1 0001, x2 0011, x4 1111), so CHK-SPI-SB-FRAME fails a TX segment that
-  drives lane 2 or 3 at x1 or x2. An
+  no check grades them. An
   x1 dummy segment is logged as INFO-SPI-OE-DUMMY: OT ToO:29 and :63 give
   different x1 dummy patterns (``ToO:29``: "for Standard-mode commands
   `SD[0]` is always configured as an output"). An x1 RX-only segment is logged as
@@ -619,13 +616,12 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 oe_ok = oe_ok and {v & used for v in seen} == {exp_oe}
                 if used != 0b1111:
                     self.logger.info(
-                        "INFO-SPI-OE-UNUSED seed=%s %s seg=%d row=%s lanes_3_2=%s%s",
+                        "INFO-SPI-OE-UNUSED seed=%s %s seg=%d row=%s lanes_3_2=%s",
                         seed,
                         label,
                         i,
                         seg.oe_row,
                         ",".join(sorted({f"{(v >> 2) & 3:02b}" for v in seen})),
-                        " chk=CHK-SPI-SB-FRAME" if seg.is_tx else "",
                     )
             if seg.direction == DIR_DUMMY:
                 continue

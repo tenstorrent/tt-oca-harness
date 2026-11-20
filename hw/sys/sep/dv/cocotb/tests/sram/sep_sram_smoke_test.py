@@ -6,7 +6,9 @@ The CPU-LSU master reads base+0x100 before any write and requires an OKAY
 answer and a word other than the 64-bit pattern (CTRL-SRAM-PRE: a refused read
 returns 0, which also differs from the pattern), writes and reads back the
 pattern, then a 4-byte (AxSIZE=2) write must change only the upper half
-(CHK-STORE, CHK-LANE, in seq_lib/sep_sram_smoke_seq.py). The shared scoreboard
+(CHK-STORE, CHK-LANE, in seq_lib/sep_sram_smoke_seq.py). CTRL-SRAM-NARROW: the AW
+handshake of that write on the testbench port carries its address and AxSIZE 2
+(Arm IHI 0022), else the leaf fails. The shared scoreboard
 grades OKAY (env/sep_scoreboard.py: a non-OKAY response logs ``SCOREBOARD FAIL``
 and fails the leaf); INFO-RESP logs each code.
 Run mode: no_cpu with +skip_fuse_sense.

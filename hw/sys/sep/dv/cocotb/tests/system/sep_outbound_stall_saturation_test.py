@@ -27,9 +27,10 @@ pending B responses and reads, which the leaf requires to be at least the
 requests it issues in one hold, so every finite stop it grades at the port is
 the DUT's, not the responder's. The LSU master stops at the same count whether
 or not the port accepts, so at the pins the stop of the outbound chain is not
-separable from a stop upstream of it: the three-initiator hold at that stop is reported
-as INFO-CHAIN-HELD, the stop is the control CTRL-CHAIN-STOP and the drain of the
-chain is graded by CHK-CHAIN-DRAIN.
+separable from a stop upstream of it: the stop is the control CTRL-CHAIN-STOP, and
+the drain of the chain and the LSU and DMA admission of the three-initiator hold at
+that stop are graded by CHK-CHAIN-DRAIN; the SMN inbound row and the chain stop
+summary of that hold are logged as INFO-CHAIN-HELD.
 
 The SMN inbound master has no route to the outbound port:
 ``hw/sys/sep/doc/fabric.adoc`` (Fabric Topology) states that the peripheral crossbar
@@ -84,9 +85,9 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-CHAIN-DRAIN   with the DMA and the SMN inbound master issuing
                     alongside, every session at CTRL-CHAIN-STOP drains,
                     including the writes-and-reads hold; in the
-                    three-initiator hold at the stop (INFO-CHAIN-HELD), the
-                    LSU's held request and the DMA's next write are each
-                    admitted within the bounded one-beat releases.
+                    three-initiator hold at the stop, the LSU's held request
+                    and the DMA's next write are each admitted within the
+                    bounded one-beat releases.
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
                     exactly one B per accepted write, the beats of each
                     accepted read, and none after the idle window.
@@ -789,8 +790,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
     async def _held(self, name: str, *, lsu_w=0, dma_words=0, sys_w=0, graded: bool) -> None:
         """One hold at the stop of CTRL-OUT-STOP with one extra request per initiator.
 
-        Graded for CHK-XBAR-HELD; the three-initiator session is reported as
-        INFO-CHAIN-HELD, since its stop is the same stop.
+        The LSU and DMA admission rows are graded lines of CHK-XBAR-HELD, and of
+        CHK-CHAIN-DRAIN in the three-initiator session; the SMN inbound row and
+        the chain stop summary are logged.
         """
         chk = "CHK-XBAR-HELD"
         rel_chk = chk if graded else "CHK-CHAIN-DRAIN"
@@ -843,7 +845,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 rel_chk,
                 f"session={name} init=dma next write",
             )
-            rows.append(("dma", "n/a", rel, None))
+            rows.append(("dma", "n/a:stall_src_not_observable_at_a_pin", rel, None))
         if sys_w:
             extra = self._launch(s, "sysif", "wr", 1)
             await ClockCycles(self.dut_clk, WINDOW)
@@ -872,15 +874,12 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 f"releases_to_admit={releases} released_beats={beats} completed={comp} "
                 f"session={name} drained={done}/{total}{note}"
             )
-            if not graded:
-                self._info_row("CHAIN-HELD", line)
-            elif init == "lsu":
-                self._line(chk, line)
+            if init != "sysif":
+                self._line(chk if graded else rel_chk, line)
+            elif graded:
+                self._blocked_row(chk, "no_outbound_path", line)
             else:
-                reason = (
-                    "no_outbound_path" if init == "sysif" else "stall_src_not_observable_at_a_pin"
-                )
-                self._blocked_row(chk, reason, line)
+                self._info_row("CHAIN-HELD", line)
         if not graded:
             self._info_row(
                 "CHAIN-HELD",

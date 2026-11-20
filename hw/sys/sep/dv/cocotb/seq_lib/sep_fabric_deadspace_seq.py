@@ -375,21 +375,23 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
 
 
 _TRNG = sym("TRNG_REG_MAP_BASE_ADDR")
+_KM_MBOX = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
+_WDT = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
 
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
-    ("km_mailbox", 0x1092_0414, "w"),
-    ("km_mailbox", 0x1092_0C04, "w"),
-    ("km_mailbox", 0x1092_0FF8, "w"),
-    ("km_mailbox", 0x1092_080C, "r"),
-    ("wdt_timer", 0x1080_1428, "w"),
-    ("wdt_timer", 0x1080_181C, "w"),
-    ("wdt_timer", 0x1080_1C0C, "w"),
-    ("edn", 0x1091_5A34, "w"),
-    ("edn", 0x1091_5E10, "w"),
-    ("csrng", 0x1091_5248, "w"),
-    ("entropy_src", 0x1091_651C, "w"),
-    ("secure_dma", 0x1080_08A8, "w"),
+    ("km_mailbox", _KM_MBOX + 0x414, "w"),
+    ("km_mailbox", _KM_MBOX + 0xC04, "w"),
+    ("km_mailbox", _KM_MBOX + 0xFF8, "w"),
+    ("km_mailbox", _KM_MBOX + 0x80C, "r"),
+    ("wdt_timer", _WDT + 0x428, "w"),
+    ("wdt_timer", _WDT + 0x81C, "w"),
+    ("wdt_timer", _WDT + 0xC0C, "w"),
+    ("edn", EDN_BASE + 0x234, "w"),
+    ("edn", EDN_BASE + 0x610, "w"),
+    ("csrng", CSRNG_BASE + 0x248, "w"),
+    ("entropy_src", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR") + 0x51C, "w"),
+    ("secure_dma", sym("SECURE_DMA_REG_MAP_BASE_ADDR") + 0x8A8, "w"),
     # First word past the ABR map, error_intr_en_r with offset bit 14 set, and
     # the last word of the ABR window.
     ("abr", _ABR + block_size("ABR"), "r"),
@@ -423,6 +425,13 @@ class SepDeadspaceCfg:
         missing = {name for name, _a, _op in DEADSPACE_ANCHORS if name not in self.windows}
         if missing:
             raise RuntimeError(f"anchor window(s) not in dead_windows(): {sorted(missing)}")
+        outside = [
+            f"{name}@0x{addr:08x}"
+            for name, addr, _op in DEADSPACE_ANCHORS
+            if not self.windows[name].dead_lo <= addr < self.windows[name].dead_hi
+        ]
+        if outside:
+            raise RuntimeError(f"anchor(s) outside the dead span of their window: {outside}")
         probes = [DeadProbe(name, addr, op, True) for name, addr, op in DEADSPACE_ANCHORS]
         rng = SepSeededRng(seed)
         taken = {(p.window, p.addr, p.op) for p in probes}

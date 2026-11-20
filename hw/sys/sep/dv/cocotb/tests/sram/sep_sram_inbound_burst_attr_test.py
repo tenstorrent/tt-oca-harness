@@ -36,6 +36,8 @@ equals the byte model.
 
 CHK-SRAM-IN-STRB: on the overlay's first and last beats, the strobed bytes
 hold the overlay and the unstrobed bytes keep the burst data (AXI4 A3.4.3).
+A beat the overlay covers whole is skipped; a seed with no partial-strobe beat
+fails (CTRL-MISSING SRAM-IN-STRB).
 
 CHK-SRAM-IN-XPATH: the CPU-LSU master reads the burst's first, last and two
 seeded beats back equal to the model, so the inbound writes landed at the
@@ -318,6 +320,13 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             len(cfg.cases),
             self.n["rd_beats"],
         )
+        if self.n["strb"] == 0:
+            msg = (
+                f"CTRL-MISSING SRAM-IN-STRB: no overlay of the {len(cfg.cases)} cases "
+                "ended inside a beat, so no partial-strobe beat was graded"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
             "CHK-SRAM-IN-STRB PASS: %d partial-strobe overlay beats kept the "
             "unstrobed bytes and took the strobed ones",
