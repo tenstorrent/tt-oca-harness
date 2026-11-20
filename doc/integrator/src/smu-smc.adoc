@@ -68,9 +68,9 @@ stay 32 bits wide. Tie unused request inputs to 0.
 
 The SMC has a chiplet-visible aperture and an internal local address
 view. Internally, the SMC uses a fixed local base address of
-`0xC000_0000` and a fixed local window size of 16 MiB. SMC-local
-addresses (registers, memories, remapped regions) are defined as offsets
-from that base. The chiplet-visible aperture is adopter-defined: the
+`0xC000_0000` and a local window whose size `REGION_SIZE` sets (16 MiB at
+reset). SMC-local addresses (registers, memories, remapped regions) are
+defined as offsets from that base. The chiplet-visible aperture is adopter-defined: the
 chiplet or SoC address map assigns the global base and size that
 external masters can use to reach SMC through the SMU crossbar.
 

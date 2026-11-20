@@ -45,8 +45,8 @@ endif::backend-pdf[]
 |Chiplet envelope |Integrator |SoC/chiplet address map + adopter fabric decode
 |SEP chiplet aperture |SEP firmware |`SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
 (the `sep_cpu_ctrl` CSRs)
-|SMC chiplet aperture |SMC firmware |`GLOBAL_BASE` / `REGION_SIZE` (the SMC CPU
-Control CSRs at `0xC001_0000`)
+|SMC chiplet aperture |SMC firmware |`GLOBAL_BASE` / `REGION_SIZE` (the
+`smc_base_config` CSRs at `0xC001_0000`)
 |SEP / SMC local view |Fixed (RTL) |Offsets within each subsystem's local map
 (SMC local base `0xC000_0000`)
 |=======================================================================
