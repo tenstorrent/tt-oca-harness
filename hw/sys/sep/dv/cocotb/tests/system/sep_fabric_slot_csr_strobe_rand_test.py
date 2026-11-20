@@ -34,8 +34,8 @@ Checkers:
                    START_ADDR and END_ADDR, one more write to START_ADDR and
                    one to END_ADDR, each chosen to move the entry if it were
                    taken, and a write of 0 to the lock bit, leave the entry
-                   unchanged. Each of those writes completes DECERR
-                   (hw/ip/axi_filter/regs/filter_ctrl.rdl:80-84 locked). Each
+                   unchanged. Each of those writes completes SLVERR
+                   (hw/ip/axi_filter/regs/filter_ctrl.rdl:79-84 locked). Each
                    refused register write is framed by a whole-register read
                    before it, and a read of exactly its written lanes and a
                    whole read of every register of the entry after it, all
@@ -255,7 +255,7 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         )
         codes = sweep.lock_codes()
         self.logger.info(
-            "CHK-SLOT-LOCK locked-entry write responses (each graded DECERR): %s",
+            "CHK-SLOT-LOCK locked-entry write responses (each graded SLVERR): %s",
             ", ".join(f"{k}={v}" for k, v in sorted(codes.items())),
         )
         self.logger.info(

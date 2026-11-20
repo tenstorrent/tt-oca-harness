@@ -31,9 +31,9 @@ without), they read back as start rounded down and end rounded up to it.
 
 While ``FILTER_CONFIG.locked`` is set, a write to the entry's
 ``FILTER_CONFIG``, ``START_ADDR`` or ``END_ADDR`` leaves the entry unchanged
-and completes DECERR (``hw/ip/axi_filter/regs/filter_ctrl.rdl:80-84``
-``locked``: the write is steered to the AXI error subordinate;
-``hw/ip/axi_filter/doc/index.adoc:151-156``). Every refused write's response
+and completes SLVERR (``hw/ip/axi_filter/regs/filter_ctrl.rdl:79-84``
+``locked``; ``hw/ip/axi_filter/doc/index.adoc:155-162``: the write is steered
+to an AXI-Lite error subordinate). Every refused write's response
 code is graded, and the register is read whole before the write and on exactly
 the written byte lanes after it.
 
@@ -41,7 +41,7 @@ FCOV: when the caller names its owner in ``graded_owner``, the owner window is
 open for one refused ``START_ADDR`` or ``END_ADDR`` write and the reads after
 it at a time (``sep_filter_match_cg.cp_locked_range_write``). It opens after
 the whole register read back its model value. The sampler holds the cell of
-a DECERR write whose read-back equals the read before the write on the
+a SLVERR write whose read-back equals the read before the write on the
 written lanes; the pass label ``slot_lock_pass`` releases it only after the
 read-back and the whole read of every register of the entry matched the
 model. The window closes at the first mismatch, which drops the held cell,
@@ -65,6 +65,7 @@ from sep_reg_meta import FieldMeta, indexed_block_count, register_fields, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = RESP_CODE["OKAY"]
+RESP_SLVERR = RESP_CODE["SLVERR"]
 RESP_DECERR = RESP_CODE["DECERR"]
 
 # AXI IDs of the overlapped write/read pair. Non-zero, so the pair does not
@@ -369,9 +370,6 @@ class SepFabricSlotCsrStrobe:
         if not locked:
             self.stats["inactive_fill_writes"] += moved
         self._arm_fill(fill)
-        mon = self.test.env.axi_monitor
-        if locked:
-            mon.arm_expected_decerr(1)
         try:
             seq = SepAxiAccessSeq(
                 f"slot_wr_{reg.bank}{reg.slot}",
@@ -385,8 +383,6 @@ class SepFabricSlotCsrStrobe:
             await self.test.start_seq(seq)
         finally:
             self._disarm_fill()
-        if locked and (seq.timed_out or seq.resp_code != RESP_DECERR):
-            mon.release_expected_decerr(1)
         return seq.resp_code
 
     def _data_for(self, reg: RegModel, acc: Access) -> int:
@@ -686,7 +682,7 @@ class SepFabricSlotCsrStrobe:
         """One write to a locked entry that would move it if taken.
 
         Reads the register whole first (graded against the model), then
-        writes, grades DECERR, reads back exactly the written lanes, then
+        writes, grades SLVERR, reads back exactly the written lanes, then
         reads every register of the entry whole (each graded against the
         model). Returns the response code and whether every check of this
         write passed. For a range register the owner window covers the write
@@ -769,11 +765,11 @@ class SepFabricSlotCsrStrobe:
                 await self._read(reg, Access(0, 8), "CHK-SLOT-LOCK")
 
     def _grade_locked_resp(self, reg: RegModel, code: int) -> None:
-        """A write to a locked entry completes DECERR (filter_ctrl.rdl ``locked``)."""
-        if code != RESP_DECERR:
+        """A write to a locked entry completes SLVERR (filter_ctrl.rdl ``locked``)."""
+        if code != RESP_SLVERR:
             self.mismatches.append(
                 f"CHK-SLOT-LOCK {reg.tag} write to a locked entry resp="
-                f"{RESP_NAME.get(code, code)}, expected DECERR"
+                f"{RESP_NAME.get(code, code)}, expected SLVERR"
             )
 
     async def final_walk(self) -> None:

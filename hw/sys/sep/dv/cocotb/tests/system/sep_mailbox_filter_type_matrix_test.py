@@ -71,6 +71,7 @@ from seq_lib.sep_mbox_port_ops import (
     MAILBOX_COUNT,
     RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     SepMboxPortOps,
     port_base,
     resp_name,
@@ -369,7 +370,7 @@ class sep_mailbox_filter_type_matrix_test(sep_base_test):
         )
         wr_resp = await self.infilt.write_tolerant(cfg_addr, new_lo)
         self._ctl_resp(
-            f"mbox={b.m} FILTER_CONFIG[{idx}] src_id={c.lock_new} locked", wr_resp, RESP_DECERR
+            f"mbox={b.m} FILTER_CONFIG[{idx}] src_id={c.lock_new} locked", wr_resp, RESP_SLVERR
         )
         cfg_lo = await self.infilt.read_cpu(cfg_addr)
         cfg_hi = await self.infilt.read_cpu(cfg_addr + 4)
