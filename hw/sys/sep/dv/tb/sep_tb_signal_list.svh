@@ -1625,6 +1625,10 @@
 // observation-only. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [55:0], smc_base_probe_o)
 `SEP_TB_OUT(logic [55:0], smc_size_probe_o)
+// SEP aperture outputs of the DUT (sep_global_base_addr_o, sep_region_size_o),
+// observation-only.
+`SEP_TB_OUT(logic [55:0], sep_global_base_addr_probe_o)
+`SEP_TB_OUT(logic [55:0], sep_region_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.

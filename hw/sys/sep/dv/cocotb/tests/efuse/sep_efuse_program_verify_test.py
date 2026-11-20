@@ -3,7 +3,7 @@
 """The reference SHIM verifies every eFuse program and returns the read-back word.
 
 no_cpu, real fuse sense, ``+sep_efuse_prog_fail_count=1``. RANDCFG: the seed
-selects one spare field and one bit in it.
+selects one spare field and bit A in it, then the READ word of the hold check.
 
 Contract. ``hw/ip/efuse/doc/architecture.adoc`` (Interface SHIM): the reference
 SHIM always reads back the programmed word after the write, returns it in
@@ -22,6 +22,13 @@ The first bank write after reset is dropped:
                       and the OTP word gains bit A.
   CHK-VERIFY-DATA     after the kept program, EFUSE_PROGRAM_INTERFACE_READ_DATA
                       equals the OTP word golden with bit A set.
+  CHK-VERIFY-DATA-HOLD  after one READ command of a non-secret data word whose
+                      golden has a bit set that is clear in the held word, the READ
+                      returns its golden and EFUSE_PROGRAM_INTERFACE_READ_DATA still
+                      equals the word of the kept program
+                      (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:156``: held until the
+                      next successful program). A register that loads, ORs in, or
+                      loads only a non-zero READ result fails.
 
 Each OTP word is read through ``EFUSE_READ_CTRL`` and compared whole against an
 image golden, so a write that lands on the wrong bit also fails. A SHIM that does
@@ -35,15 +42,30 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_test_lib import SepEfuseFd
 from env.sep_lcc_golden import LC_TEST_DEV
 from env.sep_locked_field_irq import SPARE_COUNT, spare_zero_pins
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_once_seq
 from seq_lib.sep_efuse_program_lock_seq import field_bit_addr, spare_field_name
 
 _MAX_SENSE_CYCLES = 20_000
+_PROGRAM_READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_INTERFACE_READ_DATA")
+
+
+def _hold_read_words(golden: SepEfuseImage, held: int) -> list[int]:
+    """Non-secret data words whose golden has a bit set that is clear in ``held``."""
+    secret = golden.secret_words()
+    return [
+        w
+        for fld in golden.fields
+        if fld.kind == "data"
+        for w in range(fld.word, fld.word + fld.n_words)
+        if w not in secret and golden.words[w] & ~held
+    ]
 
 
 @pyuvm.test()
@@ -54,6 +76,7 @@ class sep_efuse_program_verify_test(sep_base_test):
         "CHK-VERIFY-DETECT",
         "CHK-VERIFY-PROGRAM",
         "CHK-VERIFY-DATA",
+        "CHK-VERIFY-DATA-HOLD",
     )
 
     async def _otp_word(self, word: int) -> int:
@@ -97,9 +120,32 @@ class sep_efuse_program_verify_test(sep_base_test):
         )
         return seq
 
+    async def _check_data_hold(self, held: int, read_word: int) -> None:
+        """CHK-VERIFY-DATA-HOLD: one READ command leaves the program read data unchanged."""
+        golden = self.golden.words[read_word]
+        got_read = await self._otp_word(read_word)
+        got = await self.fd.rd(_PROGRAM_READ_DATA)
+        assert got_read == golden and got == held, (
+            f"CHK-VERIFY-DATA-HOLD FAIL: after a READ of OTP word {read_word} "
+            f"(read 0x{got_read:08x}, golden 0x{golden:08x}), "
+            f"EFUSE_PROGRAM_INTERFACE_READ_DATA = 0x{got:08x}, expected the held 0x{held:08x}"
+        )
+        self.logger.info(
+            "CHK-VERIFY-DATA-HOLD PASS: after a READ of OTP word %d = 0x%08x (golden 0x%08x, "
+            "bits 0x%08x clear in the held word), EFUSE_PROGRAM_INTERFACE_READ_DATA = 0x%08x "
+            "(held 0x%08x)",
+            read_word,
+            got_read,
+            golden,
+            golden & ~held,
+            got,
+            held,
+        )
+
     async def run_scenario(self) -> None:
         rng = SepSeededRng(self.random_seed())
-        field = spare_field_name(rng.randrange(SPARE_COUNT))
+        spare_a = rng.randrange(SPARE_COUNT)
+        field = spare_field_name(spare_a)
         nbits = SepEfuseImage.field(field).n_words * 32
         bit_a = rng.randrange(nbits)
         addr_a = field_bit_addr(field, bit_a)
@@ -118,6 +164,7 @@ class sep_efuse_program_verify_test(sep_base_test):
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         self.golden = SepEfuseImage()
         self.golden.words = list(img.words)
+        self.fd = SepEfuseFd(self)
 
         # The bank model drops the first write (+sep_efuse_prog_fail_count=1).
         await self._program("CHK-VERIFY-DETECT", addr_a, expect_err=True, lands=False)
@@ -136,3 +183,10 @@ class sep_efuse_program_verify_test(sep_base_test):
             addr_a // 32,
             addr_a % 32,
         )
+
+        pool = _hold_read_words(self.golden, want)
+        assert pool, (
+            "CHK-VERIFY-DATA-HOLD FAIL: no non-secret data word in the image has a golden "
+            f"bit set that is clear in the held 0x{want:08x}"
+        )
+        await self._check_data_hold(want, pool[rng.randrange(len(pool))])

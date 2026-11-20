@@ -115,8 +115,10 @@ module efuse_shadow_regs
     output logic                                is_read_locked_o,  // High when the APB address
                                                                    // falls in a read-locked field.
 
-    output logic                                locked_field_access_interrupt_o  // High during an APB access to the
+    output logic                                locked_field_access_interrupt_o, // High during an APB access to the
                                                                                  // MAP window that a lock blocks.
+    output logic [1:0]                          sense_state_debug_o  // Fuse sense FSM state: 0 idle, 1 read,
+                                                                     // 2 wait, 3 finished.
 );
 
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
@@ -470,6 +472,8 @@ module efuse_shadow_regs
   } efuse_sense_state_e;
 
   efuse_sense_state_e efuse_sense_state_d, efuse_sense_state_q;
+
+  assign sense_state_debug_o = 2'(efuse_sense_state_q);
 
     always_comb begin
         efuse_sense_state_d = efuse_sense_state_q;
