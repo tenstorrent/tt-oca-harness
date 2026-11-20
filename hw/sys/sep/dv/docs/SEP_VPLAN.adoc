@@ -1600,7 +1600,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |2
 |no_cpu, real fuse sense
 |ocah_axi_vip, OTP bank model program-fail injection
-|The reference SHIM verifies every program: against a dropped bank write the program reports `program_status` 1 and the bit stays clear; against a kept write it reports 0, the bit lands, and `EFUSE_PROGRAM_INTERFACE_READ_DATA` returns the programmed word and holds it across a later READ command (`CHK-VERIFY-DATA-HOLD`). A write-lock written while a program is busy does not affect that program: it completes with `program_status` 0, no `efuse_req_error`, and the bit lands (`CHK-INFLIGHT-LOCK`).
+|The reference SHIM verifies every program: against a dropped bank write the program reports `program_status` 1 and the bit stays clear; against a kept write it reports 0, the bit lands, and `EFUSE_PROGRAM_INTERFACE_READ_DATA` returns the programmed word and holds it across a later READ command (`CHK-VERIFY-DATA-HOLD`).
 |<<sep_lcc_demote_feat_ctrl_matrix_test,`sep_lcc_demote_feat_ctrl_matrix_test`>>
 |2
 |no_cpu, real fuse sense
