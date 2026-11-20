@@ -65,7 +65,7 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   protected bit [63:0] saved_start, saved_end, saved_config;
   protected int unsigned read_before, write_before, compare_before, mismatch_before;
   protected bit [63:0] word0, word1;
-  protected bit [31:0] upper_value, value_lo, value_zf;
+  protected bit [31:0] upper_value, lower_value, zero_fill_value;
   protected int unsigned null_polls, null_entries;
 
   protected function string access_context(string detail = "");
@@ -132,16 +132,16 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   endtask
 
   protected task clear_command(string check_id = ChkCleanup);
-    bit [63:0] size_value, destination;
+    bit [63:0] size_value, dest_value;
     mem_write(SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT, "Zeroer size cleanup");
     mem_write(SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT, "Zeroer destination cleanup");
     mem_read(SmcZeroerSizeAddr, size_value, "Zeroer size restored");
-    mem_read(SmcZeroerDestAddr, destination, "Zeroer destination restored");
+    mem_read(SmcZeroerDestAddr, dest_value, "Zeroer destination restored");
     prerequisite(check_id,
                  size_value == ZEROER_CTRL_SIZE_REG_DEFAULT &&
-                 destination == ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
+                 dest_value == ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
                  "Zeroer command cleared", $sformatf(
-                 "size=%h destination=%h", size_value, destination));
+                 "size=%h destination=%h", size_value, dest_value));
   endtask
 
   protected task filter_readback(bit [63:0] address, bit [63:0] expected, string check_id,
@@ -261,8 +261,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     word0 = {pattern, pattern ^ 32'h0101_0101};
     word1 = {pattern ^ 32'h0202_0202, pattern ^ 32'h0404_0404};
     upper_value = 32'(random_pattern(32)) | 1;
-    value_lo = 32'(random_pattern(32)) | 1;
-    value_zf = 32'(random_pattern(32)) | 1;
+    lower_value = 32'(random_pattern(32)) | 1;
+    zero_fill_value = 32'(random_pattern(32)) | 1;
     read_before = sep_in_history.read_count();
     write_before = sep_in_history.write_count();
     compare_before = scoreboard.compare_count(SmcFeatureMutexSema);
@@ -338,21 +338,22 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
               "upper push");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "upper push readback");
     upper_push = observed;
-    csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), value_lo, "lower push");
+    csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), lower_value, "lower push");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "lower push readback");
     grade(ChkPush, "32-bit pushes place data in the addressed half",
-          upper_push == {upper_value, 32'h0} && observed == {32'h0, value_lo}, $sformatf(
+          upper_push == {upper_value, 32'h0} && observed == {32'h0, lower_value}, $sformatf(
           "upper_push=%h lower_push=%h upper_value=%h lower_value=%h",
           upper_push,
           observed,
           upper_value,
-          value_lo
+          lower_value
           ));
-    strobed_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), {value_zf, 32'hFFFF_FFFF}, 8'hF0,
-                  "partial-strobe push");
+    strobed_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), {zero_fill_value, 32'hFFFF_FFFF},
+                  8'hF0, "partial-strobe push");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "partial-strobe push readback");
     grade(ChkZeroFill, "unstrobed lanes of a partial-strobe push are zero",
-          observed == {value_zf, 32'h0}, $sformatf("actual=%h value=%h", observed, value_zf));
+          observed == {zero_fill_value, 32'h0}, $sformatf(
+          "actual=%h value=%h", observed, zero_fill_value));
   endtask
 
   protected task check_mailbox_errors();
@@ -449,19 +450,19 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   endtask
 
   protected task check_accounting();
+    int unsigned expected_reads = FixedReads + null_polls + 2 * null_entries;
     for (int unsigned cycle = 0; cycle < ComparisonBound; cycle++) begin
       if (scoreboard.compare_count(
               SmcFeatureMutexSema
-          ) >= compare_before + ComparisonsPerPass && sep_in_history.read_count() >=
-              read_before + FixedReads + null_polls + 2 * null_entries &&
-              sep_in_history.write_count() >= write_before + FixedWrites)
+          ) >= compare_before + ComparisonsPerPass && sep_in_history.read_count() >= read_before +
+              expected_reads && sep_in_history.write_count() >= write_before + FixedWrites)
         break;
       wait_smc_cycles(1);
     end
     check_evidence(ChkScoreboard, "new mutex mismatches", scoreboard.mismatch_count(
                    SmcFeatureMutexSema) - mismatch_before, 0);
     check_evidence(ChkNonvac, "SEP_IN reads", sep_in_history.read_count() - read_before,
-                   FixedReads + null_polls + 2 * null_entries);
+                   expected_reads);
     check_evidence(ChkNonvac, "SEP_IN writes", sep_in_history.write_count() - write_before,
                    FixedWrites);
     check_evidence(ChkNonvac, "mutex comparisons", scoreboard.compare_count(SmcFeatureMutexSema
