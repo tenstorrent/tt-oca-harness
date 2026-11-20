@@ -1584,20 +1584,6 @@ ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_ax
 Toggle lifecycle_axi_resp_o.b.user "logic lifecycle_axi_resp_o.b.user[11:0]"
 Toggle lifecycle_axi_resp_o.r.user "logic lifecycle_axi_resp_o.r.user[11:0]"
 
-CHECKSUM: "1196780505 2936465847"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_efuse_shim_id_conv
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
-Toggle axi_out_resp_i.b.user "logic axi_out_resp_i.b.user[11:0]"
-Toggle axi_out_resp_i.r.user "logic axi_out_resp_i.r.user[11:0]"
-Toggle axi_in_resp_o.b.user "logic axi_in_resp_o.b.user[11:0]"
-Toggle axi_in_resp_o.r.user "logic axi_in_resp_o.r.user[11:0]"
-
-CHECKSUM: "1196780505 2936465847"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_efuse_shim_id_conv
-ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
-Toggle axi_out_req_o.aw.id [5:4] "logic axi_out_req_o.aw.id[5:0]"
-Toggle axi_out_req_o.ar.id [5:4] "logic axi_out_req_o.ar.id[5:0]"
-
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
 ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
@@ -1841,48 +1827,6 @@ INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
 ANNOTATION: "SEP-KM-EFUSE-REMAP-BASE: efuse_req_o address bits [31:12] come from OTP_EFUSE_REMAP_BASE (hw/ip/key_manager/rtl/key_manager.sv:393-396, OtpPageMask at hw/ip/key_manager/rtl/km_intf_pkg.sv:172-174), bound to a package constant at hw/sys/sep/rtl/sep_crypto.sv:1028. NOT waived: page-offset bits [11:2]."
 Toggle efuse_req_o.aw.addr [31:12] "logic efuse_req_o.aw.addr[31:0]"
 Toggle efuse_req_o.ar.addr [31:12] "logic efuse_req_o.ar.addr[31:0]"
-
-CHECKSUM: "2671987447 2027082395"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
-ANNOTATION: "SEP-KM-OTP-ERR-SLV-TIE: u_otp_err_slv answers with the parameters RESP = SLVERR and RESP_DATA = 32'hBADCAB1E (hw/ip/key_manager/rtl/key_manager.sv:373-381); prim_axi_lite_err_slv ties AxCACHE to 0 (hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv:73-87); axi_lite_to_axi ties size to the elaborated width, burst to FIXED, last to 1 and the other AXI4 fields to '0 (vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:39-67); axi_err_slv drives resp and data from the parameters and echoes the tied ID (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143-145,194-197). NOT waived: request address, prot, data and strobe, and every valid/ready handshake."
-Toggle otp_port_resp[0].r.resp "logic otp_port_resp[0].r.resp[1:0]"
-Toggle otp_port_resp[0].r.data "logic otp_port_resp[0].r.data[31:0]"
-Toggle otp_port_resp[0].b.resp "logic otp_port_resp[0].b.resp[1:0]"
-
-CHECKSUM: "1849182084 2569679982"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_otp_err_slv
-ANNOTATION: "SEP-KM-OTP-ERR-SLV-TIE: u_otp_err_slv answers with the parameters RESP = SLVERR and RESP_DATA = 32'hBADCAB1E (hw/ip/key_manager/rtl/key_manager.sv:373-381); prim_axi_lite_err_slv ties AxCACHE to 0 (hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv:73-87); axi_lite_to_axi ties size to the elaborated width, burst to FIXED, last to 1 and the other AXI4 fields to '0 (vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:39-67); axi_err_slv drives resp and data from the parameters and echoes the tied ID (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143-145,194-197). NOT waived: request address, prot, data and strobe, and every valid/ready handshake."
-Toggle axil_resp_o.r.resp "logic axil_resp_o.r.resp[1:0]"
-Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[31:0]"
-Toggle axil_resp_o.b.resp "logic axil_resp_o.b.resp[1:0]"
-Toggle axi_req.aw.user "logic axi_req.aw.user"
-Toggle axi_req.aw.region "logic axi_req.aw.region[3:0]"
-Toggle axi_req.aw.qos "logic axi_req.aw.qos[3:0]"
-Toggle axi_req.aw.cache "logic axi_req.aw.cache[3:0]"
-Toggle axi_req.aw.lock "logic axi_req.aw.lock"
-Toggle axi_req.aw.burst "logic axi_req.aw.burst[1:0]"
-Toggle axi_req.aw.size "logic axi_req.aw.size[2:0]"
-Toggle axi_req.aw.len "logic axi_req.aw.len[7:0]"
-Toggle axi_req.aw.id "logic axi_req.aw.id"
-Toggle axi_req.ar.user "logic axi_req.ar.user"
-Toggle axi_req.ar.region "logic axi_req.ar.region[3:0]"
-Toggle axi_req.ar.qos "logic axi_req.ar.qos[3:0]"
-Toggle axi_req.ar.cache "logic axi_req.ar.cache[3:0]"
-Toggle axi_req.ar.lock "logic axi_req.ar.lock"
-Toggle axi_req.ar.burst "logic axi_req.ar.burst[1:0]"
-Toggle axi_req.ar.size "logic axi_req.ar.size[2:0]"
-Toggle axi_req.ar.len "logic axi_req.ar.len[7:0]"
-Toggle axi_req.ar.id "logic axi_req.ar.id"
-Toggle axi_req.aw.atop "logic axi_req.aw.atop[5:0]"
-Toggle axi_req.w.last "logic axi_req.w.last"
-Toggle axi_req.w.user "logic axi_req.w.user"
-Toggle axi_resp.r.user "logic axi_resp.r.user"
-Toggle axi_resp.r.resp "logic axi_resp.r.resp[1:0]"
-Toggle axi_resp.r.id "logic axi_resp.r.id"
-Toggle axi_resp.b.user "logic axi_resp.b.user"
-Toggle axi_resp.b.resp "logic axi_resp.b.resp[1:0]"
-Toggle axi_resp.b.id "logic axi_resp.b.id"
-Toggle axi_resp.r.data "logic axi_resp.r.data[31:0]"
 
 CHECKSUM: "2110255361 4285487034"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_cpu

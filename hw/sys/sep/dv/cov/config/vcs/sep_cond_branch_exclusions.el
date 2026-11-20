@@ -690,16 +690,6 @@ INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
 ANNOTATION: "SEP-CPU-IFU-AW-ZERO: the VeeR IFU drives awaddr = '0 (vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv:1087), and region_size_i is the literal 0x3000_0000 (hw/sys/sep/rtl/sep_cpu.sv:544, hw/sys/sep/rtl/sep_pkg.sv:485). With addr 0, addr >= base holds only for base 0, and then 0 < base + size holds (hw/ip/axi_window_remap/rtl/axi_window_remap.sv:37,42-43), so the (1 0) vector cannot occur. NOT waived: the (0 1) and (1 1) vectors, which SEP_LOCAL_BASE_ADDR moves."
 Condition 1 "1033715818" "((slv_req_i.aw.addr >= local_alias_base_i) && ({1'b0, slv_req_i.aw.addr} < local_alias_end)) 1 -1" (2 "10")
 
-CHECKSUM: "2905179362 847969879"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-LINE: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:313, :1530 and :1652,1657 assign decoded_err, cpuif_wr_err, cpuif_rd_err and readback_err to constant '0. axil_resp_buffer_err resets to 0 (:167) and loads only these constants (:174-182), so the SLVERR statements at :210-211 never execute. NOT waived: the OKAY statements at :213-214 and all other response-path lines."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
-CHECKSUM: "2905179362 3747101343"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:313, :1530 and :1652,1657 assign the decode, write and read error terms to constant '0, and axil_resp_buffer_err loads only these constants (:167, :174-182), so the true arm of 'if(axil_resp_buffer_err[...])' at :209 never executes. NOT waived: the false (OKAY) arm."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
 ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1021/1024, :1324/1327, :1350/1353, :1376/1379, :1402/1405, :1428/1431, :1454/1457, :1480/1483 and :1506/1509 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1033, :1336, :1362, :1388, :1414, :1440, :1466, :1492 and :1518 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
@@ -740,12 +730,6 @@ Branch 74 "2747625622" "(~arst_n)" (2) "(~arst_n) 0,0"
 CHECKSUM: "3937190293 1840328202"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
 ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:722), efuse_guard (:814) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_interface_controller.sv:280-284, :298-302 and :413-419 belong to the SMC elaboration and do not execute here. NOT waived: the HAS_LC_STATE=1 address-decode statements at :274-278, :292-296 and :404-412."
-Block 5 "1977898423" "if ((axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
-Block 6 "1893830314" "efuse_req_decode_select_aw = INTERFACE_SEL;"
-Block 7 "1835296389" "efuse_req_decode_select_aw = SHIM_SEL;"
-Block 12 "2676881816" "if ((axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
-Block 13 "3347644321" "efuse_req_decode_select_ar = INTERFACE_SEL;"
-Block 14 "1855215342" "efuse_req_decode_select_ar = SHIM_SEL;"
 Block 23 "1518193479" "if ((apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}))"
 Block 24 "3333382630" "efuse_reg_select = SHADOW_REG_MAP;"
 Block 25 "2891404597" "if ((apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"

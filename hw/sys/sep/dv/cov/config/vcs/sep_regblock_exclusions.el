@@ -20,7 +20,7 @@
 // decode always_comb sets is_valid_addr='1 and is_valid_rw='1 with the
 // generator's own comments "No valid address check" / "No valid RW check",
 // then decoded_err='0, cpuif_wr_err='0, readback_err='0 and
-// cpuif_rd_err=readback_err (e.g. sep_scratch_reg.sv). With the response
+// cpuif_rd_err=readback_err (e.g. filter_ctrl_reg.sv). With the response
 // buffer never loading a 1, s_axil_bresp/s_axil_rresp hold 2'b00 OKAY.
 //
 // The same A2 reasoning holds for an APB cpuif: s_apb_pslverr is
@@ -53,48 +53,32 @@
 //     listed. The copies of this response inside u_sep come in through an
 //     integrator input port, so they stay graded.
 //
-// SEP returns SLVERR from the fabric -- the AXI-Lite demux default slave
-// (the sep_pkg::ERR_SLV leg, u_err_slv in sep_system_csr.sv), the axi_filter
-// datapath and the xbar decode error slave -- and sep_axi_map_refuse_test
-// grades those. This file does not waive them.
+// SEP returns SLVERR from the fabric -- the prim_axil_addr_demux miss
+// responders, the locked-filter error slaves (u_err_slv in sep_system_csr.sv),
+// the axi_filter datapath and the xbar decode error slave -- and
+// sep_axi_map_refuse_test grades those. The sep_scratch_reg, sep_reset_ctrl_reg
+// and sep_cpu_ctrl_reg blocks check the address and answer SLVERR past their
+// registers, so their error nets are not listed. This file does not waive them.
 //==================================================
 
 
 CHECKSUM: "3714861442 325599202"
-ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see."
 MODULE: sep_scratch_reg
-Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
-Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
 
 CHECKSUM: "602191063 2073096279"
-ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see."
 MODULE: sep_cpu_ctrl_reg
-Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
-Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
 
 CHECKSUM: "3746075860 3442232018"
-ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see."
 MODULE: sep_reset_ctrl_reg
-Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
-Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
-Toggle cpuif_rd_err "logic cpuif_rd_err"
-Toggle cpuif_wr_err "logic cpuif_wr_err"
-Toggle decoded_err "logic decoded_err"
-Toggle readback_err "logic readback_err"
 
 CHECKSUM: "1089600213 3277739977"
 ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
@@ -291,36 +275,6 @@ CHECKSUM: "2905179362 2073096279"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
 ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718 and :721 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next holds 1. NOT waived: REFERENCE_COUNTER next and value, which the hardware counter moves."
 Toggle field_combo.REFERENCE_COUNTER.rc.load_next "logic field_combo.REFERENCE_COUNTER.rc.load_next"
-
-CHECKSUM: "3743219407 1334731715"
-MODULE: sep_reset_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv:487 sets cpuif_wr_err to '0 and :513 sets readback_err to '0; these are the only loads of axil_resp_buffer_err (:166,176,181), so the 'if(axil_resp_buffer_err[...])' arm at :208 that drives SLVERR is unreachable. NOT waived: the OKAY arm and the response handshake."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
-CHECKSUM: "3743219407 2121730135"
-MODULE: sep_reset_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv:487 sets cpuif_wr_err to '0 and :513 sets readback_err to '0; these are the only loads of axil_resp_buffer_err (:166,176,181), so the 'if(axil_resp_buffer_err[...])' arm at :208 that drives SLVERR is unreachable. NOT waived: the OKAY arm and the response handshake."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
-CHECKSUM: "2905179362 847969879"
-MODULE: sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1530 sets cpuif_wr_err to '0 and :1652 sets readback_err to '0; these are the only loads of axil_resp_buffer_err (:167,177,182), so the 'if(axil_resp_buffer_err[...])' arm at :209 that drives SLVERR is unreachable. NOT waived: the OKAY arm and the response handshake."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
-CHECKSUM: "2905179362 3747101343"
-MODULE: sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1530 sets cpuif_wr_err to '0 and :1652 sets readback_err to '0; these are the only loads of axil_resp_buffer_err (:167,177,182), so the 'if(axil_resp_buffer_err[...])' arm at :209 that drives SLVERR is unreachable. NOT waived: the OKAY arm and the response handshake."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
-CHECKSUM: "2477850130 3748922694"
-MODULE: sep_scratch_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv:311 sets cpuif_wr_err to '0 and :333 sets readback_err to '0; these are the only loads of axil_resp_buffer_err (:166,176,181), so the 'if(axil_resp_buffer_err[...])' arm at :208 that drives SLVERR is unreachable. NOT waived: the OKAY arm and the response handshake."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
-CHECKSUM: "2477850130 3516621464"
-MODULE: sep_scratch_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-RESP: hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv:311 sets cpuif_wr_err to '0 and :333 sets readback_err to '0; these are the only loads of axil_resp_buffer_err (:166,176,181), so the 'if(axil_resp_buffer_err[...])' arm at :208 that drives SLVERR is unreachable. NOT waived: the OKAY arm and the response handshake."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
 CHECKSUM: "2477850130 325599202"
 MODULE: sep_scratch_reg
