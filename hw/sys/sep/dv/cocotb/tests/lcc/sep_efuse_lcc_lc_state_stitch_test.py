@@ -555,9 +555,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     done_err = _PG_DONE | _PG_STATUS
                     ends = [st & done_err for st in blocked.attempt_status]
                     statuses = ",".join(f"0x{st:08x}" for st in blocked.attempt_status)
-                    self.logger.info(
-                        "OBS-STM-PROG-BLOCK-STATUS: attempts=[%s] (%s)", statuses, exc
-                    )
+                    self.logger.info("OBS-STM-PROG-BLOCK-STATUS: attempts=[%s] (%s)", statuses, exc)
                     if ends != [done_err] * blocked.max_attempts:
                         raise AssertionError(
                             "CHK-STM-PROG-BLOCK-STATUS FAIL: each of the "
