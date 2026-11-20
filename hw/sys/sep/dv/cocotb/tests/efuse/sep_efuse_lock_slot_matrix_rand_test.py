@@ -72,12 +72,12 @@ Checkers:
                     (``hw/ip/efuse/doc/architecture.adoc:252-254``: a locked target
                     completes the operation with an error;
                     ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
-                    ``read_status``). The line prints both values, the expected 1
-                    and both values read before the go. No text states when
-                    ``read_done`` and ``read_status`` clear, so only a request whose
-                    pre-go state is not done 1 with status 1 is graded; any other
-                    request logs ``INFO-LOCK-READ-DONE-STALE`` with the same values.
-                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one graded request.
+                    ``read_status``). The line prints both values, the expected 1,
+                    both values read before the go and whether that pre-go state
+                    was fresh (not done 1 with status 1). Every request is
+                    graded, whatever its pre-go state.
+                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one request with a
+                    fresh pre-go state.
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -782,7 +782,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             await self._chain()
 
         if "CHK-LOCK-READ-DONE" in self.required_evidence:
-            # Only a request with a fresh pre-go state is graded; require one.
+            # A done 1 after a fresh pre-go state can only come from the request.
             self._control(
                 "LOCK-READ-DONE-FRESH",
                 self.fresh_read_done >= 1,
@@ -863,31 +863,24 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
-                # A request whose pre-go state is already done 1 and status 1
-                # cannot show the flags it sets, so only a fresh request is graded.
                 fresh = not (r["pre_done"] == 1 and r["pre_status"] == 1)
                 self.read_done_requests += 1
                 self.fresh_read_done += int(fresh)
-                flags = {
-                    "slot": slot,
-                    "field": name,
-                    "bit_addr": read_bit["addr"],
-                    "pre_read_done": r["pre_done"],
-                    "pre_read_status": r["pre_status"],
-                    "read_done": r["done"],
-                    "read_status": r["status"],
-                }
-                if fresh:
-                    self._grade(
-                        "LOCK-READ-DONE",
-                        r["done"] == 1 and r["status"] == 1,
-                        contract=_READ_DONE_CONTRACT,
-                        **flags,
-                        exp_read_done=1,
-                        exp_read_status=1,
-                    )
-                else:
-                    self.chk.info("LOCK-READ-DONE-STALE", **flags)
+                self._grade(
+                    "LOCK-READ-DONE",
+                    r["done"] == 1 and r["status"] == 1,
+                    contract=_READ_DONE_CONTRACT,
+                    slot=slot,
+                    field=name,
+                    bit_addr=read_bit["addr"],
+                    pre_read_done=r["pre_done"],
+                    pre_read_status=r["pre_status"],
+                    fresh=int(fresh),
+                    read_done=r["done"],
+                    read_status=r["status"],
+                    exp_read_done=1,
+                    exp_read_status=1,
+                )
             else:
                 ok &= r["busy"] == 0 and r["done"] == 1 and r["status"] == 0 and r["req_err"] == 0
                 self.accepted_reads += int(ok)
