@@ -44,9 +44,11 @@ Checkers:
                         write; the post-reset write shows on the tap, and a
                         response after the readback request carries the
                         post-reset value as read data.
-  CHK-SRAM-OTF-REFUSE   per path (read, write) a refused multi-beat FIXED or WRAP
-                        inbound burst takes ``rst_ni`` after data beat k (drawn,
-                        1 to N - 1) and before its last beat; after the release
+  CHK-SRAM-OTF-REFUSE   per path (read, write) a refused 16-beat FIXED or WRAP
+                        inbound burst takes ``rst_ni`` after ``m_axi`` data beat
+                        k, drawn from 1 to 3 for the read and from 13 to 15 for
+                        the write, while the burst error slave holds the burst
+                        (CTRL-SRAM-OTF-REFUSE); after the release
                         and a new filter programming, a refused write and a
                         refused read of the same type and length N with another
                         ID answer as CHK-SRAM-REFUSE grades them: one B beat with
@@ -97,7 +99,12 @@ CTRL-SRAM-REACH (both masters write and read back the first and last word, each
 of the 15 word-address bits and 128 drawn words), CTRL-SRAM-OTF-REFUSE (before
 the ``rst_ni`` fall the ``m_axi`` monitor shows the request handshake, at least
 one and fewer than N data beats of the abandoned burst, and no RLAST or B beat
-of it; else the leaf fails), CTRL-SRAM-STRB-PRE (the
+of it, and the burst error slave ``u_dut.u_sep.u_sram_burst_err_slv`` holds the
+burst: for the write an accepted AW waits for its WLAST (``w_fifo_empty`` = 0),
+for the read an accepted AR waits or its R burst has beats left to send
+(``r_fifo_empty`` = 0 or ``r_busy_q`` = 1); a monitor-only read on the falling
+edge of the fall, logged with ``r_current_beat``; else the leaf fails),
+CTRL-SRAM-STRB-PRE (the
 CPU-LSU master reads back the full write of a strobe leg) and CTRL-SRAM-STRB
 (the W handshake on ``m_axi`` carries the strobe of the leg and the written
 data, and one B beat with the ID of the write follows). CTRL-SRAM-XOUT: on at
@@ -245,6 +252,15 @@ XOUT_REQS = (3, 5)
 XOUT_BEATS = (2, 16)
 # Inbound IDs of the step lie above the 3-bit s_axi ID range.
 XOUT_M_IDS = range(8, 64)
+# Reset in flight on a refused inbound burst: the burst length and, per path,
+# the range of the m_axi data beat k after which rst_ni falls. The burst error
+# slave sends R beats back to back, and the R path back to m_axi takes several
+# clocks, so the reset lands early in the R stream to find beats not yet sent.
+# The error slave takes W beats only after their AW, so the reset lands late in
+# the W stream, before WLAST leaves m_axi. CTRL-SRAM-OTF-REFUSE reads the error
+# slave state at the fall and fails when it does not hold the burst.
+OTF_REFUSE_BEATS = 16
+OTF_REFUSE_K = {"RD": (1, 3), "WR": (OTF_REFUSE_BEATS - 3, OTF_REFUSE_BEATS - 1)}
 
 PROG_FIELDS = (
     F_ENTRY_ENABLED
@@ -582,20 +598,22 @@ class _Cfg:
             self.stream_avoid.update(words_of(beat_addrs(b.burst, b.addr, b.beats, b.size), WORD))
 
         # Reset in flight on a refused inbound burst, in the free slot of page_r:
-        # per path the burst shape, the beat k after which rst_ni falls (1 to
-        # N - 1), the abandoned ID and the ID of the post-reset refused bursts.
+        # per path the burst type, size and start, the beat k after which rst_ni
+        # falls (OTF_REFUSE_K), the abandoned ID and the ID of the post-reset
+        # refused bursts.
         slot = self.page_r + len(cases) * SLOT
-        shapes = [(FIXED, n) for n in FIXED_LENS] + [(WRAP, n) for n in WRAP_LENS]
+        beats = OTF_REFUSE_BEATS
         self.otf_refuse_paths = ["RD", "WR"]
         rng.shuffle(self.otf_refuse_paths)
         self.otf_refuse: dict[str, dict] = {}
         for p in ("RD", "WR"):
-            burst, beats = rng.choice(shapes)
+            burst = rng.choice((FIXED, WRAP))
             start, wsize, rsize = refused_shape(slot, burst, beats)
             abandon, post_id = rng.sample(list(M_IDS), 2)
             size = rsize if p == "RD" else wsize
             words = words_of(beat_addrs(burst, start, beats, wsize), wsize)
-            k = rng.randrange(1, beats)
+            k_lo, k_hi = OTF_REFUSE_K[p]
+            k = rng.randrange(k_lo, k_hi + 1)
             n_data = beats * size if p == "WR" else 0
             self.otf_refuse[p] = {
                 "b": _Burst(f"Z{p}", p[0], burst, start, beats, size, abandon),
@@ -1387,6 +1405,22 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             f"{op} id={axi_id}: {n} of {k} data beats on m_axi within {FOLLOW_BOUND} clocks"
         )
 
+    @staticmethod
+    def _err_slv_state() -> dict[str, int | None]:
+        """Monitor-only read of the SRAM burst error slave state; None for X or Z.
+
+        ``w_fifo_empty`` is 0 while an accepted AW waits for its WLAST;
+        ``r_fifo_empty`` is 0 while an accepted AR waits to start; ``r_busy_q``
+        is 1 while an R burst is in progress, with ``r_current_beat`` + 1 beats
+        left to send.
+        """
+        es = cocotb.top.u_dut.u_sep.u_sram_burst_err_slv
+        out: dict[str, int | None] = {}
+        for name in ("w_fifo_empty", "r_fifo_empty", "r_busy_q", "r_current_beat"):
+            val = getattr(es, name).value
+            out[name] = int(val) if val.is_resolvable else None
+        return out
+
     async def _otf_refuse(self, path: str) -> None:
         """Land rst_ni inside a refused burst, then grade the next refused burst."""
         v = self.plan.otf_refuse[path]
@@ -1407,6 +1441,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         )
         seen = await self._follow_beats(b.op, b.axi_id, k)
         await FallingEdge(top.clk_i)
+        held = self._err_slv_state()
         top.rst_ni.value = 0
         fall_clk = mon.clk
         low = await self._wait_level(top.dbg_sep_reset_n_o, 0, RESET_BOUND, "reset assert")
@@ -1424,13 +1459,24 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             data_before = [x for x in mon.since(mark, "w") if x.clk <= fall_clk]
             ended = any(x.clk <= fall_clk for x in self._beats(mon, mark, "b", b.axi_id))
         n_before = len(data_before)
+        if path == "RD":
+            # An AR waiting in the R FIFO, or an R burst with beats left to send.
+            in_slave = held["r_busy_q"] == 1 or held["r_fifo_empty"] == 0
+        else:
+            # The AW ID waits in the W FIFO until the WLAST handshake pops it.
+            in_slave = held["w_fifo_empty"] == 0
         ctrl = (
             f"path={path} {b.fmt()} k={k} follower_beats={seen} req_handshakes={len(req)} "
             f"{dch}_beats_before_fall={n_before} ended_before_fall={int(ended)} "
-            f"fall_after_clk={fall_clk}"
+            f"fall_after_clk={fall_clk} err_slv_at_fall: "
+            + " ".join(f"{n}={'X' if x is None else x}" for n, x in held.items())
+            + f" held_in_err_slv={int(in_slave)}"
         )
-        if not (req and 1 <= n_before < b.beats and not ended):
-            msg = f"CTRL-SRAM-OTF-REFUSE FAIL: {ctrl}; rst_ni did not land inside the burst"
+        if not (req and 1 <= n_before < b.beats and not ended and in_slave):
+            msg = (
+                f"CTRL-SRAM-OTF-REFUSE FAIL: {ctrl}; rst_ni did not land while the burst "
+                "error slave held the burst"
+            )
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info("CTRL-SRAM-OTF-REFUSE: %s", ctrl)

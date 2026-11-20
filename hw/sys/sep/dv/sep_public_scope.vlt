@@ -46,3 +46,11 @@ public_flat_rd -module "sep_wrapper" -var "smc_mailbox_interrupt_o"
 // condition its idle checks of PIC source 39 and the entropy-pool RAS lane on
 // STATUS.pool_error reading 0. Read-only access adds no write path.
 public_flat_rd -module "sep_entropy_fifo" -var "status_word"
+
+// The SRAM shape-matrix leaf reads the state of the SRAM burst error slave at
+// the reset fall of its refused-burst reset path, to require that the slave
+// holds the burst at that moment. Read-only access adds no write path.
+public_flat_rd -module "axi_err_slv" -var "w_fifo_empty"
+public_flat_rd -module "axi_err_slv" -var "r_fifo_empty"
+public_flat_rd -module "axi_err_slv" -var "r_busy_q"
+public_flat_rd -module "axi_err_slv" -var "r_current_beat"

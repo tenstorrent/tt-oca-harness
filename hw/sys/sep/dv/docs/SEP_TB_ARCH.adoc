@@ -315,6 +315,15 @@ Observation probe groups:
   `sep_public_scope.vlt` makes this one net readable (`public_flat_rd`). Owner:
   `sep_pic_pending_map_walk_rand_test` (CTRL-POOL-ERROR, the condition of
   CHK-SRC39 and CHK-RAS-ENTROPY_POOL_ERR-IDLE).
+* SRAM burst error slave state read (`u_dut.u_sep.u_sram_burst_err_slv`,
+  `vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv`): `w_fifo_empty`,
+  `r_fifo_empty`, `r_busy_q` and `r_current_beat`, read by hierarchy once, on
+  the falling edge where the leaf lowers `rst_ni` inside a refused inbound
+  burst, before the write. It is monitor-only: it drives nothing and adds no
+  force, and no check grades its values; it is the reach condition that the
+  error slave holds the burst at the reset. On Verilator
+  `sep_public_scope.vlt` makes these four nets readable (`public_flat_rd`).
+  Owner: `sep_sram_axi_shape_matrix_test` (CTRL-SRAM-OTF-REFUSE).
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.
