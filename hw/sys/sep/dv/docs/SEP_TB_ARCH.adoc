@@ -366,7 +366,7 @@ Observation probe groups:
   word that `esrc_compress_vld_o` offers. No register shows whether an
   offered word was taken or dropped. Owner: `sep_drbg_cmd_sequence_rand_test`,
   which counts the offered words taken and dropped and logs the counts
-  (OBS-DRBG-SEED-INGRESS).
+  (INFO-DRBG-SEED-INGRESS).
 * RMA-SIP token-digest latch probes (`token_digest_*`).
 * eFuse and lifecycle taps (read-only, no force). `efuse_shim_cmd_*_o`, the
   post-guard fuse command at the `sep` output `efuse_shim_command_req_o`

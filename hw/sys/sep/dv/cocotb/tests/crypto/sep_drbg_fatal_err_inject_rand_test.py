@@ -77,7 +77,10 @@ Checkers:
                     bits reads them 0, so CHK-EDN-FIFO13 reads ``INTR_STATE`` 0 from
                     a clean state.
 Every ERR_CODE compare uses the field bits of the register text; the Reserved
-bits are logged as ``rsvd``.
+bits are logged as ``rsvd``. Logged only, not graded: the other source bits and
+the type bits after each forced source bit (``INFO-DRBG-ERRCODE-FIELDS``; the
+fatal alert of the cell is graded by ``CHK-DRBG-ALERT``), and ``ERR_CODE`` after
+the write-one clear in the EDN bit 0 cell (``INFO-EDN-STICKY0``).
 
 RAS port checks (``hw/sys/sep/doc/port_table.adoc:130``, row ``sep_ras_o``, which
 states "The ``sep_pkg::sep_ras_t`` field comments state how each one is held and
@@ -719,8 +722,9 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             err_code_before=f"0x{err0 & unit.err_mask:08x}",
             fatal_state_before=int(bool(st0 & unit.fatal_bm)),
         )
-        self.chk.obs(
+        self.chk.info(
             "DRBG-ERRCODE-FIELDS",
+            graded="none",
             unit=unit.name,
             bit=bit,
             other_src=f"0x{other:08x}",
@@ -782,7 +786,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             )
         edn0 = unit.name == "edn" and bit == 0
         if edn0:
-            self.chk.obs("EDN-STICKY0", **self._err_fields(unit, err2))
+            self.chk.info("EDN-STICKY0", **self._err_fields(unit, err2), graded="none")
         sticky = (edn0 or kept == 1) and (not fifo_bit or s_after == 0)
         self._ok(
             "DRBG-STICKY",

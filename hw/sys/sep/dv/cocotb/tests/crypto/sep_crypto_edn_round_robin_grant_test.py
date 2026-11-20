@@ -8,11 +8,11 @@ that their beat time-spans overlap. It cannot create a same-cycle dual
 configuration. This test holds AES (crypto_edn[0]) and OTBN URND
 (crypto_edn[3]) with ``edn_req`` high *before* EDN is enabled, then brings up
 the real entropy chain so ``prim_arbiter_ppc`` inside ``drbg_axis_edn_adapter``
-has to grant both. CHK-NO-STARVE grades sharing. The grant order is logged
-only (``OBS-EDN-GRANT-SEQ``): ``hw/sys/sep/doc/trng.adoc`` names round-robin
-arbitration, and its distribution figure (``sep-trng-distribution.svg``) shows
-the arbiter filling a one-entry FIFO per client, so the ``edn_ack`` order at the
-client ports is not the arbitration order, and no text states it.
+has to grant both. CHK-NO-STARVE grades sharing. The ``edn_ack`` order at the
+client ports is logged only (``INFO-EDN-GRANT-SEQ``): the distribution figure of
+``hw/sys/sep/doc/trng.adoc`` (``sep-trng-distribution.svg``) shows the arbiter
+filling a one-entry FIFO per client, so that order is not the arbitration order.
+CHK-EDN-ARB-RR grades the arbitration order on the arbiter taps.
 
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
@@ -42,14 +42,22 @@ Checkers:
   CHK-KMAC-CLIENT  a keyed KMAC-256 on the KMAC client matches the Keccak golden.
   CHK-FOUR-CLIENT  all four adapter clients are granted in one run.
   CHK1..CHK4, CHK-ROUTING  bit-exact entropy golden and five-sink routing.
-
-The adapter arbiter itself is logged only (``OBS-EDN-ARB-GNT``): on every clock
-with a non-zero grant from the EDN enable on, the request and grant vectors of
-the client arbiter. The line gives the grant count, the count of grants with two
-or more clients requesting, whether every grant was one-hot and inside the
-request vector, and the first 16 grants as ``req:index``. ``trng.adoc`` states
-round-robin arbitration but no order, initial pointer or bound, so none of it
-is graded.
+  CHK-EDN-ARB-RR   the client arbiter is round-robin ("distributes words to
+                   native clients 0 = AES, 1 = KMAC, 2 = OTBN RND, 3 = OTBN URND,
+                   using round-robin arbitration", ``hw/sys/sep/doc/trng.adoc``
+                   :92-93): from the EDN enable to the end of the KMAC client, on
+                   the request and grant vectors of the arbiter, no client k is
+                   granted again while another client j has requested on every
+                   clock since the previous grant of k and has not been granted.
+                   Every grant is one-hot and inside the request vector, and no
+                   sample has an X or Z bit. The check claims no initial pointer
+                   and no bound beyond that. Control
+                   (``CTRL-EDN-ARB-RR-ARMED``): at least one grant went to a client
+                   j that was waiting on another client k (j requested at the
+                   previous grant of k and on every clock since), so the rule
+                   constrained that grant. The dual request held before the EDN enable
+                   forces such a grant on every run. The verdict is taken after
+                   CHK-ROUTING, so a FAIL does not hide the other checks.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
 ports), ``edn_crypto_arb_req_o`` / ``edn_crypto_arb_gnt_o`` (client arbiter
@@ -153,12 +161,19 @@ def _known(sig) -> int | None:
 
 
 class _ArbGrantLog:
-    """Request and grant vectors of the crypto-EDN client arbiter, per clock.
+    """Request and grant vectors of the crypto-EDN client arbiter, per clock, and
+    the round-robin rule on them.
 
-    Samples after each rising edge in the read-only phase. A clock counts when the
-    grant vector is non-zero; ``contended`` counts those with two or more request
-    bits set. ``onehot_in_req`` stays 1 while every grant is one-hot and inside the
-    request vector. ``xz`` counts clocks with an X or Z on either vector.
+    Samples after each rising edge in the read-only phase. A clock counts as a grant
+    when the grant vector is non-zero; ``contended`` counts those with two or more
+    request bits set. ``onehot_in_req`` stays 1 while every grant is one-hot and
+    inside the request vector. ``xz`` counts clocks with an X or Z on either vector.
+
+    ``waiting[k]`` holds the clients that requested at the last grant of k and on
+    every known clock since, and were not granted since. A grant to k with
+    ``waiting[k]`` non-zero is a violation. ``served`` counts the grants to a client
+    that is in ``waiting`` of another client: the grants the rule constrained. An X
+    or Z clock empties ``waiting``, so no rule spans it.
     """
 
     def __init__(self, dut) -> None:
@@ -167,9 +182,40 @@ class _ArbGrantLog:
         self.contended = 0
         self.onehot_in_req = 1
         self.xz = 0
+        self.served = 0
+        self.violations = 0
+        self.first_violation = "none"
+        self.waiting = [0] * len(_ALL_CLIENTS)
         self.first: list[str] = []
         self.run = True
         self.task = cocotb.start_soon(self._run())
+
+    def _step(self, req: int, gnt: int) -> None:
+        self.waiting = [w & req for w in self.waiting]
+        if gnt == 0:
+            return
+        self.grants += 1
+        if bin(req).count("1") >= 2:
+            self.contended += 1
+        onehot = gnt & (gnt - 1) == 0
+        if not onehot or gnt & ~req:
+            self.onehot_in_req = 0
+        if len(self.first) < _GRANT_SAMPLE_TARGET:
+            idx = str(gnt.bit_length() - 1) if onehot else f"g0x{gnt:x}"
+            self.first.append(f"0x{req:x}:{idx}")
+        if not onehot:
+            return
+        k = gnt.bit_length() - 1
+        if any(w & gnt for w in self.waiting):
+            self.served += 1
+        if self.waiting[k]:
+            self.violations += 1
+            if self.first_violation == "none":
+                self.first_violation = (
+                    f"grant={self.grants}:client{k}:waiting=0x{self.waiting[k]:x}:req=0x{req:x}"
+                )
+        self.waiting = [w & ~gnt for w in self.waiting]
+        self.waiting[k] = req & ~gnt
 
     async def _run(self) -> None:
         dut = self.dut
@@ -180,23 +226,16 @@ class _ArbGrantLog:
             gnt = _known(dut.edn_crypto_arb_gnt_o)
             if req is None or gnt is None:
                 self.xz += 1
+                self.waiting = [0] * len(_ALL_CLIENTS)
                 continue
-            if gnt == 0:
-                continue
-            self.grants += 1
-            if bin(req).count("1") >= 2:
-                self.contended += 1
-            onehot = gnt & (gnt - 1) == 0
-            if not onehot or gnt & ~req:
-                self.onehot_in_req = 0
-            if len(self.first) < _GRANT_SAMPLE_TARGET:
-                idx = str(gnt.bit_length() - 1) if onehot else f"g0x{gnt:x}"
-                self.first.append(f"0x{req:x}:{idx}")
+            self._step(req, gnt)
 
     def line(self) -> str:
         return (
             f"grants={self.grants} contended={self.contended} "
-            f"onehot_in_req={self.onehot_in_req} xz={self.xz} first=[{','.join(self.first)}]"
+            f"onehot_in_req={self.onehot_in_req} xz={self.xz} served={self.served} "
+            f"violations={self.violations} first_violation={self.first_violation} "
+            f"first=[{','.join(self.first)}]"
         )
 
 
@@ -328,21 +367,18 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         # The round-robin arbiter fills a one-entry FIFO per client (the
         # sep-trng-distribution.svg figure of hw/sys/sep/doc/trng.adoc), so the
-        # edn_ack order at the client ports is not the arbitration order and no
-        # text states it.
+        # edn_ack order at the client ports is not the arbitration order.
         alt_pairs = 0
         for a, b in zip(grants, grants[1:]):
             if a == b:
                 break
             alt_pairs += 1
         self.logger.info(
-            "OBS-EDN-GRANT-SEQ alt_pairs=%d grants=%s dual_grants=%s",
+            "INFO-EDN-GRANT-SEQ graded=none alt_pairs=%d grants=%s dual_grants=%s",
             alt_pairs,
             grants[:16],
             dual_grants[:12],
         )
-        arb.run = False
-        self.logger.info("OBS-EDN-ARB-GNT %s", arb.line())
 
         # --- OTBN RND, the third adapter client ------------------------------
         # AES (bit 0) and OTBN URND (bit 3) are proven above. RND (bit 2) cannot
@@ -428,9 +464,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         )
 
         # --- CHK-FOUR-CLIENT --------------------------------------------------
-        # Every adapter client was granted at some point in this run. The grant
-        # sampler above only watches AES and URND, so this is taken from the
-        # per-client ack bits the monitor accumulated across the whole run.
+        # Every adapter client was granted at some point in this run. The
+        # ``_monitor`` grant list ``grants`` holds only AES and URND, so this is
+        # taken from the per-client ack bits the monitor accumulated across the
+        # whole run.
         acked_mask = acked["mask"]
         missing = [b for b in _ALL_CLIENTS if not (acked_mask & (1 << b))]
         assert not missing, (
@@ -444,6 +481,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             acked_mask,
         )
 
+        arb.run = False
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         # Routing floors, and exactly what each one is worth.
@@ -508,3 +546,15 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             rk.matches,
             rp.matches,
         )
+
+        # --- CHK-EDN-ARB-RR, graded last ----------------------------------------
+        assert arb.served >= 1, (
+            f"CTRL-EDN-ARB-RR-ARMED absent: no grant went to a client waiting on "
+            f"another client, so the round-robin rule constrained no grant "
+            f"({arb.line()})"
+        )
+        self.logger.info("CTRL-EDN-ARB-RR-ARMED seen: %s", arb.line())
+        assert arb.violations == 0 and arb.onehot_in_req == 1 and arb.xz == 0, (
+            f"CHK-EDN-ARB-RR FAIL: {arb.line()}"
+        )
+        self.logger.info("CHK-EDN-ARB-RR PASS: %s", arb.line())
