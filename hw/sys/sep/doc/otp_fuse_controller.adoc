@@ -389,8 +389,13 @@ means the chiplet creator, and SEP ROM does not use these bits. Bits [63:44]
 reserved.
 Program a co-signer's owner code and read the fuse back through the eFuse read
 interface before programming its bit in [7:0]; the shadow register does not
-show a programmed value until the next fuse sensing. See Secure-Boot Signing
-Model and Policy Fuse Updates in the Life Cycle Controller section.
+show a programmed value until the next fuse sensing. When the owner code names
+the SiP owner or the system owner, program that owner's key digest fuses and
+read them back before programming the co-signer's bit in [7:0]: at least one
+digest, and one of each group that the co-signer's minimum in REQUIRED_ALGS
+demands. A required co-signer whose owner has no programmed digest causes every
+manifest to be rejected. See Secure-Boot Signing Model and Policy Fuse Updates
+in the Life Cycle Controller section.
 
 |REQUIRED_ALGS |22 |64 (40 used) |set-only |true |The minimum signature groups
 each verification entity must declare. Each entity has four bits: bit 0 set
