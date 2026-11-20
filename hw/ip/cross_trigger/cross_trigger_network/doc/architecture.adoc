@@ -339,7 +339,11 @@ endif::backend-html5[]
 
 |Configuration
 |Runtime via CSRs (mode, invert, stretch_mult, reset)
-|Build-time via `INT_CT_MODE` parameter
+|Build-time via `INT_CT_MODE` parameter (mode, stretch_mult)
+
+|Modes
+|Wire-OR or point-to-point
+|Wire-OR, point-to-point, or toggle
 
 |Index Range
 |ctm_ct_src/dst[0:15]
@@ -347,7 +351,7 @@ endif::backend-html5[]
 
 |Signal Mapping
 |Standard GPIO pad controls
-|Repurposed GPIO signals (see <<internal-ctp-wire-or-connections-table>> and <<internal-ctp-point-to-point-connections-table>>)
+|Repurposed GPIO signals (see <<internal-ctp-wire-or-connections-table>>, <<internal-ctp-point-to-point-connections-table>>, and <<internal-ctp-toggle-connections-table>>)
 |===
 
 ifdef::backend-html5[]
@@ -359,17 +363,25 @@ endif::backend-html5[]
 ==== Internal CTP Signal Remapping
 
 Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
-logical signals rather than physical pads. The `INT_CT_MODE` parameter bits are
-inverted before use: `ModeWireOr = ~INT_CT_MODE[i]`. This means
-`INT_CT_MODE[i]=0` selects Wire-OR mode, while `INT_CT_MODE[i]=1` selects
-Point-to-Point mode.
+logical signals rather than physical pads. `INT_CT_MODE[i]` is a
+`cross_trigger_port_pkg::ctp_int_cfg_t` with two fields:
+
+* `mode` selects `MODE_WIRE_OR`, `MODE_POINT_TO_POINT`, or `MODE_TOGGLE` for
+  internal CTP _i_. Elaboration fails on any other value.
+* `stretch_mult` is the wire-OR pulse stretch, and the hold after each toggle
+  in toggle mode. `cross_trigger_port_pkg::CtpIntCfgDefault` selects wire-OR
+  mode with `stretch_mult` 1, and is the default of every lane.
+
+Toggle mode is available only on internal CTPs. External CTPs select their mode
+through the one-bit `CONFIG.MODE` field, which reaches wire-OR and
+point-to-point mode only.
 
 The internal wire-OR request from a CLA is active-high, while the CTP core
 receives a wire-OR cross trigger on the falling edge of an idle-high wire. The
 network therefore inverts `ctm_dst_req_i[i]` before `ct_req_out_din`, so an
 internal CTP receives a cross trigger on the rising edge of the CLA request.
 
-*Wire-OR Mode (INT_CT_MODE[i]=0, internal ModeWireOr=1):*
+*Wire-OR Mode (`INT_CT_MODE[i].mode` is `MODE_WIRE_OR`):*
 
 <<internal-ctp-wire-or-connections-table>> maps the CTP core signals to internal
 connections in wire-OR mode.
@@ -402,7 +414,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-*Point-to-Point Mode (INT_CT_MODE[i]=1, internal ModeWireOr=0):*
+*Point-to-Point Mode (`INT_CT_MODE[i].mode` is `MODE_POINT_TO_POINT`):*
 
 <<internal-ctp-point-to-point-connections-table>> maps the CTP core signals to internal
 connections in point-to-point mode.
@@ -438,9 +450,60 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-This remapping allows internal CTPs to operate in either mode without physical
-GPIO pads, enabling on-chip cross-triggering between CLAs and the external
-cross-trigger network.
+*Toggle Mode (`INT_CT_MODE[i].mode` is `MODE_TOGGLE`):*
+
+<<internal-ctp-toggle-connections-table>> maps the CTP core signals to internal
+connections in toggle mode. A toggle lane uses the same two signals as a
+wire-OR lane, and its acknowledges are unused as well.
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="Internal CTP toggle signal mapping" tabindex="0">
+++++
+endif::backend-html5[]
+
+[[internal-ctp-toggle-connections-table]]
+[cols="<32,<68",options="header",role="port-reference"]
+.Internal CTP toggle connections
+|===
+|CTP Core Signal |Internal Connection
+
+|`ct_req_out_dout`
+|→ `ctm_src_req_o[i]` (toggle level to the peer; one level change per trigger)
+
+|`ct_req_in_din`
+|← `ctm_dst_req_i[i]` (toggle level from the peer; each level change is one trigger)
+
+|`ctm_dst_ack_o[i]`
+|Tied low
+
+|All other signals
+|Unused (tied to constants)
+|===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+A toggle lane has no back-pressure. The peer logic must obey the rules that the
+CTP architecture states for toggle mode:
+
+* The peer holds each level on `ctm_dst_req_i[i]` for a minimum of two `clk_i`
+  cycles. Two level changes inside one synchronizer sample period cancel, and
+  no trigger is received.
+* `ctm_src_req_o[i]` holds each level for a minimum of `stretch_mult + 2` `clk_i`
+  cycles. A trigger from the matrix during that hold is discarded. Set
+  `stretch_mult` so that the hold is at least two cycles of the peer's clock.
+* A reset of only one end of the lane while its output is high changes the
+  level that the other end sees, and the other end receives one trigger. Reset
+  the CTN and the peer together, or keep every matrix route through the lane
+  closed until both ends are out of reset.
+
+This remapping allows internal CTPs to operate in any of the three modes without
+physical GPIO pads, enabling on-chip cross-triggering between CLAs and the
+external cross-trigger network.
 
 === Signal Flow
 

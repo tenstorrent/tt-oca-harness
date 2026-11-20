@@ -4,22 +4,22 @@
 
 The per-internal-CT mode vector the SMU presents to the DTP is
 CFG.XTRIG_INT_CT_MODE in the SMU-exposed lanes above the SMC-reserved
-pulse-sync lanes. `doc/integrator/src/smu.adoc` ("Cross Trigger Parameters"
+wire-OR lanes. `doc/integrator/src/smu.adoc` ("Cross Trigger Parameters"
 and "Debug & Test Ports (DTP) Integration") states the lane counts: 8 exposed
-internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC with their
-mode bits at zero. Those counts are the golden of the tokened S1 mask compare
+internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC in wire-OR
+mode. Those counts are the golden of the tokened S1 mask compare
 and the set of lanes the live leg walks.
 
 Reading the vector back at the DTP against the +xtrig_int_ct_mode the bench
-elaborated the build with is a plumbing compare: it carries no evidence token,
-and it does not decode CFG, whose packed layout is unspecified.
+elaborated the build with is a plumbing compare and carries no evidence token.
+It decodes each lane's ctp_int_cfg_t into the mask of point-to-point lanes,
+which is what +xtrig_int_ct_mode states.
 
 The evidence is the live leg. Each external CTM lane is requested in turn and
-the ack pins are sampled: port_table.adoc states the ack ports are "Unused in
-pulse-sync mode (mode bit = 0)", so a lane whose mode bit is set must
-acknowledge and hold, a pulse-sync lane must never assert, and the number of
-lanes at which an ack was *observed* must come to the mode vector's population
-count. A DTP that ignored the mode vector fails all three.
+the ack pins are sampled: port_table.adoc states the ack ports are "Used only
+by point-to-point lanes", so a point-to-point lane must acknowledge and hold, a
+wire-OR lane must never assert, and the number of lanes at which an ack was
+*observed* must come to the number of point-to-point lanes. A DTP that ignored the mode vector fails all three.
 """
 
 from __future__ import annotations
@@ -28,11 +28,13 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.smu_compose_helpers import (
+    CTP_INT_CFG_BITS,
     DTP_NUM_INT_CT,
     XTRIG_NUM_INT_CT,
     XTRIG_SMC_INT_CT_LANES,
     bit_width,
     hier,
+    int_ct_p2p_mask,
     parse_plusarg_int,
     sample,
 )
@@ -63,31 +65,32 @@ class smu_xtrig_mode_composition_seq:
         smu_vec = hier(smu, "DtpXtrigIntCtMode")
         dtp_vec = hier(smu, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
-            "mode vector width at the DTP is the specified internal CT count",
+            "mode vector at the DTP holds one lane configuration per specified internal CT",
             bit_width(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE"),
-            DTP_NUM_INT_CT,
+            DTP_NUM_INT_CT * CTP_INT_CFG_BITS,
         )
-        dtp_mode = sample(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE")
+        dtp_cfg = sample(dtp_vec, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
-            "DTP receives the vector the SMU concatenates",
-            dtp_mode,
-            sample(smu_vec, "DtpXtrigIntCtMode"),
+            "DTP receives the low lanes of the vector the SMU concatenates",
+            dtp_cfg,
+            sample(smu_vec, "DtpXtrigIntCtMode") & ((1 << (DTP_NUM_INT_CT * CTP_INT_CFG_BITS)) - 1),
         )
+        dtp_mode = int_ct_p2p_mask(dtp_cfg, DTP_NUM_INT_CT)
         sb.expect_eq(
-            "mode bits in the SMC reservation presented to DTP are zero (pulse-sync)",
+            "no lane in the SMC reservation presented to DTP is point-to-point",
             dtp_mode & ((1 << XTRIG_SMC_INT_CT_LANES) - 1),
             0,
             evidence="CHK-SMU-XTRIG-MODE-S1",
         )
         sb.expect_eq(
-            "mode bits above the SMC reservation presented to DTP are +xtrig_int_ct_mode",
+            "point-to-point lanes above the SMC reservation presented to DTP are +xtrig_int_ct_mode",
             dtp_mode >> XTRIG_SMC_INT_CT_LANES,
             mode_contract & ((1 << XTRIG_NUM_INT_CT) - 1),
         )
         self.log.info("DTP mode vector 0x%03x = {0x%02x, 2'b00}", dtp_mode, mode_contract)
 
         # Live: a destination request on an external lane is acknowledged only
-        # when that lane's mode bit is set.
+        # when that lane is point-to-point.
         dut.xtrig_ctm_dst_req.value = 0
         dut.xtrig_ctm_src_ack.value = 0
         await ClockCycles(dut.clk_smu_i, ACK_SETTLE)

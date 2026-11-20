@@ -11,8 +11,8 @@
 // one CTP window per external port and one CTM source register per port,
 // which the cross-trigger network document's parameter table states as
 // NUM_CTP 16 and NUM_INT_CT 10; the clock-stop request count is that table's
-// NUM_CLK_STOP_REQ. INT_CT_MODE '0 runs every internal port in pulse mode,
-// where the acknowledge signals are unused. The STAP count, the IC_RESET
+// NUM_CLK_STOP_REQ. INT_CT_MODE gives every internal port the default wire-OR
+// configuration, where the acknowledge signals are unused. The STAP count, the IC_RESET
 // slice widths, the instruction enables, the IDCODE fields, and the version
 // are the bench's choice; the DUT publishes them through JTAG_CAPS ("JTAG
 // Capabilities" table, PTAP document) and IDCODE. DTP_BSR_DISABLED clears the
@@ -43,7 +43,18 @@ package dtp_dv_cfg_pkg;
       int'(cross_trigger_network_addrmap_pkg::CROSS_TRIGGER_NETWORK_CTM_CT_SRC_NUM);
   localparam int unsigned NumIntCt = NumCtmPorts - NumCtp;
   localparam int unsigned NumClkStopReq = 9;
-  localparam logic [NumIntCt-1:0] IntCtMode = '0;
+  localparam cross_trigger_port_pkg::ctp_int_cfg_t [NumIntCt-1:0] IntCtMode =
+      {NumIntCt{cross_trigger_port_pkg::CtpIntCfgDefault}};
+
+  // One bit per internal lane, set where IntCtMode selects the point-to-point handshake.
+  function automatic logic [NumIntCt-1:0] int_ct_p2p_mask(
+      input cross_trigger_port_pkg::ctp_int_cfg_t [NumIntCt-1:0] cfg);
+    for (int unsigned i = 0; i < NumIntCt; i++) begin
+      int_ct_p2p_mask[i] = (cfg[i].mode == cross_trigger_port_pkg::MODE_POINT_TO_POINT);
+    end
+  endfunction
+
+  localparam logic [NumIntCt-1:0] IntCtP2pMask = int_ct_p2p_mask(IntCtMode);
 
   // Wire-OR shared-wire polarity per CONFIG.INVERT (cross_trigger_port.rdl),
   // bit index = INVERT: INVERT=0 is an active-low wire with a pull-up, INVERT=1

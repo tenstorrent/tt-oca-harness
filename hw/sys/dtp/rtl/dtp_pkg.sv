@@ -45,12 +45,6 @@ package dtp_pkg;
       DefaultNumClkStopReq == cross_trigger_network_pkg::DefaultNumClkStopReq)
 
   //-------------------------------------------------------------------------
-  // Derived Parameters
-  //-------------------------------------------------------------------------
-
-  localparam logic [DefaultNumIntCt-1:0] DefaultIntCtMode = {DefaultNumIntCt{1'b0}};
-
-  //-------------------------------------------------------------------------
   // AXI-Lite Parameters
   //-------------------------------------------------------------------------
 
