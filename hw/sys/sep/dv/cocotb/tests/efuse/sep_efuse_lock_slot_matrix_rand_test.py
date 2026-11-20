@@ -39,9 +39,10 @@ the write-lock kind; a plan that draws another kind or cell logs
 Checkers:
   CHK-LOCK-CELL     lock leg and single-bit image, one line per read slot: the
                     sensed-shadow output equals the staged words (the sense ignores
-                    locks) when the staged value is not 0; a field staged at 0, its
-                    RDL reset, is not graded there and ``INFO-LOCK-CELL-SENSE`` logs
-                    its probe (``sense_graded=0``); an unlocked frontdoor read equals them; a frontdoor read
+                    locks); for a field staged at 0, its RDL reset, the compare
+                    cannot show that the sense ran, so the line logs
+                    ``sense_graded=0`` and ``INFO-LOCK-CELL-SENSE`` logs its probe;
+                    an unlocked frontdoor read equals them; a frontdoor read
                     of a read-locked field returns no word equal to its non-zero
                     staged word (``otp_fuse_controller.adoc:110-111``: a read-lock
                     blocks software reads of the shadow; ``CHK-LOCK-READ`` grades
@@ -73,9 +74,10 @@ Checkers:
                     ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
                     ``read_status``). The line prints both values, the expected 1
                     and both values read before the go. No text states when
-                    ``read_done`` and ``read_status`` clear, so a grade is fresh
-                    only when the pre-go state is not done 1 and status 1;
-                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one fresh grade.
+                    ``read_done`` and ``read_status`` clear, so only a request whose
+                    pre-go state is not done 1 with status 1 is graded; any other
+                    request logs ``INFO-LOCK-READ-DONE-STALE`` with the same values.
+                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one graded request.
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -767,7 +769,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             self.shim.start()
         await ClockCycles(cocotb.top.clk_i, 2)
 
-        self.read_done_grades = self.fresh_read_done = 0
+        self.read_done_requests = self.fresh_read_done = 0
         if kind == "lock_leg":
             await self._lock_leg()
         elif kind == "single_bit":
@@ -780,11 +782,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             await self._chain()
 
         if "CHK-LOCK-READ-DONE" in self.required_evidence:
-            # A grade after a pre-go done 1 and status 1 can pass on a stale state.
+            # Only a request with a fresh pre-go state is graded; require one.
             self._control(
                 "LOCK-READ-DONE-FRESH",
                 self.fresh_read_done >= 1,
-                graded=self.read_done_grades,
+                requests=self.read_done_requests,
                 fresh=self.fresh_read_done,
             )
         close_graded_window(self.logger)
@@ -813,14 +815,13 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         f["staged"] = _hexf(name, staged)
 
         # Step 3: the sense fills the shadow, locked or not. Every field of slots 1
-        # to 40 resets to 0 (sep_efuse_map.rdl), so a staged 0 cannot show a
-        # missing sense and its probe is logged, not graded.
+        # to 40 resets to 0 (sep_efuse_map.rdl), so for a staged 0 the compare
+        # fails a wrong sensed value but cannot show that the sense ran.
         probe = self._probe(name)
         f["sense_probe"] = _hexf(name, probe)
         f["sense_graded"] = int(any(staged))
-        if f["sense_graded"]:
-            ok &= probe == staged
-        else:
+        ok &= probe == staged
+        if not f["sense_graded"]:
             self.chk.info(
                 "LOCK-CELL-SENSE",
                 slot=slot,
@@ -862,24 +863,31 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
+                # A request whose pre-go state is already done 1 and status 1
+                # cannot show the flags it sets, so only a fresh request is graded.
                 fresh = not (r["pre_done"] == 1 and r["pre_status"] == 1)
-                self.read_done_grades += 1
+                self.read_done_requests += 1
                 self.fresh_read_done += int(fresh)
-                self._grade(
-                    "LOCK-READ-DONE",
-                    r["done"] == 1 and r["status"] == 1,
-                    contract=_READ_DONE_CONTRACT,
-                    slot=slot,
-                    field=name,
-                    bit_addr=read_bit["addr"],
-                    pre_read_done=r["pre_done"],
-                    pre_read_status=r["pre_status"],
-                    fresh=int(fresh),
-                    read_done=r["done"],
-                    exp_read_done=1,
-                    read_status=r["status"],
-                    exp_read_status=1,
-                )
+                flags = {
+                    "slot": slot,
+                    "field": name,
+                    "bit_addr": read_bit["addr"],
+                    "pre_read_done": r["pre_done"],
+                    "pre_read_status": r["pre_status"],
+                    "read_done": r["done"],
+                    "read_status": r["status"],
+                }
+                if fresh:
+                    self._grade(
+                        "LOCK-READ-DONE",
+                        r["done"] == 1 and r["status"] == 1,
+                        contract=_READ_DONE_CONTRACT,
+                        **flags,
+                        exp_read_done=1,
+                        exp_read_status=1,
+                    )
+                else:
+                    self.chk.info("LOCK-READ-DONE-STALE", **flags)
             else:
                 ok &= r["busy"] == 0 and r["done"] == 1 and r["status"] == 0 and r["req_err"] == 0
                 self.accepted_reads += int(ok)
