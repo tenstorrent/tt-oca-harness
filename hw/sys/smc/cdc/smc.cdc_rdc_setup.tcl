@@ -281,41 +281,6 @@ if { [sizeof_collection $prim_fifo_async_cells] > 0 } {
 }
 
 ################################################################################
-# GPIO core2pad OUTPUT IGNORE
-################################################################################
-# core2pad_o[*] outputs are constrained to ck_feedthru (async virtual clock).
-# These are GPIO pad outputs driven from SMCCLK register fields; the crossing
-# to ck_feedthru is expected and does not require synchronization since the
-# destination is a primary output going to pads with no clock relationship.
-set_cdc_ignore_path \
-    -to [cdc_boundary_port {core2pad_o*}] \
-    -type cdc_crossing \
-    -comments "GPIO core2pad outputs: SMCCLK register to async pad, no sync needed"
-
-# Separate from the generic async-crossing ignore above: pad outputs are also
-# structurally reconvergent at the padring mux (per-pad DATA_CTRL fields such as
-# interface_enable, lsio_select, lsio_disable, core2pad vs protocol sources —
-# SPI clock, AVS clock, UART TX, etc.). There is no in-block receiving flop past
-# the primary output. Static CDC may still run glitch-stage checks on that
-# terminal reconvergence; we scope glitch suppression to the port without
-# dropping ordinary crossing analysis (the separate `-type cdc_crossing` ignore
-# stays in place). Broadening the ignore to wipe all crossing-class checks on
-# these ports would hide real unsynchronized-path issues—avoid that.
-#
-# User-path glitch APIs (`set_user_ignore_path`, `configure_userpath_glitch`)
-# target a different optional analysis family than CDC-path glitch suppression;
-# product documentation distinguishes them. Use `set_cdc_ignore_path` with
-# `-type` glitch / clock_path_glitch for pad-drive glitch noise on outputs.
-#
-# Keep `-type {glitch clock_path_glitch}` additive to `-type cdc_crossing`.
-# Include clock_path_glitch so bits that behave as exported clocks under muxing
-# remain covered if the tool classifies them that way in a future rev.
-set_cdc_ignore_path \
-    -to [cdc_boundary_port {core2pad_o*}] \
-    -type {glitch clock_path_glitch} \
-    -comments "GPIO core2pad: limit glitch-stage checks on terminal outputs; padring mux reconvergence is intentional. Ordinary CDC crossing handling stays via the separate cdc_crossing ignore."
-
-################################################################################
 # INDEPENDENT FAN-IN CONVERGENCE-IGNORE
 ################################################################################
 # The DBM observation lanes and the PeakRDL readback OR-trees combine independently

@@ -53,6 +53,9 @@ if {[cdc_is_block_top]} {
 }
 
 # External sample clock. Present on the SEP port whether or not the entropy
-# source is elaborated.
-create_clock -add -name ENTROPY_ROSC_CLK -period $clock_periods(ENTROPY_ROSC_PERIOD) \
-    [cdc_boundary_port "entropy_rosc_sample_clk_i"]
+# source is elaborated. Block-top only: a parent defines whatever clock it drives
+# onto this input.
+if {[cdc_is_block_top]} {
+    create_clock -add -name ENTROPY_ROSC_CLK -period $clock_periods(ENTROPY_ROSC_PERIOD) \
+        [get_ports "entropy_rosc_sample_clk_i"]
+}
