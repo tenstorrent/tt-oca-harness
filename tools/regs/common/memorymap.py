@@ -175,11 +175,21 @@ def _windows(node: AddressableNode) -> list[tuple[AddressableNode, int, int, int
     return windows
 
 
+def _bus_bytes(node: AddressableNode) -> int:
+    """Bytes per bus word: PeakRDL sizes a block's bus to its widest accesswidth and decodes
+    whole words, so a word holding a register answers as that register."""
+    regs = [node] if isinstance(node, RegNode) else node.descendants(unroll=False)
+    widths = [int(reg.get_property("accesswidth")) for reg in regs if isinstance(reg, RegNode)]
+    return max(widths, default=8) // 8
+
+
 def _element_extent(node: AddressableNode) -> int:
-    return max(
+    extent = max(
         [int(getattr(node, "size", 0) or 0)]
         + [offset + window for _, offset, _, window in _windows(node)]
     )
+    word = _bus_bytes(node)
+    return -(-extent // word) * word
 
 
 def _node_extent(node: AddressableNode) -> int:

@@ -529,6 +529,19 @@ addrmap top {
         self.assertEqual(rows["repeated"].occupied_size, 0x40)
         self.assertEqual(rows["plain"].occupied_size, 0xC)
 
+    def test_extent_ends_at_the_bus_word_holding_the_last_register(self):
+        text = RESPONSE_RDL.replace(
+            "addrmap top {\n",
+            "addrmap mixed {\n"
+            "    reg { regwidth = 64; field { sw = rw; hw = r; } value[63:0]; } wide @0x0;\n"
+            "    reg { field { sw = rw; hw = r; } value[31:0]; } last @0x18;\n"
+            "};\naddrmap top {\n",
+        ).replace("    leaf plain @0x0;", "    mixed plain @0x0;")
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        rows = {row.label: row for row in view.rows}
+        self.assertEqual(rows["plain"].occupied_size, 0x20)
+        self.assertEqual(rows["checked"].occupied_size, 0xC)
+
     def test_memory_with_its_own_response_answers_throughout(self):
         text = RESPONSE_RDL.replace(
             "    plain->ocah_aperture_size = 0x100;\n",

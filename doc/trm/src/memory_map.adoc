@@ -130,10 +130,14 @@ follows:
 
 * Between its registers it answers `OKAY`: a read returns 0 and a write has no
   effect.
-* Past its last register it answers `SLVERR` with read data 0. The registers end
-  on a multiple of the register width, so an access wider than the registers
-  that runs past the end also answers `SLVERR`. A 64-bit read of the last
-  register of a block with 32-bit registers is one example.
+* Past its last register it answers `SLVERR` with read data 0. The block
+  decodes whole words as wide as its widest register access, so its registers
+  end at the end of the word that holds the last one. In the SMC base
+  configuration block, the last register is 32 bits wide among 64-bit
+  registers, and the upper half of its word answers `OKAY` with read data 0.
+  An access wider than the registers that runs past the end also answers
+  `SLVERR`. A 64-bit read of the last register of a block with 32-bit registers
+  is one example.
 
 An array element whose stride is wider than its registers answers `OKAY` across
 its padding, as it does between registers. The alias remap regions, the traffic

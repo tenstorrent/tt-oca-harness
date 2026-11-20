@@ -44,7 +44,7 @@
 |BASE + 0xB000 – BASE + 0xBFFF |4 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |512-entry DTP control block. |Forwarded |Forwarded
 |BASE + 0xC000 – BASE + 0xCFFF |4 KiB |2056 B |PWM Wrapper Address Map |1 instance |- |Pulse-width modulator. |between sub-blocks: DECERR, 0xBADCAB1E / DECERR; past pwm registers: SLVERR, 0xFFFFFFFF / SLVERR; past pwm_ctrl registers: SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0xD000 – BASE + 0xDFFF |4 KiB |528 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x10000 – BASE + 0x10FFF |4 KiB |76 B |SMC Base Configuration Address Map |1 instance |- |SMC base-address and aperture configuration. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
+|BASE + 0x10000 – BASE + 0x10FFF |4 KiB |80 B |SMC Base Configuration Address Map |1 instance |- |SMC base-address and aperture configuration. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |BASE + 0x11000 – BASE + 0x11FFF |4 KiB |24 B |Zeroer Control Address Map |1 instance |- |Control and status registers for the AXI memory-zeroing engine. |- |SLVERR, 0x0 / SLVERR
 |BASE + 0x12000 – BASE + 0x12FFF |4 KiB |256 B |AXI Alias Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one alias remap register block per remap region. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x13000 – BASE + 0x13FFF |4 KiB |64 B |Output Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one output remap register block per remap region. |- |DECERR, 0xBADCAB1E / DECERR
