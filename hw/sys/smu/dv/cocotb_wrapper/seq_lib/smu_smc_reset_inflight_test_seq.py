@@ -1467,10 +1467,10 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self.r.setdefault("rewrite", {})["flr"] = await self._rewrite("s7")
         await self._wr_ok(FLR_COUNTER, FLR_COUNTER_PAT, "s7_flr_counter")
         await self._wr_ok(FLR_HOLD, FLR_HOLD_PAT, "s7_flr_hold")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         held = await self._hold_across("s7")
         self.trial = "flr"
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         edge, _, _ = await self._wait_level(
             "s7_primary_fall", self.primary, "rst_primary_smc_clk_n_o", 0, RESET_LEVEL_BOUND
         )
@@ -1479,7 +1479,7 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         )
         await self._wait_level("s7_warm_rise", self.warm_net, WARM_RESET_PATH, 1, WARM_FALL_BOUND)
         self.trial = None
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         self.smc_base = GB_RESET
         self.log.info(
             "INFO-S7 FLR primary fall@%d rise@%d (%d clk_smu)", edge, release, release - edge

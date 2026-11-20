@@ -190,9 +190,9 @@
 `SMC_TB_OUT(logic, tb_gpio_pad57)
 // SEP WDT reset into SMC (smc_wrapper.sep_wdt_reset_n_i). Idle 1.
 `SMC_TB_IN(logic, tb_sep_wdt_reset_n)
-// PCIe FLR PF-active (smc_wrapper.cfg_flr_pf_active_i). Idle 0.
+// Isolation sequence trigger (smc_wrapper.isolate_sequence_trigger_i). Idle 0.
 // Unique vs rst_cool_ni / smc_flr_sanity cool-reset proxy.
-`SMC_TB_IN(logic, tb_cfg_flr_pf_active)
+`SMC_TB_IN(logic, tb_isolate_sequence_trigger)
 // Isolation acknowledges (smc_wrapper.isolate_req_ack_i). Idle 0: the FLR
 // wait runs to ISOLATE_REQ_FLR_COUNTER_VALUE.
 `SMC_TB_IN(logic [31:0], tb_isolate_req_ack)
@@ -244,7 +244,7 @@
 `SMC_TB_OUT(logic [31:0], tb_ss_cold_reset_n)
 `SMC_TB_OUT(logic [31:0], tb_ss_warm_reset_n)
 // Packed jtag_smc_reset_ctrl_t (ovrd[135:68]|val[67:0]). Idle 0.
-// Unique vs boot-stall JTAG ovrd and vs rst_cool_ni / cfg_flr_pf_active_i.
+// Unique vs boot-stall JTAG ovrd and vs rst_cool_ni / isolate_sequence_trigger_i.
 `SMC_TB_IN(logic [$bits(jtag_smc_reset_ctrl_t)-1:0], tb_jtag_reset_ctrl)
 // DFX STATUS_SMU sticky abort pins. done/success/pass stay tied 1 for
 // boot. Idle 0; unique vs ecc_dfd DEBUG_CTRL/BUS_MUX reset reads.

@@ -3854,7 +3854,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-FLR-ISOLATE",
             "CHK-SMU-FLR-ISOLATE",
-            "a cfg_flr_pf_active_i rising edge sets ISOLATE_REQ_SMC_REG, which "
+            "a isolate_sequence_trigger_i rising edge sets ISOLATE_REQ_SMC_REG, which "
             "raises isolate_req_o through ISOLATE_REQ_SMCEN_REG and "
             "skip_mem_repair_o; the latch holds when the pin drops and only a "
             "software write releases both",

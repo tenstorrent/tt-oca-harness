@@ -249,9 +249,10 @@ module smc_peripherals #(
   input  logic smc_wdt_second_timeout_i,  // Second-stage SMC watchdog timeout; asserts
                                           // the watchdog reset in the reset unit.
 
-  input  logic        cfg_flr_pf_active_i,  // PCIe function-level reset request, active-high;
-                                            // starts the reset unit's isolation and cool
-                                            // reset sequence.
+  input  logic        isolate_sequence_trigger_i,  // Isolation sequence trigger, active-high, from any
+                                                   // cause such as a PCIe function-level reset; its
+                                                   // rising edge starts the reset unit's isolation
+                                                   // and cool reset sequence.
   input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset
                                           // unit; end its FLR wait early.
   output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset
@@ -1589,7 +1590,7 @@ module smc_peripherals #(
     .smc_wdt_second_timeout_i   (smc_wdt_second_timeout_i),
 
     .isolate_req_pin_i          (isolate_req_pin),
-    .cfg_flr_pf_active_i        (cfg_flr_pf_active_i),
+    .isolate_sequence_trigger_i        (isolate_sequence_trigger_i),
     .isolate_req_ack_i          (isolate_req_ack_i),
     .rst_cool_ni                (rst_cool_ni),              // Driven from ip_integration - cool_rst_n_from_pin
     .isolate_req_o              (isolate_req_o),

@@ -3,15 +3,15 @@
 """Measure the FLR cool-reset counters in clk_ref_i cycles.
 
 Source hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl: ISOLATE_REQ_FLR_COUNTER_VALUE is the
-"number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted" and
+"number of cycles post isolate_sequence_trigger_i assertion is waited until cool_reset_n is asserted" and
 ISOLATE_REQ_FLR_RESET_COUNTER_VALUE the "number of cycles cool_reset_n is asserted for"; neither
 names a clock or an origin for the count.
 
-For each (N, M) pair the sequence programs both counters, raises ``cfg_flr_pf_active_i`` and
+For each (N, M) pair the sequence programs both counters, raises ``isolate_sequence_trigger_i`` and
 samples on every ``clk_ref_i`` edge: the first edge on which the synchronised request's rising
 edge is visible inside the wrap (``tb_flr_posedge_ref``), the first edge on which
 ``rst_cool_no`` (``tb_rst_cool_from_flr``) reads 0 and the first edge on which it reads 1 again.
-A final leg raises a second ``cfg_flr_pf_active_i`` edge while the pre-delay counter is in
+A final leg raises a second ``isolate_sequence_trigger_i`` edge while the pre-delay counter is in
 COUNT_DOWN and reports the counter state the edge met. Every measurement is an OBS-FLR line; the
 CHK line grades liveness only: each leg produced exactly one bounded cool pulse, the warm smc
 clock reset fell after the request edge and was released again.
@@ -150,7 +150,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         before the request edge) and must be released again within the bound.
         """
         dut = cocotb.top
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         for _ in range(_WARM_LOW_BOUND_SMC):
             await RisingEdge(dut.clk_smc_i)
             if self._mon.warm_falls:
@@ -198,7 +198,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         label = f"N{n}_M{m}"
         await self._program(label, n, m)
         self._mon.arm()
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self._await_cool(0, n + _SYNC_ALLOWANCE, f"COOL_ASSERT_{label}")
         await self._await_cool(1, m + _SYNC_ALLOWANCE, f"COOL_RELEASE_{label}")
         await self._ref(16)
@@ -227,7 +227,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         label = f"N{n}_M{m}_2ND"
         await self._program(label, n, m)
         self._mon.arm()
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         last = None
         for _ in range(_SYNC_ALLOWANCE):
             await RisingEdge(dut.clk_ref_i)
@@ -236,9 +236,9 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
                 break
         else:
             raise AssertionError(f"{label}: flr_counter_state never COUNT_DOWN (last {last})")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self._ref(_SECOND_EDGE_LOW_REF)
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         second_edge_at = self._mon.edge
         await self._await_cool(0, n + _SYNC_ALLOWANCE, f"COOL_ASSERT_{label}")
         await self._await_cool(1, m + _SYNC_ALLOWANCE, f"COOL_RELEASE_{label}")
@@ -277,7 +277,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         dut = cocotb.top
         await self.wait_fuse_sense_done()
         for name in (
-            "tb_cfg_flr_pf_active",
+            "tb_isolate_sequence_trigger",
             "tb_flr_posedge_ref",
             "tb_flr_sync_ref",
             "tb_flr_counter_state",
@@ -285,7 +285,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
             "tb_rst_warm_smc_clk_n",
         ):
             assert hasattr(dut, name), f"{name} missing from the smc_uvm_top port surface"
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low, no FLR")
@@ -298,14 +298,14 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
             self.rows.append(await self._second_edge())
         finally:
             self._mon.stop()
-            dut.tb_cfg_flr_pf_active.value = 0
+            dut.tb_isolate_sequence_trigger.value = 0
         await self.csr_write("FLR_HOLD_CLR", FLR_HOLD, 0)
         await self.csr_read("FLR_HOLD_CLR_RB", FLR_HOLD, expected=0)
         await self.csr_write("FLR_DELAY_CLR", FLR_DELAY, 0)
         await self.csr_read("FLR_DELAY_CLR_RB", FLR_DELAY, expected=0)
         drive_isolate_pin(dut, None)
         cocotb.log.info(
-            "CHK-FLR-COUNTER-TIMING-OBS: %d legs each raised cfg_flr_pf_active_i, saw one bounded "
+            "CHK-FLR-COUNTER-TIMING-OBS: %d legs each raised isolate_sequence_trigger_i, saw one bounded "
             "cool pulse on rst_cool_no and recovered the warm domain; pre/hold values are "
             "reported in the OBS-FLR lines and not graded: %s",
             len(self.rows),

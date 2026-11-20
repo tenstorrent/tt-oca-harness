@@ -944,7 +944,8 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`cfg_flr_pf_active_i` |input |1 |SMU external port
+|`isolate_sequence_trigger_i` |input |1 |SMU external port
+|`isolate_req_ack_i` |input |[31:0] |SMU external port
 |`isolate_req_o` |output |[31:0] |SMU external port
 |`ss_reset_complete_i` |input |[31:0] |SMU external port
 |`ss_config_o` |output |[31:0] |SMU external port

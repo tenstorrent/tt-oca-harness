@@ -179,8 +179,8 @@ _smc_conv_ignore i2c_debug {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_
 _smc_conv_ignore boot_stall {u_smc_peripherals/u_boot_stall_combined_sync/*/q_ddd/Q}
 _smc_conv_ignore reset_complete {u_smc_peripherals/u_smc_reset_unit/u_smc_subsystem_resets/u_reset_complete_sync/*/q_ddd/Q}
 _smc_conv_ignore cool_isolate_req {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_req_pin_sync/*/q_ddd/Q}
-_smc_conv_ignore cool_flr_smc {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_smc/*/q_ddd/Q}
-_smc_conv_ignore cool_flr_ref {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_ref/*/q_ddd/Q}
+_smc_conv_ignore cool_flr_smc {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_sequence_trigger_sync_smc/*/q_ddd/Q}
+_smc_conv_ignore cool_flr_ref {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_sequence_trigger_sync_ref/*/q_ddd/Q}
 _smc_conv_ignore cool_isolate_ack {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_req_ack_sync_ref/*/q_ddd/Q}
 _smc_conv_ignore i3c_scl_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/scl_synchronizer/u_sync_2/q_o/Q*}
 _smc_conv_ignore i3c_sda_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/sda_synchronizer/u_sync_2/q_o/Q*}

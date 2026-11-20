@@ -35,7 +35,7 @@ bench drove:
 * ``mem_repair_abort_i`` / ``mbist_abort_i`` -> ``DFX_CTRL.STATUS_SMU``. Those
   fields are sticky, so the bit is sampled again after the pin has dropped:
   a pure wire would follow the pin back to zero.
-* ``cfg_flr_pf_active_i``     -> ``ISOLATE_REQ_SMC_REG``, ``isolate_req_o`` via
+* ``isolate_sequence_trigger_i``     -> ``ISOLATE_REQ_SMC_REG``, ``isolate_req_o`` via
   ``ISOLATE_REQ_SMCEN_REG`` and ``skip_mem_repair_o``. The latch is set by
   hardware and cleared by a software write of 1 to bit 0, which is what the
   clear leg checks.
@@ -626,11 +626,11 @@ class smu_smc_boundary_io_seq:
             evidence="CHK-SMU-FLR-ISOLATE",
         )
 
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
         latched = await self._rd32(ISOLATE_REQ_SMC_REG, "ISOLATE_REQ_SMC_REG")
         self.sb.expect_eq(
-            "a cfg_flr_pf_active_i rising edge sets the SMC isolation latch",
+            "a isolate_sequence_trigger_i rising edge sets the SMC isolation latch",
             latched & 1,
             1,
             evidence="CHK-SMU-FLR-ISOLATE",
@@ -650,10 +650,10 @@ class smu_smc_boundary_io_seq:
 
         # Hardware sets the latch, software clears it: dropping the pin is not
         # enough, which is what the two samples either side of the write show.
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
         self.sb.expect_eq(
-            "the latch holds when cfg_flr_pf_active_i drops",
+            "the latch holds when isolate_sequence_trigger_i drops",
             self._sample("tb_skip_mem_repair"),
             1,
             evidence="CHK-SMU-FLR-ISOLATE",

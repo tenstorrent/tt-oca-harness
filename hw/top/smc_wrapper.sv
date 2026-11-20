@@ -112,7 +112,7 @@ module smc_wrapper (
 
   output logic [smc_pkg::NumMailboxes-1:0] smc_ext_mailbox_interrupts_o,
 
-  input  logic        cfg_flr_pf_active_i,
+  input  logic        isolate_sequence_trigger_i,
   input  logic [31:0] isolate_req_ack_i,
   output logic [31:0] isolate_req_o,
 
@@ -309,7 +309,7 @@ module smc_wrapper (
     .smc_ndmreset_request_i,
     .smc_ndmreset_process_o,
     .smc_ext_mailbox_interrupts_o,
-    .cfg_flr_pf_active_i,
+    .isolate_sequence_trigger_i,
     .isolate_req_ack_i,
     .isolate_req_o,
     .ss_reset_complete_i,

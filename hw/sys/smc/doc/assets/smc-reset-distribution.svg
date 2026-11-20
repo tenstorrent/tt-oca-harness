@@ -121,7 +121,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="a-in" d="M17,106 L258,106"/>
 <text class="s" x="14" y="122" text-anchor="start">sep_wdt_reset_n_i</text>
 <path class="a-in" d="M17,128 L258,128"/>
-<text class="s" x="14" y="144" text-anchor="start">cfg_flr_pf_active_i</text>
+<text class="s" x="14" y="144" text-anchor="start">isolate_sequence_trigger_i</text>
 <path class="sigo" d="M17,150 L258,150"/>
 <text class="s" x="14" y="166" text-anchor="start">jtag_reset_ctrl_i</text>
 <path class="a-jt" d="M17,172 L258,172"/>

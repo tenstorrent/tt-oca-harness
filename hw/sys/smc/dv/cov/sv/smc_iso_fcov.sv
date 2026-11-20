@@ -33,7 +33,7 @@ module smc_iso_fcov (
   input wire isolate_req_smc_reg_i,
 
   // FLR edge detect and its pre-reset delay state machine.
-  input wire cfg_flr_pf_active_i,
+  input wire isolate_sequence_trigger_i,
   input wire flr_sync_ref_i,
   input wire flr_posedge_ref_i,
   input wire [1:0] flr_counter_state_i,
@@ -110,7 +110,7 @@ module smc_iso_fcov (
   // Pin-initiated cool reset. The FLR path drives the same cool reset, so
   // the point requires the FLR trigger to be down: what is left is the pin.
   // ------------------------------------------------------------------
-  wire cool_from_pin_e = (rst_cool_ni === 1'b0) && (cfg_flr_pf_active_i === 1'b0)
+  wire cool_from_pin_e = (rst_cool_ni === 1'b0) && (isolate_sequence_trigger_i === 1'b0)
       && (rst_primary_smc_clk_ni === 1'b0);
   `OCAH_FCOV_COVER(c_cool_reset_from_gpio_pin_61, cool_from_pin_e, clk_smc_i, not_powered)
 

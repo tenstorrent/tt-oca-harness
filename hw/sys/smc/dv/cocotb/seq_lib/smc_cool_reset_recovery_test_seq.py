@@ -164,7 +164,7 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
         flr["fall"] = await self._until(
             f"{flr['label']}_COOL_FALL", _FALL_BOUND, lambda t: self._samples[t][2] == 0
         )
-        cocotb.top.tb_cfg_flr_pf_active.value = 0
+        cocotb.top.tb_isolate_sequence_trigger.value = 0
 
     async def _cool_rise(self, flr: dict) -> None:
         flr["rise"] = await self._until(
@@ -274,7 +274,7 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
         s5 = {"before": await self._rd("S5_SMC_REG_BEFORE", SMC_REG, 0)}
         flr = self._flr_raise("S5")
         await self._ticks(_S5_WATCH)
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         self._waits.append(f"S5_WATCH={_S5_WATCH}ref last={self._last_state()}")
         s5["after"] = await self._rd("S5_SMC_REG_AFTER", SMC_REG)
         s5["window"] = (flr["set"], self._tick_no)
@@ -289,8 +289,8 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        dut.tb_cfg_flr_pf_active.value = 0
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low, no FLR")

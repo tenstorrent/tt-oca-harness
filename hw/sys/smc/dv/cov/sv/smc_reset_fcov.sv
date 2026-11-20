@@ -40,7 +40,7 @@ module smc_reset_fcov #(
   input wire rst_cold_ni,
   input wire rst_cool_ni,
   input wire sep_wdt_reset_ni,
-  input wire cfg_flr_pf_active_i,
+  input wire isolate_sequence_trigger_i,
   input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
 
   // Reset observables (DUT -> TB).
@@ -121,7 +121,7 @@ module smc_reset_fcov #(
   wire cold_asserted_e = (rst_cold_ni === 1'b0);
   wire cool_asserted_e = (rst_cool_ni === 1'b0);
   wire sep_wdt_asserted_e = (sep_wdt_reset_ni === 1'b0);
-  wire flr_pf_active_e = (cfg_flr_pf_active_i === 1'b1);
+  wire flr_pf_active_e = (isolate_sequence_trigger_i === 1'b1);
   wire cool_from_flr_asserted_e = (rst_cool_from_flr_ni === 1'b0);
   `OCAH_FCOV_COVER(c_reset_op_cold_asserted, cold_asserted_e, clk_ref_i, not_powered)
   `OCAH_FCOV_COVER(c_reset_op_cool_asserted, cool_asserted_e, clk_ref_i, not_powered)

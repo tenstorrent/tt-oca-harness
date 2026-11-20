@@ -92,8 +92,8 @@ class smc_jtag_reset_ovrd_walk_test_seq(SmcCsrSeq):
         assert self._bit(dut.rst_cold_ni, "rst_cold_ni") == 1, "rst_cold_ni dropped"
         assert self._bit(dut.rst_cool_ni, "rst_cool_ni") == 1, "rst_cool_ni dropped"
         assert self._bit(dut.powergood_i, "powergood_i") == 1, "powergood_i dropped"
-        assert self._bit(dut.tb_cfg_flr_pf_active, "tb_cfg_flr_pf_active") == 0, (
-            "cfg_flr_pf_active_i high"
+        assert self._bit(dut.tb_isolate_sequence_trigger, "tb_isolate_sequence_trigger") == 0, (
+            "isolate_sequence_trigger_i high"
         )
         assert self._bit(dut.tb_sep_wdt_reset_n, "tb_sep_wdt_reset_n") == 1, "sep_wdt_reset_n_i low"
 

@@ -1444,7 +1444,7 @@ cannot be written to again</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>isolate_req_smc_reg</ipxact:name>
-            <ipxact:description>Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+            <ipxact:description>Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
 to clear. A write of 0, or a write whose byte strobes do not select this field,
 leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
@@ -1544,7 +1544,7 @@ transaction cut, and must be reset before use</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>isolate_req_flr_counter_value</ipxact:name>
-            <ipxact:description>Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+            <ipxact:description>Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
 cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
 enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>

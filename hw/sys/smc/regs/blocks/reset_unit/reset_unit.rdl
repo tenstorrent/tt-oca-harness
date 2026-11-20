@@ -134,7 +134,7 @@ addrmap reset_unit {
             sw = rw;
             hw = r;
             onwrite = woclr;
-            desc = "Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+            desc = "Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
                     to clear. A write of 0, or a write whose byte strobes do not select this field,
                     leaves it unchanged; a rising edge in the same cycle as a clearing write wins.";
         } isolate_req_smc_reg [0:0] = 0x0;
@@ -195,7 +195,7 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+            desc = "Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
                     cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
                     enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.";
         } isolate_req_flr_counter_value [31:0] = 0x0;

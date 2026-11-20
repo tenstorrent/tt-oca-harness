@@ -627,7 +627,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         assert self._v("rst_cool_ni") == 1, f"{label}: rst_cool_ni is low"
         assert self._v("tb_jtag_reset_ctrl") == 0, f"{label}: tb_jtag_reset_ctrl is not 0"
         assert self._v("tb_rst_cool_from_flr") == 1, f"{label}: the FLR cool reset is asserted"
-        assert self._v("tb_cfg_flr_pf_active") == 0, f"{label}: FLR is requested"
+        assert self._v("tb_isolate_sequence_trigger") == 0, f"{label}: FLR is requested"
         await self.program_inbound_pass_all()
         await self.program_outbound_pass_all()
         await self._ref_words(label)
@@ -751,7 +751,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
     def _assert_state(self, mon) -> str:
         return (
             f"{mon.state_text}, rst_cool_ni={self._v('rst_cool_ni')}, "
-            f"tb_cfg_flr_pf_active={self._v('tb_cfg_flr_pf_active')}, "
+            f"tb_isolate_sequence_trigger={self._v('tb_isolate_sequence_trigger')}, "
             f"tb_rst_cool_from_flr={self._v('tb_rst_cool_from_flr')}"
         )
 
@@ -797,7 +797,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         rec.ref_write = self.ref_n
         dut.tb_jtag_reset_ctrl.value = _pack(cool_ovrd=1, cool_val=0)
         await self._wait_assert(rec, mon, "override val 0")
-        rec.sources_at_assert = (self._v("rst_cool_ni"), self._v("tb_cfg_flr_pf_active"))
+        rec.sources_at_assert = (self._v("rst_cool_ni"), self._v("tb_isolate_sequence_trigger"))
         held = 0
 
         def _held_enough() -> bool:
@@ -825,7 +825,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
     async def _flr_entry(self, rec, mon) -> None:
         dut = cocotb.top
         await RisingEdge(dut.clk_ref_i)
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         rec.ref_flr = self.ref_n
         await self._wait_ref(
             f"{rec.name}.cool_from_flr_fall",
@@ -997,7 +997,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
     async def body(self) -> None:
         dut = cocotb.top
         counter = cocotb.start_soon(self._count_ref_edges())
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.tb_jtag_reset_ctrl.value = 0
         await wait_fuse_sense_done(FUSE_SENSE_BOUND_SMC)
         self._bound("SETUP.fuse_sense", f"{FUSE_SENSE_BOUND_SMC}clk_smc_i", "sense done")
@@ -1108,12 +1108,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         if (cool, flr_req) != (1, 0):
             fails.append(
                 f"CTRL-JTAG-ENTRY-SOURCES-IDLE/CHK-JTAG-COOL-OVERRIDE-ENTRY: rst_cool_ni={cool} "
-                f"tb_cfg_flr_pf_active={flr_req} at the assertion, want 1/0"
+                f"tb_isolate_sequence_trigger={flr_req} at the assertion, want 1/0"
             )
         lines.append(
             (
                 "CTRL-JTAG-ENTRY-SOURCES-IDLE",
-                f"rst_cool_ni={cool} tb_cfg_flr_pf_active={flr_req} at the override assertion "
+                f"rst_cool_ni={cool} tb_isolate_sequence_trigger={flr_req} at the override assertion "
                 "(pin and FLR idle)",
             )
         )

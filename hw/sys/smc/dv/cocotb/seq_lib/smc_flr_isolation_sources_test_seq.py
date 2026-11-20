@@ -124,7 +124,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
 
     async def _flr_low_and_clear_latch(self, label: str) -> None:
         dut = cocotb.top
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self._await(lambda: self._bit(dut.tb_flr_sync_ref, "tb_flr_sync_ref") & 1, 0, label)
         await self.csr_write(f"{label}_CLEAR", SMC_REG, SMC_BIT)
         await self._await(self._skip, 0, f"{label}_SKIP0")
@@ -153,7 +153,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         async def raise_flr() -> None:
             if delay:
                 await ClockCycles(dut.clk_smc_i, delay)
-            dut.tb_cfg_flr_pf_active.value = 1
+            dut.tb_isolate_sequence_trigger.value = 1
 
         raiser = cocotb.start_soon(raise_flr())
         await self.csr_write(f"TRIAL{delay}_WR", SMC_REG, SMC_BIT)
@@ -172,7 +172,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         for name in (
             "tb_isolate_req_o",
             "tb_skip_mem_repair_o",
-            "tb_cfg_flr_pf_active",
+            "tb_isolate_sequence_trigger",
             "tb_rst_cool_from_flr",
             "tb_flr_sync_ref",
             "tb_gpio_ext_drive_en",
@@ -182,7 +182,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
 
         # S1: all sources inactive.
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         self._pin(0)
         await self.csr_read("ISO_REG_IDLE", ISO_REG, expected=0)
         await self.csr_read("PINEN_IDLE", PINEN_REG, expected=0)
@@ -241,7 +241,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         await self.csr_write("SMCEN_SET", SMCEN_REG, BIT3)
         await self._hold(self._skip, 0, 8, "S5_PRE_SKIP")
         await self._hold(self._iso3, 0, 8, "S5_PRE_ISO")
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         skip_up = await self._await(self._skip, 1, "S5_SKIP_UP")
         iso_up = await self._await_after(self._iso3, 1, "S5_ISO_UP", skip_up)
         sync_rise = await self._await_after(
@@ -255,7 +255,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         self._stamp("S5")
         self._chk(
             "CHK-FLR-LATCH-SET",
-            f"before the edge both outputs read 0 on 8 of 8 rises; after tb_cfg_flr_pf_active rose "
+            f"before the edge both outputs read 0 on 8 of 8 rises; after tb_isolate_sequence_trigger rose "
             f"tb_skip_mem_repair_o read 1 after {skip_up} rises and tb_isolate_req_o[3] read 1 "
             f"after {iso_up} rises (reference-domain sync after {sync_rise}); both held on "
             f"{_HOLD} of {_HOLD} rises",
@@ -263,7 +263,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
 
         # S6: a write of 1 to bit 0 clears the latch; a write at a new FLR edge leaves it set.
         # With FLR low again the latch outputs must stay set until the clearing write lands.
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         for cycle in range(1, _BOUND + 1):
             await ClockCycles(dut.clk_smc_i, 1)
             assert (self._skip(), self._iso3()) == (1, 1), "latch output dropped on FLR fall"

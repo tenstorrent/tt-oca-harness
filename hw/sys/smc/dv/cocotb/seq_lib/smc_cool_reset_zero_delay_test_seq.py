@@ -3,7 +3,7 @@
 """An FLR cool reset with no pre-reset delay programmed.
 
 `reset_unit.rdl` splits the FLR cool into two programmable phases:
-`ISOLATE_REQ_FLR_COUNTER_VALUE` is "number of cycles post `cfg_flr_pf_active`
+`ISOLATE_REQ_FLR_COUNTER_VALUE` is "number of cycles post `isolate_sequence_trigger_i`
 assertion is waited until `cool_reset_n` is asserted", and
 `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` is how long it is held, with the note
 that "the cool reset flow requires this value to be greater than 0; a value of
@@ -21,7 +21,7 @@ while passing the first.
 
 The cool is real, so the sequence does what `smc_cool_reset_from_pcie_test`
 does around it: the isolate-request pad is held low throughout so the FLR path
-is the only isolation source, `cfg_flr_pf_active_i` is dropped before the
+is the only isolation source, `isolate_sequence_trigger_i` is dropped before the
 recovery wait so its rising edge cannot restart the flow, the warm reset is
 waited for before any further CSR access, and the latched request is cleared at
 the end. A warm-domain scratch register written before the cool has to read 0
@@ -110,8 +110,8 @@ class smc_cool_reset_zero_delay_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        dut.tb_cfg_flr_pf_active.value = 0
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         # The pin isolation source is quiet for the whole sequence, so every
         # observation below belongs to the FLR path.
@@ -127,7 +127,7 @@ class smc_cool_reset_zero_delay_test_seq(SmcCsrSeq):
 
         # Deny leg: hold at its reset 0. The request has to latch and no cool
         # may follow, whatever the pre-delay is.
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         latched = await self._await_smc_bit(SMC_BIT, _PIN_BOUND, "SMC_REG_HOLD_ZERO")
         for _ in range(_NO_COOL_BOUND):
             await RisingEdge(dut.clk_ref_i)
@@ -145,7 +145,7 @@ class smc_cool_reset_zero_delay_test_seq(SmcCsrSeq):
             _NO_COOL_BOUND,
         )
 
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self.csr_write("SMC_REG_CLR", SMC_REG, SMC_BIT)
         await self._await_smc_bit(0, _PIN_BOUND, "SMC_REG_CLR_RB")
 
@@ -160,12 +160,12 @@ class smc_cool_reset_zero_delay_test_seq(SmcCsrSeq):
         for _ in range(_CDC_REF):
             await RisingEdge(dut.clk_ref_i)
 
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         self.assert_edges = await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "COOL_ASSERT")
         self.hold_edges = await self._await_cool(dut, 1, _COOL_RELEASE_BOUND, "COOL_RELEASE")
         self.cool_ok = True
 
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         last_warm = None
         for _ in range(_RECOVERY_REF):
             await RisingEdge(dut.clk_smc_i)

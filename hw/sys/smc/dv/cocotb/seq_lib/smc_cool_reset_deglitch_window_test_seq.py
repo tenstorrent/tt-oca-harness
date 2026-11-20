@@ -259,11 +259,11 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
         """Pulse the FLR request and return its tick and the cool-reset fall tick."""
         dut = cocotb.top
         flr = {"label": label, "set": self._tick_no}
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         flr["fall"] = await self._until(
             f"{label}_COOL_FALL", _COOL_FALL_BOUND, lambda t: self._samples[t][2] == 0
         )
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         return flr
 
     async def _flr_finish(self, flr: dict) -> None:
@@ -313,8 +313,8 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        dut.tb_cfg_flr_pf_active.value = 0
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low, no FLR")

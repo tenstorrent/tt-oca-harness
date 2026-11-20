@@ -58,10 +58,11 @@ The reset hierarchy within the SMU proceeds as follows:
   through `isolate_req_o[31:0]`. Subsystems report completion via
   `ss_reset_complete_i[31:0]`.
 
-. *Function Level Reset (FLR).* Asserting `cfg_flr_pf_active_i` triggers a
-  warm reset sequence that isolates subsystems through `isolate_req_o` and
-  performs controlled reset propagation without tearing down the always-on
-  infrastructure.
+. *Isolation sequence.* A rising edge on `isolate_sequence_trigger_i`, for
+  example on a PCIe Function Level Reset (FLR), isolates subsystems through
+  `isolate_req_o`, waits for their `isolate_req_ack_i` acknowledges or a
+  timeout, then asserts a cool reset without tearing down the isolated
+  subsystems.
 
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
   override the fuse, cold, cool, warm, and per-subsystem reset domains

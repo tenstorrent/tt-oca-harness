@@ -225,7 +225,7 @@ typedef union {
 } reset_unit__ISOLATE_REQ_PINEN_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_SMC_REG
-// Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+// Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
 // to clear. A write of 0, or a write whose byte strobes do not select this field,
 // leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm 0x1
@@ -234,7 +234,7 @@ typedef union {
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+        // Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
         // to clear. A write of 0, or a write whose byte strobes do not select this field,
         // leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
         uint32_t isolate_req_smc_reg :1;
@@ -293,7 +293,7 @@ typedef union {
 } reset_unit__ISOLATE_REQ_VIS_t;
 
 // reg - reset_unit::ISOLATE_REQ_FLR_COUNTER_VALUE
-// Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+// Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
 // cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
 // enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bm 0xffffffff
@@ -302,7 +302,7 @@ typedef union {
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+        // Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
         // cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
         // enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.
         uint32_t isolate_req_flr_counter_value :32;

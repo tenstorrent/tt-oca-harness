@@ -335,9 +335,9 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
             pre[f"{label}_LOCK"] = await self._rd(f"{label}_LOCK_PRE_COOL", lock, ALL_ONES_WORD)
             pre[label] = await self._rd(f"{TARGET_NAME[label]}_PRE_COOL", target, LOCK_PATTERN)
             n += 2
-        flr = dut.tb_cfg_flr_pf_active.value
+        flr = dut.tb_isolate_sequence_trigger.value
         assert flr.is_resolvable and int(flr) == 0, (
-            f"cfg_flr_pf_active_i={flr}; the reset would not be attributable to rst_cool_ni"
+            f"isolate_sequence_trigger_i={flr}; the reset would not be attributable to rst_cool_ni"
         )
         cold_pin = dut.rst_cold_ni.value
         assert cold_pin.is_resolvable and int(cold_pin) == 1, (

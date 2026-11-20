@@ -108,7 +108,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW1C</td><td>0x0</td><td>Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1<br>to clear. A write of 0, or a write whose byte strobes do not select this field,<br>leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</td></tr>
+<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW1C</td><td>0x0</td><td>Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1<br>to clear. A write of 0, or a write whose byte strobes do not select this field,<br>leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</h3>
 <table>
@@ -126,7 +126,7 @@
 <h3 id="ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before<br>cool_reset_n is asserted. The sequence asserts it earlier once every subsystem<br>enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.</td></tr>
+<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before<br>cool_reset_n is asserted. The sequence asserts it earlier once every subsystem<br>enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</h3>
 <table>

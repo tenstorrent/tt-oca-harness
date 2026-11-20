@@ -6,11 +6,11 @@ Scope: this test verifies the *downstream* half of an FLR
 recovery only -- the cool reset itself and the CSR path across it -- and drives
 it from the ``rst_cool_ni`` pin. It does NOT exercise the PCIe FLR request path.
 
-The FLR trigger path (``cfg_flr_pf_active_i`` -> isolate-req CSR -> FLR delay /
+The FLR trigger path (``isolate_sequence_trigger_i`` -> isolate-req CSR -> FLR delay /
 hold counters -> ``rst_cool_no``) is a real, available TB stimulus
-(``tb_cfg_flr_pf_active`` in ``tb_top.sv``) and is covered by the sibling
+(``tb_isolate_sequence_trigger`` in ``tb_top.sv``) and is covered by the sibling
 ``smc_cool_reset_from_pcie_test`` (``seq_lib/smc_cool_reset_from_pcie_test_seq.py``).
-To keep the attribution exact, this sequence asserts ``tb_cfg_flr_pf_active``
+To keep the attribution exact, this sequence asserts ``tb_isolate_sequence_trigger``
 is inactive while it drives its own pin-cool pulse, so the observed cool reset
 can only have come from ``rst_cool_ni``.
 
@@ -101,16 +101,16 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
     def _assert_flr_pin_idle(self, label: str) -> None:
         """The cool reset under test must be attributable to ``rst_cool_ni``.
 
-        ``cfg_flr_pf_active_i`` is the other cool-reset request source in this
+        ``isolate_sequence_trigger_i`` is the other cool-reset request source in this
         TB; if it were active the observed cool reset could have come from the
         FLR path instead of the pin this test drives.
         """
         dut = cocotb.top
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        value = dut.tb_cfg_flr_pf_active.value
-        assert value.is_resolvable, f"{label}: tb_cfg_flr_pf_active is X/Z"
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        value = dut.tb_isolate_sequence_trigger.value
+        assert value.is_resolvable, f"{label}: tb_isolate_sequence_trigger is X/Z"
         assert int(value) == 0, (
-            f"{label}: cfg_flr_pf_active_i={int(value)}; the cool reset would "
+            f"{label}: isolate_sequence_trigger_i={int(value)}; the cool reset would "
             f"not be attributable to the rst_cool_ni pulse this test drives"
         )
 
@@ -224,7 +224,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"scoreboard saw {sb.reset_wait_checks_seen}"
         )
         cocotb.log.info(
-            "CHK-FLR-COOL-CSR-RECOVERY: rst_cool_ni pulse with cfg_flr_pf_active_i=0 "
+            "CHK-FLR-COOL-CSR-RECOVERY: rst_cool_ni pulse with isolate_sequence_trigger_i=0 "
             "took rst_primary_{ref,smc} low after %d clk_ref_i cycles (bound %d) "
             "and released them after %d (bound %d); SCRATCH_COLD_WARM_0 read %#010x "
             "(its reset value) where %#010x was written before the pulse, then "

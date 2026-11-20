@@ -164,7 +164,7 @@ args = [
     "+axi_sva_need_cpu_mmio",
 ]
 
-# BFM: product cfg_flr_pf_active_i (not rst_cool_ni / smc_flr_sanity proxy).
+# BFM: product isolate_sequence_trigger_i (not rst_cool_ni / smc_flr_sanity proxy).
 [[tests]]
 name = "smc_cool_reset_from_pcie_test"
 module = "smc_cool_reset_from_pcie_test"

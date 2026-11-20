@@ -352,7 +352,8 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-PCIe `cfg_flr_pf_active_i` crosses independently into the SMC and reference
+`isolate_sequence_trigger_i`, raised for example by a PCIe function-level reset,
+crosses independently into the SMC and reference
 clock domains. Its synchronized rising edge sets the SMC isolation latch and
 starts the reference-domain reset sequence when enabled by a nonzero hold count.
 The sequence asserts the cool reset when every subsystem enabled in
@@ -453,7 +454,7 @@ reset. Only its FLR and isolation registers are reset by the cold reset
 alone, and the secondary chiplet does not use them. The primary chiplet's
 `BP_COOL_RESET_N_I` and the secondary chiplet's `BP_COOL_RESET_N_O` are not connected. The board drives
 `ISOLATE_REQ`, sampled on GPIO 53, into the primary chiplet only; the
-secondary chiplet ties its `ISOLATE_REQ` and `cfg_flr_pf_active_i` low and
+secondary chiplet ties its `ISOLATE_REQ` and `isolate_sequence_trigger_i` low and
 leaves its `isolate_req_o` unconnected. The labels REG, PINEN and SMCEN
 on the isolation OR's inputs name the registers that qualify each source.
 The drawing leaves out the de-glitchers and synchronisers shown in
@@ -469,7 +470,8 @@ a cool reset.
 image::smc-flr-isolation-smc-driven.svg[alt="The FLR isolation drawing with the path from the primary SMC CPU through ISOLATE_REQ_REG and the isolation OR to the chiplet tiles highlighted",width=100%,pdfwidth=100%]
 
 <<smc-flr-tile-diagram>> shows isolation propagation for a tile request.
-A tile such as the PCIe controller raises `cfg_flr_pf_active_i`. Its
+A tile such as the PCIe controller, on a function-level reset, raises
+`isolate_sequence_trigger_i`. Its
 synchronised rising edge sets `ISOLATE_REQ_SMC`, which isolates the
 subsystems enabled in `ISOLATE_REQ_SMCEN_REG`, and starts the FLR
 counters. When they expire, the FLR cool reset asserts the primary reset of
@@ -478,7 +480,7 @@ chiplet.
 
 [[smc-flr-tile-diagram]]
 .Tile-request-driven FLR isolation
-image::smc-flr-isolation-tile-request.svg[alt="The FLR isolation drawing with the paths from the tile's cfg_flr_pf_active_i through the FLR counters to the primary chiplet's primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet's BP_COOL_RESET_N_I pin, to the secondary chiplet's primary reset, and through the isolation OR to the chiplet tiles, highlighted",width=100%,pdfwidth=100%]
+image::smc-flr-isolation-tile-request.svg[alt="The FLR isolation drawing with the paths from the tile's isolate_sequence_trigger_i through the FLR counters to the primary chiplet's primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet's BP_COOL_RESET_N_I pin, to the secondary chiplet's primary reset, and through the isolation OR to the chiplet tiles, highlighted",width=100%,pdfwidth=100%]
 
 <<smc-flr-gpio-diagram>> shows isolation propagation for a GPIO request, in two
 numbered steps. First the board raises `ISOLATE_REQ`, which isolates the

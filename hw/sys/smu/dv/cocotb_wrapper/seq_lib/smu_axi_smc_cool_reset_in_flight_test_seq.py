@@ -1040,7 +1040,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
             dut.tb_cool_reset_pin.value = 0
             self._info(f"INFO-G2A-COOL: pin held {held} clk_ref, primary low after {asserted}")
         else:
-            dut.tb_cfg_flr_pf_active.value = 1
+            dut.tb_isolate_sequence_trigger.value = 1
             await self._wait_level(
                 "rst_primary_smc_clk_n_o",
                 0,
@@ -1049,7 +1049,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
                 "clk_ref_i",
                 "flr_assert",
             )
-            dut.tb_cfg_flr_pf_active.value = 0
+            dut.tb_isolate_sequence_trigger.value = 0
             held = None
         t_release_req = _now()
         for net in ("rst_primary_smc_clk_n_o", "obs_smc_rst_n_o", "obs_xbar_rst_n_o"):
@@ -1312,7 +1312,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         sb = self.sb
         await self.cfg.reset_done.wait()
         dut.tb_cool_reset_pin.value = 0
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await ClockCycles(dut.clk_smu_i, 16)
         self._info("STEP S1: SETUP")
         await self._setup()

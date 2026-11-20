@@ -211,11 +211,11 @@ class smu_smc_reset_unit_state_test_seq:
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
-        flr = self._pin("tb_cfg_flr_pf_active")
+        flr = self._pin("tb_isolate_sequence_trigger")
         cool = self._pin("tb_cool_reset_pin")
         if flr or cool:
-            raise AssertionError(f"idle inputs not idle: flr_pf_active={flr} cool_reset_pin={cool}")
-        self._log(f"CELL setup flr_pf_active={flr} cool_reset_pin={cool} idcode=0x{idcode:08x}")
+            raise AssertionError(f"idle inputs not idle: isolate_sequence_trigger={flr} cool_reset_pin={cool}")
+        self._log(f"CELL setup isolate_sequence_trigger={flr} cool_reset_pin={cool} idcode=0x{idcode:08x}")
 
         self._mark("S2", "read SS_CONFIG, locks, cold and warm reset, force-to-ref-clk")
         config_regs = (

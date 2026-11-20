@@ -78,7 +78,7 @@ _SS_SWEEP_REGS = (
 #   * `ISOLATE_REQ_SMC_REG` @0xB8 -- `isolate_req_smc_reg [0:0]`, reset 0x0,
 #     `onwrite = woclr` (reset_unit.rdl). Its field description and
 #     hw/sys/smc/doc/clk_rst.adoc:378-381 state that only a rising edge of
-#     `cfg_flr_pf_active` sets it and a software write of 1 clears it, so a
+#     `isolate_sequence_trigger_i` sets it and a software write of 1 clears it, so a
 #     write/readback probe from the reset value reads 0x0 by specification.
 #     Proving the set half needs an FLR event, which is out of this
 #     testcase's scope.
@@ -403,9 +403,9 @@ class smc_reset_unit_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             await self._wr(f"{reg}_PRE_COOL", _ru(reg), word)
             await self._rd(f"{reg}_PRE_COOL_RB", _ru(reg), word)
             n += 1
-        flr = dut.tb_cfg_flr_pf_active.value
+        flr = dut.tb_isolate_sequence_trigger.value
         assert flr.is_resolvable and int(flr) == 0, (
-            f"cfg_flr_pf_active_i={flr}; the cool reset would not be attributable to rst_cool_ni"
+            f"isolate_sequence_trigger_i={flr}; the cool reset would not be attributable to rst_cool_ni"
         )
         assert int(dut.rst_cold_ni.value) == 1, "rst_cold_ni must be inactive for the cool pulse"
         await self._send(SmcResetOp.COOL_RST_LO, item_name="ru_cool_rst_lo")

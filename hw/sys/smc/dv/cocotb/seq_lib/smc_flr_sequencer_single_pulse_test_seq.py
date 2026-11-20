@@ -223,7 +223,7 @@ class SmcFlrLegSeq(SmcCsrSeq):
         """Drop the request, wait the warm domain back, clear the latch, fold the pad counts."""
         dut = cocotb.top
         mon = self.mon
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         for _ in range(_WARM_LOW_BOUND_SMC):
             await RisingEdge(dut.clk_smc_i)
             if mon.warm_falls:
@@ -254,7 +254,7 @@ class SmcFlrLegSeq(SmcCsrSeq):
         dut = cocotb.top
         await self.program(label, n, m)
         self.mon.arm()
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self.await_cool(0, n + SYNC_ALLOWANCE, f"{label}_COOL_ASSERT")
         await self.await_cool(1, m + SYNC_ALLOWANCE, f"{label}_COOL_RELEASE")
         await self.ref(16)
@@ -267,7 +267,7 @@ class SmcFlrLegSeq(SmcCsrSeq):
     async def setup(self) -> None:
         dut = cocotb.top
         for name in (
-            "tb_cfg_flr_pf_active",
+            "tb_isolate_sequence_trigger",
             "tb_flr_posedge_ref",
             "tb_flr_counter_state",
             "tb_rst_cool_from_flr",
@@ -279,7 +279,7 @@ class SmcFlrLegSeq(SmcCsrSeq):
         ):
             assert hasattr(dut, name), f"{name} missing from tb_top"
         await self.wait_fuse_sense_done()
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low, no FLR")
@@ -298,7 +298,7 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
         dut = cocotb.top
         await self.program("LONG", LONG_N, LONG_M)
         self.mon.arm()
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self.await_cool(0, LONG_N + SYNC_ALLOWANCE, "LONG_COOL_ASSERT")
         in_hold = await self.csr_read_bounded(
             "VIS_IN_HOLD", VIS_REG, timeout_ns=_IN_HOLD_READ_NS, allow_error=True
@@ -343,7 +343,7 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
             long_row = await self._long_hold()
         finally:
             self.mon.stop()
-            dut.tb_cfg_flr_pf_active.value = 0
+            dut.tb_isolate_sequence_trigger.value = 0
         vis_after = await self.csr_read(
             "VIS_AFTER_HOLD", VIS_REG, expected=VIS_COOL_IN | VIS_COOL_OUT
         )

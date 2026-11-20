@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""cfg_flr_pf_active_i overlapped with rst_cold_ni; cold wins. BMC pin-cool not claimed."""
+"""isolate_sequence_trigger_i overlapped with rst_cold_ni; cold wins. BMC pin-cool not claimed."""
 
 from __future__ import annotations
 
@@ -116,8 +116,8 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        dut.tb_cfg_flr_pf_active.value = 0
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         assert self._int(dut.rst_cool_ni) & 1 == 1, (
             "rst_cool_ni dropped; FLR×cold would be aliased to pin-cool"
@@ -128,11 +128,11 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         for _ in range(_CDC_REF):
             await RisingEdge(dut.clk_ref_i)
 
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "POS_COOL_ASSERT")
         assert self._int(dut.rst_cool_ni) & 1 == 1
         cocotb.log.info("CHK-FLR-COLD-POS-COOL: FLR-only rst_cool_from_flr=0 rst_cool_ni=1")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self._await_cool(dut, 1, _COOL_RELEASE_BOUND, "POS_COOL_RELEASE")
         await self._await_warm(dut, "POS_WARM")
         # FLR-cool effect on the scratch banks. Fail-capable: both banks were
@@ -160,7 +160,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         for _ in range(_CDC_REF):
             await RisingEdge(dut.clk_ref_i)
 
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         self.iso_live = await self._await_iso(dut, lambda v: v == _SMCEN, _ISO_BOUND, "ISO_LIVE")
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "OVERLAP_COOL_HELD")
         cocotb.log.info(
@@ -199,7 +199,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
         )
 
         # Drop FLR before releasing cold so the posedge does not restart the FSM.
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         for _ in range(8):
             await RisingEdge(dut.clk_ref_i)
         dut.rst_cold_ni.value = 1

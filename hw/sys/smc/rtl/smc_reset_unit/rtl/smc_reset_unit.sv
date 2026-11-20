@@ -83,11 +83,13 @@ module smc_reset_unit (
                                                                      // bits enabled in
                                                                      // ISOLATE_REQ_PINEN_REG and
                                                                      // skip_mem_repair_o.
-  input  logic                                   cfg_flr_pf_active_i,  // PCIe function-level reset
-                                                                       // request, active-high; its
-                                                                       // rising edge sets ISOLATE_REQ_SMC
-                                                                       // and starts the FLR cool-reset
-                                                                       // counters.
+  input  logic                                   isolate_sequence_trigger_i,  // Isolation sequence
+                                                                              // trigger, active-high,
+                                                                              // from any cause such as a
+                                                                              // PCIe function-level reset;
+                                                                              // its rising edge sets
+                                                                              // ISOLATE_REQ_SMC and starts
+                                                                              // the FLR cool-reset counters.
   input  logic                                   rst_cool_ni,  // Cool reset from the pin,
                                                                // active-low; de-glitched over 32
                                                                // reference clock cycles into the
@@ -284,7 +286,7 @@ module smc_reset_unit (
     .hwif_out_i             (hwif_out),
 
     .isolate_req_pin_i      (isolate_req_pin_i),
-    .cfg_flr_pf_active_i    (cfg_flr_pf_active_i),
+    .isolate_sequence_trigger_i    (isolate_sequence_trigger_i),
     .isolate_req_ack_i      (isolate_req_ack_i),
     .rst_cool_pin_stable_ni (rst_cool_pin_stable_n),
 

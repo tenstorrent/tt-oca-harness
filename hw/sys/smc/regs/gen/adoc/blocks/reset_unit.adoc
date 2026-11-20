@@ -174,7 +174,7 @@ cannot be written to again
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `isolate_req_smc_reg` | RW1C | 0x0 a| Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+| 0 | `isolate_req_smc_reg` | RW1C | 0x0 a| Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
 to clear. A write of 0, or a write whose byte strobes do not select this field,
 leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 |===
@@ -212,7 +212,7 @@ a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `isolate_req_flr_counter_value` | RW | 0x0 a| Timeout, in reference clock cycles after the cfg_flr_pf_active rising edge, before
+| 31:0 | `isolate_req_flr_counter_value` | RW | 0x0 a| Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
 cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
 enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.
 |===

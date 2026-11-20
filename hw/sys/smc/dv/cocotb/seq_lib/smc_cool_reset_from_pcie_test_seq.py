@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""cfg_flr_pf_active_i cool reset. No Force; not rst_cool_ni. BMC/primary-chiplet not claimed.
+"""isolate_sequence_trigger_i cool reset. No Force; not rst_cool_ni. BMC/primary-chiplet not claimed.
 
 ``skip_mem_repair_o`` is compared: ``clk_rst.adoc`` ("Memory Test Bypass")
 activates it automatically when either FLR-triggered or pin-based
@@ -49,7 +49,7 @@ assert _SW_ISO_BIT & ISO_REG_BM and _SW_ISO_BIT & SMCEN_ALL
 
 
 class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
-    """cfg_flr_pf_active_i → isolate CSR / rst_cool_no / isolate_req_o."""
+    """isolate_sequence_trigger_i → isolate CSR / rst_cool_no / isolate_req_o."""
 
     def __init__(self, name: str = "smc_cool_reset_from_pcie_test_seq") -> None:
         super().__init__(name)
@@ -93,8 +93,8 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        dut.tb_cfg_flr_pf_active.value = 0
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         # Quiet the pin isolation source for the whole sequence, so every
         # skip_mem_repair_o level below is attributable to the FLR path alone.
@@ -118,7 +118,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
             skip_idle,
         )
 
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         smc1 = await self._await_smc_bit(SMC_BIT, _PIN_BOUND, "SMC_REG_ZERO_CNT")
         assert self._int(dut.tb_isolate_req_o) == 0, "isolate_req_o without SMCEN"
         for _ in range(_NO_COOL_BOUND):
@@ -128,7 +128,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
         self.zero_cnt_ok = True
         cocotb.log.info("CHK-FLR-ZERO-CNT: SMC_REG=0x%x iso=0 cool stayed 1", smc1)
 
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self.csr_write("SMC_REG_CLR", SMC_REG, SMC_BIT)
         await self._await_smc_bit(0, _PIN_BOUND, "SMC_REG_CLR_RB")
 
@@ -141,7 +141,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
         for _ in range(_CDC_REF):
             await RisingEdge(dut.clk_ref_i)
 
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self._await_cool(dut, 0, _COOL_ASSERT_BOUND, "COOL_ASSERT")
         await self._await_cool(dut, 1, _COOL_RELEASE_BOUND, "COOL_RELEASE")
         self.cool_ok = True
@@ -151,7 +151,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
             _HOLD,
         )
 
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         last_warm = None
         for _ in range(_RECOVERY_REF):
             await RisingEdge(dut.clk_smc_i)

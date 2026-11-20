@@ -142,14 +142,14 @@ class smc_isolate_pinen_cold_test_seq(SmcCsrSeq):
         for name in (
             "tb_isolate_req_o",
             "tb_skip_mem_repair_o",
-            "tb_cfg_flr_pf_active",
+            "tb_isolate_sequence_trigger",
             "tb_rst_warm_smc_clk_n",
             "tb_gpio_ext_drive_en",
             "tb_gpio_ext_drive_value",
         ):
             assert hasattr(dut, name), f"{name} missing from tb_top"
         await self.wait_fuse_sense_done()
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "pin low at start")

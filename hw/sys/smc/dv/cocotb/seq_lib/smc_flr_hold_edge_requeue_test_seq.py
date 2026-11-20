@@ -49,7 +49,7 @@ class smc_flr_hold_edge_requeue_test_seq(SmcFlrLegSeq):
         dut = cocotb.top
         await self.program("ARM", FLR_N, FLR_M)
         self.mon.arm()
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self.await_cool(0, FLR_N + SYNC_ALLOWANCE, "ARM_COOL_ASSERT")
         await self.await_cool(1, FLR_M + SYNC_ALLOWANCE, "ARM_COOL_RELEASE")
         await self.ref(_REQUEUE_WATCH_REF)
@@ -65,20 +65,20 @@ class smc_flr_hold_edge_requeue_test_seq(SmcFlrLegSeq):
         dut = cocotb.top
         mon = self.mon
         mon.arm()
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self.await_state(FLR_COUNT_DOWN, "OVL_COUNT_DOWN")
         await self.ref(FLR_N // 2 - _EDGE_LOW_REF)
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self.ref(_EDGE_LOW_REF)
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         second_at = mon.edge
         assert self.cool() == 1, "OVL: cool reset asserted before the pre-reset count ended"
         await self.await_cool(0, FLR_N + SYNC_ALLOWANCE, "OVL_COOL_ASSERT")
         await self.ref(FLR_M // 2 - _EDGE_LOW_REF)
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self.ref(_EDGE_LOW_REF)
         assert self.cool() == 0, "OVL: cool reset released before the hold count ended"
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         third_at = mon.edge
         await self.await_cool(1, FLR_M + SYNC_ALLOWANCE, "OVL_COOL_RELEASE")
         await self.ref(_REQUEUE_WATCH_REF)
@@ -129,7 +129,7 @@ class smc_flr_hold_edge_requeue_test_seq(SmcFlrLegSeq):
             ovl = await self._overlap(arm["pre"], arm["hold"])
         finally:
             self.mon.stop()
-            dut.tb_cfg_flr_pf_active.value = 0
+            dut.tb_isolate_sequence_trigger.value = 0
         await self.clear_counters()
         cocotb.log.info(
             "%s: N=%d M=%d: the single request gave pre=%d hold=%d clk_ref_i edges; with a second "

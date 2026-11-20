@@ -3,7 +3,7 @@
 """ISOLATE_REQ_SMC_REG clears only on a write of 1 to bit 0 on its own byte lane.
 
 `reset_unit.rdl` makes `isolate_req_smc_reg` a single `onwrite = woclr`
-field at bit 0: hardware sets it when `cfg_flr_pf_active` rises, and software
+field at bit 0: hardware sets it when `isolate_sequence_trigger_i` rises, and software
 clears it by writing 1 to bit 0 with byte 0's strobe set. A write of 0, or a
 write whose byte strobes do not select byte 0, leaves it unchanged.
 `smc_cool_reset_wrap.sv` qualifies the clear with the field's own write enable
@@ -42,11 +42,11 @@ class smc_isolate_req_smc_lane_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self.csr_read("SMC_REG_IDLE", SMC_REG, expected=0)
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await self._await_bit(SMC_BIT, "SMC_REG_FLR")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
 
         await self.csr_write("SMC_REG_LANE1_ZERO", SMC_REG + 1, 0, length=1)
         lane1_zero = await self.csr_read("SMC_REG_LANE1_ZERO_RB", SMC_REG)

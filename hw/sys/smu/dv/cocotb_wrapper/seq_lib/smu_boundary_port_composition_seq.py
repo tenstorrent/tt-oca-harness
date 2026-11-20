@@ -303,7 +303,7 @@ class smu_boundary_port_composition_seq:
         self._width(smu, "skip_mem_repair_o", 1, "CHK-SMU-FUSE-SENSE-S4")
         sb.expect_eq(
             "no FLR isolation request is pending at the wrapper pin",
-            sample(dut.tb_cfg_flr_pf_active, "tb_cfg_flr_pf_active"),
+            sample(dut.tb_isolate_sequence_trigger, "tb_isolate_sequence_trigger"),
             0,
         )
         skip = sample(hier(smu, "skip_mem_repair_o"), "skip_mem_repair_o")
