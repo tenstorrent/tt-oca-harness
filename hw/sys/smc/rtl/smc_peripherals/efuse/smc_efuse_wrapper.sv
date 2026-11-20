@@ -136,9 +136,10 @@ module smc_efuse_wrapper #(
   } jtag_target_e;
 
   localparam smc_pkg::smc_axi_lite_32_addr_t EfusePageBase =
-      smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR);
+      smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_BASE_ADDR);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfusePageLast =
-      EfusePageBase + smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize - 1);
+      EfusePageBase + smc_pkg::smc_axi_lite_32_addr_t'(
+          smc_top_window_pkg::SMC_TOP_SMC_EFUSE_WRAP_WINDOW_SIZE - 1);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimBase =
       smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimLast =

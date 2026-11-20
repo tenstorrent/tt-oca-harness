@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from common.memorymap import (  # noqa: E402
     render_py,
 )
 from common.rdlview import parse_rdl_params  # noqa: E402
+from common.windows import Decoders, state_windows  # noqa: E402
 
 
 def _resolve(path: str | Path, root: Path) -> Path:
@@ -39,6 +41,13 @@ def main() -> int:
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--err-check-blocks", default="")
     parser.add_argument("--no-rtl-blocks", default="")
+    parser.add_argument("--regblocks", default="", help="blocks with generated register RTL")
+    parser.add_argument("--wrappers", default="", help="maps whose children share their window")
+    parser.add_argument("--no-err-blocks", default="", help="regblocks that answer OKAY throughout")
+    parser.add_argument("--addr-widths", help="make fragment of generated address widths")
+    parser.add_argument(
+        "--pages", action="append", default=[], help="RDL of a map whose children own whole pages"
+    )
     parser.add_argument("--format", choices=("adoc", "py"), default="adoc")
     args = parser.parse_args()
 
@@ -48,31 +57,38 @@ def main() -> int:
     udp = _resolve(args.udp_rdl_file, repo_root) if args.udp_rdl_file else None
     global_incdirs = [_resolve(path, repo_root) for path in args.incdir]
     parameters = parse_rdl_params(args.parameter)
+    widths = (
+        _resolve(args.addr_widths, repo_root).read_text(encoding="utf-8")
+        if args.addr_widths
+        else ""
+    )
+    decoders = Decoders(
+        frozenset(args.regblocks.split()),
+        frozenset(args.wrappers.split()),
+        frozenset(args.no_err_blocks.split()),
+        {
+            name: int(width)
+            for name, width in re.findall(r"^OCAH_REG_ADDR_WIDTH_(\w+) := (\d+)$", widths, re.M)
+        },
+    )
+    pages = {_resolve(path, repo_root).resolve() for path in args.pages}
 
     source_specs = config.get("sources", ())
-    if source_specs:
-        roots = {
-            source["name"]: compile_root(
-                _resolve(source["rdl"], repo_root),
-                udp,
-                global_incdirs,
-                source.get("top"),
-                parameters,
-            )
-            for source in source_specs
-        }
-    else:
+    if not source_specs:
         if not args.rdl:
             parser.error("rdl is required when the config has no [[sources]]")
-        roots = {
-            "main": compile_root(
-                _resolve(args.rdl, repo_root),
-                udp,
-                global_incdirs,
-                args.top,
-                parameters,
-            )
-        }
+        source_specs = [{"name": "main", "rdl": args.rdl, "top": args.top}]
+    roots = {}
+    errors = []
+    for source in source_specs:
+        rdl = _resolve(source["rdl"], repo_root)
+        root = compile_root(rdl, udp, global_incdirs, source.get("top"), parameters)
+        errors += state_windows(root.top, rdl.resolve() in pages, decoders)
+        roots[source["name"]] = root
+    if errors:
+        for error in dict.fromkeys(errors):
+            print(f"error: {error}", file=sys.stderr)
+        return 1
 
     views = build_views(config, roots)
     check_regblock_responses(

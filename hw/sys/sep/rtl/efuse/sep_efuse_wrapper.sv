@@ -148,9 +148,9 @@ module sep_efuse_wrapper #(
   localparam sep_efuse_pkg::addr_t EfuseMmrLast =
       sep_efuse_pkg::addr_t'(EfuseMmrBase + sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_SIZE - 1);
   localparam sep_efuse_pkg::addr_t EfusePageBase =
-      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR);
+      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_BASE_ADDR);
   localparam sep_efuse_pkg::addr_t EfusePageLast =
-      EfusePageBase + sep_efuse_pkg::addr_t'(sep_pkg::RegPageSize - 1);
+      EfusePageBase + sep_efuse_pkg::addr_t'(sep_top_window_pkg::SEP_TOP_SEP_EFUSE_WRAP_WINDOW_SIZE - 1);
   localparam sep_efuse_pkg::addr_t EfuseShimBase =
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
   localparam sep_efuse_pkg::addr_t EfuseShimLast =

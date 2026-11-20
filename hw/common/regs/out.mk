@@ -18,9 +18,10 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # its end and OKAY for a gap between registers; one on OCAH_REG_ERR_CHECK_BLOCKS
 # answers SLVERR for every unmapped address and illegal read/write instead, and one
 # on OCAH_REG_NO_ERR_BLOCKS answers OKAY for every address.
-# OCAH_REG_ADDR_WIDTH_<stem> widens the CPU port past the minimum the RDL needs;
-# the instantiating wrapper must then drive the block's offset, not a slice of
-# the bus address. OCAH_REG_REGBLOCK_OPTS_<stem> adds further regblock options.
+# OCAH_REG_ADDR_WIDTH_<stem>, generated into OCAH_REG_ADDR_WIDTHS, widens the CPU
+# port to the window the block owns; the instantiating wrapper must then drive
+# the block's offset, not a slice of the bus address.
+# OCAH_REG_REGBLOCK_OPTS_<stem> adds further regblock options.
 ocah_reg_regblock_opts = $(if $(filter $(1),$(OCAH_REG_ERR_CHECK_BLOCKS)),--err-if-bad-addr --err-if-bad-rw,$(if $(filter $(1),$(OCAH_REG_NO_ERR_BLOCKS)),,--err-if-out-of-range)) $(addprefix --addr-width ,$(OCAH_REG_ADDR_WIDTH_$(1))) $(OCAH_REG_REGBLOCK_OPTS_$(1))
 # PeakRDL addrmap parameter overrides (`-P NAME=VALUE`). Keyed by the RDL stem.
 ocah_reg_rdl_params = $(foreach p,$(OCAH_REG_RDL_PARAMS_$(call ocah_reg_name,$(1))),-P $(p))
@@ -51,6 +52,7 @@ ocah_reg_html_block_dir = $(call ocah_reg_gen,$(1))/html/blocks
 ocah_reg_ral_dir = $(call ocah_reg_gen,$(1))/ral
 ocah_reg_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1)).h
 ocah_reg_svpkg_output = $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_addrmap_pkg.sv
+ocah_reg_window_pkg = $(if $(filter $(1),$(OCAH_REG_PAGE_TOPS)),$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_window_pkg.sv)
 ocah_reg_svh_output = $(call ocah_reg_gen,$(1))/svh/$(call ocah_reg_name,$(1))_reg.svh
 ocah_reg_raw_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1))_addr.h
 ocah_reg_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_reg.py
@@ -134,7 +136,8 @@ ocah_reg_dep_targets = \
 
 OCAH_REGEN_REG_SV     := $(call ocah_reg_collect,ocah_reg_sv_target)
 OCAH_REGEN_REG_H      := $(call ocah_reg_collect,ocah_reg_h_full)
-OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output)
+OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output) \
+  $(call ocah_reg_collect,ocah_reg_window_pkg)
 OCAH_REGEN_REG_SVH     := $(call ocah_reg_collect,ocah_reg_svh_output)
 OCAH_REGEN_REG_PY     := $(call ocah_reg_collect,ocah_reg_py_output)
 OCAH_REGEN_REG_RAL    := $(call ocah_reg_collect,ocah_reg_ral_target)

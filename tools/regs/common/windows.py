@@ -1,0 +1,331 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+"""Size the window each generated register block decodes from the maps that place it.
+
+A generated register block decodes a power-of-two window and matches only the
+low address bits of that window, so the window's base must be a multiple of its
+size. The place of an instance gives the window it owns:
+
+* A child of a page top starts on a 4 KiB boundary and owns whole pages.
+* A child of a wrapper owns the space up to the next child, or to the end of
+  the array element that holds it. The last child of a wrapper that is not an
+  array keeps the window its registers need.
+* An element of an array owns the array's stride.
+* Any other block owns its ocah_aperture_size, or else the window its
+  registers need.
+
+The instances of one block share one generated module, so the block decodes
+the smallest window any of its instances owns, and an instance with more room
+leaves the rest to its wrapper.
+
+The memory maps take the same windows: state_windows gives them to the blocks
+whose decoders the flow generates, so their RDL states only the others.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from math import prod
+from typing import Any, Iterable
+
+from systemrdl.node import AddrmapNode, MemNode, Node, RegfileNode, RegNode, RootNode
+
+PAGE_SIZE = 0x1000
+_ADDRESSABLE = (AddrmapNode, MemNode, RegfileNode, RegNode)
+_FORWARDED = {"FORWARD", "ADOPTER"}
+
+
+@dataclass(frozen=True)
+class Placement:
+    path: str
+    needed: int
+    decoded: int
+    room: int
+    owns_room: bool
+    stated: int | None
+
+
+def _clog2(value: int) -> int:
+    return max(0, (value - 1).bit_length())
+
+
+def _is_pow2(value: int) -> bool:
+    return value > 0 and not value & (value - 1)
+
+
+def _largest_aligned(base: int, room: int) -> int:
+    size = 1 << (room.bit_length() - 1)
+    while base % size:
+        size >>= 1
+    return size
+
+
+def needed_window(node: AddrmapNode) -> int:
+    """The smallest window that holds the block's registers."""
+    return 1 << _clog2(int(node.size))
+
+
+def decoded_window(node: AddrmapNode) -> int:
+    """The window the register block decodes without an address width override."""
+    width = max(
+        (
+            int(reg.get_property("accesswidth"))
+            for reg in node.descendants()
+            if isinstance(reg, RegNode)
+        ),
+        default=8,
+    )
+    return max(needed_window(node), 1 << (_clog2(width // 8) + 1))
+
+
+def type_name(node: Node) -> str:
+    return node.orig_type_name or node.type_name
+
+
+def _stated(node: Node) -> int | None:
+    value = node.get_property("ocah_aperture_size", default=None)
+    return None if value is None else int(value)
+
+
+def _inherited(node: Node, name: str) -> Any:
+    while not isinstance(node, RootNode):
+        value = node.get_property(name, default=None)
+        if value is not None:
+            return value
+        node = node.parent
+    return None
+
+
+def _forwarded(node: Node) -> bool:
+    value = _inherited(node, "ocah_hole_resp")
+    return value is not None and bool({value.rresp.name, value.bresp.name} & _FORWARDED)
+
+
+def _whole_pages(size: int) -> int:
+    return -(-size // PAGE_SIZE) * PAGE_SIZE
+
+
+def _children(node: Node) -> list[Node]:
+    return sorted(
+        (child for child in node.children(unroll=False) if isinstance(child, _ADDRESSABLE)),
+        key=lambda child: child.raw_address_offset,
+    )
+
+
+class WindowSizer:
+    def __init__(self, regblocks: Iterable[str], wrappers: Iterable[str]) -> None:
+        self.regblocks = set(regblocks)
+        self.wrappers = set(wrappers)
+        self.placements: dict[str, list[Placement]] = {}
+        self.errors: list[str] = []
+
+    def add_top(self, top: AddrmapNode, pages: bool) -> list[tuple[Node, int]]:
+        """Size the windows under one map, returning each child of a page top with its pages."""
+        if pages:
+            return self._pages(top)
+        if type_name(top) in self.wrappers:
+            self._split(top, int(top.size), False)
+        else:
+            for child in _children(top):
+                if isinstance(child, AddrmapNode) and type_name(child) in self.regblocks:
+                    self._visit(child, _stated(child) or needed_window(child), False)
+        return []
+
+    def _pages(self, top: AddrmapNode) -> list[tuple[Node, int]]:
+        children = _children(top)
+        windows = []
+        for child, following in zip(children, children[1:] + [None]):
+            base = int(child.raw_address_offset)
+            span = _whole_pages(max(int(child.total_size), _stated(child) or 0))
+            if base % PAGE_SIZE:
+                self.errors.append(
+                    f"{child.get_path()}: starts at 0x{base:X}, not on a 4 KiB boundary"
+                )
+                continue
+            if following is not None and base + span > following.raw_address_offset:
+                self.errors.append(
+                    f"{child.get_path()}: its pages end at 0x{base + span - 1:X}, past "
+                    f"{following.inst_name} at 0x{following.raw_address_offset:X}"
+                )
+            windows.append((child, span))
+            self._visit(child, span, True)
+        return windows
+
+    def _split(self, wrapper: AddrmapNode, window: int, element: bool) -> None:
+        children = _children(wrapper)
+        for child, following in zip(children, children[1:] + [None]):
+            base = int(child.raw_address_offset)
+            end = window if following is None else int(following.raw_address_offset)
+            if base + int(child.total_size) > end:
+                self.errors.append(
+                    f"{child.get_path()}: ends at 0x{base + int(child.total_size) - 1:X}, past "
+                    f"the 0x{end:X} where its window in {wrapper.inst_name} ends"
+                )
+                continue
+            self._visit(child, end - base, following is not None or element)
+
+    def _visit(self, node: Node, room: int, owns_room: bool) -> None:
+        if not isinstance(node, AddrmapNode) or _forwarded(node):
+            return
+        if node.is_array:
+            stride = int(node.array_stride)
+            if prod(node.array_dimensions) * stride > room:
+                self.errors.append(f"{node.get_path()}: its elements reach past 0x{room:X}")
+                return
+            room, owns_room = stride, True
+        base = int(node.raw_absolute_address)
+        if not owns_room:
+            room = _largest_aligned(base, room)
+        name = type_name(node)
+        if name in self.wrappers:
+            self._split(node, room, node.is_array)
+        elif name in self.regblocks:
+            if owns_room and not (_is_pow2(room) and base % room == 0):
+                self.errors.append(
+                    f"{node.get_path()}: owns 0x{room:X} bytes at 0x{base:X}, but a register "
+                    "block decodes a power-of-two window whose base is a multiple of its size"
+                )
+                return
+            self.placements.setdefault(name, []).append(
+                Placement(
+                    node.get_path(),
+                    needed_window(node),
+                    decoded_window(node),
+                    room,
+                    owns_room,
+                    None if node.is_array else _stated(node),
+                )
+            )
+
+    def widths(self) -> dict[str, int]:
+        """Address width of each block whose window is wider than its registers need."""
+        widths: dict[str, int] = {}
+        for name, placements in sorted(self.placements.items()):
+            needed = max(place.needed for place in placements)
+            decoded = max(place.decoded for place in placements)
+            owned = [place.room for place in placements if place.owns_room]
+            window = min(owned) if owned else decoded
+            if not needed <= window <= min(place.room for place in placements):
+                self.errors.append(
+                    f"{name}: no one window suits every instance: "
+                    + "; ".join(
+                        f"{place.path} needs 0x{place.needed:X} and has room for 0x{place.room:X}"
+                        for place in placements
+                    )
+                )
+                continue
+            self.errors.extend(
+                f"{place.path}: ocah_aperture_size is 0x{place.stated:X}, but {name} "
+                f"decodes 0x{window:X}"
+                for place in placements
+                if place.stated is not None and place.stated != window
+            )
+            if window > decoded:
+                widths[name] = window.bit_length() - 1
+        return widths
+
+
+@dataclass(frozen=True)
+class Decoders:
+    regblocks: frozenset[str]
+    wrappers: frozenset[str]
+    no_err: frozenset[str]
+    widths: dict[str, int]
+
+    def window(self, node: AddrmapNode) -> int:
+        name = type_name(node)
+        return 1 << self.widths[name] if name in self.widths else decoded_window(node)
+
+
+def _text(value: Any) -> str:
+    if isinstance(value, int):
+        return f"0x{value:X}"
+    return f"{value.rresp.name}, 0x{int(value.rdata):X} / {value.bresp.name}"
+
+
+def state_windows(top: AddrmapNode, pages: bool, decoders: Decoders) -> list[str]:
+    """Give each block with a generated decoder its window and past-registers response.
+
+    A child of a page top has its whole pages, and a register block in a wrapper
+    the window it decodes. Past its registers a register block answers its
+    generated error, and a wrapper what its sub-blocks' gaps answer. The values
+    become the blocks' own properties, so every reader of the map sees them.
+    Returns an error for each value the map already states.
+    """
+    struct = top.env.property_rules.user_properties["ocah_past_extent_resp"].valid_type
+    codes = {code.name: code for code in struct._members["rresp"]}
+    errors = []
+    for node in top.descendants(unroll=False):
+        if not isinstance(node, AddrmapNode) or node.is_array or _forwarded(node):
+            continue
+        name = type_name(node)
+        if name in decoders.regblocks:
+            code = codes["OKAY" if name in decoders.no_err else "SLVERR"]
+            past = struct({"rresp": code, "rdata": 0, "bresp": code})
+        elif name in decoders.wrappers:
+            past = _inherited(node, "ocah_gap_resp")
+        else:
+            continue
+        if pages and node.parent.inst is top.inst:
+            window = _whole_pages(int(node.total_size))
+        elif type_name(node.parent) in decoders.wrappers and name in decoders.regblocks:
+            window = decoders.window(node)
+        else:
+            continue
+        for prop, value in (("ocah_aperture_size", window), ("ocah_past_extent_resp", past)):
+            if value is None:
+                continue
+            stated = node.get_property(prop, default=None)
+            if stated is None:
+                node.inst.properties[prop] = value
+            elif _text(stated) == _text(value):
+                errors.append(
+                    f"{node.get_path()}: {prop} {_text(stated)} is the value the generator "
+                    "gives it; remove the assignment"
+                )
+    return errors
+
+
+def _generated(comment: str, about: list[str], body: list[str]) -> str:
+    header = [
+        "SPDX-License-Identifier: Apache-2.0",
+        "SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
+        "",
+        *about,
+    ]
+    lines = [f"{comment} {line}" if line else "" for line in header]
+    return "\n".join([*lines, "", *body]) + "\n"
+
+
+def render_widths(widths: dict[str, int]) -> str:
+    return _generated(
+        "#",
+        [
+            "Generated by tools/regs/rdlwindows.py; do not edit. The address width of",
+            "each register block whose window is wider than its registers need.",
+        ],
+        [f"OCAH_REG_ADDR_WIDTH_{name} := {width}" for name, width in sorted(widths.items())],
+    )
+
+
+def render_window_pkg(top: AddrmapNode, windows: list[tuple[Node, int]]) -> str:
+    prefix = top.inst_name.upper()
+    return _generated(
+        "//",
+        [
+            "Generated by tools/regs/rdlwindows.py; do not edit. The window each unit",
+            f"of {top.inst_name} owns: the whole 4 KiB pages from its base address.",
+        ],
+        [
+            f"package {top.inst_name}_window_pkg;",
+            "",
+            *(
+                f"localparam longint unsigned {prefix}_{child.inst_name.upper()}_WINDOW_SIZE"
+                f" = 64'h{span:X};"
+                for child, span in windows
+            ),
+            "",
+            "endpackage",
+        ],
+    )

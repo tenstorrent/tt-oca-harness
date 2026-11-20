@@ -32,10 +32,9 @@ package sep_crypto_pkg;
       idx: 2,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_AES_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_AES_WINDOW_SIZE
   };
 
   parameter axi_pkg::xbar_rule_32_t KMAC_RULE = '{
@@ -50,11 +49,11 @@ package sep_crypto_pkg;
   // The eFuse page: interface control, MMR and map.
   parameter axi_pkg::xbar_rule_32_t FUSE_RULE = '{
       idx: 4,
-      start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_BASE_ADDR,
       end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR
+      sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_WRAP_BASE_ADDR
       +
-      sep_pkg::RegPageSize
+      sep_top_window_pkg::SEP_TOP_SEP_EFUSE_WRAP_WINDOW_SIZE
   };
 
   // The lifecycle controller page, all of which its register block decodes.
@@ -62,11 +61,9 @@ package sep_crypto_pkg;
       idx: 5,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_WINDOW_SIZE
   };
 
   // The Key Manager mailbox page, all of which its register block decodes.
@@ -74,11 +71,9 @@ package sep_crypto_pkg;
       idx: 6,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_KM_MAILBOX_SEP_WINDOW_SIZE
   };
 
   // The CSRNG page; the interconnect answers the addresses outside the window the CSRNG decodes.
@@ -86,10 +81,9 @@ package sep_crypto_pkg;
       idx: 7,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_CSRNG_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_CSRNG_WINDOW_SIZE
   };
 
   // The EDN page; the interconnect answers the addresses outside the window the EDN decodes.
@@ -97,10 +91,9 @@ package sep_crypto_pkg;
       idx: 8,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_EDN_WINDOW_SIZE
   };
 
   // The entropy source page, all of which its register block decodes.
@@ -108,11 +101,9 @@ package sep_crypto_pkg;
       idx: 9,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_ENTROPY_SOURCE_WINDOW_SIZE
   };
 
   // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to an external TRNG
@@ -131,10 +122,9 @@ package sep_crypto_pkg;
       idx: 11,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR,
       end_addr:
-      sep_pkg::reg_page_end
-      (
-          sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR, sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
-      )
+      sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR
+      +
+      sep_top_window_pkg::SEP_TOP_ABR_WINDOW_SIZE
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).

@@ -68,8 +68,8 @@ module sep_system_peripherals_xbar
     // smn_inbound_from_xbar.region_1: from the end of the scratch page to 0x10a00000
     '{
       idx: 0,
-      start_addr: 56'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
-                                            sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE)),
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_BASE_ADDR
+                    + sep_top_window_pkg::SEP_TOP_SEP_SCRATCH_WRAP_WINDOW_SIZE),
       end_addr: 57'h10a00000
     },
     // smn_inbound_from_xbar.region_2: 0x10a50000 - 0x40000000
@@ -79,50 +79,47 @@ module sep_system_peripherals_xbar
     '{
       idx: 1,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR,
-                                          sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_SIZE))
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR
+                  + sep_top_window_pkg::SEP_TOP_AXIL_MAILBOX_WINDOW_SIZE)
     },
     // system_csr.remap_ctrl: the remap page; sep_system_csr answers the addresses outside the
     // alias, AP and STEE remap windows.
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(
-          sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_SIZE))
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_BASE_ADDR
+                  + sep_top_window_pkg::SEP_TOP_SEP_REMAP_WRAP_WINDOW_SIZE)
     },
     // system_csr.outbound_filter_ctrl: the outbound filter page; sep_system_csr answers the
     // addresses outside the outbound filter window.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(
-          sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE))
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR
+                  + sep_top_window_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_WINDOW_SIZE)
     },
     // system_csr.inbound_filter_ctrl: the inbound filter page; sep_system_csr answers the
     // addresses outside the inbound filter window.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(
-          sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
-          sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE))
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR
+                  + sep_top_window_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_WINDOW_SIZE)
     },
     // system_csr.sep_cpu_ctrl: the sep_cpu_ctrl pages, all of which its register block decodes.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR,
-                                          sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE))
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR
+                  + sep_top_window_pkg::SEP_TOP_SEP_CPU_CTRL_WINDOW_SIZE)
     },
     // system_csr.sep_scratch: the scratch page; sep_system_csr answers the addresses outside the
     // cold and warm scratch windows.
     '{
       idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
-      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
-                                          sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE))
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_BASE_ADDR
+                  + sep_top_window_pkg::SEP_TOP_SEP_SCRATCH_WRAP_WINDOW_SIZE)
     }
   };
 

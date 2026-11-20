@@ -125,8 +125,9 @@ section of the Technical Reference Manual gives the rule. To add a register
 block to the SMC or the SEP:
 
 * Start a block that has a page to itself on a 4 KiB boundary, and end its
-  crossbar rule at the end of its last 4 KiB page (`smc_pkg::reg_page_end` or
-  `sep_pkg::reg_page_end`), so that its target owns whole pages. Put a vendored
+  crossbar rule at its base plus its `_WINDOW_SIZE` from the generated
+  `smc_top_window_pkg` or `sep_top_window_pkg`, so that its target owns whole
+  pages. Put a vendored
   block that does not refuse every address past its registers behind a
   `prim_axil_addr_demux` with `MISS_RESP` set to SLVERR, which answers the rest
   of the page.
@@ -136,13 +137,19 @@ block to the SMC or the SEP:
   answers `DECERR` outside the blocks' windows. Every crossbar rule that
   reaches a page leads to one port; `OCAH_ASSERT_XBAR_PAGE_OWNER` in each
   crossbar fails elaboration otherwise.
-* For a generated block, set `OCAH_REG_ADDR_WIDTH_<block>` in
-  `hw/common/regs/classify.mk` to log~2~ of its window, 12 for a block alone in
-  its page, so that the block decodes its whole window.
+* A generated block decodes its whole window without further work:
+  `make regen-regs` sizes the window from the map that places the block and
+  writes its address width to `hw/common/regs/gen/addr_widths.mk`. It fails when
+  a block placed directly in the SMC or SEP map does not start on a 4 KiB
+  boundary, or when a window is not a power of two whose base is a multiple of
+  its size.
 * Add an array whose stride is wider than one instance to
   `OCAH_REG_NO_ERR_BLOCKS`, so that its padding answers `OKAY`.
-* In the RDL, give the block its window as its `ocah_aperture_size` and the
-  responses it returns there, so that the generated memory map states them.
+* The generated memory map takes the window of a generated block, and of a
+  wrapper placed directly in the SMC or SEP map, from the same rules, with the
+  response past their registers. In the RDL, state the window and responses of
+  any other block, such as a vendored one. `make regen-regs-adoc` fails on an
+  assignment that repeats a value the generator gives.
 
 == DV Firmware
 
