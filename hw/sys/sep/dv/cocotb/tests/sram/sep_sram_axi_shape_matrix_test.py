@@ -1435,7 +1435,9 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             raise AssertionError(msg)
         self.logger.info("CTRL-SRAM-OTF-REFUSE: %s", ctrl)
         await self._filter()
-        words = words_of(beat_addrs(post_b.burst, post_b.addr, post_b.beats, post_b.size), WORD)
+        words = words_of(
+            beat_addrs(post_b.burst, post_b.addr, post_b.beats, post_b.size), post_b.size
+        )
         for w, bg in zip(words, v["bg"]):
             await self._write_word("inbound", w, bg, WORD, post_b.axi_id)
         bs, rs, changed, pre, post = await self._refused_pair(
