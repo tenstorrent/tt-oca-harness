@@ -31,7 +31,8 @@ readback, since hardware also writes SRC_ADDR_LO), CHK-RANGE-REGWEN
 base_limit_error alone, then the rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
 expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
-raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
+raising the ERROR_CODE bit of its misaligned side and no non-address bit, then a
+recovery copy; the other address bit is logged as OBS-ERR-ADDR-OTHER), CHK-HOSTINTG
 (DMA-issued command under dma_host_intg_inject_i -> exclusive host_path_err
 + aggregator [41], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
 -> exclusive host_path_err with the pin low, CLEAR, recovery), CHK-ERR-ASID (unencoded

@@ -31,8 +31,12 @@
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : an invalid opcode raises opcode_error alone and STATUS.error;
 //                    W1C clear; a subsequent good copy recovers.
-//   CHK-ERR-ADDR   : four misaligned descriptors raise the matching ERROR_CODE
-//                    bit exclusively; a subsequent good copy recovers.
+//   CHK-ERR-ADDR   : four misaligned descriptors each raise STATUS.error and
+//                    the ERROR_CODE bit of the misaligned side, no non-address
+//                    bit and no STATUS.done; a subsequent good copy recovers.
+//                    The other address bit is logged (OBS-ERR-ADDR-OTHER): the
+//                    source and destination differ in alignment, and no text
+//                    names the bit that the same-alignment rule raises.
 //   CHK-ERR-ASID   : an unencoded ASID on src and on dst each raise asid_error
 //                    exclusively; a subsequent good copy recovers.
 //   CHK-ERR-SIZE   : an unencoded transfer width raises size_error exclusively;
@@ -640,19 +644,23 @@ static int chk_done_rw1c(void) {
 // ---- CHK-ERR-ADDR: the engine's address validation ----
 // Four cells: a transfer whose source or destination address does not meet the
 // alignment its width requires, at both the 4-byte and the 2-byte width. Each
-// cell asserts its error EXCLUSIVELY, so a fault that raises a different bit is
-// a failure rather than a pass, and a clean transfer after the four proves the
-// engine recovers. The inverted-range leg (limit below base) is NOT here: it
-// must run before chk_range_regwen closes the one-way RANGE_REGWEN lock, so it
-// lives in that function.
+// address "Must be aligned to the transfer width" (secure_dma.rdl:74, :82, :91,
+// :100), so the misaligned side's bit ("address is invalid", :336, :341) must
+// rise, and no non-address bit may. The other side is aligned to the width but
+// not to its partner, and "Source and destination address must have the same
+// alignment" (:83, :92, :101) names no bit, so the other address bit is logged
+// only. A clean transfer after the four proves the engine recovers. The
+// inverted-range leg (limit below base) is NOT here: it must run before
+// chk_range_regwen closes the one-way RANGE_REGWEN lock, so it lives in that
+// function.
+#define DMA_ADDR_ERR_BITS \
+    (SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm | SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm)
 static int chk_err_addr(void) {
     int e = 0;
     struct {
         const char *name;
         uint32_t src, dst, width, want;
     } cells[] = {
-        // Each address must be aligned to the transfer width, and the misaligned
-        // side raises its own error bit.
         {"src misaligned for 4B", src_base + 1u, dst_base, SEP_DMA_WIDTH_4B,
          SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
         {"dst misaligned for 4B", src_base, dst_base + 2u, SEP_DMA_WIDTH_4B,
@@ -670,12 +678,23 @@ static int chk_err_addr(void) {
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
         uint32_t err = rd_err();
-        if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != cells[c].want) {
+        uint32_t other = DMA_ADDR_ERR_BITS & ~cells[c].want;
+        sep_mbx_puts("OBS-ERR-ADDR-OTHER LOG cell=");
+        sep_mbx_puthex(c);
+        sep_mbx_puts(" want=");
+        sep_mbx_puthex(cells[c].want);
+        sep_mbx_puts(" err=");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(" other_bit=");
+        sep_mbx_putc((err & other) ? '1' : '0');
+        sep_mbx_putc('\n');
+        if (!(st & SECURE_DMA__STATUS__ERROR_bm) || !(err & cells[c].want) ||
+            (err & ~DMA_ADDR_ERR_BITS)) {
             sep_mbx_puts("FAIL: CHK-ERR-ADDR ");
             sep_mbx_puts(cells[c].name);
-            sep_mbx_puts(" expected err ");
+            sep_mbx_puts(" expected err bit ");
             sep_mbx_puthex(cells[c].want);
-            sep_mbx_puts(" got ");
+            sep_mbx_puts(" and no non-address bit, got ");
             sep_mbx_puthex(err);
             sep_mbx_puts(" status ");
             sep_mbx_puthex(st);
@@ -719,9 +738,9 @@ static int chk_err_addr(void) {
     if (!e) {
         sep_mbx_puts("CHK-ERR-ADDR PASS: 4 misaligned descriptors, covering the "
                      "source and destination alignment checks at both 4-byte and "
-                     "2-byte width, each raised exactly the expected ERROR_CODE bit "
-                     "and no other, none set STATUS.done, and the engine copied "
-                     "correctly afterwards\n");
+                     "2-byte width, each set STATUS.error and the ERROR_CODE bit of "
+                     "the misaligned side with no non-address bit, none set "
+                     "STATUS.done, and the engine copied correctly afterwards\n");
     }
     return e;
 }
