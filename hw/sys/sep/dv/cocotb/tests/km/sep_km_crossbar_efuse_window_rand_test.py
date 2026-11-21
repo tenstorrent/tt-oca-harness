@@ -136,7 +136,14 @@ completes with SLVERR, and that the host readback (class OKAY) and
 unlocked spare field, which is not a plan target (SW writable,
 ``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
 readback (class OKAY) and the probe equal the written value; a mismatch prints
-``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. The control runs first.
+``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
+is its second control: the same KM write to a word of an unlocked lockable
+field of the plan, which is not a spare, not a plan target and uses all 32 bits
+of its word, completes OKAY, and the host readback (class OKAY) and the probe
+equal the written value for a writable field and the staged value OR the
+written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
+471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
+leaf. Both controls run before the check.
 """
 
 from __future__ import annotations
@@ -154,7 +161,7 @@ from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import word_digest
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
-from env.sep_efuse_field_map import spec_writable_shadow_walk
+from env.sep_efuse_field_map import spec_fields, spec_writable_shadow_walk
 from env.sep_efuse_image import SHADOW_BASE, WORD_BITS, WORD_MASK, SepEfuseImage
 from env.sep_efuse_plan import DIGEST_FIELDS
 from env.sep_fcov_gate import (
@@ -167,6 +174,7 @@ from env.sep_fcov_gate import (
     set_km_xbar_pass,
 )
 from env.sep_km_fuse_plan import (
+    _LOCKABLE,
     OTP_DUAL_RAIL_FIELDS,
     SPARE_FIELDS,
     T_XBAR_EFUSE,
@@ -909,8 +917,16 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         same per-field locks (``key_manager/doc/architecture.adoc:924-928``).
         The control writes a SW-writable spare word that is not a plan target
         (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
-        that drops every write fails the control first. The model is not
-        updated: the next cold reset re-senses the shadow from OTP.
+        that drops every write fails the control first. A second control writes
+        a word of an unlocked lockable field of the plan that is not a spare
+        and not a plan target, so a KM path that refuses every non-spare write
+        also fails a control first. Its expected readback follows the field's
+        SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
+        written word for a writable field, the staged word OR the written word
+        for a set-only field (``:261,274,279``). A field that uses fewer than
+        32 bits of its word is not drawn: the table states no write behavior
+        for its other bits. The model is not updated: the next cold reset
+        re-senses the shadow from OTP.
         """
         busy = {fp.read_locked, fp.write_locked} | {t.field for t in fp.targets.values()}
         cands = [f for f, _ in spec_writable_shadow_walk() if f in SPARE_FIELDS and f not in busy]
@@ -930,6 +946,19 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         self._draw("wlock.field", wl_field)
         self._draw("wlock.word", wl_idx)
         self.logger.info("DRAW wlock.value=%s", _wh(wl_idx, v))
+        spec = {f.reg_name: f for f in spec_fields()}
+        l_cands = [f for f in _LOCKABLE if f not in busy and spec[f].used_bits >= WORD_BITS]
+        if not l_cands:
+            raise AssertionError(f"test bug: no unlocked lockable control field in {fp.summary()}")
+        l_field = rng.choice(l_cands)
+        l_fld = SepEfuseImage.field(l_field)
+        l_idx = l_fld.word + rng.randrange(l_fld.n_words)
+        s_l = model.words[l_idx]
+        v_l = self._zero_bit_value(rng, s_l)
+        e_l = s_l | v_l if spec[l_field].set_only else v_l
+        self._draw("wlock.lockable_field", l_field)
+        self._draw("wlock.lockable_word", l_idx)
+        self.logger.info("DRAW wlock.lockable_value=%s", _wh(l_idx, v_l))
 
         c_addr = KM_EFUSE_MAP + 4 * c_idx
         (c_res,) = await self._run([kp.wr(c_addr, v_c)])
@@ -943,6 +972,20 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             f"field={c_field} word={c_idx} km_addr=0x{c_addr:05x} wrote=0x{v_c:08x} "
             f"staged=0x{s_c:08x} km_resp={c_km} host_resp={c_host} host_rb=0x{c_rb:08x} "
             f"probe=0x{c_probe:08x}",
+        )
+
+        l_addr = KM_EFUSE_MAP + 4 * l_idx
+        (l_res,) = await self._run([kp.wr(l_addr, v_l)])
+        l_rb, l_host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * l_idx)
+        l_probe = self._shadow_probe_word(l_idx)
+        l_km = self._wr_class(l_res)
+        self._ctrl(
+            "EFW-WLOCK-LOCKABLE",
+            (l_km, l_host, l_rb, l_probe) == ("OKAY", "OKAY", e_l, e_l),
+            f"field={l_field} set_only={int(spec[l_field].set_only)} word={l_idx} "
+            f"km_addr=0x{l_addr:05x} wrote={_wh(l_idx, v_l)} staged={_wh(l_idx, s_l)} "
+            f"expected={_wh(l_idx, e_l)} km_resp={l_km} host_resp={l_host} "
+            f"host_rb={_wh(l_idx, l_rb)} probe={_wh(l_idx, l_probe)}",
         )
 
         addr = KM_EFUSE_MAP + 4 * wl_idx
