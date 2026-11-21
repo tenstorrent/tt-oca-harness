@@ -86,6 +86,8 @@ model of the staged data and the fabric taps:
                   before, so a dropped write cannot pass. The read leg copies the
                   word to a destination staged at its complement, and the
                   destination equals the value the CPU read before the GO.
+                  On each leg the DMA master tap shows the AW or AR at the
+                  ``SEP_IRQ_ENABLE`` address.
 * CHK-DMA-FILT-RANGE every outbound filter entry of the out_setup and stack
                   legs is programmed as [a, a + 7] with a 8-byte aligned and
                   allow_burst 0, so START and END share one 8-byte granule and
@@ -278,6 +280,7 @@ FILT_IN0_CFG = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_AD
 # The not-connected targets of the firmware (ROM_BASE, DMA_CSR_WORD).
 NC_ROM = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 NC_DMA_CSR = SECURE_DMA.addr("ENABLED_MEMORY_RANGE_LIMIT")
+KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_ADDR")
 IRQ_DONE = agg_from_pic(PIC_DMA_DONE)
 IRQ_ERROR = agg_from_pic(PIC_DMA_ERROR)
 # STEE output remap (generated map; the region span is the one of the AP
@@ -1753,9 +1756,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         (hw/ip/key_manager/regs/km_mailbox_sep.rdl:279-332): the write leg reads
         back the written value and the restore gives the value before; the read
         leg copies the CPU value into a destination staged at its complement.
+        The DMA master tap shows the leg's AW (write) or AR (read) at the
+        SEP_IRQ_ENABLE address, so a copy from another word cannot pass.
         """
         _t_go, t_irq = self._go_and_irq(leg_i)
         leg = tgt[3:]
+        ch = "aw" if tgt == "km_wr" else "ar"
+        at_word = [b for b in getattr(self._dma_ev(leg_i), ch) if b.addr == KM_MBOX_IRQ_ENABLE]
         if tgt == "km_wr":
             vals = (
                 f"irq_status=0x{r['irq_status']:08x} value_before=0x{r['before']:08x} "
@@ -1776,11 +1783,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             expect = "the destination equal to the CPU read of SEP_IRQ_ENABLE"
         line = (
             f"leg={leg} word=SEP_IRQ_ENABLE end={end} irq={int(t_irq is not None)} "
-            f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x} {vals}"
+            f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x} {vals} "
+            f"dma_{ch}_at_word={len(at_word)}"
         )
-        ok = end == "done" and t_irq is not None and self._done_ok(r) and data_ok
+        ok = end == "done" and t_irq is not None and self._done_ok(r) and data_ok and at_word
         assert ok, (
-            f"CHK-DMA-KM-MBOX FAIL: {line}; expected DONE with no error, a DMA interrupt and {expect}"
+            f"CHK-DMA-KM-MBOX FAIL: {line}; expected DONE with no error, a DMA interrupt, "
+            f"a DMA {ch.upper()} at 0x{KM_MBOX_IRQ_ENABLE:08x} and {expect}"
         )
         self.logger.info("CHK-DMA-KM-MBOX PASS: %s", line)
         self._recovery_after(f"nc_{tgt}")

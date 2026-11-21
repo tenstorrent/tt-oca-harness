@@ -1019,7 +1019,9 @@ class sep_km_kpv_rand_test(sep_base_test):
         locked = res[3][0]
         written = sum(1 for i in range(k) if after[i] == vals[i])
         kept = sum(1 for i in range(k, m.N_WORDS) if after[i] == e[i])
-        lz = all(v == 0 for v in locked.data) and all(f.slv == 1 for f in locked.flags)
+        lz = all(v == 0 for v in locked.data) and all(
+            f is not None and f.clean and f.slv == 1 for f in locked.flags
+        )
         self.controls["trail_written"] = self.chk.ctrl(
             "KPV-TRAIL-WRITTEN", written == k, k=k, written=written
         )

@@ -102,7 +102,11 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    of ``wipe_state_i`` or a CPU trap clears them
                    (``architecture.adoc:512-518``). Its control
                    ``CTRL-KM-PARK-LIVE`` requires the set writes accepted and
-                   all eight banks read set before the park
+                   all eight banks read set before the park.
+                   ``CTRL-KM-PARK-REBOOT`` requires the KM bit of
+                   ``SW_RESET_N`` to read 0 during the hold, STATE to read
+                   other than BOOT before the park, and a fresh BOOT marker
+                   after the release, so the KM did reset and boot again
 
 Controls: the non-zero, accepted write of each share word before its read; the
 vector 0 after the share reads; the status and key_valid 0 before each delivery;
@@ -1235,10 +1239,22 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         # The SEP mailbox FIFO keeps its words across a warm reset and the
         # image reads a leftover word as a list header: start the reset empty.
         await self.poke.mbox.flush()
+        state_before = self.poke.state()
         await self.swrst.park("km")
+        held = await self.swrst.read_back()
         await ClockCycles(self.dut.clk_i, _PARK_HOLD_CLKS)
         await self.swrst.release("km")
-        await self.poke.wait_boot()
+        boot_wait = await self.poke.wait_boot()
+        km_held = (held >> SW_RESET_N_BIT["km"]) & 1 == 0
+        self._control(
+            "KM-PARK-REBOOT",
+            km_held and state_before is not None and state_before[0] != kp.ST_BOOT,
+            sw_reset_n_held=f"0x{held:08x}",
+            state_before="none"
+            if state_before is None
+            else kp.STATE_NAMES.get(state_before[0], hex(state_before[0])),
+            boot_wait_clks=boot_wait,
+        )
         after = _decode_state(await self._run(_state_ops(words=False)))
         # POKE image: no boot shred runs. The KM warm reset does not list the engine
         # banks (hw/ip/key_manager/doc/architecture.adoc:158-176,
