@@ -18,6 +18,15 @@ client ports is logged only (``INFO-EDN-GRANT-SEQ``): the distribution figure of
 filling a one-entry FIFO per client, so that order is not the arbitration order.
 CHK-EDN-ARB-RR grades the arbitration order on the arbiter taps.
 
+While the three requests are held, ``EXT_TRNG_SRC_SEL`` selects the external
+stream for the crypto path (its reset value) and the external stream driver
+offers six single words on stream 1, each one only when AES, KMAC and URND all
+request at the arbiter. From the second word on, the client granted the
+previous word requests again while the other two have requested since that
+grant, so the round-robin rule decides every later grant. Each client takes two
+of the words and still owes words to its seed, so all three are still held at
+the EDN enable. ``SepEsrcConfigSeq`` then selects the internal DRBG.
+
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
 on that bring-up.
@@ -51,7 +60,8 @@ Checkers:
   CHK-EDN-ARB-RR   the client arbiter is round-robin ("distributes words to
                    native clients 0 = AES, 1 = KMAC, 2 = OTBN RND, 3 = OTBN URND,
                    using round-robin arbitration", ``hw/sys/sep/doc/trng.adoc``
-                   :92-93): from the EDN enable to the end of the KMAC client, on
+                   :92-93): from the external-stream words to the end of the KMAC
+                   client, on
                    the request and grant vectors of the arbiter, no client k is
                    granted again while another client j has requested on every
                    clock since the previous grant of k and has not been granted.
@@ -65,26 +75,35 @@ Checkers:
                    is barred on that clock (a client j requested at the previous
                    grant of k and on every clock since, and has not been
                    granted). A fixed-priority arbiter in either index order
-                   fails the control or the check. The three requests held before
-                   the EDN enable create the barred clients. The verdict is taken
-                   after CHK-ROUTING, so a FAIL does not hide the other checks.
+                   fails the control or the check. The external-stream words
+                   create the barred clients: a word is offered only when AES,
+                   KMAC and URND all request, so from the second word on the
+                   client granted the previous word is barred. Any arbiter that
+                   passes the check then grants all three clients among words two
+                   to four, and KMAC is neither the lowest nor the highest index.
+                   The verdict is taken after CHK-ROUTING, so a FAIL does not hide
+                   the other checks.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
 ports), ``edn_crypto_arb_req_o`` / ``edn_crypto_arb_gnt_o`` (client arbiter
-request and grant).
+request and grant). Drive: external TRNG stream 1 (``env/sep_ext_trng_stream.py``).
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_drbg_scoreboard import SepDrbgScoreboard
+from env.sep_ext_trng_stream import SepExtTrngStream
 from env.sep_kmac_golden import kmac_family_words
 from sep_base_test import sep_base_test
 from sep_reg_meta import OTBN
 from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
+from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
+    EXT_TRNG_ALL_EXTERNAL,
+    EXT_TRNG_SRC_SEL,
     GENERATORS_OFF,
     GENERATORS_ON,
     SepEntropyCfg,
@@ -112,6 +131,12 @@ _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
 _HELD = _BOTH | (1 << _KMAC_BIT)
 # Grants decided by the round-robin rule that CTRL-EDN-ARB-RR-ARMED needs.
 _ARB_DECIDED_MIN = 2
+# Single words on external stream 1 while AES, KMAC and URND are held: two
+# rounds of the three clients. Each client seeds a PRNG from several EDN words,
+# so two words leave all three requesting at the EDN enable.
+_EXT_STREAM = 1
+_EXT_WORDS = (0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19)
+_EXT_STEP_CYCLES = 20_000
 # The RND client only requests while an OTBN program is blocked on the RND CSR,
 # so it is brought in after the AES/URND dual-request window rather than held
 # alongside it.
@@ -171,6 +196,26 @@ def _known(sig) -> int | None:
     value = sig.value
     bits = str(getattr(value, "binstr", value)).strip()
     return int(bits, 2) if bits and all(c in "01" for c in bits) else None
+
+
+async def _wait_arb_req(dut, mask: int, what: str) -> None:
+    """Wait until every bit of ``mask`` is set on the client arbiter request vector.
+
+    Samples in the read-only phase after each rising edge and returns in the next
+    time step, so the caller may write signals.
+    """
+    for _ in range(_EXT_STEP_CYCLES):
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        req = _known(dut.edn_crypto_arb_req_o)
+        if req is not None and req & mask == mask:
+            await NextTimeStep()
+            return
+    raise AssertionError(
+        f"CTRL-EDN-ARB-RR-ARMED absent: arbiter requests 0x{mask:x} not all high within "
+        f"{_EXT_STEP_CYCLES} clocks {what} "
+        f"(edn_crypto_arb_req_o={dut.edn_crypto_arb_req_o.value})"
+    )
 
 
 class _ArbGrantLog:
@@ -333,6 +378,29 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             held_seen,
         )
 
+        # Start the arbiter sampler, then supply single words on the external
+        # stream while the three requests are held.
+        arb = _ArbGrantLog(dut)
+        await SepAxiRegDriver(self)._wr(EXT_TRNG_SRC_SEL, EXT_TRNG_ALL_EXTERNAL)
+        ext = SepExtTrngStream(dut, logger=self.logger).start(streams=(_EXT_STREAM,))
+        for n, word in enumerate(_EXT_WORDS):
+            await _wait_arb_req(dut, _HELD, f"before external word {n}")
+            granted = arb.grants
+            ext.send(_EXT_STREAM, [word])
+            await ext.wait_sent(_EXT_STREAM, bound=_EXT_STEP_CYCLES)
+            for _ in range(_EXT_STEP_CYCLES):
+                if arb.grants > granted:
+                    break
+                await RisingEdge(dut.clk_i)
+            else:
+                raise AssertionError(
+                    f"CTRL-EDN-ARB-RR-ARMED absent: external word {n} was accepted and "
+                    f"the arbiter granted nothing ({arb.line()})"
+                )
+        await _wait_arb_req(dut, _HELD, "after the last external word")
+        await ext.stop()
+        self.logger.info("INFO-EDN-ARB-EXT words=%d %s", len(_EXT_WORDS), arb.line())
+
         # Same entropy bring-up as the other no_cpu consumers, split so the
         # grant monitor is not running during wait_seed_ready.
         cfg = SepEntropyCfg()
@@ -395,7 +463,6 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         # The three clients are still held (EDN has not been enabled). Start the
         # grant sampler, then enable EDN so the adapter has to pick.
         cocotb.start_soon(_monitor())
-        arb = _ArbGrantLog(dut)
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
         # Collect grants for a fixed budget; the asserts below decide.
