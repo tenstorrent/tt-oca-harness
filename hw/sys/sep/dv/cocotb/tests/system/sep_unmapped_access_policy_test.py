@@ -72,10 +72,15 @@ again: they answer the Hole in Extent cell of their row (memory_map.adoc:69,
 SLVERR, 0x0; :79, OKAY, 0x0), so the second read shows the write was
 discarded.
 
-OBS-CPU-CTRL-BASE-CODE: offset 0 of SEP CPU control lies below its first
-register. doc/trm/src/memory_map.adoc:91 states the answer for an offset
-between registers only, so the leaf reads it, writes it and reads it again
-after the graded walk and logs each response and read data with no verdict.
+CHK-CPU-CTRL-BASE-CODE: offset 0 of SEP CPU control lies below its first
+register, CLOCK_GATE_CTRL, inside the unit's decoded extent. After the graded
+walk the leaf reads it, writes PROBE_WDATA and reads it again: each access
+completes with OKAY and both reads return 0x0. The golden is the SEP hole
+response, hw/sys/sep/regs/include/sep_memory_map.rdl:13 (OKAY, 0x0 / OKAY,
+defined at :8), and doc/trm/src/memory_map.adoc:80-81 (the Hole in Extent
+column covers an unbacked offset inside the decoded extent) with :114-115 (an
+OKAY read returns the listed data and a write has no effect). The word is not
+an in-extent hole probe, so CHK-UNMAPPED-CODE does not grade it.
 
 CHK-UNMAPPED-NO-ALIAS: no refused read returns a programmed value, no probe
 write moves a watched live word, and a closing re-read of every live word
@@ -349,6 +354,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 "their read data lane-checked for X/Z"
             )
         verdict["CHK-UNMAPPED-CODE"] = w.code
+        err_reads = ua.err_reads
 
         # --- closing full compare (outside the window) ---------------------
         moved = await ua.compare(list(ua.snap))
@@ -366,7 +372,8 @@ class sep_unmapped_access_policy_test(sep_base_test):
             )
         verdict["CHK-UNMAPPED-PINS"] = pin_fail
 
-        await self._cpu_ctrl_base_obs(cfg, ua)
+        base_fail, base_log = await self._cpu_ctrl_base_chk(cfg, ua)
+        verdict["CHK-CPU-CTRL-BASE-CODE"] = base_fail
         await ua.restore()
 
         # --- verdicts ---------------------------------------------------------
@@ -384,7 +391,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
             "CHK-UNMAPPED-CODE": (
                 f"{w.n_code} probe and tail access(es), {w.n_hole} of them at an in-extent "
                 "hole, answered the response code and read data the SEP memory map states; "
-                f"all {ua.err_reads} error-response read(s) were lane-checked for X/Z"
+                f"all {err_reads} error-response read(s) were lane-checked for X/Z"
+            ),
+            "CHK-CPU-CTRL-BASE-CODE": (
+                f"{base_log}; sep_memory_map.rdl:13 states OKAY, 0x0 / OKAY"
             ),
             "CHK-UNMAPPED-NO-ALIAS": (
                 f"no refused read returned a programmed value, no probe write moved "
@@ -418,31 +428,40 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 self.logger.info("%s PASS: %s", chk, counts[chk])
         assert not bad, "unmapped-access checker(s) failed: " + ", ".join(bad)
 
-    async def _cpu_ctrl_base_obs(self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess) -> None:
-        """Log the response of SEP CPU control offset 0; no verdict.
+    async def _cpu_ctrl_base_chk(
+        self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess
+    ) -> tuple[list[str], str]:
+        """Read, write and re-read SEP CPU control offset 0; return failures and values.
 
-        It runs after the FCOV window closed and after every count the
-        verdicts use, so it releases no sample and changes no graded tally.
+        The golden is hw/sys/sep/regs/include/sep_memory_map.rdl:13: a hole in
+        the extent answers OKAY with read data 0x0, and a write has no effect,
+        so the re-read also returns 0x0. It runs after the FCOV window closed
+        and after every count the other verdicts use, so it releases no sample
+        and changes no other tally.
         """
         addr = cfg.cpu_ctrl_base
         r_resp, r_data, r_to = await ua.access("r", addr, may_refuse=True)
         w_resp, _d, w_to = await ua.access("w", addr, wdata=PROBE_WDATA, may_refuse=True)
         rr_resp, rr_data, rr_to = await ua.access("r", addr, may_refuse=True)
-        self.logger.info(
-            "OBS-CPU-CTRL-BASE-CODE: 0x%08x (SEP CPU control offset 0, below CLOCK_GATE_CTRL) "
-            "read resp=%s rdata=0x%08x timed_out=%s; write 0x%08x resp=%s timed_out=%s; "
-            "re-read resp=%s rdata=0x%08x timed_out=%s",
-            addr,
-            _code(r_resp),
-            r_data,
-            r_to,
-            PROBE_WDATA,
-            _code(w_resp),
-            w_to,
-            _code(rr_resp),
-            rr_data,
-            rr_to,
+        fail = []
+        for what, resp, data, to in (
+            ("read", r_resp, r_data, r_to),
+            ("write", w_resp, None, w_to),
+            ("re-read", rr_resp, rr_data, rr_to),
+        ):
+            if to:
+                fail.append(f"0x{addr:08x} {what} timed out")
+            elif resp != RESP_OKAY:
+                fail.append(f"0x{addr:08x} {what} resp={_code(resp)}, expected OKAY")
+            elif data is not None and data != 0:
+                fail.append(f"0x{addr:08x} {what} rdata=0x{data:08x}, expected 0x00000000")
+        log = (
+            f"0x{addr:08x} (SEP CPU control offset 0, below CLOCK_GATE_CTRL) "
+            f"read resp={_code(r_resp)} rdata=0x{r_data:08x}; "
+            f"write 0x{PROBE_WDATA:08x} resp={_code(w_resp)}; "
+            f"re-read resp={_code(rr_resp)} rdata=0x{rr_data:08x}; no timeout"
         )
+        return fail, log
 
     async def _probe_walk(self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess, w: _Walk, gate):
         """Every probe in walk order, each graded before the next one starts."""
