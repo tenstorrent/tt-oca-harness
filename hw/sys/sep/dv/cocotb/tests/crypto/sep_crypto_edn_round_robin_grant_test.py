@@ -720,8 +720,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         # logged below as diagnostics.
         #
         # What still carries each unbounded sink: AES and URND by CHK-NO-STARVE
-        # on the grant stream; KMAC by CHK-KMAC-CLIENT, whose
-        # digest cannot match the Keccak golden if its masking reseed was short.
+        # on the grant stream; KMAC by CHK-KMAC-CLIENT, which cannot complete
+        # with a digest matching the Keccak golden if its masking reseed was short.
         # The pool has nothing else here, and deriving its floor needs the
         # EDN-beats-per-pool-seed ratio -- a design fact this test does not own.
         self.drbg_sb.set_min_matches(
