@@ -24,7 +24,7 @@ The not-full fifo_empty leg ends with a write to ``INTR_TEST.fifo_empty`` with t
 closed. The first ``INTR_STATE`` read after it is graded (CHK-HMAC-FE-INTRTEST); the reads
 after a settle window and after a write-one clear are logged only (``INFO-HMAC-FE-INTRTEST``).
 Its ``state_before`` field repeats the notfull-leg read that ``CHK-HMAC-FIFOEMPTY`` grades;
-the other two fields are not graded. No open specification question.
+the other two bits are not graded. No open specification question.
 
 The drain stall is the bench input ``hmac_fifo_drain_stall_i``: it holds the read side of the
 message FIFO idle (``tb/tb_top.sv``, HMAC message-FIFO drain stall).
