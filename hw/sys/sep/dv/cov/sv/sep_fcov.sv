@@ -6556,7 +6556,8 @@ module sep_fcov (
     // of a locked entry (owner sep_fabric_slot_csr_strobe_rand_test), sampled
     // on the rise of slot_lock_pass.
     cp_locked_range_write: coverpoint fx_locked_range iff (fx_locked_range != 2'd0) {
-      bins start_slverr_kept = {2'd1}; bins end_slverr_kept = {2'd2};
+      bins start_slverr_kept = {2'd1};
+      bins end_slverr_kept = {2'd2};
       bins hole_slverr_kept = {2'd3};
     }
   endgroup
