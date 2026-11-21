@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The crypto-EDN adapter grants two clients that request at once, and every client is served.
+"""The crypto-EDN adapter grants clients that request at once by round robin, and every client is served.
 
 ``sep_crypto_edn_multisink_arbitration_test`` proves AES and KMAC complete and
 that their beat time-spans overlap. It cannot create a same-cycle dual
@@ -20,24 +20,28 @@ CHK-EDN-ARB-RR grades the arbitration order on the arbiter taps.
 
 While the three requests are held, ``EXT_TRNG_SRC_SEL`` selects the external
 stream for the crypto path (its reset value) and the external stream driver
-offers six single words on stream 1, each one only when AES, KMAC and URND all
-request at the arbiter. From the second word on, the client granted the
-previous word requests again while the other two have requested since that
-grant, so the round-robin rule decides every later grant. Each client takes two
-of the words and still owes words to its seed, so all three are still held at
-the EDN enable. ``SepEsrcConfigSeq`` then selects the internal DRBG.
+offers single words on stream 1, each one followed by its grant. Two rounds of
+six words are gated: each word is offered only when every client of the round
+requests at the arbiter. Round 1 is AES, KMAC and URND. Then words are offered
+on request until no client requests, so OTBN completes its post-reset secure
+wipe on external words, an OTBN program blocks on the RND CSR, and AES
+(``TRIGGER.PRNG_RESEED``) and KMAC (``CMD.entropy_req``) request a reseed. Round
+2 is AES, KMAC and OTBN RND. In each round, from the second word on, the client
+granted the previous word requests again while the other two have requested
+since that grant, so the round-robin rule decides every later grant. Words are
+then offered until no client requests and OTBN is idle; AES and KMAC request a
+reseed again and OTBN starts the RND program again, which holds URND, so AES,
+KMAC and URND are held at the EDN enable. ``SepEsrcConfigSeq`` then selects the
+internal DRBG. The external words are a fixed sequence, so this window does not
+depend on the seed.
 
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
 on that bring-up.
 
-OTBN RND (crypto_edn[2]) joins after the held-request window as the fourth
-client driven, and a keyed KMAC digest follows on the KMAC client. RND is not
-inside the held-request window: RND only requests while an OTBN
-program is blocked on the RND CSR, and OTBN cannot execute until its
-post-reset secure wipe has consumed URND, which already needs EDN enabled. So
-this test drives it as its own client -- a program that reads RND four times
--- and claims routing and consume for it, not arbitration.
+After the EDN enable OTBN RND (crypto_edn[2]) is driven again as its own client
+-- a program that reads RND four times -- for routing and consume, and a keyed
+KMAC digest follows on the KMAC client.
 
 Four crypto sinks are live (AES, KMAC, OTBN URND and OTBN RND) plus the entropy
 pool, so CHK5 is five-sink ROUTING: each post-adapter beat equals the AXIS1 word
@@ -70,17 +74,20 @@ Checkers:
                    and no bound beyond that. Control
                    (``CTRL-EDN-ARB-RR-ARMED``): the rule decided at least two
                    grants, and the arbiter passed over the lowest-index requester
-                   at one of them and the highest-index requester at another. A
-                   grant is decided by the rule when another requesting client k
-                   is barred on that clock (a client j requested at the previous
-                   grant of k and on every clock since, and has not been
-                   granted). A fixed-priority arbiter in either index order
-                   fails the control or the check. The external-stream words
-                   create the barred clients: a word is offered only when AES,
-                   KMAC and URND all request, so from the second word on the
-                   client granted the previous word is barred. Any arbiter that
-                   passes the check then grants all three clients among words two
-                   to four, and KMAC is neither the lowest nor the highest index.
+                   at one of them and the highest-index requester at another; the
+                   rule decided a grant to OTBN RND and a grant at which OTBN RND
+                   was barred. A grant is decided by the rule when another
+                   requesting client k is barred on that clock (a client j
+                   requested at the previous grant of k and on every clock since,
+                   and has not been granted). The gated rounds create the barred
+                   clients: from the second word of a round on, the client
+                   granted the previous word is barred. Any arbiter that passes
+                   the check then grants all three clients of a round among words
+                   one to three and again from word four, so KMAC takes a decided
+                   grant that is neither the lowest nor the highest index, and
+                   RND takes a decided grant and is barred at the next word. A
+                   fixed-priority arbiter, with RND at either end or in the
+                   middle, grants a barred client at word two and fails the check.
                    The verdict is taken after CHK-ROUTING, so a FAIL does not hide
                    the other checks.
 
@@ -98,7 +105,7 @@ from env.sep_drbg_scoreboard import SepDrbgScoreboard
 from env.sep_ext_trng_stream import SepExtTrngStream
 from env.sep_kmac_golden import kmac_family_words
 from sep_base_test import sep_base_test
-from sep_reg_meta import OTBN
+from sep_reg_meta import KMAC, OTBN
 from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
@@ -111,16 +118,20 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
-from seq_lib.sep_kmac_seq import KMAC_CFG_SHADOWED, SepKmac, SepKmacCfg
+from seq_lib.sep_kmac_seq import KMAC_CFG_SHADOWED, KMAC_CMD, SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import (
+    OTBN_ADDR_STATUS,
     OTBN_DMEM_RND_BASE,
     OTBN_RND_PROG,
     OTBN_RND_READS,
+    OTBN_STATUS_IDLE,
     SepOtbn,
 )
 
 # ERR_BITS.rnd_rep_chk_fail (otbn.hjson ERR_BITS bit 6).
 _M_ERR_RND_REP = OTBN.field_mask("ERR_BITS", "rnd_rep_chk_fail")
+# KMAC CMD.entropy_req: a manual reseed of the KMAC PRNG in EDN mode (kmac.hjson).
+_KMAC_CMD_ENTROPY_REQ = KMAC.field_mask("CMD", "entropy_req")
 
 _AES_BIT = 0
 _KMAC_BIT = 1
@@ -129,17 +140,22 @@ _URND_BIT = 3
 _ALL_CLIENTS = (_AES_BIT, _KMAC_BIT, _RND_BIT, _URND_BIT)
 _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
 _HELD = _BOTH | (1 << _KMAC_BIT)
+_RND_HELD = (1 << _AES_BIT) | (1 << _KMAC_BIT) | (1 << _RND_BIT)
 # Grants decided by the round-robin rule that CTRL-EDN-ARB-RR-ARMED needs.
 _ARB_DECIDED_MIN = 2
-# Single words on external stream 1 while AES, KMAC and URND are held: two
-# rounds of the three clients. Each client seeds a PRNG from several EDN words,
-# so two words leave all three requesting at the EDN enable.
+# Single words on external stream 1. A gated round is two rounds of its three
+# clients; each client seeds a PRNG, or fills a 256-bit RND word, from more than
+# two EDN words, so all three still request after the round.
 _EXT_STREAM = 1
-_EXT_WORDS = (0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19)
+_EXT_ROUND_WORDS = 6
+# Odd, so the word sequence step * n has no repeat and no two RND beats are equal.
+_EXT_WORD_STEP = 0x9E3779B9
 _EXT_STEP_CYCLES = 20_000
-# The RND client only requests while an OTBN program is blocked on the RND CSR,
-# so it is brought in after the AES/URND dual-request window rather than held
-# alongside it.
+# A run of clocks with no client request that ends an ungated feed, and the
+# bounds on the ungated words and on the feeds that wait for OTBN idle.
+_EXT_QUIET_CYCLES = 5_000
+_EXT_FEED_MAX = 256
+_EXT_IDLE_TRIES = 8
 _RND_REQ_CYCLES = 200_000
 
 # KMAC-256 keyed cell for the KMAC adapter client. Fixed, because this leaf
@@ -233,8 +249,9 @@ class _ArbGrantLog:
     granted one with ``waiting[c]`` non-zero is barred: the rule decided that
     grant. ``decided`` counts those grants; ``decided_not_low`` and
     ``decided_not_high`` count the ones that did not go to the lowest-index or the
-    highest-index requester. An X or Z clock empties ``waiting``, so no rule spans
-    it.
+    highest-index requester; ``decided_to[c]`` counts the ones to client c and
+    ``decided_barred[c]`` the ones at which client c was barred. An X or Z clock
+    empties ``waiting``, so no rule spans it.
     """
 
     def __init__(self, dut) -> None:
@@ -246,6 +263,8 @@ class _ArbGrantLog:
         self.decided = 0
         self.decided_not_low = 0
         self.decided_not_high = 0
+        self.decided_to = [0] * len(_ALL_CLIENTS)
+        self.decided_barred = [0] * len(_ALL_CLIENTS)
         self.violations = 0
         self.first_violation = "none"
         self.waiting = [0] * len(_ALL_CLIENTS)
@@ -269,10 +288,14 @@ class _ArbGrantLog:
         if not onehot:
             return
         k = gnt.bit_length() - 1
-        if any(c != k and req >> c & 1 and self.waiting[c] for c in _ALL_CLIENTS):
+        barred = [c for c in _ALL_CLIENTS if c != k and req >> c & 1 and self.waiting[c]]
+        if barred:
             self.decided += 1
             self.decided_not_low += int(gnt != req & -req)
             self.decided_not_high += int(k != req.bit_length() - 1)
+            self.decided_to[k] += 1
+            for c in barred:
+                self.decided_barred[c] += 1
         if self.waiting[k]:
             self.violations += 1
             if self.first_violation == "none":
@@ -301,14 +324,89 @@ class _ArbGrantLog:
             f"onehot_in_req={self.onehot_in_req} xz={self.xz} decided={self.decided} "
             f"decided_not_low={self.decided_not_low} "
             f"decided_not_high={self.decided_not_high} "
+            f"decided_rnd={self.decided_to[_RND_BIT]} "
+            f"rnd_barred={self.decided_barred[_RND_BIT]} "
             f"violations={self.violations} first_violation={self.first_violation} "
             f"first=[{','.join(self.first)}]"
         )
 
 
+async def _next_arb_req(dut) -> int:
+    """The first non-zero client arbiter request vector within ``_EXT_QUIET_CYCLES``
+    clocks, or 0. Returns in the time step after the sample, so the caller may
+    write signals.
+    """
+    for _ in range(_EXT_QUIET_CYCLES):
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        req = _known(dut.edn_crypto_arb_req_o)
+        if req:
+            await NextTimeStep()
+            return req
+    await NextTimeStep()
+    return 0
+
+
+class _ExtFeed:
+    """Single words on external stream 1, each followed by the grant it causes."""
+
+    def __init__(self, dut, ext: SepExtTrngStream, arb: _ArbGrantLog) -> None:
+        self.dut = dut
+        self.ext = ext
+        self.arb = arb
+        self.sent = 0
+
+    async def word(self, what: str) -> None:
+        granted = self.arb.grants
+        self.sent += 1
+        self.ext.send(_EXT_STREAM, [(_EXT_WORD_STEP * self.sent) & 0xFFFFFFFF])
+        await self.ext.wait_sent(_EXT_STREAM, bound=_EXT_STEP_CYCLES)
+        for _ in range(_EXT_STEP_CYCLES):
+            if self.arb.grants > granted:
+                return
+            await RisingEdge(self.dut.clk_i)
+        raise AssertionError(
+            f"CTRL-EDN-ARB-RR-ARMED absent: external word {what} was accepted and "
+            f"the arbiter granted nothing ({self.arb.line()})"
+        )
+
+    async def gated(self, mask: int, what: str) -> None:
+        """Offer ``_EXT_ROUND_WORDS`` words, each only when every client of ``mask``
+        requests, then wait for those requests once more."""
+        for n in range(_EXT_ROUND_WORDS):
+            await _wait_arb_req(self.dut, mask, f"before {what} word {n}")
+            await self.word(f"{what} {n}")
+        await _wait_arb_req(self.dut, mask, f"after the last {what} word")
+
+    async def until(self, stop: int, what: str) -> int:
+        """Offer one word per request until a client of ``stop`` requests or no
+        client requests for ``_EXT_QUIET_CYCLES`` clocks. Returns that request
+        vector, 0 when the feed ended quiet."""
+        for n in range(_EXT_FEED_MAX):
+            req = await _next_arb_req(self.dut)
+            if req == 0 or req & stop:
+                return req
+            await self.word(f"{what} {n}")
+        raise AssertionError(
+            f"CTRL-EDN-ARB-RR-ARMED absent: a client still requests after "
+            f"{_EXT_FEED_MAX} external words {what} ({self.arb.line()})"
+        )
+
+    async def until_idle(self, otbn: SepOtbn, what: str) -> None:
+        """Feed until no client requests and OTBN ``STATUS`` reads IDLE."""
+        for _ in range(_EXT_IDLE_TRIES):
+            await self.until(0, what)
+            if await otbn._rd(OTBN_ADDR_STATUS) == OTBN_STATUS_IDLE:
+                return
+        raise AssertionError(
+            f"CTRL-EDN-ARB-RR-ARMED absent: OTBN not IDLE after {_EXT_IDLE_TRIES} "
+            f"quiet feeds {what} ({self.arb.line()})"
+        )
+
+
 @pyuvm.test()
 class sep_crypto_edn_round_robin_grant_test(sep_base_test):
-    """AES and OTBN URND, requesting together, are both granted; all four clients are served."""
+    """Clients that request together are granted by round robin; all four clients are served."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -383,23 +481,36 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         arb = _ArbGrantLog(dut)
         await SepAxiRegDriver(self)._wr(EXT_TRNG_SRC_SEL, EXT_TRNG_ALL_EXTERNAL)
         ext = SepExtTrngStream(dut, logger=self.logger).start(streams=(_EXT_STREAM,))
-        for n, word in enumerate(_EXT_WORDS):
-            await _wait_arb_req(dut, _HELD, f"before external word {n}")
-            granted = arb.grants
-            ext.send(_EXT_STREAM, [word])
-            await ext.wait_sent(_EXT_STREAM, bound=_EXT_STEP_CYCLES)
-            for _ in range(_EXT_STEP_CYCLES):
-                if arb.grants > granted:
-                    break
-                await RisingEdge(dut.clk_i)
-            else:
-                raise AssertionError(
-                    f"CTRL-EDN-ARB-RR-ARMED absent: external word {n} was accepted and "
-                    f"the arbiter granted nothing ({arb.line()})"
-                )
-        await _wait_arb_req(dut, _HELD, "after the last external word")
+        feed = _ExtFeed(dut, ext, arb)
+        await feed.gated(_HELD, "AES/KMAC/URND")
+        self.logger.info("INFO-EDN-ARB-EXT round=held words=%d %s", feed.sent, arb.line())
+
+        # RND requests only while an OTBN program is blocked on the RND CSR, and
+        # OTBN executes only after its post-reset secure wipe, which reseeds URND.
+        otbn = SepOtbn(self)
+        await feed.until_idle(otbn, "to the OTBN post-reset wipe")
+        await otbn.load_program(OTBN_RND_PROG)
+        await otbn.start_execute()
+        req = await feed.until(1 << _RND_BIT, "to the RND request")
+        if not req & (1 << _RND_BIT):
+            raise AssertionError(
+                "CTRL-EDN-ARB-RR-ARMED absent: OTBN RND never requested at the arbiter "
+                f"after EXECUTE ({arb.line()})"
+            )
+        await aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
+        await kmac._wr(KMAC_CMD, _KMAC_CMD_ENTROPY_REQ)
+        await feed.gated(_RND_HELD, "AES/KMAC/RND")
+        self.logger.info("INFO-EDN-ARB-EXT round=rnd words=%d %s", feed.sent, arb.line())
+        await feed.until_idle(otbn, "to the end of the RND program")
+
+        # Hold AES, KMAC and URND again for the EDN enable: the EXECUTE reseeds URND.
+        await aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
+        await kmac._wr(KMAC_CMD, _KMAC_CMD_ENTROPY_REQ)
+        await otbn.load_program(OTBN_RND_PROG)
+        await otbn.start_execute()
+        await _wait_arb_req(dut, _HELD, "after the external words")
         await ext.stop()
-        self.logger.info("INFO-EDN-ARB-EXT words=%d %s", len(_EXT_WORDS), arb.line())
+        self.logger.info("INFO-EDN-ARB-EXT round=end words=%d %s", feed.sent, arb.line())
 
         # Same entropy bring-up as the other no_cpu consumers, split so the
         # grant monitor is not running during wait_seed_ready.
@@ -502,13 +613,9 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         )
 
         # --- OTBN RND, the fourth adapter client -----------------------------
-        # AES (bit 0), KMAC (bit 1) and OTBN URND (bit 3) were held above. RND
-        # (bit 2) cannot join that window: it only requests while an OTBN program is blocked on
-        # the RND CSR, and OTBN cannot execute until its post-reset secure wipe
-        # has consumed URND, which needs EDN already enabled. So it is driven
-        # here, after the dual-request window, as its own client.
-        otbn = SepOtbn(self)
-        await otbn.wait_idle("post-urnd-wipe", timeout=8_000)
+        # The RND program started before the EDN enable ends on internal words;
+        # the next run is the routing and consume proof of RND.
+        await otbn.wait_idle("post-held-rnd-prog", timeout=8_000)
         await otbn.load_program(OTBN_RND_PROG)
         await otbn.start_execute()
 
@@ -660,11 +767,14 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             arb.decided >= _ARB_DECIDED_MIN
             and arb.decided_not_low >= 1
             and arb.decided_not_high >= 1
+            and arb.decided_to[_RND_BIT] >= 1
+            and arb.decided_barred[_RND_BIT] >= 1
         )
         assert armed, (
             f"CTRL-EDN-ARB-RR-ARMED absent: need {_ARB_DECIDED_MIN} grants decided "
-            "by the round-robin rule, one not to the lowest-index requester and one "
-            f"not to the highest-index requester ({arb.line()})"
+            "by the round-robin rule, one not to the lowest-index requester, one "
+            "not to the highest-index requester, one to OTBN RND and one with OTBN "
+            f"RND barred ({arb.line()})"
         )
         self.logger.info("CTRL-EDN-ARB-RR-ARMED seen: %s", arb.line())
         assert arb.violations == 0 and arb.onehot_in_req == 1 and arb.xz == 0, (
