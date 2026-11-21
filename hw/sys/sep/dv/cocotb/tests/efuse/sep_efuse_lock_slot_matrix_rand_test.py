@@ -115,14 +115,14 @@ Checkers:
                     returns it to 0, with no bank bit change, no program command at
                     the post-guard tap and no valid or ``psel`` pulse from the go to the
                     disable write (``efuse_interface_ctrl.rdl:24, 43, 82``;
-                    ``hw/ip/efuse/doc/architecture.adoc:247-249``). The status reads,
+                    ``hw/ip/efuse/doc/architecture.adoc:252-254``). The status reads,
                     the clears and the disable write are frontdoor. When no write-locked
                     shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
                     word has one (``no_twin_bit``), the leaf logs ``INFO-BLOCKED
                     CHK-LOCK-JTAG-WR part=shadow_write`` and grades the program part.
                     The twin program runs first and ends with ``program_done`` 1 and
                     ``program_status`` 0; the refused program then moves ``program_status`` from 0
-                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:247-249``:
+                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:252-254``:
                     a locked target completes the operation with an error;
                     ``efuse_interface_ctrl.rdl:96-107``; the field is read-only and holds its value
                     until the next program completes, so ``pre_status`` is read before the go). Logged, not
