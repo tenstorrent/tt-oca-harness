@@ -110,7 +110,12 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    not graded (``:144`` tells firmware to clear the IP bit after
                    a type change). Control: ``CTRL-GW-LVL2EDGE`` (``meip``
                    reads 1 and ``meigwctrl`` reads level before the switch,
-                   edge after it).
+                   edge after it) and ``CTRL-GW-L2E-DROP`` (on the
+                   ``pic_rd_data_probe_o`` copies of the ``settled`` and
+                   ``released`` meip reads, the source line on
+                   ``sep_internal_interrupts_probe_o`` reads 1 and 0, with no
+                   rise between them, and the copied meip bits equal the
+                   firmware values; CHK-GW-L2E is not logged without it).
 
 Logged, not graded, out of contract: ``INFO-GWCLR-RACE``, a one-clock pulse
 on the drawn boundary input in the clock of the ``meigwclr`` write to its
@@ -693,23 +698,26 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.slot_rec[op] = (*rec, live)
 
     async def _rd_tap(self) -> None:
-        """Copies of the PIC read data at every PIC read (pic_rd_data_probe_o)."""
-        sig = self.dut.pic_rd_data_probe_o
+        """Copies of the PIC read data at every PIC read (pic_rd_data_probe_o).
+
+        Each copy also carries the source vector (``sep_internal_interrupts_probe_o``)
+        and the ``vec_all`` watcher clock of the same sample.
+        """
+        sig, vec = self.dut.pic_rd_data_probe_o, self.dut.sep_internal_interrupts_probe_o
         while True:
             await RisingEdge(self.dut.clk_i)
             await ReadOnly()
-            v = sig.value
-            if v.is_resolvable:
-                iv = int(v)
-                if (iv >> 47) & 1:
-                    self.rd_caps.append(
-                        (len(self.con.lines), (iv >> 32) & 0x7FFF, iv & 0xFFFF_FFFF, 0)
-                    )
-                continue
             val, xm = _value_bits(sig)
             if (val >> 47) & 1 and not (xm >> 47) & 1:
                 self.rd_caps.append(
-                    (len(self.con.lines), (val >> 32) & 0x7FFF, val & 0xFFFF_FFFF, xm & 0xFFFF_FFFF)
+                    (
+                        len(self.con.lines),
+                        (val >> 32) & 0x7FFF,
+                        val & 0xFFFF_FFFF,
+                        xm & 0xFFFF_FFFF,
+                        _value_bits(vec),
+                        self.wv.clk,
+                    )
                 )
 
     async def _pool_err_tap(self) -> None:
@@ -799,7 +807,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     def _taps(self, line_idx: int) -> dict[int, tuple[int, int]]:
         """The last PIC read-data copy per meip word before console line ``line_idx``."""
         out: dict[int, tuple[int, int]] = {}
-        for li, addr, data, xm in self.rd_caps:
+        for li, addr, data, xm, *_ in self.rd_caps:
             if li == line_idx and MEIP0_OFF <= addr < MEIP0_OFF + MEIP_STRIDE * MEIP_WORDS:
                 out[(addr - MEIP0_OFF) // MEIP_STRIDE] = (data, xm)
         return out
@@ -1570,7 +1578,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
 
     def _leg_gw_level_to_edge(self) -> None:
         seed, src = self.wc.seed, GW_SRCS[self.wc.l2e]
-        recs = [kv for _, kv in self._lines("GWL2E")]
+        hits = self._lines("GWL2E")
+        recs = [kv for _, kv in hits]
         r = recs[0] if len(recs) == 1 else {}
         reach = (
             int(r.get("src", -1)) == src,
@@ -1586,12 +1595,41 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             raise AssertionError(f"CTRL-MISSING GW-LVL2EDGE: {body}")
         self.logger.info("CTRL-GW-LVL2EDGE LOG %s", body)
         got = tuple(int(r[k]) for k in ("settled", "released", "after_clr"))
+        self._ctrl_gw_l2e_drop(hits[0][0], src, got)
         self._check(
             got == (1, 1, 0),
             "CHK-GW-L2E",
             f"src={src} settled={got[0]} released={got[1]} after_clr={got[2]} "
             f"want=(1, 1, 0) after_switch={int(r['after'])}",
         )
+
+    def _ctrl_gw_l2e_drop(self, line_idx: int, src: int, got: tuple[int, int, int]) -> None:
+        """CTRL-GW-L2E-DROP: the source line is high at the ``settled`` read and low at ``released``.
+
+        The firmware reads the source's meip word five times before the GWL2E
+        line (before, after, settled, released, after_clr); the tap copies of
+        the third and second-to-last reads carry the firmware's values and the
+        source vector of the same clock. Between them the line has no rise.
+        """
+        addr = MEIP0_OFF + MEIP_STRIDE * (src // 32)
+        caps = [c for c in self.rd_caps if c[0] == line_idx and c[1] == addr]
+        vb, sb = vec_bit(src), src % 32
+        body = f"seed={self.wc.seed} src={src} vec_bit={vb} meip_reads={len(caps)}"
+        if len(caps) < 5:
+            raise AssertionError(f"CTRL-MISSING GW-L2E-DROP: {body}")
+        (_, _, d_s, x_s, (v_s, vx_s), c_s), (_, _, d_r, x_r, (v_r, vx_r), c_r) = caps[-3], caps[-2]
+        rises = [c for c in self.wv.bits[f"v{vb}"].rises if c_s < c <= c_r]
+        line = ((v_s >> vb) & 1, (v_r >> vb) & 1)
+        meip = ((d_s >> sb) & 1, (d_r >> sb) & 1)
+        x_free = not ((vx_s | vx_r) >> vb) & 1 and not ((x_s | x_r) >> sb) & 1
+        body += (
+            f" line_at_settled={line[0]} line_at_released={line[1]} rises_between={len(rises)} "
+            f"tap_meip=({meip[0]}, {meip[1]}) fw_meip=({got[0]}, {got[1]}) "
+            f"read_clks=({c_s}, {c_r}) x_free={int(x_free)}"
+        )
+        if line != (1, 0) or rises or meip != got[:2] or not x_free:
+            raise AssertionError(f"CTRL-MISSING GW-L2E-DROP: {body}")
+        self.logger.info("CTRL-GW-L2E-DROP LOG %s", body)
 
     def _leg_gwclr_race(self) -> None:
         seed = self.wc.seed

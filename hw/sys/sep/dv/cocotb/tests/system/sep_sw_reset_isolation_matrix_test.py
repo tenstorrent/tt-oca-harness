@@ -116,13 +116,19 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-ISO-DRAIN-RESP OTBN, AES: at the slave side of the host isolate stage
                     of D, a transaction the stage accepted before the isolate
                     request rose does not get the isolate answer (a write: no
-                    SLVERR; a read: not SLVERR with ``0x1501A7ED``), and one
-                    the stage accepted at or after the rise, before the
-                    isolated window, gets SLVERR, with ``0x1501A7ED`` for a
-                    read. Stage response codes come from the slave-side tap;
-                    read data from the host read. The line logs
-                    ``post_req_accepted``, the count of the second kind, which
-                    some seeds leave 0. The other domains log
+                    SLVERR; a read: not SLVERR with ``0x1501A7ED``). From the
+                    stage's first SLVERR after the rise on, every stage
+                    transaction before the isolated window gets SLVERR, with
+                    ``0x1501A7ED`` for a read. The transactions between the
+                    rise and that first SLVERR are logged, with their cycle
+                    offsets from the rise and their responses, as
+                    ``INFO-ISO-DRAIN-WINDOW``: the specification gives no
+                    latency from the request to the stage. Stage response
+                    codes come from the slave-side tap; read data from the
+                    host read. The line logs ``pre_count``, ``window_count``
+                    and ``post_count``; the second half is graded when
+                    ``post_count`` is 1 or more, and the line reads
+                    ``post=not_reached`` otherwise. The other domains log
                     ``INFO-ISO-DRAIN-RESP``.
   CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
                     on a later clock than the last slave-side response of
@@ -1504,11 +1510,13 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         else:
             self.logger.info("INFO-ISO-DRAIN: %s", vals)
         # CHK-ISO-DRAIN-RESP / INFO-ISO-DRAIN-RESP: a stage transaction accepted
-        # before the isolate request rose does not get the isolate answer; one
-        # accepted at or after the rise gets it (reset_controller.adoc, Isolation
-        # and Reset Sequencing, steps 2 and 3). Only host transactions reach the
-        # stage before the isolated window; the k-th stage read is the k-th host
-        # read in s_axi AR order.
+        # before the isolate request rose does not get the isolate answer, and from
+        # the stage's first SLVERR on every later one does (reset_controller.adoc,
+        # Isolation and Reset Sequencing, steps 2 and 3). The specification gives
+        # no latency from the request to the stage, so the transactions between
+        # the rise and the first SLVERR are logged as INFO-ISO-DRAIN-WINDOW. Only
+        # host transactions reach the stage before the isolated window; the k-th
+        # stage read is the k-th host read in s_axi AR order.
         slverr = RESP_NAME[RESP_SLVERR]
         host_rd = sorted(
             ((acc[tid], ev) for op, tid, ev in host_evs if op == "rd" and tid in acc),
@@ -1520,32 +1528,48 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         stg_r = [c for c in st["ar"] if c < win["start_cyc"]]
         stg_w = [c for c in st["aw"] if c < win["start_cyc"]]
         mapped = len(stg_r) == len(host_rd) == n_rd and len(stg_w) == n_wr
-        cells = []
-        bad = []
+        # (accept cycle, cell text, code, isolate answer) per stage transaction.
+        txns = []
         for k, c in enumerate(stg_r):
             code = st["rresp"][k] if k < len(st["rresp"]) else "none"
             data = rdata[k] if k < len(rdata) else None
-            pre = c < reqrise
-            iso = code == slverr and data == ISO_DATA
-            cell = f"rd@{c}:{'pre' if pre else 'post'}:{code}:" + (
-                "none" if data is None else f"0x{data:08x}"
-            )
-            cells.append(cell)
-            if iso == pre:
-                bad.append(cell)
+            txt = f"rd@{c}:{code}:" + ("none" if data is None else f"0x{data:08x}")
+            txns.append((c, txt, code, code == slverr and data == ISO_DATA))
         for k, c in enumerate(stg_w):
             code = st["bresp"][k] if k < len(st["bresp"]) else "none"
-            pre = c < reqrise
-            cell = f"wr@{c}:{'pre' if pre else 'post'}:{code}"
-            cells.append(cell)
-            if (code == slverr) == pre:
-                bad.append(cell)
-        n_pre = sum(1 for c in stg_r + stg_w if c < reqrise)
+            txns.append((c, f"wr@{c}:{code}", code, code == slverr))
+        txns.sort(key=lambda t: t[0])
+        first_err = next((c for c, _, code, _ in txns if c >= reqrise and code == slverr), None)
+        cells, bad, window = [], [], []
+        for c, txt, _, iso in txns:
+            if c < reqrise:
+                cells.append(f"pre:{txt}")
+                if iso:
+                    bad.append(f"pre:{txt}")
+            elif first_err is None or c < first_err:
+                window.append(f"{txt}:offset={c - reqrise}")
+            else:
+                cells.append(f"post:{txt}")
+                if not iso:
+                    bad.append(f"post:{txt}")
+        n_pre = sum(1 for c, *_ in txns if c < reqrise)
+        n_post = len(txns) - n_pre - len(window)
+        self.logger.info(
+            "INFO-ISO-DRAIN-WINDOW: dom=%s pass=%s iso_req_cycle=%s first_slverr_cycle=%s "
+            "count=%d cells=[%s]",
+            d,
+            name,
+            reqrise,
+            first_err,
+            len(window),
+            ",".join(window),
+        )
         vals = (
-            f"dom={d} pass={name} iso_req_cycle={reqrise} window_start_cycle={win['start_cyc']} "
-            f"host_rd={n_rd} host_wr={n_wr} stage_rd={len(stg_r)} stage_wr={len(stg_w)} "
-            f"mapped={int(mapped)} pre_req_accepted={n_pre} "
-            f"post_req_accepted={len(stg_r) + len(stg_w) - n_pre} "
+            f"dom={d} pass={name} iso_req_cycle={reqrise} first_slverr_cycle={first_err} "
+            f"window_start_cycle={win['start_cyc']} host_rd={n_rd} host_wr={n_wr} "
+            f"stage_rd={len(stg_r)} stage_wr={len(stg_w)} mapped={int(mapped)} "
+            f"pre_count={n_pre} window_count={len(window)} post_count={n_post} "
+            f"post={'graded' if n_post else 'not_reached'} "
             f"cells=[{','.join(cells)}] mismatched=[{','.join(bad)}] "
             f"exp=pre:not_SLVERR+0x{ISO_DATA:08X},post:SLVERR+0x{ISO_DATA:08X}"
         )
