@@ -86,6 +86,12 @@ program with the timeout enabled; the specification does not state the report).
 shadow word, ``sep_fuse_sense_done_o`` and ``lcc_feat_ctrl_probe_o``; the sensing
 sequence says both that a strobe with its status bit set leaves its word unwritten and
 that the strobe at counter 255 stores the last word).
+``OBS-PROG-AFTER-TIMEOUT`` (after that timed-out program and the hold release, with no
+reset between, a new unheld program of a fourth spare bit d with the timeout disabled
+and its cycle count at the reset value: ``program_done``, ``program_status`` and ``program_busy`` of the new
+request, and bits d and c at the direct OTP read; the specification does not state
+whether the interface serves a request after a program timeout). Bit d enters the
+shadow golden only when the direct read shows it programmed.
 
 FCOV: the graded window is open over the second injected sense and the held program,
 each to its own grade. The control sense and the first injected sense are graded
@@ -110,14 +116,20 @@ from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     DIGEST_FIELDS,
     PROGRAM_CTRL_ADDR,
+    READ_CTRL_ADDR,
     SECRET_FIELDS,
+    SHIM_CTRL_WORDS,
+    SPARE_FIELDS,
     STATUS_ADDR,
     T_SHIM_FAULT,
+    bit_address,
     feat_ctrl_profile,
     field_n_words,
     field_word,
     plan,
     program_ctrl_word,
+    read_ctrl_word,
+    zero_bits,
 )
 from env.sep_efuse_test_lib import (
     SepEfuseFd,
@@ -150,6 +162,9 @@ _M_PG_STATUS = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 _M_PG_DATA = _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _M_PG_FIELDS = _IC.mask32("EFUSE_PROGRAM_CTRL")
 _PG_RESET = _IC.reset32("EFUSE_PROGRAM_CTRL")
+_M_RD_DONE = _IC.field_mask("EFUSE_READ_CTRL", "read_done")
+_M_RD_STATUS = _IC.field_mask("EFUSE_READ_CTRL", "read_status")
+_RD_DATA_ADDR = _IC.addr("EFUSE_READ_INTERFACE_READ_DATA")
 # One shadow word per 32-bit register of the MAP window.
 _N_WORDS = sym("SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
 # READ commands of one sense: ST_READ issues a single READ command for all shadow
@@ -272,6 +287,26 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         """(word, bit) of a programmed spare bit at the direct OTP read."""
         word = await direct_word(self, spare["addr"] // 32)
         return word, (word >> spare["bit"]) & 1
+
+    async def _otp_read_obs(self, bit_addr: int, bound: int) -> tuple[int, int, int] | None:
+        """(read_done, read_status, data) of the OTP word that holds ``bit_addr``.
+
+        Polls ``EFUSE_READ_CTRL`` every 8 clocks for ``read_done``; None at the bound.
+        It never raises on ``read_status`` or a missing done, so a log-only record can
+        report every outcome. ``read_enable`` is cleared before it returns.
+        """
+        dut = cocotb.top
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr // 32 * 32))
+        out = None
+        start = self.clk
+        while self.clk - start < bound:
+            v = await self._rd(READ_CTRL_ADDR)
+            if v & _M_RD_DONE:
+                out = (1, _b(v, _M_RD_STATUS), await self._rd(_RD_DATA_ADDR))
+                break
+            await ClockCycles(dut.clk_i, 8)
+        await self._wr(READ_CTRL_ADDR, 0)
+        return out
 
     def _probe_words(self) -> list[int]:
         return probe_words(self, cocotb.top.efuse_shadow_probe_o, _N_WORDS)
@@ -728,7 +763,66 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await ClockCycles(dut.clk_i, 64)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
 
-        # Step 11: status bit on the sense response of one control word.
+        # Step 11, logged only: a new unheld program of spare bit d on the same
+        # interface, with no reset after the timeout. Bit d is a zero spare bit of the
+        # staged image other than a, b and c, outside SHIM_CTRL_WORDS, so the step-12
+        # control compares no word that d can change. Its draw follows every plan draw.
+        abc = {s["addr"] for s in (a, b, c)}
+        d_cands = [
+            (f, wb)
+            for f in SPARE_FIELDS
+            for wb in zero_bits(p.image, f)
+            if bit_address(f, *wb) not in abc and field_word(f) + wb[0] not in SHIM_CTRL_WORDS
+        ]
+        f_d, (ww_d, bit_d) = p.draw.choice("spare_bit_d", d_cands)
+        d = {"field": f_d, "word": ww_d, "bit": bit_d, "addr": bit_address(f_d, ww_d, bit_d)}
+        self.logger.info(
+            "INFO-DRAW seed=%d name=spare_bit_d value={field:%s,word:%d,bit:%d,addr:0x%x}",
+            seed,
+            f_d,
+            ww_d,
+            bit_d,
+            d["addr"],
+        )
+        await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        next_go = self.clk
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(d["addr"], data=1))
+        next_pg = await self._poll_pg(_M_PG_DONE, poll_bound)
+        next_clks = self.clk - next_go if next_pg is not None else None
+        next_pg = await self._rd(PROGRAM_CTRL_ADDR) if next_pg is not None else None
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(d["addr"], data=1, enable=0, go=0))
+        d_rd = await self._otp_read_obs(d["addr"], poll_bound)
+        c_rd = await self._otp_read_obs(c["addr"], poll_bound)
+        d_got = None if d_rd is None else (d_rd[2] >> bit_d) & 1
+        c_got = None if c_rd is None else (c_rd[2] >> c["bit"]) & 1
+
+        self.logger.info(
+            "OBS-PROG-AFTER-TIMEOUT LOG seed=%d d_addr=%d d_field=%s d_word=%d c_addr=%d "
+            "tmo_reg=0x%x next_clks=%s next_pg=%s next_done=%s next_status=%s next_busy=%s "
+            "d_rd=%s d_word_read=%s d_bit=%s c_rd=%s c_word_read=%s c_bit=%s graded=0",
+            seed,
+            d["addr"],
+            f_d,
+            field_word(f_d) + ww_d,
+            c["addr"],
+            _TMO_CYC_RESET,
+            "none" if next_clks is None else next_clks,
+            "none" if next_pg is None else f"0x{next_pg:08x}",
+            "none" if next_pg is None else _b(next_pg, _M_PG_DONE),
+            "none" if next_pg is None else _b(next_pg, _M_PG_STATUS),
+            "none" if next_pg is None else _b(next_pg, _M_PG_BUSY),
+            "none" if d_rd is None else f"{d_rd[0]}/{d_rd[1]}",
+            "none" if d_rd is None else f"0x{d_rd[2]:08x}",
+            "none" if d_got is None else d_got,
+            "none" if c_rd is None else f"{c_rd[0]}/{c_rd[1]}",
+            "none" if c_rd is None else f"0x{c_rd[2]:08x}",
+            "none" if c_got is None else c_got,
+        )
+        if d_rd is not None and d_rd[1] == 0 and d_got == 1:
+            self.burned.append(d)
+            self._set_golden()
+
+        # Step 12: status bit on the sense response of one control word.
         cw = int(p.leg["ctrl_word"])
         dut.efuse_sense_status_word_i.value = cw
         dut.efuse_sense_status_inject_i.value = 1
