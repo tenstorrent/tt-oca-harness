@@ -32,13 +32,17 @@ single-bit image (its plan seed draws the write-lock kind of slot 1). The entry 
 with ``+sep_efuse_preload``. The run seed stays the ``seed=`` of every check line;
 INFO-SEED prints the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and
 ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell.
-CTRL-PIN-LEG: the plan draws the pinned leaf kind; a plan that draws another kind
-logs ``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
+CTRL-PIN-LEG: the plan draws the pinned leaf kind, and for ``single`` slot 1 with
+the write-lock kind; a plan that draws another kind or cell logs
+``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
 
 Checkers:
   CHK-LOCK-CELL     lock leg and single-bit image, one line per read slot: the
                     sensed-shadow output equals the staged words (the sense ignores
-                    locks); an unlocked frontdoor read equals them; a frontdoor read
+                    locks); for a field staged at 0, its RDL reset, the compare
+                    cannot show that the sense ran, so the line logs
+                    ``sense_graded=0`` and ``INFO-LOCK-CELL-SENSE`` logs its probe;
+                    an unlocked frontdoor read equals them; a frontdoor read
                     of a read-locked field returns no word equal to its non-zero
                     staged word (``otp_fuse_controller.adoc:110-111``: a read-lock
                     blocks software reads of the shadow; ``CHK-LOCK-READ`` grades
@@ -68,7 +72,15 @@ Checkers:
                     (``hw/ip/efuse/doc/architecture.adoc:252-254``: a locked target
                     completes the operation with an error;
                     ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
-                    ``read_status``). The line prints both values and the expected 1.
+                    ``read_status``). The line prints both values, the expected 1,
+                    both values read before the go and ``fresh=1`` when the
+                    pre-go ``read_done`` is 0. Every request is graded, whatever
+                    its pre-go state. ``CTRL-LOCK-READ-DONE-FRESH`` needs at least
+                    one request with ``fresh=1``: only that request shows that the
+                    blocked go set ``read_done``. The lock leg runs the first
+                    read-locked slot with a read bit ahead of the first unlocked
+                    one, so its first read-interface request is a blocked one
+                    (``INFO-LOCK-READ-ORDER`` logs the move).
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -143,10 +155,13 @@ Checkers:
                     ``OBS-LOCK-SLOT0-RESP`` logs both response codes. The effect
                     on ``LC_STATE`` is not graded. Control: both bits read 0 before.
   CHK-PROG-ROUND    chain leg, per round: the frontdoor word is unchanged after the
-                    program and the bank gains exactly the bit; after the resense all
+                    program, the program reads ``program_busy`` 0, ``program_done``
+                    1 and ``efuse_req_error`` 0, and the bank gains exactly the bit; after the resense all
                     256 sensed words equal the model, the frontdoor word holds the bit
                     and ``FEAT_CTRL`` equals the profile row of the new image.
-  CHK-PROG-VERSION  chain leg: after the resense only the programmed version flag is
+  CHK-PROG-VERSION  chain leg: the program reads ``program_busy`` 0,
+                    ``program_done`` 1 and ``efuse_req_error`` 0 and the bank gains
+                    exactly the bit; after the resense only the programmed version flag is
                     set, and it stays set after a second resense. Every resense
                     of the leaf fails its check unless sense done reads 0 on the
                     last clock of the ``rst_ni`` hold.
@@ -352,8 +367,11 @@ _EVIDENCE = {
     "chain": ("CHK-PROG-ROUND", "CHK-PROG-VERSION"),
 }
 _KIND_CHECK = {k: v[0] for k, v in _EVIDENCE.items()}
-# Pinned cells: plan seed and the leaf kind the cell needs.
-_PIN = {"chain": (4, "chain"), "single": (5, "single_bit")}
+# Pinned cells: plan seed, the leaf kind the cell needs and the leg values it pins.
+_PIN = {
+    "chain": (4, "chain", {}),
+    "single": (5, "single_bit", {"slot": 1, "lock_kind": "write"}),
+}
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
 # (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
 _EXEMPT_PROG_RAW = {0: LC_PROD, 3: LC_PROD_END}
@@ -372,6 +390,17 @@ def _pin(seed: int) -> tuple[str | None, int]:
 def _free_uid_slots(layout: dict) -> list[int]:
     """UID slots with no lock in the drawn lock-leg layout."""
     return [s for s in _UID_SLOTS if layout.get(s, "none") == "none"]
+
+
+def _blocked_read_first(order: list[int], layout: dict, read_bits: dict) -> list[int]:
+    """Move the first read-locked slot with a read bit ahead of the first slot with one."""
+    reads = [s for s in order if s in read_bits]
+    blocked = [s for s in reads if layout.get(s, "none") in _KIND_R]
+    if not blocked or reads[0] == blocked[0]:
+        return list(order)
+    out = [s for s in order if s != blocked[0]]
+    out.insert(out.index(reads[0]), blocked[0])
+    return out
 
 
 def _bit(v: int, m: int) -> int:
@@ -555,9 +584,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
         ``efuse_req_error`` is sticky, so the request reads it before the go
         (``pre_req_err``) and after its own clear (``clr_req_err``); a blocked read
-        graded on a flag that was already set cannot pass.
+        graded on a flag that was already set cannot pass. ``read_done`` and
+        ``read_status`` have no stated clear rule, so the request also reads them
+        before the go (``pre_done``, ``pre_status``).
         """
         pre = await self._req_err_now()
+        pre_ctrl = await self._rd32(READ_CTRL_ADDR)
         start = self._pulse_mark()
         await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr))
         await ClockCycles(cocotb.top.clk_i, self.w)
@@ -571,6 +603,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "status": _bit(ctrl, _RD_STATUS),
             "req_err": _bit(st, _REQ_ERR),
             "pre_req_err": pre,
+            "pre_done": _bit(pre_ctrl, _RD_DONE),
+            "pre_status": _bit(pre_ctrl, _RD_STATUS),
             "clr_req_err": "na",
         }
         if r["req_err"] or r["status"]:
@@ -707,7 +741,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self.chk = SepChkLog(self, TEST, seed)
         if cell is not None and not self.chk.ctrl(
             "PIN-LEG",
-            kind == _PIN[cell][1],
+            kind == _PIN[cell][1] and all(p.leg.get(k) == v for k, v in _PIN[cell][2].items()),
             pin=cell,
             plan_seed=plan_seed,
             kind=kind,
@@ -749,6 +783,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             self.shim.start()
         await ClockCycles(cocotb.top.clk_i, 2)
 
+        self.read_done_requests = self.fresh_read_done = 0
         if kind == "lock_leg":
             await self._lock_leg()
         elif kind == "single_bit":
@@ -760,6 +795,14 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         else:
             await self._chain()
 
+        if "CHK-LOCK-READ-DONE" in self.required_evidence:
+            # A done 1 after a pre-go done 0 can only come from the request.
+            self._control(
+                "LOCK-READ-DONE-FRESH",
+                self.fresh_read_done >= 1,
+                requests=self.read_done_requests,
+                fresh=self.fresh_read_done,
+            )
         close_graded_window(self.logger)
         if shim_on:
             await self.shim.stop()
@@ -785,10 +828,22 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         f: dict[str, Any] = {"slot": slot, "field": name, "wl": int(wl), "rl": int(rl)}
         f["staged"] = _hexf(name, staged)
 
-        # Step 3: the sense fills the shadow, locked or not.
+        # Step 3: the sense fills the shadow, locked or not. Every field of slots 1
+        # to 40 resets to 0 (sep_efuse_map.rdl), so for a staged 0 the compare
+        # fails a wrong sensed value but cannot show that the sense ran.
         probe = self._probe(name)
         f["sense_probe"] = _hexf(name, probe)
+        f["sense_graded"] = int(any(staged))
         ok &= probe == staged
+        if not f["sense_graded"]:
+            self.chk.info(
+                "LOCK-CELL-SENSE",
+                slot=slot,
+                field=name,
+                staged=_hexf(name, staged),
+                sense_probe=_hexf(name, probe),
+                reason="staged_equals_rdl_reset",
+            )
 
         # Step 4: frontdoor read and the read-interface request.
         if not fd_read:
@@ -822,6 +877,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
+                fresh = r["pre_done"] == 0
+                self.read_done_requests += 1
+                self.fresh_read_done += int(fresh)
                 self._grade(
                     "LOCK-READ-DONE",
                     r["done"] == 1 and r["status"] == 1,
@@ -829,9 +887,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     slot=slot,
                     field=name,
                     bit_addr=read_bit["addr"],
+                    pre_read_done=r["pre_done"],
+                    pre_read_status=r["pre_status"],
+                    fresh=int(fresh),
                     read_done=r["done"],
-                    exp_read_done=1,
                     read_status=r["status"],
+                    exp_read_done=1,
                     exp_read_status=1,
                 )
             else:
@@ -921,7 +982,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         neighbours = sorted(n for n in (target - 1, target + 1) if 1 <= n <= 40)
         self._reset_twin_counts()
         blocked_reads = blocked_progs = 0
-        for slot in leg["slot_order"]:
+        order = _blocked_read_first(leg["slot_order"], layout, leg["read_bits"])
+        if order != list(leg["slot_order"]):
+            moved = next(s for s, t in zip(order, leg["slot_order"]) if s != t)
+            self.chk.info("LOCK-READ-ORDER", moved=moved, before=order[order.index(moved) + 1])
+        for slot in order:
             kind = layout.get(slot, "none")
             name = LOCK_SLOT_FIELD[slot]
             tag = self._step()
@@ -1381,7 +1446,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         close_graded_window(self.logger)
         ck = await self._read_if(leg["class_key_bit"]["addr"])
         lk = await self._read_if(leg["locks_bit"]["addr"])
-        ck_fd = await self._fd_locked(7, "CLASS_KEY")
+        ck_fd = await self._fd_locked(SLOT_OF_FIELD["CLASS_KEY"], "CLASS_KEY")
         ctl_rl = (
             ck["pre_req_err"] == 0
             and ck["req_err"] == 1
@@ -1683,7 +1748,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         vname, a = vb["field"], vb["addr"]
         tag = self._step()
         r = await self._program(a, watch=False)
-        landed = r["req_err"] == 0 and diff_is_exactly(r["diff"], a)
+        landed = (
+            r["busy"] == 0
+            and r["req_err"] == 0
+            and r["done"] == 1
+            and diff_is_exactly(r["diff"], a)
+        )
         ref[field_word(vname) + vb["word"]] |= 1 << vb["bit"]
         set_shadow_golden(self, self.plan.image, words=ref)
         exp = [0] * field_n_words(vname)
@@ -1698,6 +1768,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             field="BL1" if vname == "BL1_VERSION" else "BL2",
             bit=leg["version_index"],
             index_class=leg["index_class"],
+            busy=r["busy"],
+            done=r["done"],
             req_err=r["req_err"],
             otp_diff=a if diff_is_exactly(r["diff"], a) else diff_log(r["diff"]),
             exp=f"0x{_hexw(exp)}",
@@ -1717,7 +1789,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         pre = await self._rd32(shadow_addr(name, rnd["word"]))
         r = await self._program(a, watch=False)
         after_prog = await self._rd32(shadow_addr(name, rnd["word"]))
-        prog_ok = r["req_err"] == 0 and diff_is_exactly(r["diff"], a)
+        prog_ok = (
+            r["busy"] == 0
+            and r["req_err"] == 0
+            and r["done"] == 1
+            and diff_is_exactly(r["diff"], a)
+        )
         new = old | (1 << rnd["bit"])
         ref[wi] = new
         # The reference of the next round is the model: this reference OR this bit.
@@ -1747,6 +1824,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             field=name,
             bit_addr=a,
             otp_diff=a if diff_is_exactly(r["diff"], a) else diff_log(r["diff"]),
+            busy=r["busy"],
+            done=r["done"],
             req_err=r["req_err"],
             prog_status=r["prog_status"],
             shadow_pre=f"0x{pre:08x}",

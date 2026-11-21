@@ -18,13 +18,12 @@ from __future__ import annotations
 import re
 
 from sep_efuse_field_map import spec_secure_tm_blocked
-from sep_efuse_image import LOCK_BITS_PER_SLOT
 from sep_reg_meta import RegBlock, sep_reg  # the generated export, path set up by sep_reg_meta
 from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
 IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
-# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:110-112).
+# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:112-114).
 # No staged pattern may equal it, so a read-lock readback that returns it also
 # differs from the stored field.
 DENY_DATA_MARKER = 0xBADCAB1E
@@ -58,26 +57,31 @@ def _spare_count() -> int:
 
 
 SPARE_COUNT = _spare_count()
-# otp_fuse_controller.adoc LOCKS slots 0–31, LOCKS_SPARE slots 32–40. Spare k is slot 32+k.
-SPARE0_SLOT = 32
-# LOCKS_SPARE starts at bit 64 of the 96-bit LOCKS+LOCKS_SPARE vector.
-_LOCKS_SPARE_VECTOR_LSB = SPARE0_SLOT * LOCK_BITS_PER_SLOT
+_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+# The 96-bit lock vector is LOCKS followed by LOCKS_SPARE (otp_fuse_controller.adoc),
+# so a LOCKS_SPARE bit sits above every LOCKS bit.
+_LOCKS_SPARE_VECTOR_LSB = 8 * (_EFUSE_MAP.offset("LOCKS_SPARE") - _EFUSE_MAP.offset("LOCKS"))
 
 
 def spare_field_name(spare_idx: int) -> str:
     return f"SPARE{spare_idx}"
 
 
-def spare_write_lock_bit(spare_idx: int) -> int:
-    """Global lock-vector bit of spare ``k``'s write-lock (otp_fuse_controller.adoc)."""
+def _spare_lock_bit(spare_idx: int, kind: str) -> int:
     if not 0 <= spare_idx < SPARE_COUNT:
         raise ValueError(f"spare_idx {spare_idx} not in 0..{SPARE_COUNT - 1}")
-    return (SPARE0_SLOT + spare_idx) * LOCK_BITS_PER_SLOT
+    lsb = _EFUSE_MAP.field_lsb("LOCKS_SPARE", f"spare{spare_idx}_{kind}_lock")
+    return _LOCKS_SPARE_VECTOR_LSB + lsb
+
+
+def spare_write_lock_bit(spare_idx: int) -> int:
+    """Global lock-vector bit of LOCKS_SPARE.SPARE<k>_WRITE_LOCK."""
+    return _spare_lock_bit(spare_idx, "write")
 
 
 def spare_read_lock_bit(spare_idx: int) -> int:
-    """Global lock-vector bit of spare ``k``'s read-lock."""
-    return spare_write_lock_bit(spare_idx) + 1
+    """Global lock-vector bit of LOCKS_SPARE.SPARE<k>_READ_LOCK."""
+    return _spare_lock_bit(spare_idx, "read")
 
 
 def spare_zero_pins() -> dict[str, int]:
@@ -87,7 +91,7 @@ def spare_zero_pins() -> dict[str, int]:
 
 def _locks_spare_bit(vector_bit: int) -> int:
     """LOCKS_SPARE bit of a spare lock (vector bits 64..81 -> 0..17 for 9 spares)."""
-    top = _LOCKS_SPARE_VECTOR_LSB + SPARE_COUNT * LOCK_BITS_PER_SLOT
+    top = spare_read_lock_bit(SPARE_COUNT - 1) + 1
     if not _LOCKS_SPARE_VECTOR_LSB <= vector_bit < top:
         raise ValueError(
             f"spare lock vector bit {vector_bit} not in {_LOCKS_SPARE_VECTOR_LSB}..{top - 1}"
@@ -109,8 +113,6 @@ def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
 # Fields the specification says must refuse a write while SECURE_TM=1
 # (otp_fuse_controller.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
 SECURE_TM_LOCK_FIELDS = spec_secure_tm_blocked()
-
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
 
 # LC_STATE bytes [31:8] (the RDL rsvd field) OR-merge as ordinary shadow bytes
 # and do not disturb the lifecycle nibble, so they are the safe payload for
@@ -213,9 +215,11 @@ class SepLockedFieldIrqCfg:
 def _selftest() -> None:
     # otp_fuse_controller.adoc: nine spares, slots 32-40.
     assert SPARE_COUNT == 9, f"SPARE_COUNT={SPARE_COUNT}, spec gives SPARE0..SPARE8"
-    assert spare_write_lock_bit(0) == 64
-    assert spare_read_lock_bit(0) == 65
-    assert spare_read_lock_bit(SPARE_COUNT - 1) == 81
+    # otp_fuse_controller.adoc:214-215: spare k (slot 32 + k) has its write lock at
+    # LOCKS_SPARE bit 2k and its read lock at bit 2k + 1, above the 64 LOCKS bits.
+    for k in range(SPARE_COUNT):
+        assert spare_write_lock_bit(k) == 64 + 2 * k, f"spare {k} write lock"
+        assert spare_read_lock_bit(k) == 64 + 2 * k + 1, f"spare {k} read lock"
     assert _locks_spare_bit(64) == 0
     assert _locks_spare_bit(65) == 1
     assert _locks_spare_bit(81) == 17
