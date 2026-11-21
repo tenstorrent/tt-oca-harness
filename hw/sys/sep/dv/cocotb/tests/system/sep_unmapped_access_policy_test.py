@@ -435,9 +435,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
 
         The golden is hw/sys/sep/regs/include/sep_memory_map.rdl:13: a hole in
         the extent answers OKAY with read data 0x0, and a write has no effect,
-        so the re-read also returns 0x0. It runs after the FCOV window closed
-        and after every count the other verdicts use, so it releases no sample
-        and changes no other tally.
+        so the re-read also returns 0x0 and every live word still matches the
+        snapshot. It runs after the FCOV window closed and after every count
+        the other verdicts use, so it releases no sample and changes no other
+        tally.
         """
         addr = cfg.cpu_ctrl_base
         r_resp, r_data, r_to = await ua.access("r", addr, may_refuse=True)
@@ -455,11 +456,15 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 fail.append(f"0x{addr:08x} {what} resp={_code(resp)}, expected OKAY")
             elif data is not None and data != 0:
                 fail.append(f"0x{addr:08x} {what} rdata=0x{data:08x}, expected 0x00000000")
+        for live in ua.snap:
+            for moved in await ua.compare([live]):
+                fail.append(f"write to 0x{addr:08x} moved live word 0x{live:08x}: {moved}")
         log = (
             f"0x{addr:08x} (SEP CPU control offset 0, below CLOCK_GATE_CTRL) "
             f"read resp={_code(r_resp)} rdata=0x{r_data:08x}; "
             f"write 0x{PROBE_WDATA:08x} resp={_code(w_resp)}; "
-            f"re-read resp={_code(rr_resp)} rdata=0x{rr_data:08x}; no timeout"
+            f"re-read resp={_code(rr_resp)} rdata=0x{rr_data:08x}; no timeout; "
+            f"all {len(ua.snap)} live words match the snapshot after the write"
         )
         return fail, log
 
