@@ -62,10 +62,14 @@ requests is not wrong, but this leaf cannot hold a request at its stop.
                     accepted. The accepted count is logged (INFO-LIMIT).
   CTRL-XBAR-HELD-STOP
                     the one extra LSU write of a held session at that count
-                    stalls and is not accepted before a release.
+                    stalls and is not accepted before a release; in the DMA
+                    session, the DMA port AW count is above 0 and below the
+                    job's writes, and does not change over one more window
+                    before the release.
   CTRL-CHAIN-STOP   the same stop with the DMA and the SMN inbound master
                     issuing alongside, for writes, for reads, and for the
-                    writes-and-reads hold. The port totals are logged
+                    writes-and-reads hold; in the three-initiator hold, the
+                    same DMA condition. The port totals are logged
                     (INFO-CHAIN-LIMIT).
 
 Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
@@ -840,6 +844,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             rows.append(("lsu", stall, rel, extra))
         if dma_words:
             base_aw = s.meter.read()["port"]["dma"]["aw"]
+            await ClockCycles(self.dut_clk, WINDOW)
+            held_aw = s.meter.read()["port"]["dma"]["aw"]
+            self._ctrl(
+                "XBAR-HELD-STOP" if graded else "CHAIN-STOP",
+                held_aw == base_aw and 0 < base_aw < dma_words,
+                f"session={name} init=dma accepted_before={base_aw} accepted_now={held_aw} "
+                f"job_writes={dma_words}",
+            )
             rel = await self._release_until(
                 lambda: s.meter.read()["port"]["dma"]["aw"] > base_aw,
                 rel_chk,
@@ -864,6 +876,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             elif init == "dma":
                 comp = int(s.job.done)
                 note = ""
+                if not comp:
+                    self._fail(chk, f"session={name} init=dma job never completed")
             else:
                 comp = int(all(t.done for t in extra))
                 note = ""
