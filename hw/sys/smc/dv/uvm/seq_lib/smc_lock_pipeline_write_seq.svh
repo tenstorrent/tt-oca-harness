@@ -8,7 +8,8 @@ class smc_lock_pipeline_write_seq extends ocah_axi_master_sequence;
 
   ocah_axi_item ops[$];
   ocah_axi_item result;
-  longint unsigned aw_at[$], w_at[$], b_at[$];
+  longint unsigned aw_at[$], w_at[$], b_at[$], bvalid_at[$];
+  int unsigned b_gap[$];
   int unsigned hold_cycles;
   bit complete, overlap;
   int unsigned previous_op, next_op;
@@ -54,6 +55,8 @@ class smc_lock_pipeline_write_seq extends ocah_axi_master_sequence;
         end else channel_match = 1'b0;
         w_at.push_back(cycle);
       end
+      if (cfg.vif.mon_cb.bvalid === 1'b1 && bvalid_at.size() == b_at.size())
+        bvalid_at.push_back(cycle);
       if (cfg.vif.mon_cb.bvalid === 1'b1 && cfg.vif.mon_cb.bready === 1'b1) begin
         channel_match &= cfg.vif.mon_cb.bid === 0;
         b_at.push_back(cycle);
@@ -72,15 +75,17 @@ class smc_lock_pipeline_write_seq extends ocah_axi_master_sequence;
     join
     complete = channel_match && !result.timed_out && aw_at.size() == ops.size() &&
         w_at.size() == ops.size() && b_at.size() == ops.size();
+    foreach (b_at[i]) b_gap.push_back(int'(b_at[i] - bvalid_at[i]));
     foreach (ops[i]) begin
       complete &= ops[i].is_ok() && !ops[i].any_resp_xz() && ops[i].id_match() &&
           !ops[i].timed_out && ops[i].resp_list.size() == 1;
       if (i < aw_at.size() && i < w_at.size() && i < b_at.size()) begin
         `uvm_info("PLOCK-PIPELINE",
                   $sformatf(
-                      "%s op=%0d addr=0x%0h size=%0d strb=0x%02h AW=%0d W=%0d B=%0d response=%s",
+                      {"%s op=%0d addr=0x%0h size=%0d strb=0x%02h AW=%0d W=%0d B=%0d ",
+                       "BVALID=%0d gap=%0d response=%s"},
                       label, i, ops[i].address, ops[i].size, ops[i].strobes[0], aw_at[i], w_at[i],
-                      b_at[i], ops[i].worst_resp().name()), UVM_LOW)
+                      b_at[i], bvalid_at[i], b_gap[i], ops[i].worst_resp().name()), UVM_LOW)
       end
     end
     if (complete && next_op < ops.size() && previous_op < ops.size())

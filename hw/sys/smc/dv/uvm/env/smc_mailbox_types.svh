@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 VNCHIP LABS
 //
-// Mailbox geometry from smc_pkg; offsets, defaults and masks from the register map.
-localparam int unsigned SmcMailboxCount = smc_pkg::NumMailboxes;
-localparam int unsigned SmcMailboxDepth = smc_pkg::MailboxDepth;
+// Mailbox geometry from the SMC Peripheral Parameter Overrides table of
+// hw/sys/smc/doc/periphs.adoc; offsets, defaults and masks from the register map.
+localparam int unsigned SmcMailboxCount = 32;
+localparam int unsigned SmcMailboxDepth = 2;
 localparam bit [63:0] SmcMailboxBase =
     smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR;
 localparam bit [63:0] SmcMailboxStride =
