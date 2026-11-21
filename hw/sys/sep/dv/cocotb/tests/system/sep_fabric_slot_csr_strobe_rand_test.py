@@ -41,6 +41,15 @@ Checkers:
                    whole read of every register of the entry after it, all
                    equal to the model; every entry has one passing refused
                    START_ADDR and one END_ADDR write.
+  CHK-SLOT-HOLE    per filter entry, a read, a 32-bit write and a read of a
+                   drawn half of the unused word after END_ADDR, once before
+                   the lock and once after it. Unlocked: every access answers
+                   the filter row's Hole in Extent cell
+                   (hw/sys/sep/regs/gen/adoc/memory_map.adoc:70-71, OKAY, read
+                   data 0x0). Locked: the write answers SLVERR
+                   (hw/ip/axi_filter/doc/index.adoc:158-162) and the reads the
+                   same cell. Every register of the entry then reads its model
+                   value, so a write that aliased onto a register fails.
   CHK-SLOT-FINAL   every register of every slot still holds its model value.
 
 Logged, not graded: after the final walk, a read and a write of drawn writable
@@ -52,8 +61,8 @@ carried the drawn AxPROT and AxCACHE. INFO-SLOT-PROT: the response of each acces
 and the value a read with the default attributes returns after the write.
 
 FCOV: owner window of this leaf (sep_filter_match_cg.cp_locked_range_write)
-opens for one refused START_ADDR or END_ADDR write and the reads after it at
-a time, after the whole-register read before it matched the model. The held
+opens for one refused START_ADDR, END_ADDR or unused-word write and the reads
+after it at a time, after the read before it matched the model. The held
 cell samples on the pass label slot_lock_pass, raised only after the read-back
 of the written lanes and the whole read of every register of the entry passed;
 the window closes at the first mismatch, which drops it; see
@@ -115,6 +124,7 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         "CHK-SLOT-STROBE",
         "CHK-SLOT-PIPE",
         "CHK-SLOT-LOCK",
+        "CHK-SLOT-HOLE",
         "CHK-SLOT-FINAL",
     )
 
@@ -272,6 +282,20 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
             forced["START_ADDR"],
             forced["END_ADDR"],
             st["CHK-SLOT-LOCK_reads"],
+        )
+        self._verdict(sweep, "CHK-SLOT-HOLE")
+        holes = (st["hole_unlocked"], st["hole_locked"])
+        assert holes == (n_filters, n_filters), (
+            f"CHK-SLOT-HOLE FAIL: unused-word legs unlocked={holes[0]} locked={holes[1]}; "
+            f"planned {n_filters} each"
+        )
+        self.logger.info(
+            "CHK-SLOT-HOLE PASS: %d filter entries: the unused word after END_ADDR answered "
+            "the map's Hole in Extent cell to a read, a write and a read unlocked, and "
+            "SLVERR to the write and the cell to both reads locked; %d reads of the entry "
+            "registers matched the RDL model",
+            n_filters,
+            st["CHK-SLOT-HOLE_reads"],
         )
 
         await sweep.final_walk()
