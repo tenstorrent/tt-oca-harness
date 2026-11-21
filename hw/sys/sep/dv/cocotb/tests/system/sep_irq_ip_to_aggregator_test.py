@@ -742,6 +742,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                         for op in ("r", "w"):
                             await self._note_probe(span, addr, op, run)
             finally:
+                await RisingEdge(cocotb.top.clk_i)
                 close_graded_window(self.logger)
 
     async def _note_probe(self, span: NoteSpan, addr: int, op: str, run: str) -> None:

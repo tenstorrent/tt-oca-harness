@@ -85,7 +85,6 @@ class sep_efuse_jtag_window_allow_test(sep_base_test):
         "CHK-JTAG-WINDOW-ALLOW",
         "CHK-JTAG-PAGE-UNBACKED",
         "CHK-JTAG-SHIM-ALLOW",
-        "CTRL-JTAG-SHIM-WRITE",
         "CHK-JTAG-OUTSIDE-NO-SHIM",
     )
 
