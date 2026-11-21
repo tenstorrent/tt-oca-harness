@@ -3451,8 +3451,8 @@ module sep_uvm_top
     // ESRC noise-source stuck-at inject.
     // ------------------------------------------------------------------
     // While bit i of esrc_noise_stuck_en_i is 1, the output of the noise ring
-    // oscillator of lane i (u_noise_source.noise_async, the net between the
-    // ring oscillator and the sampling flop u_smpl) is forced to bit i of
+    // oscillator of lane i (u_noise_source.noise_async_i, the input of the
+    // sampling flop u_smpl) is forced to bit i of
     // esrc_noise_stuck_val_i: a stuck noise source. The value passes the
     // sampling flop and the two-flop synchronizer like a real ring output, so it
     // reaches noise_bit, the noise observe FIFO samples and the decorrelator of
@@ -3462,10 +3462,10 @@ module sep_uvm_top
     // clock and released when the bit drops. Default 0: no force.
 `define ESRC_NOISE_STUCK(i) \
     if (esrc_noise_stuck_en_i[i] === 1'b1) \
-        force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async = \
+        force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async_i = \
             esrc_noise_stuck_val_i[i]; \
     else \
-        release `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async
+        release `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async_i
     always @(negedge clk_i) begin
         `ESRC_NOISE_STUCK(0);  `ESRC_NOISE_STUCK(1);  `ESRC_NOISE_STUCK(2);
         `ESRC_NOISE_STUCK(3);  `ESRC_NOISE_STUCK(4);  `ESRC_NOISE_STUCK(5);

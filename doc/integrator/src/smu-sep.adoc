@@ -122,6 +122,19 @@ The SEP includes an internal entropy source that requires a ring-oscillator
 sample clock connected to `entropy_rosc_sample_clk_i`. This clock must be
 asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 
+The entropy source's twelve noise rings and its shared sample-clock ring are
+gathered in one module, `entropy_rosc_array`, which `sep_trng` instantiates. It
+holds nothing but the rings, has flat bit-level ports, and its outputs are
+sampled by the SEP, so a build may replace it under the same name:
+
+* with a ring-oscillator hard macro behind a wrapper of the same module and
+  ports;
+* with the loop-free stub that the Bender target `entropy_rosc_stub` selects,
+  for a netlist without the rings. Its deterministic output fails the health
+  tests, so a chip built with it takes its entropy from the external TRNG.
+
+The rings stay off while `test_en_i` is high.
+
 [[sep-ext-trng]]
 === External TRNG
 
