@@ -618,8 +618,8 @@ module sep_fcov (
   input sep_efuse_pkg::efuse_axil_req_t     jtag_req_i,      // axil_sep_otp_jtag_req_i
   input sep_efuse_pkg::efuse_axil_resp_t    jtag_resp_i,     // axil_sep_otp_jtag_resp_o
   input wire                                irq_token_fault_i,  // PIC source 40 request line
-  input wire [5:0]                          tok_sip_i,       // ext_debug_bus_o[229:224]
-  input wire [5:0]                          tok_chp_i,       // ext_debug_bus_o[213:208]
+  input wire [5:0]                          tok_sip_i,       // RMA_SIP_TOKEN_MATCH status code
+  input wire [5:0]                          tok_chp_i,       // RMA_CHIPLET_TOKEN_MATCH status code
   input wire [5:0]                          tok_sdis_i,      // TOKEN_PROC sec_disable_token_match_q
   input wire [2:0]                          tok_fault_i,     // TOKEN_PROC token_match_fault_sticky_q
   input wire [2:0]                          token_go_i,      // TOKEN_PROC hash start pulses

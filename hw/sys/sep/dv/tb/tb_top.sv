@@ -697,8 +697,8 @@ module sep_uvm_top
         .smc_global_base_addr_i       (bh_smc_base),
         .smc_region_size_i            (bh_smc_size),
 `endif
-        .sep_global_base_addr_o       (),
-        .sep_region_size_o            (),
+        .sep_global_base_addr_o       (sep_global_base_addr_probe_o),
+        .sep_region_size_o            (sep_region_size_probe_o),
 
         // External debug bus
         .ext_debug_bus_o              (ext_debug_bus_o),
@@ -7457,8 +7457,8 @@ module sep_uvm_top
         .jtag_req_i            (j_axil_req_drive),
         .jtag_resp_i           (j_axil_resp_w),
         .irq_token_fault_i     (sep_internal_interrupts_probe_o[39]),
-        .tok_sip_i             (ext_debug_bus_o[229:224]),
-        .tok_chp_i             (ext_debug_bus_o[213:208]),
+        .tok_sip_i             (`FC_TOKEN.rma_sip_token_match_q_n0_scan),
+        .tok_chp_i             (`FC_TOKEN.rma_chiplet_token_match_q_n0_scan),
         .tok_sdis_i            (`FC_TOKEN.sec_disable_token_match_q),
         .tok_fault_i           (`FC_TOKEN.token_match_fault_sticky_q),
         .token_go_i            ({`FC_TOKEN.secure_disable_token_go,

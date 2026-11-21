@@ -83,7 +83,8 @@ module i2c_target_fsm
                                                                     // preceding host NACK.
   output logic                                  event_tx_arbitration_lost_o, // Arbitration was lost during a read transfer.
   output logic                                  event_tx_bus_timeout_o, // Bus timed out during a read transfer.
-  output logic                                  event_read_cmd_received_o // A read awaits confirmation for TX FIFO release.
+  output logic                                  event_read_cmd_received_o, // A read awaits confirmation for TX FIFO release.
+  output logic [4:0]                            state_debug_o // Current state_e value.
 );
 
   // I2C bus clock timing variables
@@ -323,6 +324,8 @@ module i2c_target_fsm
   } state_e;
 
   state_e state_q, state_d;
+
+  assign state_debug_o = state_q;
 
   logic rw_bit_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
