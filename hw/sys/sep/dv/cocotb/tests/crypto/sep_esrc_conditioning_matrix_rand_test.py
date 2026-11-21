@@ -2346,7 +2346,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         )
         self.chk.ctrl(
             "COND-HT-CTRL",
-            ok,
+            ok and not s_ctrl0 & 1,
             bypass=0,
             ht_status_before=f"0x{s_ctrl0:08x}",
             rep_set=ok,
