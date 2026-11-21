@@ -137,9 +137,9 @@ Checkers:
                     offset ``0x1000``, an LSU read and write of
                     ``0x11FF_F000`` each leave the alias remap once at
                     ``0x1200_0000`` (PR-ALIAS output,
-                    ``alias_remap.rdl`` REGION_ATTRS.offset), answer the DECERR of its Reserved memory-map row, and
-                    PR-OUT takes no beat (the read data is logged,
-                    INFO-OUT-GAP-ALIAS-RDATA). Live control in the same leg:
+                    ``alias_remap.rdl`` REGION_ATTRS.offset), answer the DECERR of its Reserved memory-map row, the
+                    read returns ``0xBADCAB1E`` on both words, and PR-OUT
+                    takes no beat. Live control in the same leg:
                     with the offset that remaps the page onto ``0x1180_0000``,
                     the same accesses answer OKAY and leave once on PR-OUT at
                     the STEE region 0 translation.
@@ -1438,7 +1438,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         address outside the SMU, AP and STEE regions to the peripheral crossbar
         (``hw/sys/sep/doc/fabric.adoc``, SEP output fabric), so the remapped
         access leaves the alias remap once at GAP_WORD (PR-ALIAS output) and
-        answers the Reserved-row DECERR of GAP_WORD with no PR-OUT beat.
+        answers the Reserved-row DECERR and read data of GAP_WORD with no
+        PR-OUT beat.
         Live control: the same alias page remapped onto the STEE region 0 base
         word leaves on PR-OUT at its translation. The AP and STEE region 0 pairs
         stay open over their translations.
@@ -1479,25 +1480,22 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             beats = self.out.since(mark)
             alias_out = alias_tap.since(amark, "aw" if write else "ar")
             exp = expected_unbacked(GAP_WORD, "w" if write else "r")
+            words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in (0, 1)]
+            data_ok = write or words == [exp.rdata, exp.rdata]
+            rdata = "na" if write else ",".join(f"0x{w:08x}" for w in words)
             line = (
                 f"dir={d} addr=0x{page:x} alias=0x{page:x}->0x{GAP_WORD:x} prot=0x{prot:x} "
                 f"alias_out={_join_addrs(alias_out)} "
-                f"resp={_rname(seq.resp_code)} expect={_rname(exp.resp)} out_seen={len(beats)}"
+                f"resp={_rname(seq.resp_code)} expect={_rname(exp.resp)} rdata={rdata} "
+                f"expect_rdata={'na' if write else f'0x{exp.rdata:08x}'} out_seen={len(beats)}"
             )
             assert (
                 [b.addr for b in alias_out] == [GAP_WORD]
                 and seq.resp_code == exp.resp
+                and data_ok
                 and not beats
             ), f"CHK-OUT-GAP-ALIAS FAIL: {line} beats=" + " ".join(b.fmt() for b in beats)
             self.logger.info("CHK-OUT-GAP-ALIAS PASS: %s", line)
-            if not write:
-                words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in (0, 1)]
-                self.logger.info(
-                    "INFO-OUT-GAP-ALIAS-RDATA addr=0x%x rdata=%s (not graded; no open "
-                    "specification question)",
-                    page,
-                    ",".join(f"0x{w:08x}" for w in words),
-                )
         await alias_tap.stop()
         await alias.program(False)
 
