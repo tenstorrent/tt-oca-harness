@@ -257,7 +257,7 @@ firmware = "pic_priority_gate_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 8000
-tags = ["pic", "interrupt", "priority", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
+tags = ["pic", "interrupt", "priority", "cpu", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -281,7 +281,7 @@ firmware = "nmi_vector_bark_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 4800
-tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem", "logs_open_spec_value", "grades_spec_rst_timer"]
+tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem", "grades_spec_rst_timer"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
