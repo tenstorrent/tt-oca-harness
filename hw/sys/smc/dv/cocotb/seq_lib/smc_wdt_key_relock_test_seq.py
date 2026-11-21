@@ -56,7 +56,7 @@ class smc_wdt_key_relock_test_seq(SmcCsrSeq):
         self.chk_marks: list[tuple[str, int]] = []
 
     def _reg(self, reg: str) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE0_WDT_{reg}_BASE_ADDR")
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_{reg}_BASE_ADDR")
 
     def _step(self, step_id: str) -> None:
         self.stamps.append((step_id, int(get_sim_time("ps"))))

@@ -113,7 +113,7 @@ _PROBES: tuple[tuple[str, str], ...] = (
     ("zeroer_ctrl", "zeroer_ctrl/DEST_ADDR"),
     ("cpu_ctrl", "smc_cpu_ctrl/SCRATCH[15]"),
     ("reset_unit", "smc_reset_unit/SS_CONFIG"),
-    ("efuse_interface_ctrl", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT"),
+    ("efuse_interface_ctrl", "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT"),
 )
 
 # The two blocks behind the AXI-to-AXI-Lite converter, which also take AW ahead of W.

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sep_decode_resp import sep_map_row
 from sep_reg_meta import indexed_block_count, sep_reg, sym
 
 # A row at least this wide is a container the detailed rows carve up, not an
@@ -87,6 +88,16 @@ def _rdl_window_rows(
     return tuple(rows)
 
 
+def _page_rows(stem: str, unit: str, desc: str) -> tuple[tuple[int, int, str, str], ...]:
+    """Rows for a unit alone in its page: its decoded extent, then a reserved row.
+
+    The page bounds are the unit's row in the generated memory map
+    (``hw/sys/sep/regs/gen/py/sep_memory_map.py``).
+    """
+    page = sep_map_row(sym(f"{stem}_REG_MAP_BASE_ADDR"))
+    return _rdl_window_rows(page.base, page.end, ((stem, unit, desc),))
+
+
 # Dual scratch register banks (0x1080_2000-0x1080_2FFF), OTP (0x1093_0000-0x1093_FFFF)
 # and System Bus I/F (0x10A0_0000-0x10A3_FFFF): each window holds several RDL
 # blocks with reserved space between them, so its rows come from the export.
@@ -94,31 +105,37 @@ _SRB_ROWS = _rdl_window_rows(
     0x1080_2000,
     0x1080_2FFF,
     (
-        ("SEP_SCRATCH_COLD", "SRB cold", "Cold-reset scratch register bank"),
-        ("SEP_SCRATCH_WARM", "SRB warm", "Warm-reset scratch register bank"),
+        ("SEP_SCRATCH_WRAP_SCRATCH_COLD", "SRB cold", "Cold-reset scratch register bank"),
+        ("SEP_SCRATCH_WRAP_SCRATCH_WARM", "SRB warm", "Warm-reset scratch register bank"),
     ),
 )
 _OTP_ROWS = _rdl_window_rows(
     0x1093_0000,
     0x1093_FFFF,
     (
-        ("SEP_EFUSE_MAP", "OTP shadow", "eFuse shadow map"),
-        ("EFUSE_INTERFACE_CTRL", "OTP interface", "eFuse command and status registers"),
-        ("EFUSE_MMR", "OTP MMR", "eFuse security-token registers"),
+        ("SEP_EFUSE_WRAP_SEP_EFUSE_MAP", "OTP shadow", "eFuse shadow map"),
+        (
+            "SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL",
+            "OTP interface",
+            "eFuse command and status registers",
+        ),
+        ("SEP_EFUSE_WRAP_EFUSE_MMR", "OTP MMR", "eFuse security-token registers"),
     ),
 )
+
+
 _SYS_ROWS = _rdl_window_rows(
     0x10A0_0000,
     0x10A3_FFFF,
     (
         ("AXIL_MAILBOX", "SYS mailbox", "Mailbox pairs"),
         (
-            "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
+            "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP",
             "SYS alias remap",
             "Local master alias remap",
         ),
-        ("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", "SYS AP remap", "AP output remap"),
-        ("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", "SYS STEE remap", "STEE output remap"),
+        ("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", "SYS AP remap", "AP output remap"),
+        ("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", "SYS STEE remap", "STEE output remap"),
         ("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", "SYS outbound filter", "Outbound filter control"),
         ("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", "SYS inbound filter", "Inbound filter control"),
         ("SEP_CPU_CTRL", "SYS CPU control", "SEP CPU control and interrupt registers"),
@@ -164,34 +181,37 @@ _MAP_ROWS = (
         "SEP Reset Controller (software reset for KM, the crypto accelerators and the TRNG)",
     ),
     (0x1080_3008, 0x108F_FFFF, _RSV, "reserved"),
-    (0x1090_0000, 0x1090_FFFF, "OTBN", "Public Key processor memory and CSR"),
+    (0x1090_0000, 0x1090_BFFF, "OTBN", "Public Key processor memory and CSR"),
+    (0x1090_C000, 0x1090_FFFF, _RSV, "Reserved"),
     (0x1091_0000, 0x1091_0FFF, "AES", "Block Cipher"),
     (0x1091_1000, 0x1091_2FFF, "HMAC-SHA2", "Hash / MAC"),
     (0x1091_3000, 0x1091_3FFF, "KMAC-SHA3", "Hash / MAC"),
-    (0x1091_4000, 0x1091_4FFF, _RSV, "Reserved"),
-    (0x1091_5000, 0x1091_5FFF, "DRBG", "Deterministic Random Bit Generator"),
+    *_page_rows("EDN", "EDN", "Entropy Distribution Network"),
+    *_page_rows("CSRNG", "CSRNG", "Deterministic Random Bit Generator"),
     (0x1091_6000, 0x1091_6FFF, "ESRC", "Entropy Source"),
     (0x1091_7000, 0x1091_7FFF, "TRNG", "External TRNG CSR passthrough"),
-    (0x1091_8000, 0x1091_FFFF, "LC", "Life Cycle Controller"),
+    (0x1091_8000, 0x1091_8FFF, "LC", "Life Cycle Controller"),
+    (0x1091_9000, 0x1091_FFFF, _RSV, "Reserved"),
     (0x1092_0000, 0x1092_0FFF, "KM", "Key Manager"),
     (0x1092_1000, 0x1092_FFFF, _RSV, "Reserved"),
     *_OTP_ROWS,
     (
         0x1094_0000,
-        0x1094_FFFF,
+        0x1094_CFFF,
         "ABR",
         "Adams Bridge post-quantum accelerator (ML-DSA-87 / ML-KEM-1024) CSR aperture",
     ),
+    (0x1094_D000, 0x1094_FFFF, _RSV, "Reserved"),
     (
         0x1095_0000,
-        0x1095_FFFF,
+        0x1095_0FFF,
         "EPOOL",
         "Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.",
     ),
-    (0x1096_0000, 0x109F_FFFF, _RSV, "Reserved"),
+    (0x1095_1000, 0x109F_FFFF, _RSV, "Reserved"),
     *_SYS_ROWS,
     (0x10A4_0000, 0x10AF_FFFF, _RSV, "Reserved"),
-    (0x10B0_0000, 0x10BF_FFFF, "IO", "External IO Peripherals Bridge: UART, GPIO etc."),
+    *_page_rows("SPI_CONTROLLER", "SPI", "SPI Host"),
     (
         0x1100_0000,
         0x117F_FFFF,
@@ -283,7 +303,7 @@ def _selftest() -> None:
     for lo, hi in (
         (0x1080_2040, 0x1080_207F),
         (0x1080_20C0, 0x1080_2FFF),
-        (0x1093_0600, 0x1093_FFFF),
+        (0x1093_0C00, 0x1093_FFFF),
         (0x10A1_0280, 0x10A1_02FF),
         (0x10A1_0380, 0x10A1_FFFF),
         (0x10A2_0400, 0x10A2_0FFF),
@@ -293,9 +313,9 @@ def _selftest() -> None:
         for a in (lo, hi & ~0x3):
             assert not may_complete(a, regions), f"0x{a:08x} has no RDL block but reads allocated"
     for unit, stem in (
-        ("SRB cold", "SEP_SCRATCH_COLD"),
-        ("SRB warm", "SEP_SCRATCH_WARM"),
-        ("OTP MMR", "EFUSE_MMR"),
+        ("SRB cold", "SEP_SCRATCH_WRAP_SCRATCH_COLD"),
+        ("SRB warm", "SEP_SCRATCH_WRAP_SCRATCH_WARM"),
+        ("OTP MMR", "SEP_EFUSE_WRAP_EFUSE_MMR"),
         ("SYS CPU control", "SEP_CPU_CTRL"),
     ):
         hit = region_of(sym(f"{stem}_REG_MAP_BASE_ADDR"), regions)
@@ -316,6 +336,11 @@ def _selftest() -> None:
     assert may_complete(0x1080_1FFF, regions), "WDT window top read as unallocated"
     assert not may_complete(0x1080_3008, regions), "reset-ctrl gap read as allocated"
     assert not may_complete(0x1092_1000, regions), "KM reserved gap read as allocated"
+    for stem in ("EDN", "CSRNG", "SPI_CONTROLLER"):
+        top = sym(f"{stem}_REG_MAP_BASE_ADDR") + sym(f"{stem}_REG_MAP_SIZE")
+        assert may_complete(top - 4, regions), f"{stem} last register read as unallocated"
+        assert not may_complete(top, regions), f"{stem} past-extent word read as allocated"
+    assert not may_complete(0x10B0_1000, regions), "Reserved row past SPI read as allocated"
     assert not may_complete(0x10FF_0000, regions), "SEP-local hole read as allocated"
 
     dma = region_of(0x1080_0000, regions)

@@ -10,7 +10,7 @@ module i2c_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [7:0] s_axil_awaddr,
+        input wire [8:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module i2c_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [7:0] s_axil_araddr,
+        input wire [8:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module i2c_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [7:0] cpuif_addr;
+    logic [8:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module i2c_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [7:0] axil_araddr;
+    logic [8:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [7:0] axil_awaddr;
+    logic [8:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module i2c_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[7:2], 2'b0};
+                cpuif_addr = {axil_araddr[8:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[7:2], 2'b0};
+                cpuif_addr = {axil_awaddr[8:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[7:2], 2'b0};
+                cpuif_addr = {axil_araddr[8:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -268,7 +268,7 @@ module i2c_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [7:0] decoded_addr;
+    logic [8:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -281,77 +281,77 @@ module i2c_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.INTR_STATE = cpuif_req_masked & (cpuif_addr == 8'h0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h0);
-        decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 8'h4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4);
-        decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 8'h8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h8);
-        decoded_reg_strb.SMBUS_CTRL = cpuif_req_masked & (cpuif_addr == 8'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc);
-        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 8'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h10);
-        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 8'h14) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h14);
-        decoded_reg_strb.RDATA = cpuif_req_masked & (cpuif_addr == 8'h18) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'h18) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h18);
-        decoded_reg_strb.FDATA = cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h1c);
-        decoded_reg_strb.FIFO_CTRL = cpuif_req_masked & (cpuif_addr == 8'h20) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h20);
-        decoded_reg_strb.HOST_FIFO_CONFIG = cpuif_req_masked & (cpuif_addr == 8'h24);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h24);
-        decoded_reg_strb.TARGET_FIFO_CONFIG = cpuif_req_masked & (cpuif_addr == 8'h28);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h28);
-        decoded_reg_strb.HOST_FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 8'h2c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h2c);
-        decoded_reg_strb.TARGET_FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 8'h30) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h30);
-        decoded_reg_strb.OVRD = cpuif_req_masked & (cpuif_addr == 8'h34);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h34);
-        decoded_reg_strb.VAL = cpuif_req_masked & (cpuif_addr == 8'h38) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h38);
-        decoded_reg_strb.TIMING0 = cpuif_req_masked & (cpuif_addr == 8'h3c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h3c);
-        decoded_reg_strb.TIMING1 = cpuif_req_masked & (cpuif_addr == 8'h40);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h40);
-        decoded_reg_strb.TIMING2 = cpuif_req_masked & (cpuif_addr == 8'h44);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h44);
-        decoded_reg_strb.TIMING3 = cpuif_req_masked & (cpuif_addr == 8'h48);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h48);
-        decoded_reg_strb.TIMING4 = cpuif_req_masked & (cpuif_addr == 8'h4c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4c);
-        decoded_reg_strb.TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 8'h50);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h50);
-        decoded_reg_strb.TARGET_ID = cpuif_req_masked & (cpuif_addr == 8'h54);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h54);
-        decoded_reg_strb.ACQDATA = cpuif_req_masked & (cpuif_addr == 8'h58) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'h58) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h58);
-        decoded_reg_strb.TXDATA = cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h5c);
-        decoded_reg_strb.HOST_TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 8'h60);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h60);
-        decoded_reg_strb.TARGET_TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 8'h64);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h64);
-        decoded_reg_strb.TARGET_NACK_COUNT = cpuif_req_masked & (cpuif_addr == 8'h68);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h68);
-        decoded_reg_strb.TARGET_ACK_CTRL = cpuif_req_masked & (cpuif_addr == 8'h6c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h6c);
-        decoded_reg_strb.ACQ_FIFO_NEXT_DATA = cpuif_req_masked & (cpuif_addr == 8'h70) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h70);
-        decoded_reg_strb.HOST_NACK_HANDLER_TIMEOUT = cpuif_req_masked & (cpuif_addr == 8'h74);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h74);
-        decoded_reg_strb.CONTROLLER_EVENTS = cpuif_req_masked & (cpuif_addr == 8'h78);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h78);
-        decoded_reg_strb.TARGET_EVENTS = cpuif_req_masked & (cpuif_addr == 8'h7c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h7c);
-        decoded_reg_strb.SMBUS_STATUS = cpuif_req_masked & (cpuif_addr == 8'h80) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h80);
-        is_valid_addr = cpuif_addr < 8'h84;
+        decoded_reg_strb.INTR_STATE = cpuif_req_masked & (cpuif_addr == 9'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h0);
+        decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 9'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h4);
+        decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 9'h8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h8);
+        decoded_reg_strb.SMBUS_CTRL = cpuif_req_masked & (cpuif_addr == 9'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hc);
+        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 9'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h10);
+        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 9'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h14);
+        decoded_reg_strb.RDATA = cpuif_req_masked & (cpuif_addr == 9'h18) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 9'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h18);
+        decoded_reg_strb.FDATA = cpuif_req_masked & (cpuif_addr == 9'h1c) & cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 9'h1c) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h1c);
+        decoded_reg_strb.FIFO_CTRL = cpuif_req_masked & (cpuif_addr == 9'h20) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h20);
+        decoded_reg_strb.HOST_FIFO_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h24);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h24);
+        decoded_reg_strb.TARGET_FIFO_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h28);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h28);
+        decoded_reg_strb.HOST_FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 9'h2c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h2c);
+        decoded_reg_strb.TARGET_FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 9'h30) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h30);
+        decoded_reg_strb.OVRD = cpuif_req_masked & (cpuif_addr == 9'h34);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h34);
+        decoded_reg_strb.VAL = cpuif_req_masked & (cpuif_addr == 9'h38) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h38);
+        decoded_reg_strb.TIMING0 = cpuif_req_masked & (cpuif_addr == 9'h3c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h3c);
+        decoded_reg_strb.TIMING1 = cpuif_req_masked & (cpuif_addr == 9'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h40);
+        decoded_reg_strb.TIMING2 = cpuif_req_masked & (cpuif_addr == 9'h44);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h44);
+        decoded_reg_strb.TIMING3 = cpuif_req_masked & (cpuif_addr == 9'h48);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h48);
+        decoded_reg_strb.TIMING4 = cpuif_req_masked & (cpuif_addr == 9'h4c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h4c);
+        decoded_reg_strb.TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 9'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb.TARGET_ID = cpuif_req_masked & (cpuif_addr == 9'h54);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h54);
+        decoded_reg_strb.ACQDATA = cpuif_req_masked & (cpuif_addr == 9'h58) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 9'h58) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h58);
+        decoded_reg_strb.TXDATA = cpuif_req_masked & (cpuif_addr == 9'h5c) & cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 9'h5c) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h5c);
+        decoded_reg_strb.HOST_TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 9'h60);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h60);
+        decoded_reg_strb.TARGET_TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 9'h64);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h64);
+        decoded_reg_strb.TARGET_NACK_COUNT = cpuif_req_masked & (cpuif_addr == 9'h68);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h68);
+        decoded_reg_strb.TARGET_ACK_CTRL = cpuif_req_masked & (cpuif_addr == 9'h6c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h6c);
+        decoded_reg_strb.ACQ_FIFO_NEXT_DATA = cpuif_req_masked & (cpuif_addr == 9'h70) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h70);
+        decoded_reg_strb.HOST_NACK_HANDLER_TIMEOUT = cpuif_req_masked & (cpuif_addr == 9'h74);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h74);
+        decoded_reg_strb.CONTROLLER_EVENTS = cpuif_req_masked & (cpuif_addr == 9'h78);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h78);
+        decoded_reg_strb.TARGET_EVENTS = cpuif_req_masked & (cpuif_addr == 9'h7c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h7c);
+        decoded_reg_strb.SMBUS_STATUS = cpuif_req_masked & (cpuif_addr == 9'h80) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h80);
+        is_valid_addr = cpuif_addr < 9'h84;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -3941,8 +3941,8 @@ module i2c_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [7:0] rd_mux_addr;
-    logic [7:0] pending_rd_addr;
+    logic [8:0] rd_mux_addr;
+    logic [8:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -3959,7 +3959,7 @@ module i2c_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 8'h0) begin
+        if(rd_mux_addr == 9'h0) begin
             readback_data_var[0] = hwif_in.INTR_STATE.FMT_THRESHOLD.next;
             readback_data_var[1] = hwif_in.INTR_STATE.RX_THRESHOLD.next;
             readback_data_var[2] = hwif_in.INTR_STATE.ACQ_THRESHOLD.next;
@@ -3981,7 +3981,7 @@ module i2c_reg (
             readback_data_var[18] = field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value;
             readback_data_var[19] = field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value;
         end
-        if(rd_mux_addr == 8'h4) begin
+        if(rd_mux_addr == 9'h4) begin
             readback_data_var[0] = field_storage.INTR_ENABLE.FMT_THRESHOLD.value;
             readback_data_var[1] = field_storage.INTR_ENABLE.RX_THRESHOLD.value;
             readback_data_var[2] = field_storage.INTR_ENABLE.ACQ_THRESHOLD.value;
@@ -4003,7 +4003,7 @@ module i2c_reg (
             readback_data_var[18] = field_storage.INTR_ENABLE.TARGET_TX_FIFO_ERROR.value;
             readback_data_var[19] = field_storage.INTR_ENABLE.TARGET_RX_FIFO_ERROR.value;
         end
-        if(rd_mux_addr == 8'h8) begin
+        if(rd_mux_addr == 9'h8) begin
             readback_data_var[0] = field_storage.INTR_TEST.FMT_THRESHOLD.value;
             readback_data_var[1] = field_storage.INTR_TEST.RX_THRESHOLD.value;
             readback_data_var[2] = field_storage.INTR_TEST.ACQ_THRESHOLD.value;
@@ -4012,11 +4012,11 @@ module i2c_reg (
             readback_data_var[11] = field_storage.INTR_TEST.TX_THRESHOLD.value;
             readback_data_var[12] = field_storage.INTR_TEST.ACQ_STRETCH.value;
         end
-        if(rd_mux_addr == 8'hc) begin
+        if(rd_mux_addr == 9'hc) begin
             readback_data_var[0] = field_storage.SMBUS_CTRL.SMBSUS.value;
             readback_data_var[4] = field_storage.SMBUS_CTRL.SMBALERT.value;
         end
-        if(rd_mux_addr == 8'h10) begin
+        if(rd_mux_addr == 9'h10) begin
             readback_data_var[0] = field_storage.CTRL.ENABLEHOST.value;
             readback_data_var[1] = field_storage.CTRL.ENABLETARGET.value;
             readback_data_var[2] = field_storage.CTRL.LLPBK.value;
@@ -4026,7 +4026,7 @@ module i2c_reg (
             readback_data_var[6] = field_storage.CTRL.TX_STRETCH_CTRL_EN.value;
             readback_data_var[7] = field_storage.CTRL.ACQ_START_STOP_EN.value;
         end
-        if(rd_mux_addr == 8'h14) begin
+        if(rd_mux_addr == 9'h14) begin
             readback_data_var[0] = hwif_in.STATUS.FMTFULL.next;
             readback_data_var[1] = hwif_in.STATUS.RXFULL.next;
             readback_data_var[2] = hwif_in.STATUS.FMTEMPTY.next;
@@ -4039,102 +4039,102 @@ module i2c_reg (
             readback_data_var[9] = hwif_in.STATUS.ACQEMPTY.next;
             readback_data_var[10] = hwif_in.STATUS.ACK_CTRL_STRETCH.next;
         end
-        if(rd_mux_addr == 8'h18) begin
+        if(rd_mux_addr == 9'h18) begin
             readback_data_var = hwif_in.RDATA.rd_data;
         end
-        if(rd_mux_addr == 8'h24) begin
+        if(rd_mux_addr == 9'h24) begin
             readback_data_var[11:0] = field_storage.HOST_FIFO_CONFIG.RX_THRESH.value;
             readback_data_var[27:16] = field_storage.HOST_FIFO_CONFIG.FMT_THRESH.value;
         end
-        if(rd_mux_addr == 8'h28) begin
+        if(rd_mux_addr == 9'h28) begin
             readback_data_var[11:0] = field_storage.TARGET_FIFO_CONFIG.TX_THRESH.value;
             readback_data_var[27:16] = field_storage.TARGET_FIFO_CONFIG.ACQ_THRESH.value;
         end
-        if(rd_mux_addr == 8'h2c) begin
+        if(rd_mux_addr == 9'h2c) begin
             readback_data_var[11:0] = hwif_in.HOST_FIFO_STATUS.FMTLVL.next;
             readback_data_var[27:16] = hwif_in.HOST_FIFO_STATUS.RXLVL.next;
         end
-        if(rd_mux_addr == 8'h30) begin
+        if(rd_mux_addr == 9'h30) begin
             readback_data_var[11:0] = hwif_in.TARGET_FIFO_STATUS.TXLVL.next;
             readback_data_var[27:16] = hwif_in.TARGET_FIFO_STATUS.ACQLVL.next;
         end
-        if(rd_mux_addr == 8'h34) begin
+        if(rd_mux_addr == 9'h34) begin
             readback_data_var[0] = field_storage.OVRD.TXOVRDEN.value;
             readback_data_var[1] = field_storage.OVRD.SCLVAL.value;
             readback_data_var[2] = field_storage.OVRD.SDAVAL.value;
         end
-        if(rd_mux_addr == 8'h38) begin
+        if(rd_mux_addr == 9'h38) begin
             readback_data_var[15:0] = hwif_in.VAL.SCL_RX.next;
             readback_data_var[31:16] = hwif_in.VAL.SDA_RX.next;
         end
-        if(rd_mux_addr == 8'h3c) begin
+        if(rd_mux_addr == 9'h3c) begin
             readback_data_var[12:0] = field_storage.TIMING0.THIGH.value;
             readback_data_var[28:16] = field_storage.TIMING0.TLOW.value;
         end
-        if(rd_mux_addr == 8'h40) begin
+        if(rd_mux_addr == 9'h40) begin
             readback_data_var[9:0] = field_storage.TIMING1.T_R.value;
             readback_data_var[24:16] = field_storage.TIMING1.T_F.value;
         end
-        if(rd_mux_addr == 8'h44) begin
+        if(rd_mux_addr == 9'h44) begin
             readback_data_var[12:0] = field_storage.TIMING2.TSU_STA.value;
             readback_data_var[28:16] = field_storage.TIMING2.THD_STA.value;
         end
-        if(rd_mux_addr == 8'h48) begin
+        if(rd_mux_addr == 9'h48) begin
             readback_data_var[8:0] = field_storage.TIMING3.TSU_DAT.value;
             readback_data_var[28:16] = field_storage.TIMING3.THD_DAT.value;
         end
-        if(rd_mux_addr == 8'h4c) begin
+        if(rd_mux_addr == 9'h4c) begin
             readback_data_var[12:0] = field_storage.TIMING4.TSU_STO.value;
             readback_data_var[28:16] = field_storage.TIMING4.T_BUF.value;
         end
-        if(rd_mux_addr == 8'h50) begin
+        if(rd_mux_addr == 9'h50) begin
             readback_data_var[29:0] = field_storage.TIMEOUT_CTRL.VAL.value;
             readback_data_var[30] = field_storage.TIMEOUT_CTRL.MODE.value;
             readback_data_var[31] = field_storage.TIMEOUT_CTRL.EN.value;
         end
-        if(rd_mux_addr == 8'h54) begin
+        if(rd_mux_addr == 9'h54) begin
             readback_data_var[6:0] = field_storage.TARGET_ID.ADDRESS0.value;
             readback_data_var[13:7] = field_storage.TARGET_ID.MASK0.value;
             readback_data_var[20:14] = field_storage.TARGET_ID.ADDRESS1.value;
             readback_data_var[27:21] = field_storage.TARGET_ID.MASK1.value;
         end
-        if(rd_mux_addr == 8'h58) begin
+        if(rd_mux_addr == 9'h58) begin
             readback_data_var = hwif_in.ACQDATA.rd_data;
         end
-        if(rd_mux_addr == 8'h60) begin
+        if(rd_mux_addr == 9'h60) begin
             readback_data_var[30:0] = field_storage.HOST_TIMEOUT_CTRL.VAL.value;
         end
-        if(rd_mux_addr == 8'h64) begin
+        if(rd_mux_addr == 9'h64) begin
             readback_data_var[30:0] = field_storage.TARGET_TIMEOUT_CTRL.VAL.value;
             readback_data_var[31] = field_storage.TARGET_TIMEOUT_CTRL.EN.value;
         end
-        if(rd_mux_addr == 8'h68) begin
+        if(rd_mux_addr == 9'h68) begin
             readback_data_var[7:0] = field_storage.TARGET_NACK_COUNT.TARGET_NACK_COUNT.value;
         end
-        if(rd_mux_addr == 8'h6c) begin
+        if(rd_mux_addr == 9'h6c) begin
             readback_data_var[8:0] = field_storage.TARGET_ACK_CTRL.NBYTES.value;
         end
-        if(rd_mux_addr == 8'h70) begin
+        if(rd_mux_addr == 9'h70) begin
             readback_data_var[7:0] = hwif_in.ACQ_FIFO_NEXT_DATA.DATA.next;
         end
-        if(rd_mux_addr == 8'h74) begin
+        if(rd_mux_addr == 9'h74) begin
             readback_data_var[30:0] = field_storage.HOST_NACK_HANDLER_TIMEOUT.VAL.value;
             readback_data_var[31] = field_storage.HOST_NACK_HANDLER_TIMEOUT.EN.value;
         end
-        if(rd_mux_addr == 8'h78) begin
+        if(rd_mux_addr == 9'h78) begin
             readback_data_var[0] = field_storage.CONTROLLER_EVENTS.NACK.value;
             readback_data_var[1] = field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value;
             readback_data_var[2] = field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value;
             readback_data_var[3] = field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value;
         end
-        if(rd_mux_addr == 8'h7c) begin
+        if(rd_mux_addr == 9'h7c) begin
             readback_data_var[0] = field_storage.TARGET_EVENTS.TX_PENDING.value;
             readback_data_var[1] = field_storage.TARGET_EVENTS.BUS_TIMEOUT.value;
             readback_data_var[2] = field_storage.TARGET_EVENTS.ARBITRATION_LOST.value;
             readback_data_var[3] = field_storage.TARGET_EVENTS.START_DETECT.value;
             readback_data_var[4] = field_storage.TARGET_EVENTS.STOP_DETECT.value;
         end
-        if(rd_mux_addr == 8'h80) begin
+        if(rd_mux_addr == 9'h80) begin
             readback_data_var[0] = hwif_in.SMBUS_STATUS.SMBSUS.next;
             readback_data_var[4] = hwif_in.SMBUS_STATUS.SMBALERT.next;
         end

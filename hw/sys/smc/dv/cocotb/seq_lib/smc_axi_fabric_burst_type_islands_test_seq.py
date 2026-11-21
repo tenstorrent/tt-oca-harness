@@ -158,10 +158,10 @@ GPIO_LAST = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM") - 1
 CPU_STRB_SCRATCH = 12
 
 WDT_REGS = tuple(
-    (name, smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE0_WDT_{name}_BASE_ADDR"))
+    (name, smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_{name}_BASE_ADDR"))
     for name in ("CTRL", "COUNT", "SCALED_COUNT", "FEED", "KEY", "CMP")
 )
-WDT_KEY_REG = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR")
+WDT_KEY_REG = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR")
 WDT_KEY = 0x51F15E  # wdt.rdl: the magic key that unlocks the next write to any other register
 
 FENCE = (

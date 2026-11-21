@@ -156,7 +156,8 @@ PAST_EXTENT_CELLS = (
     (
         "wdt",
         _extent_end(
-            "SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR", "SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE"
+            "SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR",
+            "SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SIZE",
         ),
         RESP_DECERR,
     ),

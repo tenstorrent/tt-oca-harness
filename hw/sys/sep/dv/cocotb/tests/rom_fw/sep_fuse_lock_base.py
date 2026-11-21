@@ -81,7 +81,7 @@ LOCKED_READ_FIELDS = ("CLASS_KEY", "RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DI
 
 
 def bl1_locked_read_nmi(field: str) -> str:
-    addr = RegBlock("SEP_EFUSE_MAP").addr(field)
+    addr = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").addr(field)
     return (
         f"LOCK_RD_NMI={field} N=0x00000001 MC=0x{MCAUSE_NMI_LOAD_BUS_ERROR:08X} DSEAC=0x{addr:08X}"
     )
@@ -95,11 +95,11 @@ BOOT_FAILURE_TOKENS = (
 )
 
 KEY_AND_UID_LOCK_BITS = {
-    name: RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
+    name: RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
     for name in ("CLASS_KEY", "CHIPLET_UID", "SIP_UID", "SYS_UID")
 }
 EXTRA_LOCK_BITS = {
-    name: RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
+    name: RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
     for name in ("RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DIGEST")
 }
 ALL_LOCK_BITS = {**KEY_AND_UID_LOCK_BITS, **EXTRA_LOCK_BITS}
@@ -108,7 +108,7 @@ for _bit in ALL_LOCK_BITS.values():
     FUSE_SECRET_READ_LOCK_MASK |= 1 << _bit
 
 # efuse_shadow_probe_o puts OTP word i at bits 32*i; LOCKS[31:0] is word 0.
-_LOCKS_WORD = sym("SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4
+_LOCKS_WORD = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4
 
 
 def bl1_locks_echo() -> str:

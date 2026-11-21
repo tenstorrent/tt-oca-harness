@@ -109,7 +109,7 @@ NOT_LAUNCHED = (0, 0, 0)
 
 #: hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl, SPARE0: a writable word nothing else
 #: reads. The marker image (hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev_marker.preload)
-#: sets it at the offset sep_addr.h gives SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR.
+#: sets it at the offset sep_addr.h gives SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR.
 SPARE0_MARKER = 0xA5C3_5A3C
 #: SEC_DISABLE_TOKEN_I[7] from the generated sep_addr.h map. The register is sw = rw
 #: (hw/ip/efuse/regs/efuse_mmr.rdl); no TOKEN_EOP write follows, so no token match is triggered.

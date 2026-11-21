@@ -96,7 +96,7 @@
 |===
 |Checker |Contract
 |CHK-ALERTS-ZERO
-|Generator and distribution error and alert status are clear. The four status registers read are the generator's `0x10915054` / `0x10915050` and the distribution block's `0x1091583c` / `0x10915838`, each required to be zero.
+|Generator and distribution error and alert status are clear. The four status registers read are the generator's `0x10915054` / `0x10915050` and the distribution block's `0x1091403c` / `0x10914038`, each required to be zero.
 |CHK1
 |Decorrelated output matches the golden model.
 |CHK2
@@ -1084,7 +1084,7 @@ RAM was wiped.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope*: The aperture is the same `sep_crypto` demux rule at `AbrRegMapBaseAddr` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`) the ML-DSA leaves use. The ML-KEM windows sit higher in the same 64 KB region; offsets resolve from the vendor `abr_reg.rdl` by symbol. `MLKEM_CTRL` is writable only while `MLKEM_STATUS.READY` is set. A write to a busy engine is dropped with no error, and the previous `VALID` would otherwise be read as this command's completion. keyGen takes the two seeds d and z over the bus and produces both keys. Encapsulation takes the message randomness m over the bus as well as the encapsulation key, which is what makes the ciphertext a fixed function of published inputs rather than a value only a round trip could check. Under FIPS-203 implicit rejection the modified ciphertext produces a different shared key rather than an error, and ACVP publishes that key. `MLKEM_STATUS.VALID` is sticky, so every command is separated by a `ZEROIZE`. The ML-KEM `NAME` and `VERSION` words are information only, not graded: `abr_reg.rdl` gives them no reset and no SEP document gives their values. A dead decode fails every window compare against the published vectors.
+*Scope*: The aperture is the same `sep_crypto` demux rule at `AbrRegMapBaseAddr` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`) the ML-DSA leaves use. The ML-KEM windows sit higher in the same 52 KB region; offsets resolve from the vendor `abr_reg.rdl` by symbol. `MLKEM_CTRL` is writable only while `MLKEM_STATUS.READY` is set. A write to a busy engine is dropped with no error, and the previous `VALID` would otherwise be read as this command's completion. keyGen takes the two seeds d and z over the bus and produces both keys. Encapsulation takes the message randomness m over the bus as well as the encapsulation key, which is what makes the ciphertext a fixed function of published inputs rather than a value only a round trip could check. Under FIPS-203 implicit rejection the modified ciphertext produces a different shared key rather than an error, and ACVP publishes that key. `MLKEM_STATUS.VALID` is sticky, so every command is separated by a `ZEROIZE`. The ML-KEM `NAME` and `VERSION` words are information only, not graded: `abr_reg.rdl` gives them no reset and no SEP document gives their values. A dead decode fails every window compare against the published vectors.
 
 *Anti-vacuity*: the ML-KEM read ports return zero before a command completes, so
 a compare against zero would pass on an engine that never ran -- every expected
@@ -1129,7 +1129,7 @@ both masters pipelining at once.
 
 [arabic]
 . Bring up in `no_cpu`. Read each identity word alone on `s_axi` and keep the values as the reference for every read below (CHK-ABR-ID-REF).
-. On `s_axi`, program one read window over the whole ABR aperture (`0x1094_0000`..`0x1094_FFFF`) before `m_axi` reads.
+. On `s_axi`, program one read window over the whole ABR aperture (`0x1094_0000`..`0x1094_CFFF`) before `m_axi` reads.
 . Read `MLDSA_VERSION1` alone on each master as the control (CHK-ABR-PIPE-CTRL).
 . In each leg below, issue all of the leg's reads in the same cycle by driving the VIP master sequence directly. Record every AR and R handshake on the TB pins (CHK-ABR-PIPE-RID, CHK-ABR-PIPE-OVERLAP).
 . On each master, issue pipelines of depth 1, 2, 3, 4 and 8 of `MLDSA_VERSION1` (CHK-ABR-PIPE-DEPTH-M-AXI, CHK-ABR-PIPE-DEPTH-S-AXI).
@@ -1209,7 +1209,7 @@ rest of the register. Inside the register map, an access to a word that no
 register or memory window owns returns no bus error: the vendored register
 block has no address check (`adams_bridge.adoc:107-108`). The response codes and
 the read data of such a hole word are the "Hole in Extent" cell of the ABR row
-of the generated SEP memory map (`hw/sys/sep/regs/gen/adoc/memory_map.adoc:66`,
+of the generated SEP memory map (`hw/sys/sep/regs/gen/adoc/memory_map.adoc:62`,
 "OKAY, 0x0 / OKAY"), which the default hole response of the SEP register
 description generates (`hw/sys/sep/regs/include/sep_memory_map.rdl`, `ocah_hole_resp`); a
 difference between it and the specification is a specification question and not
@@ -1253,7 +1253,7 @@ partial-written. The map end is 4 bytes past the highest register
 states. Each expected response is the one the SEP memory map states for that
 word (`env/sep_decode_resp.py`). The dead words are the first two past the end,
 the last word of the window, the `+0x4000` mirror of every graded register that
-lands past the end, and two seeded words.
+lands past the end and inside the window, and two seeded words.
 . Inside the register map, at the upper neighbour of the counter (`+0x8204`) and at one seeded word that no generated register address and no memory window of the ABR block owns, read at AxSIZE=2, write all ones, read back, write zero, read back, and read every graded register against its primed or captured value. The all-ones write shows that the word stores nothing, and the zero write clears bits of a primed register that the word aliases onto.
 . Every register written is restored to its entry value.
 . Around every access of the leaf, the entry reads and the restore included, read the bench AHB counters into `abr_top` (`abr_ahb_xfer_count_o`, `abr_ahb_wait_count_o`, `abr_ahb_err_count_o`, `SEP_TB_ARCH.adoc`) before the request and after the response. The error count must not move (CHK-ABR-AHB-HRESP); a full-word access with an OKAY response at a word that a generated ABR register address or memory window owns must raise the transfer count (CTRL-ABR-AHB-TAP); the transfer and wait-clock deltas of each access are logged (INFO-ABR-AHB-RESP).
@@ -1290,13 +1290,13 @@ lands past the end, and two seeded words.
 |CHK-ABR-SIZE-RD-NARROW-RW
 |Byte and halfword reads of the counter return the addressed bytes of its seeded value, and every other byte lane of the R beat reads zero.
 |CHK-ABR-UNPOP-RD
-|A 32-bit read at every dead word past the register map answers the response code and read data the SEP memory map's Past Extent column states, while every read-write register holds a nonzero value, so an aliased read returns data. Where the map states OKAY, every byte lane of the R beat also reads zero. `adams_bridge.adoc` (aperture-decode paragraph): the crypto demux refuses every access past the register map.
+|A 32-bit read at every dead word past the register map answers the response code and read data the SEP memory map's Past Extent column states, while every read-write register holds a nonzero value, so an aliased read returns data. Where the map states OKAY, every byte lane of the R beat also reads zero. `adams_bridge.adoc` (aperture-decode paragraph): the ABR wrapper refuses every access past the register map.
 |CHK-ABR-UNPOP-WR
 |An all-ones word write at every dead word answers the map's write code, the word reads back as the map states, and all five read-write registers and eight identity words read their primed or captured values afterwards.
 |CHK-ABR-UNPOP-PARTIAL
 |A byte, a halfword and a three-byte write at the first dead word past the map and at the last word of the window are each refused with the map's write code and leave every graded register unchanged. Where the map answers a word write OKAY, the write reaches ABR and the expected refusal is SLVERR (`hw/sys/sep/doc/adams_bridge.adoc`, "ABR access size").
 |CHK-ABR-INMAP-HOLE
-|At each of the two in-extent hole words the read answers the response code, the read data (0) and the whole R beat that the "Hole in Extent" cell of the SEP memory map states, both writes answer the write code of that cell, the readback returns the same code and data, exactly two AW handshakes at the word appear on the `s_axi` pins, and no graded register moves. A DUT that answers an error inside the extent, returns non-zero data or non-zero byte lanes, stores the written value, or aliases the word onto a graded register fails. The response class is `hw/sys/sep/doc/adams_bridge.adoc:107-108`; the codes and the data are `hw/sys/sep/regs/gen/adoc/memory_map.adoc:66`, accepted as the golden by decision (see Objective). The leaf logs, per word, the response, the data and the R beat of the read, both write responses, the readback, the AW count and the moved registers.
+|At each of the two in-extent hole words the read answers the response code, the read data (0) and the whole R beat that the "Hole in Extent" cell of the SEP memory map states, both writes answer the write code of that cell, the readback returns the same code and data, exactly two AW handshakes at the word appear on the `s_axi` pins, and no graded register moves. A DUT that answers an error inside the extent, returns non-zero data or non-zero byte lanes, stores the written value, or aliases the word onto a graded register fails. The response class is `hw/sys/sep/doc/adams_bridge.adoc:107-108`; the codes and the data are `hw/sys/sep/regs/gen/adoc/memory_map.adoc:62`, accepted as the golden by decision (see Objective). The leaf logs, per word, the response, the data and the R beat of the read, both write responses, the readback, the AW count and the moved registers.
 |CHK-ABR-SIZE-RESTORE
 |Every register written reads back its entry value.
 |CHK-ABR-AHB-HRESP
@@ -1555,7 +1555,7 @@ this image's load of that address is not evidence for that contract.
 
 *Functional Coverage*: owner window 745, `sep_entropy_delivery_cg` bins `cp_pool_access` (9 bins), `cp_pool_status_read` (`level_kept`, `cause_kept`) and `cp_pool_pic` (5 bins). The window opens after CHK-POOL-LOW-HIGH and closes after CHK-EMPTY-SLVERR and the class floor of CHK-POOL-LEVEL-STEP; the body of the leaf between them is graded inside the window, and any FAIL raises and closes it. The housekeeping after the close (stop of the capture and the drain, `CHK-ALERTS-ZERO`, `CHK5_pool`) is outside. Each bin samples the value that its check compares, so no pass label is used: `w_live_slverr_kept` and `w_unmapped_slverr_kept` (a SLVERR write with the level unchanged at the next `STATUS` read; `CHK-WRITE-SLVERR`, `CHK-WRITE-ORDER`, `CHK-POOL-LEVEL-STEP` class `write`), `pop_okay_level_dec` (`CHK-POOL-LEVEL-STEP` class `pop`, `CHK-HALF-READ`, `CHK-POP-DATA`), `empty_pop_slverr` (`CHK-EMPTY-SLVERR`), `upper_status_slverr0` and `upper_cause_slverr0` (`CHK-HALF-READ`), `upper_data_slverr0_no_pop` (`CHK-HALF-READ` and class `upper_data`), `unmapped_rd_slverr0` and `past_extent_rd_slverr0` (`CHK-UNMAPPED`), `level_kept` (class `status`), `cause_kept` (the stall-phase `cause` pair), `low_fall` (`CHK-POOL-LOW-LOW`, `CHK-POOL-LOW-EDGE`), `low_rise` and `low_rehigh` (`CHK-POOL-LOW-EDGE`: the edge samples only with `pool_low` 1, the flag that check compares), `stall_rise` (`CHK-STALL-ASSERT`) and `stall_held` (`CHK-STALL-DURATION`). No bin depends on the seed.
 
-*Scope*: The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`). It fills from the native EDN endpoint after the shared entropy bring-up. Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick. Fill waits on the live `pool_low` flag, not on an occupancy watermark. `STALL_POLL_CAP` is the DV ceiling of the fill-stall poll; the stall threshold is not stated.
+*Scope*: The block is a 4 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`). It fills from the native EDN endpoint after the shared entropy bring-up. Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick. Fill waits on the live `pool_low` flag, not on an occupancy watermark. `STALL_POLL_CAP` is the DV ceiling of the fill-stall poll; the stall threshold is not stated.
 
 *Anti-vacuity*: fill is observed as `pool_low` 0 and `fifo_level` greater than 0 before any refusal is
 scored; a clear of `pool_low` is claimed only after it read 1 at empty. An accepted pop happens before the empty-pop SLVERR. `[36]` is seen

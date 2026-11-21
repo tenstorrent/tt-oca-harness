@@ -40,7 +40,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 # comes from its own generated symbol: the registers are 64-bit and sit on an
 # 8-byte stride, so a base-plus-4*index walk addresses the upper half of every
 # other one and reads zero there.
-SCRATCH_ADDRS = tuple(sym(f"SEP_SCRATCH_COLD_SCRATCH_{i}__REG_ADDR") for i in range(8))
+SCRATCH_ADDRS = tuple(sym(f"SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_{i}__REG_ADDR") for i in range(8))
 SCRATCH_WORDS = len(SCRATCH_ADDRS)
 
 RESP_OKAY = 0

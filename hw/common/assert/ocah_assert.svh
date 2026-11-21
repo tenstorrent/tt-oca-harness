@@ -32,6 +32,26 @@
     $error("[%s] Static assertion failed. %s", `OCAH_STRINGIFY(__name), __msg); \
   end
 
+// OCAH_ASSERT_XBAR_PAGE_OWNER checks at elaboration that every rule of the crossbar address map
+// __map that reaches a 4 KiB page leads to the same port, so no page is split between two
+// ports. Rules into __exempt_port, when given, are not checked. It expands to a generate block
+// labelled __name.
+`define OCAH_ASSERT_XBAR_PAGE_OWNER(__name, __map, __exempt_port = -1)                     \
+  for (genvar ocah_rule_i = 0; ocah_rule_i < $size(__map); ocah_rule_i++) begin : __name     \
+    for (genvar ocah_rule_j = ocah_rule_i + 1; ocah_rule_j < $size(__map); ocah_rule_j++)    \
+    begin : gen_pair                                                                         \
+      `OCAH_ASSERT_STATIC(PageOwnedByOnePort_A,                                              \
+          __map[ocah_rule_i].idx == __map[ocah_rule_j].idx                                   \
+          || __map[ocah_rule_i].idx == (__exempt_port)                                       \
+          || __map[ocah_rule_j].idx == (__exempt_port)                                       \
+          || ((64'(__map[ocah_rule_i].end_addr) - 64'd1) >> 12)                              \
+             < (64'(__map[ocah_rule_j].start_addr) >> 12)                                    \
+          || ((64'(__map[ocah_rule_j].end_addr) - 64'd1) >> 12)                              \
+             < (64'(__map[ocah_rule_i].start_addr) >> 12),                                   \
+          "Two crossbar ports share a 4 KiB page.")                                          \
+    end                                                                                      \
+  end
+
 // The assertion macro bodies live in ocah_assert_standard_macros.svh. Each body is
 // guarded by `ifdef OCAH_INC_ASSERT, so it expands to nothing for tools that do not compile
 // assertions in. OCAH_INC_ASSERT is defined below only when assertions are enabled, and can

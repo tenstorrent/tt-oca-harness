@@ -87,10 +87,10 @@ class Island:
 
 _D = DECERR
 ISLANDS = (
-    Island("C0_WDT", "smc_cluster_core0_wdt", 0x0, 0x20, 0x24, 0x3FC, RW, RW, _D),
-    Island("C1_WDT", "smc_cluster_core1_wdt", 0x400, 0x420, 0x424, 0x7FC, RW, RW, _D),
-    Island("C2_WDT", "smc_cluster_core2_wdt", 0x800, 0x820, 0x824, 0xBFC, RW, RW, _D),
-    Island("C3_WDT", "smc_cluster_core3_wdt", 0xC00, 0xC20, 0xC24, 0xFFC, RW, RW, _D),
+    Island("C0_WDT", "smc_cluster_wdt_wrap.core0_wdt", 0x0, 0x20, 0x24, 0x3FC, RW, RW, _D),
+    Island("C1_WDT", "smc_cluster_wdt_wrap.core1_wdt", 0x400, 0x420, 0x424, 0x7FC, RW, RW, _D),
+    Island("C2_WDT", "smc_cluster_wdt_wrap.core2_wdt", 0x800, 0x820, 0x824, 0xBFC, RW, RW, _D),
+    Island("C3_WDT", "smc_cluster_wdt_wrap.core3_wdt", 0xC00, 0xC20, 0xC24, 0xFFC, RW, RW, _D),
     Island("DFX", "dfx_ctrl", 0xB800, 0xB814, 0xB818, 0xBFFC, "ro(sw=r)", RW, _D),
     Island(
         "MAILBOX",
@@ -142,11 +142,19 @@ ISLANDS = (
         _D,
     ),
     Island(
-        "EFUSE_MAP", "smc_efuse_map", 0x7000, 0x73FC, 0x7400, 0x7FFC, "ro(woset lock bits)", RW, _D
+        "EFUSE_MAP",
+        "smc_efuse_wrap.smc_efuse_map",
+        0x7000,
+        0x73FC,
+        0x7400,
+        0x7FFC,
+        "ro(woset lock bits)",
+        RW,
+        _D,
     ),
     Island(
         "EFUSE_IF",
-        "efuse_interface_ctrl",
+        "smc_efuse_wrap.efuse_interface_ctrl",
         0x8000,
         0x8018,
         0x801C,

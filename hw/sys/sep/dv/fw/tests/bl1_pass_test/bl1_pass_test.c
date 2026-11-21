@@ -49,7 +49,7 @@ static inline uint32_t mmio_read32(uint32_t addr) {
 // ---------------------------------------------------------------------------
 // Scratch register virtual console (same protocol as rom_virt_console.h)
 // ---------------------------------------------------------------------------
-#define SCRATCH2_ADDR SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
+#define SCRATCH2_ADDR SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
 
 #define VCONSOLE_OP_ASCII (0u << 1)
 
@@ -174,14 +174,15 @@ static int bl1_verify_bl0_state(void) {
 // in mdseac; the core drops the load data, so the 0xBADCAB1E the eFuse returns
 // with the error never reaches a register.
 // ---------------------------------------------------------------------------
-#define EFUSE_LOCKS_ADDR SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
+#define EFUSE_LOCKS_ADDR SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
 
 // Read-lock bits of the class key and both RMA token digests.
 #define FUSE_SECRET_READ_LOCK_MASK 0x0000A800u
 
-#define CLASS_KEY_ADDR SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
-#define RMA_SIP_TOKEN_ADDR SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
-#define RMA_CHIPLET_TOKEN_ADDR SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
+#define CLASS_KEY_ADDR SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
+#define RMA_SIP_TOKEN_ADDR SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
+#define RMA_CHIPLET_TOKEN_ADDR \
+    SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
 
 #define NMI_VEC_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR
 #define NMI_VEC_LOCK_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR
@@ -395,7 +396,7 @@ static inline void bl1_outbound_filter_init(void) {
 // default, so it is usable only after bl1_outbound_filter_init(); cold_scratch
 // is a SEP register and works from the first instruction.
 // ---------------------------------------------------------------------------
-#define VERDICT_ADDR SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#define VERDICT_ADDR SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define TEST_PASS_CODE 0xACAFACA1u
 #define TEST_FAIL_CODE 0xDEADBEEFu
 

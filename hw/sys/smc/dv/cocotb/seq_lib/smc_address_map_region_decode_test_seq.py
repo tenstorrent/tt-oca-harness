@@ -72,15 +72,15 @@ from smc_reg import (  # noqa: E402
 _ROM_IMAGE = _REPO / "hw" / "sys" / "smc" / "dv" / "assets" / "smc_rom_default.hex"
 
 # --- WDT region: four 1 KiB instances, CMP is the last register of each ---------
-WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
-WDT3_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_CMP_BASE_ADDR")
-_WDT_STRIDE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR") - smc_addr(
-    "SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR"
+WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR")
+WDT3_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CMP_BASE_ADDR")
+_WDT_STRIDE = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR") - smc_addr(
+    "SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR"
 )
 # First address past the last WDT instance. No block in the generated map
 # starts there (the next one is the reset unit at +0x2000), so the error slave
 # must answer.
-WDT_REGION_BEYOND = smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR") + _WDT_STRIDE
+WDT_REGION_BEYOND = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR") + _WDT_STRIDE
 
 # --- system control: reset unit + misc wrap ----------------------------------------
 RESET_UNIT_SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR")
@@ -142,7 +142,9 @@ UART_LAST_LSR = smc_indexed_addr(
 )
 
 # --- security / timing / DFT ------------------------------------------------------------------
-EFUSE_READ_REQ_TIMEOUT = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
+EFUSE_READ_REQ_TIMEOUT = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR"
+)
 TELEMETRY0_STATUS = smc_indexed_addr(
     "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR", 0
 )

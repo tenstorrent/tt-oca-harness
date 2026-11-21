@@ -35,15 +35,15 @@ HEADER = ROOT / "hw/sys/sep/regs/gen/c/sep_addr.h"
 RDL_DIR = ROOT / "hw/sys/sep/regs/blocks"
 
 # Block instance -> its base address symbol in sep_addr.h. Extend as needed.
-RDL_BLOCKS = {"sep_efuse_map": "SEP_EFUSE_MAP"}
+RDL_BLOCKS = {"sep_efuse_map": "SEP_EFUSE_WRAP_SEP_EFUSE_MAP"}
 
 # Prefixes stripped so doc shorthand (`LC_STATE`) matches the full symbol
-# (SEP_EFUSE_MAP_LC_STATE).
+# (SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE).
 PREFIXES = (
-    "SEP_EFUSE_MAP_",
+    "SEP_EFUSE_WRAP_SEP_EFUSE_MAP_",
     "SEP_CPU_CTRL_",
     "SEP_RESET_CTRL_",
-    "SEP_SCRATCH_",
+    "SEP_SCRATCH_WRAP_",
     "SEP_LIFECYCLE_CTRL_",
 )
 

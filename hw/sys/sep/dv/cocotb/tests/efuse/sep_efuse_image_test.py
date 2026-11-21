@@ -87,7 +87,7 @@ _SENSE_DONE_MASK = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_se
 # image, so every burn target is a known 0->1 bit. Its word offset and width come
 # from the generated map. Global fuse bit index = word*32 + bit.
 _UID_FIELD = SepEfuseImage.field("CHIPLET_UID")
-_UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
+_UID_WORD0 = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
 assert _UID_FIELD.word == _UID_WORD0, "CHIPLET_UID offset disagrees with the generated map"
 _UID_NBITS = _UID_FIELD.n_words * WORD_BITS
 _NUM_BURN = 10

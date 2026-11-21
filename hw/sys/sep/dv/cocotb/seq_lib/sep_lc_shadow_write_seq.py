@@ -31,8 +31,8 @@ from env.sep_lcc_golden import LCC_FEAT_CTRL, feat_ctrl_expected, lc_state_name
 from pyuvm import uvm_sequence
 from sep_reg_meta import RegBlock, sep_reg, sym
 
-LC_STATE_SHADOW = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
-_LC_STATE_MAP = RegBlock("SEP_EFUSE_MAP")
+LC_STATE_SHADOW = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
+_LC_STATE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 LC_STATE_BYTE_MASK = _LC_STATE_MAP.field_mask("LC_STATE", "lc_state")
 LC_STATE_UPPER_MASK = _LC_STATE_MAP.field_mask("LC_STATE", "rsvd")
 # FEAT_CTRL is one 64-bit register read as two 32-bit words; the upper word

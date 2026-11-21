@@ -862,10 +862,10 @@ module sep_fcov (
   localparam logic [31:0] BootRomEnd = BootRomBase + 32'(SEP_TOP_SEP_BOOT_ROM_SIZE);
   localparam logic [31:0] SpiBase = SPI_CONTROLLER_REG_MAP_BASE_ADDR;
   localparam logic [31:0] SpiEnd = SpiBase + SPI_CONTROLLER_REG_MAP_SIZE;
-  localparam logic [31:0] ColdBase = SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] ColdEnd = ColdBase + SEP_SCRATCH_COLD_REG_MAP_SIZE;
-  localparam logic [31:0] WarmBase = SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] WarmEnd = WarmBase + SEP_SCRATCH_WARM_REG_MAP_SIZE;
+  localparam logic [31:0] ColdBase = SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] ColdEnd = ColdBase + SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_SIZE;
+  localparam logic [31:0] WarmBase = SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] WarmEnd = WarmBase + SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_SIZE;
 
   // Inbound filter entry bank: 16 RDL array entries at a fixed stride.
   localparam logic [31:0] FiltBase = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
@@ -1133,15 +1133,15 @@ module sep_fcov (
 
   // The remap and filter banks are arrays of RDL entries; each window runs
   // from entry 0 to the end of the last entry.
-  localparam logic [31:0] AliasBankBase = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] AliasBankEnd = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REG_MAP_BASE_ADDR +
-      LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_SIZE;
-  localparam logic [31:0] ApBankBase = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] ApBankEnd = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR +
-      AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE;
-  localparam logic [31:0] SteeBankBase = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] SteeBankEnd = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR +
-      STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE;
+  localparam logic [31:0] AliasBankBase = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] AliasBankEnd = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REG_MAP_BASE_ADDR +
+      SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_SIZE;
+  localparam logic [31:0] ApBankBase = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] ApBankEnd = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR +
+      SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_SIZE;
+  localparam logic [31:0] SteeBankBase = SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] SteeBankEnd = SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR +
+      SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_SIZE;
   localparam logic [31:0] OutFiltBankBase = OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
   localparam logic [31:0] OutFiltBankEnd = OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_31__REG_MAP_BASE_ADDR +
       OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_SIZE;
@@ -1154,8 +1154,8 @@ module sep_fcov (
     if (in_blk(a, SEP_CPU_CTRL_REG_MAP_BASE_ADDR, SEP_CPU_CTRL_REG_MAP_SIZE)) return BLK_CPU_CTRL;
     if (in_blk(a, SECURE_DMA_REG_MAP_BASE_ADDR, SECURE_DMA_REG_MAP_SIZE)) return BLK_DMA;
     if (in_blk(a, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) return BLK_WDT;
-    if (in_blk(a, ColdBase, SEP_SCRATCH_COLD_REG_MAP_SIZE)) return BLK_SCRATCH_COLD;
-    if (in_blk(a, WarmBase, SEP_SCRATCH_WARM_REG_MAP_SIZE)) return BLK_SCRATCH_WARM;
+    if (in_blk(a, ColdBase, SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_SIZE)) return BLK_SCRATCH_COLD;
+    if (in_blk(a, WarmBase, SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_SIZE)) return BLK_SCRATCH_WARM;
     if (in_blk(a, SEP_RESET_CTRL_REG_MAP_BASE_ADDR, SEP_RESET_CTRL_REG_MAP_SIZE))
       return BLK_RESET_CTRL;
     if (in_blk(a, OTBN_REG_MAP_BASE_ADDR, OTBN_REG_MAP_SIZE)) return BLK_OTBN;
@@ -1169,11 +1169,22 @@ module sep_fcov (
       return BLK_LIFECYCLE;
     if (in_blk(a, KM_MAILBOX_SEP_REG_MAP_BASE_ADDR, KM_MAILBOX_SEP_REG_MAP_SIZE))
       return BLK_KM_MBOX;
-    if (in_blk(a, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE))
+    if (in_blk(
+            a,
+            SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR,
+            SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE
+        ))
       return BLK_EFUSE_MAP;
-    if (in_blk(a, EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR, EFUSE_INTERFACE_CTRL_REG_MAP_SIZE))
+    if (in_blk(
+            a,
+            SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR,
+            SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_SIZE
+        ))
       return BLK_EFUSE_CTRL;
-    if (in_blk(a, EFUSE_MMR_REG_MAP_BASE_ADDR, EFUSE_MMR_REG_MAP_SIZE)) return BLK_EFUSE_MMR;
+    if (in_blk(
+            a, SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR, SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_SIZE
+        ))
+      return BLK_EFUSE_MMR;
     if (in_blk(a, ABR_REG_MAP_BASE_ADDR, ABR_REG_MAP_SIZE)) return BLK_ABR;
     if (in_blk(a, ENTROPY_POOL_REG_MAP_BASE_ADDR, ENTROPY_POOL_REG_MAP_SIZE)) return BLK_POOL;
     if (in_blk(a, AXIL_MAILBOX_REG_MAP_BASE_ADDR, AXIL_MAILBOX_REG_MAP_SIZE)) return BLK_AXIL_MBOX;
@@ -3119,7 +3130,7 @@ module sep_fcov (
   // Every operation is frontdoor on EFUSE_PROGRAM_CTRL: the write carries the
   // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
   // PROGRAM_DONE or PROGRAM_STATUS (the refusal).
-  localparam logic [31:0] EfuseProgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] EfuseProgCtrl = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
   // Two lock bits per spare, and the assigned spare locks end where the RDL
   // reserved field of LOCKS_SPARE starts: 9 spares, slots 32-40
   // (otp_fuse_controller.adoc).
@@ -3131,13 +3142,13 @@ module sep_fcov (
   localparam int unsigned SpareIdxW = $clog2(SpareCount);
   // Spare k occupies SPARE_STRIDE bytes of the shadow map, so its OTP bit
   // range starts at (byte offset / 4) * 32 bits.
-  localparam int unsigned SpareStrideB  = SEP_EFUSE_MAP_SPARE1_REG_OFFSET -
-                                          SEP_EFUSE_MAP_SPARE0_REG_OFFSET;
-  localparam int unsigned SpareBitBase = (SEP_EFUSE_MAP_SPARE0_REG_OFFSET / 4) * 32;
+  localparam int unsigned SpareStrideB  = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE1_REG_OFFSET -
+                                          SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_REG_OFFSET;
+  localparam int unsigned SpareBitBase = (SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_REG_OFFSET / 4) * 32;
   localparam int unsigned SpareBitSpan = (SpareStrideB / 4) * 32;
   // Slot 32+k owns spare k's write lock at bit 2*(32+k) of the LOCKS vector,
   // which is where LOCKS_SPARE starts (otp_fuse_controller.adoc, sep_efuse_pkg).
-  localparam int unsigned SpareLockBase = (SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4) * 32;
+  localparam int unsigned SpareLockBase = (SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4) * 32;
 
   wire        efuse_prog_go = wr_ev && (aw_addr_q == EfuseProgCtrl) &&
       ((wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK) != 32'h0);
@@ -3270,7 +3281,7 @@ module sep_fcov (
   wire       demote_2_set = ef_demoted(demote_2_i, ef_dclr2, ef_dclr_v);
 
   // --- Lifecycle ---------------------------------------------------------
-  wire       lc_read = rd_ev && (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
+  wire       lc_read = rd_ev && (ar_addr_q == SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
   wire [3:0] lc_raw  = rd_data[3:0];
   // The shadow word carries {~raw, raw}. Requiring the complement means a
   // stuck-at or half-sensed word lands in no bin instead of scoring one.
@@ -3306,7 +3317,7 @@ module sep_fcov (
       sec_dis_release_seen_q;
   wire rd_cmpl = !in_reset && r_hs && (ar_out_q == 4'd1) && !r_multi_q;
   wire sec_dis_map_rd = rd_cmpl && sense_open && sec_dis_on &&
-      (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
+      (ar_addr_q == SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
   // SW_RESET_N is in the sep_reset_n domain. An OKAY read while sensing is
   // still open means the override has released that domain.
   wire sec_dis_reach_rd = rd_okay && sense_open && (cpu_reset_n_i === 1'b1) &&
@@ -5220,9 +5231,9 @@ module sep_fcov (
   localparam logic [31:0] FExtFirst = FShimLast + 32'd1;
   // Unit classes by aperture: the scratch banks, the system CSRs (alias remap
   // control to CPU control) and the mailboxes.
-  localparam logic [31:0] FScrBase = FapBaseSepScratchCold;
-  localparam logic [31:0] FScrLast = FapLastSepScratchWarm;
-  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemapCtrl;
+  localparam logic [31:0] FScrBase = FapBaseScratchCold;
+  localparam logic [31:0] FScrLast = FapLastScratchWarm;
+  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemap;
   localparam logic [31:0] FSysLast = FapLastSepCpuCtrl;
   localparam logic [31:0] FMbxBase = FapBaseAxilMailbox;
   localparam logic [31:0] FMbxLast = FapLastAxilMailbox;
@@ -6086,7 +6097,7 @@ module sep_fcov (
   logic [1:0] fx_writeback = '0;     // 1 fired_one_granule, 2 suppressed_multi_granule
   logic [1:0] fx_dbw = '0;           // 1 in, 2 out
   logic [1:0] fx_locked_write = '0;  // 1 in_cfg_lo, 2 in_cfg_hi
-  logic [1:0] fx_locked_range = '0;  // 1 start, 2 end
+  logic [1:0] fx_locked_range = '0;  // 1 start, 2 end, 3 unused word
 
   // Pass label of sep_fabric_row_response_matrix_test (owner 231),
   // sep_unmapped_access_policy_test (owner 755) and
@@ -6535,17 +6546,18 @@ module sep_fcov (
       bins out_fallthrough_allow = {4'b1_100};
       bins out_no_match = {4'b1_101};
     }
-    // A DECERR write to FILTER_CONFIG of a locked inbound entry, then a read
+    // A SLVERR write to FILTER_CONFIG of a locked inbound entry, then a read
     // that equals the value read before the write (owner
     // sep_fabric_inbound_filter_rule_matrix_test).
     cp_locked_write: coverpoint fx_locked_write iff (fx_locked_write != 2'd0) {
-      bins in_cfg_lo_decerr_kept = {2'd1}; bins in_cfg_hi_decerr_lock_kept = {2'd2};
+      bins in_cfg_lo_slverr_kept = {2'd1}; bins in_cfg_hi_slverr_lock_kept = {2'd2};
     }
-    // The same for START_ADDR and END_ADDR of a locked entry (owner
-    // sep_fabric_slot_csr_strobe_rand_test), sampled on the rise of
-    // slot_lock_pass.
+    // The same for START_ADDR, END_ADDR and the unused word after END_ADDR
+    // of a locked entry (owner sep_fabric_slot_csr_strobe_rand_test), sampled
+    // on the rise of slot_lock_pass.
     cp_locked_range_write: coverpoint fx_locked_range iff (fx_locked_range != 2'd0) {
-      bins start_decerr_kept = {2'd1}; bins end_decerr_kept = {2'd2};
+      bins start_slverr_kept = {2'd1}; bins end_slverr_kept = {2'd2};
+      bins hole_slverr_kept = {2'd3};
     }
   endgroup
 
@@ -6830,7 +6842,7 @@ module sep_fcov (
     cp_filter_csr_write: coverpoint fx_filter_csr_write iff (fx_filter_csr_write != 2'd0) {
       bins unlocked_lo_lands = {2'd1};
       bins unlocked_hi_lands = {2'd2};
-      bins locked_decerr_unchanged = {2'd3};
+      bins locked_slverr_unchanged = {2'd3};
     }
     // {write, latched TRANSFER_WIDTH} of each DMA AR and AW handshake with
     // AxLEN = 0.
@@ -6880,11 +6892,12 @@ module sep_fcov (
   // Rows and cells are the generated table
   // (hw/sys/sep/regs/gen/adoc/memory_map.adoc): {base, end, decoded extent}.
   // The base and the decoded extent of a unit row come from
-  // sep_top_addrmap_pkg, sep_reg.svh or sep_fcov_crypto_reg_addrs.svh; the aperture end of each row and the
-  // Reserved rows (13..20, 21..27) have no generated symbol and are copied
-  // from that table. Row 36 is a placeholder that matches no address.
+  // sep_top_addrmap_pkg, sep_reg.svh or sep_fcov_crypto_reg_addrs.svh; the
+  // aperture end of each row, the Reserved rows and the Past Extent cells
+  // (row_past, row_near) have no generated symbol and are copied from that
+  // table. Rows 15 and 36 are placeholders that match no address.
   // ---------------------------------------------------------------------
-  localparam int unsigned NRows = 38;
+  localparam int unsigned NRows = 42;
   localparam logic [31:0] RowBase[NRows] = '{
       32'(SEP_TOP_SECURE_DMA_BASE_ADDR),
       32'(SEP_TOP_WDT_TIMER_BASE_ADDR),
@@ -6901,69 +6914,77 @@ module sep_fcov (
       32'(SEP_TOP_ABR_BASE_ADDR),
       32'h1005_0000,
       32'h1080_4000,
-      32'h1091_4000,
+      32'hFFFF_FFFF,
       32'h1092_1000,
-      32'h1093_0600,
-      32'h1096_0000,
-      32'h10C0_0000,
+      32'h1093_1000,
+      32'h1095_1000,
+      32'h10B0_1000,
       32'h1200_0000,
-      32'h1080_2040,
-      32'h1080_20C0,
+      32'h1094_D000,
+      32'h1080_2100,
       32'h10A1_0280,
       32'h10A1_0380,
-      32'h10A2_0400,
-      32'h10A2_1200,
+      32'h1090_C000,
+      32'h10A2_2000,
       32'h10A3_2000,
       32'(AXIL_MAILBOX_REG_MAP_BASE_ADDR),
-      32'(EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR),
-      32'(EFUSE_MMR_REG_MAP_BASE_ADDR),
-      FapBaseLocalMasterAliasRemapCtrl,
-      FapBaseOutboundFilterCtrl,
+      32'(SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR),
+      32'(SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR),
+      FapBaseLocalMasterAliasRemap,
+      FapBaseOutboundFilterCtrlWrap,
       32'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR),
       32'(SEP_CPU_CTRL_REG_MAP_BASE_ADDR),
       32'(SPI_CONTROLLER_REG_MAP_BASE_ADDR),
       32'hFFFF_FFFF,
-      32'(SEP_TOP_TRNG_BASE_ADDR)
+      32'(SEP_TOP_TRNG_BASE_ADDR),
+      32'h1091_9000,
+      32'h10A0_8000,
+      32'(SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR),
+      32'(SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR)
   };
   localparam logic [31:0] RowEnd[NRows] = '{
       32'h1080_0FFF,
       32'h1080_1FFF,
       32'h1080_3FFF,
-      32'h1090_FFFF,
+      32'h1090_BFFF,
       32'h1091_0FFF,
       32'h1091_2FFF,
       32'h1091_3FFF,
-      32'h1091_57FF,
       32'h1091_5FFF,
+      32'h1091_4FFF,
       32'h1091_6FFF,
-      32'h1091_FFFF,
+      32'h1091_8FFF,
       32'h1092_0FFF,
-      32'h1094_FFFF,
+      32'h1094_CFFF,
       32'h107F_FFFF,
       32'h108F_FFFF,
-      32'h1091_4FFF,
+      32'h0000_0000,
       32'h1092_FFFF,
       32'h1093_FFFF,
       32'h109F_FFFF,
       32'h10FF_FFFF,
       32'h1FFF_FFFF,
-      32'h1080_207F,
+      32'h1094_FFFF,
       32'h1080_2FFF,
       32'h10A1_02FF,
       32'h10A1_FFFF,
-      32'h10A2_0FFF,
+      32'h1090_FFFF,
       32'h10A2_FFFF,
       32'h10AF_FFFF,
-      32'h10A0_FFFF,
-      32'h1093_04FF,
-      32'h1093_05FF,
+      32'h10A0_7FFF,
+      32'h1093_03FF,
+      32'h1093_07FF,
       32'h10A1_01FF,
-      32'h10A2_03FF,
-      32'h10A2_11FF,
+      32'h10A2_0FFF,
+      32'h10A2_1FFF,
       32'h10A3_1FFF,
-      32'h10BF_FFFF,
+      32'h10B0_0FFF,
       32'h0000_0000,
-      32'h1091_7FFF
+      32'h1091_7FFF,
+      32'h1091_FFFF,
+      32'h10A0_FFFF,
+      32'h1080_207F,
+      32'h1080_20FF
   };
   localparam logic [31:0] RowExt[NRows] = '{
       32'(SEP_TOP_SECURE_DMA_SIZE),
@@ -6995,25 +7016,58 @@ module sep_fcov (
       32'h0,
       32'h0,
       32'(AXIL_MAILBOX_REG_MAP_SIZE),
-      32'(EFUSE_INTERFACE_CTRL_REG_MAP_SIZE),
-      32'(EFUSE_MMR_REG_MAP_SIZE),
-      32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_TOTAL_SIZE),
+      32'(SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_SIZE),
+      32'(SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_SIZE),
+      32'(SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_TOTAL_SIZE),
       32'(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE),
       32'(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE),
       32'(SEP_CPU_CTRL_REG_MAP_SIZE),
       32'(SPI_CONTROLLER_REG_MAP_SIZE),
       32'h0,
-      32'h0
+      32'h0,
+      32'h0,
+      32'h0,
+      32'(SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_SIZE),
+      32'(SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_SIZE)
   };
   // Row ids: 0 DMA, 1 WDT, 2 reset control, 3 OTBN, 4 AES, 5 HMAC, 6 KMAC,
   // 7 CSRNG, 8 EDN, 9 entropy source, 10 LC, 11 KM mailbox, 12 ABR,
-  // 13..20 and 21..27 the Reserved rows, 28 AXI-Lite mailbox, 29 eFuse
-  // interface control, 30 eFuse token registers, 31 alias remap array,
-  // 32 outbound filter array, 33 inbound filter array, 34 SEP CPU control,
-  // 35 SPI host, 36 none, 37 External TRNG with no TRNG fitted.
+  // 13, 14, 16..27, 38 and 39 the Reserved rows, 15 none, 28 AXI-Lite
+  // mailbox, 29 eFuse interface control, 30 eFuse token registers, 31 alias
+  // remap array, 32 outbound filter array, 33 inbound filter array, 34 SEP
+  // CPU control, 35 SPI host, 36 none, 37 External TRNG with no TRNG fitted,
+  // 40 cold scratch, 41 warm scratch.
   function automatic int row_of(input logic [31:0] a);
     for (int r = 0; r < NRows; r++) if (in_rng(a, RowBase[r], RowEnd[r])) return r;
     return -1;
+  endfunction
+
+  function automatic bit row_rsvd(input int r);
+    return ((r >= 13) && (r <= 27)) || (r == 38) || (r == 39);
+  endfunction
+
+  // Past Extent cell of a unit row: {stated, response, read data}. A row
+  // that is not stated has no Past Extent cell with a bin.
+  function automatic logic [34:0] row_past(input int r);
+    unique case (r)
+      0, 1, 4, 7, 8, 12, 35: return {1'b1, FRespSlverr, 32'hBADC_AB1E};
+      2, 9, 10, 11, 28, 29, 30, 34, 40, 41: return {1'b1, FRespSlverr, 32'h0};
+      32, 33: return {1'b1, FRespDecerr, 32'hBADC_AB1E};
+      default: return '0;
+    endcase
+  endfunction
+
+  // Offset of the end of a Past Extent note span: from the end of the extent
+  // up to this offset the unit answers the Past Extent response with read
+  // data 0xFFFFFFFF. 0 for a row with no such note.
+  function automatic logic [31:0] row_near(input int r);
+    unique case (r)
+      0: return 32'h200;
+      1, 35: return 32'h40;
+      4: return 32'h100;
+      7, 8: return 32'h80;
+      default: return 32'h0;
+    endcase
   endfunction
 
   // Array slot tail: the words of a slot stride past the slot's registers.
@@ -7022,49 +7076,42 @@ module sep_fcov (
     return ((a - base) % stride) >= size;
   endfunction
 
-  // cp_row_cell code {row[5:0], kind[1:0]}: kind 0 reserved, 1 hole, 2 past,
-  // 3 live. The response and the 32-bit data lane equal the cell. The SPI
-  // host past-extent write takes code {36, 2}, so its read and write are
-  // separate bins.
+  // cp_row_cell code {row[5:0], kind[1:0]}: kind 0 a Reserved row, or the
+  // Past Extent note span of a unit row; 1 hole, 2 past, 3 live. The response
+  // and the 32-bit data lane equal the cell. The SPI host past-extent writes
+  // take row 36, so its reads and writes are separate bins.
   function automatic logic [7:0] row_cell(input logic [31:0] a, input logic wr,
                                           input logic [1:0] resp, input logic [31:0] lane);
     int r;
     bit is_reg;
     bit refused;
+    bit zero_okay;
     r = row_of(a);
     if (r < 0) return 8'hFF;
     refused = (resp == FRespDecerr) && (wr || (lane == 32'hBADC_AB1E));
-    if ((r >= 13) && (r <= 27)) return refused ? 8'({6'(r), 2'd0}) : 8'hFF;
+    if (row_rsvd(r)) return refused ? 8'({6'(r), 2'd0}) : 8'hFF;
     if (r == 37) return (refused && (trng_rsp_on_i !== 1'b1)) ? 8'({6'(r), 2'd0}) : 8'hFF;
+    if (a >= RowBase[r] + RowExt[r]) begin
+      logic [34:0] pc;
+      bit near;
+      pc   = row_past(r);
+      near = (a < RowBase[r] + row_near(r));
+      if (pc[34] && (resp == pc[33:32]) && (wr || (lane == (near ? 32'hFFFF_FFFF : pc[31:0]))))
+        return 8'({((r == 35) && wr) ? 6'd36 : 6'(r), near ? 2'd0 : 2'd2});
+      return 8'hFF;
+    end
+    zero_okay = (resp == FRespOkay) && (wr || (lane == 32'h0));
     if (r >= 28) begin
-      bit past;
-      bit zero_okay;
-      past      = (a >= RowBase[r] + RowExt[r]);
-      zero_okay = (resp == FRespOkay) && (wr || (lane == 32'h0));
       unique case (r)
         28: begin
-          if ((resp == FRespSlverr) && (wr || (lane == 32'h0)))
-            return 8'({6'(r), past ? 2'd2 : 2'd1});
-        end
-        29: begin
-          if (past && (resp == FRespSlverr) && (wr || (lane == 32'hBADC_AB1E)))
-            return 8'({6'(r), 2'd2});
-        end
-        30, 34: begin
-          if (past && refused) return 8'({6'(r), 2'd2});
-          if ((r == 34) && zero_okay && in_rng(
-                  a,
-                  SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR + 32'd8,
-                  SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR - 32'd1
-              ))
-            return 8'({6'(r), 2'd1});
+          if ((resp == FRespSlverr) && (wr || (lane == 32'h0))) return 8'({6'(r), 2'd1});
         end
         31: begin
           if (zero_okay && slot_tail(
                   a,
                   RowBase[r],
-                  32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE),
-                  32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_SIZE)
+                  32'(SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_STRIDE),
+                  32'(SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_SIZE)
               ))
             return 8'({6'(r), 2'd1});
         end
@@ -7077,23 +7124,24 @@ module sep_fcov (
               ))
             return 8'({6'(r), 2'd1});
         end
-        35: begin
-          if (past && refused) return wr ? 8'({6'd36, 2'd2}) : 8'({6'(r), 2'd2});
+        34: begin
+          if (zero_okay && in_rng(
+                  a,
+                  SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR + 32'd8,
+                  SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR - 32'd1
+              ))
+            return 8'({6'(r), 2'd1});
         end
         default: ;
       endcase
       return 8'hFF;
     end
-    if (a >= RowBase[r] + RowExt[r]) begin
-      if ((resp == FRespDecerr) && (wr || (lane == 32'hBADC_AB1E))) return 8'({5'(r), 2'd2});
-      return 8'hFF;
-    end
     is_reg = (r inside {3, 5, 6, 9, 12}) ? fcov_crypto_reg_addr({a[31:2], 2'b00}) : 1'b1;
-    if (is_reg) return (!wr && (resp == FRespOkay)) ? 8'({5'(r), 2'd3}) : 8'hFF;
+    if (is_reg) return (!wr && (resp == FRespOkay)) ? 8'({6'(r), 2'd3}) : 8'hFF;
     if (r inside {3, 5, 6}) begin
-      if ((resp == FRespSlverr) && (wr || (lane == 32'hFFFF_FFFF))) return 8'({5'(r), 2'd1});
+      if ((resp == FRespSlverr) && (wr || (lane == 32'hFFFF_FFFF))) return 8'({6'(r), 2'd1});
     end else if (r inside {9, 12}) begin
-      if ((resp == FRespOkay) && (wr || (lane == 32'h0))) return 8'({5'(r), 2'd1});
+      if (zero_okay) return 8'({6'(r), 2'd1});
     end
     return 8'hFF;
   endfunction
@@ -7124,40 +7172,51 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_aperture_reserved_access_cg";
     cp_row_cell: coverpoint row_c iff (own) {
-      bins rsvd_10802040 = {8'd84};
-      bins rsvd_108020c0 = {8'd88};
+      bins rsvd_1094d000 = {8'd84};
+      bins rsvd_10802100 = {8'd88};
       bins rsvd_10a10280 = {8'd92};
       bins rsvd_10a10380 = {8'd96};
-      bins rsvd_10a20400 = {8'd100};
-      bins rsvd_10a21200 = {8'd104};
+      bins rsvd_1090c000 = {8'd100};
+      bins rsvd_10a22000 = {8'd104};
       bins rsvd_10a32000 = {8'd108};
+      bins rsvd_10919000 = {8'd152};
+      bins rsvd_10a08000 = {8'd156};
       bins hole_mbox = {8'd113};
       bins past_mbox = {8'd114};
       bins past_efuse_ctrl = {8'd118};
       bins past_efuse_token = {8'd122};
       bins hole_alias_remap = {8'd125};
       bins hole_filter = {8'd129, 8'd133};
+      bins past_filter = {8'd130, 8'd134};
       bins hole_cpu_ctrl = {8'd137};
+      bins past_cpu_ctrl = {8'd138};
+      bins near_spi_rd = {8'd140};
+      bins near_spi_wr = {8'd144};
       bins past_spi_rd = {8'd142};
       bins past_spi_wr = {8'd146};
       bins trng_unowned = {8'd148};
+      bins past_scratch_cold = {8'd162};
+      bins past_scratch_warm = {8'd166};
       bins rsvd_10050000 = {8'd52};
       bins rsvd_10804000 = {8'd56};
-      bins rsvd_10914000 = {8'd60};
       bins rsvd_10921000 = {8'd64};
-      bins rsvd_10930600 = {8'd68};
-      bins rsvd_10960000 = {8'd72};
-      bins rsvd_10c00000 = {8'd76};
+      bins rsvd_10931000 = {8'd68};
+      bins rsvd_10951000 = {8'd72};
+      bins rsvd_10b01000 = {8'd76};
       bins rsvd_12000000 = {8'd80};
       bins hole_otbn = {8'd13};
       bins hole_hmac = {8'd21};
       bins hole_kmac = {8'd25};
       bins hole_esrc = {8'd37};
       bins hole_abr = {8'd49};
+      bins near_dma = {8'd0};
+      bins near_wdt = {8'd4};
+      bins near_aes = {8'd16};
+      bins near_csrng = {8'd28};
+      bins near_edn = {8'd32};
       bins past_dma = {8'd2};
       bins past_wdt = {8'd6};
       bins past_reset_ctrl = {8'd10};
-      bins past_otbn = {8'd14};
       bins past_aes = {8'd18};
       bins past_csrng = {8'd30};
       bins past_edn = {8'd34};
@@ -7202,22 +7261,25 @@ module sep_fcov (
     } iff (own) {
       `SEP_FCOV_ROW_SI(rsvd_10050000, 8'd52)
       `SEP_FCOV_ROW_SI(rsvd_10804000, 8'd56)
-      `SEP_FCOV_ROW_SI(rsvd_10914000, 8'd60)
       `SEP_FCOV_ROW_SI(rsvd_10921000, 8'd64)
-      `SEP_FCOV_ROW_SI(rsvd_10930600, 8'd68)
-      `SEP_FCOV_ROW_SI(rsvd_10960000, 8'd72)
-      `SEP_FCOV_ROW_SI(rsvd_10c00000, 8'd76)
+      `SEP_FCOV_ROW_SI(rsvd_10931000, 8'd68)
+      `SEP_FCOV_ROW_SI(rsvd_10951000, 8'd72)
+      `SEP_FCOV_ROW_SI(rsvd_10b01000, 8'd76)
       `SEP_FCOV_ROW_SI(rsvd_12000000, 8'd80)
       `SEP_FCOV_ROW_SI(hole_otbn, 8'd13)
       `SEP_FCOV_ROW_SI(hole_hmac, 8'd21)
       `SEP_FCOV_ROW_SI(hole_kmac, 8'd25)
       `SEP_FCOV_ROW_SI(hole_esrc, 8'd37)
       `SEP_FCOV_ROW_SI(hole_abr, 8'd49)
+      `SEP_FCOV_ROW_SI(near_dma, 8'd0)
+      `SEP_FCOV_ROW_SI(near_wdt, 8'd4)
+      `SEP_FCOV_ROW_SI(near_aes, 8'd16)
+      `SEP_FCOV_ROW_SI(near_csrng, 8'd28)
+      `SEP_FCOV_ROW_SI(near_edn, 8'd32)
       `SEP_FCOV_ROW_SI(past_dma, 8'd2)
       `SEP_FCOV_ROW_SI(past_wdt, 8'd6)
       bins past_reset_ctrl_lsu_r = {{8'd10, 2'b00}};
       bins past_reset_ctrl_lsu_w = {{8'd10, 2'b01}};
-      `SEP_FCOV_ROW_SI(past_otbn, 8'd14)
       `SEP_FCOV_ROW_SI(past_aes, 8'd18)
       `SEP_FCOV_ROW_SI(past_csrng, 8'd30)
       `SEP_FCOV_ROW_SI(past_edn, 8'd34)
@@ -7715,8 +7777,8 @@ module sep_fcov (
   function automatic logic [3:0] twin_class(input logic [31:0] a);
     if (in_rng(
             a,
-            32'(SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
-            32'(SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR + SEP_TOP_SEP_SCRATCH_COLD_SIZE - 1)
+            32'(SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
+            32'(SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR + SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SIZE - 1)
         ))
       return 4'd1;
     if ({a[31:2], 2'b00} == AES_CTRL_SHADOWED_REG_ADDR) return 4'd2;
@@ -8458,7 +8520,8 @@ module sep_fcov (
   endfunction
 
   // Filter register of an LSU address: {valid, out, idx[4:0], reg[1:0]};
-  // reg 0 FILTER_CONFIG, 1 START_ADDR, 2 END_ADDR.
+  // reg 0 FILTER_CONFIG, 1 START_ADDR, 2 END_ADDR, 3 the unused word after
+  // END_ADDR.
   typedef struct packed {
     logic       v;
     logic       out;
@@ -8489,6 +8552,9 @@ module sep_fcov (
     end else if (off == FFiltEnd) begin
       f.v = 1'b1;
       f.r = 2'd2;
+    end else if (off == FFiltEnd + 32'd8) begin
+      f.v = 1'b1;
+      f.r = 2'd3;
     end
     return f;
   endfunction
@@ -8691,7 +8757,7 @@ module sep_fcov (
         else if ((fx_dwp_resp_q == FRespOkay) && ((fx_rl & fx_dwp_s_q & 8'hF0) != 8'h00) &&
                  ((lq_rdata[63:32] & m[63:32]) == (fx_dwp_d_q[63:32] & m[63:32])))
           c_filter_csr_write = 2'd2;
-        else if ((fx_dwp_resp_q == FRespDecerr) && fx_dwp_lock_q && ((fx_rl & fx_dwp_s_q) != 8'h00) &&
+        else if ((fx_dwp_resp_q == FRespSlverr) && fx_dwp_lock_q && ((fx_rl & fx_dwp_s_q) != 8'h00) &&
                  ((lq_rdata & m) == ({8'h00, fx_dwp_snap_q} & m)))
           c_filter_csr_write = 2'd3;
       end
@@ -8708,12 +8774,12 @@ module sep_fcov (
             ) && slot_tail(
                 lq_a,
                 RowBase[31],
-                32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE),
-                32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_SIZE)
+                32'(SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_STRIDE),
+                32'(SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_SIZE)
             ))
           c_array_tail = 3'd1;
         if (z && in_rng(
-                lq_a, RowBase[33], RowEnd[33]
+                lq_a, RowBase[33], RowBase[33] + RowExt[33] - 32'd1
             ) && slot_tail(
                 lq_a,
                 RowBase[33],
@@ -8722,7 +8788,7 @@ module sep_fcov (
             ))
           c_array_tail = 3'd2;
         if (z && in_rng(
-                lq_a, RowBase[32], RowEnd[32]
+                lq_a, RowBase[32], RowBase[32] + RowExt[32] - 32'd1
             ) && slot_tail(
                 lq_a,
                 RowBase[32],
@@ -8731,8 +8797,8 @@ module sep_fcov (
             ))
           c_array_tail = 3'd3;
         if ((lq_resp == FRespDecerr) && (lq_dir_w || (fx_lane32 == 32'hBADC_AB1E))) begin
-          if (lq_a == FapLastApOutputRemapCtrl + 32'd1) c_array_tail = 3'd4;
-          if (lq_a == FapLastSteeOutputRemapCtrl + 32'd1) c_array_tail = 3'd5;
+          if (lq_a == FapLastApOutputRemap + 32'd1) c_array_tail = 3'd4;
+          if (lq_a == FapLastSteeOutputRemap + 32'd1) c_array_tail = 3'd5;
         end
       end
       // Output-remap pass-through read.
@@ -8743,7 +8809,7 @@ module sep_fcov (
         logic bst, same;
         logic [63:0] m;
         // Write-back of a range write.
-        if (own_ifwin && (fx_f.r != 2'd0)) begin
+        if (own_ifwin && (fx_f.r inside {2'd1, 2'd2})) begin
           sw   = fx_f.out ? out_sw_q[fx_f.idx] : in_sw_q[fx_f.idx[3:0]];
           ew   = fx_f.out ? out_ew_q[fx_f.idx] : in_ew_q[fx_f.idx[3:0]];
           bst   = fx_f.out ? out_f[fx_f.idx].burst : in_f[fx_f.idx[3:0]].burst;
@@ -8776,14 +8842,14 @@ module sep_fcov (
   end
 
   // Pass label of cp_locked_range_write (owner
-  // sep_fabric_slot_csr_strobe_rand_test). The cell of a refused START_ADDR or
-  // END_ADDR write whose read-back kept the written lanes is held and samples
-  // only when slot_lock_pass rises inside the window of that leaf: the leaf
-  // writes 0 when it opens the window for one refused write, and 1 after the
-  // DECERR response, the read-back of the written lanes and the whole read of
-  // every register of the entry passed, holds it two clocks and writes 0. A
-  // FAIL closes the window; a window close or a reset drops the held cell. It
-  // gates a sample; it is never a DUT value and drives nothing.
+  // sep_fabric_slot_csr_strobe_rand_test). The cell of a refused START_ADDR,
+  // END_ADDR or unused-word write whose read-back kept the written lanes is
+  // held and samples only when slot_lock_pass rises inside the window of that
+  // leaf: the leaf writes 0 when it opens the window for one refused write, and
+  // 1 after the SLVERR response, the read-back of the written lanes and the
+  // whole read of every register of the entry passed, holds it two clocks and
+  // writes 0. A FAIL closes the window; a window close or a reset drops the
+  // held cell. It gates a sample; it is never a DUT value and drives nothing.
   int unsigned slot_lock_pass = 0;
   logic        fx_slk_pass_q = 1'b0;
   logic [1:0]  fx_slk_pend_q = '0;
@@ -8976,7 +9042,7 @@ module sep_fcov (
           end
           // Filter register writes.
           if (fx_f.v) begin
-            if ((lq_resp == FRespDecerr) && fx_lr_v_q && (fx_lr_w_q == lq_a[31:3]) &&
+            if ((lq_resp == FRespSlverr) && fx_lr_v_q && (fx_lr_w_q == lq_a[31:3]) &&
                 ((fx_f.r != 2'd0) || fx_f.out || filt_locked_i[fx_f.idx[3:0]])) begin
               fx_lk_v_q   <= 1'b1;
               fx_lk_f_q   <= fx_f;
@@ -14095,8 +14161,9 @@ module sep_fcov (
   wire [6:0] pbe_val = rd_data[6:0];
   wire [1:0] dbe_val = rd_data[1:0];
   // {hit, status bit} of an LSU address on the peripheral register bridge:
-  // 0 aes, 1 hmac, 2 kmac, 3 otbn, 6 wdt. CSRNG (4) and EDN (5) answer
-  // through the DRBG adapter, so no CPU access reaches their bridge bit.
+  // 0 aes, 1 hmac, 2 kmac, 3 otbn, 6 wdt. The owner faults no CSRNG (4) or
+  // EDN (5) word; sep_irq_ip_to_aggregator_test grades those two latches
+  // (sep_ras_cg).
   function automatic logic [3:0] flt_blk(input logic [31:0] a);
     if (in_blk(a, AES_REG_MAP_BASE_ADDR, AES_REG_MAP_SIZE)) return 4'b1_000;
     if (in_blk(a, HMAC_REG_MAP_BASE_ADDR, HMAC_REG_MAP_SIZE)) return 4'b1_001;
@@ -14146,7 +14213,8 @@ module sep_fcov (
       bins kmac = {3'd2};
       bins otbn = {3'd3};
       bins wdt = {3'd6};
-      ignore_bins no_access_reaches_bridge = {3'd4, 3'd5};
+      // csrng and edn: the owner faults neither block.
+      ignore_bins not_faulted_by_owner = {3'd4, 3'd5};
     }
     cp_set_size: coverpoint s.ss iff (s.ss_v) {
       bins one = {3'd1}; bins two = {3'd2}; bins three = {3'd3};
@@ -16871,7 +16939,7 @@ module sep_fcov (
   localparam logic [31:0] MrTrngLo = TRNG_APERTURE_MEM_BASE_ADDR;
   localparam logic [31:0] MrTrngHi = TRNG_APERTURE_MEM_BASE_ADDR + TRNG_APERTURE_MEM_SIZE;
   localparam logic [31:0] MrPoolStatus = ENTROPY_POOL_STATUS_REG_ADDR;
-  localparam logic [31:0] MrEfStatus = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
+  localparam logic [31:0] MrEfStatus = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
   localparam logic [31:0] MrClkGate = SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR;
   localparam logic [31:0] MrSwDbg = SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR;
   // Isolated-window read data (hw/sys/sep/doc/reset_controller.adoc,
@@ -18860,7 +18928,9 @@ module sep_fcov (
       mr_j_ar <= 32'(jtag_req_i.ar.addr);
     if (!mr_rst) mr_pw_v <= '0;
     else if (mr_own_rel && mr_j_r && !mr_secdis && !mr_fuse && in_blk(
-            mr_j_ar, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE
+            mr_j_ar,
+            SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR,
+            SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE
         )) begin
       mr_boot_t e;
       e      = '0;
@@ -18873,7 +18943,9 @@ module sep_fcov (
         mr_pw_wp             <= mr_pw_wp + 4'd1;
       end
     end else if (mr_own_rel && r_any && !mr_secdis && in_blk(
-            ar_addr_q, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE
+            ar_addr_q,
+            SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR,
+            SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE
         )) begin
       logic hit;
       hit = 1'b0;
@@ -21858,7 +21930,7 @@ module sep_fcov (
     if (in_rng(a, FapBaseWdtTimer, FapLastWdtTimer)) return 4'd2;
     if (in_rng(a, FapBaseHmac, FapLastHmac)) return 4'd3;
     if ({a[31:2], 2'b00} == SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR) return 4'd4;
-    if (in_rng(a, FapBaseSepScratchCold, FapLastSepScratchCold)) return 4'd5;
+    if (in_rng(a, FapBaseScratchCold, FapLastScratchCold)) return 4'd5;
     if (in_rng(a, FapBaseSecureDma, FapLastSecureDma)) return 4'd6;
     if ({a[31:3], 3'b000} == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) return 4'd7;
     if ({a[31:2], 2'b00} == SPI_CONTROLLER_CSID_REG_ADDR) return 4'd8;
@@ -28228,7 +28300,7 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   localparam logic [31:0] CxAbrBase = ABR_REG_MAP_BASE_ADDR;
   localparam logic [31:0] CxAbrExtEnd = ABR_REG_MAP_BASE_ADDR + ABR_REG_MAP_SIZE;
-  localparam logic [31:0] CxAbrApEnd = ABR_REG_MAP_BASE_ADDR + 32'h0001_0000;
+  localparam logic [31:0] CxAbrApEnd = FapLastAbr + 32'd1;
   function automatic logic cxb_in_abr(input logic [31:0] a);
     return (a >= CxAbrBase) && (a < CxAbrApEnd);
   endfunction
@@ -28387,7 +28459,8 @@ module sep_fcov (
     if (cy_own_abrsz && cxb_rd1 && cxb_in_abr(ar_addr_q)) begin
       x = '0;
       if (ar_addr_q >= CxAbrExtEnd) begin
-        if (lsu_r_resp_i == FRespDecerr) begin
+        if ((lsu_r_resp_i == FRespSlverr) &&
+            ((ar_addr_q[2] ? lsu_r_data_i[63:32] : lsu_r_data_i[31:0]) === 32'hBADC_AB1E)) begin
           x.aa   = 4'd10;
           x.aa_v = 1'b1;
         end
@@ -28426,7 +28499,7 @@ module sep_fcov (
       own = aw_addr_q[2] ? hi : lo;
       x = '0;
       if (aw_addr_q >= CxAbrExtEnd) begin
-        if (lsu_b_resp_i == FRespDecerr) begin
+        if (lsu_b_resp_i == FRespSlverr) begin
           x.aa   = ((lo == 2'd2) || (hi == 2'd2)) ? 4'd12 : 4'd11;
           x.aa_v = 1'b1;
         end
@@ -34748,52 +34821,54 @@ module sep_fcov (
   localparam int unsigned EfProgN = 64;  // x_prog_lifecycle N
   localparam int unsigned EfLatchWin = 4096;  // digest replacement after release
 
-  // Windows of 0x1093_0000 to 0x1093_FFFF (memory_map.adoc): shadow map,
-  // interface control, its unused tail, token registers, the span between the
-  // token registers and 0x1093_0600 (not declared), reserved.
+  // Windows of 0x1093_0000 to 0x1093_FFFF (memory_map.adoc): the eFuse
+  // wrapper page holds the interface control, the token registers and the
+  // shadow map, each with the words past its register extent; the Reserved row
+  // runs from the end of that 4 KiB page to the ABR aperture.
   localparam logic [2:0] EfWShadow = 3'd0;
   localparam logic [2:0] EfWCtrlIn = 3'd1;
   localparam logic [2:0] EfWCtrlPast = 3'd2;
   localparam logic [2:0] EfWTokIn = 3'd3;
-  localparam logic [2:0] EfWTokGap = 3'd4;
+  localparam logic [2:0] EfWTokPast = 3'd4;
   localparam logic [2:0] EfWRsvd = 3'd5;
+  localparam logic [2:0] EfWMapPast = 3'd6;
   localparam logic [2:0] EfWNone = 3'd7;
-  localparam logic [31:0] EfMapBase = SEP_EFUSE_MAP_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] EfMapEnd = EfMapBase + SEP_EFUSE_MAP_REG_MAP_SIZE;
-  localparam logic [31:0] EfCtrlBase = EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] EfCtrlEnd = EfCtrlBase + EFUSE_INTERFACE_CTRL_REG_MAP_SIZE;
-  localparam logic [31:0] EfMmrBase = EFUSE_MMR_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] EfMmrEnd = EfMmrBase + EFUSE_MMR_REG_MAP_SIZE;
-  localparam logic [31:0] EfRsvdBase = EfMapBase + 32'h0000_0600;
-  localparam logic [31:0] EfRsvdHigh = EfMapBase + 32'h0000_1000;
-  localparam logic [31:0] EfWinEnd = EfMapBase + 32'h0001_0000;
+  localparam logic [31:0] EfMapBase = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] EfMapEnd = EfMapBase + SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE;
+  localparam logic [31:0] EfCtrlBase = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] EfCtrlEnd = EfCtrlBase + SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_SIZE;
+  localparam logic [31:0] EfMmrBase = SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] EfMmrEnd = EfMmrBase + SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_SIZE;
+  localparam logic [31:0] EfRsvdBase = EfCtrlBase + 32'h0000_1000;
+  localparam logic [31:0] EfWinEnd = 32'(SEP_TOP_ABR_BASE_ADDR);
 
   function automatic logic [2:0] ef_win(input logic [31:0] a);
     if (in_win(a, EfMapBase, EfMapEnd)) return EfWShadow;
     if (in_win(a, EfCtrlBase, EfCtrlEnd)) return EfWCtrlIn;
     if (in_win(a, EfCtrlEnd, EfMmrBase)) return EfWCtrlPast;
     if (in_win(a, EfMmrBase, EfMmrEnd)) return EfWTokIn;
-    if (in_win(a, EfMmrEnd, EfRsvdBase)) return EfWTokGap;
+    if (in_win(a, EfMmrEnd, EfMapBase)) return EfWTokPast;
+    if (in_win(a, EfMapEnd, EfRsvdBase)) return EfWMapPast;
     if (in_win(a, EfRsvdBase, EfWinEnd)) return EfWRsvd;
     return EfWNone;
   endfunction
 
   // Register addresses of the interface control and token blocks.
-  localparam logic [31:0] EfStatus = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
-  localparam logic [31:0] EfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
-  localparam logic [31:0] EfRdCtrl = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR;
-  localparam logic [31:0] EfPgData = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR;
-  localparam logic [31:0] EfRdData = EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR;
-  localparam logic [31:0] EfRdTmo = EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR;
-  localparam logic [31:0] EfPgTmo = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR;
-  localparam logic [31:0] EfTokSip = EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR;
-  localparam logic [31:0] EfTokChip = EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR;
-  localparam logic [31:0] EfTokSec = EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR;
-  localparam logic [31:0] EfTokEop = EFUSE_MMR_TOKEN_EOP_REG_ADDR;
-  localparam logic [31:0] EfMatchSip = EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR;
-  localparam logic [31:0] EfMatchChip = EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR;
-  localparam logic [31:0] EfMatchSec = EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR;
-  localparam logic [31:0] EfMatchFault = EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR;
+  localparam logic [31:0] EfStatus = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
+  localparam logic [31:0] EfPgCtrl = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] EfRdCtrl = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR;
+  localparam logic [31:0] EfPgData = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR;
+  localparam logic [31:0] EfRdData = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR;
+  localparam logic [31:0] EfRdTmo = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR;
+  localparam logic [31:0] EfPgTmo = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR;
+  localparam logic [31:0] EfTokSip = SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR;
+  localparam logic [31:0] EfTokChip = SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR;
+  localparam logic [31:0] EfTokSec = SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR;
+  localparam logic [31:0] EfTokEop = SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_ADDR;
+  localparam logic [31:0] EfMatchSip = SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR;
+  localparam logic [31:0] EfMatchChip = SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR;
+  localparam logic [31:0] EfMatchSec = SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR;
+  localparam logic [31:0] EfMatchFault = SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR;
   localparam logic [31:0] EfDemote1 = SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_ADDR;
   localparam logic [31:0] EfDemote2 = SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR;
 
@@ -34821,23 +34896,23 @@ module sep_fcov (
   localparam int unsigned EfFuseBits = sep_efuse_pkg::NumEfuseBits;
 
   // Shadow word index of each field: byte offset / 4 (sep_efuse_map.adoc).
-  localparam int unsigned EfWLocks = SEP_EFUSE_MAP_LOCKS_REG_OFFSET / 4;
-  localparam int unsigned EfWLocksSp = SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4;
-  localparam int unsigned EfWLc = SEP_EFUSE_MAP_LC_STATE_REG_OFFSET / 4;
-  localparam int unsigned EfWSboot = SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET / 4;
-  localparam int unsigned EfWTrans = SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET / 4;
-  localparam int unsigned EfWSipDis = SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET / 4;
-  localparam int unsigned EfWSysDis = SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET / 4;
-  localparam int unsigned EfWSipDig = SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET / 4;
-  localparam int unsigned EfWChipDig = SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET / 4;
-  localparam int unsigned EfWRevoke = SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET / 4;
-  localparam int unsigned EfWBl1 = SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET / 4;
-  localparam int unsigned EfWBl2 = SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET / 4;
-  localparam int unsigned EfWStatusRpt = SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET / 4;
-  localparam int unsigned EfWRomCtl = SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET / 4;
-  localparam int unsigned EfWSysclk = SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET / 4;
-  localparam int unsigned EfWSigners = SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET / 4;
-  localparam int unsigned EfWAlgs = SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET / 4;
+  localparam int unsigned EfWLocks = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET / 4;
+  localparam int unsigned EfWLocksSp = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4;
+  localparam int unsigned EfWLc = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET / 4;
+  localparam int unsigned EfWSboot = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET / 4;
+  localparam int unsigned EfWTrans = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET / 4;
+  localparam int unsigned EfWSipDis = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET / 4;
+  localparam int unsigned EfWSysDis = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET / 4;
+  localparam int unsigned EfWSipDig = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET / 4;
+  localparam int unsigned EfWChipDig = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET / 4;
+  localparam int unsigned EfWRevoke = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET / 4;
+  localparam int unsigned EfWBl1 = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET / 4;
+  localparam int unsigned EfWBl2 = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET / 4;
+  localparam int unsigned EfWStatusRpt = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET / 4;
+  localparam int unsigned EfWRomCtl = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET / 4;
+  localparam int unsigned EfWSysclk = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET / 4;
+  localparam int unsigned EfWSigners = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET / 4;
+  localparam int unsigned EfWAlgs = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET / 4;
   // CHIPLET_PUBK_REVOKE uses bits 25:0 (sep_efuse_map.adoc, CHIPLET_PUBK_REVOKE).
   localparam logic [31:0] EfRevokeAll = 32'h03FF_FFFF;
 
@@ -34846,48 +34921,48 @@ module sep_fcov (
   // spare8, in RDL field order). The LOCKS words are not a slot.
   localparam int unsigned EfSlots = 41;
   localparam logic [10:0] EfSlotOff[42] = '{
-      11'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SIP_UID_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SYS_UID_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE0_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE1_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE2_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE3_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE4_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE5_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE6_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE7_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_SPARE8_REG_OFFSET),
-      11'(SEP_EFUSE_MAP_REG_MAP_SIZE)
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_UID_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_UID_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE1_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE2_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE3_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE4_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE5_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE6_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE7_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE8_REG_OFFSET),
+      11'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE)
   };
   localparam logic [5:0] EfNoSlot = 6'd63;
   localparam logic [5:0] EfSlotSipDis = 6'd3;
@@ -35044,7 +35119,7 @@ module sep_fcov (
     logic [2:0] wn;
     logic wn_v;  // cp_window: window class
     logic rz;
-    logic rz_v;  // cp_rsvd_zone: 0 low, 1 high
+    logic rz_v;  // cp_rsvd_zone: 0 page past extent, 1 Reserved row
     logic [5:0] wr;
     logic wr_v;  // x_win_op_resp: {ignored, window, 0 rd / 1 wr, OKAY}
     logic [3:0] sf;
@@ -35062,15 +35137,16 @@ module sep_fcov (
   covergroup sep_efuse_map_geometry_cg with function sample (ef_geo_t s);
     option.per_instance = 1;
     option.name = "sep_efuse_map_geometry_cg";
-    // The span between the token registers and 0x1093_0600 is not declared.
     cp_window: coverpoint s.wn iff (s.wn_v) {
       bins shadow = {EfWShadow};
       bins ctrl_in = {EfWCtrlIn};
       bins ctrl_past = {EfWCtrlPast};
       bins tok_in = {EfWTokIn};
+      bins tok_past = {EfWTokPast};
+      bins map_past = {EfWMapPast};
       bins rsvd = {EfWRsvd};
     }
-    cp_rsvd_zone: coverpoint s.rz iff (s.rz_v) {bins low = {1'b0}; bins high = {1'b1};}
+    cp_rsvd_zone: coverpoint s.rz iff (s.rz_v) {bins page_past = {1'b0}; bins rsvd_row = {1'b1};}
     // Sampled with fuse_sense_done_i high, for the in-extent windows only.
     // The ignored accesses are those whose response no source states: a
     // shadow write, a read-locked shadow read, a STATUS write, a write to an
@@ -36984,7 +37060,7 @@ module sep_fcov (
     off = 11'(a - EfMapBase);
     if (ef_own_win) begin
       ef_geo(0, 6'(w));
-      if (w == EfWRsvd) ef_geo(1, 6'(a >= EfRsvdHigh));
+      if (w inside {EfWCtrlPast, EfWTokPast, EfWMapPast, EfWRsvd}) ef_geo(1, 6'(w == EfWRsvd));
       if ((fuse_sense_done_i === 1'b1) && (w inside {EfWShadow, EfWCtrlIn, EfWTokIn})) begin
         ign = ((w == EfWShadow) && wr) || ((w == EfWShadow) && !wr && ef_rlock(ef_slot_of(off))) ||
             (wr && (a == EfStatus)) || (wr && (a inside {EfPgData, EfRdData, EfMatchSip,
@@ -37019,15 +37095,15 @@ module sep_fcov (
     // The used-bit leg reads each narrow register with a 32-bit OKAY read.
     if (ef_own_fld && !wr && ok && (size == 3'd2) && (fuse_sense_done_i === 1'b1)) begin
       case (a)
-        SEP_EFUSE_MAP_LC_STATE_REG_ADDR: ef_geo(3, 6'd0);
-        SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR: ef_geo(3, 6'd1);
-        SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR: ef_geo(3, 6'd2);
-        SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR: ef_geo(3, 6'd3);
-        SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR: ef_geo(3, 6'd4);
-        SEP_EFUSE_MAP_ROM_CTL_REG_ADDR: ef_geo(3, 6'd5);
-        SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR: ef_geo(3, 6'd6);
-        SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR: ef_geo(3, 6'd7);
-        SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR: ef_geo(3, 6'd8);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR: ef_geo(3, 6'd0);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR: ef_geo(3, 6'd1);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR: ef_geo(3, 6'd2);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR: ef_geo(3, 6'd3);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR: ef_geo(3, 6'd4);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_ADDR: ef_geo(3, 6'd5);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR: ef_geo(3, 6'd6);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR: ef_geo(3, 6'd7);
+        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR: ef_geo(3, 6'd8);
         default: ;
       endcase
     end
@@ -37535,7 +37611,7 @@ module sep_fcov (
     // bit 3; a wrong outcome samples at once.
     if (ef_own_tr && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
         !ef_pg_stm) begin
-      if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 1)) begin
+      if (ef_pg_addr == 16'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 1)) begin
         if (ef_pg_tok[0]) begin
           if (landed) ef_lp_pend[0] <= 1'b1;
           else ef_lk(10, {5'd0, 1'b0, 1'b0, landed});
@@ -37543,7 +37619,7 @@ module sep_fcov (
           if (!landed) ef_lp_pend[1] <= 1'b1;
           else ef_lk(10, {5'd0, 1'b0, 1'b1, landed});
         end
-      end else if (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 2)) begin
+      end else if (ef_pg_addr == 16'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 2)) begin
         if (ef_pg_tok[1]) begin
           if (landed) ef_lp_pend[2] <= 1'b1;
           else ef_lk(10, {5'd0, 1'b1, 1'b0, landed});
@@ -37554,13 +37630,13 @@ module sep_fcov (
     // burned a program of bit 0 or bit 3 from TEST_DEV lands.
     if (ef_own_lock && ef_pg_data && ef_pg_en && !ef_pg_rqe && ef_pg_sensed && ef_pg_stmk &&
         !ef_pg_stm && ef_all_locked && (ef_lc == EfTd) &&
-        ((ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8)) ||
-         (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 3)))) begin
+        ((ef_pg_addr == 16'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8)) ||
+         (ef_pg_addr == 16'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 3)))) begin
       if (!landed) begin
         ef_lk(11, 8'd2);
       end else begin
         ef_xw_req <= ef_xw_req + 1;
-        ef_xw_req_bit3 <= (ef_pg_addr == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 3));
+        ef_xw_req_bit3 <= (ef_pg_addr == 16'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8 + 3));
       end
     end
   endtask
@@ -37658,7 +37734,7 @@ module sep_fcov (
           off = ef_pg_addr[12:3];
           s = ef_slot_of({1'b0, off});
           cls = 3'd7;
-          if (off < 10'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET)) cls = 3'd3;
+          if (off < 10'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET)) cls = 3'd3;
           else if (s inside {EfSlotSipDis, EfSlotSysDis}) cls = 3'd2;
           else if ((s >= EfSlotSpare0) && (s < 6'(EfSlots))) cls = 3'd4;
           else if ((s != 6'd0) && (s != EfNoSlot) && ((EfSlotOff[s+1] - EfSlotOff[s]) == 11'd32))
@@ -37830,10 +37906,10 @@ module sep_fcov (
           end
         end
         if (ef_all_locked && (ef_word(off[9:0]) != 32'h0) && (rd_data == ef_word(off[9:0]))) begin
-          if (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR) ef_lk(4, 8'd0);
-          if (ar_addr_q inside {SEP_EFUSE_MAP_LOCKS_REG_ADDR, SEP_EFUSE_MAP_LOCKS_REG_ADDR + 32'd4})
+          if (ar_addr_q == SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR) ef_lk(4, 8'd0);
+          if (ar_addr_q inside {SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_ADDR, SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_ADDR + 32'd4})
             ef_lk(4, 8'd1);
-          if (ar_addr_q == SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR) ef_lk(4, 8'd2);
+          if (ar_addr_q == SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR) ef_lk(4, 8'd2);
         end
       end
       if (ef_own_stm && (secure_tm_i === 1'b1) && (f != 3'd4)) begin
@@ -37873,12 +37949,13 @@ module sep_fcov (
   logic [31:0] ef_sw_jaw = '0, ef_sw_jw = '0, ef_sw_jpre = '0;
   function automatic logic [2:0] ef_sw_target(input logic [31:0] a);
     if (a[1:0] != 2'd0) return 3'd4;
-    if ((a >= SEP_EFUSE_MAP_LOCKS_REG_ADDR) && (a < SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR))
+    if ((a >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_ADDR) && (a < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR))
       return 3'd0;
-    if ((a >= SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR) && (a < SEP_EFUSE_MAP_LC_STATE_REG_ADDR))
+    if ((a >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR) && (a < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR))
       return 3'd1;
-    if ((a >= SEP_EFUSE_MAP_SIP_DIS_REG_ADDR) && (a < SEP_EFUSE_MAP_SYS_DIS_REG_ADDR)) return 3'd2;
-    if ((a >= SEP_EFUSE_MAP_SYS_DIS_REG_ADDR) && (a < SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR))
+    if ((a >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_REG_ADDR) && (a < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_ADDR))
+      return 3'd2;
+    if ((a >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_ADDR) && (a < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR))
       return 3'd3;
     return 3'd4;
   endfunction
@@ -39239,7 +39316,7 @@ module sep_fcov (
       ef_xw_bit3 <= ef_xw_req_bit3;
     end else if (ef_xw_pend) begin
       if (ef_sense_rise) ef_xw_sensed <= 1'b1;
-      if (ef_xw_sensed && rd_okay && (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR)) begin
+      if (ef_xw_sensed && rd_okay && (ar_addr_q == SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR)) begin
         r = ef_xw_bit3 ? 4'b1000 : 4'b0001;
         if (ef_own_lock) begin
           if (rd_data == {24'h0, ~r, r}) begin
@@ -39634,7 +39711,7 @@ module sep_fcov (
       ef_st_td <= (lc_raw == LcTestDev);
     end
     if (!in_reset && ef_cmd_pg && ef_st_td &&
-        (16'(ef_cmd_addr) == 16'(SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8))) begin
+        (16'(ef_cmd_addr) == 16'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET * 8))) begin
       ef_st_prog <= 1'b1;
       ef_st_sensed <= 1'b0;
     end else if (ef_sense_rise && ef_st_prog) begin
@@ -40131,7 +40208,7 @@ module sep_fcov (
   };
   localparam logic [31:0] KmBadcab = 32'hBADC_AB1E;
   // eFuse program control (efuse_interface_ctrl.adoc), at its SEP address.
-  localparam logic [31:0] KmEfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] KmEfPgCtrl = SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
   localparam logic [31:0] KmEfPgGo = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
   // DRBG sampler DATA-read states (architecture.adoc, table "Key Manager
   // DRBG sampler states"): idle, request, byte assembly, respond, timeout,
@@ -40858,15 +40935,15 @@ module sep_fcov (
       bins strap_stable_while_km_runs = {2'd2};
     }
     // {class (0 shadow map, 1 interface control, 2 token registers, 3 gap
-    // 0x1141C, 4 gap 0x11574, 5 reserved 0x11600), response (0 OKAY, 1 SLVERR
-    // with 0xBADCAB1E)}.
+    // 0x1101C, 4 gap 0x11474, 5 gap 0x11C00), response (0 OKAY, 1 SLVERR with
+    // read data 0x0 in gaps 3 and 4, 0xBADCAB1E in gap 5)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
-      bins gap_1141c_slverr = {4'b011_1};
-      bins gap_11574_slverr = {4'b100_1};
-      bins reserved_11600_slverr = {4'b101_1};
+      bins gap_1101c_slverr = {4'b011_1};
+      bins gap_11474_slverr = {4'b100_1};
+      bins gap_11c00_slverr = {4'b101_1};
       ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
@@ -40903,7 +40980,6 @@ module sep_fcov (
       bins efuse_map = {5'd5};
       bins efuse_ctrl = {5'd6};
       bins efuse_token = {5'd7};
-      bins rsv_11600 = {5'd8};
       bins kpv = {5'd9};
       bins kmcsr = {5'd10};
       bins rsv_14800 = {5'd11};
@@ -40921,8 +40997,8 @@ module sep_fcov (
       bins rsv_1c800 = {5'd23};
       bins vrom = {5'd24};
     }
-    // {outcome (0 DECERR on reserved, 1 SLVERR past extent, 2 SLVERR with
-    // 0xBADCAB1E in an eFuse gap), direction (0 read, 1 write)}.
+    // {outcome (0 DECERR on reserved, 1 SLVERR past extent, 2 SLVERR in an
+    // eFuse gap), direction (0 read, 1 write)}.
     cp_if_decode_outcome: coverpoint v[2:0] iff (pt == 5'd1) {
       bins reserved_decerr_rd = {3'b00_0};
       bins reserved_decerr_wr = {3'b00_1};
@@ -40939,7 +41015,7 @@ module sep_fcov (
       bins rom[] = {7'h00, 7'h01, 7'h04};
       bins sram[] = {7'h08, 7'h09, 7'h0C};
       bins mailbox[] = {7'h11, 7'h13, 7'h14};
-      bins efuse_map[] = {7'h18, 7'h19, 7'h1C};
+      bins efuse_map[] = {7'h18, 7'h19, 7'h1B, 7'h1C};
       bins efuse_ctrl[] = {7'h20, 7'h21, 7'h23, 7'h24};
       bins efuse_token[] = {7'h28, 7'h29, 7'h2B, 7'h2C};
       bins kpv[] = {7'h30, 7'h31, 7'h33, 7'h34};
@@ -40950,8 +41026,8 @@ module sep_fcov (
       bins kmac[] = {7'h59, 7'h5B, 7'h5C};
       bins hmac[] = {7'h61, 7'h63, 7'h64};
       bins abr[] = {7'h6A, 7'h69, 7'h6B, 7'h6C};
-      ignore_bins class_not_in_row = {7'h02, 7'h03, 7'h0A, 7'h0B, 7'h12, 7'h1A, 7'h1B, 7'h22,
-                                      7'h2A, 7'h32, 7'h42, 7'h43, 7'h4A, 7'h52, 7'h5A, 7'h62};
+      ignore_bins class_not_in_row = {7'h02, 7'h03, 7'h0A, 7'h0B, 7'h12, 7'h1A, 7'h22, 7'h2A,
+                                      7'h32, 7'h42, 7'h43, 7'h4A, 7'h52, 7'h5A, 7'h62};
     }
     cp_if_efuse_remap: coverpoint v[0] iff (pt == 5'd3) {
       bins low12_equal_km_offset = {1'b0}; bins upper_constant_over_three_maps = {1'b1};
@@ -42199,8 +42275,8 @@ module sep_fcov (
       logic [1:0] m;
       ea = 32'(km_efuse_req_i.ar.addr);
       ka = kx_rstart ? 32'(km_axi_req_i.ar.addr) : kx_raddr;
-      m = km_in(ka, KmEfMapBase, 32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE)) ? 2'd0 :
-          km_in(ka, KmEfCtrlBase, 32'h100) ? 2'd1 : 2'd2;
+      m = km_in(ka, KmEfMapBase, 32'h800) ? 2'd0 :
+          km_in(ka, KmEfCtrlBase, 32'h400) ? 2'd1 : 2'd2;
       if (ea[11:0] == ka[11:0]) km_remap_ok[0] <= 1'b1;
       if ((km_remap_seen != 3'b000) && (ea[31:12] != km_remap_hi)) km_remap_bad <= 1'b1;
       km_remap_hi <= ea[31:12];
@@ -42243,9 +42319,9 @@ module sep_fcov (
       32'(key_manager_addrmap_pkg::KEY_MANAGER_ROM_SIZE),
       32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE),
       32'h20,
-      32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE),
-      32'h100,
-      32'h100,
+      32'h800,
+      32'h400,
+      32'h400,
       32'h2000,
       32'h800,
       32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_SIZE),
@@ -42326,8 +42402,7 @@ module sep_fcov (
     // Reserved windows: from the end of the span of one row to the base of
     // the next. The KM aperture end has no package symbol.
     if (km_rng(a, KmRomBase + KmRowSpan[0], KmSramBase)) return 5'd1;
-    if (km_rng(a, KmMbxBase + KmRowSpan[2], KmEfMapBase)) return 5'd4;
-    if (km_rng(a, KmEfMmrBase + KmRowSpan[5], KmKpvBase)) return 5'd8;
+    if (km_rng(a, KmMbxBase + KmRowSpan[2], KmEfCtrlBase)) return 5'd4;
     if (km_rng(a, KmCsrBase + KmRowSpan[7], KmSmpBase)) return 5'd11;
     if (km_rng(a, KmSmpBase + KmRowSpan[8], KmOtbnBase)) return 5'd13;
     if (km_rng(a, KmOtbnBase + KmRowSpan[9], KmAesBase)) return 5'd19;
@@ -42342,13 +42417,18 @@ module sep_fcov (
     return w inside {5'd1, 5'd4, 5'd11, 5'd13, 5'd19, 5'd20, 5'd21, 5'd22, 5'd23};
   endfunction
 
-  // eFuse gap of an address: 1 0x1141C to 0x114FF, 2 0x11574 to 0x115FF,
-  // 3 0x11600 to 0x11FFF, 0 none.
+  // eFuse gap of an address: 1 0x1101C to 0x113FF, 2 0x11474 to 0x117FF,
+  // 3 0x11C00 to 0x11FFF, 0 none.
   function automatic logic [1:0] km_ef_gap(logic [31:0] a);
-    if (km_rng(a, KmEfCtrlBase + KmRowExt[4], KmEfMmrBase)) return 2'd1;
+    if (km_rng(a, KmEfCtrlBase + KmRowExt[4], KmEfCtrlBase + KmRowSpan[4])) return 2'd1;
     if (km_rng(a, KmEfMmrBase + KmRowExt[5], KmEfMmrBase + KmRowSpan[5])) return 2'd2;
-    if (km_rng(a, KmEfMmrBase + KmRowSpan[5], KmKpvBase)) return 2'd3;
+    if (km_rng(a, KmEfMapBase + KmRowExt[3], KmEfMapBase + KmRowSpan[3])) return 2'd3;
     return 2'd0;
+  endfunction
+
+  // Read data of a SLVERR in eFuse gap g (memory_map.adoc).
+  function automatic logic [31:0] km_ef_gap_data(logic [1:0] g);
+    return (g == 2'd3) ? KmBadcab : 32'h0;
   endfunction
 
   // Past-extent or hole address of a non-eFuse decoded row.
@@ -42384,12 +42464,12 @@ module sep_fcov (
   //
   // Window and offset class: a cell is seen when a KM data access completes
   // in the owner window with the response that the owner grades for its
-  // address: DECERR in a reserved window outside the eFuse window, SLVERR
-  // with 0xBADCAB1E on a read in an eFuse gap, SLVERR with 0x0 on a read in
-  // a hole or past the extent of a non-eFuse row, OKAY at any other decoded
-  // word, and the completion on the KM CPU memory bus for ROM and SRAM. A
-  // seen cell samples only when the pass label km_xbar_pass rises inside
-  // the owner window, and only when the label holds the bit of that cell:
+  // address: DECERR in a reserved window, SLVERR with km_ef_gap_data() on a
+  // read in an eFuse gap, SLVERR with 0x0 on a read in a hole or past the
+  // extent of a non-eFuse row, OKAY at any other decoded word, and the
+  // completion on the KM CPU memory bus for ROM and SRAM. A seen cell samples
+  // only when the pass label km_xbar_pass rises inside the owner window, and
+  // only when the label holds the bit of that cell:
   // sep_km_crossbar_efuse_window_rand_test writes 0 before its decode walk
   // and, after CHK-XBAR, CHK-XBAR-RSV, CHK-XBAR-EFUSE and CHK-XBAR-SIZE pass,
   // bit {row, class} of each graded offset cell in [127:0] and bit 128 + w
@@ -42456,7 +42536,7 @@ module sep_fcov (
       gap = km_ef_gap(a);
       r = km_row(a);
       if (km_rsv_window(win)) ok = (rsp == KmDecerr);
-      else if (gap != 2'd0) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == KmBadcab));
+      else if (gap != 2'd0) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == km_ef_gap_data(gap)));
       else if (km_past(a)) ok = (rsp == KmSlverr) && (kw_ev || (kr_data == 32'h0));
       else ok = (rsp == KmOkay);
       if (ok && (win != 5'h1F) && !(r inside {4'd0, 4'd1})) begin
@@ -42478,7 +42558,9 @@ module sep_fcov (
         km_dec_cls <= 2'd0;
         km_dec_wr <= kw_ev;
       end else if ((gap != 2'd0) && ((kw_ev ? kw_resp : kr_resp) == KmSlverr) &&
-                   (kw_ev || (kr_data == KmBadcab))) begin
+                   (kw_ev || (kr_data == km_ef_gap_data(
+              gap
+          )))) begin
         km_dec_pend <= 1'b1;
         km_dec_cls <= 2'd2;
         km_dec_wr <= kw_ev;
@@ -42495,16 +42577,17 @@ module sep_fcov (
          ((km_dec_cls != 2'd0) && (km_irq_status_i[KmIrqSlverr] === 1'b1))))
       km_dec_ok[{km_dec_cls, km_dec_wr}] <= 1'b1;
     // eFuse read class.
-    if (kr_ev && km_own_xbar && km_rng(kr_addr, KmEfMapBase, KmKpvBase)) begin
+    if (kr_ev && km_own_xbar && km_rng(kr_addr, KmEfCtrlBase, KmKpvBase)) begin
       logic [2:0] cls;
       logic ok_rsp;
       gap = km_ef_gap(kr_addr);
-      cls = km_in(kr_addr, KmEfMapBase, KmRowSpan[3]) ? 3'd0 :
-            (gap == 2'd1) ? 3'd3 : (gap == 2'd2) ? 3'd4 : (gap == 2'd3) ? 3'd5 :
+      cls = (gap == 2'd1) ? 3'd3 : (gap == 2'd2) ? 3'd4 : (gap == 2'd3) ? 3'd5 :
+            km_in(kr_addr, KmEfMapBase, KmRowSpan[3]) ? 3'd0 :
             km_in(kr_addr, KmEfCtrlBase, KmRowSpan[4]) ? 3'd1 : 3'd2;
       ok_rsp = (kr_resp == KmOkay);
       if (ok_rsp) km_rc_ok[{cls, 1'b0}] <= 1'b1;
-      else if ((kr_resp == KmSlverr) && (kr_data == KmBadcab)) km_rc_ok[{cls, 1'b1}] <= 1'b1;
+      else if ((gap != 2'd0) && (kr_resp == KmSlverr) && (kr_data == km_ef_gap_data(gap)))
+        km_rc_ok[{cls, 1'b1}] <= 1'b1;
     end
   end
 
@@ -43474,50 +43557,50 @@ module sep_fcov (
   // 8 * LOCKS REG_OFFSET.
   localparam int unsigned KmEfFields = 41;
   localparam int unsigned KmEfSpareLockOfs =
-      (SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET - SEP_EFUSE_MAP_LOCKS_REG_OFFSET) * 8;
+      (SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET - SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET) * 8;
   localparam int unsigned KmEfFieldOff[KmEfFields+1] = '{
-      SEP_EFUSE_MAP_LC_STATE_REG_OFFSET,
-      SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET,
-      SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET,
-      SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET,
-      SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET,
-      SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET,
-      SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET,
-      SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET,
-      SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET,
-      SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET,
-      SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET,
-      SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET,
-      SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET,
-      SEP_EFUSE_MAP_SIP_UID_REG_OFFSET,
-      SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET,
-      SEP_EFUSE_MAP_SYS_UID_REG_OFFSET,
-      SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET,
-      SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET,
-      SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET,
-      SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET,
-      SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET,
-      SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET,
-      SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET,
-      SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET,
-      SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET,
-      SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET,
-      SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET,
-      SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET,
-      SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET,
-      SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET,
-      SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET,
-      SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE0_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE1_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE2_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE3_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE4_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE5_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE6_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE7_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE8_REG_OFFSET,
-      SEP_EFUSE_MAP_SPARE8_REG_OFFSET + SpareStrideB
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_UID_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_UID_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE1_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE2_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE3_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE4_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE5_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE6_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE7_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE8_REG_OFFSET,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE8_REG_OFFSET + SpareStrideB
   };
   localparam int unsigned KmEfFieldWlock[KmEfFields] = '{
       SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_SHIFT,
@@ -43619,7 +43702,7 @@ module sep_fcov (
         end
       end else km_pg_cnt <= km_pg_cnt + 14'd1;
     end
-    if (kw_ev && (kw_addr == KmEfCtrlBase + (KmEfPgCtrl - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)) &&
+    if (kw_ev && (kw_addr == KmEfCtrlBase + (KmEfPgCtrl - SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)) &&
         |(kw_data & KmEfPgGo)) begin
       km_pg_cnt <= 14'd1;
       km_pg_host <= 1'b0;
@@ -45168,14 +45251,20 @@ module sep_fcov (
   localparam logic [6:0] KmCrcOpcode = 7'b0001011;
   localparam logic [6:0] KmCrcFunct7 = 7'b0101100;
   localparam int unsigned KmEfLockBit[3] = '{
-      SEP_EFUSE_MAP_LOCKS_REG_OFFSET * 8 + SEP_EFUSE_MAP_LOCKS_SEP_CHIPLET_ID_READ_LOCK_SHIFT,
-      SEP_EFUSE_MAP_LOCKS_REG_OFFSET * 8 + SEP_EFUSE_MAP_LOCKS_SEP_SIP_ID_READ_LOCK_SHIFT,
-      SEP_EFUSE_MAP_LOCKS_REG_OFFSET * 8 + SEP_EFUSE_MAP_LOCKS_SEP_SYS_ID_READ_LOCK_SHIFT
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET
+      * 8 +
+      SEP_EFUSE_MAP_LOCKS_SEP_CHIPLET_ID_READ_LOCK_SHIFT,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET
+      * 8 +
+      SEP_EFUSE_MAP_LOCKS_SEP_SIP_ID_READ_LOCK_SHIFT,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET
+      * 8 +
+      SEP_EFUSE_MAP_LOCKS_SEP_SYS_ID_READ_LOCK_SHIFT
   };
   localparam int unsigned KmEfIdBit[3] = '{
-      SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET * 8,
-      SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET * 8,
-      SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET * 8
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET * 8,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET * 8,
+      SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET * 8
   };
 
   // Class of a shadow-map byte offset for cp_otp_notkm_class
@@ -45184,17 +45273,17 @@ module sep_fcov (
   // Manager interface): 0 BL1_VERSION or BL2_VERSION, 1 an RMA token digest,
   // 3 a public-key hash, 2 any other field.
   function automatic logic [1:0] km_notkm_cls(int unsigned ofs);
-    if ((ofs >= SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET) && (ofs < SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET))
+    if ((ofs >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET) && (ofs < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET))
       return 2'd0;
-    if ((ofs >= SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET) &&
-        (ofs < SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET))
+    if ((ofs >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET) &&
+        (ofs < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET))
       return 2'd1;
-    if (((ofs >= SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET) && (ofs < SEP_EFUSE_MAP_SIP_UID_REG_OFFSET)) ||
-        ((ofs >= SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET) && (ofs < SEP_EFUSE_MAP_SYS_UID_REG_OFFSET)) ||
-        ((ofs >= SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET) &&
-         (ofs < SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET)) ||
-        ((ofs >= SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET) &&
-         (ofs < SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET)))
+    if (((ofs >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET) && (ofs < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_UID_REG_OFFSET)) ||
+        ((ofs >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET) && (ofs < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_UID_REG_OFFSET)) ||
+        ((ofs >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET) &&
+         (ofs < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET)) ||
+        ((ofs >= SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET) &&
+         (ofs < SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET)))
       return 2'd3;
     return 2'd2;
   endfunction
@@ -45977,6 +46066,8 @@ module sep_fcov (
       bins periph_bus_err_kmac = {RasPbeKmac};
       bins periph_bus_err_otbn = {RasPbeOtbn};
       bins periph_bus_err_wdt = {RasPbeWdt};
+      bins periph_bus_err_csrng = {RasPbeCsrng};
+      bins periph_bus_err_edn = {RasPbeEdn};
       bins csrng_fatal = {RasCsrngFatal};
       bins edn_fatal = {RasEdnFatal};
       bins crypto_alert = {RasCryptoAlert};
@@ -45985,10 +46076,6 @@ module sep_fcov (
       // Constant 0 in this build: hw/sys/sep/doc/port_table.adoc
       // (lockstep_status_o) and the sep_ras_t comment of entropy_pool_err.
       ignore_bins tied0 = {RasLockstepErr, RasEntropyPoolErr};
-      // The CSRNG and EDN windows of the crypto demux answer an unmapped
-      // offset with DECERR before the register bridge, so no access raises
-      // these two bits.
-      ignore_bins demux_decerr = {RasPbeCsrng, RasPbeEdn};
     }
   endgroup
 
@@ -46007,6 +46094,7 @@ module sep_fcov (
       RasDmaAlert, RasCryptoAlert: return graded_owner == FcovOwnSepPicPendingMapWalkRandTest;
       RasDmaRegBusErr, RasPbeAes, RasPbeHmac, RasPbeKmac, RasPbeOtbn, RasPbeWdt:
       return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
+      RasPbeCsrng, RasPbeEdn: return graded_owner == FcovOwnSepIrqIpToAggregatorTest;
       RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
       RasCsrngFatal, RasEdnFatal:
       return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||

@@ -15,9 +15,6 @@
 //     condition vectors that need a stall, and the stall-else arms of the
 //     AXI4-Lite request dispatch. Blocks whose stall follows external_pending
 //     (efuse_mmr_reg, entropy_source_reg, km_kpv_reg) are NOT listed.
-//   - Regblocks that decode no error: the pslverr vectors with a 1 operand
-//     (APB), and the error-response lines and branches of sep_cpu_ctrl_reg
-//     and entropy_source_reg (AXI-Lite).
 //   - Regblock load_next nets that the generator assigns '1 in both arms: the
 //     implicit else of the load_next branch (sep_cpu_ctrl_reg,
 //     filter_ctrl_reg).
@@ -377,18 +374,6 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 
-CHECKSUM: "937729671 1625737755"
-MODULE: efuse_interface_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv:78 (s_apb_pslverr), :633 cpuif_wr_err=0, :688 readback_err=0, :693 cpuif_rd_err=readback_err; the block sets is_valid_addr/is_valid_rw to '1 (no address or RW check), so both operands of cpuif_rd_err | cpuif_wr_err are constant 0 and the vectors with a 1 operand cannot occur."
-Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
-Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
-
-CHECKSUM: "3827308321 2896595"
-MODULE: efuse_mmr_reg
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv:78 (s_apb_pslverr), :320 cpuif_wr_err=0, :394 readback_err=0, :400 cpuif_rd_err=readback_err; the block sets is_valid_addr/is_valid_rw to '1 (no address or RW check), so both operands of cpuif_rd_err | cpuif_wr_err are constant 0 and the vectors with a 1 operand cannot occur."
-Condition 32 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
-Condition 32 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
-
 CHECKSUM: "2137400323 2929689567"
 MODULE: picorv32_wrapper
 ANNOTATION: "KM-VROM-NOT-DECODED: without the simulation-only OCAH_KM_VROM define (not set by SEP DV, and rejected with $error under SYNTHESIS/EMULATION, hw/ip/key_manager/rtl/picorv32_wrapper.sv:323-339) hw/ip/key_manager/rtl/picorv32_wrapper.sv:344-345 tie is_vrom_addr and is_la_vrom_addr to 1'b0 and hw/ip/key_manager/rtl/picorv32_wrapper.sv:597 ties vrom_mem_ready to 1'b0. A term that needs one of these to be 1 (or !is_vrom_addr to be 0) cannot occur. NOT waived: the ROM, SRAM and peripheral decode terms."
@@ -641,16 +626,6 @@ Condition 2 "750180934" "(pop_i & ((~empty_prim)) & ((~counter_err)) & ((~clr_i)
 Condition 3 "3059300984" "(push_i & full_prim & ((~clr_i))) 1 -1" (3 "110")
 Condition 4 "1666963403" "(pop_i & empty_prim & ((~clr_i))) 1 -1" (3 "110")
 
-CHECKSUM: "560690602 2370236681"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_source_reg
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Block 66 "4057615334" "s_axil.BRESP = 2'b10;"
-
-CHECKSUM: "560690602 2636490419"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_source_reg
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Branch 8 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
 CHECKSUM: "3497888529 4220762321"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan
 ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so the cancel input and the flush row with clear_i=0, endpoint_cancel_i=1 cannot occur. hw/sys/sep/rtl/sep_crypto.sv:1005; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:166. NOT waived: clear_i and its flush row, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:981)."
@@ -689,16 +664,6 @@ CHECKSUM: "2196427632 1402944094"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
 ANNOTATION: "SEP-CPU-IFU-AW-ZERO: the VeeR IFU drives awaddr = '0 (vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv:1087), and region_size_i is the literal 0x3000_0000 (hw/sys/sep/rtl/sep_cpu.sv:544, hw/sys/sep/rtl/sep_pkg.sv:485). With addr 0, addr >= base holds only for base 0, and then 0 < base + size holds (hw/ip/axi_window_remap/rtl/axi_window_remap.sv:37,42-43), so the (1 0) vector cannot occur. NOT waived: the (0 1) and (1 1) vectors, which SEP_LOCAL_BASE_ADDR moves."
 Condition 1 "1033715818" "((slv_req_i.aw.addr >= local_alias_base_i) && ({1'b0, slv_req_i.aw.addr} < local_alias_end)) 1 -1" (2 "10")
-
-CHECKSUM: "2905179362 847969879"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-LINE: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:313, :1530 and :1652,1657 assign decoded_err, cpuif_wr_err, cpuif_rd_err and readback_err to constant '0. axil_resp_buffer_err resets to 0 (:167) and loads only these constants (:174-182), so the SLVERR statements at :210-211 never execute. NOT waived: the OKAY statements at :213-214 and all other response-path lines."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
-CHECKSUM: "2905179362 3747101343"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:313, :1530 and :1652,1657 assign the decode, write and read error terms to constant '0, and axil_resp_buffer_err loads only these constants (:167, :174-182), so the true arm of 'if(axil_resp_buffer_err[...])' at :209 never executes. NOT waived: the false (OKAY) arm."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
@@ -740,12 +705,6 @@ Branch 74 "2747625622" "(~arst_n)" (2) "(~arst_n) 0,0"
 CHECKSUM: "3937190293 1840328202"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
 ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:722), efuse_guard (:814) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_interface_controller.sv:280-284, :298-302 and :413-419 belong to the SMC elaboration and do not execute here. NOT waived: the HAS_LC_STATE=1 address-decode statements at :274-278, :292-296 and :404-412."
-Block 5 "1977898423" "if ((axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
-Block 6 "1893830314" "efuse_req_decode_select_aw = INTERFACE_SEL;"
-Block 7 "1835296389" "efuse_req_decode_select_aw = SHIM_SEL;"
-Block 12 "2676881816" "if ((axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
-Block 13 "3347644321" "efuse_req_decode_select_ar = INTERFACE_SEL;"
-Block 14 "1855215342" "efuse_req_decode_select_ar = SHIM_SEL;"
 Block 23 "1518193479" "if ((apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}))"
 Block 24 "3333382630" "efuse_reg_select = SHADOW_REG_MAP;"
 Block 25 "2891404597" "if ((apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"

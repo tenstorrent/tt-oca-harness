@@ -12,8 +12,9 @@ channel with the word order and the vector of each word write, the positions of 
 other token-block accesses, and per denied access its address and pattern. The
 required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
 program of p, so the p read at the end grades a refused burn in every leaf. After the
-plan, the same stream draws one JTAG read address and one JTAG write address in the
-shim span and the write data.
+plan, the same stream draws one JTAG read address and one JTAG write address, each in
+the shim window, in the eFuse page outside the MMR window, or outside the page and the
+shim window, and the write data.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
 builds the same plan. After sense, ``CTRL-JTAG-LC-STATE`` reads the ``LC_STATE``
 shadow word at the frontdoor and requires the code of the drawn state. JTAG and
@@ -59,16 +60,16 @@ Mechanism and Token Submission):
   CHK-JTAG-CONCURRENT  the concurrent pair, after every other graded access and before
                     the deny-write controls: JTAG response SLVERR, JTAG read data
                     0xBADCAB1E, frontdoor data equal to the staged word.
-  CHK-JTAG-SHIM-DENY  a JTAG read and a JTAG write of the shim span (every address
-                    outside the MAP window to the end of the last register window, which
-                    the controller sends to the shim's bank control registers) answer
-                    SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: accesses
-                    outside the MMR space are blocked with an SLVERR response), and
-                    the read returns the read data 0xBADCAB1E
-                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``).
+  CHK-JTAG-SHIM-DENY  a JTAG read and a JTAG write of the drawn addresses (the shim
+                    window, a page word outside the MMR window, or an address outside
+                    the page and the shim window) answer SLVERR
+                    (``hw/ip/efuse/doc/architecture.adoc:351-353``: accesses outside
+                    the MMR space are blocked with an SLVERR response), and the read
+                    returns the read data 0xBADCAB1E
+                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:41-42, 128-131``).
   OBS-JTAG-SHIM-DENY-DATA  the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and
-                    after the two shim accesses: no TT text maps a JTAG address to a
-                    shim register offset.
+                    after the two accesses: no TT text states the shim register value
+                    after a denied JTAG access.
   OBS-JTAG-ALLOW-RESP  the response code of each token-block access: no TT text states
                     the response of an access JTAG may make.
 
@@ -92,6 +93,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
+from env.sep_decode_resp import sep_map_row
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_image import LC_FIELD_MASK, LC_WORD_IDX, SHADOW_BASE, lc_encode
 from env.sep_efuse_plan import (
@@ -156,31 +158,38 @@ OUT_OF_RANGE_BIT = 8192
 W_MULT = 2
 MATCH_READS = 400
 SENSE_BOUND = 20_000
-# The controller sends every address outside [MAP base, end of the last register window)
-# to the shim's bank control registers (otp_fuse_controller.adoc, eFuse controller figure).
-EFUSE_WINDOWS = ("SEP_EFUSE_MAP", "EFUSE_INTERFACE_CTRL", "EFUSE_MMR")
-SHIM_SPAN_GAP_LO = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
-SHIM_SPAN_GAP_HI = max(
-    sym(f"{w}_REG_MAP_BASE_ADDR") + sym(f"{w}_REG_MAP_SIZE") for w in EFUSE_WINDOWS
-)
+# The eFuse page (control, MMR and MAP windows) and the MMR window, from the SEP map.
+EFUSE_PAGE_LO = sep_map_row(sym("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")).base
+EFUSE_PAGE_HI = sep_map_row(sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")).end + 1
+MMR_ROW = sep_map_row(sym("SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR"))
 # The SEP address map, and so the JTAG address, is 32 bits wide.
 ADDR_END = 1 << 32
 SHIM_BLOCK = RegBlock("SEP_EXTERNAL_EFUSE_SHIM_CTRL")
 SHIM_REG = "EFUSE_BANK_INIT_TIME"
 SHIM_REG_ADDR = SHIM_BLOCK.addr(SHIM_REG)
+SHIM_LO = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
+SHIM_HI = SHIM_LO + sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
+# Byte spans [lo, hi) of the denied JTAG targets other than the planned accesses: the
+# page outside the MMR window, and every address outside the page and the shim window.
+DENY_SPANS = {
+    "page": ((EFUSE_PAGE_LO, MMR_ROW.base), (MMR_ROW.end + 1, EFUSE_PAGE_HI)),
+    "outside": (
+        (0, EFUSE_PAGE_LO),
+        (EFUSE_PAGE_HI, SHIM_LO),
+        (SHIM_HI, ADDR_END),
+    ),
+}
 
 
 def _shim_addr(p: SepEfusePlan, op: str) -> int:
-    """One 8-byte-aligned address of the shim span: below the MAP window, above the last
-    register window, or the map address of ``EFUSE_BANK_INIT_TIME``. The shim control
-    model decodes address bit 2 and answers SLVERR when it is set, so an aligned address
-    that passes the lifecycle filter answers OKAY, and only the filter gives the error."""
-    if SHIM_SPAN_GAP_LO <= SHIM_REG_ADDR < SHIM_SPAN_GAP_HI:
-        raise AssertionError(f"test bug: 0x{SHIM_REG_ADDR:08x} is not in the shim span")
-    region = p.draw.choice(f"shim_{op}_region", ("below", "above", "reg"))
-    if region == "reg":
+    """One 8-byte-aligned denied address: the shim window, a page word outside the MMR
+    window, or an address outside the page and the shim window. The shim control model
+    decodes address bits [2:0] and answers SLVERR when bit 2 is set, so an aligned
+    address that reached the shim would answer OKAY, and only the filter gives the error."""
+    region = p.draw.choice(f"shim_{op}_region", ("shim", *DENY_SPANS))
+    if region == "shim":
         return p.draw.put(f"shim_{op}_addr", SHIM_REG_ADDR)
-    lo, hi = (0, SHIM_SPAN_GAP_LO) if region == "below" else (SHIM_SPAN_GAP_HI, ADDR_END)
+    lo, hi = p.draw.choice(f"shim_{op}_span", DENY_SPANS[region])
     return 8 * p.draw.randrange(f"shim_{op}_dword", -(-lo // 8), hi // 8)
 
 
@@ -193,7 +202,8 @@ def _field_bits(addr: int) -> int:
 @pyuvm.test()
 class sep_efuse_jtag_access_rand_test(sep_base_test):
     """PROD and RMA_SIP JTAG reaches only the token block; a denied shadow or
-    interface-control access changes nothing; a shim-span access answers an error."""
+    interface-control access changes nothing; a shim-window, page or outside access
+    answers an error."""
 
     required_evidence = (
         "CHK-JTAG",
@@ -292,11 +302,11 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         )
 
     async def _shim_deny(self) -> None:
-        """CHK-JTAG-SHIM-DENY: the JTAG read and the JTAG write of the drawn shim-span
+        """CHK-JTAG-SHIM-DENY: the JTAG read and the JTAG write of the drawn denied
         addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: in PROD
         and RMA_SIP a SEP JTAG access outside the MMR space is blocked with an SLVERR
         response), and the JTAG read returns ``DENY_RDATA``
-        (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
+        (``hw/sys/sep/doc/otp_fuse_controller.adoc:41-42, 128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
         logs the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and after.
         """
         s = self.shim_draw

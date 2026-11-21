@@ -49,9 +49,11 @@ both channels (``hw/sys/sep/doc/otbn.adoc``, OCAH Modifications). The AxCACHE of
 each address handshake is captured on the LSU port and must equal the value of
 the instance, so a request that does not carry the value fails the check.
 
-CHK-ROW-KM: every Key Manager mailbox offset past its seven registers, and the
-reserved span after it, answers DECERR with 0xBADCAB1E, and no baseline register
-moves. The baseline control write of ``SEP_IRQ_ENABLE`` reads back.
+CHK-ROW-KM: every Key Manager mailbox offset past its seven registers answers
+SLVERR with 0, the Reserved row after the mailbox page answers DECERR with
+0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:58-59``), and no
+baseline register moves. The baseline control write of ``SEP_IRQ_ENABLE``
+reads back.
 
 CHK-ROW-BURST / CHK-ROW-BURST-CONTROL: an SI burst to the crypto region answers
 DECERR on its single B response, or on every one of its AxLEN + 1 R beats
@@ -232,7 +234,7 @@ POOL_UNMAPPED_RDATA = 0x0
 # SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-46): the local crossbar
 # sends only the SPI host register extent to sep_io, and the error responder of
 # sep_io answers only the beats of a burst that run past the extent. The extent
-# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:81).
+# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:75).
 SPI_BASE = sep_reg.SPI_CONTROLLER_REG_MAP_BASE_ADDR
 SPI_END = SPI_BASE + sep_reg.SPI_CONTROLLER_REG_MAP_SIZE
 SPI_CSID = sep_reg.SPI_CONTROLLER_CSID_REG_ADDR
@@ -287,15 +289,19 @@ BURST_PAST_ROWS = (
 # Sub-word LSU targets: (name, word address, whether a changed value is written
 # and the word restored after). A target without restore takes its own value.
 SUBWORD_TARGETS = (
-    ("scratch", sep_reg.SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
+    ("scratch", sep_reg.SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
     ("wdt_wkup_thold_lo", sep_reg.WDT_TIMER_WKUP_THOLD_LO_REG_ADDR, True),
     ("cpu_ctrl_nmi_vec", sep_reg.SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR, True),
     ("spi_csid", sep_reg.SPI_CONTROLLER_CSID_REG_ADDR, True),
     ("spi_configopts", sep_reg.SPI_CONTROLLER_CONFIGOPTS_REG_ADDR, True),
     ("km_mbox_irq_enable", rr.KM_IRQ_ENABLE, True),
     ("otbn_imem", sep_reg.OTBN_IMEM_MEM_BASE_ADDR, True),
-    ("efuse_shadow", sep_reg.SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
-    ("efuse_program_ctrl", sep_reg.EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR, False),
+    ("efuse_shadow", sep_reg.SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
+    (
+        "efuse_program_ctrl",
+        sep_reg.SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR,
+        False,
+    ),
     ("sw_reset_n", rr.SW_RESET_N, False),
 )
 # A narrow read inside a peripheral register answers OKAY and a partial write
@@ -862,7 +868,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 self._fail("CHK-ROW-CACHE", line + f" written=0x{w:x}")
 
     async def _reserved_leg(self) -> None:
-        """Step 10: the 8 Reserved rows from SI."""
+        """Step 10: every Reserved row of the SEP Local region from SI."""
         bases = list(rr.RESERVED_BASES)
         self.rng.shuffle(bases)
         for base in bases:
@@ -988,18 +994,26 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 await self._lsu_write_reg(nb, before, "abr neighbour restore")
 
     async def _past_leg(self) -> None:
-        """Step 13: past-extent cells from SI."""
+        """Step 13: past-extent cells from SI.
+
+        A row whose Past Extent note bounds the unit's own decode (``C`` > ``E``)
+        also takes the last word of the note's span and the first word past it,
+        and the drawn pair lies past the span."""
         rows = list(rr.PAST_ROWS)
         self.rng.shuffle(rows)
         for key in rows:
             row = rr.map_row(key)
             e = row.base + row.extent
-            lo = (e + 8 + 7) & ~7
+            c = row.past_from
+            lo = (c + 8 + 7) & ~7
             drawn = lo + 8 * self.rng.randrange(0, (row.end - 7 - lo) // 8 + 1)
-            self.logger.info("INFO-ROW-RAND LOG: %s past E=0x%08x drawn 0x%08x", key, e, drawn)
+            self.logger.info(
+                "INFO-ROW-RAND LOG: %s past E=0x%08x C=0x%08x drawn 0x%08x", key, e, c, drawn
+            )
+            pinned = (e, e + 4) if c == e else (e, e + 4, c - 4, c)
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
-                for a in (e, e + 4, drawn, drawn + 4):
+                for a in dict.fromkeys((*pinned, drawn, drawn + 4)):
                     wd = self.rng.getrandbits(32) if op is SepAxiOp.WRITE else None
                     await self._begin()
                     s = await self._si(op, a, wdata=wd or 0)
@@ -1145,9 +1159,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         sb = await self._si(SepAxiOp.READ, b)
                         v = sb.rdata & rr.reg_by_word()[b].word_mask(b)
                         same = same and sb.resp_code == OKAY and v == baseline[b]
+                    want = SLVERR if a < nxt else DECERR
                     ok = (
-                        s.resp_code == DECERR
-                        and exp.resp == DECERR
+                        s.resp_code == exp.resp == want
                         and (exp.rdata is None or got == exp.rdata)
                         and same
                     )

@@ -182,18 +182,20 @@ module smc_efuse_fcov #(
   // generated SMC map; LOCKS holds the write/read lock pair of slot n at bits
   // 2n and 2n+1 (smc_efuse_map.rdl LOCKS). The interface controller takes a
   // fuse bit address, eight per map byte.
-  localparam int unsigned MapBase = 32'(SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
+  localparam int unsigned MapBase = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR);
   localparam int unsigned JtagLo =
-      32'(SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR) - MapBase;
-  localparam int unsigned I2cLo = 32'(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0)) - MapBase;
-  localparam int unsigned CfgLo = 32'(SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR) - MapBase;
+      32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR) - MapBase;
+  localparam int unsigned I2cLo = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(
+      0
+  )) - MapBase;
+  localparam int unsigned CfgLo = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR) - MapBase;
   localparam int unsigned OccpLo =
-      32'(SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR) - MapBase;
-  localparam int unsigned Spare0Addr = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0));
-  localparam int unsigned Spare1Addr = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(1));
+      32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR) - MapBase;
+  localparam int unsigned Spare0Addr = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0));
+  localparam int unsigned Spare1Addr = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(1));
   localparam int unsigned SpareLo = Spare0Addr - MapBase;
   localparam int unsigned SpareStride = Spare1Addr - Spare0Addr;
-  localparam int unsigned SpareNum = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
+  localparam int unsigned SpareNum = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM);
 
   // {valid, slot} of the field holding a fuse bit address.
   function automatic logic [5:0] slot_of(input logic [15:0] bit_addr);

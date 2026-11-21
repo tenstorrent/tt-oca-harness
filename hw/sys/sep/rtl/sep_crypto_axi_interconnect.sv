@@ -5,7 +5,8 @@
 //
 // Provide a 13-port host demux (12 targets plus a DECERR slave) with bus-width conversion
 // and transaction-draining isolation for internal TRNG, accelerator, and Key Manager paths.
-// Host bursts (AxLEN != 0) and unmapped addresses receive DECERR.
+// Host bursts (AxLEN != 0) and unmapped addresses receive DECERR. In the CSRNG and EDN pages,
+// an address outside the window the block decodes receives SLVERR with read data 0xBADCAB1E.
 // isolate_req_i / isolated_o handshake with sep_reset_ctrl before domain software reset.
 // While a path isolates, new transactions on it complete with SLVERR and read data
 // 0x1501A7ED.
@@ -13,6 +14,7 @@
 // are not isolated; the eFuse and lifecycle legs leave as full AXI4 without isolation.
 
 `include "axi/typedef.svh"
+`include "ocah_assert.svh"
 
 module sep_crypto_axi_interconnect (
   input  logic clk_i,                         // System clock.
@@ -264,6 +266,31 @@ module sep_crypto_axi_interconnect (
       ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
     end else begin
       ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
+    end
+  end
+
+  // The priority chains pick the target an address belongs to only while no two rules overlap.
+  localparam int unsigned NumRules = sep_crypto_pkg::SepCryptoNumAxiMst - 1;
+  localparam axi_pkg::xbar_rule_32_t Rules[NumRules] = '{
+      sep_crypto_pkg::OTBN_RULE,
+      sep_crypto_pkg::HMAC_RULE,
+      sep_crypto_pkg::AES_RULE,
+      sep_crypto_pkg::KMAC_RULE,
+      sep_crypto_pkg::FUSE_RULE,
+      sep_crypto_pkg::LIFECYCLE_RULE,
+      sep_crypto_pkg::KM_RULE,
+      sep_crypto_pkg::CSRNG_RULE,
+      sep_crypto_pkg::EDN_RULE,
+      sep_crypto_pkg::ENTROPY_SOURCE_RULE,
+      sep_crypto_pkg::TRNG_RULE,
+      sep_crypto_pkg::ABR_RULE
+  };
+
+  for (genvar i = 0; i < NumRules; i++) begin : gen_rule_checks
+    for (genvar j = i + 1; j < NumRules; j++) begin : gen_disjoint
+      `OCAH_ASSERT_STATIC(
+          RulesDisjoint_A,
+          Rules[i].end_addr <= Rules[j].start_addr || Rules[j].end_addr <= Rules[i].start_addr)
     end
   end
 
@@ -899,6 +926,8 @@ module sep_crypto_axi_interconnect (
 
   drbg_pkg::drbg_axil64_req_t  csrng_conv_axil_req;
   drbg_pkg::drbg_axil64_resp_t csrng_conv_axil_resp;
+  drbg_pkg::drbg_axil64_req_t  csrng_page_axil_req;
+  drbg_pkg::drbg_axil64_resp_t csrng_page_axil_resp;
 
   axi_to_axi_lite #(
     .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -934,16 +963,47 @@ module sep_crypto_axi_interconnect (
     .test_i     (test_en_i),
     .slv_req_i  (csrng_conv_axil_req),
     .slv_resp_o (csrng_conv_axil_resp),
-    .mst_req_o  (csrng_axil_isolated_req_o),
-    .mst_resp_i (csrng_axil_isolated_resp_i),
+    .mst_req_o  (csrng_page_axil_req),
+    .mst_resp_i (csrng_page_axil_resp),
     .isolate_i  (isolate_req_i.trng_csrng),
     .isolated_o (isolated_o.trng_csrng)
+  );
+
+  // Pass the 2^csrng_reg_pkg::BlockAw bytes the CSRNG decodes; answer the rest of its page.
+  localparam logic [31:0] CsrngWindowBase[1] = '{32'(sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR)};
+  localparam logic [31:0] CsrngWindowSize[1] = '{32'(1) << csrng_reg_pkg::BlockAw};
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (drbg_pkg::DrbgAxil64AddrWidth),
+    .AXI_DATA_WIDTH (drbg_pkg::DrbgAxil64DataWidth),
+    .NUM_RANGES     (1),
+    .RANGE_BASE     (CsrngWindowBase),
+    .RANGE_SIZE     (CsrngWindowSize),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
+    .MAX_TRANS      (IsolateNumPending),
+    .aw_chan_t      (drbg_pkg::drbg_axil64_aw_chan_t),
+    .w_chan_t       (drbg_pkg::drbg_axil64_w_chan_t),
+    .b_chan_t       (drbg_pkg::drbg_axil64_b_chan_t),
+    .ar_chan_t      (drbg_pkg::drbg_axil64_ar_chan_t),
+    .r_chan_t       (drbg_pkg::drbg_axil64_r_chan_t),
+    .axil_req_t     (drbg_pkg::drbg_axil64_req_t),
+    .axil_resp_t    (drbg_pkg::drbg_axil64_resp_t)
+  ) u_csrng_addr_demux (
+    .clk_i,
+    .rst_ni,
+    .test_en_i,
+    .slv_req_i   (csrng_page_axil_req),
+    .slv_resp_o  (csrng_page_axil_resp),
+    .mst_reqs_o  (csrng_axil_isolated_req_o),
+    .mst_resps_i (csrng_axil_isolated_resp_i)
   );
 
   // ---- EDN: 64b AXI -> 64b AXI-Lite -> isolate ----
 
   drbg_pkg::drbg_axil64_req_t  edn_conv_axil_req;
   drbg_pkg::drbg_axil64_resp_t edn_conv_axil_resp;
+  drbg_pkg::drbg_axil64_req_t  edn_page_axil_req;
+  drbg_pkg::drbg_axil64_resp_t edn_page_axil_resp;
 
   axi_to_axi_lite #(
     .AxiAddrWidth    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -979,10 +1039,39 @@ module sep_crypto_axi_interconnect (
     .test_i     (test_en_i),
     .slv_req_i  (edn_conv_axil_req),
     .slv_resp_o (edn_conv_axil_resp),
-    .mst_req_o  (edn_axil_isolated_req_o),
-    .mst_resp_i (edn_axil_isolated_resp_i),
+    .mst_req_o  (edn_page_axil_req),
+    .mst_resp_i (edn_page_axil_resp),
     .isolate_i  (isolate_req_i.trng_edn),
     .isolated_o (isolated_o.trng_edn)
+  );
+
+  // Pass the 2^edn_reg_pkg::BlockAw bytes the EDN decodes; answer the rest of its page.
+  localparam logic [31:0] EdnWindowBase[1] = '{32'(sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR)};
+  localparam logic [31:0] EdnWindowSize[1] = '{32'(1) << edn_reg_pkg::BlockAw};
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (drbg_pkg::DrbgAxil64AddrWidth),
+    .AXI_DATA_WIDTH (drbg_pkg::DrbgAxil64DataWidth),
+    .NUM_RANGES     (1),
+    .RANGE_BASE     (EdnWindowBase),
+    .RANGE_SIZE     (EdnWindowSize),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
+    .MAX_TRANS      (IsolateNumPending),
+    .aw_chan_t      (drbg_pkg::drbg_axil64_aw_chan_t),
+    .w_chan_t       (drbg_pkg::drbg_axil64_w_chan_t),
+    .b_chan_t       (drbg_pkg::drbg_axil64_b_chan_t),
+    .ar_chan_t      (drbg_pkg::drbg_axil64_ar_chan_t),
+    .r_chan_t       (drbg_pkg::drbg_axil64_r_chan_t),
+    .axil_req_t     (drbg_pkg::drbg_axil64_req_t),
+    .axil_resp_t    (drbg_pkg::drbg_axil64_resp_t)
+  ) u_edn_addr_demux (
+    .clk_i,
+    .rst_ni,
+    .test_en_i,
+    .slv_req_i   (edn_page_axil_req),
+    .slv_resp_o  (edn_page_axil_resp),
+    .mst_reqs_o  (edn_axil_isolated_req_o),
+    .mst_resps_i (edn_axil_isolated_resp_i)
   );
 
   //=========================================================================

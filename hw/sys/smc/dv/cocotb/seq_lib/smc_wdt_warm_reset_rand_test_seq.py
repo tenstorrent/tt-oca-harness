@@ -137,7 +137,7 @@ class smc_wdt_warm_reset_rand_test_seq(SmcCsrSeq):
         return f"drawn=core {self.core} WDT_TIMEOUT 0x{self.timeout:x} CMP 0x{self.cmp:x}"
 
     def _wdt(self, reg: str) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{self.core}_WDT_{reg}_BASE_ADDR")
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{self.core}_WDT_{reg}_BASE_ADDR")
 
     async def _access(self, name: str, addr: int, op: SmcSysAxiOp, data: int = 0) -> int:
         item = SmcSysAxiItem(f"{'rd' if op is SmcSysAxiOp.READ else 'wr'}_{name}")

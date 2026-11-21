@@ -23,12 +23,12 @@ Two halves, the same split as the port-arbitration leaf:
   the DUT shows: the register keeps its value, and the lane's
   PERIPH_BUS_ERR_STATUS bit -- the bridge's sticky TL-UL error
   (hw/sys/sep/doc/crypto.adoc, table "SEP crypto alert and fault routing") --
-  stays clear. No legal access sets the CSRNG or EDN bit in this build: their
-  crypto-demux windows end at the last register, so an unmapped offset answers
-  DECERR before the bridge (the same decode sep_irq_ip_to_aggregator_test relies
-  on, in seq_lib/sep_irq_aggregator_seq.py). The probe is therefore the
-  observable that a control shows live; the status bit is a second consequence
-  only. Read data is graded on the whole 64-bit s_axi R beat.
+  stays clear. This leaf has no access that sets the CSRNG or EDN bit: only an
+  access past the lane's last register, up to offset 0x7F, sets it
+  (hw/sys/sep/regs/gen/adoc/memory_map.adoc:91-92, Past Extent notes of the EDN
+  and CSRNG rows). The probe is therefore the observable that a control shows
+  live; the status bit is a second consequence only. Read data is graded on the
+  whole 64-bit s_axi R beat.
 * The TB-owned instance ``u_tbadp_vehicle``, driven pin-level, for the refusal
   conditions one AXI master transfer cannot place at a DUT port (a full 64-bit
   beat, a zero strobe, the strobe of the other lane, a misaligned write

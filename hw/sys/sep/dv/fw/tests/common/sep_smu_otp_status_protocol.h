@@ -5,7 +5,7 @@
 
 /*
  * sep_smu_otp_status firmware <-> SMU testbench tokens.
- * Cold scratch6 = publish/fail; cold scratch7 = otp_status_ref (0x10930400).
+ * Cold scratch6 = publish/fail; cold scratch7 = otp_status_ref (0x10930000).
  */
 #define OTP_STATUS_PUBLISH 0x019A0001u
 #define OTP_STATUS_FAIL 0x019FA11Eu

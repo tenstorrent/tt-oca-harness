@@ -19,7 +19,7 @@ module entropy_source_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [8:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -45,10 +45,10 @@ module entropy_source_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [8:0] axil_araddr;
+    logic [11:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [8:0] axil_awaddr;
+    logic [11:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -126,17 +126,17 @@ module entropy_source_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[8:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[8:2], 2'b0};
+                cpuif_addr = {axil_awaddr[11:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[8:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -295,7 +295,7 @@ module entropy_source_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [8:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -308,148 +308,148 @@ module entropy_source_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.COMPONENT_ID = cpuif_req_masked & (cpuif_addr == 9'h0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h0);
-        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 9'h4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h4);
-        decoded_reg_strb.DEBUG_CTRL = cpuif_req_masked & (cpuif_addr == 9'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hc);
-        decoded_reg_strb.INTR_STATUS = cpuif_req_masked & (cpuif_addr == 9'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h10);
-        decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 9'h14);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h14);
-        decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 9'h18) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h18);
-        decoded_reg_strb.SHA256_STATUS = cpuif_req_masked & (cpuif_addr == 9'h1c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h1c);
-        decoded_reg_strb.FIFO_CTRL = cpuif_req_masked & (cpuif_addr == 9'h20);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h20);
-        decoded_reg_strb.FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 9'h24) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h24);
-        decoded_reg_strb.FIFO_RDATA = cpuif_req_masked & (cpuif_addr == 9'h28) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 9'h28) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h28);
-        decoded_reg_strb.HEALTH_TEST_CTRL = cpuif_req_masked & (cpuif_addr == 9'h30);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h30);
-        decoded_reg_strb.HEALTH_TEST_WINDOW_SIZE = cpuif_req_masked & (cpuif_addr == 9'h34);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h34);
-        decoded_reg_strb.MARKOV_TEST_PROB_THRESHOLDS = cpuif_req_masked & (cpuif_addr == 9'h38);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h38);
-        decoded_reg_strb.HEALTH_TEST_STATUS = cpuif_req_masked & (cpuif_addr == 9'h40);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h40);
-        decoded_reg_strb.REPETITION_TEST_COUNT = cpuif_req_masked & (cpuif_addr == 9'h44) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h44);
-        decoded_reg_strb.APT_PATTERN_COUNT_1BIT = cpuif_req_masked & (cpuif_addr == 9'h50) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h50);
-        decoded_reg_strb.APT_PATTERN_COUNT_2BIT = cpuif_req_masked & (cpuif_addr == 9'h54) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h54);
-        decoded_reg_strb.APT_PROPORTION_1BIT = cpuif_req_masked & (cpuif_addr == 9'h60);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h60);
-        decoded_reg_strb.APT_PROPORTION_LO = cpuif_req_masked & (cpuif_addr == 9'h70);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h70);
-        decoded_reg_strb.MARKOV_TEST_COUNTS_0 = cpuif_req_masked & (cpuif_addr == 9'h80) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h80);
-        decoded_reg_strb.RING_OSC_ENABLE = cpuif_req_masked & (cpuif_addr == 9'h90);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h90);
-        decoded_reg_strb.RING_OSC_TUNE = cpuif_req_masked & (cpuif_addr == 9'h94);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h94);
-        decoded_reg_strb.RING_OSC_CTRL = cpuif_req_masked & (cpuif_addr == 9'h98);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h98);
-        decoded_reg_strb.DECORRELATOR_CTRL = cpuif_req_masked & (cpuif_addr == 9'ha0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'ha0);
-        decoded_reg_strb.DECORRELATOR_MASK = cpuif_req_masked & (cpuif_addr == 9'ha4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'ha4);
-        decoded_reg_strb.MAIN_SM_STATUS = cpuif_req_masked & (cpuif_addr == 9'hb4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hb4);
-        decoded_reg_strb.GENERATOR_0_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hc0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hc0);
-        decoded_reg_strb.GENERATOR_1_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hc4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hc4);
-        decoded_reg_strb.GENERATOR_2_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hc8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hc8);
-        decoded_reg_strb.GENERATOR_3_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hcc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hcc);
-        decoded_reg_strb.GENERATOR_4_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hd0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hd0);
-        decoded_reg_strb.GENERATOR_5_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hd4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hd4);
-        decoded_reg_strb.GENERATOR_6_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hd8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hd8);
-        decoded_reg_strb.GENERATOR_7_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hdc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hdc);
-        decoded_reg_strb.GENERATOR_8_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'he0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'he0);
-        decoded_reg_strb.GENERATOR_9_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'he4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'he4);
-        decoded_reg_strb.GENERATOR_10_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'he8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'he8);
-        decoded_reg_strb.GENERATOR_11_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hec);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'hec);
-        decoded_reg_strb.GENERATOR_0_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h100);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h100);
-        decoded_reg_strb.GENERATOR_1_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h104);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h104);
-        decoded_reg_strb.GENERATOR_2_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h108);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h108);
-        decoded_reg_strb.GENERATOR_3_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h10c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h10c);
-        decoded_reg_strb.GENERATOR_4_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h110);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h110);
-        decoded_reg_strb.GENERATOR_5_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h114);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h114);
-        decoded_reg_strb.GENERATOR_6_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h118);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h118);
-        decoded_reg_strb.GENERATOR_7_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h11c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h11c);
-        decoded_reg_strb.GENERATOR_8_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h120);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h120);
-        decoded_reg_strb.GENERATOR_9_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h124);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h124);
-        decoded_reg_strb.GENERATOR_10_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h128);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h128);
-        decoded_reg_strb.GENERATOR_11_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 9'h12c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h12c);
-        decoded_reg_strb.HT_WATERMARK_NUM = cpuif_req_masked & (cpuif_addr == 9'h130);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h130);
-        decoded_reg_strb.HT_WATERMARK = cpuif_req_masked & (cpuif_addr == 9'h134) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h134);
-        decoded_reg_strb.REPCNT_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 9'h138) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h138);
-        decoded_reg_strb.APT_HI_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 9'h13c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h13c);
-        decoded_reg_strb.APT_LO_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 9'h140) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h140);
-        decoded_reg_strb.MARKOV_HI_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 9'h144) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h144);
-        decoded_reg_strb.MARKOV_LO_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 9'h148) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h148);
-        decoded_reg_strb.ALERT_SUMMARY_FAIL_COUNTS = cpuif_req_masked & (cpuif_addr == 9'h14c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h14c);
-        decoded_reg_strb.ALERT_FAIL_COUNTS = cpuif_req_masked & (cpuif_addr == 9'h150) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h150);
-        decoded_reg_strb.FIPS_LOCK = cpuif_req_masked & (cpuif_addr == 9'h154);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h154);
-        decoded_reg_strb.ALERT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 9'h158);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h158);
-        decoded_reg_strb.MIN_ENTROPY_H = cpuif_req_masked & (cpuif_addr == 9'h15c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h15c);
-        decoded_reg_strb.RECOMMENDED_THRESHOLDS = cpuif_req_masked & (cpuif_addr == 9'h160) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h160);
-        decoded_reg_strb.BIW_OBS_CTRL = cpuif_req_masked & (cpuif_addr == 9'h164);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h164);
-        decoded_reg_strb.BIW_OBS_STATUS = cpuif_req_masked & (cpuif_addr == 9'h168) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h168);
-        decoded_reg_strb.BIW_OBS_RDATA = cpuif_req_masked & (cpuif_addr == 9'h16c) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 9'h16c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h16c);
-        decoded_reg_strb.NOISE_OBS_CTRL = cpuif_req_masked & (cpuif_addr == 9'h170);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h170);
-        decoded_reg_strb.NOISE_OBS_STATUS = cpuif_req_masked & (cpuif_addr == 9'h174) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h174);
-        decoded_reg_strb.NOISE_OBS_RDATA = cpuif_req_masked & (cpuif_addr == 9'h178) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 9'h178) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 9'h178);
-        is_valid_addr = cpuif_addr < 9'h17c;
+        decoded_reg_strb.COMPONENT_ID = cpuif_req_masked & (cpuif_addr == 12'h0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h0);
+        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 12'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h4);
+        decoded_reg_strb.DEBUG_CTRL = cpuif_req_masked & (cpuif_addr == 12'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc);
+        decoded_reg_strb.INTR_STATUS = cpuif_req_masked & (cpuif_addr == 12'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h10);
+        decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 12'h14);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h14);
+        decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 12'h18) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h18);
+        decoded_reg_strb.SHA256_STATUS = cpuif_req_masked & (cpuif_addr == 12'h1c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h1c);
+        decoded_reg_strb.FIFO_CTRL = cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        decoded_reg_strb.FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 12'h24) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h24);
+        decoded_reg_strb.FIFO_RDATA = cpuif_req_masked & (cpuif_addr == 12'h28) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h28) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h28);
+        decoded_reg_strb.HEALTH_TEST_CTRL = cpuif_req_masked & (cpuif_addr == 12'h30);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h30);
+        decoded_reg_strb.HEALTH_TEST_WINDOW_SIZE = cpuif_req_masked & (cpuif_addr == 12'h34);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h34);
+        decoded_reg_strb.MARKOV_TEST_PROB_THRESHOLDS = cpuif_req_masked & (cpuif_addr == 12'h38);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h38);
+        decoded_reg_strb.HEALTH_TEST_STATUS = cpuif_req_masked & (cpuif_addr == 12'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h40);
+        decoded_reg_strb.REPETITION_TEST_COUNT = cpuif_req_masked & (cpuif_addr == 12'h44) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h44);
+        decoded_reg_strb.APT_PATTERN_COUNT_1BIT = cpuif_req_masked & (cpuif_addr == 12'h50) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h50);
+        decoded_reg_strb.APT_PATTERN_COUNT_2BIT = cpuif_req_masked & (cpuif_addr == 12'h54) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h54);
+        decoded_reg_strb.APT_PROPORTION_1BIT = cpuif_req_masked & (cpuif_addr == 12'h60);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h60);
+        decoded_reg_strb.APT_PROPORTION_LO = cpuif_req_masked & (cpuif_addr == 12'h70);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h70);
+        decoded_reg_strb.MARKOV_TEST_COUNTS_0 = cpuif_req_masked & (cpuif_addr == 12'h80) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h80);
+        decoded_reg_strb.RING_OSC_ENABLE = cpuif_req_masked & (cpuif_addr == 12'h90);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h90);
+        decoded_reg_strb.RING_OSC_TUNE = cpuif_req_masked & (cpuif_addr == 12'h94);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h94);
+        decoded_reg_strb.RING_OSC_CTRL = cpuif_req_masked & (cpuif_addr == 12'h98);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h98);
+        decoded_reg_strb.DECORRELATOR_CTRL = cpuif_req_masked & (cpuif_addr == 12'ha0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'ha0);
+        decoded_reg_strb.DECORRELATOR_MASK = cpuif_req_masked & (cpuif_addr == 12'ha4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'ha4);
+        decoded_reg_strb.MAIN_SM_STATUS = cpuif_req_masked & (cpuif_addr == 12'hb4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hb4);
+        decoded_reg_strb.GENERATOR_0_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hc0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc0);
+        decoded_reg_strb.GENERATOR_1_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hc4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc4);
+        decoded_reg_strb.GENERATOR_2_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hc8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc8);
+        decoded_reg_strb.GENERATOR_3_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hcc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hcc);
+        decoded_reg_strb.GENERATOR_4_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hd0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hd0);
+        decoded_reg_strb.GENERATOR_5_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hd4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hd4);
+        decoded_reg_strb.GENERATOR_6_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hd8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hd8);
+        decoded_reg_strb.GENERATOR_7_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hdc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hdc);
+        decoded_reg_strb.GENERATOR_8_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'he0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'he0);
+        decoded_reg_strb.GENERATOR_9_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'he4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'he4);
+        decoded_reg_strb.GENERATOR_10_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'he8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'he8);
+        decoded_reg_strb.GENERATOR_11_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 12'hec);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hec);
+        decoded_reg_strb.GENERATOR_0_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h100);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h100);
+        decoded_reg_strb.GENERATOR_1_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h104);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h104);
+        decoded_reg_strb.GENERATOR_2_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h108);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h108);
+        decoded_reg_strb.GENERATOR_3_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h10c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h10c);
+        decoded_reg_strb.GENERATOR_4_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h110);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h110);
+        decoded_reg_strb.GENERATOR_5_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h114);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h114);
+        decoded_reg_strb.GENERATOR_6_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h118);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h118);
+        decoded_reg_strb.GENERATOR_7_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h11c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h11c);
+        decoded_reg_strb.GENERATOR_8_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h120);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h120);
+        decoded_reg_strb.GENERATOR_9_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h124);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h124);
+        decoded_reg_strb.GENERATOR_10_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h128);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h128);
+        decoded_reg_strb.GENERATOR_11_SAMPLE_CLK_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h12c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h12c);
+        decoded_reg_strb.HT_WATERMARK_NUM = cpuif_req_masked & (cpuif_addr == 12'h130);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h130);
+        decoded_reg_strb.HT_WATERMARK = cpuif_req_masked & (cpuif_addr == 12'h134) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h134);
+        decoded_reg_strb.REPCNT_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 12'h138) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h138);
+        decoded_reg_strb.APT_HI_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 12'h13c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h13c);
+        decoded_reg_strb.APT_LO_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 12'h140) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h140);
+        decoded_reg_strb.MARKOV_HI_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 12'h144) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h144);
+        decoded_reg_strb.MARKOV_LO_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 12'h148) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h148);
+        decoded_reg_strb.ALERT_SUMMARY_FAIL_COUNTS = cpuif_req_masked & (cpuif_addr == 12'h14c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h14c);
+        decoded_reg_strb.ALERT_FAIL_COUNTS = cpuif_req_masked & (cpuif_addr == 12'h150) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h150);
+        decoded_reg_strb.FIPS_LOCK = cpuif_req_masked & (cpuif_addr == 12'h154);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h154);
+        decoded_reg_strb.ALERT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 12'h158);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h158);
+        decoded_reg_strb.MIN_ENTROPY_H = cpuif_req_masked & (cpuif_addr == 12'h15c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h15c);
+        decoded_reg_strb.RECOMMENDED_THRESHOLDS = cpuif_req_masked & (cpuif_addr == 12'h160) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h160);
+        decoded_reg_strb.BIW_OBS_CTRL = cpuif_req_masked & (cpuif_addr == 12'h164);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h164);
+        decoded_reg_strb.BIW_OBS_STATUS = cpuif_req_masked & (cpuif_addr == 12'h168) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h168);
+        decoded_reg_strb.BIW_OBS_RDATA = cpuif_req_masked & (cpuif_addr == 12'h16c) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h16c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h16c);
+        decoded_reg_strb.NOISE_OBS_CTRL = cpuif_req_masked & (cpuif_addr == 12'h170);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h170);
+        decoded_reg_strb.NOISE_OBS_STATUS = cpuif_req_masked & (cpuif_addr == 12'h174) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h174);
+        decoded_reg_strb.NOISE_OBS_RDATA = cpuif_req_masked & (cpuif_addr == 12'h178) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h178) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h178);
+        is_valid_addr = cpuif_addr < 12'h17c;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -3306,8 +3306,8 @@ module entropy_source_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [8:0] rd_mux_addr;
-    logic [8:0] pending_rd_addr;
+    logic [11:0] rd_mux_addr;
+    logic [11:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -3324,12 +3324,12 @@ module entropy_source_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 9'h0) begin
+        if(rd_mux_addr == 12'h0) begin
             readback_data_var[15:0] = 16'h1;
             readback_data_var[27:24] = 4'h1;
             readback_data_var[31:28] = 4'h0;
         end
-        if(rd_mux_addr == 9'h4) begin
+        if(rd_mux_addr == 12'h4) begin
             readback_data_var[0] = 1'h0;
             readback_data_var[1] = field_storage.CTRL.MODULE_ENABLE.value;
             readback_data_var[4] = field_storage.CTRL.AUTOTUNE_ENABLE.value;
@@ -3337,11 +3337,11 @@ module entropy_source_reg (
             readback_data_var[25:16] = field_storage.CTRL.DOWNSAMPLE_RATE.value;
             readback_data_var[28] = field_storage.CTRL.SHA256_WHITENING_ENABLE.value;
         end
-        if(rd_mux_addr == 9'hc) begin
+        if(rd_mux_addr == 12'hc) begin
             readback_data_var[7:0] = field_storage.DEBUG_CTRL.SELECT_SIGNAL.value;
             readback_data_var[10:8] = field_storage.DEBUG_CTRL.SELECT_FREQ_DIV.value;
         end
-        if(rd_mux_addr == 9'h10) begin
+        if(rd_mux_addr == 12'h10) begin
             readback_data_var[0] = field_storage.INTR_STATUS.HEALTH_TEST_FAILED.value;
             readback_data_var[4] = field_storage.INTR_STATUS.FIFO_ERROR.value;
             readback_data_var[8] = field_storage.INTR_STATUS.FIFO_OVERFLOW.value;
@@ -3351,7 +3351,7 @@ module entropy_source_reg (
             readback_data_var[24] = field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value;
             readback_data_var[28] = field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value;
         end
-        if(rd_mux_addr == 9'h14) begin
+        if(rd_mux_addr == 12'h14) begin
             readback_data_var[0] = field_storage.INTR_ENABLE.HEALTH_TEST_FAILED.value;
             readback_data_var[4] = field_storage.INTR_ENABLE.FIFO_ERROR.value;
             readback_data_var[8] = field_storage.INTR_ENABLE.FIFO_OVERFLOW.value;
@@ -3361,75 +3361,75 @@ module entropy_source_reg (
             readback_data_var[24] = field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value;
             readback_data_var[28] = field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value;
         end
-        if(rd_mux_addr == 9'h1c) begin
+        if(rd_mux_addr == 12'h1c) begin
             readback_data_var[0] = hwif_in.SHA256_STATUS.BUSY.next;
             readback_data_var[7:4] = hwif_in.SHA256_STATUS.INPUT_COUNT.next;
             readback_data_var[11:8] = hwif_in.SHA256_STATUS.OUTPUT_COUNT.next;
         end
-        if(rd_mux_addr == 9'h20) begin
+        if(rd_mux_addr == 12'h20) begin
             readback_data_var[0] = field_storage.FIFO_CTRL.ENABLE.value;
             readback_data_var[4] = field_storage.FIFO_CTRL.ENTROPY_CHURN_ENABLE.value;
         end
-        if(rd_mux_addr == 9'h24) begin
+        if(rd_mux_addr == 12'h24) begin
             readback_data_var[6:0] = hwif_in.FIFO_STATUS.LEVEL.next;
             readback_data_var[13:8] = hwif_in.FIFO_STATUS.WPTR.next;
             readback_data_var[21:16] = hwif_in.FIFO_STATUS.RPTR.next;
         end
-        if(rd_mux_addr == 9'h28) begin
+        if(rd_mux_addr == 12'h28) begin
             readback_data_var = hwif_in.FIFO_RDATA.rd_data;
         end
-        if(rd_mux_addr == 9'h30) begin
+        if(rd_mux_addr == 12'h30) begin
             readback_data_var[2:0] = field_storage.HEALTH_TEST_CTRL.ENABLE.value;
             readback_data_var[15:8] = field_storage.HEALTH_TEST_CTRL.REPETITION_LIMIT.value;
         end
-        if(rd_mux_addr == 9'h34) begin
+        if(rd_mux_addr == 12'h34) begin
             readback_data_var[15:0] = field_storage.HEALTH_TEST_WINDOW_SIZE.SIZE.value;
         end
-        if(rd_mux_addr == 9'h38) begin
+        if(rd_mux_addr == 12'h38) begin
             readback_data_var[15:0] = field_storage.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value;
             readback_data_var[31:16] = field_storage.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value;
         end
-        if(rd_mux_addr == 9'h40) begin
+        if(rd_mux_addr == 12'h40) begin
             readback_data_var[7:0] = field_storage.HEALTH_TEST_STATUS.HEALTH_STATUS.value;
         end
-        if(rd_mux_addr == 9'h44) begin
+        if(rd_mux_addr == 12'h44) begin
             readback_data_var[15:0] = hwif_in.REPETITION_TEST_COUNT.REPETITION_COUNT.next;
         end
-        if(rd_mux_addr == 9'h50) begin
+        if(rd_mux_addr == 12'h50) begin
             readback_data_var[15:0] = hwif_in.APT_PATTERN_COUNT_1BIT.PATTERN_COUNT.next;
         end
-        if(rd_mux_addr == 9'h54) begin
+        if(rd_mux_addr == 12'h54) begin
             readback_data_var[15:0] = hwif_in.APT_PATTERN_COUNT_2BIT.PATTERN_COUNT.next;
         end
-        if(rd_mux_addr == 9'h60) begin
+        if(rd_mux_addr == 12'h60) begin
             readback_data_var[15:0] = field_storage.APT_PROPORTION_1BIT.LIMIT.value;
         end
-        if(rd_mux_addr == 9'h70) begin
+        if(rd_mux_addr == 12'h70) begin
             readback_data_var[15:0] = field_storage.APT_PROPORTION_LO.LIMIT.value;
         end
-        if(rd_mux_addr == 9'h80) begin
+        if(rd_mux_addr == 12'h80) begin
             readback_data_var[15:0] = hwif_in.MARKOV_TEST_COUNTS_0.COUNT_01.next;
             readback_data_var[31:16] = hwif_in.MARKOV_TEST_COUNTS_0.COUNT_10.next;
         end
-        if(rd_mux_addr == 9'h90) begin
+        if(rd_mux_addr == 12'h90) begin
             readback_data_var[11:0] = field_storage.RING_OSC_ENABLE.ENABLE.value;
             readback_data_var[23:12] = field_storage.RING_OSC_ENABLE.SAMPLE_CLK_ENABLE.value;
         end
-        if(rd_mux_addr == 9'h94) begin
+        if(rd_mux_addr == 12'h94) begin
             readback_data_var[11:0] = field_storage.RING_OSC_TUNE.DETUNE.value;
             readback_data_var[23:12] = field_storage.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.value;
         end
-        if(rd_mux_addr == 9'h98) begin
+        if(rd_mux_addr == 12'h98) begin
             readback_data_var[11:0] = field_storage.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value;
         end
-        if(rd_mux_addr == 9'ha0) begin
+        if(rd_mux_addr == 12'ha0) begin
             readback_data_var[11:0] = field_storage.DECORRELATOR_CTRL.BYPASS.value;
             readback_data_var[31:12] = field_storage.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value;
         end
-        if(rd_mux_addr == 9'ha4) begin
+        if(rd_mux_addr == 12'ha4) begin
             readback_data_var[7:0] = field_storage.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
         end
-        if(rd_mux_addr == 9'hb4) begin
+        if(rd_mux_addr == 12'hb4) begin
             readback_data_var[8:0] = hwif_in.MAIN_SM_STATUS.STATE.next;
             readback_data_var[9] = hwif_in.MAIN_SM_STATUS.IDLE.next;
             readback_data_var[10] = field_storage.MAIN_SM_STATUS.ALERT.value;
@@ -3437,143 +3437,143 @@ module entropy_source_reg (
             readback_data_var[12] = hwif_in.MAIN_SM_STATUS.BOOT_PHASE_DONE.next;
             readback_data_var[13] = hwif_in.MAIN_SM_STATUS.ALERT_CNTR_CLR_OK.next;
         end
-        if(rd_mux_addr == 9'hc0) begin
+        if(rd_mux_addr == 12'hc0) begin
             readback_data_var[7:0] = field_storage.GENERATOR_0_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hc4) begin
+        if(rd_mux_addr == 12'hc4) begin
             readback_data_var[7:0] = field_storage.GENERATOR_1_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hc8) begin
+        if(rd_mux_addr == 12'hc8) begin
             readback_data_var[7:0] = field_storage.GENERATOR_2_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hcc) begin
+        if(rd_mux_addr == 12'hcc) begin
             readback_data_var[7:0] = field_storage.GENERATOR_3_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hd0) begin
+        if(rd_mux_addr == 12'hd0) begin
             readback_data_var[7:0] = field_storage.GENERATOR_4_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hd4) begin
+        if(rd_mux_addr == 12'hd4) begin
             readback_data_var[7:0] = field_storage.GENERATOR_5_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hd8) begin
+        if(rd_mux_addr == 12'hd8) begin
             readback_data_var[7:0] = field_storage.GENERATOR_6_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hdc) begin
+        if(rd_mux_addr == 12'hdc) begin
             readback_data_var[7:0] = field_storage.GENERATOR_7_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'he0) begin
+        if(rd_mux_addr == 12'he0) begin
             readback_data_var[7:0] = field_storage.GENERATOR_8_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'he4) begin
+        if(rd_mux_addr == 12'he4) begin
             readback_data_var[7:0] = field_storage.GENERATOR_9_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'he8) begin
+        if(rd_mux_addr == 12'he8) begin
             readback_data_var[7:0] = field_storage.GENERATOR_10_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'hec) begin
+        if(rd_mux_addr == 12'hec) begin
             readback_data_var[7:0] = field_storage.GENERATOR_11_HEALTH_STATUS.STATUS.value;
         end
-        if(rd_mux_addr == 9'h100) begin
+        if(rd_mux_addr == 12'h100) begin
             readback_data_var[4:0] = field_storage.GENERATOR_0_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h104) begin
+        if(rd_mux_addr == 12'h104) begin
             readback_data_var[4:0] = field_storage.GENERATOR_1_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h108) begin
+        if(rd_mux_addr == 12'h108) begin
             readback_data_var[4:0] = field_storage.GENERATOR_2_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h10c) begin
+        if(rd_mux_addr == 12'h10c) begin
             readback_data_var[4:0] = field_storage.GENERATOR_3_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h110) begin
+        if(rd_mux_addr == 12'h110) begin
             readback_data_var[4:0] = field_storage.GENERATOR_4_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h114) begin
+        if(rd_mux_addr == 12'h114) begin
             readback_data_var[4:0] = field_storage.GENERATOR_5_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h118) begin
+        if(rd_mux_addr == 12'h118) begin
             readback_data_var[4:0] = field_storage.GENERATOR_6_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h11c) begin
+        if(rd_mux_addr == 12'h11c) begin
             readback_data_var[4:0] = field_storage.GENERATOR_7_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h120) begin
+        if(rd_mux_addr == 12'h120) begin
             readback_data_var[4:0] = field_storage.GENERATOR_8_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h124) begin
+        if(rd_mux_addr == 12'h124) begin
             readback_data_var[4:0] = field_storage.GENERATOR_9_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h128) begin
+        if(rd_mux_addr == 12'h128) begin
             readback_data_var[4:0] = field_storage.GENERATOR_10_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h12c) begin
+        if(rd_mux_addr == 12'h12c) begin
             readback_data_var[4:0] = field_storage.GENERATOR_11_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         end
-        if(rd_mux_addr == 9'h130) begin
+        if(rd_mux_addr == 12'h130) begin
             readback_data_var[3:0] = field_storage.HT_WATERMARK_NUM.WATERMARK_NUM.value;
         end
-        if(rd_mux_addr == 9'h134) begin
+        if(rd_mux_addr == 12'h134) begin
             readback_data_var[15:0] = hwif_in.HT_WATERMARK.WATERMARK_VALUE.next;
         end
-        if(rd_mux_addr == 9'h138) begin
+        if(rd_mux_addr == 12'h138) begin
             readback_data_var[31:0] = hwif_in.REPCNT_TOTAL_FAILS.FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h13c) begin
+        if(rd_mux_addr == 12'h13c) begin
             readback_data_var[31:0] = hwif_in.APT_HI_TOTAL_FAILS.FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h140) begin
+        if(rd_mux_addr == 12'h140) begin
             readback_data_var[31:0] = hwif_in.APT_LO_TOTAL_FAILS.FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h144) begin
+        if(rd_mux_addr == 12'h144) begin
             readback_data_var[31:0] = hwif_in.MARKOV_HI_TOTAL_FAILS.FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h148) begin
+        if(rd_mux_addr == 12'h148) begin
             readback_data_var[31:0] = hwif_in.MARKOV_LO_TOTAL_FAILS.FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h14c) begin
+        if(rd_mux_addr == 12'h14c) begin
             readback_data_var[15:0] = hwif_in.ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h150) begin
+        if(rd_mux_addr == 12'h150) begin
             readback_data_var[3:0] = hwif_in.ALERT_FAIL_COUNTS.APT_LO_FAIL_COUNT.next;
             readback_data_var[7:4] = hwif_in.ALERT_FAIL_COUNTS.APT_HI_FAIL_COUNT.next;
             readback_data_var[11:8] = hwif_in.ALERT_FAIL_COUNTS.MARKOV_LO_FAIL_COUNT.next;
             readback_data_var[15:12] = hwif_in.ALERT_FAIL_COUNTS.MARKOV_HI_FAIL_COUNT.next;
             readback_data_var[19:16] = hwif_in.ALERT_FAIL_COUNTS.REPCNT_FAIL_COUNT.next;
         end
-        if(rd_mux_addr == 9'h154) begin
+        if(rd_mux_addr == 12'h154) begin
             readback_data_var[0] = field_storage.FIPS_LOCK.LOCK.value;
         end
-        if(rd_mux_addr == 9'h158) begin
+        if(rd_mux_addr == 12'h158) begin
             readback_data_var[15:0] = field_storage.ALERT_THRESHOLD.THRESHOLD.value;
         end
-        if(rd_mux_addr == 9'h15c) begin
+        if(rd_mux_addr == 12'h15c) begin
             readback_data_var[7:0] = field_storage.MIN_ENTROPY_H.H.value;
         end
-        if(rd_mux_addr == 9'h160) begin
+        if(rd_mux_addr == 12'h160) begin
             readback_data_var[15:0] = hwif_in.RECOMMENDED_THRESHOLDS.RCT_LIMIT.next;
             readback_data_var[31:16] = hwif_in.RECOMMENDED_THRESHOLDS.APT_LIMIT.next;
         end
-        if(rd_mux_addr == 9'h164) begin
+        if(rd_mux_addr == 12'h164) begin
             readback_data_var[0] = field_storage.BIW_OBS_CTRL.RAW_ENABLE.value;
         end
-        if(rd_mux_addr == 9'h168) begin
+        if(rd_mux_addr == 12'h168) begin
             readback_data_var[6:0] = hwif_in.BIW_OBS_STATUS.LEVEL.next;
             readback_data_var[13:8] = hwif_in.BIW_OBS_STATUS.WPTR.next;
             readback_data_var[21:16] = hwif_in.BIW_OBS_STATUS.RPTR.next;
         end
-        if(rd_mux_addr == 9'h16c) begin
+        if(rd_mux_addr == 12'h16c) begin
             readback_data_var = hwif_in.BIW_OBS_RDATA.rd_data;
         end
-        if(rd_mux_addr == 9'h170) begin
+        if(rd_mux_addr == 12'h170) begin
             readback_data_var[0] = field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value;
             readback_data_var[7:4] = field_storage.NOISE_OBS_CTRL.LANE_SEL.value;
         end
-        if(rd_mux_addr == 9'h174) begin
+        if(rd_mux_addr == 12'h174) begin
             readback_data_var[6:0] = hwif_in.NOISE_OBS_STATUS.LEVEL.next;
             readback_data_var[13:8] = hwif_in.NOISE_OBS_STATUS.WPTR.next;
             readback_data_var[21:16] = hwif_in.NOISE_OBS_STATUS.RPTR.next;
         end
-        if(rd_mux_addr == 9'h178) begin
+        if(rd_mux_addr == 12'h178) begin
             readback_data_var = hwif_in.NOISE_OBS_RDATA.rd_data;
         end
         readback_data = readback_data_var;

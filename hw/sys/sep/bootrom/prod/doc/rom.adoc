@@ -219,7 +219,7 @@ modular-exponentiation program for manifest signature verification (<<sec:secure
 manifest hash, payload hashes, measurements; HMAC mode is the PRF for the payload KDF.
 |AES |`0x10910000` |AES-256-CBC in-place payload decryption (<<sec:payload>>).
 |Secure DMA |`0x10800000` |Bulk copies: flash→SRAM manifest/payload transfer, SMC SRAM reads.
-|SEP efuse map |`0x10930000` |Shadow registers for LC_STATE, SBOOT_DIS, CLASS_KEY,
+|SEP efuse map |`0x10930800` |Shadow registers for LC_STATE, SBOOT_DIS, CLASS_KEY,
 CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock register.
 |Lifecycle controller |`0x10918000` |`FEAT_CTRL` (64-bit feature control, read), `DEMOTE_1` /
 `DEMOTE_2` demotion registers (write + lock).
@@ -279,8 +279,8 @@ program.
 |HMAC |`0x10911000` |8 KiB incl. FIFO |SHA-256 / HMAC-SHA-256.
 |Lifecycle controller |`0x10918000` |4 KiB |`FEAT_CTRL` @ `+0x0` (64-bit), `DEMOTE_1` @
 `+0x8`, `DEMOTE_2` @ `+0x10`.
-|SEP efuse map |`0x10930000` |1 KiB |Fuse shadow registers; see <<tbl:fuse_fields>>.
-|AXI-Lite mailboxes |`0x10A00000` |64 KiB |Inbound/outbound mailbox pairs; not used by BL0
+|SEP efuse map |`0x10930800` |1 KiB |Fuse shadow registers; see <<tbl:fuse_fields>>.
+|AXI-Lite mailboxes |`0x10A00000` |32 KiB |Inbound/outbound mailbox pairs; not used by BL0
 boot decisions.
 |Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_n`).
 |OpenTitan SPI host |`0x10B00000` |— |Boot-flash transport option A.
@@ -318,11 +318,11 @@ them from the generated SMC map; the values shown are those of the open map.
 |*Resource* |*Offset* |*ROM usage*
 |Captured straps `STRAPS_LO` / `STRAPS_HI` |`0x40_3000` / `0x40_3004` |Latched hardware straps
 (<<sec:straps>>).
-|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
-|`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
+|`CHIP_CONFIG_CHIP_ID` |`0xD108` |Chip identification, diagnostic only ([S12]).
+|`CHIP_CONFIG_LC_STATE` |`0xD10C` |SMC-side lifecycle mirror (low 4 bits); informational.
 |SMC CPU_CTRL scratch registers |`0x39080 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
-|`DFX_CTRL_STATUS_SMU` |`0xB800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
+|`DFX_CTRL_STATUS_SMU` |`0x17000` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
 |SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
@@ -1057,7 +1057,7 @@ check.
 == Fuse and System State
 
 The device's security posture is rooted in OTP fuses. Fuse sensing is performed by hardware;
-the ROM consumes *shadow registers* in the SEP efuse map (`0x1093_0000`). Differential
+the ROM consumes *shadow registers* in the SEP efuse map (`0x1093_0800`). Differential
 decoding and signal-integrity checking of sensed values are done in RTL
 (`prim_diff_decode_multi`) before the shadow registers are populated.
 
@@ -1083,7 +1083,7 @@ fail open.
 === Lifecycle State ([S11])
 
 The 4-bit lifecycle state is read from the low nibble of `SEP_EFUSE_MAP_LC_STATE`
-(`0x1093_000C`).
+(`0x1093_080C`).
 
 [[tbl:lc_states]]
 .Lifecycle states
@@ -1120,7 +1120,7 @@ The 64-bit `FEAT_CTRL` register of the lifecycle controller (`0x1091_8000`) is c
 
 === Secure-Boot Chicken Bit ([S18])
 
-`SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_0010`) bit 0 (`disable_secure_boot`) is the secure-boot
+`SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_0810`) bit 0 (`disable_secure_boot`) is the secure-boot
 chicken bit. It is read once, recorded in `bl0_state.sboot_dis`, and consumed by the
 secure-boot decision (<<sec:secure_boot>>) and the boot measurement
 (<<sec:boot_measurement>>).
@@ -1140,7 +1140,7 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 [[sec:fuse_chiplet_dbg]]
 === Chiplet Debug Lock ([S18])
 
-`CHIPLET_DBG` is bit 1 of the `SIP_DIS` (`0x1093_0018`) and `SYS_DIS` (`0x1093_0020`)
+`CHIPLET_DBG` is bit 1 of the `SIP_DIS` (`0x1093_0818`) and `SYS_DIS` (`0x1093_0820`)
 disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
 and on a `TEST_DEV` or `RMA_SiP` part it makes secure boot enforced (SEP-ROM-SB-025).
 `RMA_CHIPLET` ignores it.
@@ -1168,38 +1168,38 @@ When the lock is what makes a `TEST_DEV` or `RMA_SiP` part enforce secure boot, 
 [frame=ends]
 |===
 |*Field* |*Address* |*Size* |*ROM usage*
-|`LOCKS` |`0x10930000` |32 b |Read-lock control for the six protected fields; SET-only, and
+|`LOCKS` |`0x10930800` |32 b |Read-lock control for the six protected fields; SET-only, and
 cleared by reset. Written + verified at [S25]/[S26] (<<sec:handoff>>). The `SIP_DIS` /
 `SYS_DIS` read-lock bits are read at [S18].
-|`LC_STATE` |`0x1093000C` |8 b (low 4 used) |Lifecycle state (this chapter).
-|`SBOOT_DIS` |`0x10930010` |1 b |Secure-boot chicken bit.
-|`SIP_DIS` / `SYS_DIS` |`0x10930018` / `0x10930020` |64 b each |Disable vectors; the ROM
+|`LC_STATE` |`0x1093080C` |8 b (low 4 used) |Lifecycle state (this chapter).
+|`SBOOT_DIS` |`0x10930810` |1 b |Secure-boot chicken bit.
+|`SIP_DIS` / `SYS_DIS` |`0x10930818` / `0x10930820` |64 b each |Disable vectors; the ROM
 reads `CHIPLET_DBG` (bit 1) of each at [S18] (<<sec:fuse_chiplet_dbg>>).
-|`CLASS_KEY` |`0x10930068` |256 b |Pre-shared secret for payload-decryption KDF
+|`CLASS_KEY` |`0x10930868` |256 b |Pre-shared secret for payload-decryption KDF
 (<<sec:payload>>). Read-locked before hand-off.
-|`CHIPLET_PUBK_REVOKE` |`0x10930088` |32 b |Device-held root-key revocation bits
+|`CHIPLET_PUBK_REVOKE` |`0x10930888` |32 b |Device-held root-key revocation bits
 (<<sec:secure_boot>>).
-|`BL1_VERSION` |`0x1093008C` |256 b |Anti-rollback thermometer for the BL1 manifest security
+|`BL1_VERSION` |`0x1093088C` |256 b |Anti-rollback thermometer for the BL1 manifest security
 version (<<sec:secure_boot>>).
-|`CHIPLET_PUBK_HASH0` / `HASH1` |`0x10930178` / `0x10930198` |256 b each |SHA-256 digests of
+|`CHIPLET_PUBK_HASH0` / `HASH1` |`0x10930978` / `0x10930998` |256 b each |SHA-256 digests of
 the chiplet-creator field-programmable RSA-3072 public keys; select bits 16 / 17
 (<<tbl:key_slots>>).
-|`SIP_PUBK_HASH0` / `SIP_PUBK_HASH1` |`0x109300EC` / `0x10930240` |256 b each |SiP-owner key
+|`SIP_PUBK_HASH0` / `SIP_PUBK_HASH1` |`0x109308EC` / `0x10930A40` |256 b each |SiP-owner key
 digests; select bits 20 / 24 (<<tbl:key_slots>>).
-|`SYS_PUBK_HASH` |`0x1093012C` |256 b |System-owner key digest; select bit 22
+|`SYS_PUBK_HASH` |`0x1093092C` |256 b |System-owner key digest; select bit 22
 (<<tbl:key_slots>>).
-|`SYSCLK_FREQ_MHZ` |`0x10930174` |11 b |Configured sysclk PLL frequency in MHz, read at [S09]
+|`SYSCLK_FREQ_MHZ` |`0x10930974` |11 b |Configured sysclk PLL frequency in MHz, read at [S09]
 (PLL init); 0 keeps the reference clock.
-|`STATUS_RPT` |`0x1093016C` |2 b used |Status-ring policy in bits [1:0]; bits [31:2] do not
+|`STATUS_RPT` |`0x1093096C` |2 b used |Status-ring policy in bits [1:0]; bits [31:2] do not
 participate in the decision.
-|`CHIPLET_UID` |`0x109300CC` |256 b |*Secret.* Per-device seed for Key Manager key
+|`CHIPLET_UID` |`0x109308CC` |256 b |*Secret.* Per-device seed for Key Manager key
 derivation, chiplet scope. The ROM never reads it; it read-locks it before hand-off
 ([SEP-ROM-HOFF-030]).
-|`SIP_UID` |`0x1093010C` |256 b |*Secret.* Per-device key-derivation seed, SiP scope.
+|`SIP_UID` |`0x1093090C` |256 b |*Secret.* Per-device key-derivation seed, SiP scope.
 Read-locked, never read ([SEP-ROM-HOFF-030]).
-|`SYS_UID` |`0x1093014C` |256 b |*Secret.* Per-device key-derivation seed, system scope.
+|`SYS_UID` |`0x1093094C` |256 b |*Secret.* Per-device key-derivation seed, system scope.
 Read-locked, never read ([SEP-ROM-HOFF-030]).
-|`SEP_CHIPLET_ID` / `SEP_SIP_ID` / `SEP_SYS_ID` |`0x10930280` / `0x109302A0` / `0x109302C0`
+|`SEP_CHIPLET_ID` / `SEP_SIP_ID` / `SEP_SYS_ID` |`0x10930A80` / `0x10930AA0` / `0x10930AC0`
 |256 b each |Device identity compared against the manifest's chiplet / package / system ID
 usage constraints ([S23], [SEP-ROM-MAN-040]). Public; the ROM does not lock them.
 |===
@@ -1288,7 +1288,7 @@ success.
 
 [[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless every
 memory check that runs passes. Both checks read `DFX_CTRL_STATUS_SMU` (SMC window offset
-`0xB800`):
+`0x17000`):
 
 . *Memory repair.* When the `mem_repair_bypass` strap (`STRAPS_LO[13]`) is 1, repair did not
   run and the ROM skips this check. Otherwise bit 1 (`mem_repair_success`) shall be 1.
@@ -1313,7 +1313,7 @@ the SMC's `SRAM_INIT`/`BUFFER_READY` indications.
 
 === Chip Identification ([S12])
 
-`CHIP_CONFIG_CHIP_ID` (SMC window offset `0x2908`) is read once and reported on the status
+`CHIP_CONFIG_CHIP_ID` (SMC window offset `0xD108`) is read once and reported on the status
 channel (low 16 bits as an `INFO_EXT` status word). The read is diagnostic: it gives DV and a
 debugger the part's identity, and exercises the SMC `chip_config` path while a failure there is
 still attributable.
@@ -2541,7 +2541,7 @@ survive into the BL1 environment (legacy-ROM precedent; not yet implemented —
 Decryption is AES-256-CBC, in place, using the OpenTitan AES block:
 
 * *Key derivation:* the AES-256 key (32 bytes) is derived from the `CLASS_KEY` fuse secret
-  (`0x10930064`, 32 bytes) and the manifest's `encryption_kdf_input`.
+  (`0x10930868`, 32 bytes) and the manifest's `encryption_kdf_input`.
   [[req-SEP-ROM-PL-070]]*[SEP-ROM-PL-070]* Decryption shall require a non-zero programmed
   `CLASS_KEY`; an all-zero (unprogrammed) class key shall fail the decryption stage.
 * *IV:* the low 16 bytes of `encryption_iv` (offset 235).

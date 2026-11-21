@@ -7,7 +7,7 @@
 package sep_lifecycle_ctrl_reg_pkg;
 
     localparam SEP_LIFECYCLE_CTRL_REG_DATA_WIDTH = 64;
-    localparam SEP_LIFECYCLE_CTRL_REG_MIN_ADDR_WIDTH = 5;
+    localparam SEP_LIFECYCLE_CTRL_REG_MIN_ADDR_WIDTH = 12;
     localparam SEP_LIFECYCLE_CTRL_REG_SIZE = 'h18;
 
     typedef struct {

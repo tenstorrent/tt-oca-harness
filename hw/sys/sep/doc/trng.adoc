@@ -244,8 +244,10 @@ endif::backend-html5[]
 
 === Memory Map
 
-CSRNG and EDN occupy separate apertures in the SEP memory map. Their register
-offsets and access rules are given in the generated maps below.
+CSRNG and EDN each own a 4 KiB page in the SEP memory map. The crypto AXI
+interconnect passes each block the `0x80` bytes its register block decodes and
+answers the rest of the page with SLVERR and read data `0xBADCAB1E`. Their
+register offsets and access rules are given in the generated maps below.
 
 === Detailed Register Map
 

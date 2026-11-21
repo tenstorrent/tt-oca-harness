@@ -112,12 +112,12 @@ module smu_remap_fcov (
       SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR;
   import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_NUM;
   import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE;
-  import sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR;
-  import sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR;
-  import sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM;
-  import sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE;
-  import sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM;
-  import sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_REGION_NUM;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_REGION_NUM;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE;
   import sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR;
   import sep_top_addrmap_pkg::SEP_TOP_AP_REGION_SIZE;
   import sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR;
@@ -158,30 +158,32 @@ module smu_remap_fcov (
   // Output tables (output_remap.rdl): one REGION_ATTRS per region stride,
   // sixteen regions per table, each over a fixed window of the table's region.
   localparam logic [31:0] ApCsrBase =
-      32'(SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+      32'(SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
       0
   ));
   localparam logic [31:0] SteeCsrBase =
-      32'(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+      32'(SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
       0
   ));
-  localparam logic [31:0] ApCsrSpan = 32'(SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM
-                                          * SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE);
+  localparam logic [31:0] ApCsrSpan = 32'(SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_REGION_NUM
+                                          * SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE);
   localparam logic [31:0] SteeCsrSpan =
-      32'(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM
-          * SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE);
-  localparam int unsigned ApIdxLsb = $clog2(SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE);
+      32'(SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_REGION_NUM
+          * SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE);
+  localparam int unsigned ApIdxLsb = $clog2(
+      SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE
+  );
   localparam int unsigned SteeIdxLsb = $clog2(
-      SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE
+      SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_STRIDE
   );
   // Each table's window: its base and size from the generated address map,
   // its region count from its own table, and the in-window bits of an
   // output access, which the leaving address keeps under the upper bits of
   // the region's offset (output_remap.rdl, offset).
   localparam int unsigned ApRegions =
-      int'(SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM);
+      int'(SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_REGION_NUM);
   localparam int unsigned SteeRegions =
-      int'(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM);
+      int'(SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_REGION_NUM);
   localparam logic [31:0] ApWindowBase = 32'(SEP_TOP_AP_REGION_BASE_ADDR);
   localparam logic [31:0] SteeWindowBase = 32'(SEP_TOP_STEE_REGION_BASE_ADDR);
   localparam logic [31:0] ApWindowSpan = 32'(SEP_TOP_AP_REGION_SIZE);

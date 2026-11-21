@@ -13,13 +13,15 @@ the write response.
 This module builds the address sets that sit next to live registers but own
 none, and that no other leaf probes:
 
-* system-CSR holes: the gaps between the remap, filter and SEP CPU control
-  blocks, the space past the SEP CPU control extent, and the gaps around the
-  cold and warm scratch banks;
+* system-CSR holes: the unbacked words of the scratch, remap, filter and SEP
+  CPU control pages next to their registers, and the reserved words between
+  those pages;
 * the reserved row above SEP CPU control, walked one 64 KiB page at a time;
-* the upper half of the mailbox page, past the mailbox extent;
+* the reserved row above the mailbox pages, one mailbox image up;
 * the space past each eFuse sibling block (interface control, token MMR);
-* the space past the SPI host extent, to the end of its aperture;
+* the space past the SPI host extent, to the end of its aperture: the first two
+  words lie in the span the SPI controller answers itself (the Past Extent
+  note of its row), the rest past it;
 * a hole inside an extent: one word between two mailbox sub-blocks and one
   word between two SEP CPU control registers, each read, written and read
   again;
@@ -29,7 +31,8 @@ none, and that no other leaf probes:
 An array's extent is ``SEP_TOP_<ARRAY>_TOTAL_SIZE`` from the generated
 ``hw/sys/sep/regs/gen/c/sep_addr.h``: the RDL allocates the whole stride to
 every slot, the last one included, so every slot tail is inside the extent and
-reads zero with OKAY. The array's aperture in the map must equal that size.
+reads zero with OKAY. The array's Decoded Extent in the map must equal that
+size.
 
 ``sep_memory_map.rdl`` sets ``ocah_full_stride_extent`` on these arrays, so the map's
 Decoded Extent is the full allocation and the map states OKAY with zero for
@@ -67,7 +70,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_decode_resp import Expected, expected_unbacked, logical_region, sep_map_row
+from env.sep_decode_resp import (
+    Expected,
+    expected_unbacked,
+    logical_region,
+    sep_map_row,
+    sep_memory_map,
+)
 from env.sep_spec_tables import mailbox_depth
 from sep_reg_meta import (
     EFUSE_INTERFACE_CTRL,
@@ -196,11 +205,38 @@ REFUSE_GROUPS = (
 # of them, so this group is graded by CHK-UNMAPPED-CODE only, not by a refusal
 # checker.
 GROUP_INEXTENT = "in_extent_hole"
-# Groups whose probes reach the system-CSR AXI-Lite port when the system CSR is
-# the point that refuses. The Lite handshake is logged for these. The local
-# crossbar's ext initiator is watched for the same probes: an access that
-# sep_system_peripherals does not decode returns to the local crossbar there.
+# Groups whose probes are watched at the system-CSR AXI-Lite port and at the
+# local crossbar's ext initiator. The peripheral crossbar sends the scratch page
+# and each system CSR page whole to the system CSR block, answers the rest of
+# 0x10A0_8000-0x10A4_FFFF itself with DECERR, and forwards other addresses below
+# 0x4000_0000 to the ext initiator (hw/sys/sep/doc/fabric.adoc:144-151,
+# hw/sys/sep/doc/memory_map.adoc:106-108).
 LITE_WATCHED = (GROUP_SYSCSR, GROUP_RESERVED)
+
+# The pages the peripheral crossbar sends whole to the system CSR block, as the
+# unit rows of the generated map (sep-components view keys).
+SYSCSR_PAGE_KEYS = (
+    "main:sep_scratch_wrap",
+    "main:sep_remap_wrap",
+    "main:outbound_filter_ctrl_wrap",
+    "main:inbound_filter_ctrl_wrap",
+    "main:sep_cpu_ctrl",
+)
+
+
+def _syscsr_pages() -> tuple[tuple[int, int], ...]:
+    """``(base, end)`` of each page in ``SYSCSR_PAGE_KEYS``, from the generated map."""
+    rows = {r["key"]: r for r in sep_memory_map.VIEWS["sep-components"]["rows"]}
+    return tuple((rows[k]["base"], rows[k]["end"]) for k in SYSCSR_PAGE_KEYS)
+
+
+SYSCSR_PAGES = _syscsr_pages()
+
+
+def reaches_syscsr(addr: int) -> bool:
+    """Whether the peripheral crossbar sends ``addr`` to the system CSR block."""
+    return any(base <= addr <= end for base, end in SYSCSR_PAGES)
+
 
 # First word of the External row of the SEP CPU logical map. The local crossbar
 # sends it to sep_system_peripherals, whose peripheral crossbar forwards an
@@ -217,7 +253,7 @@ TOKEN_MATCH_FAULT_RESET = EFUSE_MMR.reset32("TOKEN_MATCH_FAULT")
 _ARRAYS = (
     (
         "local_master_alias_remap_ctrl",
-        "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
+        "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP",
         ALIAS_REGIONS,
     ),
     ("outbound_filter_ctrl", "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", OUTFILT_ENTRIES),
@@ -281,10 +317,10 @@ class SepUnmappedCfg:
             if bases[-1] + stride > bases[0] + total:
                 raise RuntimeError(f"{name}: the last slot stride ends past TOTAL_SIZE 0x{total:x}")
             row = sep_map_row(bases[0])
-            if row.base != bases[0] or row.end - row.base + 1 != total:
+            if row.base != bases[0] or row.extent != total:
                 raise RuntimeError(
-                    f"{name}: map row {row.unit} 0x{row.base:08x}-0x{row.end:08x} is not the "
-                    f"array aperture base 0x{bases[0]:08x} + TOTAL_SIZE 0x{total:x}"
+                    f"{name}: map row {row.unit} at 0x{row.base:08x} has Decoded Extent "
+                    f"0x{row.extent:x}, not the array base 0x{bases[0]:08x} + TOTAL_SIZE 0x{total:x}"
                 )
             extent_end = bases[0] + total
             self.array_extent[name] = (bases[0], total)
@@ -293,7 +329,7 @@ class SepUnmappedCfg:
                 # One distinct, non-zero programmed word per slot. The alias
                 # remap uses REGION_END (4 KB-aligned, valid stays clear); the
                 # filters use START_ADDR (entry_enabled stays clear).
-                if prefix == "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP":
+                if prefix == "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP":
                     addr = base + ALIAS_END
                     value = ((0x40 + i) << 12) & ALIAS_END_MASK
                 else:
@@ -315,7 +351,7 @@ class SepUnmappedCfg:
                     )
             # The first word past the array aperture. It is a refusal point only
             # where no other RDL block owns it: the word past the alias-remap
-            # array is AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP[0], a live word.
+            # array is SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP[0], a live word.
             ap_end = bases[0] + total
             if _rdl_owner(ap_end) is None:
                 self.tails.append(
@@ -333,12 +369,12 @@ class SepUnmappedCfg:
     def _build_syscsr(self) -> None:
         g = GROUP_SYSCSR
         ap_last = REMAP_REGIONS - 1
-        ap_end = _slot_base("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last) + _slot_size(
-            "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last
+        ap_end = _slot_base("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", ap_last) + _slot_size(
+            "SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", ap_last
         )
-        stee_end = _slot_base("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last) + _slot_size(
-            "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last
-        )
+        stee_end = _slot_base(
+            "SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", ap_last
+        ) + _slot_size("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", ap_last)
         remap_img = ALIAS_BASE + _pow2_ceil(stee_end - ALIAS_BASE)
         out_last = OUTFILT_ENTRIES - 1
         out_img = OUTFILT_BASE + _pow2_ceil(
@@ -364,13 +400,13 @@ class SepUnmappedCfg:
             ("ap_output_remap[0]", AP_BASE, 0x00A5_A000),
             (
                 f"ap_output_remap[{ap_last}]",
-                _slot_base("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last),
+                _slot_base("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP", ap_last),
                 0x00C7_C000,
             ),
             ("stee_output_remap[0]", STEE_BASE, 0x00B6_B000),
             (
                 f"stee_output_remap[{ap_last}]",
-                _slot_base("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last),
+                _slot_base("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP", ap_last),
                 0x00D8_D000,
             ),
         ):
@@ -386,27 +422,27 @@ class SepUnmappedCfg:
         # Scratch banks: the first and last SCRATCH word of each bank. A bank's
         # extent is its RDL size, so the word one extent up from SCRATCH_0 is
         # the first word past that bank.
-        cold = RegBlock("SEP_SCRATCH_COLD")
-        warm = RegBlock("SEP_SCRATCH_WARM")
-        cold_base = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
-        warm_base = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
-        cold_end = cold_base + block_size("SEP_SCRATCH_COLD")
-        warm_end = warm_base + block_size("SEP_SCRATCH_WARM")
+        cold = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD")
+        warm = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_WARM")
+        cold_base = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+        warm_base = sym("SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
+        cold_end = cold_base + block_size("SEP_SCRATCH_WRAP_SCRATCH_COLD")
+        warm_end = warm_base + block_size("SEP_SCRATCH_WRAP_SCRATCH_WARM")
         scratch_img = cold_base + _pow2_ceil(warm_end - cold_base)
-        scratch_last = _scratch_count("SEP_SCRATCH_COLD") - 1
-        if _scratch_count("SEP_SCRATCH_WARM") - 1 != scratch_last:
+        scratch_last = _scratch_count("SEP_SCRATCH_WRAP_SCRATCH_COLD") - 1
+        if _scratch_count("SEP_SCRATCH_WRAP_SCRATCH_WARM") - 1 != scratch_last:
             raise RuntimeError("cold and warm scratch banks differ in SCRATCH count")
         for label, blk, reg, value in (
-            ("sep_scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
+            ("sep_scratch_wrap.scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
             (
-                f"sep_scratch_cold.SCRATCH_{scratch_last}",
+                f"sep_scratch_wrap.scratch_cold.SCRATCH_{scratch_last}",
                 cold,
                 f"SCRATCH_{scratch_last}_",
                 0x5C01_D0F7,
             ),
-            ("sep_scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
+            ("sep_scratch_wrap.scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
             (
-                f"sep_scratch_warm.SCRATCH_{scratch_last}",
+                f"sep_scratch_wrap.scratch_warm.SCRATCH_{scratch_last}",
                 warm,
                 f"SCRATCH_{scratch_last}_",
                 0x5CA2_30F7,
@@ -430,6 +466,7 @@ class SepUnmappedCfg:
             (warm_base - 4, "last word before the warm scratch bank"),
             (warm_end, "warm scratch SCRATCH_0, one bank extent up"),
             (scratch_img - 4, "last word below one scratch-pair image up"),
+            (scratch_img, "cold scratch SCRATCH_0, one scratch-pair image up"),
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(g, addr, op, note))
@@ -454,7 +491,7 @@ class SepUnmappedCfg:
         g = GROUP_MBOX
         mb_base = sym("AXIL_MAILBOX_REG_MAP_BASE_ADDR")
         upper = mb_base + _pow2_ceil(block_size("AXIL_MAILBOX"))
-        upper_end = ALIAS_BASE  # next RDL block after the mailbox page
+        upper_end = ALIAS_BASE  # next RDL block after the reserved row
         n_in = indexed_block_count("AXIL_MAILBOX_INBOUND_MAILBOX")
         out0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
         in_last = RegBlock(f"AXIL_MAILBOX_INBOUND_MAILBOX_{n_in - 1}")
@@ -497,18 +534,18 @@ class SepUnmappedCfg:
                 ("r", "w"),
                 f"inbound mailbox {n_in - 1} WIRQT, one mailbox image up",
             ),
-            (upper + (upper_end - upper) // 2, ("r", "w"), "middle of the upper half"),
-            (upper_end - 4, ("r", "w"), "last word of the mailbox page"),
+            (upper + (upper_end - upper) // 2, ("r", "w"), "middle of the reserved row"),
+            (upper_end - 4, ("r", "w"), "last word of the reserved row"),
         ):
             for op in ops:
                 self.probes.append(Probe(g, addr, op, note))
 
     # --- eFuse siblings ----------------------------------------------------
     def _build_efuse(self) -> None:
-        ctrl_base = sym("EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
-        ctrl_end = ctrl_base + block_size("EFUSE_INTERFACE_CTRL")
-        mmr_base = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
-        mmr_end = mmr_base + block_size("EFUSE_MMR")
+        ctrl_base = sym("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
+        ctrl_end = ctrl_base + block_size("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL")
+        mmr_base = sym("SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR")
+        mmr_end = mmr_base + block_size("SEP_EFUSE_WRAP_EFUSE_MMR")
         # The two siblings sit in equal windows in the generated map, so the
         # spacing of their bases is the window size of each.
         window = mmr_base - ctrl_base
@@ -540,8 +577,12 @@ class SepUnmappedCfg:
                 LiveWord("efuse_mmr.TOKEN_MATCH_FAULT", TOKEN_MATCH_FAULT),
             )
         )
-        ctrl_img = _pow2_ceil(block_size("EFUSE_INTERFACE_CTRL"))
-        mmr_img = _pow2_ceil(block_size("EFUSE_MMR"))
+        # The map states a refusal for every word of each sibling's window past
+        # its registers. An image probe is a live word plus the next power of two
+        # at or above the extent, inside that window: a decoder that drops the
+        # address bits above the extent returns the live word there.
+        ctrl_img = _pow2_ceil(block_size("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL"))
+        mmr_img = _pow2_ceil(block_size("SEP_EFUSE_WRAP_EFUSE_MMR"))
         # The map states one read word past this extent. Probe both 32-bit lanes of
         # the 64-bit bus: the first word past the extent, and the first word past
         # it with the other value of address bit 2.
@@ -555,15 +596,9 @@ class SepUnmappedCfg:
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(GROUP_EFUSE_CTRL, addr, op, note))
-        # The token span past the efuse_mmr extent, 0x1093_0574 to 0x1093_05FF,
-        # answers DECERR with read data 0xBADCAB1E:
-        # hw/sys/sep/regs/gen/adoc/memory_map.adoc:64 (eFuse Token Registers
-        # row, Past Extent column) states it, and this generated map is the
-        # golden CHK-UNMAPPED-CODE grades. Its codes were assigned from the RTL.
-        # hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states SLVERR for an
-        # address of the APB span outside the register windows; the two
-        # documents differ on this span, so the leaf also logs each code of
-        # the span as OBS-EFUSE-TOKEN-PAST-CODE.
+        # The token window past the efuse_mmr extent, 0x1093_0474 to 0x1093_07FF,
+        # answers SLVERR with read data 0x0: hw/sys/sep/regs/gen/adoc/memory_map.adoc:60
+        # (SEP eFuse Wrapper row, "past efuse_mmr registers").
         for addr, note in (
             (mmr_end, "first word past the efuse_mmr extent (after TOKEN_MATCH_FAULT)"),
             (mmr_base + mmr_img + tok0, "RMA_SIP_TOKEN_I[0], one extent image up"),
@@ -604,11 +639,10 @@ class SepUnmappedCfg:
     # --- holes inside an extent ------------------------------------------
     def _build_inextent(self) -> None:
         # hw/sys/sep/regs/gen/adoc/memory_map.adoc states the Hole in Extent
-        # cell of these two units: :69 SEP AXI-Lite Mailbox Wrapper (SLVERR,
-        # 0x0 / SLVERR) and :79 SEP CPU Control (OKAY, 0x0 / OKAY). Its codes
-        # were assigned from the RTL. Each word is read, written with
-        # PROBE_WDATA and read again; the second read shows the write was
-        # discarded. Each unit is probed on both 32-bit lanes of the bus.
+        # cell of these two units: :66 SEP AXI-Lite Mailbox Wrapper (SLVERR,
+        # 0x0 / SLVERR) and :73 SEP CPU Control (OKAY, 0x0 / OKAY). Each word
+        # is read, written with PROBE_WDATA and read again; the second read
+        # shows the write was discarded. Each unit is probed on both 32-bit lanes of the bus.
         g = GROUP_INEXTENT
         out0 = "AXIL_MAILBOX_OUTBOUND_MAILBOX_0"
         out0_end = sym(f"{out0}_REG_MAP_BASE_ADDR") + block_size(out0)
@@ -638,6 +672,8 @@ class SepUnmappedCfg:
         }
         for p in self.probes:
             e = self.expect[(p.addr, p.op)] = expected_unbacked(p.addr, p.op)
+            if e.latch:
+                raise RuntimeError(f"{_probe_desc(p)}: the map states it also latches {e.latch}")
             if p.group == GROUP_INEXTENT:
                 if e.column != "Hole in Extent" or p.addr in backed:
                     raise RuntimeError(
@@ -711,6 +747,11 @@ class SepUnmappedCfg:
             later = self.probes[self.probes.index(p) + 1 :]
             if not any(q.addr == p.addr and q.op == "r" for q in later):
                 raise RuntimeError(f"{_probe_desc(p)}: no read follows the write")
+        watched = {reaches_syscsr(p.addr) for p in self.probes if p.group in LITE_WATCHED}
+        if watched != {False, True}:
+            raise RuntimeError(
+                "the watched probes must include words inside and outside the system CSR pages"
+            )
         for g in (GROUP_EFUSE_CTRL, GROUP_SPI):
             lanes = {p.addr & 0x4 for p in self.probes if p.group == g and p.op == "r"}
             if lanes != {0, 4}:

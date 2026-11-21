@@ -42,14 +42,18 @@ from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
-EFUSE_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
-EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
+EFUSE_STATUS = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
+EFUSE_PROGRAM_CTRL = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
+)
 # Addressed and NAMED by the same generated symbol. At this offset the shadow
 # block serves raw shadow word 0 (`efuse_shadow_regs.sv` returns
 # `shadow_efuse.values[paddr>>2]` for the whole map window) rather than the
 # lock fields the register name implies, so the value read back is fuse content
 # and not the register's 0x0 reset.
-SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 
 # Word 0 of the preload asset the bank model $readmemh's at time 0, derived from
 # the asset at run time so it follows a regenerated asset.

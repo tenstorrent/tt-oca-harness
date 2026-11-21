@@ -35,7 +35,7 @@ xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity imple
 `hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
-and ten targets. The CPU masters and the DMA issue single-beat transactions
+and eleven targets. The CPU masters and the DMA issue single-beat transactions
 only; the System Interface may issue bursts.
 
 A few access paths are intentionally outside this crossbar:
@@ -69,9 +69,12 @@ not attach to this crossbar directly; it enters SEP through the dedicated
 `smn_inbound` port and the inbound traffic filter (block-by-default), then
 through the `sep_system_peripherals` inner crossbar. That inner crossbar
 reaches the *mailboxes* and *system CSRs* directly, and loops everything
-else back into this crossbar's System Interface initiator. The inbound filter
-controls which addresses the external master may reach; it is block-by-default
-after POR and configured by SEP firmware.
+else back into this crossbar's System Interface initiator. That initiator has
+no path to the *CPU TCM*, *Reset controller* or *System Periph* targets, so an
+external master cannot reach the ICCM and DCCM or the SEP software resets, and
+a request to them answers DECERR. The inbound filter controls which addresses
+the external master may reach; it is block-by-default after POR and configured
+by SEP firmware.
 
 [[sep-axi-terms]]
 .SEP AXI4 connectivity terms
@@ -93,7 +96,8 @@ closely coupled memory (ICCM) and data closely coupled memory (DCCM).
 |SPI host (`sep_io`) |Local input/output peripheral path, including SPI boot-flash access.
 |Entropy pool (`entropy_fifo`) |Read-only aperture for entropy supplied by the entropy distribution
 network (EDN).
-|Extension, eFuse shim (`sep_external`) |Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by `u_efuse_shim_demux` to the eFuse wrapper.
+|Extension (`sep_external`) |Outbound AXI4 port for resources outside the local crossbar.
+|eFuse shim (`efuse_shim`) |The eFuse shim CSR window at the base of the external window, routed to the eFuse wrapper in the crypto subsystem.
 |SMN inbound (`ext`) |Filtered inbound path from the System Management Network (SMN).
 |Boot ROM |Read-only boot memory on the dedicated CPU fetch/load path.
 |===
@@ -137,18 +141,19 @@ debug is enabled, `SEP_DBG` bypasses the filter. The global-to-local remap then
 rebases the `SEP_REGION_SIZE` window at `SEP_GLOBAL_BASE_ADDR` to address 0 and
 passes every other address unchanged. The peripheral crossbar has a second
 initiator, the `SEP_LOCAL` port of the output fabric's route demux, so local
-masters reach the mailboxes and system CSRs through the same decode. Addresses
-outside the mailbox and system CSR windows but below `0x4000_0000` are truncated
-to 32 bits, their IDs reduced from 7 to 3 bits, and forwarded to the `ext`
-initiator of the local crossbar. Inside the system CSR windows the crossbar
-decodes each register block separately and answers the addresses between them
-with DECERR on reads and writes, as it does any address at or above
-`0x4000_0000`. The system CSRs program the inbound filter entries and the SEP aperture,
-as well as the output fabric's remaps and outbound filter.
+masters reach the mailboxes and system CSRs through the same decode. The
+crossbar sends the mailbox pages, `0x10A0_0000` to `0x10A0_7FFF`, to the
+mailboxes, and the scratch register page and each system CSR page whole to the
+system CSR block. It answers every other address in `0x10A0_8000` to
+`0x10A4_FFFF`, and any address at or above `0x4000_0000`, with DECERR on reads
+and writes. Every remaining address below `0x4000_0000` is truncated to 32
+bits, its ID reduced from 7 to 3 bits, and forwarded to the `ext` initiator of
+the local crossbar. The system CSRs program the inbound filter entries and the
+SEP aperture, as well as the output fabric's remaps and outbound filter.
 
 [[sep-local-fabric-diagram]]
 .SEP local fabric
-image::sep-local-fabric.svg[alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters in front of its ten targets",width=100%,pdfwidth=100%]
+image::sep-local-fabric.svg[alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters and demuxes in front of its eleven targets",width=100%,pdfwidth=100%]
 
 <<sep-local-fabric-diagram>> shows the local crossbar with its initiators on the
 left and its targets on the right, in crossbar port order. Each CPU master and
@@ -159,9 +164,10 @@ which reaches the ROM macro without passing the crossbar, and the IFU demux
 answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
 each target row is the conversion the target needs: the secure DMA registers
 and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
-controller and entropy pool as AXI-Lite. The `sep_external` demux diverts the
-eFuse shim CSR window to the eFuse wrapper; every other address in the
-`0x2000_0000` to `0x3FFF_FFFF` aperture leaves SEP on the AXI extension port.
+controller and entropy pool as AXI-Lite. The `efuse_shim` target takes the
+eFuse shim CSR window at the base of the external window, `0x2000_0000` to
+`0x3FFF_FFFF`, to the eFuse wrapper; the `sep_external` target sends every
+other address in the external window out of SEP on the AXI extension port.
 xref:sep-axi-connectivity[xrefstyle=short] gives the initiator-to-target connections.
 
 [[sep-output-fabric-diagram]]
@@ -372,4 +378,16 @@ endif::backend-pdf[]
 
 === Detailed Register Map
 
-See the owning register references linked above.
+See the owning register references linked above for the filters. The
+local-master alias remap and the AP and STEE output remap registers share one
+4 KiB page, placed by the wrapper below.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_remap_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_remap_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]

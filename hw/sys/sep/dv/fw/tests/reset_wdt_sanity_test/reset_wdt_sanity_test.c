@@ -10,9 +10,9 @@
 //     register to its reset value, leaves every probe outside that reset bit
 //     unchanged, and leaves the probe writable after the release;
 //   * the software reset register is back at its default afterwards;
-//   * a write and a read to the unmapped gap past the reset-controller window
+//   * a write and a read to the Reserved gap past the reset-controller page
 //     each raise a bus-error NMI; exactly two must be counted;
-//   * a store that gets DECERR (the reset-controller gap) and a store that gets
+//   * a store that gets DECERR (the Reserved gap) and a store that gets
 //     SLVERR (the read-only entropy pool) each raise one D-bus error NMI; the
 //     handler records mcause and mdseac of each, and the firmware reports them
 //     for the testbench to grade;
@@ -96,10 +96,11 @@
 #define ABR_GLOBAL_INTR_ENABLE_WR 0x3u
 #define ABR_GLOBAL_INTR_ENABLE_RST 0x0u
 
-#define RESET_CTRL_BAD_ADDR (SEP_RESET_CTRL_SW_RESET_N + 0x8u) // unmapped gap
+// First word of the Reserved row past the reset-controller page.
+#define RESET_CTRL_BAD_ADDR (SEP_TOP_SEP_RESET_CTRL_BASE_ADDR + 0x1000u)
 
-// Store-response targets. hw/sys/sep/regs/sep.rdl gives the reset-controller
-// aperture a DECERR write response past its one register, and
+// Store-response targets. hw/sys/sep/regs/gen/adoc/memory_map.adoc gives the
+// Reserved row past the reset-controller page a DECERR write response, and
 // hw/sys/sep/doc/entropy_pool.adoc states that a write to any offset of the
 // read-only entropy pool ends with BRESP=SLVERR and changes no state. The OKAY
 // target is the OTBN probe register of the reset-wire leg, a read-write field.
@@ -414,9 +415,8 @@ int main(void) {
         errors++;
     }
 
-    // Bad-address: a write and a read to the unmapped gap (SW_RESET_N is a single
-    // 64-bit register at offset 0, so the 0x8 window ends there) each raise a
-    // D-bus error -> NMI; expect exactly 2. The STORE error is IMPRECISE, so it
+    // Bad-address: a write and a read to the Reserved gap past the reset-controller
+    // page each raise a D-bus error -> NMI; expect exactly 2. The STORE error is IMPRECISE, so it
     // must be allowed to land before the next bus access -- otherwise it coalesces
     // with the precise LOAD-error NMI and only one is counted. The store leg
     // waits for its NMI and settles; the load settles after it.

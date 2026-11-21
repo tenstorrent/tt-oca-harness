@@ -226,57 +226,68 @@ localparam int unsigned WDT_TIMER_WKUP_CAUSE_REG_ADDR                           
 
 
 //==============================================================================
-// Addresses for Address Map: sep_scratch_cold
+// Addresses for Address Map: sep_scratch_wrap
 //==============================================================================
 
 
-localparam int unsigned SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR                                                        = 32'h10802000;
-localparam int unsigned SEP_SCRATCH_COLD_REG_MAP_SIZE                                                             = 32'h00000040;
+localparam int unsigned SEP_SCRATCH_WRAP_REG_MAP_BASE_ADDR                                                        = 32'h10802000;
+localparam int unsigned SEP_SCRATCH_WRAP_REG_MAP_SIZE                                                             = 32'h000000C0;
 
 
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET                                                    = 32'h00000000;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR                                                      = 32'h10802000;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR                                                      = 32'h10802008;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET                                                    = 32'h00000010;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_2__REG_ADDR                                                      = 32'h10802010;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET                                                    = 32'h00000018;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_3__REG_ADDR                                                      = 32'h10802018;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET                                                    = 32'h00000020;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR                                                      = 32'h10802020;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET                                                    = 32'h00000028;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR                                                      = 32'h10802028;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET                                                    = 32'h00000030;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_6__REG_ADDR                                                      = 32'h10802030;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET                                                    = 32'h00000038;
-localparam int unsigned SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR                                                      = 32'h10802038;
 
 
 //==============================================================================
-// Addresses for Address Map: sep_scratch_warm
+// Addresses for Address Map: scratch_cold
 //==============================================================================
 
 
-localparam int unsigned SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR                                                        = 32'h10802080;
-localparam int unsigned SEP_SCRATCH_WARM_REG_MAP_SIZE                                                             = 32'h00000040;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR                                           = 32'h10802000;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_SIZE                                                = 32'h00000040;
 
 
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_0__REG_OFFSET                                                    = 32'h00000000;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR                                                      = 32'h10802080;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_1__REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_1__REG_ADDR                                                      = 32'h10802088;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_2__REG_OFFSET                                                    = 32'h00000010;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_2__REG_ADDR                                                      = 32'h10802090;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_3__REG_OFFSET                                                    = 32'h00000018;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_3__REG_ADDR                                                      = 32'h10802098;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_4__REG_OFFSET                                                    = 32'h00000020;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_4__REG_ADDR                                                      = 32'h108020A0;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_5__REG_OFFSET                                                    = 32'h00000028;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_5__REG_ADDR                                                      = 32'h108020A8;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_6__REG_OFFSET                                                    = 32'h00000030;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_6__REG_ADDR                                                      = 32'h108020B0;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_7__REG_OFFSET                                                    = 32'h00000038;
-localparam int unsigned SEP_SCRATCH_WARM_SCRATCH_7__REG_ADDR                                                      = 32'h108020B8;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET                                       = 32'h00000000;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR                                         = 32'h10802000;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET                                       = 32'h00000008;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_1__REG_ADDR                                         = 32'h10802008;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET                                       = 32'h00000010;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_2__REG_ADDR                                         = 32'h10802010;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET                                       = 32'h00000018;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_3__REG_ADDR                                         = 32'h10802018;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_4__REG_ADDR                                         = 32'h10802020;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET                                       = 32'h00000028;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_5__REG_ADDR                                         = 32'h10802028;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET                                       = 32'h00000030;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_6__REG_ADDR                                         = 32'h10802030;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET                                       = 32'h00000038;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_7__REG_ADDR                                         = 32'h10802038;
+
+
+//==============================================================================
+// Addresses for Address Map: scratch_warm
+//==============================================================================
+
+
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR                                           = 32'h10802080;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_SIZE                                                = 32'h00000040;
+
+
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_0__REG_OFFSET                                       = 32'h00000000;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_0__REG_ADDR                                         = 32'h10802080;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_1__REG_OFFSET                                       = 32'h00000008;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_1__REG_ADDR                                         = 32'h10802088;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_2__REG_OFFSET                                       = 32'h00000010;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_2__REG_ADDR                                         = 32'h10802090;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_3__REG_OFFSET                                       = 32'h00000018;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_3__REG_ADDR                                         = 32'h10802098;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_4__REG_OFFSET                                       = 32'h00000020;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_4__REG_ADDR                                         = 32'h108020A0;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_5__REG_OFFSET                                       = 32'h00000028;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_5__REG_ADDR                                         = 32'h108020A8;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_6__REG_OFFSET                                       = 32'h00000030;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_6__REG_ADDR                                         = 32'h108020B0;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_7__REG_OFFSET                                       = 32'h00000038;
+localparam int unsigned SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_7__REG_ADDR                                         = 32'h108020B8;
 
 
 //==============================================================================
@@ -706,6 +717,53 @@ localparam int unsigned KMAC_MSG_FIFO_MEM_SIZE                                  
 
 
 //==============================================================================
+// Addresses for Address Map: edn
+//==============================================================================
+
+
+localparam int unsigned EDN_REG_MAP_BASE_ADDR                                                                     = 32'h10914000;
+localparam int unsigned EDN_REG_MAP_SIZE                                                                          = 32'h00000048;
+
+
+localparam int unsigned EDN_INTR_STATE_REG_OFFSET                                                                 = 32'h00000000;
+localparam int unsigned EDN_INTR_STATE_REG_ADDR                                                                   = 32'h10914000;
+localparam int unsigned EDN_INTR_ENABLE_REG_OFFSET                                                                = 32'h00000004;
+localparam int unsigned EDN_INTR_ENABLE_REG_ADDR                                                                  = 32'h10914004;
+localparam int unsigned EDN_INTR_TEST_REG_OFFSET                                                                  = 32'h00000008;
+localparam int unsigned EDN_INTR_TEST_REG_ADDR                                                                    = 32'h10914008;
+localparam int unsigned EDN_ALERT_TEST_REG_OFFSET                                                                 = 32'h0000000C;
+localparam int unsigned EDN_ALERT_TEST_REG_ADDR                                                                   = 32'h1091400C;
+localparam int unsigned EDN_REGWEN_REG_OFFSET                                                                     = 32'h00000010;
+localparam int unsigned EDN_REGWEN_REG_ADDR                                                                       = 32'h10914010;
+localparam int unsigned EDN_CTRL_REG_OFFSET                                                                       = 32'h00000014;
+localparam int unsigned EDN_CTRL_REG_ADDR                                                                         = 32'h10914014;
+localparam int unsigned EDN_BOOT_INS_CMD_REG_OFFSET                                                               = 32'h00000018;
+localparam int unsigned EDN_BOOT_INS_CMD_REG_ADDR                                                                 = 32'h10914018;
+localparam int unsigned EDN_BOOT_GEN_CMD_REG_OFFSET                                                               = 32'h0000001C;
+localparam int unsigned EDN_BOOT_GEN_CMD_REG_ADDR                                                                 = 32'h1091401C;
+localparam int unsigned EDN_SW_CMD_REQ_REG_OFFSET                                                                 = 32'h00000020;
+localparam int unsigned EDN_SW_CMD_REQ_REG_ADDR                                                                   = 32'h10914020;
+localparam int unsigned EDN_SW_CMD_STS_REG_OFFSET                                                                 = 32'h00000024;
+localparam int unsigned EDN_SW_CMD_STS_REG_ADDR                                                                   = 32'h10914024;
+localparam int unsigned EDN_HW_CMD_STS_REG_OFFSET                                                                 = 32'h00000028;
+localparam int unsigned EDN_HW_CMD_STS_REG_ADDR                                                                   = 32'h10914028;
+localparam int unsigned EDN_RESEED_CMD_REG_OFFSET                                                                 = 32'h0000002C;
+localparam int unsigned EDN_RESEED_CMD_REG_ADDR                                                                   = 32'h1091402C;
+localparam int unsigned EDN_GENERATE_CMD_REG_OFFSET                                                               = 32'h00000030;
+localparam int unsigned EDN_GENERATE_CMD_REG_ADDR                                                                 = 32'h10914030;
+localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_OFFSET                                               = 32'h00000034;
+localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_ADDR                                                 = 32'h10914034;
+localparam int unsigned EDN_RECOV_ALERT_STS_REG_OFFSET                                                            = 32'h00000038;
+localparam int unsigned EDN_RECOV_ALERT_STS_REG_ADDR                                                              = 32'h10914038;
+localparam int unsigned EDN_ERR_CODE_REG_OFFSET                                                                   = 32'h0000003C;
+localparam int unsigned EDN_ERR_CODE_REG_ADDR                                                                     = 32'h1091403C;
+localparam int unsigned EDN_ERR_CODE_TEST_REG_OFFSET                                                              = 32'h00000040;
+localparam int unsigned EDN_ERR_CODE_TEST_REG_ADDR                                                                = 32'h10914040;
+localparam int unsigned EDN_MAIN_SM_STATE_REG_OFFSET                                                              = 32'h00000044;
+localparam int unsigned EDN_MAIN_SM_STATE_REG_ADDR                                                                = 32'h10914044;
+
+
+//==============================================================================
 // Addresses for Address Map: csrng
 //==============================================================================
 
@@ -762,53 +820,6 @@ localparam int unsigned CSRNG_ERR_CODE_TEST_REG_OFFSET                          
 localparam int unsigned CSRNG_ERR_CODE_TEST_REG_ADDR                                                              = 32'h10915058;
 localparam int unsigned CSRNG_MAIN_SM_STATE_REG_OFFSET                                                            = 32'h0000005C;
 localparam int unsigned CSRNG_MAIN_SM_STATE_REG_ADDR                                                              = 32'h1091505C;
-
-
-//==============================================================================
-// Addresses for Address Map: edn
-//==============================================================================
-
-
-localparam int unsigned EDN_REG_MAP_BASE_ADDR                                                                     = 32'h10915800;
-localparam int unsigned EDN_REG_MAP_SIZE                                                                          = 32'h00000048;
-
-
-localparam int unsigned EDN_INTR_STATE_REG_OFFSET                                                                 = 32'h00000000;
-localparam int unsigned EDN_INTR_STATE_REG_ADDR                                                                   = 32'h10915800;
-localparam int unsigned EDN_INTR_ENABLE_REG_OFFSET                                                                = 32'h00000004;
-localparam int unsigned EDN_INTR_ENABLE_REG_ADDR                                                                  = 32'h10915804;
-localparam int unsigned EDN_INTR_TEST_REG_OFFSET                                                                  = 32'h00000008;
-localparam int unsigned EDN_INTR_TEST_REG_ADDR                                                                    = 32'h10915808;
-localparam int unsigned EDN_ALERT_TEST_REG_OFFSET                                                                 = 32'h0000000C;
-localparam int unsigned EDN_ALERT_TEST_REG_ADDR                                                                   = 32'h1091580C;
-localparam int unsigned EDN_REGWEN_REG_OFFSET                                                                     = 32'h00000010;
-localparam int unsigned EDN_REGWEN_REG_ADDR                                                                       = 32'h10915810;
-localparam int unsigned EDN_CTRL_REG_OFFSET                                                                       = 32'h00000014;
-localparam int unsigned EDN_CTRL_REG_ADDR                                                                         = 32'h10915814;
-localparam int unsigned EDN_BOOT_INS_CMD_REG_OFFSET                                                               = 32'h00000018;
-localparam int unsigned EDN_BOOT_INS_CMD_REG_ADDR                                                                 = 32'h10915818;
-localparam int unsigned EDN_BOOT_GEN_CMD_REG_OFFSET                                                               = 32'h0000001C;
-localparam int unsigned EDN_BOOT_GEN_CMD_REG_ADDR                                                                 = 32'h1091581C;
-localparam int unsigned EDN_SW_CMD_REQ_REG_OFFSET                                                                 = 32'h00000020;
-localparam int unsigned EDN_SW_CMD_REQ_REG_ADDR                                                                   = 32'h10915820;
-localparam int unsigned EDN_SW_CMD_STS_REG_OFFSET                                                                 = 32'h00000024;
-localparam int unsigned EDN_SW_CMD_STS_REG_ADDR                                                                   = 32'h10915824;
-localparam int unsigned EDN_HW_CMD_STS_REG_OFFSET                                                                 = 32'h00000028;
-localparam int unsigned EDN_HW_CMD_STS_REG_ADDR                                                                   = 32'h10915828;
-localparam int unsigned EDN_RESEED_CMD_REG_OFFSET                                                                 = 32'h0000002C;
-localparam int unsigned EDN_RESEED_CMD_REG_ADDR                                                                   = 32'h1091582C;
-localparam int unsigned EDN_GENERATE_CMD_REG_OFFSET                                                               = 32'h00000030;
-localparam int unsigned EDN_GENERATE_CMD_REG_ADDR                                                                 = 32'h10915830;
-localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_OFFSET                                               = 32'h00000034;
-localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_ADDR                                                 = 32'h10915834;
-localparam int unsigned EDN_RECOV_ALERT_STS_REG_OFFSET                                                            = 32'h00000038;
-localparam int unsigned EDN_RECOV_ALERT_STS_REG_ADDR                                                              = 32'h10915838;
-localparam int unsigned EDN_ERR_CODE_REG_OFFSET                                                                   = 32'h0000003C;
-localparam int unsigned EDN_ERR_CODE_REG_ADDR                                                                     = 32'h1091583C;
-localparam int unsigned EDN_ERR_CODE_TEST_REG_OFFSET                                                              = 32'h00000040;
-localparam int unsigned EDN_ERR_CODE_TEST_REG_ADDR                                                                = 32'h10915840;
-localparam int unsigned EDN_MAIN_SM_STATE_REG_OFFSET                                                              = 32'h00000044;
-localparam int unsigned EDN_MAIN_SM_STATE_REG_ADDR                                                                = 32'h10915844;
 
 
 //==============================================================================
@@ -1023,100 +1034,14 @@ localparam int unsigned KM_MAILBOX_SEP_SEP_CTRL_REG_ADDR                        
 
 
 //==============================================================================
-// Addresses for Address Map: sep_efuse_map
+// Addresses for Address Map: sep_efuse_wrap
 //==============================================================================
 
 
-localparam int unsigned SEP_EFUSE_MAP_REG_MAP_BASE_ADDR                                                           = 32'h10930000;
-localparam int unsigned SEP_EFUSE_MAP_REG_MAP_SIZE                                                                = 32'h00000400;
+localparam int unsigned SEP_EFUSE_WRAP_REG_MAP_BASE_ADDR                                                          = 32'h10930000;
+localparam int unsigned SEP_EFUSE_WRAP_REG_MAP_SIZE                                                               = 32'h00000C00;
 
 
-localparam int unsigned SEP_EFUSE_MAP_LOCKS_REG_OFFSET                                                            = 32'h00000000;
-localparam int unsigned SEP_EFUSE_MAP_LOCKS_REG_ADDR                                                              = 32'h10930000;
-localparam int unsigned SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR                                                        = 32'h10930008;
-localparam int unsigned SEP_EFUSE_MAP_LC_STATE_REG_OFFSET                                                         = 32'h0000000C;
-localparam int unsigned SEP_EFUSE_MAP_LC_STATE_REG_ADDR                                                           = 32'h1093000C;
-localparam int unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET                                                        = 32'h00000010;
-localparam int unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR                                                          = 32'h10930010;
-localparam int unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET                                                 = 32'h00000014;
-localparam int unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR                                                   = 32'h10930014;
-localparam int unsigned SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET                                                          = 32'h00000018;
-localparam int unsigned SEP_EFUSE_MAP_SIP_DIS_REG_ADDR                                                            = 32'h10930018;
-localparam int unsigned SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET                                                          = 32'h00000020;
-localparam int unsigned SEP_EFUSE_MAP_SYS_DIS_REG_ADDR                                                            = 32'h10930020;
-localparam int unsigned SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET                                             = 32'h00000028;
-localparam int unsigned SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR                                               = 32'h10930028;
-localparam int unsigned SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET                                         = 32'h00000048;
-localparam int unsigned SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR                                           = 32'h10930048;
-localparam int unsigned SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET                                                        = 32'h00000068;
-localparam int unsigned SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR                                                          = 32'h10930068;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET                                              = 32'h00000088;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR                                                = 32'h10930088;
-localparam int unsigned SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET                                                      = 32'h0000008C;
-localparam int unsigned SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR                                                        = 32'h1093008C;
-localparam int unsigned SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET                                                      = 32'h000000AC;
-localparam int unsigned SEP_EFUSE_MAP_BL2_VERSION_REG_ADDR                                                        = 32'h109300AC;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET                                                      = 32'h000000CC;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_UID_REG_ADDR                                                        = 32'h109300CC;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET                                                   = 32'h000000EC;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_ADDR                                                     = 32'h109300EC;
-localparam int unsigned SEP_EFUSE_MAP_SIP_UID_REG_OFFSET                                                          = 32'h0000010C;
-localparam int unsigned SEP_EFUSE_MAP_SIP_UID_REG_ADDR                                                            = 32'h1093010C;
-localparam int unsigned SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET                                                    = 32'h0000012C;
-localparam int unsigned SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_ADDR                                                      = 32'h1093012C;
-localparam int unsigned SEP_EFUSE_MAP_SYS_UID_REG_OFFSET                                                          = 32'h0000014C;
-localparam int unsigned SEP_EFUSE_MAP_SYS_UID_REG_ADDR                                                            = 32'h1093014C;
-localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET                                                       = 32'h0000016C;
-localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR                                                         = 32'h1093016C;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET                                                          = 32'h00000170;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_REG_ADDR                                                            = 32'h10930170;
-localparam int unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET                                                  = 32'h00000174;
-localparam int unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR                                                    = 32'h10930174;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET                                               = 32'h00000178;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_ADDR                                                 = 32'h10930178;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET                                               = 32'h00000198;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_ADDR                                                 = 32'h10930198;
-localparam int unsigned SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET                                                 = 32'h000001B8;
-localparam int unsigned SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR                                                   = 32'h109301B8;
-localparam int unsigned SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET                                                    = 32'h000001BC;
-localparam int unsigned SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR                                                      = 32'h109301BC;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET                                           = 32'h000001C0;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_ADDR                                             = 32'h109301C0;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET                                           = 32'h000001E0;
-localparam int unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_ADDR                                             = 32'h109301E0;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET                                               = 32'h00000200;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_ADDR                                                 = 32'h10930200;
-localparam int unsigned SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET                                                = 32'h00000220;
-localparam int unsigned SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_ADDR                                                  = 32'h10930220;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET                                                   = 32'h00000240;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_ADDR                                                     = 32'h10930240;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET                                               = 32'h00000260;
-localparam int unsigned SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_ADDR                                                 = 32'h10930260;
-localparam int unsigned SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET                                                   = 32'h00000280;
-localparam int unsigned SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_ADDR                                                     = 32'h10930280;
-localparam int unsigned SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET                                                       = 32'h000002A0;
-localparam int unsigned SEP_EFUSE_MAP_SEP_SIP_ID_REG_ADDR                                                         = 32'h109302A0;
-localparam int unsigned SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET                                                       = 32'h000002C0;
-localparam int unsigned SEP_EFUSE_MAP_SEP_SYS_ID_REG_ADDR                                                         = 32'h109302C0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE0_REG_OFFSET                                                           = 32'h000002E0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE0_REG_ADDR                                                             = 32'h109302E0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE1_REG_OFFSET                                                           = 32'h00000300;
-localparam int unsigned SEP_EFUSE_MAP_SPARE1_REG_ADDR                                                             = 32'h10930300;
-localparam int unsigned SEP_EFUSE_MAP_SPARE2_REG_OFFSET                                                           = 32'h00000320;
-localparam int unsigned SEP_EFUSE_MAP_SPARE2_REG_ADDR                                                             = 32'h10930320;
-localparam int unsigned SEP_EFUSE_MAP_SPARE3_REG_OFFSET                                                           = 32'h00000340;
-localparam int unsigned SEP_EFUSE_MAP_SPARE3_REG_ADDR                                                             = 32'h10930340;
-localparam int unsigned SEP_EFUSE_MAP_SPARE4_REG_OFFSET                                                           = 32'h00000360;
-localparam int unsigned SEP_EFUSE_MAP_SPARE4_REG_ADDR                                                             = 32'h10930360;
-localparam int unsigned SEP_EFUSE_MAP_SPARE5_REG_OFFSET                                                           = 32'h00000380;
-localparam int unsigned SEP_EFUSE_MAP_SPARE5_REG_ADDR                                                             = 32'h10930380;
-localparam int unsigned SEP_EFUSE_MAP_SPARE6_REG_OFFSET                                                           = 32'h000003A0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE6_REG_ADDR                                                             = 32'h109303A0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE7_REG_OFFSET                                                           = 32'h000003C0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE7_REG_ADDR                                                             = 32'h109303C0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE8_REG_OFFSET                                                           = 32'h000003E0;
-localparam int unsigned SEP_EFUSE_MAP_SPARE8_REG_ADDR                                                             = 32'h109303E0;
 
 
 //==============================================================================
@@ -1124,24 +1049,24 @@ localparam int unsigned SEP_EFUSE_MAP_SPARE8_REG_ADDR                           
 //==============================================================================
 
 
-localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR                                                    = 32'h10930400;
-localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                                         = 32'h0000001C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR                                     = 32'h10930000;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                          = 32'h0000001C;
 
 
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET                               = 32'h00000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR                                 = 32'h10930400;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_OFFSET                                        = 32'h00000004;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR                                          = 32'h10930404;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR                                             = 32'h10930408;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_OFFSET                         = 32'h0000000C;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR                           = 32'h1093040C;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_OFFSET                            = 32'h00000010;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR                              = 32'h10930410;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET                                    = 32'h00000014;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                                      = 32'h10930414;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET                                 = 32'h00000018;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                                   = 32'h10930418;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET                = 32'h00000000;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR                  = 32'h10930000;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_OFFSET                         = 32'h00000004;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR                           = 32'h10930004;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_OFFSET                            = 32'h00000008;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR                              = 32'h10930008;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_OFFSET          = 32'h0000000C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR            = 32'h1093000C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_OFFSET             = 32'h00000010;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR               = 32'h10930010;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET                     = 32'h00000014;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                       = 32'h10930014;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET                  = 32'h00000018;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                    = 32'h10930018;
 
 
 //==============================================================================
@@ -1149,68 +1074,165 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR 
 //==============================================================================
 
 
-localparam int unsigned EFUSE_MMR_REG_MAP_BASE_ADDR                                                               = 32'h10930500;
-localparam int unsigned EFUSE_MMR_REG_MAP_SIZE                                                                    = 32'h00000074;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_BASE_ADDR                                                = 32'h10930400;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_REG_MAP_SIZE                                                     = 32'h00000074;
 
 
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET                                                   = 32'h00000000;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR                                                     = 32'h10930500;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_OFFSET                                                   = 32'h00000004;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR                                                     = 32'h10930504;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_OFFSET                                                   = 32'h00000008;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_ADDR                                                     = 32'h10930508;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_OFFSET                                                   = 32'h0000000C;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR                                                     = 32'h1093050C;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_OFFSET                                                   = 32'h00000010;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_ADDR                                                     = 32'h10930510;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_OFFSET                                                   = 32'h00000014;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_ADDR                                                     = 32'h10930514;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_OFFSET                                                   = 32'h00000018;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_ADDR                                                     = 32'h10930518;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_OFFSET                                                   = 32'h0000001C;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_ADDR                                                     = 32'h1093051C;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_OFFSET                                               = 32'h00000020;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR                                                 = 32'h10930520;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_OFFSET                                               = 32'h00000024;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_ADDR                                                 = 32'h10930524;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_OFFSET                                               = 32'h00000028;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_ADDR                                                 = 32'h10930528;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_OFFSET                                               = 32'h0000002C;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_ADDR                                                 = 32'h1093052C;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_OFFSET                                               = 32'h00000030;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_ADDR                                                 = 32'h10930530;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_OFFSET                                               = 32'h00000034;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_ADDR                                                 = 32'h10930534;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_OFFSET                                               = 32'h00000038;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_ADDR                                                 = 32'h10930538;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_OFFSET                                               = 32'h0000003C;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_ADDR                                                 = 32'h1093053C;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_OFFSET                                               = 32'h00000040;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR                                                 = 32'h10930540;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_OFFSET                                               = 32'h00000044;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_ADDR                                                 = 32'h10930544;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_OFFSET                                               = 32'h00000048;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_ADDR                                                 = 32'h10930548;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_OFFSET                                               = 32'h0000004C;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_ADDR                                                 = 32'h1093054C;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_OFFSET                                               = 32'h00000050;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_ADDR                                                 = 32'h10930550;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_OFFSET                                               = 32'h00000054;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_ADDR                                                 = 32'h10930554;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_OFFSET                                               = 32'h00000058;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_ADDR                                                 = 32'h10930558;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_OFFSET                                               = 32'h0000005C;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_ADDR                                                 = 32'h1093055C;
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_REG_OFFSET                                                            = 32'h00000060;
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_REG_ADDR                                                              = 32'h10930560;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_OFFSET                                                  = 32'h00000064;
-localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR                                                    = 32'h10930564;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET                                              = 32'h00000068;
-localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                                = 32'h10930568;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                                              = 32'h0000006C;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                                = 32'h1093056C;
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_OFFSET                                                    = 32'h00000070;
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR                                                      = 32'h10930570;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET                                    = 32'h00000000;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR                                      = 32'h10930400;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_OFFSET                                    = 32'h00000004;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR                                      = 32'h10930404;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_OFFSET                                    = 32'h00000008;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_ADDR                                      = 32'h10930408;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_OFFSET                                    = 32'h0000000C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR                                      = 32'h1093040C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_OFFSET                                    = 32'h00000010;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_ADDR                                      = 32'h10930410;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_OFFSET                                    = 32'h00000014;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_ADDR                                      = 32'h10930414;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_OFFSET                                    = 32'h00000018;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_ADDR                                      = 32'h10930418;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_OFFSET                                    = 32'h0000001C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_ADDR                                      = 32'h1093041C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_OFFSET                                = 32'h00000020;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR                                  = 32'h10930420;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_OFFSET                                = 32'h00000024;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_ADDR                                  = 32'h10930424;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_OFFSET                                = 32'h00000028;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_ADDR                                  = 32'h10930428;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_OFFSET                                = 32'h0000002C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_ADDR                                  = 32'h1093042C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_OFFSET                                = 32'h00000030;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_ADDR                                  = 32'h10930430;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_OFFSET                                = 32'h00000034;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_ADDR                                  = 32'h10930434;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_OFFSET                                = 32'h00000038;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_ADDR                                  = 32'h10930438;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_OFFSET                                = 32'h0000003C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_ADDR                                  = 32'h1093043C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_OFFSET                                = 32'h00000040;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR                                  = 32'h10930440;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_OFFSET                                = 32'h00000044;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_ADDR                                  = 32'h10930444;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_OFFSET                                = 32'h00000048;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_ADDR                                  = 32'h10930448;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_OFFSET                                = 32'h0000004C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_ADDR                                  = 32'h1093044C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_OFFSET                                = 32'h00000050;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_ADDR                                  = 32'h10930450;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_OFFSET                                = 32'h00000054;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_ADDR                                  = 32'h10930454;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_OFFSET                                = 32'h00000058;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_ADDR                                  = 32'h10930458;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_OFFSET                                = 32'h0000005C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_ADDR                                  = 32'h1093045C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_OFFSET                                             = 32'h00000060;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_ADDR                                               = 32'h10930460;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_OFFSET                                   = 32'h00000064;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR                                     = 32'h10930464;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET                               = 32'h00000068;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                 = 32'h10930468;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                               = 32'h0000006C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                 = 32'h1093046C;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_OFFSET                                     = 32'h00000070;
+localparam int unsigned SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR                                       = 32'h10930470;
+
+
+//==============================================================================
+// Addresses for Address Map: sep_efuse_map
+//==============================================================================
+
+
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR                                            = 32'h10930800;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE                                                 = 32'h00000400;
+
+
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET                                             = 32'h00000000;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_ADDR                                               = 32'h10930800;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET                                       = 32'h00000008;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR                                         = 32'h10930808;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET                                          = 32'h0000000C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR                                            = 32'h1093080C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET                                         = 32'h00000010;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR                                           = 32'h10930810;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET                                  = 32'h00000014;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR                                    = 32'h10930814;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET                                           = 32'h00000018;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_REG_ADDR                                             = 32'h10930818;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET                                           = 32'h00000020;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_REG_ADDR                                             = 32'h10930820;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET                              = 32'h00000028;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR                                = 32'h10930828;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET                          = 32'h00000048;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR                            = 32'h10930848;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET                                         = 32'h00000068;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR                                           = 32'h10930868;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET                               = 32'h00000088;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR                                 = 32'h10930888;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET                                       = 32'h0000008C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR                                         = 32'h1093088C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET                                       = 32'h000000AC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL2_VERSION_REG_ADDR                                         = 32'h109308AC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET                                       = 32'h000000CC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_UID_REG_ADDR                                         = 32'h109308CC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET                                    = 32'h000000EC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_ADDR                                      = 32'h109308EC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_UID_REG_OFFSET                                           = 32'h0000010C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_UID_REG_ADDR                                             = 32'h1093090C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET                                     = 32'h0000012C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_ADDR                                       = 32'h1093092C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_UID_REG_OFFSET                                           = 32'h0000014C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_UID_REG_ADDR                                             = 32'h1093094C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET                                        = 32'h0000016C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR                                          = 32'h1093096C;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET                                           = 32'h00000170;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_ADDR                                             = 32'h10930970;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET                                   = 32'h00000174;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR                                     = 32'h10930974;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET                                = 32'h00000178;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_ADDR                                  = 32'h10930978;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET                                = 32'h00000198;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_ADDR                                  = 32'h10930998;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET                                  = 32'h000001B8;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR                                    = 32'h109309B8;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET                                     = 32'h000001BC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR                                       = 32'h109309BC;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET                            = 32'h000001C0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_ADDR                              = 32'h109309C0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET                            = 32'h000001E0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_ADDR                              = 32'h109309E0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET                                = 32'h00000200;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_ADDR                                  = 32'h10930A00;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET                                 = 32'h00000220;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_ADDR                                   = 32'h10930A20;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET                                    = 32'h00000240;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_ADDR                                      = 32'h10930A40;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET                                = 32'h00000260;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_ADDR                                  = 32'h10930A60;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET                                    = 32'h00000280;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_ADDR                                      = 32'h10930A80;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET                                        = 32'h000002A0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SIP_ID_REG_ADDR                                          = 32'h10930AA0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET                                        = 32'h000002C0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SEP_SYS_ID_REG_ADDR                                          = 32'h10930AC0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_REG_OFFSET                                            = 32'h000002E0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_REG_ADDR                                              = 32'h10930AE0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE1_REG_OFFSET                                            = 32'h00000300;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE1_REG_ADDR                                              = 32'h10930B00;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE2_REG_OFFSET                                            = 32'h00000320;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE2_REG_ADDR                                              = 32'h10930B20;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE3_REG_OFFSET                                            = 32'h00000340;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE3_REG_ADDR                                              = 32'h10930B40;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE4_REG_OFFSET                                            = 32'h00000360;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE4_REG_ADDR                                              = 32'h10930B60;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE5_REG_OFFSET                                            = 32'h00000380;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE5_REG_ADDR                                              = 32'h10930B80;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE6_REG_OFFSET                                            = 32'h000003A0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE6_REG_ADDR                                              = 32'h10930BA0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE7_REG_OFFSET                                            = 32'h000003C0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE7_REG_ADDR                                              = 32'h10930BC0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE8_REG_OFFSET                                            = 32'h000003E0;
+localparam int unsigned SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE8_REG_ADDR                                              = 32'h10930BE0;
 
 
 //==============================================================================
@@ -2236,12 +2258,23 @@ localparam int unsigned AXIL_MAILBOX_INBOUND_MAILBOX_7_CTRL_REG_ADDR            
 
 
 //==============================================================================
-// Addresses for Address Map: local_master_alias_remap_ctrl_wrap
+// Addresses for Address Map: sep_remap_wrap
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_REG_MAP_BASE_ADDR                                      = 32'h10A10000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_REG_MAP_SIZE                                           = 32'h00000200;
+localparam int unsigned SEP_REMAP_WRAP_REG_MAP_BASE_ADDR                                                          = 32'h10A10000;
+localparam int unsigned SEP_REMAP_WRAP_REG_MAP_SIZE                                                               = 32'h00000380;
+
+
+
+
+//==============================================================================
+// Addresses for Address Map: local_master_alias_remap
+//==============================================================================
+
+
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_REG_MAP_BASE_ADDR                                 = 32'h10A10000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_REG_MAP_SIZE                                      = 32'h00000200;
 
 
 
@@ -2251,8 +2284,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_REG_MAP_SIZE         
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR                       = 32'h10A10000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR                  = 32'h10A10000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2261,15 +2294,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REG_FILE_BASE_ADDR               = 32'h10A10000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REG_FILE_BASE_ADDR          = 32'h10A10000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR            = 32'h10A10000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR              = 32'h10A10008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR       = 32'h10A10000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR         = 32'h10A10008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10010;
 
 
 //==============================================================================
@@ -2277,8 +2310,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR                       = 32'h10A10020;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR                  = 32'h10A10020;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2287,15 +2320,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REG_FILE_BASE_ADDR               = 32'h10A10020;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REG_FILE_BASE_ADDR          = 32'h10A10020;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR            = 32'h10A10020;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR              = 32'h10A10028;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10030;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR       = 32'h10A10020;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR         = 32'h10A10028;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10030;
 
 
 //==============================================================================
@@ -2303,8 +2336,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REG_MAP_BASE_ADDR                       = 32'h10A10040;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REG_MAP_BASE_ADDR                  = 32'h10A10040;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2313,15 +2346,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REG_FILE_BASE_ADDR               = 32'h10A10040;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REG_FILE_BASE_ADDR          = 32'h10A10040;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR            = 32'h10A10040;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR              = 32'h10A10048;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10050;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR       = 32'h10A10040;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR         = 32'h10A10048;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10050;
 
 
 //==============================================================================
@@ -2329,8 +2362,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_2__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REG_MAP_BASE_ADDR                       = 32'h10A10060;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REG_MAP_BASE_ADDR                  = 32'h10A10060;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2339,15 +2372,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REG_FILE_BASE_ADDR               = 32'h10A10060;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REG_FILE_BASE_ADDR          = 32'h10A10060;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR            = 32'h10A10060;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR              = 32'h10A10068;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10070;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR       = 32'h10A10060;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR         = 32'h10A10068;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10070;
 
 
 //==============================================================================
@@ -2355,8 +2388,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REG_MAP_BASE_ADDR                       = 32'h10A10080;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REG_MAP_BASE_ADDR                  = 32'h10A10080;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2365,15 +2398,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REG_FILE_BASE_ADDR               = 32'h10A10080;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REG_FILE_BASE_ADDR          = 32'h10A10080;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR            = 32'h10A10080;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR              = 32'h10A10088;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10090;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR       = 32'h10A10080;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR         = 32'h10A10088;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10090;
 
 
 //==============================================================================
@@ -2381,8 +2414,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_4__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REG_MAP_BASE_ADDR                       = 32'h10A100A0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REG_MAP_BASE_ADDR                  = 32'h10A100A0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2391,15 +2424,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REG_FILE_BASE_ADDR               = 32'h10A100A0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REG_FILE_BASE_ADDR          = 32'h10A100A0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR            = 32'h10A100A0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR              = 32'h10A100A8;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A100B0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR       = 32'h10A100A0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR         = 32'h10A100A8;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A100B0;
 
 
 //==============================================================================
@@ -2407,8 +2440,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_5__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REG_MAP_BASE_ADDR                       = 32'h10A100C0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REG_MAP_BASE_ADDR                  = 32'h10A100C0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2417,15 +2450,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REG_FILE_BASE_ADDR               = 32'h10A100C0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REG_FILE_BASE_ADDR          = 32'h10A100C0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR            = 32'h10A100C0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR              = 32'h10A100C8;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A100D0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR       = 32'h10A100C0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR         = 32'h10A100C8;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A100D0;
 
 
 //==============================================================================
@@ -2433,8 +2466,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_6__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REG_MAP_BASE_ADDR                       = 32'h10A100E0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REG_MAP_BASE_ADDR                  = 32'h10A100E0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2443,15 +2476,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REG_FILE_BASE_ADDR               = 32'h10A100E0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REG_FILE_BASE_ADDR          = 32'h10A100E0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR            = 32'h10A100E0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR              = 32'h10A100E8;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A100F0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR       = 32'h10A100E0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR         = 32'h10A100E8;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A100F0;
 
 
 //==============================================================================
@@ -2459,8 +2492,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_7__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REG_MAP_BASE_ADDR                       = 32'h10A10100;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REG_MAP_BASE_ADDR                  = 32'h10A10100;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2469,15 +2502,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REG_FILE_BASE_ADDR               = 32'h10A10100;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REG_FILE_BASE_ADDR          = 32'h10A10100;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REGION_START_REG_ADDR            = 32'h10A10100;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REGION_END_REG_ADDR              = 32'h10A10108;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10110;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REGION_START_REG_ADDR       = 32'h10A10100;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REGION_END_REG_ADDR         = 32'h10A10108;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_8__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10110;
 
 
 //==============================================================================
@@ -2485,8 +2518,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_8__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REG_MAP_BASE_ADDR                       = 32'h10A10120;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REG_MAP_SIZE                            = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REG_MAP_BASE_ADDR                  = 32'h10A10120;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REG_MAP_SIZE                       = 32'h00000018;
 
 
 
@@ -2495,15 +2528,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REG_MA
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REG_FILE_BASE_ADDR               = 32'h10A10120;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REG_FILE_SIZE                    = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REG_FILE_BASE_ADDR          = 32'h10A10120;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REG_FILE_SIZE               = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REGION_START_REG_OFFSET          = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REGION_START_REG_ADDR            = 32'h10A10120;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REGION_END_REG_OFFSET            = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REGION_END_REG_ADDR              = 32'h10A10128;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10130;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REGION_START_REG_OFFSET     = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REGION_START_REG_ADDR       = 32'h10A10120;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REGION_END_REG_OFFSET       = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REGION_END_REG_ADDR         = 32'h10A10128;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REGION_ATTRS_REG_OFFSET     = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_9__REGION_REGION_ATTRS_REG_ADDR       = 32'h10A10130;
 
 
 //==============================================================================
@@ -2511,8 +2544,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_9__REGION
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REG_MAP_BASE_ADDR                      = 32'h10A10140;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REG_MAP_SIZE                           = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REG_MAP_BASE_ADDR                 = 32'h10A10140;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REG_MAP_SIZE                      = 32'h00000018;
 
 
 
@@ -2521,15 +2554,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REG_M
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REG_FILE_BASE_ADDR              = 32'h10A10140;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REG_FILE_SIZE                   = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REG_FILE_BASE_ADDR         = 32'h10A10140;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REG_FILE_SIZE              = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REGION_START_REG_OFFSET         = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REGION_START_REG_ADDR           = 32'h10A10140;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REGION_END_REG_OFFSET           = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REGION_END_REG_ADDR             = 32'h10A10148;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REGION_ATTRS_REG_OFFSET         = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGION_REGION_ATTRS_REG_ADDR           = 32'h10A10150;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REGION_START_REG_OFFSET    = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REGION_START_REG_ADDR      = 32'h10A10140;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REGION_END_REG_OFFSET      = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REGION_END_REG_ADDR        = 32'h10A10148;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REGION_ATTRS_REG_OFFSET    = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_10__REGION_REGION_ATTRS_REG_ADDR      = 32'h10A10150;
 
 
 //==============================================================================
@@ -2537,8 +2570,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_10__REGIO
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REG_MAP_BASE_ADDR                      = 32'h10A10160;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REG_MAP_SIZE                           = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REG_MAP_BASE_ADDR                 = 32'h10A10160;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REG_MAP_SIZE                      = 32'h00000018;
 
 
 
@@ -2547,15 +2580,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REG_M
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REG_FILE_BASE_ADDR              = 32'h10A10160;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REG_FILE_SIZE                   = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REG_FILE_BASE_ADDR         = 32'h10A10160;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REG_FILE_SIZE              = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REGION_START_REG_OFFSET         = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REGION_START_REG_ADDR           = 32'h10A10160;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REGION_END_REG_OFFSET           = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REGION_END_REG_ADDR             = 32'h10A10168;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REGION_ATTRS_REG_OFFSET         = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGION_REGION_ATTRS_REG_ADDR           = 32'h10A10170;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REGION_START_REG_OFFSET    = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REGION_START_REG_ADDR      = 32'h10A10160;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REGION_END_REG_OFFSET      = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REGION_END_REG_ADDR        = 32'h10A10168;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REGION_ATTRS_REG_OFFSET    = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_11__REGION_REGION_ATTRS_REG_ADDR      = 32'h10A10170;
 
 
 //==============================================================================
@@ -2563,8 +2596,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_11__REGIO
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REG_MAP_BASE_ADDR                      = 32'h10A10180;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REG_MAP_SIZE                           = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REG_MAP_BASE_ADDR                 = 32'h10A10180;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REG_MAP_SIZE                      = 32'h00000018;
 
 
 
@@ -2573,15 +2606,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REG_M
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REG_FILE_BASE_ADDR              = 32'h10A10180;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REG_FILE_SIZE                   = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REG_FILE_BASE_ADDR         = 32'h10A10180;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REG_FILE_SIZE              = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REGION_START_REG_OFFSET         = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REGION_START_REG_ADDR           = 32'h10A10180;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REGION_END_REG_OFFSET           = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REGION_END_REG_ADDR             = 32'h10A10188;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REGION_ATTRS_REG_OFFSET         = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGION_REGION_ATTRS_REG_ADDR           = 32'h10A10190;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REGION_START_REG_OFFSET    = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REGION_START_REG_ADDR      = 32'h10A10180;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REGION_END_REG_OFFSET      = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REGION_END_REG_ADDR        = 32'h10A10188;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REGION_ATTRS_REG_OFFSET    = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_12__REGION_REGION_ATTRS_REG_ADDR      = 32'h10A10190;
 
 
 //==============================================================================
@@ -2589,8 +2622,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_12__REGIO
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REG_MAP_BASE_ADDR                      = 32'h10A101A0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REG_MAP_SIZE                           = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REG_MAP_BASE_ADDR                 = 32'h10A101A0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REG_MAP_SIZE                      = 32'h00000018;
 
 
 
@@ -2599,15 +2632,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REG_M
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REG_FILE_BASE_ADDR              = 32'h10A101A0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REG_FILE_SIZE                   = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REG_FILE_BASE_ADDR         = 32'h10A101A0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REG_FILE_SIZE              = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REGION_START_REG_OFFSET         = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REGION_START_REG_ADDR           = 32'h10A101A0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REGION_END_REG_OFFSET           = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REGION_END_REG_ADDR             = 32'h10A101A8;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REGION_ATTRS_REG_OFFSET         = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGION_REGION_ATTRS_REG_ADDR           = 32'h10A101B0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REGION_START_REG_OFFSET    = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REGION_START_REG_ADDR      = 32'h10A101A0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REGION_END_REG_OFFSET      = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REGION_END_REG_ADDR        = 32'h10A101A8;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REGION_ATTRS_REG_OFFSET    = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_13__REGION_REGION_ATTRS_REG_ADDR      = 32'h10A101B0;
 
 
 //==============================================================================
@@ -2615,8 +2648,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_13__REGIO
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REG_MAP_BASE_ADDR                      = 32'h10A101C0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REG_MAP_SIZE                           = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REG_MAP_BASE_ADDR                 = 32'h10A101C0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REG_MAP_SIZE                      = 32'h00000018;
 
 
 
@@ -2625,15 +2658,15 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REG_M
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REG_FILE_BASE_ADDR              = 32'h10A101C0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REG_FILE_SIZE                   = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REG_FILE_BASE_ADDR         = 32'h10A101C0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REG_FILE_SIZE              = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REGION_START_REG_OFFSET         = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REGION_START_REG_ADDR           = 32'h10A101C0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REGION_END_REG_OFFSET           = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REGION_END_REG_ADDR             = 32'h10A101C8;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REGION_ATTRS_REG_OFFSET         = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGION_REGION_ATTRS_REG_ADDR           = 32'h10A101D0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REGION_START_REG_OFFSET    = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REGION_START_REG_ADDR      = 32'h10A101C0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REGION_END_REG_OFFSET      = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REGION_END_REG_ADDR        = 32'h10A101C8;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REGION_ATTRS_REG_OFFSET    = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_14__REGION_REGION_ATTRS_REG_ADDR      = 32'h10A101D0;
 
 
 //==============================================================================
@@ -2641,8 +2674,8 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_14__REGIO
 //==============================================================================
 
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REG_MAP_BASE_ADDR                      = 32'h10A101E0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REG_MAP_SIZE                           = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REG_MAP_BASE_ADDR                 = 32'h10A101E0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REG_MAP_SIZE                      = 32'h00000018;
 
 
 
@@ -2651,24 +2684,24 @@ localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REG_M
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REG_FILE_BASE_ADDR              = 32'h10A101E0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REG_FILE_SIZE                   = 32'h00000018;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REG_FILE_BASE_ADDR         = 32'h10A101E0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REG_FILE_SIZE              = 32'h00000018;
 
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REGION_START_REG_OFFSET         = 32'h00000000;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REGION_START_REG_ADDR           = 32'h10A101E0;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REGION_END_REG_OFFSET           = 32'h00000008;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REGION_END_REG_ADDR             = 32'h10A101E8;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REGION_ATTRS_REG_OFFSET         = 32'h00000010;
-localparam int unsigned LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REGION_REGION_ATTRS_REG_ADDR           = 32'h10A101F0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REGION_START_REG_OFFSET    = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REGION_START_REG_ADDR      = 32'h10A101E0;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REGION_END_REG_OFFSET      = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REGION_END_REG_ADDR        = 32'h10A101E8;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REGION_ATTRS_REG_OFFSET    = 32'h00000010;
+localparam int unsigned SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_15__REGION_REGION_ATTRS_REG_ADDR      = 32'h10A101F0;
 
 
 //==============================================================================
-// Addresses for Address Map: ap_output_remap_ctrl_wrap
+// Addresses for Address Map: ap_output_remap
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_REG_MAP_BASE_ADDR                                               = 32'h10A10200;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_REG_MAP_SIZE                                                    = 32'h00000080;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_REG_MAP_BASE_ADDR                                          = 32'h10A10200;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_REG_MAP_SIZE                                               = 32'h00000080;
 
 
 
@@ -2678,8 +2711,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_REG_MAP_SIZE                  
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR                               = 32'h10A10200;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR                          = 32'h10A10200;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2688,11 +2721,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10200;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10200;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10200;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10200;
 
 
 //==============================================================================
@@ -2700,8 +2733,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR                               = 32'h10A10208;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR                          = 32'h10A10208;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2710,11 +2743,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10208;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10208;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10208;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10208;
 
 
 //==============================================================================
@@ -2722,8 +2755,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REG_MAP_BASE_ADDR                               = 32'h10A10210;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_2__REG_MAP_BASE_ADDR                          = 32'h10A10210;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_2__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2732,11 +2765,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10210;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10210;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10210;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10210;
 
 
 //==============================================================================
@@ -2744,8 +2777,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REG_MAP_BASE_ADDR                               = 32'h10A10218;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_3__REG_MAP_BASE_ADDR                          = 32'h10A10218;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_3__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2754,11 +2787,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10218;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10218;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10218;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10218;
 
 
 //==============================================================================
@@ -2766,8 +2799,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REG_MAP_BASE_ADDR                               = 32'h10A10220;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_4__REG_MAP_BASE_ADDR                          = 32'h10A10220;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_4__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2776,11 +2809,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10220;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10220;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10220;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10220;
 
 
 //==============================================================================
@@ -2788,8 +2821,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REG_MAP_BASE_ADDR                               = 32'h10A10228;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_5__REG_MAP_BASE_ADDR                          = 32'h10A10228;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_5__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2798,11 +2831,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10228;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10228;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10228;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10228;
 
 
 //==============================================================================
@@ -2810,8 +2843,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REG_MAP_BASE_ADDR                               = 32'h10A10230;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_6__REG_MAP_BASE_ADDR                          = 32'h10A10230;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_6__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2820,11 +2853,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10230;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10230;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10230;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10230;
 
 
 //==============================================================================
@@ -2832,8 +2865,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REG_MAP_BASE_ADDR                               = 32'h10A10238;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_7__REG_MAP_BASE_ADDR                          = 32'h10A10238;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_7__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2842,11 +2875,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10238;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10238;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10238;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10238;
 
 
 //==============================================================================
@@ -2854,8 +2887,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REG_MAP_BASE_ADDR                               = 32'h10A10240;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_8__REG_MAP_BASE_ADDR                          = 32'h10A10240;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_8__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2864,11 +2897,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10240;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10240;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10240;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10240;
 
 
 //==============================================================================
@@ -2876,8 +2909,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REG_MAP_BASE_ADDR                               = 32'h10A10248;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REG_MAP_SIZE                                    = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_9__REG_MAP_BASE_ADDR                          = 32'h10A10248;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_9__REG_MAP_SIZE                               = 32'h00000008;
 
 
 
@@ -2886,11 +2919,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REG_MAP_SIZE  
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REG_FILE_BASE_ADDR                       = 32'h10A10248;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REG_FILE_SIZE                            = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REG_FILE_BASE_ADDR                  = 32'h10A10248;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REG_FILE_SIZE                       = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_OFFSET                  = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_ADDR                    = 32'h10A10248;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_OFFSET             = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_ADDR               = 32'h10A10248;
 
 
 //==============================================================================
@@ -2898,8 +2931,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REGION_
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REG_MAP_BASE_ADDR                              = 32'h10A10250;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REG_MAP_SIZE                                   = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_10__REG_MAP_BASE_ADDR                         = 32'h10A10250;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_10__REG_MAP_SIZE                              = 32'h00000008;
 
 
 
@@ -2908,11 +2941,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REG_MAP_SIZE 
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REG_FILE_BASE_ADDR                      = 32'h10A10250;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REG_FILE_SIZE                           = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REG_FILE_BASE_ADDR                 = 32'h10A10250;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REG_FILE_SIZE                      = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_OFFSET                 = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_ADDR                   = 32'h10A10250;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_OFFSET            = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_ADDR              = 32'h10A10250;
 
 
 //==============================================================================
@@ -2920,8 +2953,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REGION
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REG_MAP_BASE_ADDR                              = 32'h10A10258;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REG_MAP_SIZE                                   = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_11__REG_MAP_BASE_ADDR                         = 32'h10A10258;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_11__REG_MAP_SIZE                              = 32'h00000008;
 
 
 
@@ -2930,11 +2963,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REG_MAP_SIZE 
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REG_FILE_BASE_ADDR                      = 32'h10A10258;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REG_FILE_SIZE                           = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REG_FILE_BASE_ADDR                 = 32'h10A10258;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REG_FILE_SIZE                      = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_OFFSET                 = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_ADDR                   = 32'h10A10258;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_OFFSET            = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_ADDR              = 32'h10A10258;
 
 
 //==============================================================================
@@ -2942,8 +2975,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REGION
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REG_MAP_BASE_ADDR                              = 32'h10A10260;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REG_MAP_SIZE                                   = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_12__REG_MAP_BASE_ADDR                         = 32'h10A10260;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_12__REG_MAP_SIZE                              = 32'h00000008;
 
 
 
@@ -2952,11 +2985,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REG_MAP_SIZE 
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REG_FILE_BASE_ADDR                      = 32'h10A10260;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REG_FILE_SIZE                           = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REG_FILE_BASE_ADDR                 = 32'h10A10260;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REG_FILE_SIZE                      = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_OFFSET                 = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_ADDR                   = 32'h10A10260;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_OFFSET            = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_ADDR              = 32'h10A10260;
 
 
 //==============================================================================
@@ -2964,8 +2997,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REGION
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REG_MAP_BASE_ADDR                              = 32'h10A10268;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REG_MAP_SIZE                                   = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_13__REG_MAP_BASE_ADDR                         = 32'h10A10268;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_13__REG_MAP_SIZE                              = 32'h00000008;
 
 
 
@@ -2974,11 +3007,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REG_MAP_SIZE 
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REG_FILE_BASE_ADDR                      = 32'h10A10268;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REG_FILE_SIZE                           = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REG_FILE_BASE_ADDR                 = 32'h10A10268;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REG_FILE_SIZE                      = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_OFFSET                 = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_ADDR                   = 32'h10A10268;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_OFFSET            = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_ADDR              = 32'h10A10268;
 
 
 //==============================================================================
@@ -2986,8 +3019,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REGION
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REG_MAP_BASE_ADDR                              = 32'h10A10270;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REG_MAP_SIZE                                   = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_14__REG_MAP_BASE_ADDR                         = 32'h10A10270;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_14__REG_MAP_SIZE                              = 32'h00000008;
 
 
 
@@ -2996,11 +3029,11 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REG_MAP_SIZE 
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REG_FILE_BASE_ADDR                      = 32'h10A10270;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REG_FILE_SIZE                           = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REG_FILE_BASE_ADDR                 = 32'h10A10270;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REG_FILE_SIZE                      = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_OFFSET                 = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_ADDR                   = 32'h10A10270;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_OFFSET            = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_ADDR              = 32'h10A10270;
 
 
 //==============================================================================
@@ -3008,8 +3041,8 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REGION
 //==============================================================================
 
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR                              = 32'h10A10278;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_SIZE                                   = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR                         = 32'h10A10278;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REG_MAP_SIZE                              = 32'h00000008;
 
 
 
@@ -3018,20 +3051,20 @@ localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_SIZE 
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REG_FILE_BASE_ADDR                      = 32'h10A10278;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REG_FILE_SIZE                           = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REG_FILE_BASE_ADDR                 = 32'h10A10278;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REG_FILE_SIZE                      = 32'h00000008;
 
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_OFFSET                 = 32'h00000000;
-localparam int unsigned AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_ADDR                   = 32'h10A10278;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_OFFSET            = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_ADDR              = 32'h10A10278;
 
 
 //==============================================================================
-// Addresses for Address Map: stee_output_remap_ctrl_wrap
+// Addresses for Address Map: stee_output_remap
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_REG_MAP_BASE_ADDR                                             = 32'h10A10300;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_REG_MAP_SIZE                                                  = 32'h00000080;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_REG_MAP_BASE_ADDR                                        = 32'h10A10300;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_REG_MAP_SIZE                                             = 32'h00000080;
 
 
 
@@ -3041,8 +3074,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_REG_MAP_SIZE                
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR                             = 32'h10A10300;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR                        = 32'h10A10300;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3051,11 +3084,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10300;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REG_FILE_BASE_ADDR                = 32'h10A10300;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10300;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10300;
 
 
 //==============================================================================
@@ -3063,8 +3096,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR                             = 32'h10A10308;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR                        = 32'h10A10308;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3073,11 +3106,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10308;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REG_FILE_BASE_ADDR                = 32'h10A10308;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10308;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10308;
 
 
 //==============================================================================
@@ -3085,8 +3118,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REG_MAP_BASE_ADDR                             = 32'h10A10310;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_2__REG_MAP_BASE_ADDR                        = 32'h10A10310;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_2__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3095,11 +3128,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10310;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REG_FILE_BASE_ADDR                = 32'h10A10310;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10310;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10310;
 
 
 //==============================================================================
@@ -3107,8 +3140,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_2__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REG_MAP_BASE_ADDR                             = 32'h10A10318;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_3__REG_MAP_BASE_ADDR                        = 32'h10A10318;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_3__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3117,11 +3150,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10318;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REG_FILE_BASE_ADDR                = 32'h10A10318;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10318;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10318;
 
 
 //==============================================================================
@@ -3129,8 +3162,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_3__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REG_MAP_BASE_ADDR                             = 32'h10A10320;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_4__REG_MAP_BASE_ADDR                        = 32'h10A10320;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_4__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3139,11 +3172,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10320;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REG_FILE_BASE_ADDR                = 32'h10A10320;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10320;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10320;
 
 
 //==============================================================================
@@ -3151,8 +3184,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_4__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REG_MAP_BASE_ADDR                             = 32'h10A10328;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_5__REG_MAP_BASE_ADDR                        = 32'h10A10328;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_5__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3161,11 +3194,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10328;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REG_FILE_BASE_ADDR                = 32'h10A10328;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10328;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10328;
 
 
 //==============================================================================
@@ -3173,8 +3206,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_5__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REG_MAP_BASE_ADDR                             = 32'h10A10330;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_6__REG_MAP_BASE_ADDR                        = 32'h10A10330;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_6__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3183,11 +3216,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10330;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REG_FILE_BASE_ADDR                = 32'h10A10330;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10330;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10330;
 
 
 //==============================================================================
@@ -3195,8 +3228,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_6__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REG_MAP_BASE_ADDR                             = 32'h10A10338;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_7__REG_MAP_BASE_ADDR                        = 32'h10A10338;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_7__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3205,11 +3238,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10338;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REG_FILE_BASE_ADDR                = 32'h10A10338;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10338;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10338;
 
 
 //==============================================================================
@@ -3217,8 +3250,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_7__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REG_MAP_BASE_ADDR                             = 32'h10A10340;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_8__REG_MAP_BASE_ADDR                        = 32'h10A10340;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_8__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3227,11 +3260,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10340;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REG_FILE_BASE_ADDR                = 32'h10A10340;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10340;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_8__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10340;
 
 
 //==============================================================================
@@ -3239,8 +3272,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_8__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REG_MAP_BASE_ADDR                             = 32'h10A10348;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REG_MAP_SIZE                                  = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_9__REG_MAP_BASE_ADDR                        = 32'h10A10348;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_9__REG_MAP_SIZE                             = 32'h00000008;
 
 
 
@@ -3249,11 +3282,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REG_MAP_SIZE
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REG_FILE_BASE_ADDR                     = 32'h10A10348;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REG_FILE_SIZE                          = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REG_FILE_BASE_ADDR                = 32'h10A10348;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REG_FILE_SIZE                     = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_OFFSET                = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_ADDR                  = 32'h10A10348;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_OFFSET           = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_9__REGION_REGION_ATTRS_REG_ADDR             = 32'h10A10348;
 
 
 //==============================================================================
@@ -3261,8 +3294,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_9__REGION_REGIO
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REG_MAP_BASE_ADDR                            = 32'h10A10350;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REG_MAP_SIZE                                 = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_10__REG_MAP_BASE_ADDR                       = 32'h10A10350;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_10__REG_MAP_SIZE                            = 32'h00000008;
 
 
 
@@ -3271,11 +3304,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REG_MAP_SIZ
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REG_FILE_BASE_ADDR                    = 32'h10A10350;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REG_FILE_SIZE                         = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REG_FILE_BASE_ADDR               = 32'h10A10350;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REG_FILE_SIZE                    = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_OFFSET               = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_ADDR                 = 32'h10A10350;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_10__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10350;
 
 
 //==============================================================================
@@ -3283,8 +3316,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_10__REGION_REGI
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REG_MAP_BASE_ADDR                            = 32'h10A10358;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REG_MAP_SIZE                                 = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_11__REG_MAP_BASE_ADDR                       = 32'h10A10358;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_11__REG_MAP_SIZE                            = 32'h00000008;
 
 
 
@@ -3293,11 +3326,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REG_MAP_SIZ
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REG_FILE_BASE_ADDR                    = 32'h10A10358;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REG_FILE_SIZE                         = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REG_FILE_BASE_ADDR               = 32'h10A10358;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REG_FILE_SIZE                    = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_OFFSET               = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_ADDR                 = 32'h10A10358;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_11__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10358;
 
 
 //==============================================================================
@@ -3305,8 +3338,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_11__REGION_REGI
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REG_MAP_BASE_ADDR                            = 32'h10A10360;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REG_MAP_SIZE                                 = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_12__REG_MAP_BASE_ADDR                       = 32'h10A10360;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_12__REG_MAP_SIZE                            = 32'h00000008;
 
 
 
@@ -3315,11 +3348,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REG_MAP_SIZ
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REG_FILE_BASE_ADDR                    = 32'h10A10360;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REG_FILE_SIZE                         = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REG_FILE_BASE_ADDR               = 32'h10A10360;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REG_FILE_SIZE                    = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_OFFSET               = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_ADDR                 = 32'h10A10360;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_12__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10360;
 
 
 //==============================================================================
@@ -3327,8 +3360,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_12__REGION_REGI
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REG_MAP_BASE_ADDR                            = 32'h10A10368;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REG_MAP_SIZE                                 = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_13__REG_MAP_BASE_ADDR                       = 32'h10A10368;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_13__REG_MAP_SIZE                            = 32'h00000008;
 
 
 
@@ -3337,11 +3370,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REG_MAP_SIZ
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REG_FILE_BASE_ADDR                    = 32'h10A10368;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REG_FILE_SIZE                         = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REG_FILE_BASE_ADDR               = 32'h10A10368;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REG_FILE_SIZE                    = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_OFFSET               = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_ADDR                 = 32'h10A10368;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_13__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10368;
 
 
 //==============================================================================
@@ -3349,8 +3382,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_13__REGION_REGI
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REG_MAP_BASE_ADDR                            = 32'h10A10370;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REG_MAP_SIZE                                 = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_14__REG_MAP_BASE_ADDR                       = 32'h10A10370;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_14__REG_MAP_SIZE                            = 32'h00000008;
 
 
 
@@ -3359,11 +3392,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REG_MAP_SIZ
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REG_FILE_BASE_ADDR                    = 32'h10A10370;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REG_FILE_SIZE                         = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REG_FILE_BASE_ADDR               = 32'h10A10370;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REG_FILE_SIZE                    = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_OFFSET               = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_ADDR                 = 32'h10A10370;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_14__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10370;
 
 
 //==============================================================================
@@ -3371,8 +3404,8 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_14__REGION_REGI
 //==============================================================================
 
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR                            = 32'h10A10378;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_SIZE                                 = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR                       = 32'h10A10378;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REG_MAP_SIZE                            = 32'h00000008;
 
 
 
@@ -3381,11 +3414,11 @@ localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_SIZ
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REG_FILE_BASE_ADDR                    = 32'h10A10378;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REG_FILE_SIZE                         = 32'h00000008;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REG_FILE_BASE_ADDR               = 32'h10A10378;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REG_FILE_SIZE                    = 32'h00000008;
 
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_OFFSET               = 32'h00000000;
-localparam int unsigned STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_ADDR                 = 32'h10A10378;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_OFFSET          = 32'h00000000;
+localparam int unsigned SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_15__REGION_REGION_ATTRS_REG_ADDR            = 32'h10A10378;
 
 
 //==============================================================================
@@ -6607,6 +6640,24 @@ localparam longint unsigned KMAC_KEY_SHARE1_REG_DEFAULT                         
 localparam longint unsigned KMAC_KEY_LEN_REG_DEFAULT                                                              = 32'h00000000;
 localparam longint unsigned KMAC_PREFIX_REG_DEFAULT                                                               = 32'h00000000;
 localparam longint unsigned KMAC_ERR_CODE_REG_DEFAULT                                                             = 32'h00000000;
+localparam longint unsigned EDN_INTR_STATE_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned EDN_INTR_ENABLE_REG_DEFAULT                                                           = 32'h00000000;
+localparam longint unsigned EDN_INTR_TEST_REG_DEFAULT                                                             = 32'h00000000;
+localparam longint unsigned EDN_ALERT_TEST_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned EDN_REGWEN_REG_DEFAULT                                                                = 32'h00000001;
+localparam longint unsigned EDN_CTRL_REG_DEFAULT                                                                  = 32'h00009999;
+localparam longint unsigned EDN_BOOT_INS_CMD_REG_DEFAULT                                                          = 32'h00000901;
+localparam longint unsigned EDN_BOOT_GEN_CMD_REG_DEFAULT                                                          = 32'h00FFF003;
+localparam longint unsigned EDN_SW_CMD_REQ_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned EDN_SW_CMD_STS_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned EDN_HW_CMD_STS_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned EDN_RESEED_CMD_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned EDN_GENERATE_CMD_REG_DEFAULT                                                          = 32'h00000000;
+localparam longint unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT                                          = 32'h00000000;
+localparam longint unsigned EDN_RECOV_ALERT_STS_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned EDN_ERR_CODE_REG_DEFAULT                                                              = 32'h00000000;
+localparam longint unsigned EDN_ERR_CODE_TEST_REG_DEFAULT                                                         = 32'h00000000;
+localparam longint unsigned EDN_MAIN_SM_STATE_REG_DEFAULT                                                         = 32'h000000C1;
 localparam longint unsigned CSRNG_INTR_STATE_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned CSRNG_INTR_ENABLE_REG_DEFAULT                                                         = 32'h00000000;
 localparam longint unsigned CSRNG_INTR_TEST_REG_DEFAULT                                                           = 32'h00000000;
@@ -6631,24 +6682,6 @@ localparam longint unsigned CSRNG_RECOV_ALERT_STS_REG_DEFAULT                   
 localparam longint unsigned CSRNG_ERR_CODE_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned CSRNG_ERR_CODE_TEST_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned CSRNG_MAIN_SM_STATE_REG_DEFAULT                                                       = 32'h00000037;
-localparam longint unsigned EDN_INTR_STATE_REG_DEFAULT                                                            = 32'h00000000;
-localparam longint unsigned EDN_INTR_ENABLE_REG_DEFAULT                                                           = 32'h00000000;
-localparam longint unsigned EDN_INTR_TEST_REG_DEFAULT                                                             = 32'h00000000;
-localparam longint unsigned EDN_ALERT_TEST_REG_DEFAULT                                                            = 32'h00000000;
-localparam longint unsigned EDN_REGWEN_REG_DEFAULT                                                                = 32'h00000001;
-localparam longint unsigned EDN_CTRL_REG_DEFAULT                                                                  = 32'h00009999;
-localparam longint unsigned EDN_BOOT_INS_CMD_REG_DEFAULT                                                          = 32'h00000901;
-localparam longint unsigned EDN_BOOT_GEN_CMD_REG_DEFAULT                                                          = 32'h00FFF003;
-localparam longint unsigned EDN_SW_CMD_REQ_REG_DEFAULT                                                            = 32'h00000000;
-localparam longint unsigned EDN_SW_CMD_STS_REG_DEFAULT                                                            = 32'h00000000;
-localparam longint unsigned EDN_HW_CMD_STS_REG_DEFAULT                                                            = 32'h00000000;
-localparam longint unsigned EDN_RESEED_CMD_REG_DEFAULT                                                            = 32'h00000000;
-localparam longint unsigned EDN_GENERATE_CMD_REG_DEFAULT                                                          = 32'h00000000;
-localparam longint unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_REG_DEFAULT                                          = 32'h00000000;
-localparam longint unsigned EDN_RECOV_ALERT_STS_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned EDN_ERR_CODE_REG_DEFAULT                                                              = 32'h00000000;
-localparam longint unsigned EDN_ERR_CODE_TEST_REG_DEFAULT                                                         = 32'h00000000;
-localparam longint unsigned EDN_MAIN_SM_STATE_REG_DEFAULT                                                         = 32'h000000C1;
 localparam longint unsigned ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT                                               = 32'h01000001;
 localparam longint unsigned ENTROPY_SOURCE_CTRL_REG_DEFAULT                                                       = 32'h10000002;
 localparam longint unsigned ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT                                                 = 32'h00000000;
@@ -6727,18 +6760,6 @@ localparam longint unsigned KM_MAILBOX_SEP_STATUS_REG_REG_DEFAULT               
 localparam longint unsigned KM_MAILBOX_SEP_IRQ_STATUS_REG_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned KM_MAILBOX_SEP_IRQ_ENABLE_REG_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned KM_MAILBOX_SEP_CTRL_REG_REG_DEFAULT                                                   = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT                                                    = 32'h0000000F;
-localparam longint unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT                                                   = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT                                            = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT                                                  = 64'h0000000000000000;
-localparam longint unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_DEFAULT                                         = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_STATUS_RPT_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_DEFAULT                                             = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_DEFAULT                                            = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_REQUIRED_ALGS_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT                          = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT                                   = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT                                      = 32'h00000000;
@@ -6751,6 +6772,18 @@ localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT           
 localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT                                                    = 32'h0000000F;
+localparam longint unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT                                                   = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_DEFAULT                                         = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_STATUS_RPT_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_REQUIRED_ALGS_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned ABR_REG_MLDSA_NAME_REG_DEFAULT                                                        = 32'h00000000;
 localparam longint unsigned ABR_REG_MLDSA_VERSION_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned ABR_REG_MLDSA_CTRL_REG_DEFAULT                                                        = 32'h00000000;
@@ -7526,6 +7559,138 @@ localparam int unsigned KMAC_PREFIX_PREFIX_0_SHIFT                              
 localparam int unsigned KMAC_ERR_CODE_ERR_CODE_MASK                                                               = 32'hFFFFFFFF;
 localparam int unsigned KMAC_ERR_CODE_ERR_CODE_SHIFT                                                              = 0;
 
+localparam int unsigned EDN_INTR_STATE_EDN_CMD_REQ_DONE_MASK                                                      = 32'h1;
+localparam int unsigned EDN_INTR_STATE_EDN_CMD_REQ_DONE_SHIFT                                                     = 0;
+
+localparam int unsigned EDN_INTR_STATE_EDN_FATAL_ERR_MASK                                                         = 32'h2;
+localparam int unsigned EDN_INTR_STATE_EDN_FATAL_ERR_SHIFT                                                        = 1;
+
+localparam int unsigned EDN_INTR_ENABLE_EDN_CMD_REQ_DONE_MASK                                                     = 32'h1;
+localparam int unsigned EDN_INTR_ENABLE_EDN_CMD_REQ_DONE_SHIFT                                                    = 0;
+
+localparam int unsigned EDN_INTR_ENABLE_EDN_FATAL_ERR_MASK                                                        = 32'h2;
+localparam int unsigned EDN_INTR_ENABLE_EDN_FATAL_ERR_SHIFT                                                       = 1;
+
+localparam int unsigned EDN_INTR_TEST_EDN_CMD_REQ_DONE_MASK                                                       = 32'h1;
+localparam int unsigned EDN_INTR_TEST_EDN_CMD_REQ_DONE_SHIFT                                                      = 0;
+
+localparam int unsigned EDN_INTR_TEST_EDN_FATAL_ERR_MASK                                                          = 32'h2;
+localparam int unsigned EDN_INTR_TEST_EDN_FATAL_ERR_SHIFT                                                         = 1;
+
+localparam int unsigned EDN_ALERT_TEST_RECOV_ALERT_MASK                                                           = 32'h1;
+localparam int unsigned EDN_ALERT_TEST_RECOV_ALERT_SHIFT                                                          = 0;
+
+localparam int unsigned EDN_ALERT_TEST_FATAL_ALERT_MASK                                                           = 32'h2;
+localparam int unsigned EDN_ALERT_TEST_FATAL_ALERT_SHIFT                                                          = 1;
+
+localparam int unsigned EDN_REGWEN_REGWEN_MASK                                                                    = 32'h1;
+localparam int unsigned EDN_REGWEN_REGWEN_SHIFT                                                                   = 0;
+
+localparam int unsigned EDN_CTRL_EDN_ENABLE_MASK                                                                  = 32'hF;
+localparam int unsigned EDN_CTRL_EDN_ENABLE_SHIFT                                                                 = 0;
+
+localparam int unsigned EDN_CTRL_BOOT_REQ_MODE_MASK                                                               = 32'hF0;
+localparam int unsigned EDN_CTRL_BOOT_REQ_MODE_SHIFT                                                              = 4;
+
+localparam int unsigned EDN_CTRL_AUTO_REQ_MODE_MASK                                                               = 32'hF00;
+localparam int unsigned EDN_CTRL_AUTO_REQ_MODE_SHIFT                                                              = 8;
+
+localparam int unsigned EDN_CTRL_CMD_FIFO_RST_MASK                                                                = 32'hF000;
+localparam int unsigned EDN_CTRL_CMD_FIFO_RST_SHIFT                                                               = 12;
+
+localparam int unsigned EDN_BOOT_INS_CMD_BOOT_INS_CMD_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned EDN_BOOT_INS_CMD_BOOT_INS_CMD_SHIFT                                                       = 0;
+
+localparam int unsigned EDN_BOOT_GEN_CMD_BOOT_GEN_CMD_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned EDN_BOOT_GEN_CMD_BOOT_GEN_CMD_SHIFT                                                       = 0;
+
+localparam int unsigned EDN_SW_CMD_REQ_SW_CMD_REQ_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned EDN_SW_CMD_REQ_SW_CMD_REQ_SHIFT                                                           = 0;
+
+localparam int unsigned EDN_SW_CMD_STS_CMD_REG_RDY_MASK                                                           = 32'h1;
+localparam int unsigned EDN_SW_CMD_STS_CMD_REG_RDY_SHIFT                                                          = 0;
+
+localparam int unsigned EDN_SW_CMD_STS_CMD_RDY_MASK                                                               = 32'h2;
+localparam int unsigned EDN_SW_CMD_STS_CMD_RDY_SHIFT                                                              = 1;
+
+localparam int unsigned EDN_SW_CMD_STS_CMD_ACK_MASK                                                               = 32'h4;
+localparam int unsigned EDN_SW_CMD_STS_CMD_ACK_SHIFT                                                              = 2;
+
+localparam int unsigned EDN_SW_CMD_STS_CMD_STS_MASK                                                               = 32'h38;
+localparam int unsigned EDN_SW_CMD_STS_CMD_STS_SHIFT                                                              = 3;
+
+localparam int unsigned EDN_HW_CMD_STS_BOOT_MODE_MASK                                                             = 32'h1;
+localparam int unsigned EDN_HW_CMD_STS_BOOT_MODE_SHIFT                                                            = 0;
+
+localparam int unsigned EDN_HW_CMD_STS_AUTO_MODE_MASK                                                             = 32'h2;
+localparam int unsigned EDN_HW_CMD_STS_AUTO_MODE_SHIFT                                                            = 1;
+
+localparam int unsigned EDN_HW_CMD_STS_CMD_TYPE_MASK                                                              = 32'h3C;
+localparam int unsigned EDN_HW_CMD_STS_CMD_TYPE_SHIFT                                                             = 2;
+
+localparam int unsigned EDN_HW_CMD_STS_CMD_ACK_MASK                                                               = 32'h40;
+localparam int unsigned EDN_HW_CMD_STS_CMD_ACK_SHIFT                                                              = 6;
+
+localparam int unsigned EDN_HW_CMD_STS_CMD_STS_MASK                                                               = 32'h380;
+localparam int unsigned EDN_HW_CMD_STS_CMD_STS_SHIFT                                                              = 7;
+
+localparam int unsigned EDN_RESEED_CMD_RESEED_CMD_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned EDN_RESEED_CMD_RESEED_CMD_SHIFT                                                           = 0;
+
+localparam int unsigned EDN_GENERATE_CMD_GENERATE_CMD_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned EDN_GENERATE_CMD_GENERATE_CMD_SHIFT                                                       = 0;
+
+localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_MAX_NUM_REQS_BETWEEN_RESEEDS_MASK                        = 32'hFFFFFFFF;
+localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_MAX_NUM_REQS_BETWEEN_RESEEDS_SHIFT                       = 0;
+
+localparam int unsigned EDN_RECOV_ALERT_STS_EDN_ENABLE_FIELD_ALERT_MASK                                           = 32'h1;
+localparam int unsigned EDN_RECOV_ALERT_STS_EDN_ENABLE_FIELD_ALERT_SHIFT                                          = 0;
+
+localparam int unsigned EDN_RECOV_ALERT_STS_BOOT_REQ_MODE_FIELD_ALERT_MASK                                        = 32'h2;
+localparam int unsigned EDN_RECOV_ALERT_STS_BOOT_REQ_MODE_FIELD_ALERT_SHIFT                                       = 1;
+
+localparam int unsigned EDN_RECOV_ALERT_STS_AUTO_REQ_MODE_FIELD_ALERT_MASK                                        = 32'h4;
+localparam int unsigned EDN_RECOV_ALERT_STS_AUTO_REQ_MODE_FIELD_ALERT_SHIFT                                       = 2;
+
+localparam int unsigned EDN_RECOV_ALERT_STS_CMD_FIFO_RST_FIELD_ALERT_MASK                                         = 32'h8;
+localparam int unsigned EDN_RECOV_ALERT_STS_CMD_FIFO_RST_FIELD_ALERT_SHIFT                                        = 3;
+
+localparam int unsigned EDN_RECOV_ALERT_STS_EDN_BUS_CMP_ALERT_MASK                                                = 32'h1000;
+localparam int unsigned EDN_RECOV_ALERT_STS_EDN_BUS_CMP_ALERT_SHIFT                                               = 12;
+
+localparam int unsigned EDN_RECOV_ALERT_STS_CSRNG_ACK_ERR_MASK                                                    = 32'h2000;
+localparam int unsigned EDN_RECOV_ALERT_STS_CSRNG_ACK_ERR_SHIFT                                                   = 13;
+
+localparam int unsigned EDN_ERR_CODE_SFIFO_RESCMD_ERR_MASK                                                        = 32'h1;
+localparam int unsigned EDN_ERR_CODE_SFIFO_RESCMD_ERR_SHIFT                                                       = 0;
+
+localparam int unsigned EDN_ERR_CODE_SFIFO_GENCMD_ERR_MASK                                                        = 32'h2;
+localparam int unsigned EDN_ERR_CODE_SFIFO_GENCMD_ERR_SHIFT                                                       = 1;
+
+localparam int unsigned EDN_ERR_CODE_EDN_ACK_SM_ERR_MASK                                                          = 32'h100000;
+localparam int unsigned EDN_ERR_CODE_EDN_ACK_SM_ERR_SHIFT                                                         = 20;
+
+localparam int unsigned EDN_ERR_CODE_EDN_MAIN_SM_ERR_MASK                                                         = 32'h200000;
+localparam int unsigned EDN_ERR_CODE_EDN_MAIN_SM_ERR_SHIFT                                                        = 21;
+
+localparam int unsigned EDN_ERR_CODE_EDN_CNTR_ERR_MASK                                                            = 32'h400000;
+localparam int unsigned EDN_ERR_CODE_EDN_CNTR_ERR_SHIFT                                                           = 22;
+
+localparam int unsigned EDN_ERR_CODE_FIFO_WRITE_ERR_MASK                                                          = 32'h10000000;
+localparam int unsigned EDN_ERR_CODE_FIFO_WRITE_ERR_SHIFT                                                         = 28;
+
+localparam int unsigned EDN_ERR_CODE_FIFO_READ_ERR_MASK                                                           = 32'h20000000;
+localparam int unsigned EDN_ERR_CODE_FIFO_READ_ERR_SHIFT                                                          = 29;
+
+localparam int unsigned EDN_ERR_CODE_FIFO_STATE_ERR_MASK                                                          = 32'h40000000;
+localparam int unsigned EDN_ERR_CODE_FIFO_STATE_ERR_SHIFT                                                         = 30;
+
+localparam int unsigned EDN_ERR_CODE_TEST_ERR_CODE_TEST_MASK                                                      = 32'h1F;
+localparam int unsigned EDN_ERR_CODE_TEST_ERR_CODE_TEST_SHIFT                                                     = 0;
+
+localparam int unsigned EDN_MAIN_SM_STATE_MAIN_SM_STATE_MASK                                                      = 32'h1FF;
+localparam int unsigned EDN_MAIN_SM_STATE_MAIN_SM_STATE_SHIFT                                                     = 0;
+
 localparam int unsigned CSRNG_INTR_STATE_CS_CMD_REQ_DONE_MASK                                                     = 32'h1;
 localparam int unsigned CSRNG_INTR_STATE_CS_CMD_REQ_DONE_SHIFT                                                    = 0;
 
@@ -7696,138 +7861,6 @@ localparam int unsigned CSRNG_ERR_CODE_TEST_ERR_CODE_TEST_SHIFT                 
 
 localparam int unsigned CSRNG_MAIN_SM_STATE_MAIN_SM_STATE_MASK                                                    = 32'h3F;
 localparam int unsigned CSRNG_MAIN_SM_STATE_MAIN_SM_STATE_SHIFT                                                   = 0;
-
-localparam int unsigned EDN_INTR_STATE_EDN_CMD_REQ_DONE_MASK                                                      = 32'h1;
-localparam int unsigned EDN_INTR_STATE_EDN_CMD_REQ_DONE_SHIFT                                                     = 0;
-
-localparam int unsigned EDN_INTR_STATE_EDN_FATAL_ERR_MASK                                                         = 32'h2;
-localparam int unsigned EDN_INTR_STATE_EDN_FATAL_ERR_SHIFT                                                        = 1;
-
-localparam int unsigned EDN_INTR_ENABLE_EDN_CMD_REQ_DONE_MASK                                                     = 32'h1;
-localparam int unsigned EDN_INTR_ENABLE_EDN_CMD_REQ_DONE_SHIFT                                                    = 0;
-
-localparam int unsigned EDN_INTR_ENABLE_EDN_FATAL_ERR_MASK                                                        = 32'h2;
-localparam int unsigned EDN_INTR_ENABLE_EDN_FATAL_ERR_SHIFT                                                       = 1;
-
-localparam int unsigned EDN_INTR_TEST_EDN_CMD_REQ_DONE_MASK                                                       = 32'h1;
-localparam int unsigned EDN_INTR_TEST_EDN_CMD_REQ_DONE_SHIFT                                                      = 0;
-
-localparam int unsigned EDN_INTR_TEST_EDN_FATAL_ERR_MASK                                                          = 32'h2;
-localparam int unsigned EDN_INTR_TEST_EDN_FATAL_ERR_SHIFT                                                         = 1;
-
-localparam int unsigned EDN_ALERT_TEST_RECOV_ALERT_MASK                                                           = 32'h1;
-localparam int unsigned EDN_ALERT_TEST_RECOV_ALERT_SHIFT                                                          = 0;
-
-localparam int unsigned EDN_ALERT_TEST_FATAL_ALERT_MASK                                                           = 32'h2;
-localparam int unsigned EDN_ALERT_TEST_FATAL_ALERT_SHIFT                                                          = 1;
-
-localparam int unsigned EDN_REGWEN_REGWEN_MASK                                                                    = 32'h1;
-localparam int unsigned EDN_REGWEN_REGWEN_SHIFT                                                                   = 0;
-
-localparam int unsigned EDN_CTRL_EDN_ENABLE_MASK                                                                  = 32'hF;
-localparam int unsigned EDN_CTRL_EDN_ENABLE_SHIFT                                                                 = 0;
-
-localparam int unsigned EDN_CTRL_BOOT_REQ_MODE_MASK                                                               = 32'hF0;
-localparam int unsigned EDN_CTRL_BOOT_REQ_MODE_SHIFT                                                              = 4;
-
-localparam int unsigned EDN_CTRL_AUTO_REQ_MODE_MASK                                                               = 32'hF00;
-localparam int unsigned EDN_CTRL_AUTO_REQ_MODE_SHIFT                                                              = 8;
-
-localparam int unsigned EDN_CTRL_CMD_FIFO_RST_MASK                                                                = 32'hF000;
-localparam int unsigned EDN_CTRL_CMD_FIFO_RST_SHIFT                                                               = 12;
-
-localparam int unsigned EDN_BOOT_INS_CMD_BOOT_INS_CMD_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned EDN_BOOT_INS_CMD_BOOT_INS_CMD_SHIFT                                                       = 0;
-
-localparam int unsigned EDN_BOOT_GEN_CMD_BOOT_GEN_CMD_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned EDN_BOOT_GEN_CMD_BOOT_GEN_CMD_SHIFT                                                       = 0;
-
-localparam int unsigned EDN_SW_CMD_REQ_SW_CMD_REQ_MASK                                                            = 32'hFFFFFFFF;
-localparam int unsigned EDN_SW_CMD_REQ_SW_CMD_REQ_SHIFT                                                           = 0;
-
-localparam int unsigned EDN_SW_CMD_STS_CMD_REG_RDY_MASK                                                           = 32'h1;
-localparam int unsigned EDN_SW_CMD_STS_CMD_REG_RDY_SHIFT                                                          = 0;
-
-localparam int unsigned EDN_SW_CMD_STS_CMD_RDY_MASK                                                               = 32'h2;
-localparam int unsigned EDN_SW_CMD_STS_CMD_RDY_SHIFT                                                              = 1;
-
-localparam int unsigned EDN_SW_CMD_STS_CMD_ACK_MASK                                                               = 32'h4;
-localparam int unsigned EDN_SW_CMD_STS_CMD_ACK_SHIFT                                                              = 2;
-
-localparam int unsigned EDN_SW_CMD_STS_CMD_STS_MASK                                                               = 32'h38;
-localparam int unsigned EDN_SW_CMD_STS_CMD_STS_SHIFT                                                              = 3;
-
-localparam int unsigned EDN_HW_CMD_STS_BOOT_MODE_MASK                                                             = 32'h1;
-localparam int unsigned EDN_HW_CMD_STS_BOOT_MODE_SHIFT                                                            = 0;
-
-localparam int unsigned EDN_HW_CMD_STS_AUTO_MODE_MASK                                                             = 32'h2;
-localparam int unsigned EDN_HW_CMD_STS_AUTO_MODE_SHIFT                                                            = 1;
-
-localparam int unsigned EDN_HW_CMD_STS_CMD_TYPE_MASK                                                              = 32'h3C;
-localparam int unsigned EDN_HW_CMD_STS_CMD_TYPE_SHIFT                                                             = 2;
-
-localparam int unsigned EDN_HW_CMD_STS_CMD_ACK_MASK                                                               = 32'h40;
-localparam int unsigned EDN_HW_CMD_STS_CMD_ACK_SHIFT                                                              = 6;
-
-localparam int unsigned EDN_HW_CMD_STS_CMD_STS_MASK                                                               = 32'h380;
-localparam int unsigned EDN_HW_CMD_STS_CMD_STS_SHIFT                                                              = 7;
-
-localparam int unsigned EDN_RESEED_CMD_RESEED_CMD_MASK                                                            = 32'hFFFFFFFF;
-localparam int unsigned EDN_RESEED_CMD_RESEED_CMD_SHIFT                                                           = 0;
-
-localparam int unsigned EDN_GENERATE_CMD_GENERATE_CMD_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned EDN_GENERATE_CMD_GENERATE_CMD_SHIFT                                                       = 0;
-
-localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_MAX_NUM_REQS_BETWEEN_RESEEDS_MASK                        = 32'hFFFFFFFF;
-localparam int unsigned EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_MAX_NUM_REQS_BETWEEN_RESEEDS_SHIFT                       = 0;
-
-localparam int unsigned EDN_RECOV_ALERT_STS_EDN_ENABLE_FIELD_ALERT_MASK                                           = 32'h1;
-localparam int unsigned EDN_RECOV_ALERT_STS_EDN_ENABLE_FIELD_ALERT_SHIFT                                          = 0;
-
-localparam int unsigned EDN_RECOV_ALERT_STS_BOOT_REQ_MODE_FIELD_ALERT_MASK                                        = 32'h2;
-localparam int unsigned EDN_RECOV_ALERT_STS_BOOT_REQ_MODE_FIELD_ALERT_SHIFT                                       = 1;
-
-localparam int unsigned EDN_RECOV_ALERT_STS_AUTO_REQ_MODE_FIELD_ALERT_MASK                                        = 32'h4;
-localparam int unsigned EDN_RECOV_ALERT_STS_AUTO_REQ_MODE_FIELD_ALERT_SHIFT                                       = 2;
-
-localparam int unsigned EDN_RECOV_ALERT_STS_CMD_FIFO_RST_FIELD_ALERT_MASK                                         = 32'h8;
-localparam int unsigned EDN_RECOV_ALERT_STS_CMD_FIFO_RST_FIELD_ALERT_SHIFT                                        = 3;
-
-localparam int unsigned EDN_RECOV_ALERT_STS_EDN_BUS_CMP_ALERT_MASK                                                = 32'h1000;
-localparam int unsigned EDN_RECOV_ALERT_STS_EDN_BUS_CMP_ALERT_SHIFT                                               = 12;
-
-localparam int unsigned EDN_RECOV_ALERT_STS_CSRNG_ACK_ERR_MASK                                                    = 32'h2000;
-localparam int unsigned EDN_RECOV_ALERT_STS_CSRNG_ACK_ERR_SHIFT                                                   = 13;
-
-localparam int unsigned EDN_ERR_CODE_SFIFO_RESCMD_ERR_MASK                                                        = 32'h1;
-localparam int unsigned EDN_ERR_CODE_SFIFO_RESCMD_ERR_SHIFT                                                       = 0;
-
-localparam int unsigned EDN_ERR_CODE_SFIFO_GENCMD_ERR_MASK                                                        = 32'h2;
-localparam int unsigned EDN_ERR_CODE_SFIFO_GENCMD_ERR_SHIFT                                                       = 1;
-
-localparam int unsigned EDN_ERR_CODE_EDN_ACK_SM_ERR_MASK                                                          = 32'h100000;
-localparam int unsigned EDN_ERR_CODE_EDN_ACK_SM_ERR_SHIFT                                                         = 20;
-
-localparam int unsigned EDN_ERR_CODE_EDN_MAIN_SM_ERR_MASK                                                         = 32'h200000;
-localparam int unsigned EDN_ERR_CODE_EDN_MAIN_SM_ERR_SHIFT                                                        = 21;
-
-localparam int unsigned EDN_ERR_CODE_EDN_CNTR_ERR_MASK                                                            = 32'h400000;
-localparam int unsigned EDN_ERR_CODE_EDN_CNTR_ERR_SHIFT                                                           = 22;
-
-localparam int unsigned EDN_ERR_CODE_FIFO_WRITE_ERR_MASK                                                          = 32'h10000000;
-localparam int unsigned EDN_ERR_CODE_FIFO_WRITE_ERR_SHIFT                                                         = 28;
-
-localparam int unsigned EDN_ERR_CODE_FIFO_READ_ERR_MASK                                                           = 32'h20000000;
-localparam int unsigned EDN_ERR_CODE_FIFO_READ_ERR_SHIFT                                                          = 29;
-
-localparam int unsigned EDN_ERR_CODE_FIFO_STATE_ERR_MASK                                                          = 32'h40000000;
-localparam int unsigned EDN_ERR_CODE_FIFO_STATE_ERR_SHIFT                                                         = 30;
-
-localparam int unsigned EDN_ERR_CODE_TEST_ERR_CODE_TEST_MASK                                                      = 32'h1F;
-localparam int unsigned EDN_ERR_CODE_TEST_ERR_CODE_TEST_SHIFT                                                     = 0;
-
-localparam int unsigned EDN_MAIN_SM_STATE_MAIN_SM_STATE_MASK                                                      = 32'h1FF;
-localparam int unsigned EDN_MAIN_SM_STATE_MAIN_SM_STATE_SHIFT                                                     = 0;
 
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_NAME_MASK                                                     = 32'hFFFF;
 localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_NAME_SHIFT                                                    = 0;
@@ -8315,6 +8348,111 @@ localparam int unsigned KM_MAILBOX_SEP_CTRL_REG_FLUSH_SHIFT                     
 localparam int unsigned KM_MAILBOX_SEP_CTRL_REG_RSVD_MASK                                                         = 32'hFFFFFFF8;
 localparam int unsigned KM_MAILBOX_SEP_CTRL_REG_RSVD_SHIFT                                                        = 3;
 
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_MASK                    = 32'h1;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_SHIFT                   = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK                     = 32'h10;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_SHIFT                    = 4;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_MASK            = 32'h20;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_SHIFT           = 5;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_MASK               = 32'h40;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_SHIFT              = 6;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK               = 32'h100;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_SHIFT              = 8;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK      = 32'h200;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_SHIFT     = 9;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK         = 32'h400;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT        = 10;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK                                   = 32'hFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT                                  = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK                                   = 32'h10000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT                                  = 16;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK                             = 32'h20000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_SHIFT                            = 17;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK                                 = 32'h1000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_SHIFT                                = 24;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK                                 = 32'h2000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_SHIFT                                = 25;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_MASK                               = 32'h4000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_SHIFT                              = 26;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK                               = 32'h8000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT                              = 27;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK                                      = 32'hFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT                                     = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK                                   = 32'h10000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT                                  = 16;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK                                       = 32'h1000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_SHIFT                                      = 24;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK                                       = 32'h2000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_SHIFT                                      = 25;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_MASK                                     = 32'h4000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_SHIFT                                    = 26;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK                                     = 32'h10000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_SHIFT                                    = 28;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_MASK                          = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_SHIFT                         = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_MASK                             = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_SHIFT                            = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK                  = 32'hFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_SHIFT                 = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_MASK                   = 32'h10000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_SHIFT                  = 28;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_MASK            = 32'hFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_SHIFT           = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK            = 32'h10000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT           = 28;
+
+localparam int unsigned EFUSE_MMR_RMA_TOKEN_I_TOKEN_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_MMR_RMA_TOKEN_I_TOKEN_SHIFT                                                         = 0;
+
+localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_MASK                                                  = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_SHIFT                                                 = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_MASK                                                 = 32'h1;
+localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_SHIFT                                                = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_MASK                                             = 32'h100;
+localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_SHIFT                                            = 8;
+
+localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_MASK                                          = 32'h10000;
+localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT                                         = 16;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK                                             = 32'h3F;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT                                            = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_MASK                                      = 32'h1;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_SHIFT                                     = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_MASK                                  = 32'h100;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_SHIFT                                 = 8;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_MASK                               = 32'h10000;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_SHIFT                              = 16;
+
 localparam longint unsigned SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_MASK                                          = 64'h1;
 localparam     int unsigned SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_SHIFT                                         = 0;
 
@@ -8695,111 +8833,6 @@ localparam int unsigned SEP_EFUSE_MAP_SEP_ID_ID_SHIFT                           
 
 localparam  bit [255:0] SEP_EFUSE_MAP_SPARE_256_BITS_RSVD_MASK                                                    = 256'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 localparam int unsigned SEP_EFUSE_MAP_SPARE_256_BITS_RSVD_SHIFT                                                   = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_MASK                    = 32'h1;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_SHIFT                   = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK                     = 32'h10;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_SHIFT                    = 4;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_MASK            = 32'h20;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_SHIFT           = 5;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_MASK               = 32'h40;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_SHIFT              = 6;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK               = 32'h100;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_SHIFT              = 8;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK      = 32'h200;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_SHIFT     = 9;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK         = 32'h400;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT        = 10;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK                                   = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT                                  = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK                                   = 32'h10000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT                                  = 16;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK                             = 32'h20000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_SHIFT                            = 17;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK                                 = 32'h1000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_SHIFT                                = 24;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK                                 = 32'h2000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_SHIFT                                = 25;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_MASK                               = 32'h4000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_SHIFT                              = 26;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK                               = 32'h8000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT                              = 27;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK                                      = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT                                     = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK                                   = 32'h10000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT                                  = 16;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK                                       = 32'h1000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_SHIFT                                      = 24;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK                                       = 32'h2000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_SHIFT                                      = 25;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_MASK                                     = 32'h4000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_SHIFT                                    = 26;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK                                     = 32'h10000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_SHIFT                                    = 28;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_MASK                          = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_SHIFT                         = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_MASK                             = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_SHIFT                            = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK                  = 32'hFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_SHIFT                 = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_MASK                   = 32'h10000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_SHIFT                  = 28;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_MASK            = 32'hFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_SHIFT           = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK            = 32'h10000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT           = 28;
-
-localparam int unsigned EFUSE_MMR_RMA_TOKEN_I_TOKEN_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_MMR_RMA_TOKEN_I_TOKEN_SHIFT                                                         = 0;
-
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_MASK                                                  = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_SHIFT                                                 = 0;
-
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_MASK                                                 = 32'h1;
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_SHIFT                                                = 0;
-
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_MASK                                             = 32'h100;
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_SHIFT                                            = 8;
-
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_MASK                                          = 32'h10000;
-localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT                                         = 16;
-
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK                                             = 32'h3F;
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT                                            = 0;
-
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_MASK                                      = 32'h1;
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_SHIFT                                     = 0;
-
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_MASK                                  = 32'h100;
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_SHIFT                                 = 8;
-
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_MASK                               = 32'h10000;
-localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_SHIFT                              = 16;
 
 localparam int unsigned ABR_REG_MLDSA_NAME_NAME_MASK                                                              = 32'hFFFFFFFF;
 localparam int unsigned ABR_REG_MLDSA_NAME_NAME_SHIFT                                                             = 0;
@@ -9463,6 +9496,15 @@ localparam int unsigned EL2_PIC_MEIGWCTRL_IRQ_TYPE_SHIFT                        
 
 localparam int unsigned EL2_PIC_MEIGWCLR_CLEAR_MASK                                                               = 32'h1;
 localparam int unsigned EL2_PIC_MEIGWCLR_CLEAR_SHIFT                                                              = 0;
+
+
+
+
+
+
+
+
+
 
 
 
@@ -10630,6 +10672,143 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   edn_fatal_err ;
+    logic [0:0]   edn_cmd_req_done ;
+} edn_intr_state_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   edn_fatal_err ;
+    logic [0:0]   edn_cmd_req_done ;
+} edn_intr_enable_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   edn_fatal_err ;
+    logic [0:0]   edn_cmd_req_done ;
+} edn_intr_test_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   fatal_alert ;
+    logic [0:0]   recov_alert ;
+} edn_alert_test_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   regwen ;
+} edn_regwen_reg_t;
+
+
+
+typedef struct packed {
+    logic [3:0]   cmd_fifo_rst ;
+    logic [3:0]   auto_req_mode ;
+    logic [3:0]   boot_req_mode ;
+    logic [3:0]   edn_enable ;
+} edn_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   boot_ins_cmd ;
+} edn_boot_ins_cmd_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   boot_gen_cmd ;
+} edn_boot_gen_cmd_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   sw_cmd_req ;
+} edn_sw_cmd_req_reg_t;
+
+
+
+typedef struct packed {
+    logic [2:0]   cmd_sts ;
+    logic [0:0]   cmd_ack ;
+    logic [0:0]   cmd_rdy ;
+    logic [0:0]   cmd_reg_rdy ;
+} edn_sw_cmd_sts_reg_t;
+
+
+
+typedef struct packed {
+    logic [2:0]   cmd_sts ;
+    logic [0:0]   cmd_ack ;
+    logic [3:0]   cmd_type ;
+    logic [0:0]   auto_mode ;
+    logic [0:0]   boot_mode ;
+} edn_hw_cmd_sts_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   reseed_cmd ;
+} edn_reseed_cmd_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   generate_cmd ;
+} edn_generate_cmd_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   max_num_reqs_between_reseeds ;
+} edn_max_num_reqs_between_reseeds_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   csrng_ack_err ;
+    logic [0:0]   edn_bus_cmp_alert ;
+    logic [7:0]   rsvd_0 ;
+    logic [0:0]   cmd_fifo_rst_field_alert ;
+    logic [0:0]   auto_req_mode_field_alert ;
+    logic [0:0]   boot_req_mode_field_alert ;
+    logic [0:0]   edn_enable_field_alert ;
+} edn_recov_alert_sts_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   fifo_state_err ;
+    logic [0:0]   fifo_read_err ;
+    logic [0:0]   fifo_write_err ;
+    logic [4:0]   rsvd_1 ;
+    logic [0:0]   edn_cntr_err ;
+    logic [0:0]   edn_main_sm_err ;
+    logic [0:0]   edn_ack_sm_err ;
+    logic [17:0]   rsvd_0 ;
+    logic [0:0]   sfifo_gencmd_err ;
+    logic [0:0]   sfifo_rescmd_err ;
+} edn_err_code_reg_t;
+
+
+
+typedef struct packed {
+    logic [4:0]   err_code_test ;
+} edn_err_code_test_reg_t;
+
+
+
+typedef struct packed {
+    logic [8:0]   main_sm_state ;
+} edn_main_sm_state_reg_t;
+
+
+
+typedef struct packed {
     logic [0:0]   cs_fatal_err ;
     logic [0:0]   cs_hw_inst_exc ;
     logic [0:0]   cs_entropy_req ;
@@ -10808,143 +10987,6 @@ typedef struct packed {
 typedef struct packed {
     logic [5:0]   main_sm_state ;
 } csrng_main_sm_state_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   edn_fatal_err ;
-    logic [0:0]   edn_cmd_req_done ;
-} edn_intr_state_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   edn_fatal_err ;
-    logic [0:0]   edn_cmd_req_done ;
-} edn_intr_enable_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   edn_fatal_err ;
-    logic [0:0]   edn_cmd_req_done ;
-} edn_intr_test_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   fatal_alert ;
-    logic [0:0]   recov_alert ;
-} edn_alert_test_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   regwen ;
-} edn_regwen_reg_t;
-
-
-
-typedef struct packed {
-    logic [3:0]   cmd_fifo_rst ;
-    logic [3:0]   auto_req_mode ;
-    logic [3:0]   boot_req_mode ;
-    logic [3:0]   edn_enable ;
-} edn_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   boot_ins_cmd ;
-} edn_boot_ins_cmd_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   boot_gen_cmd ;
-} edn_boot_gen_cmd_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   sw_cmd_req ;
-} edn_sw_cmd_req_reg_t;
-
-
-
-typedef struct packed {
-    logic [2:0]   cmd_sts ;
-    logic [0:0]   cmd_ack ;
-    logic [0:0]   cmd_rdy ;
-    logic [0:0]   cmd_reg_rdy ;
-} edn_sw_cmd_sts_reg_t;
-
-
-
-typedef struct packed {
-    logic [2:0]   cmd_sts ;
-    logic [0:0]   cmd_ack ;
-    logic [3:0]   cmd_type ;
-    logic [0:0]   auto_mode ;
-    logic [0:0]   boot_mode ;
-} edn_hw_cmd_sts_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   reseed_cmd ;
-} edn_reseed_cmd_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   generate_cmd ;
-} edn_generate_cmd_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   max_num_reqs_between_reseeds ;
-} edn_max_num_reqs_between_reseeds_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   csrng_ack_err ;
-    logic [0:0]   edn_bus_cmp_alert ;
-    logic [7:0]   rsvd_0 ;
-    logic [0:0]   cmd_fifo_rst_field_alert ;
-    logic [0:0]   auto_req_mode_field_alert ;
-    logic [0:0]   boot_req_mode_field_alert ;
-    logic [0:0]   edn_enable_field_alert ;
-} edn_recov_alert_sts_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   fifo_state_err ;
-    logic [0:0]   fifo_read_err ;
-    logic [0:0]   fifo_write_err ;
-    logic [4:0]   rsvd_1 ;
-    logic [0:0]   edn_cntr_err ;
-    logic [0:0]   edn_main_sm_err ;
-    logic [0:0]   edn_ack_sm_err ;
-    logic [17:0]   rsvd_0 ;
-    logic [0:0]   sfifo_gencmd_err ;
-    logic [0:0]   sfifo_rescmd_err ;
-} edn_err_code_reg_t;
-
-
-
-typedef struct packed {
-    logic [4:0]   err_code_test ;
-} edn_err_code_test_reg_t;
-
-
-
-typedef struct packed {
-    logic [8:0]   main_sm_state ;
-} edn_main_sm_state_reg_t;
 
 
 
@@ -11537,6 +11579,110 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   efuse_read_addr_error_clear ;
+    logic [0:0]   efuse_program_addr_error_clear ;
+    logic [0:0]   efuse_req_error_clear ;
+    logic [0:0]   rsvd_1 ;
+    logic [0:0]   efuse_read_addr_error ;
+    logic [0:0]   efuse_program_addr_error ;
+    logic [0:0]   efuse_req_error ;
+    logic [2:0]   rsvd_0 ;
+    logic [0:0]   efuse_sense_done ;
+} efuse_interface_ctrl_efuse_interface_ctrl_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   program_enable ;
+    logic [0:0]   program_status ;
+    logic [0:0]   program_done ;
+    logic [0:0]   program_busy ;
+    logic [5:0]   rsvd_0 ;
+    logic [0:0]   efuse_program_go ;
+    logic [0:0]   efuse_data ;
+    logic [15:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_program_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   read_enable ;
+    logic [0:0]   rsvd_1 ;
+    logic [0:0]   read_status ;
+    logic [0:0]   read_done ;
+    logic [0:0]   read_busy ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   efuse_read_go ;
+    logic [15:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_read_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   dout ;
+} efuse_interface_ctrl_efuse_program_interface_read_data_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   dout ;
+} efuse_interface_ctrl_efuse_read_interface_read_data_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   read_req_timout_enable ;
+    logic [27:0]   read_req_timeout_cycles ;
+} efuse_interface_ctrl_efuse_read_req_timeout_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   program_req_timeout_enable ;
+    logic [27:0]   program_req_timeout_cycles ;
+} efuse_interface_ctrl_efuse_program_req_timeout_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   token ;
+} efuse_mmr_rma_token_i_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   token ;
+} efuse_mmr_sec_disable_token_i_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   secure_disable_token_go ;
+    logic [6:0]   rsvd_1 ;
+    logic [0:0]   rma_chiplet_token_go ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   rma_sip_token_go ;
+} efuse_mmr_token_eop_reg_t;
+
+
+
+typedef struct packed {
+    logic [5:0]   token_match_status ;
+} efuse_mmr_token_match_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   secure_disable_token_fault ;
+    logic [6:0]   rsvd_1 ;
+    logic [0:0]   rma_chiplet_token_fault ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   rma_sip_token_fault ;
+} efuse_mmr_token_match_fault_reg_t;
+
+
+
+typedef struct packed {
     logic [0:0]   sep_sys_id_read_lock ;
     logic [0:0]   sep_sys_id_write_lock ;
     logic [0:0]   sep_sip_id_read_lock ;
@@ -11800,110 +11946,6 @@ typedef struct packed {
 typedef struct packed {
     logic [255:0]   rsvd ;
 } sep_efuse_map_spare_256_bits_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   efuse_read_addr_error_clear ;
-    logic [0:0]   efuse_program_addr_error_clear ;
-    logic [0:0]   efuse_req_error_clear ;
-    logic [0:0]   rsvd_1 ;
-    logic [0:0]   efuse_read_addr_error ;
-    logic [0:0]   efuse_program_addr_error ;
-    logic [0:0]   efuse_req_error ;
-    logic [2:0]   rsvd_0 ;
-    logic [0:0]   efuse_sense_done ;
-} efuse_interface_ctrl_efuse_interface_ctrl_status_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   program_enable ;
-    logic [0:0]   program_status ;
-    logic [0:0]   program_done ;
-    logic [0:0]   program_busy ;
-    logic [5:0]   rsvd_0 ;
-    logic [0:0]   efuse_program_go ;
-    logic [0:0]   efuse_data ;
-    logic [15:0]   efuse_addr ;
-} efuse_interface_ctrl_efuse_program_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   read_enable ;
-    logic [0:0]   rsvd_1 ;
-    logic [0:0]   read_status ;
-    logic [0:0]   read_done ;
-    logic [0:0]   read_busy ;
-    logic [6:0]   rsvd_0 ;
-    logic [0:0]   efuse_read_go ;
-    logic [15:0]   efuse_addr ;
-} efuse_interface_ctrl_efuse_read_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   dout ;
-} efuse_interface_ctrl_efuse_program_interface_read_data_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   dout ;
-} efuse_interface_ctrl_efuse_read_interface_read_data_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   read_req_timout_enable ;
-    logic [27:0]   read_req_timeout_cycles ;
-} efuse_interface_ctrl_efuse_read_req_timeout_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   program_req_timeout_enable ;
-    logic [27:0]   program_req_timeout_cycles ;
-} efuse_interface_ctrl_efuse_program_req_timeout_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   token ;
-} efuse_mmr_rma_token_i_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   token ;
-} efuse_mmr_sec_disable_token_i_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   secure_disable_token_go ;
-    logic [6:0]   rsvd_1 ;
-    logic [0:0]   rma_chiplet_token_go ;
-    logic [6:0]   rsvd_0 ;
-    logic [0:0]   rma_sip_token_go ;
-} efuse_mmr_token_eop_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   token_match_status ;
-} efuse_mmr_token_match_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   secure_disable_token_fault ;
-    logic [6:0]   rsvd_1 ;
-    logic [0:0]   rma_chiplet_token_fault ;
-    logic [6:0]   rsvd_0 ;
-    logic [0:0]   rma_sip_token_fault ;
-} efuse_mmr_token_match_fault_reg_t;
 
 
 

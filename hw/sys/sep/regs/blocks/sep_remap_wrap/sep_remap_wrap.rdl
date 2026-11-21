@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_REMAP_WRAP_RDL
+`define SEP_REMAP_WRAP_RDL
+
+`include "alias_remap_wrap.rdl"
+`include "output_remap_wrap.rdl"
+
+
+addrmap sep_remap_wrap {
+    name = "SEP Remap Wrapper Address Map";
+    desc = "Places the local-master alias remap and the AP and STEE output remap registers in one 4 KiB page.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    alias_remap_wrap #(.NUM_REGIONS(16))   local_master_alias_remap    @0x000_0000;
+    output_remap_wrap #(.NUM_REGIONS(16))  ap_output_remap             @0x000_0200;
+    output_remap_wrap #(.NUM_REGIONS(16))  stee_output_remap           @0x000_0300;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    local_master_alias_remap->ocah_aperture_size = 0x200;
+    local_master_alias_remap->ocah_full_stride_extent = true;
+    local_master_alias_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+};
+
+`endif

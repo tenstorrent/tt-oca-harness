@@ -115,7 +115,7 @@ def _sep_indexed_addr(symbol: str, index: int) -> int:
 
 # hw/sys/sep/regs/gen/c/sep_addr.h: SEP cold scratch word 0 (0x10802000). hw/sys/sep/doc/cpu.adoc,
 # Scratch-bank reset behavior: scratch set 0 is cleared by sep_reset_n.
-SEP_COLD_SCRATCH_0 = _sep_indexed_addr("SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
+SEP_COLD_SCRATCH_0 = _sep_indexed_addr("SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
 # hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL SCRATCH[11] (0xC00390D8) on the SMC fabric bridge.
 SMC_SCRATCH_11 = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 11)
 SMC_SCRATCH_VALUE = 0x5C5C_0B01

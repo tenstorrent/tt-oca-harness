@@ -7,7 +7,7 @@
 package chip_config_reg_pkg;
 
     localparam CHIP_CONFIG_REG_DATA_WIDTH = 32;
-    localparam CHIP_CONFIG_REG_MIN_ADDR_WIDTH = 4;
+    localparam CHIP_CONFIG_REG_MIN_ADDR_WIDTH = 8;
     localparam CHIP_CONFIG_REG_SIZE = 'h10;
 
     typedef struct {

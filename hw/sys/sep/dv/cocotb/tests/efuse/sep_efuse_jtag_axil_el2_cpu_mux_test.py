@@ -65,16 +65,20 @@ _DTCM_HEX = os.path.join(_FW_DIR, "efuse_jtag_el2_mux_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # eFuse addresses reachable on the JTAG AXI-Lite port.
-_EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")  # shadow map -> DENIED to JTAG at PROD
-_EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")  # MMR token region -> ALLOWED
-_EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
+_EFUSE_SHADOW_BASE = sym(
+    "SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR"
+)  # shadow map -> DENIED to JTAG at PROD
+_EFUSE_MMR_TOKEN1 = sym(
+    "SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR"
+)  # MMR token region -> ALLOWED
+_EFUSE_MMR_TOKEN3 = sym("SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
 # Seeded into token1 before the read loop; distinct from the 0xE905_5xxx the
 # loop writes to token3, so a read that aliased onto token3 would fail.
 _TOKEN1_SEED = 0x5A5A_1001
 # Token-block members beyond the two RMA TOKEN_I words already walked above.
-_EFUSE_MMR_SEC_DIS_I0 = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
-_EFUSE_MMR_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
-_EFUSE_MMR_SEC_DIS_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
+_EFUSE_MMR_SEC_DIS_I0 = sym("SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
+_EFUSE_MMR_TOKEN_EOP = sym("SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_EFUSE_MMR_SEC_DIS_MATCH = sym("SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 # Seeded into SEC_DISABLE_TOKEN_I[0] before the token-block sample reads it.
 _SEC_DIS_I0_SEED = 0x5A5A_4001
 # Interface control sits outside the token block and is blocked in PROD.
@@ -83,7 +87,7 @@ _SEC_DIS_I0_SEED = 0x5A5A_4001
 # otp_fuse_controller.adoc:124-131 gives every such access SLVERR and read data 0xBADCAB1E.
 _JTAG_DENY_RESP = RESP_SLVERR
 _JTAG_DENY_RDATA = 0xBADCAB1E
-_EFUSE_IFACE_PROGRAM = sym("EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")
+_EFUSE_IFACE_PROGRAM = sym("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")
 
 _CPU_READY = 0xE905_0001
 _SCRATCH_READY = 0

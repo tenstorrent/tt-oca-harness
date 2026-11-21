@@ -23,11 +23,14 @@ CHK-SYSCSR-HOLE-REFUSE, CHK-SYS-RESERVED-REFUSE, CHK-MBOX-UPPER-REFUSE,
 CHK-EFUSE-CTRL-PAST-REFUSE, CHK-EFUSE-MMR-PAST-REFUSE and CHK-SPI-PAST-REFUSE:
 every read and write in that set is refused (never OKAY, never a timeout).
 
-CHK-SYSCSR-HOLE-DECODE: no system-CSR hole or reserved-row probe reaches the
-system-CSR AXI-Lite port. The system-peripherals crossbar refuses them itself,
-so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
-any write error behind it. A watched write and read of SEP_NMI_VEC must each
-show their handshake at that port, so a watcher that sees nothing fails.
+CHK-SYSCSR-HOLE-DECODE: a system-CSR hole or reserved-row probe reaches the
+system-CSR AXI-Lite port exactly when it lies in the scratch page or a system
+CSR page. The peripheral crossbar sends those pages whole to the system CSR
+block and answers the rest of 0x10A0_8000-0x10A4_FFFF itself
+(hw/sys/sep/doc/fabric.adoc:144-149, hw/sys/sep/doc/memory_map.adoc:106-107).
+The page bounds are the unit rows of the generated map. The walk must watch
+probes of both kinds. A watched write and read of SEP_NMI_VEC must each show
+their handshake at that port, so a watcher that sees nothing fails.
 
 CHK-SYS-RESERVED-NO-LOOPBACK: no system-CSR hole or reserved-row probe arrives
 at the local crossbar's ext initiator. The peripheral crossbar forwards an
@@ -60,16 +63,18 @@ UNMAPPED-MAP-DISAGREE. Past the efuse_interface_ctrl and spi_controller
 extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the
 read data of every error response for X/Z, so an unknown payload fails instead
 of reading as zero; every such read must have been lane-checked. The golden is
-the generated map, hw/sys/sep/regs/gen/adoc/memory_map.adoc, whose codes were
-assigned from the RTL; hw/sys/sep/doc/fabric.adoc:143-146 states the DECERR
-class between the register blocks of the system CSR windows. The eFuse token
-span past the efuse_mmr extent answers DECERR, 0xBADCAB1E (memory_map.adoc:64);
-hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states SLVERR for that span, so
-the leaf also logs each of its codes as OBS-EFUSE-TOKEN-PAST-CODE.
+the generated map, hw/sys/sep/regs/gen/adoc/memory_map.adoc;
+hw/sys/sep/doc/fabric.adoc:147-149 states DECERR for the
+addresses of 0x10A0_8000-0x10A4_FFFF outside the mailbox and system CSR pages.
+The eFuse token span past the efuse_mmr extent answers SLVERR, 0x0
+(memory_map.adoc:60, SEP eFuse Wrapper row). The first two words past the SPI
+host extent answer SLVERR with read data 0xFFFFFFFF and the rest of its page
+SLVERR, 0xBADCAB1E (memory_map.adoc:75 and its note); no probe lies in a span
+whose note latches a bus-error flag.
 The in-extent holes, one word between two mailbox sub-blocks and one between
 two SEP CPU control registers on each bus lane, are read, written and read
-again: they answer the Hole in Extent cell of their row (memory_map.adoc:69,
-SLVERR, 0x0; :79, OKAY, 0x0), so the second read shows the write was
+again: they answer the Hole in Extent cell of their row (memory_map.adoc:66,
+SLVERR, 0x0; :73, OKAY, 0x0), so the second read shows the write was
 discarded.
 
 OBS-CPU-CTRL-BASE-CODE: offset 0 of SEP CPU control lies below its first
@@ -123,6 +128,7 @@ from seq_lib.sep_unmapped_access_seq import (
     TOKEN_MATCH_FAULT_RESET,
     SepUnmappedAccess,
     SepUnmappedCfg,
+    reaches_syscsr,
 )
 
 TEST = "sep_unmapped_access_policy_test"
@@ -173,6 +179,7 @@ class _Walk:
     tail_codes: Counter = field(default_factory=Counter)
     n_code: int = 0
     n_watched: int = 0
+    n_lite_in: int = 0
     n_hole: int = 0
     n_in: int = 0
     n_past: int = 0
@@ -400,8 +407,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
             counts[_CHK[g]] = f"all {n} {g} probe(s) were refused"
         counts["CHK-SYSCSR-HOLE-DECODE"] = (
             f"the watcher saw the {cfg.lite_ctrl.name} control write and read at the "
-            f"system-CSR AXI-Lite port, and none of the {w.n_watched} "
-            f"{' and '.join(LITE_WATCHED)} probe(s) reached it"
+            f"system-CSR AXI-Lite port; of the {w.n_watched} {' and '.join(LITE_WATCHED)} "
+            f"probe(s), the {w.n_lite_in} in the system CSR pages reached it and the "
+            f"{w.n_watched - w.n_lite_in} outside them did not"
         )
         counts["CHK-SYS-RESERVED-NO-LOOPBACK"] = (
             f"the watcher saw the 0x{EXT_LOOPBACK_CTRL:08x} control write and read at the "
@@ -457,8 +465,14 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 tally[0] += int(r.lite_reached)
                 tally[1] += 1
                 w.n_watched += 1
-                if r.lite_reached:
-                    w.decode.append(f"{where} reached the system-CSR AXI-Lite port")
+                in_page = reaches_syscsr(p.addr)
+                w.n_lite_in += int(in_page)
+                if r.lite_reached != in_page:
+                    w.decode.append(
+                        f"{where} {'did not reach' if in_page else 'reached'} the system-CSR "
+                        f"AXI-Lite port; it lies {'in' if in_page else 'outside'} the system "
+                        "CSR pages"
+                    )
                 if r.ext_reached:
                     w.loop.append(f"{where} arrived at the local crossbar's ext initiator")
             if p.group == GROUP_INEXTENT:
@@ -494,19 +508,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 r.rdata,
                 lite_note,
             )
-            if p.group == GROUP_EFUSE_MMR and not r.timed_out:
-                # The generated memory map (graded above) and the eFuse
-                # controller text differ on the code of this span.
-                e = cfg.expect[(p.addr, p.op)]
-                self.logger.info(
-                    "OBS-EFUSE-TOKEN-PAST-CODE: %s resp=%s rdata=%s map=%s/%s "
-                    "otp_fuse_controller_text=SLVERR",
-                    where,
-                    _code(r.resp),
-                    "-" if r.rdata is None else f"0x{r.rdata:08x}",
-                    _code(e.resp),
-                    "-" if e.rdata is None else f"0x{e.rdata:08x}",
-                )
             if p.addr == cfg.mmr_end and p.op == "r":
                 if r.timed_out or r.resp == RESP_OKAY:
                     w.tok.append(

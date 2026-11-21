@@ -98,13 +98,13 @@ _TARGETS: tuple[tuple[str, str, str, str], ...] = (
     ("avsbus_controller", f"{_AVS}/AVS_INTERRUPT_CLEAR", _READ_WO, _STABLE),
     (
         "efuse_interface_ctrl",
-        "efuse_interface_ctrl/EFUSE_PROGRAM_INTERFACE_READ_DATA",
+        "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_PROGRAM_INTERFACE_READ_DATA",
         _WRITE_RO,
         _STABLE,
     ),
     (
         "efuse_interface_ctrl",
-        "efuse_interface_ctrl/EFUSE_READ_INTERFACE_READ_DATA",
+        "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_READ_INTERFACE_READ_DATA",
         _WRITE_RO,
         _STABLE,
     ),

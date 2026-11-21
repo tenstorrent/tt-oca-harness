@@ -84,11 +84,14 @@ _SINGLE: tuple[tuple[str, frozenset[str]], ...] = (
     ("smc_system_timer_octs/TIMER_PRESET_LO", frozenset()),
     ("smc_system_timer_octs/TIMER_PRESET_HI", frozenset()),
     ("smc_system_timer_octs/TIMER_GPIO_ENABLE", frozenset()),
-    ("efuse_interface_ctrl/EFUSE_READ_CTRL", frozenset()),
-    ("efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", frozenset()),
-    ("efuse_interface_ctrl/EFUSE_PROGRAM_REQ_TIMEOUT", frozenset()),
+    ("smc_efuse_wrap/efuse_interface_ctrl/EFUSE_READ_CTRL", frozenset()),
+    ("smc_efuse_wrap/efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", frozenset()),
+    ("smc_efuse_wrap/efuse_interface_ctrl/EFUSE_PROGRAM_REQ_TIMEOUT", frozenset()),
     # The data and the arming bit of a fuse burn stay at their reset.
-    ("efuse_interface_ctrl/EFUSE_PROGRAM_CTRL", frozenset({"efuse_data", "program_enable"})),
+    (
+        "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_PROGRAM_CTRL",
+        frozenset({"efuse_data", "program_enable"}),
+    ),
 )
 
 # The DMA controller's register block answers a sub-word write with an error
@@ -99,7 +102,7 @@ _WORD_ONLY: tuple[str, ...] = ("dma_ctrl/CONFIG",)
 # EFUSE_INTERFACE_CTRL_STATUS: its four state fields are `sw = r; hw = w` and
 # its three clears are `singlepulse`, so the half-register cycle has nothing to
 # drive. Every mask here comes from the generated `efuse_interface_ctrl.h`.
-_EFUSE_STATUS = "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"
+_EFUSE_STATUS = "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"
 _EFUSE_STATUS_SYM = "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__{field}_bm"
 _EFUSE_CLEARS = (
     "EFUSE_REQ_ERROR_CLEAR",

@@ -33,8 +33,8 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
     INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
     SEP_CPU_CTRL,
+    SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0,
     RegBlock,
     indexed_block_count,
     sym,
@@ -51,39 +51,43 @@ CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
-ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
+ALIAS_BASE = sym("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
 ALIAS_STRIDE = (
-    sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
+    sym("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
 )
-ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.offset("REGION_REGION_START")
-ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.reset32("REGION_REGION_END")
-ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.offset("REGION_REGION_END")
-ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.offset("REGION_REGION_ATTRS")
-ALIAS_START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask32("REGION_REGION_START")
+ALIAS_START = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.offset("REGION_REGION_START")
+ALIAS_END_RESET = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.reset32("REGION_REGION_END")
+ALIAS_END = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.offset("REGION_REGION_END")
+ALIAS_ATTRS = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.offset("REGION_REGION_ATTRS")
+ALIAS_START_MASK = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.mask32(
+    "REGION_REGION_START"
+)
 # REGION_START.start_addr[55:12] continues into the hi word as bits [23:0].
 ALIAS_START_HI_MASK = (
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask("REGION_REGION_START") >> 32
+    SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.mask("REGION_REGION_START") >> 32
 )
-ALIAS_END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask32("REGION_REGION_END")
-ALIAS_ATTRS_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.mask32("REGION_REGION_ATTRS")
+ALIAS_END_MASK = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.mask32("REGION_REGION_END")
+ALIAS_ATTRS_MASK = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.mask32(
+    "REGION_REGION_ATTRS"
+)
 
 # --- AP / STEE output-remap ---------------------------------------------------
-AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
-STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
-REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR") - AP_BASE
-REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET")
+AP_BASE = sym("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
+STEE_BASE = sym("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR")
+REMAP_STRIDE = sym("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR") - AP_BASE
+REMAP_ATTRS = sym("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET")
 # REMAP_STRIDE, REMAP_ATTRS and REMAP_REGIONS serve the AP and the STEE bank, so
 # the STEE values are read from the STEE RDL symbols and must equal the AP ones;
 # a layout that differs stops the import.
 _ap_layout = (
     REMAP_STRIDE,
     REMAP_ATTRS,
-    indexed_block_count("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP"),
+    indexed_block_count("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP"),
 )
 _stee_layout = (
-    sym("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR") - STEE_BASE,
-    sym("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET"),
-    indexed_block_count("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP"),
+    sym("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR") - STEE_BASE,
+    sym("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET"),
+    indexed_block_count("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP"),
 )
 if _stee_layout != _ap_layout:
     raise ImportError(
@@ -132,7 +136,8 @@ if _out_layout != _in_layout:
 # One hi-word bit index serves both, so each field's own RDL symbol must give it;
 # a position that differs stops the import.
 WOSET_HI_BIT = (
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
+    SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_lsb("REGION_REGION_ATTRS", "valid")
+    - 32
 )
 _hi_bits = {
     "alias REGION_ATTRS.valid": WOSET_HI_BIT,
@@ -146,12 +151,12 @@ _hi_bits = {
 if len(set(_hi_bits.values())) != 1:
     raise ImportError(f"hi-word bit positions differ: {_hi_bits}; WOSET_HI_BIT cannot serve all")
 
-# AMBA AXI4 (IHI 0022): OKAY=0, DECERR=3. While FILTER_CONFIG.locked is set,
+# AMBA AXI4 (IHI 0022): OKAY=0, SLVERR=2. While FILTER_CONFIG.locked is set,
 # every write to that entry's FILTER_CONFIG, START_ADDR and END_ADDR goes to
-# the AXI error subordinate and completes DECERR (filter_ctrl.rdl locked,
+# the AXI-Lite error subordinate and completes SLVERR (filter_ctrl.rdl locked,
 # hw/ip/axi_filter/doc/index.adoc "Locking a Filter Entry").
 RESP_OKAY = 0
-RESP_DECERR = 3
+RESP_SLVERR = 2
 
 # FILTER_CONFIG field positions (lo word), from the generated bitfield.
 F_READ_ALLOWED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed")
@@ -192,8 +197,8 @@ FILTER_CFG_LO_FIELDS = (
 
 # Bank sizes (entries) for index randomization. The counts must track the RDL
 # arrays: an undersized count leaves the tail entries unswept with a clean pass.
-ALIAS_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP")
-REMAP_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP")
+ALIAS_REGIONS = indexed_block_count("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP")
+REMAP_REGIONS = indexed_block_count("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP")
 # Both banks are RDL arrays; take the counts from the export so this sweep and
 # the filter-rule sweep cannot disagree about how many entries exist.
 INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL")
@@ -302,13 +307,10 @@ class SepFabricCsrBank(SepAxiRegDriver):
     async def _wr_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A write to a locked entry completes DECERR by the spec, so the write must
-        not raise; the caller grades the code and the read-back value. One DECERR
-        credit is armed on the bus monitor for the write and handed back when
-        the write answers anything else, so a stray DECERR elsewhere still fails.
+        A write to a locked entry completes SLVERR by the spec, so the write must
+        not raise; the caller grades the code and the read-back value. No DECERR
+        credit is armed, so a DECERR answer also fails on the bus monitor.
         """
-        mon = self.test.env.axi_monitor
-        mon.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
             "fab_wr_tol",
             op=SepAxiOp.WRITE,
@@ -318,8 +320,6 @@ class SepFabricCsrBank(SepAxiRegDriver):
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
-        if seq.timed_out or seq.resp_code != RESP_DECERR:
-            mon.release_expected_decerr(1)
         return seq.resp_code
 
     async def locked_write_probe(self, addr: int, flip: int) -> tuple[int, int, int]:
@@ -328,7 +328,7 @@ class SepFabricCsrBank(SepAxiRegDriver):
         Returns (before, after, resp): the word before and after the write, and
         the AXI response of the write. The written value always differs from
         ``before``, so an accepted write shows as a changed word. By the spec the
-        write completes DECERR and the word keeps ``before``.
+        write completes SLVERR and the word keeps ``before``.
         """
         if not flip & 0xFFFF_FFFF:
             raise ValueError("flip must change at least one bit")
@@ -442,13 +442,13 @@ class SepFabricCsrBank(SepAxiRegDriver):
         Returns (after_set, after_clear, clear_resp) -- the bit value after the set,
         the bit value after the clear-attempt, and the AXI resp of the clear write.
           * RW bit:        (1, 0, OKAY=0)        -- clear succeeds.
-          * woset (locked): (1, 1, DECERR=3)     -- set sticks; the lock steers the
-            clear write to the error subordinate (DECERR) and the bit stays set.
+          * woset (locked): (1, 1, SLVERR=2)     -- set sticks; the lock steers the
+            clear write to the error subordinate (SLVERR) and the bit stays set.
         """
         cur = await self._rd(hi_addr)
         await self._wr(hi_addr, cur | (1 << bit))  # set (OKAY)
         after_set = (await self._rd(hi_addr) >> bit) & 1
-        # Attempt to clear (tolerant: a locked entry answers this with DECERR).
+        # Attempt to clear (tolerant: a locked entry answers this with SLVERR).
         clear_resp = await self._wr_tolerant(
             hi_addr, (cur | (1 << bit)) & ~(1 << bit) & 0xFFFF_FFFF
         )

@@ -81,7 +81,7 @@ model of the staged data and the fabric taps:
                   back differs, and every count is 0.
 * CHK-DMA-FILT-WR the DMA writes of an inbound filter START_ADDR: the low and the
                   high word of the unlocked entry read back as written, then,
-                  with the entry locked, the write answers DECERR, the DMA
+                  with the entry locked, the write answers SLVERR, the DMA
                   reports a bus error and the word keeps its value.
 
 Entry ``_slverr`` (``+sep_ext_port_responder``) runs only the extension-port
@@ -175,8 +175,8 @@ from env.sep_fcov_gate import (
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
     INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
+    SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0,
     RegBlock,
     indexed_block_count,
     register_fields,
@@ -210,7 +210,7 @@ _NO_BOOT_CYCLES = 80_000
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 SRAM = sym("SEP_SRAM_MEM_BASE_ADDR")
 AP_REGION = sym("AP_REGION_MEM_BASE_ADDR")
-SCRATCH = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+SCRATCH = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
 SECURE_DMA = RegBlock("SECURE_DMA")
 SEP_CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 DMA_CONTROL = SECURE_DMA.addr("CONTROL")
@@ -224,10 +224,10 @@ LOCAL_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR")
 EXT_WORD = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR") + 0x100
 # FILTER_CONFIG field bits (low word, RW fields plus the RO data_bus_width).
 CFG_FIELDS = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("FILTER_CONFIG")
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_OFFSET_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_VALID_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "valid"
 )
 # The local alias span is 768 MiB from the SEP map base (fabric.adoc, SEP CPU
@@ -243,7 +243,7 @@ _DMA_B_VALID, _DMA_B_READY = (
 STDOUT = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 # Region index bits of the AP output remap (generated map, sep_outbound_remap_seq).
 AP_IDX_START = IDX_START
-SCRATCH_BANK = sym("SEP_SCRATCH_COLD_REG_MAP_SIZE")
+SCRATCH_BANK = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_SIZE")
 # Registers of the register-endpoint leg, in firmware id order.
 REG_ADDR = (SCRATCH, RegBlock("SPI_CONTROLLER").addr("CSID"), SEP_CPU_CTRL.addr("SEP_SW_DEBUG"))
 REG_NAME = ("scratch0", "spi_csid", "sep_sw_debug")
@@ -274,16 +274,18 @@ IRQ_ERROR = agg_from_pic(PIC_DMA_ERROR)
 # STEE output remap (generated map; the region span is the one of the AP
 # window, IDX_START of sep_outbound_remap_seq, checked below).
 STEE_REGION = sym("STEE_REGION_MEM_BASE_ADDR")
-STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0 = RegBlock("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_")
-STEE_OFFSET_FIELD = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0 = RegBlock(
+    "SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0_"
+)
+STEE_OFFSET_FIELD = SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
-STEE_VALID_FIELD = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+STEE_VALID_FIELD = SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "valid"
 )
 if (
     sym("STEE_REGION_MEM_SIZE") != N_REGIONS << IDX_START
-    or indexed_block_count("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP") != N_REGIONS
+    or indexed_block_count("SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP") != N_REGIONS
 ):
     raise RuntimeError("the STEE window does not hold the AP region count and span")
 # NS is AxPROT[1] (fabric.adoc, Transaction Routing: "its security state in
@@ -337,10 +339,12 @@ REG_SRC_BIT = {
     3: _AES_REGWEN.reset("CTRL_AUX_REGWEN") & _AES_REGWEN.mask("CTRL_AUX_REGWEN"),
 }
 # A scratch register is 8 bytes; its DATA field fills the low lane only.
-SCRATCH_STRIDE = sym("SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR") - sym(
-    "SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR"
+SCRATCH_STRIDE = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_1__REG_ADDR") - sym(
+    "SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR"
 )
-SCRATCH_FIELD_BYTES = RegBlock("SEP_SCRATCH_COLD").field_width("SCRATCH_0_", "data") // 8
+SCRATCH_FIELD_BYTES = (
+    RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD").field_width("SCRATCH_0_", "data") // 8
+)
 PAIR_LEG = ("pair_sram_scratch", "pair_scratch_sram", "pair_wdt_sram", "pair_aes_sram")
 
 
@@ -1839,7 +1843,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         (fabric.adoc, Transaction Routing). START_ADDR and END_ADDR stay in
         different granules, so the write-back does not fire and the read-back
         returns the programmed value (hw/ip/axi_filter/doc/index.adoc, Address
-        Range Granule). A locked entry answers a write with DECERR and reads
+        Range Granule). A locked entry answers a write with SLVERR and reads
         return the locked configuration (same document, Locking a Filter
         Entry); the DMA reports the error response as a bus error.
         """
@@ -1877,7 +1881,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                     and want == p["filt_v_lo"] & mask
                     and v != r["pre_v"]
                     and len(aws) == 1
-                    and [b.resp for b in bs] == [RESP_DECERR]
+                    and [b.resp for b in bs] == [RESP_SLVERR]
                     and (r["pre"] & ST3) == 0
                     and self._bus_error(r)
                     and (r["rb"] & mask) == want

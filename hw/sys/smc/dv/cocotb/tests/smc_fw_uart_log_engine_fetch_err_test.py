@@ -44,8 +44,8 @@ from smc_base_test import smc_base_test
 GOOD_REGION_SIZE = 0x100
 GOOD_XFER_LEN = 16
 # UNMAPPED_ADDR in the image: the first 4 KB-aligned address past the WDT cluster.
-_WDT_END = smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR") + smc_addr(
-    "SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE"
+_WDT_END = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR") + smc_addr(
+    "SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SIZE"
 )
 UNMAPPED_ADDR = (_WDT_END + 0xFFF) & ~0xFFF
 assert UNMAPPED_ADDR + 0x1000 <= smc_addr("SMC_TOP_SMC_RESET_UNIT_BASE_ADDR"), (

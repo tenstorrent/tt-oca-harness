@@ -105,6 +105,38 @@ addrmap top {
 };
 """
 
+SUB_BLOCK_RDL = """
+addrmap one {
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap three {
+    reg { field { sw = rw; hw = r; } value[31:0]; } first @0x0;
+    reg { field { sw = rw; hw = r; } value[31:0]; } second @0x4;
+    reg { field { sw = rw; hw = r; } value[31:0]; } third @0x8;
+};
+addrmap shared {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+    one a @0x0;
+    one b @0x40;
+    three c @0x80;
+`ifdef OCAH_DOC_MEMORY_MAP
+    a->ocah_aperture_size = 0x40;
+    a->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    c->ocah_aperture_size = 0x10;
+    c->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+addrmap top {
+    shared wrap @0x0;
+`ifdef OCAH_DOC_MEMORY_MAP
+    wrap->ocah_aperture_size = 0x1000;
+    wrap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+};
+"""
+
 RESPONSE_COLUMNS = ["base", "size", "occupied_size", "label", "hole_resp", "past_resp"]
 
 
@@ -368,6 +400,125 @@ class ResponseColumnTest(unittest.TestCase):
             ],
         )
 
+    def test_wrap_labels_array_padding_between_instances(self):
+        text = """
+addrmap entry_leaf {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
+`endif
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap other_leaf {
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap mixed {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+    entry_leaf entry[4] @0x0 += 0x10;
+    other_leaf other @0x100;
+};
+addrmap top {
+    mixed wrapped @0x0;
+};
+"""
+        cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
+        self.assertIn("between sub-blocks: SLVERR, 0x0 / SLVERR", cells["wrapped"][-2])
+        self.assertIn("between instances: OKAY, 0x0 / OKAY", cells["wrapped"][-2])
+
+    def test_wrap_array_whose_sub_block_windows_fill_the_stride_has_no_padding(self):
+        text = """
+addrmap leaf {
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap pair {
+    leaf a @0x0;
+    leaf b @0x8;
+`ifdef OCAH_DOC_MEMORY_MAP
+    a->ocah_aperture_size = 0x8;
+    a->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    b->ocah_aperture_size = 0x8;
+    b->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+addrmap paired {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+    pair element[2] @0x0 += 0x10;
+};
+addrmap top {
+    paired wrapped @0x0;
+};
+"""
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(
+            [label for label, _ in view.rows[0].hole_responses], ["past sub-block registers"]
+        )
+        view = self.view(
+            {"include_all": True, "columns": RESPONSE_COLUMNS}, text.replace("+= 0x10", "+= 0x20")
+        )
+        self.assertIn("between instances", [label for label, _ in view.rows[0].hole_responses])
+
+    def test_wrap_cell_names_the_space_past_sub_block_registers(self):
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, SUB_BLOCK_RDL)
+        self.assertEqual(
+            self.cells(view)["wrap"][-2:],
+            [
+                "between sub-blocks: DECERR, 0xBADCAB1E / DECERR; "
+                "past sub-block registers: SLVERR, 0x0 / SLVERR",
+                "DECERR, 0xBADCAB1E / DECERR",
+            ],
+        )
+        self.assertEqual(view.rows[0].occupied_size, 0x90)
+        text = SUB_BLOCK_RDL.replace(
+            "    c->ocah_aperture_size = 0x10;\n",
+            "    c->ocah_aperture_size = 0x10;\n"
+            "    b->ocah_aperture_size = 0x40;\n"
+            "    b->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,"
+            " bresp: ocah_resp_e::SLVERR};\n",
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(
+            [label for label, _ in view.rows[0].hole_responses], ["past sub-block registers"]
+        )
+
+    def test_wrap_cell_names_each_sub_block_whose_past_response_differs(self):
+        text = SUB_BLOCK_RDL.replace(
+            "c->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,",
+            "c->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF,",
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(
+            self.cells(view)["wrap"][-2],
+            "between sub-blocks: DECERR, 0xBADCAB1E / DECERR; "
+            "past a registers: SLVERR, 0x0 / SLVERR; "
+            "past c registers: SLVERR, 0xFFFFFFFF / SLVERR",
+        )
+
+    def test_rejects_a_sub_block_window_past_the_next_sibling(self):
+        text = SUB_BLOCK_RDL.replace(
+            "a->ocah_aperture_size = 0x40;", "a->ocah_aperture_size = 0x80;"
+        )
+        with self.assertRaisesRegex(ValueError, "top.wrap.a: aperture 0x80 reaches past b at 0x40"):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+
+    def test_rejects_a_sub_block_window_smaller_than_its_extent(self):
+        text = SUB_BLOCK_RDL.replace(
+            "c->ocah_aperture_size = 0x10;", "c->ocah_aperture_size = 0x8;"
+        )
+        with self.assertRaisesRegex(
+            ValueError, "top.wrap.c: aperture 0x8 is smaller than occupied extent 0xC"
+        ):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+
+    def test_sub_block_window_takes_no_past_response_from_its_wrap(self):
+        text = "\n".join(
+            line for line in SUB_BLOCK_RDL.splitlines() if "a->ocah_past_extent_resp" not in line
+        )
+        with self.assertRaisesRegex(ValueError, "top.wrap.a: ocah_past_extent_resp is not set"):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+
     def test_full_stride_extent_decodes_the_last_tail(self):
         text = RESPONSE_RDL.replace(
             "addrmap top {\n`ifdef OCAH_DOC_MEMORY_MAP\n",
@@ -377,6 +528,19 @@ class ResponseColumnTest(unittest.TestCase):
         rows = {row.label: row for row in view.rows}
         self.assertEqual(rows["repeated"].occupied_size, 0x40)
         self.assertEqual(rows["plain"].occupied_size, 0xC)
+
+    def test_extent_ends_at_the_bus_word_holding_the_last_register(self):
+        text = RESPONSE_RDL.replace(
+            "addrmap top {\n",
+            "addrmap mixed {\n"
+            "    reg { regwidth = 64; field { sw = rw; hw = r; } value[63:0]; } wide @0x0;\n"
+            "    reg { field { sw = rw; hw = r; } value[31:0]; } last @0x18;\n"
+            "};\naddrmap top {\n",
+        ).replace("    leaf plain @0x0;", "    mixed plain @0x0;")
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        rows = {row.label: row for row in view.rows}
+        self.assertEqual(rows["plain"].occupied_size, 0x20)
+        self.assertEqual(rows["checked"].occupied_size, 0xC)
 
     def test_memory_with_its_own_response_answers_throughout(self):
         text = RESPONSE_RDL.replace(
@@ -517,7 +681,9 @@ addrmap bounds_top {
         text = RESPONSE_RDL.replace("    leaf high @0x100;", "    leaf high[2] @0x100 += 0x10;")
         cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
         self.assertEqual(
-            cells["composite"][-2], "OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0x0 / SLVERR"
+            cells["composite"][-2],
+            "OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0x0 / SLVERR; "
+            "between instances: DECERR, 0x0 / SLVERR",
         )
 
     def test_rejects_invalid_read_data(self):
@@ -554,6 +720,10 @@ class RegblockResponseCheckTest(unittest.TestCase):
 
     def test_exempts_blocks_without_regblock_rtl(self):
         self.check(no_rtl={"strict"})
+
+    def test_checks_sub_blocks_of_blocks_without_regblock_rtl(self):
+        with self.assertRaisesRegex(ValueError, "top.composite.low: regblock answers SLVERR"):
+            self.check(err_check={"strict", "wrap"}, no_rtl={"wrap"})
 
     def test_composite_sub_blocks_take_the_composite_flag(self):
         with self.assertRaisesRegex(ValueError, "top.composite.low: regblock answers SLVERR"):

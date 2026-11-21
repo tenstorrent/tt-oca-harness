@@ -74,7 +74,7 @@ ST_EMPTY = mailbox_u32("AXIL_MAILBOX__STATUS__EMPTY_bm")
 EMPTY_READ_DATA = 0xFEED_DEAD
 # hw/sys/smc/doc/memmap.adoc: a read between unit apertures returns 0xBADCAB1E.
 DECERR_READ_DATA = 0xBADC_AB1E
-# hw/sys/smc/regs/gen/c/smc_addr.h: SCRATCH_COLD_WARM is eight 32-bit words at 0xC0002880
+# hw/sys/smc/regs/gen/c/smc_addr.h: SCRATCH_COLD_WARM is eight 32-bit words at 0xC000D080
 # (hw/sys/smc/regs/blocks/scratch/scratch.rdl).
 _SCRATCH_WARM = "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR"
 # hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL SCRATCH, 8-byte stride; the register implements

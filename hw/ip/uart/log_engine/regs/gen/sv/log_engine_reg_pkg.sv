@@ -7,7 +7,7 @@
 package log_engine_reg_pkg;
 
     localparam LOG_ENGINE_REG_DATA_WIDTH = 32;
-    localparam LOG_ENGINE_REG_MIN_ADDR_WIDTH = 7;
+    localparam LOG_ENGINE_REG_MIN_ADDR_WIDTH = 9;
     localparam LOG_ENGINE_REG_SIZE = 'h80;
     localparam NUM_LOG_ENTRIES = 'h10;
 

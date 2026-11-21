@@ -42,8 +42,8 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
-SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
-MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_BYTE_OFF = SPARE0 - MAP_BASE
 PAT_O = 0x0A70_AAA1
 PAT_F = 0xFAB0_BBB2

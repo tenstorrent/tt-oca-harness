@@ -7,7 +7,7 @@
 package km_mailbox_sep_reg_pkg;
 
     localparam KM_MAILBOX_SEP_REG_DATA_WIDTH = 32;
-    localparam KM_MAILBOX_SEP_REG_MIN_ADDR_WIDTH = 5;
+    localparam KM_MAILBOX_SEP_REG_MIN_ADDR_WIDTH = 12;
     localparam KM_MAILBOX_SEP_REG_SIZE = 'h1c;
 
     typedef struct {

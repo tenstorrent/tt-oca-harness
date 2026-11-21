@@ -11,9 +11,9 @@ The reset_wdt_sanity firmware:
     probe is writable again after release;
   * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
     (count == 2), the load's with the load-bus-error ``mcause`` and its address in ``mdseac``;
-  * stores to a target that answers DECERR (the reset-controller gap) and to one that answers
-    SLVERR (the read-only entropy pool), and reports the NMI count, ``mcause`` and ``mdseac`` of
-    each; then stores to an OKAY register (OTBN ``INTR_ENABLE``) and restores it, and reports
+  * stores to a target that answers DECERR (the Reserved gap past the reset-controller page)
+    and to one that answers SLVERR (the read-only entropy pool), and reports the NMI count,
+    ``mcause`` and ``mdseac`` of each; then stores to an OKAY register (OTBN ``INTR_ENABLE``) and restores it, and reports
     the NMI count and the readback;
   * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
 
@@ -35,8 +35,8 @@ AWADDR to 8 bytes outside side-effect regions). This test grades, from the firmw
                      store address, which also equals the address the testbench derives
                      from the register map. A missing AW or B, a wrong BRESP, a store that
                      completes with no NMI (nmi=0), or a wrong ``mcause`` or ``mdseac``
-                     fails. Targets: ``hw/sys/sep/regs/sep.rdl`` (reset-controller aperture:
-                     DECERR write response past its one register) and
+                     fails. Targets: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (the
+                     Reserved row past the reset-controller page: DECERR) and
                      ``hw/sys/sep/doc/entropy_pool.adoc`` (a write to any offset ends with
                      BRESP=SLVERR).
   CHK-STORE-OK-QUIET the OKAY store and its restore (the two AWs to the OKAY word after
@@ -97,6 +97,7 @@ import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_decode_resp import RESP_CODE, expected_unbacked, sep_map_row
 from env.sep_fabric_tap import SepFabricTap, TapBeat
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
@@ -134,17 +135,17 @@ _BANNER = "SEP reset+WDT sanity test"
 # a store bus error and 0xF000_0001 a load bus error.
 _MCAUSE_STORE_BUS_ERR = 0xF000_0000
 _MCAUSE_LOAD_BUS_ERR = 0xF000_0001
-# Store address of each error-response leg, from the register map: the word past
-# the reset-controller register (its aperture answers DECERR past the register,
-# hw/sys/sep/regs/sep.rdl) and the entropy pool STATUS register (any write is
-# SLVERR, hw/sys/sep/doc/entropy_pool.adoc).
-_RESET_CTRL_END = sym("SEP_RESET_CTRL_REG_MAP_BASE_ADDR") + sym("SEP_RESET_CTRL_REG_MAP_SIZE")
+# Store address of each error-response leg, from the memory map: the first word
+# of the Reserved row past the reset-controller page (DECERR) and the entropy
+# pool STATUS register (any write is SLVERR, hw/sys/sep/doc/entropy_pool.adoc).
 _STORE_ERR_ADDR = {
-    "DECERR": SEP_RESET_CTRL_SW_RESET_N + 0x8,
+    "DECERR": sep_map_row(SEP_RESET_CTRL_SW_RESET_N).end + 1,
     "SLVERR": sym("ENTROPY_POOL_STATUS_REG_ADDR"),
 }
-if _STORE_ERR_ADDR["DECERR"] < _RESET_CTRL_END:
-    raise RuntimeError("the DECERR store address is inside the reset-controller register map")
+# The DECERR store and the CHK-BADADDR load 8 bytes above it.
+for _addr, _op in ((_STORE_ERR_ADDR["DECERR"], "w"), (_STORE_ERR_ADDR["DECERR"] + 0x8, "r")):
+    if expected_unbacked(_addr, _op).resp != RESP_CODE["DECERR"]:
+        raise RuntimeError(f"0x{_addr:08x}: the memory map states no DECERR here")
 _OKAY_ADDR = sym("OTBN_INTR_ENABLE_REG_ADDR")
 # The value the restore store writes: the RDL reset of OTBN INTR_ENABLE.
 _OKAY_RESET = OTBN.reset("INTR_ENABLE")

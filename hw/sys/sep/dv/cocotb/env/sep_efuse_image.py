@@ -46,7 +46,7 @@ NUM_FUSE_WORDS = sep_efuse_field_map.spec_num_fuse_bits() // WORD_BITS
 WORD_MASK = (1 << WORD_BITS) - 1
 
 # Software-visible shadow-register block base.
-SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
+SHADOW_BASE = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
 SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 
@@ -56,10 +56,10 @@ SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 # Derived, never written down. Read the index out of the generated map so a
 # hardcoded word offset cannot silently point at a neighbour field (a wrong but
 # self-consistent differential pair still looks healthy to a shadow checker).
-LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
+LC_WORD_IDX = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 # Bits of the LC_STATE word that hold the differential code, from the generated
 # field metadata; the sense FSM writes the other bits verbatim.
-LC_FIELD_MASK = RegBlock("SEP_EFUSE_MAP").field_mask("LC_STATE", "lc_state")
+LC_FIELD_MASK = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_mask("LC_STATE", "lc_state")
 LC_RAW_WIDTH = 4
 # Legal raw LC_STATE codes from hw/sys/sep/doc/lifecycle_controller.adoc
 # (encoding table and the per-LC-state feature-control profile).
@@ -82,7 +82,9 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 )
 
 # SBOOT_DIS.disable_secure_boot, the chicken bit that turns secure boot off.
-SBOOT_DIS_MASK = RegBlock("SEP_EFUSE_MAP").field_mask("SBOOT_DIS", "disable_secure_boot")
+SBOOT_DIS_MASK = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_mask(
+    "SBOOT_DIS", "disable_secure_boot"
+)
 
 # Kinds, keyed by generated register name; offsets and lengths come from the
 # generated map (_derive_fields). kind drives randomization and the
@@ -138,7 +140,7 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
     is asserted to tile the array exactly, which is what lets the backdoor checker
     claim it covered all 256 words.
     """
-    pfx, sfx = "SEP_EFUSE_MAP_", "_REG_OFFSET"
+    pfx, sfx = "SEP_EFUSE_WRAP_SEP_EFUSE_MAP_", "_REG_OFFSET"
     regs = sorted(
         (int(getattr(sep_reg, n)), n[len(pfx) : -len(sfx)])
         for n in dir(sep_reg)

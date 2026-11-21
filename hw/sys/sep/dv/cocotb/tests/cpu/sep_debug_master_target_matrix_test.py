@@ -160,7 +160,7 @@ Checks:
                   and ARSIZE 3, or AW and one W beat with the written data and
                   all strobes) (``hw/sys/sep/doc/fabric.adoc:162-164``), and the
                   PR-DBG-SB R or B beat carries the code the port returned, and
-                  the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:86``
+                  the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:80``
                   "Adopter-defined", ``doc/trm/src/memory_map.adoc:111-112``: the
                   adopter's implementation answers). ``sberror`` is 0 for OKAY
                   and not 0 for SLVERR; an OKAY read returns the word in
@@ -317,8 +317,8 @@ from env.sep_seeded_rng import SepSeededRng
 from ocah_jtag_vip import OcahJtagMasterDriver
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
     INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
+    SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0,
     SEP_RESET_CTRL,
     RegBlock,
     sym,
@@ -356,7 +356,7 @@ _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 _WDT = RegBlock("WDT_TIMER")
 WDT_BARK = _WDT.addr("WDOG_BARK_THOLD")
 _HMAC = RegBlock("HMAC")
-_COLD = RegBlock("SEP_SCRATCH_COLD")
+_COLD = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD")
 _DMA = RegBlock("SECURE_DMA")
 _SPI = RegBlock("SPI_CONTROLLER")
 _POOL = RegBlock("SEP_ENTROPY_POOL")
@@ -457,10 +457,10 @@ DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
 F_LOCKED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "locked")
 
 # AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_OFFSET_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_VALID_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "valid"
 )
 REGION_MASK = (1 << IDX_START) - 1

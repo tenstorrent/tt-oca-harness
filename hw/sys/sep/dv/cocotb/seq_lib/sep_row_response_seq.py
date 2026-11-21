@@ -34,7 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 
-from env.sep_decode_resp import MapRow, expected_unbacked, sep_map_rows
+from env.sep_decode_resp import MapRow, expected_unbacked, logical_region, sep_map_rows
 from sep_reg_meta import (
     _IPXACT_NS,
     HMAC,
@@ -64,20 +64,16 @@ ROW_BASE = {
     "km_mbox": sep_reg.KM_MAILBOX_SEP_REG_MAP_BASE_ADDR,
     "abr": sep_reg.ABR_REG_MAP_BASE_ADDR,
 }
-# The 8 Reserved rows this leaf grades, by base address. Each must be a
-# Reserved row of the generated table (checked by ``reserved_row``).
-RESERVED_BASES = (
-    0x1005_0000,
-    0x1080_4000,
-    0x1091_4000,
-    0x1092_1000,
-    0x1093_0600,
-    0x1096_0000,
-    0x10C0_0000,
-    0x1200_0000,
+# Every Reserved row of the generated table in the SEP Local region, which
+# inbound entry 0 of the leaf covers, by base address.
+_SEP_LOCAL = logical_region("logical:sep_local")
+RESERVED_BASES = tuple(
+    r.base
+    for r in sep_map_rows()
+    if r.unit == "Reserved" and _SEP_LOCAL[0] <= r.base <= _SEP_LOCAL[1]
 )
 # Rows whose past-extent cells this leaf grades from SI.
-PAST_ROWS = ("dma", "wdt", "otbn", "aes", "csrng", "edn", "esrc", "lc")
+PAST_ROWS = ("dma", "wdt", "aes", "csrng", "edn", "esrc", "lc")
 # Rows whose hole-in-extent cells this leaf grades from SI.
 HOLE_ROWS = ("otbn", "hmac", "kmac", "esrc", "abr")
 # Rows with a live-word cell graded from SI (reset control is graded from the LSU).

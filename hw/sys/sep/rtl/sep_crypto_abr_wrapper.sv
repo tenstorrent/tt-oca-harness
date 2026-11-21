@@ -6,7 +6,10 @@
 // Convert host AXI (64-bit) to 32-bit AXI to AXI4-Lite to axi_lite_to_ahb for abr_top AHB
 // (64-bit data / 32-bit addr), one transfer on the AHB at a time. The AXCACHE modifiable
 // bit is forced so 64-bit beats can be split; only full-word writes reach abr_top, and
-// writes with all byte strobes low complete with OKAY without an AHB transfer.
+// writes with all byte strobes low complete with OKAY without an AHB transfer. abr_top answers
+// every address with OKAY, so between the AXI4-Lite and AHB bridges a demux passes the
+// SEP_TOP_ABR_SIZE bytes of its registers and answers the rest of the ABR's last page with
+// SLVERR and read data 0xBADCAB1E.
 // abr_top has no entropy port and its scan-mode zeroize input is tied low.
 //
 // Terminate the Key Manager private 32-bit AXI4-Lite key bus on abr_wrapper_key_reg here;
@@ -63,8 +66,8 @@ module sep_crypto_abr_wrapper
   input       abr_mem_rsp_t abr_mem_rsp_i,    // Read data from the external Adams Bridge SRAM
                                               // macros, SRAM_LATENCY clocks after each re.
 
-  input  wire logic scan_mode_i,              // DFT scan mode; drives only the test input of the
-                                              // AXI-to-AXI-Lite converter.
+  input  wire logic scan_mode_i,              // DFT scan mode; drives only the test inputs of the
+                                              // AXI-to-AXI-Lite converter and the register demux.
 
   output      logic mlkem_sharedkey_irq_o,    // Level ML-KEM shared-key-ready interrupt:
                                               // IRQ_STATUS.key_valid gated by
@@ -93,6 +96,8 @@ module sep_crypto_abr_wrapper
   sep_pkg::sep_32_32_6_12_axi_resp_t abr_axi32_resp;
   sep_pkg::sep_32_32_axil_req_t      abr_axil_req;
   sep_pkg::sep_32_32_axil_resp_t     abr_axil_resp;
+  sep_pkg::sep_32_32_axil_req_t      abr_reg_axil_req;
+  sep_pkg::sep_32_32_axil_resp_t     abr_reg_axil_resp;
 
   always_comb begin
     abr_axi_req_cache_forced          = abr_axi_req_i;
@@ -147,6 +152,35 @@ module sep_crypto_abr_wrapper
     .mst_resp_i (abr_axil_resp)
   );
 
+  localparam logic [31:0] RegWindowBase[1] = '{32'(sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR)};
+  localparam logic [31:0] RegWindowSize[1] = '{32'(sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE)};
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .NUM_RANGES     (1),
+    .RANGE_BASE     (RegWindowBase),
+    .RANGE_SIZE     (RegWindowSize),
+    .POW2_RANGES    (1'b0),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
+    .MAX_TRANS      (2),
+    .aw_chan_t      (sep_pkg::sep_32_32_axil_aw_chan_t),
+    .w_chan_t       (sep_pkg::sep_32_32_axil_w_chan_t),
+    .b_chan_t       (sep_pkg::sep_32_32_axil_b_chan_t),
+    .ar_chan_t      (sep_pkg::sep_32_32_axil_ar_chan_t),
+    .r_chan_t       (sep_pkg::sep_32_32_axil_r_chan_t),
+    .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+    .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_abr_addr_demux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_en_i   (scan_mode_i),
+    .slv_req_i   (abr_axil_req),
+    .slv_resp_o  (abr_axil_resp),
+    .mst_reqs_o  (abr_reg_axil_req),
+    .mst_resps_i (abr_reg_axil_resp)
+  );
+
   logic [31:0] ab_haddr;
   logic [63:0] ab_hwdata;
   logic [63:0] ab_hrdata;
@@ -175,8 +209,8 @@ module sep_crypto_abr_wrapper
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
-    .axi_lite_req_i  (abr_axil_req),
-    .axi_lite_rsp_o  (abr_axil_resp),
+    .axi_lite_req_i  (abr_reg_axil_req),
+    .axi_lite_rsp_o  (abr_reg_axil_resp),
 
     // AHB master -> abr_top slave
     .ahb_haddr_o     (ab_haddr),

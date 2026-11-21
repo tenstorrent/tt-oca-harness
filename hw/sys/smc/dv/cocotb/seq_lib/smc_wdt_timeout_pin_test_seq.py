@@ -104,7 +104,7 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
         self.other_cores: dict[int, tuple[int, int, int]] = {}
 
     def _reg(self, reg: str, core: int = WDT_CORE) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_{reg}_BASE_ADDR")
 
     async def _arm(self, core: int) -> None:
         """Arm one core's WDT with the keyed CMP, COUNT and CTRL writes."""

@@ -70,8 +70,8 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_tb_pins import smu_scope, tb_pin
 
-WDT_CTRL = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR")
-WDT_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
+WDT_CTRL = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_BASE_ADDR")
+WDT_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR")
 CPU_CTRL_WDT_TIMEOUT = smc_addr("SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_BASE_ADDR")
 
 WDT_IP0_BM = wdt_bm("WDT__CTRL__WDOGIP0_bm")

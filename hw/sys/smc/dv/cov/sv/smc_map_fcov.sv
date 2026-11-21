@@ -131,8 +131,8 @@ module smc_map_fcov (
   localparam logic [31:0] UartLo = 32'(SMC_TOP_SMC_UART_WRAP_BASE_ADDR - LocalBase);
   localparam logic [31:0] UartStride = 32'(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_STRIDE);
   localparam int unsigned UartNum = int'(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_NUM);
-  localparam logic [31:0] EfuseMapLo = 32'(SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - LocalBase);
-  localparam logic [31:0] EfuseIfLo = 32'(SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] EfuseMapLo = 32'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] EfuseIfLo = 32'(SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR - LocalBase);
   localparam logic [31:0] TelemetryLo =
       32'(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR - LocalBase);
   localparam logic [31:0] OctsLo = 32'(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR - LocalBase);

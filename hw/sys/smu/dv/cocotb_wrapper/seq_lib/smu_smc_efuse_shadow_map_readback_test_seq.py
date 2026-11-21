@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse shim response stream against the SMC eFuse map read back over JTAG2AXI.
 
-Spec: smc.rdl smc_efuse_map at 0xC0007000 and efuse_interface_ctrl at 0xC0008000;
+Spec: smc.rdl smc_efuse_map at 0xC0007800 and efuse_interface_ctrl at 0xC0007000;
 smc_efuse_map.rdl Address Map; smu-smc.adoc 256 32-bit words per instance; interface.adoc
 fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_done bit 0.
 
@@ -37,8 +37,10 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
 )
 
-MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-STATUS_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
+STATUS_ADDR = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
 STREAM_WORDS = 256
 RESP_WIDTH = 34
 VALID_BIT = 0
@@ -47,12 +49,20 @@ DATA_LSB = 2
 WORD_MASK = 0xFFFF_FFFF
 SAMPLED_WORDS = 16
 ELEMENT_CELLS = (
-    ("locks_0x0", "SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR", None),
-    ("jtag_public_identity_0x8", "SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR", None),
-    ("i2c_i3c_id_0x28", "SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
-    ("smc_config_0x70", "SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR", None),
-    ("occp_timeout_0x78", "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR", None),
-    ("spare_0x80_to_0x3ff", "SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
+    ("locks_0x0", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR", None),
+    (
+        "jtag_public_identity_0x8",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR",
+        None,
+    ),
+    ("i2c_i3c_id_0x28", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
+    ("smc_config_0x70", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR", None),
+    (
+        "occp_timeout_0x78",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
+        None,
+    ),
+    ("spare_0x80_to_0x3ff", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
 )
 ELEMENT_INDICES = tuple(
     ((smc_addr(symbol) if index is None else smc_indexed_addr(symbol, index)) - MAP_BASE) // 4

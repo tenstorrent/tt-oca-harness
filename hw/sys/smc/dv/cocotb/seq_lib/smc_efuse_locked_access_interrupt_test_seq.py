@@ -35,8 +35,10 @@ from .smc_addr_map import smc_addr, smc_efuse_map_u32
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_map_read_locked, efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+JTAG_PUBLIC_IDENTITY = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"
+)
 WRITE_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bm")
 READ_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm")
 

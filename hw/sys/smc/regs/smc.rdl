@@ -25,7 +25,6 @@
 `include "bus_error_unit.rdl"
 `include "clint.rdl"
 `include "debug_module.rdl"
-`include "efuse_interface_ctrl.rdl"
 `include "error_device.rdl"
 `include "ext_memory.rdl"
 `include "oca_i3c_wrap.rdl"
@@ -33,8 +32,8 @@
 `include "pwm_wrap.rdl"
 `include "cpu_ctrl.rdl"
 `include "smc_base_config.rdl"
-`include "smc_efuse_map.rdl"
-`include "wdt.rdl"
+`include "smc_efuse_wrap.rdl"
+`include "smc_cluster_wdt_wrap.rdl"
 `include "i2c_wrap.rdl"
 `include "smc_cla.rdl"
 `include "smc_external.rdl"
@@ -46,15 +45,11 @@ addrmap smc_top #(
     name = "SMC Top-Level Address Map";
     desc = "Top-level SMC address map exposing the resources accessible to external agents.";
 
-    wdt                                       smc_cluster_core0_wdt          @BASE_ADDR + 0x000_0000;
-    wdt                                       smc_cluster_core1_wdt          @BASE_ADDR + 0x000_0400;
-    wdt                                       smc_cluster_core2_wdt          @BASE_ADDR + 0x000_0800;
-    wdt                                       smc_cluster_core3_wdt          @BASE_ADDR + 0x000_0c00;
+    smc_cluster_wdt_wrap                      smc_cluster_wdt_wrap           @BASE_ADDR + 0x000_0000;
 
     debug_module                              debug_module                   @BASE_ADDR + 0x000_1000;
 
     reset_unit                                smc_reset_unit                 @BASE_ADDR + 0x000_2000;
-    misc_wrap                                 smc_misc_wrap                  @BASE_ADDR + 0x000_2800;
 
     gpio_intf_wrap #(.NUM_GPIOS(67))          gpio_intf_wrap                 @BASE_ADDR + 0x000_3000;
 
@@ -64,29 +59,29 @@ addrmap smc_top #(
 
     uart_wrap                                 smc_uart_wrap                  @BASE_ADDR + 0x000_6000;
 
-    smc_efuse_map                             smc_efuse_map                  @BASE_ADDR + 0x000_7000;
-    efuse_interface_ctrl                      efuse_interface_ctrl           @BASE_ADDR + 0x000_8000;
+    smc_efuse_wrap                            smc_efuse_wrap                 @BASE_ADDR + 0x000_7000;
 
     telemetry_receiver_wrap                   smc_telemetry_receiver_wrap    @BASE_ADDR + 0x000_9000;
 
     system_timer_octs                         smc_system_timer_octs          @BASE_ADDR + 0x000_a000;
 
     external ext_memory #(.NUM_ENTRIES(512))  dtp_ctrl_reg                   @BASE_ADDR + 0x000_b000;
-    dfx_ctrl_status                           dfx_ctrl                       @BASE_ADDR + 0x000_b800; // These CSRs are for ROMs knowledge of dfx status
     pwm_wrap                                  smc_pwm                        @BASE_ADDR + 0x000_c000;
+    misc_wrap                                 smc_misc_wrap                  @BASE_ADDR + 0x000_d000;
 
     smc_base_config                           smc_base_config                @BASE_ADDR + 0x001_0000;
+    zeroer_ctrl                               zeroer_ctrl                    @BASE_ADDR + 0x001_1000;
     alias_remap_wrap #(.NUM_REGIONS(8))       smc_alias_remap_wrap           @BASE_ADDR + 0x001_2000;
     output_remap_wrap #(.NUM_REGIONS(8))      smc_mmode_remap_wrap           @BASE_ADDR + 0x001_3000;
     output_remap_wrap #(.NUM_REGIONS(8))      smc_xvisor_remap_wrap          @BASE_ADDR + 0x001_4000;
 
     filter_ctrl_wrap #(.NUM_ENTRIES(16))      smc_inbound_filter_ctrl_wrap   @BASE_ADDR + 0x001_5000;
     filter_ctrl_wrap #(.NUM_ENTRIES(16))      smc_outbound_filter_ctrl_wrap  @BASE_ADDR + 0x001_6000;
+    dfx_ctrl_status                           dfx_ctrl                       @BASE_ADDR + 0x001_7000;
 
     axil_mailbox_smc_wrap                     smc_mailbox                    @BASE_ADDR + 0x001_8000;
 
     dma_ctrl                                  dma_ctrl                       @BASE_ADDR + 0x003_8000;
-    zeroer_ctrl                               zeroer_ctrl                    @BASE_ADDR + 0x003_8200;
 
     cpu_ctrl                                  smc_cpu_ctrl                   @BASE_ADDR + 0x003_9000;
 

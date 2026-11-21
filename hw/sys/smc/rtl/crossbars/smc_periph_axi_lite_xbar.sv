@@ -9,11 +9,12 @@
 // window between the eFuse shim and the external target.
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR block carved off the base of the
 // smc_external window and is threaded from smc_peripherals.sv. The shim bytes route to the
-// efuse target, which also serves the SMC eFuse map and the eFuse interface control
-// registers. Addresses outside every rule receive DECERR.
+// efuse_shim target. The efuse target takes the whole page holding the eFuse interface
+// control registers and the SMC eFuse map. Addresses outside every rule receive DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module smc_periph_axi_lite_xbar
   import smc_periph_axi_lite_xbar_pkg::axi_lite32_req_t;
@@ -22,7 +23,7 @@ module smc_periph_axi_lite_xbar
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
                                                  // the base of the smc_external window, in
                                                  // bytes; those addresses route to the
-                                                 // efuse target.
+                                                 // efuse_shim target.
 )
 (
   input  logic clk_i,                   // SMC core clock.
@@ -52,10 +53,14 @@ module smc_periph_axi_lite_xbar
   output axi_lite32_req_t  uart_req_o,  // Request for the UART wrapper window.
   input  axi_lite32_resp_t uart_resp_i,  // Response from the UART wrapper.
 
-  output axi_lite32_req_t  efuse_req_o,  // Request for the SMC eFuse map, the eFuse
-                                         // interface control registers and the eFuse
-                                         // shim window.
+  output axi_lite32_req_t  efuse_req_o,  // Request for the eFuse page: the eFuse
+                                         // interface control registers and the SMC eFuse
+                                         // map.
   input  axi_lite32_resp_t efuse_resp_i,  // Response from the eFuse target.
+
+  output axi_lite32_req_t  efuse_shim_req_o,  // Request for the eFuse shim window at the
+                                              // base of smc_external.
+  input  axi_lite32_resp_t efuse_shim_resp_i,  // Response from the eFuse shim target.
 
   output axi_lite32_req_t  telemetry_req_o,  // Request for the telemetry receiver window.
   input  axi_lite32_resp_t telemetry_resp_i,  // Response from the telemetry receivers.
@@ -88,60 +93,55 @@ module smc_periph_axi_lite_xbar
     // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE))},
     // misc: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_{BASE_ADDR,SIZE}
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE))},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_SIZE))},
     // apb2avsbus: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_{BASE_ADDR,SIZE}
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE))},
     // i2c: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_{BASE_ADDR,SIZE}
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE))},
     '{idx: 5,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE)},
-    // efuse (SMC_EFUSE_MAP): RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE))},
+    // efuse: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_{BASE_ADDR,SIZE}
     '{idx: 6,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE)},
-    // efuse (EFUSE_INTERFACE_CTRL): RDL — smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_{BASE_ADDR,SIZE}
-    '{idx: 6,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE))},
     // telemetry: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_{BASE_ADDR,SIZE}
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE))},
     // system_timer_octs: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_{BASE_ADDR,SIZE}
     '{idx: 8,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE))},
     '{idx: 9,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE))},
     '{idx: 10,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
-    '{idx: 6,
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE))},
+    '{idx: 13,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + EFUSE_SHIM_SIZE)},
@@ -152,9 +152,12 @@ module smc_periph_axi_lite_xbar
                     + smc_pkg::SmcExternalWindowSize)},
     '{idx: 12,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)}
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE))}
   };
+
+  // The eFuse shim and the external window rules share the first page of that window.
+  `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap, 13)
 
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
@@ -169,8 +172,8 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  smc_periph_axi_lite_xbar_pkg::xbar_mst_req_t  [12:0] xbar_mst_req;
-  smc_periph_axi_lite_xbar_pkg::xbar_mst_resp_t [12:0] xbar_mst_resp;
+  smc_periph_axi_lite_xbar_pkg::xbar_mst_req_t  [13:0] xbar_mst_req;
+  smc_periph_axi_lite_xbar_pkg::xbar_mst_resp_t [13:0] xbar_mst_resp;
 
   axi_lite_xbar #(
     .Cfg          (smc_periph_axi_lite_xbar_pkg::XbarCfg),
@@ -235,7 +238,7 @@ module smc_periph_axi_lite_xbar
   assign xbar_mst_resp[5] = uart_resp_i;
 
   // ---------------------------------------------------------------------------
-  // Output: efuse (AXI4_LITE, 32-bit) — serves both SMC_EFUSE_MAP and EFUSE_INTERFACE_CTRL rules
+  // Output: efuse (AXI4_LITE, 32-bit)
   // ---------------------------------------------------------------------------
   assign efuse_req_o = xbar_mst_req[6];
   assign xbar_mst_resp[6] = efuse_resp_i;
@@ -275,5 +278,11 @@ module smc_periph_axi_lite_xbar
   // ---------------------------------------------------------------------------
   assign pwm_req_o = xbar_mst_req[12];
   assign xbar_mst_resp[12] = pwm_resp_i;
+
+  // ---------------------------------------------------------------------------
+  // Output: efuse_shim (AXI4_LITE, 32-bit)
+  // ---------------------------------------------------------------------------
+  assign efuse_shim_req_o = xbar_mst_req[13];
+  assign xbar_mst_resp[13] = efuse_shim_resp_i;
 
 endmodule : smc_periph_axi_lite_xbar

@@ -194,13 +194,47 @@ from smc_memory_map import VIEWS as _MEMORY_MAP_VIEWS  # noqa: E402
 _COMPONENT_ROWS = _MEMORY_MAP_VIEWS["smc-components"]["rows"]
 
 
+def _sub_block_row(wrapper: str, child: str) -> dict:
+    """The component row of sub-block ``child`` of the wrapper unit ``wrapper``.
+
+    Its window runs to the next sub-block's base, or to the end of the wrapper's
+    aperture, and an access past its registers gets the wrapper row's
+    ``past <child> registers`` response, or its ``past sub-block registers``
+    response when the wrapper gives one for every sub-block.
+    """
+    outer = _component_row(wrapper)
+    holes = dict(outer["hole_responses"])
+    prefix = f"SMC_TOP_{wrapper.upper()}_"
+    base = smc_addr(f"{prefix}{child.upper()}_BASE_ADDR")
+    bases = set(smc_addr_symbols(rf"{prefix}\w+_BASE_ADDR"))
+    sub_blocks = (name.removesuffix("_SIZE") for name in smc_addr_symbols(rf"{prefix}\w+_SIZE"))
+    later = [
+        smc_addr(f"{name}_BASE_ADDR")
+        for name in sub_blocks
+        if f"{name}_BASE_ADDR" in bases and smc_addr(f"{name}_BASE_ADDR") > base
+    ]
+    return {
+        "key": f"{outer['key']}.{child}",
+        "label": child,
+        "base": base,
+        "end": min(later) - 1 if later else outer["end"],
+        "occupied_size": smc_addr(f"{prefix}{child.upper()}_SIZE"),
+        "past_response": holes.get(
+            f"past {child} registers", holes.get("past sub-block registers")
+        ),
+    }
+
+
 def _component_row(unit: str) -> dict:
     """The generated component row of ``unit``, keyed by its ``smc_top`` instance name.
 
-    The row's ``base`` has to equal the unit's ``SMC_TOP_<unit>_BASE_ADDR`` in
-    ``smc_addr.h`` (instance 0 of an indexed macro), so the two generated
-    artifacts cannot drift apart unnoticed.
+    ``<wrapper>.<child>`` names a sub-block of a wrapper unit. A unit's row
+    ``base`` has to equal its ``SMC_TOP_<unit>_BASE_ADDR`` in ``smc_addr.h``
+    (instance 0 of an indexed macro), so the two generated artifacts cannot
+    drift apart unnoticed.
     """
+    if "." in unit:
+        return _sub_block_row(*unit.split("."))
     for row in _COMPONENT_ROWS:
         if row["key"].rsplit(":", 1)[-1] == unit:
             break

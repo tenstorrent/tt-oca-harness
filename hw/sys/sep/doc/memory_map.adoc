@@ -94,7 +94,7 @@ return DECERR, refuse the access and never alias onto a live register. See the
 Register regions support single-beat transactions only. Bursts are supported
 into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
 fabric routes a burst on its first address only, so the later beats of a burst
-to a register region may be answered with errors or alias onto other
+to a register region may be answered with errors or reach other
 registers. The crypto region, which spans OTBN through ABR in the generated
 memory map below, refuses bursts ({sep-crypto-access-ref}).
 
@@ -103,11 +103,12 @@ memory map below, refuses bursts ({sep-crypto-access-ref}).
 Several SEP units are not connected to the external inbound port and answer
 `DECERR` to any external access attempt. These units include the Boot ROM,
 Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
-serves the mailbox and system CSR windows, and forwards all other addresses
-below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
-crossbar. Addresses above 0x4000_0000 and the units listed above are not
-reachable through this external path and receive error responses from the
-`smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
+serves the mailbox pages, the scratch register page and the system CSR pages.
+It answers the rest of 0x10A0_0000 to 0x10A4_FFFF with `DECERR` and forwards
+every other address below 0x4000_0000 to the SEP local crossbar. Addresses
+above 0x4000_0000 and the units listed above are not reachable through this
+external path and receive error responses from the `smn_inbound` port. Their
+rows in the table below state what the SEP CPU sees.
 
 ifdef::backend-html5[]
 include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]
@@ -156,7 +157,7 @@ endif::backend-pdf[]
 The SEP external-window model supplies the eFuse SHIM control register below.
 The `efuse_shim_ctrl` instance at offset `0x0` fixes where that block sits.
 `EFUSE_SHIM_SIZE` bytes from that base (`CFG.SEP_EFUSE_SHIM_SIZE` at the SMU,
-default `0x4`) are routed to the eFuse controller, which forwards them
+default `0x4`) are routed to the eFuse wrapper, which forwards them
 unchanged on `efuse_bank_ctrl` to the adopter's SHIM rather than out the
 external port. An adopter external map must keep an `efuse_shim_ctrl`
 instance at that offset.

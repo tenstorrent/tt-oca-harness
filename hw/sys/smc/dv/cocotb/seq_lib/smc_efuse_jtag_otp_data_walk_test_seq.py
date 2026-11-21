@@ -9,7 +9,7 @@ Contract: ``SMC_COV_W2T_009`` revision 4
 (``hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md``).
 
 Every write goes through the ``ej_axi`` AXI-Lite manager on the JTAG eFuse port; every
-compared value is read over SEP_IN at the same generated ``SMC_TOP_EFUSE_INTERFACE_CTRL_*``
+compared value is read over SEP_IN at the same generated ``SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_*``
 address. Field masks and resets come from the generated ``efuse_interface_ctrl.h``; the
 field access types are those of ``efuse_interface_ctrl.adoc``.
 
@@ -56,13 +56,21 @@ from .smc_addr_map import efuse_ifc_u32, smc_addr, smc_efuse_map_u32, smc_indexe
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_word_at
 
-STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
-PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
-READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
-PROG_IF_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
-READ_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR")
-READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
-PROG_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR")
+STATUS = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
+PROGRAM_CTRL = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
+READ_CTRL = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
+PROG_IF_DATA = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR"
+)
+READ_DATA = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR"
+)
+READ_TMO = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
+PROG_TMO = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR"
+)
 
 
 def _f(reg: str, field: str) -> int:
@@ -151,7 +159,8 @@ def _bits(mask: int) -> list[int]:
 def _spare_bit(index: int, offset: int) -> int:
     """Fuse bit address of bit ``offset`` of SPARE[``index``]; map byte n holds bits 8n..8n+7."""
     return (
-        smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", index) - EFUSE_MAP_BASE
+        smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", index)
+        - EFUSE_MAP_BASE
     ) * 8 + (offset)
 
 
@@ -285,8 +294,15 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
 
     async def _setup(self) -> None:
         dut = cocotb.top
-        locks = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
-        locks |= efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4) << 32
+        locks = efuse_preload_word_at(
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+        )
+        locks |= (
+            efuse_preload_word_at(
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4
+            )
+            << 32
+        )
         for spare, bit in ((SPARE_A, BIT_A), (SPARE_A2, BIT_A2)):
             lock_mask = smc_efuse_map_u32(
                 f"SMC_EFUSE_MAP__LOCKS__SPARE{spare}_WRITE_LOCK_bm"
