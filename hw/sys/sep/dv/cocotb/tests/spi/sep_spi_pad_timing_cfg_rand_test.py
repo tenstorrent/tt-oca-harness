@@ -36,7 +36,7 @@ Data (OpenTitan SPI_HOST "Input and Output Byte Ordering"): each TXDATA and
 RXDATA word carries its bytes in one in-word byte order, the same order for
 every word of the leaf (``SepSpiByteOrder`` of
 ``env/sep_spi_lane_responder.py``); which of the two orders the words use is
-not graded, and one OBS-SPI-BYTEORDER line per leaf logs it. Most significant
+not graded, and one INFO-SPI-BYTEORDER line per leaf logs it. Most significant
 bits first; in x2 and x4 the least significant bit of each pair or nibble is
 on ``sd[0]``; in x1 the host sends on ``sd[0]`` and receives on ``sd[1]``. Tx data is seeded; the first two bytes of each Tx
 segment hold lane 0 at 1, 0, 1, 0 on successive clocks, so the data-edge check
@@ -913,7 +913,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             await self.wire.finish(
                 self.logger, seed=self.seed, modes=[(c.cpol, c.cpha) for c in cells]
             )
-            self.order.log_obs(self.logger, self.seed, status_byteorder=self.status_byteorder)
+            self.order.log_info(self.logger, self.seed, status_byteorder=self.status_byteorder)
         finally:
             close_graded_window()
             if getattr(self, "rsp", None) is not None:

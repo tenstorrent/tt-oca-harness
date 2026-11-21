@@ -884,7 +884,8 @@ Observation probe groups:
    (CHK-DBG-AXBURST, CHK-DBG-AXLOCK, CHK-DBG-AXQOS, CHK-DBG-AXCACHE).
 ** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
    (`dma_csr_req`), AW and AR address. Owner:
-   `sep_fabric_dma_endpoint_matrix_test`.
+   `sep_fabric_dma_endpoint_matrix_test`; also read by
+   `sep_dma_transfer_matrix_rand_test` (CTRL-DMA-RW1C-W0).
 ** PR-INFLT (`pr_inflt_*`): the request out of the inbound filter
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
    global-to-local remap: AW and AR address, global, and AxUSER (the filter
@@ -922,7 +923,8 @@ Observation probe groups:
 ** PR-ALIAS (`pr_alias_in_*`, `pr_alias_out_*`): the request at the input and
    at the output of the local-master alias remap
    (`u_local_master_remap_wrap`): address, AxCACHE and AxPROT. Owner:
-   `sep_fabric_alias_remap_attr_rand_test`.
+   `sep_fabric_alias_remap_attr_rand_test`; `sep_fabric_outbound_route_attr_test`
+   reads the output address (CHK-OUT-GAP-ALIAS).
 * Fabric FCOV sampler taps (`cov/sv/sep_fcov.sv`, Phase 2 fabric and remap
   groups): the full request and response structs of the SMN-inbound port, the
   local crossbar `ext` initiator, the CPU LSU before and after its alias remap
@@ -1798,7 +1800,16 @@ master to the admitted or refused source ID; and the SMU-path source-ID grade
 `sep_fabric_filter_match_priority_rand_test`,
 `sep_fabric_outbound_route_attr_test`, `sep_fabric_dma_endpoint_matrix_test`,
 `sep_outbound_contention_rand_test` and `sep_outbound_stall_saturation_test`,
-which grades AxUSER[3:0] and logs AxUSER[11:4]. A check that compares the
+which grades AxUSER[3:0] of every SMU-path beat against SEP's ID, 0xF
+(`doc/integrator/src/smu-composition.adoc`, SEP row of the outbound attributes
+table, which also names AxUSER[3:0] as the source ID on `smu_axi_out`), and
+gives the `CHK-<tag>-SRC-ID` PASS line of each of those tests (CHK-FILT-SRC-ID,
+CHK-OUT-SRC-ID, CHK-CPU-SRC-ID, CHK-ATTR-SRC-ID, CHK-SAT-SRC-ID), or logs the
+FAIL line at ERROR and fails the leaf there. The same record grades the
+reserved AxUSER[11:4] of every such beat as 0: "AxUSER[11:4] are reserved: the
+harness drives them as 0 on `smu_axi_out`"
+(`doc/integrator/src/smu-composition.adoc:205-206`, under the table that gives
+SEP's ID). A check that compares the
 whole AxUSER with a stated value (OTHERS, AxUSER zero, on the AP and STEE
 paths and from the secure DMA; the initiator's AxUSER on the SMC path) does
 not use this record.
