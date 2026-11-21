@@ -7273,7 +7273,7 @@ belongs to the owner of the leg. A CTRL line that fails writes no code, so its
 bin stays empty. The bin samples no DUT signal: the CTRL line grades the DUT
 value that shows the leg reached its state. A bin is a reach record, not a
 golden comparison. Where a leg also grades a stated part with a `CHK-`
-line, that line is its reach line and the bin samples after it passes (row 27). Row 26 grades a stated part with a `CHK-` line too, but its CTRL line stays the reach line.
+line, that line is its reach line and the bin samples after it passes (rows 15, 17, 27). Row 26 grades a stated part with a `CHK-` line too, but its CTRL line stays the reach line.
 Codes 19 (`sram_wstrb_sparse`) and 20 (`sram_wstrb_zero`) stay in
 `OPEN_VALUE_LEGS` and have no bin: CHK-SRAM-STRB grades every WSTRB value
 0x00 to 0x0F and the drawn 8-bit sparse strobe, `sep_sram_access_cg.cp_sram_wstrb`
@@ -7299,9 +7299,9 @@ each leg runs on every seed of its owner.
 |12 |`slot_csr_prot_drawn` |`sep_fabric_slot_csr_strobe_rand_test` |Alias and output-remap slot register accesses with drawn AxPROT and a non-default AxCACHE, seen on the `s_axi` handshake (CTRL-SLOT-PROT).
 |13 |`syscsr_prot_drawn` |`sep_fabric_inbound_rebase_test` |System register accesses with drawn AxPROT[0] and AxPROT[2], seen on the `m_axi` handshake (CTRL-SYSCSR-PROT).
 |14 |`sram_in_excl_write` |`sep_sram_inbound_burst_attr_test` |An inbound SRAM write with AWLOCK 1 after an exclusive read of the same ID and address, both seen on the `m_axi` AR and AW handshakes (CTRL-SRAM-IN-ATTR).
-|15 |`gw_level_to_edge` |`sep_pic_pending_map_walk_rand_test` |A source pending in `meip` in level mode before its gateway switches to edge mode, and the type bit reads edge after the switch (CTRL-GW-LVL2EDGE).
+|15 |`gw_level_to_edge` |`sep_pic_pending_map_walk_rand_test` |A source pending in `meip` in level mode before its gateway switches to edge mode, and the type bit reads edge after the switch (CTRL-GW-LVL2EDGE); graded by CHK-GW-L2E.
 |16 |`gwclr_same_cycle` |`sep_pic_pending_map_walk_rand_test` |A boundary source pulse on the clock of a `meigwclr` write (`pic_wr_probe_o`) (CTRL-GWCLR-RACE).
-|17 |`nmi_during_handler` |`sep_nmi_vector_bark_rand_test` |The bark line (`wdt_bark_probe_o`) high for at least one clock between the two marker lines the NMI handler prints (CTRL-NMI-NESTED).
+|17 |`nmi_during_handler` |`sep_nmi_vector_bark_rand_test` |The bark line (`wdt_bark_probe_o`) high for at least one clock between the two marker lines the NMI handler prints (CTRL-NMI-NESTED); graded by CHK-NMI-NESTED.
 |18 |`priord_flip_pending` |`sep_pic_priority_gate_rand_test` |Drawn sources pending in `meip` with `mpiccfg.priord` read back at the drawn order before it flips with MIE 0 (CTRL-PRIORD-PENDING), and `mpiccfg.priord` read back flipped (CTRL-PRIORD-FLIP).
 |21 |`sram_macro_bit_flip` |`sep_sram_axi_shape_matrix_test` |One drawn bit of a written word flipped in the SRAM macro array, read back by backdoor before the AXI read (CTRL-SRAM-FLIP).
 |22 |`spi_cmdinval_spien1` |`sep_spi_ot_host_csr_irq_rand_test` |A reserved-SPEED `COMMAND` write with `CONTROL.SPIEN` read back 1 and `ERROR_STATUS` 0 before it (CTRL-SPI-CMDINVAL-SPIEN1), and a legal Tx `COMMAND` queued behind it (CTRL-SPI-CMDINVAL-QUEUED). The leaf writes the code after CHK-SPI-CMDINVAL-SPIEN1 passes.
