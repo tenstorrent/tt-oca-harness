@@ -91,7 +91,11 @@ Checkers:
                     offset bits above the 512 KiB region granule and the
                     issued address below it
                     (``hw/ip/output_remap/regs/output_remap.rdl:22-25``). An AP
-                    pass with offset 0 predicts ``{0, a[18:0]}``.
+                    pass with offset 0 predicts ``{0, a[18:0]}``. At the end of
+                    the run the AW and AR beats that PR-OUT recorded from its
+                    start, less those of the two logged legs (INFO-OUT-LOWADDR,
+                    INFO-SMU-MOVED), equal the admitted requests, so a PR-OUT
+                    beat outside every graded access fails.
   CHK-OUT-SRC-ID    AxUSER[3:0] of every SMU-path capture equals SEP's ID,
                     0xF; the line gives the value seen and the beat count.
                     AxUSER[11:4] of SMU-path captures is logged
@@ -623,6 +627,10 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             )
         return seq.resp_code, beats
 
+    def _addr_beats(self, mark) -> int:
+        """PR-OUT AW and AR beats since ``mark``."""
+        return sum(1 for b in self.out.since(mark) if b.ch in ("aw", "ar"))
+
     def _capture(
         self, cls, addr, pred, *, write, prot, user, wdata, beats, tag="CHK-OUT-CAPTURE"
     ) -> None:
@@ -815,6 +823,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             if seq.resp_code != RESP_DECERR:
                 mon.release_expected_decerr(1)
             ch = "aw" if write else "ar"
+            self.n_logged += self._addr_beats(mo)
             self.logger.info(
                 "INFO-OUT-LOWADDR dir=%s addr=0x%08x resp=%s pr_out=%s pr_smc=%s",
                 "W" if write else "R",
@@ -1270,6 +1279,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             if seq.resp_code != RESP_DECERR:
                 self.env.axi_monitor.release_expected_decerr(1)
             caps = [b for b in self.out.since(mark) if b.ch == "ar"]
+            self.n_logged += self._addr_beats(mark)
             self.logger.info(
                 "INFO-SMU-MOVED kind=%s base=0x%x size=0x%x word=%s addr=0x%x resp=%s "
                 "out_ar=%d out_addrs=%s",
@@ -1519,6 +1529,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         self.logger.info("INFO-CFG outbound route attr: %s", cfg.summary())
         self.n_capture = 0
         self.n_expect = 0
+        self.n_logged = 0
         self.n_cell = 0
         self.hibit: dict[str, set] = {}
         self.src_grade = SepSrcIdGrade("OUT")
@@ -1562,11 +1573,16 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._lowaddr_leg()
         await self._edge_leg()
         await self.out.stop()
-        line = f"captures={self.n_capture} admitted={self.n_expect}"
-        assert self.n_expect > 0 and self.n_capture == self.n_expect, (
-            f"CHK-OUT-CAPTURE FAIL: {line}"
+        out_aw, out_ar = self.out.count(0, "aw"), self.out.count(0, "ar")
+        graded_beats = out_aw + out_ar - self.n_logged
+        line = (
+            f"pr_out_aw={out_aw} pr_out_ar={out_ar} logged_leg_beats={self.n_logged} "
+            f"graded_beats={graded_beats} admitted={self.n_expect} captures={self.n_capture}"
         )
-        self.logger.info("INFO-OUT-CAPTURE-SUMMARY LOG: %s", line)
+        assert (
+            self.n_expect > 0 and self.n_capture == self.n_expect and graded_beats == self.n_expect
+        ), f"CHK-OUT-CAPTURE FAIL: {line}"
+        self.logger.info("CHK-OUT-CAPTURE PASS: %s", line)
         why = self.src_grade.finish(min_nonzero_issued=2)
         self.logger.info("%s", self.src_grade.chk_line())
         assert why is None, f"CHK-OUT-CAPTURE FAIL: path=smu src_id {why}"
