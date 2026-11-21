@@ -1160,6 +1160,39 @@ module tb_top
     .jtag_clock_stop_i     (u_dut.jtag_clock_stop)
   );
 
+  // JTAG2AXI coverage: each bridge's DMI strobes, captured status, update op
+  // and dmireset through hierarchical references into its jtag_dmi2axi, in the
+  // bit order of dtp_tb_if.j2a_b_hold.
+  dtp_j2a_fcov u_dtp_j2a_fcov (
+    .tck_i           (jtag_tck),
+    .tap_rst_ni      (jtag_tap_rst_n),
+    .capture_en_i    ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dmi_capture_en,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dmi_capture_en,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dmi_capture_en
+    }),
+    .update_en_i     ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dmi_update_en,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dmi_update_en,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dmi_update_en
+    }),
+    .dmireset_i      ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dtmcs_dmireset,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dtmcs_dmireset,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dtmcs_dmireset
+    }),
+    .capture_status_i({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dmi_capture[1:0],
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dmi_capture[1:0],
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dmi_capture[1:0]
+    }),
+    .update_op_i     ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dmi_bridge_tdr[1:0],
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dmi_bridge_tdr[1:0],
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dmi_bridge_tdr[1:0]
+    })
+  );
+
   // Scan-network coverage (iJTAG SIBs / STAP 3DCR / scan-side debug
   // disable): flattened chain controls plus, through hierarchical
   // references, the SIB scan bits, each STAP's SIB and stored 3DCR (sel_int

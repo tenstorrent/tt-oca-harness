@@ -10,7 +10,9 @@ transactions observed on the three bridge ports (``axi_export``) through a
 ``DtpJtag2AxiTracker`` and publishes one ``DtpJtag2AxiStatusItem`` per scan
 item, so the scoreboard pairs the two streams in lockstep; scans that are not
 a bridge capture, and captures while the PTAP 3DCR select is set, carry no
-contract. No comparison, no reporting. The SV-UVM twin is
+contract. ``DTP_J2A_STATUS_MODEL_NEGATIVE`` leaves the status at 0 where a
+capture or update finds a DMI operation in progress, so the busy captures
+that follow must disagree. No comparison, no reporting. The SV-UVM twin is
 ``dtp_jtag2axi_status_ref_model``.
 """
 
@@ -18,13 +20,15 @@ from __future__ import annotations
 
 from ocah_axi_vip import OcahAxiItem
 from ocah_jtag_vip import OcahJtagEvent, OcahJtagScanItem
-from ocah_lib import OcahRefModel
+from ocah_lib import OcahKnobs, OcahRefModel
 from pyuvm import ConfigDB
 
 from .dtp_expected_item import DtpAnalysisImp
 from .dtp_jtag2axi_model import DtpJtag2AxiTracker
 
 __all__ = ["DtpJtag2AxiStatusRefModel"]
+
+NEGATIVE_KNOB = "DTP_J2A_STATUS_MODEL_NEGATIVE"
 
 
 class DtpJtag2AxiStatusRefModel(OcahRefModel):
@@ -34,7 +38,13 @@ class DtpJtag2AxiStatusRefModel(OcahRefModel):
         super().build_phase()
         self.event_export = DtpAnalysisImp("event_export", self, self.write_event)
         self.axi_export = DtpAnalysisImp("axi_export", self, self.write_axi)
-        self._tracker = DtpJtag2AxiTracker(ConfigDB().get(self, "", "tb_if"))
+        negative = OcahKnobs.is_set(NEGATIVE_KNOB)
+        if negative:
+            self.logger.warning(
+                "NEGATIVE VALIDATION: no busy status while a DMI operation is in progress (%s)",
+                NEGATIVE_KNOB,
+            )
+        self._tracker = DtpJtag2AxiTracker(ConfigDB().get(self, "", "tb_if"), negative=negative)
 
     def bind_port(self, target: str, source: str) -> None:
         """Name the monitor whose items carry a bridge's transactions."""

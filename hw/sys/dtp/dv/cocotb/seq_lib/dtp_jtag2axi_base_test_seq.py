@@ -18,6 +18,7 @@ from cocotb.utils import get_sim_time
 from env.dtp_axi_port_history import DtpAxiPortHistory
 from env.dtp_jtag2axi_model import strobe_lanes
 from env.dtp_types import (
+    DMI_LEN,
     DTP_EXPECTED_DTMCS,
     JTAG2AXI_TARGETS,
     RESET_COUNT_CHECK_ID,
@@ -29,6 +30,7 @@ from env.dtp_types import (
     pack_dmi,
     pack_sbcs,
     unpack_dmi,
+    unpack_dtmcs,
     unpack_sbcs,
 )
 from ocah_axi_vip import OcahAxiLiteSlaveSequence, OcahAxiScoreboard, OcahAxiSlaveSequence
@@ -40,16 +42,25 @@ from .dtp_base_test_seq import dtp_base_test_seq
 
 GEOMETRY_CHECK_ID = "CHK-J2A-GEOMETRY"
 FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
+DTM_CAPTURE_CHECK_ID = "CHK-J2A-DTM-CAPTURE"
 BUS_REQ_CHECK_ID = "CHK-J2A-BUS-REQ"
 RDATA_CHECK_ID = "CHK-AXI-RDATA"
 WMEM_CHECK_ID = "CHK-AXI-WMEM"
 COMPLETION_CHECK_ID = "CHK-AXI-COMPLETION"
 GEOMETRY_NEGATIVE_KNOB = "DTP_J2A_GEOMETRY_NEGATIVE"
 BUS_REQ_NEGATIVE_KNOB = "DTP_J2A_BUS_REQ_NEGATIVE"
+FAULT_STATUS_NEGATIVE_KNOB = "DTP_J2A_FAULT_STATUS_NEGATIVE"
+DTM_CAPTURE_NEGATIVE_KNOB = "DTP_J2A_DTM_CAPTURE_NEGATIVE"
 # System cycles a port transaction has to complete in once its access started.
 PORT_COMPLETION_CYCLES = 200
 # sbcs reads a bus access has to clear sbbusy in.
 SBA_POLLS = 8
+# TCK cycles in Run-Test/Idle after a raw DMI scan, beyond DTP_DMI_SETTLE_TCK,
+# so the next scan finds its operation complete.
+RAW_SCAN_IDLE_TCK = 64
+DTMCS_DMIRESET = 1 << 16
+DTMCS_DMIHARDRESET = 1 << 17
+_DTMCS_DMISTAT_LSB = 10
 _WORD = 0xFFFF_FFFF
 
 
@@ -137,23 +148,126 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     # --- DMI access ------------------------------------------------------------
     async def dmi_scan(
-        self, target: str, address: int, data: int, op: DtpDmiOp, *, context: str
+        self,
+        target: str,
+        address: int,
+        data: int,
+        op: DtpDmiOp,
+        *,
+        context: str,
+        status: DtpDmiStatus = DtpDmiStatus.SUCCESS,
     ) -> int:
         """One DMI scan of ``{address, data, op}``; returns the captured data.
 
-        The capture carries the previous operation's status, which
-        ``CHK-J2A-FAULT-STATUS`` requires to be success.
+        The capture carries the sticky status, which ``CHK-J2A-FAULT-STATUS``
+        compares with ``status``.
         """
         captured = await self.read_tdr(self.target_cfg(target).dmi_reg, pack_dmi(address, data, op))
-        _, captured_data, status = unpack_dmi(captured)
+        _, captured_data, captured_status = unpack_dmi(captured)
+        self.check_dmi_status(
+            target, captured_status, status, context=f"{context} dmi_capture=0x{captured:x}"
+        )
+        return captured_data
+
+    def check_dmi_status(
+        self, target: str, observed: int, expected: DtpDmiStatus, *, context: str
+    ) -> None:
+        """``CHK-J2A-FAULT-STATUS`` on a captured DMI status or DTMCS ``dmistat``.
+
+        ``DTP_J2A_FAULT_STATUS_NEGATIVE=1`` swaps the expected status between
+        success and busy, so the run must fail.
+        """
+        if OcahKnobs.is_set(FAULT_STATUS_NEGATIVE_KNOB):
+            expected = DtpDmiStatus(int(expected) ^ int(DtpDmiStatus.BUSY))
         self.check_equal(
             self.target_evidence(target),
             FAULT_STATUS_CHECK_ID,
-            status,
-            int(DtpDmiStatus.SUCCESS),
-            context=f"{context} target={target} dmi_capture=0x{captured:x}",
+            observed,
+            int(expected),
+            context=f"{context} target={target} status",
         )
-        return captured_data
+
+    def check_dtm_capture(self, target: str, observed: int, expected: int, *, context: str) -> None:
+        """``CHK-J2A-DTM-CAPTURE`` on a capture without its status: a DMI capture's address
+        and data, or a DTMCS capture's other fields.
+
+        ``DTP_J2A_DTM_CAPTURE_NEGATIVE=1`` flips the expected bit 0, so the run
+        must fail.
+        """
+        if OcahKnobs.is_set(DTM_CAPTURE_NEGATIVE_KNOB):
+            expected ^= 0x1
+        self.check_equal(
+            self.target_evidence(target),
+            DTM_CAPTURE_CHECK_ID,
+            observed,
+            expected,
+            context=f"{context} target={target} observed=0x{observed:x} expected=0x{expected:x}",
+        )
+
+    async def dtmcs_scan(
+        self, target: str, shift_value: int, *, status: DtpDmiStatus, context: str
+    ) -> int:
+        """One DTMCS scan shifting ``shift_value``; judges the captured fields and dmistat."""
+        captured = await self.read_tdr(self.target_cfg(target).dtmcs_reg, shift_value)
+        dmistat = unpack_dtmcs(captured)["dmistat"]
+        self.check_dmi_status(target, dmistat, status, context=f"{context}.dmistat")
+        self.check_dtm_capture(
+            target,
+            captured & ~(0x3 << _DTMCS_DMISTAT_LSB),
+            DTP_EXPECTED_DTMCS,
+            context=f"{context}.dtmcs",
+        )
+        return captured
+
+    # --- raw DMI scans -----------------------------------------------------------
+    async def select_dmi(self, target: str) -> None:
+        """Load ``target``'s DMI instruction and stop in Run-Test/Idle."""
+        await self.load_ir(self.target_cfg(target).dmi_instr)
+
+    async def dmi_raw(
+        self,
+        target: str,
+        address: int,
+        data: int,
+        op: DtpDmiOp,
+        *,
+        status: DtpDmiStatus,
+        context: str,
+        expect: tuple[int, int] | None = None,
+        chain: bool = False,
+    ) -> None:
+        """One DMI scan of ``{address, data, op}`` under the loaded DMI instruction.
+
+        From Run-Test/Idle or Select-DR-Scan; ends in Select-DR-Scan with
+        ``chain`` and in Run-Test/Idle otherwise, with no idle cycles. Judges
+        the captured status against ``status`` and, given ``expect``, the
+        captured (address, data) against it.
+        """
+        item = await self.shift_dr(pack_dmi(address, data, op), DMI_LEN, back_to_rti=not chain)
+        captured = item.result
+        cap_address, cap_data, cap_status = unpack_dmi(captured)
+        context = f"{context} op={op.name} dmi_capture=0x{captured:x}"
+        self.check_dmi_status(target, cap_status, status, context=context)
+        if expect is not None:
+            self.check_dtm_capture(
+                target,
+                pack_dmi(cap_address, cap_data, 0) >> 2,
+                pack_dmi(expect[0], expect[1], 0) >> 2,
+                context=context,
+            )
+
+    async def dmi_zero_shift(self, *, chain: bool = False) -> None:
+        """A DMI scan from Select-DR-Scan that shifts no bit, so its update loads its capture.
+
+        Ends in Select-DR-Scan with ``chain`` and in Run-Test/Idle otherwise.
+        """
+        for tms in (0, 1, 1, int(chain)):
+            await self.tms_step(tms)
+
+    async def run_test_idle(self, cycles: int = RAW_SCAN_IDLE_TCK) -> None:
+        """Clock ``cycles`` TCK cycles in Run-Test/Idle."""
+        for _ in range(cycles):
+            await self.tms_step(0)
 
     async def dmi_write(self, target: str, address: DtpDmReg, data: int, *, context: str) -> None:
         """Write one Debug Module register."""
@@ -189,8 +303,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             target, DtpDmReg.SBADDRESS0, addr & _WORD, context=f"{context}.sbaddress0"
         )
 
-    async def wait_sba_idle(self, target: str, *, context: str) -> None:
-        """Poll sbcs until sbbusy clears, then require sberror and sbbusyerror clear.
+    async def wait_sba_idle(self, target: str, *, context: str, sbbusyerror: int = 0) -> None:
+        """Poll sbcs until sbbusy clears, then require sberror 0 and sbbusyerror
+        ``sbbusyerror``.
 
         ``CHK-AXI-COMPLETION`` judges the ``SBA_POLLS`` bound and
         ``CHK-J2A-FAULT-STATUS`` the two error fields.
@@ -210,7 +325,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             self.target_evidence(target),
             FAULT_STATUS_CHECK_ID,
             (sbcs["sberror"], sbcs["sbbusyerror"]),
-            (0, 0),
+            (0, sbbusyerror),
             context=f"{context} target={target} (sberror, sbbusyerror)",
         )
 

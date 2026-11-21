@@ -48,7 +48,10 @@ class dtp_test_cfg extends ocah_test_cfg;
   int unsigned xtrig_negative_check;
   bit j2a_geometry_negative;     // +DTP_J2A_GEOMETRY_NEGATIVE
   bit j2a_bus_req_negative;      // +DTP_J2A_BUS_REQ_NEGATIVE
+  bit j2a_fault_status_negative;  // +DTP_J2A_FAULT_STATUS_NEGATIVE
+  bit j2a_dtm_capture_negative;  // +DTP_J2A_DTM_CAPTURE_NEGATIVE
   bit jtag2axi_ref_model_negative;  // +DTP_J2A_REF_MODEL_NEGATIVE
+  bit jtag2axi_status_model_negative;  // +DTP_J2A_STATUS_MODEL_NEGATIVE
   bit xtrig_csr_ref_model_negative;  // +DTP_XTRIG_CSR_REF_MODEL_NEGATIVE
   bit xtrig_decode_ref_model_negative;  // +DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE
 
@@ -86,7 +89,10 @@ class dtp_test_cfg extends ocah_test_cfg;
     xtrig_negative_check    = ocah_knobs::get_int("DTP_XTRIG_NEGATIVE_CHECK", 0);
     j2a_geometry_negative   = ocah_knobs::is_set("DTP_J2A_GEOMETRY_NEGATIVE");
     j2a_bus_req_negative    = ocah_knobs::is_set("DTP_J2A_BUS_REQ_NEGATIVE");
+    j2a_fault_status_negative = ocah_knobs::is_set("DTP_J2A_FAULT_STATUS_NEGATIVE");
+    j2a_dtm_capture_negative = ocah_knobs::is_set("DTP_J2A_DTM_CAPTURE_NEGATIVE");
     jtag2axi_ref_model_negative = ocah_knobs::is_set("DTP_J2A_REF_MODEL_NEGATIVE");
+    jtag2axi_status_model_negative = ocah_knobs::is_set("DTP_J2A_STATUS_MODEL_NEGATIVE");
     xtrig_csr_ref_model_negative = ocah_knobs::is_set("DTP_XTRIG_CSR_REF_MODEL_NEGATIVE");
     xtrig_decode_ref_model_negative = ocah_knobs::is_set("DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE");
   endfunction

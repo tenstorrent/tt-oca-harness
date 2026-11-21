@@ -37,6 +37,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // Run-Test/Idle TCK cycles after every DTMCS or DMI scan, in which a DMI
   // operation crosses to the Debug Module and back (DtpDmiSettleTck).
   localparam int unsigned DmiIdleTck = 64;
+  // The data a read refused by the Debug Module returns.
+  localparam bit [31:0] DmiDataBusy = 32'hB051_B051;
 
   // The pass's bus-request ledger (CHK-J2A-BUS-REQ): the bridge it accounts,
   // "" while closed, and per bridge port the counts that the pass's judged
@@ -46,6 +48,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   protected int unsigned m_ledger_reads[string];
   // Completed responder bursts per bridge when the pass began.
   protected int unsigned m_burst_baseline[string];
+  // The TAP waits in Select-DR-Scan after a chained raw DMI scan.
+  protected bit          m_dr_chained;
 
   function new(string name = "dtp_jtag2axi_base_test_seq");
     super.new(name);
@@ -127,25 +131,129 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   endtask
 
   // One DMI scan of {address, data, op}; `captured` is the captured data.
-  // The capture carries the previous operation's status, which
-  // CHK-J2A-FAULT-STATUS requires to be success.
+  // The capture carries the sticky status, which CHK-J2A-FAULT-STATUS
+  // compares with `status`.
   task dmi_scan(input dtp_j2a_target_t t, input bit [6:0] address, input bit [31:0] data,
-                input dtp_dmi_op_e op, input string context_s, output bit [31:0] captured);
-    ocah_axi_checker        ev = evidence(t);
-    bit              [63:0] value;
-    dtp_dmi_t               dmi;
+                input dtp_dmi_op_e op, input string context_s, output bit [31:0] captured,
+                input dtp_dmi_status_e status = DTP_DMI_SUCCESS);
+    bit       [63:0] value;
+    dtp_dmi_t        dmi;
     read_tdr(IrWidth'(t.dmi_instr), DtpDmiLen, value, dtp_j2a_pack_dmi(address, data, op));
     run_test_idle(DmiIdleTck);
     dmi = dtp_j2a_unpack_dmi(value);
-    void'(ev.expect_equal(
-        DtpJ2aFaultStatusCheckId,
-        64'(dmi.op),
-        64'(DTP_DMI_SUCCESS),
-        $sformatf(
-            "%s target=%s dmi_capture=0x%0h", context_s, t.name, value)
-    ));
+    check_dmi_status(t, dmi.op, status, $sformatf("%s dmi_capture=0x%0h", context_s, value));
     captured = dmi.data;
   endtask
+
+  // CHK-J2A-FAULT-STATUS on a captured DMI status or DTMCS dmistat.
+  // +DTP_J2A_FAULT_STATUS_NEGATIVE swaps the expected status between success
+  // and busy, so the run must fail.
+  function void check_dmi_status(dtp_j2a_target_t t, bit [1:0] observed, dtp_dmi_status_e expected,
+                                 string context_s);
+    ocah_axi_checker       ev = evidence(t);
+    bit              [1:0] exp = expected;
+    if (test_cfg != null && test_cfg.j2a_fault_status_negative) exp ^= DTP_DMI_BUSY;
+    void'(ev.expect_equal(
+        DtpJ2aFaultStatusCheckId,
+        64'(observed),
+        64'(exp),
+        $sformatf(
+            "%s target=%s status", context_s, t.name)
+    ));
+  endfunction
+
+  // CHK-J2A-DTM-CAPTURE on a capture without its status: a DMI capture's
+  // address and data, or a DTMCS capture's other fields.
+  // +DTP_J2A_DTM_CAPTURE_NEGATIVE flips the expected bit 0, so the run must
+  // fail.
+  function void check_dtm_capture(dtp_j2a_target_t t, bit [63:0] observed, bit [63:0] expected,
+                                  string context_s);
+    ocah_axi_checker ev = evidence(t);
+    if (test_cfg != null && test_cfg.j2a_dtm_capture_negative) expected ^= 64'h1;
+    void'(ev.expect_equal(
+        DtpJ2aDtmCaptureCheckId,
+        observed,
+        expected,
+        $sformatf(
+            "%s target=%s observed=0x%0h expected=0x%0h", context_s, t.name, observed, expected)
+    ));
+  endfunction
+
+  // One DTMCS scan shifting `shift_value`; judges the captured fields and
+  // dmistat.
+  task dtmcs_scan(dtp_j2a_target_t t, bit [31:0] shift_value, dtp_dmi_status_e status,
+                  string context_s);
+    bit [63:0] value;
+    read_tdr(IrWidth'(t.dtmcs_instr), DtpDtmcsLen, value, 64'(shift_value));
+    run_test_idle(DmiIdleTck);
+    check_dmi_status(t, value[DtpDtmcsDmistatLsb+:2], status, {context_s, ".dmistat"});
+    value[DtpDtmcsDmistatLsb+:2] = '0;
+    check_dtm_capture(t, value, 64'(DtpExpectedDtmcs), {context_s, ".dtmcs"});
+  endtask
+
+  // --- raw DMI scans -----------------------------------------------------------
+
+  // Load `t`'s DMI instruction and stop in Run-Test/Idle.
+  task select_dmi(dtp_j2a_target_t t);
+    load_ir(IrWidth'(t.dmi_instr));
+    m_dr_chained = 1'b0;
+  endtask
+
+  // One DMI scan of {address, data, op} under the loaded DMI instruction,
+  // from Run-Test/Idle or from Select-DR-Scan after a chained scan; ends in
+  // Select-DR-Scan with `chain` and in Run-Test/Idle otherwise, with no idle
+  // cycles. Judges the captured status against `status` and, with
+  // `check_capture`, the captured address and data against `exp_address`
+  // and `exp_data`.
+  task dmi_raw(dtp_j2a_target_t t, bit [6:0] address, bit [31:0] data, dtp_dmi_op_e op,
+               dtp_dmi_status_e status, string context_s, bit chain = 1'b0,
+               bit check_capture = 1'b0, bit [6:0] exp_address = '0, bit [31:0] exp_data = '0);
+    bit       [63:0] value = dtp_j2a_pack_dmi(address, data, op);
+    int unsigned     lead = m_dr_chained ? 2 : 3;
+    bit              tms         [] = new[lead + DtpDmiLen + 2];
+    bit              tdi         [] = new[lead + DtpDmiLen + 2];
+    bit              tdo         [];
+    bit       [63:0] captured = '0;
+    bit       [63:0] fields;
+    dtp_dmi_t        dmi;
+    // Select-DR-Scan, Capture-DR, Shift-DR; Exit1-DR on the last bit; Update-DR.
+    if (!m_dr_chained) tms[0] = 1'b1;
+    for (int unsigned i = 0; i < DtpDmiLen; i++) begin
+      tms[lead+i] = (i == DtpDmiLen - 1);
+      tdi[lead+i] = value[i];
+    end
+    tms[lead+DtpDmiLen]   = 1'b1;
+    tms[lead+DtpDmiLen+1] = chain;
+    raw_walk_tdo(tms, tdi, tdo);
+    m_dr_chained = chain;
+    for (int unsigned i = 0; i < DtpDmiLen; i++) captured[i] = tdo[lead+i];
+    dmi       = dtp_j2a_unpack_dmi(captured);
+    context_s = $sformatf("%s op=%s dmi_capture=0x%0h", context_s, op.name(), captured);
+    check_dmi_status(t, dmi.op, status, context_s);
+    fields = dtp_j2a_pack_dmi(dmi.address, dmi.data, '0) >> 2;
+    if (check_capture)
+      check_dtm_capture(t, fields, dtp_j2a_pack_dmi(exp_address, exp_data, '0) >> 2, context_s);
+  endtask
+
+  // A DMI scan from Select-DR-Scan that shifts no bit, so its update loads
+  // its capture. Ends in Select-DR-Scan with `chain` and in Run-Test/Idle
+  // otherwise.
+  task dmi_zero_shift(bit chain = 1'b0);
+    bit tms[] = '{1'b0, 1'b1, 1'b1, chain};
+    bit tdi[] = new[4];
+    if (!m_dr_chained)
+      `uvm_fatal(get_type_name(), "dmi_zero_shift starts in Select-DR-Scan after a chained scan")
+    raw_walk(tms, tdi);
+    m_dr_chained = chain;
+  endtask
+
+  // Set `t`'s write (`b`) and read (`r`) response holds; the other bridges
+  // keep theirs. Set a hold only while its channel shows the bridge no
+  // response.
+  function void hold_responses(dtp_j2a_target_t t, bit b, bit r);
+    tb_vif.j2a_b_hold[t.reset_arm_bit] = b;
+    tb_vif.j2a_r_hold[t.reset_arm_bit] = r;
+  endfunction
 
   task dmi_write(dtp_j2a_target_t t, dtp_dm_reg_e address, bit [31:0] data, string context_s);
     bit [31:0] unused;
@@ -181,10 +289,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     dmi_write(t, DTP_DM_SBADDRESS0, masked[31:0], {context_s, ".sbaddress0"});
   endtask
 
-  // Poll sbcs until sbbusy clears, then require sberror and sbbusyerror
-  // clear. CHK-AXI-COMPLETION judges the SbaPolls bound and
+  // Poll sbcs until sbbusy clears, then require sberror 0 and sbbusyerror
+  // `exp_sbbusyerror`. CHK-AXI-COMPLETION judges the SbaPolls bound and
   // CHK-J2A-FAULT-STATUS the two error fields.
-  task wait_sba_idle(dtp_j2a_target_t t, string context_s);
+  task wait_sba_idle(dtp_j2a_target_t t, string context_s, bit exp_sbbusyerror = 1'b0);
     ocah_axi_checker        ev = evidence(t);
     realtime                start = $realtime;
     bit              [31:0] value;
@@ -206,7 +314,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     void'(ev.expect_equal(
         DtpJ2aFaultStatusCheckId,
         errors,
-        64'd0,
+        64'(exp_sbbusyerror),
         $sformatf(
             "%s target=%s (sberror, sbbusyerror)", context_s, t.name)
     ));

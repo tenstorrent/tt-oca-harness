@@ -247,12 +247,19 @@ localparam int unsigned DtpDmiLen = 41;
 localparam bit [31:0] DtpExpectedDtmcs = 32'h0000_7071;
 localparam int unsigned DtpDtmcsDmistatLsb = 10;
 localparam int unsigned DtpDtmcsDmiresetBit = 16;
+localparam int unsigned DtpDtmcsDmihardresetBit = 17;
 // TCK cycles from the Update-DR of a DMI read or write to the first DMI
 // capture or update that finds it complete: the request crosses into the
 // system clock domain and the response back through the bridge's two-phase
 // CDCs, three synchronizer stages each, at a system clock no slower than TCK,
 // with the simulation CDC delay on every crossing.
 localparam int unsigned DtpDmiSettleTck = 24;
+// TCK cycles from the Update-DR of a DMI read or write in which every DMI
+// capture or update still finds it in progress, at any clock ratio: the
+// request leaves on the next TCK cycle, and the response then passes a
+// three-stage synchronizer and one more register in the TCK domain before
+// the bridge state machine samples it.
+localparam int unsigned DtpDmiBusyTck = 6;
 
 // The DMI register: address 40:34, data 33:2, op 1:0.
 typedef struct packed {
@@ -325,6 +332,9 @@ typedef struct {
   int unsigned        default_size;
   // The debug path whose disable gates this bridge.
   dtp_dbg_path_e      dbg_path;
+  // The bridge's bit in dtp_tb_if.sys_rst_on_ar_arm, j2a_b_hold and
+  // j2a_r_hold.
+  int unsigned        reset_arm_bit;
 } dtp_j2a_target_t;
 
 // Responder memory footprint (every slave agent; addresses wrap).
@@ -337,6 +347,9 @@ localparam string DtpJ2aBusReqCheckId = "CHK-J2A-BUS-REQ";
 // The DMI status of every capture and the sberror and sbbusyerror of every
 // completed access.
 localparam string DtpJ2aFaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
+// The address and data of a DMI capture, and the fields of a DTMCS capture
+// other than dmistat.
+localparam string DtpJ2aDtmCaptureCheckId = "CHK-J2A-DTM-CAPTURE";
 
 // One function per bridge: the widths come from the bench configuration
 // tb_top elaborates the DUT with (dtp_dv_cfg_pkg), and the TDR opcodes from
@@ -347,7 +360,7 @@ localparam string DtpJ2aFaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
 function automatic dtp_j2a_target_t dtp_j2a_target(
     string name, ocah_axi_protocol_e protocol, dtp_jtag_instr_e dtmcs_instr,
     dtp_jtag_instr_e dmi_instr, int unsigned addr_width, int unsigned data_width,
-    dtp_dbg_path_e dbg_path);
+    dtp_dbg_path_e dbg_path, int unsigned reset_arm_bit);
   dtp_j2a_target_t t;
   t.name         = name;
   t.protocol     = protocol;
@@ -358,6 +371,7 @@ function automatic dtp_j2a_target_t dtp_j2a_target(
   t.beat_bytes   = data_width / 8;
   t.default_size = $clog2(data_width / 8);
   t.dbg_path     = dbg_path;
+  t.reset_arm_bit = reset_arm_bit;
   return t;
 endfunction
 
@@ -369,7 +383,8 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_otp();
       SMC_OTP_DMI_INSTR,
       dtp_dv_cfg_pkg::OtpAxilAddrWidth,
       dtp_dv_cfg_pkg::OtpAxilDataWidth,
-      DTP_DBG_PATH_SMC_OTP_JTAG2AXI
+      DTP_DBG_PATH_SMC_OTP_JTAG2AXI,
+      1
   );
 endfunction
 
@@ -381,7 +396,8 @@ function automatic dtp_j2a_target_t dtp_j2a_target_sep_otp();
       SEP_OTP_DMI_INSTR,
       dtp_dv_cfg_pkg::OtpAxilAddrWidth,
       dtp_dv_cfg_pkg::OtpAxilDataWidth,
-      DTP_DBG_PATH_SEP_OTP_JTAG2AXI
+      DTP_DBG_PATH_SEP_OTP_JTAG2AXI,
+      2
   );
 endfunction
 
@@ -393,7 +409,8 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
       SMC_DMI_INSTR,
       dtp_dv_cfg_pkg::SmcAxiAddrWidth,
       dtp_dv_cfg_pkg::SmcAxiDataWidth,
-      DTP_DBG_PATH_SMC_JTAG2AXI
+      DTP_DBG_PATH_SMC_JTAG2AXI,
+      0
   );
 endfunction
 

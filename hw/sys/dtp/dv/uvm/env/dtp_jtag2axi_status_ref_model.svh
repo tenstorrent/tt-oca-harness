@@ -9,7 +9,9 @@
 // three bridge ports (axi_export) through a dtp_jtag2axi_tracker and
 // publishes one dtp_jtag2axi_status_item per scan item, so the scoreboard
 // pairs the two streams in lockstep; scans that are not a bridge capture,
-// and captures while the PTAP 3DCR select is set, carry no contract. No
+// and captures while the PTAP 3DCR select is set, carry no contract.
+// `negative` leaves the status at 0 where a capture or update finds a DMI
+// operation in progress, so the busy captures that follow must disagree. No
 // comparison, no reporting. The cocotb twin is
 // env/dtp_jtag2axi_status_ref_model.py.
 
@@ -21,6 +23,7 @@ class dtp_jtag2axi_status_ref_model
   `uvm_component_utils(dtp_jtag2axi_status_ref_model)
 
   virtual dtp_tb_if tb_vif;
+  bit               negative;
 
   uvm_analysis_imp_dtp_j2a_status_event #(ocah_jtag_event, dtp_jtag2axi_status_ref_model)
         event_export;
@@ -38,7 +41,7 @@ class dtp_jtag2axi_status_ref_model
     if (tb_vif == null) `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not set by the env")
     event_export = new("event_export", this);
     axi_export   = new("axi_export", this);
-    m_tracker    = new(tb_vif);
+    m_tracker    = new(tb_vif, negative);
   endfunction
 
   // Name the monitor whose items carry a bridge's transactions
