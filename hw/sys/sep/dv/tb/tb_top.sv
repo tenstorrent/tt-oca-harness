@@ -5352,11 +5352,11 @@ module sep_uvm_top
     // bug in the VIP or a sequence rather than a DUT bug.
     //
     // The two-state rules use `OCAH_SVA_RULE (ocah_sva_macros.svh), which is
-    // live on every SIMULATION compile, so they run on both simulators:
-    // Verilator evaluates assertions unless a build passes --no-assert, and
-    // the SEP targets pass none. The X-hygiene rules are gated by
-    // OCAH_INC_ASSERT (hw/common/assert), which Verilator does not define, so
-    // they run under VCS only.
+    // live on every SIMULATION compile, so they run on both simulators; a
+    // build under Verilator evaluates assertions unless it passes
+    // --no-assert, and the SEP targets pass none. The X-hygiene rules are
+    // gated by OCAH_INC_ASSERT (hw/common/assert), which Verilator does not
+    // define, so they run under VCS only.
     //
     // m_axi ties en_i high: it is TB-driven in both run modes. s_axi is gated
     // by the run mode, for the reason stated at its instance. A test that needs
