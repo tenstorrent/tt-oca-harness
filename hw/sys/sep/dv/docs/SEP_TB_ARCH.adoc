@@ -859,7 +859,8 @@ Observation probe groups:
    build. Owner: `sep_debug_master_target_matrix_test`.
 ** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
    (`dma_csr_req`), AW and AR address. Owner:
-   `sep_fabric_dma_endpoint_matrix_test`.
+   `sep_fabric_dma_endpoint_matrix_test`; also read by
+   `sep_dma_transfer_matrix_rand_test` (CTRL-DMA-RW1C-W0).
 ** PR-INFLT (`pr_inflt_*`): the request out of the inbound filter
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
    global-to-local remap: AW and AR address, global, and AxUSER (the filter

@@ -55,7 +55,8 @@ Probes: register and SRAM frontdoor over ``s_axi``, register frontdoor over
 bit 9 of ``sep_internal_interrupts_probe_o`` (PIC source 10, DMA chunk done);
 the observation taps ``dma_axi_req_probe_o`` (DMA master AR/AW/W/B after the
 alias remap) and ``dma_status_probe_o`` (STATUS levels), read through
-``env/sep_dma_tap.py``, and ``dma_axi_wdata_probe_o`` (the W data of the same
+``env/sep_dma_tap.py``, the PR-DMACSR tap (``env/sep_fabric_tap.py``, AW at
+the DMA CSR target port), and ``dma_axi_wdata_probe_o`` (the W data of the same
 request), read with the W handshake of ``dma_axi_req_probe_o`` by the
 test-local ``_WdataSampler``. Hooks (``docs/SEP_TB_ARCH.adoc``): the m_axi WSTRB
 drive of one half-strobe write, and ``smn_outbound_resp_hold_i`` of the
@@ -126,9 +127,14 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       drawn 2 to 16 bytes: image, beat counts, addresses and
                       WSTRB equal the model, n-1 to n CHUNK_DONE rises, n-1
                       stop reads and n GO writes; the Leg A checks follow.
-  CHK-DMA-RW1C        per Leg D continuation stop: a STATUS write of 0 leaves
-                      CHUNK_DONE 1 and a write of CHUNK_DONE clears it
-                      (``dma.adoc:131-132``).
+  CHK-DMA-RW1C        per Leg D continuation stop: a STATUS write of 0,
+                      answered OKAY, leaves CHUNK_DONE 1 and a write of
+                      CHUNK_DONE clears it (``dma.adoc:131-132``); the line
+                      logs both write responses. Control, else CTRL-MISSING
+                      (CTRL-DMA-RW1C-W0): the write of 0 shows exactly one AW
+                      handshake at the STATUS offset on the DMA CSR target
+                      port (PR-DMACSR), so a write that does not reach STATUS
+                      cannot pass on the CHUNK_DONE it found.
   CHK-DMA-RO-HOLD     after each Leg D continuation run: each SHA2_DIGEST word
                       v reads v after a write of ~v (``sw = r``); the write
                       response is logged.
@@ -379,6 +385,7 @@ from env.sep_dma_model import (
     words_to_bytes,
 )
 from env.sep_dma_tap import FIELDS, DmaTapEvents, DmaTapMark, SepDmaTap
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -1088,6 +1095,13 @@ class _LoggedDmaOps(SepDmaOps):
         await super().wr(addr, data)
         self.writes.append((c0, self.tap.clk, addr, data))
 
+    async def wr_seq(self, addr: int, data: int) -> SepAxiAccessSeq:
+        """A logged write whose response the caller grades and logs."""
+        c0 = self.tap.clk
+        seq = await self.access(SepAxiOp.WRITE, addr, data)
+        self.writes.append((c0, self.tap.clk, addr, data))
+        return seq
+
     def status_writes(self, clk0: int, clk1: int) -> int:
         return sum(1 for a, b, addr, _ in self.writes if addr == STATUS and b > clk0 and a < clk1)
 
@@ -1347,6 +1361,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.suppress_host_axi_transaction_info()
         dut = cocotb.top
         self.tap = SepDmaTap(dut).start()
+        self.csr_tap = SepFabricTap("PR-DMACSR", dut).start()
         self.busy = SepBitWatch(dut.dma_busy_probe_o, name="dma_busy_probe_o").start()
         self.wdata = _WdataSampler(dut).start()
         self.wdata_beats = 0
@@ -1383,6 +1398,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         finally:
             self._close()
             await self.tap.stop()
+            await self.csr_tap.stop()
             await self.busy.stop()
             await self.wdata.stop()
             if getattr(self, "irq", None) is not None:
@@ -2884,21 +2900,34 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         STATUS.CHUNK_DONE is RW1C (``secure_dma.adoc`` STATUS; "Status completion
         and error bits are write-one-to-clear", ``hw/sys/sep/doc/dma.adoc:131-132``):
         a write of 0 leaves it 1 and a write of 1 clears it. No GO is written
-        between the writes, so no chunk start clears it.
+        between the writes, so no chunk start clears it. CHUNK_DONE is already 1
+        before the write of 0, so CTRL-DMA-RW1C-W0 requires that write to reach
+        STATUS: one AW handshake at the STATUS offset on PR-DMACSR.
         """
         ops = self.ops
-        await ops.wr(STATUS, 0)
+        m_csr = self.csr_tap.mark()
+        w0 = await ops.wr_seq(STATUS, 0)
+        aw = [b.addr for b in self.csr_tap.since(m_csr, "aw")]
         st0 = await ops.read_status()
-        await ops.wr(STATUS, ST_CHUNK_DONE)
+        w1 = await ops.wr_seq(STATUS, ST_CHUNK_DONE)
         st1 = await ops.read_status()
+        at_status = [a for a in aw if a is not None and (a & 0xFFF) == (STATUS & 0xFFF)]
+        ctrl = (
+            f"stop={stop} w0_aw_addrs={[f'0x{a:08x}' if a is not None else 'x' for a in aw]} "
+            f"w0_aw_at_status={len(at_status)} expect=1 {tag}"
+        )
+        if len(aw) != 1 or len(at_status) != 1:
+            self._ctrl_missing("CTRL-DMA-RW1C-W0", ctrl)
+        self.logger.info("CTRL-DMA-RW1C-W0 PASS seed=%d %s", self.seed, ctrl)
         line = (
-            f"bit=CHUNK_DONE stop={stop} after_w0={st0.chunk_done} expect_after_w0=1 "
-            f"after_w1={st1.chunk_done} expect_after_w1=0 busy={st0.busy}/{st1.busy} "
-            f"done={st0.done}/{st1.done} {tag}"
+            f"bit=CHUNK_DONE stop={stop} w0_resp={w0.resp_code} after_w0={st0.chunk_done} "
+            f"expect_after_w0=1 w1_resp={w1.resp_code} after_w1={st1.chunk_done} "
+            f"expect_after_w1=0 busy={st0.busy}/{st1.busy} done={st0.done}/{st1.done} {tag}"
         )
         if st0.busy or st1.busy or st0.done or st1.done:
             self._ctrl_missing("CHK-DMA-RW1C", f"stop left: {line}")
-        self._pass("CHK-DMA-RW1C", st0.chunk_done == 1 and st1.chunk_done == 0, line)
+        ok = w0.resp_ok and w1.resp_ok and st0.chunk_done == 1 and st1.chunk_done == 0
+        self._pass("CHK-DMA-RW1C", ok, line)
 
     async def _digest_ro_hold(self, tag: str) -> None:
         """CHK-DMA-RO-HOLD: each SHA2_DIGEST word keeps value v after a write of ~v.
