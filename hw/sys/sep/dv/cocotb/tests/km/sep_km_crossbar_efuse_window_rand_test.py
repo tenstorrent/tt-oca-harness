@@ -909,8 +909,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
     def _used_bit_change_value(rng: SepSeededRng, staged: int, used: int) -> int:
         """A drawn word that differs from ``staged`` in a bit of ``used`` and only there.
 
-        Bits outside ``used`` keep their staged value, so a refusal can come only
-        from the lock and not from a write to unused bits. It sets a used bit that
+        Bits outside ``used`` keep their staged value, so a refusal cannot come
+        from a write to unused bits. It sets a used bit that
         is 0 in ``staged``. When every used bit is 1, it clears one used bit
         instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-114``).
         """
@@ -943,9 +943,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         also fails a control first. Its expected readback follows the field's
         SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
         written word for a writable field, the staged word OR the written word
-        for a set-only field (``:261,274,279``). A field that uses fewer than
-        32 bits of its word is not drawn: the table states no write behavior
-        for its other bits. The model is not updated: the next cold reset
+        for a set-only field (``:261,274,279``). The control word comes from the
+        write class of the write-locked word (set-only or writable, full or
+        narrow) when the plan has one, and its write changes only used bits.
+        The model is not updated: the next cold reset
         re-senses the shadow from OTP.
         """
         busy = {fp.read_locked, fp.write_locked} | {t.field for t in fp.targets.values()}
@@ -982,7 +983,12 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     l_cands.append((f, fld.word + w, used))
         if not l_cands:
             raise AssertionError(f"test bug: no unlocked lockable control word in {fp.summary()}")
-        l_field, l_idx, l_used = rng.choice(l_cands)
+        # Prefer a word of the write-locked word's write class: set-only or
+        # writable, and full or narrow.
+        wl_class = (spec[wl_field].set_only, wl_used == WORD_MASK)
+        same = [c for c in l_cands if (spec[c[0]].set_only, c[2] == WORD_MASK) == wl_class]
+        class_match = int(bool(same))
+        l_field, l_idx, l_used = rng.choice(same or l_cands)
         s_l = model.words[l_idx]
         v_l = self._used_bit_change_value(rng, s_l, l_used)
         e_l = s_l | v_l if spec[l_field].set_only else v_l
@@ -1014,6 +1020,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "EFW-WLOCK-LOCKABLE",
             (l_km, l_host, l_rb, l_probe) == ("OKAY", "OKAY", e_l, e_l),
             f"field={l_field} set_only={int(spec[l_field].set_only)} word={l_idx} used=0x{l_used:08x} "
+            f"class_match={class_match} "
             f"km_addr=0x{l_addr:05x} wrote={_wh(l_idx, v_l)} staged={_wh(l_idx, s_l)} "
             f"expected={_wh(l_idx, e_l)} km_resp={l_km} host_resp={l_host} "
             f"host_rb={_wh(l_idx, l_rb)} probe={_wh(l_idx, l_probe)}",
