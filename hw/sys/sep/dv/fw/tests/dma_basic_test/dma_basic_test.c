@@ -27,6 +27,12 @@
 //                    image and an untouched neighbor: INCR linear, FIXED-src
 //                    replicates, FIXED-dst overwrites one location, WRAP (chunk <
 //                    total) accumulates one copy per chunk.
+//   CHK-CHUNK-DONE : the two-chunk WRAP copy of CHK-COPY-MODE raises
+//                    STATUS.chunk_done, without done or error, after its
+//                    non-final chunk, and a write of 1 to chunk_done reads back
+//                    0 before the next GO and before the first GO. The bit after
+//                    the final chunk is logged (INFO-CHUNK-DONE-FINAL): no text
+//                    states whether the chunk that ends the transfer raises it.
 //   CHK-WIDTH      : copy integrity for 1B/2B/4B transfer widths.
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : an invalid opcode raises opcode_error alone and STATUS.error;
@@ -139,11 +145,34 @@ static uint32_t dma_run(uint32_t src, uint32_t dst, uint32_t total, uint32_t chu
     return dma_run_asid(src, dst, total, chunk, width, src_cfg, dst_cfg, opcode, ASID_OT_BOTH);
 }
 
+// STATUS.chunk_done record of the last dma_run_chunked() call, graded by
+// chk_chunk_done(): the chunks that stopped with chunk_done and neither done nor
+// error, the STATUS reads after each write of 1 to chunk_done that still show the
+// bit, and the STATUS of the last of those reads and of the end of the transfer.
+static struct {
+    uint32_t raised;
+    uint32_t w1c_held;
+    uint32_t w1c_st;
+    uint32_t final_st;
+} chunk_obs;
+
+// Write 1 to STATUS.chunk_done and read STATUS back; a read that still shows the
+// bit is counted in chunk_obs.w1c_held.
+static void chunk_done_w1c(void) {
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
+    uint32_t st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (st & SECURE_DMA__STATUS__CHUNK_DONE_bm) {
+        chunk_obs.w1c_held++;
+        chunk_obs.w1c_st = st;
+    }
+}
+
 // Multi-chunk transfer (chunk < total). In pure memory-to-memory mode the Secure
 // DMA completes ONE chunk per GO (it raises CHUNK_DONE and drops BUSY, with no
 // LSIO handshake wired for SRAM on bare sep), so firmware paces the chunks: clear
 // CHUNK_DONE and re-GO with INITIAL_TRANSFER=0 until the final chunk raises DONE.
-// Returns the final STATUS (DONE on success, ERROR, or the last poll on timeout).
+// Returns the final STATUS (DONE on success, ERROR, or the last poll on timeout)
+// and fills chunk_obs.
 static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint32_t chunk,
                                 uint32_t width, uint32_t src_cfg, uint32_t dst_cfg,
                                 uint32_t opcode) {
@@ -158,6 +187,11 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
     wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
     wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
 
+    chunk_obs.raised = 0;
+    chunk_obs.w1c_held = 0;
+    chunk_obs.w1c_st = 0;
+    chunk_done_w1c(); // a bit left from an earlier transfer cannot count below
+
     uint32_t st = 0;
     uint32_t initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 64; guard++) { // bounded chunk count
@@ -168,15 +202,16 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
             st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(st & (DONE_OR_ERR | SECURE_DMA__STATUS__CHUNK_DONE_bm)) && --t > 0);
         if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) {
-            return st; // whole transfer finished (or errored)
+            break; // whole transfer finished (or errored)
         }
         if (!(st & SECURE_DMA__STATUS__CHUNK_DONE_bm)) {
-            return st; // timed out with no progress
+            break; // timed out with no progress
         }
-        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-           SECURE_DMA__STATUS__CHUNK_DONE_bm); // arm the next chunk
+        chunk_obs.raised++;
+        chunk_done_w1c(); // arm the next chunk
         initial = 0;
     }
+    chunk_obs.final_st = st;
     return st;
 }
 
@@ -515,6 +550,47 @@ static int run_mode(const char *tag, uint32_t total, uint32_t chunk, uint32_t sr
     return bad;
 }
 
+// ---- CHK-CHUNK-DONE: STATUS.chunk_done of the last multi-chunk copy ----
+// vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl, STATUS.CHUNK_DONE:
+// "Transfer of a single chunk is complete. Only raised for multi-chunk
+// memory-to-memory transfers.", onwrite = woclr. Each of the nchunks - 1
+// non-final chunks stops with chunk_done and neither done nor error, and each
+// write of 1 to chunk_done reads back 0.
+static int chk_chunk_done(uint32_t nchunks) {
+    int e = 0;
+    if (chunk_obs.raised != nchunks - 1u) {
+        sep_mbx_puts("FAIL: CHK-CHUNK-DONE non-final chunks with chunk_done ");
+        sep_mbx_puthex(chunk_obs.raised);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(nchunks - 1u);
+        sep_mbx_puts(" final status ");
+        sep_mbx_puthex(chunk_obs.final_st);
+        sep_mbx_putc('\n');
+        e++;
+    }
+    if (chunk_obs.w1c_held != 0) {
+        sep_mbx_puts("FAIL: CHK-CHUNK-DONE chunk_done still set after its write of 1 on ");
+        sep_mbx_puthex(chunk_obs.w1c_held);
+        sep_mbx_puts(" reads, status ");
+        sep_mbx_puthex(chunk_obs.w1c_st);
+        sep_mbx_putc('\n');
+        e++;
+    }
+    sep_mbx_puts("INFO-CHUNK-DONE-FINAL chunk_done=");
+    sep_mbx_puthex((chunk_obs.final_st & SECURE_DMA__STATUS__CHUNK_DONE_bm) ? 1u : 0u);
+    sep_mbx_puts(" final_status=");
+    sep_mbx_puthex(chunk_obs.final_st);
+    sep_mbx_putc('\n');
+    if (!e) {
+        sep_mbx_puts("CHK-CHUNK-DONE PASS: chunk_done on ");
+        sep_mbx_puthex(chunk_obs.raised);
+        sep_mbx_puts(" of ");
+        sep_mbx_puthex(nchunks);
+        sep_mbx_puts(" chunks without done or error; each write of 1 reads back 0\n");
+    }
+    return e;
+}
+
 // ---- CHK-COPY-MODE: per address-mode expected image + neighbor ----
 static int chk_copy_mode(void) {
     int e = 0;
@@ -562,7 +638,7 @@ static int chk_copy_mode(void) {
         sep_mbx_puts("CHK-COPY-MODE PASS: INCR linear / FIXED-src replicate / "
                      "FIXED-dst overwrite / WRAP chunk-accumulate, neighbors intact\n");
     }
-    return e;
+    return e + chk_chunk_done(2u); // the WRAP-src copy is the last multi-chunk copy
 }
 
 // ---- CHK-WIDTH: INCR copy integrity at 1B / 2B / 4B ----
@@ -870,7 +946,8 @@ static int chk_host_intg(void) {
 
     // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
     // with the pin low again, STATUS still holds host_path_err. The testbench
-    // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD.
+    // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD, and the pin low on
+    // a clock after its release at this read (CTRL-HOSTINTG-HELD-PIN).
     bus = rd(status_addr);
     if (bus != host_bit) {
         sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=");
