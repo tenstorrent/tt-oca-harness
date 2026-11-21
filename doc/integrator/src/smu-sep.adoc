@@ -294,8 +294,10 @@ pad pull; the GPIO pin table recommends a pull-up.
 
 == Bring-Up Considerations
 
-The SEP boot sequence begins after the SMC completes fuse sensing and releases
-the SEP reset. The SEP BL0 ROM FW verifies the BL1 software image using
+The SEP leaves reset once its own fuse sensing completes and the SMC passes on
+the integration's boot-sequence-done signal (`ext_boot_seq_done_i`). Its BL0 ROM
+FW then waits for the SMC's fuse sensing before it reads any fuse. The SEP BL0
+ROM FW verifies the BL1 software image using
 non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
