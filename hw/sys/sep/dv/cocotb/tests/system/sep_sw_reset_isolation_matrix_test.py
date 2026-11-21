@@ -111,12 +111,24 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     request has its response there before ``ip_rst_n[D]``
                     falls (the others log ``INFO-ISO-DRAIN``). The ``s_axi``
                     arrival of the same responses is logged as
-                    ``OBS-ISO-DRAIN-SAXI``.
+                    ``INFO-ISO-DRAIN-SAXI``, and each host transaction as
+                    ``INFO-HOST-TXN``.
+  CHK-ISO-DRAIN-RESP OTBN, AES: at the slave side of the host isolate stage
+                    of D, a transaction the stage accepted before the isolate
+                    request rose does not get the isolate answer (a write: no
+                    SLVERR; a read: not SLVERR with ``0x1501A7ED``), and one
+                    the stage accepted at or after the rise, before the
+                    isolated window, gets SLVERR, with ``0x1501A7ED`` for a
+                    read. Stage response codes come from the slave-side tap;
+                    read data from the host read. The line logs
+                    ``post_req_accepted``, the count of the second kind, which
+                    some seeds leave 0. The other domains log
+                    ``INFO-ISO-DRAIN-RESP``.
   CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
                     on a later clock than the last slave-side response of
                     the transactions the stage accepted before the request
-                    (the others log ``INFO-ISO-ACK-AFTER-DRAIN``). The response
-                    code and the ``s_axi`` arrival stay logged only.
+                    (the others log ``INFO-ISO-ACK-AFTER-DRAIN``). The ``s_axi``
+                    arrival stays logged only.
   CHK-ISO-PATHS     the isolate requests that rise from the baseline equal the
                     table set of the victims written.
   CHK-ISO-KEY-DRAIN leg C, every destination: every key-share write that the
@@ -1329,7 +1341,9 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self._wait_ip(IPRST[v], 0, f"pass={pd.name} {v} reset")
         fall = {v: view.ip_fall(IPRST[v]) for v in victims}
         # Step 9: the isolated window.
+        win_start = view.cyc
         win = await self._window(pd)
+        win["start_cyc"] = win_start
         # Step 10: hold, release in the order of the pass, wait for the rise.
         while view.cyc < fall[d] + pd.hold:
             await RisingEdge(dut.clk_i)
@@ -1436,20 +1450,22 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         done: dict[int, tuple[int, int]] = {}
         for c, i, r in view.beats("r", HOST_IDS) + view.beats("b", HOST_IDS):
             done.setdefault(i, (c, r))
+        graded = d in ("otbn", "aes")
         for op, tid, _ in host_evs:
             c, r = done.get(tid, (None, None))
             self.logger.info(
-                "OBS-HOST-TXN: pass=%s op=%s id=%d accept_cycle=%s resp_cycle=%s resp=%s",
+                "INFO-HOST-TXN: pass=%s op=%s id=%d accept_cycle=%s resp_cycle=%s resp=%s%s",
                 name,
                 op,
                 tid,
                 acc.get(tid),
                 c,
                 RESP_NAME.get(r, r),
+                " chk=CHK-ISO-DRAIN-RESP" if graded else "",
             )
         # s_axi view of the same transactions, for information only.
         self.logger.info(
-            "OBS-ISO-DRAIN-SAXI: dom=%s pass=%s accepted=%d resp_cycles=%s iso_req_cycle=%s "
+            "INFO-ISO-DRAIN-SAXI: dom=%s pass=%s accepted=%d resp_cycles=%s iso_req_cycle=%s "
             "rst_assert_cycle=%s",
             d,
             name,
@@ -1487,6 +1503,56 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             self._chk("CHK-ISO-DRAIN", completed == accepted, vals)
         else:
             self.logger.info("INFO-ISO-DRAIN: %s", vals)
+        # CHK-ISO-DRAIN-RESP / INFO-ISO-DRAIN-RESP: a stage transaction accepted
+        # before the isolate request rose does not get the isolate answer; one
+        # accepted at or after the rise gets it (reset_controller.adoc, Isolation
+        # and Reset Sequencing, steps 2 and 3). Only host transactions reach the
+        # stage before the isolated window; the k-th stage read is the k-th host
+        # read in s_axi AR order.
+        slverr = RESP_NAME[RESP_SLVERR]
+        host_rd = sorted(
+            ((acc[tid], ev) for op, tid, ev in host_evs if op == "rd" and tid in acc),
+            key=lambda x: x[0],
+        )
+        rdata = [int.from_bytes(bytes(ev.data)[:4], "little") for _, ev in host_rd]
+        n_rd = sum(1 for op, *_ in host_evs if op == "rd")
+        n_wr = len(host_evs) - n_rd
+        stg_r = [c for c in st["ar"] if c < win["start_cyc"]]
+        stg_w = [c for c in st["aw"] if c < win["start_cyc"]]
+        mapped = len(stg_r) == len(host_rd) == n_rd and len(stg_w) == n_wr
+        cells = []
+        bad = []
+        for k, c in enumerate(stg_r):
+            code = st["rresp"][k] if k < len(st["rresp"]) else "none"
+            data = rdata[k] if k < len(rdata) else None
+            pre = c < reqrise
+            iso = code == slverr and data == ISO_DATA
+            cell = f"rd@{c}:{'pre' if pre else 'post'}:{code}:" + (
+                "none" if data is None else f"0x{data:08x}"
+            )
+            cells.append(cell)
+            if iso == pre:
+                bad.append(cell)
+        for k, c in enumerate(stg_w):
+            code = st["bresp"][k] if k < len(st["bresp"]) else "none"
+            pre = c < reqrise
+            cell = f"wr@{c}:{'pre' if pre else 'post'}:{code}"
+            cells.append(cell)
+            if (code == slverr) == pre:
+                bad.append(cell)
+        n_pre = sum(1 for c in stg_r + stg_w if c < reqrise)
+        vals = (
+            f"dom={d} pass={name} iso_req_cycle={reqrise} window_start_cycle={win['start_cyc']} "
+            f"host_rd={n_rd} host_wr={n_wr} stage_rd={len(stg_r)} stage_wr={len(stg_w)} "
+            f"mapped={int(mapped)} pre_req_accepted={n_pre} "
+            f"post_req_accepted={len(stg_r) + len(stg_w) - n_pre} "
+            f"cells=[{','.join(cells)}] mismatched=[{','.join(bad)}] "
+            f"exp=pre:not_SLVERR+0x{ISO_DATA:08X},post:SLVERR+0x{ISO_DATA:08X}"
+        )
+        if graded:
+            self._chk("CHK-ISO-DRAIN-RESP", mapped and n_pre >= 1 and not bad, vals)
+        else:
+            self.logger.info("INFO-ISO-DRAIN-RESP: %s", vals)
         # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
         ack_hi = {v: view.ack_rise(TABLE[v] & ~baseline, first_write - 1) for v in pd.victims}
         host_hi = {v: view.ack_rise(HOST_MASK[v], first_write - 1) for v in pd.victims}

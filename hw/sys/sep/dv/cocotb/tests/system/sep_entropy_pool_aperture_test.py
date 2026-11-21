@@ -59,8 +59,9 @@ at the end of the graded body:
   SHAPE  1 on every clock from that rise to the first clock with
          ``pool_edn_ack_o`` 1 after the EDN re-enable.
   CLEAR  0 at most STALL_RAS_CLEAR_LAG (2) clocks after that acknowledge.
-The field before the first fill (OBS-RAS-ENTROPY_FILL_STALL-BRINGUP), the rise
-delay and the fall delay (INFO-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
+The field before the first fill (INFO-RAS-ENTROPY_FILL_STALL-BRINGUP; no text states
+whether the detector counts before the first EDN acknowledge), the rise delay and the
+fall delay (INFO-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
 
 RANDCFG: extra accepted pops come from the run seed. Every seed walks the
 high-bit mirrors of the live registers (the offsets that catch a truncated
@@ -578,7 +579,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         st_fill = await self._wait_pool_low(pool, 0)
         m_idle = self._ras.mark()
-        self._ras_lines.obs(
+        self._ras_lines.info(
             "RAS-ENTROPY_FILL_STALL-BRINGUP",
             rises=self._ras.rises_since(self._ras_m0),
             high_clocks=self._ras.high_clocks_since(self._ras_m0),

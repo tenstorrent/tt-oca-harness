@@ -95,6 +95,19 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  B are logged (``INFO-INT-TIMER-TRAP-LATENCY``) and have no
                  upper bound. Graded by ``CHK-INT-TIMER-TRAP``; no open
                  specification question.
+* CHK-INT-TIMER-CASCADE (firmware, outside every graded window) both timers
+                 stopped, ``mitb0`` and ``mitb1`` 0xFFFF_FFFF, ``mitcnt1`` = H
+                 and ``mitcnt0`` = 0xFFFF_FFFF - K, H and K drawn; timer 1
+                 enabled with ``mitctl1.cascade`` (bit 3) 1, then timer 0.
+                 ``mitctl1`` reads back the written 0x9; a ``mitcnt1``,
+                 ``mitcnt0``, ``mitcnt1`` read after the enable holds
+                 ``mitcnt1`` H with ``mitcnt0`` not yet wrapped; after
+                 ``mitcnt0`` wraps, ``mitcnt1`` reads H + 1 (VeeR EL2 PRM
+                 ``docs/source/timers.md``: cascade mode forms one 64-bit
+                 timer, ``mitcnt1`` increments only while ``mitcnt0`` >=
+                 ``mitb0``, a counter at or above its bound clears on the next
+                 clock, cascade is ``mitctl1`` bit 3). H stays below
+                 0xFFFF_FFFE so that H + 1 is below ``mitb1``.
 * CHK-TIMER-PIN  (firmware) the host drives ``timer_int_i`` on each
                  ``REQ tint`` line. With the pin 1, ``mip.MTIP`` reads 1; with
                  ``mie.MTIE`` 0 and mstatus.MIE 1 no trap for a hold window;
@@ -213,6 +226,13 @@ IT_HOLD_MITB = 0
 PFP_HOLD_CLK = 2
 # Salt of the open-value leg draws, so the draws above keep their seed mapping.
 _LEG_SALT = 0x4F56_4C47 << 32
+# Salt of the cascade leg draws, so every other draw keeps its seed mapping.
+_CAS_SALT = 0x4341_5343 << 32
+# Cascade leg: mitcnt1 start H, below mitb1 - 1 (mitb1 0xFFFF_FFFF), so that
+# H + 1 stays below the bound; mitcnt0 starts K below mitb0. K covers the CSR
+# writes and the first read between the enable and the wrap.
+IT_CAS_HI_MAX = 0xFFFF_FFFD
+IT_CAS_K_MIN, IT_CAS_K_MAX = 512, 4095
 # meipl values of the priord flip leg: none is the never value of either order.
 PF_RAWS = tuple(v for v in range(NUM_LEVELS) if v not in (never_value(0), never_value(1)))
 
@@ -249,6 +269,8 @@ class PrioCfg:
     pf_from: int = 0
     pf_srcs: list[int] = field(default_factory=list)
     pf_raws: list[int] = field(default_factory=list)
+    it_cas_hi: int = 0
+    it_cas_k: int = IT_CAS_K_MIN
 
     @classmethod
     def from_seed(cls, seed: int) -> "PrioCfg":
@@ -288,6 +310,9 @@ class PrioCfg:
         n = leg.randrange(2, S_MAX + 1)
         cfg.pf_srcs = leg.sample(CATALOG, n)
         cfg.pf_raws = leg.sample(PF_RAWS, n)
+        cas = SepSeededRng(seed ^ _CAS_SALT)
+        cfg.it_cas_hi = cas.randrange(0, IT_CAS_HI_MAX + 1)
+        cfg.it_cas_k = cas.randrange(IT_CAS_K_MIN, IT_CAS_K_MAX + 1)
         return cfg
 
     def _draw_tie(self, rng: SepSeededRng, r_eff1: int) -> None:
@@ -336,6 +361,7 @@ class PrioCfg:
         out += [LEG_HOLD_ITERS]
         pad = [0] * (S_MAX - len(self.pf_srcs))
         out += [self.pf_from, len(self.pf_srcs)] + self.pf_srcs + pad + self.pf_raws + pad
+        out += [self.it_cas_hi, self.it_cas_k]
         return out
 
     def draw_lines(self) -> list[str]:
@@ -351,7 +377,7 @@ class PrioCfg:
         out.append(
             f"INFO-DRAW LOG legs thr_src={self.thr_src} thr_t={self.thr_t} nest_a={self.nest_a} "
             f"nest_b={self.nest_b} nest_pl={self.nest_pl} it_first={self.it_first} "
-            f"it_bound={self.it_bound}"
+            f"it_bound={self.it_bound} it_cas_hi=0x{self.it_cas_hi:08x} it_cas_k={self.it_cas_k}"
         )
         out.append(
             f"INFO-DRAW LOG priord_flip from={self.pf_from} srcs={self.pf_srcs} raws={self.pf_raws}"
@@ -382,6 +408,9 @@ class PrioCfg:
             t = self.it_first ^ k
             got = (num("timer"), num("mitb"), num("bound"))
             exp = (t, self.it_bound[t], self.it_bound[t])
+        elif rec.name == "CHK-INT-TIMER-CASCADE":
+            got = (num("hi0"), num("k"))
+            exp = (self.it_cas_hi, self.it_cas_k)
         else:
             return None
         return None if got == exp else f"record {got} != drawn {exp}"
@@ -413,7 +442,13 @@ def _fmt(text: str) -> str:
 
 
 # Firmware checks whose records carry the drawn stimulus of their leg.
-_LEG_CHKS = ("CHK-THRESHOLD", "CHK-NEST", "CHK-INT-TIMER-HOLD", "CHK-INT-TIMER-TRAP")
+_LEG_CHKS = (
+    "CHK-THRESHOLD",
+    "CHK-NEST",
+    "CHK-INT-TIMER-HOLD",
+    "CHK-INT-TIMER-TRAP",
+    "CHK-INT-TIMER-CASCADE",
+)
 
 # The last check of each graded leg, and the pic_fw_pass bit that the pass of
 # every check of the leg releases.
@@ -449,6 +484,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         "CHK-NEST",
         "CHK-INT-TIMER-HOLD",
         "CHK-INT-TIMER-TRAP",
+        "CHK-INT-TIMER-CASCADE",
         "CHK-TIMER-PIN",
         "CHK-SOFT-PIN",
         "CHK-LEVEL-SWEEP",
@@ -770,6 +806,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 "CHK-NEST": 1,
                 "CHK-INT-TIMER-HOLD": 4,
                 "CHK-INT-TIMER-TRAP": 2,
+                "CHK-INT-TIMER-CASCADE": 1,
                 "CHK-TIMER-PIN": 1,
                 "CHK-SOFT-PIN": 1,
                 "CHK-LEVEL-SWEEP": 32,
