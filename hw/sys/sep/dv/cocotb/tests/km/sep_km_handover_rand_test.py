@@ -44,6 +44,11 @@ Checks:
                       invalid_arg with argument 0 and no image request (the
                       CMD_STAT reply is the next frame); FW_WORDS 0 returns
                       argument 0 and no image request (its code is a control).
+  CHK-SIZE-MID        the mid size gets the RESP_CMD success confirmation when
+                      its top (0x8000 + 4 x FW_WORDS) is at or under
+                      ``__km_fw_load_limit`` (0xD800, so FW_WORDS <= 5632), and
+                      invalid_arg with argument 0 and no image request (the
+                      CMD_STAT reply is the next frame) above it.
   CHK-HO-FIRST        the first word after the confirmation (pass 1: and the
                       stream) is the IMG-H MAGIC, not RESP_KM_READY.
   CHK-HO-REGS         IRQ_ENABLE 0, KM_IRQ_ENABLE 0, IRQ_ENTRY_ADDR 0x10,
@@ -76,7 +81,7 @@ pass 2 has six banks with no key; the pass 1 shared key is pending and its KEY
 words are non-zero before the handover. The cells that ``sep_km_handover_test`` grades (the code of FW_WORDS
 0, CMD_SRAM_EXEC after a good load) run here as controls with ``control=1``.
 
-Logged only: the response to the mid size (``OBS-SIZE-MID``), the shared-key
+Logged only: the response frames of the mid size (``INFO-SIZE-MID``), the shared-key
 words at the jump of each pass (``INFO-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
 SRAM store and violation readbacks, the demotion lock bit and the full CPU IRQ
 mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS remain graded contracts.
@@ -170,6 +175,13 @@ GOOD_WINDOW_CLKS = 4_000  # frame record window after the good load
 HOLD_FACTOR = 8  # hold window = 8 x the rise time
 KEM_POLLS = 20_000
 KEM_GAP = 200
+# __km_fw_load_limit, the exclusive top of the CMD_SRAM_LOAD_EXEC image. The
+# specification gives the formula (STACK - __rom_max_stack) & ~0x3FF and delegates
+# the value to the linker symbol (hw/ip/key_manager/doc/firmware.adoc:261-263,
+# :1156-1161, :1319-1324; hw/ip/key_manager/approm/prod/link/km_sram_layout.ld:90-92).
+# 0xD800 is the value of __km_fw_load_limit in the built KM ROM ELF, where the
+# firmware build sets __rom_max_stack with --defsym (km_sram_layout.ld:81-84).
+KM_FW_LOAD_LIMIT = 0xD800
 
 # Directed ML-KEM seed of the register KEYGEN that gives the encapsulation key
 # of the pass 1 ENCAPS (test vectors, pairwise different, no zero word).
@@ -369,7 +381,7 @@ class _RiseHold:
 _LOAD_SHARD = 1
 _PASS_SHARD = 2
 SHARD_EVIDENCE = {
-    _LOAD_SHARD: ("CHK-FWCRC", "CHK-SIZE-REJ"),
+    _LOAD_SHARD: ("CHK-FWCRC", "CHK-SIZE-REJ", "CHK-SIZE-MID"),
     _PASS_SHARD: (
         "CHK-HO-FIRST",
         "CHK-HO-REGS",
@@ -393,6 +405,7 @@ class sep_km_handover_rand_test(sep_base_test):
     required_evidence = (
         "CHK-FWCRC",
         "CHK-SIZE-REJ",
+        "CHK-SIZE-MID",
         "CHK-HO-FIRST",
         "CHK-HO-REGS",
         "CHK-HO-NOIRQ",
@@ -813,18 +826,45 @@ class sep_km_handover_rand_test(sep_base_test):
             self.chk.ok("SIZE-REJ", ok, code=rc, **fields)
 
     async def _mid_size(self) -> None:
-        """Step 9: the mid size, logged and not graded."""
+        """Step 9: the mid size is accepted at or under the load limit and refused above it."""
         p = self.plan
+        top = md.SRAM_BASE + 4 * p.mid
+        accept = top <= KM_FW_LOAD_LIMIT
         await self._warm(f"FW_WORDS={p.mid}")
+        await self._graded(True)
         seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [p.mid])
         fr = await self._read_frame(FRAME_POLLS)
         rc, arg = (None, None) if fr is None else fr.resp_cmd(KM_CMD_SRAM_LOAD_EXEC, seq)
-        self.chk.obs(
+        fields = {
+            "words": p.mid,
+            "top": _hx(top),
+            "limit": _hx(KM_FW_LOAD_LIMIT),
+            "side": "under" if accept else "above",
+            "code": "none" if rc is None else rc,
+        }
+        if accept:
+            await self._graded(False)
+            # The accepted size waits for its image; the next leg starts from a warm reset.
+            self.chk.ok("SIZE-MID", rc == KM_RC_SUCCESS, **fields)
+            self.chk.info(
+                "SIZE-MID",
+                arg="none" if arg is None else arg,
+                frame="none" if fr is None else fr.text(),
+            )
+            return
+        stat_seq = await self.km.send_command(KM_CMD_STAT, [])
+        fr2 = await self._read_frame(FRAME_POLLS)
+        src, _ = (None, None) if fr2 is None else fr2.resp_cmd(KM_CMD_STAT, stat_seq)
+        stat_next = int(src == KM_RC_SUCCESS)
+        await self._graded(False)
+        ok = rc == KM_RC_INVALID_ARG and arg == 0 and stat_next == 1
+        self.chk.ok(
+            "SIZE-MID", ok, arg="none" if arg is None else arg, stat_next=stat_next, **fields
+        )
+        self.chk.info(
             "SIZE-MID",
-            words=p.mid,
-            code="none" if rc is None else rc,
-            arg="none" if arg is None else arg,
             frame="none" if fr is None else fr.text(),
+            stat_frame="none" if fr2 is None else fr2.text(),
         )
 
     # --- state leg ---------------------------------------------------------------------

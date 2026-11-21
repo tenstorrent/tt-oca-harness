@@ -133,9 +133,11 @@ Checkers:
                    (the tweak uses the logical index, so only the key differs).
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
-Log only: INFO-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
-erase fill is not stated), ``INFO-KPV-ERASE-FILL LOG``, ``INFO-KSCR-COLD LOG``
-(KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
+Log only: INFO-BLOCKED CHK-KPV-ERASE-RET and ``INFO-KPV-ERASE-RET LOG`` (the
+data words after the erase of a sealed slot: the erase fill is not stated; the
+slot state is graded by CHK-KPV-RETIRED and CHK-KPV-RETIRED-REERASE),
+``INFO-KPV-ERASE-FILL LOG``, ``INFO-KSCR-COLD LOG`` (KPV cells after a cold reset
+are not stated), ``INFO-KPV-RACE-REDRAW`` and
 ``INFO-KPV-RACE``, and ``INFO-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
 ``OBS-KPV-ERASE-WARM``: a warm reset during a latched erase is not stated; the
 line logs the slots with the erase bit set and the changed stored words at the
@@ -883,7 +885,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             words = stored[s * m.N_WORDS : (s + 1) * m.N_WORDS]
             self.chk.blocked("KPV-ERASE-RET", "erase_fill_not_stated")
             self.logger.info(
-                "OBS-KPV-ERASE-RET LOG slot=%d state=sealed words_same=%d stored=%s",
+                "INFO-KPV-ERASE-RET LOG slot=%d state=sealed words_same=%d stored=%s",
                 s,
                 sum(1 for i in range(m.N_WORDS) if words[i] == rec[i]),
                 [_h(v) for v in words],
