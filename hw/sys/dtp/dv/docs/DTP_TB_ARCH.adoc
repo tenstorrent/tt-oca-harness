@@ -343,7 +343,7 @@ or clears it for op 3, and loads nothing. A busy response from the Debug
 Module sets the sticky error too, and a refused read returns `0xB051B051`.
 The sticky error blocks every later update until an op-3 update or a DTMCS
 `dmireset` clears it. While `dmcontrol.dmactive` is 0 the SBA registers hold
-their reset values.
+their reset values and start no access.
 The SBA registers start one bus beat per access: a size above the beat width
 sets `sberror` 4 and an unaligned address 3, both without a transaction, and a
 SLVERR or DECERR response sets 2. With the bridge's lifecycle disable asserted
@@ -562,11 +562,14 @@ flip one bit of every compared `xtrig_csr` and `xtrig_decode` prediction,
 `DTP_J2A_STATUS_MODEL_NEGATIVE` keeps the bridge model's status at 0 where a
 capture or update finds an operation in progress,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected `sbasize` of the per-pass
-geometry gate, `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each
-`CHK-J2A-BUS-REQ` record expects, `DTP_J2A_FAULT_STATUS_NEGATIVE` swaps the
-DMI status each `CHK-J2A-FAULT-STATUS` capture record expects between 0 and 3,
-and `DTP_J2A_DTM_CAPTURE_NEGATIVE` flips bit 0 of each value
-`CHK-J2A-DTM-CAPTURE` expects; a run with any of them set must fail. The
+geometry gate and of each later `CHK-J2A-GEOMETRY` record,
+`DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each `CHK-J2A-BUS-REQ` record
+expects, `DTP_J2A_FAULT_STATUS_NEGATIVE` swaps the DMI status each
+`CHK-J2A-FAULT-STATUS` capture record expects between 0 and 3,
+`DTP_J2A_DTM_CAPTURE_NEGATIVE` flips bit 0 of each value `CHK-J2A-DTM-CAPTURE`
+expects, and `DTP_J2A_DM_ACTIVE_NEGATIVE` flips bit 0 of each Debug Module
+register value `CHK-J2A-DM-ACTIVE` expects; a run with any of them set must
+fail. The
 same knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy

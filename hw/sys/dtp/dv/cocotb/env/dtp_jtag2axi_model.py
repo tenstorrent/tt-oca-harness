@@ -26,8 +26,7 @@ the transactions the passive monitors observe on its port:
                carrying its own address and data.
   dmcontrol    While dmactive is 0 the Debug Module holds sbcs at its reset
                value (sbaccess 2, sbversion and sbasize 0) and sbaddress and
-               sbdata at 0; a write of sbdata0 in that state starts a bus
-               write of 0 at address 0.
+               sbdata at 0, and no System Bus Access starts.
   sbcs         A write sets sbreadonaddr, sbaccess, sbautoincrement and
                sbreadondata and clears sbbusyerror and sberror where it writes
                1. sbversion, sbasize and the sbaccess* bits publish the
@@ -486,8 +485,8 @@ class DtpJtag2AxiModel:
         if bridge.dmactive:
             bridge.sbdata = (bridge.sbdata & ~(_WORD << shift)) | (data << shift)
             bridge.sbdata_mask |= _WORD << shift
-        if address == DtpDmReg.SBDATA0 and not bridge.sberror:
-            launched = self._launch(target, bridge, is_read=False, gated=gated)
+            if address == DtpDmReg.SBDATA0 and not bridge.sberror:
+                launched = self._launch(target, bridge, is_read=False, gated=gated)
         return _DmResponse(), launched
 
     # --- system bus access -------------------------------------------------------
