@@ -4,11 +4,11 @@
 
 Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are
 serialised by construction and the OTP op has completed before the fabric
-write can be issued -- the first capture after the kick already reports it
-done. What this sequence proves is therefore back-to-back coherence between two
+write can be issued -- the first status sample after the kick already reports
+it done. What this sequence proves is therefore back-to-back coherence between two
 masters on the same shadow-map word: the later writer wins on both read paths
 and in the shadow register, with no torn value in between. The OTP status seen
-at that first capture is logged so a run in which the op was still BUSY is
+at that first sample is logged so a run in which the op was still BUSY is
 visible in the record.
 
 The concurrency the name suggests needs a second master independent of this
@@ -30,15 +30,16 @@ from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
-    SMC_OTP_AXSIZE_4B,
     jtag2axi_single_read,
     jtag2axi_single_write,
+    jtag2axi_start,
+    jtag2axi_status,
+    jtag2axi_wait,
     make_smu_jtag_tap,
     otp_jtag2axi_single_read,
-    pack_otp_single_op,
+    otp_jtag2axi_single_write,
     require_jtag_tdo_resolved,
     shadow_map_word32,
-    unpack_otp_single_op,
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
@@ -74,17 +75,6 @@ class smu_otp_vs_fabric_map_race_test_seq:
             raise AssertionError(f"X/Z on {name}: {val}")
         return int(val)
 
-    async def _poll_otp_status(self, jtag, poll_limit: int = OTP_POLL) -> int:
-        status = J2A_STATUS_BUSY
-        for _ in range(poll_limit):
-            capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
-            require_jtag_tdo_resolved("OTP race poll")
-            status, _ = unpack_otp_single_op(capt)
-            if status != J2A_STATUS_BUSY:
-                return status
-            await ClockCycles(self.dut.clk_smu_i, 16)
-        return status
-
     async def run(self) -> None:
         sb = self.test.env.scoreboard
         dut = self.dut
@@ -109,29 +99,19 @@ class smu_otp_vs_fabric_map_race_test_seq:
             "CHK-OTPFAB-GATE-OPEN", (otp_gate, fab_gate), (0, 0), evidence="CHK-OTPFAB-GATE-OPEN"
         )
 
-        raw_o = pack_otp_single_op(
-            J2A_OP_WRITE,
-            SPARE0,
-            PAT_O,
-            wstrb=0xF,
-            size=SMC_OTP_AXSIZE_4B,
-        )
-        await jtag.write("SMC_OTP_AXI_SINGLE_OP", raw_o)
-        require_jtag_tdo_resolved("OTP kick")
+        access = await jtag2axi_start(jtag, J2A_OP_WRITE, SPARE0, PAT_O, target="smc_otp")
         # First look at the OTP op: the earliest the TAP can observe it. The
         # fabric write below is issued only after the op has completed, so the
         # pair is back to back, and this status says whether the op was ever
         # seen in flight.
-        capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved("OTP status at first capture")
-        st_o_first, _ = unpack_otp_single_op(capt)
+        st_o_first, _ = await jtag2axi_status(jtag, access)
         st_o = st_o_first
         if st_o == J2A_STATUS_BUSY:
-            st_o = await self._poll_otp_status(jtag)
+            st_o, _ = await jtag2axi_wait(jtag, access, poll_limit=OTP_POLL)
         if st_o != J2A_STATUS_SUCCESS:
             raise AssertionError(f"OTP write before the fabric write: status={st_o}")
         self._log(
-            f"OTPFAB back-to-back: OTP write status at first capture={st_o_first} "
+            f"OTPFAB back-to-back: OTP write status at first sample={st_o_first} "
             f"(BUSY={J2A_STATUS_BUSY}), completed={st_o}"
         )
         st_f, _ = await jtag2axi_single_write(
@@ -211,16 +191,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
                     raise AssertionError(f"pingpong fabric[{i}] status={st}")
             else:
                 pat = PAT_F ^ (i << 8)
-                raw = pack_otp_single_op(
-                    J2A_OP_WRITE,
-                    SPARE0,
-                    pat,
-                    wstrb=0xF,
-                    size=SMC_OTP_AXSIZE_4B,
-                )
-                await jtag.write("SMC_OTP_AXI_SINGLE_OP", raw)
-                require_jtag_tdo_resolved(f"pingpong OTP[{i}] kick")
-                st = await self._poll_otp_status(jtag)
+                st, _ = await otp_jtag2axi_single_write(jtag, SPARE0, pat, poll_limit=OTP_POLL)
                 if st != J2A_STATUS_SUCCESS:
                     raise AssertionError(f"pingpong OTP[{i}] status={st}")
             last = pat

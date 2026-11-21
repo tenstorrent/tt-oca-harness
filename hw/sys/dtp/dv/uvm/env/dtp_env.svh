@@ -293,6 +293,10 @@ class dtp_env extends ocah_env;
     m_jtag2axi_status_ref_model =
         dtp_jtag2axi_status_ref_model::type_id::create("m_jtag2axi_status_ref_model", this);
     m_jtag2axi_status_ref_model.tb_vif = tb_vif;
+    m_jtag2axi_status_ref_model.negative = cfg.jtag2axi_status_model_negative;
+    if (cfg.jtag2axi_status_model_negative)
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: no busy status while a DMI operation is in progress", UVM_LOW)
   endfunction
 
   // Every scoreboard feature: the observed monitor stream into its
@@ -341,7 +345,6 @@ class dtp_env extends ocah_env;
     string source = port_env.m_monitor.get_full_name();
     m_jtag2axi_req_ref_model.bind_port(target, source);
     m_jtag2axi_status_ref_model.bind_port(target, source);
-    m_scoreboard.bind_port(target, source);
     port_env.item_ap.connect(m_jtag2axi_req_ref_model.axi_export);
     port_env.item_ap.connect(m_jtag2axi_status_ref_model.axi_export);
     port_env.item_ap.connect(m_scoreboard.jtag2axi_req_observed_export);

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="170" viewBox="0 0 1040 170" role="img" aria-labelledby="title desc">
+<title id="title">JTAG2AXI DMI register layout</title>
+<desc id="desc">The DMI test data register of a JTAG2AXI bridge, 41 bits long. From the most significant bit, nearest TDI, to bit 0, which shifts out to TDO first: address in bits 40:34 (7 bits), data in bits 33:2 (32 bits) and op in bits 1:0 (2 bits). A capture returns the status of the last operation in bits 1:0. Fields are not drawn to scale.</desc>
+<defs>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.s { font-size: 13px; fill: #484848; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+</style>
+</defs>
+<rect width="1040" height="170" fill="#ffffff"/>
+<rect class="fabric" x="90" y="52" width="260" height="58" rx="0"/>
+<text class="s" x="220" y="42" text-anchor="middle">40:34</text>
+<text class="t" x="220" y="86" text-anchor="middle">address</text>
+<text class="s" x="220" y="130" text-anchor="middle">7 bits</text>
+<rect class="fabric" x="350" y="52" width="400" height="58" rx="0"/>
+<text class="s" x="550" y="42" text-anchor="middle">33:2</text>
+<text class="t" x="550" y="86" text-anchor="middle">data</text>
+<text class="s" x="550" y="130" text-anchor="middle">32 bits</text>
+<rect class="fabric" x="750" y="52" width="200" height="58" rx="0"/>
+<text class="s" x="850" y="42" text-anchor="middle">1:0</text>
+<text class="t" x="850" y="86" text-anchor="middle">op / status</text>
+<text class="s" x="850" y="130" text-anchor="middle">2 bits</text>
+<path class="jtag" d="M28,81.0 L86,81.0"/>
+<text class="s" x="28" y="73" text-anchor="start">TDI</text>
+<path class="jtag" d="M950,81.0 L1012,81.0"/>
+<text class="s" x="1012" y="73" text-anchor="end">TDO</text>
+</svg>

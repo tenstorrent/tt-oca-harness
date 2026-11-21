@@ -231,6 +231,22 @@ proc set_cdc_max_delay_cdc_2phase { inst src_clk dst_clk { delay {} } } {
         [get_nets "$inst/async_*" -quiet] {}
 }
 
+# pulp cdc_2phase_clearable with everything inside it: the handshake nets, the
+# acknowledge and request synchronizers, and the four synchronizers of its
+# cdc_reset_ctrlr. Half _a of the reset controller is on src_clk and half _b on
+# dst_clk.
+proc set_cdc_max_delay_cdc_2phase_clearable { inst src_clk dst_clk } {
+    set_cdc_max_delay_cdc_2phase $inst $src_clk $dst_clk
+    set_cdc_max_delay_sync $inst/i_src/i_sync $src_clk
+    set_cdc_max_delay_sync $inst/i_dst/i_sync $dst_clk
+    foreach { half clk } [list a $src_clk b $dst_clk] {
+        set ctrlr_half $inst/i_cdc_reset_ctrlr/i_cdc_reset_ctrlr_half_$half
+        foreach side { src dst } {
+            set_cdc_max_delay_sync $ctrlr_half/i_state_transition_cdc_$side/i_sync $clk
+        }
+    }
+}
+
 ################################################################################
 # GRAY-POINTER ASYNC FIFOS
 ################################################################################

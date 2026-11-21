@@ -94,6 +94,14 @@ packages:
     - axi
     - common_cells
     - common_verification
+  riscv-dbg:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/riscv-dbg
+    dependencies:
+    - axi
+    - common_cells
   tt_dfd:
     revision: null
     version: null

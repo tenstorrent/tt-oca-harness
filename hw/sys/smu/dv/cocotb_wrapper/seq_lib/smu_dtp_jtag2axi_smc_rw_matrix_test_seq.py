@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI WSTRB 1/2/4/8-byte on SPM. Bridge applies WSTRB, not AxSIZE. SEP=1, no Force."""
+"""JTAG2AXI 1/2/4/8-byte System Bus Access writes on SPM. SEP=1, no Force."""
 
 from __future__ import annotations
 
 import cocotb
+from dtp_types import DTP_EXPECTED_DTMCS
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -14,8 +15,6 @@ from seq_lib.smu_addr_map import (
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
-    J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_8B,
     apply_axi_wstrb,
@@ -50,7 +49,7 @@ def _full_wstrb(size: int) -> int:
 
 
 class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
-    """SIZE/WSTRB matrix on SPM via SMC J2A; gate open on the SEP=1 wrapper."""
+    """Access-size and byte-lane matrix on SPM via SMC J2A; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -129,18 +128,16 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
-        caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
-        require_jtag_tdo_resolved("SMC J2A CAPS")
-        if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
-            raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
-            )
+        dtmcs = int(await jtag.read("SMC_DTMCS"))
+        require_jtag_tdo_resolved("SMC J2A DTMCS")
+        if dtmcs != DTP_EXPECTED_DTMCS:
+            raise AssertionError(f"SMC J2A DTMCS=0x{dtmcs:08x} want 0x{DTP_EXPECTED_DTMCS:08x}")
         self.s1_ok = True
-        self._log(f"CHK-J2A-MATRIX-GATE-OPEN disable={gate} caps=0x{caps:04x}")
+        self._log(f"CHK-J2A-MATRIX-GATE-OPEN disable={gate} dtmcs=0x{dtmcs:08x}")
         sb.expect_eq(
             "CHK-J2A-MATRIX-GATE-OPEN",
-            (gate, caps),
-            (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            (gate, dtmcs),
+            (0, DTP_EXPECTED_DTMCS),
             evidence="CHK-J2A-MATRIX-GATE-OPEN",
         )
 
@@ -151,9 +148,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             window = _mask(size)
             payload = (DEFAULT_DATA ^ (0x1111_1111_1111_1111 * size)) & window
             write_data = (SIZE_OUTER & ~window) | payload
-            # Bridge byte-enables follow WSTRB, not AxSIZE: SIZE=0 + WSTRB=0xFF
-            # stores the full beat. Issue the matching WSTRB width; the 8-byte
-            # read must keep SIZE_SEED outside that window.
+            # The 8-byte read keeps SIZE_SEED outside the access's byte lanes.
             wstrb = _full_wstrb(size)
             want = apply_axi_wstrb(SIZE_SEED, write_data, wstrb, 8)
             await self._wr(
@@ -192,6 +187,8 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             evidence="CHK-J2A-WSTRB-WIDTH",
         )
 
+        # A byte write per set bit of wstrb leaves the beat a single write under
+        # wstrb would; System Bus Access issues no other partial strobe.
         partial_obs: list[tuple[int, int]] = []
         for wstrb, tag, pattern, off in (
             (0x55, "even", PARTIAL_EVEN, 0x280),
@@ -201,14 +198,15 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             await self._wr(
                 jtag, addr, 0, wstrb=0xFF, size=SMC_DBG_AXSIZE_8B, name=f"WSTRB-{tag}-CLR"
             )
-            await self._wr(
-                jtag,
-                addr,
-                pattern,
-                wstrb=wstrb,
-                size=SMC_DBG_AXSIZE_8B,
-                name=f"WSTRB-{tag}",
-            )
+            for lane in (n for n in range(8) if wstrb >> n & 1):
+                await self._wr(
+                    jtag,
+                    addr + lane,
+                    pattern,
+                    wstrb=1 << lane,
+                    size=0,
+                    name=f"WSTRB-{tag}-B{lane}",
+                )
             got = await self._rd(jtag, addr, size=SMC_DBG_AXSIZE_8B, name=f"WSTRB-{tag}")
             want = apply_axi_wstrb(0, pattern, wstrb, 8)
             if got != want:
@@ -230,15 +228,6 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             evidence="J2A_RW_MATRIX_OK",
         )
 
-        capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved("SMC SINGLE_OP sticky")
-        sticky = int(capt) & 0x3
-        if sticky == J2A_STATUS_BUSY:
-            raise AssertionError("SINGLE_OP sticky BUSY after matrix")
-        if sticky != J2A_STATUS_SUCCESS:
-            raise AssertionError(
-                f"SINGLE_OP sticky status={sticky} want SUCCESS={J2A_STATUS_SUCCESS}"
-            )
         ver_st, ver_data = await jtag2axi_single_read(
             jtag,
             VERSION_LO,
@@ -253,12 +242,12 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 f"data=0x{ver_data:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s4_ok = True
-        self._log(f"CHK-J2A-MATRIX-STICKY status=SUCCESS VERSION_LO=0x{ver_data:08x}")
+        self._log(f"CHK-J2A-MATRIX-CSR-READ VERSION_LO=0x{ver_data:08x}")
         sb.expect_eq(
-            "CHK-J2A-MATRIX-STICKY",
-            (sticky, ver_data),
+            "CHK-J2A-MATRIX-CSR-READ",
+            (ver_st, ver_data),
             (J2A_STATUS_SUCCESS, VERSION_LO_RESET),
-            evidence="CHK-J2A-MATRIX-STICKY",
+            evidence="CHK-J2A-MATRIX-CSR-READ",
         )
 
         self._log(

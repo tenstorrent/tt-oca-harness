@@ -9,7 +9,7 @@ schema_version = 1
 # The plan section is DTP_VPLAN.adoc, "Formal Verification Plan".
 name = "dtp"
 profile = "native-formal"
-description = "DTP formal properties on the dtp, jtag2axi and cross_trigger_network tops (SymbiYosys open path)"
+description = "DTP formal properties on the dtp and cross_trigger_network tops (SymbiYosys open path)"
 
 [testlist]
 path = "testlists/formal.toml"
@@ -84,15 +84,8 @@ cwd = "hw/sys/dtp/dv/formal/fpv/sby"
 script = "dtp.sby"
 args = ["dbgctl_bmc", "dbgctl_cover", "dbgctl_prove"]
 
-# The bridge control and the cross-trigger blocks run on their own tops, jtag2axi and
-# cross_trigger_network, from task files beside dtp.sby that read the same filelist. The bridge's
-# bmc and cover tasks each unroll the bridge and its CDC forty steps and its prove task holds the
-# CDC in the property-directed engine, so the three run in sequence to fit the memory of one host.
-[formal.apps.j2a_ctrl_fpv.sby]
-cwd = "hw/sys/dtp/dv/formal/fpv/sby"
-script = "dtp_jtag2axi.sby"
-args = ["j2a_ctrl_bmc", "j2a_ctrl_cover", "j2a_ctrl_prove", "--sequential"]
-
+# The cross-trigger blocks run on their own top, cross_trigger_network, from a task file beside
+# dtp.sby that reads the same filelist.
 [formal.apps.ctn_clkstop_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
 script = "dtp_cross_trigger_network.sby"

@@ -127,6 +127,12 @@ instantiate an OBI bus
 |https://github.com/tenstorrent/tt-register_interface[tenstorrent/tt-register_interface]
 |AXI-to-register bridge (`axi_to_reg_v2`) used by the iDMA control interface
 
+|RISC-V Debug
+|PULP Platform
+|https://github.com/tenstorrent/tt-riscv-dbg[tenstorrent/tt-riscv-dbg]
+|`tdr2axi` bridge with the Debug Module registers and System Bus Access engine,
+used by the DTP JTAG2AXI bridges
+
 |Adams Bridge
 |CHIPS Alliance
 |https://github.com/chipsalliance/adams-bridge[chipsalliance/adams-bridge]

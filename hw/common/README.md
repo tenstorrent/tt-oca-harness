@@ -10,6 +10,7 @@ RTL and DV flows compile against.
 | [`ocah_prim_generic/`](ocah_prim_generic/) | Behavioral standard cells a synthesis flow swaps one-for-one with a technology library |
 | [`ocah_prim/`](ocah_prim/) | Composed TT building blocks with no OpenTitan counterpart |
 | [`sync.sv`](sync.sv) | PULP `common_cells` vendor shim — not product RTL |
+| [`rstgen_bypass.sv`](rstgen_bypass.sv) | PULP `common_cells` reset synchronizer shim for vendored code — not product RTL |
 | [`axi/`](axi/), [`tlul/`](tlul/), [`ot_chip_cfg/`](ot_chip_cfg/), … | Shared buses, packages, and integration helpers |
 
 ## Primitive layering
@@ -28,7 +29,7 @@ Product RTL and TT blocks
         │         │
         │         └─► ocah_prim_generic leaf cells (prim_flop_3sync*, gates, latch, …)
         │
-        └─► sync  (PULP common_cells only — see below)
+        └─► sync, rstgen_bypass  (vendored PULP code only — see below)
 ```
 
 Nothing in [`ocah_prim/`](ocah_prim/) or [`ocah_prim_generic/`](ocah_prim_generic/)
@@ -50,6 +51,7 @@ Synchronizer-related sources split by caller and by abstraction:
 | TT width / CDC wrappers | [`ocah_prim/rtl/`](ocah_prim/rtl/) (`prim_sync3`, `prim_sync3r`, `prim_sync4`, `prim_sync4r`, …) | TT product RTL when a parametrized multi-bit sync or simulation CDC instrumentation is needed |
 | Composed CDC blocks | [`ocah_prim/rtl/`](ocah_prim/rtl/) (`prim_sync_reset`, `prim_sync_data_autohs`, `prim_sync3_pulse`, …) | TT product RTL for reset crossing, coherent multi-bit transfer, or pulse crossing |
 | PULP adapter | [`sync.sv`](sync.sv) | **Never** — compiled only for vendored `common_cells` |
+| PULP adapter | [`rstgen_bypass.sv`](rstgen_bypass.sv) | **Never** — compiled only for the vendored `riscv-dbg` `tdr2axi` bridge |
 
 Product RTL must not instantiate `sync`. It exists so PULP CDC modules
 (`cdc_fifo_gray`, `cdc_4phase`, `clk_mux_glitch_free`, …) keep their upstream
@@ -60,6 +62,14 @@ When DV or integration flows pass `-t common_cell_sync_shim`, Bender excludes
 PULP's `vendor/pulp-platform/common_cells/upstream/src/sync.sv` and compiles
 [`sync.sv`](sync.sv) instead. That target is documented in
 [`vendor/pulp-platform/common_cells/Bender.yml`](../vendor/pulp-platform/common_cells/Bender.yml).
+
+Product RTL must not instantiate `rstgen_bypass` either; use `prim_sync_reset`.
+The vendored `common_cells` manifest does not compile the upstream
+`rstgen_bypass`, which needs a technology clock mux cell that is not in the tree.
+[`rstgen_bypass.sv`](rstgen_bypass.sv) has the upstream module name, parameter and
+ports and wraps `prim_sync_reset`, so the reset synchronizers of `tdr2axi` use the
+TT reset synchronizer and its scan bypass. The root `Bender.yml` lists the file
+for the `dtp` target.
 
 ## Where to add new code
 

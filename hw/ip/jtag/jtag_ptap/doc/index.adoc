@@ -35,7 +35,7 @@ endif::backend-html5[]
 
 The PTAP is configured through feature enables for the optional instructions, TMP,
 IC_RESET slices and debug bridges, the IC_RESET slice types, the IDCODE and JTAG_CAPS
-values, and the JTAG2AXI pipeline depths.
+values, and the AXI types of the JTAG2AXI manager ports.
 
 ifdef::backend-html5[]
 The parameters of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].

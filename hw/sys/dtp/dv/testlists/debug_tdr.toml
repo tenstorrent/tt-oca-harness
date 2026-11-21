@@ -86,30 +86,3 @@ seed = 1
 timeout_sec = 1800
 tags = ["debug_tdr", "debug_control", "jtag"]
 run_modes = ["debug_tdr"]
-
-[[tests]]
-name = "dtp_dbg_smc_jtag2axi_caps_test"
-module = { cocotb = "dtp_dbg_smc_jtag2axi_caps_test", uvm = "dtp_dbg_smc_jtag2axi_caps_test" }
-target = ["default", "bsr_disabled"]
-seed = 1
-timeout_sec = 1800
-tags = ["debug_tdr", "caps", "jtag"]
-run_modes = ["debug_tdr"]
-
-[[tests]]
-name = "dtp_dbg_sep_otp_jtag2axi_caps_test"
-module = { cocotb = "dtp_dbg_sep_otp_jtag2axi_caps_test", uvm = "dtp_dbg_sep_otp_jtag2axi_caps_test" }
-target = ["default", "bsr_disabled"]
-seed = 1
-timeout_sec = 1800
-tags = ["debug_tdr", "caps", "jtag"]
-run_modes = ["debug_tdr"]
-
-[[tests]]
-name = "dtp_dbg_smc_otp_jtag2axi_caps_test"
-module = { cocotb = "dtp_dbg_smc_otp_jtag2axi_caps_test", uvm = "dtp_dbg_smc_otp_jtag2axi_caps_test" }
-target = ["default", "bsr_disabled"]
-seed = 1
-timeout_sec = 1800
-tags = ["debug_tdr", "caps", "jtag"]
-run_modes = ["debug_tdr"]

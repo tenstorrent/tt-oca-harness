@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// jtag2axi_status reference model: the status a SINGLE_OP or SERIES_CTRL
-// scan captures is the outcome of the bridge's completed AXI transactions
-// (SUCCESS, SLVERR, DECERR, or BUSY_OR_FULL while one is pending), and the
-// data a SINGLE_OP capture returns after a completed OKAY read is the word
-// the bus returned. Consumes the reconstructed scan stream (write) and the
-// per-TCK event stream (event_export) through a dtp_jtag_ir_model, applies
-// every bridge-register DR scan, on the TCK cycle that leaves Update-DR, and
-// every observed bridge completion (axi_export) to a dtp_jtag2axi_model, and
-// publishes one dtp_jtag2axi_status_item per scan item so the scoreboard
+// jtag2axi_status reference model: a DMI capture presents the address and
+// data of the last DMI update, the read response after a read, and the
+// sticky DMI status; a DTMCS capture presents the bridge's fixed DTM fields
+// and the same status. Consumes the reconstructed scan stream (write), the
+// per-TCK event stream (event_export) and the transactions observed on the
+// three bridge ports (axi_export) through a dtp_jtag2axi_tracker and
+// publishes one dtp_jtag2axi_status_item per scan item, so the scoreboard
 // pairs the two streams in lockstep; scans that are not a bridge capture,
-// captures while the PTAP 3DCR select is set, captures inside the CDC settle
-// window after a completion, and the captures dtp_jtag2axi_model exempts
-// carry no contract. Series-data captures (the pipelined read FIFO) are not
-// predicted. Where a completion raced a system reset, the bridge model reads
-// the capture's status field to choose between the completion's status and
-// DECERR, the two outcomes of the race. No comparison, no reporting. The cocotb twin is
+// and captures while the PTAP 3DCR select is set, carry no contract.
+// `negative` leaves the status at 0 where a capture or update finds a DMI
+// operation in progress, so the busy captures that follow must disagree. No
+// comparison, no reporting. The cocotb twin is
 // env/dtp_jtag2axi_status_ref_model.py.
 
 `uvm_analysis_imp_decl(_dtp_j2a_status_event)
@@ -26,22 +22,15 @@ class dtp_jtag2axi_status_ref_model
     extends ocah_ref_model #(ocah_jtag_scan_item, dtp_jtag2axi_status_item);
   `uvm_component_utils(dtp_jtag2axi_status_ref_model)
 
-  dtp_env_cfg       cfg;
   virtual dtp_tb_if tb_vif;
+  bit               negative;
 
   uvm_analysis_imp_dtp_j2a_status_event #(ocah_jtag_event, dtp_jtag2axi_status_ref_model)
         event_export;
   uvm_analysis_imp_dtp_j2a_status_axi #(ocah_axi_item, dtp_jtag2axi_status_ref_model)
         axi_export;
 
-  protected dtp_jtag_ir_model  m_ir;
-  protected dtp_jtag2axi_model m_bridge;
-  protected string             m_target_by_source[string];
-  protected bit [31:0]         m_sys_rst_seen;
-  // The bridge scan waiting for the TAP to leave Update-DR.
-  protected bit                m_pending;
-  protected dtp_j2a_target_t   m_pending_target;
-  protected dtp_j2a_request_t  m_pending_req;
+  protected dtp_jtag2axi_tracker m_tracker;
 
   function new(string name = "dtp_jtag2axi_status_ref_model", uvm_component parent = null);
     super.new(name, parent);
@@ -49,95 +38,30 @@ class dtp_jtag2axi_status_ref_model
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    if (!uvm_config_db#(dtp_env_cfg)::get(this, "", "env_cfg", cfg) || cfg == null)
-      `uvm_fatal(get_type_name(), "dtp_env_cfg `env_cfg` not found in uvm_config_db")
     if (tb_vif == null) `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not set by the env")
     event_export = new("event_export", this);
     axi_export   = new("axi_export", this);
-    m_ir         = new();
-    m_bridge     = new();
-    // CDC window after a completion during which a capture is not checkable.
-    m_bridge.settle_window = DtpJ2aStatusSettleTck * 2 * cfg.tck_half_period_ns * 1ns;
+    m_tracker    = new(tb_vif, negative);
   endfunction
 
   // Name the monitor whose items carry a bridge's transactions
   // (connect_phase of dtp_env).
   function void bind_port(string target, string source);
-    m_target_by_source[source] = target;
+    m_tracker.bind_port(target, source);
   endfunction
 
-  // One expected capture per scan item: predicted at the scan's
-  // Capture-DR; the scan's Update-DR waits for the TCK cycle that leaves
-  // Update-DR.
   function void write(ocah_jtag_scan_item t);
-    dtp_j2a_target_t         target;
-    dtp_j2a_request_t        req;
-    dtp_j2a_scan_kind_e      kind;
-    dtp_jtag2axi_status_item exp =
-            dtp_jtag2axi_status_item::type_id::create("exp");
-    exp.timestamp = t.end_time;
-    exp.compare   = 1'b0;
-    sync_reset();
-    if (t.is_ir) begin
-      m_ir.on_ir_scan(t);
-      expected_ap.write(exp);
-      return;
-    end
-    m_ir.on_dr_scan(t);
-    kind = m_ir.ir_known() ? m_bridge.decode(m_ir.ir(), t, target, req) : DTP_J2A_SCAN_NONE;
-    if (kind != DTP_J2A_SCAN_NONE) begin
-      if (((kind == DTP_J2A_SCAN_SINGLE_OP) || (kind == DTP_J2A_SCAN_SERIES_CTRL)) &&
-          m_ir.ptap_select_clear()) begin
-        exp.context_s = $sformatf("%s %s bits=%0d", target.name, kind.name(), t.bit_count);
-        m_bridge.predict_capture(target, kind, t.start_time, dtp_j2a_status_e'(dtp_bits_field(
-                                 t.tdo_bits, 0, 2)), exp);
-      end
-      m_pending        = 1'b1;
-      m_pending_target = target;
-      m_pending_req    = req;
-    end
-    expected_ap.write(exp);
+    expected_ap.write(m_tracker.on_scan(t));
   endfunction
 
   function void write_dtp_j2a_status_event(ocah_jtag_event t);
-    ocah_axi_item unused;
-    sync_reset();
-    if (t.kind == OCAH_JTAG_EV_STEP && t.trst_n) m_bridge.tck_step();
-    if (m_pending && t.kind == OCAH_JTAG_EV_STEP && t.trst_n &&
-        m_ir.tap_state() == OCAH_JTAG_UPDATE_DR) begin
-      m_pending = 1'b0;
-      if (dtp_dbg_path_disabled(tb_vif.dbg_disable, m_pending_target.dbg_path))
-        m_bridge.gated(m_pending_target.name);
-      else void'(m_bridge.update(m_pending_target, m_pending_req, t.timestamp, unused));
-    end
-    void'(m_ir.on_event(t));
-    consume_tap_reset();
+    string        target;
+    ocah_axi_item launched;
+    void'(m_tracker.on_event(t, target, launched));
   endfunction
 
   function void write_dtp_j2a_status_axi(ocah_axi_item t);
-    dtp_j2a_target_t target;
-    if (!m_target_by_source.exists(t.source))
-      `uvm_fatal(get_type_name(), $sformatf("AXI item from unbound port `%s`", t.source))
-    target = dtp_j2a_target_by_name(m_target_by_source[t.source]);
-    m_bridge.complete(target.name, t, dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path));
-  endfunction
-
-  protected function void sync_reset();
-    void'(m_ir.sync_power_on_reset(tb_vif.por_assert_count));
-    consume_tap_reset();
-    if (tb_vif.sys_rst_assert_count !== m_sys_rst_seen) begin
-      m_sys_rst_seen = tb_vif.sys_rst_assert_count;
-      m_bridge.system_reset();
-    end
-  endfunction
-
-  // The bridges' JTAG-side registers reset whenever the TAP is in
-  // Test-Logic-Reset (jtag_tap_ctrlr host_dr_scan_ctrl_o.rst_n).
-  protected function void consume_tap_reset();
-    if (m_ir.take_tap_reset()) begin
-      m_pending = 1'b0;
-      m_bridge.reset();
-    end
+    m_tracker.on_axi(t);
   endfunction
 
 endclass : dtp_jtag2axi_status_ref_model

@@ -7,8 +7,8 @@ The crossbar routes a ``smc_out`` or ``sep_out`` request that matches neither ap
 answers an ``ext_in`` request outside both apertures with DECERR because ``ext_in`` is not
 connected to ``ext_out`` (``hw/sys/smu/doc/index.adoc``, "AXI Crossbar"). A request the bench
 responder answers has therefore reached ``ext_out``, and the code it returns is the response of
-that request at its initiator. The SMC fabric JTAG2AXI bridge reports SLVERR as op 1 and DECERR
-as op 2 (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, ``AXI_SINGLE_OP``). The SEP debug
+that request at its initiator. The SMC fabric JTAG2AXI bridge reports SLVERR and DECERR alike as
+sbcs.sberror 2, which ``seq_lib.smu_jtag_helpers`` returns as J2A_STATUS_DECERR. The SEP debug
 module's system bus reports a failed access as a non-zero ``sbcs.sberror`` (RISC-V Debug
 Specification 0.13, ``sbcs``); neither that specification nor a document or RDL in this tree maps
 an AXI SLVERR or DECERR to a value of the field, so a SEP cell grades ``sberror`` non-zero and logs
@@ -108,18 +108,18 @@ from seq_lib.smu_filter_helpers import (
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
+    J2A_OP_READ,
+    J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
     J2A_STATUS_SLVERR,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
-    jtag2axi_single_read,
-    jtag2axi_single_write,
+    jtag2axi_poll,
+    jtag2axi_start,
     make_smu_jtag_tap,
-    require_jtag_tdo_resolved,
 )
-from seq_lib.smu_lc_export_seq import _ReadCounter
 from seq_lib.smu_sep_sba_fabric_sweep_test_seq import (
     ADDR_MASK,
     OUTBOUND_CFG_SECURE,
@@ -153,7 +153,7 @@ PLACE_MIN_BEATS = 3
 
 SLVERR, DECERR = "SLVERR", "DECERR"
 CODE_RESP = {SLVERR: RESP_SLVERR, DECERR: RESP_DECERR}
-# architecture.adoc AXI_SINGLE_OP op field.
+# seq_lib.smu_jtag_helpers J2A_STATUS_* codes.
 CODE_J2A = {SLVERR: J2A_STATUS_SLVERR, DECERR: J2A_STATUS_DECERR}
 # RISC-V Debug Specification 0.13, sbcs.sberror: 0 is no error.
 SB_NO_ERROR = 0
@@ -419,20 +419,15 @@ class smu_ext_in_error_inject_rand_test_seq(smu_dtp_sep_dm_sba_test_seq):
     # JTAG2AXI bridge ------------------------------------------------------------------------
 
     async def _j2a(self, op: str, addr: int, data: int = 0, *, size: int, wstrb: int = 0):
-        tap = _ReadCounter(self.j2a_tap)
-        if op == WRITE:
-            st, rdata = await jtag2axi_single_write(
-                tap, addr, data, wstrb=wstrb, size=size, poll_limit=J2A_POLL_LIMIT
-            )
-        else:
-            st, rdata = await jtag2axi_single_read(tap, addr, size=size, poll_limit=J2A_POLL_LIMIT)
-        require_jtag_tdo_resolved(f"J2A {op} @0x{addr:x}")
+        j2a_op = J2A_OP_WRITE if op == WRITE else J2A_OP_READ
+        access = await jtag2axi_start(self.j2a_tap, j2a_op, addr, data, wstrb=wstrb, size=size)
+        st, rdata, polls = await jtag2axi_poll(self.j2a_tap, access, poll_limit=J2A_POLL_LIMIT)
         self._site(
             "j2a",
             f"{op}@0x{addr:x}",
             J2A_POLL_LIMIT,
             "polls",
-            tap.reads,
+            polls,
             f"op={st}",
             st != J2A_STATUS_BUSY,
         )

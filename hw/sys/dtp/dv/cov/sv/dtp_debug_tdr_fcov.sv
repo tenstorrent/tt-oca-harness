@@ -69,15 +69,10 @@ module dtp_debug_tdr_fcov (
   localparam logic [63:0] IcResetTdr = 64'h1 << 6'h0D;
   localparam logic [63:0] DebugControlTdr = 64'h1 << 6'h18;
   localparam logic [63:0] JtagCapsTdr = 64'h1 << 6'h19;
-  localparam logic [63:0] SmcOtpCapsTdr = 64'h1 << 6'h1B;
-  localparam logic [63:0] SepOtpCapsTdr = 64'h1 << 6'h21;
-  localparam logic [63:0] SmcCapsTdr = 64'h1 << 6'h27;
-  localparam logic [63:0] AnyCapsTdr = JtagCapsTdr | SmcOtpCapsTdr | SepOtpCapsTdr | SmcCapsTdr;
   localparam logic [6:0] TmpStatusLen = 7'd2;
   localparam logic [6:0] IcResetLen = 7'd7;
   localparam logic [6:0] DebugControlLen = 7'd5;
   localparam logic [6:0] JtagCapsLen = 7'd60;
-  localparam logic [6:0] Jtag2AxiCapsLen = 7'd14;
 
   // Sample events and classes. Each class the covergroups list under
   // illegal_bins is a design failure.
@@ -350,18 +345,11 @@ module dtp_debug_tdr_fcov (
   end
 
   // ------------------------------------------------------------------
-  // cg_caps_tdr — full-length capability-TDR scans: the register, the
-  // pattern shifted in, the instruction committed before it, and the
-  // value read against that register's previous direct read.
+  // cg_caps_tdr — full-length JTAG_CAPS scans: the pattern shifted in, the
+  // instruction committed before it, and the value read against the
+  // previous direct read.
   // ------------------------------------------------------------------
-  wire caps_jtag_sel = |(inst_decoded_i & JtagCapsTdr);
-  wire caps_smc_sel = |(inst_decoded_i & SmcCapsTdr);
-  wire caps_smc_otp_sel = |(inst_decoded_i & SmcOtpCapsTdr);
-  wire caps_any_sel = |(inst_decoded_i & AnyCapsTdr);
-  wire [1:0] caps_reg = caps_jtag_sel ? 2'd0
-      : (caps_smc_sel ? 2'd1 : (caps_smc_otp_sel ? 2'd2 : 2'd3));
-  wire [6:0] caps_len = caps_jtag_sel ? JtagCapsLen : Jtag2AxiCapsLen;
-  wire caps_commit = dr_update && caps_any_sel && (shift_count_q >= caps_len);
+  wire caps_commit = dr_update && |(inst_decoded_i & JtagCapsTdr) && (shift_count_q >= JtagCapsLen);
 
   // Two-stage committed-instruction history: at an IR update the decode
   // already shows the new instruction, so the instruction before the
@@ -377,20 +365,19 @@ module dtp_debug_tdr_fcov (
     end
   end
 
-  // The previous direct full read of each register.
-  logic [63:0] caps_last_q[4];
-  logic [3:0] caps_seen_q;
-  wire [63:0] caps_len_mask = (64'h1 << caps_len) - 64'h1;
-  wire [63:0] caps_value = tdo_accum_q & caps_len_mask;
+  // The previous direct full read.
+  logic [63:0] caps_last_q;
+  logic caps_seen_q;
+  wire [63:0] caps_value = tdo_accum_q & ((64'h1 << JtagCapsLen) - 64'h1);
   wire caps_read_direct = caps_commit && tdo_direct_q;
   always_ff @(posedge tck_i) begin
     if (caps_read_direct) begin
-      caps_last_q[caps_reg] <= caps_value;
-      caps_seen_q[caps_reg] <= 1'b1;
+      caps_last_q <= caps_value;
+      caps_seen_q <= 1'b1;
     end
   end
-  wire caps_judged = caps_read_direct && caps_seen_q[caps_reg];
-  wire caps_stable = (caps_value == caps_last_q[caps_reg]);
+  wire caps_judged = caps_read_direct && caps_seen_q;
+  wire caps_stable = (caps_value == caps_last_q);
 
   wire [63:0] alt_a = 64'hAAAA_AAAA_AAAA_AAAA & shifted_mask;
   wire [63:0] alt_5 = 64'h5555_5555_5555_5555 & shifted_mask;
@@ -564,15 +551,9 @@ module dtp_debug_tdr_fcov (
   endgroup
 
   covergroup cg_caps_tdr with function sample (
-      logic [1:0] which, logic [1:0] pattern, logic [1:0] after, logic judged, logic stable
+      logic [1:0] pattern, logic [1:0] after, logic judged, logic stable
   );
     option.per_instance = 1;
-    cp_register: coverpoint which {
-      bins jtag_caps = {2'd0};
-      bins smc_caps = {2'd1};
-      bins smc_otp_caps = {2'd2};
-      bins sep_otp_caps = {2'd3};
-    }
     cp_pattern: coverpoint pattern {
       bins all_zero = {2'd0}; bins all_one = {2'd1}; bins alternating = {2'd2}; bins mixed = {2'd3};
     }
@@ -585,9 +566,6 @@ module dtp_debug_tdr_fcov (
     cp_stability: coverpoint stable iff (judged) {
       bins stable = {1'b1}; illegal_bins changed = {1'b0};
     }
-    x_register_pattern: cross cp_register, cp_pattern;
-    x_register_after: cross cp_register, cp_after;
-    x_register_stability: cross cp_register, cp_stability;
   endgroup
 
   cg_tmp u_cg_tmp = new();
@@ -623,8 +601,8 @@ module dtp_debug_tdr_fcov (
       u_cg_debug_control.sample(1'b0, '0, 1'b0, 1'b0, 1'b0, '0, '0, dbgctl_reset_outcome);
     end
     if (caps_commit) begin
-      u_cg_caps_tdr.sample(caps_reg, caps_pattern, {prev_instr_idcode_q, prev_instr_bypass_q},
-                           caps_judged, caps_stable);
+      u_cg_caps_tdr.sample(caps_pattern, {prev_instr_idcode_q, prev_instr_bypass_q}, caps_judged,
+                           caps_stable);
     end
   end
 

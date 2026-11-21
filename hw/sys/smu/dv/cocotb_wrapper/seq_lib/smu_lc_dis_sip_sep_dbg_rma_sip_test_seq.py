@@ -17,7 +17,7 @@ S2, feature control: ``lcc_feat_ctrl_o`` has bit 0 clear and every other bit set
 S3, Case 1 control: the I/O STAP host TMS follows the PTAP TMS and the DFD SIB opens with its
     bench cell in the loop.
 S4, Case 2 control: the SMC debug STAP host TMS follows the PTAP TMS and an SMC fabric
-    SINGLE_OP read and write launch AR, AW and B.
+    JTAG2AXI read and write launch AR, AW and B.
 S5, SEP debug STAP: host TMS parked, TDO enable low, 3DCR Select captured 0.
 S6, DFT secure SIB: captures 0 and the DR stays 3 bits long.
 Every bounded wait reports its bound, the cycles it used and the last observed state.

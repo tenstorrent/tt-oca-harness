@@ -31,14 +31,15 @@ from .dtp_tap_device import dtp_tap_device
 from .dtp_tb_if import DtpTbIf
 from .dtp_types import (
     DTP_IR_WIDTH,
-    SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
-    DtpJtag2AxiOp,
-    DtpJtag2AxiStatus,
+    DtpDmiOp,
+    DtpDmiStatus,
+    DtpDmReg,
     DtpJtagInstr,
     decode_idcode,
-    pack_single_op,
-    unpack_single_op,
+    pack_dmi,
+    pack_sbcs,
+    unpack_dmi,
+    unpack_sbcs,
 )
 from .dtp_xtrig_csr_model import DtpXtrigCsrModel
 from .dtp_xtrig_csr_ref_model import DtpXtrigCsrRefModel
@@ -77,11 +78,12 @@ __all__ = [
     "DtpTbIf",
     "DTP_IR_WIDTH",
     "DtpJtagInstr",
-    "DtpJtag2AxiOp",
-    "DtpJtag2AxiStatus",
-    "SMC_DBG_AXSIZE_8B",
-    "SMC_DBG_SINGLE_OP_LEN",
+    "DtpDmiOp",
+    "DtpDmiStatus",
+    "DtpDmReg",
     "decode_idcode",
-    "pack_single_op",
-    "unpack_single_op",
+    "pack_dmi",
+    "pack_sbcs",
+    "unpack_dmi",
+    "unpack_sbcs",
 ]

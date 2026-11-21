@@ -32,7 +32,7 @@ This project incorporates code from the following third-party sources:
    v0.51 or v2.1. The Solderpad Hardware License permits use under the Apache License,
    Version 2.0, and Tenstorrent distributes this material under Apache-2.0.
    Packages: axi, apb, axi_stream, common_cells, common_verification, idma, obi,
-   register_interface, unbent
+   register_interface, riscv-dbg, unbent
    Vendored under vendor/pulp-platform/
    Individual files outside vendor/:
    hw/common/sync.sv (Copyright 2018 ETH Zurich and University of Bologna;
@@ -40,6 +40,12 @@ This project incorporates code from the following third-party sources:
    Individual files inside vendor/:
    vendor/pulp-platform/common_cells/upstream/src/read.sv (Copyright 2022 EPFL;
    Solderpad Hardware License v2.1, tagged "Apache-2.0 WITH SHL-2.1")
+   vendor/pulp-platform/riscv-dbg/upstream/ comes from the fork
+   https://github.com/tenstorrent/tt-riscv-dbg. Its src/dm_pkg.sv, src/dm_csrs.sv
+   and src/dm_sba.sv are under the Solderpad Hardware License v0.51. Its
+   src/tdr2axi/ (Copyright 2026 Tenstorrent USA, Inc.) is under the Apache
+   License, Version 2.0, and its doc/tdr2axi.md (Copyright 2026 Tenstorrent USA,
+   Inc.) is under CC-BY-4.0.
 
 3. VeeR-EL2 (CHIPS Alliance)
    Copyright (c) Antmicro and contributors

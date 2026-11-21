@@ -216,6 +216,11 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
+vendor/pulp-platform/riscv-dbg/upstream/src/dm_pkg.sv
+vendor/pulp-platform/riscv-dbg/upstream/src/dm_csrs.sv
+vendor/pulp-platform/riscv-dbg/upstream/src/dm_sba.sv
+vendor/pulp-platform/riscv-dbg/upstream/src/tdr2axi/dmi_tdr_bridge.sv
+vendor/pulp-platform/riscv-dbg/upstream/src/tdr2axi/tdr2axi.sv
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
 hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
 hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
@@ -304,17 +309,17 @@ hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
-hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
+hw/common/rstgen_bypass.sv
 hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_byp_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
+hw/ip/jtag/jtag_ptap/rtl/jtag_dmi2axi.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_idcode_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_inv_byp_reg.sv
-hw/ip/jtag/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
@@ -323,7 +328,6 @@ hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
 hw/sys/dtp/rtl/dtp.sv
 
 hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv
-hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv
 hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv
 hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv
 hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv
@@ -335,7 +339,6 @@ hw/sys/dtp/dv/tb/dtp_tb_if.sv
 hw/sys/dtp/dv/tb/dtp_scan_if.sv
 hw/sys/dtp/dv/tb/dtp_xtrig_if.sv
 hw/sys/dtp/dv/cov/sv/dtp_fcov.sv
-hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv
 hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv
 hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv
 hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv

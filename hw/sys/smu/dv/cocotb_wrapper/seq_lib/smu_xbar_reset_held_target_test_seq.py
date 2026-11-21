@@ -115,17 +115,16 @@ from seq_lib.smu_filter_helpers import (
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     J2A_OP_READ,
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
+    Jtag2AxiScanPort,
+    jtag2axi_start,
+    jtag2axi_status,
     make_smu_jtag_tap,
-    pack_single_op,
     require_jtag_tdo_resolved,
-    unpack_single_op,
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_PRESENSE
 from seq_lib.smu_tb_pins import smc_primary_reset
@@ -1399,18 +1398,11 @@ class smu_xbar_reset_held_target_test_seq(smu_dtp_sep_ic_reset_effect_test_seq):
         )
         arvalid, arready = _val(dut.ext_in_arvalid), _val(dut.ext_in_arready)
         c0 = self._counts()
-        raw = pack_single_op(J2A_OP_READ, OTHER_INIT_ADDR, 0, wstrb=0, size=SMC_DBG_AXSIZE_8B)
-        await self._dr(DTP_IR_SMC_AXI_SINGLE_OP, raw, SMC_DBG_SINGLE_OP_LEN, "s11_j2a_issue")
+        port = Jtag2AxiScanPort(self._ptap_scan, self.jtag)
+        access = await jtag2axi_start(port, J2A_OP_READ, OTHER_INIT_ADDR, size=SMC_DBG_AXSIZE_8B)
         status, rdata, used = J2A_STATUS_BUSY, 0, 0
         for used in range(1, J2A_OBS_CAPTURES + 1):
-            captured, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"s11_j2a_c{used}",
-                counted=used == 1,
-            )
-            status, rdata = unpack_single_op(captured)
+            status, rdata = await jtag2axi_status(port, access)
             if status != J2A_STATUS_BUSY:
                 break
             await ClockCycles(dut.clk_smu_i, CAPTURE_POLL_CLK)

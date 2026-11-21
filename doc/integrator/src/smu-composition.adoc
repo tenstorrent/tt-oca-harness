@@ -247,7 +247,7 @@ endif::backend-pdf[]
 
 == SMU Default Parameters
 
-The DTP JTAG features, identification, cross trigger, and pipeline depths are
+The DTP JTAG features, identification, and cross trigger settings are
 fields of the `CFG` parameter, of type `smu_pkg::smu_cfg_t`. `CFG` defaults to
 the `smu_pkg::SmuConfigs` preset that the `CFG_IDX` parameter selects:
 `smu_pkg::DefaultCfg` at the default index 0, or `smu_pkg::NoSepCfg`, which
@@ -384,7 +384,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |DTP IP major version
+|`JTAG_OCH_VER` |`8'h01` |Yes |DTP IP major version
 |===
 
 === Cross Trigger Parameters
@@ -402,20 +402,6 @@ Type parameters are set internally based on SMC package types.
 The SMU remaps DTP internal-CT lanes above the SMC reservation onto the
 SMU-exposed ports. Clock-stop request lane 0 is reserved for SMC; the SMU
 exposes the remaining DTP lanes.
-
-=== Pipeline Depth Parameters
-
-[cols="<25%,<15%,<15%,<45%",options="header"]
-|===
-|Parameter |SMU Default |Pass-through |Notes
-
-|`SMC_OTP_RD_PL_DEPTH` |`2'h3` |Yes |SMC OTP read pipeline depth
-|`SMC_OTP_WR_PL_DEPTH` |`2'h3` |Yes |SMC OTP write pipeline depth
-|`SEP_OTP_RD_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `CFG.SEP=1`, ignored when `CFG.SEP=0`
-|`SEP_OTP_WR_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `CFG.SEP=1`, ignored when `CFG.SEP=0`
-|`SMC_RD_PL_DEPTH` |`2'h3` |Yes |SMC fabric read pipeline depth
-|`SMC_WR_PL_DEPTH` |`2'h3` |Yes |SMC fabric write pipeline depth
-|===
 
 === Type Parameters
 

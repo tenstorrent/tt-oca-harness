@@ -27,7 +27,7 @@ endif::[]
 * *JTAG access* — IEEE 1149.1-2013 Primary TAP with configurable Secondary TAPs
   for hierarchical multi-chiplet debug connectivity per IEEE 1838-2019 (3DIC).
 * *iJTAG chains* — IEEE 1687-2014 SIB-based chains for DFT secure, DFT
-  non-secure, and DFD instrumentation, plus SMC and SEP OTP debug bridges.
+  non-secure, and DFD instrumentation.
 * *JTAG2AXI bridges* — SMC fabric, SMC OTP and SEP OTP debug access without
   system software.
 * *Cross-trigger fabric* — Configurable network (1–32 external CTPs, 0–32

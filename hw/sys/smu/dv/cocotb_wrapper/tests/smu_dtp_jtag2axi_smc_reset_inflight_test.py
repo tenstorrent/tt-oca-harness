@@ -5,7 +5,7 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_SEP_SCN_VPLAN_DETAIL_RESET.md @ artifact_revision 3 ENV: cocotb
 """smu_dtp_jtag2axi_smc_reset_inflight_test - DTP JTAG2AXI into the SMC fabric across SMC resets.
 
-JTAG2AXI SINGLE_OP accesses launched inside a pin cool reset, an FLR-timed cool reset and a
+JTAG2AXI accesses launched inside a pin cool reset, an FLR-timed cool reset and a
 CORE0 watchdog warm reset, and across the release of the pin; the values read after the
 resets and a fresh access.
 

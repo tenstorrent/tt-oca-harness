@@ -37,9 +37,9 @@ waive_violation -add {SMU_RDC_CORRUPT_jtag_smc_dtm_to_dtp_stap} \
     -filter {(RdcSourceResets:ResetName == "JTAG_RESET") AND (SrcObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestObject =~ "u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND ((RdcDestResets:DestResetInfo:ResetName == "'no-reset'") OR (RdcDestResets:DestResetInfo:ResetName == "trst_n_combined") OR (RdcDestResets:DestResetInfo:ResetName == "stap_smc_dbg_rst")) AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
-# DTP jtag2axi -> SMC cluster fabric: cross-block twin of SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET.
+# DTP JTAG2AXI bridge -> SMC cluster fabric: cross-block twin of SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET.
 waive_violation -add {SMU_RDC_CORRUPT_dtp_jtag2axi_primary_into_smc_cluster} \
-    -comment {DTP jtag2axi clearable-CDC controller state (PRIMARY) reaching the SMC cluster MMIO-port AXI buffer queue pointers through fabric arbitration; PRIMARY also drives the cluster reset, so the destination is reset on the same event. Same disposition as SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET for a source outside u_smc.} \
+    -comment {DTP JTAG2AXI bridge state (PRIMARY) reaching the SMC cluster MMIO-port AXI buffer queue pointers through fabric arbitration; PRIMARY also drives the cluster reset, so the destination is reset on the same event. Same disposition as SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET for a source outside u_smc.} \
     -filter {((RdcSourceResets:ResetName == "PRIMARY_RESET_N") OR (RdcSourceResets:ResetName == "PRIMARY_RESET_N_SMC_CLK")) AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (SrcObject =~ "u_dtp/u_jtag_intf_unit/u_jtag_ptap/*jtag2axi*/*") AND (DestObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 17-09-2026 18:15:09 }
 

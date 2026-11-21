@@ -16,7 +16,8 @@
 // operation sequence. On top of the operations it keeps the SMU-local
 // helpers: TAP-state checks against the DTP one-hot observable, the TDR
 // accesses (IC_RESET, DEBUG_CONTROL) and the SMC-fabric JTAG2AXI accesses
-// (SINGLE_OP, SERIES) through the dtp_env_pkg codec, bounded waits
+// (DTMCS, and DMI scans driving the Debug Module's System Bus Access) through
+// the dtp_env_pkg codec, bounded waits
 // (TCK-stepped or clock polled) that record one TIMEOUT-PATH line each with
 // a finite bound and the last state seen, the TRST, power-good and
 // cold-reset controls with the re-bring-up wait a reset needs before the
@@ -41,12 +42,6 @@ class smu_base_test_seq extends ocah_sequence;
   // across the TCK-to-system boundary before its exports are sampled
   // (cocotb ClockCycles(clk_smu_i, 16) after each TDR write).
   localparam int unsigned TdrExportSettleCycles = 16;
-  // Idle TCK cycles after a series-data shift for the op to launch in the
-  // system domain (bridge series pipeline, cocotb parity).
-  localparam int unsigned J2aSeriesLaunchCycles = 5;
-  // SMU clocks between the series-data shift and the first SERIES_CTRL poll
-  // (cocotb jtag2axi_series_incr_write: ClockCycles(clk_smu_i, 64)).
-  localparam int unsigned J2aSeriesSettleCycles = 64;
 
   // Plumbed by the test before start(): the SMU TB interface, the embedded
   // DTP TB interface, the two cfg levels, and the always-on scoreboard the
@@ -490,174 +485,149 @@ class smu_base_test_seq extends ocah_sequence;
   endtask
 
   // ------------------------------------------------------------------
-  // SMC-fabric JTAG2AXI operations (dtp_jtag2axi_single_op_seq /
-  // dtp_jtag2axi_single_status_seq on the primary TAP sequencer): the
-  // dtp_env_pkg codec and bridge geometry the embedded DTP's own bench uses
-  // for this bridge, reused unchanged.
+  // SMC-fabric JTAG2AXI accesses: the bridge's DTMCS and DMI TDRs in front of
+  // a RISC-V Debug Module whose System Bus Access drives the bridge port
+  // (dtp_env_pkg codec and bridge geometry; cocotb seq_lib.smu_jtag_helpers
+  // parity). A DMI capture carries the status of the previous DMI operation,
+  // and a read or write operation needs DtpDmiSettleTck TCK cycles before
+  // the next DMI capture.
   // ------------------------------------------------------------------
 
   static function dtp_env_pkg::dtp_j2a_target_t j2a_target_smc_axi();
     return dtp_env_pkg::dtp_j2a_target_smc_axi();
   endfunction
 
-  // Launch one SINGLE_OP request; the bridge starts the AXI transaction
-  // after the shift.
-  task issue_single_j2a(dtp_env_pkg::dtp_j2a_target_t t, dtp_env_pkg::dtp_j2a_op_e op,
-                        bit [63:0] addr, bit [63:0] data, bit [7:0] wstrb, int unsigned size);
-    dtp_jtag2axi_single_op_seq req = dtp_jtag2axi_single_op_seq::type_id::create("j2a_single_op");
-    req.target = t;
-    req.op     = op;
-    req.addr   = addr;
-    req.data   = data;
-    req.wstrb  = wstrb;
-    req.size   = size;
-    ensure_run_test_idle();
-    run_jtag_op(req);
+  // DTMCS readback of one bridge.
+  task read_j2a_dtmcs(input dtp_env_pkg::dtp_j2a_target_t t, output bit [31:0] dtmcs);
+    bit [63:0] observed;
+    load_ir(IrWidth'(t.dtmcs_instr));
+    dr_scan(64'h0, dtp_env_pkg::DtpDtmcsLen, observed);
+    dtmcs = observed[31:0];
   endtask
 
-  // Bounded poll of the SINGLE_OP status register (cocotb
-  // jtag2axi_single_write/read parity): shifts zeros until the bridge
-  // leaves BUSY_OR_FULL. One TIMEOUT-PATH site per call, `label` naming the
-  // site; the last observed status is the "last state" the site records.
-  task poll_single_j2a(dtp_env_pkg::dtp_j2a_target_t t, string label,
-                       output dtp_env_pkg::dtp_j2a_status_e status, output bit [63:0] rdata);
+  // One DMI scan of {address, data, op}; returns the captured data. Any
+  // captured status but success is an error: the bridge refused the previous
+  // operation or had not finished it.
+  task dmi_scan(input dtp_env_pkg::dtp_j2a_target_t t, input bit [6:0] address,
+                input bit [31:0] data, input dtp_env_pkg::dtp_dmi_op_e op, input string label,
+                output bit [31:0] captured);
+    bit [63:0] observed;
+    dtp_env_pkg::dtp_dmi_t dmi;
+    load_ir(IrWidth'(t.dmi_instr));
+    dr_scan(dtp_env_pkg::dtp_j2a_pack_dmi(address, data, op), dtp_env_pkg::DtpDmiLen, observed);
+    dmi = dtp_env_pkg::dtp_j2a_unpack_dmi(observed);
+    if (dmi.op != dtp_env_pkg::DTP_DMI_SUCCESS)
+      `uvm_error(get_type_name(), $sformatf("%s %s: DMI capture status %0d", t.name, label, dmi.op))
+    if (op != dtp_env_pkg::DTP_DMI_OP_NOP) idle_tck(dtp_env_pkg::DtpDmiSettleTck);
+    captured = dmi.data;
+  endtask
+
+  task dmi_write(dtp_env_pkg::dtp_j2a_target_t t, dtp_env_pkg::dtp_dm_reg_e address,
+                 bit [31:0] data, string label);
+    bit [31:0] unused;
+    dmi_scan(t, address, data, dtp_env_pkg::DTP_DMI_OP_WRITE, label, unused);
+  endtask
+
+  // Read one Debug Module register: the read, then a NOP scan that captures
+  // its data.
+  task dmi_read(input dtp_env_pkg::dtp_j2a_target_t t, input dtp_env_pkg::dtp_dm_reg_e address,
+                input string label, output bit [31:0] data);
+    dmi_scan(t, address, '0, dtp_env_pkg::DTP_DMI_OP_READ, label, data);
+    dmi_scan(t, '0, '0, dtp_env_pkg::DTP_DMI_OP_NOP, {label, ".fetch"}, data);
+  endtask
+
+  // Program the Debug Module for one `size` access of `addr` and start it. A
+  // system reset clears dmactive, so every access sets it; the sbcs write
+  // clears sberror and sbbusyerror. With sbreadonaddr the sbaddress0 write
+  // starts a read, otherwise the sbdata0 write starts a write of `data`.
+  task start_j2a(dtp_env_pkg::dtp_j2a_target_t t, bit is_read, bit [63:0] addr, bit [63:0] data,
+                 int unsigned size, string label);
+    dtp_env_pkg::dtp_sbcs_t sbcs = '0;
+    sbcs.sbbusyerror  = 1'b1;
+    sbcs.sberror      = '1;
+    sbcs.sbreadonaddr = is_read;
+    sbcs.sbaccess     = 3'(size);
+    dmi_write(t, dtp_env_pkg::DTP_DM_DMCONTROL, 32'h1, {label, ".dmcontrol"});
+    dmi_write(t, dtp_env_pkg::DTP_DM_SBCS, 32'(sbcs), {label, ".sbcs"});
+    if (t.addr_width > 32)
+      dmi_write(t, dtp_env_pkg::DTP_DM_SBADDRESS1, addr[63:32], {label, ".sbaddress1"});
+    if (!is_read && size == 3)
+      dmi_write(t, dtp_env_pkg::DTP_DM_SBDATA1, data[63:32], {label, ".sbdata1"});
+    dmi_write(t, dtp_env_pkg::DTP_DM_SBADDRESS0, addr[31:0], {label, ".sbaddress0"});
+    if (!is_read) dmi_write(t, dtp_env_pkg::DTP_DM_SBDATA0, data[31:0], {label, ".sbdata0"});
+  endtask
+
+  // Bounded poll of sbcs until sbbusy clears; returns sberror (2 for any bus
+  // error response). One TIMEOUT-PATH site per call, `label` naming it.
+  task poll_j2a(input dtp_env_pkg::dtp_j2a_target_t t, input string label,
+                output bit [2:0] sberror);
     bit ok = 1'b0;
-    status = dtp_env_pkg::DTP_J2A_BUSY_OR_FULL;
-    rdata  = '0;
+    bit [31:0] value;
+    dtp_env_pkg::dtp_sbcs_t sbcs = '0;
     for (int unsigned poll = 0; poll < test_cfg.j2a_max_status_polls; poll++) begin
-      dtp_jtag2axi_single_status_seq st = dtp_jtag2axi_single_status_seq::type_id::create(
-          "j2a_single_status"
-      );
-      st.target = t;
-      ensure_run_test_idle();
-      run_jtag_op(st);
-      status = st.status;
-      rdata  = st.rdata;
-      if (status != dtp_env_pkg::DTP_J2A_BUSY_OR_FULL) begin
+      dmi_read(t, dtp_env_pkg::DTP_DM_SBCS, label, value);
+      sbcs = dtp_env_pkg::dtp_sbcs_t'(value);
+      if (!sbcs.sbbusy) begin
         ok = 1'b1;
         break;
       end
-      wait_smu_cycles(TdrExportSettleCycles);
     end
-    record_timeout_path(label, test_cfg.j2a_max_status_polls, ok, 16'(status));
+    record_timeout_path(label, test_cfg.j2a_max_status_polls, ok, value[15:0]);
+    if (sbcs.sbbusyerror)
+      `uvm_error(get_type_name(), $sformatf(
+                 "%s %s: sbbusyerror set, sbcs=0x%08h", t.name, label, value))
+    sberror = sbcs.sberror;
   endtask
 
-  task single_write_j2a(dtp_env_pkg::dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
-                        bit [7:0] wstrb, int unsigned size, string label,
-                        output dtp_env_pkg::dtp_j2a_status_e status);
-    bit [63:0] unused_rdata;
-    issue_single_j2a(t, dtp_env_pkg::DTP_J2A_OP_WRITE, addr, data, wstrb, size);
-    poll_single_j2a(t, label, status, unused_rdata);
+  task write_j2a(input dtp_env_pkg::dtp_j2a_target_t t, input bit [63:0] addr,
+                 input bit [63:0] data, input int unsigned size, input string label,
+                 output bit [2:0] sberror);
+    start_j2a(t, 1'b0, addr, data, size, label);
+    poll_j2a(t, label, sberror);
   endtask
 
-  task single_read_j2a(dtp_env_pkg::dtp_j2a_target_t t, bit [63:0] addr, int unsigned size,
-                       string label, output dtp_env_pkg::dtp_j2a_status_e status,
-                       output bit [63:0] rdata);
-    issue_single_j2a(t, dtp_env_pkg::DTP_J2A_OP_READ, addr, '0, '0, size);
-    poll_single_j2a(t, label, status, rdata);
+  task read_j2a(input dtp_env_pkg::dtp_j2a_target_t t, input bit [63:0] addr,
+                input int unsigned size, input string label, output bit [2:0] sberror,
+                output bit [63:0] rdata);
+    bit [31:0] word;
+    start_j2a(t, 1'b1, addr, '0, size, label);
+    poll_j2a(t, label, sberror);
+    dmi_read(t, dtp_env_pkg::DTP_DM_SBDATA0, {label, ".sbdata0"}, word);
+    rdata = 64'(word);
+    if (size == 3) begin
+      dmi_read(t, dtp_env_pkg::DTP_DM_SBDATA1, {label, ".sbdata1"}, word);
+      rdata[63:32] = word;
+    end
   endtask
 
-  // SINGLE_OP write whose bridge status is graded SUCCESS under `check_id`.
+  // write_j2a whose sberror is graded zero under `check_id`. `data` and
+  // `wstrb` are the beat lanes of the AXI W channel. System Bus Access writes
+  // whole naturally aligned words, so `wstrb` is the full strobe of the
+  // access's lanes.
   task write_j2a_checked(dtp_env_pkg::dtp_j2a_target_t t, string check_id, string name,
                          bit [63:0] addr, bit [63:0] data, bit [7:0] wstrb, int unsigned size,
                          string label);
-    dtp_env_pkg::dtp_j2a_status_e status;
-    single_write_j2a(t, addr, data, wstrb, size, label, status);
-    check_evidence(check_id, {name, " write status"}, 64'(status),
-                   64'(dtp_env_pkg::DTP_J2A_SUCCESS), $sformatf("addr=0x%0h", addr));
+    int unsigned lane = int'(addr % t.beat_bytes);
+    bit [2:0] sberror;
+    if (wstrb != dtp_env_pkg::dtp_j2a_full_wstrb(size) << lane)
+      `uvm_error(get_type_name(), $sformatf(
+                 "%s %s: System Bus Access cannot issue wstrb 0x%02h", t.name, label, wstrb))
+    write_j2a(t, addr, (data >> (8 * lane)) & dtp_env_pkg::dtp_j2a_data_mask(size), size, label,
+              sberror);
+    check_evidence(check_id, {name, " write sberror"}, 64'(sberror), 64'd0, $sformatf(
+                   "addr=0x%0h", addr));
   endtask
 
-  // SINGLE_OP read whose bridge status is graded SUCCESS under `check_id`.
-  task read_j2a_checked(dtp_env_pkg::dtp_j2a_target_t t, string check_id, string name,
-                        bit [63:0] addr, int unsigned size, string label, output bit [63:0] rdata);
-    dtp_env_pkg::dtp_j2a_status_e status;
-    single_read_j2a(t, addr, size, label, status, rdata);
-    check_evidence(check_id, {name, " read status"}, 64'(status), 64'(dtp_env_pkg::DTP_J2A_SUCCESS),
-                   $sformatf("addr=0x%0h", addr));
-  endtask
-
-  // *_JTAG2AXI_CAPS readback of one bridge (14 bits).
-  task read_j2a_caps(dtp_env_pkg::dtp_j2a_target_t t, output bit [SmuJ2aCapsLen-1:0] caps);
-    bit [63:0] observed;
-    load_ir(t.caps_instr);
-    dr_scan(64'h0, SmuJ2aCapsLen, observed);
-    caps = SmuJ2aCapsLen'(observed);
-  endtask
-
-  // SERIES_CTRL programming: op, size, pipeline depth and address latched at
-  // Update-DR (dtp_env_pkg codec).
-  task series_ctrl_j2a(dtp_env_pkg::dtp_j2a_target_t t, dtp_env_pkg::dtp_j2a_op_e op,
-                       bit [63:0] addr, int unsigned pipeline_depth, int unsigned size);
-    bit [63:0] unused;
-    load_ir(t.series_ctrl_instr);
-    dr_scan(dtp_env_pkg::dtp_j2a_pack_series_ctrl(t, op, addr, pipeline_depth, size, 1'b0),
-            dtp_env_pkg::dtp_j2a_series_ctrl_len(t), unused);
-  endtask
-
-  // Bounded poll of SERIES_CTRL until its status leaves BUSY_OR_FULL (a
-  // NOP image keeps the latched programming). One TIMEOUT-PATH site.
-  task poll_series_ctrl_j2a(dtp_env_pkg::dtp_j2a_target_t t, int unsigned size, string label,
-                            output dtp_env_pkg::dtp_j2a_status_e status);
-    bit        ok = 1'b0;
-    bit [63:0] nop = dtp_env_pkg::dtp_j2a_pack_series_ctrl(t, dtp_env_pkg::DTP_J2A_OP_NOP, '0, 0,
-                                                            size, 1'b0);
-    status = dtp_env_pkg::DTP_J2A_BUSY_OR_FULL;
-    load_ir(t.series_ctrl_instr);
-    for (int unsigned poll = 0; poll < test_cfg.j2a_max_status_polls; poll++) begin
-      bit [63:0] observed, addr_u;
-      bit rst_u;
-      int unsigned pl_u, size_u;
-      dr_scan(nop, dtp_env_pkg::dtp_j2a_series_ctrl_len(t), observed);
-      dtp_env_pkg::dtp_j2a_unpack_series_ctrl(t, observed, rst_u, addr_u, pl_u, size_u, status);
-      if (status != dtp_env_pkg::DTP_J2A_BUSY_OR_FULL) begin
-        ok = 1'b1;
-        break;
-      end
-      wait_smu_cycles(TdrExportSettleCycles);
-    end
-    record_timeout_path(label, test_cfg.j2a_max_status_polls, ok, 16'(status));
-  endtask
-
-  // One SERIES_DATA_INCR shift under the latched series size, returning the
-  // captured payload.
-  task series_data_incr_j2a(dtp_env_pkg::dtp_j2a_target_t t, bit [63:0] data, int unsigned size,
-                            output bit [63:0] captured);
-    int unsigned width = 8 * dtp_env_pkg::dtp_j2a_size_bytes(size);
-    load_ir(t.series_data_incr_instr);
-    dr_scan(data & dtp_env_pkg::dtp_j2a_data_mask(size), width, captured);
-    idle_tck(J2aSeriesLaunchCycles);
-    captured &= dtp_env_pkg::dtp_j2a_data_mask(size);
-  endtask
-
-  // Series INCR write of one word, then the CTRL status (cocotb
-  // jtag2axi_series_incr_write parity).
-  task series_incr_write_j2a(dtp_env_pkg::dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
-                             int unsigned size, string label,
-                             output dtp_env_pkg::dtp_j2a_status_e status);
-    bit [63:0] unused;
-    series_ctrl_j2a(t, dtp_env_pkg::DTP_J2A_OP_WRITE, addr, 1, size);
-    series_data_incr_j2a(t, data, size, unused);
-    wait_smu_cycles(J2aSeriesSettleCycles);
-    poll_series_ctrl_j2a(t, size, label, status);
-  endtask
-
-  // Series INCR read of one word: programme, one data shift to launch the
-  // read, the CTRL status, then the data shift that returns the word. That
-  // last shift launches the next pipelined read of the series (the budget is
-  // pipeline_depth + 1 per programming), so the CTRL status is polled once
-  // more (`drain_label`) and the bridge is idle when the task returns.
-  task series_incr_read_j2a(dtp_env_pkg::dtp_j2a_target_t t, bit [63:0] addr, int unsigned size,
-                            string label, string drain_label,
-                            output dtp_env_pkg::dtp_j2a_status_e status, output bit [63:0] rdata);
-    bit [63:0] unused;
-    dtp_env_pkg::dtp_j2a_status_e drain_status;
-    series_ctrl_j2a(t, dtp_env_pkg::DTP_J2A_OP_READ, addr, 1, size);
-    series_data_incr_j2a(t, '0, size, unused);
-    wait_smu_cycles(J2aSeriesSettleCycles);
-    poll_series_ctrl_j2a(t, size, label, status);
-    series_data_incr_j2a(t, '0, size, rdata);
-    wait_smu_cycles(J2aSeriesSettleCycles);
-    poll_series_ctrl_j2a(t, size, drain_label, drain_status);
+  // read_j2a whose sberror is graded zero under `check_id`; `rdata` holds the
+  // read data at the access's byte lanes of the beat.
+  task read_j2a_checked(input dtp_env_pkg::dtp_j2a_target_t t, input string check_id,
+                        input string name, input bit [63:0] addr, input int unsigned size,
+                        input string label, output bit [63:0] rdata);
+    bit [2:0] sberror;
+    read_j2a(t, addr, size, label, sberror, rdata);
+    check_evidence(check_id, {name, " read sberror"}, 64'(sberror), 64'd0, $sformatf(
+                   "addr=0x%0h", addr));
+    rdata = (rdata & dtp_env_pkg::dtp_j2a_data_mask(size)) << (8 * (addr % t.beat_bytes));
   endtask
 
   // ------------------------------------------------------------------

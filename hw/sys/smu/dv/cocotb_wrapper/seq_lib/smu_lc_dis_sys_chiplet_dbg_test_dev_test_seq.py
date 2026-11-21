@@ -15,7 +15,7 @@ S1, setup: the image is the leaf's own and ``sep_fuse_sense_done_o`` rises withi
 S2, feature control: ``lcc_feat_ctrl_o`` has bit 1 clear and every other bit set.
 S3, Case 1 control: the I/O STAP host TMS follows the PTAP TMS and the DFD SIB opens with its
     bench cell in the loop.
-S4, fabric: an SMC fabric SINGLE_OP read and write launch nothing.
+S4, fabric: an SMC fabric JTAG2AXI read and write launch nothing.
 S5, SMC debug STAP: host TMS parked, TDO enable low, 3DCR Select captured 0.
 S6, extra STAP: the same.
 S7, DFT non-secure SIB: captures 0 and the DR stays 3 bits long.
@@ -306,7 +306,7 @@ class smu_lc_dis_sys_chiplet_dbg_test_dev_test_seq(smu_lc_sec_dis_over_sigint_pr
             ((True, True, True, True), SIB_OPEN_CAPTURED, True, True, True, 0),
         )
 
-        await self._mark("SMC fabric SINGLE_OP read then write, DTP-to-SMC AR/AW/B counters")
+        await self._mark("SMC fabric JTAG2AXI read then write, DTP-to-SMC AR/AW/B counters")
         await self._tlr()
         lane_before = self._rd("lcc_dbg_disable_smc_jtag2axi_o")
         start, end, delta = await self._fabric_deltas(launches=False)

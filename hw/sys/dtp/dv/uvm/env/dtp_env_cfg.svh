@@ -23,6 +23,10 @@ class dtp_env_cfg extends ocah_env_cfg;
   // Negative validation of the jtag2axi_req reference model: every
   // predicted address is corrupted, so the scoreboard pairing must fail.
   bit jtag2axi_ref_model_negative;
+  // Negative validation of the jtag2axi_status reference model: no busy
+  // status while a DMI operation is in progress, so the busy captures must
+  // disagree.
+  bit jtag2axi_status_model_negative;
   // Negative validation of the xtrig_csr and xtrig_decode reference models:
   // one bit of every compared prediction is flipped, so the scoreboard
   // pairing must fail.
@@ -44,6 +48,7 @@ class dtp_env_cfg extends ocah_env_cfg;
     c.resp_user_seed         = ocah_rng::salted_seed(t.seed, "resp_user");
     c.jtag_activity_required = t.jtag_activity_required;
     c.jtag2axi_ref_model_negative = t.jtag2axi_ref_model_negative;
+    c.jtag2axi_status_model_negative = t.jtag2axi_status_model_negative;
     c.xtrig_csr_ref_model_negative = t.xtrig_csr_ref_model_negative;
     c.xtrig_decode_ref_model_negative = t.xtrig_decode_ref_model_negative;
     c.jtag_policy            = t.jtag_policy;
