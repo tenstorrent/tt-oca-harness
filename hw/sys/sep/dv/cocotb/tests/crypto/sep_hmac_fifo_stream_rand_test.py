@@ -23,7 +23,8 @@ runs the same plan shape in drawn orders:
 The not-full fifo_empty leg ends with a write to ``INTR_TEST.fifo_empty`` with the window
 closed. The first ``INTR_STATE`` read after it is graded (CHK-HMAC-FE-INTRTEST); the reads
 after a settle window and after a write-one clear are logged only (``INFO-HMAC-FE-INTRTEST``).
-Its ``state_before`` field is graded by ``CHK-HMAC-FIFOEMPTY``; no open specification question.
+Its ``state_before`` field repeats the notfull-leg read that ``CHK-HMAC-FIFOEMPTY`` grades;
+the other two fields are not graded. No open specification question.
 
 The drain stall is the bench input ``hmac_fifo_drain_stall_i``: it holds the read side of the
 message FIFO idle (``tb/tb_top.sv``, HMAC message-FIFO drain stall).
@@ -1186,7 +1187,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             state_settle=int(bool(st_settle)),
             settle_clk=FQ_SETTLE_CLK,
             state_after_w1c=int(bool(st_w1c)),
-            chk="CHK-HMAC-FIFOEMPTY",
+            graded="none",
         )
 
     async def _wipe_leg(self, leg: WipeLeg) -> None:
