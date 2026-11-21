@@ -990,9 +990,9 @@ module entropy_source
         if (!rst_ni) begin
             ht_fail_sticky_q <= 1'b0;
         end else if (window_wrap_pulse) begin
-            // Sampled this cycle by ht_fail_pulse; restart accumulation. Capture
-            // a fresh failure landing exactly on the wrap cycle immediately.
-            ht_fail_sticky_q <= health_test_enable && (|health_status);
+            // Sampled this cycle by ht_fail_pulse, which also counts a failure
+            // on the wrap cycle itself, so the next window starts clean.
+            ht_fail_sticky_q <= 1'b0;
         end else if (health_test_enable && (|health_status)) begin
             ht_fail_sticky_q <= 1'b1;
         end
