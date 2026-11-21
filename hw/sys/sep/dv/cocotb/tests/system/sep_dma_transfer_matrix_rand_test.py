@@ -104,25 +104,26 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-FIXED-CHUNK a copy of two chunks of a drawn 4 to 64 bytes at width 4,
                       source INCREMENT=0 and WRAP=0, destination INCREMENT=1,
                       with the source programmed in a drawn direct or alias
-                      form: exactly two GO writes, DONE=1, ERROR=0; every AR
-                      of chunk 1 (before the second GO write) is at the source
-                      address and every AR of chunk 2 at the source address
-                      plus CHUNK_DATA_SIZE, CHUNK_DATA_SIZE / 4 of each (the
-                      tap is after the alias remap, so both are direct
-                      addresses); the destination holds the source word at
-                      each of the two addresses, CHUNK_DATA_SIZE / 4 times
-                      each. The chunk-2 start is graded on SRC_CONFIG.WRAP
-                      "When 0: Chunks occupy contiguous ascending addresses"
-                      (``secure_dma.rdl:267``); the INCREMENT text "When 0:
-                      Source address is not changed. All reads are done from
-                      the same address" (``secure_dma.rdl:259-262``) covers
-                      the reads within one chunk ("all data reads within a
-                      single chunk are performed to/from a single address",
-                      OpenTitan DMA
-                      ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/theory_of_operation.md:147-153,178-179``).
-                      The address is computed in the leaf, not with
-                      ``env/sep_dma_model.txn_addr``, which covers INCREMENT=0
-                      within one chunk only.
+                      form: exactly two GO writes, DONE=1, ERROR=0 and
+                      ERROR_CODE 0; every AR of chunk 1 (before the second GO
+                      write) is at the source address (INCREMENT=0, "All
+                      reads are done from the same address",
+                      ``secure_dma.rdl:259-262``), CHUNK_DATA_SIZE / 4 of
+                      them, and the first chunk of the destination holds the
+                      source word, CHUNK_DATA_SIZE / 4 times (the tap is after
+                      the alias remap, so the addresses are direct). Two RDL
+                      lines give different chunk-2 starts: the source address
+                      (``secure_dma.rdl:259-262``) or the source address plus
+                      CHUNK_DATA_SIZE (WRAP=0, "Chunks occupy contiguous
+                      ascending addresses", ``secure_dma.rdl:267``). Both give
+                      CHUNK_DATA_SIZE / 4 reads at one address, so chunk 2 is
+                      graded as that many reads at one of the two addresses,
+                      with the second chunk of the destination holding the
+                      source word at that address. Control (else
+                      CTRL-MISSING): CTRL-DMA-FIXED-CHUNK2, a second GO write
+                      and at least one chunk-2 AR. The chunk-2 address the DUT
+                      reads, with the address of each reading, is logged on
+                      OBS-DMA-FIXED-CHUNK-ADDR.
   CHK-DMA-CHUNK1      width 1 with CHUNK_DATA_SIZE 1 (the stated minimum) on a
                       drawn 2 to 16 bytes: image, beat counts, addresses and
                       WSTRB equal the model, n-1 to n CHUNK_DONE rises, n-1
@@ -2147,9 +2148,13 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         The source is programmed in the drawn form (direct or local alias); the
         tap addresses are after the alias remap, so the golden is the direct
         address. Chunk 1 reads every word at ``src`` (SRC_CONFIG.INCREMENT=0,
-        ``secure_dma.rdl:259-262``); chunk 2 reads every word at ``src + chunk``,
-        because with WRAP=0 "Chunks occupy contiguous ascending addresses"
-        (``secure_dma.rdl:267``).
+        ``secure_dma.rdl:259-262``). Two RDL lines give the chunk-2 start:
+        ``src`` ("All reads are done from the same address",
+        ``secure_dma.rdl:259-262``) or ``src + chunk`` (WRAP=0, "Chunks occupy
+        contiguous ascending addresses", ``secure_dma.rdl:267``). The check
+        grades what both readings state for chunk 2: CHUNK_DATA_SIZE / 4 reads
+        at one of those two addresses, and the destination holding the word
+        read there. OBS-DMA-FIXED-CHUNK-ADDR logs which address the DUT read.
         """
         ops = self.ops
         src, dst, chunk, s, words = plan.fixed
@@ -2182,17 +2187,27 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         err = await ops.rd(ERROR_CODE)
         got = await self.mem.read(dst, 2 * chunk // 4)
         n = chunk // 4
-        exp_img = [words[0]] * n + [words[n]] * n
-        exp1, exp2 = [src] * n, [src + chunk] * n
         ar1 = rle(["X" if a is None else f"0x{a:08x}" for a in first]) or "-"
         ar2 = rle(["X" if a is None else f"0x{a:08x}" for a in second]) or "-"
+        ctrl = f"form={plan.fixed_form} chunk={chunk} go_writes={len(gos)} chunk2_ar={len(second)}"
+        if cut is None or not second:
+            self._ctrl_missing("CTRL-DMA-FIXED-CHUNK2", ctrl)
+        self.logger.info("CTRL-DMA-FIXED-CHUNK2 PASS seed=%d %s", self.seed, ctrl)
+        same_addr, next_chunk = src, src + chunk
+        start2 = second[0] if len(set(second)) == 1 else None
+        chunk2_ok = len(second) == n and start2 in (same_addr, next_chunk)
+        word2 = words[(start2 - src) // 4] if chunk2_ok else None
+        img1_ok = got[:n] == [words[0]] * n
+        img2_ok = chunk2_ok and got[n:] == [word2] * n
         ok = (
             len(gos) == 2
-            and first == exp1
-            and second == exp2
-            and got == exp_img
+            and first == [src] * n
+            and chunk2_ok
+            and img1_ok
+            and img2_ok
             and res.status.done
             and not res.status.error
+            and err == 0
         )
         self._pass(
             "CHK-DMA-FIXED-CHUNK",
@@ -2200,8 +2215,21 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"form={plan.fixed_form} chunk={chunk} go_writes={len(gos)}/2 "
             f"done={res.status.done} error={res.status.error} error_code=0x{err:x} "
             f"src=0x{src:08x} chunk1_ar={ar1} chunk1_expect=0x{src:08x}*{n} "
-            f"chunk2_ar={ar2} chunk2_expect=0x{src + chunk:08x}*{n} "
-            f"dst_eq_golden={int(got == exp_img)}",
+            f"chunk2_ar_count={len(second)}/{n} chunk2_one_of=0x{same_addr:08x},0x{next_chunk:08x} "
+            f"chunk2_ok={int(chunk2_ok)} dst_chunk1_eq_golden={int(img1_ok)} "
+            f"dst_chunk2_eq_read_word={int(img2_ok)}",
+        )
+        reading = {same_addr: "same_address", next_chunk: "next_chunk"}[start2]
+        self.logger.info(
+            "OBS-DMA-FIXED-CHUNK-ADDR seed=%d form=%s chunk=%d chunk2_ar=%s "
+            "same_address=0x%08x next_chunk=0x%08x dut=%s (value logged)",
+            self.seed,
+            plan.fixed_form,
+            chunk,
+            ar2,
+            same_addr,
+            next_chunk,
+            reading,
         )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 
