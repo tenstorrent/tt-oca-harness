@@ -264,6 +264,7 @@ tests = [
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_transient_rma_rand_test_prod",
+    "sep_efuse_transient_rma_rand_test_simul",
     "sep_boot_rom_lsu_read_test",
     "sep_boot_rom_aperture_sweep_test_rom_be",
     "sep_efuse_set_only_monotonicity_test",
@@ -512,6 +513,7 @@ tests = [
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_transient_rma_rand_test_prod",
+    "sep_efuse_transient_rma_rand_test_simul",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
@@ -1090,7 +1092,7 @@ tests = [
 # Convenience group of the eFuse, lifecycle and SEC_DIS tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_efuse_lifecycle"
-expected_count = 20
+expected_count = 21
 tests = [
     "sep_efuse_window_decode_reset_test",
     "sep_efuse_field_layout_rand_test",
@@ -1102,6 +1104,7 @@ tests = [
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_transient_rma_rand_test_prod",
+    "sep_efuse_transient_rma_rand_test_simul",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",

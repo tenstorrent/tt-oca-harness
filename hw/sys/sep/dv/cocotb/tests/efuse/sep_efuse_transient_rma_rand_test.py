@@ -16,9 +16,10 @@ image and every stimulus choice above; the run seed is the ``seed=`` of every
 check line. INFO-SEED prints the plan seed as ``seed=`` and both seeds as
 ``run_seed=`` and ``plan_seed=``.
 
-With ``+sep_pin_cell=prod`` the plan seed is the fixed seed of the cell in ``_PIN``
-in place of the run seed; it draws enable 0 and start PROD, so the leaf runs
-neither leg B nor leg S and reaches the out-of-order program of bit 2. The entry
+With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
+``_PIN`` in place of the run seed. Cell ``prod`` draws enable 0 and start PROD, so
+the leaf runs neither leg B nor leg S and reaches the out-of-order program of
+bit 2. Cell ``simul`` draws enable 1 and start PROD, so the leaf runs leg S. The entry
 that sets it stages the same image with ``+sep_efuse_preload``. INFO-SEED also
 prints ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell;
 ``+sep_pin_cell`` with ``+sep_rma_require_legb`` is a setup failure. CTRL-PIN-LEG:
@@ -45,12 +46,15 @@ RMA_SIP already set, so the SIP match does not fall through: after W the
 channels at Match before and after W (``otp_fuse_controller.adoc``, row
 ``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
 after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
-follows each token match (``otp_fuse_controller.adoc:232-238``) and the block
-covers only a SIP match made while the chiplet match is held. A cold reset
-follows; the twin then presents the
+follows each token match (``otp_fuse_controller.adoc:237-243``) and the block
+covers only a SIP match made while the chiplet match is held. A lone CHIPLET
+match after that lands RMA_CHIPLET without a reset
+(CHK-TRANSIENT-AFTER-BLOCK-CHP), so the blocked CHIPLET match of the script does
+not use up the CHIPLET update either. A cold reset follows; the twin then
+presents the
 SIP match alone from the sensed start state and lands RMA_SIP, and a second
-cold reset restores the sensed state. The lone SIP match and the cold reset
-after it run with the graded coverage window closed.
+cold reset restores the sensed state. The lone SIP and CHIPLET matches and the
+cold reset after them run with the graded coverage window closed.
 
 Every ``LC_STATE`` shadow read is graded as the whole 32-bit word: ``{~r, r}``
 in bits [7:0] and 0 in the reserved bits [31:8]
@@ -88,7 +92,8 @@ channel before the next cold reset. In leg A a CHIPLET match also ends before
 a later SIP step; leg S holds it on purpose.
 
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
-leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
+leaf); CHK-TRANSIENT-SIMUL, CHK-TRANSIENT-AFTER-BLOCK and
+CHK-TRANSIENT-AFTER-BLOCK-CHP (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
 CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
 enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-GO (leg B: after each
 refused program, ``efuse_addr``, ``efuse_data`` and ``program_enable`` of
@@ -102,8 +107,8 @@ leaf verdict.
 
 FCOV (owner ``sep_efuse_transient_rma_rand_test``): the graded window opens
 after the window control and stays open to the end of the leaf, except for the
-lone SIP match of leg S and its cold reset and the bit-2 control program of
-leg B. The sampler holds each legal outcome of ``x_transient``,
+lone SIP and CHIPLET matches of leg S and their cold reset and the bit-2
+control program of leg B. The sampler holds each legal outcome of ``x_transient``,
 ``cp_simultaneous_match``, ``cp_reset_restore`` and ``x_lc_prog_gate`` as
 pending, and samples it only on the rise of its bit of the pass label
 ``tr_pass``, which the leaf writes after the check that grades that outcome
@@ -177,7 +182,7 @@ _SENSE_BOUND = 100_000
 _POLL_READS = 400
 _LC_WORD = field_word("LC_STATE")
 _EN_MASK = NARROW_USED["TRANSIENT_RMA_EN"]
-# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:216-224;
+# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:221-229;
 # lifecycle_controller.adoc:88-90): bit 1 with an RMA_SIP match, bit 2 with an
 # RMA_CHIPLET match from a state with bit 1 set.
 _LC_SIP_BIT = 1
@@ -208,7 +213,10 @@ _LEG_S_STARTS = ("TEST_DEV", "PROD")
 # Plan seed of ``+sep_rma_require_legb``: plan(T_TRANSIENT, _S_B) draws leg B.
 _S_B = 8
 # Pinned cells: plan seed and the draw the cell needs.
-_PIN = {"prod": (15, lambda p: p.leg["enable"] == 0 and p.leg["start"] == "PROD")}
+_PIN = {
+    "prod": (15, lambda p: p.leg["enable"] == 0 and p.leg["start"] == "PROD"),
+    "simul": (27, lambda p: p.leg["enable"] == 1 and p.leg["start"] in _LEG_S_STARTS),
+}
 
 
 def _pin(seed: int) -> tuple[str | None, int]:
@@ -361,7 +369,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         Every match of the leg ended with a Mismatch go before the reset; the whole
         LC_STATE word, its probe, FEAT_CTRL and its probe equal the staged state; and
         when the leg updated the shadow, the byte before the reset differs from the
-        staged byte (otp_fuse_controller.adoc:9-11, :232-234).
+        staged byte (otp_fuse_controller.adoc:9-11, :237-239).
         """
         p = self.plan
         raw0 = p.lc_raw & _LC_RAW_MASK
@@ -597,6 +605,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
                 *type(self).required_evidence,
                 "CHK-TRANSIENT-SIMUL",
                 "CHK-TRANSIENT-AFTER-BLOCK",
+                "CHK-TRANSIENT-AFTER-BLOCK-CHP",
             )
         self.logger.info("EVIDENCE-REQUIRED seed=%d ids=%s", seed, ",".join(self.required_evidence))
 
@@ -786,7 +795,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         (CHK-TRANSIENT ``step=simul_chp``). The SIP match that follows while the
         CHIPLET match is held does not fall through to RMA_SIP: after W the whole
         LC_STATE word, its probe and FEAT_CTRL keep the start state
-        (otp_fuse_controller.adoc:232-238). Both channels read Match after the SIP
+        (otp_fuse_controller.adoc:237-243). Both channels read Match after the SIP
         match and the CHIPLET channel still reads Match after W, in the same line, so
         a script that never held both cannot pass. SIP ends first, then CHIPLET;
         an end go that does not reach Mismatch ends the leaf before the cold
@@ -860,9 +869,13 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         First, right after the simultaneous script, a lone SIP match must land
         RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK,
-        ``otp_fuse_controller.adoc:232-238``). Its Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
-        missing end ends the leaf there), and a cold reset follows, both with
-        the window closed. The window opens again after that reset. Then the
+        ``otp_fuse_controller.adoc:237-243``). After its Mismatch go a lone
+        CHIPLET match must then land RMA_CHIPLET without a reset
+        (CHK-TRANSIENT-AFTER-BLOCK-CHP): the CHIPLET match blocked in the
+        simultaneous script does not use up the CHIPLET update. Both Mismatch
+        goes must reach their code (CTRL-TRANSIENT-AFTER-BLOCK-END; a missing
+        end ends the leaf there), and a cold reset follows, all with the window
+        closed. The window opens again after that reset. Then the
         twin SIP match lands RMA_SIP from the sensed start state (CHK-TRANSIENT
         ``step=simul_twin``); after its Mismatch go a cold reset restores the
         staged state (CHK-TRANSIENT-RESET ``leg=simul``), so that reset always
@@ -883,10 +896,24 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             name="TRANSIENT-AFTER-BLOCK",
         )
         obs_end = await self._mismatch(CH_SIP, f"{tag}.obs_sip_end")
+        sip_raw = _transient_next(raw0, CH_SIP, 1)
+        obs_chp = await self._match(CH_CHIPLET, f"{tag}.obs_chp")
+        await ClockCycles(dut.clk_i, self.w)
+        obs = await self._lc_and_feat()
+        self._grade_transient(
+            "after_block_chp",
+            CH_CHIPLET,
+            obs_chp,
+            _transient_next(sip_raw, CH_CHIPLET, 1),
+            obs,
+            name="TRANSIENT-AFTER-BLOCK-CHP",
+        )
+        chp_end = await self._mismatch(CH_CHIPLET, f"{tag}.obs_chp_end")
         if not self._ctrl(
             "TRANSIENT-AFTER-BLOCK-END",
-            obs_end == CODE_MISMATCH,
+            obs_end == CODE_MISMATCH and chp_end == CODE_MISMATCH,
             sip_end=_hex2(obs_end),
+            chp_end=_hex2(chp_end),
         ):
             self.chk.finish()
         await self.pulse_rst_ni()
