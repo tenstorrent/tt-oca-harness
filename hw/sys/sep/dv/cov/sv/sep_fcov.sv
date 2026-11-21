@@ -6097,7 +6097,7 @@ module sep_fcov (
   logic [1:0] fx_writeback = '0;     // 1 fired_one_granule, 2 suppressed_multi_granule
   logic [1:0] fx_dbw = '0;           // 1 in, 2 out
   logic [1:0] fx_locked_write = '0;  // 1 in_cfg_lo, 2 in_cfg_hi
-  logic [1:0] fx_locked_range = '0;  // 1 start, 2 end
+  logic [1:0] fx_locked_range = '0;  // 1 start, 2 end, 3 unused word
 
   // Pass label of sep_fabric_row_response_matrix_test (owner 231),
   // sep_unmapped_access_policy_test (owner 755) and
@@ -6552,11 +6552,12 @@ module sep_fcov (
     cp_locked_write: coverpoint fx_locked_write iff (fx_locked_write != 2'd0) {
       bins in_cfg_lo_slverr_kept = {2'd1}; bins in_cfg_hi_slverr_lock_kept = {2'd2};
     }
-    // The same for START_ADDR and END_ADDR of a locked entry (owner
-    // sep_fabric_slot_csr_strobe_rand_test), sampled on the rise of
-    // slot_lock_pass.
+    // The same for START_ADDR, END_ADDR and the unused word after END_ADDR
+    // of a locked entry (owner sep_fabric_slot_csr_strobe_rand_test), sampled
+    // on the rise of slot_lock_pass.
     cp_locked_range_write: coverpoint fx_locked_range iff (fx_locked_range != 2'd0) {
       bins start_slverr_kept = {2'd1}; bins end_slverr_kept = {2'd2};
+      bins hole_slverr_kept = {2'd3};
     }
   endgroup
 
@@ -8519,7 +8520,8 @@ module sep_fcov (
   endfunction
 
   // Filter register of an LSU address: {valid, out, idx[4:0], reg[1:0]};
-  // reg 0 FILTER_CONFIG, 1 START_ADDR, 2 END_ADDR.
+  // reg 0 FILTER_CONFIG, 1 START_ADDR, 2 END_ADDR, 3 the unused word after
+  // END_ADDR.
   typedef struct packed {
     logic       v;
     logic       out;
@@ -8550,6 +8552,9 @@ module sep_fcov (
     end else if (off == FFiltEnd) begin
       f.v = 1'b1;
       f.r = 2'd2;
+    end else if (off == FFiltEnd + 32'd8) begin
+      f.v = 1'b1;
+      f.r = 2'd3;
     end
     return f;
   endfunction
@@ -8804,7 +8809,7 @@ module sep_fcov (
         logic bst, same;
         logic [63:0] m;
         // Write-back of a range write.
-        if (own_ifwin && (fx_f.r != 2'd0)) begin
+        if (own_ifwin && (fx_f.r inside {2'd1, 2'd2})) begin
           sw   = fx_f.out ? out_sw_q[fx_f.idx] : in_sw_q[fx_f.idx[3:0]];
           ew   = fx_f.out ? out_ew_q[fx_f.idx] : in_ew_q[fx_f.idx[3:0]];
           bst   = fx_f.out ? out_f[fx_f.idx].burst : in_f[fx_f.idx[3:0]].burst;
@@ -8837,14 +8842,14 @@ module sep_fcov (
   end
 
   // Pass label of cp_locked_range_write (owner
-  // sep_fabric_slot_csr_strobe_rand_test). The cell of a refused START_ADDR or
-  // END_ADDR write whose read-back kept the written lanes is held and samples
-  // only when slot_lock_pass rises inside the window of that leaf: the leaf
-  // writes 0 when it opens the window for one refused write, and 1 after the
-  // DECERR response, the read-back of the written lanes and the whole read of
-  // every register of the entry passed, holds it two clocks and writes 0. A
-  // FAIL closes the window; a window close or a reset drops the held cell. It
-  // gates a sample; it is never a DUT value and drives nothing.
+  // sep_fabric_slot_csr_strobe_rand_test). The cell of a refused START_ADDR,
+  // END_ADDR or unused-word write whose read-back kept the written lanes is
+  // held and samples only when slot_lock_pass rises inside the window of that
+  // leaf: the leaf writes 0 when it opens the window for one refused write, and
+  // 1 after the SLVERR response, the read-back of the written lanes and the
+  // whole read of every register of the entry passed, holds it two clocks and
+  // writes 0. A FAIL closes the window; a window close or a reset drops the
+  // held cell. It gates a sample; it is never a DUT value and drives nothing.
   int unsigned slot_lock_pass = 0;
   logic        fx_slk_pass_q = 1'b0;
   logic [1:0]  fx_slk_pend_q = '0;
@@ -14156,8 +14161,9 @@ module sep_fcov (
   wire [6:0] pbe_val = rd_data[6:0];
   wire [1:0] dbe_val = rd_data[1:0];
   // {hit, status bit} of an LSU address on the peripheral register bridge:
-  // 0 aes, 1 hmac, 2 kmac, 3 otbn, 6 wdt. CSRNG (4) and EDN (5) answer
-  // through the DRBG adapter, so no CPU access reaches their bridge bit.
+  // 0 aes, 1 hmac, 2 kmac, 3 otbn, 6 wdt. The owner faults no CSRNG (4) or
+  // EDN (5) word; sep_irq_ip_to_aggregator_test grades those two latches
+  // (sep_ras_cg).
   function automatic logic [3:0] flt_blk(input logic [31:0] a);
     if (in_blk(a, AES_REG_MAP_BASE_ADDR, AES_REG_MAP_SIZE)) return 4'b1_000;
     if (in_blk(a, HMAC_REG_MAP_BASE_ADDR, HMAC_REG_MAP_SIZE)) return 4'b1_001;
@@ -14207,7 +14213,8 @@ module sep_fcov (
       bins kmac = {3'd2};
       bins otbn = {3'd3};
       bins wdt = {3'd6};
-      ignore_bins no_access_reaches_bridge = {3'd4, 3'd5};
+      // csrng and edn: the owner faults neither block.
+      ignore_bins not_faulted_by_owner = {3'd4, 3'd5};
     }
     cp_set_size: coverpoint s.ss iff (s.ss_v) {
       bins one = {3'd1}; bins two = {3'd2}; bins three = {3'd3};
@@ -46059,6 +46066,8 @@ module sep_fcov (
       bins periph_bus_err_kmac = {RasPbeKmac};
       bins periph_bus_err_otbn = {RasPbeOtbn};
       bins periph_bus_err_wdt = {RasPbeWdt};
+      bins periph_bus_err_csrng = {RasPbeCsrng};
+      bins periph_bus_err_edn = {RasPbeEdn};
       bins csrng_fatal = {RasCsrngFatal};
       bins edn_fatal = {RasEdnFatal};
       bins crypto_alert = {RasCryptoAlert};
@@ -46067,10 +46076,6 @@ module sep_fcov (
       // Constant 0 in this build: hw/sys/sep/doc/port_table.adoc
       // (lockstep_status_o) and the sep_ras_t comment of entropy_pool_err.
       ignore_bins tied0 = {RasLockstepErr, RasEntropyPoolErr};
-      // The CSRNG and EDN windows of the crypto demux answer an unmapped
-      // offset with DECERR before the register bridge, so no access raises
-      // these two bits.
-      ignore_bins demux_decerr = {RasPbeCsrng, RasPbeEdn};
     }
   endgroup
 
@@ -46089,6 +46094,7 @@ module sep_fcov (
       RasDmaAlert, RasCryptoAlert: return graded_owner == FcovOwnSepPicPendingMapWalkRandTest;
       RasDmaRegBusErr, RasPbeAes, RasPbeHmac, RasPbeKmac, RasPbeOtbn, RasPbeWdt:
       return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
+      RasPbeCsrng, RasPbeEdn: return graded_owner == FcovOwnSepIrqIpToAggregatorTest;
       RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
       RasCsrngFatal, RasEdnFatal:
       return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||

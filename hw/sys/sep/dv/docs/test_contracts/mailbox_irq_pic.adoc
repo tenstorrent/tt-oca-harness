@@ -81,9 +81,9 @@ such contract.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves that interrupts owned by the entropy blocks, HMAC error, and DMA done/chunk/error reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter, the same hole written, and one read through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
+*Objective*: Proves that interrupts owned by the entropy blocks, HMAC error, and DMA done/chunk/error reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter, the same hole written, and one read through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write. Then an access to the span that a Past Extent note of the generated map gives the unit's own decode must answer the map's code and read data and latch exactly the flag the note names, and an access past that span must latch nothing.
 
-*Test Coverage*: Entropy, HMAC-error, and DMA `INTR_TEST` bits plus adapter SLVERR into the aggregator.
+*Test Coverage*: Entropy, HMAC-error, and DMA `INTR_TEST` bits plus adapter SLVERR into the aggregator. The Past Extent note spans of the DMA, watchdog, AES, EDN, CSRNG and SPI host rows (`hw/sys/sep/regs/gen/adoc/memory_map.adoc:42`, `:43`, `:49`, `:52`, `:53`, `:75`; notes `:88-92`, `:95`) and the first and last word past each span. Functional coverage: `sep_ras_cg` bins `periph_bus_err_csrng` and `periph_bus_err_edn`.
 
 *Test Procedure*:
 
@@ -99,6 +99,8 @@ such contract.
 . Write the same DMA hole full-width; require BRESP=SLVERR, exclusive `reg_path_err`, and bit 40, then clear again.
 . Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 42. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 42 read 0.
 . Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`).
+. For each row of the generated map with a Past Extent note span, take four words: the first and the last word of the span, the first word past it and the last word of the page. Read each word once and write it once (`0xA5A5_1234`). After each access, read both STATUS words and sample aggregator bits 40 to 42 and the `dma_reg_bus_err` and `periph_bus_err` bits of the bench tap `sep_ras_probe_o`. For an access that latches a flag, write the matching CLEAR (`DMA_BUS_ERR_CLEAR.clr` or the `PERIPH_BUS_ERR_CLEAR` bit of the block) and sample all three again.
+. Run the previous step twice: with the graded FCOV window closed, then with the window of this leaf open, so that a `sep_ras_cg` bin samples only an access that passed once. The cocotb leaf runs these two steps; the SV-UVM leaf ends at the step before them.
 
 *Checkers*:
 
@@ -123,11 +125,19 @@ such contract.
 |Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 42 is 1; bit 40 stays 0.
 |CHK-BUSERR-CLR
 |Each matching CLEAR write returns its STATUS word and its aggregator bit to 0. The CLEAR registers are write-only single-pulse fields that always read 0, so their read value is not graded.
+|CHK-BUSERR-NOTE
+|An access to the first or last word of a note span answers the code the map states for the row's Past Extent cell and, for a read, the read data of the note (0xFFFFFFFF). The note's flag is latched and nothing else: for the DMA (note 2, "latches PIC source 41") `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`, `PERIPH_BUS_ERR_STATUS` is 0 and bit 40 is 1; for the watchdog, AES, EDN and CSRNG (notes 3 to 6) `PERIPH_BUS_ERR_STATUS` is exactly the named bit, `DMA_BUS_ERR_STATUS` is 0 and bit 42 is 1; the other two of bits 40 to 42 are 0. On `sep_ras_probe_o` the `dma_reg_bus_err` and `periph_bus_err` bits hold exactly the latched flag (`hw/sys/sep/doc/port_table.adoc:130`, `periph_bus_err` indexed by `periph_bus_err_e`). A DUT that does not latch the CSRNG or EDN bit, latches the wrong bit or answers the span with other data fails. Evidence: `CHK-BUSERR-NOTE PASS: run=<closed\|graded> unit=<row> addr=0x<a> op=<r\|w> column=Past Extent resp=2 rdata=0x<d>\|na expect=2/0x<d>\|na flag=<f> dma=0x<v> periph=0x<v> vec42_40=<bbb> ras=0x<v> want=...`.
+|CHK-BUSERR-NOTE-CLR
+|The CLEAR write of the latched flag returns both STATUS words, bits 40 to 42 and the bus-error bits of `sep_ras_probe_o` to 0.
+|CHK-BUSERR-PAST
+|An access to the first word past a note span or to the last word of the page answers the row's Past Extent cell (SLVERR, read data 0xBADCAB1E), and both STATUS words, bits 40 to 42 and the bus-error bits of `sep_ras_probe_o` stay 0: the note applies only up to its offset. The SPI host note (note 9) names no flag, so its span words are graded here too, with the note's read data 0xFFFFFFFF. A DUT that latches past the note's offset fails.
+|CTRL-BUSERR-NOTE
+|Set-up check, printed only on a failure: the flags that the generated map's notes name are exactly PIC source 41 and the `aes`, `csrng`, `edn` and `wdt` bits, so the leg grades every latch the map states.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PUT_PARTIAL_DATA` opcode arm — a sub-word write is refused upstream of the bridge from this master (SLVERR, status register unchanged), so only the `PUT_FULL_DATA` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench. For AES, CSRNG and EDN all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge (SLVERR, `PERIPH_BUS_ERR_STATUS` still 0); and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The partial-write term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
+*Not claimed*: the bridge's `PUT_PARTIAL_DATA` opcode arm — a sub-word write is refused upstream of the bridge from this master (SLVERR, status register unchanged), so only the `PUT_FULL_DATA` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. The AES and watchdog partial-write term (<<sep_cpu_bridge_fault_matrix_rand_test>>) and the bridge command-integrity term. The words of a note span between its first and last word. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The partial-write term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
 
 '''''
 
