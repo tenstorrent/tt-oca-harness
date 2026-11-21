@@ -19,6 +19,7 @@
 //                    write is rejected.
 //   CHK-CFG-REGWEN : the config lock engages while BUSY, so a config write does
 //                    not land: SRC_ADDR_LO does not read the written 0xDEADBEEF
+//                    or that value advanced by up to the transfer length
 //                    (hardware also writes SRC_ADDR_LO, so no other readback is
 //                    stated; the PASS line prints it). The lock releases when
 //                    idle, and the write then lands.
@@ -329,10 +330,11 @@ static int chk_cfg_regwen(void) {
         e++;
     }
     // A config write while locked does not land. Hardware also writes
-    // SRC_ADDR_LO, so only the written value is a failing readback.
+    // SRC_ADDR_LO and advances it by at most the transfer length, so a
+    // readback in [0xDEADBEEF, 0xDEADBEEF + len] is the written value.
     wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
     uint32_t after = rd(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR);
-    if (after == 0xDEADBEEFu) {
+    if ((uint32_t)(after - 0xDEADBEEFu) <= len) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN config write not rejected while locked, got ");
         sep_mbx_puthex(after);
         sep_mbx_putc('\n');
@@ -361,7 +363,9 @@ static int chk_cfg_regwen(void) {
     if (!e) {
         sep_mbx_puts("CHK-CFG-REGWEN PASS: locked 0x9 while BUSY, SRC_ADDR_LO busy readback ");
         sep_mbx_puthex(after);
-        sep_mbx_puts(" not the written 0xDEADBEEF; unlocked 0x6 when idle (write lands)\n");
+        sep_mbx_puts(" outside the written band [0xDEADBEEF, ");
+        sep_mbx_puthex(0xDEADBEEFu + len);
+        sep_mbx_puts("]; unlocked 0x6 when idle (write lands)\n");
     }
     return e;
 }
