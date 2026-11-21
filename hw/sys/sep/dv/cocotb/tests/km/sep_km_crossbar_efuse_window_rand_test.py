@@ -138,9 +138,10 @@ unlocked spare field, which is not a plan target (SW writable,
 ``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
 readback (class OKAY) and the probe equal the written value; a mismatch prints
 ``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
-is its second control: the same KM write to a word of an unlocked lockable
-field of the plan, which is not a spare, not a plan target and uses all 32 bits
-of its word, completes OKAY, and the host readback (class OKAY) and the probe
+is its second control: a KM write of the same rule as the write-locked write
+(it changes only used bits) to a word of an unlocked lockable field of the plan,
+which is not a spare and not a plan target, and whose used bits an unlocked write
+can change, completes OKAY, and the host readback (class OKAY) and the probe
 equal the written value for a writable field and the staged value OR the
 written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
 471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
@@ -971,17 +972,23 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         self._draw("wlock.word", wl_idx)
         self._draw("wlock.used_mask", wl_used)
         self.logger.info("DRAW wlock.value=%s", _wh(wl_idx, v))
-        l_cands = [f for f in _LOCKABLE if f not in busy and spec[f].used_bits >= WORD_BITS]
+        # Every word of an unlocked lockable field whose used bits an unlocked write
+        # can change: a set-only word needs a used bit that is 0.
+        l_cands = []
+        for f in (f for f in _LOCKABLE if f not in busy):
+            fld = SepEfuseImage.field(f)
+            for w, used in enumerate(field_used_masks(f)):
+                if not spec[f].set_only or used & ~model.words[fld.word + w]:
+                    l_cands.append((f, fld.word + w, used))
         if not l_cands:
-            raise AssertionError(f"test bug: no unlocked lockable control field in {fp.summary()}")
-        l_field = rng.choice(l_cands)
-        l_fld = SepEfuseImage.field(l_field)
-        l_idx = l_fld.word + rng.randrange(l_fld.n_words)
+            raise AssertionError(f"test bug: no unlocked lockable control word in {fp.summary()}")
+        l_field, l_idx, l_used = rng.choice(l_cands)
         s_l = model.words[l_idx]
-        v_l = self._zero_bit_value(rng, s_l)
+        v_l = self._used_bit_change_value(rng, s_l, l_used)
         e_l = s_l | v_l if spec[l_field].set_only else v_l
         self._draw("wlock.lockable_field", l_field)
         self._draw("wlock.lockable_word", l_idx)
+        self._draw("wlock.lockable_used_mask", l_used)
         self.logger.info("DRAW wlock.lockable_value=%s", _wh(l_idx, v_l))
 
         c_addr = KM_EFUSE_MAP + 4 * c_idx
@@ -1006,7 +1013,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         self._ctrl(
             "EFW-WLOCK-LOCKABLE",
             (l_km, l_host, l_rb, l_probe) == ("OKAY", "OKAY", e_l, e_l),
-            f"field={l_field} set_only={int(spec[l_field].set_only)} word={l_idx} "
+            f"field={l_field} set_only={int(spec[l_field].set_only)} word={l_idx} used=0x{l_used:08x} "
             f"km_addr=0x{l_addr:05x} wrote={_wh(l_idx, v_l)} staged={_wh(l_idx, s_l)} "
             f"expected={_wh(l_idx, e_l)} km_resp={l_km} host_resp={l_host} "
             f"host_rb={_wh(l_idx, l_rb)} probe={_wh(l_idx, l_probe)}",
