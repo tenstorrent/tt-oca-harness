@@ -115,7 +115,10 @@ returns OKAY"; a partial write, "a byte strobe that misses a byte the register
 owns", gets a TL-UL error and "the faulting access also received SLVERR
 synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
-write and the other sub-word targets are logged (``INFO-REG-SUBWORD``).
+write and the other sub-word targets are logged (``INFO-REG-SUBWORD``). Control
+CTRL-REG-SUBWORD-SHAPE: the LSU (``s_axi``) read address handshake of each shape
+carries the byte address and AxSIZE 0 or 1, since a 32-bit read also answers
+OKAY; the CHK line passes only when the control holds.
 
 CHK-REG-SUBWORD-KEEP: after each AxSIZE 0 and AxSIZE 1 LSU write to a sub-word
 target, the bytes of the target word that the write strobe does not enable read
@@ -2003,7 +2006,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 mask = (1 << (8 << size)) - 1
                 old = (cur >> (8 * off)) & mask
                 wv = (~old & mask) if restore else old
+                wdt = name == SUBWORD_GRADED
+                ar = cocotb.start_soon(capture_addr_handshake("ar")) if wdt else None
                 rd_resp, rdata = await self._lsu(SepAxiOp.READ, addr + off, size=size, expect="any")
+                if wdt:
+                    seen = take_handshake(ar)
+                    shaped = self._ctrl(
+                        "REG-SUBWORD-SHAPE",
+                        seen is not None and (seen["addr"], seen["size"]) == (addr + off, size),
+                        f"target={name} addr=0x{addr + off:08x} "
+                        f"araddr={_hex(None if seen is None else seen['addr'])} "
+                        f"arsize={_hex(None if seen is None else seen['size'])} expect={size}",
+                    )
                 if otbn:
                     crc_before = await self._load_checksum()
                     tl_before = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value)
@@ -2030,7 +2044,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
                 _r, rb = await self._lsu(SepAxiOp.READ, addr)
                 rb &= 0xFFFF_FFFF
-                chks = [c for c, on in (("WDT", name == SUBWORD_GRADED), ("KEEP", keep)) if on]
+                chks = [c for c, on in (("WDT", wdt), ("KEEP", keep)) if on]
                 self.logger.info(
                     "INFO-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
                     "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x%s",
@@ -2075,13 +2089,13 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         self.logger.info("CHK-REG-SUBWORD-KEEP PASS: %s", line)
                     else:
                         self._fail("CHK-REG-SUBWORD-KEEP", line)
-                if name == SUBWORD_GRADED:
+                if wdt:
                     line = (
                         f"target={name} addr=0x{addr + off:08x} size={size} "
                         f"rd_resp={_RN.get(rd_resp)} wr_resp={_RN.get(wr_resp)} "
                         f"expect=OKAY/SLVERR"
                     )
-                    if (rd_resp, wr_resp) == (OKAY, SLVERR):
+                    if shaped and (rd_resp, wr_resp) == (OKAY, SLVERR):
                         self.logger.info("CHK-REG-SUBWORD-WDT PASS: %s", line)
                     else:
                         self._fail("CHK-REG-SUBWORD-WDT", line)
