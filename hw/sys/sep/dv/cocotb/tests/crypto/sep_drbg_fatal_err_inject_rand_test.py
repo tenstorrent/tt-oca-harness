@@ -59,7 +59,8 @@ Checkers:
                     held words and no clear, reads ERR_CODE 0 after 13 words and
                     the FIFO source bit after word 14, so the k words land; then
                     a TRNG reset, and CTRL-EDN-FIFO-PRECLEAR reads ERR_CODE 0
-                    with the k words held again, before the clear.
+                    after the same k words are written on the same set-up,
+                    before the clear.
   CHK-EDN-FIFO14    the 14th word: ERR_CODE equals the FIFO error bit plus
                     FIFO_WRITE_ERR, INTR_STATE equals edn_fatal_err, vector bit 28 high
                     and at least one clock of vector bit 32.
