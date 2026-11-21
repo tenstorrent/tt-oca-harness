@@ -9,8 +9,8 @@ which is not a restricted lifecycle state, and reads a register of each of the
 three windows: OKAY here and a refusal there is the per-window gate
 (CHK-JTAG-WINDOW-ALLOW).
 
-A JTAG read and a JTAG write of a page word past the registers of each window, and
-of the last word of the page, answer as the SEP map states for that word
+A JTAG read and a JTAG write of the first word and the first 8-byte-aligned word past
+the registers of each window, and of the last two words of the page, answer as the SEP map states for that word
 (CHK-JTAG-PAGE-UNBACKED; ``hw/sys/sep/regs/gen/adoc/memory_map.adoc``, row SEP eFuse
 Wrapper Address Map; ``hw/sys/sep/doc/otp_fuse_controller.adoc:122-124``: JTAG and AXI
 reach the same internal space).
@@ -49,8 +49,18 @@ _WINDOW_ROWS = tuple(
 )
 _PAGE_LO = _WINDOW_ROWS[0].base
 _PAGE_HI = _WINDOW_ROWS[-1].end + 1
-# The first word past the registers of each window, and the last word of the page.
-_PAGE_UNBACKED = (*(r.past_from for r in _WINDOW_ROWS), _PAGE_HI - 4)
+# The first word and the first 8-byte-aligned word past the registers of each window,
+# and the last two words of the page. A JTAG write that reached the shim at an
+# 8-byte-aligned word would land on the shim register.
+_PAGE_UNBACKED = tuple(
+    dict.fromkeys(
+        (
+            *(a for r in _WINDOW_ROWS for a in (r.past_from, (r.past_from + 7) & ~7)),
+            _PAGE_HI - 8,
+            _PAGE_HI - 4,
+        )
+    )
+)
 _SHIM = RegBlock("SEP_EXTERNAL_EFUSE_SHIM_CTRL")
 _SHIM_REG = "EFUSE_BANK_INIT_TIME"
 _SHIM_ADDR = _SHIM.addr(_SHIM_REG)
