@@ -29200,8 +29200,8 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      // While the integrity error persists ERR latches again whatever a write
-      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      // A write of 0 cannot fail while the integrity error persists (INFO-SM-ERR-CAUSE-W0);
+      // a write of 0 with no cause left is in this cell too, graded by CHK-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
       // A write of 1 clears ERR once the state machine error output that set it
       // is gone (CHK-SM-ERR-W1C).
@@ -32733,8 +32733,9 @@ module sep_fcov (
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin
         // Code 3 samples only at a Generate acknowledge
-        // (CHK-CSRNG-UNINST-REFUSE); the owner logs the CMD_STS of its
-        // repeated Instantiate.
+        // (CHK-CSRNG-UNINST-REFUSE); the owner logs the CMD_STS of a repeated
+        // Instantiate and of an Uninstantiate only (INFO-CSRNG-INVSEQ,
+        // INFO-CSRNG-UNINST).
         case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
           3'd1: cz_ccmd(3, 3'd1);
           3'd3: if (cz_cs_acmd == 4'h3) cz_ccmd(3, 3'd3);
@@ -40862,12 +40863,13 @@ module sep_fcov (
     // with 0xBADCAB1E)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
+      bins shadow_slverr = {4'b000_1};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
       bins gap_1141c_slverr = {4'b011_1};
       bins gap_11574_slverr = {4'b100_1};
       bins reserved_11600_slverr = {4'b101_1};
-      ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
+      ignore_bins no_such_response = {4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
     // secure test strap set)}.

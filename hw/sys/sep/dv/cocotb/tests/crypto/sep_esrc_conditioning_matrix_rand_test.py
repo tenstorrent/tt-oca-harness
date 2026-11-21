@@ -211,14 +211,24 @@ Checkers:
                        the K pops, exactly one matching slice (entropy_source.rdl
                        FIFO_CTRL.ENABLE, INTR_STATUS.FIFO_OVERFLOW; architecture.adoc:146,
                        :150).
+  CHK-COND-HT-OFF      with ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1 the 32-bit health test
+                       is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63):
+                       HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a write
+                       of 0xFF and still reads 0 after max(WINDOW, t_ctrl) + 64
+                       constant-zero strobes (WINDOW = 2048, the health-test window;
+                       t_ctrl the strobes the control trial took to trip), a span
+                       that holds a window wrap and the control's trip time.
+                       Controls: ``CTRL-COND-HT-CTRL``, the same constant zero with
+                       the compressor in use sets HEALTH_TEST_STATUS bit 0 within
+                       WINDOW + 256 strobes; ``CTRL-COND-HT-OFF``, CTRL reads back the
+                       bypass 1 and at least max(WINDOW, t_ctrl) strobes are counted
+                       in the wait.
 Logged only: ``INFO-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
 (entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
 whitened window shows the field non-zero, so a read of 0 does not tell a correct
 field from one that is not connected; the status tap grades the count
-(CHK-COND-SHA-COUNT). Also logged only: ``INFO-BLOCKED CHK-COND-HT-OFF`` (the
-32-bit health test with the compressor bypassed has no single stated behaviour)
-and ``INFO-COND-SHA-INTAKE`` (the BIW words, pushes and FIFO words of the
+(CHK-COND-SHA-COUNT). Also logged only: ``INFO-COND-SHA-INTAKE`` (the BIW words, pushes and FIFO words of the
 whitened trial): not graded; no open specification question.
 ``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
 (the time base of the period is not stated: the register text names sample-clock
@@ -255,6 +265,7 @@ from env.sep_esrc_pattern_noise import (
     NUM_LANES,
     Alternate,
     Balanced,
+    EsrcStrobeTimeout,
     LanePattern,
     SepEsrcPatternNoise,
     Stuck,
@@ -309,6 +320,7 @@ from seq_lib.sep_esrc_clean_start_seq import (
     MAX_PRE_CLEAN_STROBES,
     PERIOD_CAP,
     RESET_STROBE_CLK,
+    RESET_WINDOW,
     SepEsrcCleanStart,
     SepEsrcLeafSetup,
 )
@@ -322,7 +334,7 @@ ESRC_BIW_OBS_RDATA = sym("ENTROPY_SOURCE_BIW_OBS_RDATA_REG_ADDR")
 # SW_RESET_N baseline 0x20: TRNG released; Key Manager and every engine held.
 PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 LEGS = ("mask", "bypass", "downsample", "health", "whiten")
-WINDOW = 2048
+WINDOW = RESET_WINDOW
 RATES_FIXED = (0, 1, 1023)
 SIGNATURE_PASSES = (0, 1, 2, 3, "all1")
 BYPASS_OUTPUTS = 21  # 63 words
@@ -339,7 +351,8 @@ PASSTHRU_BIW_MIN = 16
 PASSTHRU_FIFO_MIN = 8
 PASSTHRU_MAX_OFFSET = 8
 BIW_MAP_WORDS = 4  # FIFO words paired with their strobe bytes in INFO-ESRC-BIW-MAP
-HT_WAIT_FACTOR = 3
+# Strobes past one window, and past the control trial's trip, in the bypass wait.
+HT_OFF_EXTRA_STROBES = 64
 # Period walk: strobes after a lane enable (the first distance and five gaps).
 PERIOD_STROBES = 6
 # Largest drawn divider value: a period walk value needs 7 periods of D + 1 clocks.
@@ -652,6 +665,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-ONE-LANE",
         "CHK-COND-BYPASS-ORDER",
         "CHK-COND-BYPASS-STREAM",
+        "CHK-COND-HT-OFF",
     )
 
     async def run_scenario(self) -> None:
@@ -2320,7 +2334,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             fields["reason"] = "timeout:push"
         self.chk.info("COND-BYPASS-MIDGROUP", **fields)
 
-    # --- health-test leg (logged only) ----------------------------------------------
+    # --- health-test leg ---------------------------------------------------------
     async def _leg_health(self) -> None:
         await self._setup()
         await self._wr(ESRC_DECORRELATOR_CTRL, _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL))
@@ -2331,8 +2345,9 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         ok, _, t_ctrl = await self._poll(
             ESRC_HEALTH_TEST_STATUS, "HEALTH_TEST_STATUS", "HEALTH_STATUS", lambda v: v & 1, bound
         )
-        self.chk.info(
+        self.chk.ctrl(
             "COND-HT-CTRL",
+            ok and not s_ctrl0 & 1,
             bypass=0,
             ht_status_before=f"0x{s_ctrl0:08x}",
             rep_set=ok,
@@ -2342,20 +2357,52 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self._setup()
         await self._wr(ESRC_DECORRELATOR_CTRL, _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL))
         await self._wr(ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1))
+        bypass = _get(await self._rd(ESRC_CTRL), "CTRL", "BYPASS_ENTROPY_COMPRESSOR")
         await self._wr(ESRC_HEALTH_TEST_STATUS, _val("HEALTH_TEST_STATUS", HEALTH_STATUS=0xFF))
-        s_before = await self._rd(ESRC_HEALTH_TEST_STATUS)
+        s_before = _get(
+            await self._rd(ESRC_HEALTH_TEST_STATUS), "HEALTH_TEST_STATUS", "HEALTH_STATUS"
+        )
         self.noise.set_lanes([Stuck(0)] * NUM_LANES)
-        wait = HT_WAIT_FACTOR * max(1, t_ctrl)
-        await ClockCycles(cocotb.top.clk_i, wait)
-        s_after = await self._rd(ESRC_HEALTH_TEST_STATUS)
-        self.chk.blocked("COND-HT-OFF", "ht32_in_bypass_unstated")
-        self.chk.obs(
+        t_ctrl_strobes = -(-t_ctrl // self._period())
+        strobes = max(WINDOW, t_ctrl_strobes) + HT_OFF_EXTRA_STROBES
+        mark = self.noise.mark()
+        try:
+            await self.noise.wait_words(strobes, (strobes + WINDOW) * self._period())
+        except EsrcStrobeTimeout as exc:
+            self.chk.ok(
+                "COND-HT-OFF",
+                False,
+                bypass=bypass,
+                ht_status_before=f"0x{s_before:02x}",
+                reason="timeout:strobes",
+                missing=exc.missing,
+                bound=exc.bound,
+            )
+            return
+        words = self.noise.words_since(mark)
+        s_after = _get(
+            await self._rd(ESRC_HEALTH_TEST_STATUS), "HEALTH_TEST_STATUS", "HEALTH_STATUS"
+        )
+        self.chk.ctrl(
             "COND-HT-OFF",
-            bypass=1,
-            ht_status_before=f"0x{s_before:08x}",
-            ht_status=f"0x{s_after:08x}",
+            bypass == 1 and words >= max(WINDOW, t_ctrl_strobes),
+            bypass=bypass,
+            words=words,
+            wait_strobes=strobes,
+            t_ctrl_strobes=t_ctrl_strobes,
+            window=WINDOW,
+        )
+        self.chk.ok(
+            "COND-HT-OFF",
+            s_before == 0 and s_after == 0,
+            bypass=bypass,
+            ht_status_before=f"0x{s_before:02x}",
+            ht_status=f"0x{s_after:02x}",
+            expect="0x00",
             t_ctrl_clk=t_ctrl,
-            wait_clk=wait,
+            t_ctrl_strobes=t_ctrl_strobes,
+            wait_strobes=strobes,
+            words=words,
         )
 
     # --- whitener and pass-through leg ---------------------------------------------

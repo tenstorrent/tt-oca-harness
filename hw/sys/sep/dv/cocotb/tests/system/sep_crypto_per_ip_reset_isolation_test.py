@@ -33,7 +33,9 @@ Isolation proof (both directions, then the remaining isolated bits):
                     returns every field to its register-map reset; the read
                     before the pulse shows the programmed value, which differs
                     from that reset (proves the pulse landed in that engine's
-                    domain). DATA_OUT after the pulse is logged only.
+                    domain). INFO-AES-DATA-OUT logs DATA_OUT after the pulse,
+                    not graded: the reset clears it with pseudo-random data
+                    and no value is stated.
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
   * CHK-AES-RESET-MIDMSG  an AES SW_RESET_N pulse after k of N1 blocks of a
                     CBC-ENC-256 message, with block k + 1 written to DATA_IN;
@@ -192,7 +194,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     ``edn_ack`` is 0 on every gated-reset edge. An edge
                     with no KMAC ``edn_req`` outstanding is logged as
                     INFO-EDN-EDGE-KMAC-IDLE.
-  * OBS-EDN-NOACK-WINDOW (graded=0)  KMAC, AES, OTBN URND and OTBN RND
+  * INFO-EDN-NOACK-WINDOW  KMAC, AES, OTBN URND and OTBN RND
                     are each reset with the endpoint's edn_req live at the
                     cancel. The acknowledges of the engine's endpoints from
                     the first cycle its paths report isolated to the
@@ -200,7 +202,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     acknowledge of the same arm with no reset and the
                     number of windows that hold it. The stimulus places no
                     due acknowledge inside that window, so it is logged
-                    only. The KMAC trials grade CHK-KMAC-DRAIN-ORDER on
+                    only (graded=none). The KMAC trials grade CHK-KMAC-DRAIN-ORDER on
                     their reset edge. The bus of a cancelled endpoint has no stated
                     value and is logged (INFO-EDN-CANCEL-BUS).
   * CHK-EDN-DISCARD  a word committed to an endpoint and not yet
@@ -456,7 +458,7 @@ _EDN_KEEP_CYCLES = 20_000
 # The "kmac", "aes", "otbn_urnd" and "otbn_rnd" counts are resets whose cancel
 # finds the endpoint's edn_req live: high on the last released cycle before the gated
 # reset falls, with no edn_ack on that cycle or the one before. After the live
-# trials of an engine, OBS-EDN-NOACK-WINDOW logs the first acknowledge of the
+# trials of an engine, INFO-EDN-NOACK-WINDOW logs the first acknowledge of the
 # same arm with no reset against the cancel windows. KMAC is armed by a CFG commit with EDN entropy, AES by a PRNG reseed,
 # OTBN RND by the RND program. Each of these reseeds spans several EDN words.
 # OTBN URND is armed by an OTBN reset pulse: a cold OTBN raises URND edn_req
@@ -2618,7 +2620,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
     async def _edn_due_control(
         self, name: str, eng, bit: int, arm, windows, window_acks: int
     ) -> None:
-        """OBS-EDN-NOACK-WINDOW: the no-reset acknowledge against the cancel windows.
+        """INFO-EDN-NOACK-WINDOW: the no-reset acknowledge against the cancel windows.
 
         ``windows`` holds, per live trial of ``eng``, the cancel start and the
         gated-reset fall as cycles after the request was seen. The arm of
@@ -2626,12 +2628,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         first acknowledge cycle of ``bit`` (counted the same way, up to the
         latest fall), the number of windows that hold it, and the acknowledges
         seen in the cancel windows of this client's attempts. Logged only:
-        the stimulus places no due acknowledge inside a window. The engine is
-        then pulsed back to reset.
+        the stimulus places no due acknowledge inside a window, and no check
+        grades these values. The engine is then pulsed back to reset.
         """
         clk = cocotb.top.clk_i
         bound = max(fall for _c0, fall in windows)
-        await arm(f"OBS-EDN-NOACK-WINDOW {name}")
+        await arm(f"INFO-EDN-NOACK-WINDOW {name}")
         for _ in range(_EDN_PEND_CYCLES):
             await RisingEdge(clk)
             await ReadOnly()
@@ -2639,7 +2641,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 break
         else:
             raise AssertionError(
-                f"OBS-EDN-NOACK-WINDOW SETUP FAILED (not a contract result): {name} "
+                f"INFO-EDN-NOACK-WINDOW SETUP FAILED (not a contract result): {name} "
                 f"endpoint {bit} never raised edn_req"
             )
         due = None
@@ -2652,8 +2654,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 break
         in_window = sum(1 for c0, fall in windows if due is not None and c0 <= due <= fall)
         self.logger.info(
-            "OBS-EDN-NOACK-WINDOW graded=0 client=%s ack_after_req=%s bound=%d windows=%s "
-            "due_in_window=%d window_acks=%d",
+            "INFO-EDN-NOACK-WINDOW client=%s ack_after_req=%s bound=%d windows=%s "
+            "due_in_window=%d window_acks=%d graded=none",
             name,
             due if due is not None else "none",
             bound,
@@ -2679,7 +2681,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         KMAC, AES, OTBN URND and OTBN RND are reset while the endpoint's EDN
         request is live; each needs ``_EDN_LEAD_TRIALS`` such resets. The
         acknowledges seen in each cancel window are counted and logged
-        (``OBS-EDN-NOACK-WINDOW``), because the stimulus places no due
+        (``INFO-EDN-NOACK-WINDOW``), because the stimulus places no due
         acknowledge inside the window. Six more OTBN
         trials start at a different offset from a URND acknowledge each time,
         with the graded window closed. The committed-word walk then puts an OTBN cancel start on every phase of one URND
@@ -2774,7 +2776,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             self._arm_rnd_live,
         )
         self.logger.info(
-            "OBS-EDN-NOACK-WINDOW graded=0 summary: %d KMAC, %d AES, %d OTBN URND and "
+            "INFO-EDN-NOACK-WINDOW summary: %d KMAC, %d AES, %d OTBN URND and "
             "%d OTBN RND resets with a live request (%d, %d, %d and %d attempts), %d "
             "OTBN URND phase resets (URND live on %d) and %d walk resets (URND live on "
             "%d); edn_ack on the engine's EDN endpoints on %d cycle(s) from the first "
@@ -2943,9 +2945,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # hw/sys/sep/doc/crypto.adoc:97 gives each accelerator its own
         # software reset). The read before the pulse shows the programmed
         # ECB-256 ENC value, which differs from that reset, so the check can
-        # fail on a pulse that did not land. DATA_OUT after the pulse is
-        # logged only: aes.hjson states that a reset clears it "with
-        # pseudo-random data", so it has no exact value.
+        # fail on a pulse that did not land. DATA_OUT after the pulse has no
+        # exact form: vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/
+        # programmers_guide.md:8-11 states only that the reset clears the
+        # data registers "with pseudo-random data", and no value. A compare
+        # against the held ciphertext fails a healthy DUT with a non-zero
+        # probability, so it is not a check; INFO-AES-DATA-OUT logs the words.
         ctrl_pre = await self.aes._rd(AES_CTRL_SHADOWED)
         async with self._graded_window():
             await self._pulse_reset(ENG_AES.rst_bit)
@@ -2969,12 +2974,17 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "(no stated value)",
             ctrl_post & ~AES_CTRL_FIELD_MASK & 0xFFFF_FFFF,
         )
+        await self.aes.wait_idle("post-aes-reset-data-out")
         aes_after = await self.aes.read_data_out()
         self.logger.info(
-            "OBS-AES-DATA-OUT: DATA_OUT after the AES pulse %s (held %s; differs=%s)",
+            "INFO-AES-DATA-OUT: DATA_OUT after the AES SW_RESET_N pulse and STATUS.IDLE "
+            "%s, held ciphertext %s, per word (after, held): %s (pseudo-random, "
+            "not graded)",
             [hex(w) for w in aes_after],
             [hex(w) for w in c_block],
-            aes_after != c_block,
+            ", ".join(
+                f"[{i}] 0x{a:08x} 0x{c:08x}" for i, (a, c) in enumerate(zip(aes_after, c_block))
+            ),
         )
         hmac_survived = await self.hmac.read_digest()
         self._grade(

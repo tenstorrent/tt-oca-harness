@@ -140,7 +140,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN; one-clock pulses timed against a `meigwclr` write for CTRL-GWCLR-RACE and OBS-GWCLR-RACE).
 |CPU machine timer interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `timer_int` (the core pin that drives `mip.MTIP`) from the TB input `timer_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-TIMER-PIN).
 |CPU machine software interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `soft_int` (the core pin that drives `mip.MSIP`) from the TB input `soft_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-SOFT-PIN).
-|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, the beat-pattern legs of `sep_km_drbg_sampler_rand_test` (stream 0 with `EXT_TRNG_SRC_SEL` bit 0 set: CHK-SMP-PACK, CHK-SMP-PRE-PARTIAL, CHK-SMP-TO-ASM, CHK-SMP-STRM-CTRL), and the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth).
+|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, the beat-pattern legs of `sep_km_drbg_sampler_rand_test` (stream 0 with `EXT_TRNG_SRC_SEL` bit 0 set: CHK-SMP-PACK, CHK-SMP-PRE-PARTIAL, CHK-SMP-TO-ASM, CHK-SMP-STRM-CTRL), the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth), and the external words of `sep_crypto_edn_round_robin_grant_test` (stream 1: single words, each followed by its grant; two rounds of six words, each offered when AES, KMAC and OTBN URND, then AES, KMAC and OTBN RND, all request at the crypto EDN arbiter).
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |CPU lockstep control |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `lockstep_ctrl_i` (`err_injection_en`, `disable_corruption_detection`) from the `tb_top` variable `lockstep_ctrl_i`, 0 from time 0, and observes `lockstep_status_o` in the variable of the same name. A leaf writes the variable through the `tb_top` handle. Owner: `sep_cpu_isa_pmp_csr_test`.
@@ -269,7 +269,9 @@ Observation probe groups:
   before the core and uncore mux (bit 8 `dmi_en`, bit 7 `dmi_wr_en`, bits 6:0
   `dmi_addr` of `u_sep_cpu.u_el2_veer_wrapper`), tied to 0 on the CPU stub
   build. No frontdoor shows a DMI request that the enable gates block. Read-only;
-  owner `sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE).
+  owners `sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE),
+  `sep_cpu_reset_entry_test` (the `dmcontrol` write strobe that ends the
+  hold window of CHK-NDMRESET-RESTART).
   `dmi_active_probe_o`, the wrapper output `dmi_active`. No register shows
   it. Read-only; owner `sep_debug_master_target_matrix_test`, which counts
   its rises and high clocks while the DTM is on and grades the high clocks
@@ -328,6 +330,12 @@ Observation probe groups:
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.
+* Core TAP TDO enable (`jtag_tdoEn_o`): the `sep_wrapper` output
+  `jtag_tdoEn_o` on one monitor output of `tb_top`. It is monitor-only: it
+  drives nothing and adds no force. It is in the `jtag_tck_i` domain; a leaf
+  samples it at the TDO sample point of its JTAG driver (TCK low phase,
+  read-only). The CPU stub drives it to 0. Owner: `sep_cpu_reset_entry_test`
+  (CHK-TDOEN-SHIFT; INFO-TDOEN-IDLE logged).
 * Test-pin walk (read-only): the leaf reads, through the cocotb hierarchy
   handle, the `test_en_i` and `test_i` inputs of the consumers of the `sep`
   input `test_en_i`: the clock gater `u_sep_dma_wrap.u_secure_dma.dma_clk_gate`
@@ -366,7 +374,7 @@ Observation probe groups:
   word that `esrc_compress_vld_o` offers. No register shows whether an
   offered word was taken or dropped. Owner: `sep_drbg_cmd_sequence_rand_test`,
   which counts the offered words taken and dropped and logs the counts
-  (OBS-DRBG-SEED-INGRESS).
+  (INFO-DRBG-SEED-INGRESS).
 * RMA-SIP token-digest latch probes (`token_digest_*`).
 * eFuse and lifecycle taps (read-only, no force). `efuse_shim_cmd_*_o`, the
   post-guard fuse command at the `sep` output `efuse_shim_command_req_o`
@@ -691,6 +699,12 @@ Observation probe groups:
   output) it gives the FIFO occupancy. Users: the external stream hold entry
   of the crypto and entropy area and the FCOV sampler
   (`sep_entropy_delivery_cg` `cp_adapter_fifo_depth`).
+* EDN command FIFO level probe (`edn_cmd_fifo_depth_o`): bits 3:0 are the
+  level of the `RESEED_CMD` FIFO and bits 7:4 the level of the `GENERATE_CMD`
+  FIFO of EDN (`sfifo_rescmd_depth` and `sfifo_gencmd_depth` in
+  `u_edn.u_edn_core` of the DRBG). Read-only; no force. Users: the controls
+  CTRL-EDN-FIFO-PRECLEAR and CTRL-EDN-FIFO-CLEARED of
+  `sep_drbg_fatal_err_inject_rand_test`.
 * ESRC lane 0 sample-clock probe (`esrc_sample_clk_lane0_o`): the sample clock
   of lane 0 after the source mux and the ripple divider
   (`u_generator_complex.u_sampler_clocks.sample_clk_o[0]`). Its period against
@@ -817,10 +831,14 @@ Observation probe groups:
    `sep_tcm_dma_aperture_ecc_test`, `sep_cpu_demux_unmapped_fetch_test`.
 ** PR-IFU (`pr_ifu_*`): the IFU request after its local alias remap and
    before the IFU demux (`u_sep_cpu.ifu_axi_req`: AR address, ID, AxLEN,
-   AxSIZE) and the response the demux returns (R `resp`, `id`, `last`,
-   DECERR of the error responder included); tied to 0 on the CPU stub build.
+   AxSIZE, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION; the AxBURST, AxLOCK,
+   AxCACHE, AxQOS and AxREGION taps are monitor only) and the response the
+   demux returns (R `resp`, `id`, `last`, DECERR of the error responder
+   included); tied to 0 on the CPU stub build.
    Owners: `sep_cpu_reset_entry_test`, `sep_cpu_demux_unmapped_fetch_test`,
-   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (AxLEN, CHK-IFU-SINGLE-BEAT).
+   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (AxLEN, CHK-IFU-SINGLE-BEAT),
+   `sep_cpu_rom_ar_contention_test` (AR address, CTRL-ROM-AR-STALL; every AR
+   field but AxPROT, CHK-ROM-AR-HOLD).
 ** PR-IFU-XBAR (`pr_ifu_xbar_*`): the IFU demux port to the local crossbar
    (`sep.sv` `ifu_sram_axi_req`, with its response): AR address, ID, AxLEN,
    AxSIZE and R `resp`, `id`, `last`. Every IFU fetch that the demux sends
@@ -857,6 +875,13 @@ Observation probe groups:
    `dbg_axi_req_raw` and `dbg_axi_req_o` with the AW and AR ready of their
    responses): AW and AR valid, ready and address; tied to 0 on the CPU stub
    build. Owner: `sep_debug_master_target_matrix_test`.
+** PR-DBG-IN-ATTR (`pr_dbg_in_{aw,ar}{burst,lock,cache,qos}_o`, with the
+   PR-DBG-IN valid, ready and address): AxBURST, AxLOCK, AxCACHE and AxQOS of
+   the same `dbg_axi_req_raw` AW and AR. Monitor only; sampled on `clk_i`;
+   tied to 0 on the CPU stub build. Graded against the core-complex port table
+   of the EL2 Programmer's Reference Manual that
+   `hw/sys/sep/doc/cpu.adoc` names. Owner: `sep_cpu_reset_entry_test`
+   (CHK-DBG-AXBURST, CHK-DBG-AXLOCK, CHK-DBG-AXQOS, CHK-DBG-AXCACHE).
 ** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
    (`dma_csr_req`), AW and AR address. Owner:
    `sep_fabric_dma_endpoint_matrix_test`; also read by
@@ -875,7 +900,22 @@ Observation probe groups:
    before any remap; tied to 0 on the CPU stub build. Graded against
    `hw/sys/sep/doc/cpu.adoc` (`sep-cpu-axprot-table`). Owners:
    `sep_cpu_lsu_alias_window_twin_test` (LSU, CHK-CPU-AXPROT; IFU logged),
-   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (IFU, CHK-IFU-AXPROT).
+   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (IFU, CHK-IFU-AXPROT),
+   `sep_cpu_rom_ar_contention_test` (IFU and LSU AR valid and ready,
+   CTRL-ROM-AR-STALL; IFU and LSU AR valid, ready and AxPROT,
+   CHK-ROM-AR-HOLD).
+** PR-CPU-LSU-ATTR (`pr_cpu_lsu_{aw,ar}{addr,burst,lock,cache,qos,region}_o`
+   and `pr_cpu_lsu_ar{id,len,size}_o`, with the PR-CPU LSU valid and ready):
+   address, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION of the same raw
+   `lsu_axi_req_raw` AW and AR, and ID, AxLEN and AxSIZE of that AR, before
+   the alias remap. Monitor only; sampled on `clk_i`; tied to 0 on the CPU
+   stub build. AxBURST, AxLOCK and AxQOS are graded against the core-complex port
+   table of the EL2 Programmer's Reference Manual that
+   `hw/sys/sep/doc/cpu.adoc` names; AxCACHE and AxREGION are logged only.
+   Owner: `sep_cpu_lsu_alias_window_twin_test` (CHK-CPU-AXBURST,
+   CHK-CPU-AXLOCK, CHK-CPU-AXQOS; OBS-LSU-AXCACHE-MRAC logged),
+   `sep_cpu_rom_ar_contention_test` (AR address, to count ROM stalls for
+   CTRL-ROM-AR-STALL; every AR field but AxPROT, CHK-ROM-AR-HOLD).
 ** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
    (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Graded against
    `hw/sys/sep/doc/cpu.adoc` (`sep-cpu-axprot-table`). Owner:
@@ -1578,8 +1618,10 @@ Exceptions (a closed set):
   SEP reset from software or JTAG is outside `aresetn`, so no reset rule
   grades it and a transaction open at that reset stays in the outstanding
   tracking until the next `rst_ni`. Compiled in every build and run mode
-  and enabled once `rst_ni` is known; the rules grade on VCS only (the SEP
-  Verilator targets pass no `--assert`). On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
+  and enabled once `rst_ni` is known. The two-state rules grade on both
+  simulators (Verilator evaluates assertions unless a build passes
+  `--no-assert`, and the SEP targets pass none); the X-hygiene rules grade on
+  VCS only. On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
   fails when that checker graded no AW or AR handshake. Protocol, not data.
 
 [[sep-run-modes]]
