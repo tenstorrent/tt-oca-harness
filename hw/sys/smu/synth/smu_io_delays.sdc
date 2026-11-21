@@ -389,6 +389,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 # of the period is owed to its arrival.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(async)]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
 
+# LCC Feature Control
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {feat_ctrl_o*}] -add_delay
+
 # LCC Demote States
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {lcc_demote_state_1_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMUCLK] [get_ports {lcc_demote_state_2_o*}] -add_delay

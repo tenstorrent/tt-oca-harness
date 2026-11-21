@@ -358,6 +358,11 @@ module smu #(
 
   input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_ext_interrupts_i,  // External interrupts into the SEP.
 
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,  // SEP lifecycle feature-control
+                                                                     // vector, 1 = enabled; its
+                                                                     // reserved bits gate adopter
+                                                                     // features. All ones when
+                                                                     // CFG.SEP is 0.
   output logic [1:0]  lcc_demote_state_1_o,     // Lifecycle demote state 1.
   output logic [1:0]  lcc_demote_state_2_o,     // Lifecycle demote state 2.
   output logic secure_tm_o,                     // Secure test-mode indication from the SEP; low
@@ -1001,6 +1006,7 @@ module smu #(
       .sep_io_spi_rsp_i              (sep_io_spi_rsp),
 
       .lc_state_o                    (sep_lc_state),
+      .feat_ctrl_o                   (feat_ctrl_o),
       .dbg_disable_o                 (sep_dbg_disable),
       .sep_fuse_dft_disable_o        (sep_fuse_dft_disable_o),
       .smc_fuse_dft_disable_o        (smc_fuse_dft_disable_o),
@@ -1201,6 +1207,7 @@ module smu #(
     // ==================================================================
     assign sep_lc_state      = 8'hf0;
     assign sep_dbg_disable   = '0;
+    assign feat_ctrl_o       = '1;
     assign lc_state_o        = sep_lc_state;
 
     // differential encoding error reported by either the SEP or SMC efuse interface

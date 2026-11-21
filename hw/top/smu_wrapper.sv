@@ -232,6 +232,7 @@ module smu_wrapper #(
 
   input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_ext_interrupts_i,
 
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output logic [1:0]  lcc_demote_state_1_o,
   output logic [1:0]  lcc_demote_state_2_o,
 
@@ -483,6 +484,7 @@ module smu_wrapper #(
     .sep_lockstep_ctrl_i,
     .sep_lockstep_status_o,
     .sep_ext_interrupts_i,
+    .feat_ctrl_o,
     .lcc_demote_state_1_o,
     .lcc_demote_state_2_o,
     .secure_tm_o,

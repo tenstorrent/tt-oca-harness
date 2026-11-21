@@ -1729,6 +1729,7 @@ module smu_wrapper_uvm_top
 
     .sep_cpu_trace_o (sep_cpu_trace),
     .sep_ext_interrupts_i (tb_sep_ext_interrupts),
+    .feat_ctrl_o          (),
     .lcc_demote_state_1_o (lcc_demote_state_1_o),
     .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o (),
