@@ -320,6 +320,7 @@ from seq_lib.sep_esrc_clean_start_seq import (
     MAX_PRE_CLEAN_STROBES,
     PERIOD_CAP,
     RESET_STROBE_CLK,
+    RESET_WINDOW,
     SepEsrcCleanStart,
     SepEsrcLeafSetup,
 )
@@ -333,7 +334,7 @@ ESRC_BIW_OBS_RDATA = sym("ENTROPY_SOURCE_BIW_OBS_RDATA_REG_ADDR")
 # SW_RESET_N baseline 0x20: TRNG released; Key Manager and every engine held.
 PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 LEGS = ("mask", "bypass", "downsample", "health", "whiten")
-WINDOW = 2048
+WINDOW = RESET_WINDOW
 RATES_FIXED = (0, 1, 1023)
 SIGNATURE_PASSES = (0, 1, 2, 3, "all1")
 BYPASS_OUTPUTS = 21  # 63 words
