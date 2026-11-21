@@ -74,9 +74,9 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
-# EL2 firmware reads one OTP word through the eFuse read interface and submits a
-# matching SiP RMA token and a non-matching chiplet RMA token; the leaf grades the
-# published words. Real fuse sense of a committed preload image.
+# EL2 firmware reads one OTP word through the eFuse read interface, submits a
+# matching SiP RMA token, then a non-matching and a matching chiplet RMA token; the
+# leaf grades the published words. Real fuse sense of a committed preload image.
 name = "sep_efuse_el2_fw_mmio_test"
 module = "efuse.sep_efuse_el2_fw_mmio_test"
 firmware = "efuse_el2_fw_mmio_test"

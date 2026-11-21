@@ -959,6 +959,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         s = model.words[wl_idx]
         wl_used = field_used_masks(wl_field)[wl_idx - wl_fld.word]
         v = self._used_bit_change_value(rng, s, wl_used)
+        # A set-only word with every used bit 1 cannot change even when unlocked,
+        # so only the SLVERR half grades the lock on such a draw.
+        spec = {f.reg_name: f for f in spec_fields()}
+        rb_disc = int(not spec[wl_field].set_only or bool(wl_used & ~s))
         self._draw("wlock.ctrl_field", c_field)
         self._draw("wlock.ctrl_word", c_idx)
         self._draw("wlock.ctrl_value", v_c)
@@ -966,7 +970,6 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         self._draw("wlock.word", wl_idx)
         self._draw("wlock.used_mask", wl_used)
         self.logger.info("DRAW wlock.value=%s", _wh(wl_idx, v))
-        spec = {f.reg_name: f for f in spec_fields()}
         l_cands = [f for f in _LOCKABLE if f not in busy and spec[f].used_bits >= WORD_BITS]
         if not l_cands:
             raise AssertionError(f"test bug: no unlocked lockable control field in {fp.summary()}")
@@ -1016,7 +1019,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         flags = f"slv={res.slv} dec={res.dec}" if km != "UNKNOWN" else "slv=x dec=x"
         line = (
             f"field={wl_field} word={wl_idx} km_addr=0x{addr:05x} wrote={_wh(wl_idx, v)} "
-            f"staged={_wh(wl_idx, s)} used=0x{wl_used:08x} km_resp={km} {flags} pre_clean={int(res.clean)} "
+            f"staged={_wh(wl_idx, s)} used=0x{wl_used:08x} rb_discriminates={rb_disc} km_resp={km} {flags} pre_clean={int(res.clean)} "
             f"host_resp={host} host_rb={_wh(wl_idx, rb)} probe={_wh(wl_idx, probe)}"
         )
         problems = []
