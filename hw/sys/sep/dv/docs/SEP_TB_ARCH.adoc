@@ -808,7 +808,8 @@ Observation probe groups:
    DECERR of the error responder included); tied to 0 on the CPU stub build.
    Owners: `sep_cpu_reset_entry_test`, `sep_cpu_demux_unmapped_fetch_test`,
    `sep_cpu_ifu_lsu_alias_remap_matrix_test` (AxLEN, CHK-IFU-SINGLE-BEAT),
-   `sep_cpu_rom_ar_contention_test` (AR address, CTRL-ROM-AR-STALL).
+   `sep_cpu_rom_ar_contention_test` (AR address, CTRL-ROM-AR-STALL; AR
+   address, ID, AxLEN and AxSIZE, CHK-ROM-AR-HOLD).
 ** PR-IFU-XBAR (`pr_ifu_xbar_*`): the IFU demux port to the local crossbar
    (`sep.sv` `ifu_sram_axi_req`, with its response): AR address, ID, AxLEN,
    AxSIZE and R `resp`, `id`, `last`. Every IFU fetch that the demux sends
@@ -871,7 +872,8 @@ Observation probe groups:
    `sep_cpu_lsu_alias_window_twin_test` (LSU, CHK-CPU-AXPROT; IFU logged),
    `sep_cpu_ifu_lsu_alias_remap_matrix_test` (IFU, CHK-IFU-AXPROT),
    `sep_cpu_rom_ar_contention_test` (IFU and LSU AR valid and ready,
-   CTRL-ROM-AR-STALL).
+   CTRL-ROM-AR-STALL; IFU and LSU AR valid, ready and AxPROT,
+   CHK-ROM-AR-HOLD).
 ** PR-CPU-LSU-ATTR (`pr_cpu_lsu_{aw,ar}{addr,burst,lock,cache,qos,region}_o`,
    with the PR-CPU LSU valid and ready): address, AxBURST, AxLOCK, AxCACHE,
    AxQOS and AxREGION of the same raw `lsu_axi_req_raw` AW and AR, before the
@@ -882,7 +884,8 @@ Observation probe groups:
    Owner: `sep_cpu_lsu_alias_window_twin_test` (CHK-CPU-AXBURST,
    CHK-CPU-AXLOCK, CHK-CPU-AXQOS; OBS-LSU-AXCACHE-MRAC logged),
    `sep_cpu_rom_ar_contention_test` (AR address, to count ROM stalls for
-   CTRL-ROM-AR-STALL).
+   CTRL-ROM-AR-STALL; AR address, AxBURST, AxLOCK, AxCACHE, AxQOS and
+   AxREGION, CHK-ROM-AR-HOLD).
 ** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
    (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Graded against
    `hw/sys/sep/doc/cpu.adoc` (`sep-cpu-axprot-table`). Owner:
@@ -1584,8 +1587,10 @@ Exceptions (a closed set):
   SEP reset from software or JTAG is outside `aresetn`, so no reset rule
   grades it and a transaction open at that reset stays in the outstanding
   tracking until the next `rst_ni`. Compiled in every build and run mode
-  and enabled once `rst_ni` is known; the rules grade on VCS only (the SEP
-  Verilator targets pass no `--assert`). On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
+  and enabled once `rst_ni` is known. The two-state rules grade on both
+  simulators (Verilator evaluates assertions unless a build passes
+  `--no-assert`, and the SEP targets pass none); the X-hygiene rules grade on
+  VCS only. On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
   fails when that checker graded no AW or AR handshake. Protocol, not data.
 
 [[sep-run-modes]]

@@ -1557,8 +1557,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_cpu_rom_ar_contention_test,`sep_cpu_rom_ar_contention_test`>>
 |3
 |cpu, `+skip_fuse_sense`, test ROM image, `+axi_sva_need_lsu`, `+axi_sva_need_ifu`
-|CPU firmware from the ICCM, ROM image generator, PR-CPU and PR-CPU-LSU-ATTR AR taps, CPU AXI protocol checkers
-|Proves that while three ROM-resident hash loops run, with the IFU fetching the loop from the boot ROM and the LSU loading a 32-word data block from it, every one of the 12 hashes equals the host hash of the image words (`CHK-ROM-AR-SUM`). Both demuxes send boot ROM addresses to the boot ROM mux (`cpu.adoc:51-54`), so the two masters contend for one ROM interface. `CTRL-ROM-AR-STALL` requires at least one clock with ARVALID high and ARREADY low on each of the IFU and the LSU inside the loop windows while the other master's ARVALID to the boot ROM is also high, so the AXI hold and payload-stable rules of the bench checkers on both raw ports are exercised under contention. The handshake counts are logged (`INFO-ROM-AR-TRAFFIC`). Nothing is random: every seed runs the same program.
+|CPU firmware from the ICCM, ROM image generator, PR-CPU, PR-CPU-LSU-ATTR and PR-IFU AR taps, CPU AXI protocol checkers
+|Proves that while three ROM-resident hash loops run, with the IFU fetching the loop from the boot ROM and the LSU loading a 32-word data block from it, every one of the 12 hashes equals the host hash of the image words (`CHK-ROM-AR-SUM`). Both demuxes send boot ROM addresses to the boot ROM mux (`cpu.adoc:51-54`), so the two masters contend for one ROM interface. `CTRL-ROM-AR-STALL` requires at least one clock with ARVALID high and ARREADY low on each of the IFU and the LSU inside the loop windows while the other master's ARVALID to the boot ROM is also high, so the AXI hold and payload-stable rules are exercised under contention. `CHK-ROM-AR-HOLD` grades that rule on every in-window stall clock of each port: at the next clock the port keeps ARVALID high and the same AR payload, and every contended stall clock is graded; the bench checkers on both raw ports grade it too. The handshake counts are logged (`INFO-ROM-AR-TRAFFIC`). Nothing is random: every seed runs the same program.
 |===
 
 [[sep-vplan-summary-6]]
@@ -4390,10 +4390,10 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |The core TAP TDO enable, in the `jtag_tck_i` domain, read at the TDO sample point of the JTAG driver. The CPU stub drives 0.
 |`sep_cpu_reset_entry_test` (CHK-TDOEN-SHIFT; INFO-TDOEN-IDLE logged)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|PR-CPU AR valid and ready, PR-CPU-LSU-ATTR AR address
+|PR-CPU AR valid, ready and AxPROT, PR-CPU-LSU-ATTR AR address and attributes, PR-IFU AR address, ID, AxLEN and AxSIZE
 |Read-only tap
-|The AR valid and ready of the raw CPU IFU and LSU requests, and the raw LSU AR address, before any remap.
-|`sep_cpu_rom_ar_contention_test` (CTRL-ROM-AR-STALL; INFO-ROM-AR-TRAFFIC logged)
+|The AR valid, ready and AxPROT of the raw CPU IFU and LSU requests, and the raw LSU AR address, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION, before any remap; the IFU AR address, ID, AxLEN and AxSIZE after the alias remap.
+|`sep_cpu_rom_ar_contention_test` (CTRL-ROM-AR-STALL, CHK-ROM-AR-HOLD; INFO-ROM-AR-TRAFFIC logged)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Isolate-stage slave-side taps
 |Read-only tap
