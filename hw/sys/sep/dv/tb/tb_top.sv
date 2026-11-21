@@ -3832,14 +3832,16 @@ module sep_uvm_top
     assign drbg_genbits_fips_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
     assign drbg_gen_last_o      = `SEP_DRBG.u_csrng.u_csrng_core.gen_last_q;
     // EDN hardware command port into CSRNG, the EDN endpoint acknowledges that
-    // push into the DRBG stream-adapter FIFOs, and the divided sample clock of
-    // ESRC lane 0. Read-only XMR taps.
+    // push into the DRBG stream-adapter FIFOs, the levels of the EDN command
+    // FIFOs, and the divided sample clock of ESRC lane 0. Read-only XMR taps.
     assign edn_csrng_cmd_valid_o = `SEP_DRBG.edn_csrng_req.csrng_req_valid;
     assign edn_csrng_cmd_ready_o = `SEP_DRBG.edn_csrng_rsp.csrng_req_ready;
     assign edn_csrng_cmd_bus_o   = `SEP_DRBG.edn_csrng_req.csrng_req_bus;
     assign drbg_adapter_push_o   = {`SEP_DRBG.edn_axis_endpoint_rsp[2].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[1].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[0].edn_ack};
+    assign edn_cmd_fifo_depth_o  = {`SEP_DRBG.u_edn.u_edn_core.sfifo_gencmd_depth,
+                                    `SEP_DRBG.u_edn.u_edn_core.sfifo_rescmd_depth};
     assign esrc_sample_clk_lane0_o = `SEP_ESRC.u_generator_complex.u_sampler_clocks.sample_clk_o[0];
     // ESRC FIFO downsample count, the decorrelator stream strobe after the boot
     // gate, and the divider count of lane 0. Read-only XMR taps.

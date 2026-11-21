@@ -24,6 +24,9 @@ Contract (``vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
     alert (edn.adoc:225, :232, :241, :249, :318, :323), and ``FIFO_WRITE_ERR``,
     the type bit of a write to a full FIFO (edn.adoc:305). The drop of the 14th
     word is not graded: no register reads the FIFO level or contents.
+  * A write to ``RESEED_CMD`` or ``GENERATE_CMD`` fills its FIFO (edn.adoc:225,
+    :241). The monitor tap ``edn_cmd_fifo_depth_o`` reads the level of both
+    FIFOs for the controls of the FIFO trials.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. Each trial pulses the TRNG
@@ -58,9 +61,10 @@ Checkers:
                     CTRL-EDN-FIFO-HELD, a trial on the same FIFO with the same k
                     held words and no clear, reads ERR_CODE 0 after 13 words and
                     the FIFO source bit after word 14, so the k words land; then
-                    a TRNG reset, and CTRL-EDN-FIFO-PRECLEAR reads ERR_CODE 0
-                    after the same k words are written on the same set-up,
-                    before the clear.
+                    a TRNG reset, and CTRL-EDN-FIFO-PRECLEAR reads ERR_CODE 0 and
+                    the level tap k for the FIFO and 0 for the other after the
+                    same k words, before the clear; CTRL-EDN-FIFO-CLEARED reads
+                    the tap 0 for both FIFOs after the clear.
   CHK-EDN-FIFO14    the 14th word: ERR_CODE equals the FIFO error bit plus
                     FIFO_WRITE_ERR, INTR_STATE equals edn_fatal_err, vector bit 28 high
                     and at least one clock of vector bit 32.
@@ -277,6 +281,21 @@ EDN_CMD_FIFO = {
 VEC_BITS = {"cs_fatal": 26, "edn_fatal": 28, "alert": 32}
 # sep_ras_o field of the fatal alert of each unit (port_table.adoc:130).
 RAS_FIELD = {"csrng": "csrng_fatal", "edn": "edn_fatal"}
+# Monitor tap edn_cmd_fifo_depth_o: the level of each EDN command FIFO, 4 bits each.
+FIFO_DEPTH_LSB = {"reseed": 0, "generate": 4}
+FIFO_DEPTH_MASK = 0xF
+
+
+def _fifo_depths() -> dict[str, int | None]:
+    """The level of each EDN command FIFO on the tap, None when a bit is X or Z."""
+    value = cocotb.top.edn_cmd_fifo_depth_o.value
+    bits = str(getattr(value, "binstr", value)).strip()
+    if not bits or any(c not in "01" for c in bits):
+        return dict.fromkeys(FIFO_DEPTH_LSB)
+    v = int(bits, 2)
+    return {f: (v >> lsb) & FIFO_DEPTH_MASK for f, lsb in FIFO_DEPTH_LSB.items()}
+
+
 RAS_HALVES = ("IDLE", "RISE", "MODE2", "SHAPE")
 
 
@@ -860,16 +879,29 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         for w in plan.pre_words[fifo]:
             await self._wr(addr, w)
         held = await self._rd(unit.err_code)
+        other = next(f for f in FIFO_TRIALS if f != fifo)
+        depth = _fifo_depths()
         self._ctrl(
             "EDN-FIFO-PRECLEAR",
-            (held & unit.err_mask) == 0,
+            (held & unit.err_mask) == 0 and depth[fifo] == k and depth[other] == 0,
             fifo=fifo,
             held_before_clear=k,
+            depth=depth[fifo],
+            other_depth=depth[other],
             **self._err_fields(unit, held),
         )
         self._open_window()
         await self._wr(EDN_CTRL_ADDR, EDN_CTRL_FIFO_RST)
         await self._wr(EDN_CTRL_ADDR, EDN_CTRL_SW_PORT)
+        depth = _fifo_depths()
+        self._ctrl(
+            "EDN-FIFO-CLEARED",
+            depth[fifo] == 0 and depth[other] == 0,
+            fifo=fifo,
+            held_before_clear=k,
+            depth=depth[fifo],
+            other_depth=depth[other],
+        )
         await self._wr(unit.intr_enable, unit.fatal_bm)
         m = self.vec.mark()
         n = 0
