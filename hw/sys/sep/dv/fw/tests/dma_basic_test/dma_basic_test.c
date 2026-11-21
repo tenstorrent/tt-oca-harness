@@ -34,7 +34,7 @@
 //   CHK-ERR-ADDR   : four misaligned descriptors each raise STATUS.error and
 //                    the ERROR_CODE bit of the misaligned side, no non-address
 //                    bit and no STATUS.done; a subsequent good copy recovers.
-//                    The other address bit is logged (OBS-ERR-ADDR-OTHER): the
+//                    The other address bit is logged (INFO-ERR-ADDR-OTHER): the
 //                    source and destination differ in alignment, and no text
 //                    names the bit that the same-alignment rule raises.
 //   CHK-ERR-ASID   : an unencoded ASID on src and on dst each raise asid_error
@@ -679,7 +679,7 @@ static int chk_err_addr(void) {
                               SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
         uint32_t err = rd_err();
         uint32_t other = DMA_ADDR_ERR_BITS & ~cells[c].want;
-        sep_mbx_puts("OBS-ERR-ADDR-OTHER LOG cell=");
+        sep_mbx_puts("INFO-ERR-ADDR-OTHER LOG cell=");
         sep_mbx_puthex(c);
         sep_mbx_puts(" want=");
         sep_mbx_puthex(cells[c].want);
