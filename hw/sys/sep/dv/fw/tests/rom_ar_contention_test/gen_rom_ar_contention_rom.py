@@ -137,8 +137,8 @@ def header_text() -> str:
         "",
         "static const uint32_t rom_ar_data[ROM_AR_DATA_WORDS] = {",
     ]
-    for i in range(0, DATA_WORDS, 4):
-        out.append("    " + ", ".join(f"0x{w:08x}u" for w in words[i : i + 4]) + ",")
+    for i in range(0, DATA_WORDS, 7):
+        out.append("    " + ", ".join(f"0x{w:08x}u" for w in words[i : i + 7]) + ",")
     out += ["};", "", "#endif // ROM_AR_CONTENTION_ROM_H", ""]
     return "\n".join(out)
 
