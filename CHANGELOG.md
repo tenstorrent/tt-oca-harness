@@ -10,6 +10,11 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- A TRNG reset zeroed an EDN word already acknowledged to AES, KMAC or OTBN,
+  which took 0, and OTBN RND failed its FIPS check (#3731).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added
