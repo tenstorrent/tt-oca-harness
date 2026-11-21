@@ -64,7 +64,9 @@ The local crossbar routes a burst by its start address, so a burst that starts
 between unit apertures answers `DECERR` for every beat. A write burst to a
 register unit is split into single-beat writes. Its write response is that of
 the last beat when the last beat answers `SLVERR` or `DECERR`; otherwise it is
-`SLVERR` when an earlier beat answered an error, and `OKAY` when none did.
+`SLVERR` when an earlier beat answered an error, and `OKAY` when none did. The
+DMA registers are the exception: they accept single-beat accesses only and
+answer a burst `SLVERR` on every beat.
 
 The SMC does not check AXI4 burst encodings on its inbound ports. An illegal
 burst -- a WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11,
@@ -186,10 +188,10 @@ follows:
   raises no interrupt.
 * An offset inside the block that no register occupies answers `OKAY`. A read
   returns 0, and a write has no effect.
-* An offset past the end of the block's last register answers `SLVERR` if it
-  reaches the block, including the part of a wider access that runs past that
-  end. The remap tables and filter controls answer `OKAY` there instead: each
-  is an array, and the padding between its entries is a hole.
+* An offset past the end of the block's last register but inside its window
+  answers `SLVERR`, including the part of a wider access that runs past that
+  end. The alias remap table and filter controls answer `OKAY` there instead:
+  each is an array, and the padding between its entries is a hole.
 * Exclusive access is not supported. The AXI-to-AXI-Lite conversion in front
   of each block discards `AxLOCK`, so an exclusive read or write is performed
   as a normal access and answers `OKAY`, never `EXOKAY`.

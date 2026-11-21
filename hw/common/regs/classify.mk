@@ -37,19 +37,28 @@ ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1)
 # oca_i3c_wrap describes the same map as the SMC top sees it (HCI fields
 # expanded), while its register RTL comes from the vendored i3c-core.
 # The axil_mailbox maps describe the register interface implemented by the
-# vendored PULP mailbox RTL. pwm_wrap composes the vendored OpenTitan PWM map,
-# whose register RTL is upstream's; its pwm_ctrl sub-block is a regblock leaf.
+# vendored PULP mailbox RTL.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
-  clint plic debug_module wdt bus_error_unit misc_wrap \
+  clint plic debug_module wdt bus_error_unit \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
   pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
-  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm pwm_wrap
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
+
+# Wrappers: maps with no registers of their own that place several blocks in
+# one 4 KiB page, or array copies of a leaf block, behind one crossbar port.
+# The RTL in front of the wrapper decodes its children. pwm_wrap composes the
+# vendored OpenTitan PWM map, whose register RTL is upstream's, with its
+# pwm_ctrl regblock leaf.
+OCAH_REG_WRAPPER_BLOCKS ?= \
+  misc_wrap smc_cluster_wdt_wrap pwm_wrap \
+  gpio_intf_wrap alias_remap_wrap output_remap_wrap filter_ctrl_wrap
+OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_WRAPPER_BLOCKS)
 
 # UVM RAL models are opt-in: only a DV environment that drives registers through
 # a uvm_reg_block needs one (today just the SEP TB), and every extra block is
@@ -148,6 +157,26 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   cross_trigger_port \
   filter_ctrl \
   gpio_intf
+
+# Blocks alone in a 4 KiB page: the regblock decodes the whole page, so an access
+# past its last register answers SLVERR.
+OCAH_REG_ADDR_WIDTH_reset_unit ?= 12
+OCAH_REG_ADDR_WIDTH_avsbus_controller ?= 12
+OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
+OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
+OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
+OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
+OCAH_REG_ADDR_WIDTH_zeroer_ctrl ?= 12
+
+# Blocks that share a page: the regblock decodes the whole window its wrapper
+# routes it.
+OCAH_REG_ADDR_WIDTH_scratch ?= 7
+OCAH_REG_ADDR_WIDTH_chip_config ?= 8
+OCAH_REG_ADDR_WIDTH_i2c ?= 9
+OCAH_REG_ADDR_WIDTH_uart_log_engine_ctrl ?= 8
+OCAH_REG_ADDR_WIDTH_uart_16550_main ?= 8
+OCAH_REG_ADDR_WIDTH_log_engine ?= 9
+OCAH_REG_ADDR_WIDTH_cross_trigger_matrix ?= 9
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))

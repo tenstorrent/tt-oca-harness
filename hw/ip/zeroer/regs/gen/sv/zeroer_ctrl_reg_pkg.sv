@@ -7,7 +7,7 @@
 package zeroer_ctrl_reg_pkg;
 
     localparam ZEROER_CTRL_REG_DATA_WIDTH = 64;
-    localparam ZEROER_CTRL_REG_MIN_ADDR_WIDTH = 5;
+    localparam ZEROER_CTRL_REG_MIN_ADDR_WIDTH = 12;
     localparam ZEROER_CTRL_REG_SIZE = 'h18;
 
     typedef struct {

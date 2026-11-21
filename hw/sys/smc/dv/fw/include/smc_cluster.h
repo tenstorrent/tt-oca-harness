@@ -43,13 +43,13 @@ static inline uint64_t read_beu_reg(int hartid, uint64_t offset) {
 static inline void write_wdt_reg(int hartid, uint64_t offset, uint64_t value) {
     uint64_t BASE_ADDRESS_WDT;
     if (hartid == 0) {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR;
     } else if (hartid == 1) {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR;
     } else if (hartid == 2) {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR;
     } else {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR;
     }
 
     volatile uint64_t *p_addr = (volatile uint64_t *)(uintptr_t)(BASE_ADDRESS_WDT + offset);
@@ -59,13 +59,13 @@ static inline void write_wdt_reg(int hartid, uint64_t offset, uint64_t value) {
 static inline uint64_t read_wdt_reg(int hartid, uint64_t offset) {
     uint64_t BASE_ADDRESS_WDT;
     if (hartid == 0) {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR;
     } else if (hartid == 1) {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR;
     } else if (hartid == 2) {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR;
     } else {
-        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR;
+        BASE_ADDRESS_WDT = SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR;
     }
 
     volatile uint64_t *p_addr = (volatile uint64_t *)(uintptr_t)(BASE_ADDRESS_WDT + offset);

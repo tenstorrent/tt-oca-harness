@@ -23,6 +23,7 @@ module cross_trigger_network
 
     `include "axi/typedef.svh"
     `include "prim_assert.sv"
+    `include "ocah_assert.svh"
 #(
     parameter int unsigned NUM_CTP          = DefaultNumCtp,    // Number of external CTPs, from 1
                                                                 // to 32. NUM_CTP + NUM_INT_CT must
@@ -144,10 +145,12 @@ module cross_trigger_network
 
     // Address space sizes
     localparam int unsigned AddrCtmSize = cross_trigger_network_pkg::CsrAddrCtmSize;  // 512 bytes for CTM
-    localparam int unsigned AddrCtmRegSize = cross_trigger_network_pkg::CsrAddrCtmRegSize;
     localparam int unsigned AddrCtpSize = cross_trigger_network_pkg::CsrAddrCtpSize;  // 16 bytes per CTP
 
-    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmRegsFitAperture_A, AddrCtmRegSize <= AddrCtmSize)
+    `OCAH_ASSERT_STATIC(CtmWindow_A,
+        AddrCtmSize == 1 << cross_trigger_matrix_reg_pkg::CROSS_TRIGGER_MATRIX_REG_MIN_ADDR_WIDTH)
+    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
+        CtmRegsFitAperture_A, cross_trigger_network_pkg::CsrAddrCtmRegSize <= AddrCtmSize)
 
     //--------------------------------------------------------------------------
     // AXI-Lite Crossbar Type Definitions
@@ -187,11 +190,10 @@ module cross_trigger_network
     //--------------------------------------------------------------------------
 
     // Generate address map: CTM first at address 0, then external CTPs
-    // CTM is the first port (index 0). Its rule ends at the register map's extent, so the
-    // rest of its 512-byte aperture decodes as unmapped.
+    // CTM is the first port (index 0). Its window runs up to the first CTP.
     assign addr_map[0].idx        = 0;
     assign addr_map[0].start_addr = 0;
-    assign addr_map[0].end_addr   = AddrCtmRegSize;
+    assign addr_map[0].end_addr   = AddrCtmSize;
 
     // External CTPs follow (indices 1 to NUM_CTP, starting at 0x0200)
     for (genvar i = 0; i < NUM_CTP; i++) begin : gen_ctp_addr_map

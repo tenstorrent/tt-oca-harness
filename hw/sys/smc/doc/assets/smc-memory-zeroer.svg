@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="710" viewBox="0 0 1040 710" role="img" aria-labelledby="title desc">
 <title id="title">SMC memory zeroer</title>
-<desc id="desc">u_zeroer takes its control port from u_axi_demux (AXI4, 5-bit address, 64-bit data, 8-bit ID) and converts it to AXI-Lite for the u_zeroer_reg registers DEST_ADDR, SIZE and CTRL_STATUS, which run on reg_clk from the u_zeroer_cg bus snoop. The clear state machine runs on axi_clk from u_axi_clk_gater, which is enabled while the zeroer is busy. Reset enters ST_IDLE (3'b001). A write to CTRL_STATUS with SIZE non-zero latches DEST_ADDR and SIZE and moves to ST_ISSUE_ADDR (3'b010), which drives AWVALID with an aligned address and a burst length of up to 256 beats that never crosses a 4 KiB boundary. AWREADY moves to ST_ISSUE_DATA (3'b100), which drives zero data with byte strobes for every beat. When the last beat is accepted the machine returns to ST_ISSUE_ADDR if bytes remain and to ST_IDLE if none do. Any illegal state encoding enters ST_ERROR (3'b000), which holds the zeroer busy with no interrupt until reset. The AW and W channels leave on the master port to u_axi_mux (AXI4, 56-bit address, 64-bit data, 3-bit ID); the B channel is always ready and its response code is not checked, and the AR and R channels are tied off. outstanding_reqs counts accepted addresses up and write responses down. zeroer_busy_o is high outside ST_IDLE, on a start and while the count is non-zero; zeroer_intp_o pulses when busy falls while INT_EN is set.</desc>
+<desc id="desc">u_zeroer takes its control port from the internal CSR crossbar (AXI-Lite, 32-bit address, 64-bit data) and decodes the low 12 address bits in the u_zeroer_reg registers DEST_ADDR, SIZE and CTRL_STATUS, which run on reg_clk from the u_zeroer_cg bus snoop. The clear state machine runs on axi_clk from u_axi_clk_gater, which is enabled while the zeroer is busy. Reset enters ST_IDLE (3'b001). A write to CTRL_STATUS with SIZE non-zero latches DEST_ADDR and SIZE and moves to ST_ISSUE_ADDR (3'b010), which drives AWVALID with an aligned address and a burst length of up to 256 beats that never crosses a 4 KiB boundary. AWREADY moves to ST_ISSUE_DATA (3'b100), which drives zero data with byte strobes for every beat. When the last beat is accepted the machine returns to ST_ISSUE_ADDR if bytes remain and to ST_IDLE if none do. Any illegal state encoding enters ST_ERROR (3'b000), which holds the zeroer busy with no interrupt until reset. The AW and W channels leave on the master port to u_axi_mux (AXI4, 56-bit address, 64-bit data, 3-bit ID); the B channel is always ready and its response code is not checked, and the AR and R channels are tied off. outstanding_reqs counts accepted addresses up and write responses down. zeroer_busy_o is high outside ST_IDLE, on a start and while the count is non-zero; zeroer_intp_o pulses when busy falls while INT_EN is set.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -85,14 +85,12 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect width="1040" height="710" fill="#ffffff"/>
 <rect class="smu" x="150" y="20" width="720" height="580" rx="6"/>
 <text class="b" x="164" y="590" text-anchor="start">u_zeroer</text>
-<path class="axi" d="M14,92 L170,92"/>
-<text class="t" x="14" y="70" text-anchor="start">from u_axi_demux</text>
-<text class="s" x="14" y="114" text-anchor="start">AXI4, address 5,</text>
-<text class="s" x="14" y="130" text-anchor="start">data 64, ID 8</text>
-<rect class="network" x="170" y="68" width="76" height="48" rx="4"/>
-<text class="s" x="208" y="89.5" text-anchor="middle">AXI4 to</text>
-<text class="s" x="208" y="104.5" text-anchor="middle">AXI-Lite</text>
-<path class="axil" d="M246,92 L275,92"/>
+<path class="axil" d="M14,92 L275,92"/>
+<text class="t" x="14" y="52" text-anchor="start">from the internal</text>
+<text class="t" x="14" y="70" text-anchor="start">CSR crossbar</text>
+<text class="s" x="14" y="114" text-anchor="start">AXI-Lite, address 32,</text>
+<text class="s" x="14" y="130" text-anchor="start">data 64,</text>
+<text class="s" x="14" y="146" text-anchor="start">low 12 bits decoded</text>
 <rect class="core" x="275" y="56" width="200" height="72" rx="6"/>
 <text class="bs" x="375" y="79" text-anchor="middle">u_zeroer_reg</text>
 <text class="s" x="375" y="97" text-anchor="middle">DEST_ADDR, SIZE</text>
@@ -183,16 +181,14 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M440,540 L415,540"/>
 <path class="sigo" d="M290,568 L290,630"/>
 <text class="s" x="298" y="626" text-anchor="start">zeroer_busy_o, zeroer_intp_o</text>
-<rect class="network" x="14" y="655" width="36" height="18" rx="3"/>
-<text class="s" x="58" y="668.5" text-anchor="start">Converter</text>
-<rect class="core" x="146.1" y="655" width="36" height="18" rx="4"/>
-<text class="s" x="190.1" y="668.5" text-anchor="start">RTL block, FSM state</text>
-<text class="s" x="384.1" y="668.5" text-anchor="start">Subordinate port</text>
-<text class="s" x="550.5" y="668.5" text-anchor="start">Manager port</text>
-<path class="axi" d="M662.3,664 L704.3,664"/>
-<text class="s" x="715.3" y="668.5" text-anchor="start">AXI4</text>
-<path class="axil" d="M771.9,664 L813.9,664"/>
-<text class="s" x="824.9" y="668.5" text-anchor="start">AXI-Lite</text>
+<rect class="core" x="14" y="655" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="668.5" text-anchor="start">RTL block, FSM state</text>
+<text class="s" x="252" y="668.5" text-anchor="start">Subordinate port</text>
+<text class="s" x="418.4" y="668.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M530.2,664 L572.2,664"/>
+<text class="s" x="583.2" y="668.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M639.8,664 L681.8,664"/>
+<text class="s" x="692.8" y="668.5" text-anchor="start">AXI-Lite</text>
 <path class="sigo" d="M17,692 L59,692"/>
 <text class="s" x="70" y="696.5" text-anchor="start">Transition, channel, clock, signal</text>
 <rect class="core opt" x="330.6" y="683" width="36" height="18" rx="4"/>
@@ -201,8 +197,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pst" x="150" y="96.5" text-anchor="middle">S</text>
 <rect class="pm" x="859.0" y="311.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="870" y="324.5" text-anchor="middle">M</text>
-<rect class="ps" x="354.1" y="655.0" width="22" height="18" rx="4"/>
-<text class="pst" x="365.1" y="668.5" text-anchor="middle">S</text>
-<rect class="pm" x="520.5" y="655.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="531.5" y="668.5" text-anchor="middle">M</text>
+<rect class="ps" x="222" y="655.0" width="22" height="18" rx="4"/>
+<text class="pst" x="233" y="668.5" text-anchor="middle">S</text>
+<rect class="pm" x="388.4" y="655.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="399.4" y="668.5" text-anchor="middle">M</text>
 </svg>

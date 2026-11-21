@@ -126,10 +126,14 @@ SMC_END = SMC_B + SMC_SIZE
 # SMC_B is the SMC local base, the CORE0 watchdog CTRL. KEY unlocks the next write to CTRL, so
 # with KEY written before the S9 write burst a beat leaking into the SMC changes CTRL.
 SMC_WDT_CTRL = (
-    SMC_B - SMC_APERTURE_LOCAL_BASE + smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR")
+    SMC_B
+    - SMC_APERTURE_LOCAL_BASE
+    + smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_BASE_ADDR")
 )
 SMC_WDT_KEY = (
-    SMC_B - SMC_APERTURE_LOCAL_BASE + smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR")
+    SMC_B
+    - SMC_APERTURE_LOCAL_BASE
+    + smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR")
 )
 # A KEY-unlocked write of WDOGCOREAWAKE changes CTRL: the live control of the unchanged word.
 # WDOGIP0 is status and is masked from the compare.

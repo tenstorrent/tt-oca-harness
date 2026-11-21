@@ -49,19 +49,20 @@ module smc_local_xbar
                                            // PLIC, CLINT and core bus-error units.
   input  axi_out_resp_t front_port_resp_i,  // Response from the CPU cluster front port.
 
-  output axi_out_req_t  data_accel_ctrl_req_o,  // Request for the DMA and zeroer control
-                                                // windows of the data accelerator.
+  output axi_out_req_t  data_accel_ctrl_req_o,  // Request for the data accelerator's
+                                                // control page, which holds the DMA
+                                                // control window.
   input  axi_out_resp_t data_accel_ctrl_resp_i,  // Response from the data accelerator
                                                  // control port.
 
   output axi_lite64_req_t  local_reg_req_o,  // Request to the internal CSR crossbar for the
-                                             // base config through mailbox windows and the
-                                             // DFX control window.
+                                             // base config through mailbox windows, the
+                                             // zeroer and DFX control included.
   input  axi_lite64_resp_t local_reg_resp_i,  // Response from the internal CSR crossbar.
 
   output axi_lite32_req_t  periph_reg_req_o,  // Request to the peripheral CSR crossbar for
-                                              // the reset unit through DTP control windows,
-                                              // the PWM, the I3C wrapper and smc_external.
+                                              // the reset unit through the miscellaneous
+                                              // registers, the I3C wrapper and smc_external.
   input  axi_lite32_resp_t periph_reg_resp_i,  // Response from the peripheral CSR crossbar.
 
   output apb32_req_t  smc_dfd_reg_req_o,  // Request for the SMC CLA window.
@@ -76,25 +77,25 @@ module smc_local_xbar
   // hart-facing window has no rule: only the cluster's harts may reach it.
   localparam smc_local_xbar_pkg::addr_rule_t [smc_local_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SIZE)},
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SIZE)},
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SIZE)},
     '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SIZE)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE))},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR
@@ -125,34 +126,22 @@ module smc_local_xbar
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE)},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)},
-    '{idx: 1,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE))},
     // The internal and peripheral child xbars reject holes within these
     // generated aggregate bounds.
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
-    '{idx: 2,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
-    '{idx: 3,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR

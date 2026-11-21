@@ -77,7 +77,7 @@
 /* First 4 KB-aligned address past the WDT cluster: unmapped, so a fetch there
  * gets a decode error from the fabric. */
 #define WDT_REGION_END \
-    (SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR + SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE)
+    (SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR + SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SIZE)
 #define UNMAPPED_ADDR (((WDT_REGION_END) + 0xFFFu) & ~0xFFFu)
 #define UNMAPPED_SPAN 0x1000u /* largest region any scenario below programs */
 

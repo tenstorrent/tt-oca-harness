@@ -59,7 +59,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, MAILBOX_CG_EN
 from .smc_rdl_regmap import rdl_contract
 
-BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
+BASE = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR")
 RESP_OKAY = 0
 RESP_DECERR = 3
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}

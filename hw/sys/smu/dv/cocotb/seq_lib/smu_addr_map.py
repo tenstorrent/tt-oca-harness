@@ -227,8 +227,8 @@ SMC_CHIP_CONFIG_CHIP_ID = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BA
 
 def smc_local_xbar_unmapped_gap() -> int:
     """Page-aligned hole between CORE3 WDT bank end and RESET_UNIT."""
-    wdt_end = smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR") + smc_addr(
-        "SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE"
+    wdt_end = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR") + smc_addr(
+        "SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SIZE"
     )
     reset = smc_addr("SMC_TOP_SMC_RESET_UNIT_BASE_ADDR")
     gap = ((wdt_end + reset) // 2) & ~0xFFF
