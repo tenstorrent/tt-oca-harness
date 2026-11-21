@@ -8111,13 +8111,13 @@ module sep_fcov (
   // of the run passed, so a window close does not drop a held cell and the
   // release does not depend on the window; reset drops it. It gates a
   // sample; it is never a DUT value and drives nothing.
-  localparam int unsigned DepPair = 0;  // cp_dma_pair: index = bin code - 1 (13 cells)
-  localparam int unsigned DepForm = 13;  // cp_dma_addr_form: 3 * form + side - 1 (6 cells)
-  localparam int unsigned DepSmc = 19;  // cp_dma_smc_beat user0_len0: + write (2 cells)
-  localparam int unsigned DepExt = 21;  // cp_ext_init_dir_dma: + write (2 cells)
-  localparam int unsigned DepAttr = 23;  // cp_out_attr[dma_smu_user_sep]
-  localparam int unsigned DepInst = 24;  // cp_instance_dir: + 2 * stee + write (4 cells)
-  localparam int unsigned DepTwin = 28;  // cp_local_alias_twin[dma_ext_top_alias]
+  localparam int unsigned DepPair  = 0;   // cp_dma_pair: index = bin code - 1 (13 cells)
+  localparam int unsigned DepForm  = 13;  // cp_dma_addr_form: 3 * form + side - 1 (6 cells)
+  localparam int unsigned DepSmc   = 19;  // cp_dma_smc_beat user0_len0: + write (2 cells)
+  localparam int unsigned DepExt   = 21;  // cp_ext_init_dir_dma: + write (2 cells)
+  localparam int unsigned DepAttr  = 23;  // cp_out_attr[dma_smu_user_sep]
+  localparam int unsigned DepInst  = 24;  // cp_instance_dir: + 2 * stee + write (4 cells)
+  localparam int unsigned DepTwin  = 28;  // cp_local_alias_twin[dma_ext_top_alias]
   localparam int unsigned DepCount = 29;
   int unsigned dma_ep_pass = 0;
   int unsigned fx_dep_n[DepCount] = '{default: 0};     // written by the fabric sampling block only
@@ -10342,10 +10342,10 @@ module sep_fcov (
   // ZERO. The TCM class, the width and the size come from the registers at the
   // initial GO. The continuation window opens at the issue clock of its GO:
   // the DMA raises a configuration ERROR before the B of that write.
-  localparam logic [7:0] DzDstOnly = 8'(1) << SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_SHIFT;
-  localparam logic [7:0] DzOpcOnly = 8'(1) << SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT;
+  localparam logic [7:0] DzDstOnly  = 8'(1) << SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_SHIFT;
+  localparam logic [7:0] DzOpcOnly  = 8'(1) << SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT;
   localparam logic [7:0] DzSizeOnly = 8'(1) << SECURE_DMA_ERROR_CODE_SIZE_ERROR_SHIFT;
-  localparam logic [7:0] DzBusOnly = 8'(1) << SECURE_DMA_ERROR_CODE_BUS_ERROR_SHIFT;
+  localparam logic [7:0] DzBusOnly  = 8'(1) << SECURE_DMA_ERROR_CODE_BUS_ERROR_SHIFT;
   localparam logic [7:0] DzAsidOnly = 8'(1) << SECURE_DMA_ERROR_CODE_ASID_ERROR_SHIFT;
   logic dc_on_q;
   logic dc_hs_q, dc_lock_q, dc_out_q, dc_wr_q, dc_done_q, dc_err_q;
@@ -12171,7 +12171,7 @@ module sep_fcov (
   // landed with an OKAY response (16 is a full block). A GCM_INIT write starts
   // a new message. The record of a passing GCM run samples them.
   localparam logic [5:0] CxGcmInit = 6'b00_0001;
-  localparam logic [5:0] CxGcmAad = 6'b00_0100;
+  localparam logic [5:0] CxGcmAad  = 6'b00_0100;
   localparam logic [5:0] CxGcmText = 6'b00_1000;
   logic cxgl_aad_v = 1'b0;
   logic cxgl_aad_full = 1'b0;
@@ -13581,7 +13581,7 @@ module sep_fcov (
 
   localparam logic [31:0] PicBase = 32'(SEP_TOP_PIC_BASE_ADDR);
   localparam logic [31:0] MbxBase = AXIL_MAILBOX_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] MbxEnd = MbxBase + AXIL_MAILBOX_REG_MAP_SIZE;
+  localparam logic [31:0] MbxEnd  = MbxBase + AXIL_MAILBOX_REG_MAP_SIZE;
   // Target of a PIC offset: 0 mpiccfg, 1 meipl, 2 meie, 3 meigwctrl,
   // 4 meigwclr, 5 meip, 6 hole, 7 past extent.
   function automatic logic [2:0] pic_tgt(input logic [14:0] o);
@@ -14084,9 +14084,9 @@ module sep_fcov (
   // PERIPH_BUS_ERR_STATUS has the same index.
   // =====================================================================
   localparam logic [31:0] PbeStatus = SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_ADDR;
-  localparam logic [31:0] PbeClear = SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR;
+  localparam logic [31:0] PbeClear  = SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR;
   localparam logic [31:0] DbeStatus = SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_ADDR;
-  localparam logic [31:0] DbeClear = SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_ADDR;
+  localparam logic [31:0] DbeClear  = SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_REG_ADDR;
   // Any response of a single outstanding LSU transaction.
   wire b_any = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
   wire r_any = !in_reset && r_hs && (ar_out_q == 4'd1) && !r_multi_q;
@@ -15143,7 +15143,7 @@ module sep_fcov (
     endcase
   endfunction
   localparam logic [31:0] SmuApBase = 32'h8000_0000;
-  localparam logic [31:0] SmuApEnd = 32'hC000_0000;
+  localparam logic [31:0] SmuApEnd  = 32'hC000_0000;
   logic [8:1]  cnt_one_q;
   logic        to_en_q;
   logic [4:0] xs_cnt_q, ls_cnt_q, os_cnt_q;
@@ -21833,7 +21833,7 @@ module sep_fcov (
   wire fd_tcm_hs = !in_reset && (((tcm_axi_req_i.ar_valid === 1'b1) && (tcm_axi_resp_i.ar_ready === 1'b1)) ||
                                  ((tcm_axi_req_i.aw_valid === 1'b1) && (tcm_axi_resp_i.aw_ready === 1'b1)));
   localparam logic [31:0] FdIccmBase = 32'hC000_0000;
-  localparam logic [31:0] FdIccmEnd = 32'hC003_FFFF;
+  localparam logic [31:0] FdIccmEnd  = 32'hC003_FFFF;
   logic fd_rd_v_q, fd_wr_v_q;
   logic [31:0] fd_rd_a_q, fd_wr_a_q;
   logic [31:0] fd_rd_raw_q;
@@ -22039,11 +22039,11 @@ module sep_fcov (
   // and drives nothing.
   int unsigned isa_pmp_pass = 0;
   // Bits 0 to 15: cp_pmp_entry entry[i], CHK-PMP of entry i.
-  localparam int unsigned IsaPassMrac = 16;  // cp_mrac_no_perm, CHK-MRAC
+  localparam int unsigned IsaPassMrac   = 16;  // cp_mrac_no_perm, CHK-MRAC
   localparam int unsigned IsaPassLsBit0 = 17;  // cp_lockstep_inert ctrl_bit0_status0
   localparam int unsigned IsaPassLsBit1 = 18;  // cp_lockstep_inert ctrl_bit1_status0
-  localparam int unsigned IsaPassIcls = 19;  // cp_instr_class, CHK-ISA
-  localparam int unsigned IsaPassTrap = 20;  // cp_traced_event taken_trap, CHK-ISA and CHK-MRAC
+  localparam int unsigned IsaPassIcls   = 19;  // cp_instr_class, CHK-ISA
+  localparam int unsigned IsaPassTrap   = 20;  // cp_traced_event taken_trap, CHK-ISA and CHK-MRAC
   wire fd_own_isa = (graded_owner == FcovOwnSepCpuIsaPmpCsrTest);
   logic [15:0] fd_pmp_wr_q = '0;
   logic fd_isa_q = 1'b0;
@@ -28226,9 +28226,9 @@ module sep_fcov (
   // sep_drbg_axil_concurrent_csrng_aw_then_ar_test and
   // sep_drbg_axil_concurrent_edn_aw_then_ar_test).
   // ---------------------------------------------------------------------
-  localparam logic [31:0] CxAbrBase = ABR_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] CxAbrBase   = ABR_REG_MAP_BASE_ADDR;
   localparam logic [31:0] CxAbrExtEnd = ABR_REG_MAP_BASE_ADDR + ABR_REG_MAP_SIZE;
-  localparam logic [31:0] CxAbrApEnd = ABR_REG_MAP_BASE_ADDR + 32'h0001_0000;
+  localparam logic [31:0] CxAbrApEnd  = ABR_REG_MAP_BASE_ADDR + 32'h0001_0000;
   function automatic logic cxb_in_abr(input logic [31:0] a);
     return (a >= CxAbrBase) && (a < CxAbrApEnd);
   endfunction
@@ -30865,8 +30865,8 @@ module sep_fcov (
   localparam logic [2:0] CzClsNone = 3'd0;
   localparam logic [2:0] CzClsZero = 3'd1;
   localparam logic [2:0] CzClsHigh = 3'd2;
-  localparam logic [2:0] CzClsLow = 3'd3;
-  localparam logic [2:0] CzClsOne = 3'd4;
+  localparam logic [2:0] CzClsLow  = 3'd3;
+  localparam logic [2:0] CzClsOne  = 3'd4;
   function automatic logic [2:0] cz_cls(input logic [6:0] c);
     case (c)
       7'd0: return CzClsZero;
@@ -33484,8 +33484,8 @@ module sep_fcov (
   // sampled on the rise of xhs_pass bit 9 + stream; a broken run or a closed
   // window drops it.
   // ---------------------------------------------------------------------
-  localparam int unsigned CzAdHold = 64;
-  localparam int unsigned CzAdDepth = 8;  // trng.adoc: one 8-entry FIFO per endpoint
+  localparam int unsigned CzAdHold  = 64;
+  localparam int unsigned CzAdDepth = 8;   // trng.adoc: one 8-entry FIFO per endpoint
   int unsigned cz_ad_occ[3] = '{default: 0};
   int unsigned cz_ad_hold[3] = '{default: 0};
   logic [2:0] cz_ad_done = '0;
@@ -33857,10 +33857,10 @@ module sep_fcov (
   logic cz_e2e_pass_q = 1'b0;
   wire  cz_e2e_rel = (esrc_e2e_pass != 0) && !cz_e2e_pass_q && cz_own_e2e && !in_reset;
   always @(posedge clk_i) cz_e2e_pass_q <= (esrc_e2e_pass != 0);
-  localparam logic [31:0] CzUnfMask = 32'(ENTROPY_SOURCE_INTR_STATUS_FIFO_UNDERFLOW_MASK);
-  localparam logic [31:0] CzOvfMask = 32'(ENTROPY_SOURCE_INTR_STATUS_FIFO_OVERFLOW_MASK);
+  localparam logic [31:0] CzUnfMask  = 32'(ENTROPY_SOURCE_INTR_STATUS_FIFO_UNDERFLOW_MASK);
+  localparam logic [31:0] CzOvfMask  = 32'(ENTROPY_SOURCE_INTR_STATUS_FIFO_OVERFLOW_MASK);
   localparam logic [31:0] CzFLvlMask = 32'(ENTROPY_SOURCE_FIFO_STATUS_LEVEL_MASK);
-  localparam logic [31:0] CzFEnMask = 32'(ENTROPY_SOURCE_FIFO_CTRL_ENABLE_MASK);
+  localparam logic [31:0] CzFEnMask  = 32'(ENTROPY_SOURCE_FIFO_CTRL_ENABLE_MASK);
   logic cz_us_arm = 1'b0;
   logic cz_us_pop = 1'b0;
   logic cz_us_tst = 1'b0;
@@ -34922,12 +34922,12 @@ module sep_fcov (
   // Lifecycle raw class (lifecycle_controller.adoc, Per-LC-state Feature
   // Control Profile): 0 TEST_DEV, 1 PROD, 2 PROD_END, 3 RMA_SIP, 4
   // RMA_CHIPLET, 5 INVALID.
-  localparam logic [2:0] EfTd = 3'd0;
+  localparam logic [2:0] EfTd   = 3'd0;
   localparam logic [2:0] EfProd = 3'd1;
-  localparam logic [2:0] EfPe = 3'd2;
-  localparam logic [2:0] EfRs = 3'd3;
-  localparam logic [2:0] EfRc = 3'd4;
-  localparam logic [2:0] EfInv = 3'd5;
+  localparam logic [2:0] EfPe   = 3'd2;
+  localparam logic [2:0] EfRs   = 3'd3;
+  localparam logic [2:0] EfRc   = 3'd4;
+  localparam logic [2:0] EfInv  = 3'd5;
   function automatic logic [2:0] ef_cls(input logic [3:0] raw);
     if (raw == 4'b0000) return EfTd;
     if (raw == 4'b0001) return EfProd;
