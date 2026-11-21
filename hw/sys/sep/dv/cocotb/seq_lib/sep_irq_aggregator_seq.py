@@ -14,9 +14,9 @@ SLVERR and latch DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive
 aggregator bits [40] and [42]. The probes stay inside each routed extent.
 AES, CSRNG, EDN and WDT have no hole between registers: their bits latch only
 on an access past the last register, up to the offset the Past Extent note of
-the row states (hw/sys/sep/regs/gen/adoc/memory_map.adoc:89-92). This
-sequence makes no such access, which is why periph_holes() names three blocks
-and not seven.
+the row states (hw/sys/sep/regs/gen/adoc/memory_map.adoc:87-95).
+note_spans() gives those spans and the flag each note names, from the generated
+map, for the note-span leg of the aggregator test.
 
 OpenTitan interrupt registers (per IP):
   INTR_STATE   Event: RW1C; Status: RO
@@ -31,9 +31,11 @@ bridge, like the AES/OTBN drivers.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import sep_map_rows
 from env.sep_spec_tables import pic
 from sep_reg_meta import CSRNG, EDN, HMAC, KMAC, OTBN, SEP_CPU_CTRL, RegBlock, sym
 
@@ -149,6 +151,47 @@ def periph_holes() -> tuple[PeriphHole, ...]:
         PeriphHole("hmac", hmac_reg_unmapped_addr(), PERIPH_HMAC_BIT, PERIPH_HMAC_CLR),
         PeriphHole("kmac", kmac_reg_unmapped_addr(), PERIPH_KMAC_BIT, PERIPH_KMAC_CLR),
         PeriphHole("otbn", otbn_reg_unmapped_addr(), PERIPH_OTBN_BIT, PERIPH_OTBN_CLR),
+    )
+
+
+_NOTE_PERIPH = re.compile(r"PERIPH_BUS_ERR_STATUS\.(\w+),")
+
+
+def note_flag(latch: str) -> str:
+    """The latch a Past Extent note names: "dma_reg" for the DMA register-path
+    source, a ``PERIPH_BUS_ERR_STATUS`` field name, or "" when it names none."""
+    if not latch:
+        return ""
+    if latch == f"PIC source {PIC_DMA_REG_PATH}":
+        return "dma_reg"
+    m = _NOTE_PERIPH.match(latch)
+    if m is None:
+        raise ValueError(f"note flag {latch!r} is not modeled")
+    SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", m[1])
+    return m[1]
+
+
+@dataclass(frozen=True)
+class NoteSpan:
+    """A map row whose Past Extent note bounds the unit's own decode.
+
+    ``first`` is the first word past the registers, ``past`` the first word
+    past the note's span and ``last`` the last word of the row.
+    """
+
+    unit: str
+    first: int
+    past: int
+    last: int
+    flag: str
+
+
+def note_spans() -> tuple[NoteSpan, ...]:
+    """Every row of the generated map with a Past Extent note span."""
+    return tuple(
+        NoteSpan(r.unit, r.base + r.extent, r.past_from, r.end - 3, note_flag(r.past.near_latch))
+        for r in sep_map_rows()
+        if r.past is not None and r.past.near_end
     )
 
 
