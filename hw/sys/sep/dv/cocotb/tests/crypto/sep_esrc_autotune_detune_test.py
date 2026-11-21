@@ -41,12 +41,12 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): lane k, the window W (256, 512 or 2048), the three clean gaps (2, 3
 or 4 windows), the non-zero masks m1 != m2, the non-zero mask m3 that is not
 all ones (its complement m3c is non-zero), the ``balanced`` masks and
-permutation, the order of the divide values 0 to 5, one divide value of 6 to
-the field maximum, the one enable (module or ring) of the one-enable step and
-its new divide value (0 to 5, at a ratio other than that of the last value), and
-the divide value of the guide step (0 to 5, at a ratio other than that of the
-one-enable value and of the value before it, so the guide ratio differs from the
-lane ratio before the guide write).
+permutation, the order of the divide values 0 to 5 (the divide-by-4 value never
+last), one divide value of 6 to the field maximum, the one enable (module or
+ring) of the one-enable step and its new divide value (0 to 5, at a ratio other
+than that of the last value), and the divide value of the guide step (0 to 5, at
+a ratio other than that of the one-enable value and of the value before it, so
+the guide ratio differs from the lane ratio before the guide write).
 
 Checkers:
   CHK-TUNE-MANUAL   probe == DETUNE readback == written mask for 0, m1, m2; with
@@ -70,8 +70,11 @@ Checkers:
                     AUTOTUNE_FAIL = 0. Control: CHK-TUNE-AUTO sets it.
   CHK-TUNE-IRQ      with INTR_ENABLE = AUTOTUNE_FAIL only, after each autotune
                     burst INTR_STATUS.AUTOTUNE_FAIL = 1 (entropy_source.rdl:150,
-                    :198). The other INTR_STATUS bits have enable 0 and are
-                    logged on OBS-TUNE-PIC16.
+                    :198).
+  CHK-TUNE-PIC16    in the same read, AUTOTUNE_FAIL reads 1 and PIC source 16 reads 1:
+                    AUTOTUNE_FAIL is the only enabled source (entropy_source.rdl:150,
+                    :198). Controls: CTRL-TUNE-PIC16-LIVE, and CHK-TUNE-W1C reads the
+                    line 0 after the clear.
   CHK-TUNE-OFF-NOIRQ after the autotune-off burst INTR_STATUS.AUTOTUNE_FAIL = 0
                     and PIC source 16 reads 0: AUTOTUNE_FAIL is the only enabled
                     source (entropy_source.rdl:168-169). Controls: CHK-TUNE-IRQ
@@ -113,10 +116,7 @@ Checkers:
 
 Logged only: INFO-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
 each burst (no text states whether a generator failure counts in it).
-OBS-TUNE-PIC16, PIC source 16 and the whole INTR_STATUS word while AUTOTUNE_FAIL
-is 1 after each autotune burst (no text states that a source other than
-PERSISTENT_FAILURE drives source 16, and the value of a status bit with its
-enable 0 is not stated). INFO-TUNE-DETUNE-AFTER, the probe bit k before each
+INFO-TUNE-DETUNE-AFTER, the probe bit k before each
 autotune burst and after its clean gap (no text states the detune after the
 failure ends).
 INFO-SCLK-ONE-ENABLE, with the graded window closed: only one of
@@ -220,12 +220,13 @@ SHARD_EVIDENCE = {
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
         "CHK-TUNE-IRQ",
+        "CHK-TUNE-PIC16",
         "CHK-TUNE-OFF-NOIRQ",
         "CHK-TUNE-W1C",
         "CHK-SCLK-DIV",
         "CHK-SCLK-GUIDE",
     ),
-    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE", "CHK-TUNE-IRQ", "CHK-TUNE-W1C"),
+    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE", "CHK-TUNE-IRQ", "CHK-TUNE-PIC16", "CHK-TUNE-W1C"),
 }
 
 
@@ -350,6 +351,10 @@ def draw_plan(seed: int) -> Plan:
     balanced = tuple(balanced_lanes(rng))
     div_order = list(range(len(DIV_RATIOS)))
     rng.shuffle(div_order)
+    # The value before div_other is not at DIV_OTHER_RATIO, so a lane that keeps its
+    # last divide on an out-of-range value fails CHK-SCLK-DIV.
+    if DIV_RATIOS[div_order[-1]] == DIV_OTHER_RATIO:
+        div_order.insert(0, div_order.pop())
     div_other = rng.randrange(len(DIV_RATIOS), DIVIDE_MAX + 1)
     one_enable = rng.choice(ONE_ENABLES)
     div_v2 = rng.choice(
@@ -400,6 +405,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
         "CHK-TUNE-IRQ",
+        "CHK-TUNE-PIC16",
         "CHK-TUNE-OFF-NOIRQ",
         "CHK-TUNE-W1C",
         "CHK-SCLK-DIV",
@@ -540,8 +546,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             and en_rb == M_AUTOTUNE_EN,
             pf_set=int(bool(pf_set)),
             pic16_set=line_set,
-            pf_cleared=int(not pf_clr),
-            pic16_cleared=line_clr,
+            pf_after_clear=int(bool(pf_clr)),
+            pic16_after_clear=line_clr,
             intr_enable=f"0x{en_rb:08x}",
             want_intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
         )
@@ -714,7 +720,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             t0, t1 = await self._burst(plan.gaps[i], f"auto{i + 1}")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
-            for name in ("TUNE-TOGGLE", "TUNE-AUTO", "TUNE-IRQ", "TUNE-W1C"):
+            for name in ("TUNE-TOGGLE", "TUNE-AUTO", "TUNE-IRQ", "TUNE-PIC16", "TUNE-W1C"):
                 self._ok(name, False, lane=k, burst=i + 1, reason=reason)
             await self._clear_status(clear_autotune=True)
             return None
@@ -757,10 +763,14 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             gen_status=f"0x{gen:02x}",
         )
         self._ok("TUNE-IRQ", fail == 1, lane=k, burst=i + 1, autotune_fail=fail)
-        self.chk.obs(
+        self._ok(
             "TUNE-PIC16",
+            fail == 1 and line == 1,
+            lane=k,
             burst=i + 1,
             pic16=line,
+            expect_pic16=1,
+            autotune_fail=fail,
             intr_status=f"0x{intr:08x}",
             intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
         )

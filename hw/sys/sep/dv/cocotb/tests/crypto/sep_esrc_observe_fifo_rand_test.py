@@ -72,8 +72,8 @@ Checkers:
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
                     after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
-                    stays 0. That write must get a B response of any code; no text
-                    states the code, so it is logged as ``OBS-LOCK0-RESP``.
+                    stays 0. That write must get a B response of any code; the
+                    code is logged as ``INFO-LOCK0-RESP`` and is not graded.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -1184,7 +1184,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         else:
             resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
-        self.logger.info("OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
+        self.chk.info("LOCK0-RESP", fifo=fifo, b=resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:
