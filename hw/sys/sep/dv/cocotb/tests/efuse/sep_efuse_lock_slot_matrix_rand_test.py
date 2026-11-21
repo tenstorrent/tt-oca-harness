@@ -74,10 +74,11 @@ Checkers:
                     ``efuse_interface_ctrl.rdl:139`` ``read_done``, ``:145``
                     ``read_status``). The line prints both values, the expected 1,
                     both values read before the go and ``fresh=1`` when the
-                    pre-go ``read_done`` is 0. Every request is graded, whatever
-                    its pre-go state. ``CTRL-LOCK-READ-DONE-FRESH`` needs at least
-                    one request with ``fresh=1``: only that request shows that the
-                    blocked go set ``read_done``. The lock leg runs the first
+                    pre-go ``read_done`` and ``read_status`` are both 0. Every
+                    request is graded, whatever its pre-go state.
+                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one request
+                    with ``fresh=1``: only that request shows that the blocked
+                    go set both values. The lock leg runs the first
                     read-locked slot with a read bit ahead of the first unlocked
                     one, so its first read-interface request is a blocked one
                     (``INFO-LOCK-READ-ORDER`` logs the move).
@@ -114,14 +115,14 @@ Checkers:
                     returns it to 0, with no bank bit change, no program command at
                     the post-guard tap and no valid or ``psel`` pulse from the go to the
                     disable write (``efuse_interface_ctrl.rdl:24, 43, 82``;
-                    ``hw/ip/efuse/doc/architecture.adoc:247-249``). The status reads,
+                    ``hw/ip/efuse/doc/architecture.adoc:252-254``). The status reads,
                     the clears and the disable write are frontdoor. When no write-locked
                     shadow-write word has a used 0 bit (``no_wlocked_field``) or no twin
                     word has one (``no_twin_bit``), the leaf logs ``INFO-BLOCKED
                     CHK-LOCK-JTAG-WR part=shadow_write`` and grades the program part.
                     The twin program runs first and ends with ``program_done`` 1 and
                     ``program_status`` 0; the refused program then moves ``program_status`` from 0
-                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:247-249``:
+                    to 1 and ends with ``program_done`` 1 (``hw/ip/efuse/doc/architecture.adoc:252-254``:
                     a locked target completes the operation with an error;
                     ``efuse_interface_ctrl.rdl:96-107``; the field is read-only and holds its value
                     until the next program completes, so ``pre_status`` is read before the go). Logged, not
@@ -796,7 +797,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             await self._chain()
 
         if "CHK-LOCK-READ-DONE" in self.required_evidence:
-            # A done 1 after a pre-go done 0 can only come from the request.
+            # A done 1 and status 1 after a pre-go 0 and 0 can only come from the request.
             self._control(
                 "LOCK-READ-DONE-FRESH",
                 self.fresh_read_done >= 1,
@@ -877,7 +878,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
-                fresh = r["pre_done"] == 0
+                fresh = r["pre_done"] == 0 and r["pre_status"] == 0
                 self.read_done_requests += 1
                 self.fresh_read_done += int(fresh)
                 self._grade(
