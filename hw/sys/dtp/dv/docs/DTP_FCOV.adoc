@@ -114,6 +114,7 @@ checkers. Toggle and FSM coverage are not collected.
 |STAP / 3DCR |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold` |`dtp_scan_fcov`
 |iJTAG SIBs |`cg_ijtag_sib` |`dtp_scan_fcov`
 |JTAG2AXI DMI status |`cg_j2a_dmi_status` |`dtp_j2a_fcov`
+|JTAG2AXI Debug Module access |`cg_j2a_dm_access` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -468,6 +469,32 @@ with the status its scan captured, which includes the busy status a capture
 during a read sets; an update that shifts no bit carries that status as its
 op. `dtp_jtag2axi_dmi_status_test` reaches every `x_update` and `x_dmireset`
 bin on each bridge in every pass.
+
+==== `cg_j2a_dm_access`
+
+*Description*: Covers the Debug Module registers each JTAG2AXI bridge reads
+and writes with `dmcontrol.dmactive` 0 and 1, and the `sbcs` writes that set a
+read-only field.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_bridge` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_register` |`dmcontrol`, `sbcs`, `sbaddress0`, `sbdata0`: the address of the DMI update
+|`cp_op` |`read`, `write`
+|`cp_dmactive` |`inactive`, `active`: the bridge's `dmactive` at the update
+|`cp_sbcs_ro` |`none`, `some`: whether an `sbcs` write with `dmactive` 1 sets a bit of `sbversion`, `sbbusy`, `sbasize`, or `sbaccess128` to `sbaccess8`
+|`x_access` |`cp_bridge` x `cp_register` x `cp_op` x `cp_dmactive`
+|`x_sbcs_ro` |`cp_bridge` x `cp_sbcs_ro`
+|===
+
+`dtp_j2a_fcov` takes each bridge's DMI value at the update and the `dmactive`
+of its Debug Module, and samples on the TCK edge that leaves Update-DR, for an
+update whose own scan captured status 0, which the bridge carries out. A
+`dmcontrol` write sets `dmactive` before the next scan, so the sample has the
+value the access finds.
+`dtp_jtag2axi_dm_regs_test` reaches every `x_access` and `x_sbcs_ro` bin on
+each bridge in every pass.
 
 ==== `cg_ctp`
 
@@ -952,6 +979,7 @@ review.
 |`debug_tdr` group |`cg_tmp`, `cg_ic_reset`, `cg_debug_control`, `cg_clock_stop`, `cg_caps_tdr`, `cg_jtag_instruction`
 |`jtag2axi` group |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi`, `cg_instruction_gate` bridge bins with `clear`
 |`dtp_jtag2axi_dmi_status_test` |`cg_j2a_dmi_status` `x_update` and `x_dmireset`
+|`dtp_jtag2axi_dm_regs_test` |`cg_j2a_dm_access` `x_access` and `x_sbcs_ro`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins

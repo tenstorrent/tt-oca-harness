@@ -237,9 +237,10 @@ Executable membership is resolved from the testlists; each group's
 
 Every canonical scenario in `all` appears in one row; the CLA and random
 clock-stop scenarios also carry F5.7, the three JTAG2AXI write and read-back
-scenarios carry F4.1 and F4.2, and `dtp_jtag2axi_dmi_status_test` carries F4.1
-and F4.3. Test names written with `<target>` expand over `smc_axi`,
-`smc_otp_axi`, and `sep_otp_axi`.
+scenarios carry F4.1 and F4.2, `dtp_jtag2axi_dmi_status_test` carries F4.1
+and F4.3, and `dtp_jtag2axi_dm_regs_test` carries F4.1 and F4.4. Test names
+written with `<target>` expand over `smc_axi`, `smc_otp_axi`, and
+`sep_otp_axi`.
 
 [cols="2,3,1,2,3,1",options="header",]
 |===
@@ -261,9 +262,10 @@ and F4.3. Test names written with `<target>` expand over `smc_axi`,
 |F3.4 The external STAP return path follows `stap_host`: the host scan controls and the PTAP chain return (`jtag_stap_host_scan_in_i` while enabled, `jtag_stap_host_scan_out_o` while disabled); the STAP chain and the host scan controls move only while the PTAP 3DCR SELECT is set |`dtp_ext_stap_scan_test`, `dtp_stap_chain_hold_test` |scan, dbg_disable |`cg_stap_chain` `x_chain`; `cg_dbg_disable_scan` `x_cell` and `x_sequence` for `stap_host` |`CHK-SCAN-CHAIN` segment readback and marker position, `CHK-SCAN-OBS` PTAP 3DCR with SELECT=0, `CHK-SCAN-WIN` |YES, against the 7-bit host segment in `tb_top`
 |F3.5 3DCR `config_hold` and `tms_hold` |`dtp_3dcr_config_hold_test`, `dtp_3dcr_tms_hold_test` |scan |`cg_3dcr_hold` `x_hold`; `cg_stap_3dcr` `x_config` |`CHK-SCAN-CHAIN` chain readbacks after TLR/TRST, `CHK-SCAN-OBS` PTAP 3DCR over the TDR return path, `CHK-SCAN-WIN` parked TMS polarity |YES
 |F3.6 Every scan-side disable field gates exactly its path, with no replay after release and full recovery |`dtp_scan_dbg_disable_matrix_test` |scan, dbg_disable |`DtpDbgDisableFcov`: the sixteen scan-side cells; `cg_dbg_disable_scan` `x_cell`, `cp_mask`, `x_field_isolation`, and `x_sequence` |`CHK-SCAN-WIN`, `CHK-SCAN-LEN`, `CHK-SCAN-CHAIN` in both realizations; ledger `require_cells` (cocotb) |YES
-|F4.1 Bridge geometry: each bridge's DTMCS reads version 1, a 7-bit DMI address, and the largest idle hint, and with the Debug Module active its `sbcs` publishes SBA version 1, the bridge's address width, and the access sizes up to its data width |`+dtp_jtag2axi_<target>_single_write_read_test+`, `dtp_jtag2axi_dmi_status_test` |jtag2axi; smoke and functional also carry `dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi` |`CHK-J2A-GEOMETRY` on all three bridges every pass, `CHK-J2A-FAULT-STATUS`; the `jtag2axi_status` scoreboard feature |YES
+|F4.1 Bridge geometry: each bridge's DTMCS reads version 1, a 7-bit DMI address, and the largest idle hint, and with the Debug Module active its `sbcs` publishes SBA version 1, the bridge's address width, and the access sizes up to its data width, and keeps them through a write that sets those fields otherwise |`+dtp_jtag2axi_<target>_single_write_read_test+`, `dtp_jtag2axi_dmi_status_test`, `dtp_jtag2axi_dm_regs_test` |jtag2axi; smoke and functional also carry `dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi`; `cg_j2a_dm_access` `x_sbcs_ro` |`CHK-J2A-GEOMETRY` on all three bridges every pass and after the `sbcs` write of 2.5, `CHK-J2A-FAULT-STATUS`; the `jtag2axi_status` scoreboard feature |YES
 |F4.2 System Bus Access write and read on the SMC fabric, SMC OTP, and SEP OTP bridges: each Debug Module register access is one DMI operation whose status the next capture returns; each access is one single-beat transaction at the full bridge address width, with the access size on AXI4 and the strobes and data lanes of a full-width beat; `sbbusy` clears and `sberror` and `sbbusyerror` stay clear after an OKAY access; a read returns the bus data through `sbdata`; the other bridge ports stay idle |`+dtp_jtag2axi_<target>_single_write_read_test+` |jtag2axi; smoke and functional also carry `dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_instruction_gate` `cx_gate_disabled` `smc_axi_tdr`, `smc_otp_tdr`, and `sep_otp_tdr` with `clear` |`CHK-J2A-BUS-REQ`, `CHK-J2A-FAULT-STATUS`, `CHK-AXI-COMPLETION`, `CHK-AXI-WMEM` (each write, against the stimulus), `CHK-AXI-RDATA` (the read-back, against the first word written), `CHK-AXI-RESP`, `CHK-AXI-STRB`, the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR`, and `CHK-AXI-NONVAC` (SV-UVM) |YES
 |F4.3 DTMCS and the sticky DMI status on the SMC fabric, SMC OTP, and SEP OTP bridges: DTMCS `dmistat` shows the sticky status, `dmireset` clears it and keeps the captured address and data, and `dmihardreset` leaves it; with status 0 a no-operation and op 3 load the scanned address and data, a write reaches the Debug Module register, and a read returns it; a capture during a read, an update other than op 3 while an operation is in progress, and a Debug Module busy answer each set status 3, under which reads and writes are ignored until op 3 or `dmireset` clears it; a read the Debug Module refuses returns `0xB051B051`; an operation stays in progress while TCK is stopped and completes once TCK runs |`dtp_jtag2axi_dmi_status_test` |jtag2axi |`cg_j2a_dmi_status` `x_update` and `x_dmireset` |`CHK-J2A-FAULT-STATUS` (each capture's status and `dmistat`, and `sbbusy` and `sbbusyerror` around a refused access), `CHK-J2A-DTM-CAPTURE` (the DTMCS fields other than `dmistat`, and each DMI capture's address and data), `CHK-J2A-BUS-REQ`, `CHK-AXI-WMEM`, `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, and `CHK-AXI-NONVAC` (SV-UVM) |YES
+|F4.4 Debug Module activation on the SMC fabric, SMC OTP, and SEP OTP bridges: a write of 0 to `dmcontrol.dmactive` returns `dmcontrol`, `sbcs`, `sbaddress`, and `sbdata` to their reset values, `sberror` among them; while `dmactive` is 0 a write changes no other Debug Module register, and an `sbaddress0` write, an `sbdata0` read, and an `sbdata0` write start no bus access; a write of 1 releases the registers at their reset values, with `sbcs` giving the geometry, and the bridge reaches the bus again |`dtp_jtag2axi_dm_regs_test` |jtag2axi |`cg_j2a_dm_access` `x_access` |`CHK-J2A-DM-ACTIVE` (each read of `dmcontrol`, `sbcs`, `sbaddress`, and `sbdata` around a change of `dmactive`), `CHK-J2A-GEOMETRY`, `CHK-J2A-BUS-REQ` (no transaction while `dmactive` is 0), `CHK-J2A-FAULT-STATUS`, `CHK-AXI-WMEM`, `CHK-AXI-RDATA`, `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR`, and `CHK-AXI-NONVAC` (SV-UVM) |YES
 |F5.1 CTP wire-OR mode: pulse routing, configurable stretcher, inversion, the shared open-drain wire |`dtp_xtrig_wire_or_test`, `dtp_xtrig_wire_or_bus_test`, `dtp_ctm_wire_or_cla_to_ctp_test`, `dtp_ctm_wire_or_ctp_to_cla_test`, `dtp_ctm_wire_or_cla_to_cla_test`, `dtp_ctm_wire_or_ctp_to_ctp_test`, `dtp_ctm_rand_wire_or_only_test` |xtrig; smoke also carries `dtp_xtrig_wire_or_test` |`cg_ctp` `x_direction_mode_inversion` wire-OR bins and `x_inversion_stretch`; `cg_ctp_wire_or_rx` `x_sense_listeners` and `x_sense_origin` |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH` (width and pulse count), `CHK-XTRIG-ROUTE-MODEL` (the fired outputs and one assertion per routed output), `CHK-XTRIG-WIRE`; `xtrig_csr` scoreboard feature |YES
 |F5.2 CTP point-to-point four-phase handshake: a request held until its acknowledge and released by it, an acknowledge raised by a request and dropped after it, STATUS through each phase |`dtp_xtrig_p2p_test`, `dtp_ctm_p2p_cla_to_ctp_test`, `dtp_ctm_p2p_ctp_to_cla_test`, `dtp_ctm_p2p_ctp_to_ctp_test`, `dtp_ctm_rand_p2p_only_test` |xtrig |`cg_ctp_p2p` `x_phase_inversion`; `cg_ctp` `x_direction_mode_inversion` point-to-point bins; `cg_xtrig_csr_read` `cp_status` |`CHK-XTRIG-SIGNAL` (each handshake phase at the CTP endpoints), `CHK-XTRIG-CSR` (STATUS, `dtp_xtrig_p2p_test`), `CHK-XTRIG-ROUTE-MODEL` |YES
 |F5.3 CTM routing: every source and destination index, fanout, isolation of unrouted ports |`dtp_xtrig_rand_test`, `dtp_xtrig_rand_deterministic_dst_port_sweep_test`, `dtp_ctm_p2p_cla_to_cla_test`, `dtp_ctm_rand_all_scenarios_test`, `dtp_ctm_rand_cla_to_ctp_test`, `dtp_ctm_rand_ctp_to_cla_test`, `dtp_ctm_rand_all_source_select_coverage_test` |xtrig |`cg_ctm` `cp_source_index`, `cp_dest_index`, and `cp_dest_fanin`; `cg_ctm_route` `x_cla_to_ctp` and `x_ctp_to_cla`; `cg_ctm_fanout` `cp_unrouted`, `cp_fanout`, and `x_source_dest_fanout` |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-CSR` |YES
@@ -327,6 +329,7 @@ and F4.3. Test names written with `<target>` expand over `smc_axi`,
 |`dtp_jtag2axi_smc_otp_axi_single_write_read_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC OTP System Bus Access write, neighbour write, and read-back
 |`dtp_jtag2axi_sep_otp_axi_single_write_read_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SEP OTP System Bus Access write, neighbour write, and read-back
 |`dtp_jtag2axi_dmi_status_test` |`ocah_jtag_vip`, `ocah_axi_vip` |DTMCS and the sticky DMI status on every bridge
+|`dtp_jtag2axi_dm_regs_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Debug Module activation and the `sbcs` geometry on every bridge
 |===
 
 ==== STAP, 3DCR, and iJTAG Scenarios
@@ -1579,7 +1582,7 @@ TCK cycles in Run-Test/Idle, in which a DMI operation crosses to the Debug Modul
 bridge model holds a DMI read or write in progress for 6 TCK cycles after its update and complete
 from 24 TCK cycles on, and treats a capture or update between the two as outside its scope. A DMI
 capture returns the outcome of the operation before it, and every capture records
-`CHK-J2A-FAULT-STATUS` that its status is the one the scenario expects, which is 0 in 2.1 to 2.3.
+`CHK-J2A-FAULT-STATUS` that its status is the one the scenario expects, which is 0 outside 2.4.
 A Debug Module register read is a read scan followed
 by a no-operation scan that captures its data. A System Bus Access writes `sbcs` with the access
 size in `sbaccess` and, for a read, `sbreadonaddr` set, then `sbaddress1` on a bridge whose address
@@ -1608,6 +1611,8 @@ or `dmistat` between 0 and 3. A run of any scenario in this section with one of 
 `DTP_J2A_DTM_CAPTURE_NEGATIVE` flips bit 0 of every value `CHK-J2A-DTM-CAPTURE` expects, and
 `DTP_J2A_STATUS_MODEL_NEGATIVE` keeps the bridge model's status at 0 where a capture or update finds
 an operation in progress; a run of 2.4 with one of them set must fail.
+`DTP_J2A_DM_ACTIVE_NEGATIVE` flips bit 0 of every value `CHK-J2A-DM-ACTIVE` expects, and a run of
+2.5 with it set must fail.
 
 [[sec-21-dtp_jtag2axi_smc_axi_single_write_read_test]]
 ===== 2.1 `dtp_jtag2axi_smc_axi_single_write_read_test`
@@ -1826,6 +1831,52 @@ g. TCK stopped: after a write of a seeded `sbaddress0` value, a read of `sbaddre
 |===
 
 *Pass Criteria*: Every pass reads the bench geometry from all three bridges, and on each bridge every capture of the seven cases carries the status, address, and data its case expects, only the held write reaches the bridge port, and the scoreboard and reference models report zero errors.
+
+'''''
+
+[[sec-25-dtp_jtag2axi_dm_regs_test]]
+===== 2.5 `dtp_jtag2axi_dm_regs_test`
+
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
+
+*Objective*: Debug Module activation and the `sbcs` geometry on every bridge
+
+*Test Coverage*:
+
+* All three bridges in a seeded order, each through its DMI TDR and its manager port
+* `dmcontrol`, `sbcs`, `sbaddress0`, and `sbdata0` read and written with `dmactive` 0 and 1, and `sbaddress1` and `sbdata1` on the SMC fabric bridge
+* Each access that starts a bus access while `dmactive` is 1, made while it is 0
+* An `sbcs` write that sets every read-only field to the inverse of the bridge's geometry
+
+*Test Procedure*:
+
+[arabic]
+. Run the geometry gate as in 2.1, clear every debug disable, and reset the TAP.
+. For each bridge in a seeded order:
+a. Deactivate: write `sbcs` with `sbaccess` one above the bridge's data width and `sbautoincrement` and `sbreadondata` set, then seeded nonzero values to `sbaddress1` and `sbdata1` where the bridge has them, to `sbaddress0`, aligned to that size, and to `sbdata0`, whose write sets `sberror` 4 with no bus access. `sbcs` reads `sberror` 4 with the written fields, and each register written reads its value. Write `dmcontrol` with 0: `dmcontrol` then reads 0, `sbcs` reads `0x00040000`, and each `sbaddress` and `sbdata` register reads 0.
+b. Inactive: write `dmcontrol` with seeded upper fields and `dmactive` 0, `sbcs` with `sbreadonaddr`, `sbautoincrement`, and `sbreadondata` set and a seeded `sbaccess` up to the data width, and seeded `sbaddress1` and `sbaddress0` values aligned to that size. `dmcontrol`, `sbcs`, each `sbaddress` register, and `sbdata0` read their reset values. Write seeded `sbdata1` and `sbdata0` values, after which `sbcs` and each `sbdata` register read their reset values. No transaction reaches the port.
+c. Reactivate: write `dmcontrol` with 1. `dmcontrol` reads 1, `sbcs` reads the geometry with `sbaccess` 2 and the other writable fields 0, and each `sbaddress` and `sbdata` register reads 0. Write `sbcs` with `sbversion`, `sbbusy`, `sbasize`, and `sbaccess128` to `sbaccess8` the inverse of the geometry, `sbbusyerror`, `sberror`, and bits 28:23 at 0, and seeded writable fields other than their reset values; `sbcs` reads the geometry with the written fields. Write a seeded word and its neighbour, and read the first back, as in 2.1.
+. In SV-UVM, check that each bridge's responder completed at least one burst in the pass (`CHK-AXI-NONVAC`).
+. Check that no bridge port completed a transaction other than the writes and the read of step c (`CHK-J2A-BUS-REQ`).
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker |Description
+|`CHK-J2A-GEOMETRY` |DTMCS and `sbcs` of every bridge publish the geometry of the bench configuration table, and `sbcs` keeps it after the write of step c
+|`CHK-J2A-DM-ACTIVE` |Every read of `dmcontrol`, `sbcs`, `sbaddress`, and `sbdata` in steps a to c returns the value its step expects
+|`CHK-J2A-BUS-REQ` |No transaction reaches a bridge port while `dmactive` is 0, and each write and the read of step c completes exactly one single-beat transaction with its address, size, strobes, and strobed data
+|`CHK-J2A-FAULT-STATUS` |Every DMI capture reports status 0, and every `sbcs` poll reads `sberror` and `sbbusyerror` 0
+|`CHK-AXI-COMPLETION` |`sbbusy` clears within eight `sbcs` reads of every poll
+|`CHK-AXI-WMEM`, `CHK-AXI-RDATA` |The responder word at each write's address equals the word written, and the read returns the first word
+|`CHK-AXI-RESP`, `CHK-AXI-STRB` |Every response is OKAY, and each write's strobes equal the strobes the sequence armed from the access address and size
+|`CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR`, `CHK-AXI-NONVAC` |SV-UVM: the passive AXI environment's address and data comparisons against the stimulus, and at least one responder burst per bridge per pass
+|`CHK-AXI-CREDITS`, `CHK-AXI-STREAM-MIN` |cocotb: every armed strobe expectation is consumed, and each bridge stream carries at least one compared transaction
+|`jtag2axi_req`, `jtag2axi_status` |Every bridge transaction is the access its DMI operations launched, and every DMI capture equals the bridge model on the bits it predicts
+|===
+
+*Pass Criteria*: Every pass reads the bench geometry from all three bridges, and on each bridge every read around a change of `dmactive` returns the value its step expects, no transaction reaches the port while `dmactive` is 0, and the scoreboard and reference models report zero errors.
 
 '''''
 
@@ -4044,7 +4095,7 @@ The simulation groups below come from `testlists/all.toml` and the per-area list
 |`basic_jtag` |The Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, boundary-scan-disabled, and TMP smoke coverage
 |`debug_tdr` |The TMP_STATUS, IC_RESET, DEBUG_CONTROL, and JTAG_CAPS tests |Debug TDR coverage
 |`all` |Every scenario-expanded test (`expected_count`-pinned in `testlists/all.toml`) |Full OCAH DTP regression
-|`jtag2axi` |The System Bus Access write and read-back scenario of each bridge, and the DTMCS and DMI status scenario of all three |AXI/AXI-Lite bridge and DMI status coverage
+|`jtag2axi` |The System Bus Access write and read-back scenario of each bridge, and the DTMCS and DMI status scenario and the Debug Module activation scenario of all three |AXI/AXI-Lite bridge, DMI status, and Debug Module activation coverage
 |`scan` |STAP, 3DCR, and iJTAG scenarios |IEEE 1838 and IEEE 1687 coverage
 |`dbg_disable` |The scan debug-disable matrix test plus every scan-side directed gating test |Per-field scan-side `dbg_disable_t` closure (16-cell coverage contract)
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage

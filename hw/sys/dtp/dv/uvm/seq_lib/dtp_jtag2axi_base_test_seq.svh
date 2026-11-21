@@ -76,9 +76,39 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // run must FAIL.
   task verify_bridge_geometry();
     string            names[3] = '{"smc_otp", "sep_otp", "smc_axi"};
-    bit               negative = (test_cfg != null) && test_cfg.j2a_geometry_negative;
     ocah_jtag_checker geometry = ocah_jtag_checker::type_id::create({get_name(), ".geometry"});
-    dtp_sbcs_t        field_mask = '0;
+    geometry.name_tag     = $sformatf("dtp_jtag2axi_geometry.pass%0d", loop_index);
+    geometry.required_ids = {DtpJ2aGeometryCheckId};
+    if (test_cfg != null && test_cfg.j2a_geometry_negative)
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: geometry gate expectations will be corrupted", UVM_LOW)
+    tap_reset();
+    step(1'b0);  // TLR -> RTI: TDR reads start their IR scan from Run-Test/Idle
+    foreach (names[i]) begin
+      dtp_j2a_target_t t = dtp_j2a_target_by_name(names[i]);
+      bit       [63:0] dtmcs;
+      bit       [31:0] sbcs;
+      bit       [63:0] observed;
+      bit       [63:0] expected;
+      read_tdr(IrWidth'(t.dtmcs_instr), DtpDtmcsLen, dtmcs);
+      run_test_idle(DmiIdleTck);
+      activate_dm(t);
+      dmi_read(t, DTP_DM_SBCS, "geometry", sbcs);
+      `uvm_info(get_type_name(), $sformatf(
+                "GEOMETRY %s dtmcs=0x%08h sbcs=0x%08h", t.name, dtmcs, sbcs), UVM_LOW)
+      observed = {dtmcs[31:0], sbcs_geometry(sbcs)};
+      expected = {DtpExpectedDtmcs, expected_geometry(t)};
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, observed, expected, $sformatf("%s DTMCS and sbcs geometry", t.name)
+      ));
+    end
+    geometry.finalize();
+  endtask
+
+  // The geometry fields of an sbcs value (SBA version, address width, access
+  // sizes), every other field 0.
+  function bit [31:0] sbcs_geometry(bit [31:0] value);
+    dtp_sbcs_t field_mask = '0;
     field_mask.sbversion   = '1;
     field_mask.sbasize     = '1;
     field_mask.sbaccess128 = 1'b1;
@@ -86,40 +116,37 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     field_mask.sbaccess32  = 1'b1;
     field_mask.sbaccess16  = 1'b1;
     field_mask.sbaccess8   = 1'b1;
-    geometry.name_tag      = $sformatf("dtp_jtag2axi_geometry.pass%0d", loop_index);
-    geometry.required_ids  = {DtpJ2aGeometryCheckId};
-    if (negative)
-      `uvm_info(get_type_name(),
-                "NEGATIVE VALIDATION: geometry gate expectations will be corrupted", UVM_LOW)
-    tap_reset();
-    step(1'b0);  // TLR -> RTI: TDR reads start their IR scan from Run-Test/Idle
-    foreach (names[i]) begin
-      dtp_j2a_target_t t = dtp_j2a_target_by_name(names[i]);
-      dtp_sbcs_t       sbcs_exp = '0;
-      bit       [63:0] dtmcs;
-      bit       [31:0] sbcs;
-      bit       [63:0] observed;
-      bit       [63:0] expected;
-      sbcs_exp.sbversion  = 3'd1;
-      sbcs_exp.sbasize    = 7'(t.addr_width ^ int'(negative));
-      sbcs_exp.sbaccess64 = (t.data_width >= 64);
-      sbcs_exp.sbaccess32 = (t.data_width >= 32);
-      sbcs_exp.sbaccess16 = (t.data_width >= 16);
-      sbcs_exp.sbaccess8  = 1'b1;
-      read_tdr(IrWidth'(t.dtmcs_instr), DtpDtmcsLen, dtmcs);
-      run_test_idle(DmiIdleTck);
-      activate_dm(t);
-      dmi_read(t, DTP_DM_SBCS, "geometry", sbcs);
-      `uvm_info(get_type_name(), $sformatf(
-                "GEOMETRY %s dtmcs=0x%08h sbcs=0x%08h", t.name, dtmcs, sbcs), UVM_LOW)
-      observed = {dtmcs[31:0], sbcs & 32'(field_mask)};
-      expected = {DtpExpectedDtmcs, 32'(sbcs_exp)};
-      void'(geometry.expect_equal(
-          DtpJ2aGeometryCheckId, observed, expected, $sformatf("%s DTMCS and sbcs geometry", t.name)
-      ));
-    end
-    geometry.finalize();
-  endtask
+    return value & 32'(field_mask);
+  endfunction
+
+  // The sbcs geometry of `t` in the dtp_types table.
+  // +DTP_J2A_GEOMETRY_NEGATIVE corrupts the expected address width so the
+  // run must FAIL.
+  function bit [31:0] expected_geometry(dtp_j2a_target_t t);
+    bit        negative = (test_cfg != null) && test_cfg.j2a_geometry_negative;
+    dtp_sbcs_t sbcs = '0;
+    sbcs.sbversion  = 3'd1;
+    sbcs.sbasize    = 7'(t.addr_width ^ int'(negative));
+    sbcs.sbaccess64 = (t.data_width >= 64);
+    sbcs.sbaccess32 = (t.data_width >= 32);
+    sbcs.sbaccess16 = (t.data_width >= 16);
+    sbcs.sbaccess8  = 1'b1;
+    return 32'(sbcs);
+  endfunction
+
+  // CHK-J2A-GEOMETRY on one sbcs read of an active Debug Module.
+  function void check_sbcs_geometry(dtp_j2a_target_t t, bit [31:0] sbcs, string context_s);
+    ocah_axi_checker ev = evidence(t);
+    bit       [31:0] observed = sbcs_geometry(sbcs);
+    bit       [31:0] expected = expected_geometry(t);
+    void'(ev.expect_equal(
+        DtpJ2aGeometryCheckId,
+        64'(observed),
+        64'(expected),
+        $sformatf(
+            "%s target=%s sbcs=0x%08h", context_s, t.name, sbcs)
+    ));
+  endfunction
 
   // --- DMI access ------------------------------------------------------------
 
@@ -512,6 +539,13 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       port.mark_reads  = m_ledger_reads[p];
     end
     m_ledger_target = "";
+  endfunction
+
+  // CHK-J2A-BUS-REQ: the port holds the counts of the pass's last judged
+  // access. A no-op unless this pass's ledger accounts `t`.
+  function void expect_no_bus_request(dtp_j2a_target_t t, string context_s);
+    if (m_ledger_target == "" || m_ledger_target != t.name) return;
+    void'(check_bus_counts(t.name, m_ledger_writes[t.name], m_ledger_reads[t.name], context_s));
   endfunction
 
   // Record the port's write and read counts against the expected ones.
