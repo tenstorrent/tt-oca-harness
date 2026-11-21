@@ -129,8 +129,9 @@ Write-locked shadow word, after the boot-one checks and before the boot-two
 re-sense (``otp_fuse_controller.adoc:110-114``; ``hw/ip/key_manager/doc/
 architecture.adoc:924-928``, the KM eFuse path honors the native per-field
 locks): ``CHK-EFW-WLOCK-SHADOW`` grades that a KM write of a drawn value, which
-sets a bit that is 0 in the staged word, to a word of the write-locked field
-completes with SLVERR, and that the host readback (class OKAY) and
+differs from the staged word in a used bit of the field (it sets a used bit
+that is 0, or clears a used bit when every used bit is 1), to a word of the
+write-locked field completes with SLVERR, and that the host readback (class OKAY) and
 ``efuse_shadow_probe_o`` of that word equal the staged word.
 ``CTRL-EFW-WLOCK-SHADOW`` is its control: the same KM write to a word of an
 unlocked spare field, which is not a plan target (SW writable,
@@ -163,7 +164,7 @@ from env.sep_chk_log import word_digest
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_field_map import spec_fields, spec_writable_shadow_walk
 from env.sep_efuse_image import SHADOW_BASE, WORD_BITS, WORD_MASK, SepEfuseImage
-from env.sep_efuse_plan import DIGEST_FIELDS
+from env.sep_efuse_plan import DIGEST_FIELDS, field_used_masks
 from env.sep_fcov_gate import (
     KM_EFW_PROG_PASS_DENY,
     KM_EFW_PROG_PASS_SPARE,
@@ -904,6 +905,23 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         return rng.getrandbits(WORD_BITS) | (1 << rng.choice(zeros))
 
     @staticmethod
+    def _used_bit_change_value(rng: SepSeededRng, staged: int, used: int) -> int:
+        """A drawn word that differs from ``staged`` in a bit of ``used``.
+
+        It sets a used bit that is 0 in ``staged``. When every used bit is 1,
+        it clears one used bit instead: a write lock blocks any write
+        (``otp_fuse_controller.adoc:110,112-114``).
+        """
+        word = rng.getrandbits(WORD_BITS)
+        ones = [b for b in range(WORD_BITS) if (used >> b) & 1]
+        zeros = [b for b in ones if not (staged >> b) & 1]
+        if zeros:
+            return word | (1 << rng.choice(zeros))
+        if not ones:
+            raise AssertionError(f"used-bit mask 0x{used:08x} has no bit")
+        return word & ~(1 << rng.choice(ones))
+
+    @staticmethod
     def _wr_class(res: kp.PokeResult) -> str:
         """Response class of a KM write; UNKNOWN when the flags cannot be graded."""
         return _km_class(res) if res.flags_known and res.clean else "UNKNOWN"
@@ -939,12 +957,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         wl_fld = SepEfuseImage.field(wl_field)
         wl_idx = wl_fld.word + rng.randrange(wl_fld.n_words)
         s = model.words[wl_idx]
-        v = self._zero_bit_value(rng, s)
+        wl_used = field_used_masks(wl_field)[wl_idx - wl_fld.word]
+        v = self._used_bit_change_value(rng, s, wl_used)
         self._draw("wlock.ctrl_field", c_field)
         self._draw("wlock.ctrl_word", c_idx)
         self._draw("wlock.ctrl_value", v_c)
         self._draw("wlock.field", wl_field)
         self._draw("wlock.word", wl_idx)
+        self._draw("wlock.used_mask", wl_used)
         self.logger.info("DRAW wlock.value=%s", _wh(wl_idx, v))
         spec = {f.reg_name: f for f in spec_fields()}
         l_cands = [f for f in _LOCKABLE if f not in busy and spec[f].used_bits >= WORD_BITS]
@@ -996,7 +1016,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         flags = f"slv={res.slv} dec={res.dec}" if km != "UNKNOWN" else "slv=x dec=x"
         line = (
             f"field={wl_field} word={wl_idx} km_addr=0x{addr:05x} wrote={_wh(wl_idx, v)} "
-            f"staged={_wh(wl_idx, s)} km_resp={km} {flags} pre_clean={int(res.clean)} "
+            f"staged={_wh(wl_idx, s)} used=0x{wl_used:08x} km_resp={km} {flags} pre_clean={int(res.clean)} "
             f"host_resp={host} host_rb={_wh(wl_idx, rb)} probe={_wh(wl_idx, probe)}"
         )
         problems = []
