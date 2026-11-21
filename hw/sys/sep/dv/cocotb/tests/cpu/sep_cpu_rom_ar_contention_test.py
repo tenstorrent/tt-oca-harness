@@ -327,7 +327,7 @@ class sep_cpu_rom_ar_contention_test(sep_base_test):
         self._check_image()
         self.sb.expected_line = _BANNER
         sampler = _ArStallSampler(cocotb.top, self.sb, self.rd, self.logger)
-        cocotb.start_soon(sampler.run())
+        sampler_task = cocotb.start_soon(sampler.run())
         try:
             await self.boot_firmware(
                 self.sb,
@@ -341,6 +341,7 @@ class sep_cpu_rom_ar_contention_test(sep_base_test):
             await RisingEdge(cocotb.top.clk_i)
         finally:
             sampler.stop = True
+            await sampler_task
             if sampler.hold_fails:
                 raise AssertionError("; ".join(sampler.hold_fails))
         if sampler.error is not None:
