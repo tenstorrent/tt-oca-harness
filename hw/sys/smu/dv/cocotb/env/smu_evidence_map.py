@@ -5001,6 +5001,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the SMC-side ID-width converter presents the specified 6-bit subsystem ID",
         ),
         (
+            "CHK-SMU-SEP-IN-ID-WIDTH",
+            "CHK-SMU-SEP-IN-ID-WIDTH",
+            "the SEP-side ID-width converter presents the 6-bit transaction ID the crossbar "
+            "is stated to present to the SEP inbound subordinate",
+        ),
+        (
+            "CHK-SMU-XBAR-OUT-ID-WIDTH",
+            "CHK-SMU-XBAR-OUT-ID-WIDTH",
+            "both ID-width converters take the 10-bit crossbar output ID the SMU datasheet states",
+        ),
+        (
             "CHK-SMU-INT-AGG-S1",
             "CHK-SMU-INT-AGG-S1",
             "smc_ext_interrupts_i is 256 wide, the SMC external interrupt count",

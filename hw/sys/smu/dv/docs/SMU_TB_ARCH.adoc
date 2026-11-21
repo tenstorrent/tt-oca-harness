@@ -271,8 +271,10 @@ Shadow call stack:: retired RV32IMC encodings are decoded for linking calls
   ra/t0), and `mret`. Exception-flagged retirements push a synthetic trap frame
   carrying ecause/interrupt/tval; `mret` unwinds it. A SEP reset flushes the
   stack while history and tallies survive.
-Trap records:: every exception retirement is kept with its cycle, PC, decoded
-  mcause name, and tval.
+Trap records:: every exception retirement is counted; the 64 most recent are
+  kept with their cycle, PC, decoded mcause name, and tval, and the first eight
+  after each SEP reset release are logged as warnings. The rest are tallied, so
+  a core that traps on every retirement does not flood the log.
 Hang watch:: after the first retirement, a 20k-cycle retirement-free gap out of
   reset logs a one-shot warning with a full dump. Diagnostic only — `wfi` and the
   firmware's terminal loops are legitimate.
