@@ -19,6 +19,8 @@ from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 
 DM_ACTIVE_CHECK_ID = "CHK-J2A-DM-ACTIVE"
 DM_ACTIVE_NEGATIVE_KNOB = "DTP_J2A_DM_ACTIVE_NEGATIVE"
+# The one dmcontrol bit besides dmactive that an active Debug Module stores.
+DMCONTROL_NDMRESET = 0x2
 # sbcs while dmactive is 0.
 SBCS_RESET = pack_sbcs(sbaccess=2)
 SBERROR_SIZE = 4
@@ -132,13 +134,20 @@ class dtp_jtag2axi_dm_regs_test_seq(dtp_jtag2axi_base_test_seq):
         sbcs = pack_sbcs(sbaccess=oversize, sbautoincrement=1, sbreadondata=1)
         addresses, data = self.sba_registers(target)
         words = self.sba_words(target, addresses + data, rng, align=oversize)
+        await self.dmi_write(
+            target, DtpDmReg.DMCONTROL, DMCONTROL_NDMRESET | 1, context=f"{ctx}.dmcontrol"
+        )
         await self.dmi_write(target, DtpDmReg.SBCS, sbcs, context=f"{ctx}.sbcs")
         # The sbdata0 write starts an access that sbaccess refuses with sberror 4.
         for register, word in words.items():
             await self.dmi_write(target, register, word, context=f"{ctx}.{register.name.lower()}")
         await self.expect_registers(
             target,
-            {DtpDmReg.SBCS: self.active_sbcs(target, sbcs, sberror=SBERROR_SIZE), **words},
+            {
+                DtpDmReg.DMCONTROL: DMCONTROL_NDMRESET | 1,
+                DtpDmReg.SBCS: self.active_sbcs(target, sbcs, sberror=SBERROR_SIZE),
+                **words,
+            },
             context=f"{ctx}.set",
         )
         await self.dmi_write(target, DtpDmReg.DMCONTROL, 0, context=f"{ctx}.dmcontrol")
@@ -158,7 +167,10 @@ class dtp_jtag2axi_dm_regs_test_seq(dtp_jtag2axi_base_test_seq):
         words = self.sba_words(target, addresses, rng, align=size)
         sbdata = self.sba_words(target, data, rng)
         await self.dmi_write(
-            target, DtpDmReg.DMCONTROL, random_word(rng, 31) << 1, context=f"{ctx}.dmcontrol"
+            target,
+            DtpDmReg.DMCONTROL,
+            (random_word(rng, 30) << 2) | DMCONTROL_NDMRESET,
+            context=f"{ctx}.dmcontrol",
         )
         await self.dmi_write(
             target,

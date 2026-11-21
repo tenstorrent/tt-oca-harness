@@ -12,6 +12,8 @@
 class dtp_jtag2axi_dm_regs_test_seq extends dtp_jtag2axi_base_test_seq;
   `uvm_object_utils(dtp_jtag2axi_dm_regs_test_seq)
 
+  // The one dmcontrol bit besides dmactive that an active Debug Module stores.
+  localparam bit [31:0] DmcontrolNdmreset = 32'h2;
   // sbcs while dmactive is 0.
   localparam bit [31:0] SbcsReset = 32'h0004_0000;
   localparam bit [2:0] SberrorSize = 3'd4;
@@ -158,11 +160,12 @@ class dtp_jtag2axi_dm_regs_test_seq extends dtp_jtag2axi_base_test_seq;
     regs = addresses;
     foreach (data[i]) regs.push_back(data[i]);
     sba_words(t, regs, oversize, words);
+    dmi_write(t, DTP_DM_DMCONTROL, DmcontrolNdmreset | 32'h1, {ctx, ".dmcontrol"});
     dmi_write(t, DTP_DM_SBCS, 32'(sbcs), {ctx, ".sbcs"});
     // The sbdata0 write starts an access that sbaccess refuses with sberror 4.
     foreach (regs[i]) dmi_write(t, regs[i], words[i], {ctx, ".", reg_label(regs[i])});
-    reads  = '{DTP_DM_SBCS};
-    values = '{active_sbcs(t, 32'(sbcs), SberrorSize)};
+    reads  = '{DTP_DM_DMCONTROL, DTP_DM_SBCS};
+    values = '{DmcontrolNdmreset | 32'h1, active_sbcs(t, 32'(sbcs), SberrorSize)};
     foreach (regs[i]) begin
       reads.push_back(regs[i]);
       values.push_back(words[i]);
@@ -194,7 +197,7 @@ class dtp_jtag2axi_dm_regs_test_seq extends dtp_jtag2axi_base_test_seq;
     sba_registers(t, addresses, data);
     sba_words(t, addresses, size, words);
     sba_words(t, data, 0, sbdata);
-    dmi_write(t, DTP_DM_DMCONTROL, random_word(31) << 1, {ctx, ".dmcontrol"});
+    dmi_write(t, DTP_DM_DMCONTROL, (random_word(30) << 2) | DmcontrolNdmreset, {ctx, ".dmcontrol"});
     sbcs.sbreadonaddr    = 1'b1;
     sbcs.sbaccess        = 3'(size);
     sbcs.sbautoincrement = 1'b1;
