@@ -1255,20 +1255,28 @@ class sep_base_test(uvm_test):
         sb = self.env.scoreboard
         return len(sb.errors), sb.value_checks
 
-    def assert_sb_judged(self, mark: tuple[int, int], chk: str) -> None:
+    def assert_sb_judged(self, mark: tuple[int, int], chk: str, expected: int | None = None) -> int:
         """Fail ``chk`` unless the scoreboard judged a read and rejected none since ``mark``.
 
         SepScoreboard.write compares every read that carries ``item.expected``:
         a mismatch goes to ``errors`` and fails the test only at check_phase, and
         a match counts in ``value_checks``. A CHK PASS line logged after this
         call rests on that judgment, so it cannot print for a value the
-        scoreboard rejected.
+        scoreboard rejected. With ``expected``, the number of judged reads
+        since ``mark`` must equal it. Returns the number of judged reads.
         """
         errs, judged = mark
         sb = self.env.scoreboard
         new = sb.errors[errs:]
         assert not new, f"{chk} FAIL: scoreboard rejected {len(new)} read(s): " + "; ".join(new)
-        assert sb.value_checks > judged, f"{chk} FAIL: the scoreboard judged no read value"
+        n = sb.value_checks - judged
+        if expected is None:
+            assert n > 0, f"{chk} FAIL: the scoreboard judged no read value"
+        else:
+            assert n == expected, (
+                f"{chk} FAIL: the scoreboard judged {n} read value(s), expected {expected}"
+            )
+        return n
 
     def watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
         """Record system-CSR AXI-Lite handshakes until the caller kills the task.

@@ -187,15 +187,19 @@ class sep_efuse_km_public_id_test(sep_base_test):
                 check_sense_status=False,
             )
         )
-        self.assert_sb_judged(mark, "CHK-KM-ID-EFUSE-LOCK")
+        judged = self.assert_sb_judged(
+            mark, "CHK-KM-ID-EFUSE-LOCK", expected=ID_WORDS * len(cfg.unlocked_fields)
+        )
         self.logger.info(
             "CHK-KM-ID-EFUSE-LOCK PASS: %d shadow reads of read-locked %s returned "
-            "SLVERR and 0x%08x, not the staged words; %d reads of %s returned them",
+            "SLVERR and 0x%08x, not the staged words; %d reads of %s returned them "
+            "(scoreboard judged %d)",
             ID_WORDS,
             cfg.locked_field,
             DENY_DATA_MARKER,
             ID_WORDS * len(cfg.unlocked_fields),
             " and ".join(cfg.unlocked_fields),
+            judged,
         )
 
     def _km_sram_words(self) -> list[int]:
