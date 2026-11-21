@@ -22,6 +22,7 @@ __all__ = [
     "DMI_DATA_WIDTH",
     "DMI_LEN",
     "DTMCS_LEN",
+    "DTP_DMI_BUSY_TCK",
     "DTP_DMI_SETTLE_TCK",
     "DTP_EXPECTED_DTMCS",
     "DTP_FEATURE_BYPASS",
@@ -86,6 +87,13 @@ DTP_FEATURE_JTAG2AXI_STATUS = "jtag2axi_status"
 # with the simulation CDC delay on every crossing. The bench's idle cycles
 # after each access exceed it.
 DTP_DMI_SETTLE_TCK = 24
+
+# TCK cycles from the Update-DR of a DMI read or write in which every DMI
+# capture or update still finds it in progress, at any clock ratio: the
+# request leaves on the next TCK cycle, and the response then passes a
+# three-stage synchronizer and one more register in the TCK domain before the
+# bridge state machine samples it.
+DTP_DMI_BUSY_TCK = 6
 
 
 class DtpJtagInstr(IntEnum):
@@ -308,7 +316,8 @@ class DtpJtag2AxiTargetCfg:
     activity_prefix: str
     dbg_disable_bit: str
     # tb_top instances of the bridge port: the responder side and the
-    # monitor tap, and the port's bit in dtp_tb_if.sys_rst_on_ar_arm.
+    # monitor tap, and the port's bit in dtp_tb_if.sys_rst_on_ar_arm,
+    # j2a_b_hold and j2a_r_hold.
     slave_if: str
     monitor_if: str
     reset_arm_bit: int

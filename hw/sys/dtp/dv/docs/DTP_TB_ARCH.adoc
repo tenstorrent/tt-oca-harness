@@ -206,7 +206,7 @@ out; `dtp_tb_if` publishes the build's own, which the bypass reference models re
 |JTAG TAP |`u_jtag_if` (`ocah_jtag_if`): the shared JTAG master drives tck/tms/trst_n/tdi, the DUT drives tdo/tdo_oen
 |SMC fabric AXI4 |`+axi_smc_dbg_*+` structs flattened onto `u_smc_axi_slave_if` (responder) and mirrored onto `u_m_axi_if` (monitor); real geometry ID 2 / ADDR 56 / DATA 64 / USER 12 in the VIP configs; an R beat the responder answers with SLVERR or DECERR carries the errored-beat word its injection armed; the responder answers seeded random BUSER and RUSER (`randomize_resp_user`), and `tb_top` drives RLAST low while RVALID is low
 |Debug disables |One named `dtp_tb_if.dbg_disable_<field>` member per `dbg_disable_i` path (init 1 = fail-closed), bound by field name into the typed `sep_lifecycle_ctrl_pkg::dbg_disable_t` that `tb_top` forwards to `dbg_disable_i`; cocotb deposits the members by name and SV-UVM writes them through `dtp_tb_if.drive_dbg_disable`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly. The path-to-field binding is the "DTP debug-disable paths" table of `hw/sys/dtp/doc/jtag.adoc`; SV-UVM holds it once, as `dtp_dbg_path_e` with `dtp_dbg_path_set` / `dtp_dbg_path_disabled` in `uvm/env/dtp_types.svh`, and every driven vector and every gating prediction starts from a path
-|JTAG2AXI response holds |`dtp_tb_if.j2a_b_hold` and `j2a_r_hold`, one bit per bridge in the `sys_rst_on_ar_arm` order (0 `smc_axi`, 1 `smc_otp`, 2 `sep_otp`): while a bit is set, `tb_top` accepts that bridge's write or read responses from its responder into a four-entry queue and shows the bridge none of them, and once the bit clears the bridge takes them in order. The responder sees each response accepted, so it takes the next request while earlier responses wait; `<target>_b_held` and `<target>_r_held` report each queue's occupancy. A sequence sets a hold only while its channel carries no response, and `DTP_J2A_HOLD_VALID_HELD` asserts that no VALID the bridge sees falls before its handshake. cocotb drives the hold bits by name through `DtpTbIf`, and SV-UVM through the virtual interface
+|JTAG2AXI response holds |`dtp_tb_if.j2a_b_hold` and `j2a_r_hold`, one bit per bridge in the `sys_rst_on_ar_arm` order (0 `smc_axi`, 1 `smc_otp`, 2 `sep_otp`): while a bit is set, `tb_top` accepts that bridge's write or read responses from its responder into a four-entry queue and shows the bridge none of them, and once the bit clears the bridge takes them in order. The responder sees each response accepted, so it takes the next request while earlier responses wait; `<target>_b_held` and `<target>_r_held` report each queue's occupancy. A sequence sets a hold only while its channel carries no response, and `DTP_J2A_HOLD_VALID_HELD` asserts that no VALID the bridge sees falls before its handshake. cocotb sets a bridge's holds through `DtpTbIf.hold_responses`, and SV-UVM through the JTAG2AXI base sequence's `hold_responses` on the virtual interface
 |BSR |Looped back; the chain controls mirrored onto `dtp_scan_if`
 |iJTAG SIB host chains |One `prim_jtag_scan_reg` instrument stub per SIB (4, 5, 6 bits behind secure DFT, non-secure DFT, DFD) that captures its own update register, so open-SIB subsets have distinct chain lengths and a written value reads back on the next scan; the chain controls and host scan outputs mirrored onto `dtp_scan_if`
 |STAP host ports |Loopback (`tdi <- tdo`) by default; `dtp_scan_if.stap_<x>_ds_en` splices the downstream `u_stap_<x>_ds_if` TAP behind the port for the STAP-selection and zero-length-bypass scenarios; the forwarded TAP pins mirrored onto `dtp_scan_if`, with a per-port flag that records whether the forwarded TMS differed from the primary TMS at the last rising TCK edge, which the forwarding windows require to stay low, and a per-port count of forwarded TRST assertions, which the STAP-selection scenarios require to stay flat across the gate
@@ -325,18 +325,25 @@ port.
 
 Each JTAG2AXI reference model holds a `dtp_jtag2axi_tracker`, which applies
 the scan stream, the TCK events, and the three port streams to one
-`dtp_jtag2axi_model`. The tracker classifies a DR scan as a bridge's DTMCS or
-DMI scan from the active instruction and the scan length, yields its expected
-capture while the PTAP 3DCR select is clear, and applies its Update-DR on the
-TCK cycle that leaves Update-DR, with the bridge's debug disable read from
-`dtp_tb_if` at that cycle; a TAP reset drops a scan that has not reached its
-Update-DR, the power-on reset counter resets the TAP model, and the system
-reset counter resets the bridges. The model follows the Debug Module rules of
-the PTAP document. A DMI update loads the scanned address and data and reads
-or writes that Debug Module register. A busy response from the Debug Module
-sets the sticky DMI error, which blocks every later update until an op-3
-update or a DTMCS `dmireset` clears it. While `dmcontrol.dmactive` is 0 the
-SBA registers hold their reset values.
+`dtp_jtag2axi_model`. The tracker takes a bridge's DTMCS or DMI capture from
+the active instruction on the TCK cycle that leaves Capture-DR, and applies its
+update on the TCK cycle that leaves Update-DR with the captured value shifted
+by the bits the scan shifted, so a DR scan of any length counts, one that
+shifts no bit included. It yields the expected capture, masked to the bits the
+scan shifted out, while the PTAP 3DCR select is clear, and reads the bridge's
+debug disable and response holds from `dtp_tb_if` at the update; a TAP reset
+drops a scan that has not reached its Update-DR, the power-on reset counter
+resets the TAP model, and the system reset counter resets the bridges. The
+model follows the Debug Module rules of the PTAP document. A DMI update loads
+the scanned address and data and reads or writes that Debug Module register.
+A read or write is in progress from its update until the Debug Module's
+response returns: a DMI capture during a read sets the sticky DMI error and
+returns the read's own address and data, and an update during either sets it,
+or clears it for op 3, and loads nothing. A busy response from the Debug
+Module sets the sticky error too, and a refused read returns `0xB051B051`.
+The sticky error blocks every later update until an op-3 update or a DTMCS
+`dmireset` clears it. While `dmcontrol.dmactive` is 0 the SBA registers hold
+their reset values.
 The SBA registers start one bus beat per access: a size above the beat width
 sets `sberror` 4 and an unaligned address 3, both without a transaction, and a
 SLVERR or DECERR response sets 2. With the bridge's lifecycle disable asserted
@@ -346,12 +353,17 @@ handshake. A system reset returns every bridge to its reset state, and the
 accesses already on the fabric complete as orphans that the model consumes
 without applying them.
 
-The model predicts a bridge only while no DMI operation is in flight and no
-bus access races a Debug Module access: every DMI capture or update falls at
-least `DtpDmiSettleTck` (24) TCK cycles after the last read or write update,
-and only sbcs is accessed while a bus access is outstanding. The bench idles
-in Run-Test/Idle for 64 TCK cycles after every DMI scan (`DmiIdleTck` in
-SV-UVM, `DtpEnvCfg.idle_tck` in cocotb), and a scan outside the scope is a
+The model places every DMI capture and update against the last read or write
+update. Within `DtpDmiBusyTck` (6) TCK cycles the operation is in progress,
+since its request and response cross between TCK and the system clock through
+synchronizers whatever the clock ratio; from `DtpDmiSettleTck` (24) TCK cycles
+on it has completed at the bench clock ratios; between the two the ratio
+decides, and the model has no prediction. While a bus access is outstanding
+only sbcs is read, unless the bridge's response hold for that access is set,
+which keeps the completion from the bridge until the hold releases. The bench
+idles in Run-Test/Idle for 64 TCK cycles after every DMI scan (`DmiIdleTck` in
+SV-UVM, `DtpEnvCfg.idle_tck` in cocotb), and the raw scans of the DMI status
+scenario close each case with the same idle. A scan outside the scope is a
 scope error, `DtpJtag2AxiScopeError` in cocotb and a UVM error in SV-UVM.
 
 Each feature ends the run as one `CHK-SB-<FEATURE>` record through the shared
@@ -521,7 +533,7 @@ scenario builds from its own stimulus and the design collateral
 (`CHK-TMP-*`, `CHK-DBG-*`, `CHK-CAPS*`, `CHK-BSR-*`, `CHK-DFT-*`,
 `CHK-RUNBIST-*`, `CHK-SCAN-*`, `CHK-DS-*`, `CHK-XTRIG-*`).
 
-The three JTAG2AXI scenarios of VPLAN section 2 judge every bus access from
+The JTAG2AXI scenarios of VPLAN section 2 judge every bus access from
 the scenario sequence as `CHK-J2A-BUS-REQ`, the same way in both
 realizations: once sbcs reports the access complete, the port monitor has
 completed exactly one single-beat transaction of its direction, at the address
@@ -547,9 +559,14 @@ value of one cross-trigger evidence ID wherever the scenario records it (1
 corrupted addresses so the scoreboard pairing fails against the observed bus,
 `DTP_XTRIG_CSR_REF_MODEL_NEGATIVE` and `DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE`
 flip one bit of every compared `xtrig_csr` and `xtrig_decode` prediction,
+`DTP_J2A_STATUS_MODEL_NEGATIVE` keeps the bridge model's status at 0 where a
+capture or update finds an operation in progress,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected `sbasize` of the per-pass
-geometry gate, and `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each
-`CHK-J2A-BUS-REQ` record expects; a run with any of them set must fail. The
+geometry gate, `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each
+`CHK-J2A-BUS-REQ` record expects, `DTP_J2A_FAULT_STATUS_NEGATIVE` swaps the
+DMI status each `CHK-J2A-FAULT-STATUS` capture record expects between 0 and 3,
+and `DTP_J2A_DTM_CAPTURE_NEGATIVE` flips bit 0 of each value
+`CHK-J2A-DTM-CAPTURE` expects; a run with any of them set must fail. The
 same knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy

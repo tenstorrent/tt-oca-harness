@@ -28,3 +28,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_dmi_status_test"
+module = { cocotb = "dtp_jtag2axi_dmi_status_test", uvm = "dtp_jtag2axi_dmi_status_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]

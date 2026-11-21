@@ -57,6 +57,7 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_j2a_fcov.sv",
 ]
 
 # The cocotb bench needs read and write access, which keeps VCS optimizing the DUT,
@@ -244,6 +245,7 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_j2a_fcov.sv",
   "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",

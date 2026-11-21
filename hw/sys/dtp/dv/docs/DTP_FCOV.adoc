@@ -113,6 +113,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG_CAPS TDR |`cg_caps_tdr` |`dtp_debug_tdr_fcov`
 |STAP / 3DCR |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold` |`dtp_scan_fcov`
 |iJTAG SIBs |`cg_ijtag_sib` |`dtp_scan_fcov`
+|JTAG2AXI DMI status |`cg_j2a_dmi_status` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -443,6 +444,30 @@ Each SIB's open state is the one after the update, and its disable is the
 synchronized field the SIB gate applies, so a gated SIB is closed whatever was
 shifted into it. `dtp_ijtag_sib_random_test` walks every `x_gating`
 combination in each pass.
+
+==== `cg_j2a_dmi_status`
+
+*Description*: Covers each DMI operation of every JTAG2AXI bridge with the
+sticky status its own scan captured, and DTMCS `dmireset` with the status it
+clears.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_bridge` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_op` |`nop`, `read`, `write`, `clear`: the op the bridge receives at the DMI update
+|`cp_status` |`success` (0), `busy` (3); 1, which the DMI does not define, and 2, which this integration's Debug Module never answers, are illegal bins
+|`x_update` |`cp_bridge` x `cp_op` x `cp_status`, sampled at a DMI update
+|`x_dmireset` |`cp_bridge` x `cp_status`, sampled at a DTMCS update with `dmireset` set
+|===
+
+`dtp_j2a_fcov` takes each bridge's DMI capture and update strobes, captured
+status, received op, and `dmireset` strobe from its `jtag_dmi2axi` instance,
+and samples on the TCK edge that leaves Update-DR. A DMI update pairs its op
+with the status its scan captured, which includes the busy status a capture
+during a read sets; an update that shifts no bit carries that status as its
+op. `dtp_jtag2axi_dmi_status_test` reaches every `x_update` and `x_dmireset`
+bin on each bridge in every pass.
 
 ==== `cg_ctp`
 
@@ -926,6 +951,7 @@ review.
 |JTAG instruction scenarios |`cg_jtag_instruction`, `cg_dr_scan`
 |`debug_tdr` group |`cg_tmp`, `cg_ic_reset`, `cg_debug_control`, `cg_clock_stop`, `cg_caps_tdr`, `cg_jtag_instruction`
 |`jtag2axi` group |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi`, `cg_instruction_gate` bridge bins with `clear`
+|`dtp_jtag2axi_dmi_status_test` |`cg_j2a_dmi_status` `x_update` and `x_dmireset`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
@@ -952,7 +978,8 @@ Sampling happens at the documented transaction boundaries: TCK rising edge
 STAP chain, and iJTAG network groups sample at the edge that leaves Update-IR
 or Update-DR), Test-Logic-Reset and TRST, STAP chain shift cycle, system
 reset, clock-stop source change, CTP/CTM event, completed XTRIG CSR access,
-and debug-disable configuration change.
+DMI update and DTMCS `dmireset` of a JTAG2AXI bridge, and debug-disable
+configuration change.
 
 === Exclusions and Limitations
 
@@ -960,7 +987,7 @@ and debug-disable configuration change.
 |===
 |Item |Reason
 |JTAG_CAPS field values |Elaboration-time constants with one reachable value each; `CHK-CAPS` compares every field on every read, and `cg_caps_tdr` covers their stability and read-only behavior
-|Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, Verilator stops the simulation on one, and the ledger records a contradictory outcome as a checker failure, never a cell
+|Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, a DMI status of 1 or 2, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, Verilator stops the simulation on one, and the ledger records a contradictory outcome as a checker failure, never a cell
 |Internal cross-trigger lanes in point-to-point mode |The bench elaborates `XTRIG_INT_CT_MODE` = 0, so every internal CT runs pulse mode
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
 |`prim_cdc_rand_delay` under every synchronizer primitive (`prim_flop_2sync`, `prim_sync3r` and their siblings) |Simulation-only CDC jitter model with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage

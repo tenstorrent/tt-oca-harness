@@ -199,6 +199,13 @@ class DtpTbIf:
         """Clear the read-armed system reset of every bridge."""
         self.ctrl.sys_rst_on_ar_arm.value = 0
 
+    def hold_responses(self, target: str, *, b: bool, r: bool) -> None:
+        """Set ``target``'s write (``b``) and read (``r``) response holds; the other bridges
+        keep theirs. Set a hold only while its channel shows the bridge no response."""
+        bit = 1 << JTAG2AXI_TARGETS[target].reset_arm_bit
+        for name, hold in (("j2a_b_hold", b), ("j2a_r_hold", r)):
+            self.handle(name).value = (self.sample(name) & ~bit) | (bit if hold else 0)
+
     # --- shared AXI VIP binding -----------------------------------------------
     def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:
         """Shared-VIP bus handle over one DTP AXI interface at the bus's real geometry.
