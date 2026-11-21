@@ -61,11 +61,12 @@ Records:
                       a port has ARVALID = 1 and ARREADY = 0 sets an
                       obligation: at the next sample, also when the END
                       marker has closed the window, that port has ARVALID = 1
-                      and the same AR payload. IFU payload: address, ID,
-                      AxLEN, AxSIZE (``pr_ifu_ar*_o``, PR-IFU) and AxPROT
-                      (``pr_cpu_ifu_arprot_o``). LSU payload: address,
-                      AxBURST, AxLOCK, AxCACHE, AxQOS, AxREGION and AxPROT
-                      (``pr_cpu_lsu_ar*_o``). A violation logs
+                      and the same AR payload. The payload of each port is
+                      the full AR payload: ID, address, AxLEN, AxSIZE,
+                      AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS and AxREGION.
+                      IFU: ``pr_ifu_ar*_o`` (PR-IFU) and AxPROT
+                      ``pr_cpu_ifu_arprot_o``. LSU: ``pr_cpu_lsu_ar*_o``
+                      (PR-CPU, PR-CPU-LSU-ATTR). A violation logs
                       ``CHK-ROM-AR-HOLD FAIL: port= field= was= now= t=`` as
                       an error at once, and the leaf fails, also when the
                       firmware run ends by a timeout or an error. PASS logs
@@ -152,33 +153,21 @@ _CFG = re.compile(
     r"ROM-AR-CFG routines=0x([0-9a-f]{8}) passes=0x([0-9a-f]{8}) groups=0x([0-9a-f]{8})"
     r" data=0x([0-9a-f]{8}) init=0x([0-9a-f]{8})"
 )
-# AR valid, ready and payload taps of each CPU port. The IFU payload is read
+# AR valid, ready and payload taps of each CPU port. The payload is the full AR
+# payload except AxUSER, a constant in sep_cpu. The IFU payload is read
 # after the alias remap (PR-IFU), on the same clock as the raw valid; the remap
 # changes only the address. The LSU payload is the raw request.
+_AR_FIELDS = ("id", "addr", "len", "size", "burst", "lock", "cache", "prot", "qos", "region")
 _AR_PORTS = {
     "ifu": (
         "pr_cpu_ifu_arvalid_o",
         "pr_cpu_ifu_arready_o",
-        (
-            ("addr", "pr_ifu_araddr_o"),
-            ("id", "pr_ifu_arid_o"),
-            ("len", "pr_ifu_arlen_o"),
-            ("size", "pr_ifu_arsize_o"),
-            ("prot", "pr_cpu_ifu_arprot_o"),
-        ),
+        tuple((f, "pr_cpu_ifu_arprot_o" if f == "prot" else f"pr_ifu_ar{f}_o") for f in _AR_FIELDS),
     ),
     "lsu": (
         "pr_cpu_lsu_arvalid_o",
         "pr_cpu_lsu_arready_o",
-        (
-            ("addr", "pr_cpu_lsu_araddr_o"),
-            ("burst", "pr_cpu_lsu_arburst_o"),
-            ("lock", "pr_cpu_lsu_arlock_o"),
-            ("cache", "pr_cpu_lsu_arcache_o"),
-            ("qos", "pr_cpu_lsu_arqos_o"),
-            ("region", "pr_cpu_lsu_arregion_o"),
-            ("prot", "pr_cpu_lsu_arprot_o"),
-        ),
+        tuple((f, f"pr_cpu_lsu_ar{f}_o") for f in _AR_FIELDS),
     ),
 }
 _SUM = re.compile(

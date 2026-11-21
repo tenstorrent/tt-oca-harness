@@ -80,20 +80,25 @@ Checks:
                        ``sep_fuse_sense_done_o``.
   CHK-NDMRESET-RESTART: after the last scope leg, at a quiet point, ``dmcontrol``
                        is written ``dmactive`` | ``ndmreset`` and then
-                       ``dmactive`` only. No instruction retires from the
-                       completion of the first write to the start of the
-                       second; after the second, the first PR-IFU read request
-                       covers 0x1004_0000, the first retired PC is 0x1004_0000
-                       and the marker is ``M_ROM`` (EL2 PRM cited at
+                       ``dmactive`` only. No instruction retires in the hold
+                       window: from the completion of the first write to the
+                       clk_i sample in which ``dmi_req_probe_o`` shows the DTM
+                       write strobe of the second to ``dmcontrol`` (the
+                       debug module takes ``ndmreset`` = 0 on the next edge),
+                       so the window covers the ``dmcontrol`` read and the
+                       whole second write. After that strobe the first PR-IFU
+                       read request covers 0x1004_0000, the first retired PC
+                       is 0x1004_0000 and the marker is ``M_ROM`` (EL2 PRM cited at
                        cpu.adoc:23, Debug Support, ``dmcontrol.ndmreset``:
                        "Signal resets hart, but not DM"; cpu.adoc Reset Vector:
                        the TDR persists across a CPU reset, and the
                        Test-Logic-Reset of the last scope leg left it at its
                        default). Positive probes in the same line: instructions
-                       retire in the window before the first write, and the
-                       hold window has samples. ``ndmreset`` does not move the
-                       ``sep_cpu_reset_n`` tap, so the restart is anchored on
-                       the start of the second write. The wait for the restart
+                       retire in the window before the first write, the hold
+                       window has samples, and the strobe of the second write
+                       is seen (``clear_wr_seen=1``). ``ndmreset`` does not
+                       move the ``sep_cpu_reset_n`` tap, so the restart is
+                       anchored on that strobe. The wait for the restart
                        is bounded by W_obs clk_i cycles after the last DMI
                        access of the leg; a missing restart is a FAIL line of
                        this record, not a raise.
@@ -357,6 +362,11 @@ FILTER_CFG_OPEN = (
     | _OUTF.field_mask("FILTER_CONFIG", "allow_burst")
     | (_OUTF.reset("FILTER_CONFIG") & _OUTF.field_mask("FILTER_CONFIG", "data_bus_width"))
 )
+
+# dmi_req_probe_o (tb/sep_tb_signal_list.svh): bit 8 dmi_en, bit 7 dmi_wr_en,
+# bits 6:0 dmi_addr. The one-clock DTM write strobe to dmcontrol (DMI 0x10); the
+# debug module register takes the written value on the next clk_i edge.
+DTM_DMCONTROL_WR = (1 << 8) | (1 << 7) | 0x10
 
 # Environment choices (logged).
 W_OBS = 10_000  # clk_i cycles from the sep_cpu_reset_n rise: first retire and marker
@@ -682,12 +692,17 @@ class _LegWatch:
 class _NdmWatch:
     """Trace and fetch samples around one ``dmcontrol.ndmreset`` pulse.
 
-    Phases, set by the leg: ``pre`` (the core runs the routine), ``set`` (the
-    ``ndmreset`` write is in flight), ``held`` (from the completion of that
-    write to the start of the clear write) and ``release`` (from the start of
-    the clear write). ``ndmreset`` is 1 for the whole ``held`` phase, and the
-    hart stays in reset until the clear write takes effect, so the first
-    retirement and the first PR-IFU request of ``release`` follow the restart.
+    Phases: ``pre`` (the core runs the routine), ``set`` (the ``ndmreset``
+    write is in flight), ``held`` (from the completion of that write to the
+    clock in which the clear write takes effect in the debug module) and
+    ``release`` (the clocks after it). The leg sets ``pre``, ``set`` and
+    ``held``, and ``clear_sent`` when it starts the clear write. The sampler
+    ends ``held`` on the first ``dmi_req_probe_o`` sample after ``clear_sent``
+    that shows the DTM write strobe to ``dmcontrol``: that sample is the last
+    ``held`` clock, because the ``ndmreset`` bit takes the written 0 on the
+    next clk_i edge. ``ndmreset`` is 1 for the whole ``held`` phase, so the
+    first retirement and the first PR-IFU request of ``release`` follow the
+    restart.
     """
 
     phase: str = "pre"
@@ -696,6 +711,10 @@ class _NdmWatch:
     held_retire: list = field(default_factory=list)
     held_fetch: int = 0
     held_cpu_tap_low: int = 0
+    clear_sent: bool = False
+    # Held clocks from the start of the clear write to its dmcontrol strobe.
+    held_clear_clk: int = 0
+    # The clk of the clear write's dmcontrol strobe, the last held clock.
     release_clk: int | None = None
     first_retire: tuple[int, int] | None = None
     # The first PR-IFU AR request of the release phase: (clk, addr, len, size).
@@ -919,6 +938,11 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     nw.held_cpu_tap_low += cpu_tap == 0
                     if tv:
                         nw.held_retire.append((self.clk, pc))
+                    if nw.clear_sent:
+                        nw.held_clear_clk += 1
+                        if self._rd_or_none(dut.dmi_req_probe_o) == DTM_DMCONTROL_WR:
+                            nw.phase = "release"
+                            nw.release_clk = self.clk
                 elif nw.phase == "release":
                     if tv and nw.first_retire is None:
                         nw.first_retire = (self.clk, pc)
@@ -1639,7 +1663,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ``dmactive`` is written 1 first, because the ``ndmreset`` bit is held in
         reset while ``dmactive`` is 0. The watch opens before the quiet point,
         so its ``pre`` phase holds routine retirements. ``dmactive`` is read
-        while ``ndmreset`` is 1, which also gives the ``held`` phase its length.
+        while ``ndmreset`` is 1. The ``held`` phase lasts through that read and
+        the clear write, up to the clock of the clear write's ``dmcontrol``
+        strobe on ``dmi_req_probe_o``; the sampler then opens ``release``.
         The leg grades through ``_grade`` and does not raise on a missing
         restart; a DMI error raises, as in the other legs.
         """
@@ -1657,8 +1683,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE | DMCONTROL_NDMRESET)
         nw.phase = "held"
         dm_held, word_held = await self._dmactive()
-        nw.phase = "release"
-        nw.release_clk = self.clk
+        nw.clear_sent = True
         await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
         dm_after, word_after = await self._dmactive()
         dut.dmi_core_enable_i.value = 0
@@ -1698,14 +1723,21 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ok = (
             nw.pre_retire > 0
             and nw.held_clk > 0
+            and nw.release_clk is not None
             and not nw.held_retire
             and self._fetch_covers(nw, DEFAULT_RESET_PC)
             and pc == DEFAULT_RESET_PC
             and name == "M_ROM"
         )
-        lat = "none" if nw.first_retire is None else str(nw.first_retire[0] - nw.release_clk)
+        lat = (
+            "none"
+            if nw.first_retire is None or nw.release_clk is None
+            else str(nw.first_retire[0] - nw.release_clk)
+        )
         text = (
             f"tdr=default pre_retire={nw.pre_retire} held_clk={nw.held_clk} "
+            f"held_clear_clk={nw.held_clear_clk} held_end=dmcontrol_wr "
+            f"clear_wr_seen={int(nw.release_clk is not None)} "
             f"held_retire={len(nw.held_retire)} first_held={nw.held_retire[:4]} "
             f"{self._fetch_text(nw)} first_pc={'none' if pc is None else f'0x{pc:08x}'} "
             f"marker={name or 'none'} m_rom_seen={int(name == 'M_ROM')} "
@@ -1713,7 +1745,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
         if not ok:
             text += (
-                f" expected pre_retire>0 held_clk>0 held_retire=0 first_fetch covering "
+                f" expected pre_retire>0 held_clk>0 clear_wr_seen=1 held_retire=0 first_fetch covering "
                 f"0x{DEFAULT_RESET_PC:08x} first_pc=0x{DEFAULT_RESET_PC:08x} marker=M_ROM"
             )
         self._grade("CHK-NDMRESET-RESTART", ok, text)

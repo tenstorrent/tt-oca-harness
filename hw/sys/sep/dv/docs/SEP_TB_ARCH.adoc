@@ -269,7 +269,9 @@ Observation probe groups:
   before the core and uncore mux (bit 8 `dmi_en`, bit 7 `dmi_wr_en`, bits 6:0
   `dmi_addr` of `u_sep_cpu.u_el2_veer_wrapper`), tied to 0 on the CPU stub
   build. No frontdoor shows a DMI request that the enable gates block. Read-only;
-  owner `sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE).
+  owners `sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE),
+  `sep_cpu_reset_entry_test` (the `dmcontrol` write strobe that ends the
+  hold window of CHK-NDMRESET-RESTART).
   `dmi_active_probe_o`, the wrapper output `dmi_active`. No register shows
   it. Read-only; owner `sep_debug_master_target_matrix_test`, which counts
   its rises and high clocks while the DTM is on and grades the high clocks
@@ -823,12 +825,14 @@ Observation probe groups:
    `sep_tcm_dma_aperture_ecc_test`, `sep_cpu_demux_unmapped_fetch_test`.
 ** PR-IFU (`pr_ifu_*`): the IFU request after its local alias remap and
    before the IFU demux (`u_sep_cpu.ifu_axi_req`: AR address, ID, AxLEN,
-   AxSIZE) and the response the demux returns (R `resp`, `id`, `last`,
-   DECERR of the error responder included); tied to 0 on the CPU stub build.
+   AxSIZE, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION; the AxBURST, AxLOCK,
+   AxCACHE, AxQOS and AxREGION taps are monitor only) and the response the
+   demux returns (R `resp`, `id`, `last`, DECERR of the error responder
+   included); tied to 0 on the CPU stub build.
    Owners: `sep_cpu_reset_entry_test`, `sep_cpu_demux_unmapped_fetch_test`,
    `sep_cpu_ifu_lsu_alias_remap_matrix_test` (AxLEN, CHK-IFU-SINGLE-BEAT),
-   `sep_cpu_rom_ar_contention_test` (AR address, CTRL-ROM-AR-STALL; AR
-   address, ID, AxLEN and AxSIZE, CHK-ROM-AR-HOLD).
+   `sep_cpu_rom_ar_contention_test` (AR address, CTRL-ROM-AR-STALL; every AR
+   field but AxPROT, CHK-ROM-AR-HOLD).
 ** PR-IFU-XBAR (`pr_ifu_xbar_*`): the IFU demux port to the local crossbar
    (`sep.sv` `ifu_sram_axi_req`, with its response): AR address, ID, AxLEN,
    AxSIZE and R `resp`, `id`, `last`. Every IFU fetch that the demux sends
@@ -893,18 +897,18 @@ Observation probe groups:
    `sep_cpu_rom_ar_contention_test` (IFU and LSU AR valid and ready,
    CTRL-ROM-AR-STALL; IFU and LSU AR valid, ready and AxPROT,
    CHK-ROM-AR-HOLD).
-** PR-CPU-LSU-ATTR (`pr_cpu_lsu_{aw,ar}{addr,burst,lock,cache,qos,region}_o`,
-   with the PR-CPU LSU valid and ready): address, AxBURST, AxLOCK, AxCACHE,
-   AxQOS and AxREGION of the same raw `lsu_axi_req_raw` AW and AR, before the
-   alias remap. Monitor only; sampled on `clk_i`; tied to 0 on the CPU stub
-   build. AxBURST, AxLOCK and AxQOS are graded against the core-complex port
+** PR-CPU-LSU-ATTR (`pr_cpu_lsu_{aw,ar}{addr,burst,lock,cache,qos,region}_o`
+   and `pr_cpu_lsu_ar{id,len,size}_o`, with the PR-CPU LSU valid and ready):
+   address, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION of the same raw
+   `lsu_axi_req_raw` AW and AR, and ID, AxLEN and AxSIZE of that AR, before
+   the alias remap. Monitor only; sampled on `clk_i`; tied to 0 on the CPU
+   stub build. AxBURST, AxLOCK and AxQOS are graded against the core-complex port
    table of the EL2 Programmer's Reference Manual that
    `hw/sys/sep/doc/cpu.adoc` names; AxCACHE and AxREGION are logged only.
    Owner: `sep_cpu_lsu_alias_window_twin_test` (CHK-CPU-AXBURST,
    CHK-CPU-AXLOCK, CHK-CPU-AXQOS; OBS-LSU-AXCACHE-MRAC logged),
    `sep_cpu_rom_ar_contention_test` (AR address, to count ROM stalls for
-   CTRL-ROM-AR-STALL; AR address, AxBURST, AxLOCK, AxCACHE, AxQOS and
-   AxREGION, CHK-ROM-AR-HOLD).
+   CTRL-ROM-AR-STALL; every AR field but AxPROT, CHK-ROM-AR-HOLD).
 ** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
    (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Graded against
    `hw/sys/sep/doc/cpu.adoc` (`sep-cpu-axprot-table`). Owner:

@@ -2261,7 +2261,8 @@ module sep_uvm_top
     assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
     assign pr_inflt_aruser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.user;
     // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
-    // PR-CPU-LSU-ATTR: address and side-band fields of the same raw LSU AW and AR.
+    // PR-CPU-LSU-ATTR: address and side-band fields of the same raw LSU AW and AR,
+    // and the raw LSU AR ID, AxLEN and AxSIZE.
 `ifndef SEP_CPU_STUB
     assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;
     assign pr_cpu_lsu_awready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.aw_ready;
@@ -2284,6 +2285,9 @@ module sep_uvm_top
     assign pr_cpu_lsu_arcache_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.cache;
     assign pr_cpu_lsu_arqos_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.qos;
     assign pr_cpu_lsu_arregion_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.region;
+    assign pr_cpu_lsu_arid_o     = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.id;
+    assign pr_cpu_lsu_arlen_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.len;
+    assign pr_cpu_lsu_arsize_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.size;
 `else
     assign pr_cpu_lsu_awvalid_o = 1'b0;
     assign pr_cpu_lsu_awready_o = 1'b0;
@@ -2306,6 +2310,9 @@ module sep_uvm_top
     assign pr_cpu_lsu_arcache_o  = '0;
     assign pr_cpu_lsu_arqos_o    = '0;
     assign pr_cpu_lsu_arregion_o = '0;
+    assign pr_cpu_lsu_arid_o     = '0;
+    assign pr_cpu_lsu_arlen_o    = '0;
+    assign pr_cpu_lsu_arsize_o   = '0;
 `endif
     // PR-DMA-RAW: AxPROT of the raw secure DMA master request.
     assign pr_dma_raw_awvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw_valid;
@@ -2389,6 +2396,11 @@ module sep_uvm_top
     assign pr_ifu_arid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.id;
     assign pr_ifu_arlen_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.len;
     assign pr_ifu_arsize_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.size;
+    assign pr_ifu_arburst_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.burst;
+    assign pr_ifu_arlock_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.lock;
+    assign pr_ifu_arcache_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.cache;
+    assign pr_ifu_arqos_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.qos;
+    assign pr_ifu_arregion_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.region;
     assign pr_ifu_rvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r_valid;
     assign pr_ifu_rready_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.r_ready;
     assign pr_ifu_rresp_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r.resp;
@@ -2401,6 +2413,11 @@ module sep_uvm_top
     assign pr_ifu_arid_o = '0;
     assign pr_ifu_arlen_o = '0;
     assign pr_ifu_arsize_o = '0;
+    assign pr_ifu_arburst_o = '0;
+    assign pr_ifu_arlock_o = 1'b0;
+    assign pr_ifu_arcache_o = '0;
+    assign pr_ifu_arqos_o = '0;
+    assign pr_ifu_arregion_o = '0;
     assign pr_ifu_rvalid_o = 1'b0;
     assign pr_ifu_rready_o = 1'b0;
     assign pr_ifu_rresp_o = '0;
