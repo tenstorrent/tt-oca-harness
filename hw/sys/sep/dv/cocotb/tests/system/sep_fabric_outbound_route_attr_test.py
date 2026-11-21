@@ -97,10 +97,11 @@ Checkers:
                     INFO-SMU-MOVED), equal the admitted requests, so a PR-OUT
                     beat outside every graded access fails.
   CHK-OUT-SRC-ID    AxUSER[3:0] of every SMU-path capture equals SEP's ID,
-                    0xF; the line gives the value seen and the beat count.
-                    AxUSER[11:4] of SMU-path captures is logged
-                    (OBS-OUT-USER-HI): ``smu-composition.adoc`` states its
-                    value on ``smu_axi_out`` and not at this port. The W user
+                    0xF, and AxUSER[11:4] is 0 (reserved, "the harness drives
+                    them as 0", ``smu-composition.adoc:205-206``, under the
+                    table that gives 0xF), while the LSU issues non-zero
+                    AxUSER[11:4]; the line gives the values seen and the beat
+                    count. The W user
                     of SMU-path writes is logged as INFO-OUT-WUSER: no contract
                     gives WUSER a meaning (``smu-composition.adoc``, USER
                     signals).
@@ -656,8 +657,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             f"wdata={_hx(seen_w.data) if write else 'na'} wstrb={_hx(seen_w.strb) if write else 'na'}"
         )
         if path == "smu":
-            # Per capture AxUSER[3:0] is SEP's ID; constancy and the
-            # replacement are graded over the leaf.
+            # Per capture AxUSER[3:0] is SEP's ID and AxUSER[11:4] is 0;
+            # constancy and the replacement are graded over the leaf.
             why = self.src_grade.note(b.user, user)
             user_ok = why is None
             user_expect = f"SEP's ID ({why})" if why else "SEP's ID"
@@ -678,17 +679,6 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             + (" X/Z" if unknown else "")
         )
         self.logger.info("%s PASS: %s prot_issued=0x%x", tag, line, prot)
-        if path == "smu":
-            # AxUSER[11:4] has a stated value only on the AP and STEE paths
-            # (OTHERS, graded above); on the SMU path it is logged.
-            self.logger.info(
-                "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x "
-                "user_seen_11_4=0x%02x (value logged)",
-                cls,
-                d,
-                user >> 4,
-                b.user >> 4,
-            )
         if write and path == "smu":
             self.logger.info(
                 "INFO-OUT-WUSER: class=%s dir=W wuser_issued=0x%03x wuser_seen=0x%03x "

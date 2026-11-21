@@ -41,7 +41,8 @@ Legs:
   bits inbound; OTHERS against the AP and STEE remaps; on the SMU aperture
   outbound, two wildcard probes with distinct LSU AxUSER values read SEP's
   source ID off PR-OUT (graded as one value for both and equal to SEP's ID,
-  0xF, ``doc/integrator/src/smu-composition.adoc`` SEP row: CHK-FILT-SRC-ID),
+  0xF, ``doc/integrator/src/smu-composition.adoc`` SEP row, with the reserved
+  AxUSER[11:4] 0, ``smu-composition.adoc:205-206``: CHK-FILT-SRC-ID),
   and the exact and
   mismatch cells then take that ID as stimulus, so they grade that the
   outbound filter matches ``src_id`` against the replaced AxUSER[3:0];
@@ -1361,7 +1362,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         # Outbound exact and mismatch on the SMU aperture: the SMU path replaces the LSU
         # AxUSER with SEP's source ID. Wildcard probes with two distinct LSU
         # AxUSER values read it off PR-OUT; the grade is 0xF and one value for
-        # both (SepSrcIdGrade). The exact and mismatch
+        # both, with AxUSER[11:4] 0 (SepSrcIdGrade). The exact and mismatch
         # cells take the read ID as stimulus and an issued AxUSER whose [3:0]
         # differs from it, so a filter that matches the issued AxUSER fails them.
         users = draw_src_users(self.rng)

@@ -111,11 +111,15 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     issued with NS 1, and AxUSER[3:0] equal to SEP's ID, 0xF;
                     AxUSER[3:0] is the same on every request of the leaf,
                     although the LSU alternates two distinct non-zero values
-                    and the DMA issues OTHERS: the SMU path sets SEP's ID. A
-                    hold session also fails its own checker on such a request.
+                    and the DMA issues OTHERS: the SMU path sets SEP's ID.
+                    AxUSER[11:4] of every matched request is 0, although the
+                    LSU issues it non-zero. A hold session also fails its own
+                    checker on such a request.
   CHK-SAT-SRC-ID    that AxUSER[3:0] equals SEP's ID, 0xF
-                    (``doc/integrator/src/smu-composition.adoc``, SEP row); the
-                    line gives the value seen and the request count.
+                    (``doc/integrator/src/smu-composition.adoc``, SEP row), and
+                    AxUSER[11:4] is 0 (reserved, driven as 0 on
+                    ``smu_axi_out``, ``smu-composition.adoc:205-206``); the
+                    line gives the values seen and the request count.
   CHK-NONVAC        the ordered fence of the phases.
   CHK-TIMEOUT-PATHS each bounded wait (a transaction, a DMA DONE wait, a
                     one-beat release loop) logs its bound and raises on

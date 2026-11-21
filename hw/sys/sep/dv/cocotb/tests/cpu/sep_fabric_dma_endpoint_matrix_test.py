@@ -24,10 +24,13 @@ model of the staged data and the fabric taps:
                   permission flip admits it; every DMA beat on PR-OUT carries
                   the routed address and the source ID of its path: OTHERS
                   (AxUSER 0, all 12 bits) on the AP path; on the SMU path a value that is not OTHERS,
-                  the same on every DMA beat and on the CPU store.
+                  the same on every DMA beat and on the CPU store, with
+                  AxUSER[11:4] 0.
 * CHK-CPU-SRC-ID  AxUSER[3:0] of those SMU-path DMA beats and of the CPU store
                   equals SEP's ID, 0xF (``doc/integrator/src/smu-composition.adoc``,
-                  SEP row); the line gives the value seen and the beat count.
+                  SEP row), and AxUSER[11:4] is 0 (reserved, driven as 0 on
+                  ``smu_axi_out``, ``smu-composition.adoc:205-206``); the line
+                  gives the values seen and the beat count.
 * CHK-DMA-EP-REG  SCRATCH[0], SPI CSID and SEP_SW_DEBUG at a fixed address in
                   both directions; the SW_RESET_N read: the DMA copy and the
                   LSU read both equal the RDL reset value in every field, with
@@ -1169,7 +1172,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         # routed address. The DMA master drives OTHERS, AxUSER zero (fabric.adoc,
         # Transaction Routing); the AP path sets OTHERS, graded on all AxUSER
         # bits, and the SMU path sets SEP's ID: SepSrcIdGrade grades it as 0xF and
-        # one value on every SMU-path beat.
+        # one value on every SMU-path beat, with AxUSER[11:4] 0.
         grade = SepSrcIdGrade("CPU")
         legs = (
             ("out_ap", "ap", [self.ep.ap_out, self.ep.ap_out + 4]),

@@ -1763,8 +1763,11 @@ which grades AxUSER[3:0] of every SMU-path beat against SEP's ID, 0xF
 table, which also names AxUSER[3:0] as the source ID on `smu_axi_out`), and
 gives the `CHK-<tag>-SRC-ID` PASS line of each of those tests (CHK-FILT-SRC-ID,
 CHK-OUT-SRC-ID, CHK-CPU-SRC-ID, CHK-ATTR-SRC-ID, CHK-SAT-SRC-ID), or logs the
-FAIL line at ERROR and fails the leaf there. AxUSER[11:4]
-is not graded. A check that compares the
+FAIL line at ERROR and fails the leaf there. The same record grades the
+reserved AxUSER[11:4] of every such beat as 0: "AxUSER[11:4] are reserved: the
+harness drives them as 0 on `smu_axi_out`"
+(`doc/integrator/src/smu-composition.adoc:205-206`, under the table that gives
+SEP's ID). A check that compares the
 whole AxUSER with a stated value (OTHERS, AxUSER zero, on the AP and STEE
 paths and from the secure DMA; the initiator's AxUSER on the SMC path) does
 not use this record.

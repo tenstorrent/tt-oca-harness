@@ -18,10 +18,10 @@
 * ``SEP_SOURCE_ID``: SEP's source ID on the SMU path, 0xF
   (``doc/integrator/src/smu-composition.adoc``, outbound attributes table).
 * ``SepSrcIdGrade`` and ``draw_src_users``: the grade of the SMU-path source
-  ID against ``SEP_SOURCE_ID``, and the issued AxUSER pair that shows the
-  replacement. The grade reads AxUSER[3:0] under the "Source ID carrier"
-  record (``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``,
-  ``sep-standin-src-id-carrier``); AxUSER[11:4] of these beats is not graded.
+  ID against ``SEP_SOURCE_ID`` and of the reserved AxUSER[11:4] against 0, and
+  the issued AxUSER pair that shows the replacement. The grade reads
+  AxUSER[3:0] under the "Source ID carrier" record
+  (``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, ``sep-standin-src-id-carrier``).
 """
 
 from __future__ import annotations
@@ -81,6 +81,9 @@ OTHERS_SOURCE_ID: int = 0
 # SEP's source ID on the SMU path (doc/integrator/src/smu-composition.adoc:200,
 # the SEP row of the outbound attributes table).
 SEP_SOURCE_ID: int = 0xF
+# AxUSER[11:4] are reserved and driven as 0 on the SMU path
+# (doc/integrator/src/smu-composition.adoc:205-206, under the same table).
+USER_RSVD_SHIFT: int = 4
 
 
 def outbound_ns(path: str, addr: int) -> int:
@@ -116,7 +119,8 @@ class SepSrcIdGrade:
     grade is:
 
     * per beat (``note``): AxUSER[3:0] is known, is not OTHERS (0) and equals
-      ``SEP_SOURCE_ID``;
+      ``SEP_SOURCE_ID``, and the reserved AxUSER[11:4] is 0
+      (``smu-composition.adoc:205-206``);
     * per leaf (``finish``): every beat carries the same AxUSER[3:0], and the
       issued AxUSER[3:0] of the beats show the replacement. A constant output
       over two distinct issued values differs from at least one of them, so it
@@ -124,15 +128,17 @@ class SepSrcIdGrade:
       replacement on its own, because the output is not 0.
 
     The source ID is AxUSER[3:0] (the "Source ID carrier" record,
-    ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). AxUSER[11:4] is not graded.
-    ``chk_line`` gives the ``CHK-<tag>-SRC-ID`` PASS line with the observed
-    value, and raises the FAIL line.
+    ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). ``chk_line`` gives the
+    ``CHK-<tag>-SRC-ID`` PASS line with the observed values of AxUSER[3:0] and
+    AxUSER[11:4], and raises the FAIL line.
     """
 
     def __init__(self, tag: str) -> None:
         self.tag = tag
         self.observed: list[int] = []
+        self.observed_rsvd: set[int] = set()
         self.issued: set[int] = set()
+        self.issued_rsvd: set[int] = set()
 
     def note(self, user: int | None, issued: int | None = None) -> str | None:
         """Record one beat; returns the failure reason, or None when the beat passes.
@@ -143,9 +149,14 @@ class SepSrcIdGrade:
         if user is None:
             return "AxUSER is X or Z"
         sid = user & SRC_ID_MASK
+        rsvd = user >> USER_RSVD_SHIFT
         self.observed.append(sid)
+        self.observed_rsvd.add(rsvd)
         if issued is not None:
             self.issued.add(issued & SRC_ID_MASK)
+            self.issued_rsvd.add(issued >> USER_RSVD_SHIFT)
+        if rsvd:
+            return f"AxUSER[11:4]=0x{rsvd:x}; reserved, driven as 0"
         if sid == OTHERS_SOURCE_ID:
             return f"AxUSER[3:0]=0x{sid:x} is OTHERS; the SMU path sets SEP's ID"
         if sid != SEP_SOURCE_ID:
@@ -188,15 +199,18 @@ class SepSrcIdGrade:
 
     def chk_line(self) -> str:
         """``CHK-<tag>-SRC-ID``: the PASS line when every graded beat carries
-        ``SEP_SOURCE_ID``; otherwise logs the FAIL line at ERROR and raises it."""
+        ``SEP_SOURCE_ID`` and AxUSER[11:4] 0; otherwise logs the FAIL line at
+        ERROR and raises it."""
         import logging
 
         vals = sorted(set(self.observed))
-        ok = vals == [SEP_SOURCE_ID]
+        ok = vals == [SEP_SOURCE_ID] and self.observed_rsvd == {0}
         sid = f"0x{vals[0]:x}" if len(vals) == 1 else _hexset(vals)
         line = (
             f"CHK-{self.tag}-SRC-ID {'PASS' if ok else 'FAIL'}: path=smu src_id={sid} "
-            f"expected=0x{SEP_SOURCE_ID:x} beats={len(self.observed)}"
+            f"expected=0x{SEP_SOURCE_ID:x} user_11_4={_hexset(self.observed_rsvd)} "
+            f"expected_11_4=0x0 issued_11_4={_hexset(self.issued_rsvd)} "
+            f"beats={len(self.observed)}"
         )
         if not ok:
             logging.getLogger("cocotb").error("%s", line)
