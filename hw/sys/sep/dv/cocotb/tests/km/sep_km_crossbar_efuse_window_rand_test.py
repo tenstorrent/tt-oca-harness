@@ -906,13 +906,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
     @staticmethod
     def _used_bit_change_value(rng: SepSeededRng, staged: int, used: int) -> int:
-        """A drawn word that differs from ``staged`` in a bit of ``used``.
+        """A drawn word that differs from ``staged`` in a bit of ``used`` and only there.
 
-        It sets a used bit that is 0 in ``staged``. When every used bit is 1,
-        it clears one used bit instead: a write lock blocks any write
-        (``otp_fuse_controller.adoc:110,112-114``).
+        Bits outside ``used`` keep their staged value, so a refusal can come only
+        from the lock and not from a write to unused bits. It sets a used bit that
+        is 0 in ``staged``. When every used bit is 1, it clears one used bit
+        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-114``).
         """
-        word = rng.getrandbits(WORD_BITS)
+        word = (staged & ~used & WORD_MASK) | (rng.getrandbits(WORD_BITS) & used)
         ones = [b for b in range(WORD_BITS) if (used >> b) & 1]
         zeros = [b for b in ones if not (staged >> b) & 1]
         if zeros:
