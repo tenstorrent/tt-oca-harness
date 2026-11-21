@@ -885,6 +885,10 @@
 // acknowledge into drbg_edn_axis_adapter (u_drbg edn_axis_endpoint_rsp[i].edn_ack)
 // that pushes one word. Read-only; no force.
 `SEP_TB_OUT(logic [2:0], drbg_adapter_push_o)
+// Level of the two EDN command FIFOs (u_edn.u_edn_core): [3:0] the RESEED_CMD
+// FIFO (sfifo_rescmd_depth), [7:4] the GENERATE_CMD FIFO (sfifo_gencmd_depth).
+// Read-only; no force.
+`SEP_TB_OUT(logic [7:0], edn_cmd_fifo_depth_o)
 // Sample clock of ESRC lane 0 after the source mux and the ripple divider
 // (u_generator_complex.u_sampler_clocks.sample_clk_o[0]). Read-only; no force.
 `SEP_TB_OUT(logic, esrc_sample_clk_lane0_o)

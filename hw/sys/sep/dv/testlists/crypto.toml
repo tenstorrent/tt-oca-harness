@@ -190,8 +190,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Same-cycle dual crypto-EDN request across all four adapter clients; round-robin
-# order is not graded.
+# Same-cycle dual crypto-EDN request across all four adapter clients; the
+# round-robin rule is graded on the arbiter taps.
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1
@@ -770,7 +770,7 @@ module = "crypto.sep_drbg_cmd_sequence_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 1800
-tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log", "logs_open_spec_value", "sep_spec_chk_crypto_entropy"]
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log", "sep_spec_chk_crypto_entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
