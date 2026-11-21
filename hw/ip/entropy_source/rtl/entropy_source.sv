@@ -241,7 +241,7 @@ module entropy_source
     logic [15:0]             sample_clk_monitor_ext;
     logic                    noise_obs_raw_bit;
     logic                    noise_obs_raw_sclk;
-    logic [1:0]              noise_obs_sclk_sync;
+    logic [2:0]              noise_obs_sclk_sync;
     logic                    noise_obs_sample_stb;
     logic [31:0]             noise_obs_shift_q,  noise_obs_shift_d;
     logic [4:0]              noise_obs_bit_cnt_q, noise_obs_bit_cnt_d;
@@ -517,15 +517,17 @@ module entropy_source
 
     // Rising-edge strobe on the selected lane's sample clock: a fresh raw bit
     // is available once per rising edge of the (async, divided) sample clock.
-    // noise_obs_sclk_sync is a 2-FF synchroniser of the async sample clock into
-    // clk_i; the strobe is its rising-edge detect. noise_bit_monitor is held
-    // stable across the whole slow sample period, so latching it on this strobe
-    // captures exactly one valid raw sample per period (small clk_i phase skew
-    // between the synced edge and the synced data bit is harmless).
+    // noise_obs_sclk_meta and noise_obs_sclk_sync[0] synchronise the async sample
+    // clock into clk_i. The raw bit passes the lane's sampling flop before its own
+    // synchroniser, so it can reach noise_bit_monitor one clk_i after the edge
+    // reaches noise_obs_sclk_sync[0]; the strobe is the rising-edge detect one
+    // stage later, on noise_obs_sclk_sync[2:1]. noise_bit_monitor is held stable
+    // across the whole slow sample period, so latching it on this strobe captures
+    // exactly one valid raw sample per period.
     /* verilator lint_off UNUSEDSIGNAL */
     logic noise_obs_sclk_meta;  // metastable capture stage (intentional CDC)
     /* verilator lint_on UNUSEDSIGNAL */
-    assign noise_obs_sample_stb = ~noise_obs_sclk_sync[1] & noise_obs_sclk_sync[0];
+    assign noise_obs_sample_stb = ~noise_obs_sclk_sync[2] & noise_obs_sclk_sync[1];
 
     // Packer next-state (bit_cnt counts packed bits 0..31; push at 31->wrap).
     assign noise_obs_word_push = reg_out.NOISE_OBS_CTRL.RAW_ENABLE.value
@@ -554,14 +556,14 @@ module entropy_source
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             noise_obs_sclk_meta  <= 1'b0;
-            noise_obs_sclk_sync  <= 2'b0;
+            noise_obs_sclk_sync  <= 3'b0;
             noise_obs_shift_q    <= 32'h0;
             noise_obs_bit_cnt_q  <= 5'd0;
             noise_obs_lane_sel_q <= 4'h0;
         end else begin
             // 2-FF CDC synchroniser for the async divided sample clock.
             noise_obs_sclk_meta <= noise_obs_raw_sclk;
-            noise_obs_sclk_sync <= {noise_obs_sclk_sync[0], noise_obs_sclk_meta};
+            noise_obs_sclk_sync <= {noise_obs_sclk_sync[1:0], noise_obs_sclk_meta};
             noise_obs_shift_q    <= noise_obs_shift_d;
             noise_obs_bit_cnt_q  <= noise_obs_bit_cnt_d;
             noise_obs_lane_sel_q <= noise_obs_lane_sel_eff;

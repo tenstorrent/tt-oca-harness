@@ -10,6 +10,11 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- Entropy source raw-noise observe FIFO could repeat a sample, and lose the
+  next, when a sample-clock edge landed just before a `clk_i` edge (#3740).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added
