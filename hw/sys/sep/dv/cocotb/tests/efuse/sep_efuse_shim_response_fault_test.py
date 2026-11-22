@@ -1000,6 +1000,16 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await rst_pulse(self, hold=_RST_HOLD)
         if await clocks_to_sense(self, sense_bound, started=True) is None:
             raise AssertionError(f"sense done missing after the bank-error reset seed={seed}")
+        # The frontdoor enters at the CPU LSU demux, which sep_cpu_reset_n holds in
+        # reset for the reset synchronizer clocks after sense done. An AW sent before
+        # that release is not counted, and its B response underflows the ID counter.
+        for _ in range(8):
+            if self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True):
+                break
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+        else:
+            raise AssertionError(f"sep_cpu_reset_n_o low after the bank-error sense seed={seed}")
         await RisingEdge(dut.clk_i)
 
         dut.efuse_sense_status_word_i.value = r
