@@ -32,7 +32,13 @@ records, the trace events, the pulse counts and the field record:
                   ``ext_debug_bus_o[367]`` (ICCM single-bit) pulses in that
                   interval, at least 2^t + 1, the number of flipped words; the
                   block executes every slot, so each flipped word is fetched at
-                  least once (VeeR EL2 PRM
+                  least once, and the MICCMECT sample after each flipped slot
+                  is above the sample after the flipped slot before it (the
+                  sample before the block for the first): the slot's sample
+                  follows the fetch of its word, and an error on that fetch is
+                  counted when it is detected and the word is refetched before
+                  it executes (PRM ``:183``, ``:189``, fn-3 at ``:246``). A word can be fetched more than once, so no upper
+                  bound is graded per slot (VeeR EL2 PRM
                   ``docs/source/error-protection.md:311`` and ``:365``, ``:369``:
                   the count rises for each correctable error detected on a fetch
                   or on a retired load; ``:247``: every fetch error is counted,
@@ -74,16 +80,20 @@ records, the trace events, the pulse counts and the field record:
                   release is one clock wide. Each logs PASS or FAIL; the leaf
                   fails once after its other checks if any of them failed.
 
-Log only: ``INFO-TCM-ISLOT`` (the MICCMECT count after each flipped ICCM slot;
-the number of fetches of a flipped word is not fixed by the image),
+Log only: ``INFO-TCM-ISLOT`` (the MICCMECT count after each flipped ICCM slot,
+which CHK-TCM-INCR also prints and grades as a rise of at least 1),
 ``INFO-TCM-FORM`` (a miss-first draw whose readback skipped 2^t - 1 runs in the
-reach-first form), ``INFO-TCM-DBG366-COUNT`` (the
-bit-366 pulse counts in total and in the windows other than ``iccm_ue``; the PRM
-counts a fetch error independent of execution, so no count there is wrong),
+reach-first form; a skip needs one load to count twice, which fails CHK-TCM-INCR
+on that sample first, so a passing run does not print it),
+``INFO-TCM-DBG366-COUNT`` (the bit-366 pulse counts in total and in the windows
+other than ``iccm_ue``; the PRM acts on an ICCM double-bit fetch error for the
+oldest instruction in the pipeline only, fn-5 at ``:248``, and no source states
+how many bit-366 pulses a fetch outside that window makes, so no count there is
+wrong),
 ``INFO-TCM-DBG366-WIDTHS`` (the widths of the pulses outside that window, which no
 check of the leaf grades),
-``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
-each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
+``INFO-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
+each window), ``INFO-RAS-<FIELD>-COUNT`` (rises per window) and
 ``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
 which the interrupt chapter and the ``SEP_NMI_VEC`` register text state
 differently).
@@ -618,7 +628,13 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         # delta from the sample before the block to the quiet sample equals the
         # bit-367 pulses from that sample's read to the end of the block. The
         # block executes every slot, so each of the n flipped words is fetched
-        # at least once and the delta is at least n.
+        # at least once and the delta is at least n. The sample of a flipped
+        # slot follows the fetch of its word, and an error on that fetch is
+        # counted when detected and the word is refetched before it executes
+        # (RFPC flush, PRM fn-3), so each
+        # flipped slot raises the count by at least 1 over the sample of the
+        # flipped slot before it. A word can be fetched more than once, so no
+        # upper bound is graded per slot.
         ib = next(
             r.clk
             for r in self._recs("SAMPLE")
@@ -626,27 +642,41 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         )
         p367 = len(self._pulses_in((ib, bwin[1]))[BIT_I_SB])
         bcnt = int(bef["ic"]) & CNT_MASK
-        body = (
-            f"mem=ICCM t={cfg.t} flipped_words={cfg.n} counter_before={bcnt} "
-            f"counter_quiet={qcnt} delta={qcnt - bcnt} bit367_pulses={p367} expect_min={cfg.n}"
-        )
-        if qcnt - bcnt != p367 or p367 < cfg.n:
-            raise AssertionError(f"CHK-TCM-INCR FAIL: {body}")
-        self.logger.info("CHK-TCM-INCR PASS: %s", body)
-        n += 1
-        # Per-slot ICCM samples: the number of fetches of a flipped word is not
-        # fixed by the image, so the per-slot counts are logged, not graded.
         slots = {int(r.kv["k"]): r.kv for r in self._recs("ISLOT")}
-        prev = 0
+        steps, flat = [], []
+        prev = bcnt
         for s in cfg.islots:
-            cur = int(slots[s]["ic"]) & CNT_MASK
+            cur = int(slots[s]["ic"]) & CNT_MASK if s in slots else -1
+            steps.append((s, prev, cur))
             self.logger.info(
                 "INFO-TCM-ISLOT LOG mem=ICCM access=slot%d counter_before=%d counter_after=%d",
                 s,
                 prev,
                 cur,
             )
+            if cur <= prev:
+                flat.append(f"slot{s}")
             prev = cur
+        failed = [
+            name
+            for name, bad in (
+                ("delta", qcnt - bcnt != p367),
+                ("min", p367 < cfg.n),
+                ("slot", bool(flat)),
+            )
+            if bad
+        ]
+        body = (
+            f"mem=ICCM t={cfg.t} flipped_words={cfg.n} counter_before={bcnt} "
+            f"counter_quiet={qcnt} delta={qcnt - bcnt} bit367_pulses={p367} expect_min={cfg.n} "
+            f"slot_steps={','.join(f'slot{s}:{a}>{b}' for s, a, b in steps)} "
+            f"expect_slot_step=>=1 flat_slots={','.join(flat) or 'none'} "
+            f"failed={','.join(failed) or 'none'}"
+        )
+        if failed:
+            raise AssertionError(f"CHK-TCM-INCR FAIL: {body}")
+        self.logger.info("CHK-TCM-INCR PASS: %s", body)
+        n += 1
 
         # DCCM leg.
         ds = self._samples("dccm")
