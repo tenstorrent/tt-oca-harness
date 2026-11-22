@@ -100,10 +100,13 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    baseline, and the band drops at the release.
 * CHK-GW-L2E       an event source held at its active level in level mode
                    switches to edge mode with the input asserted; ``meip``
-                   reads 1 once the input settles in edge mode, 1 after the
-                   input drops with no clear, and 0 after the ``meigwclr``
-                   write (VeeR EL2 PRM ``docs/source/interrupts.md:68-69``: no
-                   edge detection, an active input stays pending; ``:59-60``:
+                   reads 1 once the input settles in edge mode, 1 after a
+                   ``meigwclr`` write with the input still asserted, 1 after
+                   the input drops with no clear, and 0 after the next
+                   ``meigwclr`` write (VeeR EL2 PRM
+                   ``docs/source/interrupts.md:68-69``: no edge detection, an
+                   input at the active level stays reported as pending after
+                   the IP latch is cleared; ``:59-60``:
                    the IP flop holds until firmware clears it; ``:144``: the
                    ``meigwclr`` write clears it). ``meip`` read at once after
                    the switch, before any clear, is logged on the same line and
@@ -111,11 +114,12 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    a type change). Control: ``CTRL-GW-LVL2EDGE`` (``meip``
                    reads 1 and ``meigwctrl`` reads level before the switch,
                    edge after it) and ``CTRL-GW-L2E-DROP`` (on the
-                   ``pic_rd_data_probe_o`` copies of the ``settled`` and
-                   ``released`` meip reads, the source line on
-                   ``sep_internal_interrupts_probe_o`` reads 1 and 0, with no
-                   rise between them, and the copied meip bits equal the
-                   firmware values; CHK-GW-L2E is not logged without it).
+                   ``pic_rd_data_probe_o`` copies of the ``settled``,
+                   ``held_after_clr`` and ``released`` meip reads, the source
+                   line on ``sep_internal_interrupts_probe_o`` reads 1, 1 and
+                   0, with no rise between the first and the last, and the
+                   copied meip bits equal the firmware values; CHK-GW-L2E is
+                   not logged without it).
 
 Logged, not graded, out of contract: ``INFO-GWCLR-RACE``, a one-clock pulse
 on the drawn boundary input in the clock of the ``meigwclr`` write to its
@@ -1594,40 +1598,43 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         if reach != (True, 1, 0, 1):
             raise AssertionError(f"CTRL-MISSING GW-LVL2EDGE: {body}")
         self.logger.info("CTRL-GW-LVL2EDGE LOG %s", body)
-        got = tuple(int(r[k]) for k in ("settled", "released", "after_clr"))
+        keys = ("settled", "held_after_clr", "released", "after_clr")
+        got = tuple(int(r[k]) for k in keys)
         self._ctrl_gw_l2e_drop(hits[0][0], src, got)
         self._check(
-            got == (1, 1, 0),
+            got == (1, 1, 1, 0),
             "CHK-GW-L2E",
-            f"src={src} settled={got[0]} released={got[1]} after_clr={got[2]} "
-            f"want=(1, 1, 0) after_switch={int(r['after'])}",
+            " ".join(f"{k}={v}" for k, v in zip(keys, got))
+            + f" want=(1, 1, 1, 0) after_switch={int(r['after'])}",
         )
 
-    def _ctrl_gw_l2e_drop(self, line_idx: int, src: int, got: tuple[int, int, int]) -> None:
-        """CTRL-GW-L2E-DROP: the source line is high at the ``settled`` read and low at ``released``.
+    def _ctrl_gw_l2e_drop(self, line_idx: int, src: int, got: tuple[int, ...]) -> None:
+        """CTRL-GW-L2E-DROP: the source line is high at ``settled`` and ``held_after_clr``, low at ``released``.
 
-        The firmware reads the source's meip word five times before the GWL2E
-        line (before, after, settled, released, after_clr); the tap copies of
-        the third and second-to-last reads carry the firmware's values and the
-        source vector of the same clock. Between them the line has no rise.
+        The firmware reads the source's meip word six times before the GWL2E
+        line (before, after, settled, held_after_clr, released, after_clr);
+        the tap copies of the third to fifth reads carry the firmware's values
+        and the source vector of the same clock. Between the third and the
+        fifth the line has no rise.
         """
         addr = MEIP0_OFF + MEIP_STRIDE * (src // 32)
         caps = [c for c in self.rd_caps if c[0] == line_idx and c[1] == addr]
         vb, sb = vec_bit(src), src % 32
         body = f"seed={self.wc.seed} src={src} vec_bit={vb} meip_reads={len(caps)}"
-        if len(caps) < 5:
+        if len(caps) < 6:
             raise AssertionError(f"CTRL-MISSING GW-L2E-DROP: {body}")
-        (_, _, d_s, x_s, (v_s, vx_s), c_s), (_, _, d_r, x_r, (v_r, vx_r), c_r) = caps[-3], caps[-2]
-        rises = [c for c in self.wv.bits[f"v{vb}"].rises if c_s < c <= c_r]
-        line = ((v_s >> vb) & 1, (v_r >> vb) & 1)
-        meip = ((d_s >> sb) & 1, (d_r >> sb) & 1)
-        x_free = not ((vx_s | vx_r) >> vb) & 1 and not ((x_s | x_r) >> sb) & 1
+        reads = caps[-4:-1]
+        clks = tuple(c[5] for c in reads)
+        rises = [c for c in self.wv.bits[f"v{vb}"].rises if clks[0] < c <= clks[2]]
+        line = tuple((c[4][0] >> vb) & 1 for c in reads)
+        meip = tuple((c[2] >> sb) & 1 for c in reads)
+        x_free = not any((c[4][1] >> vb) & 1 or (c[3] >> sb) & 1 for c in reads)
         body += (
-            f" line_at_settled={line[0]} line_at_released={line[1]} rises_between={len(rises)} "
-            f"tap_meip=({meip[0]}, {meip[1]}) fw_meip=({got[0]}, {got[1]}) "
-            f"read_clks=({c_s}, {c_r}) x_free={int(x_free)}"
+            f" line_at_settled={line[0]} line_at_held={line[1]} line_at_released={line[2]} "
+            f"rises_between={len(rises)} tap_meip={meip} fw_meip={got[:3]} "
+            f"read_clks={clks} x_free={int(x_free)}"
         )
-        if line != (1, 0) or rises or meip != got[:2] or not x_free:
+        if line != (1, 1, 0) or rises or meip != got[:3] or not x_free:
             raise AssertionError(f"CTRL-MISSING GW-L2E-DROP: {body}")
         self.logger.info("CTRL-GW-L2E-DROP LOG %s", body)
 

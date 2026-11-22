@@ -81,7 +81,7 @@ Log only: ``INFO-TCM-ISLOT`` (the MICCMECT count after each flipped ICCM slot,
 which CHK-TCM-INCR also prints and does not grade),
 ``INFO-TCM-FORM`` (a miss-first draw whose readback skipped 2^t - 1 runs in the
 reach-first form; a skip needs one load to count twice, which fails CHK-TCM-INCR
-on that sample first, so a passing run does not print it),
+on that sample, so a passing run does not print it),
 ``INFO-TCM-DBG366-COUNT`` (the bit-366 pulse counts in total and in the windows
 other than ``iccm_ue``; the PRM acts on an ICCM double-bit fetch error for the
 oldest instruction in the pipeline only, fn-5 at ``:248``, and no source states
@@ -629,12 +629,12 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         # independent of execution (PRM fn-4), so a word fetched ahead can be
         # counted before the sample of an earlier slot, and a word can be
         # counted more than once: the per-slot counts are logged, not graded.
-        ib = next(
+        before_line = next(
             r.clk
             for r in self._recs("SAMPLE")
             if r.kv.get("leg") == "iccm" and r.kv.get("tag") == "before"
         )
-        p367 = len(self._pulses_in((ib, bwin[1]))[BIT_I_SB])
+        p367 = len(self._pulses_in((before_line, bwin[1]))[BIT_I_SB])
         bcnt = int(bef["ic"]) & CNT_MASK
         slots = {int(r.kv["k"]): r.kv for r in self._recs("ISLOT")}
         steps = []

@@ -341,10 +341,18 @@ periods, ``N`` = the bite threshold minus the count tap at the hold start plus
 * CHK-WDT-CLKSTOP-BITE. The ``sep`` output ``wdt_timer_rst_req_o`` is 0 at the
   hold start (precondition), rises inside the hold, reads 1 at its end, and the
   count tap ``wdt_wdog_count_o`` at the rise is at or above the bite threshold.
-  No upper latency bound is stated; the hold runs ``CLKSTOP_PAST`` ticks past
-  the threshold. The line also logs the count taps at both ends of the hold,
-  the ``clk_wdt_i`` edges between them, and the time and ``clk_wdt_i`` edge
-  index of the rise.
+  A bite comes "on every AON clock tick when the count is at least"
+  ``WDOG_BITE_THOLD``; no text states whether that count is the value before or
+  after the tick, or how many register stages lie between the bite and
+  ``wdt_timer_rst_req_o``. The tap at the rise therefore reads the threshold or
+  above under every reading, and a rise while the tap is below the threshold
+  fails. A bite one tick early that reads the threshold at the rise is the
+  legal value of another reading, so the exact offset is logged, not graded
+  (``count_tap_before_rise``: the tap at the last ``clk_wdt_i`` falling edge
+  before the rise). No upper latency bound is stated; the hold runs
+  ``CLKSTOP_PAST`` ticks past the threshold. The line also logs the count taps
+  at both ends of the hold, the ``clk_wdt_i`` edges between them, and the time
+  and ``clk_wdt_i`` edge index of the rise.
 * INFO-WDT-CLKSTOP-AFTER. After ``clk_i`` runs again: a ``WDOG_COUNT`` read, the
   bark status and the bite pin.
 * CTRL-CLKI-STOPPED. No ``clk_i`` rising edge at the pin in the hold window, else
@@ -2174,7 +2182,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             )
         n_hold = hd - c_start + CLKSTOP_PAST
         hold_ps = (n_hold + 2) * wdt_ps
-        rise = {"t": None, "count": None}
+        rise = {"t": None, "count": None, "before": None}
 
         async def _watch_rise() -> None:
             await RisingEdge(dut.wdt_timer_rst_req_o)
@@ -2182,7 +2190,15 @@ class sep_timer_clock_contract_test(sep_base_test):
             await ReadOnly()
             rise["count"] = self.rd(dut.wdt_wdog_count_o)
 
+        async def _watch_before() -> None:
+            while True:
+                await FallingEdge(dut.clk_wdt_i)
+                if rise["t"] is not None:
+                    return
+                rise["before"] = self.rd(dut.wdt_wdog_count_o)
+
         watch = cocotb.start_soon(_watch_rise())
+        before = cocotb.start_soon(_watch_before())
         mark = self.pins.mark()
         t0 = self._now()
         self.restart_clock("clk_i", self.cfg.sys_clk_period_ns, hold_ps)
@@ -2194,13 +2210,14 @@ class sep_timer_clock_contract_test(sep_base_test):
         c_end = self.rd(dut.wdt_wdog_count_o)
         req_end = self.rd(dut.wdt_timer_rst_req_o)
         t_rise = rise["t"]
-        if not watch.done():
-            watch.cancel()
+        for task in (watch, before):
+            if not task.done():
+                task.cancel()
         line = f"window_ps={t1 - t0} hold_ps={hold_ps} clk_i_edges={n_clk} E_wdt={e_wdt} N={n_hold}"
         if n_clk != 0:
             raise AssertionError(f"CTRL-CLKI-STOPPED FAIL: {line}")
         self.logger.info("CTRL-CLKI-STOPPED: %s", line)
-        c_rise = rise["count"]
+        c_rise, c_before = rise["count"], rise["before"]
         rise_ok = t_rise is not None and t0 < t_rise <= t1 and c_rise is not None
         bite_line = (
             f"seed={cfg.seed} bark_thold={hb} bite_thold={hd} count_read=0x{c_rd:x} "
@@ -2209,6 +2226,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"rst_req_rise_ps={'none' if t_rise is None else t_rise - t0} "
             f"rst_req_rise_E_wdt={'none' if t_rise is None else self._edges('clk_wdt_i', t0, t_rise)} "
             f"count_tap_at_rise={'none' if c_rise is None else f'0x{c_rise:x}'} "
+            f"count_tap_before_rise={'none' if c_before is None else f'0x{c_before:x}'} "
             "exp=rise_in_hold,count_at_rise>=bite_thold,rst_req_end=1"
         )
         if not (rise_ok and c_rise >= hd and req_end == 1):
