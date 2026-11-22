@@ -1650,6 +1650,18 @@ module sep_uvm_top
     end
 
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
+    assign entropy_pool_axi_hs_o = {
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.r_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.r_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.ar_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.ar_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.b_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.b_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.w_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.w_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.aw_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.aw_valid
+    };
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_reset_active_probe_o =

@@ -1015,6 +1015,11 @@
 // Observation-only depth of the fabric pool's 32->64 packer. Used to
 // trigger a TRNG reset with exactly one pre-reset 32-bit half-word cached.
 `SEP_TB_OUT(logic [1:0], entropy_pool_packer_depth_o)
+// Entropy-pool AXI slave handshake: the valid and ready nets of
+// u_entropy_fifo.entropy_fifo_axi_req_i/_resp_o, sampled on clk_i. Read-only.
+// [0] aw_valid [1] aw_ready [2] w_valid [3] w_ready [4] b_valid [5] b_ready
+// [6] ar_valid [7] ar_ready [8] r_valid [9] r_ready.
+`SEP_TB_OUT(logic [9:0], entropy_pool_axi_hs_o)
 // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
