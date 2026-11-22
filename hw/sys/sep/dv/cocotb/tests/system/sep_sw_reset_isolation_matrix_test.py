@@ -1617,8 +1617,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             and len(stg_w) == len(host_wr) == n_wr
             and None not in wr_first
         )
-        # (first presented, stage handshake, stage response clock, cell text,
-        #  isolate answer, normal response) per stage transaction.
+
         # Valid can stay high across back-to-back transactions: one is first
         # presented after the previous stage handshake on its channel.
         def first_valid(hs: list[int], ch: str) -> list[int]:
@@ -1631,6 +1630,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 prev = c
             return out
 
+        # (first presented, stage handshake, stage response clock, cell text,
+        #  isolate answer, normal response) per stage transaction.
         txns = []
         stage_only_post = 0
         for k, (c, f) in enumerate(zip(stg_r, first_valid(stg_r, "ar"))):
