@@ -34,17 +34,19 @@ read that must show the armed level.
 
 Queued accesses (hw/sys/sep/doc/entropy_pool.adoc:22 names the pool an AXI
 aperture, so AMBA AXI IHI 0022 applies). Three writes go out with W late and
-BREADY held, and four DATA reads with RREADY held, all with ID 0; each leg adds
-one request every QUEUE_STEP clocks, up to QUEUED_MAX, until a response waits
-for its ready at the pool's AXI slave port. The tap entropy_pool_axi_hs_o
-records the valid and ready nets at that port. CTRL-POOL-QUEUED: of each kind, at least three requests are issued, an
-AWVALID (ARVALID) waits with AWREADY (ARREADY) low while an earlier write (read)
-has no B (R), and a B (R) waits with its ready low. CHK-POOL-QUEUED-RESP: the
-tap shows exactly one B per AW and one R per AR, the master gets one response
-per request, no BVALID or RVALID falls before its ready (IHI 0022 A3.2.1), each
-write answers SLVERR (entropy_pool.adoc:38-39), and the reads answer in issue
-order (one ID): OKAY with the next packed word while the pool holds a word, then
-SLVERR (entropy_pool.adoc:31-33). The read leg starts in the drain at level 1
+BREADY held, and four DATA reads with RREADY held, all with ID 0; the read leg
+adds one read every QUEUE_STEP clocks, up to QUEUED_MAX, until an AR waits at
+the pool's AXI slave port. The tap entropy_pool_axi_hs_o records the valid and
+ready nets at that port. CTRL-POOL-QUEUED: of each kind, at least three requests
+are issued and an AWVALID (ARVALID) waits with AWREADY (ARREADY) low while an
+earlier write (read) has no B (R). The fabric in front of the pool takes each B
+and R at once, so INFO-POOL-QUEUED-WAIT gives the clocks a B (R) waited with its
+ready low; a B (R) that falls before its ready in those clocks fails the check
+(IHI 0022 A3.2.1). CHK-POOL-QUEUED-RESP: the tap shows exactly one B per AW and
+one R per AR, the master gets one response per request, each write answers
+SLVERR (entropy_pool.adoc:38-39), and the reads answer in issue order (one ID):
+OKAY with the next packed word while the pool holds a word, then SLVERR
+(entropy_pool.adoc:31-33). The read leg starts in the drain at level 1
 or 2, so it has OKAY reads followed by empty reads. CHK-POOL-LEVEL-STEP grades
 the level across each leg.
 
@@ -147,12 +149,11 @@ STALL_CLEAR_CAP = 20000
 # holds "until the next acknowledge" (port_table.adoc:130, delegating to the sep_pkg
 # field comment), and the allowance covers one register stage and the sampling edge.
 STALL_RAS_CLEAR_LAG = 2
-# Queued-access legs. The write cells are the three live registers, written in
-# turn; the first read burst leaves at least two empty reads after the OKAY reads
-# of level 1 or 2. The fabric between the master and the pool buffers responses,
-# so a leg adds one request every QUEUE_STEP clocks, up to QUEUED_MAX, until a
-# response waits for its ready at the pool port. DV-owned counts and bounds (in
-# clocks); no check depends on their values.
+# Queued-access legs. The write cells are the three live registers; the first
+# read burst leaves at least two empty reads after the OKAY reads of level 1 or
+# 2, and the read leg adds one read every QUEUE_STEP clocks, up to QUEUED_MAX,
+# until an AR waits at the pool port. DV-owned counts and bounds (in clocks); no
+# check depends on their values.
 QUEUED_WRITE_CELLS = (POOL_STATUS, POOL_IRQ_CAUSE, POOL_POP)
 QUEUED_READS = 4
 QUEUED_READ_LEVEL = 2
@@ -605,14 +606,15 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
     def _queued_ctrl(self, part: str, watch: _PoolHsWatch, req: str, rsp: str, n: int) -> None:
         self.logger.info(
-            "CTRL-POOL-QUEUED seen: part=%s issued=%d %s_queued_clocks=%d %s_wait_clocks=%d hs=%s",
+            "CTRL-POOL-QUEUED seen: part=%s issued=%d %s_queued_clocks=%d hs=%s",
             part,
             n,
             req,
             watch.queued[req],
-            rsp,
-            watch.resp_wait[rsp],
             watch.hs,
+        )
+        self.logger.info(
+            "INFO-POOL-QUEUED-WAIT: part=%s %s_wait_clocks=%d", part, rsp, watch.resp_wait[rsp]
         )
 
     def _queued_resp(self, part: str, watch: _PoolHsWatch, req: str, rsp: str, n: int, got: int):
@@ -633,8 +635,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         """Writes with W late and BREADY held: CTRL-POOL-QUEUED, CHK-POOL-QUEUED-RESP.
 
         Three writes go out with W held until an AW waits at the pool port; then
-        W is released and writes are added until a B waits for BREADY there.
-        The FIFO drain on the same master is stopped by the caller and EDN is
+        W and BREADY are released in turn. The FIFO drain on the same master is stopped by the caller and EDN is
         disabled, so the tap sees only these writes and the level cannot move.
         """
         chans = drv.channels
@@ -649,15 +650,6 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             await watch.wait_for(lambda: watch.queued["aw"] > 0, "part=write AWVALID queued")
             await ClockCycles(cocotb.top.clk_i, QUEUE_HOLD)
             w_chan.pause = False
-
-            def b_wait() -> bool:
-                return watch.resp_wait["b"] > 0
-
-            await _issue_until(
-                evs, lambda i: drv.init_write(cells[i % len(cells)], 0xFFFF, awid=0), b_wait
-            )
-            if not b_wait():
-                watch.missing(f"part=write BVALID waiting after {len(evs)} writes")
             await ClockCycles(cocotb.top.clk_i, QUEUE_HOLD)
             b_chan.pause = False
             got = await _wait_events(evs, QUEUE_WAIT_CAP)
@@ -679,7 +671,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self._level_pair(graded0, "write", level, pool_level(st), "write")
         self.logger.info(
             "CHK-POOL-QUEUED-RESP PASS: part=write %d AW, %d B on the tap, %d master responses, "
-            "bresp=%s, no BVALID fell before BREADY, level %d kept",
+            "bresp=%s, level %d kept",
             watch.hs["aw"],
             watch.hs["b"],
             got,
@@ -691,7 +683,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         """DATA reads with RREADY held at ``level`` 1 or 2.
 
         Four reads go out, and reads are added until an AR waits at the pool
-        port with an earlier read unanswered and an R waits for RREADY there.
+        port with an earlier read unanswered.
         The reads share ID 0, so their R beats return in issue order (AMBA AXI
         IHI 0022, transaction identifiers and ordering): the first ``level`` pop
         the next packed words with OKAY and the rest find the pool empty and
@@ -708,11 +700,11 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             evs = [drv.init_read(POOL_POP, arid=0) for _ in range(QUEUED_READS)]
 
             def seen() -> bool:
-                return watch.queued["ar"] > 0 and watch.resp_wait["r"] > 0
+                return watch.queued["ar"] > 0
 
             await _issue_until(evs, lambda _i: drv.init_read(POOL_POP, arid=0), seen)
             if not seen():
-                watch.missing(f"part=read ARVALID queued and RVALID waiting after {len(evs)} reads")
+                watch.missing(f"part=read ARVALID queued after {len(evs)} reads")
             await ClockCycles(cocotb.top.clk_i, QUEUE_HOLD)
             r_chan.pause = False
             got = await _wait_events(evs, QUEUE_WAIT_CAP)
@@ -739,8 +731,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self._level_pair(graded0, "pop", level, pool_level(st), "read")
         self.logger.info(
             "CHK-POOL-QUEUED-RESP PASS: part=read %d AR, %d R on the tap, %d master responses, "
-            "rresp=%s at level %d, OKAY words %s each the next packed word, no RVALID fell "
-            "before RREADY",
+            "rresp=%s at level %d, OKAY words %s each the next packed word",
             watch.hs["ar"],
             watch.hs["r"],
             got,
