@@ -2120,8 +2120,6 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             reason = f"timeout:{exc.what} bound={exc.bound}"
         sts = await r._rd(EDN_SW_CMD_STS)
         ack_first = bool(sts & ED_STS_ACK)
-        hw_exc = await r._rd(CSRNG_HW_EXC_STS)
-        hw_inst_exc = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_HW_INST_EXC))
         # CMD_STS is checked once CMD_ACK reads 1 (edn.hjson:359-363).
         ack_reason = ""
         if not ack_first and not reason:
@@ -2129,6 +2127,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 _, sts = await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, bound, "edn_ack2")
             except TrialTimeout as exc:
                 ack_reason = f"timeout:{exc.what} bound={exc.bound}"
+        hw_exc = await r._rd(CSRNG_HW_EXC_STS)
+        hw_inst_exc = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_HW_INST_EXC))
         cmd_ack = int(bool(sts & ED_STS_ACK))
         cmd_sts = _field(sts, ED_STS_STS)
         ack_err = int(bool(await r._rd(EDN_RECOV_ALERT_STS) & ED_ACK_ERR))
