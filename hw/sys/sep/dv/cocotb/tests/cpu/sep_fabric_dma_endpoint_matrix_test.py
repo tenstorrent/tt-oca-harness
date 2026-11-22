@@ -91,7 +91,9 @@ model of the staged data and the fabric taps:
                   fails the leaf unless the written value differs from the value
                   before, so a dropped write cannot pass. The read leg copies the
                   word to a destination staged at its complement, and the
-                  destination equals the value the CPU read before the GO.
+                  destination equals the value the CPU read before the GO; the
+                  CPU first changes the word, and CTRL-DMA-KM-MBOX-RD-LIVE fails
+                  the leaf unless that value differs from the reset value 0.
                   On each leg the DMA master tap shows the AW or AR at the
                   ``SEP_IRQ_ENABLE`` address.
 * CHK-DMA-FILT-RANGE every outbound filter entry of the out_setup and stack
@@ -1764,7 +1766,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         interrupt. Fields [4:0] of SEP_IRQ_ENABLE are ``sw = rw``
         (hw/ip/key_manager/regs/km_mailbox_sep.rdl:279-332): the write leg reads
         back the written value and the restore gives the value before; the read
-        leg copies the CPU value into a destination staged at its complement.
+        leg copies the CPU value into a destination staged at its complement;
+        the firmware first changes the word, so that value differs from the
+        reset value 0.
         The DMA master tap shows the leg's AW (write) or AR (read) at the
         SEP_IRQ_ENABLE address, so a copy from another word cannot pass.
         """
@@ -1788,6 +1792,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             expect = "readback equal to the written value and restored equal to the value before"
         else:
             vals = f"cpu_value=0x{r['src_v']:08x} dst_value=0x{r['dst']:08x}"
+            # A copy of the reset value 0 also passes a read answered by a zero hole.
+            if r["src_v"] == 0:
+                msg = f"CTRL-MISSING DMA-KM-MBOX-RD-LIVE: {vals}; expected cpu_value != 0"
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            self.logger.info("CTRL-DMA-KM-MBOX-RD-LIVE seen: %s", vals)
             data_ok = r["dst"] == r["src_v"]
             expect = "the destination equal to the CPU read of SEP_IRQ_ENABLE"
         line = (

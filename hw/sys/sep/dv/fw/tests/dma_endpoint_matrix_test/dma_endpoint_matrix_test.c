@@ -1245,9 +1245,10 @@ static void nc_legs(void) {
         else
             recovery("nc_km_src");
     }
-    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source,
-    // each logged. The write sets only enable bits whose IRQ_STATUS bit reads
-    // 0, so no mailbox interrupt rises; the CPU then restores the word.
+    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source.
+    // Each leg changes only enable bits whose IRQ_STATUS bit reads 0, so no
+    // mailbox interrupt rises; the CPU restores the word after the run. The
+    // read leg copies a value that differs from the value before the leg.
     if (!timed_out) {
         uint32_t s0 = rd(KM_IRQ_STATUS), e0 = rd(KM_IRQ_ENABLE);
         uint32_t v = e0 ^ (KM_IRQ_EN_FIELDS & ~s0);
@@ -1274,11 +1275,14 @@ static void nc_legs(void) {
             recovery("nc_km_wr");
     }
     if (!timed_out) {
-        uint32_t e1 = rd(KM_IRQ_ENABLE);
-        wr(d, ~e1);
+        uint32_t s1 = rd(KM_IRQ_STATUS), e1 = rd(KM_IRQ_ENABLE);
+        wr(KM_IRQ_ENABLE, e1 ^ (KM_IRQ_EN_FIELDS & ~s1));
+        uint32_t v1 = rd(KM_IRQ_ENABLE);
+        wr(d, ~v1);
         mark('C', "nc_km_rd");
         e = nc_run(KM_IRQ_ENABLE, d);
-        nc_rec("km_rd", e, 1, e1, rd(d));
+        wr(KM_IRQ_ENABLE, e1);
+        nc_rec("km_rd", e, 1, v1, rd(d));
         if (e == 2u)
             timed_out = 1;
         else
