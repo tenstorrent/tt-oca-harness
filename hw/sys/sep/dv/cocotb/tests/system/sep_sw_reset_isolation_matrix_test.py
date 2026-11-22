@@ -147,7 +147,10 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     ``INFO-ISO-DRAIN-RESP``.
   CHK-ISO-DRAIN-POST HMAC, KMAC, Adams Bridge, TRNG: the POST and order terms
                     of CHK-ISO-DRAIN-RESP, which hold on every host path. A
-                    pass with no POST transaction logs
+                    POST write counts only after a write to the probe of D
+                    answered OKAY before a rise in the leaf, since the write is
+                    graded on its B code alone. A pass with no counted POST
+                    transaction logs
                     ``INFO-ISO-DRAIN-POST``; reach depends on the seed, and
                     ``INFO-ISO-DRAIN-POST-REACH`` counts the graded passes
                     per domain at the end of the leaf.
@@ -905,6 +908,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         self.taps.log_map(self.logger)
         self.late_fail: list[str] = []
         self.post_reach: dict[str, int] = {"hmac": 0, "kmac": 0, "abr": 0, "trng": 0}
+        self.wr_okay: set[str] = set()  # domains whose probe write answered OKAY
         self.pd = SepResetProbeDriver(self)
         self.axi = self.env.axi_agent.driver.axi
         self.hold = SepAxiReadyHold(self, "s_axi")
@@ -1661,6 +1665,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         txns.sort(key=lambda t: t[1])
         pre, amb, post, bad = [], [], [], []
         for f, c, rsp, txt, iso, normal in txns:
+            if txt.startswith("wr:") and normal and f <= reqrise:
+                self.wr_okay.add(d)
             if c < reqrise:
                 pre.append(txt)
                 ok = normal or not graded
@@ -1724,9 +1730,15 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             self.logger.info("INFO-ISO-DRAIN-RESP: %s", vals)
             # CHK-ISO-DRAIN-POST: the POST and order terms, which hold on every
             # host path, on the domains whose PRE and AMBIGUOUS terms are logged.
-            if post:
+            # A POST write is graded on its B code alone, so it counts only once a
+            # write to the probe of D has answered OKAY before a rise in this leaf.
+            counted = [t for t in post if t.startswith("rd:") or d in self.wr_okay]
+            vals += f" wr_okay_seen={int(d in self.wr_okay)} post_counted={len(counted)}"
+            if counted:
                 self._chk("CHK-ISO-DRAIN-POST", mapped and not bad, vals)
                 self.post_reach[d] += 1
+            elif bad:
+                self._chk("CHK-ISO-DRAIN-POST", False, vals)
             else:
                 self.logger.info("INFO-ISO-DRAIN-POST: not reached: %s", vals)
         # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
