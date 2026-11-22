@@ -8,6 +8,9 @@ value 0x0, and sense done still rises. Every other word loads its staged value.
 Leg B: a program request that waits for its shim response, with the program timeout
 disabled, shows ``program_busy`` and not ``program_done`` while it waits, and shows
 ``program_done`` with ``program_status`` 0 and no busy after the response.
+Leg C: a bank APB error on a post-sense READ or PROGRAM ends the command: the read
+shows ``read_done`` and no busy, and the program shows ``program_done``,
+``program_status`` 1 and no busy.
 
 Sources: ``hw/sys/sep/doc/otp_fuse_controller.adoc`` (section Fuse Sensing and Boot
 Sequencing, the sensing sequence, lines 96-103: ST_READ issues a single READ command for
@@ -16,17 +19,26 @@ set advances the counter and leaves that word unwritten, and sense done rises af
 strobe of the last word); ``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``
 (reset value 0x0 of every field except ``LC_STATE``);
 ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc`` (``EFUSE_INTERFACE_CTRL_STATUS``,
-``EFUSE_PROGRAM_CTRL``, ``EFUSE_PROGRAM_REQ_TIMEOUT``); ``hw/ip/efuse/doc/interface.adoc``
-(section Fuse Command Protocol, the response status bit and the READ command encoding).
+``EFUSE_PROGRAM_CTRL``, ``EFUSE_PROGRAM_REQ_TIMEOUT``, ``EFUSE_READ_CTRL``);
+``hw/ip/efuse/doc/interface.adoc`` (section Fuse Command Protocol, the response status
+bit and the READ command encoding; the reference SHIM sets the status on a write or
+read-back PSLVERR); ``doc/integrator/src/smu-smc.adoc`` (a set status ends a firmware
+read or program command with an error); ``doc/programmer/src/smc-programming.adoc``
+(poll until busy clears and done is set).
 
 Image: fixed TEST_DEV image of ``env/sep_efuse_plan.py`` (non-zero distinct words in
 shadow words 10 to 254, no lock bit), written before the first reset. Draws:
 ``plan(test, seed)`` (word class and word w, spare bits a, b, c, timeout cycles T, hold
-multiple m).
+multiple m); after them the leaf stream draws spare bit d, read word r (10 to 254,
+staged non-zero, no secret, digest or control word) and spare bits e and f (staged 0)
+and s (staged 1), outside the control words and distinct from a, b, c, d.
 
 Hooks: ``efuse_sense_status_inject_i`` with ``efuse_sense_status_word_i`` (status bit on
-the sense response of word w) and ``efuse_shim_resp_hold_i`` (the shim response of a
-program request is withheld while it is high).
+the sense response of word w); ``efuse_status_inject_read_i``,
+``efuse_status_inject_write_i`` and ``efuse_status_inject_readback_i`` with the same
+word select (after sense done, PSLVERR on the bank response of a READ, of the write of
+a PROGRAM, or of its read-back, to that word); ``efuse_shim_resp_hold_i`` (the shim
+response of a program request is withheld while it is high).
 
 Checkers:
   CHK-SENSE-STATUS  sense shape, graded in both senses (``sense=control``, then
@@ -79,6 +91,22 @@ Checkers:
                     Debug and Functional Feature Control and Per-LC-state Feature
                     Control Profile; an unwritten ``LC_STATE`` word decodes as INVALID,
                     which disables every feature). Word 255 is no profile input.
+  CHK-PROG-TIMEOUT-WAIT  a held program with the timeout enabled at T cycles: at the
+                    (T-1)-th clock after the first clock ``efuse_program_busy_o`` reads 1,
+                    ``efuse_program_busy_o`` reads 1 and ``efuse_program_done_o`` reads 0.
+                    A missing busy rise fails.
+  CHK-READ-BANK-ERR  after a reset, a frontdoor READ of word r with the READ bank
+                    error on: the first ``EFUSE_READ_CTRL`` read with ``read_done`` 1,
+                    inside the poll bound, shows ``read_busy`` 0. No done fails.
+  CHK-PROG-BANK-ERR  one line per leg: ``leg=write`` (bit e, write error),
+                    ``leg=write_set`` (bit s, which reads 1 at the direct read before the
+                    go, so the read-back passes; write error), ``leg=readback`` (bit f,
+                    read-back error). After the done poll ``program_done`` 1,
+                    ``program_busy`` 0, ``program_status`` 1, and the one shim response at
+                    the ``sep`` input carried status 1.
+                    Control (``CTRL-BANK-ERR-INJ``, one line per leg including
+                    ``leg=read``): from the go to the done there is exactly one shim
+                    response at the ``sep`` input; for the read leg it carries status 1.
 
 Log-only: ``OBS-PROG-TIMEOUT`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
@@ -92,12 +120,17 @@ and its cycle count at the reset value: ``program_done``, ``program_status`` and
 request, and bits d and c at the direct OTP read; the specification does not state
 whether the interface serves a request after a program timeout). Bit d enters the
 shadow golden only when the direct read shows it programmed.
+``OBS-READ-BANK-ERR`` (``read_status`` and ``EFUSE_READ_INTERFACE_READ_DATA`` of the
+READ of word r with the bank error, and the staged word; the specification does not
+state the read status cause or the read data after a bank error).
+``INFO-PROG-BANK-ERR-BIT`` (bits e and f at the direct read after their legs; a bit
+that reads 1 enters the shadow golden).
 
 FCOV: the graded window is open over the second injected sense and the held program,
 each to its own grade. The control sense and the first injected sense are graded
 with the window closed, so the window opens on a sense only after the same check has
-passed. Every sample of the leaf (``cp_sense_status_word``, ``cp_sense_shape``,
-``x_prog_lifecycle``) is held with the tag of its graded step (``set_ef_hold_tag``)
+passed. The bank-error legs run with the window closed and sample nothing. Every
+sample of the leaf (``cp_sense_status_word``, ``cp_sense_shape``, ``x_prog_lifecycle``) is held with the tag of its graded step (``set_ef_hold_tag``)
 and samples only when the leaf writes that tag to the pass label
 (``set_ef_hold_pass``) after the check of that instance passed: CHK-SENSE-STATUS of
 the second injected sense, and CHK-PROG-RESET with its control and CHK-PROG-LIFE
@@ -129,6 +162,7 @@ from env.sep_efuse_plan import (
     plan,
     program_ctrl_word,
     read_ctrl_word,
+    used_bits,
     zero_bits,
 )
 from env.sep_efuse_test_lib import (
@@ -163,6 +197,7 @@ _M_PG_DATA = _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _M_PG_FIELDS = _IC.mask32("EFUSE_PROGRAM_CTRL")
 _PG_RESET = _IC.reset32("EFUSE_PROGRAM_CTRL")
 _M_RD_DONE = _IC.field_mask("EFUSE_READ_CTRL", "read_done")
+_M_RD_BUSY = _IC.field_mask("EFUSE_READ_CTRL", "read_busy")
 _M_RD_STATUS = _IC.field_mask("EFUSE_READ_CTRL", "read_status")
 _RD_DATA_ADDR = _IC.addr("EFUSE_READ_INTERFACE_READ_DATA")
 # One shadow word per 32-bit register of the MAP window.
@@ -275,6 +310,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         "CHK-PROG-LIFE",
         "CHK-PROG-RESET",
         "CHK-SENSE-STATUS-CTRLWORD-FEAT",
+        "CHK-PROG-TIMEOUT-WAIT",
+        "CHK-READ-BANK-ERR",
+        "CHK-PROG-BANK-ERR",
     )
 
     async def _rd(self, addr: int) -> int:
@@ -498,6 +536,84 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         close_graded_window(self.logger)
         return ok
 
+    def _draw_spare(self, name: str, cands: list, taken: set[int]) -> dict:
+        """One spare bit from ``cands`` ((field, (word, bit)) pairs), not in ``taken``."""
+        fld, (ww, bit) = self.p.draw.choice(
+            name, [(fl, wb) for fl, wb in cands if bit_address(fl, *wb) not in taken]
+        )
+        spare = {"field": fld, "word": ww, "bit": bit, "addr": bit_address(fld, ww, bit)}
+        self.logger.info(
+            "INFO-DRAW seed=%d name=%s value={field:%s,word:%d,bit:%d,addr:0x%x}",
+            self.seed,
+            name,
+            fld,
+            ww,
+            bit,
+            spare["addr"],
+        )
+        return spare
+
+    async def _resp_mon(self, out: list[int]) -> None:
+        """Status of every shim response strobe at the ``sep`` input, into ``out``."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd_known(dut.efuse_shim_resp_valid_o) & 1:
+                out.append(self.rd_known(dut.efuse_shim_resp_status_o) & 1)
+
+    async def _prog_bank_err(
+        self, leg: str, spare: dict, mode, bound: int, pre_bit: int | None
+    ) -> None:
+        """One program of ``spare`` with the bank-error mode ``mode`` on its word.
+
+        Grades ``CHK-PROG-BANK-ERR``: after the done, ``program_done`` 1,
+        ``program_busy`` 0, ``program_status`` 1, and the one shim response at the
+        ``sep`` input carried status 1. ``CTRL-BANK-ERR-INJ`` requires that one response.
+        """
+        dut = cocotb.top
+        dut.efuse_sense_status_word_i.value = spare["addr"] // 32
+        resp: list[int] = []
+        mon = cocotb.start_soon(self._resp_mon(resp))
+        mode.value = 1
+        await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        go = self.clk
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(spare["addr"], data=1))
+        pg = await self._poll_pg(_M_PG_DONE, bound)
+        clks = self.clk - go
+        pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
+        mode.value = 0
+        mon.cancel()
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(spare["addr"], data=1, enable=0, go=0))
+        resp_status = ",".join(map(str, resp)) or "none"
+        self._ctrl(
+            "BANK-ERR-INJ",
+            len(resp) == 1,
+            leg=leg,
+            addr=spare["addr"],
+            resp_n=len(resp),
+            resp_status=resp_status,
+        )
+        extra = {} if pre_bit is None else {"pre_bit": pre_bit}
+        self._grade(
+            "PROG-BANK-ERR",
+            pg is not None
+            and _b(pg, _M_PG_DONE) == 1
+            and _b(pg, _M_PG_BUSY) == 0
+            and _b(pg, _M_PG_STATUS) == 1
+            and resp == [1],
+            leg=leg,
+            bit_addr=spare["addr"],
+            **extra,
+            resp_n=len(resp),
+            resp_status=resp_status,
+            pg="none" if pg is None else f"0x{pg:08x}",
+            done="none" if pg is None else _b(pg, _M_PG_DONE),
+            busy="none" if pg is None else _b(pg, _M_PG_BUSY),
+            status="none" if pg is None else _b(pg, _M_PG_STATUS),
+            clks=clks,
+        )
+
     async def _clk_counter(self) -> None:
         while True:
             await RisingEdge(cocotb.top.clk_i)
@@ -531,6 +647,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         dut.efuse_sense_status_inject_i.value = 0
         dut.efuse_sense_status_word_i.value = 0
         dut.efuse_shim_resp_hold_i.value = 0
+        dut.efuse_status_inject_read_i.value = 0
+        dut.efuse_status_inject_write_i.value = 0
+        dut.efuse_status_inject_readback_i.value = 0
         self.clk = 0
         cocotb.start_soon(self._clk_counter())
 
@@ -742,12 +861,34 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         self.burned.append(b)
         self._set_golden()
 
-        # Step 10: timeout cell, logged only.
+        # Step 10: timeout cell. Before T graded at the program taps, after T logged.
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_EN | (t_cyc & _TMO_CYC))
         dut.efuse_shim_resp_hold_i.value = 1
+        wait: dict = {"rise": None, "at": None, "busy": None, "done": None}
+
+        async def _wait_sample() -> None:
+            # The wait cannot start before busy rises, so T-1 clocks after the rise
+            # the interface has waited at most T-1 cycles.
+            for _ in range(poll_bound):
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if self.rd_known(dut.efuse_program_busy_o) & 1:
+                    wait["rise"] = self.clk
+                    break
+            if wait["rise"] is None:
+                return
+            await ClockCycles(dut.clk_i, t_cyc - 1)
+            await ReadOnly()
+            wait["at"] = self.clk
+            wait["busy"] = self.rd_known(dut.efuse_program_busy_o) & 1
+            wait["done"] = self.rd_known(dut.efuse_program_done_o) & 1
+
+        wait_task = cocotb.start_soon(_wait_sample())
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(c["addr"], data=1))
         await ClockCycles(dut.clk_i, m * t_cyc)
+        if not wait_task.done():
+            wait_task.cancel()
         v = await self._rd(PROGRAM_CTRL_ADDR)
         dut.efuse_shim_resp_hold_i.value = 0
         self.logger.info(
@@ -759,6 +900,17 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             _b(v, _M_PG_DONE),
             _b(v, _M_PG_STATUS),
             c["addr"],
+        )
+        self._grade(
+            "PROG-TIMEOUT-WAIT",
+            wait["at"] is not None and wait["busy"] == 1 and wait["done"] == 0,
+            cycles=t_cyc,
+            held=f"{m}x",
+            busy_rise_clk="none" if wait["rise"] is None else wait["rise"],
+            sample_clk="none" if wait["at"] is None else wait["at"],
+            busy="none" if wait["busy"] is None else wait["busy"],
+            done="none" if wait["done"] is None else wait["done"],
+            bit_addr=c["addr"],
         )
         await ClockCycles(dut.clk_i, 64)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
@@ -821,6 +973,106 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         if d_rd is not None and d_rd[1] == 0 and d_got == 1:
             self.burned.append(d)
             self._set_golden()
+
+        # Step 11b: a bank APB error on a post-sense READ (word r) and on a PROGRAM in
+        # its write phase (bit e, and bit s that already reads 1, so the read-back
+        # passes and only the write error can set the status) and in its read-back
+        # phase (bit f). The reset first clears the interface state of the step 10 timeout.
+        # The graded window is closed and the hold tag is 0 for the whole step.
+        abcd = abc | {d["addr"]}
+        r_cands = [
+            k
+            for k in range(10, _N_WORDS - 1)
+            if staged[k] and k not in _HIDDEN_WORDS and k not in SHIM_CTRL_WORDS
+        ]
+        r = p.draw.choice("read_word_r", r_cands)
+        self.chk.info("DRAW", name="read_word_r", value=r)
+        e = self._draw_spare("spare_bit_e", d_cands, abcd)
+        s_cands = [
+            (fl, wb)
+            for fl in SPARE_FIELDS
+            for wb in used_bits(fl)
+            if (staged[field_word(fl) + wb[0]] >> wb[1]) & 1
+            and field_word(fl) + wb[0] not in SHIM_CTRL_WORDS
+        ]
+        s = self._draw_spare("spare_bit_s", s_cands, abcd | {e["addr"]})
+        f = self._draw_spare("spare_bit_f", d_cands, abcd | {e["addr"]})
+        await rst_pulse(self, hold=_RST_HOLD)
+        if await clocks_to_sense(self, sense_bound, started=True) is None:
+            raise AssertionError(f"sense done missing after the bank-error reset seed={seed}")
+
+        dut.efuse_sense_status_word_i.value = r
+        r_addr = 32 * r
+        resp: list[int] = []
+        mon = cocotb.start_soon(self._resp_mon(resp))
+        dut.efuse_status_inject_read_i.value = 1
+        rd_go = self.clk
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(r_addr))
+        rd = None
+        while self.clk - rd_go < poll_bound:
+            v = await self._rd(READ_CTRL_ADDR)
+            if v & _M_RD_DONE:
+                rd = v
+                break
+            await ClockCycles(dut.clk_i, 8)
+        rd_clks = self.clk - rd_go
+        rd_data = await self._rd(_RD_DATA_ADDR)
+        dut.efuse_status_inject_read_i.value = 0
+        mon.cancel()
+        await self._wr(READ_CTRL_ADDR, 0)
+        self._ctrl(
+            "BANK-ERR-INJ",
+            resp == [1],
+            leg="read",
+            addr=r_addr,
+            resp_n=len(resp),
+            resp_status=",".join(map(str, resp)) or "none",
+        )
+        self._grade(
+            "READ-BANK-ERR",
+            rd is not None and _b(rd, _M_RD_BUSY) == 0,
+            word=r,
+            addr=r_addr,
+            rd="none" if rd is None else f"0x{rd:08x}",
+            done=int(rd is not None),
+            busy="none" if rd is None else _b(rd, _M_RD_BUSY),
+            clks=rd_clks,
+        )
+        self.chk.obs(
+            "READ-BANK-ERR",
+            word=r,
+            staged=f"0x{staged[r]:08x}",
+            read_status="none" if rd is None else _b(rd, _M_RD_STATUS),
+            read_data=f"0x{rd_data:08x}",
+            graded=0,
+        )
+
+        for leg, spare, mode in (
+            ("write", e, dut.efuse_status_inject_write_i),
+            ("write_set", s, dut.efuse_status_inject_write_i),
+            ("readback", f, dut.efuse_status_inject_readback_i),
+        ):
+            pre_bit = None
+            if leg == "write_set":
+                _word_s, pre_bit = await self._direct_bit(spare)
+                if pre_bit != 1:
+                    raise AssertionError(
+                        f"SETUP FAIL seed={seed} reason=bit_s_clear addr={spare['addr']}"
+                    )
+            await self._prog_bank_err(leg, spare, mode, poll_bound, pre_bit)
+            if leg == "write_set":
+                continue
+            word_x, bit_x = await self._direct_bit(spare)
+            self.chk.info(
+                "PROG-BANK-ERR-BIT",
+                leg=leg,
+                bit_addr=spare["addr"],
+                word=f"0x{word_x:08x}",
+                bit=bit_x,
+            )
+            if bit_x == 1:
+                self.burned.append(spare)
+                self._set_golden()
 
         # Step 12: status bit on the sense response of one control word.
         cw = int(p.leg["ctrl_word"])

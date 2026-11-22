@@ -128,6 +128,15 @@
 // carries pslverr = 1. Data and ready are not forced.
 `SEP_TB_IN(logic, efuse_sense_status_inject_i)
 `SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
+// eFuse status inject, post-sense modes. Default 0. Each acts only after
+// fuse sense done, on the bank access to word efuse_sense_status_word_i, and
+// forces pslverr = 1 on one shim copy of the bank response:
+// _read_i on a frontdoor READ (apb_fuse_bank_resp_r), _write_i on the bank
+// write of a PROGRAM (apb_fuse_bank_resp_w), _readback_i on the bank
+// read-back of a PROGRAM (apb_fuse_bank_resp_w_readback).
+`SEP_TB_IN(logic, efuse_status_inject_read_i)
+`SEP_TB_IN(logic, efuse_status_inject_write_i)
+`SEP_TB_IN(logic, efuse_status_inject_readback_i)
 // eFuse shim response hold. Default 0. While 1 and a PROGRAM command is at
 // the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i is forced to 0.
 `SEP_TB_IN(logic, efuse_shim_resp_hold_i)
@@ -1725,6 +1734,14 @@
 // sensing FSM (efuse_shadow_regs). Read-only taps.
 `SEP_TB_OUT(logic, efuse_shadow_resp_valid_o)
 `SEP_TB_OUT(logic, efuse_shadow_sense_done_o)
+// Registered APB response of the shadow map (efuse_shadow_regs apb_resp_q):
+// pready and pslverr. Read-only taps.
+`SEP_TB_OUT(logic, efuse_shadow_apb_pready_o)
+`SEP_TB_OUT(logic, efuse_shadow_apb_pslverr_o)
+// Program-fail drop of the OTP bank model (prog_fail_act, one clock per
+// dropped bank write) and the APB paddr of that write. Read-only taps.
+`SEP_TB_OUT(logic, efuse_bank_prog_drop_o)
+`SEP_TB_OUT(sep_efuse_pkg::addr_t, efuse_bank_prog_drop_paddr_o)
 // APB select of the shim request to the OTP bank model. Read-only tap.
 `SEP_TB_OUT(logic, efuse_bank_psel_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).

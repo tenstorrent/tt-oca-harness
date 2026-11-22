@@ -27,8 +27,9 @@ The seed draws one leaf kind and its t=0 image through ``sep_efuse_plan.plan``
 the exempt cell 1, the order cell 2 and the chain leg 2.
 
 With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
-``_PIN`` in place of the run seed: ``chain`` draws the chain leg and ``single`` the
-single-bit image (its plan seed draws the write-lock kind of slot 1). The entry that sets it stages the same image
+``_PIN`` in place of the run seed: ``chain`` draws the chain leg, ``single`` the
+single-bit image (its plan seed draws the write-lock kind of slot 1) and ``exempt`` the
+exempt cell (its plan seed draws ``LC_STATE`` bit 3 for the program). The entry that sets it stages the same image
 with ``+sep_efuse_preload``. The run seed stays the ``seed=`` of every check line;
 INFO-SEED prints the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and
 ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell.
@@ -372,6 +373,7 @@ _KIND_CHECK = {k: v[0] for k, v in _EVIDENCE.items()}
 _PIN = {
     "chain": (4, "chain", {}),
     "single": (5, "single_bit", {"slot": 1, "lock_kind": "write"}),
+    "exempt": (44, "exempt", {}),
 }
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
 # (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
