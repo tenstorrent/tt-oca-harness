@@ -336,6 +336,9 @@ class sep_km_aes_sram_cpu_rand_test(sep_base_test):
         patch_param_block(_DTCM_HEX, dtcm, P_MAGIC, plan.param_words())
         self.sb.expected_line = _BANNER
         self.con = SepFwConsole(self).start()
+        # +esrc_noise_force routes this driver onto the ring-oscillator noise
+        # input; without it the ESRC health window never fills.
+        noise = self.start_esrc_noise_driver()
         boot_err: AssertionError | None = None
         try:
             await self.boot_firmware(
@@ -349,6 +352,7 @@ class sep_km_aes_sram_cpu_rand_test(sep_base_test):
         except AssertionError as exc:
             boot_err = exc
         finally:
+            await noise.stop()
             await self.con.stop()
 
         for rec in self.con.records("INFO-KMAES-CMD"):
