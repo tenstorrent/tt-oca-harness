@@ -1172,7 +1172,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         # routed address. The DMA master drives OTHERS, AxUSER zero (fabric.adoc,
         # Transaction Routing); the AP path sets OTHERS, graded on all AxUSER
         # bits, and the SMU path sets SEP's ID: SepSrcIdGrade grades it as 0xF and
-        # one value on every SMU-path beat, with AxUSER[11:4] 0.
+        # one value on every SMU-path beat, with AxUSER[11:4] 0. No probe shows
+        # the DMA master's AxUSER, so the beats carry no issued value.
         grade = SepSrcIdGrade("CPU")
         legs = (
             ("out_ap", "ap", [self.ep.ap_out, self.ep.ap_out + 4]),
@@ -1183,7 +1184,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             leg_i = self._leg_index(leg)
             aws = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr != STDOUT]
             if path == "smu":
-                bad = [f"{b.fmt()} ({why})" for b in aws if (why := grade.note(b.user, 0))]
+                bad = [f"{b.fmt()} ({why})" for b in aws if (why := grade.note(b.user))]
                 want = "not OTHERS"
             else:
                 want = f"0x{outbound_user(path):03x}"
@@ -1209,7 +1210,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             f"CHK-DMA-USER FAIL: the CPU store to the SMU window carries {bad}; expected SEP's ID "
             f"0x{SEP_SOURCE_ID:x}"
         )
-        why = grade.finish(min_nonzero_issued=0)
+        why = grade.finish(min_nonzero_issued=None)
         assert why is None, (
             f"CHK-DMA-USER FAIL: SMU-path source ID over the DMA beats and the CPU store: {why}"
         )

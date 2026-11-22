@@ -124,8 +124,7 @@ class SepSrcIdGrade:
     * per leaf (``finish``): every beat carries the same AxUSER[3:0], and the
       issued AxUSER[3:0] of the beats show the replacement. A constant output
       over two distinct issued values differs from at least one of them, so it
-      is a replacement and not a pass-through. An issued OTHERS (0) shows the
-      replacement on its own, because the output is not 0.
+      is a replacement and not a pass-through.
 
     The source ID is AxUSER[3:0] (the "Source ID carrier" record,
     ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``). ``chk_line`` gives the
@@ -166,13 +165,13 @@ class SepSrcIdGrade:
     def value(self) -> int | None:
         return self.observed[0] if self.observed else None
 
-    def finish(self, *, min_nonzero_issued: int = 2) -> str | None:
+    def finish(self, *, min_nonzero_issued: int | None = 2) -> str | None:
         """Leaf-level failure reason, or None when the leaf passes.
 
         ``min_nonzero_issued`` is the number of distinct non-zero issued
         AxUSER[3:0] values the beats must carry (2 for a bench master that
-        drives the source ID). With 0, the beats must include one issued
-        OTHERS (0) instead (the secure DMA, which drives OTHERS).
+        drives the source ID). With None, no beat has a measured issued value,
+        and only the per-beat grade and the one value over all beats apply.
         """
         if not self.observed:
             return "no SMU-path beat was graded"
@@ -180,11 +179,7 @@ class SepSrcIdGrade:
         if len(vals) != 1:
             return f"AxUSER[3:0] differs between SMU-path beats: {_hexset(vals)}"
         nonzero = self.issued - {OTHERS_SOURCE_ID}
-        if min_nonzero_issued == 0:
-            proof = OTHERS_SOURCE_ID in self.issued
-        else:
-            proof = len(nonzero) >= min_nonzero_issued
-        if not proof:
+        if min_nonzero_issued is not None and len(nonzero) < min_nonzero_issued:
             return (
                 f"the SMU-path beats were issued with AxUSER[3:0] {_hexset(self.issued)}; "
                 "the replacement is not visible on them"
@@ -194,7 +189,7 @@ class SepSrcIdGrade:
     def summary(self) -> str:
         return (
             f"beats={len(self.observed)} constant={int(len(set(self.observed)) == 1)} "
-            f"not_others=1 issued_src_ids={_hexset(self.issued)}"
+            f"not_others=1 issued_src_ids={_hexset(self.issued) if self.issued else 'unmeasured'}"
         )
 
     def chk_line(self) -> str:
