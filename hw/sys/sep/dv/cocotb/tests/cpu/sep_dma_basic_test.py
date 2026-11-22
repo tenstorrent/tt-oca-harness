@@ -23,12 +23,19 @@ continuous knobs come from the run seed (patched into the firmware param block).
 Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
 the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which
 the boot scoreboard gates on. The firmware self-checks (each with a positive PASS
-line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock),
-CHK-RANGE-REGWEN (an unconfigured range raises range_valid_error alone, an
-inverted range base_limit_error alone, then the rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
-expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
+line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock:
+while BUSY, SRC_ADDR_LO reads outside 0xDEADBEEF to 0xDEADBEEF plus the transfer
+length, the written value and its hardware advance, and the PASS line prints the
+readback, since hardware also writes SRC_ADDR_LO), CHK-RANGE-REGWEN
+(an unconfigured range raises range_valid_error alone, an inverted range
+base_limit_error alone, then the rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
+expected images + neighbor), CHK-CHUNK-DONE (the two-chunk WRAP copy raises
+STATUS.chunk_done after its non-final chunk, and its write-one-to-clear reads back 0
+before the next GO; INFO-CHUNK-DONE-FINAL logs the bit after the final chunk),
+CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
-raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
+raising the ERROR_CODE bit of its misaligned side and no non-address bit, then a
+recovery copy; the other address bit is logged as INFO-ERR-ADDR-OTHER), CHK-HOSTINTG
 (DMA-issued command under dma_host_intg_inject_i -> exclusive host_path_err
 + aggregator [41], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
 -> exclusive host_path_err with the pin low, CLEAR, recovery), CHK-ERR-ASID (unencoded
@@ -56,7 +63,12 @@ injected command, from the CPU reads of that register on the PR-LSU-XBAR tap
 (``env/sep_fabric_tap.py``). CHK-HOSTINTG-STICKY requires sep_internal_interrupts[41]
 to stay 1 from the pin release to the firmware CHK-HOSTINTG-HELD marker, which the
 firmware prints after it reads DMA_BUS_ERR_STATUS = host_path_err and before it
-writes DMA_BUS_ERR_CLEAR.
+writes DMA_BUS_ERR_CLEAR. CTRL-HOSTINTG-HELD-PIN requires that firmware held read,
+the last CPU read of DMA_BUS_ERR_STATUS on the tap before CHK-HOSTINTG-HELD, to come
+on a clock after the pin release with ``dma_host_intg_inject_i`` = 0, and at least
+one graded clock of CHK-HOSTINTG-STICKY; otherwise it logs ``CTRL-MISSING
+HOSTINTG-HELD-PIN`` and the leaf raises, because a held read before the pin release
+does not show that the latch holds after the pin falls.
 
 FCOV: the graded window of this leaf opens when the CPU is released and closes after
 the host has parsed the console. ``cp_error_class_exclusive`` holds each cell at the
@@ -285,6 +297,7 @@ class sep_dma_basic_test(sep_base_test):
             raise AssertionError(arm_line)
         self.logger.info(arm_line)
         dut.dma_host_intg_inject_i.value = 0
+        drop_ps = get_sim_time("ps")
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
 
         # The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
@@ -309,6 +322,29 @@ class sep_dma_basic_test(sep_base_test):
                 raise AssertionError("firmware finished without printing CHK-HOSTINTG-HELD")
         else:
             raise AssertionError("firmware never printed CHK-HOSTINTG-HELD")
+        # The last DMA_BUS_ERR_STATUS read before CHK-HOSTINTG-HELD is the firmware
+        # held read. It shows the latch holds after the pin falls only if it comes
+        # on a later clock than the pin release, with the pin low.
+        held_ps = get_sim_time("ps")
+        to_held = [r for r in self._status_reads if r[0] <= held_ps]
+        held_read = to_held[-1] if to_held else (None, None)
+        after_drop = sum(1 for r in to_held if r[0] > drop_ps)
+        held_ok = (
+            held_read[0] is not None
+            and held_read[0] > drop_ps
+            and held_read[1] == 0
+            and held_clocks > 0
+        )
+        held_fields = (
+            f"seed={self.random_seed()} pin_release_ps={drop_ps} held_read_ps={held_read[0]} "
+            f"pin_at_held_read={held_read[1]} reads_after_release={after_drop} "
+            f"held_clocks={held_clocks}"
+        )
+        if not held_ok:
+            held_line = f"CTRL-MISSING HOSTINTG-HELD-PIN: {held_fields}"
+            self.logger.error(held_line)
+            raise AssertionError(held_line)
+        self.logger.info("CTRL-HOSTINTG-HELD-PIN PASS: %s", held_fields)
         self.logger.info(
             "CHK-HOSTINTG-STICKY PASS: sep_internal_interrupts[41]=1 on %d clocks from the "
             "pin release to CHK-HOSTINTG-HELD",
@@ -534,6 +570,7 @@ class sep_dma_basic_test(sep_base_test):
         # FAIL, and the scoreboard verdict lands later.
         for needle, what in (
             ("CHK-COPY-MODE PASS:", "the INCR/FIXED/WRAP walk"),
+            ("CHK-CHUNK-DONE PASS:", "the STATUS.chunk_done grade of the two-chunk copy"),
             ("CHK-WIDTH PASS:", "the 1B/2B/4B width walk"),
             ("CHK-ERR-ASID PASS:", "the unencoded-ASID error legs"),
             ("CHK-ERR-SIZE PASS:", "the unencoded-width error leg"),

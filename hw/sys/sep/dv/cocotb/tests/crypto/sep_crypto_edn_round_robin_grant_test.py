@@ -408,6 +408,20 @@ class _ExtFeed:
 class sep_crypto_edn_round_robin_grant_test(sep_base_test):
     """Clients that request together are granted by round robin; all four clients are served."""
 
+    required_evidence = (
+        "CHK-RND-REQ",
+        "CHK-RND-CONSUME",
+        "CHK-DUAL-REQ",
+        "CHK-KMAC-REQ",
+        "CHK-NO-STARVE",
+        "CHK-FOUR-CLIENT",
+        "CHK-KMAC-CLIENT",
+        "CHK-ROUTING",
+        "CHK-EDN-ARB-RR",
+        "CHK-DONE-RW1C",
+        "CHK-ERR",
+    )
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
         await self.bring_up_no_cpu()

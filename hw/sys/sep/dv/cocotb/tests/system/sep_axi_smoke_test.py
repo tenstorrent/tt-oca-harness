@@ -5,9 +5,8 @@
 The CPU-LSU master reads SEP_LOCAL_BASE_ADDR and writes and reads back four
 SEP_CPU_CTRL registers. Each read must return the expected value (CHK-DECODE,
 CHK-WR-RB, in seq_lib/sep_axi_smoke_seq.py), and the scoreboard judges every read
-value and rejects no access (CHK-NONVAC). No document states the response of these
-accesses, so OBS-RESP logs each response code, not graded. Run mode: no_cpu with
-+skip_fuse_sense.
+value and rejects no access (CHK-NONVAC). The shared scoreboard grades OKAY;
+INFO-RESP logs each code. Run mode: no_cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ class sep_axi_smoke_test(sep_base_test):
         await self.start_seq(seq)
 
         self.logger.info(
-            "OBS-RESP LOG accesses=%d %s",
+            "INFO-RESP accesses=%d %s chk=CHK-NONVAC",
             len(seq.responses),
             " ".join(f"{op}@0x{addr:08x}={RESP_NAME.get(c, c)}" for op, addr, c in seq.responses),
         )
