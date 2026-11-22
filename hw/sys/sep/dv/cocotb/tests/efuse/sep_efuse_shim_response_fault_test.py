@@ -147,7 +147,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_chk_log import SepChkLog, word_digest
-from env.sep_efuse_bank_watch import WORD_MASK, SepShimCmdMonitor
+from env.sep_efuse_bank_watch import WORD_MASK, SepShimCmdMonitor, bank_words
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     DIGEST_FIELDS,
@@ -1124,6 +1124,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
 
         # Step 12: status bit on the sense response of one control word.
         cw = int(p.leg["ctrl_word"])
+        # The bank keeps the programs of the steps before (a spare bit can lie in word
+        # 255), so the sense of word cw carries the bank word, not the staged one.
+        bank_cw = bank_words(self.rd_known(dut.otp_bank_probe_o))[cw]
         dut.efuse_sense_status_word_i.value = cw
         dut.efuse_sense_status_inject_i.value = 1
         cw_rec = _SenseRec()
@@ -1136,7 +1139,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             cw_task.cancel()
         await cw_rec.stop()
         # The inject reached the drawn word: exactly one response of the sense
-        # carries status 1, at word cw, with the staged data.
+        # carries status 1, at word cw, with the bank data.
         cw_err = [k for k, (st, _d) in enumerate(cw_rec.resp) if st]
         cw_resp = cw_rec.resp[cw] if len(cw_rec.resp) > cw else None
         self._ctrl(
@@ -1145,11 +1148,12 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             and len(cw_rec.resp) == _N_WORDS
             and cw_err == [cw]
             and cw_resp is not None
-            and cw_resp[1] == staged[cw],
+            and cw_resp[1] == bank_cw,
             word=cw,
             n_resp=len(cw_rec.resp),
             err_idx=cw_err[:4],
             data="none" if cw_resp is None else f"0x{cw_resp[1]:08x}",
+            bank=f"0x{bank_cw:08x}",
             staged=f"0x{staged[cw]:08x}",
         )
         await ReadOnly()
