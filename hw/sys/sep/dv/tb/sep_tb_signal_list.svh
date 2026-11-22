@@ -124,8 +124,8 @@
 // The LC_STATE shadow and the lifecycle controller decoder are not forced.
 `SEP_TB_IN(logic, jtag_filter_lc_sigint_inject_i)
 // eFuse sense status inject. Default 0. While 1, during fuse sense only, the
-// bank model APB response to the READ of word efuse_sense_status_word_i
-// carries pslverr = 1. Data and ready are not forced.
+// shim's read-path copy of the bank model APB response to the READ of word
+// efuse_sense_status_word_i carries pslverr = 1. Data and ready are not forced.
 `SEP_TB_IN(logic, efuse_sense_status_inject_i)
 `SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
 // eFuse status inject, post-sense modes. Default 0. Each acts only after

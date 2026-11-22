@@ -3121,7 +3121,8 @@ module sep_uvm_top
     // input routed by the READ command). It is a variable of an always_comb
     // block that also drives the APB request, so the block runs again on the
     // next request change and the released pslverr takes the bank value again
-    // within one clock. The bank pslverr itself has a constant driver, so a
+    // at that change; the shim reads that copy only in ST_READ_WAIT, after a new
+    // request. The bank pslverr itself has a constant driver, so a
     // released force there would keep the value 1 (Verilator release of a
     // variable) and fail every later sense word, also after rst_ni.
     // The sense streams words 0..255 from bit address 0 and the shim reads

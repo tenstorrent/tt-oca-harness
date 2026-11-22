@@ -41,8 +41,9 @@ Checkers:
   CHK-WIN-PRESENSE-RESET  after a cold reset that cut a shadow-map read with a live
                   response, the first OTP JTAG read of the same word answers SLVERR
                   while ``sep_fuse_sense_done_o`` reads 0 (``otp_fuse_controller.adoc``,
-                  Fuse Sensing and Boot Sequencing); after sense done the same read
-                  answers OKAY with the staged word.
+                  Fuse Sensing and Boot Sequencing); after sense done a read of a
+                  second word j, staged with a different value, answers OKAY with the
+                  staged word of j.
 
 Control: ``CTRL-LCC-WR-TAP``: the ``FEAT_CTRL`` write reaches the AXI-Lite port of
 the lifecycle register block. The write tap (``lcc_wr_count_probe_o``,
@@ -59,7 +60,9 @@ fall, the shadow APB response tap (``efuse_shadow_apb_pready_o``,
 ``efuse_shadow_apb_pslverr_o``) shows a live OKAY response, sense done reads 1, the
 JTAG read of the word has not completed, and no rising edge lies between that sample
 and the fall. ``rst_ni`` clears the tapped register, so the tap is not read after
-the fall.
+the fall. ``CTRL-WIN-PRESENSE-REACH``: during the pre-sense JTAG read the same tap
+shows ``pready`` 1 with ``pslverr`` 1 while ``sep_fuse_sense_done_o`` reads 0, so the
+read reached the shadow file and not only the JTAG lifecycle filter.
 
 Log-only: the response and read data past the extent and in the reserved span
 (``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``),
@@ -729,12 +732,14 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         await self._reset_on_live_response(p, seed)
         self.chk.finish()
 
-    def _presense_word(self, p, seed: int) -> tuple[int, int]:
-        """Draw the shadow word of step 21: (word index, staged value).
+    def _presense_word(self, p, seed: int) -> tuple[int, int, int, int]:
+        """Draw the shadow words of step 21: (word i, staged i, word j, staged j).
 
         Candidates hold a staged value that is not 0, not all ones and not the error
         data, in a field that is not a secret, a digest, ``LC_STATE`` or a shadow
         register with writable bits, and are not the last word (step 13 control read).
+        Word j, read after sense done, is a candidate whose staged value differs from
+        that of word i, so a response left from the cut read of word i fails.
         """
         skip = {*SECRET_FIELDS, *DIGEST_FIELDS, *SHADOW_RW_FIELDS, "LC_STATE"}
         cands = [
@@ -746,9 +751,13 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             and 4 * idx not in self.rw_offsets
             and p.image.words[idx] not in (0, _WORD, EFUSE_ERR_SLV_RDATA)
         ]
-        idx = SepSeededRng(seed ^ _PRESENSE_SALT).choice(cands)
+        rng = SepSeededRng(seed ^ _PRESENSE_SALT)
+        idx = rng.choice(cands)
         self._log("INFO-DRAW", name="presense_reset.word", value=idx, candidates=len(cands))
-        return idx, int(p.image.words[idx])
+        post = [k for k in cands if p.image.words[k] != p.image.words[idx]]
+        jdx = rng.choice(post)
+        self._log("INFO-DRAW", name="presense_reset.post_word", value=jdx, candidates=len(post))
+        return idx, int(p.image.words[idx]), jdx, int(p.image.words[jdx])
 
     async def _reset_on_live_response(self, p, seed: int) -> None:
         """Procedure step 21: ``rst_ni`` falls while a shadow-map read has a live response.
@@ -759,14 +768,16 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         so the tap is sampled before the fall only. After the release, the first JTAG
         read of word i must answer SLVERR before sense done
         (``hw/sys/sep/doc/otp_fuse_controller.adoc``, Fuse Sensing and Boot Sequencing);
-        after sense done the same read answers OKAY with the staged word.
+        the shadow APB response tap shows that read reach the shadow file
+        (``CTRL-WIN-PRESENSE-REACH``). After sense done a JTAG read of word j answers
+        OKAY with the staged word of j.
 
         The cut read uses the JTAG master with ``allow_timeout``: the master drops an
         operation in flight at ``rst_ni``, and an operation that never completes ends at
         the same bound as every other JTAG read of the step. Its outcome is logged only.
         """
         dut = cocotb.top
-        idx, staged = self._presense_word(p, seed)
+        idx, staged, jdx, staged_j = self._presense_word(p, seed)
         addr = SHADOW_BASE + 4 * idx
         cut = cocotb.start_soon(
             self.jtag_axil_master().read_result(
@@ -822,10 +833,34 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         await ClockCycles(dut.clk_i, RST_HOLD)
         dut.rst_ni.value = 1
 
+        reach = {"n": 0, "pslverr": None, "sense_done": None}
+        reach_stop = [False]
+
+        async def _reach_mon() -> None:
+            while not reach_stop[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if not reach_stop[0] and self.rd(dut.efuse_shadow_apb_pready_o):
+                    reach["n"] += 1
+                    if reach["pslverr"] is None:
+                        reach["pslverr"] = self.rd(dut.efuse_shadow_apb_pslverr_o)
+                        reach["sense_done"] = self.rd(dut.sep_fuse_sense_done_o)
+
+        cocotb.start_soon(_reach_mon())
         pre_resp, pre_data = await self.jtag_axil_op(
             write=False, addr=addr, timeout_ns=_JTAG_TIMEOUT_NS
         )
+        reach_stop[0] = True
         sense_at_resp = self.rd(dut.sep_fuse_sense_done_o)
+        self.chk.ctrl(
+            "WIN-PRESENSE-REACH",
+            reach["n"] >= 1 and reach["pslverr"] == 1 and reach["sense_done"] == 0,
+            word=idx,
+            addr=f"0x{addr:08x}",
+            tap_pready_samples=reach["n"],
+            tap_pslverr="none" if reach["pslverr"] is None else reach["pslverr"],
+            sense_done="none" if reach["sense_done"] is None else reach["sense_done"],
+        )
         cut_res = await cut
         self._log(
             "INFO-WIN-CUT-READ",
@@ -837,22 +872,24 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         sense = await clocks_to_sense(self, _SENSE_BOUND, started=True)
         if sense is None:
             raise AssertionError(f"sense did not complete within {_SENSE_BOUND} clocks")
+        addr_j = SHADOW_BASE + 4 * jdx
         post_resp, post_data = await self.jtag_axil_op(
-            write=False, addr=addr, timeout_ns=_JTAG_TIMEOUT_NS
+            write=False, addr=addr_j, timeout_ns=_JTAG_TIMEOUT_NS
         )
         self.chk.ok(
             "WIN-PRESENSE-RESET",
             pre_resp == RESP_SLVERR
             and sense_at_resp == 0
             and post_resp == RESP_OKAY
-            and post_data & _WORD == staged,
+            and post_data & _WORD == staged_j,
             word=idx,
             addr=f"0x{addr:08x}",
             resp=_RESP.get(pre_resp, pre_resp),
             sense_done_at_resp=sense_at_resp,
+            post_word=jdx,
             post_resp=_RESP.get(post_resp, post_resp),
             post_data=f"0x{post_data & _WORD:08x}",
-            staged=f"0x{staged:08x}",
+            staged=f"0x{staged_j:08x}",
         )
         self.chk.obs(
             "WIN-PRESENSE-DATA",

@@ -94,7 +94,8 @@ Checkers:
   CHK-PROG-TIMEOUT-WAIT  a held program with the timeout enabled at T cycles: at the
                     (T-1)-th clock after the first clock ``efuse_program_busy_o`` reads 1,
                     ``efuse_program_busy_o`` reads 1 and ``efuse_program_done_o`` reads 0.
-                    A missing busy rise fails.
+                    A missing busy rise fails. Control (``CTRL-PROG-TIMEOUT-ARMED``):
+                    ``EFUSE_PROGRAM_REQ_TIMEOUT`` reads back the enable and T before the go.
   CHK-READ-BANK-ERR  after a reset, a frontdoor READ of word r with the READ bank
                     error on: the first ``EFUSE_READ_CTRL`` read with ``read_done`` 1,
                     inside the poll bound, shows ``read_busy`` 0. No done fails.
@@ -103,7 +104,9 @@ Checkers:
                     go, so the read-back passes; write error), ``leg=readback`` (bit f,
                     read-back error). After the done poll ``program_done`` 1,
                     ``program_busy`` 0, ``program_status`` 1, and the one shim response at
-                    the ``sep`` input carried status 1.
+                    the ``sep`` input carried status 1. A reset precedes the ``write_set``
+                    and ``readback`` legs. Control (``CTRL-PROG-BANK-ERR-PRE``, one line per
+                    leg): ``EFUSE_PROGRAM_CTRL`` shows done, busy and status 0 before the go.
                     Control (``CTRL-BANK-ERR-INJ``, one line per leg including
                     ``leg=read``): from the go to the done there is exactly one shim
                     response at the ``sep`` input; for the read leg it carries status 1.
@@ -562,6 +565,28 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             if self.rd_known(dut.efuse_shim_resp_valid_o) & 1:
                 out.append(self.rd_known(dut.efuse_shim_resp_status_o) & 1)
 
+    async def _reset_to_frontdoor(self, sense_bound: int) -> None:
+        """Pulse ``rst_ni``, wait for sense done and for the CPU reset release.
+
+        The frontdoor enters at the CPU LSU demux, which sep_cpu_reset_n holds in
+        reset for the reset synchronizer clocks after sense done. An AW sent before
+        that release is not counted, and its B response underflows the ID counter.
+        """
+        dut = cocotb.top
+        await rst_pulse(self, hold=_RST_HOLD)
+        if await clocks_to_sense(self, sense_bound, started=True) is None:
+            raise AssertionError(f"sense done missing after the bank-error reset seed={self.seed}")
+        for _ in range(8):
+            if self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True):
+                break
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+        else:
+            raise AssertionError(
+                f"sep_cpu_reset_n_o low after the bank-error sense seed={self.seed}"
+            )
+        await RisingEdge(dut.clk_i)
+
     async def _prog_bank_err(
         self, leg: str, spare: dict, mode, bound: int, pre_bit: int | None
     ) -> None:
@@ -570,6 +595,8 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         Grades ``CHK-PROG-BANK-ERR``: after the done, ``program_done`` 1,
         ``program_busy`` 0, ``program_status`` 1, and the one shim response at the
         ``sep`` input carried status 1. ``CTRL-BANK-ERR-INJ`` requires that one response.
+        ``CTRL-PROG-BANK-ERR-PRE`` requires ``program_done``, ``program_busy`` and
+        ``program_status`` 0 before the go, so the graded done and status are this leg's.
         """
         dut = cocotb.top
         dut.efuse_sense_status_word_i.value = spare["addr"] // 32
@@ -577,6 +604,16 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         mon = cocotb.start_soon(self._resp_mon(resp))
         mode.value = 1
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        pre = await self._rd(PROGRAM_CTRL_ADDR)
+        self._ctrl(
+            "PROG-BANK-ERR-PRE",
+            _b(pre, _M_PG_DONE) == 0 and _b(pre, _M_PG_STATUS) == 0 and _b(pre, _M_PG_BUSY) == 0,
+            leg=leg,
+            pg=f"0x{pre:08x}",
+            done=_b(pre, _M_PG_DONE),
+            busy=_b(pre, _M_PG_BUSY),
+            status=_b(pre, _M_PG_STATUS),
+        )
         go = self.clk
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(spare["addr"], data=1))
         pg = await self._poll_pg(_M_PG_DONE, bound)
@@ -863,7 +900,16 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
 
         # Step 10: timeout cell. Before T graded at the program taps, after T logged.
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
-        await self._wr(_PG_TMO_ADDR, _TMO_EN | (t_cyc & _TMO_CYC))
+        tmo_want = _TMO_EN | (t_cyc & _TMO_CYC)
+        await self._wr(_PG_TMO_ADDR, tmo_want)
+        tmo = await self._rd(_PG_TMO_ADDR)
+        self._ctrl(
+            "PROG-TIMEOUT-ARMED",
+            tmo & (_TMO_EN | _TMO_CYC) == tmo_want,
+            cycles=t_cyc,
+            tmo=f"0x{tmo:08x}",
+            exp=f"0x{tmo_want:08x}",
+        )
         dut.efuse_shim_resp_hold_i.value = 1
         wait: dict = {"rise": None, "at": None, "busy": None, "done": None}
 
@@ -977,7 +1023,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         # Step 11b: a bank APB error on a post-sense READ (word r) and on a PROGRAM in
         # its write phase (bit e, and bit s that already reads 1, so the read-back
         # passes and only the write error can set the status) and in its read-back
-        # phase (bit f). The reset first clears the interface state of the step 10 timeout.
+        # phase (bit f). The reset first clears the interface state of the step 10 timeout;
+        # a reset before the write_set and readback legs clears the done and status of
+        # the leg before.
         # The graded window is closed and the hold tag is 0 for the whole step.
         abcd = abc | {d["addr"]}
         r_cands = [
@@ -997,20 +1045,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         ]
         s = self._draw_spare("spare_bit_s", s_cands, abcd | {e["addr"]})
         f = self._draw_spare("spare_bit_f", d_cands, abcd | {e["addr"]})
-        await rst_pulse(self, hold=_RST_HOLD)
-        if await clocks_to_sense(self, sense_bound, started=True) is None:
-            raise AssertionError(f"sense done missing after the bank-error reset seed={seed}")
-        # The frontdoor enters at the CPU LSU demux, which sep_cpu_reset_n holds in
-        # reset for the reset synchronizer clocks after sense done. An AW sent before
-        # that release is not counted, and its B response underflows the ID counter.
-        for _ in range(8):
-            if self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True):
-                break
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-        else:
-            raise AssertionError(f"sep_cpu_reset_n_o low after the bank-error sense seed={seed}")
-        await RisingEdge(dut.clk_i)
+        await self._reset_to_frontdoor(sense_bound)
 
         dut.efuse_sense_status_word_i.value = r
         r_addr = 32 * r
@@ -1063,6 +1098,8 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             ("write_set", s, dut.efuse_status_inject_write_i),
             ("readback", f, dut.efuse_status_inject_readback_i),
         ):
+            if leg != "write":
+                await self._reset_to_frontdoor(sense_bound)
             pre_bit = None
             if leg == "write_set":
                 _word_s, pre_bit = await self._direct_bit(spare)
