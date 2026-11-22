@@ -79,8 +79,14 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-ATTR-USER     AxUSER[3:0] of every LSU and DMA request at PR-OUT is
                     known, is not OTHERS (0) and is the same on every request,
                     although the LSU issues two distinct non-zero values and
-                    the DMA issues OTHERS: the SMU path sets SEP's ID. The
-                    number is logged (OBS-ATTR-SRC-ID), with AxUSER[11:4].
+                    the DMA issues OTHERS: the SMU path sets SEP's ID.
+                    AxUSER[11:4] of every such request is 0, although the LSU
+                    issues it non-zero.
+  CHK-ATTR-SRC-ID   that AxUSER[3:0] equals SEP's ID, 0xF
+                    (``doc/integrator/src/smu-composition.adoc``, SEP row), and
+                    AxUSER[11:4] is 0 (reserved, driven as 0 on
+                    ``smu_axi_out``, ``smu-composition.adoc:205-206``); the
+                    line gives the values seen and the request count.
   CHK-ATTR-PROT     AxPROT of every LSU and DMA request at PR-OUT: bits 0
                     and 2 as issued, NS 1 (the inverse of address bit 55).
   CHK-LSU-DMA-OVERLAP
@@ -227,7 +233,7 @@ def _unattributed(view) -> str:
 class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
     """LSU, Secure DMA and SMN inbound master toward the outbound port, singly and together."""
 
-    required_evidence = CHECKS
+    required_evidence = CHECKS + ("CHK-ATTR-SRC-ID",)
 
     # ---- stimulus builders -----------------------------------------------------
     def _words(self, n: int) -> list[int]:
@@ -846,9 +852,9 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         seen_u = {i: [] for i in INITS}
         seen_p = {i: [] for i in INITS}
         cross_p = 0
-        # The SMU path sets SEP's ID, whose number is not stated: the grade is
-        # not OTHERS, one value on every request, and a replacement visible
-        # over the two LSU values and the DMA's OTHERS (SepSrcIdGrade).
+        # The SMU path sets SEP's ID: the grade is 0xF on every request, with
+        # AxUSER[11:4] 0, and a replacement visible over the two LSU values and
+        # the DMA's OTHERS (SepSrcIdGrade).
         grade = SepSrcIdGrade("ATTR")
         for r in reqs:
             if r.unknown:
@@ -888,7 +894,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             )
         if cross_p:
             self._fail("CHK-ATTR-PROT", f"crossings={cross_p}")
-        self.logger.info("%s", grade.obs_line())
+        self.logger.info("%s", grade.chk_line())
         self._emit(
             "CHK-ATTR-USER",
             f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "

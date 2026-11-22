@@ -5,7 +5,7 @@
 The flash BFM must log 0x9F as its last opcode, and the RXDATA word must carry
 the BFM's three ID bytes in wire order, in one in-word byte order, with its
 fourth byte 0 (CHK-JEDEC-ID). The in-word order is not graded: the one
-OBS-SPI-BYTEORDER line logs it. CTRL-SPI-CONFIGOPTS: CONFIGOPTS reads back the
+INFO-SPI-BYTEORDER line logs it. CTRL-SPI-CONFIGOPTS: CONFIGOPTS reads back the
 written Mode 0 word (CLKDIV 9, CSNIDLE, CSNTRAIL and CSNLEAD 2; every field is
 ``sw = rw`` in ``spi_controller.rdl``), else the leaf fails before CHK-JEDEC-ID,
 because the reset value 0 also runs Mode 0. Run mode: no_cpu with
@@ -84,4 +84,4 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         sb.finish()
-        order.log_obs(self.logger, self.random_seed())
+        order.log_info(self.logger, self.random_seed())
