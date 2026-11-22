@@ -79,8 +79,8 @@ DMA_PROT = 0b001
 def out_prot(prot: int) -> int:
     """AxPROT of a request to PAGE as the SMU path delivers it to PR-OUT.
 
-    The SMU path sets SEP's source ID in AxUSER; its number is not stated, so
-    callers grade AxUSER with ``env.sep_fabric_common.SepSrcIdGrade``.
+    The SMU path sets SEP's source ID in AxUSER[3:0]; callers grade AxUSER with
+    ``env.sep_fabric_common.SepSrcIdGrade``.
     """
     return (prot & 0b101) | (outbound_ns("smu", PAGE) << 1)
 

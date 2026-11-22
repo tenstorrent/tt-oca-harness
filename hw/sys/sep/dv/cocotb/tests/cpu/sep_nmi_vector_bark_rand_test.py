@@ -44,15 +44,23 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   ``mstatus.MIE`` or PIC setting suppresses the NMI; VeeR EL2 PRM section
   3.16). The return path to the external handler is not graded.
 
-Open-value leg (logged, not graded): in the held-bark leg of boot 1 the NMI
-handler leaves the bark asserted for its hold window, then clears it.
-``CTRL-NMI-NESTED`` (fails the leaf) counts the clocks with
-``wdt_bark_probe_o`` 1 between the handler's ``REQ m t=h0`` and ``t=h1``
-lines and needs one or more. ``OBS-NMI-NESTED`` logs the NMI entries the
-firmware counts, the retired PCs at the vector on the CPU trace in the leg,
-the bark level the handler reads and the ``mepc`` and ``mcause`` of each
-entry. After the control passes, the test raises the ``nmi_during_handler``
-bin of ``sep_open_value_leg_cg``.
+* CHK-NMI-NESTED (host) in the held-bark leg of boot 1 the NMI handler leaves
+  the bark asserted for its hold window, then clears it, and the bark NMI is
+  taken once: the firmware counts one NMI entry (``fw_entries``), the CPU
+  trace retires the vector PC once in the leg (``trace_entries``), no entry
+  nests (``nested_mepc`` and ``nested_mcause`` read 0) and the leg does not
+  time out (``timeout`` 0). ``nmi_int`` is a low-to-high edge-triggered input
+  that must stay low for two full core clocks before the next NMI request
+  (VeeR EL2 PRM ``docs/source/memory-map.md:1243-1245`` at the ``veer_el2``
+  ``rev`` in ``Bender.yml``); it is the WDT bark
+  (``hw/sys/sep/doc/interrupts.adoc:273-274``), which holds until
+  ``INTR_STATE`` is cleared (``hw/sys/sep/rtl/sep_pkg.sv``, delegated by
+  ``hw/sys/sep/doc/port_table.adoc:130``). ``CTRL-NMI-NESTED`` (fails the
+  leaf) counts the clocks with ``wdt_bark_probe_o`` 1 between the handler's
+  ``REQ m t=h0`` and ``t=h1`` lines and needs one or more. The check also logs
+  the bark level the handler reads and the ``mepc`` and ``mcause`` of the
+  first entry, not graded. After the check passes, the test raises the
+  ``nmi_during_handler`` bin of ``sep_open_value_leg_cg``.
 
 The sampler holds the owner-324 bark cells of each graded leg; the test raises
 the ``pic_fw_pass`` bits of the leg (``RELEASE``) once every firmware check of
@@ -281,6 +289,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         "CHK-NMI-ENTRY",
         "CHK-NMI-STUB",
         "CHK-NMI-BITE-LOW",
+        "CHK-NMI-NESTED",
     )
 
     def build_phase(self) -> None:
@@ -325,7 +334,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
     async def _req_mark(self, kv: dict) -> None:
         self.bark_marks[kv["t"]] = (self.con.clk, self.bark_high)
 
-    def _leg_nmi_held(self) -> None:
+    def _leg_nmi_held(self) -> int:
+        """CTRL-NMI-NESTED, then CHK-NMI-NESTED: one NMI entry for one held bark."""
         seed = self.tcfg.seed
         h0, h1 = self.bark_marks.get("h0"), self.bark_marks.get("h1")
         high = h1[1] - h0[1] if h0 and h1 else 0
@@ -336,19 +346,29 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         self.logger.info("CTRL-NMI-NESTED LOG %s", body)
         kv = self._one("INFO-NMI-HELD").kv
         lo, hi = self._leg("nmi_held")
-        self.logger.info(
-            "OBS-NMI-NESTED LOG bark_thold=%d fw_entries=%s trace_entries=%d bark_in_handler=%s "
-            "mepc=0x%08x mcause=0x%08x nested_mepc=0x%08x nested_mcause=0x%08x timeout=%s",
-            self.tcfg.held_bark,
-            kv["entries"],
-            sum(1 for c in self.vec_hits if lo <= c < hi),
-            kv["bark_in_handler"],
-            kv["mepc"],
-            kv["mcause"],
-            kv["nested_mepc"],
-            kv["nested_mcause"],
-            kv["timeout"],
+        fw_entries = int(kv["entries"])
+        trace_entries = sum(1 for c in self.vec_hits if lo <= c < hi)
+        nested_mepc = int(kv["nested_mepc"])
+        nested_mcause = int(kv["nested_mcause"])
+        timeout = int(kv["timeout"])
+        ok = (
+            fw_entries == 1
+            and trace_entries == 1
+            and nested_mepc == 0
+            and nested_mcause == 0
+            and timeout == 0
         )
+        body = (
+            f"seed={seed} bark_thold={self.tcfg.held_bark} fw_entries={fw_entries} "
+            f"trace_entries={trace_entries} nested_mepc=0x{nested_mepc:08x} "
+            f"nested_mcause=0x{nested_mcause:08x} timeout={timeout} "
+            f"bark_in_handler={kv['bark_in_handler']} mepc=0x{int(kv['mepc']):08x} "
+            f"mcause=0x{int(kv['mcause']):08x}"
+        )
+        if not ok:
+            raise AssertionError(f"CHK-NMI-NESTED FAIL {body}")
+        self.logger.info("CHK-NMI-NESTED PASS %s", body)
+        return 1
 
     async def _pass_label(self) -> None:
         """Raise the ``pic_fw_pass`` bits of this test: release and drop.
@@ -631,13 +651,13 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if cases != ["a", CASES[cfg.case]]:
             raise AssertionError(f"CHK-NMI-NOPIC FAIL: cases {cases}, drawn a,{CASES[cfg.case]}")
         n_host = self._chk_taken(sy) + self._chk_bark_vec(sy, boot2_clk)
-        self._leg_nmi_held()
+        n_host += self._leg_nmi_held()
         await self._release_targets()
         self.result_pass(TEST, seed, n_fw + n_host)
 
     async def _release_targets(self) -> None:
         """Raise ``PIC_FW_PASS_NMI_TARGET`` once, after every check of the run passed,
-        then the ``nmi_during_handler`` leg bin, whose control passed before."""
+        then the ``nmi_during_handler`` leg bin, whose control and check passed before."""
         clk = cocotb.top.clk_i
         await RisingEdge(clk)
         set_pic_fw_pass(1 << PIC_FW_PASS_NMI_TARGET, self.logger)

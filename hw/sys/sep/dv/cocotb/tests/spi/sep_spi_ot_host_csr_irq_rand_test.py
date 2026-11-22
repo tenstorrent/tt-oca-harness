@@ -60,10 +60,11 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   (tap spi_alert_tx_probe_o) reads idle before the write and
                   fired inside the window (CTRL-SPI-ALERT-REACH, else
                   CTRL-MISSING); INTR_TEST.ERROR at the same enable raises the
-                  line inside the same window. The response code is logged
-                  (OBS-SPI-ALERT-RESP): no specification states the response
-                  code of a legal register write. The other vector bits are
-                  logged (OBS-SPI-ALERT-TEST).
+                  line inside the same window. The response code is logged,
+                  not graded (INFO-SPI-ALERT-RESP): no specification states
+                  the response code of a legal register write. The other
+                  vector bits of the same window are logged
+                  (INFO-SPI-ALERT-TEST).
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -908,7 +909,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.logger.info(
             "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
         )
-        self.logger.info("OBS-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
+        self.logger.info("INFO-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
         high, _first, diff, alert_clk = await self._line_window()
         if alert_clk < 0:
             msg = (
@@ -920,7 +921,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.logger.info("CTRL-SPI-ALERT-REACH seed=%d alert seen at clk=%d", seed, alert_clk)
         st = await self.spi.rd(INTR_STATE)
         self.logger.info(
-            "OBS-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded)", diff & ~(1 << _SPI_AGG), _SPI_AGG
+            "INFO-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded) chk=CHK-SPI-ALERT-TEST",
+            diff & ~(1 << _SPI_AGG),
+            _SPI_AGG,
         )
         # Control: an interrupt source at the same enable raises the line in
         # the same window.
