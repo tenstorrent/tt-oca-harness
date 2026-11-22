@@ -821,6 +821,7 @@ static void stack_leg(void) {
     uint32_t pre1 = g_pre;
     uint32_t ec1 = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     dma_clear();
+    uint32_t rec_ec_clr = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // Recovery copy inside the stack window; its record is printed below.
     uint32_t tag = 0x100u + g_rec_n++;
     uint32_t n = REC_LEN / 4u;
@@ -877,6 +878,7 @@ static void stack_leg(void) {
     rec("RECOV");
     sep_mbx_puts(" after=stack");
     kv("tag", tag);
+    kv("ec_clr", rec_ec_clr);
     kv("pre", rpre);
     kv("st", rst);
     kv("ec", rec_ec);
