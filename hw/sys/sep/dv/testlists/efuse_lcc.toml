@@ -74,6 +74,21 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
+# EL2 firmware reads one OTP word through the eFuse read interface, submits a
+# matching SiP RMA token, then a non-matching and a matching chiplet RMA token; the
+# leaf grades the published words. Real fuse sense of a committed preload image.
+name = "sep_efuse_el2_fw_mmio_test"
+module = "efuse.sep_efuse_el2_fw_mmio_test"
+firmware = "efuse_el2_fw_mmio_test"
+seed = 1
+timeout_sec = 900
+tags = ["efuse", "token", "mux", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_el2_fw_mmio.toml",
+]
+
+[[tests]]
 # eFuse program x write-lock on SPARE0..SPARE8 (never LC_STATE). RAND-REP.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"

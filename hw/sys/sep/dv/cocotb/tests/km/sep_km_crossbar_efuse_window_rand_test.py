@@ -124,6 +124,28 @@ for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
+
+Write-locked shadow word, after the boot-one checks and before the boot-two
+re-sense (``otp_fuse_controller.adoc:110-114``; ``hw/ip/key_manager/doc/
+architecture.adoc:924-928``, the KM eFuse path honors the native per-field
+locks): ``CHK-EFW-WLOCK-SHADOW`` grades that a KM write of a drawn value, which
+differs from the staged word in a used bit of the field (it sets a used bit
+that is 0, or clears a used bit when every used bit is 1), to a word of the
+write-locked field completes with SLVERR, and that the host readback (class OKAY) and
+``efuse_shadow_probe_o`` of that word equal the staged word.
+``CTRL-EFW-WLOCK-SHADOW`` is its control: the same KM write to a word of an
+unlocked spare field, which is not a plan target (SW writable,
+``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
+readback (class OKAY) and the probe equal the written value; a mismatch prints
+``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
+is its second control: a KM write of the same rule as the write-locked write
+(it changes only used bits) to a word of an unlocked lockable field of the plan,
+which is not a spare and not a plan target, and whose used bits an unlocked write
+can change, completes OKAY, and the host readback (class OKAY) and the probe
+equal the written value for a writable field and the staged value OR the
+written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
+471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
+leaf. Both controls run before the check.
 """
 
 from __future__ import annotations
@@ -141,8 +163,9 @@ from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import word_digest
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
+from env.sep_efuse_field_map import spec_fields, spec_writable_shadow_walk
 from env.sep_efuse_image import SHADOW_BASE, WORD_BITS, WORD_MASK, SepEfuseImage
-from env.sep_efuse_plan import DIGEST_FIELDS
+from env.sep_efuse_plan import DIGEST_FIELDS, field_used_masks
 from env.sep_fcov_gate import (
     KM_EFW_PROG_PASS_DENY,
     KM_EFW_PROG_PASS_SPARE,
@@ -153,7 +176,9 @@ from env.sep_fcov_gate import (
     set_km_xbar_pass,
 )
 from env.sep_km_fuse_plan import (
+    _LOCKABLE,
     OTP_DUAL_RAIL_FIELDS,
+    SPARE_FIELDS,
     T_XBAR_EFUSE,
     FuseTarget,
     KmFusePlan,
@@ -631,6 +656,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         "CHK-EFW-DENY",
         "CHK-EFW-TM",
         "CHK-REMAP-BUS",
+        "CHK-EFW-WLOCK-SHADOW",
     )
 
     # --- small helpers ------------------------------------------------------
@@ -837,6 +863,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         await self._deny_pair(rng, fp, prog)
         await self._pulse_efw_prog_pass(KM_EFW_PROG_PASS_DENY)
         close_graded_window(self.logger)
+        # A stream of its own, so the draws of every other stream keep their values.
+        await self._wlock_shadow(SepSeededRng(seed ^ (733 << 48)), fp, model)
 
         # Boot two: secure test strap set before the cold reset and held.
         tm1 = await self._cold_reset_strap1(model)
@@ -868,6 +896,158 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         await ClockCycles(clk, 2)
         set_km_efw_prog_pass(0, self.logger)
         await RisingEdge(clk)
+
+    @staticmethod
+    def _zero_bit_value(rng: SepSeededRng, staged: int) -> int:
+        """A drawn word that sets at least one bit that is 0 in ``staged``."""
+        zeros = [b for b in range(WORD_BITS) if not (staged >> b) & 1]
+        if not zeros:
+            raise AssertionError(f"staged word 0x{staged:08x} has no 0 bit")
+        return rng.getrandbits(WORD_BITS) | (1 << rng.choice(zeros))
+
+    @staticmethod
+    def _used_bit_change_value(rng: SepSeededRng, staged: int, used: int) -> int:
+        """A drawn word that differs from ``staged`` in a bit of ``used`` and only there.
+
+        Bits outside ``used`` keep their staged value, so a refusal cannot come
+        from a write to unused bits. It sets a used bit that
+        is 0 in ``staged``. When every used bit is 1, it clears one used bit
+        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-114``).
+        """
+        word = (staged & ~used & WORD_MASK) | (rng.getrandbits(WORD_BITS) & used)
+        ones = [b for b in range(WORD_BITS) if (used >> b) & 1]
+        zeros = [b for b in ones if not (staged >> b) & 1]
+        if zeros:
+            return word | (1 << rng.choice(zeros))
+        if not ones:
+            raise AssertionError(f"used-bit mask 0x{used:08x} has no bit")
+        return word & ~(1 << rng.choice(ones))
+
+    @staticmethod
+    def _wr_class(res: kp.PokeResult) -> str:
+        """Response class of a KM write; UNKNOWN when the flags cannot be graded."""
+        return _km_class(res) if res.flags_known and res.clean else "UNKNOWN"
+
+    async def _wlock_shadow(self, rng: SepSeededRng, fp: KmFusePlan, model: SepEfuseImage) -> None:
+        """KM write to a write-locked shadow word, after its control write to a spare.
+
+        A write-lock blocks shadow writes, and a write to a locked field
+        completes with SLVERR and leaves the shadow unchanged
+        (``otp_fuse_controller.adoc:110-114``); the KM eFuse path honors the
+        same per-field locks (``key_manager/doc/architecture.adoc:924-928``).
+        The control writes a SW-writable spare word that is not a plan target
+        (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
+        that drops every write fails the control first. A second control writes
+        a word of an unlocked lockable field of the plan that is not a spare
+        and not a plan target, so a KM path that refuses every non-spare write
+        also fails a control first. Its expected readback follows the field's
+        SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
+        written word for a writable field, the staged word OR the written word
+        for a set-only field (``:261,274,279``). The control word comes from the
+        write class of the write-locked word (set-only or writable, full or
+        narrow) when the plan has one, and its write changes only used bits.
+        The model is not updated: the next cold reset
+        re-senses the shadow from OTP.
+        """
+        busy = {fp.read_locked, fp.write_locked} | {t.field for t in fp.targets.values()}
+        cands = [f for f, _ in spec_writable_shadow_walk() if f in SPARE_FIELDS and f not in busy]
+        c_field = rng.choice(cands)
+        c_fld = SepEfuseImage.field(c_field)
+        c_idx = c_fld.word + rng.randrange(c_fld.n_words)
+        s_c = model.words[c_idx]
+        v_c = self._zero_bit_value(rng, s_c)
+        wl_field = fp.write_locked
+        wl_fld = SepEfuseImage.field(wl_field)
+        wl_idx = wl_fld.word + rng.randrange(wl_fld.n_words)
+        s = model.words[wl_idx]
+        wl_used = field_used_masks(wl_field)[wl_idx - wl_fld.word]
+        v = self._used_bit_change_value(rng, s, wl_used)
+        # A set-only word with every used bit 1 cannot change even when unlocked,
+        # so only the SLVERR half grades the lock on such a draw.
+        spec = {f.reg_name: f for f in spec_fields()}
+        rb_disc = int(not spec[wl_field].set_only or bool(wl_used & ~s))
+        self._draw("wlock.ctrl_field", c_field)
+        self._draw("wlock.ctrl_word", c_idx)
+        self._draw("wlock.ctrl_value", v_c)
+        self._draw("wlock.field", wl_field)
+        self._draw("wlock.word", wl_idx)
+        self._draw("wlock.used_mask", wl_used)
+        self.logger.info("DRAW wlock.value=%s", _wh(wl_idx, v))
+        # Every word of an unlocked lockable field whose used bits an unlocked write
+        # can change: a set-only word needs a used bit that is 0.
+        l_cands = []
+        for f in (f for f in _LOCKABLE if f not in busy):
+            fld = SepEfuseImage.field(f)
+            for w, used in enumerate(field_used_masks(f)):
+                if not spec[f].set_only or used & ~model.words[fld.word + w]:
+                    l_cands.append((f, fld.word + w, used))
+        if not l_cands:
+            raise AssertionError(f"test bug: no unlocked lockable control word in {fp.summary()}")
+        # Prefer a word of the write-locked word's write class: set-only or
+        # writable, and full or narrow.
+        wl_class = (spec[wl_field].set_only, wl_used == WORD_MASK)
+        same = [c for c in l_cands if (spec[c[0]].set_only, c[2] == WORD_MASK) == wl_class]
+        class_match = int(bool(same))
+        l_field, l_idx, l_used = rng.choice(same or l_cands)
+        s_l = model.words[l_idx]
+        v_l = self._used_bit_change_value(rng, s_l, l_used)
+        e_l = s_l | v_l if spec[l_field].set_only else v_l
+        self._draw("wlock.lockable_field", l_field)
+        self._draw("wlock.lockable_word", l_idx)
+        self._draw("wlock.lockable_used_mask", l_used)
+        self.logger.info("DRAW wlock.lockable_value=%s", _wh(l_idx, v_l))
+
+        c_addr = KM_EFUSE_MAP + 4 * c_idx
+        (c_res,) = await self._run([kp.wr(c_addr, v_c)])
+        c_rb, c_host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * c_idx)
+        c_probe = self._shadow_probe_word(c_idx)
+        c_km = self._wr_class(c_res)
+        seen = (c_km, c_host, c_rb, c_probe) == ("OKAY", "OKAY", v_c, v_c)
+        self._ctrl(
+            "EFW-WLOCK-SHADOW",
+            seen,
+            f"field={c_field} word={c_idx} km_addr=0x{c_addr:05x} wrote=0x{v_c:08x} "
+            f"staged=0x{s_c:08x} km_resp={c_km} host_resp={c_host} host_rb=0x{c_rb:08x} "
+            f"probe=0x{c_probe:08x}",
+        )
+
+        l_addr = KM_EFUSE_MAP + 4 * l_idx
+        (l_res,) = await self._run([kp.wr(l_addr, v_l)])
+        l_rb, l_host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * l_idx)
+        l_probe = self._shadow_probe_word(l_idx)
+        l_km = self._wr_class(l_res)
+        self._ctrl(
+            "EFW-WLOCK-LOCKABLE",
+            (l_km, l_host, l_rb, l_probe) == ("OKAY", "OKAY", e_l, e_l),
+            f"field={l_field} set_only={int(spec[l_field].set_only)} word={l_idx} used=0x{l_used:08x} "
+            f"class_match={class_match} "
+            f"km_addr=0x{l_addr:05x} wrote={_wh(l_idx, v_l)} staged={_wh(l_idx, s_l)} "
+            f"expected={_wh(l_idx, e_l)} km_resp={l_km} host_resp={l_host} "
+            f"host_rb={_wh(l_idx, l_rb)} probe={_wh(l_idx, l_probe)}",
+        )
+
+        addr = KM_EFUSE_MAP + 4 * wl_idx
+        (res,) = await self._run([kp.wr(addr, v)])
+        rb, host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * wl_idx)
+        probe = self._shadow_probe_word(wl_idx)
+        km = self._wr_class(res)
+        flags = f"slv={res.slv} dec={res.dec}" if km != "UNKNOWN" else "slv=x dec=x"
+        line = (
+            f"field={wl_field} word={wl_idx} km_addr=0x{addr:05x} wrote={_wh(wl_idx, v)} "
+            f"staged={_wh(wl_idx, s)} used=0x{wl_used:08x} rb_discriminates={rb_disc} km_resp={km} {flags} pre_clean={int(res.clean)} "
+            f"host_resp={host} host_rb={_wh(wl_idx, rb)} probe={_wh(wl_idx, probe)}"
+        )
+        problems = []
+        if km != "SLVERR":
+            problems.append(f"KM write answered {km}, expected SLVERR: {line}")
+        if host != "OKAY":
+            problems.append(f"host shadow read answered {host}, expected OKAY: {line}")
+        if rb != s:
+            problems.append(f"host readback differs from the staged word: {line}")
+        if probe != s:
+            problems.append(f"efuse_shadow_probe_o word differs from the staged word: {line}")
+        self._fail("CHK-EFW-WLOCK-SHADOW", problems)
+        self.logger.info("CHK-EFW-WLOCK-SHADOW PASS %s", line)
 
     # --- steps 4 to 7: decode walk ------------------------------------------
 
