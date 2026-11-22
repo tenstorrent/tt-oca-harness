@@ -435,9 +435,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
         The golden is the hole response the SEP memory map states for this
         offset (hw/sys/sep/regs/include/sep_memory_map.rdl:13: OKAY with read
         data 0x0, write OKAY). A write to a hole has no effect, so the re-read
-        returns the same data and every live word still matches the snapshot. It runs after the FCOV window closed and after every count
-        the other verdicts use, so it releases no sample and changes no other
-        tally.
+        returns the same data and every live word still matches the snapshot.
+        It runs after the FCOV window closed and after every count the other
+        verdicts use, so it releases no sample and changes no other tally.
         """
         addr = cfg.cpu_ctrl_base
         e_r = expected_unbacked(addr, "r")
