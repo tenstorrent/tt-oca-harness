@@ -110,11 +110,14 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     Each matched request has AxLEN 0, AxPROT bits 0 and 2 as
                     issued with NS 1, and AxUSER[3:0] equal to SEP's ID, 0xF;
                     AxUSER[3:0] is the same on every request of the leaf,
-                    although the LSU alternates two distinct non-zero values
-                    and the DMA issues OTHERS: the SMU path sets SEP's ID.
-                    AxUSER[11:4] of every matched request is 0, although the
-                    LSU issues it non-zero. A hold session also fails its own
-                    checker on such a request.
+                    although the LSU alternates two distinct non-zero values,
+                    as sampled at the ``s_axi`` handshake: the SMU path sets
+                    SEP's ID. AxUSER[11:4] of every matched request is 0,
+                    although the LSU issues it non-zero. A hold session also
+                    fails its own checker on such a request.
+  CTRL-ATTR-LSU-USER
+                    each LSU request carries its drawn AxUSER at the
+                    ``s_axi`` handshake, once per request.
   CHK-SAT-SRC-ID    that AxUSER[3:0] equals SEP's ID, 0xF
                     (``doc/integrator/src/smu-composition.adoc``, SEP row), and
                     AxUSER[11:4] is 0 (reserved, driven as 0 on
@@ -142,6 +145,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
+from env.sep_axi_chan_mon import SepAxUserMon
 from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
@@ -261,6 +265,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         user = c.lsu_users[len(self.lsu_issued) % 2] if init == "lsu" else c.sys_user
         if init == "lsu":
             self.lsu_issued[addr] = user
+            self.lsu_drawn.setdefault(addr, []).append(user)
         t = Txn(
             init=init,
             op=op,
@@ -291,8 +296,6 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
 
     def _note_issue(self, init: str, op: str, addrs: list[int]) -> None:
         self.issued_all.setdefault((init, op), []).extend(addrs)
-        if init == "dma":
-            self.dma_addrs.update(addrs)
         sess = self.cur
         if sess is not None:
             sess.issued.setdefault((init, op), []).extend(addrs)
@@ -624,9 +627,9 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         return {"lsu": out_prot(LSU_PROT), "dma": out_prot(DMA_PROT)}
 
     def _issued_user(self) -> dict:
-        """AxUSER issued per address: the LSU draws, and OTHERS (0) for the DMA,
-        which drives OTHERS (hw/sys/sep/doc/fabric.adoc, Transaction Routing)."""
-        return {**{a: 0 for a in self.dma_addrs}, **self.lsu_issued}
+        """AxUSER issued per LSU address, as sampled at the ``s_axi`` handshake.
+        No probe shows the DMA master's AxUSER, so its addresses have none."""
+        return {a: self.lsu_mon.first(a) for a in self.lsu_drawn}
 
     def _check_session_requests(self, s, chk: str) -> None:
         beats = self.out.beats[s.meter.out0 :]
@@ -1134,6 +1137,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         its address was issued, counts as altered, so graded == issued holds
         only for an exact match.
         """
+        self.lsu_mon.stop()
+        self.lsu_mon.check(self.logger, "ATTR-LSU-USER", self.lsu_drawn, self.c.seed)
         g = self.src_grade
         chk = "CHK-ATTR-USER"
         issued = {k: v for k, v in self.issued_all.items() if k[0] in ("lsu", "dma")}
@@ -1156,8 +1161,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         c = self.c
         self._emit(
             "CHK-ATTR-USER",
-            f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
-            f"dma_user_issued=0 graded={graded} issued={n_issued} altered={alt} lost={miss} "
+            f"lsu_users_drawn=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
+            f"graded={graded} issued={n_issued} altered={alt} lost={miss} "
             f"{g.summary()}",
         )
 
@@ -1168,7 +1173,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
         self.n_made = self.n_jobs = 0
         self.lsu_issued: dict[int, int] = {}
-        self.dma_addrs: set[int] = set()
+        self.lsu_drawn: dict[int, list[int]] = {}
         self.src_grade = SepSrcIdGrade("SAT")
         self.sys_checked: set[str] = set()
         self.cur = None
@@ -1188,6 +1193,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         self.suppress_host_axi_transaction_info()
         self.ctl = RespCtl()
         await self.bench_start()
+        self.lsu_mon = SepAxUserMon().start()
         # PR-INFLT: the request out of the inbound filter. Only the SMN inbound
         # master passes the inbound filter, so every beat here is one of its
         # accesses that the filter admitted.

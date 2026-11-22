@@ -105,9 +105,9 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 
 from __future__ import annotations
 
-import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles
+from env.sep_axi_chan_mon import SepAxUserMon
 from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
@@ -271,48 +271,6 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             wdata=wdata,
             name=f"{init}_{op}_{self.n_made}",
         )
-
-    async def _sample_lsu_user(self) -> None:
-        """AxUSER of every AW and AR handshake on ``s_axi``, by address."""
-        dut = cocotb.top
-        chans = [
-            tuple(getattr(dut, f"s_axi_{ch}{f}") for f in ("valid", "ready", "addr", "user"))
-            for ch in ("aw", "ar")
-        ]
-        while True:
-            await RisingEdge(self.dut_clk)
-            await ReadOnly()
-            for valid, ready, addr, user in chans:
-                v, r = valid.value, ready.value
-                if v.is_resolvable and r.is_resolvable and int(v) and int(r):
-                    u = user.value
-                    self.lsu_seen.setdefault(int(addr.value), []).append(
-                        int(u) if u.is_resolvable else None
-                    )
-
-    def _lsu_seen_user(self) -> None:
-        """CTRL-ATTR-LSU-USER: each LSU request carried its drawn AxUSER at the
-        ``s_axi`` handshake, so the issued values of the source-ID grade are
-        measured on the bus."""
-
-        def fmt(vals) -> str:
-            return "[" + ",".join("X" if v is None else f"0x{v:03x}" for v in vals) + "]"
-
-        bad = [
-            f"0x{a:x}:drawn=0x{u:03x},seen={fmt(self.lsu_seen.get(a, []))}"
-            for a, u in self.lsu_issued.items()
-            if self.lsu_seen.get(a) != [u]
-        ]
-        seen = {v for a in self.lsu_issued for v in self.lsu_seen.get(a, [])}
-        line = (
-            f"seed={self.c.seed} probe=s_axi requests={len(self.lsu_issued)} "
-            f"users_seen={fmt(sorted(seen, key=lambda v: -1 if v is None else v))}"
-        )
-        if bad:
-            msg = f"CTRL-MISSING ATTR-LSU-USER: {line} mismatch={bad[:4]}"
-            self.logger.error(msg)
-            raise AssertionError(msg)
-        self.logger.info("CTRL-ATTR-LSU-USER PASS: %s", line)
 
     def _job(self, write: bool) -> DmaJob:
         self.n_jobs += 1
@@ -902,8 +860,13 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         # AxUSER[11:4] 0, and a replacement visible over the two LSU values
         # sampled at the s_axi handshake (SepSrcIdGrade). No probe shows the
         # DMA master's AxUSER, so its requests carry no issued value.
-        self.lsu_task.kill()
-        self._lsu_seen_user()
+        self.lsu_mon.stop()
+        self.lsu_mon.check(
+            self.logger,
+            "ATTR-LSU-USER",
+            {a: [u] for a, u in self.lsu_issued.items()},
+            c.seed,
+        )
         grade = SepSrcIdGrade("ATTR")
         for r in reqs:
             if r.unknown:
@@ -915,8 +878,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             if r.prot != ep and r.prot in others_p:
                 cross_p += 1
             if r.init in ("lsu", "dma"):
-                seen = self.lsu_seen.get(r.addr) if r.init == "lsu" else None
-                issued = seen[0] if seen else None
+                issued = self.lsu_mon.first(r.addr) if r.init == "lsu" else None
                 why = grade.note(r.user, issued)
                 if why is not None:
                     self._fail(
@@ -1071,7 +1033,6 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         self.rng = SepSeededRng(seed ^ 0x0C0FFEE)
         self.n_made = self.n_jobs = 0
         self.lsu_issued: dict[int, int] = {}
-        self.lsu_seen: dict[int, list[int | None]] = {}
         self.max_lat = 0.0
         self.sys_neg = {"issued": 0, "decerr": 0, "writes": 0, "reads": 0, "beats": 0}
         self.tot = {i: {} for i in INITS}
@@ -1082,7 +1043,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
         await self.bench_start()
-        self.lsu_task = cocotb.start_soon(self._sample_lsu_user())
+        self.lsu_mon = SepAxUserMon().start()
         # PR-INFLT: the request out of the inbound filter. Only the SMN inbound
         # master passes the inbound filter, so every beat here is one of its
         # accesses that the filter admitted.
