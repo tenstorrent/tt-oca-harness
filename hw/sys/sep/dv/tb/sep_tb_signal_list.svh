@@ -128,9 +128,8 @@
 // carries pslverr = 1. Data and ready are not forced.
 `SEP_TB_IN(logic, efuse_sense_status_inject_i)
 `SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
-// eFuse shim response hold. Default 0. While 1 and a PROGRAM or
-// PROGRAM_READ_BACK command is at the post-guard port, the valid of the shim
-// response at the sep input efuse_shim_command_resp_i is forced to 0.
+// eFuse shim response hold. Default 0. While 1 and a PROGRAM command is at
+// the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i is forced to 0.
 `SEP_TB_IN(logic, efuse_shim_resp_hold_i)
 // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
 // broken codeword onto the host-adapter command-integrity decoder input
@@ -886,6 +885,10 @@
 // acknowledge into drbg_edn_axis_adapter (u_drbg edn_axis_endpoint_rsp[i].edn_ack)
 // that pushes one word. Read-only; no force.
 `SEP_TB_OUT(logic [2:0], drbg_adapter_push_o)
+// Level of the two EDN command FIFOs (u_edn.u_edn_core): [3:0] the RESEED_CMD
+// FIFO (sfifo_rescmd_depth), [7:4] the GENERATE_CMD FIFO (sfifo_gencmd_depth).
+// Read-only; no force.
+`SEP_TB_OUT(logic [7:0], edn_cmd_fifo_depth_o)
 // Sample clock of ESRC lane 0 after the source mux and the ripple divider
 // (u_generator_complex.u_sampler_clocks.sample_clk_o[0]). Read-only; no force.
 `SEP_TB_OUT(logic, esrc_sample_clk_lane0_o)
@@ -1377,6 +1380,24 @@
 `SEP_TB_OUT(logic, pr_cpu_ifu_arvalid_o)
 `SEP_TB_OUT(logic, pr_cpu_ifu_arready_o)
 `SEP_TB_OUT(logic [2:0], pr_cpu_ifu_arprot_o)
+// PR-CPU-LSU-ATTR: address, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION of the
+// same raw LSU AW and AR, and ID, AxLEN and AxSIZE of the raw LSU AR
+// (lsu_axi_req_raw); tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [31:0], pr_cpu_lsu_awaddr_o)
+`SEP_TB_OUT(logic [1:0], pr_cpu_lsu_awburst_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_awlock_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_awcache_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_awqos_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_awregion_o)
+`SEP_TB_OUT(logic [31:0], pr_cpu_lsu_araddr_o)
+`SEP_TB_OUT(logic [1:0], pr_cpu_lsu_arburst_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_arlock_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_arcache_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_arqos_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_arregion_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_arid_o)
+`SEP_TB_OUT(logic [7:0], pr_cpu_lsu_arlen_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_arsize_o)
 // PR-DMA-RAW: AxPROT of the raw secure DMA master request, before its window
 // remap (u_sep_dma_wrap dma_axi_req_raw).
 `SEP_TB_OUT(logic, pr_dma_raw_awvalid_o)
@@ -1455,7 +1476,8 @@
 `SEP_TB_OUT(logic [63:0], pr_tcm_dccm_rdata_o)
 `SEP_TB_OUT(logic [13:0], pr_tcm_dccm_recc_o)
 // PR-IFU: the IFU request after the local alias remap and before the IFU
-// demux (u_sep_cpu.ifu_axi_req), and the response the demux returns to it,
+// demux (u_sep_cpu.ifu_axi_req: AR address, ID, AxLEN, AxSIZE, AxBURST, AxLOCK,
+// AxCACHE, AxQOS, AxREGION), and the response the demux returns to it,
 // DECERR of the error responder included. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, pr_ifu_arvalid_o)
 `SEP_TB_OUT(logic, pr_ifu_arready_o)
@@ -1463,6 +1485,11 @@
 `SEP_TB_OUT(logic [2:0], pr_ifu_arid_o)
 `SEP_TB_OUT(logic [7:0], pr_ifu_arlen_o)
 `SEP_TB_OUT(logic [2:0], pr_ifu_arsize_o)
+`SEP_TB_OUT(logic [1:0], pr_ifu_arburst_o)
+`SEP_TB_OUT(logic, pr_ifu_arlock_o)
+`SEP_TB_OUT(logic [3:0], pr_ifu_arcache_o)
+`SEP_TB_OUT(logic [3:0], pr_ifu_arqos_o)
+`SEP_TB_OUT(logic [3:0], pr_ifu_arregion_o)
 `SEP_TB_OUT(logic, pr_ifu_rvalid_o)
 `SEP_TB_OUT(logic, pr_ifu_rready_o)
 `SEP_TB_OUT(logic [1:0], pr_ifu_rresp_o)
@@ -1612,9 +1639,22 @@
 `SEP_TB_OUT(logic, pr_dbg_out_arvalid_o)
 `SEP_TB_OUT(logic, pr_dbg_out_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dbg_out_araddr_o)
+// PR-DBG-IN-ATTR: AxBURST, AxLOCK, AxCACHE and AxQOS of the debug-module
+// system-bus request at the remap input (dbg_axi_req_raw), AW and AR. Tied to 0
+// on the CPU stub build.
+`SEP_TB_OUT(logic [1:0], pr_dbg_in_awburst_o)
+`SEP_TB_OUT(logic, pr_dbg_in_awlock_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_awcache_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_awqos_o)
+`SEP_TB_OUT(logic [1:0], pr_dbg_in_arburst_o)
+`SEP_TB_OUT(logic, pr_dbg_in_arlock_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_arcache_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_arqos_o)
 // Core JTAG and DMI outputs of sep that the DUT instance leaves open
-// otherwise: the TAP TDO and the uncore DMI enable and write enable.
+// otherwise: the TAP TDO and its output enable, and the uncore DMI enable and
+// write enable.
 `SEP_TB_OUT(logic, jtag_tdo_o)
+`SEP_TB_OUT(logic, jtag_tdoEn_o)
 `SEP_TB_OUT(logic, dmi_uncore_en_o)
 `SEP_TB_OUT(logic, dmi_uncore_wr_en_o)
 // BH-SMC (docs/SEP_TB_ARCH.adoc, HDL Top port table). A leaf drives these
@@ -1626,6 +1666,10 @@
 // observation-only. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [55:0], smc_base_probe_o)
 `SEP_TB_OUT(logic [55:0], smc_size_probe_o)
+// SEP aperture outputs of the DUT (sep_global_base_addr_o, sep_region_size_o),
+// observation-only.
+`SEP_TB_OUT(logic [55:0], sep_global_base_addr_probe_o)
+`SEP_TB_OUT(logic [55:0], sep_region_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -1671,7 +1715,6 @@
 `SEP_TB_OUT(logic, efuse_shim_cmd_valid_o)
 `SEP_TB_OUT(efuse_pkg::fuse_command_e, efuse_shim_cmd_command_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_addr_bit_t, efuse_shim_cmd_address_o)
-`SEP_TB_OUT(logic, efuse_shim_cmd_program_data_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_word_counter_t, efuse_shim_cmd_len_o)
 // Shim response at the sep input efuse_shim_command_resp_i: valid, status and
 // data. Read-only taps.

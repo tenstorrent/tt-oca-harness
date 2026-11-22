@@ -120,6 +120,11 @@ module idma_wrapper #(
                                                             // a 2D midend, or a backend has a
                                                             // request pending, a transfer active or
                                                             // an AXI response outstanding.
+  output logic dma_frontend_busy_o,                         // Frontend half of dma_busy_o: a command
+                                                            // is queued or in a 2D midend.
+  output logic dma_backend_busy_o,                          // Backend half of dma_busy_o: a backend
+                                                            // has a request pending, a transfer
+                                                            // active or an AXI response outstanding.
   output logic dma_intp_o,                                  // Completion interrupt: a registered
                                                             // one-cycle pulse in the cycle after
                                                             // dma_busy_o falls, with no enable or
@@ -241,7 +246,9 @@ module idma_wrapper #(
     .gated_clk_o(local_clock)
   );
 
-  assign dma_busy_o = dma_frontend_busy | dma_backend_busy;
+  assign dma_busy_o          = dma_frontend_busy | dma_backend_busy;
+  assign dma_frontend_busy_o = dma_frontend_busy;
+  assign dma_backend_busy_o  = dma_backend_busy;
 
   // Falling-edge pulse of dma_busy_o (transfer-complete interrupt)
   logic dma_prev_busy;

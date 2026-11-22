@@ -84,10 +84,9 @@ sources = [
   # FCOV covergroup sampler.
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
-  # buses at the foot of tb_top. The Verilator targets pass no --assert, so
-  # Verilator drops its two-state rules; the X-hygiene rules are gated by
-  # OCAH_INC_ASSERT, which Verilator does not define. The rules are live
-  # under VCS.
+  # buses at the foot of tb_top. Its two-state rules run on both simulators;
+  # the X-hygiene rules are gated by OCAH_INC_ASSERT, which Verilator does not
+  # define, so they run under VCS only.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   # IC_RESET TDR storage for the SEP slice. The TAP that selects it is not
   # in this DUT.

@@ -19,7 +19,7 @@ Contract:
     (``hw/ip/entropy_source/regs/entropy_source.rdl:352``).
   * The five total-failure counters count since the last ``MODULE_ENABLE``
     rising edge (``entropy_source.rdl:821-861``), and the rising edge restarts
-    startup health testing (``architecture.adoc:226-227``). A falling edge is not
+    startup health testing (``architecture.adoc:230-231``). A falling edge is not
     that edge, so it does not clear a counter.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
@@ -46,7 +46,9 @@ Checkers:
   CHK-BOOT-BAD      stuck0 start, hold of 3 t_boot: BOOT_PHASE_DONE 0, both
                     levels 0, no strobe on ``esrc_whiten_push_o`` or
                     ``esrc_compress_vld_o``, HEALTH_TEST_STATUS bit 0 = 1.
-                    Control: the clean start shows levels and tap strobes.
+                    Control: the clean start shows levels and tap strobes, and
+                    ``BIW_OBS_CTRL.RAW_ENABLE`` reads 1 before the stuck0 enable
+                    (CTRL-BOOT-BAD; its reset value 0 also keeps the BIW level 0).
   CHK-BOOT-IDLE     after MODULE_ENABLE = 0: IDLE = 1, and after BUSY = 0 and a
                     drain the FIFO stays empty and the stream tap silent for
                     3 t_fill. Control: IDLE 0 and a level above 0 before.
@@ -56,9 +58,9 @@ Checkers:
   CHK-BOOT-FALL-KEEP in the same leg, the five counters read after the
                     MODULE_ENABLE = 0 write and before the rise are each at least
                     their value before the fall (no clear at the fall). Control:
-                    CTRL-BOOT-RESTART, REPCNT_TOTAL_FAILS non-zero before. Whether a
-                    counter still counts while MODULE_ENABLE is 0 is not stated: the
-                    values after the fall are also logged as OBS-BOOT-COUNTERS.
+                    CTRL-BOOT-RESTART, REPCNT_TOTAL_FAILS non-zero before. The
+                    values after the fall are also logged as INFO-BOOT-COUNTERS:
+                    graded by CHK-BOOT-FALL-KEEP; no open specification question.
   CHK-BOOT-TOGGLE   per drawn moment (boot, after_boot, bad_pattern): IDLE = 1
                     after the fall; after the rise every counter that read
                     non-zero before the fall reads 0 at once, the first
@@ -66,7 +68,7 @@ Checkers:
                     BOOT_PHASE_DONE returns to 1. Failures after the rise count
                     again by contract (stuck samples still in the pipeline at
                     the bad_pattern moment), so the counters at BOOT_PHASE_DONE
-                    are logged as OBS-BOOT-COUNTERS only. At the bad_pattern
+                    are logged as INFO-BOOT-COUNTERS only. At the bad_pattern
                     moment HEALTH_TEST_CTRL.ENABLE goes 0 then 7 after the fall
                     (it clears the tester run state, RDL :314), so a stale stuck0
                     sample after the rise cannot extend the run past the limit
@@ -75,9 +77,37 @@ Checkers:
                     Control: IDLE 0 before the fall; the boot moment reads
                     BOOT_PHASE_DONE 0 last; bad_pattern reads REPCNT above 0, and
                     above 0 again after the tester clear.
+  CHK-BOOT-TRANSIENT clean start with ``RAW_ENABLE`` 0; strobes W/4 to W/4 +
+                    REPETITION_LIMIT + 8 after the enable carry stuck0, then the lanes
+                    return to ``balanced``, so the run ends before strobe W/2 and only
+                    the first window fails. Two grades (architecture.adoc:40-41: the gate
+                    passes only after a passing boot window; entropy_source.rdl
+                    BOOT_PHASE_DONE):
+                    half=closed, from the enable to strobe W: BOOT_PHASE_DONE 0 and
+                    FIFO LEVEL 0 at every poll, no strobe on ``esrc_compress_vld_o`` or
+                    ``esrc_whiten_push_o``;
+                    half=opens, within 4W strobes of the enable (3 windows after the
+                    failing window) and no earlier than W strobes after the first stuck0
+                    strobe (the failing window ends at or after the failure and a whole
+                    passing window follows it): BOOT_PHASE_DONE reads 1, then the stream
+                    tap shows a word, no earlier than the first poll that read
+                    BOOT_PHASE_DONE 1.
+                    Control: CTRL-BOOT-TRANSIENT, HEALTH_TEST_STATUS bit 0 reads 0 at a
+                    poll before strobe W/4 and 1 at a poll before strobe W/2.
+  CHK-BOOT-ONE-WINDOW in the transient leg: BOOT_PHASE_DONE reads 1 no later than
+                    strobe stuck_first + 2W + 64 after the enable. The window that
+                    holds the first stuck0 strobe fails and ends by stuck_first + W,
+                    and the gate opens after one passing boot window
+                    (``hw/ip/entropy_source/doc/architecture.adoc``:40-41; the enable
+                    restarts startup testing, :230-231). The two-window rule of
+                    ``vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/doc/
+                    theory_of_operation.md``:41-46 is the FIPS startup test, which
+                    this block has no register to select. A gate that waits for two
+                    passing windows opens near strobe 3W and fails. The same line
+                    logs the strobes from the end of the stuck0 run to that read.
 Every bound is a multiple of a clean time of the same seed and is logged.
-Logged only: OBS-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
-(the state encoding is not stated).
+Logged only: INFO-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
+(not graded; no open specification question).
 """
 
 from __future__ import annotations
@@ -163,6 +193,16 @@ SHA_BUSY, _ = _fm("SHA256_STATUS", "BUSY")
 # Outer caps of a first latency measurement: a cap, never a contract.
 FIRST_LATENCY_CAP = 20_000
 HOLD_FACTOR = 3
+# Transient leg: the stuck0 run starts at this strobe after the enable and is
+# REPETITION_LIMIT + TRANSIENT_EXTRA strobes long (test parameters); the closed half
+# spans one window from the enable, the open half TRANSIENT_WINDOWS windows.
+TRANSIENT_START = WINDOW // 4
+TRANSIENT_EXTRA = 8
+TRANSIENT_WINDOWS = 4
+# Strobes past stuck_first + 2W allowed for the MAIN_SM_STATUS poll that reads
+# BOOT_PHASE_DONE 1; fewer than the REPETITION_LIMIT + TRANSIENT_EXTRA strobes of
+# the stuck0 run.
+BOOT_DONE_MARGIN = 64
 MAX_POPS = 4 * 64
 PRE_CLEAN_MAX = 16
 
@@ -230,6 +270,8 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         "CHK-BOOT-RESTART",
         "CHK-BOOT-FALL-KEEP",
         "CHK-BOOT-TOGGLE",
+        "CHK-BOOT-TRANSIENT",
+        "CHK-BOOT-ONE-WINDOW",
     )
 
     async def run_scenario(self) -> None:
@@ -266,6 +308,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         await self._guard(self._restart_leg(), "BOOT-RESTART")
         for i, moment in enumerate(plan.order):
             await self._guard(self._toggle_leg(moment, plan.raw[i]), "BOOT-TOGGLE", moment=moment)
+        await self._guard(self._transient_leg(), "BOOT-TRANSIENT")
         close_graded_window(self.logger)
 
         self.noise.byte_check(False)
@@ -302,7 +345,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         state = _fld("MAIN_SM_STATUS", "STATE", sm)
         if state != self._last_state:
             self._last_state = state
-            self.chk.obs(
+            self.chk.info(
                 "ESRC-SM-STATE",
                 state=f"0x{state:03x}",
                 idle=_fld("MAIN_SM_STATUS", "IDLE", sm),
@@ -441,6 +484,8 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         )
         await self._wr(ESRC_ALERT_THRESHOLD, ENTROPY_SOURCE.value("ALERT_THRESHOLD", THRESHOLD=0))
         await self._wr(ESRC_BIW_OBS_CTRL, ENTROPY_SOURCE.value("BIW_OBS_CTRL", RAW_ENABLE=1))
+        raw_rb = _fld("BIW_OBS_CTRL", "RAW_ENABLE", await self._rd(ESRC_BIW_OBS_CTRL))
+        self.chk.ctrl("BOOT-BAD", raw_rb == 1, biw_obs_raw_enable_rb=raw_rb)
         # MODULE_ENABLE = 0 here, so the immediate change applies stuck0 from the first sample.
         self.noise.set_lanes([Stuck(0)] * NUM_LANES, immediate=True)
         pre = self.noise.words_since(mark)
@@ -637,7 +682,12 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         await self._enable(0)
         idle_ok, _, idle_bound = await self._wait_idle("restart_leg")
         after_fall = await self._totals()
-        self.chk.obs("BOOT-COUNTERS", leg="restart", after_fall=self._fmt_totals(after_fall))
+        self.chk.info(
+            "BOOT-COUNTERS",
+            leg="restart",
+            after_fall=self._fmt_totals(after_fall),
+            chk="CHK-BOOT-FALL-KEEP",
+        )
         cleared = [k for k, _ in TOTALS if after_fall[k] < before[k]]
         self.chk.ok(
             "BOOT-FALL-KEEP",
@@ -782,7 +832,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         # REPCNT_TOTAL_FAILS is read first, before the first strobe after the rise;
         # the window counters fail only at a window end, a whole window later.
         after = await self._totals()
-        # The rise restarts startup health testing (architecture.adoc:226-227), and
+        # The rise restarts startup health testing (architecture.adoc:230-231), and
         # BOOT_PHASE_DONE reports its completion (entropy_source.adoc:409), so the
         # first MAIN_SM_STATUS read after the rise, a few register reads into a
         # startup window, reads BOOT_PHASE_DONE = 0.
@@ -791,7 +841,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         if not done_ok and not reason:
             reason = f"timeout:boot_done_again bound={done_bound}"
         at_done = await self._totals()
-        self.chk.obs(
+        self.chk.info(
             "BOOT-COUNTERS", leg=f"toggle_{moment}", at_boot_done=self._fmt_totals(at_done)
         )
         self._bytes_end(f"toggle_{moment}", base)
@@ -814,4 +864,120 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             "BOOT-TOGGLE",
             not reason and idle_ok and done_at_rise == 0 and done_ok and not nonzero,
             **fields,
+        )
+
+    async def _stuck_burst(self, m0: int, length: int) -> tuple[int, int]:
+        """Stuck0 on every lane for ``length`` whole words from strobe TRANSIENT_START + 1
+        after ``m0``, then ``balanced``; returns the first stuck and first balanced word
+        after ``m0``."""
+        bound = LATENCY_FACTOR * self.t_boot
+        await self.noise.wait_words(max(0, m0 + TRANSIENT_START - self.noise.mark()), bound)
+        self.noise.set_lanes([Stuck(0)] * NUM_LANES)
+        first = self.noise.mark() + 1
+        await self.noise.wait_words(length, bound)
+        self.noise.set_lanes(list(self.plan.balanced))
+        return first - m0, self.noise.mark() + 1 - m0
+
+    async def _transient_leg(self) -> None:
+        """One failing startup window after the enable, then clean windows: the gate
+        stays closed through the failing window and opens after a passing one."""
+        lim = clean_limits(WINDOW)
+        length = lim.repetition + TRANSIENT_EXTRA
+        if TRANSIENT_START + length >= WINDOW // 2:
+            raise ValueError(f"stuck0 run {length} from strobe {TRANSIENT_START} reaches W/2")
+        await self._clean_start(0)
+        m0 = self.noise.mark()
+        wm, vm = self.whiten.mark(), self.vld.mark()
+        base = self._bytes_begin()
+        burst = cocotb.start_soon(self._stuck_burst(m0, length))
+        try:
+            polls = done_seen = fifo_seen = 0
+            ht_before: int | None = None
+            ht_word: int | None = None
+            while self.noise.words_since(m0) < WINDOW:
+                p = await self._poll()
+                ht = await self._rd(ESRC_HEALTH_TEST_STATUS)
+                ht0 = _fld("HEALTH_TEST_STATUS", "HEALTH_STATUS", ht) & 1
+                w = self.noise.words_since(m0)
+                polls += 1
+                done_seen |= p.done
+                fifo_seen = max(fifo_seen, p.fifo)
+                if w < TRANSIENT_START:
+                    ht_before = max(ht_before or 0, ht0)
+                if ht0 and ht_word is None:
+                    ht_word = w
+            closed_words = self.noise.words_since(m0)
+            push = self.whiten.high_clocks_since(wm)
+            stream = self.vld.high_clocks_since(vm)
+            stuck_first, stuck_end = await burst
+        finally:
+            if not burst.done():
+                burst.cancel()
+        self.chk.ctrl(
+            "BOOT-TRANSIENT",
+            ht_before == 0 and ht_word is not None and ht_word < WINDOW // 2,
+            ht_status_bit0_before=ht_before if ht_before is not None else "na",
+            ht_status_bit0_first_strobe=ht_word if ht_word is not None else "none",
+            stuck_strobes=f"{stuck_first}-{stuck_end}",
+        )
+        self.chk.ok(
+            "BOOT-TRANSIENT",
+            done_seen == 0 and fifo_seen == 0 and push == 0 and stream == 0,
+            half="closed",
+            strobes=closed_words,
+            polls=polls,
+            boot_phase_done=done_seen,
+            level=fifo_seen,
+            whiten_push=push,
+            pushes=stream,
+            ctrl_stream_vld=self.ctrl_vld,
+        )
+        bound = TRANSIENT_WINDOWS * WINDOW
+        done_word: int | None = None
+        push_word: int | None = None
+        # Clock at the start of the last read of BOOT_PHASE_DONE 0: the bit rose after
+        # it, so the first stream word must rise after it too.
+        closed_clk = vm.clk
+        while push_word is None and self.noise.words_since(m0) <= bound:
+            read_clk = self.vld.clk
+            sm = await self._sm()
+            w = self.noise.words_since(m0)
+            if done_word is None:
+                if sm & SM_BOOT:
+                    done_word = w
+                else:
+                    closed_clk = read_clk
+            if self.vld.any_high_since(vm):
+                push_word = w
+        rises = self.vld.rise_clks_since(vm)
+        push_clk = rises[0] if rises else None
+        self._bytes_end("transient_boot", base)
+        # The failing window ends at or after the first stuck0 strobe, and a whole
+        # passing window follows it before the gate opens.
+        lower = stuck_first + WINDOW
+        self.chk.ok(
+            "BOOT-TRANSIENT",
+            done_word is not None
+            and push_word is not None
+            and lower <= done_word <= push_word
+            and push_clk is not None
+            and push_clk > closed_clk,
+            half="opens",
+            done_strobe=done_word if done_word is not None else "none",
+            first_push_strobe=push_word if push_word is not None else "none",
+            lower_bound_strobes=lower,
+            bound_strobes=bound,
+            last_closed_read_clk=closed_clk,
+            first_push_clk=push_clk if push_clk is not None else "none",
+        )
+        upper = stuck_first + 2 * WINDOW + BOOT_DONE_MARGIN
+        self.chk.ok(
+            "BOOT-ONE-WINDOW",
+            done_word is not None and done_word <= upper,
+            window=WINDOW,
+            done_strobe=done_word if done_word is not None else "none",
+            upper_bound_strobes=upper,
+            stuck_strobes=f"{stuck_first}-{stuck_end}",
+            ht_fail_strobe=ht_word if ht_word is not None else "none",
+            strobes_stuck_end_to_done=done_word - stuck_end if done_word is not None else "na",
         )

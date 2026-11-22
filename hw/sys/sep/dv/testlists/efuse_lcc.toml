@@ -74,6 +74,21 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
+# EL2 firmware reads one OTP word through the eFuse read interface, submits a
+# matching SiP RMA token, then a non-matching and a matching chiplet RMA token; the
+# leaf grades the published words. Real fuse sense of a committed preload image.
+name = "sep_efuse_el2_fw_mmio_test"
+module = "efuse.sep_efuse_el2_fw_mmio_test"
+firmware = "efuse_el2_fw_mmio_test"
+seed = 1
+timeout_sec = 900
+tags = ["efuse", "token", "mux", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_el2_fw_mmio.toml",
+]
+
+[[tests]]
 # eFuse program x write-lock on SPARE0..SPARE8 (never LC_STATE). RAND-REP.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
@@ -85,17 +100,17 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# Program with and without EFUSE_PROGRAM_CTRL.efuse_program_read_back. count=2
-# drops the first two bank writes, so each leg sees one dropped and one kept write.
-name = "sep_efuse_program_read_back_select_test"
-module = "efuse.sep_efuse_program_read_back_select_test"
+# The SHIM verifies every program. count=1 drops the first bank write, so the
+# first program sees a dropped write and the second a kept write.
+name = "sep_efuse_program_verify_test"
+module = "efuse.sep_efuse_program_verify_test"
 seed = 1
 timeout_sec = 900
 tags = ["efuse", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = [
-    "+sep_efuse_prog_fail_count=2",
+    "+sep_efuse_prog_fail_count=1",
     "+sep_efuse_prog_fail_percent=0",
     "+sep_efuse_prog_fail_seed={seed}",
 ]
@@ -523,7 +538,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_interface_status_rand_test"
 module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
-# No reseed: every run walks the eight cases; the seed selects only order, slots and values.
+# No reseed: every run walks the nine cases; the seed selects only order, slots and values.
 timeout_sec = 900
 tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks", "logs_open_spec_value"]
 run_modes = ["no_cpu"]

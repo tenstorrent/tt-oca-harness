@@ -128,7 +128,10 @@ class smu_base_test extends ocah_test;
   // One TAP reset operation straight on the JTAG agent sequencer (the
   // bring-up runs before any scenario pass owns the virtual sequencer).
   protected task tap_reset_on_jtag_seqr(string when);
-    smu_jtag_tap_reset_seq op = smu_jtag_tap_reset_seq::type_id::create("bring_up_tap_reset");
+    dtp_seq_lib_pkg::dtp_jtag_tap_reset_seq op =
+        dtp_seq_lib_pkg::dtp_jtag_tap_reset_seq::type_id::create(
+        "bring_up_tap_reset"
+    );
     `uvm_info(get_type_name(), {"TAP reset ", when}, UVM_LOW)
     op.entry_state = OCAH_JTAG_TEST_LOGIC_RESET;
     op.start(m_env.m_jtag_env.m_sequencer);

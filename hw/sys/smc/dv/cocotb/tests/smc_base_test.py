@@ -1342,6 +1342,7 @@ class smc_base_test(uvm_test):
             "tb_efuse_program_state_inject",
             "tb_efuse_read_state_inject",
             "tb_efuse_read_error_inject",
+            "tb_efuse_write_pslverr_inject",
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0

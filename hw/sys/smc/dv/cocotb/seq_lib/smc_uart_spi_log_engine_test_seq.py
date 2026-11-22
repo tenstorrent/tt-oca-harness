@@ -296,9 +296,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             )
 
         # Establish the CTS level as this test's own stimulus and route the pad
-        # to the pin. Pad 14 is driven LOW before UART_EN: cts_ni then reads 0
-        # both before and after the write, so enabling the pad function cannot
-        # itself move CTS and the first MSR read needs no settling.
+        # to the pin. Pad 14 is driven LOW before UART_EN; while UART_EN is
+        # clear cts_ni reads the idle level, 1, and the write routes the pad in,
+        # so cts_ni falls to 0 at the write and the first MSR read sees CTS=1.
         self._drive_cts_pad(0)
         await self.csr_write(
             "UART_LOG_ENGINE_CTRL_UART_EN", UART_LOG_ENGINE_CTRL_CTRL, UART_LOG_ENGINE_CTRL_UART_EN

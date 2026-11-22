@@ -21,7 +21,7 @@ Checks:
     7:0, or in bits 31:24; OpenTitan spi_host "Input and Output Byte Ordering"); one PASS
     line per read with its opcode, width and byte count. The leaf requires exactly one line
     per staged read, in order. The firmware prints the order seen once on
-    ``OBS-SPI-BYTEORDER fw order=...``, logged, not graded: no SEP text states it. The leaf
+    ``INFO-SPI-BYTEORDER fw order=...``, logged, not graded: no SEP text states it. The leaf
     requires that line.
   CHK-NOERR (firmware): per read, the polled DMA STATUS has DONE=1 and ERROR=0, ERROR_CODE
     reads 0, the SPI host goes idle and ERROR_STATUS reads 0, each read before the DMA
@@ -87,7 +87,7 @@ _FW_NOERR = re.compile(
     r"CHK-NOERR PASS: dma_status=0x([0-9a-f]{8}) dma_err_code=0x([0-9a-f]{8}) "
     r"spi_idle=([01]) spi_err_status=0x([0-9a-f]{8})"
 )
-_FW_ORDER = re.compile(r"OBS-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided) ")
+_FW_ORDER = re.compile(r"INFO-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided) ")
 
 # Scratch-mutation hooks (None/False in the committed leaf). MUT_PATTERN_SEED
 # stages expected patterns drawn from another seed while the flash keeps this
@@ -319,5 +319,5 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
         if len(orders) != 1:
             raise AssertionError(
                 f"CTRL-MISSING CHK-DATAPATH seed={cfg.seed}: {len(orders)} firmware "
-                f"OBS-SPI-BYTEORDER lines, expected 1. Console was:\n{console}"
+                f"INFO-SPI-BYTEORDER lines, expected 1. Console was:\n{console}"
             )
