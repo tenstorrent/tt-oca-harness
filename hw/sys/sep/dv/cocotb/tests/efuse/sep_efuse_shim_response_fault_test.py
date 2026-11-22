@@ -986,7 +986,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             if staged[k] and k not in _HIDDEN_WORDS and k not in SHIM_CTRL_WORDS
         ]
         r = p.draw.choice("read_word_r", r_cands)
-        self.chk.info("DRAW", name="read_word_r", value=r)
+        self.chk.info("DRAW", draw="read_word_r", value=r)
         e = self._draw_spare("spare_bit_e", d_cands, abcd)
         s_cands = [
             (fl, wb)
