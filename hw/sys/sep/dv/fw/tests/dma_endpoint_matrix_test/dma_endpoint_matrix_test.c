@@ -340,6 +340,7 @@ static uint32_t g_rec_n;
 static int recovery(const char *after) {
     mark('C', "recovery");
     dma_clear();
+    uint32_t ec_clr = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     uint32_t tag = 0x100u + g_rec_n++;
     uint32_t n = REC_LEN / 4u;
     stage_src(SRAM + B_REC_SRC, n, tag);
@@ -355,6 +356,7 @@ static int recovery(const char *after) {
     sep_mbx_puts(" after=");
     sep_mbx_puts(after);
     kv("tag", tag);
+    kv("ec_clr", ec_clr);
     rec_run(st);
     kv("nbad", bad);
     kv("dsum", h);

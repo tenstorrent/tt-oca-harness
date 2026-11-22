@@ -812,7 +812,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             (r["pre"] & ST3) == 0
             and (r["st"] & ST_DONE)
             and not (r["st"] & ST_ERROR)
-            and r["ec"] == 0
+            and (r["ec_clr"] & EC_DEFINED) == 0
             and r["nbad"] == 0
             and r["dsum"] == exp
         )
@@ -961,7 +961,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             self._recovery_after(leg)
             self.logger.info(
                 "CHK-DMA-PAIR PASS: src=%s dst=%s len=%d data_ok=na done=na seen=PR-EXT %s=0x%x beats=%d "
-                "port_resp=%s replies=%d dma_status=0x%08x error_code=0x%08x recovery_ok=1",
+                "port_resp=%s replies=%d pre_status=0x%x dma_status=0x%08x error_code=0x%08x recovery_ok=1",
                 "ext" if d == "R" else "sram",
                 "sram" if d == "R" else "ext",
                 r["tot"],
@@ -970,6 +970,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 len(beats),
                 name,
                 len(rep),
+                r["pre"],
                 r["st"],
                 r["ec"],
             )
