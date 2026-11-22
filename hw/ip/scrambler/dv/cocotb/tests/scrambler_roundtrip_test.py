@@ -16,6 +16,13 @@ random key per instance:
 4. Key and address dependence — the same word at the same address scrambles
    differently under a second key, and the same word at a different address
    scrambles differently under the same key (the address tweak takes part).
+
+Every scrambled write of steps 2-4 is also graded against the data cipher
+model of ``scrambler_base_test`` (``CHK-SCR-DATA-GOLDEN``): in word mode the
+scrambled word equals the model word; in byte-wise mode, where the ``perm8``
+table is not documented, each byte of the scrambled word has the popcount of
+the same byte of the model's S-box layer output. The scrambled address is
+not graded against a model.
 """
 
 from __future__ import annotations
@@ -24,7 +31,35 @@ import logging
 import random
 
 import cocotb
-from scrambler_base_test import DATA_MASK, VARIANTS, ScramblerPort, random_seed
+from scrambler_base_test import (
+    DATA_MASK,
+    VARIANTS,
+    ScramblerPort,
+    byte_popcounts,
+    model_scramble_pre_perm,
+    model_scramble_word,
+    random_seed,
+)
+
+
+def check_data_golden(port: ScramblerPort, key: int, addr: int, data: int, sdata: int) -> None:
+    """Raise unless ``sdata`` matches the cipher model for this write."""
+    variant = port.variant
+    if variant.byte_wise:
+        pre_perm = model_scramble_pre_perm(key, addr, data, variant.addr_width)
+        expected = byte_popcounts(pre_perm)
+        observed = byte_popcounts(sdata)
+        mode = "byte"
+    else:
+        expected = model_scramble_word(key, addr, data, variant.addr_width)
+        observed = sdata
+        mode = "word"
+    if observed != expected:
+        raise AssertionError(
+            f"CHK-SCR-DATA-GOLDEN FAIL mode={mode} depth={variant.depth} addr=0x{addr:x} "
+            f"key=0x{key:08x} data=0x{data:08x} sdata=0x{sdata:08x} "
+            f"observed={observed} expected={expected}"
+        )
 
 
 async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
@@ -53,12 +88,15 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
         depth,
     )
 
+    graded = 0
     sample = range(depth)
     memory: dict[int, int] = {}
     expected: dict[int, int] = {}
     for addr in sample:
         data = random.getrandbits(32)
         saddr, sdata = await port.scramble(addr, data)
+        check_data_golden(port, key, addr, data, sdata)
+        graded += 1
         assert saddr == scrambled_of[addr], (
             f"{variant.name}: scrambled address changed with the data"
         )
@@ -73,6 +111,8 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
 
     for value, addr in enumerate(reversed(sample)):
         saddr, sdata = await port.scramble(addr, value & DATA_MASK)
+        check_data_golden(port, key, addr, value & DATA_MASK, sdata)
+        graded += 1
         memory[saddr] = sdata
         expected[addr] = value & DATA_MASK
     for addr in reversed(sample):
@@ -85,17 +125,29 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     addr_a, addr_b = random.sample(range(depth), 2)
     data = random.getrandbits(32)
     _, sdata_a = await port.scramble(addr_a, data)
+    check_data_golden(port, key, addr_a, data, sdata_a)
     _, sdata_b = await port.scramble(addr_b, data)
+    check_data_golden(port, key, addr_b, data, sdata_b)
+    graded += 2
     assert sdata_a != sdata_b, (
         f"{variant.name}: 0x{data:08x} scrambles identically at 0x{addr_a:x} and 0x{addr_b:x}"
     )
     other_key = key ^ (1 << random.randrange(32)) ^ random.getrandbits(32)
     port.init(other_key)
     _, sdata_other = await port.scramble(addr_a, data)
+    check_data_golden(port, other_key, addr_a, data, sdata_other)
+    graded += 1
     assert sdata_other != sdata_a, (
         f"{variant.name}: 0x{data:08x} at 0x{addr_a:x} scrambles identically under two keys"
     )
     log.info("%s: scrambled data depends on the address and on the key", variant.name)
+    assert graded == 2 * depth + 3
+    log.info(
+        "CHK-SCR-DATA-GOLDEN PASS mode=%s depth=%d writes=%d",
+        "byte" if variant.byte_wise else "word",
+        depth,
+        graded,
+    )
 
 
 @cocotb.test()

@@ -4196,6 +4196,9 @@ module sep_uvm_top
     `ESRC_DECOR_NOISE_TAP(6);  `ESRC_DECOR_NOISE_TAP(7);  `ESRC_DECOR_NOISE_TAP(8);
     `ESRC_DECOR_NOISE_TAP(9);  `ESRC_DECOR_NOISE_TAP(10); `ESRC_DECOR_NOISE_TAP(11);
 `undef ESRC_DECOR_NOISE_TAP
+    //   * esrc_window_wrap_o: the entropy_source health-test window-wrap strobe
+    //     (window_wrap_pulse), 1 for the clk_i cycle that ends a window.
+    assign esrc_window_wrap_o = `SEP_ESRC.window_wrap_pulse;
     assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};

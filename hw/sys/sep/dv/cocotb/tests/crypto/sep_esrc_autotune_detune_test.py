@@ -65,7 +65,17 @@ Checkers:
   CHK-TUNE-AUTO     after each of three autotune bursts, AUTOTUNE_FAIL = 1 and
                     status k bit 0 = 1; both read 0 before each burst (control).
   CHK-TUNE-TOGGLE   in each autotune burst and its gap probe bit k changes at
-                    least once and no other probe bit changes (count logged).
+                    least once and no other probe bit changes (count logged);
+                    probe bit k does not change from the p0 sample of the
+                    ignored leg, or from the end of the previous gap, to the
+                    burst start (changes_outside); and each change of bit k
+                    holds at least two clk_i cycles (min_hold_clk). A toggle
+                    needs a rising edge of the failure (architecture.adoc:73),
+                    and two rising edges of one clk_i signal are at least two
+                    cycles apart. The hold after the last change is counted
+                    to the end of the gap. The stimulus of a burst is one
+                    whole window of stuck1, so the APT and Markov failures of
+                    the lane rise at one window boundary (architecture.adoc:124).
   CHK-TUNE-OFF      after the autotune-off burst status k bit 0 = 1 and
                     AUTOTUNE_FAIL = 0. Control: CHK-TUNE-AUTO sets it.
   CHK-TUNE-IRQ      with INTR_ENABLE = AUTOTUNE_FAIL only, after each autotune
@@ -187,6 +197,9 @@ PERIOD_STROBES = 8
 
 # Clocks the pass label stays 1, so the sampler sees its rise on a clk_i edge.
 LABEL_HOLD_CLK = 2
+
+# CHK-TUNE-TOGGLE: least clk_i cycles between two changes of the lane detune.
+TOGGLE_MIN_HOLD_CLK = 2
 
 # CHK-SCLK-DIV. architecture.adoc:75: SAMPLE_CLK_DIVIDE 0 to 5 select division by
 # 1, 2, 4, 8, 16 and 32 (in that order, entropy_source.rdl:674); a value outside
@@ -449,6 +462,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         self.timer = SepEdgeTimer(dut.esrc_detune_o, name="esrc_detune_o").start()
         # Time from each autotune burst start to the first change of probe bit k.
         self.first_toggle_ps: list[int] = []
+        # Start of the span before the next autotune burst in which probe bit k stays.
+        self.quiet_since_ps = _now_ps()
         set_esrc_tune_pass(False, self.logger)
 
         grades = shard in (None, 1)
@@ -687,6 +702,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         await self._write_autotune(1)
         p0 = await self._probe()
         t_p0 = _now_ps()
+        self.quiet_since_ps = t_p0
         probes = []
         readbacks = []
         try:
@@ -723,13 +739,18 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             for name in ("TUNE-TOGGLE", "TUNE-AUTO", "TUNE-IRQ", "TUNE-PIC16", "TUNE-W1C"):
                 self._ok(name, False, lane=k, burst=i + 1, reason=reason)
             await self._clear_status(clear_autotune=True)
+            self.quiet_since_ps = _now_ps()
             return None
-        edges = sorted(
-            self.timer.rises(t0, until_ps=t1, bit=k) + self.timer.falls(t0, until_ps=t1, bit=k)
-        )
+        edges = self._bit_changes(t0, t1, k)
         toggles = len(edges)
         if edges:
             self.first_toggle_ps.append(edges[0] - t0)
+        quiet = self.quiet_since_ps
+        outside = [t for t in self._bit_changes(quiet, t0, k) if quiet < t < t0]
+        self.quiet_since_ps = t1
+        sys_ps = self._sys_ps()
+        holds = [(b - a) // sys_ps for a, b in zip(edges, [*edges[1:], t1])]
+        min_hold = min(holds, default=None)
         moved = [
             j
             for j in range(NUM_LANES)
@@ -740,13 +761,21 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         ]
         self._ok(
             "TUNE-TOGGLE",
-            toggles >= 1 and not moved,
+            toggles >= 1
+            and not moved
+            and not outside
+            and min_hold is not None
+            and min_hold >= TOGGLE_MIN_HOLD_CLK,
             lane=k,
             burst=i + 1,
             changes_ge1=toggles >= 1,
             others_unchanged=not moved,
             toggles=toggles,
             moved_lanes=moved or "none",
+            changes_outside=len(outside),
+            outside_ps=t0 - quiet,
+            min_hold_clk="na" if min_hold is None else min_hold,
+            want_min_hold_clk=TOGGLE_MIN_HOLD_CLK,
         )
         fail, gen, intr = await self._reads()
         line = self._pic16()
@@ -805,6 +834,14 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             intr_status=f"0x{cleared:08x}",
         )
         return toggles
+
+    def _bit_changes(self, since_ps: int, until_ps: int, bit: int) -> list[int]:
+        """Times in ps of every change of probe ``bit`` from ``since_ps`` to ``until_ps``."""
+        t = self.timer
+        return sorted(
+            t.rises(since_ps, until_ps=until_ps, bit=bit)
+            + t.falls(since_ps, until_ps=until_ps, bit=bit)
+        )
 
     auto_fail_seen = False
 
@@ -898,11 +935,14 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         """Period of ``entropy_rosc_sample_clk_i`` the bench drives (env/sep_env_cfg.py)."""
         return round(self.cfg.entropy_clk_period_ns * 1000)
 
+    def _sys_ps(self) -> int:
+        """Period of ``clk_i`` the bench drives (env/sep_env_cfg.py)."""
+        return round(self.cfg.sys_clk_period_ns * 1000)
+
     def _edge_bound(self, edges: int) -> int:
         """clk_i cycles for ``edges`` rising edges at the largest stated ratio, with margin."""
-        sys_ps = round(self.cfg.sys_clk_period_ns * 1000)
         span_ps = (edges + 1) * max(DIV_RATIOS) * self._src_ps() * SCLK_BOUND_FACTOR
-        return -(-span_ps // sys_ps)
+        return -(-span_ps // self._sys_ps())
 
     async def _rises(self, sig, count: int) -> list[int]:
         """Times in ps of the next ``count`` rising edges of ``sig``, within a bound.
@@ -997,8 +1037,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
                 edges += 1
 
         counter = cocotb.start_soon(count())
-        sys_ps = round(self.cfg.sys_clk_period_ns * 1000)
-        await ClockCycles(cocotb.top.clk_i, -(-SCLK_ONE_HOLD * want_old // sys_ps))
+        await ClockCycles(cocotb.top.clk_i, -(-SCLK_ONE_HOLD * want_old // self._sys_ps()))
         counter.cancel()
         await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=plan.div_v2))
         if plan.one_enable == "module":

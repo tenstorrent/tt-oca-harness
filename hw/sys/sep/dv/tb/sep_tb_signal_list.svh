@@ -856,6 +856,9 @@
 `SEP_TB_OUT(logic [11:0], esrc_detune_o)
 // Lane i: u_decorrelator.noise_i, the decorrelator input bit of the lane.
 `SEP_TB_OUT(logic [11:0], esrc_decor_noise_o)
+// entropy_source window_wrap_pulse: 1 for the clk_i cycle that ends a
+// health-test window.
+`SEP_TB_OUT(logic, esrc_window_wrap_o)
 // Next value of the SHA256_STATUS fields: [0] BUSY, [4:1] INPUT_COUNT,
 // [8:5] OUTPUT_COUNT.
 `SEP_TB_OUT(logic [8:0], esrc_sha256_status_o)

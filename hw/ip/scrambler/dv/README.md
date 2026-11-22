@@ -14,8 +14,8 @@ Layout
   `<mode><depth>_*` pin bundle (`w` word mode, `b` byte-wise mode). The design
   is combinational and the bench uses no clock.
 * `cocotb/tests/` — test modules; `scrambler_base_test.py` carries the variant
-  table, the pin-level scramble/descramble helpers and the byte-lane merge
-  model of a byte-maskable memory.
+  table, the pin-level scramble/descramble helpers, the data cipher model and
+  the byte-lane merge model of a byte-maskable memory.
 * `testlists/all.toml` — testlist and groups (`smoke`, `all`).
 * `lint/` — slang-tidy configuration for the scrambler RTL.
 
@@ -44,7 +44,9 @@ Tests
 * `scrambler_roundtrip_test` — on every variant with a random key: the
   address map is a permutation of the address space, random and sequential
   words round-trip through a memory indexed by scrambled address, and the
-  scrambled data depends on both the address and the key.
+  scrambled data depends on both the address and the key. Every scrambled
+  write is graded against the documented data cipher (`CHK-SCR-DATA-GOLDEN`):
+  the whole word in word mode, the per-byte popcount in byte-wise mode.
 * `scrambler_bytewise_test` — byte-wise variants keep every lane
   independently descramblable under byte-masked writes into a lane-merging
   memory, and a word-mode variant demonstrably does not.

@@ -13,6 +13,14 @@ permutation of the address space for a given key; a word scrambled at an
 address descrambles back to itself at the same address and key; and in
 byte-wise mode each byte lane scrambles independently, so a memory that
 merges byte-masked writes keeps every lane descramblable.
+
+The data cipher model below follows ``hw/ip/scrambler/doc/architecture.adoc``
+alone: the round key is the address expansion XOR the key, the write word is
+XORed with it, each nibble passes the PRESENT S-box, and the word passes the
+player permutation. Byte-wise mode replaces the player with a per-byte
+``perm8`` whose bit table the document does not give, so the model stops at
+the S-box layer there. The address scramble tables (``sbox3``, ``permN``) are
+not in the document either, and no model covers the scrambled address.
 """
 
 from __future__ import annotations
@@ -53,6 +61,77 @@ VARIANTS = tuple(
 )
 WORD_VARIANTS = tuple(v for v in VARIANTS if not v.byte_wise)
 BYTEWISE_VARIANTS = tuple(v for v in VARIANTS if v.byte_wise)
+
+
+# architecture.adoc "SRAM scrambler S-box" table: S(x) for x = 0x0 .. 0xF.
+SBOX4 = (0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD, 0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2)
+
+# architecture.adoc "SRAM scrambler permutation" tables: input bit i -> output bit P(i).
+PLAYER = dict(
+    zip(
+        range(31, -1, -1),
+        (0, 4, 8, 12, 16, 20, 24, 28, 1, 5, 9, 13, 17, 21, 25, 29)
+        + (2, 6, 10, 14, 18, 22, 26, 30, 3, 7, 11, 15, 19, 23, 27, 31),
+    )
+)
+
+# architecture.adoc "SRAM scrambler address expansion" table: ADDR_WIDTH ->
+# (whole address copies, high bit and low bit of the trailing slice), MSB first.
+ADDR_EXPANSION = {
+    9: (3, 8, 4),
+    10: (3, 9, 8),
+    11: (2, 10, 1),
+    12: (2, 11, 4),
+    13: (2, 12, 7),
+}
+
+
+def expand_address(addr: int, addr_width: int) -> int:
+    """The 32-bit address expansion of the address expansion table."""
+    copies, high, low = ADDR_EXPANSION[addr_width]
+    expanded = 0
+    for _ in range(copies):
+        expanded = (expanded << addr_width) | addr
+    tail_width = high - low + 1
+    expanded = (expanded << tail_width) | ((addr >> low) & ((1 << tail_width) - 1))
+    assert copies * addr_width + tail_width == DATA_WIDTH
+    return expanded
+
+
+def model_round_key(key: int, addr: int, addr_width: int) -> int:
+    """Rkey = scrambler_key ^ expanded address (architecture.adoc Address Tweaking)."""
+    return (key ^ expand_address(addr, addr_width)) & DATA_MASK
+
+
+def model_sbox_layer(word: int) -> int:
+    """Each of the eight nibbles of ``word`` through the S-box, in place."""
+    out = 0
+    for lane in range(DATA_WIDTH // 4):
+        out |= SBOX4[(word >> (4 * lane)) & 0xF] << (4 * lane)
+    return out
+
+
+def model_player(word: int) -> int:
+    """Output bit P(i) takes input bit i."""
+    out = 0
+    for src, dst in PLAYER.items():
+        out |= ((word >> src) & 1) << dst
+    return out
+
+
+def model_scramble_pre_perm(key: int, addr: int, data: int, addr_width: int) -> int:
+    """The S-box layer output for ``data`` written at ``addr`` (Scrambling Procedure)."""
+    return model_sbox_layer((data ^ model_round_key(key, addr, addr_width)) & DATA_MASK)
+
+
+def model_scramble_word(key: int, addr: int, data: int, addr_width: int) -> int:
+    """The word-mode scrambled write data: player(S(data ^ Rkey))."""
+    return model_player(model_scramble_pre_perm(key, addr, data, addr_width))
+
+
+def byte_popcounts(word: int) -> tuple[int, ...]:
+    """Population count of each byte lane, lane 0 first."""
+    return tuple(bin((word >> (8 * lane)) & 0xFF).count("1") for lane in range(NUM_LANES))
 
 
 def random_seed() -> int:
@@ -115,15 +194,25 @@ class ScramblerPort:
 
 
 __all__ = [
+    "ADDR_EXPANSION",
     "BYTEWISE_VARIANTS",
     "DATA_MASK",
     "DATA_WIDTH",
     "FULL_MASK",
     "NUM_LANES",
+    "PLAYER",
+    "SBOX4",
     "VARIANTS",
     "WORD_VARIANTS",
     "ScramblerPort",
     "Variant",
+    "byte_popcounts",
+    "expand_address",
     "merge_lanes",
+    "model_player",
+    "model_round_key",
+    "model_sbox_layer",
+    "model_scramble_pre_perm",
+    "model_scramble_word",
     "random_seed",
 ]
