@@ -148,7 +148,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-ISO-DRAIN-POST HMAC, KMAC, Adams Bridge, TRNG: the POST and order terms
                     of CHK-ISO-DRAIN-RESP, which hold on every host path. A
                     pass with no POST transaction logs
-                    ``INFO-ISO-DRAIN-POST``.
+                    ``INFO-ISO-DRAIN-POST``; reach depends on the seed, and
+                    ``INFO-ISO-DRAIN-POST-REACH`` counts the graded passes
+                    per domain at the end of the leaf.
   CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
                     on a later clock than the last slave-side response of
                     the transactions the stage accepted before the request
@@ -902,6 +904,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         self.isolog = IsoSlvLog(dut).start()
         self.taps.log_map(self.logger)
         self.late_fail: list[str] = []
+        self.post_reach: dict[str, int] = {"hmac": 0, "kmac": 0, "abr": 0, "trng": 0}
         self.pd = SepResetProbeDriver(self)
         self.axi = self.env.axi_agent.driver.axi
         self.hold = SepAxiReadyHold(self, "s_axi")
@@ -936,6 +939,10 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self.taps.stop()
             await self.chan.stop()
             await self.isolog.stop()
+        self.logger.info(
+            "INFO-ISO-DRAIN-POST-REACH: graded passes per domain %s",
+            " ".join(f"{k}={v}" for k, v in self.post_reach.items()),
+        )
         if self.late_fail:
             raise AssertionError("; ".join(self.late_fail))
         self.result_pass(TEST, self.seed, self.k)
@@ -1719,6 +1726,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             # host path, on the domains whose PRE and AMBIGUOUS terms are logged.
             if post:
                 self._chk("CHK-ISO-DRAIN-POST", mapped and not bad, vals)
+                self.post_reach[d] += 1
             else:
                 self.logger.info("INFO-ISO-DRAIN-POST: not reached: %s", vals)
         # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
