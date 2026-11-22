@@ -88,11 +88,13 @@ without READY), bounded by ``BUSY_RISE_BOUND`` + t_clean clocks
 (``CTRL-MISSING`` when none is seen). The probe carries no R channel, so an
 outstanding read is not observable.
 
-Logged only: ``OBS-DMA-RESET-INFLIGHT`` (the open beats at the ``rst_ni`` fall,
+Logged only: ``INFO-DMA-RESET-INFLIGHT`` (the open beats at the ``rst_ni`` fall,
 the AR, AW, W and B handshakes from the fall to t_clean clocks after the reset
 release, and STATUS and CONTROL after the release; no text states the fate of a
-transfer in flight at reset), ``OBS-DMA-ABORT`` (BUSY, GO, DONE and ERROR after the abort, which
-the register description does not state) and the destination content after the
+transfer in flight at reset), ``INFO-DMA-ABORT chk=CHK-DMA-ABORT,CHK-DMA-ABORT-BEATS``
+(BUSY, GO, DONE and ERROR after the abort, which the register description does
+not state; the stated part, ABORTED set and no further beats, is graded by
+CHK-DMA-ABORT and CHK-DMA-ABORT-BEATS) and the destination content after the
 abort.
 """
 
@@ -530,11 +532,12 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         ops = self.ops
         rec, redraws, landing = await self._graded_attempt(plan)
 
-        # Step 8: OBS-DMA-ABORT.
+        # Step 8: INFO-DMA-ABORT.
         st = await ops.read_status()
         ctl = await ops.rd(CONTROL)
         self.logger.info(
-            "OBS-DMA-ABORT seed=%d busy=%d go=%d done=%d error=%d",
+            "INFO-DMA-ABORT chk=CHK-DMA-ABORT,CHK-DMA-ABORT-BEATS seed=%d busy=%d go=%d done=%d "
+            "error=%d",
             c.seed,
             st.busy,
             int(bool(ctl & CTRL_GO_MASK)),
@@ -777,7 +780,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         await sampler
         if "mark" not in out:
             self._ctrl_missing(
-                f"OBS-DMA-RESET-INFLIGHT: no clock with BUSY=1 and an open beat from {d} to "
+                f"INFO-DMA-RESET-INFLIGHT: no clock with BUSY=1 and an open beat from {d} to "
                 f"{bound} clocks after the sampler start"
             )
         await ClockCycles(cocotb.top.clk_i, self.t_clean)
@@ -785,7 +788,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         st = await ops.read_status()
         ctl = await ops.rd(CONTROL)
         self.logger.info(
-            "OBS-DMA-RESET-INFLIGHT seed=%d rst_clk=%d delay=%d busy=%d aw_minus_b=%d "
+            "INFO-DMA-RESET-INFLIGHT seed=%d rst_clk=%d delay=%d busy=%d aw_minus_b=%d "
             "ar_valid=%d aw_valid=%d w_valid=%d ar_stall=%d aw_stall=%d w_stall=%d "
             "ar_count=%d aw_count=%d w_count=%d b_count=%d after_rst_fall ar=%d aw=%d w=%d b=%d "
             "window_clks=%d r_channel=unobserved %s CONTROL=0x%08x",

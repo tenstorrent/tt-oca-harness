@@ -108,7 +108,7 @@ class sep_axi_id_routing_test(sep_base_test):
         # IDs may return in an order other than the AR order, so the arrival
         # order is logged only.
         self.logger.info(
-            "OBS-ID-RETURN-ORDER: issued=%s returned=%s in_issue_order=%d",
+            "INFO-ID-RETURN-ORDER: issued=%s returned=%s in_issue_order=%d",
             ids,
             rid_order,
             int(rid_order == ids),

@@ -71,7 +71,7 @@ module smu_axi_xbar
       int unsigned idx, logic [55:0] base, logic [31:0] size);
     aperture_rule.idx        = idx;
     aperture_rule.start_addr = base;
-    aperture_rule.end_addr   = 57'(base) + 57'(size);
+    aperture_rule.end_addr   = base + size;
   endfunction
 
   // A zero-size aperture decodes as no rule, but addr_decode accepts no empty range (start < end,

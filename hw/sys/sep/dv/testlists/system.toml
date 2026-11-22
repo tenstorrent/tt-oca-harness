@@ -779,7 +779,7 @@ tags = ["dft", "scan", "system", "subsystem", "scan_secure_tm"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_require_full_cpu"]
 
 [[tests]]
 # SEP_CPU_CTRL version ID, NMI vector lock, read-only status and write-only timeout

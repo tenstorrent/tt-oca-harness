@@ -23,7 +23,7 @@
 //   CHK-SRC0    source 0 never sets and never takes a handler
 //
 // The response to the meip store (trap or not) is not stated; the firmware
-// logs it as OBS-PIC-MEIP-WR and grades only the register state.
+// logs it as INFO-PIC-MEIP-WR and grades only the register state.
 //
 // A graded leg (M G) holds only accesses that one of its CHK lines grades;
 // set-up and restore writes run in control legs (M C). The host releases the
@@ -320,7 +320,7 @@ static void leg_reset(uint32_t ne) {
     rec_hex("val", pval);
     rec_hex("idle_masked", 1u);
     chk_end(pbad == 0u);
-    rec_obs("IDLE-UNSTATED");
+    rec_info("IDLE-UNSTATED");
     rec_num("src13", (meip[0] >> 13) & 1u);
     rec_num("src15", (meip[0] >> 15) & 1u);
     rec_num("src16", (meip[0] >> 16) & 1u);
@@ -710,7 +710,7 @@ int main(void) {
     uint32_t mw_traps = g_traps - t_mw;
 
     rec_mark(0, "meip_wr_end");
-    rec_obs("PIC-MEIP-WR");
+    rec_info("PIC-MEIP-WR");
     rec_num("writes", 2u);
     rec_num("trap", mw_traps);
     rec_hex("mcause", mw_traps ? g_trap_mcause : 0u);

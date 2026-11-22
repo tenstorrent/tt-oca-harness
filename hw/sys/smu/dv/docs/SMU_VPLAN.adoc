@@ -10,7 +10,7 @@
 |===
 |Field |Value
 |Design Under Test |`hw/top/smu_wrapper.sv` through `hw/sys/smu/dv/tb/tb_wrapper_top.sv`
-|Framework |PyUVM on cocotb; an SV-UVM view (`--framework uvm`, VCS) for the five scenarios that carry one
+|Framework |PyUVM on cocotb; an SV-UVM view (`--framework uvm`, VCS or Verilator) for the eight scenarios that carry one
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
 |Executable contract |the enrolled groups in `testlists/all.toml` (`--dut smu`)
@@ -20,7 +20,7 @@ This plan describes what the SMU open-source suite verifies and against which
 RTL. The executable contract is the enrolled testlist groups; this document
 describes them, it does not replace them.
 
-Five scenarios carry a second implementation in SystemVerilog UVM under the
+Eight scenarios carry a second implementation in SystemVerilog UVM under the
 same name (`module = { cocotb = "<name>", uvm = "<name>" }` in
 `testlists/all.toml`; `hw/sys/smu/dv/README.md`, "SystemVerilog UVM
 framework"). The enrolled groups run the cocotb view; every `result.json` a
@@ -57,6 +57,109 @@ on the wrapper, plus the SEP firmware set:
 Checking is centralised in `SmuScoreboard`, which refuses a vacuous PASS and
 requires every mapped evidence token to have been proven by a real check. See
 the checking strategy in `SMU_TB_ARCH.adoc`.
+
+[[smu-vplan-sv-uvm-bound]]
+==== SV-UVM bound scenarios
+
+The SV-UVM view (`--framework uvm`) runs the scenarios below. Each carries the
+module binding `{ cocotb = "<name>", uvm = "<name>" }` in `testlists/all.toml` and
+carries the scenario of its cocotb procedure. A row names what the SV-UVM pass adds,
+names differently or does not grade; a row that reads "Same as the cocotb procedure"
+grades every checker the cocotb card lists, and a cocotb checker the SV-UVM pass does
+not grade is named in its row.
+
+[cols="2,5",options="header",]
+|===
+|Scenario |SV-UVM contract
+
+|<<sec-020-smu_boot_stall_jtag_cold_reset_matrix_test,`smu_boot_stall_jtag_cold_reset_matrix_test`>>
+|Same as the cocotb procedure, over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_BOOT_STALL_TEST_LOOPS`, `+SMU_BOOT_STALL_JTAG_COLD_RESET_MATRIX_TEST_LOOPS`). Each
+pass runs the eight legs on the real sense, with the sense-done and fuse-reset
+observables read through `smu_tb_if` and every bounded wait recorded. The scoreboard
+features `debug_control_tdr` and `boot_gate` judge the DEBUG_CONTROL captures and the
+fuse-reset releases; `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE` and
+`+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` corrupt a prediction each, and the run must FAIL.
+
+|<<sec-024-smu_ext_boot_seq_gate_test,`smu_ext_boot_seq_gate_test`>>
+|Over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_BOOT_GATE_TEST_LOOPS`, `+SMU_EXT_BOOT_SEQ_GATE_TEST_LOOPS`). Each pass re-runs the
+cold reset with the gate shut, and stamps the first primary and fuse rises against the
+gate level. The SV-UVM pass does not grade the cocotb checkers CHK-BOOT-SEQ-GATE-SEP
+(the SV-UVM pin map has no `sep_reset_n_o`) and CHK-BOOT-SEQ-REGATE (the second cold
+reset); its three bounded waits cover the sense done, the primary release and the fuse
+release, not the SEP release. The scoreboard feature `boot_gate` judges the fuse-reset release;
+`+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` corrupts the prediction, and the run must FAIL.
+
+|<<sec-028-smu_jtag_reset_override_test,`smu_jtag_reset_override_test`>>
+|Over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_DTP_TEST_LOOPS`, `+SMU_JTAG_RESET_OVERRIDE_TEST_LOOPS`). The 155-bit IC_RESET
+register is scanned through the wide DR path, the override exports are read through
+`smu_tb_if`, and each pass confirms the SMC primary reset releases again. The SV-UVM
+pass applies each override in a single Update-DR and has no SEP reset export in its pin
+map, so it does not grade the cocotb checkers CHK-IC-EXT-STAGED,
+CHK-IC-EXT-RELEASE-STAGED and CHK-IC-SS-SEP-WALK, nor the SEP half of CHK-IC-DOMAIN (its
+CHK-IC-DOMAIN covers the external and SMC slices). The scoreboard
+feature `ic_reset_tdr` judges every IC_RESET capture;
+`+SMU_IC_RESET_SCOREBOARD_NEGATIVE` corrupts the prediction, and the run must FAIL.
+
+|<<sec-053-smu_dtp_jtag_smoke_test,`smu_dtp_jtag_smoke_test`>>
+|Over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_DTP_TEST_LOOPS`, `+SMU_DTP_JTAG_SMOKE_TEST_LOOPS`). The SV-UVM pass does not emit
+the cocotb CHK-NONVAC step-order fence; its vacuity guards are CHK-SB-MIN-ACTIVITY and
+the CHK-TIMEOUT-PATHS site count. The one-hot TAP state is
+sampled through `dtp_tb_if`, and the power-on reset leg restores the released-reset
+baseline before the next pass. The embedded DTP's `ir_decode`, `idcode` and `bypass`
+features judge the scans; `+SMU_PTAP_IDCODE_NEGATIVE` corrupts the expected IDCODE, and the
+run must FAIL.
+
+|<<sec-060-smu_smc_dtp_jtag2axi_smoke_test,`smu_smc_dtp_jtag2axi_smoke_test`>>
+|Same as the cocotb procedure, over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_DTP_TEST_LOOPS`, `+SMU_SMC_DTP_JTAG2AXI_SMOKE_TEST_LOOPS`). Pass 0 runs the directed
+patterns and later passes seeded patterns; the TCK period is at least four SMU clocks.
+The embedded DTP's `jtag2axi_req` and `jtag2axi_status` features pair every bridge
+transaction; `+SMU_J2A_SCOREBOARD_NEGATIVE` corrupts the predicted addresses, and the run
+must FAIL.
+
+|<<sec-070-smu_smc_mailbox_sanity_test,`smu_smc_mailbox_sanity_test`>>
+|Same as the cocotb procedure, over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_SMC_TEST_LOOPS`, `+SMU_SMC_MAILBOX_SANITY_TEST_LOOPS`). Each access's JTAG2AXI status
+is graded SUCCESS under the check of its step. The post-clear STATUS read, which the
+cocotb leaf asserts without a record, is graded under CHK-MBX-STATUS.
+CHK-TIMEOUT-PATHS: eight bounded waits, none expired. The `jtag2axi_req` and
+`jtag2axi_status` features pair the seven bridge transactions of every pass
+(CHK-SB-MIN-ACTIVITY floor seven). Each check has its own negative plusarg
+(`+SMU_MBX_<CHECK>_NEGATIVE`), under which the run must FAIL on that check;
+`+SMU_J2A_SCOREBOARD_NEGATIVE` fails the scoreboard. The cocotb TDO-resolved checks run on
+cocotb only.
+
+|<<sec-073-smu_smc_wdt_sanity_test,`smu_smc_wdt_sanity_test`>>
+|Same as the cocotb procedure, over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_SMC_TEST_LOOPS`, `+SMU_SMC_WDT_SANITY_TEST_LOOPS`). The IDCODE the cocotb leaf asserts
+is graded under CHK-WDT-SANITY-GATE-OPEN. The cocotb check named `CHK-WDT-UNLOCK CMP
+programmed` is CHK-WDT-UNLOCK. Each pass ends with a restore graded as CHK-WDT-RESTORE:
+unlock, CMP back to its reset value, unlock, CTRL back to 0, and both read back, so the
+next pass starts from the reset state. Every access's JTAG2AXI status is graded SUCCESS
+under the check of its step; CHK-TIMEOUT-PATHS: seventeen bounded waits, none expired; the
+`jtag2axi_req` and `jtag2axi_status` features pair the sixteen bridge transactions of every
+pass (CHK-SB-MIN-ACTIVITY floor sixteen). Each check has its own negative plusarg
+(`+SMU_WDT_<CHECK>_NEGATIVE`). The cocotb TDO-resolved checks run on cocotb only.
+
+|<<sec-074-smu_smc_wdt_timeout_irq_test,`smu_smc_wdt_timeout_irq_test`>>
+|Same as the cocotb procedure, over sixteen passes by default (`+SMU_TEST_LOOPS`,
+`+SMU_SMC_TEST_LOOPS`, `+SMU_SMC_WDT_TIMEOUT_IRQ_TEST_LOOPS`). The IDCODE the cocotb leaf
+asserts is graded under CHK-WDT-TO-GATE-OPEN. The cocotb check named `CHK-WDT-IP0 set
+after enable+CMP and held across the window` is CHK-WDT-IP0, one record per sample. Each
+pass ends with a restore graded as CHK-WDT-TO-RESTORE: CMP back to its reset value, CTRL
+back to 0 (which clears WDOGIP0 by the documented KEY-then-zero rule), COUNT to 0, and
+CTRL, CMP and COUNT read back; the SV-UVM shape first writes a non-zero COUNT pattern
+behind its own unlock and reads it back, so the zero write is read against a non-zero
+value. Every access's JTAG2AXI status is graded SUCCESS under the check of its step; CHK-TIMEOUT-PATHS counts one wait per access plus the TAP-state confirmation
+and the WDOGIP0 poll loop, none expired; the `jtag2axi_req` and `jtag2axi_status` features
+pair every bridge transaction (CHK-SB-MIN-ACTIVITY floor twenty-five). Each check has its
+own negative plusarg (`+SMU_WDT_TO_<CHECK>_NEGATIVE`, `+SMU_WDT_IP0_NEGATIVE`). Interrupt
+delivery is not claimed in either framework.
+|===
 
 [[smu-vplan-tiers]]
 ==== Scope tiers
@@ -1775,7 +1878,7 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
 
 *BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `boot_stall`, `dtp`, `no_sep`; run mode `sep_rtl` (no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS runs the SV-UVM view).
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `boot_stall`, `dtp`, `no_sep`; run mode `sep_rtl` (no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the body walks the same fixed legs in every run (bring-up, stall held across a cold reset with TRST high, TRST clear, sticky re-assert, pad alone, both sources, override low over the pad) with fixed DEBUG_CONTROL values and bounds; nothing is drawn from the seed.
 
@@ -1787,6 +1890,7 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
 * TRST pulse (reset_tap) clears DEBUG_CONTROL / boot-stall exports
 * fuse_reset releases after TRST clear
 * Sticky: re-assert stall without primary reset does not re-gate fuse_reset
+* After each fuse-reset release (bring-up, TRST clear, override low over the pad) the SMC CPU makes its first ROM request at word address 0x0000 (byte 0xC004_0000, inside 0xC004_0000..0xC005_FFFF) within the declared bound (`hw/sys/smc/doc/rom.adoc:9-10` and `:22-24`, `hw/sys/smc/doc/cpu.adoc:145`)
 
 *Test Procedure*:
 
@@ -1803,6 +1907,11 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
   gate and not a sense still in progress. After the stall clears, with the sense already done, the
   release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
   not the sense latency) and stay released for 64 `clk_smu`.
+. Arm a per-`clk_smu` sampler of `smc_rom_read_count_o` and the ROM macro request before the bring-up;
+  per release leg require the first request (`en`=1, `wmode`=0) within 524288 `clk_smu` of the release at word address 0x0000, logging
+  the leg name and the measured latency; the bound is a test-declared liveness bound (32 x 4096
+  zero-fill writes at one per cycle, times 4) and the specification states none. The ROM reads seen
+  before the release edge are logged per leg (`OBS-NO-FETCH-WHILE-HELD`) and not graded.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -1824,8 +1933,11 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 |===
 |Checker |Description
 |`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 for 64 `clk_smu` with `smc_fuse_sense_done_o` high
-|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released
+|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released; in the cocotb view the per-`clk_smu` sampler times the release from the observed clear edge and requires the gate to read 1 on every sampled edge from the release edge, at least 64 of them; the same timing and hold check, under the same label, also grades the override-low release over the driving pad, timed from the edge where the override stops reading 1
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
+|`CHK-FIRST-FETCH-AFTER-RELEASE` |Cocotb view only: per release leg the first ROM macro request (`en`=1, `wmode`=0) arrives within 524288 `clk_smu` of the fuse-reset release at word address 0x0000 (byte 0xC004_0000, inside the 128 KiB ROM window); one line per leg with the measured latency
+|`CHK-NONVAC` |Cocotb view only: the fence labels the legs and the first-fetch checks append are compared, in order, against the expected list (bring-up, cold+stall hold, TRST-clear release, sticky re-assert, pad-only hold, both-sources hold, override-low release, one first-fetch line per leg), and their timestamps must be ordered
+|`CHK-TIMEOUT-PATHS` |Cocotb view only: the sense-done, gate-release and first-fetch waits each name a finite bound and log their last state on expiry; one first-fetch wait finished per leg and none expired
 |`CHK-STALL-BASELINE` |SV-UVM shape only (`--framework uvm`): after the TAP reset the fuse reset is released, the sense is done and the stall override idle
 |`CHK-DEBUG-CONTROL-READBACK` |SV-UVM shape only (`--framework uvm`): the written DEBUG_CONTROL image reads back on its four software-owned bits and on the SMC exports
 |`CHK-STALL-STICKY` |SV-UVM shape only (`--framework uvm`): `STALL_COLD_STICKY` in the SV-UVM shape: the stall exports survive the cold reset and the fuse reset reads 0 on every hold-window clock after the sense completes
@@ -1842,7 +1954,7 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE` and `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` must each fail the run.
 
-*Scope limit*: None stated.
+*Scope limit*: The first-fetch checker is carried by the cocotb view only; the SV-UVM view does not carry it. No ROM read while the fuse reset alone holds the CPU is graded (the held window is logged only). The core that fetched is not identified, and the response word and the zero-fill completion order are not graded.
 
 '''''
 
@@ -2025,7 +2137,7 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 
 *BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `smoke`, `hosted`, `all`; `timeout_sec` 1800; tags `boot_gate`, `no_sep`, `smc`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS runs the SV-UVM view).
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `smoke`, `hosted`, `all`; `timeout_sec` 1800; tags `boot_gate`, `no_sep`, `smc`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the feature has a single named handshake (the `ext_boot_seq_done_i` gate of `smc_fuse_reset_n_delayed_o`) exercised in a fixed gated, ungate and re-gate order with fixed sample windows and bounds; nothing is drawn from the seed.
 
@@ -2056,7 +2168,9 @@ and the fence are taken from DUT edges rather than from levels found after the s
 Independently of the sequence,
 `smu_boot_gate_ref_model` requires the boot gate open and the sense complete at
 every fuse-reset release `smu_reset_pin_monitor` observes, so a release inside the
-gated window fails the scoreboard as well as the sequence.
+gated window fails the scoreboard as well as the sequence. The SV-UVM shape does not
+grade CHK-BOOT-SEQ-GATE-SEP (its pin map has no `sep_reset_n_o`) or CHK-BOOT-SEQ-REGATE
+(the second cold reset); those two are graded on cocotb only.
 
 *Checkers*:
 
@@ -2229,7 +2343,7 @@ gated window fails the scoreboard as well as the sequence.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `dtp`, `no_sep`, `reset`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`, `+km_rom_hex=hw/sys/sep/dv/cocotb/tests/km_rom.parhex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS runs the SV-UVM view).
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `dtp`, `no_sep`, `reset`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`, `+km_rom_hex=hw/sys/sep/dv/cocotb/tests/km_rom.parhex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the body walks the fixed staging order (control staged under enable=1, enable cleared, control released, TDR cleared) on the EXT port, the SMC cold port and then every SS and SEP port in every run with fixed control values; nothing is drawn from the seed.
 
@@ -2261,6 +2375,9 @@ two bits each plus `reset_hold`), scans the 155-bit register through the wide DR
 and reads the override exports and the whole SMC slice (`jtag_smc_reset_ctrl.ovrd`
 / `.val`) through `smu_tb_if`; it also confirms the SMC primary reset releases again
 once the cold override is cleared, so the next pass starts from the same baseline.
+The SV-UVM shape applies each override in a single Update-DR and its pin map has no
+SEP reset export, so it does not grade CHK-IC-EXT-STAGED, CHK-IC-EXT-RELEASE-STAGED,
+CHK-IC-SS-SEP-WALK or the SEP half of CHK-IC-DOMAIN; those are graded on cocotb only.
 Independently of the sequence, `smu_ic_reset_tdr_ref_model` predicts the capture of
 every IC_RESET scan from the register shadow it rebuilds from the updates and the
 TAP resets it observes, and the always-on scoreboard pairs the two.
@@ -4443,7 +4560,7 @@ The per-pattern `CHK-J2A-MATRIX-WSTRB-<tag>` lines are log output, not checks; t
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `smoke`, `hosted`, `all`; `timeout_sec` 1800; tags `dtp`, `no_sep`, `smoke`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS runs the SV-UVM view).
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `smoke`, `hosted`, `all`; `timeout_sec` 1800; tags `dtp`, `no_sep`, `smoke`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the cocotb sequence runs one IDCODE scan, one BYPASS scan with the fixed 32-bit pattern 0xA5A5_A5A5 and the TRST and POR reset legs (the `random_count` BYPASS scans belong to the SV-UVM shape only); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
 
@@ -4471,7 +4588,9 @@ Independently of the sequence, the embedded DTP's reference models predict the
 decoded instruction of every IR load, the IDCODE capture from the documented default
 identification fields (all zero over the marker bit) and the BYPASS capture from the
 shifted pattern, and the always-on scoreboard pairs
-them with the reconstructed scans.
+them with the reconstructed scans. The SV-UVM shape does not emit the cocotb CHK-NONVAC
+step-order fence; CHK-SB-MIN-ACTIVITY and the CHK-TIMEOUT-PATHS site count guard it
+against a vacuous pass.
 
 *Checkers*:
 
@@ -4778,7 +4897,7 @@ graded by `CHK-JTAG-IDCODE`, `CHK-JTAG-BYPASS` and `CHK-JTAG-CHAIN-ENHANCED`.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `dtp`, `jtag2axi`, `no_sep`, `tier_c`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS runs the SV-UVM view).
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `dtp`, `jtag2axi`, `no_sep`, `tier_c`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the cocotb sequence writes the fixed patterns 0xDEAD_BEEF to SCRATCH_15, 0x5A17_C0DE_CAFE_1234 to the SPM base and 0x0102_0304_0506_0708 as the series INCR at SPM+0x40 (the seeded later passes belong to the SV-UVM shape only); nothing is drawn and the seed selects only the bench clock periods and reset timing in the base test.
 
@@ -5694,7 +5813,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `mailbox`, `no_sep`, `smc`, `tier_c`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `mailbox`, `no_sep`, `smc`, `tier_c`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the leaf reads STATUS and ERROR_FLAGS of outbound mailbox 0, writes one fixed IRQEN pattern, reads it back and clears it, in every run; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
 
@@ -5712,6 +5831,20 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb
+`smu_smc_mailbox_sanity_test_seq.py` and the SV-UVM
+`smu_smc_mailbox_sanity_test_seq.svh` (`--framework uvm`). The SV-UVM shape issues
+the same seven SINGLE_OP accesses through the `dtp_env_pkg` codec on the SMC fabric
+bridge, takes the addresses from the generated `smc_top_addrmap_pkg` and the field
+values from the generated register header, grades every access's bridge status as
+SUCCESS under the check of its step, grades the post-clear STATUS read under
+`CHK-MBX-STATUS` (the cocotb leaf asserts it without a record), and runs sixteen
+passes by default, each ending with IRQEN back at 0. Independently of the sequence,
+the embedded DTP's `dtp_jtag2axi_req_ref_model` pairs every transaction the passive
+monitor sees on the DTP's SMC debug port with the request the scan encoded, and
+`dtp_jtag2axi_status_ref_model` pairs every SINGLE_OP capture with the completion
+the bus returned. The cocotb TDO-resolved checks run on cocotb only.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -5723,9 +5856,12 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 |`CHK-MBX-IRQEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-MBX-IRQEN-CLR` |Evidence token, emitted only after the compares it names have held
 |assertion |mailbox_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): eight bounded waits (the TAP-state confirmation and one status poll per bridge access) each name a finite bound and their last status; none expired
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `jtag2axi_req` and `jtag2axi_status` features' comparison counts, from the always-on scoreboard, are at or above the seven bridge transactions the pass launches
+|`CHK-SB-JTAG2AXI-REQ`, `CHK-SB-JTAG2AXI-STATUS` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, the embedded DTP's features reused unchanged: every bridge transaction observed by the passive monitor on `smu.dtp_axi_smc_dbg_req/resp` matches the direction, address, size, strobes and strobed data of the request the scan encoded, and every status capture carries the completion's status and, after a read, its data. A required feature with zero comparisons fails the run
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`. Under `--framework uvm` the checker rows above and the SV-UVM shape rows govern together, and `+SMU_MBX_JTAG_READY_NEGATIVE`, `+SMU_MBX_STATUS_NEGATIVE`, `+SMU_MBX_ERR_FLAGS_NEGATIVE`, `+SMU_MBX_IRQEN_NEGATIVE`, `+SMU_MBX_IRQEN_CLR_NEGATIVE` and `+SMU_J2A_SCOREBOARD_NEGATIVE` must each fail the run.
 
 *Scope limit*: IRQ pin / doorbell not claimed.
 
@@ -5794,7 +5930,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `no_sep`, `smc`, `tier_c`, `wdt`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `no_sep`, `smc`, `tier_c`, `wdt`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, the magic unlock and the fixed scale and CMP (`0x2345`) programming are the same in every run; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
 
@@ -5811,6 +5947,23 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb
+`smu_smc_wdt_sanity_test_seq.py` and the SV-UVM `smu_smc_wdt_sanity_test_seq.svh`
+(`--framework uvm`). The SV-UVM shape issues the same ten accesses through the
+`dtp_env_pkg` codec on the SMC fabric bridge, takes the addresses from the generated
+`smc_top_addrmap_pkg`, the field masks and reset values from the generated register
+header and the KEY magic from the watchdog register specification, grades every
+access's bridge status as SUCCESS under the check of its step, grades the IDCODE
+under `CHK-WDT-SANITY-GATE-OPEN`, names the cocotb check `CHK-WDT-UNLOCK CMP
+programmed` as `CHK-WDT-UNLOCK`, and runs sixteen passes by default. Each pass ends
+with a restore graded as `CHK-WDT-RESTORE`: unlock, CMP back to its reset value,
+unlock, CTRL back to 0, and both read back, so the next pass starts from the reset
+state. Independently of the sequence, the embedded DTP's
+`dtp_jtag2axi_req_ref_model` pairs every transaction the passive monitor sees on the
+DTP's SMC debug port with the request the scan encoded, and
+`dtp_jtag2axi_status_ref_model` pairs every SINGLE_OP capture with the completion
+the bus returned. The cocotb TDO-resolved checks run on cocotb only.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -5823,9 +5976,13 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 |`CHK-WDT-CTRL-UNLOCKED` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-UNLOCK` |Evidence token, emitted only after the compares it names have held
 |assertion |wdt_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
+|`CHK-WDT-RESTORE` |SV-UVM shape only (`--framework uvm`): after the unlock CMP is written back to its reset value, after a second unlock CTRL is written back to 0, and both read back at their reset values
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): seventeen bounded waits (the TAP-state confirmation and one status poll per bridge access) each name a finite bound and their last status; none expired
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `jtag2axi_req` and `jtag2axi_status` features' comparison counts, from the always-on scoreboard, are at or above the sixteen bridge transactions the pass launches
+|`CHK-SB-JTAG2AXI-REQ`, `CHK-SB-JTAG2AXI-STATUS` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, the embedded DTP's features reused unchanged: every bridge transaction observed by the passive monitor on `smu.dtp_axi_smc_dbg_req/resp` matches the direction, address, size, strobes and strobed data of the request the scan encoded, and every status capture carries the completion's status and, after a read, its data. A required feature with zero comparisons fails the run
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`. Under `--framework uvm` the checker rows above and the SV-UVM shape rows govern together, and `+SMU_WDT_SANITY_GATE_OPEN_NEGATIVE`, `+SMU_WDT_CMP_DEFAULT_NEGATIVE`, `+SMU_WDT_CTRL_LOCKED_NEGATIVE`, `+SMU_WDT_KEY_UNLOCKED_NEGATIVE`, `+SMU_WDT_CTRL_UNLOCKED_NEGATIVE`, `+SMU_WDT_UNLOCK_NEGATIVE`, `+SMU_WDT_RESTORE_NEGATIVE` and `+SMU_J2A_SCOREBOARD_NEGATIVE` must each fail the run.
 
 *Scope limit*: None stated.
 
@@ -5842,7 +5999,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `no_sep`, `smc`, `tier_c`, `wdt`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 1800 (3600 for the SV-UVM view); tags `depth`, `no_sep`, `smc`, `tier_c`, `wdt`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+rom_hex=hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex`, `+smc_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex`, `+sep_efuse_hex=hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex`, `+sep_boot_rom_hex=hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex`, `+sep_itcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex`, `+sep_dtcm_hex=hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex`; module `{ cocotb, uvm }` (the enrolled groups run the cocotb view; `--framework uvm` on VCS or Verilator runs the SV-UVM view).
 
 *Randomization*: RAND-NONE: directed, CMP (`0x10`), the four sticky samples and the 512-cycle gap are fixed constants of the sequence; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
 
@@ -5859,6 +6016,27 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb
+`smu_smc_wdt_timeout_irq_test_seq.py` and the SV-UVM
+`smu_smc_wdt_timeout_irq_test_seq.svh` (`--framework uvm`). The SV-UVM shape issues
+the same accesses through the `dtp_env_pkg` codec on the SMC fabric bridge, takes
+the addresses from the generated `smc_top_addrmap_pkg`, the field masks and reset
+values from the generated register header and the KEY magic from the watchdog
+register specification, grades every access's bridge status as SUCCESS under the
+check of its step, grades the IDCODE under `CHK-WDT-TO-GATE-OPEN`, names the cocotb
+check `CHK-WDT-IP0 set after enable+CMP and held across the window` as
+`CHK-WDT-IP0`, one record per sample, and runs sixteen passes by default. The
+interrupt is observed as the `CTRL.WDOGIP0` register bit in both shapes; interrupt
+delivery is not claimed. Each pass ends with a restore graded as
+`CHK-WDT-TO-RESTORE`: CMP back to its reset value, CTRL back to 0 (which clears
+WDOGIP0 by the register's KEY-then-zero rule), COUNT back to 0, and CTRL, CMP and
+COUNT read back, with a non-zero COUNT pattern (0xA5A) written and read back before the
+zero write, so the next pass starts with WDOGIP0 clear. Independently of the
+sequence, the embedded DTP's `dtp_jtag2axi_req_ref_model` pairs every transaction the
+passive monitor sees on the DTP's SMC debug port with the request the scan encoded,
+and `dtp_jtag2axi_status_ref_model` pairs every SINGLE_OP capture with the
+completion the bus returned. The cocotb TDO-resolved checks run on cocotb only.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -5868,11 +6046,15 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 |`CHK-WDT-TO-CMP` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-TO-IP0-PRE` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-TO-EN` |Evidence token, emitted only after the compares it names have held
-|`CHK-WDT-IP0` |WDOGIP0 set after enable+CMP and still set at every sample of the hold window
+|`CHK-WDT-IP0` |WDOGIP0 set after enable+CMP and still set at every sample of the hold window; in the SV-UVM shape the COUNT read after the window is at most CMP, because WDOGZEROCMP returns the counter to 0 when it reaches CMP (WDOGSCALE 0)
 |assertion |wdt_timeout incomplete s1=<value> s2=<value> s3=<value>
+|`CHK-WDT-TO-RESTORE` |SV-UVM shape only (`--framework uvm`): CMP is written back to its reset value, CTRL back to 0, the counter frozen, a non-zero COUNT pattern (0xA5A, inside WDOGCOUNT and above the compare value of the pass) written behind its own unlock and read back as the pattern (`COUNT pattern write`), then COUNT back to 0, each behind its own unlock, and CTRL (all fields, WDOGIP0 included), CMP and COUNT read back at their reset values
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): the bounded waits (the TAP-state confirmation, one status poll per bridge access and the WDOGIP0 poll loop with its bound of 32) each name a finite bound and their last state; none expired
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `jtag2axi_req` and `jtag2axi_status` features' comparison counts, from the always-on scoreboard, are at or above the twenty-five bridge transactions of a pass whose first WDOGIP0 poll reads it set
+|`CHK-SB-JTAG2AXI-REQ`, `CHK-SB-JTAG2AXI-STATUS` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, the embedded DTP's features reused unchanged: every bridge transaction observed by the passive monitor on `smu.dtp_axi_smc_dbg_req/resp` matches the direction, address, size, strobes and strobed data of the request the scan encoded, and every status capture carries the completion's status and, after a read, its data. A required feature with zero comparisons fails the run
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`. Under `--framework uvm` the checker rows above and the SV-UVM shape rows govern together, and `+SMU_WDT_TO_GATE_OPEN_NEGATIVE`, `+SMU_WDT_TO_CMP_NEGATIVE`, `+SMU_WDT_TO_IP0_PRE_NEGATIVE`, `+SMU_WDT_TO_EN_NEGATIVE`, `+SMU_WDT_IP0_NEGATIVE`, `+SMU_WDT_TO_RESTORE_NEGATIVE` and `+SMU_J2A_SCOREBOARD_NEGATIVE` must each fail the run.
 
 *Scope limit*: None stated.
 
@@ -8773,16 +8955,16 @@ sequence's own raise, outside the scoreboard
 
 * Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at a fuse bit address, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
 * S4: a read at bit address 0, and at the middle of the array with each address bit set in turn, completes with `read_done` and no `read_status` error. The middle of the array is spare space that no lock field of the shadow preloads covers, so no read there is blocked.
-* S5: programs of four bits of the fuse word at the middle of the array, alternately with read-back, complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read-back, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
+* S5: programs of four bits of the fuse word at the middle of the array complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
 * S6: a read and a program one bit past the array complete with an error and set the sticky read and program address errors, and the clear strobes clear both.
-* S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. A program with read-back at a fresh bit then reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
+* S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. Every program ends with the SHIM's verify read of the word, so a program at a fresh bit reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
 * S8: programs of all 32 bits of a fresh word complete without error, the word reads back `0xFFFF_FFFF`, and the word after it still reads 0.
 
 *Test Procedure*:
 
 [arabic]
 . Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
-. For the SEP block and then the SMC block: read at every walk address. Error injection. Point: EFUSE_PROGRAM_CTRL at a fresh bit, with the bench fuse-bank model under `+sep_efuse_prog_fail_count=1` / `+smc_efuse_prog_fail_count=1`. Kind: the first program the bank takes leaves the fuse unblown. Expected response: the program with read-back reads the bit back unset and reports `program_status` 1, and the word reads 0. Read the middle fuse word, program four of its bits and a zero-data program, and read it again; program all 32 bits of a fresh word and read it and the next word. Error injection. Point: EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL at the bit address one past the fuse array. Kind: an out-of-range read and program. Expected response: each completes with an error and sets the sticky read and program address errors, and the clear strobes clear both. Read and clear the sticky errors.
+. For the SEP block and then the SMC block: read at every walk address. Error injection. Point: EFUSE_PROGRAM_CTRL at a fresh bit, with the bench fuse-bank model under `+sep_efuse_prog_fail_count=1` / `+smc_efuse_prog_fail_count=1`. Kind: the first program the bank takes leaves the fuse unblown. Expected response: the program's verify read finds the bit unset, `program_status` reads 1, and the word reads 0. Read the middle fuse word, program four of its bits and a zero-data program, and read it again; program all 32 bits of a fresh word and read it and the next word. Error injection. Point: EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL at the bit address one past the fuse array. Kind: an out-of-range read and program. Expected response: each completes with an error and sets the sticky read and program address errors, and the clear strobes clear both. Read and clear the sticky errors.
 
 *Checkers*:
 
@@ -8793,7 +8975,7 @@ sequence's own raise, outside the scoreboard
 |`CHK-EFUSE-CMD-READ` |on both blocks every walk read completes with `read_done` and no error
 |`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the middle fuse word reads back with every programmed bit set
 |`CHK-EFUSE-CMD-OOB` |on both blocks the out-of-range read and program complete with an error, set both sticky address errors, and the clear strobes clear them
-|`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks the program with read-back against a failing bank reports `program_status` 1 and the word reads 0
+|`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks a program against a failing bank reports `program_status` 1 from its verify read and the word reads 0
 |`CHK-EFUSE-CMD-WORD` |on both blocks the all-ones word reads back `0xFFFF_FFFF` and the next word reads 0
 |assertion |efuse_command incomplete s1..s3,sep,smc=<values>
 |===

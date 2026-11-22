@@ -120,9 +120,22 @@ The trap cause and value of an unmapped fetch and the cause of an ICCM data
 access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
 ``CHK-IFU-TRAP`` grades. ``INFO-LSU-ICCM`` re-logs the two trap causes, which
 ``CHK-LSU-ICCM-CAUSE`` grades, and the load value. When the load traps, the value holds
-the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
+the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``INFO-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
 no check grades. Every expected value comes from the drawn plan and the staged images; no
 expected value is read from the DUT.
+
+``OBS-TRACE-TVAL`` logs, and does not grade, the trace port trap value. It pairs
+each exception trap event of the trace monitor (``env/sep_cpu_trace_monitor.py``,
+interrupt flag 0), in order, with the ``mtval`` record that the trap handler
+stores for each synchronous trap, and logs per pair the trace ecause, the
+exception and interrupt flags, the trace tval, the firmware ``mtval`` and
+whether the two are equal. The extension-read NMI is a trace event with the
+interrupt flag 1 and has no ``mtval`` record, so it is not paired. Open
+question: the VeeR EL2 PRM (``complex-ports.md``, delegated by cpu.adoc) names
+``trace_rv_i_tval_ip`` only "Exception trap value", and port_table.adoc
+describes ``sep_cpu_trace_o`` as "CPU trace output for debug"; no text states
+that the port carries, for each exception trap, the value the core writes to
+``mtval`` for the same trap, or what it carries for an interrupt.
 
 cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
 """
@@ -850,6 +863,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
     # ---------------------------------------------------------------- grading
     def _grade_all(self) -> None:
         self._log_dma_csr_writes()
+        self._log_trace_tval()
         for step in (
             self._grade_ifu,
             self._grade_route,
@@ -1014,6 +1028,45 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             )
         self.logger.info("OBS-DMA-CSR-WRITE LOG writes=%d %s", len(rows), " ".join(rows))
 
+    def _log_trace_tval(self) -> None:
+        """OBS: trace tval against the firmware mtval of each exception trap, logged only."""
+        traps = [e for e in self.cpu_trace_mon.trap_events if e[3] == 0]
+        nmis = len(self.cpu_trace_mon.trap_events) - len(traps)
+        recs = self.mbx.records()
+        causes = [r.val for r in recs if r.off == OFF["TRAP_CAUSE"]]
+        mtvals = [r.val for r in recs if r.off == OFF["TRAP_VAL"]]
+        equal = 0
+        for k in range(max(len(traps), len(mtvals))):
+            tr = traps[k] if k < len(traps) else None
+            mt = mtvals[k] if k < len(mtvals) else None
+            mc = causes[k] if k < len(causes) else None
+            same = tr is not None and mt is not None and tr[4] == mt
+            equal += same
+            self.logger.info(
+                "OBS-TRACE-TVAL LOG pair=%d cycle=%s pc=%s ecause=%s exception=%s interrupt=%s "
+                "trace_tval=%s fw_mcause=%s fw_mtval=%s equal=%s",
+                k,
+                "-" if tr is None else tr[0],
+                "-" if tr is None else f"0x{tr[1]:08x}",
+                "-" if tr is None else f"0x{tr[2]:x}",
+                "-" if tr is None else 1,
+                "-" if tr is None else tr[3],
+                "-" if tr is None else f"0x{tr[4]:08x}",
+                "-" if mc is None else f"0x{mc:x}",
+                "-" if mt is None else f"0x{mt:08x}",
+                "yes" if same else "no",
+            )
+        self.logger.info(
+            "OBS-TRACE-TVAL LOG trace_exceptions=%d fw_mtval_records=%d equal=%d "
+            "trace_interrupts_not_paired=%d open=no text states whether trace_rv_i_tval_ip "
+            "(sep_cpu_trace_o) carries, for each exception trap, the value the core writes "
+            "to mtval for the same trap, or what it carries for an interrupt",
+            len(traps),
+            len(mtvals),
+            equal,
+            nmis,
+        )
+
     def _grade_route(self) -> None:
         p = self.plan
         w_rom = self._win("ROMLD_B", "ROMLD_E")
@@ -1107,7 +1160,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         dma = [(f"0x{v:08x}", _dma_status_bits(v)) for v in dma_st[:3]]
         dma += [("-", "-")] * (3 - len(dma))
         self.logger.info(
-            "OBS-LSU-ICCM-DMA-STATUS seed=%d "
+            "INFO-LSU-ICCM-DMA-STATUS seed=%d "
             "dma_d1=%s d1_bits=%s dma_d2=%s d2_bits=%s dma_d3=%s d3_bits=%s",
             self.random_seed(),
             *(f for pair in dma for f in pair),
@@ -1148,7 +1201,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             for b in self._beats(tcm, self._win("PAIR_B", "PAIR_E"), ("dccm",))
             if b.wren is not None and b.wren != 0
         )
-        self.logger.info("OBS-DCCM-WE LOG pair_store_dccm_we=%d", dccm_we)
+        self.logger.info("INFO-DCCM-WE LOG pair_store_dccm_we=%d", dccm_we)
         self._grade(
             "CHK-LSU-ICCM-WE",
             we_st == 0 and we_ctl >= 1,

@@ -1038,14 +1038,17 @@ module jtag2axi #(
       axi_state_q_tclk <= axi_state_d_tclk;
 
       // A new CTRL programming arriving while the FSM is mid-flight on
-      // a series read marks that in-flight transaction as stale. Its
-      // response will complete on AXI but will not enter the freshly
-      // flushed rsp-FIFO. The flag self-clears when the FSM returns to
-      // IDLE.
+      // a series read, or on the edge where it dequeues one, marks that
+      // transaction as stale. Its response will complete on AXI but will
+      // not enter the freshly flushed rsp-FIFO. The flag self-clears when
+      // the FSM returns to IDLE.
       if (ctrl_flush_pulse_tclk &&
-                (axi_state_q_tclk != AXI_IDLE) &&
-                current_tx_is_series_read_tclk &&
-                !current_is_series_data_with_error_status_op_tclk) begin
+                (((axi_state_q_tclk != AXI_IDLE) &&
+                  current_tx_is_series_read_tclk &&
+                  !current_is_series_data_with_error_status_op_tclk) ||
+                 (series_request_fifo_pop_tclk &&
+                  (series_request_fifo_dout_tclk.op == JtagOpRead) &&
+                  !series_request_fifo_dout_tclk.is_series_data_with_error_status_op))) begin
         current_tx_stale_tclk <= 1'b1;
       end else if (axi_state_d_tclk == AXI_IDLE && axi_state_q_tclk != AXI_IDLE) begin
         current_tx_stale_tclk <= 1'b0;

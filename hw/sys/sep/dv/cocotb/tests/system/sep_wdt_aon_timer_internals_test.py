@@ -13,7 +13,7 @@ scope (CHK-REGWEN-SCOPE) and SEP_CPU_CTRL.REFERENCE_COUNTER (CHK-REFCNT-RUNS,
 not an aon_timer register).
 
 Two legs follow the lock legs, each after a wdt_rst_ni_i pulse that returns the
-aon_timer registers to their reset values. OBS-WDT-COUNT-WRAP preloads
+aon_timer registers to their reset values. INFO-WDT-COUNT-WRAP preloads
 WDOG_COUNT below 0xFFFF_FFFF and logs the count, the status and the bite request
 after the count passes the wrap, then the clear sequence (no line states a wrap
 rule for the 32-bit watchdog count). CHK-WDT-COMBO runs the wakeup timer, the
@@ -185,7 +185,7 @@ _COMBO_G = (128, 192)
 # Largest step of the drawn locked WDOG_BITE_THOLD write above the bite threshold.
 _COMBO_TRY_MAX = 64
 # A: the count allowance of a status read against a count read, in clk_wdt
-# ticks (the age of a count copy is not stated, OBS-WDT-COUNT-AGE).
+# ticks (the age of a count copy is not stated, INFO-WDT-COUNT-AGE).
 _COUNT_ALLOW = 4
 # Least distance in counts from the count read before the pet to the bite threshold.
 _PET_MARGIN = 64
@@ -346,7 +346,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
         await self._wdt_rst_pulse("before_wrap")
-        await self._obs_count_wrap()
+        await self._info_count_wrap()
         await self._chk_combo()
         # Each facet logs its own PASS line, and the plan rows key on those.
 
@@ -411,7 +411,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         """Read a stopped counter until two reads ``_SETTLE_TICKS`` apart agree.
 
         Return the first read and the settled value. The age of a count read is
-        not stated (``OBS-WDT-COUNT-AGE``), so the first read after the stop can
+        not stated (``INFO-WDT-COUNT-AGE``), so the first read after the stop can
         still show an older count; a stopped counter does not change, so equal
         reads give its value.
         """
@@ -526,7 +526,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
         for tag, w, r in (("a", _RUN_BASE_TICKS, ra), ("b", _RUN_BASE_TICKS + ticks, rb_)):
             self.logger.info(
-                "OBS-WDT-COUNT-AGE: %s run=%s ctrl=0x%x ticks=%d d=%d stopped=%d "
+                "INFO-WDT-COUNT-AGE: %s run=%s ctrl=0x%x ticks=%d d=%d stopped=%d "
                 "first_read_after_stop=%d offset=%d",
                 chk,
                 tag,
@@ -704,7 +704,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         ``INTR_STATE`` is polled until ``wkup_expired`` sets (bounded; the bound
         FAILs). The counter is then stopped and its count is read until it
         settles (``_settled_count``). A count read while the counter runs is a
-        copy of unstated age (``OBS-WDT-COUNT-AGE``: the first read after a stop
+        copy of unstated age (``INFO-WDT-COUNT-AGE``: the first read after a stop
         can be several counts behind the stopped count), so a running count
         read is not graded against the threshold. The settled stopped count is
         the count at the stop, which follows the observed set, and the counter
@@ -875,7 +875,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         intr = await self.wdt.read(INTR_STATE)
         cause = await self.wdt.read(WKUP_CAUSE)
         self.logger.info(
-            "OBS-WDT-COUNT-AGE: %s leg=%s ticks=%d start=%d stopped=%d first_read_after_stop=%d",
+            "INFO-WDT-COUNT-AGE: %s leg=%s ticks=%d start=%d stopped=%d first_read_after_stop=%d",
             chk,
             leg,
             _RUN_BASE_TICKS,
@@ -928,7 +928,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         above leg must show the set within that bound, and the below leg is
         read after the same bound. An expiry earlier than the count C of the
         below leg or later than the count C - 1 of the above leg fails. The
-        stopped counts are logged as ``OBS-WDT-COUNT-AGE``.
+        stopped counts are logged as ``INFO-WDT-COUNT-AGE``.
         """
         chk = "CHK-WKUP-EXPIRE"
         thold = self.cfg_wdt.wkup_thold + _RUN_BASE_TICKS
@@ -964,7 +964,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         # No line states which count the core compares at the completion that
         # sets the expiry: the count on the wakeup tap at that edge is logged.
         self.logger.info(
-            "OBS-WKUP-EXPIRE-COUNT thold=%d count_at_set=%s",
+            "INFO-WKUP-EXPIRE-COUNT thold=%d count_at_set=%s",
             thold,
             tap.get("count", "none"),
         )
@@ -1183,8 +1183,6 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             "CHK-REGWEN-LOCK",
             f"WDOG_REGWEN.regwen did not clear on a write of 0 (read 0x{regwen:08x})",
         )
-        if regwen & ~_REGWEN_MASK:
-            self.logger.info("OBS-WDT-RSVD: reg=WDOG_REGWEN raw=0x%08x", regwen)
 
         # CHK-REGWEN-LOCK: a write of a value other than the pre-lock value is
         # ignored on each threshold; the readback is the whole pre-lock value.
@@ -1241,7 +1239,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             bite_pre,
         )
         self.logger.info(
-            "OBS-WDT-LOCK-RESP: locked-write response WDOG_BARK_THOLD=%d WDOG_BITE_THOLD=%d; "
+            "INFO-WDT-LOCK-RESP: locked-write response WDOG_BARK_THOLD=%d WDOG_BITE_THOLD=%d; "
             "the specification states no response code, not graded",
             resp,
             resp_bite,
@@ -1392,8 +1390,8 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         self.logger.info("INFO-WDT-RST-PULSE: %s", line)
         return {"req_before": req_before, "req_fall": req_fall, "req_after": req_after}
 
-    async def _obs_count_wrap(self) -> None:
-        """OBS-WDT-COUNT-WRAP: the watchdog count, status and bite request past 0xFFFF_FFFF.
+    async def _info_count_wrap(self) -> None:
+        """INFO-WDT-COUNT-WRAP: the watchdog count, status and bite request past 0xFFFF_FFFF.
 
         The watchdog timer is 32 bits wide
         (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/doc/theory_of_operation.md:21``),
@@ -1410,7 +1408,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         and the request after a ``wdt_rst_ni_i`` pulse. Nothing here is graded;
         a setup read that differs fails the leaf as a precondition.
         """
-        tag = "OBS-WDT-COUNT-WRAP"
+        tag = "INFO-WDT-COUNT-WRAP"
         dut = cocotb.top
         d = self.tail
         bark = _COUNT_MAX - d.wrap_j

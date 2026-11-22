@@ -44,6 +44,20 @@ Checkers:
                         write; the post-reset write shows on the tap, and a
                         response after the readback request carries the
                         post-reset value as read data.
+  CHK-SRAM-OTF-REFUSE   per path (read, write) a refused 16-beat FIXED or WRAP
+                        inbound burst takes ``rst_ni`` after ``m_axi`` data beat
+                        k, drawn from 1 to 3 for the read and from 13 to 15 for
+                        the write, while the burst error slave holds the burst
+                        (CTRL-SRAM-OTF-REFUSE); after the release
+                        and a new filter programming, a refused write and a
+                        refused read of the same type and length N with another
+                        ID answer as CHK-SRAM-REFUSE grades them: one B beat with
+                        SLVERR and the words read back unchanged, then N R beats,
+                        each SLVERR, RLAST on beat N only. The master drops the
+                        abandoned burst, and no R or B beat with an ID the bench
+                        did not issue after the reset appears on ``m_axi``
+                        (``hw/sys/sep/doc/fabric.adoc``,
+                        lines 62-65).
   CHK-SRAM-STRB         over a word written in full, one single-beat 8-byte
                         inbound write for each WSTRB 0x00 to 0x0F in a seeded
                         order, and one with a drawn 8-bit sparse strobe: the
@@ -51,14 +65,54 @@ Checkers:
                         new data in each strobed lane and the stored word in
                         every other lane, so strobe 0x00 changes nothing (AMBA
                         AXI write strobes, through ``hw/sys/sep/doc/fabric.adoc``,
-                        AXI4 crossbar and SRAM target). Every leg runs, and the
-                        leaf then fails once, naming each failing leg.
+                        AXI4 crossbar and SRAM target). Then, in a second loop,
+                        one such leg for each of the 214 non-contiguous strobes
+                        from 0x10 to 0xFF, in a seeded order. Every leg of a loop
+                        runs, and the leaf then fails once, naming each failing
+                        leg.
+  CHK-SRAM-STREAM       a seeded stream of 4096 single-beat accesses: per master
+                        1024 writes and 1024 8-byte reads, in a shuffled order,
+                        to words over the full SRAM. A write to a word the byte
+                        model does not hold in full writes all 8 bytes; a write
+                        to a held word is, on the inbound master, an 8-byte beat
+                        with a drawn non-zero WSTRB and, on the CPU-LSU master, a
+                        drawn size of 1, 2, 4 or 8 bytes at an aligned offset.
+                        Every access answers OKAY, the strobed beat carries its
+                        drawn strobe, and every read returns the byte-model word.
+                        A read targets only a word the model holds in full. After
+                        the stream, every word the stream wrote is read again on
+                        a drawn master and compared with the model.
+  CHK-SRAM-XOUT         the inbound master (INCR bursts of 2 to 16 8-byte beats)
+                        and the CPU-LSU master (single-beat 8-byte accesses) each
+                        issue 3 to 5 reads and writes to disjoint words without
+                        waiting; on each master at least two reads share one ID.
+                        Every response is OKAY and every read returns the
+                        byte-model bytes of its own request. On each port the R
+                        and B beats carry only the IDs issued on that port, in
+                        the issued count per ID; the R beats of one ID end each
+                        burst in issue order (RLAST pattern); the k-th B beat of
+                        an ID follows the k-th AW and the last W beat of that
+                        write. Each written word then reads back on both masters
+                        (AMBA AXI, IHI 0022, transaction identifiers and ordering;
+                        ``hw/sys/sep/doc/fabric.adoc``, SRAM target).
 Controls (not counted): CTRL-SRAM-FILTER (inbound filter entry readback),
 CTRL-SRAM-REACH (both masters write and read back the first and last word, each
-of the 15 word-address bits and 128 drawn words), CTRL-SRAM-STRB-PRE (the
+of the 15 word-address bits and 128 drawn words), CTRL-SRAM-OTF-REFUSE (before
+the ``rst_ni`` fall the ``m_axi`` monitor shows the request handshake, at least
+one and fewer than N data beats of the abandoned burst, and no RLAST or B beat
+of it, and the burst error slave ``u_dut.u_sep.u_sram_burst_err_slv`` holds the
+burst: for the write an accepted AW waits for its WLAST (``w_fifo_empty`` = 0),
+for the read an accepted AR waits or its R burst has beats left to send
+(``r_fifo_empty`` = 0 or ``r_busy_q`` = 1); a monitor-only read on the falling
+edge of the fall, logged with ``r_current_beat``; else the leaf fails),
+CTRL-SRAM-STRB-PRE (the
 CPU-LSU master reads back the full write of a strobe leg) and CTRL-SRAM-STRB
 (the W handshake on ``m_axi`` carries the strobe of the leg and the written
-data, and one B beat with the ID of the write follows).
+data, and one B beat with the ID of the write follows). CTRL-SRAM-XOUT: on at
+least one ``clk_i`` cycle a request of each master is outstanding (from its
+request handshake to its last R or B beat, on the ``s_axi`` and ``m_axi``
+channel monitors), and on each port two requests with one ID are outstanding
+together, so the same-ID order grade compares requests in flight at once.
 
 Open-value leg (logged, not graded): no specification or RDL states the result.
   OBS-SRAM-FLIP  one drawn bit of a written word flipped in the SRAM macro array:
@@ -66,6 +120,10 @@ Open-value leg (logged, not graded): no specification or RDL states the result.
                  the read data of the PR-SRAM tap. Control CTRL-SRAM-FLIP: the
                  macro array holds the written word before the flip and the word
                  with the drawn bit flipped after it.
+  INFO-SRAM-XOUT-DEPTH  the peak count of outstanding requests on each port and on
+                 both ports together during CHK-SRAM-XOUT, the overlap clocks and
+                 the IDs seen per port; no SEP document states an outstanding
+                 limit or an ID-sharing rule.
 ``ocah_axi_vip`` places a full strobe on an aligned 8-byte beat and does not
 issue a sparse or zero strobe. The leaf drives ``m_axi_wstrb`` from the falling
 edge after the VIP raises WVALID, so the DUT samples the drawn strobe on every
@@ -94,15 +152,21 @@ request from the SRAM base ``SEP_SRAM_MEM_BASE_ADDR`` (``docs/SEP_TB_ARCH.adoc``
 PR-SRAM entry); the leaf compares it at 8-byte word granularity.
 
 The graded window (owner code of this test) is open around the outstanding
-bursts, the refused bursts, the single-beat bursts, the strobe legs and each
-reset in flight. The filter setup, the reach control, the refusal controls, the
-open-value leg and the W measurement run with the window closed. After
+bursts, the refused bursts, the single-beat bursts, the strobe legs of the first
+loop and each reset in flight on the CPU-LSU master. The filter setup, the reach
+control, the refusal controls, the stream, the two-master outstanding step, the
+strobe legs of the second loop, the open-value leg, the W measurement and each
+reset in flight on a refused inbound burst run with the window closed. After
 CHK-SRAM-STRB passes for a WSTRB 0x00 to 0x0F leg, the leaf writes that value
 to the pass label of ``sep_sram_access_cg.cp_sram_wstrb``
 (``set_sram_access_pass``).
 """
 
 from __future__ import annotations
+
+import dataclasses
+from collections import Counter
+from itertools import zip_longest
 
 import cocotb
 import pyuvm
@@ -172,6 +236,32 @@ LEG_SALT = 0x5A5 << 48
 WALK_SALT = 0x5A6 << 48
 # Every WSTRB value of the low four lanes of the 8-byte inbound beat.
 WALK_STRBS = range(16)
+# Seed salts of the second strobe loop, the stream and the two-master step.
+SPARSE_WALK_SALT = 0x5A7 << 48
+STREAM_SALT = 0x5A8 << 48
+XOUT_SALT = 0x5A9 << 48
+# Every non-contiguous strobe with a lane above 3 set: the 240 values 0x10-0xFF
+# less the 26 contiguous runs that reach lane 4 or above.
+N_SPARSE_WALK = 214
+# Stream quotas per master: 8-byte reads, full writes of a word not held in
+# full, and writes over a held word (strobed on inbound, narrow on CPU-LSU).
+STREAM_READS = 1024
+STREAM_NEW_WRITES = 512
+STREAM_HELD_WRITES = 512
+# Two-master outstanding step: requests per master, and inbound burst lengths.
+XOUT_REQS = (3, 5)
+XOUT_BEATS = (2, 16)
+# Inbound IDs of the step lie above the 3-bit s_axi ID range.
+XOUT_M_IDS = range(8, 64)
+# Reset in flight on a refused inbound burst: the burst length and, per path,
+# the range of the m_axi data beat k after which rst_ni falls. The burst error
+# slave sends R beats back to back, and the R path back to m_axi takes several
+# clocks, so the reset lands early in the R stream to find beats not yet sent.
+# The error slave takes W beats only after their AW, so the reset lands late in
+# the W stream, before WLAST leaves m_axi. CTRL-SRAM-OTF-REFUSE reads the error
+# slave state at the fall and fails when it does not hold the burst.
+OTF_REFUSE_BEATS = 16
+OTF_REFUSE_K = {"RD": (1, 3), "WR": (OTF_REFUSE_BEATS - 3, OTF_REFUSE_BEATS - 1)}
 
 PROG_FIELDS = (
     F_ENTRY_ENABLED
@@ -203,6 +293,10 @@ def contiguous(strb: int) -> bool:
     """True when the set bits of a nonzero strobe form one run."""
     run = strb >> ((strb & -strb).bit_length() - 1)
     return run & (run + 1) == 0
+
+
+SPARSE_WALK_STRBS = [s for s in range(0x10, 0x100) if not contiguous(s)]
+assert len(SPARSE_WALK_STRBS) == N_SPARSE_WALK, "non-contiguous strobe set 0x10-0xFF"
 
 
 def words_of(addrs: list[int], size: int) -> list[int]:
@@ -318,9 +412,9 @@ class _Cfg:
         cases = [(FIXED, n) for n in FIXED_LENS] + [(WRAP, n) for n in WRAP_LENS]
         rng.shuffle(cases)
         r_ids = rng.sample(list(M_IDS), len(cases))
-        self.refuse: list[dict] = []
-        for i, (burst, beats) in enumerate(cases):
-            slot = self.page_r + i * SLOT
+
+        def refused_shape(slot: int, burst: int, beats: int) -> tuple[int, int, int]:
+            """Start address, write size and read size of a refused burst in ``slot``."""
             if burst == FIXED:
                 wsize = 8
                 start = slot + rng.randrange(0, 256 // WORD) * WORD
@@ -331,6 +425,12 @@ class _Cfg:
                 lo = slot + rng.randrange(0, (256 - 2 * span) // span + 1) * span
                 start = lo + rng.randrange(beats) * wsize
             rsize = rng.choice(SIZES) if burst == FIXED else wsize
+            return start, wsize, rsize
+
+        self.refuse: list[dict] = []
+        for i, (burst, beats) in enumerate(cases):
+            slot = self.page_r + i * SLOT
+            start, wsize, rsize = refused_shape(slot, burst, beats)
             b = _Burst(f"X{i}", "W", burst, start, beats, wsize, r_ids[i])
             words = words_of(beat_addrs(burst, start, beats, wsize), wsize)
             self.refuse.append(
@@ -417,6 +517,127 @@ class _Cfg:
             strb_leg(walk, "walk", m, SRAM_BASE + w * WORD) for m, w in zip(masks, words)
         ] + [sparse_leg]
 
+        # Second strobe loop: every non-contiguous strobe 0x10-0xFF, own word each.
+        sw = SepSeededRng(seed ^ SPARSE_WALK_SALT)
+        sw_strbs = list(SPARSE_WALK_STRBS)
+        sw.shuffle(sw_strbs)
+        taken = {a_sparse, a_flip, *(x["addr"] for x in self.strb_legs)}
+        sw_free = [w for w in range(N_WORDS) if SRAM_BASE + w * WORD not in taken]
+        self.sparse_walk_legs = [
+            strb_leg(sw, "sparse_walk", st, SRAM_BASE + w * WORD)
+            for st, w in zip(sw_strbs, sw.sample(sw_free, len(sw_strbs)))
+        ]
+
+        # Two-master outstanding step: inbound bursts in one page, CPU-LSU words in
+        # another, neither page used by the outstanding or refusal steps.
+        xo = SepSeededRng(seed ^ XOUT_SALT)
+        xo_used: set[int] = set()
+
+        def xo_uniq64() -> int:
+            while True:
+                v = xo.getrandbits(64)
+                if v not in xo_used and v != 0:
+                    xo_used.add(v)
+                    return v
+
+        def xo_ops(ids: list[int]) -> list[tuple[str, int]]:
+            """Op kinds and IDs: two reads share ids[0]; further reads draw
+            ids[0] or ids[1], writes ids[2] or ids[3]."""
+            n = xo.randrange(XOUT_REQS[0], XOUT_REQS[1] + 1)
+            kinds = ["R", "R", "W"] + [xo.choice(("R", "W")) for _ in range(n - 3)]
+            xo.shuffle(kinds)
+            out, n_r = [], 0
+            for k in kinds:
+                if k == "R":
+                    out.append((k, ids[0] if n_r < 2 else xo.choice(ids[:2])))
+                    n_r += 1
+                else:
+                    out.append((k, xo.choice(ids[2:])))
+            return out
+
+        def payload(beats: int) -> bytes:
+            return b"".join(xo_uniq64().to_bytes(WORD, "little") for _ in range(beats))
+
+        xo_pages = [
+            SRAM_BASE + p * PAGE
+            for p in range(n_pages)
+            if SRAM_BASE + p * PAGE not in (self.page_o, self.page_r)
+        ]
+        pg_si, pg_lsu = xo.sample(xo_pages, 2)
+        si: list[tuple[str, _Burst, bytes]] = []
+        for i, (k, axi_id) in enumerate(xo_ops(xo.sample(list(XOUT_M_IDS), 4))):
+            beats = xo.randrange(XOUT_BEATS[0], XOUT_BEATS[1] + 1)
+            off = xo.randrange(0, (SLOT - beats * WORD) // WORD + 1) * WORD
+            b = _Burst(f"XS{i}", k, INCR, pg_si + i * SLOT + off, beats, WORD, axi_id)
+            if k == "W":
+                b.data = payload(beats)
+            si.append(("inbound", b, payload(beats) if k == "R" else b""))
+        lsu: list[tuple[str, _Burst, bytes]] = []
+        lsu_ops = xo_ops(xo.sample(list(S_IDS), 4))
+        lsu_words = xo.sample(range(PAGE // WORD), len(lsu_ops))
+        for i, ((k, axi_id), w) in enumerate(zip(lsu_ops, lsu_words)):
+            b = _Burst(f"XL{i}", k, INCR, pg_lsu + w * WORD, 1, WORD, axi_id)
+            if k == "W":
+                b.data = payload(1)
+            lsu.append(("cpu_lsu", b, payload(1) if k == "R" else b""))
+        self.xout = [op for pair in zip_longest(lsu, si) for op in pair if op is not None]
+
+        # Stream: per master the read and write quotas in one shuffled list; the
+        # CPU-LSU sizes of the held-word writes in equal shares. Addresses, IDs,
+        # data and strobes are drawn from the same stream while it runs.
+        self.stream_rng = SepSeededRng(seed ^ STREAM_SALT)
+        quota = (("R", STREAM_READS), ("WN", STREAM_NEW_WRITES), ("WH", STREAM_HELD_WRITES))
+        self.stream_ops = [(m, k) for m in MASTERS for k, n in quota for _ in range(n)]
+        self.stream_rng.shuffle(self.stream_ops)
+        self.stream_lsu_sizes = list(SIZES) * (STREAM_HELD_WRITES // len(SIZES))
+        self.stream_rng.shuffle(self.stream_lsu_sizes)
+        # Words later steps use, and the open-value word, stay out of the stream.
+        self.stream_avoid = taken | {x["addr"] for x in self.sparse_walk_legs}
+        self.stream_avoid |= {v[k] for v in self.otf.values() for k in ("addr", "post_addr")}
+        self.stream_avoid.add(self.meas_addr)
+        for _m, b, _p in self.xout:
+            self.stream_avoid.update(words_of(beat_addrs(b.burst, b.addr, b.beats, b.size), WORD))
+
+        # Reset in flight on a refused inbound burst, in the free slot of page_r:
+        # per path the burst type, size and start, the beat k after which rst_ni
+        # falls (OTF_REFUSE_K), the abandoned ID and the ID of the post-reset
+        # refused bursts.
+        slot = self.page_r + len(cases) * SLOT
+        beats = OTF_REFUSE_BEATS
+        self.otf_refuse_paths = ["RD", "WR"]
+        rng.shuffle(self.otf_refuse_paths)
+        self.otf_refuse: dict[str, dict] = {}
+        for p in ("RD", "WR"):
+            burst = rng.choice((FIXED, WRAP))
+            start, wsize, rsize = refused_shape(slot, burst, beats)
+            abandon, post_id = rng.sample(list(M_IDS), 2)
+            size = rsize if p == "RD" else wsize
+            words = words_of(beat_addrs(burst, start, beats, wsize), wsize)
+            k_lo, k_hi = OTF_REFUSE_K[p]
+            k = rng.randrange(k_lo, k_hi + 1)
+            bg = [uniq64() for _ in words]
+            data = b""
+            if p == "WR":
+                # Each byte of the abandoned write differs from its background
+                # byte and from 0x00 and 0xFF, so a byte it lands shows.
+                held = {
+                    w + i: (v >> (8 * i)) & 0xFF for w, v in zip(words, bg) for i in range(WORD)
+                }
+                data = bytes(
+                    0x5A if held[a + i] in (0x00, 0xFF) else ~held[a + i] & 0xFF
+                    for a in beat_addrs(burst, start, beats, size)
+                    for i in range(size)
+                )
+            self.otf_refuse[p] = {
+                "b": _Burst(f"Z{p}", p[0], burst, start, beats, size, abandon),
+                "k": k,
+                "data": data,
+                "post": _Burst(f"Z{p}post", "W", burst, start, beats, wsize, post_id),
+                "rsize": rsize,
+                "bg": bg,
+                "words": words,
+            }
+
     def draw_lines(self) -> list[str]:
         out = []
         for m in MASTERS:
@@ -459,6 +680,27 @@ class _Cfg:
             + f" flip=@0x{self.flip['addr']:08x}/value={_w(self.flip['value'])}"
             f"/bit={self.flip['bit']}/id={self.flip['id']}"
         )
+        out.append(
+            f"sparse_walk legs={len(self.sparse_walk_legs)} "
+            + " ".join(
+                f"0x{x['strb']:02x}/@0x{x['addr']:08x}/id={x['id']}" for x in self.sparse_walk_legs
+            )
+        )
+        out.append(
+            f"stream accesses={len(self.stream_ops)} per_master reads={STREAM_READS} "
+            f"new_writes={STREAM_NEW_WRITES} held_writes={STREAM_HELD_WRITES} "
+            f"avoid_words={len(self.stream_avoid)}"
+        )
+        out.append("xout=" + " ".join(f"{m}/{b.fmt()}" for m, b, _ in self.xout))
+        out.append(
+            "otf_refuse_order="
+            + ",".join(self.otf_refuse_paths)
+            + " "
+            + " ".join(
+                f"{p}:{v['b'].fmt()}/k={v['k']}/post_id={v['post'].axi_id}/rsize={v['rsize']}"
+                for p, v in self.otf_refuse.items()
+            )
+        )
         return out
 
 
@@ -472,7 +714,10 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         "CHK-SRAM-SINGLE",
         "CHK-SRAM-OTF",
         "CHK-SRAM-OTF-REPLAY",
+        "CHK-SRAM-OTF-REFUSE",
         "CHK-SRAM-STRB",
+        "CHK-SRAM-STREAM",
+        "CHK-SRAM-XOUT",
     )
 
     # ---- access primitives ---------------------------------------------------
@@ -757,7 +1002,6 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
 
     # ---- step 5: refused FIXED and WRAP bursts --------------------------------
     async def _refuse_case(self, r: dict) -> None:
-        mon = self.mon_m
         b, rsize, ctrl, value, incr_data = r["b"], r["rsize"], r["ctrl"], r["fixed"], r["incr"]
         addrs = beat_addrs(b.burst, b.addr, b.beats, b.size)
         words = words_of(addrs, b.size)
@@ -797,41 +1041,9 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             ctrl,
             words[0],
         )
-        # Pre-read.
-        pre = {w: await self._read_word("inbound", w, b.axi_id) for w in words}
-        for w in words:
-            if pre[w] != self.model.word(w):
-                raise AssertionError(
-                    f"CHK-SRAM-REFUSE FAIL: {b.fmt()} pre-read @0x{w:08x} {_w(pre[w])} differs "
-                    f"from the byte model {_w(self.model.word(w))}"
-                )
-        pre_bytes = {}
-        for w, v in pre.items():
-            for i, byte in enumerate(v.to_bytes(WORD, "little")):
-                pre_bytes[w + i] = byte
-        data = b"".join(bytes((~pre_bytes[a + i]) & 0xFF for i in range(b.size)) for a in addrs)
-        # Refused write.
-        open_graded_window(TEST, self.logger)
-        mark = mon.mark()
-        ev = self._issue(
-            "inbound", "W", b.burst, b.addr, beats=b.beats, size=b.size, axi_id=b.axi_id, data=data
+        bs, rs, changed, pre, post = await self._refused_pair(
+            b, rsize, "CHK-SRAM-REFUSE", graded=True
         )
-        raw = await self._wait(ev, f"CHK-SRAM-REFUSE {b.fmt()} write")
-        await ClockCycles(cocotb.top.clk_i, 2)
-        bs = self._beats(mon, mark, "b", b.axi_id)
-        close_graded_window(self.logger)
-        post = {w: await self._read_word("inbound", w, b.axi_id) for w in words}
-        changed = [w for w in words if post[w] != pre[w]]
-        # Refused read of the same shape.
-        open_graded_window(TEST, self.logger)
-        mark = mon.mark()
-        ev = self._issue(
-            "inbound", "R", b.burst, b.addr, beats=b.beats, size=rsize, axi_id=b.axi_id
-        )
-        await self._wait(ev, f"CHK-SRAM-REFUSE {b.fmt()} read")
-        await ClockCycles(cocotb.top.clk_i, 2)
-        rs = self._beats(mon, mark, "r", b.axi_id)
-        close_graded_window(self.logger)
         bresp = [x.resp for x in bs]
         rresp = [x.resp for x in rs]
         ok = (
@@ -855,6 +1067,54 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             raise AssertionError(msg)
         self.logger.info("CHK-SRAM-REFUSE PASS: %s", line)
         self.n_checks += 1
+
+    async def _refused_pair(self, b: _Burst, rsize: int, chk: str, *, graded: bool):
+        """Refused write of ``b`` with data unlike the stored bytes, then the read.
+
+        Every word the write touches must hold its byte-model value. Returns the
+        B beats and R beats with the ID of ``b`` on ``m_axi``, the words the write
+        changed, and the word values before and after the write. With ``graded``
+        set, the FCOV graded window is open around each burst.
+        """
+        mon = self.mon_m
+        addrs = beat_addrs(b.burst, b.addr, b.beats, b.size)
+        words = words_of(addrs, b.size)
+        pre = {w: await self._read_word("inbound", w, b.axi_id) for w in words}
+        for w in words:
+            if pre[w] != self.model.word(w):
+                raise AssertionError(
+                    f"{chk} FAIL: {b.fmt()} pre-read @0x{w:08x} {_w(pre[w])} differs "
+                    f"from the byte model {_w(self.model.word(w))}"
+                )
+        pre_bytes = {}
+        for w, v in pre.items():
+            for i, byte in enumerate(v.to_bytes(WORD, "little")):
+                pre_bytes[w + i] = byte
+        data = b"".join(bytes((~pre_bytes[a + i]) & 0xFF for i in range(b.size)) for a in addrs)
+        beats = {}
+        for op, size in (("W", b.size), ("R", rsize)):
+            if graded:
+                open_graded_window(TEST, self.logger)
+            mark = mon.mark()
+            ev = self._issue(
+                "inbound",
+                op,
+                b.burst,
+                b.addr,
+                beats=b.beats,
+                size=size,
+                axi_id=b.axi_id,
+                data=data if op == "W" else b"",
+            )
+            await self._wait(ev, f"{chk} {b.fmt()} {'write' if op == 'W' else 'read'}")
+            await ClockCycles(cocotb.top.clk_i, 2)
+            beats[op] = self._beats(mon, mark, "b" if op == "W" else "r", b.axi_id)
+            if graded:
+                close_graded_window(self.logger)
+            if op == "W":
+                post = {w: await self._read_word("inbound", w, b.axi_id) for w in words}
+        changed = [w for w in words if post[w] != pre[w]]
+        return beats["W"], beats["R"], changed, pre, post
 
     # ---- steps 6 and 7: single-beat FIXED and WRAP ------------------------------
     async def _single_case(self, master: str, burst: int, addr: int, value: int, axi_id: int):
@@ -1120,6 +1380,194 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         self.logger.info("CHK-SRAM-OTF-REPLAY PASS: %s", line)
         self.n_checks += 1
 
+    # ---- reset in flight on a refused inbound burst ------------------------------
+    async def _follow_beats(self, op: str, axi_id: int, k: int) -> int:
+        """Sample the m_axi pins each clock (read-only phase) until data beat ``k``.
+
+        Counts R beats with ``axi_id`` (``op`` "R") or W beats (``op`` "W") and
+        returns the count at the sample that shows beat ``k``. Returns earlier
+        when the burst ends (RLAST, or a B beat with ``axi_id``) before beat
+        ``k``; the caller's reach control then fails.
+        """
+        top = cocotb.top
+
+        def hi(name: str) -> bool:
+            v = getattr(top, f"m_axi_{name}").value
+            return v.is_resolvable and int(v) == 1
+
+        def idv(name: str) -> int | None:
+            v = getattr(top, f"m_axi_{name}").value
+            return int(v) if v.is_resolvable else None
+
+        n = 0
+        for _ in range(FOLLOW_BOUND):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            if op == "R":
+                if hi("rvalid") and hi("rready") and idv("rid") == axi_id:
+                    n += 1
+                    if hi("rlast"):
+                        return n
+            else:
+                if hi("wvalid") and hi("wready"):
+                    n += 1
+                if hi("bvalid") and hi("bready") and idv("bid") == axi_id:
+                    return n
+            if n >= k:
+                return n
+        raise AssertionError(
+            f"{op} id={axi_id}: {n} of {k} data beats on m_axi within {FOLLOW_BOUND} clocks"
+        )
+
+    @staticmethod
+    def _err_slv_state() -> dict[str, int | None]:
+        """Monitor-only read of the SRAM burst error slave state; None for X or Z.
+
+        ``w_fifo_empty`` is 0 while an accepted AW waits for its WLAST;
+        ``r_fifo_empty`` is 0 while an accepted AR waits to start; ``r_busy_q``
+        is 1 while an R burst is in progress, with ``r_current_beat`` + 1 beats
+        left to send.
+        """
+        es = cocotb.top.u_dut.u_sep.u_sram_burst_err_slv
+        out: dict[str, int | None] = {}
+        for name in ("w_fifo_empty", "r_fifo_empty", "r_busy_q", "r_current_beat"):
+            val = getattr(es, name).value
+            out[name] = int(val) if val.is_resolvable else None
+        return out
+
+    async def _otf_refuse(self, path: str) -> None:
+        """Land rst_ni inside a refused burst, then grade the next refused burst."""
+        v = self.plan.otf_refuse[path]
+        b, post_b, k = v["b"], v["post"], v["k"]
+        top = cocotb.top
+        mon = self.mon_m
+        rch, dch = ("ar", "r") if path == "RD" else ("aw", "w")
+        for w, bg in zip(v["words"], v["bg"]):
+            await self._write_word("inbound", w, bg, WORD, post_b.axi_id)
+        mark = mon.mark()
+        ev = self._issue(
+            "inbound",
+            b.op,
+            b.burst,
+            b.addr,
+            beats=b.beats,
+            size=b.size,
+            axi_id=b.axi_id,
+            data=v["data"],
+        )
+        seen = await self._follow_beats(b.op, b.axi_id, k)
+        await FallingEdge(top.clk_i)
+        held = self._err_slv_state()
+        top.rst_ni.value = 0
+        fall_clk = mon.clk
+        low = await self._wait_level(top.dbg_sep_reset_n_o, 0, RESET_BOUND, "reset assert")
+        await FallingEdge(top.clk_i)
+        top.rst_ni.value = 1
+        rel = await self._wait_level(top.dbg_sep_reset_n_o, 1, RESET_BOUND, "reset release")
+        await self.wait_fuse_sense()
+        dropped = ev.is_set() and ev.data is None
+        # Reach control from the channel monitor record.
+        req = [x for x in self._beats(mon, mark, rch, b.axi_id) if x.clk <= fall_clk]
+        if path == "RD":
+            data_before = [x for x in self._beats(mon, mark, "r", b.axi_id) if x.clk <= fall_clk]
+            ended = any(x.last == 1 for x in data_before)
+        else:
+            data_before = [x for x in mon.since(mark, "w") if x.clk <= fall_clk]
+            ended = any(x.clk <= fall_clk for x in self._beats(mon, mark, "b", b.axi_id))
+        n_before = len(data_before)
+        if path == "RD":
+            # An AR waiting in the R FIFO, or an R burst with beats left to send.
+            in_slave = held["r_busy_q"] == 1 or held["r_fifo_empty"] == 0
+        else:
+            # The AW ID waits in the W FIFO until the WLAST handshake pops it.
+            in_slave = held["w_fifo_empty"] == 0
+        ctrl = (
+            f"path={path} {b.fmt()} k={k} follower_beats={seen} req_handshakes={len(req)} "
+            f"{dch}_beats_before_fall={n_before} ended_before_fall={int(ended)} "
+            f"fall_after_clk={fall_clk} err_slv_at_fall: "
+            + " ".join(f"{n}={'X' if x is None else x}" for n, x in held.items())
+            + f" held_in_err_slv={int(in_slave)}"
+        )
+        # A reach failure is raised after the CHK grade below, so a refused write
+        # that lands in the SRAM still shows in the abandoned-word read-back.
+        fails: list[str] = []
+        if req and 1 <= n_before < b.beats and not ended and in_slave:
+            self.logger.info("CTRL-SRAM-OTF-REFUSE: %s", ctrl)
+        else:
+            fails.append(
+                f"CTRL-SRAM-OTF-REFUSE FAIL: {ctrl}; rst_ni did not land while the burst "
+                "error slave held the burst"
+            )
+            self.logger.error(fails[-1])
+        await self._filter()
+        # Read back the words the abandoned write covered, before anything writes
+        # them again. A byte it landed reads its write data; a word that matches
+        # the byte model also kept its value across the reset (logged only).
+        landed: list[int] = []
+        retained = 0
+        if path == "WR":
+            after = {w: await self._read_word("inbound", w, post_b.axi_id) for w in v["words"]}
+            retained = sum(after[w] == self.model.word(w) for w in v["words"])
+            addrs = beat_addrs(b.burst, b.addr, b.beats, b.size)
+            for j, a in enumerate(addrs):
+                for i in range(b.size):
+                    x = a + i
+                    got = (after[x - x % WORD] >> (8 * (x % WORD))) & 0xFF
+                    if got == v["data"][j * b.size + i] and x not in landed:
+                        landed.append(x)
+        for w, bg in zip(v["words"], v["bg"]):
+            await self._write_word("inbound", w, bg, WORD, post_b.axi_id)
+        bs, rs, changed, pre, post = await self._refused_pair(
+            post_b, v["rsize"], "CHK-SRAM-OTF-REFUSE", graded=False
+        )
+        await ClockCycles(top.clk_i, QUIET_CYCLES)
+        # After the fall the bench issues on m_axi only post_b.axi_id (background
+        # writes, reads and the refused pair), so an R or B beat with any other
+        # ID answers no request.
+        issued = {post_b.axi_id}
+        stale = [
+            (x.ch, x.axi_id, x.clk)
+            for x in mon.since(mark)
+            if x.ch in ("r", "b") and x.clk > fall_clk and x.axi_id not in issued
+        ]
+        bresp = [x.resp for x in bs]
+        rresp = [x.resp for x in rs]
+        n = post_b.beats
+        ok = (
+            dropped
+            and bresp == [SLVERR]
+            and not changed
+            and len(rs) == n
+            and all(r == SLVERR for r in rresp)
+            and [x.last for x in rs] == [0] * (n - 1) + [1]
+            and not stale
+            and not landed
+        )
+        n_ab = len(v["words"]) if path == "WR" else 0
+        line = (
+            f"path={path} type={BURST_NAME[b.burst]} len={n} landed_after_beat={n_before} "
+            f"abandoned_words={n_ab} abandoned_landed_bytes={len(landed)} "
+            f"abandoned_retained={retained}/{n_ab} "
+            f"bresp={'/'.join(RESP_NAME.get(r, str(r)) for r in bresp) or 'none'} "
+            f"unchanged={int(not changed)} rbeats={len(rs)} "
+            f"{'all_SLVERR' if rresp and all(r == SLVERR for r in rresp) else 'rresp=' + str(rresp)} "
+            f"rlast={[x.last for x in rs]} stale_beats={len(stale)} issued_ids={sorted(issued)} abandoned_id={b.axi_id} "
+            f"post_id={post_b.axi_id} wsize={post_b.size} rsize={v['rsize']} "
+            f"start=0x{post_b.addr:08x} dropped_in_master={int(dropped)} reset_low_clks={low} "
+            f"release_clks={rel} quiet={QUIET_CYCLES}"
+        )
+        if not ok:
+            detail = "; ".join(f"@0x{w:08x} pre={_w(pre[w])} post={_w(post[w])}" for w in changed)
+            landed_at = ",".join(f"0x{x:08x}" for x in landed[:8])
+            fails.append(
+                f"CHK-SRAM-OTF-REFUSE FAIL: {line} stale={stale} landed=[{landed_at}] {detail}"
+            )
+            self.logger.error(fails[-1])
+        if fails:
+            raise AssertionError(" | ".join(fails))
+        self.logger.info("CHK-SRAM-OTF-REFUSE PASS: %s", line)
+        self.n_checks += 1
+
     # ---- strobe legs and the stored-bit flip ------------------------------------
     def _sram_mem(self):
         sram = cocotb.top.u_dut.u_sep_ip_integration.u_sep_sram
@@ -1262,6 +1710,26 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         )
         self.n_checks += 1
 
+    async def _sparse_walk(self) -> None:
+        """One strobe leg per non-contiguous strobe 0x10-0xFF; window closed."""
+        legs = self.plan.sparse_walk_legs
+        fails: list[str] = []
+        for x in legs:
+            msg = await self._strb_leg(x)
+            if msg is not None:
+                fails.append(msg)
+        if fails or len(legs) != N_SPARSE_WALK:
+            raise AssertionError(
+                f"CHK-SRAM-STRB FAIL: sparse_walk {len(fails)} of {len(legs)} legs "
+                f"(want {N_SPARSE_WALK}): " + " | ".join(fails)
+            )
+        self.logger.info(
+            "CHK-SRAM-STRB PASS: sparse_walk legs=%d strobes=0x10..0xFF non-contiguous order=%s",
+            len(legs),
+            ",".join(f"0x{x['strb']:02x}" for x in legs),
+        )
+        self.n_checks += 1
+
     async def _flip_leg(self) -> None:
         f = self.plan.flip
         seed, addr, value, axi_id = self.plan.seed, f["addr"], f["value"], f["id"]
@@ -1310,6 +1778,328 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         )
         await self._write_word("inbound", addr, value, WORD, axi_id)
 
+    # ---- long mixed stream ------------------------------------------------------------
+    async def _stream(self) -> None:
+        c = self.plan
+        rng = c.stream_rng
+        model = self.model
+
+        def held(a: int) -> bool:
+            return all(a + i in model.mem for i in range(WORD))
+
+        pool = sorted(
+            a for a in {k - k % WORD for k in model.mem} if held(a) and a not in c.stream_avoid
+        )
+        if not pool:
+            raise AssertionError("CHK-SRAM-STREAM FAIL: no word held in full before the stream")
+        written: list[int] = []
+        written_set: set[int] = set()
+        bad: list[str] = []
+        n = Counter()
+        lsu_sizes = iter(c.stream_lsu_sizes)
+
+        def note(what: str, code: int, got: bytes | None = None, exp: bytes | None = None):
+            if code != OKAY or got != exp:
+                bad.append(
+                    f"{what} resp={RESP_NAME.get(code, code)}"
+                    + ("" if exp is None else f" read={got.hex()} want={exp.hex()}")
+                )
+
+        for m, kind in c.stream_ops:
+            axi_id = rng.choice(S_IDS) if m == "cpu_lsu" else rng.choice(M_IDS)
+            if kind == "R":
+                src = written if written and rng.randrange(4) else pool
+                addr = rng.choice(src)
+                code, rd = await self._single(m, "R", addr, WORD, axi_id=axi_id)
+                note(
+                    f"{m} R id={axi_id} @0x{addr:08x}",
+                    code,
+                    rd,
+                    model.span(addr, WORD).to_bytes(WORD, "little"),
+                )
+                n["graded_reads"] += 1
+                continue
+            if kind == "WN":
+                addr = SRAM_BASE + rng.randrange(N_WORDS) * WORD
+                while addr in c.stream_avoid or held(addr):
+                    addr = SRAM_BASE + rng.randrange(N_WORDS) * WORD
+                new = rng.getrandbits(64).to_bytes(WORD, "little")
+                code, _ = await self._single(m, "W", addr, WORD, axi_id=axi_id, data=new)
+                note(f"{m} W full id={axi_id} @0x{addr:08x}", code)
+                model.write(addr, new)
+                pool.append(addr)
+                n["new_writes"] += 1
+            else:
+                addr = rng.choice(pool)
+                stored = model.span(addr, WORD).to_bytes(WORD, "little")
+                new = bytes(b ^ rng.randrange(1, 256) for b in stored)
+                if m == "inbound":
+                    strb = rng.randrange(1, 256)
+                    seen: dict = {}
+                    drive = cocotb.start_soon(self._drive_strb(strb, seen))
+                    ev = self._issue(
+                        "inbound", "W", INCR, addr, beats=1, size=WORD, axi_id=axi_id, data=new
+                    )
+                    raw = await self._wait(ev, f"stream strobed write @0x{addr:08x}")
+                    await drive
+                    what = f"inbound W wstrb=0x{strb:02x} id={axi_id} @0x{addr:08x}"
+                    note(what, worst_resp(getattr(raw, "resp", None)))
+                    if seen.get("wstrb") != strb or seen.get("wdata") != int.from_bytes(
+                        new, "little"
+                    ):
+                        bad.append(f"{what}: the W beat carried wstrb={seen.get('wstrb')}")
+                    for i in range(WORD):
+                        if strb >> i & 1:
+                            model.write(addr + i, new[i : i + 1])
+                    n["strobed_inbound"] += 1
+                else:
+                    size = next(lsu_sizes)
+                    off = rng.randrange(WORD // size) * size
+                    chunk = new[off : off + size]
+                    code, _ = await self._single(
+                        "cpu_lsu", "W", addr + off, size, axi_id=axi_id, data=chunk
+                    )
+                    note(f"cpu_lsu W size={size} id={axi_id} @0x{addr + off:08x}", code)
+                    model.write(addr + off, chunk)
+                    n["lsu_held"] += 1
+                    n["lsu_narrow"] += size < WORD
+            if addr not in written_set:
+                written_set.add(addr)
+                written.append(addr)
+        for addr in written:
+            m = rng.choice(MASTERS)
+            axi_id = rng.choice(S_IDS) if m == "cpu_lsu" else rng.choice(M_IDS)
+            code, rd = await self._single(m, "R", addr, WORD, axi_id=axi_id)
+            note(
+                f"re-read {m} id={axi_id} @0x{addr:08x}",
+                code,
+                rd,
+                model.span(addr, WORD).to_bytes(WORD, "little"),
+            )
+            n["reread_words"] += 1
+        per = len(MASTERS)
+        plan_ok = (
+            n["graded_reads"] == per * STREAM_READS
+            and n["new_writes"] == per * STREAM_NEW_WRITES
+            and n["strobed_inbound"] == STREAM_HELD_WRITES
+            and n["lsu_held"] == STREAM_HELD_WRITES
+            and n["lsu_narrow"] > 0
+            and n["reread_words"] == len(written) > 0
+        )
+        writes = n["new_writes"] + n["strobed_inbound"] + n["lsu_held"]
+        line = (
+            f"accesses={len(c.stream_ops)} writes={writes} "
+            f"reads={n['graded_reads']} graded_reads={n['graded_reads']} "
+            f"strobed_inbound={n['strobed_inbound']} lsu_held={n['lsu_held']} "
+            f"lsu_narrow={n['lsu_narrow']} reread_words={n['reread_words']} "
+            f"start_pool={len(pool) - n['new_writes']} mismatches={len(bad)}"
+        )
+        if bad or not plan_ok:
+            msg = f"CHK-SRAM-STREAM FAIL: {line} plan_ok={int(plan_ok)} " + "; ".join(bad[:6])
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CHK-SRAM-STREAM PASS: %s", line)
+        self.n_checks += 1
+
+    # ---- two masters outstanding ---------------------------------------------------
+    @staticmethod
+    def _intervals(beats) -> list[tuple[int, int]]:
+        """[request clock, last-response clock) of each transaction in ``beats``.
+
+        Per ID, the k-th AR pairs with the k-th R beat with RLAST and the k-th
+        AW with the k-th B beat."""
+        out = []
+        for req_ch, done in (
+            ("ar", lambda b: b.ch == "r" and b.last == 1),
+            ("aw", lambda b: b.ch == "b"),
+        ):
+            ids = {b.axi_id for b in beats if b.ch == req_ch}
+            for i in ids:
+                reqs = [b.clk for b in beats if b.ch == req_ch and b.axi_id == i]
+                ends = [b.clk for b in beats if done(b) and b.axi_id == i]
+                out += list(zip(reqs, ends))
+        return out
+
+    @classmethod
+    def _same_id_peak(cls, beats) -> int:
+        """Peak count of outstanding requests that share one ID on one request channel."""
+        return max(
+            (
+                cls._depth_peak([b for b in beats if b.ch in chans and b.axi_id == i])
+                for chans in (("ar", "r"), ("aw", "b"))
+                for i in {b.axi_id for b in beats if b.ch == chans[0]}
+            ),
+            default=0,
+        )
+
+    def _grade_port(self, m: str, mon: SepAxiChanMon, mark, mine) -> list[str]:
+        """CHK-SRAM-XOUT grades of one port; ``mine`` is (burst, completion) in issue order."""
+        beats = mon.since(mark)
+        bad: list[str] = []
+        for b, raw in mine:
+            code = worst_resp(getattr(raw, "resp", None))
+            if code != OKAY:
+                bad.append(f"{m} {b.fmt()} resp={RESP_NAME.get(code, code)}")
+            if b.op == "R":
+                got = bytes(getattr(raw, "data", b"") or b"")
+                exp = bytes(self.model.mem[b.addr + i] for i in range(b.nbytes))
+                if got != exp:
+                    bad.append(f"{m} {b.fmt()} data {got.hex()} expected {exp.hex()}")
+        reads = [b for b, _ in mine if b.op == "R"]
+        writes = [b for b, _ in mine if b.op == "W"]
+        want_r = Counter()
+        for b in reads:
+            want_r[b.axi_id] += b.beats
+        got_r = Counter(x.axi_id for x in beats if x.ch == "r")
+        want_b = Counter(b.axi_id for b in writes)
+        got_b = Counter(x.axi_id for x in beats if x.ch == "b")
+        if got_r != want_r or got_b != want_b:
+            bad.append(
+                f"{m} response IDs R={dict(got_r)} B={dict(got_b)}, issued "
+                f"R={dict(want_r)} B={dict(want_b)}"
+            )
+        bad += [
+            f"{m} {x.ch.upper()} beat id={x.axi_id} "
+            f"resp={RESP_NAME.get(x.resp, x.resp)} clk={x.clk}"
+            for x in beats
+            if x.ch in ("r", "b") and x.resp != OKAY
+        ]
+        for i in want_r:
+            want = [bit for b in reads if b.axi_id == i for bit in [0] * (b.beats - 1) + [1]]
+            got = [x.last for x in beats if x.ch == "r" and x.axi_id == i]
+            if got != want:
+                bad.append(f"{m} id={i} RLAST order {got}, issue order {want}")
+        aw = [x for x in beats if x.ch == "aw"]
+        wb = [x.clk for x in beats if x.ch == "w"]
+        if [x.axi_id for x in aw] != [b.axi_id for b in writes] or len(wb) != sum(
+            b.beats for b in writes
+        ):
+            bad.append(
+                f"{m} AW IDs {[x.axi_id for x in aw]} and {len(wb)} W beats, issued "
+                f"{[b.axi_id for b in writes]} with {sum(b.beats for b in writes)} beats"
+            )
+        else:
+            wlast, pos = [], 0
+            for b in writes:
+                pos += b.beats
+                wlast.append(wb[pos - 1])
+            for i in want_b:
+                reqs = [max(x.clk, wl) for x, wl in zip(aw, wlast) if x.axi_id == i]
+                bclk = [x.clk for x in beats if x.ch == "b" and x.axi_id == i]
+                if len(bclk) != len(reqs) or any(bc <= rq for bc, rq in zip(bclk, reqs)):
+                    bad.append(f"{m} id={i} B clocks {bclk} do not follow AW/W-last {reqs}")
+        return bad
+
+    async def _xout(self) -> None:
+        c = self.plan
+        clk = cocotb.top.clk_i
+        seed = c.seed
+        for m, b, prime in c.xout:
+            if b.op != "R":
+                continue
+            ev = self._issue(
+                m, "W", INCR, b.addr, beats=b.beats, size=WORD, axi_id=b.axi_id, data=prime
+            )
+            raw = await self._wait(ev, f"CHK-SRAM-XOUT prime {m} {b.fmt()}")
+            code = worst_resp(getattr(raw, "resp", None))
+            if code != OKAY:
+                raise AssertionError(
+                    f"CHK-SRAM-XOUT FAIL: prime write {m} {b.fmt()} answered "
+                    f"{RESP_NAME.get(code, code)}, expected OKAY"
+                )
+            self.model.write(b.addr, prime)
+        await ClockCycles(clk, SETTLE_CYCLES)
+        offset = self.mon_s.clk - self.mon_m.clk
+        mark_s, mark_m = self.mon_s.mark(), self.mon_m.mark()
+        evs = [
+            self._issue(
+                m, b.op, INCR, b.addr, beats=b.beats, size=b.size, axi_id=b.axi_id, data=b.data
+            )
+            for m, b, _ in c.xout
+        ]
+        raws = [
+            await self._wait(ev, f"CHK-SRAM-XOUT {m} {b.fmt()}")
+            for (m, b, _), ev in zip(c.xout, evs)
+        ]
+        await ClockCycles(clk, SETTLE_CYCLES)
+        bad: list[str] = []
+        ports = (("cpu_lsu", self.mon_s, mark_s), ("inbound", self.mon_m, mark_m))
+        for m, mon, mark in ports:
+            mine = [(b, raw) for (mm, b, _), raw in zip(c.xout, raws) if mm == m]
+            bad += self._grade_port(m, mon, mark, mine)
+        for _m, b, _p in c.xout:
+            if b.op == "W":
+                self.model.write(b.addr, b.data)
+        # Overlap and depth, on the s_axi clock count.
+        s_beats = self.mon_s.since(mark_s)
+        m_beats = [dataclasses.replace(x, clk=x.clk + offset) for x in self.mon_m.since(mark_m)]
+        s_busy = {t for lo, hi in self._intervals(s_beats) for t in range(lo, hi)}
+        m_busy = {t for lo, hi in self._intervals(m_beats) for t in range(lo, hi)}
+        both = sorted(s_busy & m_busy)
+        ids = {
+            p: sorted({x.axi_id for x in beats if x.ch in ("ar", "aw")})
+            for p, beats in (("si", m_beats), ("lsu", s_beats))
+        }
+        self.logger.info(
+            "INFO-SRAM-XOUT-DEPTH seed=%d si_peak=%d lsu_peak=%d both_peak=%d si_ids=%s "
+            "lsu_ids=%s overlap_clocks=%d clk_offset=%d",
+            seed,
+            self._depth_peak(m_beats),
+            self._depth_peak(s_beats),
+            self._depth_peak(s_beats + m_beats),
+            ids["si"],
+            ids["lsu"],
+            len(both),
+            offset,
+        )
+        same = {"lsu": self._same_id_peak(s_beats), "si": self._same_id_peak(m_beats)}
+        if not both or min(same.values()) < 2:
+            msg = (
+                f"CTRL-SRAM-XOUT FAIL: seed={seed} overlap_clocks={len(both)} (s_axi busy "
+                f"{len(s_busy)} clocks, m_axi busy {len(m_busy)} clocks), same-ID peak "
+                f"lsu={same['lsu']} si={same['si']}; want a clock with a request of each master "
+                f"outstanding and two same-ID requests outstanding together on each port"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-SRAM-XOUT PASS: seed=%d overlap_clocks=%d first=%d last=%d (s_axi clock count) "
+            "same_id_peak lsu=%d si=%d",
+            seed,
+            len(both),
+            both[0],
+            both[-1],
+            same["lsu"],
+            same["si"],
+        )
+        # Every written word reads back on both masters.
+        for m, b, _ in c.xout:
+            if b.op != "W":
+                continue
+            for w in words_of(beat_addrs(b.burst, b.addr, b.beats, b.size), WORD):
+                for rm in MASTERS:
+                    got = await self._read_word(rm, w, 1)
+                    if got != self.model.word(w):
+                        bad.append(
+                            f"read-back {rm} @0x{w:08x} {_w(got)} expected {_w(self.model.word(w))}"
+                        )
+        n_si = sum(m == "inbound" for m, _, _ in c.xout)
+        line = (
+            f"seed={seed} si_reqs={n_si} lsu_reqs={len(c.xout) - n_si} "
+            f"reads={sum(b.op == 'R' for _, b, _ in c.xout)} "
+            f"writes={sum(b.op == 'W' for _, b, _ in c.xout)}"
+        )
+        if bad:
+            msg = f"CHK-SRAM-XOUT FAIL: {line} " + "; ".join(bad[:6])
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CHK-SRAM-XOUT PASS: %s resp=OKAY id_route=1 same_id_order=1 data_match=1 "
+            "readback_both=1",
+            line,
+        )
+        self.n_checks += 1
+
     # ---- scenario ------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -1342,16 +2132,24 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             await self._refuse_case(r)
         for m, burst, addr, value, axi_id in plan.single:
             await self._single_case(m, burst, addr, value, axi_id)
+        await self._stream()
+        await self._xout()
 
         self.sram_tap = SepFabricTap("PR-SRAM").start()
         self.macro_tap = SepFabricTap("PR-SRAM-MACRO").start()
         await self._strb_walk()
+        await self._sparse_walk()
         await self._flip_leg()
         await self.macro_tap.stop()
         windows = await self._measure()
         for path in plan.paths:
             await self._otf(path, windows[path])
         close_graded_window(self.logger)
+        # The inbound filter entry is in the sep_reset_n domain, which rst_ni
+        # resets (hw/sys/sep/doc/clk_rst.adoc), so each reset leg programs it again.
+        await self._filter()
+        for path in plan.otf_refuse_paths:
+            await self._otf_refuse(path)
         await self.sram_tap.stop()
         await self.mon_s.stop()
         await self.mon_m.stop()

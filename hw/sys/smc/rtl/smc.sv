@@ -426,9 +426,10 @@ module smc #(
 
   input  wire logic tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
                                                    // action as a clock stop.
-  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while an enabled CLA
-                                                           // halt-clock action requests a
-                                                           // clock stop.
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // CLA clock-halt request, set
+                                                           // by a halt-clock action and
+                                                           // held until primary reset;
+                                                           // gated by its enables.
 
   output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Requests from the DFD
                                                                                           // trace sink to the
@@ -528,10 +529,14 @@ module smc #(
   logic [16:0] avsbus_cur_state_debug;
   logic [8:0]  system_timer_octs_credits_debug;
   logic        system_timer_octs_credits_left_debug;
+  logic [1:0]  system_timer_octs_pulse_state_debug;
+  logic [2:0]  cpu_mem_zero_state_debug;
 
   logic [smc_config_pkg::NumTelemetryReceivers-1:0][3:0]   telemetry_debug;
   logic [smc_config_pkg::NumI2c-1:0][3:0]                  i2c_debug;
+  logic [smc_config_pkg::NumI2c-1:0][11:0]                 i2c_fsm_state_debug;
   logic [9:0]                                              efuse_debug;
+  logic [5:0]                                              efuse_fsm_state_debug;
 
   // ROM Flip Endianness bit from shadow registers
   logic rom_flip_endianness;
@@ -573,7 +578,6 @@ module smc #(
   smc_pkg::smc_local_32_64_8_12_axi_resp_t    cpu_axi_front_port_resp;
   smc_pkg::smc_cpu_mmio_axi_req_t             cpu_axi_mmio_port_req;
   smc_pkg::smc_cpu_mmio_axi_resp_t            cpu_axi_mmio_port_resp;
-  logic [NumCpuCores-1:0][57:0]               cpu_wb_reg_pc;
   logic [NumCpuCores-1:0]                     cpu_wdt_timeout_cluster;
 
   smc_base #(
@@ -628,7 +632,6 @@ module smc #(
     // CPU wrapper bridge ports (inputs from smc_cpu_wrapper)
     .cpu_axi_mmio_port_req_i                (cpu_axi_mmio_port_req),
     .cpu_axi_mmio_port_resp_o               (cpu_axi_mmio_port_resp),
-    .cpu_wb_reg_pc_i                        (cpu_wb_reg_pc),
     .cpu_wdt_timeout_cluster_i              (cpu_wdt_timeout_cluster),
     .cpu_cluster_ded_i                      (smc_cluster_ded),
     .wdt_second_timeout_i                   (smc_wdt_second_timeout),
@@ -662,9 +665,13 @@ module smc #(
     .avsbus_cur_state_debug_i               (avsbus_cur_state_debug),
     .system_timer_octs_credits_debug_i      (system_timer_octs_credits_debug),
     .system_timer_octs_credits_left_debug_i (system_timer_octs_credits_left_debug),
+    .system_timer_octs_pulse_state_debug_i  (system_timer_octs_pulse_state_debug),
+    .cpu_mem_zero_state_debug_i             (cpu_mem_zero_state_debug),
     .telemetry_debug_i                      (telemetry_debug),
     .i2c_debug_i                            (i2c_debug),
+    .i2c_fsm_state_debug_i                  (i2c_fsm_state_debug),
     .efuse_debug_i                          (efuse_debug),
+    .efuse_fsm_state_debug_i                (efuse_fsm_state_debug),
 
     // indicators for DFT status
     .mem_repair_done_i                      (mem_repair_done_i),
@@ -720,7 +727,7 @@ module smc #(
     // To smc_base
     .axi_mmio_port_req_o                (cpu_axi_mmio_port_req),
     .axi_mmio_port_resp_i               (cpu_axi_mmio_port_resp),
-    .wb_reg_pc_o                        (cpu_wb_reg_pc),
+    .wb_reg_pc_o                        (),
     .wdt_timeout_cluster_o              (cpu_wdt_timeout_cluster),
     .wdt_second_timeout_o               (smc_wdt_second_timeout),
 
@@ -742,6 +749,7 @@ module smc #(
     .l1_dcache_data_intf_rsp_i         (smc_l1_dcache_data_intf_rsp_i),
     .disable_sram_auto_init_i           (smc_disable_sram_auto_init_i),
     .init_mem_done_o                    (smc_init_mem_done_o),
+    .mem_zero_state_debug_o             (cpu_mem_zero_state_debug),
 
     // ROM Flip Endianness
     .rom_flip_endianness_i              (rom_flip_endianness),
@@ -843,6 +851,7 @@ module smc #(
     .timer_count_o                         (timer_count_o),
     .system_timer_octs_credits_debug_o     (system_timer_octs_credits_debug),
     .system_timer_octs_credits_left_debug_o(system_timer_octs_credits_left_debug),
+    .system_timer_octs_pulse_state_debug_o (system_timer_octs_pulse_state_debug),
 
     // Efuse Interface to SHIM
     .fuse_bank_ctrl_req_o                  (efuse_bank_ctrl_req_o),
@@ -926,9 +935,11 @@ module smc #(
 
     // I2C debug
     .i2c_debug_o                           (i2c_debug),
+    .i2c_fsm_state_debug_o                 (i2c_fsm_state_debug),
 
     // Efuse debug
-    .efuse_debug_o                         (efuse_debug)
+    .efuse_debug_o                         (efuse_debug),
+    .efuse_fsm_state_debug_o               (efuse_fsm_state_debug)
   );
   assign rom_flip_endianness = shadow_regs_o.fields.smc_config.rom_flip_endianness;
 

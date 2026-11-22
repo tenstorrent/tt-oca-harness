@@ -11,7 +11,10 @@ domain isolates and drains its paths before its reset asserts
 and no software reset can reach the in-flight cases this test grades.
 
 Phase A walks one read-write probe register on each converted register port
-the CPU-LSU master reaches (``seq_lib/sep_reset_mid_transfer_seq.PROBES``). For
+the CPU-LSU master reaches (``seq_lib/sep_reset_mid_transfer_seq.PROBES``), and
+``EFUSE_BANK_INIT_TIME`` of the eFuse shim control block in the SEP external
+window (``hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl``), whose register
+resets on ``rst_ni``. For
 each probe and each of read and write it first runs the probe access with no
 reset to measure the response window W: the cycles from the last request
 handshake to the response handshake on ``s_axi``. It then lands ``rst_ni`` at
@@ -79,10 +82,11 @@ from env.sep_efuse_image import (
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import word_reset
+from sep_reg_meta import RegBlock, word_reset
 from seq_lib.sep_reset_mid_transfer_seq import (
     PROBE_ID,
     PROBES,
+    ResetProbe,
     SepResetProbeDriver,
     other_value,
     reset_offsets,
@@ -102,6 +106,16 @@ _HOLD = 20
 # the 200 kHz default one probe access outlasts the AXI timeout; eight core
 # periods keeps it inside, as in sep_reg_bit_bash_rand_test.
 _WDT_CLK_RATIO = 8
+
+_EFUSE_SHIM = RegBlock("SEP_EXTERNAL_EFUSE_SHIM_CTRL")
+_PROBES: tuple[ResetProbe, ...] = PROBES + (
+    ResetProbe(
+        "efuse_shim",
+        _EFUSE_SHIM.addr("EFUSE_BANK_INIT_TIME"),
+        _EFUSE_SHIM.reset32("EFUSE_BANK_INIT_TIME"),
+        _EFUSE_SHIM.mask32("EFUSE_BANK_INIT_TIME"),
+    ),
+)
 
 
 def _shadow_reset_words() -> list[int]:
@@ -154,13 +168,13 @@ class sep_reset_mid_transfer_recovery_test(sep_base_test):
         await self.bring_up_no_cpu(max_cycles=_MAX_SENSE_CYCLES)
         self.drv = SepResetProbeDriver(self)
         total = 0
-        for probe in PROBES:
+        for probe in _PROBES:
             for op in ("read", "write"):
                 total += await self._walk(probe, op)
         self.logger.info(
             "Phase A PASS: %d resets landed mid-access over %d probes x 2 ops",
             total,
-            len(PROBES),
+            len(_PROBES),
         )
         await self._sense_restart()
 

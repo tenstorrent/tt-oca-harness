@@ -60,7 +60,7 @@ access control
 
 === Shadow Register Subsystem
 
-The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `access_length_words` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
+The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `read_word_count` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
 
 === Features
 
@@ -89,12 +89,14 @@ support robust error handling and retry logic.
 
 The program interface FSM (efuse_program_interface.sv) enforces the
 write-once nature of OTP hardware, ensuring that programmed data cannot
-be altered once set. It supports write-and-verify procedures for
-reliability, integrating verification steps that check programmed values
-against intended data, and fully blocks any unauthorized overwrites to
-maintain data integrity.
+be altered once set. It issues a single `FUSE_COMMAND_PROGRAM` to the SHIM
+and fully blocks any unauthorized overwrites to maintain data integrity.
+Whether to verify the programmed bit is the adopter's decision: the SHIM
+implements the foundry-specific program flow, including any mandatory verify
+step, and reports the outcome in `status`. Any data returned by the SHIM in the
+program response is stored in `EFUSE_PROGRAM_INTERFACE_READ_DATA`.
 
-*Readback Capture Behavior:*
+*Read-data Capture Behavior:*
 
 When a read command completes successfully, the read interface captures data from
 the SHIM response into the read-data CSR during the ST_WAIT_RESP state. This data
@@ -107,7 +109,7 @@ The fuse command request/response structs exchanged between the
 controller and the SHIM are not declared with fixed types. Instead, they
 are generated from parameterized preprocessor macros defined in
 `efuse_typedef.svh`. This keeps the command interface technology-agnostic:
-each integration supplies its own address, data, access-length, and
+each integration supplies its own address, data, read word-count, and
 command types, while the macros guarantee a consistent struct layout and
 field ordering across all OTP variants.
 
@@ -124,17 +126,16 @@ purpose.
 |=====================================================================================
 
 The request macro is parameterized over the struct name plus four payload
-types (`addr_t`, `data_t`, `access_length_words_t`, `command_t`), allowing
-the controller to size the address space, transfer length, and command
+types (`addr_t`, `data_t`, `word_count_t`, `command_t`), allowing
+the controller to size the address space, read word count, and command
 encoding to match the target OTP technology:
 
 [source,sourceCode,systemverilog]
 ----
-`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)  \
+`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)  \
   typedef struct packed {                                       \
     addr_t                    address;             // Target address       \
-    logic                     program_data;        // Data to program (1'b1) \
-    access_length_words_t     access_length_words; // Transfer size        \
+    word_count_t              read_word_count;     // Words to read        \
     command_t                 command;             // Command type         \
     logic                     valid;               // Request valid        \
   } fuse_command_req_t;
@@ -158,7 +159,7 @@ types:
 
 [source,sourceCode,systemverilog]
 ----
-`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)
+`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)
 `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)
 ----
 
@@ -186,14 +187,18 @@ the controller's generic commands into the signaling expected by a particular
 OTP macro; in this reference version the macro-side interface is APB, but a
 real integration would replace this with the foundry's native signals.
 
-The SHIM decodes three command types from the controller:
+The SHIM decodes two command types from the controller:
 
 * *Read* — fetch one or more words from the bank.
-* *Program* — burn new bits into the bank.
-* *Program/read-back* — program, then read back to verify success.
+* *Program* — burn new bits into the bank using the foundry's native program
+  sequence (including any mandatory verify step the foundry requires).
 
 It implements these with dedicated read and program FSMs that sequence the
 macro-side transactions and return a `fuse_command_resp_t` to the controller.
+The reference SHIM (`efuse_interface_shim.sv`) always reads back the programmed
+word after the write and returns it in `data`. It sets `status` when the write or
+the read-back answers PSLVERR, or when the bit did not stick. A real integration
+replaces the program FSM with the foundry's own sequence.
 Foundry-specific timing and configuration (for example, program pulse widths)
 are exposed through the SHIM Control CSRs, accessed over the
 `fuse_bank_ctrl` AXI4-Lite interface.
@@ -315,8 +320,10 @@ For SMC, the internal security disable signal is directly driven by the
 
 === Lifecycle State (LC_STATE) Effects
 
-The eFuse interface controller enforces access restrictions based on the
-chip's lifecycle state.
+The subsystem eFuse wrapper, not the eFuse interface controller, enforces the
+JTAG access restrictions based on the chip's lifecycle state: `smc_efuse_wrapper`
+for SMC and `sep_efuse_wrapper` for SEP. The wrapper decodes the differentially
+encoded lifecycle state and treats a decode integrity error as a restricted state.
 
 *Lifecycle State Encoding:*
 
@@ -343,31 +350,35 @@ JTAG access policies differ between SMC and SEP variants. The table below descri
 the SMC variant policy, which restricts JTAG access in production and RMA states.
 SEP applies a different policy: in restricted states (PROD or RMA_SIP), JTAG
 accesses to the MMR (token register) space remain allowed for token programming;
-accesses outside the MMR space are blocked with an error response.
+accesses outside the MMR space are blocked with an SLVERR response.
 
 *SMC JTAG Policy:*
 
-When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
-to eFuse registers is restricted (<<efuse-lifecycle-based-jtag-permissions-table>>).
+When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG writes to eFuse
+registers are blocked and JTAG reads are blocked except for JTAG_PUBLIC_IDENTITY.
+When the lifecycle state fails its integrity check, every JTAG write and read is
+blocked, JTAG_PUBLIC_IDENTITY included
+(<<efuse-lifecycle-based-jtag-permissions-table>>).
 
 [[efuse-lifecycle-based-jtag-permissions-table]]
-[width="100%",cols="32%,43%,25%",options="header",]
+[width="100%",cols="28%,30%,24%,18%",options="header",]
 .eFuse JTAG permissions (SMC)
 |=====================================================================================
-|Access Type |PROD/RMA_SOP State |Other States
-|JTAG Write |*Blocked* (error response) |Allowed
-|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |Allowed
-|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |Allowed
+|Access Type |PROD/RMA_SOP State |LC_STATE Integrity Error |Other States
+|JTAG Write |*Blocked* (SLVERR response) |*Blocked* (SLVERR response) |Allowed
+|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |*Blocked* |Allowed
+|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |*Blocked* |Allowed
 |=====================================================================================
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
-returns an error response with data value `0xbadcab1e`.
+returns an SLVERR response with data value `0xbadcab1e`.
 
 *SMC exception for JTAG_PUBLIC_IDENTITY:*
 
 Even in PROD or RMA_SOP states, JTAG read access to the JTAG_PUBLIC_IDENTITY
-register is permitted. This allows identification of the chip for manufacturing
+register is permitted. The exception does not apply when the lifecycle state
+fails its integrity check. This allows identification of the chip for manufacturing
 and field returns without exposing sensitive eFuse contents.
 
 === Secure Test Mode (secure_tm_i)
