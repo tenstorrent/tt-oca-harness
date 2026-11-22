@@ -7,15 +7,18 @@ random key per instance:
 
 1. Address permutation — sweeping the whole address space, the scrambled
    addresses are all distinct (a bijection onto the same space) and at least
-   one differs from its plain address.
+   one differs from its plain address (``CHK-SCR-ADDR-PERM``).
 2. Ascending round trip — random words written through the scrambler into a
    Python memory indexed by scrambled address read back unchanged through
-   the descrambler, at every address.
+   the descrambler, at every address (``CHK-SCR-ROUNDTRIP-ASC``); the scrambled
+   address of each write equals the address map of step 1, whatever the data
+   (``CHK-SCR-ADDR-STABLE``).
 3. Descending round trip — the same with sequential data, walking every
-   address downwards.
+   address downwards (``CHK-SCR-ROUNDTRIP-DESC``).
 4. Key and address dependence — the same word at the same address scrambles
    differently under a second key, and the same word at a different address
-   scrambles differently under the same key (the address tweak takes part).
+   scrambles differently under the same key (the address tweak takes part;
+   ``CHK-SCR-KEY-DEP``, ``CHK-SCR-ADDR-DEP``).
 
 Every scrambled write of steps 2-4 is also graded against the data cipher
 model of ``scrambler_base_test`` (``CHK-SCR-DATA-GOLDEN``): in word mode the
@@ -23,6 +26,9 @@ scrambled word equals the model word; in byte-wise mode, where the ``perm8``
 table is not documented, each byte of the scrambled word has the popcount of
 the same byte of the model's S-box layer output. The scrambled address is
 not graded against a model.
+
+Each check logs one ``CHK-SCR-<name> PASS`` line per variant; a failing check
+raises with its ``FAIL`` line, which fails the test.
 """
 
 from __future__ import annotations
@@ -62,52 +68,75 @@ def check_data_golden(port: ScramblerPort, key: int, addr: int, data: int, sdata
         )
 
 
+def chk(log: logging.Logger, name: str, ok: bool, **fields) -> None:
+    """Log ``CHK-SCR-<name> PASS``, or raise with the ``FAIL`` line."""
+    line = f"CHK-SCR-{name} {'PASS' if ok else 'FAIL'} " + " ".join(
+        f"{k}={v}" for k, v in fields.items()
+    )
+    if not ok:
+        raise AssertionError(line)
+    log.info("%s", line)
+
+
+async def check_roundtrip(
+    port: ScramblerPort, name: str, addrs, memory, expected, scrambled_of, log, **fields
+) -> None:
+    """Descramble each address of ``addrs`` and grade it against ``expected``."""
+    bad = []
+    for addr in addrs:
+        observed = await port.descramble(addr, memory[scrambled_of[addr]])
+        if observed != expected[addr]:
+            bad.append(f"0x{addr:x}:0x{expected[addr]:08x}->0x{observed:08x}")
+    chk(
+        log,
+        name,
+        not bad,
+        addresses=len(addrs),
+        mismatches=len(bad),
+        first=bad[0] if bad else "none",
+        **fields,
+    )
+
+
 async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     variant = port.variant
     depth = variant.depth
     key = random.getrandbits(32)
     port.init(key)
+    mode = "byte" if variant.byte_wise else "word"
+    ids = {"mode": mode, "depth": depth}
 
     scrambled_of = {}
     for addr in range(depth):
         scrambled_of[addr] = await port.scrambled_address(addr)
     images = set(scrambled_of.values())
-    assert len(images) == depth, (
-        f"{variant.name}: {depth - len(images)} scrambled addresses collide under key 0x{key:08x}"
-    )
-    assert max(images) < depth, (
-        f"{variant.name}: a scrambled address exceeds the {depth}-word space"
-    )
     moved = sum(1 for addr, image in scrambled_of.items() if addr != image)
-    assert moved > 0, f"{variant.name}: the address map is the identity under key 0x{key:08x}"
-    log.info(
-        "%s key 0x%08x: address map is a permutation, %d of %d addresses move",
-        variant.name,
-        key,
-        moved,
-        depth,
+    chk(
+        log,
+        "ADDR-PERM",
+        len(images) == depth and max(images) < depth and moved > 0,
+        **ids,
+        key=f"0x{key:08x}",
+        distinct=len(images),
+        max_image=max(images),
+        moved=moved,
     )
 
     graded = 0
     sample = range(depth)
     memory: dict[int, int] = {}
     expected: dict[int, int] = {}
+    addr_changed = 0
     for addr in sample:
         data = random.getrandbits(32)
         saddr, sdata = await port.scramble(addr, data)
         check_data_golden(port, key, addr, data, sdata)
         graded += 1
-        assert saddr == scrambled_of[addr], (
-            f"{variant.name}: scrambled address changed with the data"
-        )
+        addr_changed += saddr != scrambled_of[addr]
         memory[saddr] = sdata
         expected[addr] = data
-    for addr in sample:
-        observed = await port.descramble(addr, memory[scrambled_of[addr]])
-        assert observed == expected[addr], (
-            f"{variant.name}: ascending round trip at 0x{addr:x}: wrote 0x{expected[addr]:08x}, read 0x{observed:08x}"
-        )
-    log.info("%s: ascending round trip over %d addresses", variant.name, len(sample))
+    chk(log, "ADDR-STABLE", addr_changed == 0, **ids, writes=depth, addr_changed=addr_changed)
+    await check_roundtrip(port, "ROUNDTRIP-ASC", sample, memory, expected, scrambled_of, log, **ids)
 
     for value, addr in enumerate(reversed(sample)):
         saddr, sdata = await port.scramble(addr, value & DATA_MASK)
@@ -115,12 +144,9 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
         graded += 1
         memory[saddr] = sdata
         expected[addr] = value & DATA_MASK
-    for addr in reversed(sample):
-        observed = await port.descramble(addr, memory[scrambled_of[addr]])
-        assert observed == expected[addr], (
-            f"{variant.name}: descending round trip at 0x{addr:x}: wrote 0x{expected[addr]:08x}, read 0x{observed:08x}"
-        )
-    log.info("%s: descending round trip over %d addresses", variant.name, len(sample))
+    await check_roundtrip(
+        port, "ROUNDTRIP-DESC", sample[::-1], memory, expected, scrambled_of, log, **ids
+    )
 
     addr_a, addr_b = random.sample(range(depth), 2)
     data = random.getrandbits(32)
@@ -129,25 +155,35 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     _, sdata_b = await port.scramble(addr_b, data)
     check_data_golden(port, key, addr_b, data, sdata_b)
     graded += 2
-    assert sdata_a != sdata_b, (
-        f"{variant.name}: 0x{data:08x} scrambles identically at 0x{addr_a:x} and 0x{addr_b:x}"
+    chk(
+        log,
+        "ADDR-DEP",
+        sdata_a != sdata_b,
+        **ids,
+        data=f"0x{data:08x}",
+        addr_a=f"0x{addr_a:x}",
+        addr_b=f"0x{addr_b:x}",
+        sdata_a=f"0x{sdata_a:08x}",
+        sdata_b=f"0x{sdata_b:08x}",
     )
     other_key = key ^ (1 << random.randrange(32)) ^ random.getrandbits(32)
     port.init(other_key)
     _, sdata_other = await port.scramble(addr_a, data)
     check_data_golden(port, other_key, addr_a, data, sdata_other)
     graded += 1
-    assert sdata_other != sdata_a, (
-        f"{variant.name}: 0x{data:08x} at 0x{addr_a:x} scrambles identically under two keys"
+    chk(
+        log,
+        "KEY-DEP",
+        sdata_other != sdata_a,
+        **ids,
+        data=f"0x{data:08x}",
+        addr=f"0x{addr_a:x}",
+        key=f"0x{key:08x}",
+        other_key=f"0x{other_key:08x}",
+        sdata=f"0x{sdata_a:08x}",
+        sdata_other=f"0x{sdata_other:08x}",
     )
-    log.info("%s: scrambled data depends on the address and on the key", variant.name)
-    assert graded == 2 * depth + 3
-    log.info(
-        "CHK-SCR-DATA-GOLDEN PASS mode=%s depth=%d writes=%d",
-        "byte" if variant.byte_wise else "word",
-        depth,
-        graded,
-    )
+    chk(log, "DATA-GOLDEN", graded == 2 * depth + 3, **ids, writes=graded)
 
 
 @cocotb.test()

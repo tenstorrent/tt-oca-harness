@@ -74,7 +74,12 @@ Checkers:
                    at least 100, the count reads below 100 and below its value
                    before the write after one window (the run state is cleared;
                    control CTRL-HT-ENABLE-REP-WRITE: ENABLE reads back 6 after
-                   the write). INFO-HT-REPCOUNT-AFTER logs the cleared
+                   the write). After the write and a write of 1 to
+                   HEALTH_TEST_STATUS bit 0, that bit reads 0 and still reads 0
+                   after the window, and REPCNT_TOTAL_FAILS does not increase
+                   across the window: no new repetition failure while the
+                   tester is disabled (entropy_source.rdl:352, :820-826).
+                   INFO-HT-REPCOUNT-AFTER logs the cleared
                    value: graded by CHK-HT-ENABLE; no open specification
                    question. No enabled control runs: no
                    text states whether the count restarts at a failure while
@@ -636,11 +641,11 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             await self._guard(self._reset_window_leg(), ("HT-RESET-WINDOW",), None)
         if runs(2):
             self.rep_timeout = ""
-            rep_before, rep_after = await self._guard(
-                self._rep_enable_leg(), (), (None, None), tester="rep"
+            rep_before, rep_after, rep_top = await self._guard(
+                self._rep_enable_leg(), (), (None, None, {}), tester="rep"
             )
             limit_status = await self._limit_trials()
-            self._grade_rep_enable(rep_before, rep_after, limit_status)
+            self._grade_rep_enable(rep_before, rep_after, rep_top, limit_status)
             await self._guard(self._all_off_leg(), ("HT-ALL-OFF", "HT-ENABLE"), None)
             await self._guard(self._rec_copy_leg(), ("REC-COPY",), None)
         if runs(3):
@@ -1105,8 +1110,18 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         )
 
     # --- repetition enable leg ------------------------------------------------------
-    async def _rep_enable_leg(self) -> tuple[int | None, int | None]:
-        """Stuck1 on all lanes, REPETITION_TEST_COUNT >= 100, then ENABLE = 6."""
+    async def _rep_rd(self) -> tuple[int, int]:
+        """HEALTH_TEST_STATUS bit 0 and REPCNT_TOTAL_FAILS."""
+        status = (await self._rd(A_HT_STATUS)) & M_HT_STATUS
+        total = (await self._rd(A_TOTALS["REPCNT_TOTAL_FAILS"])) & M_TOTAL
+        return (status >> BIT_REP) & 1, total
+
+    async def _rep_enable_leg(self) -> tuple[int | None, int | None, dict[str, int]]:
+        """Stuck1 on all lanes, REPETITION_TEST_COUNT >= 100, then ENABLE = 6.
+
+        The returned dict holds HEALTH_TEST_STATUS bit 0 and REPCNT_TOTAL_FAILS
+        before the write, after the write with bit 0 cleared, and after the window.
+        """
         w = RESET_WINDOW
         await self._start(w)
         open_graded_window(TEST, self.logger)
@@ -1129,23 +1144,40 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         )
         if before is None:
             close_graded_window(self.logger)
-            return None, None
+            return None, None, {}
+        top: dict[str, int] = {}
+        top["rep_status_pre"], top["rep_total_pre"] = await self._rep_rd()
         await self._ht_ctrl(enable=6)
         enable_rb = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
         self.chk.ctrl("HT-ENABLE-REP-WRITE", enable_rb == 6, enable=enable_rb, want=6)
+        # HEALTH_TEST_STATUS is write-one-to-clear (entropy_source.rdl:352).
+        await self._wr(A_HT_STATUS, 1 << BIT_REP)
+        top["rep_status_clr"], top["rep_total_off"] = await self._rep_rd()
         await self._wait_words(w, w)
         after = (await self._rd(A_REP_COUNT)) & M_REP_COUNT
+        top["rep_status_post"], top["rep_total_post"] = await self._rep_rd()
         close_graded_window(self.logger)
         self.chk.info("HT-REPCOUNT-AFTER", value=after, before=before, chk="CHK-HT-ENABLE")
-        return before, after
+        return before, after, top
 
     def _grade_rep_enable(
-        self, before: int | None, after: int | None, limit_status: dict[str, list[int]]
+        self,
+        before: int | None,
+        after: int | None,
+        top: dict[str, int],
+        limit_status: dict[str, list[int]],
     ) -> None:
         rep_st = limit_status.get("rep", [])
         rep_trips = bool(rep_st) and all((s >> BIT_REP) & 1 for s in rep_st)
         self.chk.ctrl("HT-ENABLE-REP", rep_trips, ctrl_enabled_trips=int(rep_trips))
         ok = before is not None and after is not None and after < REPCOUNT_PRE and after < before
+        ok = (
+            ok
+            and bool(top)
+            and top["rep_status_clr"] == 0
+            and top["rep_status_post"] == 0
+            and top["rep_total_post"] == top["rep_total_off"]
+        )
         extra = {"reason": self.rep_timeout} if self.rep_timeout else {}
         self.chk.ok(
             "HT-ENABLE",
@@ -1156,6 +1188,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             latched="na",
             count_before=before if before is not None else "na",
             count_after_disable=after if after is not None else "na",
+            **top,
             ctrl_enabled_trips=int(rep_trips),
         )
 

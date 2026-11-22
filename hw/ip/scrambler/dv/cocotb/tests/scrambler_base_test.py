@@ -8,11 +8,12 @@ byte-wise mode). The scrambler is combinational: the bench drives the pins of
 one instance, lets a nanosecond pass, and samples its outputs, so no clock is
 involved.
 
-The contract under test (rtl/scrambler.sv): the scrambled address is a
-permutation of the address space for a given key; a word scrambled at an
-address descrambles back to itself at the same address and key; and in
-byte-wise mode each byte lane scrambles independently, so a memory that
-merges byte-masked writes keeps every lane descramblable.
+The contract under test (``hw/ip/scrambler/doc/architecture.adoc``: Data
+Scrambling Algorithm, Address Scrambling, Byte-Wise Scrambling Mode): the
+scrambled address is a permutation of the address space for a given key; a
+word scrambled at an address descrambles back to itself at the same address
+and key; and in byte-wise mode each byte lane scrambles independently, so a
+memory that merges byte-masked writes keeps every lane descramblable.
 
 The data cipher model below follows ``hw/ip/scrambler/doc/architecture.adoc``
 alone: the round key is the address expansion XOR the key, the write word is

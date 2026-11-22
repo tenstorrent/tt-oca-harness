@@ -121,8 +121,9 @@ Checkers:
                     each equal the stated ratio of the guide value times the
                     source period, exact in ps. Positive probes in the same
                     line: RING_OSC_ENABLE reads the written word and
-                    MODULE_ENABLE reads 1 while the field is clear, and the
-                    DIVIDE readback is the guide value after the restore.
+                    MODULE_ENABLE reads 1 while the field is clear, and after
+                    the restore RING_OSC_ENABLE reads its reset value and the
+                    DIVIDE readback is the guide value.
 
 Logged only: INFO-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
 each burst (no text states whether a generator failure counts in it).
@@ -1068,12 +1069,16 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         men_rb = int(bool(await rd(A_CTRL) & M_MODULE_ENABLE))
         await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=v))
         await wr(A_RING_OSC_ENABLE, RING_OSC_ENABLE_RESET)
+        restore_rb = await rd(A_RING_OSC_ENABLE) & M_RING_OSC_ENABLE
+        restore_want = RING_OSC_ENABLE_RESET & M_RING_OSC_ENABLE
         div_rb = (await rd(A_DIV0) & M_DIVIDE) >> BP_DIVIDE
         want = div_ratio(v) * src_ps
         lane = cocotb.top.esrc_sample_clk_lane0_o
         periods = _periods(await self._rises(lane, SCLK_DISCARD + SCLK_GRADE + 1))[SCLK_DISCARD:]
         ring_want = ring_off & M_RING_OSC_ENABLE
-        probes_ok = en_rb == ring_want and men_rb == 1 and div_rb == v
+        probes_ok = (
+            en_rb == ring_want and restore_rb == restore_want and men_rb == 1 and div_rb == v
+        )
         self.chk.ok(
             "SCLK-GUIDE",
             probes_ok and len(periods) == SCLK_GRADE and all(p == want for p in periods),
@@ -1083,6 +1088,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             want_ps=want,
             ring_osc_enable_off_rb=f"0x{en_rb:06x}",
             ring_osc_enable_off_want=f"0x{ring_want:06x}",
+            ring_osc_enable_restore_rb=f"0x{restore_rb:06x}",
+            ring_osc_enable_restore_want=f"0x{restore_want:06x}",
             module_enable_rb=men_rb,
             divide_rb=div_rb,
             src_ps=src_ps,
