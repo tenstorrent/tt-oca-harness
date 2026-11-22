@@ -107,6 +107,7 @@ from dataclasses import dataclass, field
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep
+from env.sep_decode_resp import expected_unbacked
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from sep_base_test import sep_base_test
 from seq_lib.sep_unmapped_access_seq import (
@@ -393,9 +394,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 "hole, answered the response code and read data the SEP memory map states; "
                 f"all {err_reads} error-response read(s) were lane-checked for X/Z"
             ),
-            "CHK-CPU-CTRL-BASE-CODE": (
-                f"{base_log}; sep_memory_map.rdl:13 states OKAY, 0x0 / OKAY"
-            ),
+            "CHK-CPU-CTRL-BASE-CODE": base_log,
             "CHK-UNMAPPED-NO-ALIAS": (
                 f"no refused read returned a programmed value, no probe write moved "
                 f"a watched word, and all {len(ua.snap)} live words match the snapshot"
@@ -433,29 +432,31 @@ class sep_unmapped_access_policy_test(sep_base_test):
     ) -> tuple[list[str], str]:
         """Read, write and re-read SEP CPU control offset 0; return failures and values.
 
-        The golden is hw/sys/sep/regs/include/sep_memory_map.rdl:13: a hole in
-        the extent answers OKAY with read data 0x0, and a write has no effect,
-        so the re-read also returns 0x0 and every live word still matches the
-        snapshot. It runs after the FCOV window closed and after every count
+        The golden is the hole response the SEP memory map states for this
+        offset (hw/sys/sep/regs/include/sep_memory_map.rdl:13: OKAY with read
+        data 0x0, write OKAY). A write to a hole has no effect, so the re-read
+        returns the same data and every live word still matches the snapshot. It runs after the FCOV window closed and after every count
         the other verdicts use, so it releases no sample and changes no other
         tally.
         """
         addr = cfg.cpu_ctrl_base
+        e_r = expected_unbacked(addr, "r")
+        e_w = expected_unbacked(addr, "w")
         r_resp, r_data, r_to = await ua.access("r", addr, may_refuse=True)
         w_resp, _d, w_to = await ua.access("w", addr, wdata=PROBE_WDATA, may_refuse=True)
         rr_resp, rr_data, rr_to = await ua.access("r", addr, may_refuse=True)
         fail = []
-        for what, resp, data, to in (
-            ("read", r_resp, r_data, r_to),
-            ("write", w_resp, None, w_to),
-            ("re-read", rr_resp, rr_data, rr_to),
+        for what, resp, data, to, e in (
+            ("read", r_resp, r_data, r_to, e_r),
+            ("write", w_resp, None, w_to, e_w),
+            ("re-read", rr_resp, rr_data, rr_to, e_r),
         ):
             if to:
                 fail.append(f"0x{addr:08x} {what} timed out")
-            elif resp != RESP_OKAY:
-                fail.append(f"0x{addr:08x} {what} resp={_code(resp)}, expected OKAY")
-            elif data is not None and data != 0:
-                fail.append(f"0x{addr:08x} {what} rdata=0x{data:08x}, expected 0x00000000")
+            elif resp != e.resp:
+                fail.append(f"0x{addr:08x} {what} resp={_code(resp)}, expected {_code(e.resp)}")
+            elif data is not None and data != e.rdata:
+                fail.append(f"0x{addr:08x} {what} rdata=0x{data:08x}, expected 0x{e.rdata:08x}")
         for live in ua.snap:
             for moved in await ua.compare([live]):
                 fail.append(f"write to 0x{addr:08x} moved live word 0x{live:08x}: {moved}")
@@ -464,7 +465,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
             f"read resp={_code(r_resp)} rdata=0x{r_data:08x}; "
             f"write 0x{PROBE_WDATA:08x} resp={_code(w_resp)}; "
             f"re-read resp={_code(rr_resp)} rdata=0x{rr_data:08x}; no timeout; "
-            f"all {len(ua.snap)} live words match the snapshot after the write"
+            f"all {len(ua.snap)} live words match the snapshot after the write; "
+            f"the map states {_code(e_r.resp)}, 0x{e_r.rdata:08x} / {_code(e_w.resp)} "
+            f"({e_r.row}, {e_r.column})"
         )
         return fail, log
 
