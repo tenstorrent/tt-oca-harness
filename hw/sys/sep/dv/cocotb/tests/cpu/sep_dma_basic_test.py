@@ -55,7 +55,7 @@ clear pulse of the host-path latch, across the pin release) and -CLEAR (a fall w
 all four are logged. INFO-RAS-DMA_HOST_INTG_ERR-DELAY logs the rise delay: not graded; no open
 specification question. INFO-RAS-DMA_HOST_INTG_ERR-FALL logs the fall delay: graded by
 CHK-RAS-DMA_HOST_INTG_ERR-CLEAR; no open specification question. The field in the fabric-DECERR
-leg is logged only (OBS-RAS-DMA_HOST_INTG_ERR-FABRIC): no document states it.
+leg is logged only (INFO-RAS-DMA_HOST_INTG_ERR-FABRIC): no document states it.
 
 CTRL-HOSTINTG-ARM-PIN requires ``dma_host_intg_inject_i`` = 1 on the clock of the
 firmware control read of DMA_BUS_ERR_STATUS before GO and of the read after the
@@ -509,7 +509,7 @@ class sep_dma_basic_test(sep_base_test):
             if self.sb.fw_done:
                 break
             await RisingEdge(dut.clk_i)
-        self._ras_chk.obs(
+        self._ras_chk.info(
             f"{_RAS}-FABRIC",
             span="CHK-HOSTFABRIC-ARM_to_fw_end",
             rises=self._ras.rises_since(mf),
