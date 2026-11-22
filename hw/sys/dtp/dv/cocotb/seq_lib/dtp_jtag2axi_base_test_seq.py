@@ -117,34 +117,55 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             required_ids={GEOMETRY_CHECK_ID},
             logger=cocotb.log,
         )
-        negative = OcahKnobs.is_set(GEOMETRY_NEGATIVE_KNOB)
-        if negative:
+        if OcahKnobs.is_set(GEOMETRY_NEGATIVE_KNOB):
             self.log.warning("NEGATIVE VALIDATION: geometry gate expectations will be corrupted")
         await self.reset_tap()
         for cfg in JTAG2AXI_TARGETS.values():
             dtmcs = await self.read_tdr(cfg.dtmcs_reg)
             await self.activate_dm(cfg.name)
-            sbcs = unpack_sbcs(await self.dmi_read(cfg.name, DtpDmReg.SBCS, context="geometry"))
-            observed = {
-                "dtmcs": dtmcs,
-                "sbversion": sbcs["sbversion"],
-                "sbasize": sbcs["sbasize"],
-                "sbaccess": [sbcs[f"sbaccess{bits}"] for bits in (128, 64, 32, 16, 8)],
-            }
-            expected = {
-                "dtmcs": DTP_EXPECTED_DTMCS,
-                "sbversion": 1,
-                "sbasize": cfg.addr_width ^ int(negative),
-                "sbaccess": [int(cfg.data_width >= bits) for bits in (128, 64, 32, 16, 8)],
-            }
-            self.log.info("GEOMETRY %s dtmcs=0x%08x sbcs=%s", cfg.name, dtmcs, sbcs)
+            sbcs = await self.dmi_read(cfg.name, DtpDmReg.SBCS, context="geometry")
+            self.log.info("GEOMETRY %s dtmcs=0x%08x sbcs=0x%08x", cfg.name, dtmcs, sbcs)
             checker.expect_equal(
                 GEOMETRY_CHECK_ID,
-                observed,
-                expected,
+                {"dtmcs": dtmcs, **self.sbcs_geometry(sbcs)},
+                {"dtmcs": DTP_EXPECTED_DTMCS, **self.expected_geometry(cfg.name)},
                 context=f"{cfg.name} DTMCS and sbcs geometry",
             )
         checker.finalize()
+
+    @staticmethod
+    def sbcs_geometry(sbcs: int) -> dict[str, object]:
+        """The geometry fields of an ``sbcs`` value: the SBA version, address width and
+        access sizes."""
+        fields = unpack_sbcs(sbcs)
+        return {
+            "sbversion": fields["sbversion"],
+            "sbasize": fields["sbasize"],
+            "sbaccess": [fields[f"sbaccess{bits}"] for bits in (128, 64, 32, 16, 8)],
+        }
+
+    def expected_geometry(self, target: str) -> dict[str, object]:
+        """The ``sbcs`` geometry of ``target`` in ``JTAG2AXI_TARGETS``.
+
+        ``DTP_J2A_GEOMETRY_NEGATIVE=1`` corrupts the expected address width, so
+        the run must fail.
+        """
+        cfg = self.target_cfg(target)
+        return {
+            "sbversion": 1,
+            "sbasize": cfg.addr_width ^ int(OcahKnobs.is_set(GEOMETRY_NEGATIVE_KNOB)),
+            "sbaccess": [int(cfg.data_width >= bits) for bits in (128, 64, 32, 16, 8)],
+        }
+
+    def check_sbcs_geometry(self, target: str, sbcs: int, *, context: str) -> None:
+        """``CHK-J2A-GEOMETRY`` on one ``sbcs`` read of an active Debug Module."""
+        self.check_equal(
+            self.target_evidence(target),
+            GEOMETRY_CHECK_ID,
+            self.sbcs_geometry(sbcs),
+            self.expected_geometry(target),
+            context=f"{context} target={target} sbcs=0x{sbcs:08x}",
+        )
 
     # --- DMI access ------------------------------------------------------------
     async def dmi_scan(
@@ -566,6 +587,16 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             self._check_bus_counts(name, counts, context="after_last_op")
             self.port_history(name).mark = counts
         self._bus_ledger = None
+
+    def expect_no_bus_request(self, target: str, *, context: str) -> None:
+        """CHK-J2A-BUS-REQ: the port holds the counts of the pass's last judged access.
+
+        A no-op unless this pass's ledger accounts ``target``.
+        """
+        ledger = self._bus_ledger
+        if ledger is None or ledger.target != target:
+            return
+        self._check_bus_counts(target, (ledger.writes, ledger.reads), context=context)
 
     def _check_bus_counts(self, target: str, expected: tuple[int, int], *, context: str) -> None:
         """Record the port's write and read counts against ``expected``; raise on a mismatch."""

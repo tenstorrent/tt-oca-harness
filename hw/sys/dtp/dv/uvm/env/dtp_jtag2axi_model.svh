@@ -27,8 +27,7 @@
 //                op-3 update carrying its own address and data.
 //   dmcontrol    While dmactive is 0 the Debug Module holds sbcs at its reset
 //                value (sbaccess 2, sbversion and sbasize 0) and sbaddress and
-//                sbdata at 0; a write of sbdata0 in that state starts a bus
-//                write of 0 at address 0.
+//                sbdata at 0, and no System Bus Access starts.
 //   sbcs         A write sets sbreadonaddr, sbaccess, sbautoincrement and
 //                sbreadondata and clears sbbusyerror and sberror where it
 //                writes 1. sbversion, sbasize and the sbaccess* bits publish
@@ -448,9 +447,9 @@ class dtp_jtag2axi_model;
           m_bridge[n].sbdata =
               (m_bridge[n].sbdata & ~(64'hFFFF_FFFF << shift)) | (64'(data) << shift);
           m_bridge[n].sbdata_mask |= 64'hFFFF_FFFF << shift;
+          if (address == DTP_DM_SBDATA0 && m_bridge[n].ctrl.sberror == 0)
+            launched = launch(t, 1'b0, gated);
         end
-        if (address == DTP_DM_SBDATA0 && m_bridge[n].ctrl.sberror == 0)
-          launched = launch(t, 1'b0, gated);
       end
       default: ;
     endcase
