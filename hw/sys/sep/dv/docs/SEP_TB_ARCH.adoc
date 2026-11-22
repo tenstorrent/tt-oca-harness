@@ -220,7 +220,8 @@ Observation probe groups:
 * Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
   `iso_slv_ar_hs_probe_o`, `iso_slv_b_hs_probe_o`, `iso_slv_r_hs_probe_o`
   (one bit per isolate stage, valid and ready on the same clock),
-  `iso_slv_ar_valid_probe_o` (the AR valid alone, one bit per stage) and
+  `iso_slv_ar_valid_probe_o`, `iso_slv_aw_valid_probe_o` (the AR and AW valid
+  alone, one bit per stage) and
   `iso_slv_bresp_probe_o`, `iso_slv_rresp_probe_o` (two bits per stage, stage i
   at `[2i+1:2i]`), read from the `slv_req_i` and `slv_resp_o` ports of the 14
   isolate units of `sep_crypto_axi_interconnect.sv` (`u_*_host_isolate`,

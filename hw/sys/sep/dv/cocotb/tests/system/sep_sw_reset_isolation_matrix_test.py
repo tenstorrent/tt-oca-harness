@@ -66,7 +66,7 @@ request and isolate-complete vectors (``crypto_isolate_req_probe_o``,
 ``crypto_isolated_probe_o``), read in the bench index of
 ``env/sep_reset_taps.py``, and the slave-side handshakes of the 14 isolate
 stages (``iso_slv_{aw,ar,b,r}_hs_probe_o``, ``iso_slv_{b,r}resp_probe_o``,
-``iso_slv_ar_valid_probe_o``). The handshakes of ``s_axi`` and its AWVALID and
+``iso_slv_{ar,aw}_valid_probe_o``). The handshakes of ``s_axi`` and its AWVALID and
 AWID are sampled on the same clock as the taps. Leg C also samples the Key Manager key-path AW channel
 (``km_key_aw_{valid,ready}_o``, KM-BUS) and reads the POKE results through
 ``km_sram_probe_o`` (KM-RESULT).
@@ -120,9 +120,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-ISO-DRAIN-RESP OTBN, AES: at the slave side of the host isolate stage
                     of D, each transaction before the isolated window is
                     PRE (stage handshake before the isolate request rise),
-                    POST (a read whose own first AR valid at the stage, or a
-                    write whose first AWVALID on ``s_axi``, is after the
-                    rise) or AMBIGUOUS (first presented at or before the
+                    POST (a transaction whose own first AR or AW valid at
+                    the stage is after the rise) or AMBIGUOUS (first presented at or before the
                     rise, stage handshake at or after it). The normal
                     response is OKAY, and for a read its data under the
                     probe mask is the armed value of the probe of D, which
@@ -135,8 +134,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     the normal response), and a normal response comes at
                     the stage before the host isolate-complete bit of D
                     rises and before ``ip_rst_n[D]`` falls. Per channel,
-                    in order of first presentation (stage AR valid for a
-                    read, ``s_axi`` AWVALID for a write), every
+                    in order of first presentation (stage AR or AW valid),
+                    every
                     transaction after one that got the isolate answer
                     gets the isolate answer too. The
                     AMBIGUOUS transactions are also logged with both clocks
@@ -571,8 +570,9 @@ class IsoSlvLog:
     Reads ``iso_slv_{aw,ar,b,r}_hs_probe_o`` and the response codes on every rising
     edge of ``clk_i`` in the read-only phase and drives nothing. A handshake is one
     clock with valid and ready high, so every high clock is recorded. On the same
-    edges it records the clocks on which ``iso_slv_ar_valid_probe_o`` is high and
-    the clocks and AWID on which ``s_axi_awvalid`` is high. ``clk`` counts
+    edges it records the clocks on which ``iso_slv_ar_valid_probe_o`` or
+    ``iso_slv_aw_valid_probe_o`` is high and the clocks and AWID on which
+    ``s_axi_awvalid`` is high. ``clk`` counts
     the sampled edges from ``start``. While ``km_on`` is set it also records, per
     clock, the Key Manager key-path ports whose AW is valid and not ready
     (``km_key_aw_{valid,ready}_o``, port i = bench stage 8 + i).
@@ -585,6 +585,7 @@ class IsoSlvLog:
         self.clk = 0
         self.ev: list[tuple[int, str, int, int]] = []  # (clk, ch, bench stage, resp)
         self.arv: list[tuple[int, int]] = []  # (clk, stages with AR valid high)
+        self.awsv: list[tuple[int, int]] = []  # (clk, stages with AW valid high)
         self.awv: list[tuple[int, int]] = []  # (clk, s_axi AWID) while AWVALID is high
         self.km_on = False
         self.km_wait: dict[int, int] = {}  # clk -> ports with AW valid and not ready
@@ -598,13 +599,17 @@ class IsoSlvLog:
             await RisingEdge(d.clk_i)
             await ReadOnly()
             self.clk += 1
-            arv, awv = d.iso_slv_ar_valid_probe_o.value, d.s_axi_awvalid.value
-            if not (arv.is_resolvable and awv.is_resolvable):
+            arv, awsv = d.iso_slv_ar_valid_probe_o.value, d.iso_slv_aw_valid_probe_o.value
+            awv = d.s_axi_awvalid.value
+            if not (arv.is_resolvable and awsv.is_resolvable and awv.is_resolvable):
                 raise AssertionError(
-                    f"iso_slv_ar_valid_probe_o/s_axi_awvalid is X/Z at clock {self.clk}"
+                    "iso_slv_ar_valid_probe_o/iso_slv_aw_valid_probe_o/s_axi_awvalid "
+                    f"is X/Z at clock {self.clk}"
                 )
             if int(arv):
                 self.arv.append((self.clk, int(arv)))
+            if int(awsv):
+                self.awsv.append((self.clk, int(awsv)))
             if int(awv):
                 awid = d.s_axi_awid.value
                 self.awv.append((self.clk, int(awid) if awid.is_resolvable else -1))
@@ -652,9 +657,10 @@ class IsoSlvLog:
                 out[f"{ch}resp"].append(RESP_NAME.get(code, code))
         return out
 
-    def ar_valid_clks(self, start: int, stages: int, off: int) -> set[int]:
-        """Tap clocks after ``start`` on which the AR valid of one of ``stages`` is high."""
-        return {c - off for c, v in self.arv if c - off > start and v & stages}
+    def valid_clks(self, ch: str, start: int, stages: int, off: int) -> set[int]:
+        """Tap clocks after ``start`` on which the ``ch`` valid of one of ``stages`` is high."""
+        rec = self.arv if ch == "ar" else self.awsv
+        return {c - off for c, v in rec if c - off > start and v & stages}
 
     def aw_first(self, start: int, off: int) -> dict[int, int]:
         """First tap clock after ``start`` with ``s_axi_awvalid`` high, per AWID."""
@@ -1568,8 +1574,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             self.logger.info("INFO-ISO-DRAIN: %s", vals)
         # CHK-ISO-DRAIN-RESP / INFO-ISO-DRAIN-RESP (reset_controller.adoc, Isolation
         # and Reset Sequencing, steps 2 and 3). Each stage transaction is PRE (stage
-        # handshake before the request rise), POST (a read whose own first AR valid
-        # at the stage, or a write whose first AWVALID on s_axi, is after the rise)
+        # handshake before the request rise), POST (a transaction whose own first
+        # AR or AW valid at the stage is after the rise)
         # or AMBIGUOUS (first presented at or before the rise, stage handshake at or
         # after it). PRE gets the normal response; POST always gets the isolate
         # answer. AMBIGUOUS gets either the whole isolate answer or the normal
@@ -1594,7 +1600,9 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         rdata = [int.from_bytes(bytes(ev.data)[:4], "little") for _, ev in host_rd]
         aw_first = self.isolog.aw_first(mark, self.iso_off)
         wr_first = [aw_first.get(tid) for _, tid in host_wr]
-        ar_valid = self.isolog.ar_valid_clks(mark, HOST_MASK[d], self.iso_off)
+        valid = {
+            ch: self.isolog.valid_clks(ch, mark, HOST_MASK[d], self.iso_off) for ch in ("ar", "aw")
+        }
         host_ack = view.ack_rise(HOST_MASK[d], first_write - 1)
         n_rd = sum(1 for op, *_ in host_evs if op == "rd")
         n_wr = len(host_evs) - n_rd
@@ -1607,15 +1615,21 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         )
         # (first presented, stage handshake, stage response clock, cell text,
         #  isolate answer, normal response) per stage transaction.
+        # Valid can stay high across back-to-back transactions: one is first
+        # presented after the previous stage handshake on its channel.
+        def first_valid(hs: list[int], ch: str) -> list[int]:
+            out, prev = [], mark
+            for c in hs:
+                f = c
+                while f - 1 > prev and f - 1 in valid[ch]:
+                    f -= 1
+                out.append(f)
+                prev = c
+            return out
+
         txns = []
-        prev = mark
-        for k, c in enumerate(stg_r):
-            # AR valid can stay high across back-to-back reads: a read is first
-            # presented after the previous stage AR handshake.
-            f = c
-            while f - 1 > prev and f - 1 in ar_valid:
-                f -= 1
-            prev = c
+        stage_only_post = 0
+        for k, (c, f) in enumerate(zip(stg_r, first_valid(stg_r, "ar"))):
             code = st["rresp"][k] if k < len(st["rresp"]) else "none"
             rsp = st["r"][k] if k < len(st["r"]) else None
             data = rdata[k] if k < len(rdata) else None
@@ -1625,11 +1639,12 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             iso = code == slverr and data == ISO_DATA
             normal = code == okay and data is not None and (data & probe.mask) == rd_exp
             txns.append((f, c, rsp, txt, iso, normal))
-        for k, c in enumerate(stg_w):
-            f = wr_first[k] if k < len(wr_first) else None
+        for k, (c, f) in enumerate(zip(stg_w, first_valid(stg_w, "aw"))):
+            sf = wr_first[k] if k < len(wr_first) else None
             code = st["bresp"][k] if k < len(st["bresp"]) else "none"
             rsp = st["b"][k] if k < len(st["b"]) else None
-            txt = f"wr:saxi_valid={f}:hs={c}:resp_cycle={rsp}:{code}"
+            txt = f"wr:valid={f}:saxi_valid={sf}:hs={c}:resp_cycle={rsp}:{code}"
+            stage_only_post += sf is not None and sf <= reqrise < f
             txns.append((f, c, rsp, txt, code == slverr, code == okay))
         txns.sort(key=lambda t: t[1])
         pre, amb, post, bad = [], [], [], []
@@ -1637,7 +1652,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             if c < reqrise:
                 pre.append(txt)
                 ok = normal
-            elif f is not None and f > reqrise:
+            elif f > reqrise:
                 post.append(txt)
                 ok = iso
             else:
@@ -1648,13 +1663,9 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 ok = iso or (normal and drained)
             if not ok:
                 bad.append(txt)
-        # Order of first presentation; a write with no AWVALID clock is unmapped and
-        # sorts on its handshake.
+        # Order of first presentation at the stage.
         for ch in ("rd:", "wr:"):
-            seq = sorted(
-                (t for t in txns if t[3].startswith(ch)),
-                key=lambda t: (t[1] if t[0] is None else t[0], t[1]),
-            )
+            seq = sorted((t for t in txns if t[3].startswith(ch)), key=lambda t: (t[0], t[1]))
             first_iso = None
             for _, _, _, txt, iso, _ in seq:
                 if first_iso is None:
@@ -1682,7 +1693,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"rst_assert_cycle={fall[d]} window_start_cycle={win['start_cyc']} "
             f"host_rd={n_rd} host_wr={n_wr} stage_rd={len(stg_r)} stage_wr={len(stg_w)} "
             f"mapped={int(mapped)} pre_count={len(pre)} ambiguous_count={len(amb)} "
-            f"post_count={len(post)} cells=[{','.join(cells)}] "
+            f"post_count={len(post)} wr_post_saxi_before_rise={stage_only_post} cells=[{','.join(cells)}] "
             f"mismatched=[{','.join(bad)}] wr_graded_on=bresp "
             f"rd_exp=0x{rd_exp:08x} rd_mask=0x{probe.mask:08x} "
             f"exp=pre:OKAY+rd_exp,"
