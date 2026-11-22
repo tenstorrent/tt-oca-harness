@@ -17,6 +17,9 @@ master; ``m_axi_*``, the SMN-inbound external master):
   unequal to every code, and fails the leaf with ``CHAN-XZ FAIL`` while
   ``xz_fail`` is set; :meth:`SepAxiChanMon.xz_beats` lists such beats for a
   caller that grades them. Verilator is 2-state.
+* :class:`SepAxUserMon` records the AxUSER of every AW and AR handshake by
+  address, at the same sample point, so a leaf can check that the AxUSER it
+  drew reached the bus and grade against the measured value.
 * :class:`SepAxiReadyHold` holds BREADY or RREADY of one master low through
   the backend channel ``pause`` that ``ocah_axi_vip`` exposes
   (``OcahAxiMasterDriver.channels``), and releases it. The VIP keeps the
@@ -256,6 +259,70 @@ class SepAxiChanMon:
                         )
 
 
+class SepAxUserMon:
+    """AxUSER of every AW and AR handshake of one master, by address."""
+
+    def __init__(self, prefix: str = "s_axi", dut=None) -> None:
+        self.dut: Any = dut if dut is not None else cocotb.top
+        self.seen: dict[int, list[int | None]] = {}
+        self._chans = [
+            tuple(
+                getattr(self.dut, f"{prefix}_{ch}{f}") for f in ("valid", "ready", "addr", "user")
+            )
+            for ch in ("aw", "ar")
+        ]
+        self._task: Any = None
+
+    def start(self) -> "SepAxUserMon":
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    def stop(self) -> None:
+        if self._task is not None:
+            self._task.kill()
+            self._task = None
+
+    async def _run(self) -> None:
+        while True:
+            await RisingEdge(self.dut.clk_i)
+            await ReadOnly()
+            for valid, ready, addr, user in self._chans:
+                if _val(valid) and _val(ready):
+                    self.seen.setdefault(int(addr.value), []).append(_val(user))
+
+    def first(self, addr: int) -> int | None:
+        """The AxUSER of the first handshake at ``addr``, or None."""
+        vals = self.seen.get(addr)
+        return vals[0] if vals else None
+
+    def check(self, logger, name: str, drawn: dict[int, list[int]], seed: int) -> None:
+        """``CTRL-<name>``: every address in ``drawn`` has one handshake per draw,
+        with the drawn AxUSER values. Logs the PASS line, or logs and raises
+        ``CTRL-MISSING <name>``."""
+
+        def key(v):
+            return -1 if v is None else v
+
+        def fmt(vals) -> str:
+            return "[" + ",".join("X" if v is None else f"0x{v:03x}" for v in vals) + "]"
+
+        bad = [
+            f"0x{a:x}:drawn={fmt(u)},seen={fmt(self.seen.get(a, []))}"
+            for a, u in drawn.items()
+            if sorted(self.seen.get(a, []), key=key) != sorted(u)
+        ]
+        seen = {v for a in drawn for v in self.seen.get(a, [])}
+        line = (
+            f"seed={seed} probe=s_axi requests={sum(len(u) for u in drawn.values())} "
+            f"users_seen={fmt(sorted(seen, key=key))}"
+        )
+        if bad:
+            msg = f"CTRL-MISSING {name}: {line} mismatch={bad[:4]}"
+            logger.error(msg)
+            raise AssertionError(msg)
+        logger.info("CTRL-%s PASS: %s", name, line)
+
+
 class SepAxiReadyHold:
     """Hold BREADY or RREADY of one testbench master low, and release it."""
 
@@ -303,5 +370,6 @@ __all__ = [
     "ChanMonIdleError",
     "ChanXZError",
     "SepAxiChanMon",
+    "SepAxUserMon",
     "SepAxiReadyHold",
 ]

@@ -120,7 +120,8 @@ the SRAM to the two last ICCM words and the two first DCCM words; no text
 states a DMA transfer across the ICCM end; the four words hold known values
 before the copy; CTRL-TCM-SEAM-ADJ requires the ICCM end to equal the DCCM
 base), INFO-TCM-EXCL (whether the other memory's clock-enable
-tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
+tap rose), INFO-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read;
+the corrected data is graded by CHK-TCM-SBE, and no text states the response),
 INFO-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
 and its bits other than BUS_ERROR), INFO-TCM-DBE-DONE (STATUS.done and
 STATUS.error after each double-bit read),
@@ -728,7 +729,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         stored = self._stored_word(mem, addr, mark)
         berr = await self._bus_err()
         self._chk_dbg(mem, "single", nib)
-        self.logger.info("OBS-TCM-SBE-STATUS: mem=%s k=%d dma_bus_err_status=0x%x", mem, k, berr)
+        self.logger.info("INFO-TCM-SBE-STATUS: mem=%s k=%d dma_bus_err_status=0x%x", mem, k, berr)
         flipped = int(written is not None and stored is not None and (stored ^ written) == mask)
         line = (
             f"mem={mem} addr=0x{addr:08x} k={k} staging_before=0x{before:08x} data=0x{got:08x} "
