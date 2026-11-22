@@ -5091,7 +5091,8 @@ and the debug-bus pulses. Tool: VCS.
 this group and on `cp_traced_event` is counted as pending inside the window of
 that owner and samples only when the label rises; the owner writes it after
 every check of the run passed (CHK-TCM-CLAMP, CHK-TCM-CE, CHK-TCM-SILENT,
-CHK-TCM-UE, CHK-TCM-NMI, CHK-TCM-DBG, CHK-TCM-NO-PIC), so a run whose check
+CHK-TCM-INCR, CHK-TCM-UE, CHK-TCM-NMI, CHK-TCM-DBG, CHK-TCM-DBG366,
+CHK-TCM-NO-PIC and the CHK-RAS-<FIELD>-IDLE, -RISE and -SHAPE checks), so a run whose check
 fails leaves those cells at 0. A reset drops the pending counts. An illegal
 outcome samples at once. `cp_dma_ecc_response` of `sep_tcm_dma_aperture_ecc_test`
 samples as before.
