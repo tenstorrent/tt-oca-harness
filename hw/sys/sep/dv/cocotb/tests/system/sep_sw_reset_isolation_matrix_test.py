@@ -145,6 +145,10 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     Stage response codes come from the slave-side tap; read
                     data from the host read. The other domains log
                     ``INFO-ISO-DRAIN-RESP``.
+  CHK-ISO-DRAIN-POST HMAC, KMAC, Adams Bridge, TRNG: the POST and order terms
+                    of CHK-ISO-DRAIN-RESP, which hold on every host path. A
+                    pass with no POST transaction logs
+                    ``INFO-ISO-DRAIN-POST``.
   CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
                     on a later clock than the last slave-side response of
                     the transactions the stage accepted before the request
@@ -1651,7 +1655,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         for f, c, rsp, txt, iso, normal in txns:
             if c < reqrise:
                 pre.append(txt)
-                ok = normal
+                ok = normal or not graded
             elif f > reqrise:
                 post.append(txt)
                 ok = iso
@@ -1660,7 +1664,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 drained = (
                     rsp is not None and host_ack is not None and rsp < host_ack and rsp < fall[d]
                 )
-                ok = iso or (normal and drained)
+                ok = not graded or iso or (normal and drained)
             if not ok:
                 bad.append(txt)
         # Order of first presentation at the stage.
@@ -1694,7 +1698,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"host_rd={n_rd} host_wr={n_wr} stage_rd={len(stg_r)} stage_wr={len(stg_w)} "
             f"mapped={int(mapped)} pre_count={len(pre)} ambiguous_count={len(amb)} "
             f"post_count={len(post)} wr_post_saxi_before_rise={stage_only_post} cells=[{','.join(cells)}] "
-            f"mismatched=[{','.join(bad)}] wr_graded_on=bresp "
+            f"mismatched=[{','.join(bad)}] graded_terms={'all' if graded else 'post,order'} "
+            "wr_graded_on=bresp "
             f"rd_exp=0x{rd_exp:08x} rd_mask=0x{probe.mask:08x} "
             f"exp=pre:OKAY+rd_exp,"
             f"ambiguous:SLVERR+0x{ISO_DATA:08X}|OKAY+rd_exp_before_ack_and_rst,"
@@ -1709,6 +1714,12 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             )
         else:
             self.logger.info("INFO-ISO-DRAIN-RESP: %s", vals)
+            # CHK-ISO-DRAIN-POST: the POST and order terms, which hold on every
+            # host path, on the domains whose PRE and AMBIGUOUS terms are logged.
+            if post:
+                self._chk("CHK-ISO-DRAIN-POST", mapped and not bad, vals)
+            else:
+                self.logger.info("INFO-ISO-DRAIN-POST: not reached: %s", vals)
         # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
         ack_hi = {v: view.ack_rise(TABLE[v] & ~baseline, first_write - 1) for v in pd.victims}
         host_hi = {v: view.ack_rise(HOST_MASK[v], first_write - 1) for v in pd.victims}
