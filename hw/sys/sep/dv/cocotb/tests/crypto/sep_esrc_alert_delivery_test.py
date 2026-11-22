@@ -14,25 +14,26 @@ failing windows, ALERT_FAIL_COUNTS attributes the trip to the repetition lane,
 HEALTH_TEST_STATUS and every per-generator status byte latch bit 0
 (repetition; every lane is held at 0), and MAIN_SM_STATUS.ERR must stay 0
 so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
-state fault. ``OBS-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
+state fault. ``INFO-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
 HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
 and states no value. An opening INTR_TEST sweep, before the trip, drives each interrupt
 source the RDL defines on its own, from ``INTR_STATUS`` = 0 and PIC source 16 at 0.
 Each source must set only its own bit and clear on W1C, which leaves ``INTR_STATUS``
-= 0 and PIC source 16 at 0. While the source is set, PIC source 16 is graded 1 for
-``PERSISTENT_FAILURE`` only and is logged (``OBS-INTR-TEST-PIC16``) for the other
-sources, for the same reason as in the pair walk below.
+= 0 and PIC source 16 at 0. While the source is set with every enable set, PIC source
+16 is graded 1: for ``PERSISTENT_FAILURE`` under ``CHK-INTR-TEST``, and for each other
+source under ``CHK-INTR-TEST-PIC16`` (each ``INTR_ENABLE`` field "Enables the <cause>
+interrupt", ``entropy_source.rdl``:173-208).
 
 A pair walk follows the sweep, with every enable set. Each source is a target i once,
 with a partner j != i; one INTR_TEST write sets both. A write of one to i leaves exactly
 j set (``INTR_STATUS`` fields are woclr, ``entropy_source.rdl``:108-166; ``INTR_TEST``
 fields are singlepulse, :212-262), and a write of one to j leaves ``INTR_STATUS`` = 0
-and PIC source 16 at 0. While only j is set, PIC source 16 is graded 1 when j is
-``PERSISTENT_FAILURE`` (the persistent-failure interrupt is source 16,
-``hw/sys/sep/doc/interrupts.adoc``:22-24, :109-111; entropy_source.rdl:193) and is
-logged (``OBS-INTR-PAIR-PIC16``) for any other j: the register text does not state
-which other enabled status bits drive source 16. One pair per seed has
-j = ``PERSISTENT_FAILURE``; the PASS line counts those pairs (``pf_j_pairs``).
+and PIC source 16 at 0. While only j is set, PIC source 16 is graded 1 (the ESRC
+interrupt is source 16, ``hw/sys/sep/doc/interrupts.adoc``:22-24, :109-111): under
+``CHK-INTR-PAIR-W1C`` when j is ``PERSISTENT_FAILURE`` (entropy_source.rdl:193), and
+under ``CHK-INTR-PAIR-PIC16`` for any other j (entropy_source.rdl:173-208). One pair
+per seed has j = ``PERSISTENT_FAILURE``; the PASS line counts those pairs
+(``pf_j_pairs``).
 
 ``CTRL-ALERT-ARM`` reads back ALERT_THRESHOLD, HEALTH_TEST_WINDOW_SIZE and
 HEALTH_TEST_CTRL after the trip setup writes them; each must hold the written value.
@@ -83,7 +84,7 @@ _TRIP_POLL_EVERY = 64
 class sep_esrc_alert_delivery_test(sep_base_test):
     """A persistent failure sets ALERT and PIC source 16, and W1C clears both."""
 
-    required_evidence = ("CHK-INTR-PAIR-W1C",)
+    required_evidence = ("CHK-INTR-PAIR-W1C", "CHK-INTR-TEST-PIC16", "CHK-INTR-PAIR-PIC16")
 
     async def _check_arm(self, esrc: SepEsrcAlert) -> None:
         """CTRL-ALERT-ARM: each trip setup register reads back its written value."""
@@ -141,7 +142,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         # from their live cause, so once a real health-test failure is latched the
         # matching bit cannot clear on W1C. From the clean pre-trip state each
         # source must set only its own bit and clear on W1C. Source 16 is graded 1
-        # for PERSISTENT_FAILURE only; for any other source it is logged.
+        # while each source is set.
         await esrc.enable_all_irq()
         proven: list[str] = []
         pf_sources = 0
@@ -169,7 +170,11 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                     f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
                 )
             else:
-                self.logger.info("OBS-INTR-TEST-PIC16 %s pic16=%d", name, irq)
+                assert irq == 1, (
+                    f"CHK-INTR-TEST-PIC16 FAIL: {name} set INTR_STATUS with its enable but "
+                    f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
+                )
+                self.logger.info("CHK-INTR-TEST-PIC16 PASS: %s pic16=%d", name, irq)
             await esrc.w1c_intr_status(bm)
             st_after = await esrc.read_intr()
             irq_after = self._irq_bit()
@@ -308,7 +313,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
         gen_health = await esrc.read_generator_health()
         self.logger.info(
-            "OBS-HT-RSVD graded=0 ht_rsvd=0x%02x gen_rsvd=%s",
+            "INFO-HT-RSVD graded=0 ht_rsvd=0x%02x gen_rsvd=%s",
             ht_status & HEALTH_RSVD_MASK,
             [f"0x{v & HEALTH_RSVD_MASK:02x}" for v in gen_health],
         )
@@ -419,7 +424,11 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                     f"but sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
                 )
             else:
-                self.logger.info("OBS-INTR-PAIR-PIC16 %s pic16=%d", tag, irq_j)
+                assert irq_j == 1, (
+                    f"CHK-INTR-PAIR-PIC16 FAIL: {tag} j set alone with its enable but "
+                    f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
+                )
+                self.logger.info("CHK-INTR-PAIR-PIC16 PASS: %s pic16=%d", tag, irq_j)
             await esrc.w1c_intr_status(bj)
             st_end = await esrc.read_intr()
             irq_end = self._irq_bit()

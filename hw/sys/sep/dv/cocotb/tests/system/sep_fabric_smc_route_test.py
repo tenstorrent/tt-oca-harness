@@ -30,7 +30,7 @@ document states which transaction sees the new decode. With no LSU access in
 flight, the leaf drives the other configuration on the BH-SMC hook and reads
 one word inside the new aperture only and one word inside the old aperture
 only. CTRL-SMC-APERTURE-CHANGE: the DUT aperture inputs hold the new base and
-size on every clock of both reads. OBS-SMC-APERTURE-CHANGE logs, per word, the
+size on every clock of both reads. INFO-SMC-APERTURE-CHANGE logs, per word, the
 response, the read data and the PR-SMC and PR-OUT AR counts; it grades
 nothing.
 
@@ -483,7 +483,7 @@ class sep_fabric_smc_route_test(sep_base_test):
         set_open_value_leg_pass(None, self.logger)
         for role, addr, resp, rdata, c in probes:
             self.logger.info(
-                "OBS-SMC-APERTURE-CHANGE word=%s addr=0x%08x resp=%s rdata=0x%08x "
+                "INFO-SMC-APERTURE-CHANGE word=%s addr=0x%08x resp=%s rdata=0x%08x "
                 "smc_ar=%d out_ar=%d",
                 role,
                 addr,

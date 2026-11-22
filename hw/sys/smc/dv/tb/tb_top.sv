@@ -1629,6 +1629,18 @@ module smc_uvm_top
 `undef SMC_EFUSE_READ
 `undef SMC_EFUSE_PROGRAM
 `undef SMC_EFUSE_IFC
+    // eFuse SHIM write PSLVERR knob: while set, the reference SHIM sees PSLVERR on the bank
+    // response of a program's write phase (apb_fuse_bank_resp_w carries only that phase). The
+    // read-back phase and reads keep the bank's own response.
+`define SMC_EFUSE_SHIM u_dut.u_smc_ip_integration.u_efuse_interface_shim
+    always @(posedge clk_smc) begin
+        if (tb_efuse_write_pslverr_inject === 1'b1) begin
+            force `SMC_EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr = 1'b1;
+        end else begin
+            release `SMC_EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr;
+        end
+    end
+`undef SMC_EFUSE_SHIM
 
     assign tb_sync_irq        = sync_irq;
     assign tb_gpio_irq_any    = |gpio_interrupt;

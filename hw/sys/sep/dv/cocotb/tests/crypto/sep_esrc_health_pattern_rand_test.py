@@ -71,8 +71,9 @@ Checkers:
                    at least 100, the count reads below 100 and below its value
                    before the write after one window (the run state is cleared;
                    control CTRL-HT-ENABLE-REP-WRITE: ENABLE reads back 6 after
-                   the write). The exact cleared value is not stated:
-                   OBS-HT-REPCOUNT-AFTER logs it. No enabled control runs: no
+                   the write). INFO-HT-REPCOUNT-AFTER logs the cleared
+                   value: graded by CHK-HT-ENABLE; no open specification
+                   question. No enabled control runs: no
                    text states whether the count restarts at a failure while
                    the tester stays enabled.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
@@ -86,9 +87,9 @@ Checkers:
                    INPUT_COUNT(first) + input words - INPUT_COUNT(last). Input words
                    are strobes of esrc_whiten_push_o, output words strobes of
                    esrc_compress_vld_o. Control: at least 16 input and 8 output
-                   words in the span. Whether the whitener input continues after
-                   the 32-bit test fails after boot is not stated: a push timeout
-                   logs INFO-BLOCKED and the check has no evidence.
+                   words in the span. A push timeout logs INFO-HT-PRESHA-NOPUSH
+                   (not graded; no open specification question) and the check
+                   has no evidence.
   CHK-HT-LIMIT     each limit trial (repetition L-3, Markov high W/2-3, Markov
                    low W/L+3, W = 1024) sets exactly the bit of its tester in all
                    12 generators.
@@ -143,17 +144,25 @@ Checkers:
                    Controls (CTRL-REC-COPY): the H readbacks, A + 1 within the
                    window, the cleared statuses and the ENABLE readback before
                    each trial.
-Logged only: OBS-ESRC-HT-TOTALS, the five total-fail counters after each limit
-trial (no text states how the totals count the per-generator failures).
-OBS-HT-ALERT-COUNTS, the ALERT_FAIL_COUNTS fields and ALERT_THRESHOLD after each
-pattern trial and each limit trial, each of which fails one tester type (no text
-states which tester instances feed those counters).
-OBS-ESRC-HT-BYPASS, HEALTH_TEST_STATUS bits 3 and 5 and the APT_LO and MARKOV_LO
-totals after the constant-zero windows with ``CTRL.BYPASS_ENTROPY_COMPRESSOR``
-set: architecture.adoc:47-48 states the 32-bit test clock-gated off in that mode,
-architecture.adoc:122 states that it monitors the post-bypass stream. Control
-CTRL-ESRC-HT-BYPASS: CTRL reads the bypass 1 before the windows, and the
-lane-byte control compares at least W zero strobes with no mismatch.
+  CHK-ESRC-HT-BYPASS
+                   ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1: the 32-bit health test
+                   is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63),
+                   so HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a
+                   write of 1 to its set bits and still reads 0 after 3W
+                   constant-zero strobes. Control (CTRL-ESRC-HT-BYPASS): CTRL
+                   reads back bypass 1 and HEALTH_TEST_CTRL.ENABLE reads back 7
+                   before the windows, and the lane-byte control compares at
+                   least W zero strobes with no mismatch.
+Logged only: INFO-ESRC-HT-TOTALS, the five total-fail counters after each limit
+trial (not graded; no open specification question).
+INFO-HT-ALERT-COUNTS, the ALERT_FAIL_COUNTS fields and ALERT_THRESHOLD after each
+pattern trial and each limit trial, each of which fails one tester type (not
+graded; no open specification question).
+INFO-ESRC-HT-BYPASS-TOTALS, the APT_LO and MARKOV_LO totals and
+INTR_STATUS.HEALTH_TEST_FAILED before and after the constant-zero windows of
+CHK-ESRC-HT-BYPASS (not graded: entropy_source.rdl:840-847, :860-867 do not state
+which testers feed the totals, and the per-generator testers still see the stuck
+lanes in bypass; no open specification question).
 """
 
 from __future__ import annotations
@@ -227,7 +236,13 @@ DRAIN_POPS = 160
 SHARD_EVIDENCE = {
     1: ("CHK-HT-TRIP", "CHK-HT-PASS", "CHK-HT-OTHERS", "CHK-HT-W1C", "CHK-HT-ENABLE"),
     2: ("CHK-HT-ENABLE", "CHK-HT-LIMIT", "CHK-HT-ALL-OFF", "CHK-REC-COPY"),
-    3: ("CHK-HT-PRESHA", "CHK-HT-TOP-ZERO", "CHK-HT-TOP-HI", "CHK-HT-TOP-ONE"),
+    3: (
+        "CHK-HT-PRESHA",
+        "CHK-HT-TOP-ZERO",
+        "CHK-HT-TOP-HI",
+        "CHK-HT-TOP-ONE",
+        "CHK-ESRC-HT-BYPASS",
+    ),
 }
 
 
@@ -458,6 +473,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         "CHK-HT-TOP-ONE",
         "CHK-HT-ALL-OFF",
         "CHK-REC-COPY",
+        "CHK-ESRC-HT-BYPASS",
     )
 
     async def run_scenario(self) -> None:
@@ -563,12 +579,12 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
     async def _any_fail(self) -> int:
         return ((await self._rd(A_ANY_FAIL)) & M_ANY_FAIL) >> P_ANY_FAIL
 
-    async def _alert_counts_obs(self, tester: str) -> None:
-        """OBS-HT-ALERT-COUNTS after a trial that fails only ``tester``."""
+    async def _alert_counts_info(self, tester: str) -> None:
+        """INFO-HT-ALERT-COUNTS after a trial that fails only ``tester``."""
         raw = await self._rd(A_ALERT_FAIL_COUNTS)
         thr = ((await self._rd(A_ALERT_THRESHOLD)) & M_THR) >> P_THR
         counts = {f.lower(): (raw & m["bm"]) >> m["bp"] for f, m in ALERT_FAIL_FIELDS.items()}
-        self.chk.obs("HT-ALERT-COUNTS", tester=tester, alert_threshold=thr, **counts)
+        self.chk.info("HT-ALERT-COUNTS", tester=tester, alert_threshold=thr, **counts)
 
     async def _drain(self) -> None:
         """Pop FIFO_RDATA until FIFO_STATUS.LEVEL reads 0."""
@@ -659,7 +675,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         await self._write_trip_limit(trial)
         await self._pattern_window(self._lanes_with(k, trial.pattern), 3 * w, w)
         st = await self._gen_statuses()
-        await self._alert_counts_obs(trial.tester)
+        await self._alert_counts_info(trial.tester)
         gk = st[k]
         tripped = gk & GRADED_BITS == 1 << BIT_APT
         self.chk.ok(
@@ -796,8 +812,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         await self._wait_words(w, w)
         after = (await self._rd(A_REP_COUNT)) & M_REP_COUNT
         close_graded_window(self.logger)
-        self.chk.obs("HT-REPCOUNT-AFTER", value=after, before=before)
-        self.chk.blocked("HT-ENABLE-REPCOUNT-VALUE", "cleared_count_value_unstated")
+        self.chk.info("HT-REPCOUNT-AFTER", value=after, before=before, chk="CHK-HT-ENABLE")
         return before, after
 
     def _grade_rep_enable(
@@ -891,8 +906,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         words[trial] = self.noise.words_since(mark)
         out[trial] = await self._gen_statuses()
         _, totals, _ = await self._top_regs()
-        self.chk.obs("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
-        await self._alert_counts_obs(trial)
+        self.chk.info("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
+        await self._alert_counts_info(trial)
         close_graded_window(self.logger)
         for addr, s in zip(A_GEN_STATUS, out[trial]):
             if s:
@@ -1244,14 +1259,13 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         level = (await self._rd(A_FIFO_STATUS)) & M_FIFO_LEVEL
         for _ in range(level):
             words.append(await self._rd(A_FIFO_RDATA))
-        self.chk.obs(
+        self.chk.info(
             "HT-PRESHA-WORDS",
             level=level,
             words=[f"0x{x:08x}" for x in words[:16]],
         )
         if pushes < PRESHA_PUSHES:
-            self.chk.obs("HT-PRESHA-NOPUSH", pushes=pushes, stream_words=tap.words, bound=bound)
-            self.chk.blocked("HT-PRESHA-NOPUSH", "whitener_input_after_post_boot_ht_fail_unstated")
+            self.chk.info("HT-PRESHA-NOPUSH", pushes=pushes, stream_words=tap.words, bound=bound)
             return
         span = tap.quiet_span()
         s = span or {"span_clk": 0, "in_first": 0, "in_last": 0, "in_words": 0, "out_words": 0}
@@ -1286,19 +1300,23 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         self.chk.ok("HT-PRESHA", span is not None and 2 * s["out_words"] == absorbed, **fields)
 
     async def _bypass_zero_leg(self) -> None:
-        """Constant zero with the compressor bypassed; the 32-bit tester result is logged.
+        """Constant zero with the compressor bypassed: the 32-bit tester latches nothing.
 
-        The windows are those of ``_zero_leg``. Which of architecture.adoc:47-48 (the
-        32-bit test is clock-gated off in bypass) and architecture.adoc:122 (it
-        monitors the post-bypass stream) holds is not settled, so the status and
-        totals are OBS-ESRC-HT-BYPASS.
+        The windows are those of ``_zero_leg``. The 32-bit health test is clock-gated
+        off in bypass (architecture.adoc:47-48; trng.adoc:62-63), so
+        HEALTH_TEST_STATUS reads 0 after a write of 1 to its set bits and still
+        reads 0 after the windows (CHK-ESRC-HT-BYPASS). The APT_LO and MARKOV_LO
+        totals are INFO-ESRC-HT-BYPASS-TOTALS.
         """
         w = RESET_WINDOW
         try:
             await self._start(w, ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1})
             ctrl = await self._rd(A_CTRL)
-            s0, t0, _ = await self._top_regs()
             await self._write_reset_limits()
+            enable = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+            s_start = (await self._rd(A_HT_STATUS)) & M_HT_STATUS
+            await self._wr(A_HT_STATUS, s_start)
+            s0, t0, i0 = await self._top_regs()
             open_graded_window(TEST, self.logger)
             c0, m0 = self.noise.byte_control()
             await self._pattern_window([Stuck(0)] * NUM_LANES, 3 * w, w)
@@ -1307,16 +1325,21 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         except (TrialTimeout, EsrcStrobeTimeout) as exc:
             close_graded_window(self.logger)
             self.noise.byte_check(False)
-            self.chk.ctrl("ESRC-HT-BYPASS", False, reason=_timeout_reason(exc), bound=exc.bound)
+            reason = _timeout_reason(exc)
+            self.chk.ctrl("ESRC-HT-BYPASS", False, reason=reason, bound=exc.bound)
+            self.chk.ok("ESRC-HT-BYPASS", False, reason=reason, bound=exc.bound)
             return
         bypass = (ctrl & M_CTRL_BYPASS) >> P_CTRL_BYPASS
+        all_on = HT_EN_REP | HT_EN_APT | HT_EN_MKV
         words = (c1 - c0) // NUM_LANES
         if self.chk.ctrl(
             "ESRC-HT-BYPASS",
-            bypass == 1 and m1 == m0 and words >= w,
+            bypass == 1 and enable == all_on and m1 == m0 and words >= w,
             ctrl=f"0x{ctrl:08x}",
             bypass=bypass,
             expect=1,
+            ht_enable=enable,
+            expect_ht_enable=all_on,
             words=words,
             mismatched=m1 - m0,
             window=w,
@@ -1325,16 +1348,25 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, LEG_LABEL_CLKS)
             set_open_value_leg_pass(None, self.logger)
         close_graded_window(self.logger)
-        self.chk.obs(
+        self.chk.ok(
             "ESRC-HT-BYPASS",
+            s0 == 0 and s1 == 0,
             status=f"0x{s1:02x}",
+            expect_status="0x00",
             apt_bit3=(s1 >> BIT_APT) & 1,
             mkv_lo_bit5=(s1 >> BIT_MKV_LO) & 1,
+            status_after_w1c=f"0x{s0:02x}",
+            status_start=f"0x{s_start:02x}",
+            window=w,
+        )
+        self.chk.info(
+            "ESRC-HT-BYPASS-TOTALS",
+            apt_lo_total_before=t0["APT_LO_TOTAL_FAILS"],
             apt_lo_total=t1["APT_LO_TOTAL_FAILS"],
+            mkv_lo_total_before=t0["MARKOV_LO_TOTAL_FAILS"],
             mkv_lo_total=t1["MARKOV_LO_TOTAL_FAILS"],
+            intr_health_failed_before=int(bool(i0)),
             intr_health_failed=int(bool(i1)),
-            status_before=f"0x{s0:02x}",
-            totals_before=f"{t0['APT_LO_TOTAL_FAILS']}_{t0['MARKOV_LO_TOTAL_FAILS']}",
             window=w,
         )
 
