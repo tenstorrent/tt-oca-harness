@@ -207,7 +207,7 @@ volatile uint32_t g_prm[P_WORDS] = {
 // meipX registers report a disabled source that is pending (PRM 8.9, 8.12.3).
 #define CSR_MCGC 0x7F8
 #define MCGC_PICIO (1u << 9)
-#define MITCTL_ENABLE 1u       // mitctl.enable, bit 0
+#define MITCTL_ENABLE 1u // mitctl.enable, bit 0
 // mitctl1.cascade, bit 3, mitctl1 only (VeeR EL2 PRM chapter 6, mitctl table).
 #define MITCTL1_CASCADE (1u << 3)
 #define MITB_RESET 0xFFFFFFFFu // mitb reset value
