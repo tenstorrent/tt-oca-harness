@@ -201,9 +201,13 @@ through ``env/sep_jtag_dmi`` on the shared ``OcahJtagMasterDriver``, with a TCK
 period of the drawn number of ``clk_i`` periods.
 
 The routine programs ``SEP_NMI_VEC`` with a handler in the SRAM before it arms
-the registers. A store that ends in a bus error raises an NMI on VeeR EL2; the
-handler stores ``mcause`` and ``mdseac`` to the mailbox, unlocks ``mdseac`` and
-returns, and the leaf logs each record (``OBS-STORE-BUS-ERR``). The retention
+the registers. The stores of this leaf get OKAY, so no NMI is expected. A
+store that ends in a bus error raises an NMI on VeeR EL2; the handler stores
+``mcause`` and ``mdseac`` to the mailbox, unlocks ``mdseac`` and returns, and
+the leaf logs the number of such records, 0 when every store gets OKAY, and
+each record with no verdict (``INFO-STORE-BUS-ERR``). The store bus error NMI
+and its ``mcause`` are graded by CHK-STORE-ERR-NMI in
+``sep_reset_wdt_sanity_test``. The retention
 compares, not the bus response, decide whether a register holds its value.
 
 The ``ndmreset`` leg runs after the last scope leg. The restarted core runs the
@@ -1892,7 +1896,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         causes = [r for r in self._mbx() if r.off == OFF_NMI_CAUSE]
         addrs = [r for r in self._mbx() if r.off == OFF_NMI_ADDR]
         self.logger.info(
-            "OBS-STORE-BUS-ERR LOG nmi_records=%d %s",
+            "INFO-STORE-BUS-ERR LOG nmi_records=%d %s (graded by CHK-STORE-ERR-NMI in "
+            "sep_reset_wdt_sanity_test)",
             len(causes),
             " ".join(
                 f"mcause=0x{c.val:08x}/mdseac=0x{a.val:08x}@{c.seq}" for c, a in zip(causes, addrs)
