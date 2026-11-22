@@ -414,6 +414,20 @@ Observation probe groups:
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
   `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`,
   `sep_lcc_lc_state_transition_matrix_test`.
+* eFuse shadow APB response tap (`efuse_shadow_apb_pready_o`,
+  `efuse_shadow_apb_pslverr_o`, read-only, no force): `pready` and `pslverr`
+  of the registered APB response of the shadow map (`apb_resp_q` of
+  `efuse_shadow_regs`), sampled every clock. `rst_ni` clears the register
+  asynchronously. No register shows whether a response was live when a
+  reset arrived. Owner: `sep_efuse_window_decode_reset_test`.
+* eFuse bank program drop tap (`efuse_bank_prog_drop_o`,
+  `efuse_bank_prog_drop_paddr_o`, read-only, no force): `prog_fail_act` of
+  the bank model (`u_efuse_bank_model` in `sep_ip_integration`), high for
+  the one APB setup clock of a bank write whose data the model zeroes under
+  `+sep_efuse_prog_fail_count`, and `apb_req_i.paddr` of that write. The tap
+  has no reset of its own; the drop count re-arms on every `rst_ni`. The
+  model print of a drop goes to the simulator log, which a running leaf
+  cannot read. Owner: `sep_efuse_program_verify_test`.
 * Lifecycle decoder input tap (`lc_dec_data_probe_o`): the decoder input
   `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`, read-only XMR, after the
   LC differential-integrity inject. Owner: `sep_lcc_state_codeword_rand_test`
@@ -1326,8 +1340,19 @@ Exceptions (a closed set):
   sense response with its status bit set. The force covers the APB access
   phase of that word. Data and ready are not forced. A healthy bank never
   returns an error, so the sense status path has no frontdoor. Default 0;
-  released when the input drops or sense ends. Owner:
-  `sep_efuse_shim_response_fault_test`.
+  released when the input drops or sense ends. Three post-sense modes use
+  the same word select and act only after sense done, each with its own
+  input (default 0) and force target in `u_efuse_interface_shim`:
+  `efuse_status_inject_read_i`, a frontdoor READ of the word
+  (`apb_fuse_bank_resp_r.pslverr`, the target of the sense-time inject);
+  `efuse_status_inject_write_i`, the bank write of a PROGRAM to the word
+  (`apb_fuse_bank_resp_w.pslverr`, the write-phase copy that the shim keeps
+  for the program response); `efuse_status_inject_readback_i`, the bank
+  read-back of a PROGRAM to the word
+  (`apb_fuse_bank_resp_w_readback.pslverr`). Each force covers the APB
+  access phase of that bank access and is released when its gate drops.
+  The bank access itself is not changed, so the bank write still happens.
+  Owner: `sep_efuse_shim_response_fault_test`.
 * *eFuse shim response hold* — while `efuse_shim_resp_hold_i` is 1 and a
   program command is at the post-guard port, the `valid` of the shim response
   at the `sep` input `efuse_shim_command_resp_i` is forced to 0. Sense and
@@ -1336,7 +1361,7 @@ Exceptions (a closed set):
   valid at the post-guard port (one command at the tap), the shim repeats its
   bank write, and the first response after the release completes the
   request. Default 0.
-  Owner: `sep_efuse_shim_response_fault_test`.
+  Owners: `sep_efuse_shim_response_fault_test`, `sep_efuse_program_verify_test`.
 * *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
   `efuse_program_state_inject_i` with their enables force `read_state_q` /
   `program_state_q` for one cycle at a time. The only legal encodings are
