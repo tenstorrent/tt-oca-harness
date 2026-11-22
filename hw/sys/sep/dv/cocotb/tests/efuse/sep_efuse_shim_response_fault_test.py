@@ -1000,6 +1000,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await rst_pulse(self, hold=_RST_HOLD)
         if await clocks_to_sense(self, sense_bound, started=True) is None:
             raise AssertionError(f"sense done missing after the bank-error reset seed={seed}")
+        await RisingEdge(dut.clk_i)
 
         dut.efuse_sense_status_word_i.value = r
         r_addr = 32 * r
