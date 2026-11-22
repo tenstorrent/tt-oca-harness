@@ -24,6 +24,9 @@ Procedure:
      the key with destination AES and CMD_KEY_TRANSFER of the returned handle
      to AES.
   3. The firmware pre-fills the window and prints its readback. It runs the
+     decoy leg (CTRL_SHADOWED with SIDELOAD=0, KEY_LEN 256, ECB, encrypt; the
+     dummy key in KEY_SHARE0 and zero in KEY_SHARE1; SRC block 0 through AES,
+     the output printed and not stored), the
      encrypt leg (CTRL_SHADOWED with SIDELOAD=1, KEY_LEN 256, ECB, encrypt;
      the dummy key in KEY_SHARE0 and zero in KEY_SHARE1; per block a CPU load
      from SRC, DATA_IN, OUTPUT_VALID, DATA_OUT, a CPU store to ENC) and the
@@ -33,7 +36,8 @@ Procedure:
 Checks:
   CHK-AES-SRAM-KM-CPU op=enc  ENC reads back AES-256-ECB(key, plaintext), the
       FIPS-197 golden of ``env/sep_aes_golden.py``. The software key registers
-      hold the dummy key, so a wrong key select fails it.
+      hold the dummy key, proven live by CTRL-AES-SRAM-CPU-DECOY-LIVE, so a
+      wrong key select fails it.
   CHK-AES-SRAM-KM-CPU op=dec  DEC reads back the drawn plaintext.
 
 Controls:
@@ -48,6 +52,11 @@ Controls:
       argument carries the handle of the load and DEST_ENGINE = AES.
   CTRL-KMAES-SIDELOAD    per leg, the CTRL_SHADOWED readback has SIDELOAD 1,
       KEY_LEN 256, MODE ECB and the leg's OPERATION.
+  CTRL-AES-SRAM-CPU-DECOY-LIVE  with SIDELOAD 0 (CTRL_SHADOWED readback:
+      SIDELOAD 0, KEY_LEN 256, MODE ECB, encrypt), the decoy-leg output equals
+      AES-256-ECB(dummy key, SRC block 0) and differs from the key golden of
+      that block: the dummy-key write sequence of the sideload legs reaches the
+      key registers and the engine uses them.
   CTRL-AES-SRAM-CPU-PRE  every pre-filled word reads back as written; each fill
       word differs from 0 and from the golden of its slot, each guard word from
       every plaintext and golden word, and the dummy-key ciphertext of every
@@ -469,6 +478,33 @@ class sep_km_aes_sram_cpu_rand_test(sep_base_test):
             mismatch=bad,
             draw_ok=draw_ok,
             **{f"{p}_got": _hex(pre[p] or []) for p in pre},
+        )
+
+        # The dummy-key write sequence lands: with SIDELOAD 0 the engine keys
+        # from the software registers.
+        rec = self._cmd("ctrl", "decoy")
+        ctrl = rec["arg"] if rec is not None else 0
+        dfields = {f: _ctrl_field(ctrl, f) for f in ("sideload", "key_len", "mode", "operation")}
+        dexp = {
+            "sideload": 0,
+            "key_len": AES_KEY_LEN_256,
+            "mode": AES_MODE_ECB,
+            "operation": AES_OP_ENC,
+        }
+        decoy_got = self._words("decoy", "out")
+        decoy_exp = plan.dummy_golden[:_BLOCK_WORDS]
+        chk.ctrl(
+            "AES-SRAM-CPU-DECOY-LIVE",
+            rec is not None
+            and dfields == dexp
+            and decoy_got == decoy_exp
+            and decoy_exp != plan.enc_golden[:_BLOCK_WORDS],
+            ctrl=f"0x{ctrl:08x}",
+            sideload=dfields["sideload"],
+            dkey_sha=word_digest(plan.dkey),
+            got=_hex(decoy_got or []),
+            exp=_hex(decoy_exp),
+            key_exp=_hex(plan.enc_golden[:_BLOCK_WORDS]),
         )
 
         # Graded: the two AES legs.

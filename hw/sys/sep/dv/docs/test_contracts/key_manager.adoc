@@ -3621,6 +3621,7 @@ Functional coverage: none; the leaf opens no coverage window.
 . The firmware echoes the parameter header and the CRC-32C of each key (`CTRL-KMAES-PARAM`; no key word is printed). It waits for fuse sense, brings up the entropy stack, releases AES and the Key Manager, and waits for the Key Manager ready response (`CTRL-KMAES-KM-READY`).
 . The firmware sends CMD_KEY_LOAD of the 8-word key (`REQ_SIZE` 7) with `DEST_VALID` AES (`CTRL-KMAES-KEY-LOAD`), and CMD_KEY_TRANSFER of the returned handle to AES (`CTRL-KMAES-KEY-XFER`).
 . The firmware writes the window `[G][SRC][G][G][ENC][G][G][DEC][G]` in SEP SRAM, each region n 16-byte blocks and each guard G two 32-bit words, and prints the readback (`CTRL-AES-SRAM-CPU-PRE`).
+. Decoy leg. The firmware writes `CTRL_SHADOWED` twice with the encrypt word and SIDELOAD 0, writes the dummy key to `KEY_SHARE0` and 0 to `KEY_SHARE1` in the same sequence as the sideload legs, reads `CTRL_SHADOWED` back, and moves SRC block 0 through AES with CPU loads and stores of `DATA_IN` and `DATA_OUT`. It prints the output and does not store it (`CTRL-AES-SRAM-CPU-DECOY-LIVE`).
 . Encrypt leg. The firmware follows the AES programmer's order: idle, write `CTRL_SHADOWED` twice with SIDELOAD 1, KEY_LEN 256, ECB and encrypt, write the dummy key to `KEY_SHARE0` and 0 to `KEY_SHARE1`, and read `CTRL_SHADOWED` back (`CTRL-KMAES-SIDELOAD`). One block is in flight at a time: it loads the block from SRC, writes `DATA_IN`, polls `STATUS` for OUTPUT_VALID, reads `DATA_OUT` and stores the result to ENC. The poll has a liveness bound only; the poll counts are logged (`INFO-AES-SRAM-KM-CPU-LAT`).
 . Decrypt leg. The same sequence with the decrypt operation moves the blocks from ENC to DEC.
 . The firmware prints the readback of every region and guard word and returns 0 only if every step returned 0. The host grades the printed words.
@@ -3631,7 +3632,7 @@ Functional coverage: none; the leaf opens no coverage window.
 |===
 |Checker |Contract
 |CHK-AES-SRAM-KM-CPU
-|Data in SEP SRAM goes through the AES under the key that the Key Manager delivered, with the CPU as the data mover (`hw/sys/sep/doc/aes.adoc`, the sideload description: `CTRL_SHADOWED.sideload` selects the delivered key, and the 256-bit `key_len` consumes the whole delivered key; `hw/ip/key_manager/doc/firmware.adoc`, CMD_KEY_LOAD and CMD_KEY_TRANSFER). op=enc: ENC block i equals AES-256-ECB encrypt of SRC block i under the loaded key for every i < n (`env/sep_aes_golden.py`, FIPS-197). The software key registers hold the dummy key, whose ciphertext differs from the key ciphertext for every block, so a wrong key select fails. op=dec: DEC block i equals SRC block i. Anchor: SEP SRAM readback printed by the firmware. Control: CTRL-AES-SRAM-CPU-PRE. Evidence: `CHK-AES-SRAM-KM-CPU PASS op=enc ...` and `CHK-AES-SRAM-KM-CPU PASS op=dec ...`; the `op=enc` line logs `dummy_key_exp`.
+|Data in SEP SRAM goes through the AES under the key that the Key Manager delivered, with the CPU as the data mover (`hw/sys/sep/doc/aes.adoc`, the sideload description: `CTRL_SHADOWED.sideload` selects the delivered key, and the 256-bit `key_len` consumes the whole delivered key; `hw/ip/key_manager/doc/firmware.adoc`, CMD_KEY_LOAD and CMD_KEY_TRANSFER). op=enc: ENC block i equals AES-256-ECB encrypt of SRC block i under the loaded key for every i < n (`env/sep_aes_golden.py`, FIPS-197). The software key registers hold the dummy key, proven live by CTRL-AES-SRAM-CPU-DECOY-LIVE, and its ciphertext differs from the key ciphertext for every block, so a wrong key select fails. op=dec: DEC block i equals SRC block i. Anchor: SEP SRAM readback printed by the firmware. Controls: CTRL-AES-SRAM-CPU-PRE, CTRL-AES-SRAM-CPU-DECOY-LIVE. Evidence: `CHK-AES-SRAM-KM-CPU PASS op=enc ...` and `CHK-AES-SRAM-KM-CPU PASS op=dec ...`; the `op=enc` line logs `dummy_key_exp`.
 |CTRL-KMAES-PARAM
 |The header that the firmware echoes equals the draw, and the CRC-32C of the key and of the dummy key that the firmware computes equals the CRC-32C of the drawn words (little-endian bytes). The firmware used the drawn keys. A miss fails the leaf.
 |CTRL-KMAES-KM-READY
@@ -3642,6 +3643,8 @@ Functional coverage: none; the leaf opens no coverage window.
 |CMD_KEY_TRANSFER returns 0, the return argument carries the handle of the load and DEST_ENGINE equal to AES (`firmware.adoc`, CMD_KEY_TRANSFER success response). A miss fails the leaf.
 |CTRL-KMAES-SIDELOAD
 |Control of CHK-AES-SRAM-KM-CPU, once per leg (`op=enc`, `op=dec`). The `CTRL_SHADOWED` readback has SIDELOAD 1, KEY_LEN 256, MODE ECB and the OPERATION of the leg, so the engine ran under the delivered key. A miss fails the leaf.
+|CTRL-AES-SRAM-CPU-DECOY-LIVE
+|Control of CHK-AES-SRAM-KM-CPU. In the decoy leg the `CTRL_SHADOWED` readback has SIDELOAD 0, KEY_LEN 256, MODE ECB and encrypt, and the output equals AES-256-ECB encrypt of SRC block 0 under the dummy key (`env/sep_aes_golden.py`), which differs from the golden of that block under the loaded key. While SIDELOAD is 0 the engine uses its software key registers (`hw/sys/sep/doc/aes.adoc`, sideload description). The key registers are write-only, so this is the proof that the dummy-key write sequence of the sideload legs lands; a dropped or wrong write fails the leaf. Evidence: `CTRL-AES-SRAM-CPU-DECOY-LIVE seen: seed=<n> ctrl=0x<c> sideload=0 dkey_sha=<h> got=[...] exp=[...] key_exp=[...]`, where `<h>` is the first 8 hex digits of SHA-256 over the dummy key (the key words are not logged).
 |CTRL-AES-SRAM-CPU-PRE
 |Control of CHK-AES-SRAM-KM-CPU. Every pre-filled word (SRC, the ENC and DEC fill, the guards) reads back as written. By the draw, every value is non-zero, each fill word differs from the golden of its slot, each guard word differs from every plaintext and golden word, and the dummy-key ciphertext of every block differs from the key ciphertext. A destination that already holds its golden, or an SRAM that does not store, cannot give a pass.
 |CTRL-AES-SRAM-CPU-REGIONS
@@ -3649,7 +3652,7 @@ Functional coverage: none; the leaf opens no coverage window.
 |INFO-AES-SRAM-KM-CPU-PLAN
 |Bench record, not a check: n, the window base, the region bases, the window size, the digests of the key and the dummy key, and the two salts.
 |INFO-KMAES-CMD
-|Bench record, not a check: each firmware step (`sense`, `entropy`, `aes_rst`, `km_rst`, `ready`, `load`, `xfer`, `ctrl`, `aes_enc`, `aes_dec`) with its return code and argument.
+|Bench record, not a check: each firmware step (`sense`, `entropy`, `aes_rst`, `km_rst`, `ready`, `load`, `xfer`, `ctrl`, `aes_decoy`, `aes_enc`, `aes_dec`) with its return code and argument.
 |INFO-AES-SRAM-KM-CPU-LAT
 |Logged, not graded: per leg the block count and the minimum, maximum and first-block `STATUS` poll counts until OUTPUT_VALID. No SEP document states a latency for this wait.
 |===

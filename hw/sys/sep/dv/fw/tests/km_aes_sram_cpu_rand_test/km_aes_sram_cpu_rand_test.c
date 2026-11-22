@@ -21,15 +21,18 @@
 //     return code and return argument.
 //  4. Write the guard, source, encrypt-fill and decrypt-fill words to SRAM and
 //     print their readback.
-//  5. Encrypt leg: CTRL_SHADOWED (written twice) with the patched encrypt word,
+//  5. Decoy leg: CTRL_SHADOWED (written twice) with the encrypt word and
+//     SIDELOAD cleared, the dummy key to KEY_SHARE0 and zero to KEY_SHARE1, and
+//     source block 0 through AES; the output is printed, not stored.
+//  6. Encrypt leg: CTRL_SHADOWED (written twice) with the patched encrypt word,
 //     the dummy key to KEY_SHARE0 and zero to KEY_SHARE1, then for each block a
 //     CPU load from the source region, DATA_IN, OUTPUT_VALID, DATA_OUT and a CPU
 //     store to the encrypt region. Decrypt leg: the same from the encrypt
 //     region to the decrypt region. Each leg prints its CTRL_SHADOWED readback
 //     and its OUTPUT_VALID poll counts.
-//  6. Print the readback of every region and guard word.
+//  7. Print the readback of every region and guard word.
 //
-// main() returns 0 only when every set-up step, both KM commands and both AES
+// main() returns 0 only when every set-up step, both KM commands and the three AES
 // legs return 0; crt0.s turns 0 into the PASS magic.
 
 #include <stdint.h>
@@ -153,17 +156,16 @@ static int params_ok(void) {
     return 1;
 }
 
-// One AES leg: n blocks from src through AES to dst, the CPU doing every load
-// and store. Returns 0, or 1/2/3/4 for an IDLE, INPUT_READY or OUTPUT_VALID
-// timeout, or a configuration IDLE timeout.
-static int aes_leg(const char *op, uint32_t ctrl, uint32_t src, uint32_t dst, uint32_t n,
-                   const uint32_t dkey[KEY_WORDS]) {
+// Configure AES in the programmer's order: IDLE, CTRL_SHADOWED twice, IDLE,
+// `key` to KEY_SHARE0 and zero to KEY_SHARE1, IDLE. Prints the CTRL_SHADOWED
+// readback. Returns 0, or 1/4 for an IDLE timeout before/after CTRL_SHADOWED.
+static int aes_config(const char *op, uint32_t ctrl, const uint32_t key[KEY_WORDS]) {
     if (wait_for_idle() != 0) return 1;
     WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl);
     WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl);
     if (wait_for_idle() != 0) return 4;
     for (uint32_t i = 0; i < KEY_WORDS; i++) {
-        WRITE_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), dkey[i]);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), key[i]);
         WRITE_REG(SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0u);
     }
     if (wait_for_idle() != 0) return 4;
@@ -174,21 +176,55 @@ static int aes_leg(const char *op, uint32_t ctrl, uint32_t src, uint32_t dst, ui
     rec_hex("rc", 0u);
     rec_hex("arg", READ_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR));
     rec_end();
+    return 0;
+}
+
+// One block through AES: INPUT_READY, DATA_IN, OUTPUT_VALID, DATA_OUT. Returns
+// 0, or 2/3 for an INPUT_READY or OUTPUT_VALID timeout; *polls counts the
+// STATUS reads until OUTPUT_VALID.
+static int aes_block(const uint32_t in[BLOCK_WORDS], uint32_t out[BLOCK_WORDS], uint32_t *polls) {
+    if (wait_for_input_ready() != 0) return 2;
+    write_data_in(in);
+    *polls = 0u;
+    for (;;) {
+        aes__STATUS_t st = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
+        (*polls)++;
+        if (st.f.OUTPUT_VALID) break;
+        if (*polls >= (uint32_t)AES_WAIT_TIMEOUT) return 3;
+    }
+    read_data_out(out);
+    return 0;
+}
+
+// Decoy leg: the encrypt word with SIDELOAD cleared, so AES keys from the
+// software registers, and one block (SRC block 0) through AES. The output is
+// printed and not stored. Returns as aes_config / aes_block.
+static int aes_decoy(uint32_t ctrl_enc, uint32_t src, const uint32_t dkey[KEY_WORDS]) {
+    aes__CTRL_SHADOWED_t ctrl = {.w = ctrl_enc};
+    ctrl.f.SIDELOAD = 0;
+    int rc = aes_config("decoy", ctrl.w, dkey);
+    if (rc != 0) return rc;
+    uint32_t in[BLOCK_WORDS], out[BLOCK_WORDS], polls;
+    sram_read(src, in, BLOCK_WORDS);
+    rc = aes_block(in, out, &polls);
+    if (rc != 0) return rc;
+    put_words("decoy", "out", out, BLOCK_WORDS);
+    return 0;
+}
+
+// One AES leg: n blocks from src through AES to dst, the CPU doing every load
+// and store. Returns as aes_config / aes_block.
+static int aes_leg(const char *op, uint32_t ctrl, uint32_t src, uint32_t dst, uint32_t n,
+                   const uint32_t dkey[KEY_WORDS]) {
+    int rc = aes_config(op, ctrl, dkey);
+    if (rc != 0) return rc;
 
     uint32_t pmin = 0xFFFFFFFFu, pmax = 0u, pfirst = 0u;
     for (uint32_t b = 0; b < n; b++) {
-        uint32_t in[BLOCK_WORDS], out[BLOCK_WORDS];
+        uint32_t in[BLOCK_WORDS], out[BLOCK_WORDS], polls;
         sram_read(src + b * BLOCK_WORDS * 4u, in, BLOCK_WORDS);
-        if (wait_for_input_ready() != 0) return 2;
-        write_data_in(in);
-        uint32_t polls = 0u;
-        for (;;) {
-            aes__STATUS_t st = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
-            polls++;
-            if (st.f.OUTPUT_VALID) break;
-            if (polls >= (uint32_t)AES_WAIT_TIMEOUT) return 3;
-        }
-        read_data_out(out);
+        rc = aes_block(in, out, &polls);
+        if (rc != 0) return rc;
         sram_write(dst + b * BLOCK_WORDS * 4u, out, BLOCK_WORDS);
         if (b == 0u) pfirst = polls;
         if (polls < pmin) pmin = polls;
@@ -272,6 +308,8 @@ int main(void) {
     sram_write(g_prm[P_DEC], buf, words);
     put_all_regions("pre", words);
 
+    int xrc = aes_decoy(g_prm[P_CTRL_ENC], g_prm[P_SRC], dkey);
+    put_cmd("aes_decoy", xrc, 0u);
     int erc = aes_leg("enc", g_prm[P_CTRL_ENC], g_prm[P_SRC], g_prm[P_ENC], n, dkey);
     put_cmd("aes_enc", erc, 0u);
     int drc =
@@ -280,5 +318,5 @@ int main(void) {
 
     rec_mark(0, "readback");
     put_all_regions("post", words);
-    return (erc != 0 || drc != 0) ? 1 : 0;
+    return (xrc != 0 || erc != 0 || drc != 0) ? 1 : 0;
 }
