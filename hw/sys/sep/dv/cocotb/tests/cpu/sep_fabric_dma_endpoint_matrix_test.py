@@ -812,6 +812,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             (r["pre"] & ST3) == 0
             and (r["st"] & ST_DONE)
             and not (r["st"] & ST_ERROR)
+            and r["ec"] == 0
             and r["nbad"] == 0
             and r["dsum"] == exp
         )
@@ -951,11 +952,11 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             # the SLVERR the bench responder drives, and the DMA reports it as a
             # bus error.
             rep = self._port_reply(leg_i, "r" if d == "R" else "b", code)
-            assert rep and self._bus_error(r), (
-                f"CHK-DMA-PAIR FAIL: ext_{d.lower()} total={r['tot']} "
+            assert rep and (r["pre"] & ST3) == 0 and self._bus_error(r), (
+                f"CHK-DMA-PAIR FAIL: ext_{d.lower()} total={r['tot']} pre_status=0x{r['pre']:x} "
                 f"port_resp={[b.resp for b in self._beats('PR-EXT-RSP', leg_i, 'r' if d == 'R' else 'b')]} "
                 f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x}; expected port {name}, "
-                "STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
+                "STATUS DONE, ERROR and CHUNK_DONE clear before the GO, STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
             )
             self._recovery_after(leg)
             self.logger.info(
