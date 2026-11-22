@@ -92,10 +92,15 @@ states "The ``sep_pkg::sep_ras_t`` field comments state how each one is held and
 cleared", and those field comments in ``hw/sys/sep/rtl/sep_pkg.sv``): ``csrng_fatal`` and
 ``edn_fatal`` are one-``clk_i``-cycle pulses per fatal alert handshake, and a
 fatal error repeats the pulse until reset. The tap ``sep_ras_probe_o`` is
-watched on every ``clk_i`` from the start of the scenario. Each half is its own
-check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
+watched on every ``clk_i`` from the ``rst_ni`` release. Each half is its own
+check on its own line (``CHK-RAS-<FIELD>-BOOT``, ``-IDLE``, ``-RISE``, ``-MODE2``,
 ``-SHAPE``); a FAIL is recorded and the leaf fails at its end.
   CHK-RAS-CSRNG_FATAL-<HALF>, CHK-RAS-EDN_FATAL-<HALF>
+    BOOT   both fields read 0 on every clock from the ``rst_ni`` release to the
+           end of the set-up of the first cell, before any error of the leaf.
+           A field that reads X or Z on a clock of the window fails the check.
+           Clocks with ``rst_ni`` low are counted, not graded. Control
+           ``CTRL-RAS-BOOT-WINDOW``: the window holds at least one clock.
     IDLE   both fields read 0 on every clock of the first cell from the end of
            its set-up to its ERR_CODE_TEST write, before any error of the leaf.
     RISE   in each fatal-alert cell of the unit, the field rises after the
@@ -105,7 +110,8 @@ check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
            after the ERR_CODE_TEST write, and once more within 16 x t_ref clocks
            after the write-one clear of the state: the repeat continues to the
            end of the cell window, before its TRNG reset.
-    SHAPE  every high run of the field over the whole leaf is exactly one clock.
+    SHAPE  every high run of the field from the end of the bring-up to the end
+           of the leaf is exactly one clock.
   CHK-RAS-EDN_FATAL-FIFO: the EDN FIFO errors are fatal
   (``vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc:321,326``)
   and a fatal error repeats ``edn_fatal`` until reset
@@ -145,7 +151,7 @@ opens it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import cocotb
 import pyuvm
@@ -300,17 +306,38 @@ FIFO_DEPTH_LSB = {"reseed": 0, "generate": 4}
 FIFO_DEPTH_MASK = 0xF
 
 
+def _binstr(sig) -> str:
+    value = sig.value
+    return str(getattr(value, "binstr", value)).strip()
+
+
 def _fifo_depths() -> dict[str, int | None]:
     """The level of each EDN command FIFO on the tap, None when a bit is X or Z."""
-    value = cocotb.top.edn_cmd_fifo_depth_o.value
-    bits = str(getattr(value, "binstr", value)).strip()
+    bits = _binstr(cocotb.top.edn_cmd_fifo_depth_o)
     if not bits or any(c not in "01" for c in bits):
         return dict.fromkeys(FIFO_DEPTH_LSB)
     v = int(bits, 2)
     return {f: (v >> lsb) & FIFO_DEPTH_MASK for f, lsb in FIFO_DEPTH_LSB.items()}
 
 
-RAS_HALVES = ("IDLE", "RISE", "MODE2", "SHAPE")
+RAS_HALVES = ("BOOT", "IDLE", "RISE", "MODE2", "SHAPE")
+
+
+def _per_field(value) -> dict:
+    return dict.fromkeys(RAS_FIELD.values(), value)
+
+
+@dataclass
+class BootRas:
+    """Samples of the RAS fields from the ``rst_ni`` release; per field the high and X/Z clocks."""
+
+    rst_low_clocks: int = 0
+    clocks: int = 0
+    high: dict = field(default_factory=lambda: _per_field(0))
+    first_high: dict = field(default_factory=lambda: _per_field("na"))
+    xz: dict = field(default_factory=lambda: _per_field(0))
+    first_xz: dict = field(default_factory=lambda: _per_field("na"))
+    done: bool = False
 
 
 def long_runs(rises: list[int], falls: list[int], end: int) -> list[tuple[int, int]]:
@@ -406,6 +433,9 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     )
 
     async def run_scenario(self) -> None:
+        check_tap_width(cocotb.top.sep_ras_probe_o)
+        self.ras_boot = BootRas()
+        self.ras_boot_task = cocotb.start_soon(self._ras_boot_watch())
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
@@ -419,7 +449,6 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         self.vec = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, dict(VEC_BITS), name="pic_vec"
         ).start()
-        check_tap_width(cocotb.top.sep_ras_probe_o)
         self.ras = SepBitWatch(
             cocotb.top.sep_ras_probe_o,
             {f: ras_bit(f) for f in RAS_FIELD.values()},
@@ -625,6 +654,54 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         )
 
     # --- sep_ras_o fatal-alert fields ----------------------------------------------------
+    async def _ras_boot_watch(self) -> None:
+        """Sample both fields on every ``clk_i`` from the ``rst_ni`` release until ``done``."""
+        dut = cocotb.top
+        b = self.ras_boot
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if b.done:
+                return
+            if b.clocks == 0 and _binstr(dut.rst_ni) != "1":
+                b.rst_low_clocks += 1
+                continue
+            b.clocks += 1
+            bits = _binstr(dut.sep_ras_probe_o)
+            for f in RAS_FIELD.values():
+                c = bits[len(bits) - 1 - ras_bit(f)]
+                if c == "1":
+                    b.high[f] += 1
+                    if b.first_high[f] == "na":
+                        b.first_high[f] = b.clocks
+                elif c != "0":
+                    b.xz[f] += 1
+                    if b.first_xz[f] == "na":
+                        b.first_xz[f] = f"{b.clocks}:{c}"
+
+    def _ras_boot(self) -> None:
+        """BOOT half: the window from the ``rst_ni`` release to the end of the first set-up."""
+        b = self.ras_boot
+        b.done = True
+        alive = not self.ras_boot_task.done()
+        self._ctrl(
+            "RAS-BOOT-WINDOW",
+            alive and b.clocks > 0,
+            clocks=b.clocks,
+            rst_low_clocks=b.rst_low_clocks,
+            sampler_alive=alive,
+        )
+        for f in RAS_FIELD.values():
+            self._ok(
+                f"RAS-{f.upper()}-BOOT",
+                b.high[f] == 0 and b.xz[f] == 0,
+                clocks=b.clocks,
+                high_clocks=b.high[f],
+                first_high_clk=b.first_high[f],
+                xz_clocks=b.xz[f],
+                first_xz=b.first_xz[f],
+            )
+
     def _ras_idle(self, mark, **key) -> None:
         """IDLE half before the first error of the leaf; after it, the field is logged."""
         for f in RAS_FIELD.values():
@@ -713,6 +790,8 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     # --- source-bit cells (steps 3-8) -------------------------------------------------
     async def _cell(self, unit: Unit, bit: int) -> None:
         await self._setup()
+        if not self.ras_boot.done:
+            self._ras_boot()
         self._open_window()
         m_ras = self.ras.mark()
         vec_key = unit.vec_key

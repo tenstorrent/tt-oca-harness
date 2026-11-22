@@ -31,7 +31,8 @@ a Key Manager wipe clears KEY_VALID and both shares;
 ``hw/ip/key_manager/doc/architecture.adoc:511-517``: the wipe pulse clears both
 shares and KEY_VALID of every sideload block). It brings up the
 entropy stack so AES can run, then for share 0 and share 1 (order drawn): the
-image writes both AES shares non-zero and sets KEY_VALID, the host pulses
+image writes both AES shares non-zero and sets KEY_VALID of all eight banks,
+the host pulses
 ``SEP_CPU_CTRL.KM_WIPE_CTRL.wipe_state``, the image writes only the drawn share
 with K and sets KEY_VALID, and the host encrypts one block with AES-256 ECB
 from the sideload key.
@@ -73,6 +74,15 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    wipe, after it and after the share write
                    (``hw/ip/key_manager/regs/aes_wrapper_key.rdl:78-84``,
                    ``rsvd[31:1]``, ``sw = r``, ``reset = 31'h0``)
+  CHK-BANK-WIPE    after each single-share wipe, KEY_CTRL.key_valid of all
+                   eight sideload banks reads 0 and every read is accepted
+                   (``hw/sys/sep/doc/crypto.adoc:196``,
+                   ``hw/ip/key_manager/doc/architecture.adoc:515-518``). Its
+                   control ``CTRL-BANK-WIPE-LIVE`` requires the key_valid
+                   writes to all eight banks accepted and all eight read set
+                   right before the wipe. The ML-KEM shared-key KEY_VALID that
+                   the same sentence names is not graded here: only a delivery
+                   sets it
   CHK-BANK-RST     after each engine ``SW_RESET_N`` park and release, that
                    engine's own banks read KEY_CTRL.key_valid 0; after the ABR
                    reset the shared-key KEY_CTRL.key_valid and the 8 KEY words
@@ -259,6 +269,7 @@ _SHARD_EVIDENCE = {
         "CHK-BANK-SK-IRQ",
         "CHK-SINGLE-SHARE",
         "CHK-SS-KEY-CTRL-RSVD",
+        "CHK-BANK-WIPE",
         *_RESET_EVIDENCE,
     ),
 }
@@ -290,6 +301,11 @@ def _ok(r: kp.PokeResult) -> bool:
 
 def _ctrl_ops() -> list[kp.PokeOp]:
     return [kp.rd(b.ctrl) for b in pl.BANKS]
+
+
+def _bank_vec(res: list[kp.PokeResult]) -> int:
+    """The key_valid vector of the eight banks from the results of ``_ctrl_ops``."""
+    return pl.vector({b.bit: res[i].value for i, b in enumerate(pl.BANKS)})
 
 
 def _set_all_ops() -> list[kp.PokeOp]:
@@ -329,7 +345,12 @@ def _stage_msg_ops(plan: pl.Plan) -> list[kp.PokeOp]:
 class sep_km_key_bank_register_rand_test(sep_base_test):
     """KM-bus view of the wrapper key registers and the ML-KEM shared-key block."""
 
-    required_evidence = (*_STEPS_EVIDENCE, "CHK-SINGLE-SHARE", "CHK-SS-KEY-CTRL-RSVD")
+    required_evidence = (
+        *_STEPS_EVIDENCE,
+        "CHK-SINGLE-SHARE",
+        "CHK-SS-KEY-CTRL-RSVD",
+        "CHK-BANK-WIPE",
+    )
 
     # ------------------------------------------------------------------ main
 
@@ -928,29 +949,53 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         mask = a.valid_mask
         own = (a.share0, a.share1)[leg.share]
         set_km_ss_pass(False, self.logger)
+        n = pl.N_BANKS
         pre = await self._run(
             [kp.wrblk(a.share0[0], leg.pre[0]), kp.wrblk(a.share1[0], leg.pre[1])]
-            + [kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+            + _set_all_ops()
+            + _ctrl_ops()
         )
         await self._km_wipe()
         post = await self._run(
-            [kp.rd(a.ctrl), kp.wrblk(own[0], leg.key), kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+            _ctrl_ops() + [kp.wrblk(own[0], leg.key), kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+        )
+        ctrl_pre, ctrl_wipe, ctrl_post = pre[2 + n :], post[:n], post[n + 2]
+        before, after = _bank_vec(ctrl_pre), _bank_vec(ctrl_wipe)
+        self._control(
+            "BANK-WIPE-LIVE",
+            before == pl.ALL_BANKS and all(_ok(x) for x in pre),
+            share=leg.share,
+            before=_v(before),
+            expect=_v(pl.ALL_BANKS),
+            resp_ok=all(_ok(x) for x in pre),
+        )
+        self._grade(
+            "BANK-WIPE",
+            after == 0 and all(_ok(x) for x in ctrl_wipe),
+            contract="sep/doc/crypto.adoc:196;key_manager/doc/architecture.adoc:515-518",
+            share=leg.share,
+            before=_v(before),
+            after=_v(after),
+            expect=_v(0),
+            resp_ok=all(_ok(x) for x in ctrl_wipe),
         )
         ct = await self._aes_block(leg.pt)
         golden = aes256_ecb_encrypt_words(list(leg.key), list(leg.pt))
-        v_pre = int(bool(pre[3].value & mask))
-        v_wipe = int(bool(post[0].value & mask))
-        v_post = int(bool(post[3].value & mask))
+        i_aes = pl.BANKS.index(a)
+        aes_pre, aes_wipe = ctrl_pre[i_aes], ctrl_wipe[i_aes]
+        v_pre = int(bool(aes_pre.value & mask))
+        v_wipe = int(bool(aes_wipe.value & mask))
+        v_post = int(bool(ctrl_post.value & mask))
         resp = all(_ok(x) for x in pre + post)
-        rsvd = [x.value & pl.AES_KEY_CTRL_RSVD for x in (pre[3], post[0], post[3])]
+        rsvd = [x.value & pl.AES_KEY_CTRL_RSVD for x in (aes_pre, aes_wipe, ctrl_post)]
         self._grade(
             "SS-KEY-CTRL-RSVD",
             not any(rsvd) and resp,
             contract="key_manager/regs/aes_wrapper_key.rdl:78-84",
             share=leg.share,
-            before_wipe=_h(pre[3].value),
-            after_wipe=_h(post[0].value),
-            after_write=_h(post[3].value),
+            before_wipe=_h(aes_pre.value),
+            after_wipe=_h(aes_wipe.value),
+            after_write=_h(ctrl_post.value),
             rsvd_mask=_h(pl.AES_KEY_CTRL_RSVD),
             expect_rsvd=_h(0),
             resp_ok=resp,
@@ -1227,7 +1272,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
 
     async def _park(self) -> None:
         r = await self._run(_set_all_ops() + _ctrl_ops())
-        before = pl.vector({b.bit: r[pl.N_BANKS + i].value for i, b in enumerate(pl.BANKS)})
+        before = _bank_vec(r[pl.N_BANKS :])
         self._control(
             "KM-PARK-LIVE",
             before == pl.ALL_BANKS and all(_ok(x) for x in r),
