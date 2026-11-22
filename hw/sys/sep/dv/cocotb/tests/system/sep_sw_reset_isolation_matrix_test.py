@@ -132,7 +132,11 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     (SLVERR with ``0x1501A7ED`` for a read, or a normal
                     response, never a mix), and a normal response comes at
                     the stage before the host isolate-complete bit of D
-                    rises and before ``ip_rst_n[D]`` falls. The
+                    rises and before ``ip_rst_n[D]`` falls. Per channel,
+                    in order of first presentation (stage AR valid for a
+                    read, ``s_axi`` AWVALID for a write), every
+                    transaction after one that got the isolate answer
+                    gets the isolate answer too. The
                     AMBIGUOUS transactions are also logged with both clocks
                     as ``INFO-ISO-DRAIN-WINDOW``. A pass with no PRE or no
                     POST transaction fails; the read and the write issued
@@ -1568,9 +1572,10 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         # after it). PRE never gets the isolate answer; POST always does. AMBIGUOUS
         # gets either the whole isolate answer or a normal response, and a normal
         # response comes at the stage before the host isolate-complete rise of D and
-        # before ip_rst_n[D] falls. Only host transactions reach the stage before
-        # the isolated window; the k-th stage read (write) is the k-th host read
-        # (write) in s_axi AR (AW) handshake order.
+        # before ip_rst_n[D] falls. Per channel, once a transaction gets the isolate
+        # answer, every later-presented one does too. Only host transactions reach
+        # the stage before the isolated window; the k-th stage read (write) is the
+        # k-th host read (write) in s_axi AR (AW) handshake order.
         slverr = RESP_NAME[RESP_SLVERR]
         answers = set(RESP_NAME.values()) - {RESP_NAME[-1]}
         mark = view.m["iso_req"].clk
@@ -1636,6 +1641,19 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 ok = iso or (normal and drained)
             if not ok:
                 bad.append(txt)
+        # Order of first presentation; a write with no AWVALID clock is unmapped and
+        # sorts on its handshake.
+        for ch in ("rd:", "wr:"):
+            seq = sorted(
+                (t for t in txns if t[3].startswith(ch)),
+                key=lambda t: (t[1] if t[0] is None else t[0], t[1]),
+            )
+            first_iso = None
+            for _, _, _, txt, iso, _ in seq:
+                if first_iso is None:
+                    first_iso = txt if iso else None
+                elif not iso:
+                    bad.append(f"order:{txt}:after:{first_iso}")
         cells = (
             [f"pre:{t}" for t in pre]
             + [f"ambiguous:{t}" for t in amb]
@@ -1661,7 +1679,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"mismatched=[{','.join(bad)}] wr_graded_on=bresp "
             f"exp=pre:not_SLVERR+not_0x{ISO_DATA:08X},"
             f"ambiguous:SLVERR+0x{ISO_DATA:08X}|normal_resp_before_ack_and_rst,"
-            f"post:SLVERR+0x{ISO_DATA:08X}"
+            f"post:SLVERR+0x{ISO_DATA:08X},"
+            "order:isolate_answer_on_every_later_txn_per_channel"
         )
         if graded:
             self._chk(
