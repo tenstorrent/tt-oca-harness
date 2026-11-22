@@ -123,14 +123,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     POST (a read whose own first AR valid at the stage, or a
                     write whose first AWVALID on ``s_axi``, is after the
                     rise) or AMBIGUOUS (first presented at or before the
-                    rise, stage handshake at or after it). A PRE
-                    transaction does not get SLVERR and a PRE read does not
-                    return ``0x1501A7ED``. A POST transaction gets SLVERR,
-                    with ``0x1501A7ED`` for a read; a write is graded on its
-                    B code, since the same address answers OKAY before the
-                    rise. An AMBIGUOUS transaction gets one whole answer
-                    (SLVERR with ``0x1501A7ED`` for a read, or a normal
-                    response, never a mix), and a normal response comes at
+                    rise, stage handshake at or after it). The normal
+                    response is OKAY, and for a read its data under the
+                    probe mask is the armed value of the probe of D, which
+                    every host write of the pass writes. A PRE transaction
+                    gets the normal response. A POST transaction gets
+                    SLVERR, with ``0x1501A7ED`` for a read; a write is
+                    graded on its B code, since the same address answers
+                    OKAY before the rise. An AMBIGUOUS transaction gets one
+                    whole answer (SLVERR with ``0x1501A7ED`` for a read, or
+                    the normal response), and a normal response comes at
                     the stage before the host isolate-complete bit of D
                     rises and before ``ip_rst_n[D]`` falls. Per channel,
                     in order of first presentation (stage AR valid for a
@@ -762,6 +764,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         "CHK-ISO-PAIR",
         "CHK-ISO-ORDER",
         "CHK-ISO-DRAIN",
+        "CHK-ISO-DRAIN-RESP",
         "CHK-ISO-PATHS",
         "CHK-ISO-ACK-AFTER-DRAIN",
         "CHK-ISO-WR-SLVERR",
@@ -1515,14 +1518,13 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         for op, tid, _ in host_evs:
             c, r = done.get(tid, (None, None))
             self.logger.info(
-                "INFO-HOST-TXN: pass=%s op=%s id=%d accept_cycle=%s resp_cycle=%s resp=%s%s",
+                "INFO-HOST-TXN: pass=%s op=%s id=%d accept_cycle=%s resp_cycle=%s resp=%s",
                 name,
                 op,
                 tid,
                 acc.get(tid),
                 c,
                 RESP_NAME.get(r, r),
-                " chk=CHK-ISO-DRAIN-RESP" if graded else "",
             )
         # s_axi view of the same transactions, for information only.
         self.logger.info(
@@ -1569,15 +1571,20 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         # handshake before the request rise), POST (a read whose own first AR valid
         # at the stage, or a write whose first AWVALID on s_axi, is after the rise)
         # or AMBIGUOUS (first presented at or before the rise, stage handshake at or
-        # after it). PRE never gets the isolate answer; POST always does. AMBIGUOUS
-        # gets either the whole isolate answer or a normal response, and a normal
-        # response comes at the stage before the host isolate-complete rise of D and
+        # after it). PRE gets the normal response; POST always gets the isolate
+        # answer. AMBIGUOUS gets either the whole isolate answer or the normal
+        # response, and the normal response comes at the stage before the host isolate-complete rise of D and
         # before ip_rst_n[D] falls. Per channel, once a transaction gets the isolate
         # answer, every later-presented one does too. Only host transactions reach
         # the stage before the isolated window; the k-th stage read (write) is the
-        # k-th host read (write) in s_axi AR (AW) handshake order.
+        # k-th host read (write) in s_axi AR (AW) handshake order. The normal
+        # response is OKAY, and for a read the probe of D holds its armed value
+        # under the probe mask: the pass arms it, and every host write of the pass
+        # writes that value.
         slverr = RESP_NAME[RESP_SLVERR]
-        answers = set(RESP_NAME.values()) - {RESP_NAME[-1]}
+        okay = RESP_NAME[RESP_OKAY]
+        probe = PROBES_B[d][0]
+        rd_exp = self.armed[probe.name] & probe.mask
         mark = view.m["iso_req"].clk
         host_rd = sorted(
             ((acc[tid], ev) for op, tid, ev in host_evs if op == "rd" and tid in acc),
@@ -1616,14 +1623,14 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 "none" if data is None else f"0x{data:08x}"
             )
             iso = code == slverr and data == ISO_DATA
-            normal = code in answers and code != slverr and data not in (None, ISO_DATA)
+            normal = code == okay and data is not None and (data & probe.mask) == rd_exp
             txns.append((f, c, rsp, txt, iso, normal))
         for k, c in enumerate(stg_w):
             f = wr_first[k] if k < len(wr_first) else None
             code = st["bresp"][k] if k < len(st["bresp"]) else "none"
             rsp = st["b"][k] if k < len(st["b"]) else None
             txt = f"wr:saxi_valid={f}:hs={c}:resp_cycle={rsp}:{code}"
-            txns.append((f, c, rsp, txt, code == slverr, code in answers and code != slverr))
+            txns.append((f, c, rsp, txt, code == slverr, code == okay))
         txns.sort(key=lambda t: t[1])
         pre, amb, post, bad = [], [], [], []
         for f, c, rsp, txt, iso, normal in txns:
@@ -1677,8 +1684,9 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"mapped={int(mapped)} pre_count={len(pre)} ambiguous_count={len(amb)} "
             f"post_count={len(post)} cells=[{','.join(cells)}] "
             f"mismatched=[{','.join(bad)}] wr_graded_on=bresp "
-            f"exp=pre:not_SLVERR+not_0x{ISO_DATA:08X},"
-            f"ambiguous:SLVERR+0x{ISO_DATA:08X}|normal_resp_before_ack_and_rst,"
+            f"rd_exp=0x{rd_exp:08x} rd_mask=0x{probe.mask:08x} "
+            f"exp=pre:OKAY+rd_exp,"
+            f"ambiguous:SLVERR+0x{ISO_DATA:08X}|OKAY+rd_exp_before_ack_and_rst,"
             f"post:SLVERR+0x{ISO_DATA:08X},"
             "order:isolate_answer_on_every_later_txn_per_channel"
         )
