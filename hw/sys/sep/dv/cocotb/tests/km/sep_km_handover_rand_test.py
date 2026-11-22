@@ -32,7 +32,8 @@ Plan (``SepSeededRng`` from the run seed). RAND-REP for the load legs: the good
 size n1 and the corrupted size n2 in [8, 256], the flipped position (word 0,
 the last word, the trailer or a drawn word) and bit (0, 31 or a drawn bit), one
 oversize FW_WORDS in [8193, 0xFFFE], one mid size in [n1 + 1, 8191], and the
-image words. 8192 and 0xFFFF run on every seed. RAND-NONE for the state leg:
+image words. 8192 and 0xFFFF run on every seed, and so do the boundary sizes 5632
+and 5633 beside the drawn mid size. RAND-NONE for the state leg:
 the pre-state of each pass is directed; the seed draws the key words, the
 staged OTP words and the junk words only.
 
@@ -44,8 +45,9 @@ Checks:
                       invalid_arg with argument 0 and no image request (the
                       CMD_STAT reply is the next frame); FW_WORDS 0 returns
                       argument 0 and no image request (its code is a control).
-  CHK-SIZE-MID        the mid size gets the RESP_CMD success confirmation when
-                      its top (0x8000 + 4 x FW_WORDS) is at or under
+  CHK-SIZE-MID        each mid size (the drawn one, 5632 and 5633) gets the
+                      RESP_CMD success confirmation when its top
+                      (0x8000 + 4 x FW_WORDS) is at or under
                       ``__km_fw_load_limit`` (0xD800, so FW_WORDS <= 5632), and
                       invalid_arg with argument 0 and no image request (the
                       CMD_STAT reply is the next frame) above it.
@@ -825,18 +827,17 @@ class sep_km_handover_rand_test(sep_base_test):
             ok = rc == KM_RC_INVALID_ARG and arg == 0 and stat_next == 1
             self.chk.ok("SIZE-REJ", ok, code=rc, **fields)
 
-    async def _mid_size(self) -> None:
-        """Step 9: the mid size is accepted at or under the load limit and refused above it."""
-        p = self.plan
-        top = md.SRAM_BASE + 4 * p.mid
+    async def _mid_size(self, words: int) -> None:
+        """Step 9: a mid size is accepted at or under the load limit and refused above it."""
+        top = md.SRAM_BASE + 4 * words
         accept = top <= KM_FW_LOAD_LIMIT
-        await self._warm(f"FW_WORDS={p.mid}")
+        await self._warm(f"FW_WORDS={words}")
         await self._graded(True)
-        seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [p.mid])
+        seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [words])
         fr = await self._read_frame(FRAME_POLLS)
         rc, arg = (None, None) if fr is None else fr.resp_cmd(KM_CMD_SRAM_LOAD_EXEC, seq)
         fields = {
-            "words": p.mid,
+            "words": words,
             "top": _hx(top),
             "limit": _hx(KM_FW_LOAD_LIMIT),
             "side": "under" if accept else "above",
@@ -1097,7 +1098,10 @@ class sep_km_handover_rand_test(sep_base_test):
             for i, w in enumerate(oversize):
                 await self._size_rej(w, zero=False, boot=i > 0)
             await self._size_rej(0, zero=True, boot=True)  # step 8
-            await self._mid_size()  # step 9
+            # Step 9: the drawn mid size, then the last accepted and first refused size.
+            edge = (KM_FW_LOAD_LIMIT - md.SRAM_BASE) // 4
+            for w in (self.plan.mid, edge, edge + 1):
+                await self._mid_size(w)
         if self.shard in (None, _PASS_SHARD):
             await self._warm("pass 1 pre-state")
             await self._state_pass(1)  # steps 10 to 14
