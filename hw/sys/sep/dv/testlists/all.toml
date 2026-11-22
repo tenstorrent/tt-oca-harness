@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 297
+expected_count = 299
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -295,6 +295,7 @@ tests = [
     "sep_spi_cold_reset_values_rand_test",
     "sep_efuse_rma_token_rand_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
+    "sep_efuse_el2_fw_mmio_test",
     "sep_efuse_field_layout_rand_test",
     "sep_boot_release_terms_test_smc_hold",
     "sep_cpu_trace_diag_test",
@@ -315,7 +316,7 @@ tests = [
     "sep_fabric_smc_route_test",
     "sep_cpu_demux_unmapped_fetch_test",
     "sep_warm_cold_reset_scratch_test",
-    "sep_efuse_program_read_back_select_test",
+    "sep_efuse_program_verify_test",
     "sep_clock_gate_control_test",
     "sep_axi_partial_lane_read_test",
     "sep_axi_strobe_window_test",
@@ -336,6 +337,7 @@ tests = [
     "sep_esrc_e2e_smoke_test",
     "sep_mailbox_access_error_inject_test",
     "sep_rom_sanity_test",
+    "sep_cpu_rom_ar_contention_test",
     "sep_drbg_gen_segmentation_test",
     "sep_secure_tm_strap_sampling_test",
     "sep_outbound_stall_saturation_test",
@@ -395,6 +397,7 @@ tests = [
     "sep_mailbox_plic_test",
     "sep_dma_cpu_contention_test",
     "sep_rom_sanity_test",
+    "sep_cpu_rom_ar_contention_test",
     "sep_spi_ot_dma_rx_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_otbn_fw_control_flow_test",
@@ -409,6 +412,7 @@ tests = [
     "sep_dma_zero_test",
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
+    "sep_efuse_el2_fw_mmio_test",
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
     "sep_boot_rom_lsu_read_test",
     "sep_spi_ot_flash_cmd_rand_test",
@@ -492,7 +496,7 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
-    "sep_efuse_program_read_back_select_test",
+    "sep_efuse_program_verify_test",
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",

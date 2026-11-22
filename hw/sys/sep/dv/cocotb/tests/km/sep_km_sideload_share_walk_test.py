@@ -101,7 +101,7 @@ Checkers (``r`` is the round, 1 or 2):
                 not count"). INSN_CNT is shown live: it reads nonzero after the
                 round's completed key-dump run in CHK-OTBN-r. The S0-first
                 key-dump program is loaded again afterwards
-  OBS-ABR-ZEROIZE-KM-VALID
+  INFO-ABR-ZEROIZE-KM-VALID
                 ``km_engine_key_valid_o[7:4]`` (the four Adams Bridge
                 destination KEY_VALID bits) just before and just after each ABR
                 ZEROIZE of the CHK-MLDSA-r, CHK-MLKEM-SEED-r and CHK-MLKEM-MSG-r
@@ -152,7 +152,7 @@ check that reads the tap:
                 engines only, ``:1945-1947``). The tap is shown live on all
                 five ports: during the round-1 deliveries every port shows at
                 least one AW and no X/Z, which this check also requires
-  OBS-ABR-CLR-VALID
+  INFO-ABR-CLR-VALID
                 the VALID bit of each failed CHK-ABR-CLR KV read. crypto.adoc,
                 km-key-delivery-summary, says only "Seed read does not complete",
                 and kv_def.rdl says VALID means the flow is done; no text states
@@ -549,13 +549,13 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await RisingEdge(cocotb.top.clk_i)
         return v
 
-    async def _zeroize_obs(self, zeroize, *, tag: int, site: str) -> None:
-        """One ABR ZEROIZE, with OBS-ABR-ZEROIZE-KM-VALID around it."""
+    async def _zeroize_info(self, zeroize, *, tag: int, site: str) -> None:
+        """One ABR ZEROIZE, with INFO-ABR-ZEROIZE-KM-VALID around it."""
         before = await self._km_valid()
         await zeroize(what=site)
         after = await self._km_valid()
         self.logger.info(
-            "OBS-ABR-ZEROIZE-KM-VALID r=%d site=%s abr_key_valid_before=0x%x "
+            "INFO-ABR-ZEROIZE-KM-VALID r=%d site=%s abr_key_valid_before=0x%x "
             "abr_key_valid_after=0x%x km_valid_before=0x%02x km_valid_after=0x%02x",
             tag,
             site.replace(" ", "_"),
@@ -565,15 +565,16 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             after,
         )
 
-    def _obs_clr_valid(self, tag: int, leg: str, st: int) -> None:
-        """OBS-ABR-CLR-VALID: the VALID bit of a failed KV read on a shredded block."""
+    def _info_clr_valid(self, tag: int, leg: str, st: int) -> None:
+        """INFO-ABR-CLR-VALID: the VALID bit of a failed KV read on a shredded block."""
         self.logger.info(
-            "OBS-ABR-CLR-VALID r=%d leg=%s valid=%d error=%d status=0x%08x",
+            "INFO-ABR-CLR-VALID r=%d leg=%s valid=%d error=%d status=0x%08x chk=CHK-ABR-CLR-%d",
             tag,
             leg.replace(" ", "_"),
             kv_status_field(st, "VALID"),
             kv_status_field(st, "ERROR"),
             st,
+            tag,
         )
 
     async def _kv_read(self, ctrl: int, status: int, *, what: str) -> tuple[int, int]:
@@ -794,13 +795,13 @@ class sep_km_sideload_share_walk_test(sep_base_test):
 
         # ABR ML-DSA seed: KV leg first, then the direct-seed reference.
         seed = keys[KM_DEST_ABR_MLDSA_SEED]
-        await self._zeroize_obs(self._mldsa_zeroize, tag=tag, site=f"CHK-MLDSA-{tag} pre-KV")
+        await self._zeroize_info(self._mldsa_zeroize, tag=tag, site=f"CHK-MLDSA-{tag} pre-KV")
         st, err = await self._kv_read(
             ABR_MLDSA_KV_RD_SEED_CTRL, ABR_MLDSA_KV_RD_SEED_STATUS, what=f"CHK-MLDSA-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLDSA-{tag}")
         pk_kv = await self._mldsa_keygen(None, what=f"CHK-MLDSA-{tag} KV")
-        await self._zeroize_obs(self._mldsa_zeroize, tag=tag, site=f"CHK-MLDSA-{tag} pre-ref")
+        await self._zeroize_info(self._mldsa_zeroize, tag=tag, site=f"CHK-MLDSA-{tag} pre-ref")
         pk_ref = await self._mldsa_keygen(seed, what=f"CHK-MLDSA-{tag} ref")
         self._same(pk_kv, pk_ref, chk=f"CHK-MLDSA-{tag}", what="the KV-seed public key")
         self.logger.info(
@@ -816,14 +817,14 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         # ABR ML-KEM seed D||Z: KV leg first, then the direct-seed reference.
         d = keys[KM_DEST_ABR_MLKEM_SEED_D]
         z = keys[KM_DEST_ABR_MLKEM_SEED_Z]
-        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-SEED-{tag} pre-KV")
+        await self._zeroize_info(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-SEED-{tag} pre-KV")
         st, err = await self._kv_read(
             MLKEM_KV_SEED_RD_CTRL, MLKEM_KV_SEED_RD_STATUS, what=f"CHK-MLKEM-SEED-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLKEM-SEED-{tag}")
         z_kv = self._seed_z_probe()
         ek_kv = await self._mlkem_keygen(None, None, what=f"CHK-MLKEM-SEED-{tag} KV")
-        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-SEED-{tag} pre-ref")
+        await self._zeroize_info(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-SEED-{tag} pre-ref")
         ek_ref = await self._mlkem_keygen(d, z, what=f"CHK-MLKEM-SEED-{tag} ref")
         self._same(ek_kv, ek_ref, chk=f"CHK-MLKEM-SEED-{tag}", what="the KV-seed encaps key")
         # Word i of the delivered Z must sit at engine index i.
@@ -846,13 +847,13 @@ class sep_km_sideload_share_walk_test(sep_base_test):
 
         # ABR ML-KEM message: KV leg first, then the direct-message reference.
         msg = keys[KM_DEST_ABR_MLKEM_MSG]
-        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-MSG-{tag} pre-KV")
+        await self._zeroize_info(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-MSG-{tag} pre-KV")
         st, err = await self._kv_read(
             MLKEM_KV_MSG_RD_CTRL, MLKEM_KV_MSG_RD_STATUS, what=f"CHK-MLKEM-MSG-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLKEM-MSG-{tag}")
         ct_kv = await self._mlkem_encaps(ek_ref, None, what=f"CHK-MLKEM-MSG-{tag} KV")
-        await self._zeroize_obs(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-MSG-{tag} pre-ref")
+        await self._zeroize_info(self._mlkem_zeroize, tag=tag, site=f"CHK-MLKEM-MSG-{tag} pre-ref")
         ct_ref = await self._mlkem_encaps(ek_ref, msg, what=f"CHK-MLKEM-MSG-{tag} ref")
         self._same(ct_kv, ct_ref, chk=f"CHK-MLKEM-MSG-{tag}", what="the KV-message ciphertext")
         self.logger.info(
@@ -943,7 +944,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 name,
                 st,
             )
-            self._obs_clr_valid(tag, name, st)
+            self._info_clr_valid(tag, name, st)
 
         # D and Z one at a time: deliver one of them again, so the D||Z read
         # can only fail on the other one's KEY_VALID. Then deliver the other one
@@ -969,7 +970,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"the shred, the D||Z KV read reports ERROR={err} (status 0x{st:08x}), "
                 f"expected KV_READ_FAIL={KV_READ_FAIL}: the shred left {other} KEY_VALID set"
             )
-            self._obs_clr_valid(tag, f"only {DEST_NAME[again]}", st)
+            self._info_clr_valid(tag, f"only {DEST_NAME[again]}", st)
             await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
             await self._transfer(r, self.handles[r][other_dest], other_dest)
             st_ok, err_ok = await self._kv_read(

@@ -54,7 +54,7 @@ Checks:
                    response or the end of the warm reset to the next fault). The spans
                    from a cause to its fault frame plus _PIC_BOUND and the spans of each
                    CMD_RECOV_ACK command and warm reset are not compared;
-                   OBS-RAS-KM_CORRECTABLE-DELAY logs the rise and fall clocks there.
+                   INFO-RAS-KM_CORRECTABLE-DELAY logs the rise and fall clocks there.
 
 Controls (``control=1``): CHK-WRAP-CTRL (sequence 0 at e = 1 returns -3 arg 1),
 CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg and after the
@@ -614,7 +614,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
 
             if pf.arg == pl.ARG_LOGGED:
                 arg_ok, golden = True, "logged"
-                self.chk.obs("PAIR-LEN-ARG", pair=idx, arg=_a(pr.arg))
+                self.chk.info("PAIR-LEN-ARG", pair=idx, arg=_a(pr.arg))
             elif pf.arg is None:
                 arg_ok, golden = pr.arg is None, "none"
             else:
@@ -1424,7 +1424,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                 high=sum(h for _, _, h in clear),
                 bad=clear_bad[:4],
             )
-        self.chk.obs(
+        self.chk.info(
             "RAS-KM_CORRECTABLE-DELAY",
             rise_after_frame_clk=rise_delay,
             fall_after_clear_start_clk=fall_delay,

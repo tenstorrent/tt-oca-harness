@@ -18,7 +18,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
@@ -32,10 +32,10 @@ CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_
 # Word 0 of the preload asset the bank model $readmemh's at time 0, read from
 # the asset so the gate follows a regenerated image.
 OTP_WORD0_MARKER = efuse_preload_word_at(EFUSE_MAP_0)
-_PROG_DATA = 1 << 16
-_PROG_GO = 1 << 17
-_PROG_READBACK = 1 << 18
-_PROG_ENABLE = 1 << 27
+_PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
+_PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
+_PROG_ENABLE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
+_PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 
 
 class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
@@ -65,12 +65,12 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         await self.csr_write(
             "SECURE_PROGRAM_FAIL",
             EFUSE_PROGRAM_CTRL,
-            8 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            8 | _PROG_DATA | _PROG_GO | _PROG_ENABLE,
         )
         for fail_polls in range(10_000):
             await RisingEdge(clk)
             st = await self.csr_read("PROGRAM_FAIL_POLL", EFUSE_PROGRAM_CTRL)
-            if (st >> 25) & 1:
+            if st & _PROG_DONE:
                 break
         else:
             raise AssertionError("program_done never set on secure-error path")
@@ -106,12 +106,12 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         await self.csr_write(
             "SECURE_PROGRAM_OK",
             EFUSE_PROGRAM_CTRL,
-            0 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            0 | _PROG_DATA | _PROG_GO | _PROG_ENABLE,
         )
         for ok_polls in range(10_000):
             await RisingEdge(clk)
             st = await self.csr_read("PROGRAM_OK_POLL", EFUSE_PROGRAM_CTRL)
-            if (st >> 25) & 1:
+            if st & _PROG_DONE:
                 break
         else:
             raise AssertionError("program_done never set on recovery burn")

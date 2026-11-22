@@ -1130,7 +1130,7 @@ class SepDrbgScoreboard:
 
         ``axis1_residual`` adds CHK-AXIS1-RESIDUAL (accepted AXIS1 words no client
         took are at most ``AXIS1_RESIDUAL_MAX``; it fails when the AXIS1 tap is not
-        running or saw no beat), OBS-SB-GOLDEN-LEFT and the X/Z count INFO lines.
+        running or saw no beat), INFO-SB-GOLDEN-LEFT and the X/Z count INFO lines.
         """
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")
         any_fail = False
@@ -1453,7 +1453,7 @@ class SepDrbgScoreboard:
         return False
 
     def _report_golden_left(self) -> None:
-        """OBS-SB-GOLDEN-LEFT: golden items no DUT item matched, and the verified
+        """INFO-SB-GOLDEN-LEFT: golden items no DUT item matched, and the verified
         genbits words no tapped stream (KM, AXIS1, AXIS2, pool) carried."""
         left = {
             key: len(self._expected_q(key))
@@ -1465,7 +1465,7 @@ class SepDrbgScoreboard:
             Counter(self._km_words + self._axis1_words + self._axis2_words + self._pool_words)
         )
         self.log.info(
-            "OBS-SB-GOLDEN-LEFT: left=%s seed_packer_words=%d loss=%d",
+            "INFO-SB-GOLDEN-LEFT: left=%s seed_packer_words=%d loss=%d",
             left,
             len(self.chain.unconsumed_seed_words()),
             sum(n for n in unseen.values() if n > 0),

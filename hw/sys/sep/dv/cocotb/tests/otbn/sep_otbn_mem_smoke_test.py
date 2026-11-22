@@ -8,7 +8,7 @@ the access raises ILLEGAL_BUS_ACCESS. During the post-reset internal wipe, which
 lasts the whole no_cpu smoke, the result is logged under the OTBN wipe-state
 memory access exception (docs/test_contracts/smoke_uvm.adoc). The
 response codes, the readbacks and the SRAM request and write counters are
-logged on one OBS-OTBN-MEM-BUSY-ACCESS record. CTRL-OTBN-MEM-PRECOND fails the
+logged on one INFO-OTBN-MEM-BUSY-ACCESS record. CTRL-OTBN-MEM-PRECOND fails the
 leaf unless STATUS reads BUSY_SEC_WIPE_INT before the accesses.
 Run mode: no_cpu with +skip_fuse_sense.
 """
@@ -56,5 +56,5 @@ class sep_otbn_mem_smoke_test(sep_base_test):
                 f"{mem}_reqs={reqs} {mem}_writes={writes}"
             )
         self.logger.info(
-            "OBS-OTBN-MEM-BUSY-ACCESS status=0x%08x %s", seq.status_raw, " ".join(fields)
+            "INFO-OTBN-MEM-BUSY-ACCESS status=0x%08x %s", seq.status_raw, " ".join(fields)
         )
