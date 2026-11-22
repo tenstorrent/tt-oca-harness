@@ -30,7 +30,9 @@ records, the trace events, the pulse counts and the field record:
                   the MICCMECT delta from the sample before the ICCM block to
                   the quiescent sample equals the number of
                   ``ext_debug_bus_o[367]`` (ICCM single-bit) pulses in that
-                  interval, at least 1 (VeeR EL2 PRM
+                  interval, at least 2^t + 1, the number of flipped words; the
+                  block executes every slot, so each flipped word is fetched at
+                  least once (VeeR EL2 PRM
                   ``docs/source/error-protection.md:311`` and ``:365``, ``:369``:
                   the count rises for each correctable error detected on a fetch
                   or on a retired load; ``:247``: every fetch error is counted,
@@ -614,7 +616,9 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n += 1
         # ICCM count: one per detected correctable fetch error, so the count
         # delta from the sample before the block to the quiet sample equals the
-        # bit-367 pulses from that sample's read to the end of the block.
+        # bit-367 pulses from that sample's read to the end of the block. The
+        # block executes every slot, so each of the n flipped words is fetched
+        # at least once and the delta is at least n.
         ib = next(
             r.clk
             for r in self._recs("SAMPLE")
@@ -624,9 +628,9 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         bcnt = int(bef["ic"]) & CNT_MASK
         body = (
             f"mem=ICCM t={cfg.t} flipped_words={cfg.n} counter_before={bcnt} "
-            f"counter_quiet={qcnt} delta={qcnt - bcnt} bit367_pulses={p367}"
+            f"counter_quiet={qcnt} delta={qcnt - bcnt} bit367_pulses={p367} expect_min={cfg.n}"
         )
-        if qcnt - bcnt != p367 or p367 < 1:
+        if qcnt - bcnt != p367 or p367 < cfg.n:
             raise AssertionError(f"CHK-TCM-INCR FAIL: {body}")
         self.logger.info("CHK-TCM-INCR PASS: %s", body)
         n += 1
