@@ -322,6 +322,8 @@ def _lock_slots() -> tuple[tuple[str, int, int], ...]:
 LOCK_SLOTS = _lock_slots()
 LOCK_SLOT_FIELD: tuple[str, ...] = tuple(s[0] for s in LOCK_SLOTS)
 SLOT_OF_FIELD: dict[str, int] = {n: i for i, n in enumerate(LOCK_SLOT_FIELD)}
+_UID_LOCK_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID"))
+_ORDER_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("SIP_DIS", "SYS_DIS", "REQUIRED_ALGS"))
 # otp_fuse_controller.adoc LOCK field: 41 slots, write lock at bit 2s, read lock at 2s+1.
 for _s, (_n, _wb, _rb) in enumerate(LOCK_SLOTS):
     if (_wb, _rb) != (2 * _s, 2 * _s + 1) or _n not in FIELD_NAMES:
@@ -732,15 +734,12 @@ def _fld(reg: str, name: str, value: int) -> int:
     return int(value << lsb)
 
 
-def program_ctrl_word(
-    bit_addr: int, *, data: int = 1, enable: int = 1, go: int = 1, read_back: int = 0
-) -> int:
+def program_ctrl_word(bit_addr: int, *, data: int = 1, enable: int = 1, go: int = 1) -> int:
     """``EFUSE_PROGRAM_CTRL`` value with the named fields; every other bit 0."""
     return (
         _fld(_PG, "efuse_addr", bit_addr)
         | _fld(_PG, "efuse_data", data)
         | _fld(_PG, "efuse_program_go", go)
-        | _fld(_PG, "efuse_program_read_back", read_back)
         | _fld(_PG, "program_enable", enable)
     )
 
@@ -754,15 +753,13 @@ def read_ctrl_word(bit_addr: int, *, enable: int = 1, go: int = 1) -> int:
     )
 
 
-async def program_go_no_wait(
-    wr: WriteFn, bit_addr: int, *, data: int = 1, read_back: int = 0
-) -> int:
+async def program_go_no_wait(wr: WriteFn, bit_addr: int, *, data: int = 1) -> int:
     """Write one ``EFUSE_PROGRAM_CTRL`` with enable, data, address and go; no poll.
 
     Returns the written value. The caller places every later step by a probe or a
     bounded window (VPLAN eFuse rules, Time).
     """
-    value = program_ctrl_word(bit_addr, data=data, read_back=read_back)
+    value = program_ctrl_word(bit_addr, data=data)
     await wr(PROGRAM_CTRL_ADDR, value)
     return value
 
@@ -1055,7 +1052,7 @@ def _timeout_count(d: SepEfuseDraws, name: str) -> int:
 def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     """Fixed TEST_DEV image; runtime draws in the Randomization order.
 
-    Order: two timeout counts; ``EFUSE_PROGRAM_CTRL`` pattern (bits 18, 16, 15:0);
+    Order: two timeout counts; ``EFUSE_PROGRAM_CTRL`` pattern (bits 16, 15:0);
     ``EFUSE_READ_CTRL`` pattern (15:0); word order of the SIP, CHIPLET and SEC_DIS
     arrays; seven past-extent offsets (one in {0x20, 0x24}); six reserved-span
     addresses (one alias target per zone); control-write word index w.
@@ -1064,10 +1061,8 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=FIXED_SIP_DIS, sys_dis=FIXED_SYS_DIS)
     _timeout_count(d, "read_req_timeout_cycles")
     _timeout_count(d, "program_req_timeout_cycles")
-    pg_mask = (
-        EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr")
-        | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
-        | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_program_read_back")
+    pg_mask = EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr") | EFUSE_INTERFACE_CTRL.field_mask(
+        _PG, "efuse_data"
     )
     rd_mask = EFUSE_INTERFACE_CTRL.field_mask(_RD, "efuse_addr")
     d.until("program_ctrl_pattern", lambda: d.rng.getrandbits(32) & pg_mask, lambda v: v != 0)
@@ -1624,6 +1619,7 @@ IF_CASES = (
     "lock_read",
     "both_enables",
     "data0",
+    "prog_go_no_enable",
 )
 
 
@@ -1632,8 +1628,9 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
 
     Order: case order; out-of-range address in 8193..65534; write-lock slot
     (1..39); read-lock slot (1..39, not 11, 13, 15, not the write-lock slot); the
-    four spare fields of the pre-sense program, its twin, the lock twin and the data-0
-    program (pairwise different, none a lock-slot field), each with a zero bit; the
+    six spare fields of the pre-sense program, its twin, the lock twin, the data-0
+    program, the program go with ``program_enable`` 0 and the program after the
+    flag reset (pairwise different, none a lock-slot field), each with a zero bit; the
     zero bit of the lock-blocked program; the bit of the lock-blocked read; the
     unlocked read bits of the case frame, the read-go case, the lock-read twin and
     the both-enables case.
@@ -1647,9 +1644,19 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
     locks = (1 << write_lock_bit(wl)) | (1 << read_lock_bit(rl))
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_, lock_bits=locks)
     locked = {LOCK_SLOT_FIELD[wl], LOCK_SLOT_FIELD[rl]}
-    spares = d.sample("program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], 4)
+    roles = (
+        "pre_sense",
+        "pre_sense_twin",
+        "lock_twin",
+        "data0",
+        "prog_go_no_enable",
+        "reset_flags",
+    )
+    spares = d.sample(
+        "program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], len(roles)
+    )
     progs = {}
-    for role, f in zip(("pre_sense", "pre_sense_twin", "lock_twin", "data0"), spares):
+    for role, f in zip(roles, spares):
         progs[role] = _pick_bit(d, f"program.{role}", img, f)
     lock_prog = _pick_bit(d, "program.lock_blocked", img, LOCK_SLOT_FIELD[wl])
     lock_read = _pick_bit(d, "read.lock_blocked", img, LOCK_SLOT_FIELD[rl], zero=False)
@@ -1718,7 +1725,7 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
                 continue
             kinds = (
                 (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_WR)
-                if s in (11, 13, 15)
+                if s in _UID_LOCK_SLOTS
                 else (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR)
             )
             layout[s] = d.choice(f"lock_kind.{s}", kinds)
@@ -1780,12 +1787,12 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
         leg["class_key_bit"] = _pick_bit(d, "class_key_bit", img, "CLASS_KEY", zero=False)
         leg["locks_bit"] = _pick_bit(d, "locks_bit", img, "LOCKS", zero=False)
     elif kind == "order":
-        slot = d.choice("order_slot", (3, 4, 22))
+        slot = d.choice("order_slot", _ORDER_SLOTS)
         perm = d.shuffled("order_permutation", ("write_a", "lock", "write_b"))
         img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_)
         fname = LOCK_SLOT_FIELD[slot]
         abc = d.sample("order_bits_abc", zero_bits(img, fname), 3)
-        ctl_slot = d.choice("control_slot", [s for s in (3, 4, 22) if s != slot])
+        ctl_slot = d.choice("control_slot", [s for s in _ORDER_SLOTS if s != slot])
         leg.update(slot=slot, permutation=perm, bits_abc=abc, control_slot=ctl_slot)
         leg["control_bit"] = _pick_bit(d, "control_bit", img, LOCK_SLOT_FIELD[ctl_slot])
     else:
@@ -1808,9 +1815,8 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
             ]
             fname = d.choice(f"round.{rnd}.field", [f for f in fields if zero_bits(ref, f)])
             bit = _pick_bit(d, f"round.{rnd}.bit", ref, fname)
-            rb = d.choice(f"round.{rnd}.read_back", (0, 1))
             ref.words[field_word(fname) + bit["word"]] |= 1 << bit["bit"]
-            chain.append({**bit, "read_back": rb})
+            chain.append(bit)
         leg.update(rounds=chain, version_field=version, index_class=idx_class, version_index=index)
         leg["version_bit"] = {
             "field": version,

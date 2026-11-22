@@ -99,7 +99,7 @@ the attempt; the flush window is the clocks from the start of the host
 SEP_CTRL write to its response.
   CTRL-KMBOX-FLUSH-RACE  in one attempt the KM write handshake falls inside the
                    flush window and the image saw flushed_by_sep.
-  OBS-KMBOX-FLUSH-RACE   per attempt: d, the host delay, the write clock, the
+  INFO-KMBOX-FLUSH-RACE   per attempt: d, the host delay, the write clock, the
                    window, KM_STATUS right after the write and after the flush,
                    KM_IRQ_STATUS before and after the write of 1 to
                    flushed_by_sep, and the words the host drained from
@@ -110,7 +110,7 @@ SEP_CTRL write to its response.
 KM CPU ready mux (the bench counters ``km_{rom,sram,axi}_ready_{on,off}_target_count_o``,
 read at the end of the leaf): ``CTRL-KM-READY-TAP`` requires each on-target
 count to be non-zero (the image fetched from ROM, wrote KM SRAM and reached the
-mailbox through the AXI adapter); ``OBS-KM-READY-OFFTGT`` logs the three
+mailbox through the AXI adapter); ``INFO-KM-READY-OFFTGT`` logs the three
 off-target counts. ``architecture.adoc`` does not state whether a memory source
 may drive ready without a request for it.
 
@@ -379,7 +379,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                 f"check={_h(want[0])} n={want[1]} m={want[2]}"
             )
         self.rst = r[:5]
-        self.chk.obs("KMBOX-RST-LEVEL", level_logged=f"0x{r[4] & m.IRQ_LEVEL:x}")
+        self.chk.info("KMBOX-RST-LEVEL", level_logged=f"0x{r[4] & m.IRQ_LEVEL:x}")
         self._rsvd("KM_STATUS", r[0], m.ST_FIELDS)
         self._rsvd("KM_CTRL", r[1], m.CTRL_FIELDS)
         self._rsvd("KM_IRQ_ENABLE", r[2], m.EN_FIELDS)
@@ -581,7 +581,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                     raise AssertionError("FIFO model holds an inbound word before the underflow")
                 queue_ok = m.km_depths(r[9])[1] == 0 and m.fld(r[9], m.ST_IN_EMPTY) == 1
                 queue = m.km_depths(r[9])[1]
-                self.chk.obs(
+                self.chk.info(
                     "KMBOX-UDF-DATA", resp=resp, first_read=_h(r[7]), second_read=_h(r[14])
                 )
             sticky = [int(bool(r[9] & st_bit)), int(bool(r[10] & irq_bit))]
@@ -735,7 +735,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                     and w1c
                 )
                 fields.update(km_depths=km_post, sep_depths=sep_post_d, km_flush_bit=flush_bit)
-                self.chk.obs("KMBOX-FLUSH-TIME", init=init, cell=cell, km_ctrl_polls=r[6])
+                self.chk.info("KMBOX-FLUSH-TIME", init=init, cell=cell, km_ctrl_polls=r[6])
             else:
                 poll_ok = not (sep_ctrl_last & m.S_CTRL_FLUSH)
                 ok = (
@@ -756,7 +756,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                     control_sep_flush_bit=int(bool(sep_ctrl_last & m.S_CTRL_FLUSH)),
                     flushed_seen=r[11],
                 )
-                self.chk.obs("KMBOX-FLUSH-TIME", init=init, cell=cell, sep_ctrl_polls=polls)
+                self.chk.info("KMBOX-FLUSH-TIME", init=init, cell=cell, sep_ctrl_polls=polls)
             self.chk.ok("KMBOX-FLUSH", ok, **fields)
             for i in (3, 7):
                 self._rsvd("KM_STATUS", r[i], m.ST_FIELDS)
@@ -841,7 +841,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             "km_irq_after_clear": _h(r[6]),
             "drained": drained,
         }
-        self.chk.obs("KMBOX-FLUSH-RACE", **rec)
+        self.chk.info("KMBOX-FLUSH-RACE", **rec)
         self._rsvd("KM_STATUS", r[2] | r[4], m.ST_FIELDS)
         self._rsvd("KM_IRQ_STATUS", r[5] | r[6], m.IRQ_FIELDS)
         await self._sync()
@@ -903,7 +903,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             on[f"{src}_on"] = self.rd(getattr(dut, f"km_{src}_ready_on_target_count_o"))
             off[f"{src}_off"] = self.rd(getattr(dut, f"km_{src}_ready_off_target_count_o"))
         self.chk.ctrl("KM-READY-TAP", all(on.values()), **on)
-        self.chk.obs("KM-READY-OFFTGT", **off)
+        self.chk.info("KM-READY-OFFTGT", **off)
 
     # Steps 9 to 13.
     async def _step_irq(self) -> None:

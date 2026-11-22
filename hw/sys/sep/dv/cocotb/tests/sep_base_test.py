@@ -125,7 +125,7 @@ class _EvidenceFilter(logging.Filter):
         "sep_otbn_mem_smoke_test": (
             "grades only the bench state (CTRL-OTBN-MEM-PRECOND); the IMEM/DMEM "
             "access result while STATUS reads BUSY_SEC_WIPE_INT is logged by "
-            "OBS-OTBN-MEM-BUSY-ACCESS under the OTBN wipe-state memory access "
+            "INFO-OTBN-MEM-BUSY-ACCESS under the OTBN wipe-state memory access "
             "exception (docs/test_contracts/smoke_uvm.adoc)"
         ),
     }
@@ -155,6 +155,43 @@ FILE_PLUSARGS: tuple[str, ...] = (
     "sep_shadow_reg_preload",
     "sep_smc_mem_hex",
 )
+
+
+class SepEsrcNoiseDriver:
+    """Raw-noise driver of ``start_esrc_noise_driver`` with a cooperative stop.
+
+    ``stop`` clears the run flag and waits until the loop exits, so no
+    ``NextTimeStep`` trigger is cancelled while it is pending. The loop exits at
+    the next clock edge, or after the write of the current cycle when ``stop``
+    comes between the edge and that write. Before the first clock edge the loop
+    waits only on ``RisingEdge``, so ``stop`` cancels it there: a caller that
+    fails before ``clk_i`` starts would otherwise wait for an edge that never
+    comes.
+    """
+
+    def __init__(self, noise_mode: str, seed_base: int) -> None:
+        self._gen = EntropyNoiseModel()
+        self._gen.configure(noise_mode, seed_base=seed_base)
+        self._run = True
+        self._seen_edge = False
+        self._task = cocotb.start_soon(self._drive())
+
+    async def _drive(self) -> None:
+        dut = cocotb.top
+        while self._run:
+            await RisingEdge(dut.clk_i)
+            self._seen_edge = True
+            if not self._run:
+                break
+            await NextTimeStep()
+            dut.esrc_noise_ext_i.value = self._gen.step_all()
+
+    async def stop(self) -> None:
+        self._run = False
+        if not self._seen_edge:
+            self._task.cancel()
+            return
+        await self._task
 
 
 class sep_base_test(uvm_test):
@@ -1218,20 +1255,28 @@ class sep_base_test(uvm_test):
         sb = self.env.scoreboard
         return len(sb.errors), sb.value_checks
 
-    def assert_sb_judged(self, mark: tuple[int, int], chk: str) -> None:
+    def assert_sb_judged(self, mark: tuple[int, int], chk: str, expected: int | None = None) -> int:
         """Fail ``chk`` unless the scoreboard judged a read and rejected none since ``mark``.
 
         SepScoreboard.write compares every read that carries ``item.expected``:
         a mismatch goes to ``errors`` and fails the test only at check_phase, and
         a match counts in ``value_checks``. A CHK PASS line logged after this
         call rests on that judgment, so it cannot print for a value the
-        scoreboard rejected.
+        scoreboard rejected. With ``expected``, the number of judged reads
+        since ``mark`` must equal it. Returns the number of judged reads.
         """
         errs, judged = mark
         sb = self.env.scoreboard
         new = sb.errors[errs:]
         assert not new, f"{chk} FAIL: scoreboard rejected {len(new)} read(s): " + "; ".join(new)
-        assert sb.value_checks > judged, f"{chk} FAIL: the scoreboard judged no read value"
+        n = sb.value_checks - judged
+        if expected is None:
+            assert n > 0, f"{chk} FAIL: the scoreboard judged no read value"
+        else:
+            assert n == expected, (
+                f"{chk} FAIL: the scoreboard judged {n} read value(s), expected {expected}"
+            )
+        return n
 
     def watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
         """Record system-CSR AXI-Lite handshakes until the caller kills the task.
@@ -1502,8 +1547,8 @@ class sep_base_test(uvm_test):
 
     def start_esrc_noise_driver(
         self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678
-    ):
-        """Drive tb_top.esrc_noise_ext_i every cycle and return the forked task.
+    ) -> SepEsrcNoiseDriver:
+        """Drive tb_top.esrc_noise_ext_i every cycle and return the driver.
 
         ``+esrc_noise_force`` only routes this port onto the ring-oscillator
         noise input; it does not generate anything. A test that brings the
@@ -1515,21 +1560,15 @@ class sep_base_test(uvm_test):
         no scoring: the caller gets entropy that moves, not entropy that is
         graded. A test that needs the values checked wants ``bring_up_entropy``.
 
-        Kill the returned task before the test ends. A forked task still writing
-        a DUT port while the simulator tears down segfaults the run, which shows
-        up as a non-zero exit on an otherwise passing test.
+        Each cycle waits for ``RisingEdge(clk_i)``, then ``NextTimeStep()``, then
+        writes the next noise word. End the driver with ``await driver.stop()``
+        before the test ends, while ``clk_i`` still toggles. A forked task still
+        writing a DUT port while the simulator tears down segfaults the run.
+        Killing or cancelling a task that waits on ``NextTimeStep`` leaves the
+        simulator callback registered on Verilator, and the simulator later
+        calls freed callback data.
         """
-        dut = cocotb.top
-        gen = EntropyNoiseModel()
-        gen.configure(noise_mode, seed_base=seed_base)
-
-        async def _drive() -> None:
-            while True:
-                await RisingEdge(dut.clk_i)
-                await NextTimeStep()
-                dut.esrc_noise_ext_i.value = gen.step_all()
-
-        return cocotb.start_soon(_drive())
+        return SepEsrcNoiseDriver(noise_mode, seed_base)
 
     async def assert_noise_force_active(self, cycles: int = 16) -> None:
         """Prove +esrc_noise_force took: lane-0's actual DUT noise_i tracks the

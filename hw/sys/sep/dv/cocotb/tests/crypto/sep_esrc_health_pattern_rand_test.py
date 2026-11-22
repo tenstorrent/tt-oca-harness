@@ -43,7 +43,9 @@ pattern noise driver (``env/sep_esrc_pattern_noise.py``) runs from before the
 first TRNG reset release to the end of the leaf. Every start is a TRNG reset,
 the eight defined ``INTR_ENABLE`` bits set, and the clean start
 (``seq_lib/sep_esrc_clean_start_seq.py``) with ``ALERT_THRESHOLD`` = 0 and
-``HEALTH_TEST_CTRL.ENABLE`` = 7. Every window that a check uses runs the
+``HEALTH_TEST_CTRL.ENABLE`` = 7. The second pattern trial, the last limit trial
+and the all-off leg start with ``ALERT_THRESHOLD`` at its field maximum, so a
+failing window counts towards the alert and the alert does not fire. Every window that a check uses runs the
 lane-byte control. A window is W strobes of ``esrc_decor_valid_o``.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before any stimulus):
@@ -51,7 +53,10 @@ the lanes of the bias70 and bias30 trials (two different lanes), their windows
 (two different windows of 1024, 2048 and 4096), the order of the two pattern
 trials, the order of the three limit trials, the half-period L of the square
 lanes, the balanced masks and permutation, the bias one positions, the square
-phases and the alternate start values.
+phases and the alternate start values; then the window (1024 or 2048) and the
+drawn ``HEALTH_TEST_CTRL.ENABLE`` value (1 to 4) of the all-off leg, the
+``MIN_ENTROPY_H`` code H (0x02 to the field maximum) of the copy leg, and the
+order in which that leg tries the other codes for H'.
 
 Checkers:
   CHK-HT-TRIP      after 3W words of a bias pattern on lane k, of the bits
@@ -64,9 +69,13 @@ Checkers:
                    read back before the pattern starts);
                    with ENABLE bit 0 cleared while REPETITION_TEST_COUNT reads
                    at least 100, the count reads below 100 and below its value
-                   before the write after one window (the run state is cleared).
-                   The exact cleared value is not stated: OBS-HT-REPCOUNT-AFTER
-                   logs it.
+                   before the write after one window (the run state is cleared;
+                   control CTRL-HT-ENABLE-REP-WRITE: ENABLE reads back 6 after
+                   the write). INFO-HT-REPCOUNT-AFTER logs the cleared
+                   value: graded by CHK-HT-ENABLE; no open specification
+                   question. No enabled control runs: no
+                   text states whether the count restarts at a failure while
+                   the tester stays enabled.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
                    clears them. The write runs with every tester disabled, so no
                    window end can latch a bit between the write and the read;
@@ -78,9 +87,9 @@ Checkers:
                    INPUT_COUNT(first) + input words - INPUT_COUNT(last). Input words
                    are strobes of esrc_whiten_push_o, output words strobes of
                    esrc_compress_vld_o. Control: at least 16 input and 8 output
-                   words in the span. Whether the whitener input continues after
-                   the 32-bit test fails after boot is not stated: a push timeout
-                   logs INFO-BLOCKED and the check has no evidence.
+                   words in the span. A push timeout logs INFO-HT-PRESHA-NOPUSH
+                   (not graded; no open specification question) and the check
+                   has no evidence.
   CHK-HT-LIMIT     each limit trial (repetition L-3, Markov high W/2-3, Markov
                    low W/L+3, W = 1024) sets exactly the bit of its tester in all
                    12 generators.
@@ -100,14 +109,60 @@ Checkers:
                    instance); controls: APT_PROPORTION_LO reads back 0,
                    APT_LO_TOTAL_FAILS does not change over the ones windows, and
                    APT_HI_TOTAL_FAILS reads 0 after the constant-zero leg.
-Logged only: OBS-ESRC-HT-TOTALS, the five total-fail counters after each limit
-trial (no text states how the totals count the per-generator failures).
-OBS-ESRC-HT-BYPASS, HEALTH_TEST_STATUS bits 3 and 5 and the APT_LO and MARKOV_LO
-totals after the constant-zero windows with ``CTRL.BYPASS_ENTROPY_COMPRESSOR``
-set: architecture.adoc:47-48 states the 32-bit test clock-gated off in that mode,
-architecture.adoc:122 states that it monitors the post-bypass stream. Control
-CTRL-ESRC-HT-BYPASS: CTRL reads the bypass 1 before the windows, and the
-lane-byte control compares at least W zero strobes with no mismatch.
+  CHK-HT-ALL-OFF   ENABLE = 0 (entropy_source.rdl:314) and stuck1 on all lanes
+                   for 2W words, with MARKOV PROB_10_THRESHOLD = 1 and
+                   ALERT_THRESHOLD at its maximum: every GENERATOR_k_HEALTH_STATUS
+                   reads 0 and ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT reads 0.
+                   Control (CTRL-HT-ALL-OFF): the same pattern with ENABLE = 7 for
+                   2W more words latches bits 0, 3 and 5 in every generator and
+                   makes ANY_FAIL_COUNT non-zero.
+  CHK-HT-ENABLE    (tester=set) after the all-off control, the drawn ENABLE value
+                   with the same pattern for 2W words latches in every generator
+                   exactly the bits of the enabled testers: bit 0 for ENABLE bit
+                   0, bit 3 for bit 1, bit 5 for bit 2.
+  CHK-REC-COPY     window 1024 (APT_LIMIT is derived for a 1024-sample window,
+                   entropy_source.rdl:971), APT_PROPORTION_LO = 0, every tester
+                   off outside a trial: MIN_ENTROPY_H = H, RECOMMENDED_THRESHOLDS
+                   RCT_LIMIT C and APT_LIMIT A copied into REPETITION_LIMIT and
+                   APT_PROPORTION_1BIT read back exactly (part copy); writes of
+                   MIN_ENTROPY_H alone, up to the first code H' whose RCT_LIMIT
+                   C' differs from C by at least 3, leave both limits unchanged
+                   (part h_only); with H' written and only the repetition
+                   tester on, runs of C - 2 words on all lanes latch nothing
+                   and runs of C + 1 latch exactly bit 0 in every generator;
+                   with only the APT tester on, a 1024-word period with A ones
+                   latches nothing and one with A + 1 latches exactly bit 3
+                   (entropy_source.rdl:394); C' copied into REPETITION_LIMIT
+                   flips the result of a run length graded at C (C + 1 when
+                   C' > C, C - 2 when C' < C).
+                   REPETITION_LIMIT is the "Maximum allowed" count
+                   (entropy_source.rdl:320) and RCT_LIMIT is the SP 800-90B
+                   cutoff C (:966), which fails at a run of C: runs of C - 1
+                   and C are logged as OBS-REC-COPY-BOUNDARY with their result.
+                   A run of C - 1 can count one more when the tester enable
+                   lands inside it, so passes are graded at C - 2 only.
+                   Controls (CTRL-REC-COPY): the H readbacks, A + 1 within the
+                   window, the cleared statuses and the ENABLE readback before
+                   each trial.
+  CHK-ESRC-HT-BYPASS
+                   ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1: the 32-bit health test
+                   is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63),
+                   so HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a
+                   write of 1 to its set bits and still reads 0 after 3W
+                   constant-zero strobes. Control (CTRL-ESRC-HT-BYPASS): CTRL
+                   reads back bypass 1 and HEALTH_TEST_CTRL.ENABLE reads back 7
+                   before the windows, and the lane-byte control compares at
+                   least W zero strobes with no mismatch.
+Logged only: INFO-ESRC-HT-TOTALS, the five total-fail counters after each limit
+trial (not graded; no open specification question).
+INFO-HT-ALERT-COUNTS, the ALERT_FAIL_COUNTS fields and ALERT_THRESHOLD after each
+pattern trial and each limit trial, each of which fails one tester type (not
+graded; no open specification question).
+INFO-ESRC-HT-BYPASS-TOTALS, the APT_LO and MARKOV_LO totals and
+INTR_STATUS.HEALTH_TEST_FAILED before and after the constant-zero windows of
+CHK-ESRC-HT-BYPASS (not graded: entropy_source.rdl:840-847, :860-867 do not state
+which testers feed the totals, and the per-generator testers still see the stuck
+lanes in bypass; no open specification question).
 """
 
 from __future__ import annotations
@@ -159,6 +214,13 @@ LIMIT_WINDOW = 1024
 RESET_WINDOW = 2048
 LIMIT_TRIALS = ("rep", "mkv_hi", "mkv_lo")
 SQUARE_LS = (8, 16, 32)
+OFF_WINDOWS = (1024, 2048)
+DRAWN_ENABLES = (1, 2, 3, 4)
+# HEALTH_TEST_CTRL.ENABLE bits 0, 1 and 2: repetition, APT, Markov (entropy_source.rdl:314).
+HT_EN_REP, HT_EN_APT, HT_EN_MKV = 1, 2, 4
+# Any minimum alternation count above 0 fails a stuck lane, which has none.
+MKV_LO_TRIP = 1
+SWITCH_WORDS = 4  # words of a pattern change with every tester off
 
 REPCOUNT_PRE = 100  # REPETITION_TEST_COUNT value that shows a live run
 REPCOUNT_PRE_WORDS = 128 + REPCOUNT_PRE
@@ -168,12 +230,19 @@ DRAIN_POPS = 160
 
 # Shards (env/sep_shard.py). Every group starts with its own TRNG reset.
 # 1: both pattern trials and the APT enable leg, which repeats the first trial.
-# 2: the repetition enable leg and the limit trials, which its grade reads.
+# 2: the repetition enable leg and the limit trials, which its grade reads, then
+#    the all-off leg and the threshold copy leg.
 # 3: the constant-zero, constant-ones and bypass-zero legs; the ones leg reads the zero leg.
 SHARD_EVIDENCE = {
     1: ("CHK-HT-TRIP", "CHK-HT-PASS", "CHK-HT-OTHERS", "CHK-HT-W1C", "CHK-HT-ENABLE"),
-    2: ("CHK-HT-ENABLE", "CHK-HT-LIMIT"),
-    3: ("CHK-HT-PRESHA", "CHK-HT-TOP-ZERO", "CHK-HT-TOP-HI", "CHK-HT-TOP-ONE"),
+    2: ("CHK-HT-ENABLE", "CHK-HT-LIMIT", "CHK-HT-ALL-OFF", "CHK-REC-COPY"),
+    3: (
+        "CHK-HT-PRESHA",
+        "CHK-HT-TOP-ZERO",
+        "CHK-HT-TOP-HI",
+        "CHK-HT-TOP-ONE",
+        "CHK-ESRC-HT-BYPASS",
+    ),
 }
 
 
@@ -209,6 +278,10 @@ A_APT_1BIT = _addr("APT_PROPORTION_1BIT")
 A_APT_LO = _addr("APT_PROPORTION_LO")
 A_MARKOV = _addr("MARKOV_TEST_PROB_THRESHOLDS")
 A_ALERT_THRESHOLD = _addr("ALERT_THRESHOLD")
+A_MIN_H = _addr("MIN_ENTROPY_H")
+A_REC = _addr("RECOMMENDED_THRESHOLDS")
+A_ALERT_FAIL_COUNTS = _addr("ALERT_FAIL_COUNTS")
+A_ANY_FAIL = _addr("ALERT_SUMMARY_FAIL_COUNTS")
 A_GEN_STATUS = tuple(_addr(f"GENERATOR_{n}_HEALTH_STATUS") for n in range(NUM_LANES))
 TOTALS = (
     "REPCNT_TOTAL_FAILS",
@@ -231,6 +304,28 @@ M_HT_ENABLE = _fbm("HEALTH_TEST_CTRL", "ENABLE")
 P_HT_ENABLE = _fbp("HEALTH_TEST_CTRL", "ENABLE")
 M_REP_LIMIT = _fbm("HEALTH_TEST_CTRL", "REPETITION_LIMIT")
 P_REP_LIMIT = _fbp("HEALTH_TEST_CTRL", "REPETITION_LIMIT")
+M_APT_1BIT = _fbm("APT_PROPORTION_1BIT", "LIMIT")
+P_APT_1BIT = _fbp("APT_PROPORTION_1BIT", "LIMIT")
+M_MIN_H = _fbm("MIN_ENTROPY_H", "H")
+P_MIN_H = _fbp("MIN_ENTROPY_H", "H")
+H_MAX = M_MIN_H >> P_MIN_H
+# RCT_LIMIT is 1 + ceil(20 / H) in 16 bits (entropy_source.rdl:966-967), and
+# REPETITION_LIMIT holds 8 bits (:322): code 0x01 gives 321, code 0x02 gives 161.
+REC_H_MIN = 0x02
+# The copy leg grades a pass at a run of C - 2 (C is at least 3 at H = 0xFF) and
+# a flip between C and a C' at least REC_FLIP_GAP away, so that each graded run
+# is at least two below or one above both limits.
+REC_FLIP_GAP = 3
+M_RCT = _fbm("RECOMMENDED_THRESHOLDS", "RCT_LIMIT")
+P_RCT = _fbp("RECOMMENDED_THRESHOLDS", "RCT_LIMIT")
+M_APT_REC = _fbm("RECOMMENDED_THRESHOLDS", "APT_LIMIT")
+P_APT_REC = _fbp("RECOMMENDED_THRESHOLDS", "APT_LIMIT")
+M_THR = _fbm("ALERT_THRESHOLD", "THRESHOLD")
+P_THR = _fbp("ALERT_THRESHOLD", "THRESHOLD")
+ALERT_THR_MAX = M_THR >> P_THR
+M_ANY_FAIL = _fbm("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
+P_ANY_FAIL = _fbp("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
+ALERT_FAIL_FIELDS = ENTROPY_SOURCE.fields("ALERT_FAIL_COUNTS")
 
 M_CTRL_BYPASS = _fbm("CTRL", "BYPASS_ENTROPY_COMPRESSOR")
 P_CTRL_BYPASS = _fbp("CTRL", "BYPASS_ENTROPY_COMPRESSOR")
@@ -241,6 +336,30 @@ LEG_LABEL_CLKS = 2
 BIT_REP, BIT_APT, BIT_MKV_HI, BIT_MKV_LO = 0, 3, 4, 5
 GRADED_BITS = (1 << BIT_REP) | (1 << BIT_APT) | (1 << BIT_MKV_HI) | (1 << BIT_MKV_LO)
 TRIP_BIT = {"rep": BIT_REP, "mkv_hi": BIT_MKV_HI, "mkv_lo": BIT_MKV_LO}
+# The generator status bit of each ENABLE bit; Markov is the low side under stuck1.
+ENABLE_BITS = ((HT_EN_REP, BIT_REP), (HT_EN_APT, BIT_APT), (HT_EN_MKV, BIT_MKV_LO))
+
+
+def enabled_bits(enable: int) -> int:
+    """Generator status bits that stuck1 latches with ``enable``."""
+    return sum(1 << bit for en, bit in ENABLE_BITS if enable & en)
+
+
+@dataclass(frozen=True)
+class Spread(LanePattern):
+    """``ones`` ones in every ``period`` words at evenly spread positions, so every
+    run of ``period`` consecutive words holds exactly ``ones`` ones."""
+
+    ones: int
+    period: int
+
+    def bit(self, n: int) -> int:
+        i = n % self.period
+        return (i + 1) * self.ones // self.period - i * self.ones // self.period
+
+    def describe(self) -> str:
+        return f"spread({self.ones}/{self.period})"
+
 
 # Reset limits of the window 2048 (the RDL reset column).
 RESET_APT_1BIT = _freset("APT_PROPORTION_1BIT", "LIMIT")
@@ -278,6 +397,10 @@ class Plan:
     half_period: int
     squares: tuple[Square, ...]
     alternates: tuple[Alternate, ...]
+    off_window: int
+    enable_drawn: int
+    rec_h: int
+    rec_h_order: tuple[int, ...]
 
     def describe(self) -> str:
         tr = " ".join(
@@ -289,7 +412,8 @@ class Plan:
             f"trials=[{tr}] limit_order={','.join(self.limit_order)} L={self.half_period} "
             f"squares=[{','.join(s.describe() for s in self.squares)}] "
             f"alternates=[{','.join(a.describe() for a in self.alternates)}] "
-            f"{describe(self.balanced)}"
+            f"off_window={self.off_window} enable_drawn={self.enable_drawn} "
+            f"rec_h=0x{self.rec_h:02x} {describe(self.balanced)}"
         )
 
 
@@ -308,7 +432,24 @@ def draw_plan(seed: int) -> Plan:
     half_period = rng.choice(SQUARE_LS)
     squares = tuple(square_lane(rng, half_period) for _ in range(NUM_LANES))
     alternates = tuple(alternate_lane(rng) for _ in range(NUM_LANES))
-    return Plan(seed, balanced, tuple(trials), tuple(limit_order), half_period, squares, alternates)
+    off_window = rng.choice(OFF_WINDOWS)
+    enable_drawn = rng.choice(DRAWN_ENABLES)
+    rec_h = rng.randrange(REC_H_MIN, H_MAX + 1)
+    rec_h_order = [h for h in range(REC_H_MIN, H_MAX + 1) if h != rec_h]
+    rng.shuffle(rec_h_order)
+    return Plan(
+        seed,
+        balanced,
+        tuple(trials),
+        tuple(limit_order),
+        half_period,
+        squares,
+        alternates,
+        off_window,
+        enable_drawn,
+        rec_h,
+        tuple(rec_h_order),
+    )
 
 
 class _Esrc(SepAxiRegDriver):
@@ -330,6 +471,9 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         "CHK-HT-TOP-ZERO",
         "CHK-HT-TOP-HI",
         "CHK-HT-TOP-ONE",
+        "CHK-HT-ALL-OFF",
+        "CHK-REC-COPY",
+        "CHK-ESRC-HT-BYPASS",
     )
 
     async def run_scenario(self) -> None:
@@ -358,9 +502,9 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
 
         trip_results: dict[str, bool] = {}
         if runs(1):
-            for trial in plan.trials:
+            for i, trial in enumerate(plan.trials):
                 trip_results[trial.name] = await self._guard(
-                    self._pattern_trial(trial),
+                    self._pattern_trial(trial, thr=ALERT_THR_MAX if i else 0),
                     ("HT-TRIP",),
                     False,
                     pattern=trial.name,
@@ -379,6 +523,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             )
             limit_status = await self._limit_trials()
             self._grade_rep_enable(rep_before, rep_after, limit_status)
+            await self._guard(self._all_off_leg(), ("HT-ALL-OFF", "HT-ENABLE"), None)
+            await self._guard(self._rec_copy_leg(), ("REC-COPY",), None)
         if runs(3):
             apt_hi_zero = await self._guard(self._zero_leg(), ("HT-TOP-ZERO", "HT-TOP-HI"), None)
             await self._guard(self._ones_leg(apt_hi_zero), ("HT-TOP-ONE",), None)
@@ -425,6 +571,21 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
     async def _gen_statuses(self) -> list[int]:
         return [(await self._rd(a)) & M_GEN for a in A_GEN_STATUS]
 
+    async def _clear_gen_statuses(self) -> None:
+        for addr, s in zip(A_GEN_STATUS, await self._gen_statuses()):
+            if s:
+                await self._wr(addr, s)
+
+    async def _any_fail(self) -> int:
+        return ((await self._rd(A_ANY_FAIL)) & M_ANY_FAIL) >> P_ANY_FAIL
+
+    async def _alert_counts_info(self, tester: str) -> None:
+        """INFO-HT-ALERT-COUNTS after a trial that fails only ``tester``."""
+        raw = await self._rd(A_ALERT_FAIL_COUNTS)
+        thr = ((await self._rd(A_ALERT_THRESHOLD)) & M_THR) >> P_THR
+        counts = {f.lower(): (raw & m["bm"]) >> m["bp"] for f, m in ALERT_FAIL_FIELDS.items()}
+        self.chk.info("HT-ALERT-COUNTS", tester=tester, alert_threshold=thr, **counts)
+
     async def _drain(self) -> None:
         """Pop FIFO_RDATA until FIFO_STATUS.LEVEL reads 0."""
         for _ in range(DRAIN_POPS):
@@ -463,7 +624,9 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
     async def _trng_reset(self) -> int:
         return await self.setup.trng_reset()
 
-    async def _start(self, window: int, ctrl_fields: dict[str, int] | None = None) -> None:
+    async def _start(
+        self, window: int, ctrl_fields: dict[str, int] | None = None, thr: int = 0
+    ) -> None:
         """Reset sequence, INTR_ENABLE, clean start(W), BOOT_PHASE_DONE, statuses 0."""
         close_graded_window(self.logger)
         mark = await self._trng_reset()
@@ -476,7 +639,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             ctrl_fields=ctrl_fields,
             health_enable=7,
             extra_writes=(
-                (A_ALERT_THRESHOLD, ENTROPY_SOURCE.value("ALERT_THRESHOLD", THRESHOLD=0)),
+                (A_ALERT_THRESHOLD, ENTROPY_SOURCE.value("ALERT_THRESHOLD", THRESHOLD=thr)),
             ),
         )
         await cs.run(release_mark=mark)
@@ -504,14 +667,15 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             await self._wr(A_APT_LO, ENTROPY_SOURCE.value("APT_PROPORTION_LO", LIMIT=trial.limit))
 
     # --- pattern trials -----------------------------------------------------------
-    async def _pattern_trial(self, trial: PatternTrial) -> bool:
+    async def _pattern_trial(self, trial: PatternTrial, thr: int) -> bool:
         """One bias trial; returns True when lane k latched bit 3."""
         w, k = trial.window, trial.lane
-        await self._start(w)
+        await self._start(w, thr=thr)
         open_graded_window(TEST, self.logger)
         await self._write_trip_limit(trial)
         await self._pattern_window(self._lanes_with(k, trial.pattern), 3 * w, w)
         st = await self._gen_statuses()
+        await self._alert_counts_info(trial.tester)
         gk = st[k]
         tripped = gk & GRADED_BITS == 1 << BIT_APT
         self.chk.ok(
@@ -552,7 +716,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             ctrl_lane_latched=int(bool(gk & (1 << BIT_APT))),
         )
         # W1C under disabled testers: no window end can latch a bit between the
-        # write and the read.
+        # write and the read. The FCOV window stays open so the read, write-one
+        # clear and read of bit 3 sample x_gen_latch.
         before = (await self._rd(A_GEN_STATUS[k])) & M_GEN
         await self._ht_ctrl(enable=0)
         hold = (await self._rd(A_GEN_STATUS[k])) & M_GEN
@@ -642,11 +807,12 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             close_graded_window(self.logger)
             return None, None
         await self._ht_ctrl(enable=6)
+        enable_rb = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+        self.chk.ctrl("HT-ENABLE-REP-WRITE", enable_rb == 6, enable=enable_rb, want=6)
         await self._wait_words(w, w)
         after = (await self._rd(A_REP_COUNT)) & M_REP_COUNT
         close_graded_window(self.logger)
-        self.chk.obs("HT-REPCOUNT-AFTER", value=after, before=before)
-        self.chk.blocked("HT-ENABLE-REPCOUNT-VALUE", "cleared_count_value_unstated")
+        self.chk.info("HT-REPCOUNT-AFTER", value=after, before=before, chk="CHK-HT-ENABLE")
         return before, after
 
     def _grade_rep_enable(
@@ -705,7 +871,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         reasons: dict[str, str] = {}
         for trial in self.plan.limit_order:
             try:
-                await self._limit_trial(trial, out, words)
+                thr = ALERT_THR_MAX if trial == self.plan.limit_order[-1] else 0
+                await self._limit_trial(trial, out, words, thr)
             except (TrialTimeout, EsrcStrobeTimeout) as exc:
                 close_graded_window(self.logger)
                 self.noise.byte_check(False)
@@ -715,10 +882,10 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
                 words[trial] = 0
         return self._grade_limits(out, words, reasons)
 
-    async def _limit_trial(self, trial: str, out: dict, words: dict) -> None:
+    async def _limit_trial(self, trial: str, out: dict, words: dict, thr: int) -> None:
         """One limit trial: a pattern below the limit at clean limits, then the limit."""
         w = LIMIT_WINDOW
-        await self._start(w)
+        await self._start(w, thr=thr)
         await self._pattern_window(self._limit_patterns(trial), 2 * w, w)
         pre = await self._gen_statuses()
         self.chk.ctrl(
@@ -739,7 +906,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         words[trial] = self.noise.words_since(mark)
         out[trial] = await self._gen_statuses()
         _, totals, _ = await self._top_regs()
-        self.chk.obs("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
+        self.chk.info("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
+        await self._alert_counts_info(trial)
         close_graded_window(self.logger)
         for addr, s in zip(A_GEN_STATUS, out[trial]):
             if s:
@@ -774,6 +942,246 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
                 other_bits=f"0x{stray:02x}",
             )
         return out
+
+    # --- all-off leg ------------------------------------------------------------------
+    async def _all_off_leg(self) -> None:
+        """CHK-HT-ALL-OFF, its ENABLE = 7 control, then CHK-HT-ENABLE for the drawn value."""
+        w = self.plan.off_window
+        stuck: list[LanePattern] = [Stuck(1)] * NUM_LANES
+        await self._start(w, thr=ALERT_THR_MAX)
+        open_graded_window(TEST, self.logger)
+        await self._ht_ctrl(enable=0)
+        await self._wr(
+            A_MARKOV,
+            ENTROPY_SOURCE.value(
+                "MARKOV_TEST_PROB_THRESHOLDS",
+                PROB_01_THRESHOLD=w + 1,
+                PROB_10_THRESHOLD=MKV_LO_TRIP,
+            ),
+        )
+        enable = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+        thr = ((await self._rd(A_ALERT_THRESHOLD)) & M_THR) >> P_THR
+        await self._pattern_window(stuck, 2 * w, w)
+        st = await self._gen_statuses()
+        any_fail = await self._any_fail()
+        top = (await self._rd(A_HT_STATUS)) & M_HT_STATUS
+        self.chk.ctrl("HT-ALL-OFF", enable == 0 and thr == ALERT_THR_MAX, enable=enable, thr=thr)
+        self.chk.ok(
+            "HT-ALL-OFF",
+            all(s == 0 for s in st) and any_fail == 0,
+            enable=enable,
+            window=w,
+            words=2 * w,
+            gen_status_all=[f"0x{s:02x}" for s in st],
+            any_fail_count=any_fail,
+            alert_threshold=thr,
+            ht_status=f"0x{top:02x}",
+        )
+        close_graded_window(self.logger)
+
+        await self._ht_ctrl(enable=HT_EN_REP | HT_EN_APT | HT_EN_MKV)
+        await self._pattern_window(stuck, 2 * w, w)
+        st = await self._gen_statuses()
+        any_fail = await self._any_fail()
+        want = enabled_bits(HT_EN_REP | HT_EN_APT | HT_EN_MKV)
+        live = all(s & GRADED_BITS == want for s in st) and any_fail > 0
+        self.chk.ctrl(
+            "HT-ALL-OFF",
+            live,
+            enable=HT_EN_REP | HT_EN_APT | HT_EN_MKV,
+            gen_status_all=[f"0x{s:02x}" for s in st],
+            any_fail_count=any_fail,
+        )
+
+        v = self.plan.enable_drawn
+        await self._ht_ctrl(enable=0)
+        await self._clear_gen_statuses()
+        pre = await self._gen_statuses()
+        await self._ht_ctrl(enable=v)
+        enable = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+        self.chk.ctrl(
+            "HT-ENABLE-SET",
+            all(s == 0 for s in pre) and enable == v,
+            cleared_status=[f"0x{s:02x}" for s in pre],
+            enable=enable,
+            want_enable=v,
+        )
+        await self._pattern_window(stuck, 2 * w, w)
+        st = await self._gen_statuses()
+        want = enabled_bits(v)
+        self.chk.ok(
+            "HT-ENABLE",
+            all(s & GRADED_BITS == want for s in st),
+            tester="set",
+            enable=v,
+            want_bits=f"0x{want:02x}",
+            window=w,
+            gen_status_all=[f"0x{s:02x}" for s in st],
+            ctrl_enabled_trips=int(live),
+        )
+
+    # --- threshold copy leg -----------------------------------------------------------
+    async def _recommend(self, h: int) -> tuple[int, int, int]:
+        """MIN_ENTROPY_H = ``h``; returns (H readback, RCT_LIMIT, APT_LIMIT)."""
+        await self._wr(A_MIN_H, ENTROPY_SOURCE.value("MIN_ENTROPY_H", H=h))
+        h_rb = ((await self._rd(A_MIN_H)) & M_MIN_H) >> P_MIN_H
+        rec = await self._rd(A_REC)
+        return h_rb, (rec & M_RCT) >> P_RCT, (rec & M_APT_REC) >> P_APT_REC
+
+    async def _copied(self) -> tuple[int, int]:
+        """(REPETITION_LIMIT, APT_PROPORTION_1BIT.LIMIT) read back."""
+        rep = ((await self._rd(A_HT_CTRL)) & M_REP_LIMIT) >> P_REP_LIMIT
+        apt = ((await self._rd(A_APT_1BIT)) & M_APT_1BIT) >> P_APT_1BIT
+        return rep, apt
+
+    async def _rec_trial(
+        self, part: str, enable: int, pattern: LanePattern, words: int
+    ) -> list[int]:
+        """``pattern`` on all lanes for ``words`` with only ``enable`` testers on.
+
+        The pattern changes while every tester is off, so no run or window that
+        spans the change is tested. Returns the 12 generator statuses.
+        """
+        lanes = [pattern] * NUM_LANES
+        await self._ht_ctrl(enable=0)
+        await self._clear_gen_statuses()
+        await self._pattern_window(lanes, SWITCH_WORDS, LIMIT_WINDOW)
+        pre = await self._gen_statuses()
+        await self._ht_ctrl(enable=enable)
+        en = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+        self.chk.ctrl(
+            "REC-COPY",
+            all(s == 0 for s in pre) and en == enable,
+            part=part,
+            cleared_status=[f"0x{s:02x}" for s in pre],
+            enable=en,
+            want_enable=enable,
+        )
+        await self._pattern_window(lanes, words, LIMIT_WINDOW)
+        return await self._gen_statuses()
+
+    def _grade_rec(
+        self, part: str, st: list[int], bit: int | None, ready: bool = True, **fields
+    ) -> None:
+        """Nothing latched (``bit`` None), or exactly ``bit`` in every generator."""
+        want = 0 if bit is None else 1 << bit
+        mask = M_GEN if bit is None else GRADED_BITS
+        ok = ready and len(st) == NUM_LANES and all(s & mask == want for s in st)
+        self.chk.ok(
+            "REC-COPY",
+            ok,
+            part=part,
+            expect="pass" if bit is None else f"bit{bit}",
+            gen_status_all=[f"0x{s:02x}" for s in st],
+            **fields,
+        )
+
+    async def _rec_copy_leg(self) -> None:
+        """CHK-REC-COPY: RECOMMENDED_THRESHOLDS copied into the two limit registers."""
+        w = LIMIT_WINDOW
+        h = self.plan.rec_h
+        await self._start(w)
+        await self._ht_ctrl(enable=0)
+        await self._wr(A_APT_LO, ENTROPY_SOURCE.value("APT_PROPORTION_LO", LIMIT=0))
+        apt_lo = (await self._rd(A_APT_LO)) & M_APT_LO
+        h_rb, c, a = await self._recommend(h)
+        await self._ht_ctrl(rep_limit=c)
+        await self._wr(A_APT_1BIT, ENTROPY_SOURCE.value("APT_PROPORTION_1BIT", LIMIT=a))
+        rep, apt = await self._copied()
+        usable = h_rb == h and apt_lo == 0 and c - 2 >= 1 and a + 1 <= w
+        self.chk.ctrl(
+            "REC-COPY",
+            usable,
+            part="recommend",
+            h=f"0x{h:02x}",
+            h_rb=f"0x{h_rb:02x}",
+            rct_limit=c,
+            apt_limit=a,
+            apt_lo_limit=apt_lo,
+            window=w,
+        )
+        self.chk.ok(
+            "REC-COPY",
+            rep == c and apt == a,
+            part="copy",
+            h=f"0x{h:02x}",
+            rct_limit=c,
+            apt_limit=a,
+            repetition_limit=rep,
+            apt_1bit_limit=apt,
+        )
+        if not usable:
+            return
+
+        # MIN_ENTROPY_H-only writes, up to the first code whose RCT_LIMIT is at
+        # least REC_FLIP_GAP from C.
+        h2 = c2 = None
+        tried = 0
+        rb_ok = True
+        for code in self.plan.rec_h_order:
+            tried += 1
+            rb, rct, _ = await self._recommend(code)
+            rb_ok = rb_ok and rb == code
+            if abs(rct - c) >= REC_FLIP_GAP:
+                h2, c2 = code, rct
+                break
+        rep, apt = await self._copied()
+        self.chk.ctrl("REC-COPY", rb_ok and h2 is not None, part="new_rct", tried=tried, c2=c2)
+        self.chk.ok(
+            "REC-COPY",
+            rep == c and apt == a,
+            part="h_only",
+            h_written=f"0x{h2:02x}" if h2 is not None else "na",
+            repetition_limit=rep,
+            apt_1bit_limit=apt,
+            want=f"{c}_{a}",
+        )
+
+        def rep_words(run: int) -> int:
+            # Two whole runs after the tester turns on, then a window boundary.
+            return w + 2 * run + 2
+
+        common = {"limit": c, "h_written": f"0x{h2:02x}" if h2 is not None else "na"}
+        run_pass, run_trip = c - 2, c + 1
+        st = await self._rec_trial("rct_pass", HT_EN_REP, Square(run_pass, 0), rep_words(run_pass))
+        self._grade_rec("rct_pass", st, None, run=run_pass, **common)
+        for run in (c - 1, c):
+            st = await self._rec_trial("boundary", HT_EN_REP, Square(run, 0), rep_words(run))
+            if all(s & M_GEN == 0 for s in st):
+                result = "pass"
+            elif all(s & GRADED_BITS == 1 << BIT_REP for s in st):
+                result = "trip"
+            else:
+                result = "mixed"
+            self.chk.obs(
+                "REC-COPY-BOUNDARY",
+                run=run,
+                result=result,
+                gen_status_all=[f"0x{s:02x}" for s in st],
+                **common,
+            )
+        st = await self._rec_trial("rct_trip", HT_EN_REP, Square(run_trip, 0), rep_words(run_trip))
+        self._grade_rec("rct_trip", st, BIT_REP, run=run_trip, **common)
+        if c2 is not None:
+            # A run graded at C that passes at one limit and trips at the other.
+            run = run_trip if c2 > c else run_pass
+            await self._ht_ctrl(rep_limit=c2)
+            rep, _ = await self._copied()
+            st = await self._rec_trial("flip", HT_EN_REP, Square(run, 0), rep_words(run))
+            self._grade_rec(
+                "flip",
+                st,
+                None if c2 > c else BIT_REP,
+                ready=rep == c2,
+                run=run,
+                old_limit=c,
+                limit=c2,
+                repetition_limit=rep,
+            )
+        st = await self._rec_trial("apt_pass", HT_EN_APT, Spread(a, w), 2 * w)
+        self._grade_rec("apt_pass", st, None, limit=a, ones=a, window=w)
+        st = await self._rec_trial("apt_trip", HT_EN_APT, Spread(a + 1, w), 2 * w)
+        self._grade_rec("apt_trip", st, BIT_APT, limit=a, ones=a + 1, window=w)
 
     # --- 32-bit tester legs -----------------------------------------------------------
     async def _top_regs(self) -> tuple[int, dict[str, int], int]:
@@ -851,14 +1259,13 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         level = (await self._rd(A_FIFO_STATUS)) & M_FIFO_LEVEL
         for _ in range(level):
             words.append(await self._rd(A_FIFO_RDATA))
-        self.chk.obs(
+        self.chk.info(
             "HT-PRESHA-WORDS",
             level=level,
             words=[f"0x{x:08x}" for x in words[:16]],
         )
         if pushes < PRESHA_PUSHES:
-            self.chk.obs("HT-PRESHA-NOPUSH", pushes=pushes, stream_words=tap.words, bound=bound)
-            self.chk.blocked("HT-PRESHA-NOPUSH", "whitener_input_after_post_boot_ht_fail_unstated")
+            self.chk.info("HT-PRESHA-NOPUSH", pushes=pushes, stream_words=tap.words, bound=bound)
             return
         span = tap.quiet_span()
         s = span or {"span_clk": 0, "in_first": 0, "in_last": 0, "in_words": 0, "out_words": 0}
@@ -893,19 +1300,23 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         self.chk.ok("HT-PRESHA", span is not None and 2 * s["out_words"] == absorbed, **fields)
 
     async def _bypass_zero_leg(self) -> None:
-        """Constant zero with the compressor bypassed; the 32-bit tester result is logged.
+        """Constant zero with the compressor bypassed: the 32-bit tester latches nothing.
 
-        The windows are those of ``_zero_leg``. Which of architecture.adoc:47-48 (the
-        32-bit test is clock-gated off in bypass) and architecture.adoc:122 (it
-        monitors the post-bypass stream) holds is not settled, so the status and
-        totals are OBS-ESRC-HT-BYPASS.
+        The windows are those of ``_zero_leg``. The 32-bit health test is clock-gated
+        off in bypass (architecture.adoc:47-48; trng.adoc:62-63), so
+        HEALTH_TEST_STATUS reads 0 after a write of 1 to its set bits and still
+        reads 0 after the windows (CHK-ESRC-HT-BYPASS). The APT_LO and MARKOV_LO
+        totals are INFO-ESRC-HT-BYPASS-TOTALS.
         """
         w = RESET_WINDOW
         try:
             await self._start(w, ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1})
             ctrl = await self._rd(A_CTRL)
-            s0, t0, _ = await self._top_regs()
             await self._write_reset_limits()
+            enable = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+            s_start = (await self._rd(A_HT_STATUS)) & M_HT_STATUS
+            await self._wr(A_HT_STATUS, s_start)
+            s0, t0, i0 = await self._top_regs()
             open_graded_window(TEST, self.logger)
             c0, m0 = self.noise.byte_control()
             await self._pattern_window([Stuck(0)] * NUM_LANES, 3 * w, w)
@@ -914,16 +1325,21 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         except (TrialTimeout, EsrcStrobeTimeout) as exc:
             close_graded_window(self.logger)
             self.noise.byte_check(False)
-            self.chk.ctrl("ESRC-HT-BYPASS", False, reason=_timeout_reason(exc), bound=exc.bound)
+            reason = _timeout_reason(exc)
+            self.chk.ctrl("ESRC-HT-BYPASS", False, reason=reason, bound=exc.bound)
+            self.chk.ok("ESRC-HT-BYPASS", False, reason=reason, bound=exc.bound)
             return
         bypass = (ctrl & M_CTRL_BYPASS) >> P_CTRL_BYPASS
+        all_on = HT_EN_REP | HT_EN_APT | HT_EN_MKV
         words = (c1 - c0) // NUM_LANES
         if self.chk.ctrl(
             "ESRC-HT-BYPASS",
-            bypass == 1 and m1 == m0 and words >= w,
+            bypass == 1 and enable == all_on and m1 == m0 and words >= w,
             ctrl=f"0x{ctrl:08x}",
             bypass=bypass,
             expect=1,
+            ht_enable=enable,
+            expect_ht_enable=all_on,
             words=words,
             mismatched=m1 - m0,
             window=w,
@@ -932,16 +1348,25 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, LEG_LABEL_CLKS)
             set_open_value_leg_pass(None, self.logger)
         close_graded_window(self.logger)
-        self.chk.obs(
+        self.chk.ok(
             "ESRC-HT-BYPASS",
+            s0 == 0 and s1 == 0,
             status=f"0x{s1:02x}",
+            expect_status="0x00",
             apt_bit3=(s1 >> BIT_APT) & 1,
             mkv_lo_bit5=(s1 >> BIT_MKV_LO) & 1,
+            status_after_w1c=f"0x{s0:02x}",
+            status_start=f"0x{s_start:02x}",
+            window=w,
+        )
+        self.chk.info(
+            "ESRC-HT-BYPASS-TOTALS",
+            apt_lo_total_before=t0["APT_LO_TOTAL_FAILS"],
             apt_lo_total=t1["APT_LO_TOTAL_FAILS"],
+            mkv_lo_total_before=t0["MARKOV_LO_TOTAL_FAILS"],
             mkv_lo_total=t1["MARKOV_LO_TOTAL_FAILS"],
+            intr_health_failed_before=int(bool(i0)),
             intr_health_failed=int(bool(i1)),
-            status_before=f"0x{s0:02x}",
-            totals_before=f"{t0['APT_LO_TOTAL_FAILS']}_{t0['MARKOV_LO_TOTAL_FAILS']}",
             window=w,
         )
 

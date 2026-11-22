@@ -96,6 +96,9 @@ module smc_efuse_wrapper (
                                                                      // access, read and program
                                                                      // timeouts, request error and
                                                                      // secure-test-mode block.
+  output logic [5:0]                                 efuse_fsm_state_debug_o,  // eFuse controller FSM
+                                                                               // states; see
+                                                                               // efuse_interface_controller.
 
   output logic                                       locked_field_access_interrupt_o  // High during an access
                                                                                       // to the eFuse map
@@ -171,12 +174,13 @@ module smc_efuse_wrapper (
     .mst_resps_i(axil_smc_otp_jtag_resp_filtered)
   );
 
-  // Blocked path: return a slverr with a tagged data pattern.
+  // Blocked path: return SLVERR with a tagged data pattern.
   prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH(smc_pkg::SmcLocalAddrWidth),
     .AXI_DATA_WIDTH(smc_pkg::AxiLite32DataWidth),
     .axil_req_t    (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t   (smc_pkg::smc_axil_32_32_resp_t),
+    .RESP          (axi_pkg::RESP_SLVERR),
     .RESP_WIDTH    (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA     (32'hbadcab1e),
     .MAX_TRANS     (2)
@@ -286,6 +290,7 @@ module smc_efuse_wrapper (
     .is_rma_chiplet_token_match_debug_o (),
 
     .token_match_fault_o                (),
+    .fsm_state_debug_o                  (efuse_fsm_state_debug_o),
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o)
   );

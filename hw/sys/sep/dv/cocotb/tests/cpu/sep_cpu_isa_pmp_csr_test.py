@@ -68,7 +68,8 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   1 and the rises of each bit at the variable, so a walk that did not reach
   the port or retired too few instructions fails. No cited specification
   states which bit holds which control, so the check names the bits by
-  position and the layout is logged (``OBS-LOCKSTEP-LAYOUT``). Verilator does not take a cocotb
+  position and the layout is logged (``INFO-LOCKSTEP-LAYOUT``). Not graded; no open
+  specification question. Verilator does not take a cocotb
   write of that variable: the leg is skipped there with an ``INFO-LOCKSTEP-SKIP``
   line and the check is required evidence on VCS only.
 
@@ -152,7 +153,7 @@ MCAUSE_LOAD_FAULT = 5
 # (disable corruption detection, error-injection enable) but states no bit
 # position, so the leaf names the bits by position only and walks all four
 # values; no check or bin depends on which bit holds which control. The layout
-# is logged (OBS-LOCKSTEP-LAYOUT).
+# is logged (INFO-LOCKSTEP-LAYOUT).
 LS_BIT0 = 1 << 0
 LS_BIT1 = 1 << 1
 LS_VALUES = (0, LS_BIT0, LS_BIT1, LS_BIT0 | LS_BIT1)
@@ -503,7 +504,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
                 raise AssertionError(f"CHK-PMP FAIL: PMPC line {i} has i={rec.kv['i']}")
             cur = _list(rec.kv)
             self.logger.info(
-                "OBS-PMP-READBACK LOG after_complement=%d readback=%s",
+                "INFO-PMP-READBACK LOG after_complement=%d readback=%s chk=CHK-PMP",
                 i,
                 ",".join(f"0x{v:08x}" for v in cur),
             )
@@ -749,7 +750,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         self.con.start()
         tasks = [cocotb.start_soon(self._trace(sy["isa_r1"], sy["isa_r2"]))]
         self.logger.info(
-            "OBS-LOCKSTEP-LAYOUT LOG ctrl_width=%d bit_roles=not_stated: port_table.adoc:58 "
+            "INFO-LOCKSTEP-LAYOUT LOG ctrl_width=%d bit_roles=not_stated: port_table.adoc:58 "
             "names the two controls and no bit position; the walk drives all four values",
             len(dut.lockstep_ctrl_i),
         )

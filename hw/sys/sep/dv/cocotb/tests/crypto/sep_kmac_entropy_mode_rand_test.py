@@ -22,7 +22,7 @@ Legs: a six-seed leg first (gives t_ctrl, the clean start time), then in drawn
 order: seed count (5 and 0 words), mode lock (sw first and edn first), timer
 (prescaler 0 and P, wait timers T, 2T, 8, then 0), counter (N hashes,
 ``hash_cnt_clr``, ``entropy_req``) and reseed (threshold R, then 0 on the same
-KMAC). A ``msg_mask`` leg runs last and is logged only (``OBS-KMAC-MSGMASK``).
+KMAC). A ``msg_mask`` leg runs last and is logged only (``INFO-KMAC-MSGMASK``).
 "Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
 uninitialized" is the state after a TRNG reset with no bring-up after it: EDN
 does not answer, which is the starvation of the timer leg.
@@ -60,16 +60,18 @@ Checkers:
                            error." (``vendor/lowRISC/opentitan/upstream/hw/ip/
                            kmac/doc/theory_of_operation.md``:724, :764). No text
                            gives bits 23:0 a value for this code: they are
-                           masked and logged as ``OBS-KMAC-TIMER-ERRCODE``.
-  CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
+                           masked and logged as ``INFO-KMAC-TIMER-ERRCODE``.
+  CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending;
+                           ENTROPY_PERIOD reads back wait timer 0 and prescaler P.
                            At prescaler 0 the window is (2^16 // 7 + 4) x the
                            error time at wait timer 8 (at least 7 whole pulse
                            periods), so it is longer than 2^16 timer pulses (kmac.adoc ``ENTROPY_PERIOD``: a
                            16-bit timer) and a DUT that counts 0 as a finite
                            16-bit count expires in it. At prescaler P the
                            window is 4 x that error time.
-  CHK-KMAC-HASHCNT         counter 1..N, 0 after hash_cnt_clr, 1, 0 after
-                           entropy_req, which adds an acknowledge.
+  CHK-KMAC-HASHCNT         threshold reads back N + 5; counter 1..N, 0 after
+                           hash_cnt_clr, 1, 0 after entropy_req, which adds an
+                           acknowledge.
   CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, and the
                            counter after hash i reads i mod R (``kmac.hjson``
                            :806-810: a counter that "hits (GTE)" the threshold
@@ -160,6 +162,8 @@ HASH_CNT_MASK = KMAC.field_mask("ENTROPY_REFRESH_HASH_CNT", "hash_cnt")
 ERR_CODE_MASK = KMAC.field_mask("ERR_CODE", "err_code")
 PERIOD_PRESCALER_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "prescaler")
 PERIOD_WAIT_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "wait_timer")
+PERIOD_MASK = KMAC.mask("ENTROPY_PERIOD")
+THRESHOLD_MASK = KMAC.field_mask("ENTROPY_REFRESH_THRESHOLD_SHADOWED", "threshold")
 # kmac.adoc ERR_CODE:343-344: the RDL reset value; the error code is in bits 31:24.
 EXP_ERR_CODE_RESET = KMAC.reset32("ERR_CODE")
 ERR_CODE_LSB = 24
@@ -742,7 +746,14 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             reason="ok" if all_clean else "timeout_or_no_error",
         )
 
-        self.chk.obs("KMAC-TIMER-CLK", t=t, p=self.plan.p, p0_err_clk=clks(p0), p_err_clk=clks(pp))
+        self.chk.info(
+            "KMAC-TIMER-CLK",
+            t=t,
+            p=self.plan.p,
+            p0_err_clk=clks(p0),
+            p_err_clk=clks(pp),
+            chk="CHK-KMAC-TIMER",
+        )
 
         def err_code(run: dict) -> int | None:
             return (run["code"] >> ERR_CODE_LSB) & 0xFF if "code" in run else None
@@ -764,7 +775,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             expected=f"0x{EXP_ERR_WAIT_TIMER_EXPIRED:02x}",
         )
         # Bits 23:0: no text gives them a value for WaitTimerExpired.
-        self.chk.obs(
+        self.chk.info(
             "KMAC-TIMER-ERRCODE",
             p0_debug=",".join(
                 f"0x{r['code'] & ERR_CODE_DEBUG_MASK:x}" if "code" in r else "na" for r in p0
@@ -792,6 +803,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         self._open()
         await self.kmac._wr(KMAC_INTR_ENABLE, KMAC_INTR_KMAC_ERR)
         await self.kmac.set_period(wait_timer=0, prescaler=prescaler)
+        period_rb = await self.kmac.read(KMAC_ENTROPY_PERIOD) & PERIOD_MASK
         req_m, ack_m, err_m = self.w_req.mark(), self.w_ack.mark(), self.w_vec.mark()
         await self.kmac.program(entropy_mode="edn", keyed=False)
         await self._wait_clocks(window)
@@ -803,8 +815,14 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         err = int(bool(intr & KMAC_INTR_KMAC_ERR))
         self.chk.ok(
             "KMAC-TIMER0",
-            err == 0 and not line and code == EXP_ERR_CODE_RESET and req == 1 and acks == 0,
+            err == 0
+            and not line
+            and code == EXP_ERR_CODE_RESET
+            and req == 1
+            and acks == 0
+            and period_rb == prescaler << PERIOD_PRESCALER_LSB,
             p=prescaler,
+            period_rb=f"0x{period_rb:08x}",
             window_clk=window,
             err=err,
             line=int(line),
@@ -834,10 +852,13 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         await self._need_chain_up()
         n = self.plan.n
         t_reseed = await self._keyed_setup(n + 5)
+        threshold_rb = await self.kmac.read(KMAC_THRESHOLD) & THRESHOLD_MASK
         window = max(WIN_MULT * (t_reseed or BOUND_CLK // WIN_MULT), WIN_FLOOR)
         self._open()
         status, cnts = await self._keyed_run(n)
-        fields = dict(n=n, cnts=",".join(map(str, cnts)), window_clk=window)
+        fields = dict(
+            n=n, cnts=",".join(map(str, cnts)), window_clk=window, threshold_rb=threshold_rb
+        )
         if status != "ok":
             self.chk.ok("KMAC-HASHCNT", False, **fields, reason="timeout", stage=status)
             self._close()
@@ -865,6 +886,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         self.chk.ok(
             "KMAC-HASHCNT",
             cnts == list(range(1, n + 1))
+            and threshold_rb == n + 5
             and after_clr == 0
             and one == [1]
             and after_req == 0
@@ -977,7 +999,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             if ref is None:
                 ref = digest
                 continue
-            self.chk.obs(
+            self.chk.info(
                 "KMAC-MSGMASK",
                 flag=name,
                 stage=status,

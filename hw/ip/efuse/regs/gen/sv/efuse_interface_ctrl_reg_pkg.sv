@@ -125,17 +125,12 @@ package efuse_interface_ctrl_reg_pkg;
 
     typedef struct {
         logic value;
-    } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_program_read_back__out_t;
-
-    typedef struct {
-        logic value;
     } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__program_enable__out_t;
 
     typedef struct {
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_addr__out_t efuse_addr;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_data__out_t efuse_data;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_program_go__out_t efuse_program_go;
-        efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_program_read_back__out_t efuse_program_read_back;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__program_enable__out_t program_enable;
     } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__out_t;
 

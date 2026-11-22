@@ -88,7 +88,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           its AW and an OKAY B on the bus. A B of the cut write,
                           when one shows, is OKAY. Its timing against the
                           ``sep_cpu_reset_n`` fall (drained, late, dropped) is
-                          logged, not graded (OBS-OVL-CUT-B). A WDT run with a
+                          logged, not graded (INFO-OVL-CUT-B). A WDT run with a
                           late or dropped B applies the cold reset before the
                           release write (``cold_before_release=1``): then
                           ``ip_rst_n[D]`` holds low from its fall to the cold
@@ -123,7 +123,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ID 0 shows its AW and an OKAY B on the bus within the
                           bound, with no other ID-0 B from the cold reset to the
                           bound after that B. The B of the cut write is logged,
-                          not graded (OBS-WDT-INFLIGHT).
+                          not graded (INFO-WDT-INFLIGHT).
   CHK-MBX-CPURST          after each pulse sequence: the word pushed into one
                           drawn mailbox before the sequence pops back equal (the
                           read response code is logged in the same line). The mailboxes are system peripherals
@@ -1547,7 +1547,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         sep_high = not sep.fall_clks_since(ms)
         cpu_ok = c_fall is not None and c_rise is not None and c_rise > c_fall
         self.logger.info(
-            "OBS-WDT-INFLIGHT: write id=0 aw_clk=%d b_clk=%s b_resp=%s b_outcome=%s "
+            "INFO-WDT-INFLIGHT: write id=0 aw_clk=%d b_clk=%s b_resp=%s b_outcome=%s "
             "(not graded: the watchdog reset does not drain transactions)",
             aw,
             b_clk,
@@ -1844,7 +1844,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"b_clk={b_clk} "
             f"b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome={outcome}"
         )
-        self.logger.info("OBS-OVL-CUT-B: %s", text)
+        self.logger.info("INFO-OVL-CUT-B: %s chk=CHK-OVL", text)
         return {"ok": ok, "outcome": outcome, "aw": aw, "text": text}
 
     async def _pulse_now(self, cls: str, width: int) -> None:
@@ -2117,7 +2117,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         dest_graded = src_m >= 1 and b_m >= 1
         unchanged = r1 == r2
         if not dest_graded:
-            self.logger.info("OBS-DMA-COLD-MEM: src_match=%d patB_match=%d", src_m, b_m)
+            self.logger.info("INFO-DMA-COLD-MEM: src_match=%d patB_match=%d", src_m, b_m)
         ok = (
             not mism
             and asid_ok

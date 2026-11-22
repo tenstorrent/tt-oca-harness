@@ -655,7 +655,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # which is the opposite of recovery. No text states the read data of the
         # refused pop, so the data is logged only.
         self.logger.info(
-            "OBS-TRNG-STALE-RDATA rdata=0x%016x resp=%d", empty_pop.rdata, empty_pop.resp_code
+            "INFO-TRNG-STALE-RDATA rdata=0x%016x resp=%d chk=CHK-TRNG-STALE",
+            empty_pop.rdata,
+            empty_pop.resp_code,
         )
         self._grade(
             "CHK-TRNG-STALE",
