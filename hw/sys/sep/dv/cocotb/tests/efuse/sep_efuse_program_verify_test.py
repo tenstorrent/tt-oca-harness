@@ -58,7 +58,7 @@ A lock set while a program is in flight (last step, after the dropped write is s
   CTRL-VERIFY-INFLIGHT-LOCK  the lock took effect: a program of bit Y in the same
                       field ends with program_done 1 and program_status 1,
                       ``efuse_req_error`` goes from 0 to 1, the command tap shows no
-                      PROGRAM command at Y, and the OTP word of Y is unchanged.
+                      fuse command after the go, and the OTP word of Y is unchanged.
 
 Each OTP word is read through ``EFUSE_READ_CTRL`` and compared whole against an
 image golden, so a write that lands on the wrong bit also fails. A SHIM that does
@@ -309,7 +309,7 @@ class sep_efuse_program_verify_test(sep_base_test):
         pg_y = await self._poll_pg(_M_PG_DONE)
         err_y = await self._req_err()
         await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
-        y_cmds = len(cmds.programs_since(m_y, address=y))
+        y_cmds = len(cmds.commands_since(m_y))
         await cmds.stop()
         clr_y = await self._clear_req_err()
         got_y = await self._otp_word(word_y)
@@ -317,7 +317,7 @@ class sep_efuse_program_verify_test(sep_base_test):
             f"bit_y={y} pg={'none' if pg_y is None else f'0x{pg_y:08x}'} "
             f"program_done={'none' if pg_y is None else _b(pg_y, _M_PG_DONE)} "
             f"program_status={'none' if pg_y is None else _b(pg_y, _M_PG_STATUS)} "
-            f"req_err={pre_y}->{err_y} clr_req_err={clr_y} prog_cmds={y_cmds} "
+            f"req_err={pre_y}->{err_y} clr_req_err={clr_y} cmds={y_cmds} "
             f"otp_word={word_y} got=0x{got_y:08x} exp=0x{want_y:08x}"
         )
         ok = (
