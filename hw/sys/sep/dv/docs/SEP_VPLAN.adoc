@@ -1529,7 +1529,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu
 |CPU firmware, ECC counter CSR reads, `ext_debug_bus_o` tap, TCM bit-flip hook (added hook)
-|Proves that a corrected CPU-side TCM error counts silently until the counter reaches its threshold and then raises `mip.MCEIP`, with `mstatus.MIE` = 1 and `mie` = 0 on every silent sample (CHK-TCM-SILENT), that an uncorrectable DCCM error traps with the stated cause, that an uncorrectable error on the fast-interrupt path is an NMI through `SEP_NMI_VEC`, that the uncorrectable ICCM fetch pulses `ext_debug_bus_o[366]` one clock wide (CHK-TCM-DBG366), that each flipped DCCM load raises `MDCCMECT` by exactly 1 and the `MICCMECT` rise over the ICCM block equals the `ext_debug_bus_o[367]` pulses of that block and is at least the number of flipped words, with the count after each flipped slot above the count after the flipped slot before it (CHK-TCM-INCR), and that no PIC source is involved.
+|Proves that a corrected CPU-side TCM error counts silently until the counter reaches its threshold and then raises `mip.MCEIP`, with `mstatus.MIE` = 1 and `mie` = 0 on every silent sample (CHK-TCM-SILENT), that an uncorrectable DCCM error traps with the stated cause, that an uncorrectable error on the fast-interrupt path is an NMI through `SEP_NMI_VEC`, that the uncorrectable ICCM fetch pulses `ext_debug_bus_o[366]` one clock wide (CHK-TCM-DBG366), that each flipped DCCM load raises `MDCCMECT` by exactly 1 and the `MICCMECT` rise over the ICCM block equals the `ext_debug_bus_o[367]` pulses of that block and is at least the number of flipped words (CHK-TCM-INCR), and that no PIC source is involved.
 
 |<<sep_cpu_demux_unmapped_fetch_test,`sep_cpu_demux_unmapped_fetch_test`>>
 |3

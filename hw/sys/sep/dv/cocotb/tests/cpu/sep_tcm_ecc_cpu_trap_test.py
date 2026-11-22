@@ -32,13 +32,10 @@ records, the trace events, the pulse counts and the field record:
                   ``ext_debug_bus_o[367]`` (ICCM single-bit) pulses in that
                   interval, at least 2^t + 1, the number of flipped words; the
                   block executes every slot, so each flipped word is fetched at
-                  least once, and the MICCMECT sample after each flipped slot
-                  is above the sample after the flipped slot before it (the
-                  sample before the block for the first): the slot's sample
-                  follows the fetch of its word, and an error on that fetch is
-                  counted when it is detected and the word is refetched before
-                  it executes (PRM ``:183``, ``:189``, fn-3 at ``:246``). A word can be fetched more than once, so no upper
-                  bound is graded per slot (VeeR EL2 PRM
+                  least once. The count after each flipped slot is logged and
+                  not graded: a word can be fetched ahead and counted before
+                  the sample of the slot before it, and fetched and counted
+                  more than once (VeeR EL2 PRM
                   ``docs/source/error-protection.md:311`` and ``:365``, ``:369``:
                   the count rises for each correctable error detected on a fetch
                   or on a retired load; ``:247``: every fetch error is counted,
@@ -81,7 +78,7 @@ records, the trace events, the pulse counts and the field record:
                   fails once after its other checks if any of them failed.
 
 Log only: ``INFO-TCM-ISLOT`` (the MICCMECT count after each flipped ICCM slot,
-which CHK-TCM-INCR also prints and grades as a rise of at least 1),
+which CHK-TCM-INCR also prints and does not grade),
 ``INFO-TCM-FORM`` (a miss-first draw whose readback skipped 2^t - 1 runs in the
 reach-first form; a skip needs one load to count twice, which fails CHK-TCM-INCR
 on that sample first, so a passing run does not print it),
@@ -628,13 +625,10 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         # delta from the sample before the block to the quiet sample equals the
         # bit-367 pulses from that sample's read to the end of the block. The
         # block executes every slot, so each of the n flipped words is fetched
-        # at least once and the delta is at least n. The sample of a flipped
-        # slot follows the fetch of its word, and an error on that fetch is
-        # counted when detected and the word is refetched before it executes
-        # (RFPC flush, PRM fn-3), so each
-        # flipped slot raises the count by at least 1 over the sample of the
-        # flipped slot before it. A word can be fetched more than once, so no
-        # upper bound is graded per slot.
+        # at least once and the delta is at least n. A fetch error is counted
+        # independent of execution (PRM fn-4), so a word fetched ahead can be
+        # counted before the sample of an earlier slot, and a word can be
+        # counted more than once: the per-slot counts are logged, not graded.
         ib = next(
             r.clk
             for r in self._recs("SAMPLE")
@@ -643,7 +637,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         p367 = len(self._pulses_in((ib, bwin[1]))[BIT_I_SB])
         bcnt = int(bef["ic"]) & CNT_MASK
         slots = {int(r.kv["k"]): r.kv for r in self._recs("ISLOT")}
-        steps, flat = [], []
+        steps = []
         prev = bcnt
         for s in cfg.islots:
             cur = int(slots[s]["ic"]) & CNT_MASK if s in slots else -1
@@ -654,15 +648,12 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 prev,
                 cur,
             )
-            if cur <= prev:
-                flat.append(f"slot{s}")
             prev = cur
         failed = [
             name
             for name, bad in (
                 ("delta", qcnt - bcnt != p367),
                 ("min", p367 < cfg.n),
-                ("slot", bool(flat)),
             )
             if bad
         ]
@@ -670,7 +661,6 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             f"mem=ICCM t={cfg.t} flipped_words={cfg.n} counter_before={bcnt} "
             f"counter_quiet={qcnt} delta={qcnt - bcnt} bit367_pulses={p367} expect_min={cfg.n} "
             f"slot_steps={','.join(f'slot{s}:{a}>{b}' for s, a, b in steps)} "
-            f"expect_slot_step=>=1 flat_slots={','.join(flat) or 'none'} "
             f"failed={','.join(failed) or 'none'}"
         )
         if failed:
