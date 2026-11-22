@@ -1741,6 +1741,7 @@ module sep_uvm_top
     assign iso_slv_ar_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid & \
                                       `SEP_ISO_IC.inst.slv_resp_o.ar_ready; \
     assign iso_slv_ar_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid; \
+    assign iso_slv_aw_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.aw_valid; \
     assign iso_slv_b_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.b_valid & \
                                       `SEP_ISO_IC.inst.slv_req_i.b_ready; \
     assign iso_slv_r_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.r_valid & \

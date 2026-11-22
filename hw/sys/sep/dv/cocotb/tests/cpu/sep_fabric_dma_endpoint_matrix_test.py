@@ -78,6 +78,24 @@ model of the staged data and the fabric taps:
                   ``hw/sys/sep/doc/fabric.adoc:91``), so the run ends DONE with
                   no error, raises the DMA interrupt, and the destination holds
                   the STATUS word the CPU read before the GO.
+* CHK-DMA-KM-MBOX a DMA write and a DMA read of the Key Manager mailbox
+                  ``SEP_IRQ_ENABLE`` word answer OKAY: the ``sep_crypto`` reach
+                  that CHK-DMA-KM-SRC grades for a DMA read of the mailbox
+                  STATUS word (``hw/sys/sep/doc/fabric.adoc:91``, figure
+                  ``sep-axi-connectivity``, ``fabric.adoc:101``). Each run
+                  ends DONE with no error and raises the DMA interrupt. The write
+                  leg copies a staged value into the word; the CPU read back
+                  equals the written value (fields [4:0] ``sw = rw``,
+                  ``hw/ip/key_manager/regs/km_mailbox_sep.rdl:279-332``), and the
+                  CPU restore equals the value before the run. CTRL-DMA-KM-MBOX-WR-LIVE
+                  fails the leaf unless the written value differs from the value
+                  before, so a dropped write cannot pass. The read leg copies the
+                  word to a destination staged at its complement, and the
+                  destination equals the value the CPU read before the GO; the
+                  CPU first changes the word, and CTRL-DMA-KM-MBOX-RD-LIVE fails
+                  the leaf unless that value differs from the reset value 0.
+                  On each leg the DMA master tap shows the AW or AR at the
+                  ``SEP_IRQ_ENABLE`` address.
 * CHK-DMA-FILT-RANGE every outbound filter entry of the out_setup and stack
                   legs is programmed as [a, a + 7] with a 8-byte aligned and
                   allow_burst 0, so START and END share one 8-byte granule and
@@ -108,11 +126,6 @@ and W beats before and after the first error reply, the DMA master requests,
 W beats and B responses of the leg, STATUS, ERROR_CODE and the destination
 words of the read leg. STATUS and ERROR_CODE are graded by ``CHK-DMA-PAIR``; no
 open specification question.
-
-OBS-DMA-KM-MBOX-ACCESS logs a DMA write and a DMA read of the Key Manager
-mailbox ``SEP_IRQ_ENABLE`` word (end state, interrupt, ERROR_CODE and the
-word before, written, read back and restored, or the CPU value and the copied
-value); no text states the DMA access policy of the mailbox.
 
 One line grades nothing. INFO-DMA-RESP-USER gives, per leg that the SMU port
 answers (``out_ap``, ``ap_r``, ``stee_w``, ``stee_r``, ``out_smu``), the B and R
@@ -281,6 +294,7 @@ FILT_IN0_CFG = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_AD
 # The not-connected targets of the firmware (ROM_BASE, DMA_CSR_WORD).
 NC_ROM = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 NC_DMA_CSR = SECURE_DMA.addr("ENABLED_MEMORY_RANGE_LIMIT")
+KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_ADDR")
 IRQ_DONE = agg_from_pic(PIC_DMA_DONE)
 IRQ_ERROR = agg_from_pic(PIC_DMA_ERROR)
 # STEE output remap (generated map; the region span is the one of the AP
@@ -575,6 +589,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         "CHK-DMA-FILT-WR",
         "CHK-DMA-FILT-RANGE",
         "CHK-DMA-KM-SRC",
+        "CHK-DMA-KM-MBOX",
     )
 
     def build_phase(self) -> None:
@@ -1621,7 +1636,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             leg_i = self._leg_index({**names, **logged, **km_mbox, "km_src": "nc_km_src"}[tgt])
             end = {0: "done", 1: "error", 2: "timeout"}[r["end"]]
             if tgt in km_mbox:
-                self._obs_km_mbox(leg_i, tgt, r, end)
+                self._chk_km_mbox(leg_i, tgt, r, end)
                 km_mbox_seen.add(tgt)
                 continue
             if tgt == "km_src":
@@ -1729,7 +1744,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         assert km_seen, "CHK-DMA-KM-SRC FAIL: no km_src record"
         assert km_mbox_seen == set(km_mbox), (
-            f"OBS-DMA-KM-MBOX-ACCESS: records for {sorted(km_mbox_seen)}, expected {sorted(km_mbox)}"
+            f"CHK-DMA-KM-MBOX FAIL: records for {sorted(km_mbox_seen)}, expected {sorted(km_mbox)}"
         )
         self.logger.info("INFO-STEP not-connected: %d graded runs", graded)
 
@@ -1758,27 +1773,60 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("nc_km_src")
 
-    def _obs_km_mbox(self, leg_i: int, tgt: str, r: dict, end: str) -> None:
-        """OBS-DMA-KM-MBOX-ACCESS: a DMA write or read of the mailbox SEP_IRQ_ENABLE word."""
+    def _chk_km_mbox(self, leg_i: int, tgt: str, r: dict, end: str) -> None:
+        """CHK-DMA-KM-MBOX: a DMA write or read of the mailbox SEP_IRQ_ENABLE word answers OKAY.
+
+        The DMA reaches ``sep_crypto``, which holds the Key Manager mailbox
+        (hw/sys/sep/doc/fabric.adoc:91, figure sep-axi-connectivity at
+        fabric.adoc:101), so each run ends DONE with no error and a DMA
+        interrupt. Fields [4:0] of SEP_IRQ_ENABLE are ``sw = rw``
+        (hw/ip/key_manager/regs/km_mailbox_sep.rdl:279-332): the write leg reads
+        back the written value and the restore gives the value before; the read
+        leg copies the CPU value into a destination staged at its complement;
+        the firmware first changes the word, so that value differs from the
+        reset value 0.
+        The DMA master tap shows the leg's AW (write) or AR (read) at the
+        SEP_IRQ_ENABLE address, so a copy from another word cannot pass.
+        """
         _t_go, t_irq = self._go_and_irq(leg_i)
+        leg = tgt[3:]
+        ch = "aw" if tgt == "km_wr" else "ar"
+        at_word = [b for b in getattr(self._dma_ev(leg_i), ch) if b.addr == KM_MBOX_IRQ_ENABLE]
         if tgt == "km_wr":
             vals = (
                 f"irq_status=0x{r['irq_status']:08x} value_before=0x{r['before']:08x} "
                 f"value_written=0x{r['written']:08x} readback=0x{r['readback']:08x} "
                 f"restored=0x{r['restored']:08x}"
             )
+            # A written value equal to the value before passes a dropped write.
+            if r["written"] == r["before"]:
+                msg = f"CTRL-MISSING DMA-KM-MBOX-WR-LIVE: {vals}; expected written != before"
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            self.logger.info("CTRL-DMA-KM-MBOX-WR-LIVE seen: %s", vals)
+            data_ok = r["readback"] == r["written"] and r["restored"] == r["before"]
+            expect = "readback equal to the written value and restored equal to the value before"
         else:
             vals = f"cpu_value=0x{r['src_v']:08x} dst_value=0x{r['dst']:08x}"
-        self.logger.info(
-            "OBS-DMA-KM-MBOX-ACCESS leg=%s word=SEP_IRQ_ENABLE end=%s irq=%d dma_status=0x%08x "
-            "error_code=0x%08x %s",
-            tgt[3:],
-            end,
-            int(t_irq is not None),
-            r["st"],
-            r["ec"],
-            vals,
+            # A copy of the reset value 0 also passes a read answered by a zero hole.
+            if r["src_v"] == 0:
+                msg = f"CTRL-MISSING DMA-KM-MBOX-RD-LIVE: {vals}; expected cpu_value != 0"
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            self.logger.info("CTRL-DMA-KM-MBOX-RD-LIVE seen: %s", vals)
+            data_ok = r["dst"] == r["src_v"]
+            expect = "the destination equal to the CPU read of SEP_IRQ_ENABLE"
+        line = (
+            f"leg={leg} word=SEP_IRQ_ENABLE end={end} irq={int(t_irq is not None)} "
+            f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x} {vals} "
+            f"dma_{ch}_at_word={len(at_word)}"
         )
+        ok = end == "done" and t_irq is not None and self._done_ok(r) and data_ok and at_word
+        assert ok, (
+            f"CHK-DMA-KM-MBOX FAIL: {line}; expected DONE with no error, a DMA interrupt, "
+            f"a DMA {ch.upper()} at 0x{KM_MBOX_IRQ_ENABLE:08x} and {expect}"
+        )
+        self.logger.info("CHK-DMA-KM-MBOX PASS: %s", line)
         self._recovery_after(f"nc_{tgt}")
 
     def _chk_pool(self, leg_i: int, r: dict, end: str, t_go: int) -> None:
