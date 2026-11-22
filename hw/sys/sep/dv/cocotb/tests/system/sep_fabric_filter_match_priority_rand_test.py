@@ -40,14 +40,16 @@ Legs:
 * leg 2, source ID: exact, mismatch, wildcard, fall-through and upper AxUSER
   bits inbound; OTHERS against the AP and STEE remaps; on the SMU aperture
   outbound, two wildcard probes with distinct LSU AxUSER values read SEP's
-  source ID off PR-OUT (graded as not OTHERS and one value for both, logged
-  as OBS-FILT-SRC-ID: no specification gives the number), and the exact and
+  source ID off PR-OUT (graded as one value for both and equal to SEP's ID,
+  0xF, ``doc/integrator/src/smu-composition.adoc`` SEP row, with the reserved
+  AxUSER[11:4] 0, ``smu-composition.adoc:205-206``: CHK-FILT-SRC-ID),
+  and the exact and
   mismatch cells then take that ID as stimulus, so they grade that the
   outbound filter matches ``src_id`` against the replaced AxUSER[3:0];
 * leg 4, granule: seven (granule, shape, instance) cells probed at the widened
   edges.
 
-Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
+Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CHK-FILT-SRC-ID, CTRL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-IN,
 CHK-RESET-DENY-ARMED, CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE,
 CHK-FILT-GROUP. CHK-RESET-DENY-IN: in the reset state, every inbound probe of
@@ -243,6 +245,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         "CHK-GRANULE",
         "CHK-FILT-GROUP",
         "CHK-RESET-DENY-SI",
+        "CHK-FILT-SRC-ID",
     )
 
     # ------------------------------------------------------------------
@@ -1357,9 +1360,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 await self._src_pair("out", p, p, bad, good, "mismatch", s)
                 await self._src_pair("out", p, p, good, bad, "wildcard", 0)
         # Outbound exact and mismatch on the SMU aperture: the SMU path replaces the LSU
-        # AxUSER with SEP's source ID, which has no stated number. Wildcard probes
-        # with two distinct LSU AxUSER values read it off PR-OUT; the grade is not
-        # OTHERS and one value for both (SepSrcIdGrade). The exact and mismatch
+        # AxUSER with SEP's source ID. Wildcard probes with two distinct LSU
+        # AxUSER values read it off PR-OUT; the grade is 0xF and one value for
+        # both, with AxUSER[11:4] 0 (SepSrcIdGrade). The exact and mismatch
         # cells take the read ID as stimulus and an issued AxUSER whose [3:0]
         # differs from it, so a filter that matches the issued AxUSER fails them.
         users = draw_src_users(self.rng)
@@ -1385,7 +1388,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 )
         why = grade.finish(min_nonzero_issued=2)
         assert why is None, f"CHK-FILTER-SRC FAIL: smu src_id {why}"
-        self.logger.info("%s", grade.obs_line())
+        self.logger.info("%s", grade.chk_line())
         self.logger.info("CHK-FILTER-SRC PASS: inst=out class=smu_src_id %s", grade.summary())
         sep = grade.value()
         self.sep_id = sep
