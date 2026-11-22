@@ -79,9 +79,12 @@ Checkers:
                    after the window, and REPCNT_TOTAL_FAILS does not increase
                    across the window: no new repetition failure while the
                    tester is disabled (entropy_source.rdl:352, :820-826).
+                   Control CTRL-HT-ENABLE-REP-LIVE: after the window, ENABLE = 7
+                   on the same stuck1 stream sets that bit and raises that
+                   total within REPETITION_LIMIT + 129 words.
                    INFO-HT-REPCOUNT-AFTER logs the cleared
                    value: graded by CHK-HT-ENABLE; no open specification
-                   question. No enabled control runs: no
+                   question. No count is graded past REPETITION_LIMIT: no
                    text states whether the count restarts at a failure while
                    the tester stays enabled.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
@@ -277,7 +280,8 @@ MKV_LO_TRIP = 1
 SWITCH_WORDS = 4  # words of a pattern change with every tester off
 
 REPCOUNT_PRE = 100  # REPETITION_TEST_COUNT value that shows a live run
-REPCOUNT_PRE_WORDS = 128 + REPCOUNT_PRE
+REP_WAIT_SLACK = 128  # words past a repetition count that a polled wait allows
+REPCOUNT_PRE_WORDS = REP_WAIT_SLACK + REPCOUNT_PRE
 PRESHA_PUSHES = 64
 PRESHA_TAIL = 4  # input words past PRESHA_PUSHES, so the trace ends after a quiet clock
 DRAIN_POPS = 160
@@ -1120,7 +1124,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         """Stuck1 on all lanes, REPETITION_TEST_COUNT >= 100, then ENABLE = 6.
 
         The returned dict holds HEALTH_TEST_STATUS bit 0 and REPCNT_TOTAL_FAILS
-        before the write, after the write with bit 0 cleared, and after the window.
+        before the write, after the write with bit 0 cleared, and after the window,
+        and the result of CTRL-HT-ENABLE-REP-LIVE.
         """
         w = RESET_WINDOW
         await self._start(w)
@@ -1158,7 +1163,35 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         top["rep_status_post"], top["rep_total_post"] = await self._rep_rd()
         close_graded_window(self.logger)
         self.chk.info("HT-REPCOUNT-AFTER", value=after, before=before, chk="CHK-HT-ENABLE")
+        top["rep_live"] = int(await self._rep_live(top["rep_total_post"]))
         return before, after, top
+
+    async def _rep_live(self, total_off: int) -> bool:
+        """CTRL-HT-ENABLE-REP-LIVE: ENABLE = 7 on the running stuck1 stream sets
+        HEALTH_TEST_STATUS bit 0 and raises REPCNT_TOTAL_FAILS above ``total_off``."""
+        await self._ht_ctrl(enable=7)
+        v = await self._rd(A_HT_CTRL)
+        enable_rb = (v & M_HT_ENABLE) >> P_HT_ENABLE
+        limit = (v & M_REP_LIMIT) >> P_REP_LIMIT
+        bound = self._word_bound(REP_WAIT_SLACK + limit + 1, 0)
+        t0 = self._now()
+        status, total = 0, total_off
+        while self._now() - t0 <= bound:
+            status, total = await self._rep_rd()
+            if status and total > total_off:
+                break
+        count = (await self._rd(A_REP_COUNT)) & M_REP_COUNT
+        return self.chk.ctrl(
+            "HT-ENABLE-REP-LIVE",
+            enable_rb == 7 and status == 1 and total > total_off,
+            enable=enable_rb,
+            rep_limit=limit,
+            status_bit0=status,
+            total=total,
+            total_off=total_off,
+            count=count,
+            bound=bound,
+        )
 
     def _grade_rep_enable(
         self,
