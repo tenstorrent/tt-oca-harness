@@ -20,13 +20,13 @@ HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
                    0x0000, the high-mode arm value (rdl:805: "Unsupported values select
                    REPCNT_HI"; rdl:811). The entry holds 0xFFFF, so a dropped write
                    fails. Which counter the watermark then tracks is not graded;
-                   OBS-HT-WM-SOURCE logs it.
-  OBS-HT-UNSUP-SEL the HT_WATERMARK_NUM readback after that write. Logged, not graded:
+                   INFO-HT-WM-SOURCE logs it.
+  INFO-HT-UNSUP-SEL the HT_WATERMARK_NUM readback after that write. Logged, not graded:
                    no text states the stored or read value of an unsupported selector.
   CHK-LOW-FALL     a low-mode watermark arms 0xFFFF and falls from it once health
                    tests run.
   CHK-RANDCFG      every encoding of enum WATERMARK_TEST (rdl:790-796) armed to its value.
-  OBS-HT-WM-SOURCE for each of the five selectors and the unsupported value: the
+  INFO-HT-WM-SOURCE for each of the five selectors and the unsupported value: the
                    selector readback, the arm value, the noise pattern, the word
                    count, the HT_WATERMARK value after that pattern ran with the
                    health tests on, and moved (watermark differs from the arm
@@ -185,7 +185,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         await ht.write_unsupported(sel)
         got_sel = await ht.read_num()
         self.logger.info(
-            "OBS-HT-UNSUP-SEL: wrote 0x%x, HT_WATERMARK_NUM=0x%x (no stated readback)",
+            "INFO-HT-UNSUP-SEL: wrote 0x%x, HT_WATERMARK_NUM=0x%x (no stated readback)",
             sel,
             got_sel,
         )
@@ -236,7 +236,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         )
 
     async def _observe_source(self, ht: SepHtWatermark, sel: int) -> None:
-        """OBS-HT-WM-SOURCE: HT_WATERMARK after the fixed pattern of selector ``sel``.
+        """INFO-HT-WM-SOURCE: HT_WATERMARK after the fixed pattern of selector ``sel``.
 
         An unsupported ``sel`` runs the REPCNT_HI pattern and word count. The leg
         grades nothing: a selector that does not settle to the written value
@@ -272,7 +272,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         finally:
             await noise.stop()
         await ht.hold_health_tests_off()
-        self.chk.obs(
+        self.chk.info(
             "HT-WM-SOURCE",
             sel=f"0x{sel:x}",
             sel_rb=f"0x{sel_rb:x}",

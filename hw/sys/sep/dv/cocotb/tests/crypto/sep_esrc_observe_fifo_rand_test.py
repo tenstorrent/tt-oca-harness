@@ -72,8 +72,8 @@ Checkers:
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
                     after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
-                    stays 0. That write must get a B response of any code; no text
-                    states the code, so it is logged as ``OBS-LOCK0-RESP``.
+                    stays 0. That write must get a B response of any code; the
+                    code is logged as ``INFO-LOCK0-RESP`` and is not graded.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -119,10 +119,10 @@ Checkers:
   CHK-OBS-BIW-DRAIN same drain: the BIW observe FIFO reads LEVEL 64 before the first
                     pop and reads LEVEL 0 after exactly 64 pops (architecture.adoc:189,
                     :146: the same 64-entry FIFO as the output FIFO).
-Logged only: ``OBS-OBS-EMPTY-READ`` logs, as the last action of the leaf and for both
+Logged only: ``INFO-OBS-EMPTY-READ`` logs, as the last action of the leaf and for both
 observe FIFOs at LEVEL 0 with capture off, RDATA and LEVEL, WPTR and RPTR before and
 after one RDATA read (no text states the result of a read of an empty observe FIFO).
-``OBS-FAST``
+``INFO-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
 ``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-LANESEL-SAME`` logs
 LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
@@ -491,7 +491,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             await self._lock0(fifo, plan.z_lock[2 * i + 1], t_cap)
         await self._seq_leg()
         close_graded_window(self.logger)
-        await self._empty_read_obs()
+        await self._empty_read_info()
         self._release_stuck()
         await self.noise.stop()
         self.chk.finish()
@@ -571,8 +571,8 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         v = await self._rd(addr)
         return _get(v, reg, "LEVEL"), _get(v, reg, "WPTR"), _get(v, reg, "RPTR")
 
-    async def _empty_read_obs(self) -> None:
-        """OBS-OBS-EMPTY-READ: one RDATA read of each observe FIFO at LEVEL 0, capture off."""
+    async def _empty_read_info(self) -> None:
+        """INFO-OBS-EMPTY-READ: one RDATA read of each observe FIFO at LEVEL 0, capture off."""
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         for fifo in ("noise", "biw"):
@@ -580,7 +580,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             l0, w0, r0 = await self._status_fields(fifo)
             data = await self._pop(fifo)
             l1, w1, r1 = await self._status_fields(fifo)
-            self.chk.obs(
+            self.chk.info(
                 "OBS-EMPTY-READ",
                 fifo=fifo,
                 rdata=f"0x{data:08x}",
@@ -727,9 +727,9 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             cur = v
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, cur))
         close_graded_window(self.logger)
-        await self._lane_same_obs()
+        await self._lane_same_info()
 
-    async def _lane_same_obs(self) -> None:
+    async def _lane_same_info(self) -> None:
         """LEVEL around a LANE_SEL write that keeps lane 0 selected."""
         sel = self.plan.same_sel
         await self._pop_to_empty("noise")
@@ -1184,7 +1184,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         else:
             resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
-        self.logger.info("OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
+        self.chk.info("LOCK0-RESP", fifo=fifo, b=resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:
@@ -1223,7 +1223,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
 
     async def _seq_leg(self) -> None:
         """CHK-OBS-SEQ and CHK-SYNC-DEPTH at a sample period of 8 x clk_i + 2 ps, then
-        OBS-FAST at 2 x clk_i + 2 ps, then CHK-OBS-OVF-KEEP at 8 x clk_i + 2 ps."""
+        INFO-FAST at 2 x clk_i + 2 ps, then CHK-OBS-OVF-KEEP at 8 x clk_i + 2 ps."""
         plan = self.plan
         lane = plan.seq_lane
         t = self._clk_ps()
@@ -1257,7 +1257,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._release_stuck()
         got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
         lost, rep = _indel_align(got, plan.fast)
-        self.chk.obs(
+        self.chk.info(
             "FAST",
             lane=lane,
             period_ps=fast["period_ps"],

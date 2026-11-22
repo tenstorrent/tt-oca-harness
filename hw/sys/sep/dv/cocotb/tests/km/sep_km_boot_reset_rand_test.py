@@ -124,7 +124,7 @@ Checks:
                   ports behind it and pairs each response with a request after
                   the release
 
-Observations: OBS-RST-AXI-EXT-RSP (per AXI reset point, with its
+Logged, not graded: INFO-RST-AXI-EXT-RSP (per AXI reset point, with its
 CHK-RST-AXI-NORESP line: the same R and B pairing after the release on the
 crypto engine ports 4-7 and 9, which lead outside the KM
 (``architecture.adoc:180-182`` gives no completion or cancellation guarantee
@@ -231,7 +231,7 @@ AXI_WARM_TRIES = 3  # warm resets per warm point: one to measure, then aimed one
 # the mailbox): 0 KPV, 1 KMCSR, 2 DRBG sampler, 3 mailbox. The other ports lead
 # to slaves outside the KM: 4-7 and 9 the crypto engines. The warm reset is not
 # a completion or cancellation guarantee for an external transaction
-# (architecture.adoc:180-182), so those ports are logged by OBS-RST-AXI-EXT-RSP
+# (architecture.adoc:180-182), so those ports are logged by INFO-RST-AXI-EXT-RSP
 # and not graded. Port 8 combines the KM-internal OTP error slave and the
 # forwarded eFuse path behind the OTP demux (key_manager.sv:379,400), which the
 # tap cannot separate, so it is logged with them and not graded.
@@ -342,7 +342,7 @@ class _NoResp:
     end only (the crossbar routes a W to a slave no earlier than its AW, so a
     window end between a W and its AW does not occur on this bench): a graded port with more W than AW handshakes since the release
     is in ``w_unpaired``, write data with no address since the release. The
-    CHK is logged then, with OBS-RST-AXI-EXT-RSP, which logs the same R and B
+    CHK is logged then, with INFO-RST-AXI-EXT-RSP, which logs the same R and B
     pairing on the external ports (KM_PORTS_EXT) and grades nothing. An
     unknown bit on an external port is not counted and sets that port in
     ``x_ports``. A paired response on a graded port whose valid and handshake
@@ -411,8 +411,8 @@ class _NoResp:
         }
 
     def log_ext(self) -> None:
-        """OBS-RST-AXI-EXT-RSP: the R and B pairing on the external ports; grades nothing."""
-        self.test.chk.obs(
+        """INFO-RST-AXI-EXT-RSP: the R and B pairing on the external ports; grades nothing."""
+        self.test.chk.info(
             "RST-AXI-EXT-RSP",
             point=self.point,
             ports=f"0x{KM_PORTS_EXT:03x}",

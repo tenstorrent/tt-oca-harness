@@ -11,8 +11,8 @@
 
 module prim_flop_4sync_s (
   input clk_i,       // Destination-domain clock.
-  d_i,               // Async data to synchronize.
-  set_ni,            // Async active-low set; forces q_o to 1.
+  input d_i,         // Async data to synchronize.
+  input set_ni,      // Async active-low set; forces q_o to 1.
   output wire q_o    // Synchronized data.
 );
   logic q_d_inv, q_dd_inv, q_ddd_inv, q_dddd_inv;

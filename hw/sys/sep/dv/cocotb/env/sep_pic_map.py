@@ -158,9 +158,9 @@ def idle_unstated_values(vec: int | None = None, words=None) -> dict[str, int | 
 
 
 def idle_unstated_line(vec: int | None = None, words=None) -> str:
-    """``OBS-IDLE-UNSTATED LOG src13=a src15=f ...`` for the log."""
+    """``INFO-IDLE-UNSTATED LOG src13=a src15=f ...`` for the log."""
     vals = idle_unstated_values(vec, words)
-    return "OBS-IDLE-UNSTATED LOG " + " ".join(f"{k}={v}" for k, v in vals.items())
+    return "INFO-IDLE-UNSTATED LOG " + " ".join(f"{k}={v}" for k, v in vals.items())
 
 
 # ---- priority model (el2_pic.adoc, meipl and mpiccfg) ----

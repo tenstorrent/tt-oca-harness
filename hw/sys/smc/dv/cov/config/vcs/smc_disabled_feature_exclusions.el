@@ -309,7 +309,6 @@ CHECKSUM: "2585843499 1130749731"
 ANNOTATION: "SMC-C10-VALID-WITH-COMMAND: efuse_program_interface sets the request's program command and its valid on the same cycle and clears both together to the all-zero default, and the read and sense requesters issue only READ, so efuse_interface_shim never sees a program command without valid."
 ANNOTATION: "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns SLVERR and the sense status stays zero; the model's injected program failures corrupt the data, which the read-back mismatch term still grades. A bank model or macro that can return SLVERR retires the class."
 MODULE: efuse_interface_shim
-Condition 4 "1965672997" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
 Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
 
 CHECKSUM: "1528449775 3798676833"

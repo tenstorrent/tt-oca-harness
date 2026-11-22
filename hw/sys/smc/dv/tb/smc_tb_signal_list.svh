@@ -631,6 +631,7 @@
 `SMC_TB_IN(logic, tb_efuse_read_state_inject_en)
 `SMC_TB_IN(logic [1:0], tb_efuse_read_state_inject)
 `SMC_TB_IN(logic [1:0], tb_efuse_read_error_inject)
+`SMC_TB_IN(logic, tb_efuse_write_pslverr_inject)
 `SMC_TB_OUT(logic [1:0], tb_efuse_read_state)
 `SMC_TB_OUT(logic, tb_efuse_read_req_valid)
 `SMC_TB_OUT(logic, tb_efuse_read_busy)

@@ -244,12 +244,12 @@ class SepAxiStrobeWindow:
         text states that a memory read returns 0 and a write is ignored; during
         the post-reset internal wipe the result is accepted as logged only (OTBN
         wipe-state memory access exception, docs/test_contracts/smoke_uvm.adoc).
-        The responses and the readback are logged on OBS-OTBN-MEM-BUSY-ACCESS.
+        The responses and the readback are logged on INFO-OTBN-MEM-BUSY-ACCESS.
         """
         wr_resp = await self._wr(p.addr, p.value, tolerate=True)
         rd_resp, got = await self._rd(p.addr, ungraded=True)
         self.test.logger.info(
-            "OBS-OTBN-MEM-BUSY-ACCESS status=0x%08x window=%s addr=0x%08x wr_resp=%d "
+            "INFO-OTBN-MEM-BUSY-ACCESS status=0x%08x window=%s addr=0x%08x wr_resp=%d "
             "rd_resp=%d written=0x%08x readback=0x%08x",
             self.otbn_status,
             p.name,
