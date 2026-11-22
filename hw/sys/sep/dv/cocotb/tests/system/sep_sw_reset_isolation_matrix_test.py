@@ -145,10 +145,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     Stage response codes come from the slave-side tap; read
                     data from the host read. The other domains log
                     ``INFO-ISO-DRAIN-RESP``.
-  CHK-ISO-DRAIN-POST HMAC, KMAC, TRNG: the POST and order terms of
-                    CHK-ISO-DRAIN-RESP, which hold on every host path. The
-                    Adams Bridge pass sends no host transaction before the
-                    isolated window, so it is never graded (``abr=0``). A
+  CHK-ISO-DRAIN-POST HMAC, KMAC, Adams Bridge, TRNG: the POST and order terms
+                    of CHK-ISO-DRAIN-RESP, which hold on every host path. A
                     pass with no POST transaction logs
                     ``INFO-ISO-DRAIN-POST``; reach depends on the seed, and
                     ``INFO-ISO-DRAIN-POST-REACH`` counts the graded passes
