@@ -120,8 +120,6 @@ VISIBLE_ARMS = ("write", "read", "series_read")
 VISIBLE_RESET_TCK = 7
 # Runs the response-reset legs when set.
 VISIBLE_RESET_KNOB = "DTP_J2A_VISIBLE_RESPONSE_RESET"
-# Runs the flush-edge read step of the series-corner scenario when set.
-FLUSH_EDGE_KNOB = "DTP_J2A_FLUSH_EDGE_READ"
 # Negative validation: flips bit 0 of every CHK-J2A-ORPHAN-* expectation.
 ORPHAN_NEGATIVE_KNOB = "DTP_J2A_ORPHAN_NEGATIVE"
 # Phases of the ACLK-side clear sequence a system reset is placed in while the
@@ -3606,12 +3604,11 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             await self._series_corner_sticky_status(target, target_idx, beats, rng)
         self.log_step(3, "Interleaved beats across the three bridges")
         await self._series_corner_interleaved(beats, rng)
-        if OcahKnobs.is_set(FLUSH_EDGE_KNOB):
-            for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
-                await self._series_flush_fill(target, target_idx, rng)
-            for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
-                late = bool(((self.scenario_seed or 0) + target_idx) % 2)
-                await self._series_flush_edge_read(target, target_idx, rng, late=late)
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            await self._series_flush_fill(target, target_idx, rng)
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            late = bool(((self.scenario_seed or 0) + target_idx) % 2)
+            await self._series_flush_edge_read(target, target_idx, rng, late=late)
         await self._run_cdc_fifo_entry_sweep()
 
     async def _series_data_before_ctrl(self, rng: random.Random) -> None:

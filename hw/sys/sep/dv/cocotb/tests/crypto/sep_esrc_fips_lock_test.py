@@ -8,11 +8,16 @@ ring-osc enable/tune, every generator sample-clock divider, FIFO enable and chur
 alert threshold, debug-pin mux). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
 Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
-rst_ni does. For every H > 0 the RCT cutoff is checked against the RDL formula
+rst_ni does. The threshold sweep walks every MIN_ENTROPY_H code. For each of the
+255 codes H > 0 the RCT cutoff is checked against the RDL formula
 C = 1 + ceil(20 / H), and the APT cutoff against the SP 800-90B 4.4.2 binomial
 cutoff for the 1024-sample window with the same alpha = 2^-20 (SP 800-90B 4.4:
-alpha = 2^-20 is used in all the calculations of that section). At H = 0 neither
-cutoff has a stated value; the read is logged as OBS-REC-THRESH-H0 and not graded.
+alpha = 2^-20 is used in all the calculations of that section). Every written code,
+H = 0 included, must read back from MIN_ENTROPY_H before its thresholds are read. One
+CHK-REC-THRESH line per sweep counts the codes graded, the matches of each column
+and the readback matches. At H = 0
+neither cutoff has a stated value; the read is logged as INFO-REC-THRESH-H0 and
+not graded.
 Both observe-tap enables are writable before the lock and
 frozen after it: one tap is held at 1 and rejects a clear, the other is held
 at 0 and rejects a set (CHK-OBS-ENABLE-LOCKED). NOISE_OBS_CTRL.LANE_SEL stays
@@ -20,14 +25,26 @@ writable under the lock (CHK-OBS-LANE-SEL), and after rst_ni the tap held at 0
 can be set again (CHK-OBS-POST-UNLOCK). Health-test ENABLE
 stays 0 so this test does not trip the alert path.
 
+The lock leaves every INTR_* field writable (entropy_source.rdl FIPS_LOCK: only
+swwel fields lock). CHK-LOCK-INTR-CYCLE, under FIPS_LOCK = 1, for each of the
+eight sources with INTR_ENABLE set to that source only: INTR_ENABLE reads back
+as that source alone, PIC source 16 (vector bit 15 of
+sep_internal_interrupts_probe_o) reads 0, an INTR_TEST pulse sets the status
+bit, a W1C clears it, PIC source 16 reads 0 after the clear, and the bit reads 0
+again RELATCH_CLKS clocks later. For each source, PIC source 16 reads 1 while
+the bit is set with its enable set (interrupts.adoc:23, :109-111; each
+INTR_ENABLE field "Enables the <cause> interrupt", entropy_source.rdl:173-208).
+Control: CTRL-LOCK-INTR-IDLE, the status bit reads 0
+RELATCH_CLKS clocks after a W1C, before the pulse, so no live cause sets it again.
+
 The FIPS_LOCK write and the pre-lock reserved CTRL write grade their OKAY B
 response in the same CHK line. The observe-tap writes before the lock and the
 post-unlock tap set grade only that a B response arrived, with the code on the
 same line: no TT text states it. A write the
 lock refuses has no stated B code: its CHK line grades only that a B response
 arrived, so a write that never reached the DUT fails, and logs the code as
-OBS-POST-LOCK-RESP, OBS-ENABLE-LOCKED-RESP or OBS-CTRL-RSVD-LOCKED-RESP.
-The reserved bits of each graded FIPS_LOCK read are logged as OBS-FIPS-LOCK-RSVD
+INFO-POST-LOCK-RESP, INFO-ENABLE-LOCKED-RESP or INFO-CTRL-RSVD-LOCKED-RESP.
+The reserved bits of each graded FIPS_LOCK read are logged as INFO-FIPS-LOCK-RSVD
 (no stated reset value).
 CHK-RANDCFG grades the (register, field) pairs that the walked targets cover,
 taken from their bus addresses and compare masks, against every field the RDL
@@ -44,16 +61,21 @@ Scope: one field per locked class, not every swwel bit.
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-from cocotb.triggers import NextTimeStep
+from cocotb.triggers import ClockCycles, NextTimeStep
 from env.sep_fabric_common import RESP_NAME, RESP_OKAY
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE
+from seq_lib.sep_esrc_alert_seq import INTR_SOURCES, IRQ_AGG_IDX
+from seq_lib.sep_esrc_bringup_seq import ESRC_INTR_ENABLE, ESRC_INTR_STATUS, ESRC_INTR_TEST
 from seq_lib.sep_esrc_fips_lock_seq import (
     APT_WINDOW,
     CTRL_RSVD0_BIT,
+    ESRC_MIN_ENTROPY_H,
     LOCK_BIT,
+    MIN_ENTROPY_H_MASK,
     SepEsrcFipsLock,
     SepEsrcFipsLockCfg,
     apt_limit_golden,
@@ -64,6 +86,10 @@ from seq_lib.sep_esrc_fips_lock_seq import (
 
 TEST = "sep_esrc_fips_lock_test"
 WORD_MASK = 0xFFFF_FFFF
+# Clocks from the W1C read to the re-read of CHK-LOCK-INTR-CYCLE: a bound in
+# which a live cause would set the bit again. INTR_TEST is a single pulse.
+RELATCH_CLKS = 64
+ENABLE_MASK = ENTROPY_SOURCE.mask("INTR_ENABLE")
 
 
 def _resp(code: int | None) -> str:
@@ -94,6 +120,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
         "CHK-POST-LOCK",
         "CHK-OBS-ENABLE-LOCKED",
         "CHK-OBS-LANE-SEL",
+        "CHK-LOCK-INTR-CYCLE",
         "CHK-RST-NI",
         "CHK-POST-UNLOCK",
         "CHK-OBS-POST-UNLOCK",
@@ -111,9 +138,9 @@ class sep_esrc_fips_lock_test(sep_base_test):
 
     async def _read_lock_word(self, esrc: SepEsrcFipsLock, when: str) -> int:
         """Read FIPS_LOCK; log its reserved bits, which have no reset value in the
-        register table, as OBS-FIPS-LOCK-RSVD."""
+        register table, as INFO-FIPS-LOCK-RSVD."""
         word = await esrc.read_lock_word()
-        self.logger.info("OBS-FIPS-LOCK-RSVD: %s rsvd=0x%08x", when, word & ~LOCK_BIT & WORD_MASK)
+        self.logger.info("INFO-FIPS-LOCK-RSVD: %s rsvd=0x%08x", when, word & ~LOCK_BIT & WORD_MASK)
         return word
 
     async def _check_pre(self, esrc: SepEsrcFipsLock, target) -> None:
@@ -132,7 +159,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
         self._walked.append(target)
         resp = await esrc.write_resp(target.addr, target.poke, locked=True)
         got = await esrc.read(target.addr)
-        self.logger.info("OBS-POST-LOCK-RESP: %s B=%s", target.name, _resp(resp))
+        self.logger.info("INFO-POST-LOCK-RESP: %s B=%s chk=CHK-POST-LOCK", target.name, _resp(resp))
         self._grade(
             "CHK-POST-LOCK",
             _b_seen(resp) and (got & target.mask) == (target.pre & target.mask),
@@ -147,15 +174,23 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # The RCT cutoff golden is the RCT_LIMIT field formula, the APT cutoff
         # golden the 4.4.2 binomial cutoff for W = 1024 (apt_limit_golden);
         # neither comes from the design table. At H = 0 neither field has a
-        # stated value, so that point is logged as OBS and graded by nothing.
+        # stated value, so that point is logged as INFO-REC-THRESH-H0 and graded by
+        # nothing.
+        # The H field sits at bit 0, so its mask is the count of non-zero codes.
+        graded = rct_ok = apt_ok = h_ok = 0
+        bad: list[str] = []
         for h in cfg.rec_thresh_h:
             await esrc.write_min_entropy_h(h)
+            h_rb = await esrc.read(ESRC_MIN_ENTROPY_H) & MIN_ENTROPY_H_MASK
+            h_ok += h_rb == h
+            if h_rb != h:
+                bad.append(f"0x{h:02x}:H={h_rb:#04x}")
             rct, apt = await esrc.read_recommended_thresholds()
             want = rct_limit_golden(h)
             want_apt = apt_limit_golden(h)
             if want is None:
                 self.logger.info(
-                    "OBS-REC-THRESH-H0: %s MIN_ENTROPY_H=0x%02x RCT_LIMIT=%d APT_LIMIT=%d "
+                    "INFO-REC-THRESH-H0: %s MIN_ENTROPY_H=0x%02x RCT_LIMIT=%d APT_LIMIT=%d "
                     "(no stated RCT or APT value at H = 0)",
                     label,
                     h,
@@ -163,12 +198,68 @@ class sep_esrc_fips_lock_test(sep_base_test):
                     apt,
                 )
                 continue
+            graded += 1
+            rct_ok += rct == want
+            apt_ok += apt == want_apt
+            if rct != want or apt != want_apt:
+                bad.append(f"0x{h:02x}:RCT={rct}/{want},APT={apt}/{want_apt}")
+        self._grade(
+            "CHK-REC-THRESH",
+            graded == rct_ok == apt_ok == MIN_ENTROPY_H_MASK and h_ok == len(cfg.rec_thresh_h),
+            f"{label} graded {graded} of {MIN_ENTROPY_H_MASK} non-zero MIN_ENTROPY_H codes; "
+            f"RCT_LIMIT match {rct_ok}, APT_LIMIT match {apt_ok}, window={APT_WINDOW}; "
+            f"min_entropy_h_readback_match {h_ok} of {len(cfg.rec_thresh_h)}; "
+            f"mismatch (code:read/golden) {bad}",
+        )
+
+    def _pic16(self) -> int:
+        """PIC source 16: vector bit 15 of the internal interrupt probe, X fails."""
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
+
+    async def _lock_intr_cycle(self, esrc: SepEsrcFipsLock) -> None:
+        """CTRL-LOCK-INTR-IDLE and CHK-LOCK-INTR-CYCLE per source."""
+        lock = _lock_of(await self._read_lock_word(esrc, "before the interrupt cycle"))
+        enable_before = await esrc.read(ESRC_INTR_ENABLE)
+        for name, bm in INTR_SOURCES:
+            # Only this source is enabled: with its bit clear no enabled bit is set.
+            await esrc.write(ESRC_INTR_ENABLE, bm)
+            en_rb = await esrc.read(ESRC_INTR_ENABLE) & ENABLE_MASK
+            await esrc.write(ESRC_INTR_STATUS, bm)
+            await ClockCycles(cocotb.top.clk_i, RELATCH_CLKS)
+            idle = await esrc.read(ESRC_INTR_STATUS)
             self._grade(
-                "CHK-REC-THRESH",
-                rct == want and apt == want_apt,
-                f"{label} MIN_ENTROPY_H=0x{h:02x} RCT_LIMIT={rct} "
-                f"golden={want} APT_LIMIT={apt} golden={want_apt} window={APT_WINDOW}",
+                "CTRL-LOCK-INTR-IDLE",
+                (idle & bm) == 0,
+                f"{name} INTR_STATUS=0x{idle:08x} {RELATCH_CLKS} clocks after a W1C, "
+                "before the pulse",
             )
+            pic_idle = self._pic16()
+            await esrc.write(ESRC_INTR_TEST, bm)
+            st_set = await esrc.read(ESRC_INTR_STATUS)
+            pic_set = self._pic16()
+            await esrc.write(ESRC_INTR_STATUS, bm)
+            st_clr = await esrc.read(ESRC_INTR_STATUS)
+            pic_clr = self._pic16()
+            await ClockCycles(cocotb.top.clk_i, RELATCH_CLKS)
+            st_late = await esrc.read(ESRC_INTR_STATUS)
+            self._grade(
+                "CHK-LOCK-INTR-CYCLE",
+                lock == 1
+                and en_rb == bm
+                and pic_idle == 0
+                and (st_set & bm) != 0
+                and (st_clr & bm) == 0
+                and pic_clr == 0
+                and (st_late & bm) == 0
+                and pic_set == 1,
+                f"{name} FIPS_LOCK.LOCK={lock} INTR_ENABLE=0x{en_rb:08x} want 0x{bm:08x}; "
+                f"PIC16 {pic_idle} before the pulse; "
+                f"INTR_STATUS=0x{st_set:08x} after INTR_TEST, 0x{st_clr:08x} after W1C, "
+                f"0x{st_late:08x} {RELATCH_CLKS} clocks later; PIC16 after W1C {pic_clr}; "
+                f"PIC16 while set {pic_set} want 1",
+            )
+        await esrc.write(ESRC_INTR_ENABLE, enable_before)
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -274,7 +365,9 @@ class sep_esrc_fips_lock_test(sep_base_test):
             resp = await esrc.write_obs(reg, held ^ 1, cfg.lane_post, locked=True)
             got, lane = await esrc.read_obs(reg)
             direction = "set" if held == 0 else "clear"
-            self.logger.info("OBS-ENABLE-LOCKED-RESP: %s B=%s", reg, _resp(resp))
+            self.logger.info(
+                "INFO-ENABLE-LOCKED-RESP: %s B=%s chk=CHK-OBS-ENABLE-LOCKED", reg, _resp(resp)
+            )
             self._grade(
                 "CHK-OBS-ENABLE-LOCKED",
                 _b_seen(resp) and got == held,
@@ -289,9 +382,11 @@ class sep_esrc_fips_lock_test(sep_base_test):
                     f"(pre-lock {cfg.lane_pre})",
                 )
 
+        await self._lock_intr_cycle(esrc)
+
         ctrl_before, resp, ctrl_after = await esrc.poke_reserved_ctrl_bit(locked=True)
         word = await self._read_lock_word(esrc, "after locked CTRL RSVD0 write")
-        self.logger.info("OBS-CTRL-RSVD-LOCKED-RESP: CTRL B=%s", _resp(resp))
+        self.logger.info("INFO-CTRL-RSVD-LOCKED-RESP: CTRL B=%s chk=CHK-CTRL-RSVD", _resp(resp))
         self._grade(
             "CHK-CTRL-RSVD",
             _b_seen(resp)

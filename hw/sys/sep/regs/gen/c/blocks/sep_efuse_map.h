@@ -706,7 +706,11 @@ extern "C" {
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_reset 0x0
 
 // addrmap - sep_efuse_map
-// Per-field write-lock and read-lock registers for the SEP eFuse map.
+// Shadow registers of the SEP eFuse fields and their per-field write-lock and
+// read-lock registers. The access properties of each field state the
+// software access to its shadow register when the field's locks are clear;
+// a set write lock, a set read lock or secure test mode further restricts
+// it as the LOCKS register describes.
 typedef struct __attribute__ ((__packed__)) {
     uint64_t LOCKS;
     uint32_t LOCKS_SPARE;

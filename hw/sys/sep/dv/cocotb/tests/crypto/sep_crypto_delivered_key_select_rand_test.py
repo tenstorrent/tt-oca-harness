@@ -11,7 +11,7 @@ Modifications; ``hw/sys/sep/doc/crypto.adoc``, Key Manager Key Delivery;
   * A supported key_length that disagrees gives a repeatable digest and no
     error; key_length 128 takes the top 128 bits of the delivered key. The
     digest is "wrong but repeatable" (hmac.adoc:54-56); whether it differs from
-    the digest of the matching key_length is logged only (OBS-KEYSEL-MISMATCH).
+    the digest of the matching key_length is logged only (INFO-KEYSEL-MISMATCH).
   * key_length = Key_None with hmac_en = 1 raises a configuration error at
     start and leaves DIGEST unchanged.
   * AES ignores the delivered key while CTRL_SHADOWED.sideload = 0 and reports
@@ -81,7 +81,7 @@ Checkers:
 The digest of a mismatched length above 128 bits has no stated value:
 ``hmac.adoc`` (OCAH Modifications) calls it "wrong but repeatable" but does not
 state the padding below the delivered key. Its compare with the matching-length
-digest and the decoy golden is logged as ``OBS-KEYSEL-MISMATCH``.
+digest and the decoy golden is logged as ``INFO-KEYSEL-MISMATCH``.
 No text states which key an HMAC run uses when CMD_ENGINE_SHRED of HMAC lands
 between hash_start and hash_process; that run is logged as
 ``OBS-KEYSEL-SHRED-MIDOP``.
@@ -591,7 +591,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
                 line["digest==golden_kh128"] = "na"
                 if runs:
                     g_decoy = hmac_golden(_sw_key_bytes(decoy[: keylen // 32]), self.plan.msg, sha)
-                    self.chk.obs(
+                    self.chk.info(
                         "KEYSEL-MISMATCH",
                         sha=sha,
                         keylen=keylen,
