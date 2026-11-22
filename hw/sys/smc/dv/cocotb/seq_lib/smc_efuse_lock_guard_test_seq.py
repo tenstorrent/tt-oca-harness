@@ -21,17 +21,15 @@ live control for the two that follow:
 1. **Unlocked.** A pattern is written into the field and read back exactly, so
    the field is demonstrably writable and readable before anything is locked.
 2. **Write-locked.** The field's write-lock bit is set in `LOCKS` and read
-   back, then a different pattern is written. The write may be refused or
-   ignored -- neither the RDL nor the architecture document fixes which, so the
-   response is recorded rather than asserted -- but the field has to still read
-   the pattern from step 1. That is the claim.
+   back, then a different pattern is written. The RDL (`LOCKS`) says the write
+   completes with SLVERR, so that response is asserted, and the field has to
+   still read the pattern from step 1.
 3. **Write-1-to-set.** `LOCKS` is written again with that bit clear. The RDL
    makes every lock `onwrite = woset`, so the bit has to stay set.
 4. **Read-locked.** The field's read-lock bit is set, and the field is read.
-   The architecture document states the permission (`lock[0] = 1` is
-   read-locked) but not the word a read-locked shadow register substitutes, so
-   the claim is non-disclosure: what comes back must not be the pattern the
-   field holds.
+   The RDL says the read completes with SLVERR and the word `0xBADCAB1E`, so
+   both are asserted, and what comes back must not be the pattern the field
+   holds.
 
 The fields are the first two SPARE entries and the OCCP transport timeout,
 whose locks the default image leaves clear -- the sequence reads `LOCKS` first
@@ -52,9 +50,12 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr, smc_efuse_map_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_efuse_vip_utils import efuse_preload_word_at
+from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA, efuse_preload_word_at
 
 LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+#: AXI response of a locked shadow access (smc_efuse_map.rdl, LOCKS).
+_RESP_SLVERR = 2
+_MASK32 = 0xFFFF_FFFF
 #: The LOCKS word the default eFuse image senses into the shadow register.
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
 
@@ -112,21 +113,33 @@ class smc_efuse_lock_guard_test_seq(SmcCsrSeq):
         self.locked_read_data: list[int] = []
 
     async def _locked_write(self, label: str, addr: int, data: int) -> int:
-        """A write the guard may refuse or ignore; the caller checks the state."""
-        item = SmcSysAxiItem(f"wr_{label}")
-        item.op = SmcSysAxiOp.WRITE
+        """A write the guard refuses with SLVERR; the caller checks the state."""
+        return await self.csr_write_expect_error(
+            label, addr, data, length=_WORD_BYTES, resp=_RESP_SLVERR
+        )
+
+    async def _locked_read(self, label: str, addr: int) -> int:
+        """A read the guard refuses with SLVERR and the word 0xBADCAB1E."""
+        item = SmcSysAxiItem(f"rd_{label}")
+        item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = _WORD_BYTES
-        item.wdata = data
         item.allow_error = True
+        item.expect_error = True
+        item.expected_resp = _RESP_SLVERR
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code is not None, (
-            f"{label}: the write-locked write got no response at all, so the guard "
-            f"wedged the bus instead of answering"
+        assert item.resp_code == _RESP_SLVERR, (
+            f"{label} @ 0x{addr:08x}: a read-locked read must complete with SLVERR, "
+            f"got resp={item.resp_code}"
         )
-        return item.resp_code
+        got = item.rdata & _MASK32
+        assert got == EFUSE_BLOCKED_READ_DATA, (
+            f"{label} @ 0x{addr:08x}: a read-locked read returns 0x{EFUSE_BLOCKED_READ_DATA:08x}, "
+            f"got 0x{got:08x}"
+        )
+        return item.rdata
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -189,9 +202,7 @@ class smc_efuse_lock_guard_test_seq(SmcCsrSeq):
             locks |= rd_lock
             await self.csr_write(f"{name}_RD_LOCK", LOCKS, locks, length=_WORD_BYTES)
             await self.csr_read(f"{name}_RD_LOCK_RB", LOCKS, expected=locks, length=_WORD_BYTES)
-            # No exact expectation: the architecture document states the
-            # permission but not the word a read-locked field substitutes.
-            disclosed = await self.csr_read(f"{name}_LOCKED_RD", addr, length=_WORD_BYTES)
+            disclosed = await self._locked_read(f"{name}_LOCKED_RD", addr)
             self.locked_read_data.append(disclosed)
             assert disclosed != pattern, (
                 f"{name} @ 0x{addr:08x} returned 0x{disclosed:016x} with its read lock set, "
@@ -228,8 +239,8 @@ class smc_efuse_lock_guard_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-EFUSE-LOCK-GUARD-READ: on %d shadow fields a read taken after the field's "
             "read lock was set returned something other than the word the field holds "
-            "(%s), so the guard withheld the content; the architecture document fixes the "
-            "permission but not the substituted word, so non-disclosure is the whole claim",
+            "(%s), so the guard withheld the content; each read completed with SLVERR and "
+            "the low word 0xBADCAB1E the RDL fixes for a locked access",
             self.read_locks_held,
             ", ".join(f"0x{d:016x}" for d in self.locked_read_data),
         )

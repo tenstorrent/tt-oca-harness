@@ -9,14 +9,18 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 
+from seq_lib.sep_axi_access_seq import capture_addr_handshake, take_handshake
+
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 STORE_PATTERN = 0x0123_4567_89AB_CDEF
+# AxSIZE encoding of a 4-byte beat (AMBA AXI, Arm IHI 0022, AxSIZE table).
+AXSIZE_4_BYTES = 2
 
 
 class sep_sram_smoke_seq(uvm_sequence):
     def __init__(self, name: str = "sep_sram_smoke_seq") -> None:
         super().__init__(name)
-        # (op, addr, response code) of every access, for OBS-RESP in the test.
+        # (op, addr, response code) of every access, for INFO-RESP in the test.
         self.responses: list[tuple[str, int, int]] = []
 
     async def _check(self, chk: str, addr: int, length: int, expected: int, what: str) -> None:
@@ -68,7 +72,17 @@ class sep_sram_smoke_seq(uvm_sequence):
         await self._check("CHK-STORE", base, 8, STORE_PATTERN, "64-bit write")
         # Drive a real 4-byte beat, not a full-width beat with narrowed strobes:
         # nothing else in the suite exercises a narrow AxSIZE on this bus.
-        await self._write(base + 4, 0xFEED_FACE, 4, size=2)
+        aw = cocotb.start_soon(capture_addr_handshake("aw"))
+        await self._write(base + 4, 0xFEED_FACE, 4, size=AXSIZE_4_BYTES)
+        hs = take_handshake(aw) or {}
+        fields = (
+            f"addr=0x{base + 4:08x} awaddr=0x{hs.get('addr', 0):08x} "
+            f"awsize={hs.get('size', 'none')} expect={AXSIZE_4_BYTES}"
+        )
+        if not (hs.get("addr") == base + 4 and hs.get("size") == AXSIZE_4_BYTES):
+            cocotb.log.error("CTRL-MISSING SRAM-NARROW: %s", fields)
+            raise AssertionError(f"CTRL-MISSING SRAM-NARROW: {fields}")
+        cocotb.log.info("CTRL-SRAM-NARROW seen: %s", fields)
         await self._check(
             "CHK-LANE", base, 8, 0xFEED_FACE_89AB_CDEF, "4-byte AxSIZE=2 write to the upper half"
         )

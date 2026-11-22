@@ -50,7 +50,7 @@ on the unstrobed lanes of that W beat at the mailbox unit port.
   CHK-HALF-ZERO       : the 64-bit pop returns exactly ``word << (32 * half)``:
                         the written half holds the word and the other half
                         reads 0. Both legs must grade.
-  OBS-HALF-ZERO-RESP  : the response of each pop, logged only (no TT text
+  INFO-HALF-ZERO-RESP : the response of each pop, logged only (no TT text
                         states the response of a pop of a non-empty FIFO).
 
 The graded window of this leaf opens once the CPU is released and closes after
@@ -199,7 +199,7 @@ class sep_mailbox_plic_test(sep_base_test):
         written = (data >> (_HALF_BITS * half)) & _HALF_MASK
         other = (data >> (_HALF_BITS * (1 - half))) & _HALF_MASK
         self.logger.info(
-            "OBS-HALF-ZERO-RESP LOG %s m=%d resp=%s", leg["name"], leg["m"], resp_name(resp)
+            "INFO-HALF-ZERO-RESP LOG %s m=%d resp=%s", leg["name"], leg["m"], resp_name(resp)
         )
         line = (
             f"{leg['name']} m={leg['m']} half={half} "
