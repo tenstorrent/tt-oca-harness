@@ -86,6 +86,8 @@
 `endif // not def SYNTHESIS
 
 module OCAH4CORECluster_ResetCatchAndSync_d3(	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:13:7]
+  input  test_en_i,
+  input  scan_rst_ni,
   input  clock,	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:13:7]
   input  reset,	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:13:7]
   output io_sync_reset	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:17:14]
@@ -98,6 +100,14 @@ module OCAH4CORECluster_ResetCatchAndSync_d3(	// @[generators/rocket-chip/src/ma
     .io_d  (1'h1),	// @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:47:16]
     .io_q  (_io_sync_reset_chain_io_q)
   );
-  assign io_sync_reset = ~_io_sync_reset_chain_io_q;	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:13:7, :29:7, generators/rocket-chip/src/main/scala/util/ShiftReg.scala:45:23]
+  
+  wire sync_rst_n;
+  prim_rst_mux2_hf_n u_scan_rst_bypass (
+    .rst0_ni (_io_sync_reset_chain_io_q),
+    .rst1_ni (scan_rst_ni),
+    .sel_i   (test_en_i),
+    .rst_no  (sync_rst_n)
+  );
+  assign io_sync_reset = ~sync_rst_n;	// @[generators/rocket-chip/src/main/scala/util/ResetCatchAndSync.scala:13:7, :29:7, generators/rocket-chip/src/main/scala/util/ShiftReg.scala:45:23]
 endmodule
 

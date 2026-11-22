@@ -42,6 +42,10 @@ module smc_data_accelerator_wrap #(
 
   output logic                                             dma_busy_o,  // High while the DMA front end or back end
                                                                         // has a transfer in flight.
+  output logic                                             dma_frontend_busy_o,  // Front-end half of
+                                                                                 // dma_busy_o.
+  output logic                                             dma_backend_busy_o,  // Back-end half of
+                                                                                // dma_busy_o.
   output logic                                             dma_intp_o,  // DMA completion interrupt, a one-cycle
                                                                         // pulse when dma_busy_o falls.
   output logic                                             zeroer_busy_o,  // High while the zeroer has work in flight.
@@ -60,8 +64,9 @@ module smc_data_accelerator_wrap #(
   output logic                                             zeroer_clk_active_o,  // High while the zeroer
                                                                                  // datapath gated clock is
                                                                                  // running.
-  output logic                                             zeroer_bus_active_o  // High while the zeroer
-                                                                                // control bus has traffic.
+  output logic                                             zeroer_bus_active_o,  // High while the zeroer
+                                                                                 // control bus has traffic.
+  output logic [2:0]                                       zeroer_state_debug_o  // Zeroer clear FSM state.
 );
 
   localparam int unsigned NumAccelerators = 2;
@@ -169,6 +174,8 @@ module smc_data_accelerator_wrap #(
     .test_en_i                          (test_en_i),
 
     .dma_busy_o                         (dma_busy_o),
+    .dma_frontend_busy_o                (dma_frontend_busy_o),
+    .dma_backend_busy_o                 (dma_backend_busy_o),
     .dma_intp_o                         (dma_intp_o),
 
     .cg_enable_i                        (dma_cg_en_i),
@@ -226,7 +233,8 @@ module smc_data_accelerator_wrap #(
 
     // Clock gater activity indicators
     .zeroer_clk_active_o                (zeroer_clk_active_o),
-    .zeroer_bus_active_o                (zeroer_bus_active_o)
+    .zeroer_bus_active_o                (zeroer_bus_active_o),
+    .state_debug_o                      (zeroer_state_debug_o)
   );
 
   // AXI Mux to combine DMA and Zeroer master outputs

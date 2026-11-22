@@ -504,12 +504,17 @@ basenames, one class per file, on the shared framework bases of
   SV-UVM JTAG and AXI VIPs. The primary TAP is the driven interface (the
   active `ocah_jtag_master_env`); the outbound SMN boundary is answered by
   the memory-backed `ocah_axi_slave_agent`; the DTP's SMC-fabric JTAG2AXI port
-  is observed by a monitor-only `ocah_axi_env`.
+  is observed by a monitor-only `ocah_axi_env`. The outbound SMN responder's
+  test-facing handle is `p_sequencer.m_axi_out_slave_seq` (memory backdoor,
+  one-shot error injection, back-pressure and burst counts); no bound scenario
+  uses it.
 . `hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv` -- the DTP bench's reference models,
   TAP FSM checker and scoreboard, reused unchanged on the embedded DTP:
   `ir_decode`, `idcode`, `bypass` on the JTAG event and scan streams,
   `jtag2axi_req` and `jtag2axi_status` on the bridge-port monitor and the scan
   stream. Their `dtp_env_cfg` is derived from the SMU cfg by `smu_env`.
+  `hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv`, compiled after it, supplies the
+  reusable JTAG and JTAG2AXI operation sequences `smu_base_test_seq` starts.
 . `tb/smu_tb_if.sv` -- the SMU-local TB interface: harness clock periods and
   two clock mirrors, power-good, cold reset, the boot-sequence gate and the
   GPIO boot-stall pad, the reset-unit outputs, the fuse-sense observables, the
@@ -523,11 +528,37 @@ basenames, one class per file, on the shared framework bases of
   the SMC addresses from the generated address map), `smu_test_cfg`,
   `smu_env_cfg`, `smu_virtual_sequencer`, the items, `smu_reset_pin_monitor`,
   the three SMU-level reference models, `smu_scoreboard`, and `smu_env`.
-. `uvm/seq_lib/smu_seq_lib_pkg.sv` -- the reusable JTAG operations
-  (`smu_jtag_<op>_seq`, `smu_jtag2axi_*_seq`), `smu_base_test_seq` and one
-  scenario sequence per bound test.
+. `uvm/seq_lib/smu_seq_lib_pkg.sv` -- `smu_base_test_seq`, which starts the
+  DTP operation sequences of `dtp_seq_lib_pkg` (`dtp_jtag_<op>_seq`,
+  `dtp_jtag2axi_single_*_seq`), and one scenario sequence per bound test.
 . `uvm/tests/smu_tests.sv` -- `smu_base_test` and one thin test class per
   scenario, `include`d by the top under `UVM`.
+
+Eight scenarios are bound, each a thin test class under `uvm/tests/` and a
+scenario sequence under `uvm/seq_lib/`:
+
+* `smu_dtp_jtag_smoke_test` -- primary TAP IDCODE, BYPASS and the TRST and
+  power-on reset returns to Test-Logic-Reset.
+* `smu_jtag_reset_override_test` -- the IC_RESET TDR overrides of the external
+  and SMC cold-reset slices.
+* `smu_smc_dtp_jtag2axi_smoke_test` -- the SMC-fabric JTAG2AXI bridge: CAPS,
+  SINGLE_OP and series write and readback.
+* `smu_boot_stall_jtag_cold_reset_matrix_test` -- DEBUG_CONTROL boot stall
+  across cold reset, TRST and the GPIO pad.
+* `smu_ext_boot_seq_gate_test` -- the external boot-sequence gate on the SMC
+  fuse-reset release.
+* `smu_smc_mailbox_sanity_test` -- SMC outbound mailbox 0 STATUS, ERROR_FLAGS
+  and IRQEN over the JTAG2AXI bridge.
+* `smu_smc_wdt_sanity_test` -- CORE0 watchdog lock, KEY unlock and CMP
+  programming over the JTAG2AXI bridge, restored at the end of every pass.
+* `smu_smc_wdt_timeout_irq_test` -- CORE0 watchdog first timeout: WDOGIP0 sets
+  and holds with no software clear, restored at the end of every pass.
+
+A bound scenario grades the checkers of its cocotb procedure except those the
+VPLAN table "SV-UVM bound scenarios" names as cocotb-only: for
+`smu_ext_boot_seq_gate_test` the SEP reset and re-gate checkers, for
+`smu_jtag_reset_override_test` the staged, SS/SEP walk and SEP-domain checkers, and
+for `smu_dtp_jtag_smoke_test` the step-order fence.
 
 The always-on `smu_scoreboard` is the one verdict point. Embedded-IP features
 are judged by the DTP scoreboard held as a child; the SMU-level features are
@@ -549,7 +580,11 @@ check cannot report PASS. Each feature has a documented negative plusarg that
 corrupts its prediction (`+SMU_IC_RESET_SCOREBOARD_NEGATIVE`,
 `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE`, `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE`,
 `+SMU_J2A_SCOREBOARD_NEGATIVE`, `+SMU_PTAP_IDCODE_NEGATIVE`), under which the
-run must FAIL with the feature's `CHK-SB-*` record as the failing token.
+run must FAIL with the feature's `CHK-SB-*` record as the failing token. Each
+check of the mailbox and watchdog scenarios has its own negative plusarg
+(`+SMU_MBX_<CHECK>_NEGATIVE`, `+SMU_WDT_<CHECK>_NEGATIVE`,
+`+SMU_WDT_TO_<CHECK>_NEGATIVE`, `+SMU_WDT_IP0_NEGATIVE`) that corrupts the
+expected value of that check alone, so the run fails on that `CHK-*` record.
 
 `smu_base_test.bring_up()` walks the cocotb ladder through `smu_tb_if`
 (power-good and cold reset asserted while the clocks start, a TAP reset so

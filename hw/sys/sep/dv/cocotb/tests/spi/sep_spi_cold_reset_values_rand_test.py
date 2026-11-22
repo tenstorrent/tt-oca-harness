@@ -61,7 +61,7 @@ Checks:
                    same order for every TXDATA word of the leaf (most
                    significant bits first; in x2 and x4 the least significant
                    bit of each pair or nibble on ``sd[0]``). Which order the
-                   words use is not graded: one OBS-SPI-BYTEORDER line per
+                   words use is not graded: one INFO-SPI-BYTEORDER line per
                    leaf logs it (``env/sep_spi_lane_responder.py``,
                    ``SepSpiByteOrder``). The shared SPI monitor
                    (``env/sep_spi_wire_monitor.py``) runs only from the first
@@ -283,7 +283,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         try:
             await self._run(draw)
             await self.wire.finish(self.logger, seed=self.seed)
-            self.order.log_obs(self.logger, self.seed)
+            self.order.log_info(self.logger, self.seed)
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()

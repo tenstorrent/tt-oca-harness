@@ -21,8 +21,18 @@ Address map for efuse shadow registers providing access to various chip configur
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-smc_efuse_map-LOCKS,LOCKS>> | RW a| Lock controls for each fuse field. When write locked, the corresponding field is not
 programmable. When read locked, the shadow register is not readable.
+
+A write to the shadow register of a write-locked field, or a read of the shadow
+register of a read-locked field, completes with SLVERR and read data 0xBADCAB1E,
+leaves the shadow register unchanged and raises the locked-field access interrupt
+for the duration of the access. An attempted fuse program of a write-locked field,
+or an attempted fuse read of a read-locked field, started through the eFuse
+interface control registers is refused and sets
+EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.
 | 0x8 | <<reg-{regmap-instance}-smc_efuse_map-JTAG_PUBLIC_IDENTITY,JTAG_PUBLIC_IDENTITY>> | RW a| JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
-are admitted while JTAG access to every other fuse field is blocked. Encoding
+are admitted while every JTAG write and every other JTAG read is blocked. When
+the lifecycle state fails its integrity check, JTAG reads of this range are
+blocked as well. Encoding
 is adopter-defined; the harness does not interpret or consume the value. The
 slot-0 read lock still hides the bits when set.
 | 0x28 - 0x68 | <<reg-{regmap-instance}-smc_efuse_map-I2C_I3C_ID-,I2C_I3C_ID[9]>> | RW a| I2C/I3C interface ID

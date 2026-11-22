@@ -796,6 +796,7 @@ static uint32_t gw_src_of_cell(uint32_t want_cell, int event) {
 
 // The event source of gateway index g is held at its active level in level
 // mode, then its gateway switches to edge mode with the input still asserted.
+// A meigwclr write while the input is still asserted precedes the deassert.
 static void gw_level_to_edge(uint32_t g) {
     const struct src *s = &k_map[k_gw_map[g]];
     uint32_t id = s->id;
@@ -813,6 +814,9 @@ static void gw_level_to_edge(uint32_t g) {
     wait_clk(g_p[P_SETTLE]);
     uint32_t settled = meip_bit(id);
     uint32_t cfg_edge = pic_read_gateway(id);
+    gwclr_wr(id, 0u);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t held_after_clr = meip_bit(id);
     gw_deassert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t released = meip_bit(id);
@@ -825,6 +829,7 @@ static void gw_level_to_edge(uint32_t g) {
     rec_num("after", after);
     rec_num("settled", settled);
     rec_num("type_after", (cfg_edge & EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm) != 0u);
+    rec_num("held_after_clr", held_after_clr);
     rec_num("released", released);
     rec_num("after_clr", after_clr);
     rec_end();

@@ -1,0 +1,47 @@
+cla_mmrs: describe the held CLA clock halt request
+
+A clock halt action sets the global or local clock halt request, and the
+request is held until the CLA reset; nothing in the register block clears
+it. DisableGlobalClockHalt and DisableLocalClockHalt only block a new set,
+and clearing EnableCla gates the CLA clock, which freezes the request. The
+field descriptions read as a level that follows the action. This hold is the
+intended behaviour, and the descriptions now say so.
+
+Recorded as a patch so the hand-mirrored upstream/ tree stays
+reproducible from the vendored spec plus patches/ applied in order.
+diff --git a/rtl/mmr/spec/cla_mmrs.yml b/rtl/mmr/spec/cla_mmrs.yml
+index c6a575f4c..78ac5a8a1 100644
+--- a/rtl/mmr/spec/cla_mmrs.yml
++++ b/rtl/mmr/spec/cla_mmrs.yml
+@@ -3569,7 +3569,9 @@ c_dbg_cla_ctrl_status:
+     FIELDS_RANGE: '15:15'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: If this bit is set, clock halt action is not applied to local clocks
++    DESCRIPTION: If this bit is set, a clock halt action does not set the local
++      clock halt request. Setting it does not release a request already set; the
++      request is held until the CLA reset
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3579,7 +3581,9 @@ c_dbg_cla_ctrl_status:
+     FIELDS_RANGE: '14:14'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: If this bit is set, clock halt action is not applied to global clocks
++    DESCRIPTION: If this bit is set, a clock halt action does not set the global
++      clock halt request. Setting it does not release a request already set; the
++      request is held until the CLA reset
+     RESET_PORT: ''
+     SW_WRITE: W
+     SW_READ: R
+@@ -3602,7 +3606,8 @@ c_dbg_cla_ctrl_status:
+     DESCRIPTION: Set this bit to 1 to enable the CLA functional clock; clear it to 0
+       to gate that clock (save pwr). The CLA register block runs on a clock whose
+       functional enable is tied high, so this bit can still be written while the
+-      functional clock is gated
++      functional clock is gated. Gating the clock freezes a held clock halt request
++      rather than releasing it
+     MASKED_BY: ~cla_lock
+     MASK_WRITES_ONLY?: 'True'
+     RESET_PORT: ''

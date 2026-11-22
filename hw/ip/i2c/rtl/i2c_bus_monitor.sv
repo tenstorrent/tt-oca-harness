@@ -40,7 +40,9 @@ module i2c_bus_monitor
 
   output logic        bus_free_o,                           // Bus free for a new transfer; outside
                                                             // multi-controller mode low only during
-                                                            // the t_buf_i wait after a STOP.
+                                                            // the t_buf_i wait, which starts when
+                                                            // the STOP is qualified, so it stays
+                                                            // high for the thd_dat_i cycles before.
   output logic        start_detect_o,                       // One-cycle pulse on a qualified START
                                                             // or repeated START.
   output logic        stop_detect_o,                        // One-cycle pulse on a qualified STOP.
@@ -48,9 +50,10 @@ module i2c_bus_monitor
   output logic        event_bus_active_timeout_o,           // One-cycle pulse when SCL is held low
                                                             // past the threshold while
                                                             // bus_active_timeout_en_i is set.
-  output logic        event_host_timeout_o                  // Pulse when SCL is held high past the
+  output logic        event_host_timeout_o,                 // Pulse when SCL is held high past the
                                                             // threshold while the target is not
                                                             // idle.
+  output logic [1:0]  state_debug_o                         // Current bus_state_e value.
 );
 
   `include "prim_assert.sv"
@@ -207,6 +210,8 @@ module i2c_bus_monitor
   } bus_state_e;
 
   bus_state_e state_q, state_d;
+
+  assign state_debug_o = state_q;
 
   always_comb begin
     state_d = state_q;
