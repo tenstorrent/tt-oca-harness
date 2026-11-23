@@ -5,9 +5,9 @@
 Spec sources: hw/ip/telemetry_receiver/doc/architecture.adoc, doc/interface.adoc,
 regs/telemetry_receiver.rdl.
 
-ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
-LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
-choice. The message driven here is one last-flagged packet.
+ATB framing from telemetry_receiver/doc/index.adoc (Telemetry packet fields) and
+architecture.adoc (Assembly and Decode): eight beats LSB first, bit 63 last packet, probe ID
+[60:56] of the first packet, block i at bits [9i+8:9i] with its valid bit at 9i+8. The message driven here is one last-flagged packet.
 """
 
 from __future__ import annotations

@@ -58,7 +58,7 @@ Checkers:
                     CHK-ABR-SINGLE-STATUS). Graded on every trial whose re-arm
                     is the reset; a seed that draws no reset re-arm does not
                     reach it and does not require it. Seed 1 draws the reset
-                    re-arm on its single-step cell. ``OBS-ABR-VALID`` logs VALID
+                    re-arm on its single-step cell. ``INFO-ABR-VALID`` logs VALID
                     at the READY read after a ZEROIZE re-arm.
   CHK-ABR-PARK      after the result reads and before the re-arm READY reads 0;
                     a combined cell also holds VALID=1.
@@ -112,11 +112,10 @@ from Y's outputs G, so a run of Y changes a graded window) and
 write-only (``abr_reg.rdl``:190); the leaf writes the same mu both times.
 ``OBS-ABR-PARKED-MSG`` logs the ``MLKEM_MSG`` readback at the park and grades
 nothing.
-``OBS-ABR-START-PARKED`` logs the fields of the graded STATUS read after Y's
+``INFO-ABR-START-PARKED`` logs the fields of the graded STATUS read after Y's
 refused command (READY, VALID, ERROR and, on ML-DSA, MSG_STREAM_READY) and the
-write response of that CTRL write: ``abr_reg.rdl`` gives ERROR only for the end
-of a process and no text states ERROR, MSG_STREAM_READY or the bus response of a
-command written while parked.
+write response of that CTRL write. READY and VALID are graded by
+``CHK-ABR-PARKED-CMD``; no open specification question.
 ``INFO-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
 ZEROIZE; a window that held none records ``INFO-ABR-SECRET-EMPTY`` and is not
 graded. A zero window proves that the window is not readable, not that the
@@ -695,7 +694,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             first_diff="none",
             **f,
         )
-        self.chk.obs(
+        self.chk.info(
             "ABR-START-PARKED",
             **base,
             ready=f["ready"],
@@ -703,6 +702,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             error=f["obs_error"],
             msg_stream_ready=int(bool(raw & ST_MSG_STREAM_READY)) if blk is DSA else "na",
             status=f"0x{raw:x}",
+            chk="CHK-ABR-PARKED-CMD",
         )
 
     # --- cells --------------------------------------------------------------
@@ -871,7 +871,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             # VALID returns to its reset value 0 (abr_reg.rdl:104, :351).
             self._ok("ABR-RESET-VALID", fr["valid"] == 0, cell=cell, via=via, **fr)
         else:
-            self.chk.obs("ABR-VALID", cell=cell, via=via, valid=fr["valid"])
+            self.chk.info("ABR-VALID", cell=cell, via=via, valid=fr["valid"])
         if not combined:
             self._ctl("ABR-PARK", fr["ready"] == 1, cell=cell, via=via, ready_after_rearm=1)
             return
@@ -995,30 +995,30 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
 
     async def _zeroize_or_recover(self, blk: _Block, where: str) -> None:
         if await self._zeroize(blk) is None:
-            self.chk.obs("ABR-ZEROIZE-TIMEOUT", where=where, bound=f"{READY_POLLS}x{READY_GAP}")
+            self.chk.info("ABR-ZEROIZE-TIMEOUT", where=where, bound=f"{READY_POLLS}x{READY_GAP}")
             await self._recover(where)
 
     async def _combo_verify(self) -> None:
         """Steps 10-11: verify the combined signature; logged only."""
         if self.combo_sig is None:
-            self.chk.obs("ABR-COMBO-VERIFY", verify="n/a", reason="no_signature")
+            self.chk.info("ABR-COMBO-VERIFY", verify="n/a", reason="no_signature")
             return
         st, why = await self._command(
             DSA, [(ABR_SEED, NIST_KG_SEED), (ABR_ENTROPY, self.plan.entropy)], CMD_KEYGEN
         )
         if st is None:
-            self.chk.obs("ABR-COMBO-VERIFY", verify="n/a", reason=why)
+            self.chk.info("ABR-COMBO-VERIFY", verify="n/a", reason=why)
             await self._recover("combo-verify/keygen")
             return
         pk = await self.abr.read_words(ABR_PUBKEY, PK_WORDS)
         await self._zeroize_or_recover(DSA, "combo-verify/keygen")
         res, st, why = await self._verify(pk, NIST_SG_MU, self.combo_sig)
         if res is None:
-            self.chk.obs("ABR-COMBO-VERIFY", verify="n/a", reason=why)
+            self.chk.info("ABR-COMBO-VERIFY", verify="n/a", reason=why)
             await self._recover("combo-verify/verify")
             return
         accept = res == list(self.combo_sig[:VERIFY_RES_WORDS])
-        self.chk.obs("ABR-COMBO-VERIFY", verify="accept" if accept else "reject")
+        self.chk.info("ABR-COMBO-VERIFY", verify="accept" if accept else "reject")
         await self._zeroize_or_recover(DSA, "combo-verify/verify")
 
     async def _tamper(self) -> None:
@@ -1051,7 +1051,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             return
         c_tilde = sig[:VERIFY_RES_WORDS]
         bad = _first_diff(res, c_tilde)
-        self.chk.obs("ABR-TAMPER-ERROR", tcid=tcid, error=int(bool(st & ST_ERROR)))
+        self.chk.info("ABR-TAMPER-ERROR", tcid=tcid, error=int(bool(st & ST_ERROR)))
         self._ok(
             "ABR-TAMPER",
             bad is not None and len(res) == VERIFY_RES_WORDS,

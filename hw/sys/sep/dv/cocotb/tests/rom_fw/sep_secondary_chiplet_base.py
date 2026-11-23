@@ -248,14 +248,14 @@ class sep_secondary_chiplet_base(sep_base_test):
         dut = cocotb.top
 
         self.check_plusarg_agreement()
-        self.check_smc_image()
         self.prepare_smc_mem()
+        self.check_smc_image()
 
         image = self.build_efuse_image()
         self.write_efuse_image(image)
 
         console: list[str] = []
-        cocotb.start_soon(rom_console_task(self.logger, sink=console))
+        self._console_task = cocotb.start_soon(rom_console_task(self.logger, sink=console))
 
         status_seq: list[int] = []
         last_status = None
@@ -334,6 +334,9 @@ class sep_secondary_chiplet_base(sep_base_test):
             f"cold_scratch[1] moved on from 0x{terminal_status:08x} within "
             f"{_QUIESCE_CYCLES} cycles of the terminal verdict: the ROM reported "
             f"the terminal error and then kept running"
+        )
+        assert not self._console_task.done(), (
+            "the console decoder stopped before the check, so a silent console proves nothing"
         )
         assert not post_console, (
             f"ROM printed {post_console} after the terminal verdict; a terminal "

@@ -17,7 +17,7 @@ Debug and Test Port Path Gating, row SEP OTP JTAG2AXIL path;
 ``hw/sys/sep/doc/security_disable.adoc``, sections Token Activation, Implementation
 Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
 
-  CHK-BIND          the SHA-256 of 32 zero bytes equals the SEC_DIS digest that the
+  CTRL-BIND         (control) the SHA-256 of 32 zero bytes equals the SEC_DIS digest that the
                     bench binds, read through the simulator handle of
                     ``SecDisTbDigest`` (``tb/tb_top.sv``).
   CHK-SIGINT        leg A, one line per inject epoch. The leaf walks the 30 pairs
@@ -42,8 +42,13 @@ Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
                     (``lcc_demote_state_1_probe_o``, ``lcc_demote_state_2_probe_o``)
                     equals its own level read before the walk. Control of the demoted
                     walk: the pair of a demoted register differs from its level after
-                    the cold reset and the pair of the other register does not. The
-                    levels are logged (``OBS-DEMOTE-PAIR-LEVEL``) and not graded.
+                    the cold reset and the pair of the other register does not.
+  CHK-DEMOTE-PAIR-LEVEL each demote pair is ``{~v, v}`` of the demotion flag v of its
+                    register (key manager ``architecture.adoc``, OTP_DEMOTION_STATE,
+                    which takes the flags directly): both pairs read 2'b10 before the
+                    walks, and after the drawn demotion a demoted register reads
+                    2'b01 and the other 2'b10. Every drawn demotion demotes at least
+                    one register, so every seed grades both levels.
   CHK-SIGINT-DEMOTE-REG in the last epoch of the demoted walk, the 64-bit
                     ``DEMOTE_1`` and ``DEMOTE_2`` readbacks equal the value written
                     before the walk: the drawn demote bit and one drawn ``rsvd``
@@ -68,8 +73,8 @@ Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
                     under ``jtag_filter_lc_sigint_inject_i``, a JTAG read of a shadow
                     word and of ``EFUSE_PROGRAM_CTRL``, a JTAG write to ``SIP_DIS`` and
                     a JTAG write to ``EFUSE_READ_REQ_TIMEOUT`` answer SLVERR and
-                    change nothing at the frontdoor (``hw/ip/efuse/doc/architecture.adoc:321``:
-                    a decode integrity error is a restricted state, ``:346-348``: a SEP
+                    change nothing at the frontdoor (``hw/ip/efuse/doc/architecture.adoc:326``:
+                    a decode integrity error is a restricted state, ``:351-353``: a SEP
                     JTAG access outside the MMR space in a restricted state is blocked
                     with an SLVERR response); the token word
                     writes, the token word read, the go and the match read answer
@@ -120,7 +125,7 @@ from env.sep_efuse_plan import (
 from env.sep_efuse_test_lib import (
     SepEfuseFd,
     bit,
-    chk_bind,
+    ctrl_bind,
     hook_fail,
     sec_dis_go,
     wait_bit,
@@ -169,9 +174,9 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
     """Integrity error forces FEAT_CTRL to 0, SEC_DIS overrides it, the JTAG filter refuses."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-SIGINT",
         "CHK-SIGINT-PAIRS",
+        "CHK-DEMOTE-PAIR-LEVEL",
         "CHK-SIGINT-DEMOTE-REG",
         "CHK-DBG-DISABLE",
         "CHK-FUSE-DFT-CLASS",
@@ -522,13 +527,18 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         pair_ctl_ok = all(
             (d["pairs"][r - 1] != ref_pairs[r - 1]) == bool(d["dsel"][r - 1]) for r in (1, 2)
         )
-        self.chk.obs(
+        want = tuple((v ^ 1) << 1 | v for v in d["dsel"])
+        self.chk.ok(
             "DEMOTE-PAIR-LEVEL",
+            ref_pairs == (0b10, 0b10) and d["pairs"] == want,
             demoted=d["label"],
             undemoted_1=f"0b{ref_pairs[0]:02b}",
             undemoted_2=f"0b{ref_pairs[1]:02b}",
             level_1=f"0b{d['pairs'][0]:02b}",
             level_2=f"0b{d['pairs'][1]:02b}",
+            exp_undemoted="0b10",
+            exp_level_1=f"0b{want[0]:02b}",
+            exp_level_2=f"0b{want[1]:02b}",
         )
         walk.update(
             dem_label=d["label"],
@@ -871,7 +881,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         self.fd = SepEfuseFd(self)
         self.rng = SepSeededRng(seed ^ _WALK_SALT)
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.write_efuse_image(p.image)
         presense = cocotb.start_soon(self._presense_sample())
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)

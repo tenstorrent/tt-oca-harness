@@ -9,6 +9,8 @@
 // Exports peripheral AXI-Lite, interrupts, and clock-gate enables to the SMC top.
 // NO_ADDR_REMAP removes the M-mode and Xvisor output remap from the output fabric.
 
+`include "ocah_debug_axi.svh"
+
 module smc_base #(
   parameter bit NO_ADDR_REMAP = 1'b1,   // Removes the M-mode and Xvisor output remap from the
                                         // output fabric, leaving only its AXI ID conversion;
@@ -119,10 +121,6 @@ module smc_base #(
   output smc_pkg::smc_cpu_mmio_axi_resp_t     cpu_axi_mmio_port_resp_o,  // CPU cluster MMIO AXI
                                                                          // response to
                                                                          // smc_cpu_wrapper.
-  input  wire logic [NumCpuCores-1:0][57:0] cpu_wb_reg_pc_i,    // Per-core writeback program
-                                                                // counter from smc_cpu_wrapper; the
-                                                                // low 32 bits go onto the debug
-                                                                // bus.
   input  wire logic [NumCpuCores-1:0]       cpu_wdt_timeout_cluster_i,    // Per-core first-stage watchdog
                                                                           // timeout from smc_cpu_wrapper,
                                                                           // ORed onto wdt_first_timeout_o.
@@ -157,14 +155,17 @@ module smc_base #(
   input  logic [511:0] ext_debug_bus_i,  // Adopter debug signals, synchronized to clk_smc_i into
                                          // the upper half of the debug bus; keep each signal 16-bit
                                          // aligned.
-  input  logic [16:0]  avsbus_cur_state_debug_i,  // AVS bus controller state from the SMC
-                                                  // peripherals; the low 16 bits go onto the debug
-                                                  // bus.
+  input  logic [16:0]  avsbus_cur_state_debug_i,  // One-hot AVS bus controller state from the SMC
+                                                  // peripherals, encoded onto the debug bus.
   input  logic [8:0]   system_timer_octs_credits_debug_i,  // OCTS credit count from the system
                                                            // timer, placed on the debug bus.
   input  logic         system_timer_octs_credits_left_debug_i,  // OCTS credits-left status from the
                                                                 // system timer, placed on the debug
                                                                 // bus.
+  input  logic [1:0]   system_timer_octs_pulse_state_debug_i,  // OCTS outbound pulse FSM state,
+                                                               // placed on the debug bus.
+  input  logic [2:0]   cpu_mem_zero_state_debug_i,  // CPU scratch RAM zero-fill FSM state,
+                                                    // placed on the debug bus.
 
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0][3:0] telemetry_debug_i,    // Debug status from each telemetry
                                                                                       // receiver in the SMC peripherals,
@@ -173,9 +174,17 @@ module smc_base #(
                                                                                 // controller in the SMC
                                                                                 // peripherals, placed on the debug
                                                                                 // bus.
+  input  logic [smc_config_pkg::NumI2c-1:0][11:0]                i2c_fsm_state_debug_i,  // FSM states from each
+                                                                                         // I2C in the SMC
+                                                                                         // peripherals, placed on
+                                                                                         // the debug bus.
   input  logic [9:0]                                              efuse_debug_i,  // eFuse controller debug status
                                                                                   // from the SMC peripherals, placed
                                                                                   // on the debug bus.
+  input  logic [5:0]                                              efuse_fsm_state_debug_i,  // eFuse controller FSM
+                                                                                            // states from the SMC
+                                                                                            // peripherals, placed on
+                                                                                            // the debug bus.
 
   output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,  // Custom CLA external-action outputs from the DFD block, one bit per custom action.
 
@@ -340,10 +349,13 @@ module smc_base #(
   logic zeroer_bus_active;
 
   logic dma_busy;
+  logic dma_frontend_busy;
+  logic dma_backend_busy;
   logic dma_intp;
 
   // Zero-er busy signal
   logic zeroer_busy;
+  logic [2:0] zeroer_state_debug;
   logic zeroer_intp;
 
   // DFD signals
@@ -411,28 +423,32 @@ module smc_base #(
   logic [1023:0] debug_bus;
   logic [7:0]    debug_marker;
 
-  assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
-  assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
-  assign debug_bus[16*3-1:16*2]       = cpu_wb_reg_pc_i[1][15:0];
-  assign debug_bus[16*4-1:16*3]       = cpu_wb_reg_pc_i[1][31:16];
-  assign debug_bus[16*5-1:16*4]       = cpu_wb_reg_pc_i[2][15:0];
-  assign debug_bus[16*6-1:16*5]       = cpu_wb_reg_pc_i[2][31:16];
-  assign debug_bus[16*7-1:16*6]       = cpu_wb_reg_pc_i[3][15:0];
-  assign debug_bus[16*8-1:16*7]       = cpu_wb_reg_pc_i[3][31:16];
+  assign debug_bus[16*1-1:16*0]       = `OCAH_DEBUG_AXI4_LANE(sys_axi_in_req_i, sys_axi_in_resp_o);
+  assign debug_bus[16*2-1:16*1]       = `OCAH_DEBUG_AXI4_LANE(output_axi_req_o, output_axi_resp_i);
+  assign debug_bus[16*3-1:16*2]       = `OCAH_DEBUG_AXI4_LANE(cpu_axi_front_port_req_o,
+                                                              cpu_axi_front_port_resp_i);
+  assign debug_bus[16*4-1:16*3]       = `OCAH_DEBUG_AXI4_LANE(cpu_axi_mmio_port_req_i,
+                                                              cpu_axi_mmio_port_resp_o);
+  assign debug_bus[16*5-1:16*4]       = `OCAH_DEBUG_AXI4_LANE(sep_axi_in_req_i, sep_axi_in_resp_o);
+  assign debug_bus[16*6-1:16*5]       = `OCAH_DEBUG_AXI4_LANE(jtag_axi_in_req_i, jtag_axi_in_resp_o);
+  assign debug_bus[16*7-1:16*6]       = `OCAH_DEBUG_AXI4_LANE(axi_data_accel_req, axi_data_accel_resp);
+  assign debug_bus[16*8-1:16*7]       = `OCAH_DEBUG_AXIL_LANE(axil_peripherals_req_o,
+                                                             axil_peripherals_resp_i);
+  assign debug_bus[16*9-1:16*8]       = `OCAH_DEBUG_AXIL_LANE(axil_log_engine_req_i,
+                                                              axil_log_engine_resp_o);
 
-  assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
-  assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
-  assign debug_bus[16*11-1:16*10]     = cpu_interrupts_o[47:32]   | cpu_interrupts_o[175:160];
-  assign debug_bus[16*12-1:16*11]     = cpu_interrupts_o[63:48]   | cpu_interrupts_o[191:176];
-  assign debug_bus[16*13-1:16*12]     = cpu_interrupts_o[79:64]   | cpu_interrupts_o[207:192];
-  assign debug_bus[16*14-1:16*13]     = cpu_interrupts_o[95:80]   | cpu_interrupts_o[223:208];
-  assign debug_bus[16*15-1:16*14]     = cpu_interrupts_o[111:96]  | cpu_interrupts_o[239:224];
-  assign debug_bus[16*16-1:16*15]     = cpu_interrupts_o[127:112] | cpu_interrupts_o[255:240];
-
-  assign debug_bus[16*17-1:16*16]     = peripheral_interrupts_i[15:0];
-  assign debug_bus[16*18-1:16*17]     = peripheral_interrupts_i[31:16];
-  assign debug_bus[16*19-1:16*18]     = mailbox_interrupts[15:0];
-  assign debug_bus[16*20-1:16*19]     = mailbox_interrupts[31:16];
+  // [9] dma_backend_busy  [8] dma_frontend_busy  [7:6] octs pulse state
+  // [5:3] cpu scratch RAM zero-fill state  [2:0] zeroer state
+  assign debug_bus[16*10-1:16*9]      = {6'h0, dma_backend_busy, dma_frontend_busy,
+                                          system_timer_octs_pulse_state_debug_i,
+                                          cpu_mem_zero_state_debug_i, zeroer_state_debug};
+  // One lane per I2C: [11:10] bus monitor  [9:5] target FSM  [4:0] controller FSM
+  for (genvar i = 0; i < smc_config_pkg::NumI2c; i++) begin : gen_i2c_fsm_debug
+    assign debug_bus[16*(10+i)+:16] = {4'h0, i2c_fsm_state_debug_i[i]};
+  end
+  // [5:4] fuse sense  [3:2] program  [1:0] read
+  assign debug_bus[16*(10+smc_config_pkg::NumI2c)+:16] = {10'h0, efuse_fsm_state_debug_i};
+  assign debug_bus[16*20-1:16*(11+smc_config_pkg::NumI2c)] = '0;
   // [10] zeroer  [9] idma_frontend_wrapper  [8] sys_in_filter  [7] sys_out_filter  [6] fabric
   // [5] alias_remap  [4] xvisor_remap  [3] mmode_remap  [2] ib_filter  [1] ob_filter  [0] mailbox
   assign debug_bus[16*21-1:16*20]     = {5'h0, zeroer_clk_active, dma_frontend_clk_active,
@@ -454,7 +470,15 @@ module smc_base #(
                                           i2c_debug_i};
   assign debug_bus[16*26-1:16*25]     = {{(16 - 4 * smc_config_pkg::NumTelemetryReceivers){1'b0}},
                                           telemetry_debug_i};
-  assign debug_bus[16*27-1:16*26]     = avsbus_cur_state_debug_i[15:0];
+  // [5] not one-hot  [4:0] index of the set bit of the one-hot AVS state
+  logic [4:0] avsbus_state_idx;
+  always_comb begin
+    avsbus_state_idx = '0;
+    for (int unsigned i = 0; i < $bits(avsbus_cur_state_debug_i); i++) begin
+      if (avsbus_cur_state_debug_i[i]) avsbus_state_idx = 5'(i);
+    end
+  end
+  assign debug_bus[16*27-1:16*26]     = {10'h0, ~$onehot(avsbus_cur_state_debug_i), avsbus_state_idx};
   assign debug_bus[16*28-1:16*27]     = {6'h0, system_timer_octs_credits_left_debug_i, system_timer_octs_credits_debug_i};
   assign debug_bus[16*29-1:16*28]     = {zeroer_busy, dma_busy, cpu_cluster_ded_i, wdt_second_timeout_i,
                                           {{(4-NumCpuCores){1'b0}}, cpu_wdt_timeout_cluster_i},
@@ -735,6 +759,8 @@ module smc_base #(
     .mst_axi_resp_i                     (axi_data_accel_resp),
 
     .dma_busy_o                         (dma_busy),
+    .dma_frontend_busy_o                (dma_frontend_busy),
+    .dma_backend_busy_o                 (dma_backend_busy),
     .dma_intp_o                         (dma_intp),
     .zeroer_busy_o                      (zeroer_busy),
     .zeroer_intp_o                      (zeroer_intp),
@@ -743,7 +769,8 @@ module smc_base #(
     .dma_frontend_clk_active_o          (dma_frontend_clk_active),
     .dma_frontend_bus_active_o          (dma_frontend_bus_active),
     .zeroer_clk_active_o                (zeroer_clk_active),
-    .zeroer_bus_active_o                (zeroer_bus_active)
+    .zeroer_bus_active_o                (zeroer_bus_active),
+    .zeroer_state_debug_o               (zeroer_state_debug)
   );
 
 

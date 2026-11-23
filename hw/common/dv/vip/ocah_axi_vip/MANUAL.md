@@ -565,9 +565,14 @@ modules simply do not elaborate. Its contents:
   that clears its requests with synchronous-reset flops: the AW, W and AR
   reset rules then allow VALID high on the first clock edge that samples
   `aresetn` low and require it low from the next edge on; every other rule
-  keeps the true reset. The `dv/` harness binds it to every VIP-driven
-  bundle; the response-ID corruption bundles stay unbound because the
-  ID-ordering rules fire there by design. Rules implement the IHI 0022 rule
+  keeps the true reset. `SLAVE_IN_RESET_DOMAIN` (default 1) set to 0 is for
+  an instance whose `aresetn` resets the master only: the B and R reset
+  rules are off and the tracking runs through the reset, so the slave's
+  responses to the requests it accepted before the reset are matched to
+  them; the master rules under that reset stay graded. The `dv/` harness
+  binds it to every VIP-driven bundle; the response-ID corruption bundles
+  stay unbound because the ID-ordering rules fire there by design. Rules
+  implement the IHI 0022 rule
   descriptions. Simulator capability selects between two trees. The two-state
   rules use `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run
   on every simulator, Verilator included under `--assert`, and on licensed

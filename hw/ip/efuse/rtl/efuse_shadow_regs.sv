@@ -45,7 +45,7 @@ module efuse_shadow_regs
 
     parameter type efuse_addr_t = logic,  // Fuse bit-address type.
     parameter type efuse_data_t = logic,  // Fuse data-word type.
-    parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+    parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
     parameter type fuse_command_req_t = logic,  // Fuse-command request type.
     parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
@@ -115,8 +115,10 @@ module efuse_shadow_regs
     output logic                                is_read_locked_o,  // High when the APB address
                                                                    // falls in a read-locked field.
 
-    output logic                                locked_field_access_interrupt_o  // High during an APB access to the
+    output logic                                locked_field_access_interrupt_o, // High during an APB access to the
                                                                                  // MAP window that a lock blocks.
+    output logic [1:0]                          sense_state_debug_o  // Fuse sense FSM state: 0 idle, 1 read,
+                                                                     // 2 wait, 3 finished.
 );
 
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
@@ -176,7 +178,7 @@ module efuse_shadow_regs
   end
 
   logic chiplet_state_change_completed_n0_scan;
-  logic sop_state_change_completed_n0_scan;
+  logic sip_state_change_completed_n0_scan;
 
   logic [LcStateWidth-1:0] lc_state_raw_d;
   logic [2*LcStateWidth-1:0] lc_state_diff_d;
@@ -386,12 +388,13 @@ module efuse_shadow_regs
     end
   end
 
-  efuse_word_counter_t current_word_num_q, current_word_num_d;
   efuse_word_counter_t words_received_q, words_received_d;
   fuse_command_req_t fuse_command_req_d;
 
   logic [LcStateWidth-1:0] lc_state_cur;
   logic [LcStateWidth-1:0] lc_state_candidate;
+  logic chiplet_rma_update;
+  logic sip_rma_update;
 
   // Combinationally compute the next raw LC_STATE value for each write path,
   // then feed it through the differential encoder so the always_ff can store
@@ -400,6 +403,8 @@ module efuse_shadow_regs
       lc_state_raw_d = '0;
       lc_state_candidate = '0;
       lc_state_cur = '0;
+      chiplet_rma_update = 1'b0;
+      sip_rma_update = 1'b0;
       if (HAS_LC_STATE) begin
           lc_state_raw_d = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           lc_state_candidate = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
@@ -438,12 +443,15 @@ module efuse_shadow_regs
                       lc_state_raw_d = lc_state_candidate;
                   end
               end else if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-                  // Transient RMA applies the same token gates as the APB path.
-                  if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && lc_state_cur[1]) begin
+                  // A chiplet match without RMA_SIP established changes nothing and blocks a
+                  // simultaneous SIP match.
+                  chiplet_rma_update = (rma_chiplet_token_match_i == TOKEN_MATCH_CODE) &&
+                                       lc_state_cur[1];
+                  sip_rma_update = (rma_chiplet_token_match_i != TOKEN_MATCH_CODE) &&
+                                   (rma_sip_token_match_i == TOKEN_MATCH_CODE);
+                  if (chiplet_rma_update) begin
                       lc_state_raw_d[2] = 1'b1;
-                  end else if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE) begin
-                      // A chiplet match without RMA_SIP established changes nothing.
-                  end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE) begin
+                  end else if (sip_rma_update) begin
                       lc_state_raw_d[1] = 1'b1;
                   end
               end
@@ -465,10 +473,11 @@ module efuse_shadow_regs
 
   efuse_sense_state_e efuse_sense_state_d, efuse_sense_state_q;
 
+  assign sense_state_debug_o = 2'(efuse_sense_state_q);
+
     always_comb begin
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
-        current_word_num_d = current_word_num_q;
         fuse_command_req_d = fuse_command_req_o;
 
         unique case (efuse_sense_state_q)
@@ -476,15 +485,13 @@ module efuse_shadow_regs
                 if (rst_ni) begin
                     efuse_sense_state_d = ST_READ;
                     words_received_d = '0;
-                    current_word_num_d = '0;
                 end
             end
 
             ST_READ: begin
-                // .address is a bit address. current_word_num_q is always 0 here, so it is also
-                // bit 0 of word 0.
-                fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
-                fuse_command_req_d.access_length_words =
+                // Sensing reads the whole bank from bit 0.
+                fuse_command_req_d.address = '0;
+                fuse_command_req_d.read_word_count =
                     efuse_word_counter_t'(NumShadowWords);
                 fuse_command_req_d.valid = 1'b1;
                 fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
@@ -500,7 +507,6 @@ module efuse_shadow_regs
                         efuse_sense_state_d = ST_FINISHED;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
-                        current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
                     end
                 end
 
@@ -518,7 +524,6 @@ module efuse_shadow_regs
     end
 
     `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
-    `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
     `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
     `OCAH_FF(fuse_command_req_o, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
 
@@ -556,7 +561,7 @@ module efuse_shadow_regs
       end
 
       chiplet_state_change_completed_n0_scan <= 1'b0;
-      sop_state_change_completed_n0_scan <= 1'b0;
+      sip_state_change_completed_n0_scan <= 1'b0;
 
     end else begin
       /////////////////////////////////////////
@@ -627,24 +632,22 @@ module efuse_shadow_regs
       end else if (!shadow_reg_access) begin : transient_rma_en
         if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-            if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
-                !chiplet_state_change_completed_n0_scan) begin
+            if (chiplet_rma_update && !chiplet_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
               chiplet_state_change_completed_n0_scan <= 1'b1;
-            end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE &&
-                         !sop_state_change_completed_n0_scan) begin
+            end else if (sip_rma_update && !sip_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
-              sop_state_change_completed_n0_scan <= 1'b1;
+              sip_state_change_completed_n0_scan <= 1'b1;
             end
           end
         end else begin
           // No chiplet state change in the SMC instance.
           chiplet_state_change_completed_n0_scan <= 1'b1;
-          sop_state_change_completed_n0_scan <= 1'b1;
+          sip_state_change_completed_n0_scan <= 1'b1;
         end
       end
     end

@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD image with the transient RMA enable clear. The SiP RMA digest is
+# SHA-256 of TOKEN_T1 and the chiplet RMA digest SHA-256 of TOKEN_T2
+# (cocotb/env/sep_efuse_plan.py). SPARE0 carries eight distinct non-zero
+# words for the direct OTP read.
+#
+# Used by sep_efuse_el2_fw_mmio_test.
+
+[LC_STATE]
+value = 0xe1
+
+[TRANSIENT_RMA_EN]
+value = 0x0
+
+[RMA_SIP_TOKEN_DIGEST]
+value = 0xe1dafe5507844336af126f89340a285afb616470f10e381144819e66db5d7b32
+
+[RMA_CHIPLET_TOKEN_DIGEST]
+value = 0xc68ad13ca005de25f132274d8d2574371586cfe9a2e395fc8f17a3e0fe032473
+
+[SPARE0]
+value = 0x5ec0a0085ec0a0075ec0a0065ec0a0055ec0a0045ec0a0035ec0a0025ec0a001

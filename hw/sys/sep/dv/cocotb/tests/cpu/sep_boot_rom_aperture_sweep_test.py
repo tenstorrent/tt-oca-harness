@@ -34,7 +34,7 @@ Checks:
                      beat with the strobe of the stored bytes and one B beat
                      per store (rom.adoc: stores receive a response and do not
                      modify the ROM). The B code is logged
-                     (OBS-ROM-STORE-RESP).
+                     (INFO-ROM-STORE-RESP).
                      Back-to-back pairs: at the first 8 store points, 4 pairs load the
                      word and then store to it (read_before_store) and 4 pairs
                      store and then load (store_before_read), with only a
@@ -62,6 +62,13 @@ Checks:
                      0x1004_FFFF). Control: the sweep loads of CHK-ROM-PORT
                      are on PR-LSU-ROM. The leg runs with the graded window
                      closed, after the bench sets its release flag.
+                     Store leg, after the loads: a 32-bit LSU store at the
+                     same two addresses each makes exactly one AW at its
+                     address on PR-LSU-XBAR; from the store to the next store
+                     (or the store leg end marker) PR-LSU-ROM carries no AW and
+                     PR-ROM and PR-ROM-MACRO carry no request. Control: the
+                     byte and halfword stores of CHK-ROM-STORE are AWs on
+                     PR-LSU-ROM.
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
                      neighbour words read exact (rom.adoc:59-60, no ECC or
@@ -93,12 +100,15 @@ Checks:
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
 
-Logged only (OBS-ROM-PAST-EXTENT-RESP): for each past-extent load, the
+Logged only (INFO-ROM-PAST-EXTENT-RESP): for each past-extent load, the
 PR-LSU-XBAR R response code, the loaded value, the NMI count between the load
-and the next one, and the NMI ``mcause`` and ``mdseac``. No TT text states the
-response of that range to the SEP CPU.
+and the next one, and the NMI ``mcause`` and ``mdseac``; for each past-extent
+store (``dir=store``), the PR-LSU-XBAR B response code and the same NMI
+fields. No TT text states the response of that range to the SEP CPU. A store
+bus error raises an imprecise NMI, so its record can follow the address record
+of the next store; the line logs the records as they fall and grades none.
 
-Logged only (OBS-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
+Logged only (INFO-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
 closed, a set-up ``rst_ni`` pulse and the same anchor, ``wdt_rst_ni`` falls at
 the same offset o and is released after RST_HOLD cycles. The ``wdt_rst_ni``
 reset lowers the CPU reset and not the reset of the boot ROM interface
@@ -325,6 +335,9 @@ OFF_PX_B = 0x108
 OFF_PXA = 0x110  # past-extent load address
 OFF_PXV = 0x118  # past-extent loaded value
 OFF_PX_E = 0x120
+OFF_PS_B = 0x128
+OFF_PSA = 0x130  # past-extent store address
+OFF_PS_E = 0x138
 FAIL_ROMCTL, FAIL_FLAG = 1, 2
 
 # SRAM layout of the generated image.
@@ -627,6 +640,10 @@ def build_code(p: _Plan) -> Asm:
         a.li(S0, addr).op(sw(S0, GP, OFF_PXA), FENCE, lw(A0, S0, 0), FENCE)
         a.op(sw(A0, GP, OFF_PXV), FENCE)
     _mark(a, OFF_PX_E)
+    _mark(a, OFF_PS_B)
+    for addr in p.past:
+        a.li(S0, addr).op(sw(S0, GP, OFF_PSA), FENCE, store(4, S0, S0, 0), FENCE)
+    _mark(a, OFF_PS_E)
     # Step 13: wait for the flips, one ecall, then read each flipped word and
     # its neighbours.
     a.op(sw(S11, GP, OFF_TCNT))
@@ -948,6 +965,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         await mbx.wait(OFF_PX_E, LEG_BOUND, what="past-extent end")
         await self._check_fail()
         self._grade_past()
+        await mbx.wait(OFF_PS_E, LEG_BOUND, what="past-extent store end")
+        await self._check_fail()
+        self._grade_past_store()
         # Step 13: the flips are set-up outside the window.
         await mbx.wait(OFF_FLIP_READY, LEG_BOUND, what="FLIP_READY")
         for w, m in p.flips:
@@ -1350,7 +1370,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                     f"exp_word={hex(addr >> 3)} strb={w.strb} exp_strb=0x{exp_strb:02x}"
                 )
         self.logger.info(
-            "OBS-ROM-STORE-RESP n_stores=%d bresp=%s",
+            "INFO-ROM-STORE-RESP n_stores=%d bresp=%s",
             N_STORES,
             ",".join("X" if b.resp is None else str(b.resp) for b in b_beats),
         )
@@ -1456,7 +1476,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             )
 
     def _grade_past(self) -> None:
-        """CHK-ROM-PAST-EXTENT per load, and OBS-ROM-PAST-EXTENT-RESP."""
+        """CHK-ROM-PAST-EXTENT per load, and INFO-ROM-PAST-EXTENT-RESP."""
         p = self.plan
         t_end = self._marker_t(OFF_PX_E)
         recs = self.mbx.records()
@@ -1520,11 +1540,77 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             nmi = [r.val for r in rl if r.off == OFF_NMI]
             mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
             self.logger.info(
-                "OBS-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
+                "INFO-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
                 "mdseac=%s traps=%d",
                 addr,
                 "X" if rresp is None else str(rresp),
                 "X" if val is None else f"0x{val:08x}",
+                len(nmi),
+                ",".join(f"0x{v:08x}" for v in nmi) or "none",
+                ",".join(f"0x{v:08x}" for v in mdseac) or "none",
+                sum(1 for r in rl if r.off == OFF_TRAP),
+            )
+
+    def _grade_past_store(self) -> None:
+        """CHK-ROM-PAST-EXTENT per store, and INFO-ROM-PAST-EXTENT-RESP dir=store."""
+        p = self.plan
+        t_end = self._marker_t(OFF_PS_E)
+        recs = self.mbx.records()
+        seg = recs[self.mbx.find(OFF_PS_B).seq : self.mbx.find(OFF_PS_E).seq + 1]
+        psa_t = self._aw_times(OFF_PSA)
+        per_store: list[list] = []
+        for r in seg:
+            if r.off == OFF_PSA:
+                per_store.append([r])
+            elif per_store:
+                per_store[-1].append(r)
+        if not (len(psa_t) == len(per_store) == len(p.past)):
+            self._grade(
+                "CHK-ROM-PAST-EXTENT",
+                False,
+                f"dir=store records={len(per_store)} psa={len(psa_t)} expected={len(p.past)}",
+            )
+            return
+        ctl_aw = len(
+            self._in(self.lsu_rom.beats, self._marker_t(OFF_ST_B), self._marker_t(OFF_ST_E), "aw")
+        )
+        exp_xbar_aw, exp_lsu_rom_aw = 1, 0
+        for i, addr in enumerate(p.past):
+            lo = psa_t[i]
+            end = psa_t[i + 1] if i + 1 < len(p.past) else t_end
+            aw = [b for b in self._in(self.lsu_xbar.beats, lo, end, "aw") if b.addr == addr]
+            lsu_rom_aw = len(self._in(self.lsu_rom.beats, lo, end, "aw"))
+            rom_req = len(self._in(self.rom.beats, lo, end, "req"))
+            macro_req = len(self._in(self.macro.beats, lo, end, "req"))
+            self._grade(
+                "CHK-ROM-PAST-EXTENT",
+                len(aw) == exp_xbar_aw
+                and lsu_rom_aw == exp_lsu_rom_aw
+                and rom_req == 0
+                and macro_req == 0
+                and ctl_aw > 0,
+                f"dir=store addr=0x{addr:08x} lsu_xbar_aw={len(aw)} lsu_rom_aw={lsu_rom_aw} "
+                f"rom_req={rom_req} macro_req={macro_req} expect_lsu_xbar_aw={exp_xbar_aw} "
+                f"expect_lsu_rom_aw={exp_lsu_rom_aw} control_store_lsu_rom_aw={ctl_aw}",
+            )
+            bresp = None
+            if len(aw) == 1:
+                bresp = next(
+                    (
+                        b.resp
+                        for b in self._in(self.lsu_xbar.beats, aw[0].t_ps, end, "b")
+                        if b.id == aw[0].id
+                    ),
+                    None,
+                )
+            rl = per_store[i]
+            nmi = [r.val for r in rl if r.off == OFF_NMI]
+            mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
+            self.logger.info(
+                "INFO-ROM-PAST-EXTENT-RESP dir=store addr=0x%08x bresp=%s nmi=%d mcause=%s "
+                "mdseac=%s traps=%d",
+                addr,
+                "X" if bresp is None else str(bresp),
                 len(nmi),
                 ",".join(f"0x{v:08x}" for v in nmi) or "none",
                 ",".join(f"0x{v:08x}" for v in mdseac) or "none",
@@ -1894,7 +1980,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         first_word = None if first is None or first.addr is None else first.addr >> 3
         self.logger.info(
-            "OBS-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
+            "INFO-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
             "macro_after_fall=req%s/addr%s/memif_rst_n%s "
             "cpu_low_rom_req=%d[%s] cpu_low_rom_rsp=%d[%s] cpu_low_macro_req=%d[%s] "
             "anchor_rsp_c=%s anchor_rsp_is_word1=%s first_req_word=%s first_req_c=%s "

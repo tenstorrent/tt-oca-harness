@@ -524,7 +524,7 @@ module sep_uvm_top
     localparam bit [255:0] SecDisTbDigest =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
     // Read-only copy of the bound digest: a localparam has no simulator handle on
-    // every tool, a net does. CHK-BIND reads it.
+    // every tool, a net does. CTRL-BIND reads it.
     wire [255:0] sec_dis_digest_probe_o;
     assign sec_dis_digest_probe_o = SecDisTbDigest;
     // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
@@ -597,7 +597,7 @@ module sep_uvm_top
         .jtag_tdi_i                   (jtag_core_tdi),
         .jtag_trst_ni                 (jtag_core_trst_n),
         .jtag_tdo_o                   (jtag_tdo_o),
-        .jtag_tdoEn_o                 (),
+        .jtag_tdoEn_o                 (jtag_tdoEn_o),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
 
 `ifdef SEP_JTAG_AXIL_LIVE
@@ -697,8 +697,8 @@ module sep_uvm_top
         .smc_global_base_addr_i       (bh_smc_base),
         .smc_region_size_i            (bh_smc_size),
 `endif
-        .sep_global_base_addr_o       (),
-        .sep_region_size_o            (),
+        .sep_global_base_addr_o       (sep_global_base_addr_probe_o),
+        .sep_region_size_o            (sep_region_size_probe_o),
 
         // External debug bus
         .ext_debug_bus_o              (ext_debug_bus_o),
@@ -1650,6 +1650,18 @@ module sep_uvm_top
     end
 
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
+    assign entropy_pool_axi_hs_o = {
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.r_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.r_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.ar_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.ar_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.b_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.b_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.w_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.w_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.aw_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.aw_valid
+    };
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_reset_active_probe_o =
@@ -1741,6 +1753,7 @@ module sep_uvm_top
     assign iso_slv_ar_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid & \
                                       `SEP_ISO_IC.inst.slv_resp_o.ar_ready; \
     assign iso_slv_ar_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid; \
+    assign iso_slv_aw_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.aw_valid; \
     assign iso_slv_b_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.b_valid & \
                                       `SEP_ISO_IC.inst.slv_req_i.b_ready; \
     assign iso_slv_r_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.r_valid & \
@@ -2261,6 +2274,8 @@ module sep_uvm_top
     assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
     assign pr_inflt_aruser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.user;
     // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
+    // PR-CPU-LSU-ATTR: address and side-band fields of the same raw LSU AW and AR,
+    // and the raw LSU AR ID, AxLEN and AxSIZE.
 `ifndef SEP_CPU_STUB
     assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;
     assign pr_cpu_lsu_awready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.aw_ready;
@@ -2271,6 +2286,21 @@ module sep_uvm_top
     assign pr_cpu_ifu_arvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar_valid;
     assign pr_cpu_ifu_arready_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw.ar_ready;
     assign pr_cpu_ifu_arprot_o  = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar.prot;
+    assign pr_cpu_lsu_awaddr_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.addr;
+    assign pr_cpu_lsu_awburst_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.burst;
+    assign pr_cpu_lsu_awlock_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.lock;
+    assign pr_cpu_lsu_awcache_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.cache;
+    assign pr_cpu_lsu_awqos_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.qos;
+    assign pr_cpu_lsu_awregion_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.region;
+    assign pr_cpu_lsu_araddr_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.addr;
+    assign pr_cpu_lsu_arburst_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.burst;
+    assign pr_cpu_lsu_arlock_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.lock;
+    assign pr_cpu_lsu_arcache_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.cache;
+    assign pr_cpu_lsu_arqos_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.qos;
+    assign pr_cpu_lsu_arregion_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.region;
+    assign pr_cpu_lsu_arid_o     = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.id;
+    assign pr_cpu_lsu_arlen_o    = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.len;
+    assign pr_cpu_lsu_arsize_o   = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.size;
 `else
     assign pr_cpu_lsu_awvalid_o = 1'b0;
     assign pr_cpu_lsu_awready_o = 1'b0;
@@ -2281,6 +2311,21 @@ module sep_uvm_top
     assign pr_cpu_ifu_arvalid_o = 1'b0;
     assign pr_cpu_ifu_arready_o = 1'b0;
     assign pr_cpu_ifu_arprot_o  = '0;
+    assign pr_cpu_lsu_awaddr_o   = '0;
+    assign pr_cpu_lsu_awburst_o  = '0;
+    assign pr_cpu_lsu_awlock_o   = 1'b0;
+    assign pr_cpu_lsu_awcache_o  = '0;
+    assign pr_cpu_lsu_awqos_o    = '0;
+    assign pr_cpu_lsu_awregion_o = '0;
+    assign pr_cpu_lsu_araddr_o   = '0;
+    assign pr_cpu_lsu_arburst_o  = '0;
+    assign pr_cpu_lsu_arlock_o   = 1'b0;
+    assign pr_cpu_lsu_arcache_o  = '0;
+    assign pr_cpu_lsu_arqos_o    = '0;
+    assign pr_cpu_lsu_arregion_o = '0;
+    assign pr_cpu_lsu_arid_o     = '0;
+    assign pr_cpu_lsu_arlen_o    = '0;
+    assign pr_cpu_lsu_arsize_o   = '0;
 `endif
     // PR-DMA-RAW: AxPROT of the raw secure DMA master request.
     assign pr_dma_raw_awvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw_valid;
@@ -2364,6 +2409,11 @@ module sep_uvm_top
     assign pr_ifu_arid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.id;
     assign pr_ifu_arlen_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.len;
     assign pr_ifu_arsize_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.size;
+    assign pr_ifu_arburst_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.burst;
+    assign pr_ifu_arlock_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.lock;
+    assign pr_ifu_arcache_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.cache;
+    assign pr_ifu_arqos_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.qos;
+    assign pr_ifu_arregion_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.region;
     assign pr_ifu_rvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r_valid;
     assign pr_ifu_rready_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.r_ready;
     assign pr_ifu_rresp_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r.resp;
@@ -2376,6 +2426,11 @@ module sep_uvm_top
     assign pr_ifu_arid_o = '0;
     assign pr_ifu_arlen_o = '0;
     assign pr_ifu_arsize_o = '0;
+    assign pr_ifu_arburst_o = '0;
+    assign pr_ifu_arlock_o = 1'b0;
+    assign pr_ifu_arcache_o = '0;
+    assign pr_ifu_arqos_o = '0;
+    assign pr_ifu_arregion_o = '0;
     assign pr_ifu_rvalid_o = 1'b0;
     assign pr_ifu_rready_o = 1'b0;
     assign pr_ifu_rresp_o = '0;
@@ -2519,6 +2574,7 @@ module sep_uvm_top
     assign pr_dbg_sb_rlast_o = `SEP_CORE.dbg_axi_resp.r.last;
     // PR-DBG-IN / PR-DBG-OUT: the debug-module system-bus request at the input
     // and output of u_dbg_local_alias_remap. The CPU stub has no debug module.
+    // PR-DBG-IN-ATTR: AxBURST, AxLOCK, AxCACHE and AxQOS of the same input request.
 `ifndef SEP_CPU_STUB
     assign pr_dbg_in_awvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw_valid;
     assign pr_dbg_in_awready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw.aw_ready;
@@ -2532,6 +2588,14 @@ module sep_uvm_top
     assign pr_dbg_out_arvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.ar_valid;
     assign pr_dbg_out_arready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_i.ar_ready;
     assign pr_dbg_out_araddr_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.ar.addr;
+    assign pr_dbg_in_awburst_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.burst;
+    assign pr_dbg_in_awlock_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.lock;
+    assign pr_dbg_in_awcache_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.cache;
+    assign pr_dbg_in_awqos_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.qos;
+    assign pr_dbg_in_arburst_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.burst;
+    assign pr_dbg_in_arlock_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.lock;
+    assign pr_dbg_in_arcache_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.cache;
+    assign pr_dbg_in_arqos_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.qos;
 `else
     assign pr_dbg_in_awvalid_o = 1'b0;
     assign pr_dbg_in_awready_o = 1'b0;
@@ -2545,6 +2609,14 @@ module sep_uvm_top
     assign pr_dbg_out_arvalid_o = 1'b0;
     assign pr_dbg_out_arready_o = 1'b0;
     assign pr_dbg_out_araddr_o = '0;
+    assign pr_dbg_in_awburst_o = '0;
+    assign pr_dbg_in_awlock_o = 1'b0;
+    assign pr_dbg_in_awcache_o = '0;
+    assign pr_dbg_in_awqos_o = '0;
+    assign pr_dbg_in_arburst_o = '0;
+    assign pr_dbg_in_arlock_o = 1'b0;
+    assign pr_dbg_in_arcache_o = '0;
+    assign pr_dbg_in_arqos_o = '0;
 `endif
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
@@ -2664,6 +2736,41 @@ module sep_uvm_top
 `endif
             $display("[tb] cold_scratch[7] seeded 0x%08x (+sep_cold_scratch7)",
                      cold_scratch7_seed);
+        end
+    end
+
+    // Runtime warm-handler deposit: the same leaf and per-tool mechanics as
+    // cold_scratch7_seed_deposit, so a leaf can arm the slot after the ROM has
+    // started and then raise a second CPU reset. Handshake order:
+    //   1. cocotb drives runtime_cold_scratch7_wdata_i, then raises _we_i.
+    //   2. tb writes the value into COLD Scratch 7.
+    //   3. tb raises _ack_o; the slot already holds the value.
+    //   4. cocotb drops _we_i; tb drops _ack_o.
+    logic [31:0] runtime_cold_scratch7_q;
+    initial begin : runtime_cold_scratch7_deposit
+        runtime_cold_scratch7_ack_o = 1'b0;
+        forever begin
+            @(posedge runtime_cold_scratch7_we_i);
+            if (runtime_cold_scratch7_we_i === 1'b1) begin
+                runtime_cold_scratch7_q = runtime_cold_scratch7_wdata_i;
+`ifdef VERILATOR
+                `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+`else
+                force `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+                @(posedge clk_i);
+                release `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
+`endif
+                $display("%0t: [tb] cold_scratch[7] = 0x%08x (runtime_cold_scratch7_we_i)",
+                         $time, runtime_cold_scratch7_q);
+                runtime_cold_scratch7_ack_o = 1'b1;
+                wait (runtime_cold_scratch7_we_i !== 1'b1);
+                runtime_cold_scratch7_ack_o = 1'b0;
+            end
         end
     end
 
@@ -2955,13 +3062,12 @@ module sep_uvm_top
     // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
     // stimulus. Scope: the two state registers named below, for one cycle at
     // a time. Seeing the injected encoding on *_state_o confirms the force
-    // landed; it is not fail-closed evidence. After release the recovered
-    // encoding must be a legal idle/wait value (DUT-driven). Command
-    // withdraw and the error/done/busy/data terms are claimed only on the
-    // in-flight leg. The legal encodings 2'b01 idle and 2'b10 wait are the
-    // design's state encoding in efuse_read_interface.sv and
-    // efuse_program_interface.sv; this leaf grades recovery against that set
-    // and injects its complement. Owner:
+    // landed; it is not fail-closed evidence. The owner grades the error
+    // output and status field after each release; the recovered encoding,
+    // the in-flight command withdraw and the done/busy/data values are
+    // logged, not graded. The legal encodings 2'b01 idle and 2'b10 wait are
+    // the design's state encoding in efuse_read_interface.sv and
+    // efuse_program_interface.sv; the inject uses their complement. Owner:
     // sep_efuse_illegal_state_fail_closed_test.
     //
     // The registers are enum-typed and the injected encodings are not members
@@ -2991,8 +3097,7 @@ module sep_uvm_top
     assign efuse_shim_cmd_valid_o = `SEP_CORE.efuse_shim_command_req_o.valid;
     assign efuse_shim_cmd_command_o = `SEP_CORE.efuse_shim_command_req_o.command;
     assign efuse_shim_cmd_address_o = `SEP_CORE.efuse_shim_command_req_o.address;
-    assign efuse_shim_cmd_program_data_o = `SEP_CORE.efuse_shim_command_req_o.program_data;
-    assign efuse_shim_cmd_len_o = `SEP_CORE.efuse_shim_command_req_o.access_length_words;
+    assign efuse_shim_cmd_len_o = `SEP_CORE.efuse_shim_command_req_o.read_word_count;
     // The shim response at the sep input efuse_shim_command_resp_i: valid, status
     // and data, after the sense-status inject.
     assign efuse_shim_resp_valid_o = `SEP_CORE.efuse_shim_command_resp_i.valid;
@@ -3003,6 +3108,16 @@ module sep_uvm_top
     // doc/otp_fuse_controller.adoc names.
     assign efuse_shadow_resp_valid_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_command_resp_i.valid;
     assign efuse_shadow_sense_done_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_sense_done_o;
+    // The registered APB response of the shadow map (efuse_shadow_regs apb_resp_q):
+    // pready and pslverr. rst_ni clears the register asynchronously.
+    assign efuse_shadow_apb_pready_o = `EFUSE_CTRL.u_efuse_shadow_regs.apb_resp_q.pready;
+    assign efuse_shadow_apb_pslverr_o = `EFUSE_CTRL.u_efuse_shadow_regs.apb_resp_q.pslverr;
+    // The program-fail drop of the bank model: prog_fail_act is high for the
+    // one APB setup clock of a bank write whose data the model zeroes, with
+    // the paddr of that write. prog_fail_act has no reset of its own; the
+    // drop count re-arms on every rst_ni.
+    assign efuse_bank_prog_drop_o = `SEP_IPI.u_efuse_bank_model.prog_fail_act;
+    assign efuse_bank_prog_drop_paddr_o = `SEP_IPI.u_efuse_bank_model.apb_req_i.paddr;
     // The APB select of the shim request to the bank model (efuse_model_otp_req in
     // sep_ip_integration): a request that the guard blocks starts no bank access.
     assign efuse_bank_psel_o = `SEP_IPI.efuse_model_otp_req.psel;
@@ -3054,7 +3169,8 @@ module sep_uvm_top
     // input routed by the READ command). It is a variable of an always_comb
     // block that also drives the APB request, so the block runs again on the
     // next request change and the released pslverr takes the bank value again
-    // within one clock. The bank pslverr itself has a constant driver, so a
+    // at that change; the shim reads that copy only in ST_READ_WAIT, after a new
+    // request. The bank pslverr itself has a constant driver, so a
     // released force there would keep the value 1 (Verilator release of a
     // variable) and fail every later sense word, also after rst_ni.
     // The sense streams words 0..255 from bit address 0 and the shim reads
@@ -3064,32 +3180,81 @@ module sep_uvm_top
     // evaluated at the clock edge that starts the APB access phase (psel high,
     // penable not yet high), so the force covers the whole access phase.
     // Re-issued every clock and released when the gate drops. Default 0.
+    //
+    // Three post-sense modes use the same word select and the same gate
+    // timing, each only after sense done (fuse_sense_done high):
+    // - efuse_status_inject_read_i=1: a frontdoor READ of the word; force
+    //   target apb_fuse_bank_resp_r.pslverr, as above.
+    // - efuse_status_inject_write_i=1: the bank write (pwrite=1) of a PROGRAM
+    //   command to the word; force target apb_fuse_bank_resp_w.pslverr, the
+    //   write-phase copy that the shim keeps for the program response.
+    // - efuse_status_inject_readback_i=1: the bank read-back (pwrite=0) of a
+    //   PROGRAM command to the word; force target
+    //   apb_fuse_bank_resp_w_readback.pslverr.
+    // apb_fuse_bank_resp_w and apb_fuse_bank_resp_w_readback are variables of
+    // the same always_comb block as apb_fuse_bank_resp_r, so the release
+    // argument above holds for them. The sense-time term is independent of
+    // these inputs. Each mode input defaults to 0.
 `define EFUSE_OTP_REQ  `SEP_IPI.efuse_model_otp_req
-`define EFUSE_SHIM_RESP_R `SEP_IPI.u_efuse_interface_shim.apb_fuse_bank_resp_r
+`define EFUSE_SHIM     `SEP_IPI.u_efuse_interface_shim
+`define EFUSE_SHIM_CMD `SEP_CORE.efuse_shim_command_req_o
+    wire efuse_status_word_sel =
+        (`EFUSE_SHIM_CMD.valid === 1'b1) &&
+        (`EFUSE_OTP_REQ.psel === 1'b1) &&
+        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
     wire efuse_sense_status_hit =
         (efuse_sense_status_inject_i === 1'b1) &&
         (`EFUSE_CTRL.fuse_sense_done === 1'b0) &&
-        (`SEP_CORE.efuse_shim_command_req_o.valid === 1'b1) &&
-        (`SEP_CORE.efuse_shim_command_req_o.command === efuse_pkg::FUSE_COMMAND_READ) &&
-        (`EFUSE_OTP_REQ.psel === 1'b1) &&
-        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        efuse_status_word_sel;
+    wire efuse_status_read_hit =
+        (efuse_status_inject_read_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        efuse_status_word_sel;
+    wire efuse_status_write_hit =
+        (efuse_status_inject_write_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_PROGRAM) &&
+        (`EFUSE_OTP_REQ.pwrite === 1'b1) &&
+        efuse_status_word_sel;
+    wire efuse_status_readback_hit =
+        (efuse_status_inject_readback_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_PROGRAM) &&
+        (`EFUSE_OTP_REQ.pwrite === 1'b0) &&
+        efuse_status_word_sel;
     always @(posedge clk_i) begin
-        if (efuse_sense_status_hit) begin
-            force `EFUSE_SHIM_RESP_R.pslverr = 1'b1;
+        if (efuse_sense_status_hit || efuse_status_read_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_r.pslverr = 1'b1;
         end else begin
-            release `EFUSE_SHIM_RESP_R.pslverr;
+            release `EFUSE_SHIM.apb_fuse_bank_resp_r.pslverr;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (efuse_status_write_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (efuse_status_readback_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_w_readback.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_SHIM.apb_fuse_bank_resp_w_readback.pslverr;
         end
     end
 `undef EFUSE_OTP_REQ
-`undef EFUSE_SHIM_RESP_R
+`undef EFUSE_SHIM
+`undef EFUSE_SHIM_CMD
 
     // ------------------------------------------------------------------
     // eFuse shim response hold.
     // ------------------------------------------------------------------
     // A healthy shim always answers, so a late program response has no
-    // frontdoor. While efuse_shim_resp_hold_i=1 and a PROGRAM or
-    // PROGRAM_READ_BACK command is at the post-guard port, the valid of the
-    // shim response at the sep input efuse_shim_command_resp_i (the
+    // frontdoor. While efuse_shim_resp_hold_i=1 and a PROGRAM command is at
+    // the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i (the
     // sep_wrapper net efuse_shim_command_resp) is forced to 0. A READ command
     // never matches, so sense and read responses are not held. The program
     // interface keeps its request valid until a response arrives, so while
@@ -3835,14 +4000,16 @@ module sep_uvm_top
     assign drbg_genbits_fips_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
     assign drbg_gen_last_o      = `SEP_DRBG.u_csrng.u_csrng_core.gen_last_q;
     // EDN hardware command port into CSRNG, the EDN endpoint acknowledges that
-    // push into the DRBG stream-adapter FIFOs, and the divided sample clock of
-    // ESRC lane 0. Read-only XMR taps.
+    // push into the DRBG stream-adapter FIFOs, the levels of the EDN command
+    // FIFOs, and the divided sample clock of ESRC lane 0. Read-only XMR taps.
     assign edn_csrng_cmd_valid_o = `SEP_DRBG.edn_csrng_req.csrng_req_valid;
     assign edn_csrng_cmd_ready_o = `SEP_DRBG.edn_csrng_rsp.csrng_req_ready;
     assign edn_csrng_cmd_bus_o   = `SEP_DRBG.edn_csrng_req.csrng_req_bus;
     assign drbg_adapter_push_o   = {`SEP_DRBG.edn_axis_endpoint_rsp[2].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[1].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[0].edn_ack};
+    assign edn_cmd_fifo_depth_o  = {`SEP_DRBG.u_edn.u_edn_core.sfifo_gencmd_depth,
+                                    `SEP_DRBG.u_edn.u_edn_core.sfifo_rescmd_depth};
     assign esrc_sample_clk_lane0_o = `SEP_ESRC.u_generator_complex.u_sampler_clocks.sample_clk_o[0];
     // ESRC FIFO downsample count, the decorrelator stream strobe after the boot
     // gate, and the divider count of lane 0. Read-only XMR taps.
@@ -4138,6 +4305,9 @@ module sep_uvm_top
     `ESRC_DECOR_NOISE_TAP(6);  `ESRC_DECOR_NOISE_TAP(7);  `ESRC_DECOR_NOISE_TAP(8);
     `ESRC_DECOR_NOISE_TAP(9);  `ESRC_DECOR_NOISE_TAP(10); `ESRC_DECOR_NOISE_TAP(11);
 `undef ESRC_DECOR_NOISE_TAP
+    //   * esrc_window_wrap_o: the entropy_source health-test window-wrap strobe
+    //     (window_wrap_pulse), 1 for the clk_i cycle that ends a window.
+    assign esrc_window_wrap_o = `SEP_ESRC.window_wrap_pulse;
     assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};
@@ -5312,10 +5482,12 @@ module sep_uvm_top
     // Both buses carry TB-sourced stimulus, so a failure here is a stimulus
     // bug in the VIP or a sequence rather than a DUT bug.
     //
-    // The Verilator targets pass no --assert, so Verilator drops the
-    // two-state rules; the X-hygiene rules are gated by OCAH_INC_ASSERT
-    // (hw/common/assert), which Verilator does not define. The rules are
-    // live under VCS.
+    // The two-state rules use `OCAH_SVA_RULE (ocah_sva_macros.svh), which is
+    // live on every SIMULATION compile, so they run on both simulators; a
+    // build under Verilator evaluates assertions unless it passes
+    // --no-assert, and the SEP targets pass none. The X-hygiene rules are
+    // gated by OCAH_INC_ASSERT (hw/common/assert), which Verilator does not
+    // define, so they run under VCS only.
     //
     // m_axi ties en_i high: it is TB-driven in both run modes. s_axi is gated
     // by the run mode, for the reason stated at its instance. A test that needs
@@ -5648,9 +5820,10 @@ module sep_uvm_top
 
     // AW and AR handshakes each checker graded. A test that names a port with
     // +axi_sva_need_<lsu|ifu|sb|tcm> fails when that count is zero. With
-    // +cpu_boot, a run that never arms the system-bus checker fails. Both run
-    // on VCS only, as the checkers do (the SEP Verilator targets pass no
-    // --assert).
+    // +cpu_boot, a run that never arms the system-bus checker fails. Both
+    // checks are in the final block below, which Verilator does not compile.
+    // The checkers' two-state rules run on both simulators; their X-hygiene
+    // rules need a four-state simulator (ocah_axi_sva.sv header).
     int unsigned cpu_axi_hs_lsu, cpu_axi_hs_ifu, cpu_axi_hs_sb, cpu_axi_hs_tcm;
     always_ff @(posedge clk_i) begin
         if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.lsu_axi_req_raw,
@@ -5750,8 +5923,8 @@ module sep_uvm_top
     );
 
     // AW and AR handshakes each checker graded. A test that names a port with
-    // +axi_sva_need_<dma|smn|smc|ext> fails when that count is zero (VCS only,
-    // as the checkers).
+    // +axi_sva_need_<dma|smn|smc|ext> fails when that count is zero (VCS only:
+    // the final block below is not compiled on Verilator).
     int unsigned axi_hs_dma, axi_hs_smn, axi_hs_smc, axi_hs_ext;
     always_ff @(posedge clk_i) begin
         if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(`SEP_CORE.dma_axi_req, `SEP_CORE.dma_axi_resp))
@@ -6041,6 +6214,9 @@ module sep_uvm_top
     assign jtag_filter_lc_sigint_inject_i = 1'b0;
     assign efuse_sense_status_inject_i = 1'b0;
     assign efuse_sense_status_word_i = '0;
+    assign efuse_status_inject_read_i = 1'b0;
+    assign efuse_status_inject_write_i = 1'b0;
+    assign efuse_status_inject_readback_i = 1'b0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign mbox_lane_inject_arm_i   = 1'b0;
@@ -6128,6 +6304,8 @@ module sep_uvm_top
     assign rom_flip_i               = 1'b0;
     assign rom_flip_index_i         = '0;
     assign rom_flip_mask_i          = '0;
+    assign runtime_cold_scratch7_we_i    = 1'b0;
+    assign runtime_cold_scratch7_wdata_i = '0;
 
     // Test classes compile as part of this top (module scope).
     `include "sep_tests.sv"
@@ -7415,8 +7593,8 @@ module sep_uvm_top
         .jtag_req_i            (j_axil_req_drive),
         .jtag_resp_i           (j_axil_resp_w),
         .irq_token_fault_i     (sep_internal_interrupts_probe_o[39]),
-        .tok_sip_i             (ext_debug_bus_o[229:224]),
-        .tok_chp_i             (ext_debug_bus_o[213:208]),
+        .tok_sip_i             (`FC_TOKEN.rma_sip_token_match_q_n0_scan),
+        .tok_chp_i             (`FC_TOKEN.rma_chiplet_token_match_q_n0_scan),
         .tok_sdis_i            (`FC_TOKEN.sec_disable_token_match_q),
         .tok_fault_i           (`FC_TOKEN.token_match_fault_sticky_q),
         .token_go_i            ({`FC_TOKEN.secure_disable_token_go,
