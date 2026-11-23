@@ -51,12 +51,7 @@ extern "C" {
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
-// eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.
-// Bit address to program
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bw 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_reset 0x0
+// eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.
 // Data to program to eFuse.  If this bit is 0, the program request will be ignored
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
@@ -89,12 +84,7 @@ extern "C" {
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_READ_CTRL
-// eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
-// Bit address to read
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm 0xffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bw 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_reset 0x0
+// eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.
 // When set, triggers a read to efuse.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
@@ -163,6 +153,22 @@ extern "C" {
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_reset 0x0
 
+// reg - efuse_interface_ctrl::EFUSE_PROGRAM_ADDR
+// Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.
+// Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bm 0xffffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bw 32
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_READ_ADDR
+// Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.
+// Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bm 0xffffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bw 32
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_reset 0x0
+
 // addrmap - efuse_interface_ctrl
 // Program and read command, address, data, status, and timeout registers for the eFuse interface.
 typedef struct __attribute__ ((__packed__)) {
@@ -173,6 +179,8 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t EFUSE_READ_INTERFACE_READ_DATA;
     uint32_t EFUSE_READ_REQ_TIMEOUT;
     uint32_t EFUSE_PROGRAM_REQ_TIMEOUT;
+    uint32_t EFUSE_PROGRAM_ADDR;
+    uint32_t EFUSE_READ_ADDR;
 } efuse_interface_ctrl_t;
 
 // reg - efuse_mmr::RMA_TOKEN_I
@@ -994,7 +1002,7 @@ typedef struct __attribute__ ((__packed__)) {
 // Places the SEP eFuse controller, its security-token registers and its shadow registers in one 4 KiB page.
 typedef struct __attribute__ ((__packed__)) {
     efuse_interface_ctrl_t efuse_interface_ctrl;
-    uint8_t RESERVED_1c_3ff[0x3e4];
+    uint8_t RESERVED_24_3ff[0x3dc];
     efuse_mmr_t efuse_mmr;
     uint8_t RESERVED_474_7ff[0x38c];
     sep_efuse_map_t sep_efuse_map;

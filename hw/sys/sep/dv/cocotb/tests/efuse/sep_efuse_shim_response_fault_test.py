@@ -75,8 +75,8 @@ Checkers:
                     control program equals its RDL reset value on every field
                     (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``, ``EFUSE_PROGRAM_CTRL``).
                     Control (``CTRL-PROG-RESET-PRE``): after the control program the
-                    leaf clears ``program_enable`` and keeps ``efuse_addr`` and
-                    ``efuse_data`` 1, and the read right before that ``rst_ni`` shows
+                    leaf clears ``program_enable`` and keeps ``efuse_data`` 1
+                    (the address is in ``EFUSE_PROGRAM_ADDR``), and the read right before that ``rst_ni`` shows
                     ``efuse_data`` 1, so a register that the reset does not clear fails.
 
   CHK-SENSE-STATUS-CTRLWORD  a last sense with the status bit on the response of a
@@ -151,7 +151,9 @@ from env.sep_efuse_bank_watch import WORD_MASK, SepShimCmdMonitor, bank_words
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     DIGEST_FIELDS,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     SECRET_FIELDS,
     SHIM_CTRL_WORDS,
@@ -163,7 +165,9 @@ from env.sep_efuse_plan import (
     field_n_words,
     field_word,
     plan,
+    program_addr_word,
     program_ctrl_word,
+    read_addr_word,
     read_ctrl_word,
     used_bits,
     zero_bits,
@@ -337,7 +341,8 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         report every outcome. ``read_enable`` is cleared before it returns.
         """
         dut = cocotb.top
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr // 32 * 32))
+        await self._wr(READ_ADDR_ADDR, read_addr_word(bit_addr // 32 * 32))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word())
         out = None
         start = self.clk
         while self.clk - start < bound:
@@ -614,14 +619,15 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             busy=_b(pre, _M_PG_BUSY),
             status=_b(pre, _M_PG_STATUS),
         )
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(spare["addr"]))
         go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(spare["addr"], data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         pg = await self._poll_pg(_M_PG_DONE, bound)
         clks = self.clk - go
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
         mode.value = 0
         mon.cancel()
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(spare["addr"], data=1, enable=0, go=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1, enable=0, go=0))
         resp_status = ",".join(map(str, resp)) or "none"
         self._ctrl(
             "BANK-ERR-INJ",
@@ -750,12 +756,13 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         # Step 6: control program of a, no hold.
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(a["addr"]))
         ctl_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         pg = await self._poll_pg(_M_PG_DONE, poll_bound)
         ctl_clks = self.clk - ctl_go if pg is not None else None
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, enable=0, go=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1, enable=0, go=0))
         ctl_word_a, ctl_bit = await self._direct_bit(a)
         ctl_done = pg is not None and _b(pg, _M_PG_DONE) == 1
         ctl_clean = pg is not None and _b(pg, _M_PG_STATUS) == 0 and _b(pg, _M_PG_BUSY) == 0
@@ -795,8 +802,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         dut.efuse_shim_resp_hold_i.value = 1
         self._open_window()
         set_ef_hold_tag(_TAG_LIFE, self.logger)
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(b["addr"]))
         held_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(b["addr"], data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         busy_seen = None
         start = self.clk
         while self.clk - start < poll_bound:
@@ -931,7 +939,8 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             wait["done"] = self.rd_known(dut.efuse_program_done_o) & 1
 
         wait_task = cocotb.start_soon(_wait_sample())
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(c["addr"], data=1))
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(c["addr"]))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         await ClockCycles(dut.clk_i, m * t_cyc)
         if not wait_task.done():
             wait_task.cancel()
@@ -983,12 +992,13 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             d["addr"],
         )
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(d["addr"]))
         next_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(d["addr"], data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         next_pg = await self._poll_pg(_M_PG_DONE, poll_bound)
         next_clks = self.clk - next_go if next_pg is not None else None
         next_pg = await self._rd(PROGRAM_CTRL_ADDR) if next_pg is not None else None
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(d["addr"], data=1, enable=0, go=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1, enable=0, go=0))
         d_rd = await self._otp_read_obs(d["addr"], poll_bound)
         c_rd = await self._otp_read_obs(c["addr"], poll_bound)
         d_got = None if d_rd is None else (d_rd[2] >> bit_d) & 1
@@ -1052,8 +1062,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         resp: list[int] = []
         mon = cocotb.start_soon(self._resp_mon(resp))
         dut.efuse_status_inject_read_i.value = 1
+        await self._wr(READ_ADDR_ADDR, read_addr_word(r_addr))
         rd_go = self.clk
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(r_addr))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word())
         rd = None
         while self.clk - rd_go < poll_bound:
             v = await self._rd(READ_CTRL_ADDR)

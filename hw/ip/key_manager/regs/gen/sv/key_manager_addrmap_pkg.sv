@@ -18,7 +18,7 @@ localparam longint unsigned KEY_MANAGER_MAILBOX_KM_BASE_ADDR = 64'h10000;
 localparam longint unsigned KEY_MANAGER_MAILBOX_KM_SIZE = 64'h1C;
 
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR = 64'h11000;
-localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_SIZE = 64'h1C;
+localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_SIZE = 64'h24;
 
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR = 64'h11400;
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_SIZE = 64'h74;
@@ -87,6 +87,8 @@ localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_PROGRAM_INTERFACE_R
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'h11010;
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'h11014;
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'h11018;
+localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR = 64'h1101C;
+localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_READ_ADDR_BASE_ADDR = 64'h11020;
 function automatic longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(input int unsigned RMA_SIP_TOKEN_I_idx);
     return 64'h11400 + (RMA_SIP_TOKEN_I_idx * 64'h4);
 endfunction

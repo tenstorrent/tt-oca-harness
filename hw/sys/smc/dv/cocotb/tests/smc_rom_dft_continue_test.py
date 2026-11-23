@@ -58,7 +58,7 @@ from smc_occp_dual_defs import (
     strap_reg_addr,
 )
 from smc_occp_rom_only_test import run_occp_rom_only
-from smc_reg import SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+from smc_reg import SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
 from smc_rom_park_defs import park_loop_pcs
 
 CASE = "smc_rom_dft_continue_test"
@@ -209,7 +209,9 @@ async def smc_rom_dft_continue_test(harness: SmcDualHarness) -> None:
         for strap in ("MEM_REPAIR_BYPASS", "MEM_BIST_BYPASS"):
             addr, bit = strap_reg_addr(STRAP_BITS[strap])
             straps[strap] = (await dut_csr.read(f"STRAPS_{strap}", addr) >> bit) & 1
-        smc_config = await dut_csr.read("SMC_CONFIG", SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR)
+        smc_config = await dut_csr.read(
+            "SMC_CONFIG", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+        )
         ignore = int(bool(smc_config & SMC_CONFIG_DFT_IGNORE_ERROR))
         wrong = [f"{strap}={straps[strap]}" for strap in straps if straps[strap] != row[strap]]
         if ignore != row["ignore"] or harness.efuse.dft_ignore_error != row["ignore"]:

@@ -133,7 +133,7 @@ _PROBE_UNITS = (
     ("AVSBUS", "smc_avsbus_controller", "smc_avsbus_controller/AVS_CMD"),
     ("I2C", "smc_i2c_wrap", "smc_i2c_wrap/i2c/INTR_STATE"),
     ("UART", "smc_uart_wrap", "smc_uart_wrap/uart_log_engine_wrap/uart_log_engine_ctrl/CTRL"),
-    ("EFUSE_MAP", "smc_efuse_wrap.smc_efuse_map", "smc_efuse_wrap/smc_efuse_map/LOCKS"),
+    ("EFUSE_MAP", "smc_efuse_wrap.smc_efuse_map", "smc_efuse_wrap/smc_efuse_map/HARNESS_LOCKS"),
     (
         "EFUSE_IF",
         "smc_efuse_wrap.efuse_interface_ctrl",

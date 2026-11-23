@@ -108,7 +108,8 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 # Block bases from the generated map.
 _EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
-_PG_ADDR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
+_EFUSE_PROGRAM_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_ADDR")
+_PG_ADDR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_ADDR", "efuse_addr")
 _PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
 _PG_ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
@@ -159,6 +160,9 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         # PROGRAM_CTRL word at the completion of each attempt, in attempt order.
         # An attempt that does not complete adds no entry.
         self.attempt_status: list[int] = []
+        # EFUSE_PROGRAM_ADDR read back after the last address write.
+        self.addr_readback: int | None = None
+        self.addr_written: int | None = None
 
     async def _access(
         self,
@@ -228,9 +232,19 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
         # Field masks from the generated export, like the register address above,
         # so a field move in the RDL moves the programming word with it.
-        wdata = (self.bit_addr & _PG_ADDR) | _PG_DATA | _PG_GO | _PG_ENABLE
+        addr = self.bit_addr & _PG_ADDR
+        wdata = _PG_DATA | _PG_GO | _PG_ENABLE
         saw_retry = False
         for attempt in range(1, self.max_attempts + 1):
+            await self._write(_EFUSE_PROGRAM_ADDR, addr, "program_addr")
+            self.addr_written = addr
+            self.addr_readback = await self._read(_EFUSE_PROGRAM_ADDR, "program_addr_rb")
+            if self.addr_readback != addr:
+                raise AssertionError(
+                    f"CHK-EFUSE-ADDR-RB FAIL: EFUSE_PROGRAM_ADDR read "
+                    f"0x{self.addr_readback:08x} after write 0x{addr:08x} "
+                    f"(OTP bit {self.bit_addr})"
+                )
             await self._write(_EFUSE_PROGRAM_CTRL, wdata, "program_ctrl")
 
             for _ in range(200):
@@ -535,9 +549,13 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 try:
                     await self.start_seq(blocked)
                 except AssertionError as exc:
+                    # A refusal counts only at the address this leg set.
+                    if blocked.addr_readback != blocked.addr_written:
+                        raise
                     done_err = _PG_DONE | _PG_STATUS
                     ends = [st & done_err for st in blocked.attempt_status]
                     statuses = ",".join(f"0x{st:08x}" for st in blocked.attempt_status)
+                    self.logger.info("OBS-STM-PROG-BLOCK-STATUS: attempts=[%s] (%s)", statuses, exc)
                     if ends != [done_err] * blocked.max_attempts:
                         raise AssertionError(
                             "CHK-STM-PROG-BLOCK-STATUS FAIL: each of the "
@@ -577,10 +595,11 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 # resense compared the whole sensed shadow with the image, which does
                 # not hold the blocked bit, so a written bit fails there.
                 self.logger.info(
-                    "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] not programmed after %d "
-                    "refused attempt(s) under secure_tm=1; the post-sense shadow equals "
-                    "the image without it (expected LC=0x%x)",
-                    _LC_STATE_BIT_BASE,
+                    "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] (EFUSE_PROGRAM_ADDR read "
+                    "back before the go) not programmed after %d refused attempt(s) under "
+                    "secure_tm=1; the post-sense shadow equals the image without it "
+                    "(expected LC=0x%x)",
+                    blocked.addr_readback,
                     blocked_attempts,
                     raw,
                 )

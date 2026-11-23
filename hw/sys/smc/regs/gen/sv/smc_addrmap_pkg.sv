@@ -87,13 +87,13 @@ localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGIN
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE = 64'h80;
 
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SIZE = 64'hC00;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SIZE = 64'h900;
 
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE = 64'h24;
 
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR = 64'hC0007800;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE = 64'h400;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE = 64'h100;
 
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR = 64'hC0009000;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE = 64'h300;
@@ -522,7 +522,7 @@ localparam longint unsigned SMC_TOP_SMC_CLA_DST_STRIDE = 64'h1000;
 localparam longint unsigned SMC_TOP_SMC_CLA_DST_TOTAL_SIZE = 64'h1000;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_BASE_ADDR = 64'hC0400000;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h6548;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'hB000;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR = 64'hC0400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SIZE = 64'h3008;
@@ -545,7 +545,7 @@ localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR = 64
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE = 64'h8;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR = 64'hC0404000;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SIZE = 64'h2548;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SIZE = 64'h7000;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_BASE_ADDR = 64'hC0404000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_SIZE = 64'h390;
@@ -558,6 +558,9 @@ localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_S
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR = 64'hC0405C00;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE = 64'h948;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR = 64'hC0407000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_SIZE = 64'h4000;
 
 localparam longint unsigned SMC_TOP_MMODE_REGION_BASE_ADDR = 64'hC1000000;
 localparam longint unsigned SMC_TOP_MMODE_REGION_SIZE = 64'h800000;
@@ -900,18 +903,25 @@ localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PR
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'hC0007010;
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'hC0007014;
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'hC0007018;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC0007800;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007808;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR = 64'hC000701C;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR = 64'hC0007020;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR = 64'hC0007800;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR = 64'hC0007808;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007810;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(input int unsigned I2C_I3C_ID_idx);
-    return 64'hC0007828 + (I2C_I3C_ID_idx * 64'h8);
+    return 64'hC0007830 + (I2C_I3C_ID_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM = 64'h9;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007870;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007878;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007878;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007880;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(input int unsigned SPARE_idx);
-    return 64'hC0007880 + (SPARE_idx * 64'h20);
+    return 64'hC0007888 + (SPARE_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM = 64'h1C;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM = 64'h3;
+function automatic longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(input int unsigned SPARE_TAIL_idx);
+    return 64'hC00078E8 + (SPARE_TAIL_idx * 64'h8);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(input int unsigned telemetry_receiver_idx);
     return 64'hC0009000 + (telemetry_receiver_idx * 64'h100);
 endfunction

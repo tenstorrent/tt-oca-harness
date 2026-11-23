@@ -6,18 +6,24 @@
 // Presents the eFuse register page and the eFuse shim window on the peripheral AXI-Lite
 // map. Bridges fuse sense, program, shadow-register, and DFT sidebands into the SMC
 // peripheral domain.
-// JTAG AXI-Lite accesses go to the eFuse controller inside the eFuse register page and to
-// the shim inside the EFUSE_SHIM_SIZE bytes at the base of smc_external; they are muxed
-// with the functional shim port onto fuse_bank_ctrl_req_o. Every other JTAG access
-// receives SLVERR with data 0xBADCAB1E, as does every JTAG access when the SEP lifecycle
-// state is PROD or RMA_SiP or fails its integrity check, except reads of
+// JTAG AXI-Lite accesses go to the eFuse controller inside the eFuse register page and the
+// supplementary fuse window, and to the shim inside the EFUSE_SHIM_SIZE bytes at the base of
+// smc_external, muxed with the functional shim port onto fuse_bank_ctrl_req_o. Every other
+// JTAG access receives SLVERR with data 0xBADCAB1E, as does every JTAG access when the SEP
+// lifecycle state is PROD or RMA_SiP or fails its integrity check, except reads of
 // JTAG_PUBLIC_IDENTITY outside an integrity error.
+// With SUPPLEMENTARY_FUSE.WORDS non-zero, the controller also serves the supplementary fuse region in its
+// window at SUPPLEMENTARY_FUSE.BASE within smc_external, locked per SUPPLEMENTARY_FUSE.LOCK_REGION_END.
 
 `include "ocah_assert.svh"
 
 module smc_efuse_wrapper #(
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h4  // Vendor eFuse shim CSR block at the base of
-                                                // the smc_external window, in bytes.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Vendor eFuse shim CSR block at the base of
+                                                 // the smc_external window, in bytes.
+  parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region; '0
+                                                                              // omits it.
+  localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS)
 ) (
   input  logic                                       clk_i,  // SMC core clock for the
                                                              // eFuse controller and JTAG
@@ -102,6 +108,13 @@ module smc_efuse_wrapper #(
                                                                      // completes unless
                                                                      // sep_security_disable_i is
                                                                      // set.
+  output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary shadow-register
+                                                                                                                                                                    // contents; zero until fuse
+                                                                                                                                                                    // sensing completes unless
+                                                                                                                                                                    // sep_security_disable_i is set,
+                                                                                                                                                                    // and always without the supplementary
+                                                                                                                                                                    // region.
+                                                     supplementary_shadow_regs_o,
 
   output logic [9:0]                                 efuse_debug_o,  // eFuse controller status,
                                                                      // from bit 0: shadow-register
@@ -147,6 +160,11 @@ module smc_efuse_wrapper #(
       smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimLast =
       smc_pkg::smc_axi_lite_32_addr_t'(EfuseShimBase + EFUSE_SHIM_SIZE - 1);
+  localparam bit HasSupplementaryFuses = SUPPLEMENTARY_FUSE.WORDS > 0;
+  localparam smc_pkg::smc_axi_lite_32_addr_t SupplementaryBase = smc_pkg::smc_axi_lite_32_addr_t'(
+      smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SUPPLEMENTARY_FUSE.BASE);
+  localparam smc_pkg::smc_axi_lite_32_addr_t SupplementaryLast =
+      SupplementaryBase + smc_pkg::smc_axi_lite_32_addr_t'(4 * SupplementaryPortWords - 1);
 
   `OCAH_ASSERT_STATIC(EfusePageAligned_A,
                       EfusePageBase % smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize) == 0)
@@ -185,8 +203,11 @@ module smc_efuse_wrapper #(
   always_comb begin
     jtag_aw_target = JTAG_TARGET_ERROR;
     if (!is_prod_or_rma_sip && !lc_sigint_err) begin
-      if ((axil_smc_otp_jtag_req_i.aw.addr >= EfusePageBase) &&
-          (axil_smc_otp_jtag_req_i.aw.addr <= EfusePageLast)) begin
+      if (((axil_smc_otp_jtag_req_i.aw.addr >= EfusePageBase) &&
+           (axil_smc_otp_jtag_req_i.aw.addr <= EfusePageLast)) ||
+          (HasSupplementaryFuses &&
+           (axil_smc_otp_jtag_req_i.aw.addr >= SupplementaryBase) &&
+           (axil_smc_otp_jtag_req_i.aw.addr <= SupplementaryLast))) begin
         jtag_aw_target = JTAG_TARGET_REGS;
       end else if ((axil_smc_otp_jtag_req_i.aw.addr >= EfuseShimBase) &&
                    (axil_smc_otp_jtag_req_i.aw.addr <= EfuseShimLast)) begin
@@ -196,8 +217,11 @@ module smc_efuse_wrapper #(
 
     jtag_ar_target = JTAG_TARGET_ERROR;
     if ((!is_prod_or_rma_sip || is_rd_jtag_public_identity) && !lc_sigint_err) begin
-      if ((axil_smc_otp_jtag_req_i.ar.addr >= EfusePageBase) &&
-          (axil_smc_otp_jtag_req_i.ar.addr <= EfusePageLast)) begin
+      if (((axil_smc_otp_jtag_req_i.ar.addr >= EfusePageBase) &&
+           (axil_smc_otp_jtag_req_i.ar.addr <= EfusePageLast)) ||
+          (HasSupplementaryFuses &&
+           (axil_smc_otp_jtag_req_i.ar.addr >= SupplementaryBase) &&
+           (axil_smc_otp_jtag_req_i.ar.addr <= SupplementaryLast))) begin
         jtag_ar_target = JTAG_TARGET_REGS;
       end else if ((axil_smc_otp_jtag_req_i.ar.addr >= EfuseShimBase) &&
                    (axil_smc_otp_jtag_req_i.ar.addr <= EfuseShimLast)) begin
@@ -285,6 +309,32 @@ module smc_efuse_wrapper #(
   // eFuse Interface Controller
   /////////////////////////////////////////////////////////////////////////
 
+  localparam efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] SupplementaryFieldMap =
+      smc_efuse_pkg::build_supplementary_field_map(
+      SUPPLEMENTARY_FUSE.LOCK_REGION_END
+  );
+
+  `OCAH_ASSERT_STATIC(
+      SupplementaryLocksFollowHarnessLocks_A,
+      smc_efuse_pkg::SupplementaryLocksBitOffset == smc_efuse_pkg::HarnessLockFieldBits,
+      "efuse_lock_view_t places SUPPLEMENTARY_LOCKS directly after HARNESS_LOCKS; the RDL map must too")
+
+  // Every field-map idx other than '1 must have a lock pair: the controller gives the harness map
+  // 2 * (NumEfuseFields - 1) lock bits and the supplementary map SUPPLEMENTARY_LOCKS. The lock
+  // lookups read an idx outside its vector as locked, so this check finds the malformed map.
+  for (genvar i = 0; i < smc_efuse_pkg::NumEfuseFields; i++) begin : gen_field_lock_idx
+    `OCAH_ASSERT_STATIC(FieldMapIdxHasLockPair_A,
+                        (smc_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
+        (int'(smc_efuse_pkg::EfuseFieldMap[i].idx) < int'(smc_efuse_pkg::NumEfuseFields - 1)))
+  end
+  for (
+      genvar i = 0; i < efuse_pkg::SupplementaryLockRegions; i++
+  ) begin : gen_supplementary_lock_idx
+    `OCAH_ASSERT_STATIC(SupplementaryMapIdxHasLockPair_A,
+                        (SupplementaryFieldMap[i].idx == '1) ||
+        (int'(SupplementaryFieldMap[i].idx) < int'(efuse_pkg::SupplementaryLockBits / 2)))
+  end
+
   efuse_interface_controller #(
     .ADDR_WIDTH                  (smc_pkg::SmcLocalAddrWidth),
     .DATA_WIDTH                  (smc_pkg::AxiLite32DataWidth),
@@ -328,6 +378,10 @@ module smc_efuse_wrapper #(
     .SECRET_SHADOW_RANGES        ('0),   // SMC has no shadow registers that should be blocked in secure_tm
     .LC_STATE_BIT_POSITION       (0),
 
+    .SUPPLEMENTARY_FUSE_WORDS          (SUPPLEMENTARY_FUSE.WORDS),
+    .SUPPLEMENTARY_REG_MAP_BASE_ADDR   (32'(SupplementaryBase)),
+    .SUPPLEMENTARY_LOCKS_BIT_OFFSET    (smc_efuse_pkg::SupplementaryLocksBitOffset),
+
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
   ) u_efuse_interface_controller (
     .clk_i                              (clk_i),
@@ -351,11 +405,13 @@ module smc_efuse_wrapper #(
     .secure_tm_i                        (1'b0),
     .security_disable_i                 (sep_security_disable_i),
     .efuse_field_map_i                  (smc_efuse_pkg::EfuseFieldMap),
+    .supplementary_field_map_i                (SupplementaryFieldMap),
 
     .reset_n_o                          (reset_n_o),
     .fuse_sense_done_o                  (fuse_sense_done_o),
     .security_disable_o                 (), // SEP only
     .shadow_regs_o                      (shadow_regs_o),
+    .supplementary_shadow_regs_o              (supplementary_shadow_regs_o),
 
     .ext_boot_seq_done_i                (ext_boot_seq_done_i),
 
