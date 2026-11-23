@@ -57,9 +57,11 @@ if { [sizeof_collection $avs_refclk_family] && [sizeof_collection $avs_periph_fa
 create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO -master_clock SPICLK -divide_by 1 -source [get_pins u_smc/spi_clk_i]
 create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [get_pins u_smc/spi_clk_i]
 
-# External entropy sample clock.
+# External entropy sample clock. The SEP replay ran sep.resets.tcl before this clock
+# existed, so its power-good sequence to the clock is declared here.
 create_clock -add -name ENTROPY_ROSC_CLK -period $clock_periods(ENTROPY_ROSC_PERIOD) \
     [get_ports "entropy_rosc_sample_clk_i"]
+set_rdc_define_assertion_sequence -from_reset POWERGOOD_STABLE_N -to_clock ENTROPY_ROSC_CLK
 
 ################################################################################
 # GPIO core2pad OUTPUT IGNORE
