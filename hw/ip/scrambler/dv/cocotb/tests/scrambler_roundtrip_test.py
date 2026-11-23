@@ -48,24 +48,22 @@ from scrambler_base_test import (
 )
 
 
-def check_data_golden(port: ScramblerPort, key: int, addr: int, data: int, sdata: int) -> None:
-    """Raise unless ``sdata`` matches the cipher model for this write."""
+def data_golden_mismatch(port: ScramblerPort, key: int, addr: int, data: int, sdata: int) -> list:
+    """Return ``[]`` if ``sdata`` matches the cipher model for this write, else one mismatch."""
     variant = port.variant
     if variant.byte_wise:
         pre_perm = model_scramble_pre_perm(key, addr, data, variant.addr_width)
         expected = byte_popcounts(pre_perm)
         observed = byte_popcounts(sdata)
-        mode = "byte"
     else:
         expected = model_scramble_word(key, addr, data, variant.addr_width)
         observed = sdata
-        mode = "word"
-    if observed != expected:
-        raise AssertionError(
-            f"CHK-SCR-DATA-GOLDEN FAIL mode={mode} depth={variant.depth} addr=0x{addr:x} "
-            f"key=0x{key:08x} data=0x{data:08x} sdata=0x{sdata:08x} "
-            f"observed={observed} expected={expected}"
-        )
+    if observed == expected:
+        return []
+    return [
+        f"addr=0x{addr:x},key=0x{key:08x},data=0x{data:08x},sdata=0x{sdata:08x},"
+        f"observed={observed},expected={expected}".replace(" ", "")
+    ]
 
 
 def chk(log: logging.Logger, name: str, ok: bool, **fields) -> None:
@@ -123,6 +121,7 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     )
 
     graded = 0
+    golden_bad: list = []
     sample = range(depth)
     memory: dict[int, int] = {}
     expected: dict[int, int] = {}
@@ -130,7 +129,7 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     for addr in sample:
         data = random.getrandbits(32)
         saddr, sdata = await port.scramble(addr, data)
-        check_data_golden(port, key, addr, data, sdata)
+        golden_bad += data_golden_mismatch(port, key, addr, data, sdata)
         graded += 1
         addr_changed += saddr != scrambled_of[addr]
         memory[saddr] = sdata
@@ -140,7 +139,7 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
 
     for value, addr in enumerate(reversed(sample)):
         saddr, sdata = await port.scramble(addr, value & DATA_MASK)
-        check_data_golden(port, key, addr, value & DATA_MASK, sdata)
+        golden_bad += data_golden_mismatch(port, key, addr, value & DATA_MASK, sdata)
         graded += 1
         memory[saddr] = sdata
         expected[addr] = value & DATA_MASK
@@ -151,9 +150,9 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     addr_a, addr_b = random.sample(range(depth), 2)
     data = random.getrandbits(32)
     _, sdata_a = await port.scramble(addr_a, data)
-    check_data_golden(port, key, addr_a, data, sdata_a)
+    golden_bad += data_golden_mismatch(port, key, addr_a, data, sdata_a)
     _, sdata_b = await port.scramble(addr_b, data)
-    check_data_golden(port, key, addr_b, data, sdata_b)
+    golden_bad += data_golden_mismatch(port, key, addr_b, data, sdata_b)
     graded += 2
     chk(
         log,
@@ -169,7 +168,7 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
     other_key = key ^ (1 << random.randrange(32)) ^ random.getrandbits(32)
     port.init(other_key)
     _, sdata_other = await port.scramble(addr_a, data)
-    check_data_golden(port, other_key, addr_a, data, sdata_other)
+    golden_bad += data_golden_mismatch(port, other_key, addr_a, data, sdata_other)
     graded += 1
     chk(
         log,
@@ -183,7 +182,15 @@ async def check_variant(port: ScramblerPort, log: logging.Logger) -> None:
         sdata=f"0x{sdata_a:08x}",
         sdata_other=f"0x{sdata_other:08x}",
     )
-    chk(log, "DATA-GOLDEN", graded == 2 * depth + 3, **ids, writes=graded)
+    chk(
+        log,
+        "DATA-GOLDEN",
+        not golden_bad,
+        **ids,
+        writes=graded,
+        mismatches=len(golden_bad),
+        first=golden_bad[0] if golden_bad else "none",
+    )
 
 
 @cocotb.test()
