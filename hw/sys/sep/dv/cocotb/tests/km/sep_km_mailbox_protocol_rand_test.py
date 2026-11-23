@@ -55,8 +55,10 @@ Checkers:
                slot, or that moves the read pointer, fails (key_manager
                architecture.adoc:237, "A write to a full FIFO drops the incoming
                word without changing queued data")
-  OBS-OVR-QUEUE  the inbound entries behind the head, and the absence of the
-               overflow word among them, have no tap: logged as not observed
+  INFO-OVR-QUEUE the fill digest and the overflow word; the inbound entries
+               behind the head, and the absence of the overflow word among
+               them, are graded by CHK-KMBOX-OVR-DRAIN in
+               sep_km_mailbox_km_side_rand_test
   CHK-IRQ      enabling the two error IRQs raises aggregator [14]; clearing
                the enable drops the pin while IRQ_STATUS stays; W1C drops both
   CHK-FLUSH    CTRL.FLUSH empties the full inbound FIFO, self-clears, and
@@ -84,8 +86,10 @@ positions, so every seed grades at least one armed and one unarmed word.
 Not covered:
   * Inbound entries 2 to 16 after an overrun. KM-INFIFO shows the head word
     only, the KM is held so no entry is popped, and the flush discards the
-    entries unread, so only the head word of "without changing queued data"
-    is graded (CHK-OVR-HEAD).
+    entries unread, so this leaf grades only the head word of "without
+    changing queued data" (CHK-OVR-HEAD). CHK-KMBOX-OVR-DRAIN in
+    sep_km_mailbox_km_side_rand_test grades entries 2 to 16, where the KM
+    pops them.
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
     as the peer, so this test does not grade them.
   * STATUS.inbound_separator updates only when the KM pops inbound;
@@ -452,9 +456,9 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
             cfg.overflow_word,
         )
         self.logger.info(
-            "OBS-OVR-QUEUE not observed: inbound entries 2..%d and the absence of the "
-            "overflow word behind the head have no tap (KM held, flush discards unread); "
-            "fill_sha=%s overflow=0x%08x",
+            "INFO-OVR-QUEUE inbound entries 2..%d and the absence of the overflow word "
+            "behind the head are graded by CHK-KMBOX-OVR-DRAIN in "
+            "sep_km_mailbox_km_side_rand_test; fill_sha=%s overflow=0x%08x",
             KM_MBOX_DEPTH,
             word_digest(cfg.fill_words),
             cfg.overflow_word,
