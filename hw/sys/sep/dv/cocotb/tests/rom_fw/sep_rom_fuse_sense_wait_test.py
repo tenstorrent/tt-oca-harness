@@ -39,9 +39,9 @@ from env.sep_fabric_tap import SepFabricTap
 from rom_fw.sep_rom_observe_base import sep_rom_observe_base
 from sep_reg_meta import sym
 
-_EFUSE_LO = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
-_EFUSE_HI = _EFUSE_LO + sym("SEP_EFUSE_MAP_REG_MAP_SIZE")
-_LC_STATE = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
+_EFUSE_LO = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
+_EFUSE_HI = _EFUSE_LO + sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE")
+_LC_STATE = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
 _SENSE_REG = sym("SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR")
 _SENSE_HI = _SENSE_REG + sym("SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_WIDTH") // 8
 _SENSE_PORT = "smc_fuse_sense_done_model"

@@ -42,7 +42,7 @@ from sep_reg_meta import RegBlock, sym
 
 _SHADOW = "efuse_shadow_probe_o"
 # The probe holds OTP shadow word i at bits [32*i +: 32].
-_LOCKS_SHIFT = 32 * (sym("SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4)
+_LOCKS_SHIFT = 32 * (sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4)
 _SECRET_FIELDS = (
     "CLASS_KEY",
     "RMA_SIP_TOKEN_DIGEST",
@@ -53,7 +53,9 @@ _SECRET_FIELDS = (
 )
 _LOCKS_MASK = 0
 for _name in _SECRET_FIELDS:
-    _LOCKS_MASK |= 1 << RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{_name.lower()}_read_lock")
+    _LOCKS_MASK |= 1 << RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_lsb(
+        "LOCKS", f"{_name.lower()}_read_lock"
+    )
 # DEMOTE_1 probes and their reset values: demote 0 on the {~d, d} rails, lock clear.
 _DEMOTE_RESET = {"lcc_demote_state_1_probe_o": 0b10, "lcc_demote_lock_1_probe_o": 0}
 
