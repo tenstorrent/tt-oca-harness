@@ -8,18 +8,24 @@ fields, then complements the plain read-write bits of one lane at a time
 through 1-byte writes at every lane, of two lanes through 2-byte writes at
 offsets 0 and 2, and of three lanes through four 4-byte writes that each leave
 one lane unstrobed while every lane of the beat carries the complemented
-bits. After every write the target must read the expected image: the lanes
-the write enabled carry the complement, every other lane the value it held,
-so a dropped write, a write on the wrong lane, a zero-filled lane and a strobe
-the block ignored each read back as a mismatch. The cpuif of the block sees,
+bits. After every write a target with plain read-write fields must read the
+expected image: the lanes the write enabled carry the complement, every other
+lane the value it held, so a dropped write, a write on the wrong lane, a
+zero-filled lane and a strobe the block ignored each read back as a mismatch.
+The cpuif of the block sees,
 for every plain field, a write with that field's lane off while its storage
 holds a one, and a write whose unstrobed lane carries the opposite of the
 storage. A full-width restore must read back the saved word over the plain
 fields and the neighbour must read what it read before the leg. A target with
-no plain field (write-only clears, self-clearing starts) must read the same
-word after every write that it read before the leg, outside the field a
-write-only register is declared to drive (`FCR` drives `IIR.FIFOS_ENABLED`). The UART's read-only LSR
-and MSR take one byte write each and must not change.
+no plain field (write-only clears) must read the same word after every write
+that it read before the leg, outside the field a write-only register is
+declared to drive; that compare alone cannot see a dropped or misplaced write.
+Two write-only targets are graded on their effect after every write instead:
+`FCR.FIFO_ENABLE` toggles on each write that enables lane 0 and
+`IIR.FIFOS_ENABLED` must follow it, and the log engine `INTR_TEST` bits must
+set `INTR_STATUS` after exactly the writes that strobe lane 0 with them set
+(the status is cleared after every read). The UART's read-only LSR and MSR
+take one byte write each and must not change.
 
 The target of each block is a register whose preload has no effect on the bench
 while the SMC is idle:
@@ -35,21 +41,21 @@ while the SMC is idle:
 * I2C control `I2C_CTRL[0]` enables (the I2C0 pads carry the bench pull-ups and
   no transaction is issued), I2C0 `INTR_TEST` read-write bits (restored to 0)
   and `FIFO_CTRL` FIFO resets on empty FIFOs.
-* eFuse `EFUSE_PROGRAM_CTRL` address, data and read-back fields with
-  `efuse_program_go` and `program_enable` 0 through every write, and the clear
-  bits of `EFUSE_INTERFACE_CTRL_STATUS` with no error pending.
-* UART0 `SCR`, `LCR` with `DLAB` and `SET_BREAK` 0 through every write, `FCR` with the FIFOs
-  enabled (`IIR.FIFOS_ENABLED` reads 3 after every write and 0 after the
-  restore), and the wrapper `CTRL.UART_EN` restored to 0.
-* log engine `INTR_TEST`, whose `INTR_STATUS` bits read set after the writes
-  and 0 after the clear.
+* eFuse `EFUSE_PROGRAM_CTRL` address and data fields with `efuse_program_go`
+  and `program_enable` 0 through every write, and the clear bits of
+  `EFUSE_INTERFACE_CTRL_STATUS` with no error pending.
+* UART0 `SCR`, `LCR` with `DLAB` and `SET_BREAK` 0 through every write, `FCR`
+  with `FIFO_ENABLE` toggled by the lane-0 writes on empty FIFOs (written back
+  to 0), and the wrapper `CTRL.UART_EN` restored to 0.
+* log engine `INTR_TEST` with `INTR_ENABLE` 0, whose `INTR_STATUS` bits are
+  read and cleared after every write.
 * telemetry receiver 1 `CTRL` threshold and flush bits, and `INTR_TEST`.
-* system timer `TIMER_START`, written back to 0.
+* system timer `TIMER_PRESET_LO`, which the timer loads only on a start.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import cocotb
 from cocotb.utils import get_sim_time
@@ -74,8 +80,10 @@ STROBES = (0xE, 0xD, 0xB, 0x7)
 WRITES_PER_LEG = 1 + len(LANES) + len(HALVES) + len(STROBES) + 1
 # Accesses of one leg: two reads before the writes, a readback per write, the neighbour read.
 LEG_ACCESSES = 2 + 2 * WRITES_PER_LEG + 1
-# An `after` entry reads the register, writes the clear and reads it again.
-AFTER_ACCESSES = 3
+# An observed level field is read after every write; an observed pulse field is
+# read, cleared and read again after every write.
+LEVEL_ACCESSES = 1
+PULSE_ACCESSES = 3
 UART_RO_ACCESSES = 6
 CG_ACCESSES = 5
 
@@ -90,13 +98,23 @@ _GPIO5 = "gpio_intf_wrap/gpio_intf[5]"
 
 @dataclass(frozen=True)
 class Observe:
-    """A read-only register whose field follows the target's writes."""
+    """A register field driven by the `drive` bits of the target's writes.
+
+    A level field follows the target's lane image: it reads `on` over `mask`
+    while the image holds `drive` and `off` while it does not. A pulse field is
+    set by a write that strobes a lane carrying `drive`: it reads `on` after
+    such a write, `off` after any other, and is cleared with `clear` after
+    every read.
+    """
 
     label: str
     addr: int
     mask: int
-    while_set: int
-    after_restore: int
+    drive: int
+    on: int
+    off: int
+    pulse: bool = False
+    clear: int = 0
 
 
 @dataclass(frozen=True)
@@ -109,7 +127,6 @@ class Leg:
     preload: int
     neighbour: int
     restore: int | None
-    after: tuple[tuple[str, int, int], ...] = ()
     observe: Observe | None = None
 
 
@@ -137,7 +154,6 @@ def _leg(
     neighbour: str,
     hold: tuple[str, ...] = (),
     restore: int | None = None,
-    after: tuple[tuple[str, str, int], ...] = (),
 ) -> Leg:
     reg = rdl_register(path)
     assert reg.width_bytes == 4, f"{path} is {reg.width_bytes} bytes wide, the legs take 4"
@@ -153,7 +169,6 @@ def _leg(
         word,
         rdl_register(neighbour).addr,
         restore,
-        tuple((lbl, rdl_register(p).addr, v) for lbl, p, v in after),
     )
 
 
@@ -162,6 +177,9 @@ def build_legs() -> tuple[Leg, ...]:
     fcr = uart_base(0) + FCR_OFFSET
     assert fcr == iir.addr, f"FCR {fcr:#x} is not the write-only alias of IIR {iir.addr:#x}"
     log_status = rdl_register(f"{_LOG}/INTR_STATUS")
+    log_test = rdl_register(f"{_LOG}/INTR_TEST")
+    log_bits = _word(log_test, LOG_FETCH_ERR=1, LOG_WRITE_ERR=1)
+    log_set = _word(log_status, LOG_FETCH_ERR=1, LOG_WRITE_ERR=1)
     return (
         _leg(
             "RESET-UNIT",
@@ -249,9 +267,9 @@ def build_legs() -> tuple[Leg, ...]:
             "EFUSE-CTRL",
             "EFUSE_PROGRAM_CTRL",
             f"{_EFUSE}/EFUSE_PROGRAM_CTRL",
-            {"efuse_addr": 0x5A5A, "efuse_data": 1, "efuse_program_read_back": 1},
+            {"efuse_addr": 0x5A5A, "efuse_data": 1},
             f"{_EFUSE}/EFUSE_READ_CTRL",
-            hold=("program_enable",),
+            hold=("program_enable", "efuse_program_go"),
         ),
         _leg(
             "EFUSE-CTRL",
@@ -279,12 +297,17 @@ def build_legs() -> tuple[Leg, ...]:
             "UART0_FCR",
             fcr,
             0,
-            0,
+            FCR_FIFO_ENABLE,
             FCR_FIFO_ENABLE | (3 << FCR_RCVR_TRIGGER_SHIFT),
             rdl_register(f"{_UART}/MCR").addr,
             0,
             observe=Observe(
-                "UART0_IIR_FIFOS", iir.addr, IIR_FIFOS_ENABLED, 3 << IIR_FIFOS_SHIFT, 0
+                "UART0_IIR_FIFOS",
+                iir.addr,
+                IIR_FIFOS_ENABLED,
+                FCR_FIFO_ENABLE,
+                3 << IIR_FIFOS_SHIFT,
+                0,
             ),
         ),
         _leg(
@@ -294,19 +317,24 @@ def build_legs() -> tuple[Leg, ...]:
             {"UART_EN": 1},
             f"{_LOG}/CTRL",
         ),
-        _leg(
-            "LOG-ENGINE",
-            "LOG0_INTR_TEST",
-            f"{_LOG}/INTR_TEST",
-            {"LOG_FETCH_ERR": 1, "LOG_WRITE_ERR": 1},
-            f"{_LOG}/INTR_ENABLE",
-            restore=0,
-            after=(
-                (
-                    "LOG0_INTR_STATUS_CLEAR",
-                    f"{_LOG}/INTR_STATUS",
-                    _word(log_status, LOG_FETCH_ERR=1, LOG_WRITE_ERR=1),
-                ),
+        replace(
+            _leg(
+                "LOG-ENGINE",
+                "LOG0_INTR_TEST",
+                f"{_LOG}/INTR_TEST",
+                {"LOG_FETCH_ERR": 1, "LOG_WRITE_ERR": 1},
+                f"{_LOG}/INTR_ENABLE",
+                restore=0,
+            ),
+            observe=Observe(
+                "LOG0_INTR_STATUS",
+                log_status.addr,
+                log_set,
+                log_bits,
+                log_set,
+                0,
+                pulse=True,
+                clear=log_set,
             ),
         ),
         _leg(
@@ -325,11 +353,10 @@ def build_legs() -> tuple[Leg, ...]:
         ),
         _leg(
             "TIMER",
-            "TIMER_START",
-            "smc_system_timer_octs/TIMER_START",
-            {"START": 1},
-            "smc_system_timer_octs/CTRL",
-            restore=0,
+            "TIMER_PRESET_LO",
+            "smc_system_timer_octs/TIMER_PRESET_LO",
+            {"PRESET_LO": 0x8421_C3A5},
+            "smc_system_timer_octs/TIMER_PRESET_HI",
         ),
     )
 
@@ -353,8 +380,10 @@ CHECKERS = tuple(sorted(f"CHK-LANE-{b}" for b in BLOCKS)) + ("CHK-LANE-RESTORE",
 
 
 def leg_accesses(leg: Leg) -> int:
-    observed = WRITES_PER_LEG if leg.observe is not None else 0
-    return LEG_ACCESSES + AFTER_ACCESSES * len(leg.after) + observed
+    if leg.observe is None:
+        return LEG_ACCESSES
+    per_write = PULSE_ACCESSES if leg.observe.pulse else LEVEL_ACCESSES
+    return LEG_ACCESSES + WRITES_PER_LEG * per_write
 
 
 def planned_accesses(legs: tuple[Leg, ...]) -> int:
@@ -389,7 +418,12 @@ class smc_regblock_byte_lane_write_sweep_test_seq(SmcCsrSeq):
         cocotb.log.info("%s: %s", chk_id, text)
         self.chk_seen.append(chk_id)
 
-    async def _compare(self, leg: Leg, label: str, image: int, saved: int) -> int:
+    async def _compare(self, leg: Leg, label: str, image: int, saved: int, delivered: int) -> int:
+        """Read the target and its observed field after one write.
+
+        `image` is the target's expected lane image after the write and
+        `delivered` the bits the write carried on the lanes it enabled.
+        """
         got = await self.csr_read(f"{leg.label}_{label}_RB", leg.addr)
         if leg.plain_mask:
             assert (got ^ image) & leg.plain_mask == 0, (
@@ -403,14 +437,23 @@ class smc_regblock_byte_lane_write_sweep_test_seq(SmcCsrSeq):
                 f"{leg.label} at {leg.addr:#x} after {label}: read {got:#x}, the register "
                 f"read {saved:#x} before the leg and has no plain read-write field"
             )
-        if leg.observe is not None:
-            obs = leg.observe
-            want = obs.after_restore if label == "RESTORE" else obs.while_set
+        obs = leg.observe
+        if obs is not None:
+            driven = (delivered if obs.pulse else image) & obs.drive
+            assert driven in (0, obs.drive), f"{obs.label} {label}: partial drive {driven:#x}"
+            want = obs.on if driven else obs.off
             seen = await self.csr_read(f"{obs.label}_{label}", obs.addr)
             assert seen & obs.mask == want, (
-                f"{obs.label} at {obs.addr:#x} after {label}: read {seen:#x}, expected "
-                f"{want:#x} over {obs.mask:#x}"
+                f"{obs.label} at {obs.addr:#x} after {leg.label} {label}: read {seen:#x}, "
+                f"expected {want:#x} over {obs.mask:#x} (the write "
+                f"{'delivered' if driven else 'did not deliver'} {obs.drive:#x})"
             )
+            if obs.pulse:
+                await self.csr_write(f"{obs.label}_{label}_CLR", obs.addr, obs.clear)
+                cleared = await self.csr_read(f"{obs.label}_{label}_CLR_RB", obs.addr)
+                assert cleared & obs.mask == obs.off, (
+                    f"{obs.label} at {obs.addr:#x} still reads {cleared:#x} after the clear"
+                )
         return got
 
     async def _run_leg(self, leg: Leg) -> None:
@@ -418,40 +461,29 @@ class smc_regblock_byte_lane_write_sweep_test_seq(SmcCsrSeq):
         saved = await self.csr_read(f"{leg.label}_SAVE", leg.addr)
         image = leg.preload
         await self.csr_write(f"{leg.label}_PRELOAD", leg.addr, image)
-        await self._compare(leg, "PRELOAD", image, saved)
+        await self._compare(leg, "PRELOAD", image, saved, image)
         reads: list[str] = []
         for lane in LANES:
             image ^= leg.flip_mask & _lane_mask(lane)
             byte = (image >> (8 * lane)) & 0xFF
             await self.csr_write(f"{leg.label}_L{lane}", leg.addr + lane, byte, length=1)
-            got = await self._compare(leg, f"L{lane}", image, saved)
+            got = await self._compare(leg, f"L{lane}", image, saved, image & _lane_mask(lane))
             reads.append(f"L{lane}={got:#x}")
         for off in HALVES:
             image ^= leg.flip_mask & _lane_mask(off, 2)
             half = (image >> (8 * off)) & 0xFFFF
             await self.csr_write(f"{leg.label}_H{off}", leg.addr + off, half, length=2)
-            got = await self._compare(leg, f"H{off}", image, saved)
+            got = await self._compare(leg, f"H{off}", image, saved, image & _lane_mask(off, 2))
             reads.append(f"H{off}={got:#x}")
         for wstrb in STROBES:
             data = image ^ leg.flip_mask
             image ^= leg.flip_mask & _strobe_mask(wstrb)
             await self.csr_write_strobed(f"{leg.label}_S{wstrb:X}", leg.addr, data, wstrb)
-            got = await self._compare(leg, f"S{wstrb:X}", image, saved)
+            got = await self._compare(leg, f"S{wstrb:X}", image, saved, data & _strobe_mask(wstrb))
             reads.append(f"S{wstrb:X}={got:#x}")
         restore = saved if leg.restore is None else leg.restore
         await self.csr_write(f"{leg.label}_RESTORE", leg.addr, restore)
-        back = await self._compare(leg, "RESTORE", restore, saved)
-        for label, addr, value in leg.after:
-            pending = await self.csr_read(f"{label}_PRE", addr)
-            assert pending & value == value, (
-                f"{label} at {addr:#x} reads {pending:#x} before the clear, the writes set "
-                f"{value:#x}"
-            )
-            await self.csr_write(label, addr, value)
-            cleared = await self.csr_read(f"{label}_RB", addr)
-            assert cleared & value == 0, (
-                f"{label} at {addr:#x} still reads {cleared:#x} after the clear write"
-            )
+        back = await self._compare(leg, "RESTORE", restore, saved, restore)
         self.restores_ok += 1
         nb_post = await self.csr_read(f"{leg.label}_NB_POST", leg.neighbour)
         assert nb_post == nb, (
@@ -463,6 +495,7 @@ class smc_regblock_byte_lane_write_sweep_test_seq(SmcCsrSeq):
             f"{leg.label} saved={saved:#x} preload={leg.preload:#x} "
             f"plain={leg.plain_mask:#x} flip={leg.flip_mask:#x} [{' '.join(reads)}] "
             f"restore={back:#x}"
+            + (f" observed={leg.observe.label} per write" if leg.observe else "")
         )
 
     async def _uart_ro_writes(self) -> None:
@@ -499,8 +532,9 @@ class smc_regblock_byte_lane_write_sweep_test_seq(SmcCsrSeq):
             self._mark(block, sum(leg_accesses(leg) for leg in legs))
             self._chk(
                 f"CHK-LANE-{block}",
-                f"{len(legs)} leg(s), every lane, half-word and lane-strobed write read back "
-                f"its lane image; " + "; ".join(self._results[block]),
+                f"{len(legs)} leg(s), every lane, half-word and lane-strobed write graded "
+                f"(lane image over the plain fields, the unchanged word otherwise, the "
+                f"observed field per write); " + "; ".join(self._results[block]),
             )
 
         await self.csr_write("CG_RESTORE", CLOCK_GATE_CONTROL, cg_saved, length=8)
