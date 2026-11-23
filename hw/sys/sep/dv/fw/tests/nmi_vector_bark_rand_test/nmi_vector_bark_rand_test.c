@@ -23,8 +23,9 @@
 //
 // Records: CHK-NMI-STUB (the reset-vector bark runs the stub once);
 // CHK-NMI-ENTRY (each locked-copy bark enters the copy once; the CTRL-MIE-AT-BARK
-// read of mstatus.MIE before the bark is the stated value of the leg, and the
-// mstatus.MPIE value at the NMI entry is logged as OBS-NMI-MPIE, not graded);
+// read of mstatus.MIE before the bark is the stated value of the leg, and
+// INFO-NMI-MPIE logs the mstatus.MPIE value at the NMI entry, not graded, with
+// mie_at_bark, graded by CHK-NMI-ENTRY; no open specification question);
 // CHK-NMI-NOPIC (the bark moves no bit of
 // any of the eight meip words, masked by the excluded idle bits; the pending
 // source delivers once after its gate opens); CHK-NMI-IN-EXT (a bark fired
@@ -379,8 +380,8 @@ static uint32_t copy_addr(uint32_t k) {
 // One bark through the locked trampoline; prints the CHK-NMI-ENTRY record: one
 // NMI entry, at the locked copy. Before the bark it reads mstatus.MIE back
 // (CTRL-MIE-AT-BARK), and CHK-NMI-ENTRY needs that read equal to mie_at_bark.
-// No cited specification states mstatus.MPIE at an NMI entry, so the value the
-// handler reads is logged (OBS-NMI-MPIE) and not graded. The host grades the
+// INFO-NMI-MPIE logs the mstatus.MPIE value the handler reads, not graded, and
+// mie_at_bark, graded by CHK-NMI-ENTRY; no open specification question. The host grades the
 // same entry with the CPU trace (CHK-NMI-TAKEN).
 static int bark_nmi(uint32_t n, uint32_t thold, uint32_t mie_at_bark) {
     uint32_t r0 = g_nmi_runs;
@@ -411,10 +412,11 @@ static int bark_nmi(uint32_t n, uint32_t thold, uint32_t mie_at_bark) {
     rec_hex("vec_exp", vec);
     rec_num("timeout", left == 0u);
     rec_end();
-    rec_obs("NMI-MPIE");
+    rec_info("NMI-MPIE");
     rec_num("bark", n);
     rec_num("mpie", g_nmi_mpie);
     rec_num("mie_at_bark", mie_rd);
+    rec_str("chk", "CHK-NMI-ENTRY");
     rec_end();
     if (!pass) {
         g_err++;

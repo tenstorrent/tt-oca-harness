@@ -1106,8 +1106,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             for e in self.taps[n].ev["aw"]
         ]
         self.log.info(
-            "OBS-G2B-ATOP-SEP: every sep_out and SEP-to-SMC AW so far: %s; observation only; open "
-            "spec question: whether the fabric carries ATOP and how an atomic request is answered",
+            "OBS-G2B-ATOP-SEP: every sep_out and SEP-to-SMC AW so far: %s; AWATOP is 0 by the "
+            "smu_axi_in boundary contract (integrator guide, AXI boundary contract: the SMU neither "
+            "refuses nor answers an atomic); measured, never compared",
             " ".join(atop) or "none",
         )
         self._fence(len(recs))

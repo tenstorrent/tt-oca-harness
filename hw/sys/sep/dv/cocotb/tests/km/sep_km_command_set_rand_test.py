@@ -48,7 +48,7 @@ Checkers:
               word address is compared
   CHK-HW-VER  CMD_HW_VER returns rc=0 and RETURN_ARG = KMCSR VERSION 1.0.0
   CHK-ROM-VER CMD_ROM_VER returns rc=0 with a return argument; the version
-              value (bits 23:0) is logged as OBS-ROM-VER (no spec states it)
+              value (bits 23:0) is logged as INFO-ROM-VER (no spec states it)
   CHK-ROM-VER-RSVD
               bits 31:24 of the CMD_ROM_VER RETURN_ARG read 0: they are
               RESERVED and reserved fields read as 0 (firmware.adoc,
@@ -148,10 +148,10 @@ Checkers:
               in use again: there the single-slot CMD_KEY_LOAD that follows
               still returns RC_FAILURE with no RETURN_ARG, so the refused
               revoke freed no slot. Which refusal code is logged as
-              OBS-REVOKE-TWICE (no spec line picks one)
+              INFO-REVOKE-TWICE (no spec line picks one)
   CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused with
               RC_INVALID_ARG or RC_FAILURE; which of the two is logged as
-              OBS-NULL (no spec line picks one)
+              INFO-NULL (no spec line picks one)
   CHK-NULL-ARG
               that refusal carries the RETURN_ARG its code defines:
               RC_INVALID_ARG with RETURN_ARG 0 (the index of the handle word),
@@ -204,7 +204,7 @@ Checkers:
               RC_INVALID_ARG with RETURN_ARG 1. Both responses must carry
               the RETURN_ARG word, so a missing one does not read as 0. The
               five other reserved-bit and empty-mask frames are logged as
-              OBS-CMD-ARG-EDGE (no spec states their code or argument)
+              INFO-CMD-ARG-EDGE (no spec states their code or argument)
   CHK-VAULT-FILL
               with F = KPV_SLOTS minus the slots of the leaf's live keys
               (each live key is at most 16 words, one slot), F single-slot
@@ -245,7 +245,7 @@ Checkers:
               Transfer and Sideload Purge": an unavailable handle gets
               failure; "0x24 - CMD_KEY_TRANSFER" Response), as CHK-CLOSED
               grades a revoked handle, and CHK-ALIVE follows. The code is also
-              logged as OBS-WARM-STALE-HANDLE. The refused load of
+              logged as INFO-WARM-STALE-HANDLE. The refused load of
               CHK-VAULT-FULL in the same seed
               is the control of the load. The control of the refusal is a
               CMD_KEY_TRANSFER of the new handle 1 to AES in the same state:
@@ -844,7 +844,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             arg,
             rsvd,
         )
-        self.logger.info("OBS-ROM-VER LOG ver=0x%08x", arg & 0x00FF_FFFF)
+        self.logger.info("INFO-ROM-VER LOG ver=0x%08x", arg & 0x00FF_FFFF)
 
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_SRAM_VER, [])
         assert rc == KM_RC_FAILURE, (
@@ -1108,12 +1108,12 @@ class sep_km_command_set_rand_test(sep_base_test):
         # The specification gives two refusal codes, invalid_arg for an invalid
         # argument and failure for an unavailable handle, and does not say which
         # one the null handle gets, so the check accepts either and the code is
-        # logged as OBS-NULL. Each code defines its RETURN_ARG: invalid_arg
+        # logged as INFO-NULL. Each code defines its RETURN_ARG: invalid_arg
         # carries the index of the invalid payload word (0, the handle word),
         # failure carries none. The frame is decoded here so that a missing
         # RETURN_ARG does not read as 0.
         rc, null_arg = await self._resp_cmd(KM_CMD_KEY_REVOKE, [KM_KEY_HANDLE_NULL])
-        self.logger.info("OBS-NULL LOG rc=%d", rc)
+        self.logger.info("INFO-NULL LOG rc=%d chk=CHK-NULL", rc)
         assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE), (
             f"CHK-NULL FAIL: CMD_KEY_REVOKE of the null handle returned rc={rc}, "
             f"expected {KM_RC_INVALID_ARG} (RC_INVALID_ARG) or {KM_RC_FAILURE} (RC_FAILURE)"
@@ -1656,7 +1656,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             _arg_str(load_arg),
             KM_RC_FAILURE,
         )
-        self.logger.info("OBS-VAULT-FULL-GEN-ARG LOG arg=%s", _arg_str(gen_arg))
+        self.logger.info("INFO-VAULT-FULL-GEN-ARG LOG arg=%s", _arg_str(gen_arg))
         await self._check_alive("post-vault-full")
 
     async def _aes_shred(self, cap: _AesKeyPortWrites) -> tuple[int, int, int]:
@@ -1780,7 +1780,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         succeed.
         """
         rc, arg = await self._resp_cmd(KM_CMD_KEY_REVOKE, [handle])
-        self.logger.info("OBS-REVOKE-TWICE LOG site=%s rc=%d", site, rc)
+        self.logger.info("INFO-REVOKE-TWICE LOG site=%s rc=%d chk=CHK-REVOKE-TWICE", site, rc)
         exp_arg = 0 if rc == KM_RC_INVALID_ARG else None
         assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE) and arg == exp_arg, (
             f"CHK-REVOKE-TWICE FAIL [{site}]: CMD_KEY_REVOKE of revoked handle "
@@ -1877,7 +1877,11 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
 
         rc, arg = await self._resp_cmd(KM_CMD_KEY_TRANSFER, [stale, KM_DEST_AES])
-        self.logger.info("OBS-WARM-STALE-HANDLE LOG handle=0x%02x rc=%d", stale, rc)
+        self.logger.info(
+            "INFO-WARM-STALE-HANDLE LOG handle=0x%02x rc=%d chk=CHK-VAULT-WARM-LOAD",
+            stale,
+            rc,
+        )
         assert rc == KM_RC_FAILURE and arg is None, (
             f"CHK-VAULT-WARM-LOAD FAIL: CMD_KEY_TRANSFER of pre-reset handle 0x{stale:02x} "
             f"to AES after the warm reset returned rc={rc} RETURN_ARG={_arg_str(arg)}, "
@@ -1984,7 +1988,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         out-of-range field. Each targets the revoked handle or the unused ML-KEM
         message engine, so a command the KM accepts changes no state a later
         check reads. The two CMD_KEY_GENERATE frames are graded (CHK-GEN-ARG);
-        the others are logged (OBS-CMD-ARG-EDGE)."""
+        the others are logged (INFO-CMD-ARG-EDGE)."""
         cases = (
             ("revoke_rsvd", KM_CMD_KEY_REVOKE, [revoked | _ARG_RESERVED]),
             ("transfer_rsvd", KM_CMD_KEY_TRANSFER, [revoked | _ARG_RESERVED, KM_DEST_AES]),
@@ -2012,7 +2016,7 @@ class sep_km_command_set_rand_test(sep_base_test):
                 rc, arg = await self.km.send_raw_expect_rc(cmd, payload)
             if case not in graded_arg:
                 self.logger.info(
-                    "OBS-CMD-ARG-EDGE LOG cmd=0x%02x case=%s code=%d arg=0x%08x",
+                    "INFO-CMD-ARG-EDGE LOG cmd=0x%02x case=%s code=%d arg=0x%08x",
                     cmd,
                     case,
                     rc,

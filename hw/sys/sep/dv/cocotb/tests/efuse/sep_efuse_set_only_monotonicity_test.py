@@ -12,6 +12,13 @@ patterns. The LC_STATE nibble is graded by
 lcc/sep_lcc_lc_state_transition_matrix_test, and program x lock by
 efuse/sep_efuse_program_lock_matrix_test.
 
+Mixed write (``CHK-LOCK-MIXED-WR``). After CHK-OR-MERGE of ``LOCKS`` word 0 and
+word 1, one write carries 0 at the set bit and 1 at one fresh clear bit of the
+word, drawn from a salted ``SepSeededRng`` stream of the seed. The readback is
+the OR of both (``sep_efuse_map.rdl`` ``LOCKS``, ``onwrite = woset``;
+``hw/ip/efuse/doc/architecture.adoc``: 1's may be added, never cleared). The
+LOCK walk is last, so the slot that the fresh bit locks takes no later access.
+
 Real fuse sense. ``SepEfuseSetOnlyCfg`` is the single source of truth
 for the image pins and the checker goldens.
 
@@ -28,13 +35,15 @@ from __future__ import annotations
 import pyuvm
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import LC_TEST_DEV
-from env.sep_efuse_set_only import SepEfuseSetOnlyCfg
+from env.sep_efuse_set_only import WORD_BITS, SepEfuseSetOnlyCfg
 from env.sep_efuse_test_lib import SepEfuseFd
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_set_only_seq import SepEfuseShadow
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
+_MIXED_WR_SALT = 0x4D49_5845_4457_5254
 
 
 @pyuvm.test()
@@ -119,6 +128,28 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         )
         self.logger.info("CHK-OR-MERGE PASS: %s[%d] write-0 left OR 0x%08x", name, word, got)
 
+    async def _check_mixed_write(self, shadow: SepEfuseShadow, field, rng: SepSeededRng) -> None:
+        """0 at the set bit and 1 at one fresh clear bit: the word keeps both."""
+        name, word = field.name, field.word_idx
+        clear = field.used_mask & ~field.after_set
+        fresh = 1 << rng.choice([b for b in range(WORD_BITS) if clear >> b & 1])
+        wdata = field.drive_word(fresh)
+        await shadow.write_word(name, word, wdata)
+        got = await shadow.read_word(name, word)
+        want = field.after_set | fresh
+        assert got == want, (
+            f"CHK-LOCK-MIXED-WR FAIL: {name}[{word}] = 0x{got:08x} want 0x{want:08x} "
+            f"(held 0x{field.after_set:08x}, wdata 0x{wdata:08x})"
+        )
+        self.logger.info(
+            "CHK-LOCK-MIXED-WR PASS: %s[%d] 0x%08x write 0x%08x = 0x%08x",
+            name,
+            word,
+            field.after_set,
+            wdata,
+            got,
+        )
+
     async def _check_writable_contrast(self, shadow: SepEfuseShadow, field) -> None:
         name, word, pattern = field.name, field.word_idx, field.pattern
         got = await shadow.read_word(name, word)
@@ -182,8 +213,11 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
             await self._collect(self._check_writable_contrast(shadow, field))
         # Assigned lock bits write-lock the row they name, so both LOCK
         # windows run after every other shadow write in this invocation.
+        mixed_rng = SepSeededRng(seed ^ _MIXED_WR_SALT)
         for field in cfg.lock_fields:
             await self._collect(self._check_field(shadow, field, set_only=False))
+            if field.name == "LOCKS":
+                await self._collect(self._check_mixed_write(shadow, field, mixed_rng))
         self.chk.ok(
             "RANDCFG",
             not self._failures,

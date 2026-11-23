@@ -51,9 +51,9 @@ Control:
                       polled a running operation.
 
 Log-only:
-  OBS-OTBN-FW-INIT-INTR    ``INTR_STATE`` after the reset wipe: ToO:139 states
+  INFO-OTBN-FW-INIT-INTR    ``INTR_STATE`` after the reset wipe: ToO:139 states
                       ``done`` for EXECUTE only.
-  OBS-OTBN-FW-STATUS-SEQ   the probe codes of each operation and the firmware's
+  INFO-OTBN-FW-STATUS-SEQ   the probe codes of each operation and the firmware's
                       first ``STATUS`` read after ``CMD``: no sentence states
                       whether EXECUTE shows 0x04 during its end-of-run wipe.
   INFO-OTBN-FW-INSN        ``INSN_CNT`` of each leg and 3n + 8, the count with
@@ -231,7 +231,7 @@ class sep_otbn_fw_control_flow_test(sep_base_test):
         console = self.sb.console_text()
         legs = {leg: parse_line(console, f"INFO-OTBN-FW-LEG leg={leg}") for leg in LEGS}
         init = parse_line(console, "INFO-OTBN-FW-INIT")
-        chk.obs(
+        chk.info(
             "OTBN-FW-INIT-INTR",
             intr=init.get("intr", "none") if init else "none",
             polls=init.get("polls", "none") if init else "none",
@@ -277,7 +277,7 @@ class sep_otbn_fw_control_flow_test(sep_base_test):
         ]
         starts = [t_ps for t_ps, _, _ in ops]
         st_end = {leg: int(legs[leg]["st_end"], 16) if legs[leg] else None for leg in LEGS}
-        chk.obs(
+        chk.info(
             "OTBN-FW-STATUS-SEQ",
             before_idle=_fmt_codes(pre),
             ops=len(ops),

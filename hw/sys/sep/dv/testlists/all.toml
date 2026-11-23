@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 297
+expected_count = 303
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -198,6 +198,7 @@ tests = [
     "sep_dma_basic_test",
     "sep_km_kpv_scrambler_test",
     "sep_km_otbn_sideload_kat_test",
+    "sep_km_aes_sram_cpu_rand_test",
     "sep_km_aes_sideload_kat_test",
     "sep_km_kmac_sideload_kat_test",
     "sep_cpu_zbe_exec_test",
@@ -230,6 +231,7 @@ tests = [
     "sep_efuse_lock_slot_matrix_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test_chain",
     "sep_efuse_lock_slot_matrix_rand_test_single",
+    "sep_efuse_lock_slot_matrix_rand_test_exempt",
     "sep_cpu_reset_retention_test",
     "sep_aes_mode_keysize_rand_test",
     "sep_axi_order_sweep_test",
@@ -264,6 +266,8 @@ tests = [
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_transient_rma_rand_test_prod",
+    "sep_efuse_transient_rma_rand_test_rma_sip",
+    "sep_efuse_transient_rma_rand_test_legs",
     "sep_boot_rom_lsu_read_test",
     "sep_boot_rom_aperture_sweep_test_rom_be",
     "sep_efuse_set_only_monotonicity_test",
@@ -295,6 +299,7 @@ tests = [
     "sep_spi_cold_reset_values_rand_test",
     "sep_efuse_rma_token_rand_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
+    "sep_efuse_el2_fw_mmio_test",
     "sep_efuse_field_layout_rand_test",
     "sep_boot_release_terms_test_smc_hold",
     "sep_cpu_trace_diag_test",
@@ -336,6 +341,7 @@ tests = [
     "sep_esrc_e2e_smoke_test",
     "sep_mailbox_access_error_inject_test",
     "sep_rom_sanity_test",
+    "sep_cpu_rom_ar_contention_test",
     "sep_drbg_gen_segmentation_test",
     "sep_secure_tm_strap_sampling_test",
     "sep_outbound_stall_saturation_test",
@@ -395,6 +401,7 @@ tests = [
     "sep_mailbox_plic_test",
     "sep_dma_cpu_contention_test",
     "sep_rom_sanity_test",
+    "sep_cpu_rom_ar_contention_test",
     "sep_spi_ot_dma_rx_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_otbn_fw_control_flow_test",
@@ -409,6 +416,7 @@ tests = [
     "sep_dma_zero_test",
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
+    "sep_efuse_el2_fw_mmio_test",
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
     "sep_boot_rom_lsu_read_test",
     "sep_spi_ot_flash_cmd_rand_test",
@@ -430,6 +438,7 @@ tests = [
     "sep_tcm_ecc_cpu_trap_test",
     "sep_cpu_isa_pmp_csr_test",
     "sep_cpu_zbe_exec_test",
+    "sep_km_aes_sram_cpu_rand_test",
 ]
 
 [[groups]]
@@ -510,12 +519,15 @@ tests = [
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_transient_rma_rand_test_prod",
+    "sep_efuse_transient_rma_rand_test_rma_sip",
+    "sep_efuse_transient_rma_rand_test_legs",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test_chain",
     "sep_efuse_lock_slot_matrix_rand_test_single",
+    "sep_efuse_lock_slot_matrix_rand_test_exempt",
     "sep_efuse_secure_tm_matrix_rand_test",
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",
@@ -747,6 +759,13 @@ tests = [
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_mbist_only_fail_test",
     "sep_firmware_mbist_pass_test",
+    "sep_firmware_repair_bypass_test",
+    "sep_firmware_mbist_bypass_test",
+    "sep_firmware_repair_fail_test",
+    "sep_firmware_mbist_abort_test",
+    "sep_firmware_mbist_timeout_test",
+    "sep_status_reporting_disabled_test",
+    "sep_boot_stall_efuse_shadow_override_test",
     "sep_boot_recovery_test",
     "sep_rotate_update_set_test",
     "sep_firmware_primary_invalid_key_hash_test",
@@ -761,6 +780,12 @@ tests = [
     "sep_warm_reset_below_range_hang_test",
     "sep_warm_reset_unarmed_cold_boot_test",
     "sep_warm_reset_bad_target_exception_test",
+    "sep_runtime_warm_reset_valid_test",
+    "sep_runtime_warm_reset_zero_test",
+    "sep_runtime_warm_reset_below_range_test",
+    "sep_runtime_warm_reset_upper_bound_test",
+    "sep_runtime_warm_reset_bad_instruction_test",
+    "sep_runtime_warm_reset_one_shot_rearm_test",
     "sep_otbn_rsa_verify_failure_test",
     "sep_firmware_backup_pubkey_rom_0_revoked_key_test",
     "sep_firmware_backup_pubkey_rom_1_revoked_key_test",
@@ -883,6 +908,7 @@ tests = [
     "sep_firmware_primary_payload_offset_into_backup_test",
     "sep_firmware_cleartext_image_corrupt_hash_test",
     "sep_firmware_secondary_chiplet_bootcode_test",
+    "sep_secondary_secure_boot_rand_test",
     "sep_firmware_secondary_manifest_offset_misaligned_test",
     "sep_firmware_secondary_manifest_offset_invalid_test",
     "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test",
@@ -1088,7 +1114,7 @@ tests = [
 # Convenience group of the eFuse, lifecycle and SEC_DIS tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_efuse_lifecycle"
-expected_count = 20
+expected_count = 23
 tests = [
     "sep_efuse_window_decode_reset_test",
     "sep_efuse_field_layout_rand_test",
@@ -1100,12 +1126,15 @@ tests = [
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_transient_rma_rand_test_prod",
+    "sep_efuse_transient_rma_rand_test_rma_sip",
+    "sep_efuse_transient_rma_rand_test_legs",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test_chain",
     "sep_efuse_lock_slot_matrix_rand_test_single",
+    "sep_efuse_lock_slot_matrix_rand_test_exempt",
     "sep_efuse_secure_tm_matrix_rand_test",
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",

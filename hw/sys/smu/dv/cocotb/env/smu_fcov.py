@@ -17,7 +17,7 @@ FCOV_BINS: dict[str, dict[str, set[str]]] = {
         "bringup": {"cold_primary_release"},
     },
     "xbar_route_cg": {
-        "sep0_path": {"smc_ext", "ext_smc", "decerr", "id_width", "atop_reject", "remap"},
+        "sep0_path": {"smc_ext", "ext_smc", "decerr", "id_width", "remap"},
         "filter": {
             "inbound_program_okay",
             "outside_still_decerr",

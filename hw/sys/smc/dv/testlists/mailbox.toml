@@ -79,6 +79,16 @@ timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
 
+# Byte-offset pushes and pops, all-ones and all-zero words, and a high in-aperture offset on
+# every one of the 64 mailbox apertures.
+[[tests]]
+name = "smc_mailbox_lane_offset_walk_test"
+module = "smc_mailbox_lane_offset_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
 [[tests]]
 name = "smc_mailbox_access_error_test"
 module = "smc_mailbox_access_error_test"

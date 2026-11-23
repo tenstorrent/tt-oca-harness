@@ -124,10 +124,19 @@
 // The LC_STATE shadow and the lifecycle controller decoder are not forced.
 `SEP_TB_IN(logic, jtag_filter_lc_sigint_inject_i)
 // eFuse sense status inject. Default 0. While 1, during fuse sense only, the
-// bank model APB response to the READ of word efuse_sense_status_word_i
-// carries pslverr = 1. Data and ready are not forced.
+// shim's read-path copy of the bank model APB response to the READ of word
+// efuse_sense_status_word_i carries pslverr = 1. Data and ready are not forced.
 `SEP_TB_IN(logic, efuse_sense_status_inject_i)
 `SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
+// eFuse status inject, post-sense modes. Default 0. Each acts only after
+// fuse sense done, on the bank access to word efuse_sense_status_word_i, and
+// forces pslverr = 1 on one shim copy of the bank response:
+// _read_i on a frontdoor READ (apb_fuse_bank_resp_r), _write_i on the bank
+// write of a PROGRAM (apb_fuse_bank_resp_w), _readback_i on the bank
+// read-back of a PROGRAM (apb_fuse_bank_resp_w_readback).
+`SEP_TB_IN(logic, efuse_status_inject_read_i)
+`SEP_TB_IN(logic, efuse_status_inject_write_i)
+`SEP_TB_IN(logic, efuse_status_inject_readback_i)
 // eFuse shim response hold. Default 0. While 1 and a PROGRAM command is at
 // the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i is forced to 0.
 `SEP_TB_IN(logic, efuse_shim_resp_hold_i)
@@ -387,6 +396,13 @@
 `SEP_TB_IN(logic, rom_flip_i)
 `SEP_TB_IN(logic [12:0], rom_flip_index_i)
 `SEP_TB_IN(logic [63:0], rom_flip_mask_i)
+// Runtime warm-handler deposit (docs/SEP_TB_ARCH.adoc). A rising edge of
+// runtime_cold_scratch7_we_i writes runtime_cold_scratch7_wdata_i into COLD
+// Scratch 7; runtime_cold_scratch7_ack_o rises after the write and falls when
+// the request drops. Default 0: the slot is not written.
+`SEP_TB_IN(logic, runtime_cold_scratch7_we_i)
+`SEP_TB_IN(logic [31:0], runtime_cold_scratch7_wdata_i)
+`SEP_TB_OUT(logic, runtime_cold_scratch7_ack_o)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -856,6 +872,9 @@
 `SEP_TB_OUT(logic [11:0], esrc_detune_o)
 // Lane i: u_decorrelator.noise_i, the decorrelator input bit of the lane.
 `SEP_TB_OUT(logic [11:0], esrc_decor_noise_o)
+// entropy_source window_wrap_pulse: 1 for the clk_i cycle that ends a
+// health-test window.
+`SEP_TB_OUT(logic, esrc_window_wrap_o)
 // Next value of the SHA256_STATUS fields: [0] BUSY, [4:1] INPUT_COUNT,
 // [8:5] OUTPUT_COUNT.
 `SEP_TB_OUT(logic [8:0], esrc_sha256_status_o)
@@ -885,6 +904,10 @@
 // acknowledge into drbg_edn_axis_adapter (u_drbg edn_axis_endpoint_rsp[i].edn_ack)
 // that pushes one word. Read-only; no force.
 `SEP_TB_OUT(logic [2:0], drbg_adapter_push_o)
+// Level of the two EDN command FIFOs (u_edn.u_edn_core): [3:0] the RESEED_CMD
+// FIFO (sfifo_rescmd_depth), [7:4] the GENERATE_CMD FIFO (sfifo_gencmd_depth).
+// Read-only; no force.
+`SEP_TB_OUT(logic [7:0], edn_cmd_fifo_depth_o)
 // Sample clock of ESRC lane 0 after the source mux and the ripple divider
 // (u_generator_complex.u_sampler_clocks.sample_clk_o[0]). Read-only; no force.
 `SEP_TB_OUT(logic, esrc_sample_clk_lane0_o)
@@ -999,6 +1022,11 @@
 // Observation-only depth of the fabric pool's 32->64 packer. Used to
 // trigger a TRNG reset with exactly one pre-reset 32-bit half-word cached.
 `SEP_TB_OUT(logic [1:0], entropy_pool_packer_depth_o)
+// Entropy-pool AXI slave handshake: the valid and ready nets of
+// u_entropy_fifo.entropy_fifo_axi_req_i/_resp_o, sampled on clk_i. Read-only.
+// [0] aw_valid [1] aw_ready [2] w_valid [3] w_ready [4] b_valid [5] b_ready
+// [6] ar_valid [7] ar_ready [8] r_valid [9] r_ready.
+`SEP_TB_OUT(logic [9:0], entropy_pool_axi_hs_o)
 // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
@@ -1048,11 +1076,13 @@
 // stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
 // (valid and ready on the same clock) and the B and R response codes (two bits per
 // stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
-// slv_resp_o ports. iso_slv_ar_valid_probe_o is the AR valid alone, so a read can be
-// seen pending at a stage before its handshake.
+// slv_resp_o ports. iso_slv_ar_valid_probe_o and iso_slv_aw_valid_probe_o are the AR
+// and AW valid alone, so a read or write can be seen pending at a stage before its
+// handshake.
 `SEP_TB_OUT(logic [13:0], iso_slv_aw_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_valid_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_aw_valid_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_b_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
@@ -1376,6 +1406,24 @@
 `SEP_TB_OUT(logic, pr_cpu_ifu_arvalid_o)
 `SEP_TB_OUT(logic, pr_cpu_ifu_arready_o)
 `SEP_TB_OUT(logic [2:0], pr_cpu_ifu_arprot_o)
+// PR-CPU-LSU-ATTR: address, AxBURST, AxLOCK, AxCACHE, AxQOS and AxREGION of the
+// same raw LSU AW and AR, and ID, AxLEN and AxSIZE of the raw LSU AR
+// (lsu_axi_req_raw); tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [31:0], pr_cpu_lsu_awaddr_o)
+`SEP_TB_OUT(logic [1:0], pr_cpu_lsu_awburst_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_awlock_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_awcache_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_awqos_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_awregion_o)
+`SEP_TB_OUT(logic [31:0], pr_cpu_lsu_araddr_o)
+`SEP_TB_OUT(logic [1:0], pr_cpu_lsu_arburst_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_arlock_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_arcache_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_arqos_o)
+`SEP_TB_OUT(logic [3:0], pr_cpu_lsu_arregion_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_arid_o)
+`SEP_TB_OUT(logic [7:0], pr_cpu_lsu_arlen_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_arsize_o)
 // PR-DMA-RAW: AxPROT of the raw secure DMA master request, before its window
 // remap (u_sep_dma_wrap dma_axi_req_raw).
 `SEP_TB_OUT(logic, pr_dma_raw_awvalid_o)
@@ -1454,7 +1502,8 @@
 `SEP_TB_OUT(logic [63:0], pr_tcm_dccm_rdata_o)
 `SEP_TB_OUT(logic [13:0], pr_tcm_dccm_recc_o)
 // PR-IFU: the IFU request after the local alias remap and before the IFU
-// demux (u_sep_cpu.ifu_axi_req), and the response the demux returns to it,
+// demux (u_sep_cpu.ifu_axi_req: AR address, ID, AxLEN, AxSIZE, AxBURST, AxLOCK,
+// AxCACHE, AxQOS, AxREGION), and the response the demux returns to it,
 // DECERR of the error responder included. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, pr_ifu_arvalid_o)
 `SEP_TB_OUT(logic, pr_ifu_arready_o)
@@ -1462,6 +1511,11 @@
 `SEP_TB_OUT(logic [2:0], pr_ifu_arid_o)
 `SEP_TB_OUT(logic [7:0], pr_ifu_arlen_o)
 `SEP_TB_OUT(logic [2:0], pr_ifu_arsize_o)
+`SEP_TB_OUT(logic [1:0], pr_ifu_arburst_o)
+`SEP_TB_OUT(logic, pr_ifu_arlock_o)
+`SEP_TB_OUT(logic [3:0], pr_ifu_arcache_o)
+`SEP_TB_OUT(logic [3:0], pr_ifu_arqos_o)
+`SEP_TB_OUT(logic [3:0], pr_ifu_arregion_o)
 `SEP_TB_OUT(logic, pr_ifu_rvalid_o)
 `SEP_TB_OUT(logic, pr_ifu_rready_o)
 `SEP_TB_OUT(logic [1:0], pr_ifu_rresp_o)
@@ -1611,9 +1665,22 @@
 `SEP_TB_OUT(logic, pr_dbg_out_arvalid_o)
 `SEP_TB_OUT(logic, pr_dbg_out_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dbg_out_araddr_o)
+// PR-DBG-IN-ATTR: AxBURST, AxLOCK, AxCACHE and AxQOS of the debug-module
+// system-bus request at the remap input (dbg_axi_req_raw), AW and AR. Tied to 0
+// on the CPU stub build.
+`SEP_TB_OUT(logic [1:0], pr_dbg_in_awburst_o)
+`SEP_TB_OUT(logic, pr_dbg_in_awlock_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_awcache_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_awqos_o)
+`SEP_TB_OUT(logic [1:0], pr_dbg_in_arburst_o)
+`SEP_TB_OUT(logic, pr_dbg_in_arlock_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_arcache_o)
+`SEP_TB_OUT(logic [3:0], pr_dbg_in_arqos_o)
 // Core JTAG and DMI outputs of sep that the DUT instance leaves open
-// otherwise: the TAP TDO and the uncore DMI enable and write enable.
+// otherwise: the TAP TDO and its output enable, and the uncore DMI enable and
+// write enable.
 `SEP_TB_OUT(logic, jtag_tdo_o)
+`SEP_TB_OUT(logic, jtag_tdoEn_o)
 `SEP_TB_OUT(logic, dmi_uncore_en_o)
 `SEP_TB_OUT(logic, dmi_uncore_wr_en_o)
 // BH-SMC (docs/SEP_TB_ARCH.adoc, HDL Top port table). A leaf drives these
@@ -1625,6 +1692,10 @@
 // observation-only. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [55:0], smc_base_probe_o)
 `SEP_TB_OUT(logic [55:0], smc_size_probe_o)
+// SEP aperture outputs of the DUT (sep_global_base_addr_o, sep_region_size_o),
+// observation-only.
+`SEP_TB_OUT(logic [55:0], sep_global_base_addr_probe_o)
+`SEP_TB_OUT(logic [55:0], sep_region_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -1680,6 +1751,14 @@
 // sensing FSM (efuse_shadow_regs). Read-only taps.
 `SEP_TB_OUT(logic, efuse_shadow_resp_valid_o)
 `SEP_TB_OUT(logic, efuse_shadow_sense_done_o)
+// Registered APB response of the shadow map (efuse_shadow_regs apb_resp_q):
+// pready and pslverr. Read-only taps.
+`SEP_TB_OUT(logic, efuse_shadow_apb_pready_o)
+`SEP_TB_OUT(logic, efuse_shadow_apb_pslverr_o)
+// Program-fail drop of the OTP bank model (prog_fail_act, one clock per
+// dropped bank write) and the APB paddr of that write. Read-only taps.
+`SEP_TB_OUT(logic, efuse_bank_prog_drop_o)
+`SEP_TB_OUT(sep_efuse_pkg::addr_t, efuse_bank_prog_drop_paddr_o)
 // APB select of the shim request to the OTP bank model. Read-only tap.
 `SEP_TB_OUT(logic, efuse_bank_psel_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).
