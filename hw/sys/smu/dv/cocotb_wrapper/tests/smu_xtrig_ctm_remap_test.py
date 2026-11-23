@@ -8,8 +8,8 @@ Proves SMU glue on real TB ports (same class as clock-stop remap):
   2. xtrig_ctm_dst_ack[7] follows dst_req[7] within a settle window and holds:
      lane 7 is the one lane the TB configures for req/ack handshaking
      (XTRIG_INT_CT_MODE[7].mode = MODE_POINT_TO_POINT). The integrator guide
-     says a wire-OR lane's ack is unused and pins no level for it, so lanes 0-6 are recorded, not
-     compared
+     says a wire-OR lane's ack is unused and pins no level for it, so lanes
+     0-6 are recorded, not compared
   3. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
   4. TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
 """

@@ -11,8 +11,8 @@
 // one CTP window per external port and one CTM source register per port,
 // which the cross-trigger network document's parameter table states as
 // NUM_CTP 16 and NUM_INT_CT 10; the clock-stop request count is that table's
-// NUM_CLK_STOP_REQ. INT_CT_MODE gives every internal port the default wire-OR
-// configuration, where the acknowledge signals are unused. The STAP count, the IC_RESET
+// NUM_CLK_STOP_REQ. INT_CT_MODE puts every internal port in wire-OR mode,
+// where the acknowledge signals are unused. The STAP count, the IC_RESET
 // slice widths, the instruction enables, the IDCODE fields, and the version
 // are the bench's choice; the DUT publishes them through JTAG_CAPS ("JTAG
 // Capabilities" table, PTAP document) and IDCODE. DTP_BSR_DISABLED clears the

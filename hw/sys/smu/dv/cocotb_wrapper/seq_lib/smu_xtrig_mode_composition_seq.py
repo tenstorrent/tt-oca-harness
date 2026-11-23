@@ -19,7 +19,8 @@ The evidence is the live leg. Each external CTM lane is requested in turn and
 the ack pins are sampled: port_table.adoc states the ack ports are "Used only
 by point-to-point lanes", so a point-to-point lane must acknowledge and hold, a
 wire-OR lane must never assert, and the number of lanes at which an ack was
-*observed* must come to the number of point-to-point lanes. A DTP that ignored the mode vector fails all three.
+*observed* must come to the number of point-to-point lanes. A DTP that
+ignored the mode vector fails all three.
 """
 
 from __future__ import annotations

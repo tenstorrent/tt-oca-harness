@@ -5,9 +5,9 @@
 `doc/integrator/src/smu.adoc` ("Cross Trigger Parameters", "Debug & Test
 Ports (DTP) Integration") states the lane geometry: 8 SMU-exposed internal CT
 lanes, 10 at the DTP, the low 2 reserved for the SMC in wire-OR mode. Those
-counts size the tokened mask compare and the lane walk. Reading
-the elaborated mode vector back against the +xtrig_int_ct_mode the bench
-elaborated the build with is a plumbing compare and carries no evidence token. What the tokens rest
+counts size the tokened mask compare and the lane walk. Reading the elaborated
+mode vector back against the +xtrig_int_ct_mode the bench elaborated the build
+with is a plumbing compare and carries no evidence token. What the tokens rest
 on is the live leg: `hw/sys/smu/doc/port_table.adoc` states that the CTM ack
 ports are "Used only by point-to-point lanes", and each external CTM lane is
 requested in turn so that a point-to-point lane acknowledges and a wire-OR

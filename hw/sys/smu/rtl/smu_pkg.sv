@@ -25,6 +25,9 @@ package smu_pkg;
   localparam int unsigned XtrigSmcClkStopLanes = 1;
   localparam int unsigned XtrigIntCtModeWidth = 32;
 
+  // Configuration of each SMU-exposed internal cross-trigger lane.
+  typedef cross_trigger_port_pkg::ctp_int_cfg_t [XtrigIntCtModeWidth-1:0] xtrig_int_ct_mode_t;
+
   typedef struct packed {
     int unsigned NUM_INT_TO_SMC;  // Width of smc_ext_interrupts_i, 1 to 256; smu zero-extends
                                   // it to the 256 SMC external interrupt inputs.
@@ -75,10 +78,12 @@ package smu_pkg;
     int unsigned XTRIG_NUM_CLK_STOP_REQ;  // SMU-exposed clock-stop request count, at least 1;
                                           // the DTP gets these plus the
                                           // XtrigSmcClkStopLanes SMC lane below them.
-    cross_trigger_port_pkg::ctp_int_cfg_t [XtrigIntCtModeWidth-1:0] XTRIG_INT_CT_MODE;  // Per
-    // exposed lane, the CTP mode (wire-OR pulse, point-to-point req/ack, or toggle) and
-    // stretch. Lanes at and above XTRIG_NUM_INT_CT are ignored, and the SMC lanes are
-    // always wire-OR with the default stretch.
+    xtrig_int_ct_mode_t XTRIG_INT_CT_MODE;  // Per exposed lane, the CTP mode (wire-OR
+                                            // pulse, point-to-point req/ack, or toggle)
+                                            // and stretch. Lanes at and above
+                                            // XTRIG_NUM_INT_CT are ignored, and the SMC
+                                            // lanes are always wire-OR with the default
+                                            // stretch.
 
     // Pipeline depths
     logic [1:0] SMC_OTP_RD_PL_DEPTH;  // DTP JTAG2AXI read pipeline depth toward the SMC OTP, 0
