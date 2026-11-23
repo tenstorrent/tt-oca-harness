@@ -577,7 +577,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                 self._rsvd("KM_IRQ_STATUS", r[3] | r[4], m.IRQ_FIELDS)
             await self._sync()
 
-    # Inbound overrun, drained by the KM.
+    # Step 5: inbound overrun, drained by the KM.
     async def _step_ovr(self) -> None:
         od = self.od
         self.chk.info(
@@ -607,6 +607,8 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             sep_status=_h(s_full),
         )
         keep = await self._sep_rd(KM_MBOX_CTRL) & m.S_CTRL_FIELDS & ~m.S_CTRL_FLUSH
+        markers = []
+        mid: list[int] = []
         for mode, bit, word in (("slverr", 0, od.overflow[0]), ("okay", 1, od.overflow[1])):
             await self._sep_wr(
                 KM_MBOX_CTRL, (keep & ~m.S_CTRL_IN_OVF_RESP) | (bit * m.S_CTRL_IN_OVF_RESP)
@@ -624,18 +626,27 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                 want_resp=want,
                 sep_ctrl=_h(ctrl_rb),
             )
-        await self._sep_wr(KM_MBOX_CTRL, keep)
-        ctrl_restored = await self._sep_rd(KM_MBOX_CTRL)
-        # The marker read frees one outbound slot; the image pops nothing before it.
-        marker = await self._sep_rd(KM_MBOX_READ_DATA)
-        marker_model = self.mb.outb.pop()
+            if bit:
+                await self._sep_wr(KM_MBOX_CTRL, keep)
+                ctrl_restored = await self._sep_rd(KM_MBOX_CTRL)
+            # The marker read frees one outbound slot; the image pops nothing before it.
+            markers.append((await self._sep_rd(KM_MBOX_READ_DATA), self.mb.outb.pop()))
+            if not bit:
+                await self._wait((m.PH_OVR_MID,), "the first overrun status")
+                mid = self._report(4)[1:4]
+                self.mb.outb.push(self.plan.out_overflow[0])
+                self._ctrl(
+                    "KMBOX-OVR-MID",
+                    m.fld(mid[2], m.ST_OUT_FULL) == 1 and m.km_depths(mid[2]) == (m.DEPTH, m.DEPTH),
+                    km_status=_h(mid[2]),
+                )
         await self._wait((m.PH_OVR,), "the overrun drain")
         r = self._report(m.OVR_WORDS)
-        pops = [r[2 + 2 * i] for i in range(m.DEPTH)]
-        sts = [r[3 + 2 * i] for i in range(m.DEPTH)]
+        pops = [r[5 + 2 * i] for i in range(m.DEPTH)]
+        sts = [r[6 + 2 * i] for i in range(m.DEPTH)]
         model = [self.mb.inb.pop() for _ in range(m.DEPTH)]
         self._ctrl("KMBOX-OVR-HEAD", pops[0] == model[0], pop=_h(pops[0]), fill_word=_h(model[0]))
-        depth_before = m.km_depths(r[1])[1]
+        depth_before = m.km_depths(r[4])[1]
         depths = [m.km_depths(s)[1] for s in sts]
         absent = [int(w not in pops) for w in od.overflow]
         empty_after = m.fld(sts[-1], m.ST_IN_EMPTY)
@@ -657,18 +668,22 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             depths=depths,
             empty_after=empty_after,
         )
-        ovf = [int(bool(s & m.ST_IN_OVF)) for s in (r[0], r[1], *sts, r[34])]
-        through = ovf[2:-1]
+        status = (r[0], *mid, r[4], *sts, r[37])
+        ovf = [int(bool(s & m.ST_IN_OVF)) for s in status]
+        through = ovf[5:-1]
         self.chk.ok(
             "KMBOX-OVR-STS",
-            ovf[0] == 0 and ovf[1] == 1 and all(through) and ovf[-1] == 0,
+            ovf[:5] == [0, 1, 0, 0, 1] and all(through) and ovf[-1] == 0,
             before=ovf[0],
-            after_overruns=ovf[1],
+            after_slverr=ovf[1],
+            after_mid_w1c=ovf[2],
+            after_refill=ovf[3],
+            after_okay=ovf[4],
             set_through_pops=sum(through),
             pops=m.DEPTH,
             after_w1c=ovf[-1],
         )
-        for s in (r[0], r[1], *sts, r[34]):
+        for s in status:
             self._rsvd("KM_STATUS", s, m.ST_FIELDS)
 
         s_st = await self._sep_rd(KM_MBOX_STATUS)
@@ -691,14 +706,14 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
         s_end = await self._sep_rd(KM_MBOX_STATUS)
         self.chk.info(
             "KMBOX-OVR-OUTDRAIN",
-            marker_equal=marker == marker_model,
+            marker_equal=all(a == b for a, b in markers),
             words_equal=sum(1 for a, b in zip(got, out_model) if a == b),
             words=m.DEPTH - 1,
             out_empty_after=m.fld(s_end, m.S_OUT_EMPTY),
         )
         await self._sync()
 
-    # Steps 5 to 7.
+    # Steps 6 to 8.
     async def _step_err(self) -> None:
         p = self.plan
         for idx in range(4):
@@ -818,7 +833,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             self._rsvd("KM_CTRL", r[3], m.CTRL_FIELDS)
             await self._sync()
 
-    # Step 8.
+    # Step 9.
     def _cell_fill(self, cell: int) -> tuple[int, int]:
         """(outbound filled, inbound filled) of a flush cell."""
         kind = m.CELL_FILL[cell]
@@ -1040,6 +1055,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
         await self._sync()
         return where, rec
 
+    # Step 10.
     async def _step_race(self) -> None:
         """Attempts until the KM write lands inside the flush write, bisecting on x."""
         rng = SepSeededRng(self.random_seed() ^ _RACE_SALT)
@@ -1098,7 +1114,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
         self.chk.ctrl("KM-READY-TAP", all(on.values()), **on)
         self.chk.info("KM-READY-OFFTGT", **off)
 
-    # Steps 9 to 13.
+    # Steps 11 to 15.
     async def _step_irq(self) -> None:
         p = self.plan
         await self._wait((m.PH_IRQ_START,), "the interrupt phase")
@@ -1259,7 +1275,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             _h(r[5]),
         )
 
-    # Step 14.
+    # Step 16.
     async def _step_end(self) -> None:
         await self._wait((m.PH_END,), "the end of the script")
         r = self._report(1)
