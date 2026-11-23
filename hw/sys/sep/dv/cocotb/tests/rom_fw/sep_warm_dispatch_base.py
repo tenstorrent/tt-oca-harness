@@ -126,7 +126,7 @@ class sep_warm_dispatch_base(sep_base_test):
         self.write_efuse_image(efuse_img)
 
         console: list[str] = []
-        cocotb.start_soon(rom_console_task(self.logger, sink=console))
+        self.console_task = cocotb.start_soon(rom_console_task(self.logger, sink=console))
 
         hook = None
         if self.stage_tcm:
@@ -136,6 +136,7 @@ class sep_warm_dispatch_base(sep_base_test):
             ):
                 if not os.path.isfile(src):
                     raise FileNotFoundError(f"ROM image not found: {src}")
+                self.log_image_identity(dst, src)
                 shutil.copyfile(src, os.path.join(os.getcwd(), dst))
 
             async def _load_tcm() -> None:

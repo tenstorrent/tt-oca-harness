@@ -2727,6 +2727,41 @@ module sep_uvm_top
         end
     end
 
+    // Runtime warm-handler deposit: the same leaf and per-tool mechanics as
+    // cold_scratch7_seed_deposit, so a leaf can arm the slot after the ROM has
+    // started and then raise a second CPU reset. Handshake order:
+    //   1. cocotb drives runtime_cold_scratch7_wdata_i, then raises _we_i.
+    //   2. tb writes the value into COLD Scratch 7.
+    //   3. tb raises _ack_o; the slot already holds the value.
+    //   4. cocotb drops _we_i; tb drops _ack_o.
+    logic [31:0] runtime_cold_scratch7_q;
+    initial begin : runtime_cold_scratch7_deposit
+        runtime_cold_scratch7_ack_o = 1'b0;
+        forever begin
+            @(posedge runtime_cold_scratch7_we_i);
+            if (runtime_cold_scratch7_we_i === 1'b1) begin
+                runtime_cold_scratch7_q = runtime_cold_scratch7_wdata_i;
+`ifdef VERILATOR
+                `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+`else
+                force `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+                @(posedge clk_i);
+                release `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
+`endif
+                $display("%0t: [tb] cold_scratch[7] = 0x%08x (runtime_cold_scratch7_we_i)",
+                         $time, runtime_cold_scratch7_q);
+                runtime_cold_scratch7_ack_o = 1'b1;
+                wait (runtime_cold_scratch7_we_i !== 1'b1);
+                runtime_cold_scratch7_ack_o = 1'b0;
+            end
+        end
+    end
+
     // ------------------------------------------------------------------
     // KM VUART_STATUS.PRINT_ENABLE drive.
     // ------------------------------------------------------------------
@@ -6254,6 +6289,8 @@ module sep_uvm_top
     assign rom_flip_i               = 1'b0;
     assign rom_flip_index_i         = '0;
     assign rom_flip_mask_i          = '0;
+    assign runtime_cold_scratch7_we_i    = 1'b0;
+    assign runtime_cold_scratch7_wdata_i = '0;
 
     // Test classes compile as part of this top (module scope).
     `include "sep_tests.sv"

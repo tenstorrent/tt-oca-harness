@@ -1462,6 +1462,17 @@ Exceptions (a closed set):
   XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The
   ROM has no write path, so a changed stored bit has no frontdoor. Driver:
   `env/sep_rom_image.py`. Owner: `sep_boot_rom_aperture_sweep_test`.
+* *Runtime warm-handler deposit* — a rising edge of
+  `runtime_cold_scratch7_we_i` writes `runtime_cold_scratch7_wdata_i` into
+  the COLD Scratch 7 field storage, with the per-simulator mechanics of the
+  `+sep_cold_scratch7` initial deposit; `runtime_cold_scratch7_ack_o` rises
+  after the write and falls when the request drops. The CPU owns the
+  system-CSR frontdoor while the ROM runs, so the testbench has no independent
+  master for a write after the ROM has started. On VCS the force holds the
+  field for one `clk_i` cycle, so a ROM write to the slot in that cycle does
+  not land. Outside that cycle the ROM's own reads and writes of the slot, the
+  status words and the trace port the checkers read are not forced. Owner:
+  `sep_runtime_warm_dispatch_test`.
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
@@ -1940,6 +1951,13 @@ build from, once in ICCM and once in DCCM. The test reads the string out of both
 loaded images and requires
 each to equal the digest of the tree it runs from, which `RUN-IDENTITY` binds to a commit. An image built from other
 source, or left over from an older build, fails the check.
+
+`RUN-IDENTITY` hashes the tracked diff. `RUN-IDENTITY-UNTRACKED-SHA256` covers
+the untracked files, with one `RUN-IDENTITY-UNTRACKED-FILE` line per file. The
+digest has the same form as `git ls-files --others --exclude-standard | LC_ALL=C sort |
+xargs sha256sum | sha256sum`. A test that reads an image by path, such as a
+flash image or the ROM's staged TCM hex, logs that image's sha256 in
+`RUN-IDENTITY-IMAGE`.
 
 ==== Register metadata
 

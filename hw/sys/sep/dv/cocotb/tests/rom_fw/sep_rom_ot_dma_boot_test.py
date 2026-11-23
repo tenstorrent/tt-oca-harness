@@ -195,6 +195,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # and the payload at 0x2000, matching the ROM's compiled-in offsets.
         # Loaded as bytes so mutate_flash_image() can inject a defect before
         # preload() receives the buffer.
+        self.log_image_identity("flash", self.flash_image)
         with open(self.flash_image, "rb") as fh:
             image = bytearray(fh.read())
         loaded = bytes(self.mutate_flash_image(image))
