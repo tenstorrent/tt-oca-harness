@@ -123,7 +123,7 @@ module i3c_wrapper #(
     // AXI4 Write Address Channel (AXI-Lite -> AXI4, single beat)
     .awaddr_i (AXI_LITE_ADDR_WIDTH'(awaddr_i)),
     .awburst_i(2'b01),                       // INCR; irrelevant for awlen==0
-    .awsize_i (3'($clog2(AXI_LITE_DATA_WIDTH/8))),
+    .awsize_i (3'(unsigned'($clog2(AXI_LITE_DATA_WIDTH/8)))),
     .awlen_i  (8'd0),
     .awuser_i ({32{1'b0}}),
     .awid_i   ({1{1'b0}}),
@@ -149,7 +149,7 @@ module i3c_wrapper #(
     // AXI4 Read Address Channel
     .araddr_i (AXI_LITE_ADDR_WIDTH'(araddr_i)),
     .arburst_i(2'b01),
-    .arsize_i (3'($clog2(AXI_LITE_DATA_WIDTH/8))),
+    .arsize_i (3'(unsigned'($clog2(AXI_LITE_DATA_WIDTH/8)))),
     .arlen_i  (8'd0),
     .aruser_i ({32{1'b0}}),
     .arid_i   ({1{1'b0}}),

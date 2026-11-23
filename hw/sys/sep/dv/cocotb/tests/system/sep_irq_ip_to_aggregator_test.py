@@ -95,8 +95,9 @@ order of the cells after the cell (1, 1), the masks and the flip order.
                     low line is one that rose in the cell (1, 1) of the same run, and a
                     write-one clear drops state and line
   CHK-INTR-FLIP     with the state set, the line follows each enable toggle both ways
-  CHK-INTR-LINE     after INTR_TEST of mask T, INTR_STATE reads T and each line equals
-                    state AND enable over a hold of 4 times t_rise
+  CHK-INTR-LINE     INTR_ENABLE reads back E, after INTR_TEST of mask T INTR_STATE
+                    reads T, and each line equals state AND enable over a hold of 4
+                    times t_rise
   CHK-INTR-CLEAR    a write-one clear of mask C leaves T AND NOT C and the lines follow
 The leg grades only the cells the body above and the simultaneous fan-in test do not
 walk; the other cells run as controls (CTRL-INTR-OPEN). t_rise is the clocks from the
@@ -1138,6 +1139,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         m0 = self.vec.mark()
         self._open()
         await self.irq.write32(src0.enable_addr, trial.enable)
+        en_rb = await self.irq.read32(src0.enable_addr) & drv
         await self.irq.write32(src0.test_addr, trial.test)
         st = await self.irq.read32(src0.state_addr) & drv
         expect = st & trial.enable
@@ -1160,10 +1162,11 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         self._grade(
             "chk",
             "INTR-LINE",
-            rise_ok and bits_ok and st == trial.test,
+            rise_ok and bits_ok and st == trial.test and en_rb == trial.enable & drv,
             block=block,
             trial=trial.kind,
             enable=f"0x{trial.enable:x}",
+            enable_rb=f"0x{en_rb:x}",
             test=f"0x{trial.test:x}",
             state=f"0x{st:x}",
             vec=f"0x{vec:x}",
@@ -1480,13 +1483,12 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             bound=self._LEG_RISE_BOUND,
             hold=4 * tr,
         )
-        # Which register names the contributor of source 16 is an open specification
-        # question: the INTR_STATUS value with the line is logged only.
-        self.chk.obs(
+        self.chk.info(
             "ESRC-CONTRIBUTOR",
             run=self._run_tag,
             line=self.evec.level(),
             intr_status=f"0x{st:08x}",
+            chk="CHK-ESRC-PAIR",
         )
         # Clear one of the two: the line stays high, and the cleared bit drops (probe).
         mc = self.evec.mark()

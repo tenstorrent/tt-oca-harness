@@ -168,8 +168,10 @@ module efuse_interface_controller #(
   output logic                                  locked_field_access_interrupt_o,  // High during an APB access to the MAP
                                                                                   // window that a field lock blocks.
 
-  output logic                                  token_match_fault_o  // Token comparator redundancy fault, sticky until
-                                                                     // reset; tied low when HAS_LC_STATE is clear.
+  output logic                                  token_match_fault_o,  // Token comparator redundancy fault, sticky until
+                                                                      // reset; tied low when HAS_LC_STATE is clear.
+  output logic [5:0]                            fsm_state_debug_o  // [1:0] read FSM state, [3:2] program FSM
+                                                                   // state, [5:4] fuse sense FSM state.
 );
 
   localparam fuse_command_resp_t FuseCommandRespDefault = '0;
@@ -278,43 +280,19 @@ module efuse_interface_controller #(
     .AXI_ADDR_WIDTH(ADDR_WIDTH),
     .AXI_DATA_WIDTH(DATA_WIDTH),
     .ADDR_START(32'h0000_0000),
-    .ADDR_END(32'hFFFF_FFFF)  // Full address range
+    .ADDR_END(32'hFFFF_FFFF),  // Full address range
+    .axil_req_t(efuse_axil_req_t),
+    .axil_resp_t(efuse_axil_resp_t),
+    .apb_req_t(efuse_apb_req_t),
+    .apb_resp_t(efuse_apb_resp_t)
   ) u_prim_axi_lite_to_apb_single (
-    .clk_i                (clk_i),
-    .rst_ni               (rst_ni),
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
 
-    // AXI-Lite input signals
-    .axi_lite_awvalid_i   (axil_mux_req.aw_valid),
-    .axi_lite_awaddr_i    (axil_mux_req.aw.addr),
-    .axi_lite_awprot_i    (axil_mux_req.aw.prot),
-    .axi_lite_awready_o   (axil_mux_resp.aw_ready),
-    .axi_lite_wvalid_i    (axil_mux_req.w_valid),
-    .axi_lite_wdata_i     (axil_mux_req.w.data),
-    .axi_lite_wstrb_i     (axil_mux_req.w.strb),
-    .axi_lite_wready_o    (axil_mux_resp.w_ready),
-    .axi_lite_bvalid_o    (axil_mux_resp.b_valid),
-    .axi_lite_bresp_o     (axil_mux_resp.b.resp),
-    .axi_lite_bready_i    (axil_mux_req.b_ready),
-    .axi_lite_arvalid_i   (axil_mux_req.ar_valid),
-    .axi_lite_araddr_i    (axil_mux_req.ar.addr),
-    .axi_lite_arprot_i    (axil_mux_req.ar.prot),
-    .axi_lite_arready_o   (axil_mux_resp.ar_ready),
-    .axi_lite_rvalid_o    (axil_mux_resp.r_valid),
-    .axi_lite_rdata_o     (axil_mux_resp.r.data),
-    .axi_lite_rresp_o     (axil_mux_resp.r.resp),
-    .axi_lite_rready_i    (axil_mux_req.r_ready),
-
-    // APB output signals
-    .psel_o               (apb_mux_req.psel),
-    .penable_o            (apb_mux_req.penable),
-    .pwrite_o             (apb_mux_req.pwrite),
-    .paddr_o              (apb_mux_req.paddr),
-    .pwdata_o             (apb_mux_req.pwdata),
-    .pstrb_o              (apb_mux_req.pstrb),
-    .pprot_o              (apb_mux_req.pprot),
-    .pready_i             (apb_mux_resp.pready),
-    .pslverr_i            (apb_mux_resp.pslverr),
-    .prdata_i             (apb_mux_resp.prdata)
+    .axil_req_i (axil_mux_req),
+    .axil_resp_o(axil_mux_resp),
+    .apb_req_o  (apb_mux_req),
+    .apb_resp_i (apb_mux_resp)
   );
 
 
@@ -548,7 +526,8 @@ module efuse_interface_controller #(
     .fuse_command_req_o           (fuse_command_req_interface_ctrl_w),
     .fuse_command_resp_i          (fuse_command_resp_interface_ctrl_w),
 
-    .is_program_timeout_debug_o   (is_program_timeout_debug_o)
+    .is_program_timeout_debug_o   (is_program_timeout_debug_o),
+    .state_debug_o                (fsm_state_debug_o[3:2])
   );
 
   // Program response status to CSR
@@ -618,7 +597,8 @@ module efuse_interface_controller #(
     .fuse_command_req_o  (fuse_command_req_interface_ctrl_r),
     .fuse_command_resp_i (fuse_command_resp_interface_ctrl_r),
 
-    .is_read_timeout_debug_o (is_read_timeout_debug_o)
+    .is_read_timeout_debug_o (is_read_timeout_debug_o),
+    .state_debug_o           (fsm_state_debug_o[1:0])
   );
 
   // Read response status to CSR
@@ -697,7 +677,8 @@ module efuse_interface_controller #(
     .is_lc_state_access_o    (is_lc_state_access_o),
     .is_read_locked_o        (is_read_locked_shadow_regs_o),
 
-    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
+    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
+    .sense_state_debug_o              (fsm_state_debug_o[5:4])
   );
 
   ////////////////////////////////////////////////////////////////////////////

@@ -363,6 +363,16 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 args = ["+axi_sva_need_jtag_in", "+axi_sva_need_stall_jtag_in"]
 
+# JTAG AXI port: address bits above the map leave on the output port intact; bit 27 falls after a set.
+[[tests]]
+name = "smc_jtag_axi_addr_bits_test"
+module = "smc_jtag_axi_addr_bits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_jtag_in"]
+
 [[tests]]
 name = "smc_dual_base_addressing_test"
 module = "smc_dual_base_addressing_test"

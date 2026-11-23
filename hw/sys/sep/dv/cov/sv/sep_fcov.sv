@@ -618,8 +618,8 @@ module sep_fcov (
   input sep_efuse_pkg::efuse_axil_req_t     jtag_req_i,      // axil_sep_otp_jtag_req_i
   input sep_efuse_pkg::efuse_axil_resp_t    jtag_resp_i,     // axil_sep_otp_jtag_resp_o
   input wire                                irq_token_fault_i,  // PIC source 40 request line
-  input wire [5:0]                          tok_sip_i,       // ext_debug_bus_o[229:224]
-  input wire [5:0]                          tok_chp_i,       // ext_debug_bus_o[213:208]
+  input wire [5:0]                          tok_sip_i,       // RMA_SIP_TOKEN_MATCH status code
+  input wire [5:0]                          tok_chp_i,       // RMA_CHIPLET_TOKEN_MATCH status code
   input wire [5:0]                          tok_sdis_i,      // TOKEN_PROC sec_disable_token_match_q
   input wire [2:0]                          tok_fault_i,     // TOKEN_PROC token_match_fault_sticky_q
   input wire [2:0]                          token_go_i,      // TOKEN_PROC hash start pulses
@@ -6251,8 +6251,8 @@ module sep_fcov (
   // (NS 1 for ap, the inverse of address bit 55 for smu and stee); 7 ap and
   // 8 stee with AxUSER[3:0] 0 while the LSU drove non-zero; 9 smu with a
   // source ID that is not OTHERS (0) and not the one the LSU drove; 10 DMA on
-  // smu with a source ID that is not OTHERS. SEP's ID has no stated number,
-  // so bins 9 and 10 sample its class, not a value.
+  // smu with a source ID that is not OTHERS. Bins 9 and 10 sample the class of
+  // SEP's ID, not its value 0xF; CHK-OUT-SRC-ID and CHK-CPU-SRC-ID grade it.
   covergroup sep_fabric_outbound_route_cg with function sample (
       logic [3:0] cls_dir,
       logic own_cls,
@@ -29274,8 +29274,8 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      // While the integrity error persists ERR latches again whatever a write
-      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      // A write of 0 cannot fail while the integrity error persists (INFO-SM-ERR-CAUSE-W0);
+      // a write of 0 with no cause left is in this cell too, graded by CHK-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
       // A write of 1 clears ERR once the state machine error output that set it
       // is gone (CHK-SM-ERR-W1C).
@@ -32807,8 +32807,9 @@ module sep_fcov (
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin
         // Code 3 samples only at a Generate acknowledge
-        // (CHK-CSRNG-UNINST-REFUSE); the owner logs the CMD_STS of its
-        // repeated Instantiate.
+        // (CHK-CSRNG-UNINST-REFUSE). The owner grades the CMD_STS of a repeated
+        // Instantiate (CHK-CSRNG-INVSEQ-STS) and of an Uninstantiate of an
+        // instantiated instance (CHK-CSRNG-UNINST-STS) outside these bins.
         case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
           3'd1: cz_ccmd(3, 3'd1);
           3'd3: if (cz_cs_acmd == 4'h3) cz_ccmd(3, 3'd3);
@@ -40937,15 +40938,16 @@ module sep_fcov (
     }
     // {class (0 shadow map, 1 interface control, 2 token registers, 3 gap
     // 0x1101C, 4 gap 0x11474, 5 gap 0x11C00), response (0 OKAY, 1 SLVERR with
-    // read data 0x0 in gaps 3 and 4, 0xBADCAB1E in gap 5)}.
+    // read data 0xBADCAB1E in class 0 and gap 5, 0x0 in gaps 3 and 4)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
+      bins shadow_slverr = {4'b000_1};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
       bins gap_1101c_slverr = {4'b011_1};
       bins gap_11474_slverr = {4'b100_1};
       bins gap_11c00_slverr = {4'b101_1};
-      ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
+      ignore_bins no_such_response = {4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
     // secure test strap set)}.

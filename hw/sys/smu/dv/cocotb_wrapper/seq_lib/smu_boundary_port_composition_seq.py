@@ -19,10 +19,11 @@ for the port rows, `doc/integrator/src/smu.adoc` for the parameter defaults,
 `doc/integrator/src/smu-smc.adoc` and the SMC port table for the external
 interrupt count and the system AXI input ID width,
 `doc/integrator/src/smu-composition.adoc` ("SMU AXI Crossbar Address Map")
-for the ID and user widths of `smu_axi_in` and `smu_axi_out`, and the
-generated `reset_unit` register header for `SS_CONFIG`. The crossbar-side ID
-width of the two ID-width converters and the SEP-side ID width have no
-specified value and are not compared.
+for the ID and user widths of `smu_axi_in` and `smu_axi_out` and for the 6-bit
+ID the crossbar presents to the SEP and SMC inbound subordinates,
+`doc/datasheets/src/smu.adoc` ("At a glance") for the 10-bit crossbar output
+ID both ID-width converters take, and the generated `reset_unit` register
+header for `SS_CONFIG`.
 
 The two "idle value" compares read an output after bring-up and compare it
 with the value the specification gives for that state: `ss_config_o` presents
@@ -50,10 +51,12 @@ from seq_lib.smu_compose_helpers import (
     LCC_DEMOTE_WIDTH,
     NUM_INT_TO_SMC,
     NUM_SUBSYSTEMS,
+    SEP_SYS_IN_ID_WIDTH,
     SMC_SYS_IN_ID_WIDTH,
     SMU_AXI_IN_ID_WIDTH,
     SMU_AXI_OUT_ID_WIDTH,
     SMU_AXI_USER_WIDTH,
+    XBAR_OUTPUT_ID_WIDTH,
     XTRIG_NUM_CTP,
     XTRIG_NUM_INT_CT,
     bit_width,
@@ -198,24 +201,27 @@ class smu_boundary_port_composition_seq:
             evidence="CHK-SMU-BOUNDARY-ID-USER-WIDTH",
         )
         # SMU-EXT-SMN.S4: the SMC-side converter presents the 6-bit ID the
-        # SMC system AXI input specifies. The crossbar-side ID width of the
-        # two converters and the SEP-side ID width have no specified value
-        # and are logged, not compared.
-        for conv in ("u_iw_conv_smc", "u_iw_conv_sep"):
+        # SMC system AXI input specifies; the SEP-side converter presents the
+        # 6-bit ID smu-composition.adoc states the crossbar presents to the
+        # SEP inbound subordinate; both take the 10-bit crossbar output ID the
+        # SMU datasheet states.
+        for conv, want, evidence in (
+            ("u_iw_conv_smc", SMC_SYS_IN_ID_WIDTH, "CHK-SMU-EXT-SMN-S4"),
+            ("u_iw_conv_sep", SEP_SYS_IN_ID_WIDTH, "CHK-SMU-SEP-IN-ID-WIDTH"),
+        ):
             inst = hier(smu, f"gen_sep.{conv}")
-            self.log.info(
-                "OBSERVATION %s AxiSlvPortIdWidth=%d AxiMstPortIdWidth=%d",
-                conv,
+            sb.expect_eq(
+                f"{conv} crossbar-side ID width",
                 sample(inst.AxiSlvPortIdWidth, f"{conv}.AxiSlvPortIdWidth"),
-                sample(inst.AxiMstPortIdWidth, f"{conv}.AxiMstPortIdWidth"),
+                XBAR_OUTPUT_ID_WIDTH,
+                evidence="CHK-SMU-XBAR-OUT-ID-WIDTH",
             )
-        smc_conv = hier(smu, "gen_sep.u_iw_conv_smc")
-        sb.expect_eq(
-            "u_iw_conv_smc subsystem-side ID width",
-            sample(smc_conv.AxiMstPortIdWidth, "u_iw_conv_smc.AxiMstPortIdWidth"),
-            SMC_SYS_IN_ID_WIDTH,
-            evidence="CHK-SMU-EXT-SMN-S4",
-        )
+            sb.expect_eq(
+                f"{conv} subsystem-side ID width",
+                sample(inst.AxiMstPortIdWidth, f"{conv}.AxiMstPortIdWidth"),
+                want,
+                evidence=evidence,
+            )
 
         # SMU-XTRIG-CTP.S1
         for group in CTP_GROUPS:

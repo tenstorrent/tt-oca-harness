@@ -78,10 +78,11 @@ no specification states the layout of the digest in the shadow words) and is the
 control ``CTRL-TOKEN-DIGEST-LAYOUT`` of the hold, idle-first and later legs, which
 need that held Match.
 
-Checkers: CHK-BIND, CHK-TOKEN, CHK-TOKEN-CODES, CHK-TOKEN-HOLD, CHK-TOKEN-INDEP,
+Checkers: CHK-TOKEN, CHK-TOKEN-CODES, CHK-TOKEN-HOLD, CHK-TOKEN-INDEP,
 CHK-NORESET, CHK-TOKEN-RETAIN, CHK-TOKEN-PRESENSE, CHK-TOKEN-GWB, CHK-TOKEN-HMAC,
 CHK-TOKEN-MULTI-GO, CHK-SDIS-AFTER-FOREIGN. A failing hook control logs ``CHK-HOOK FAIL``
-and ends the leaf.
+and ends the leaf. Control CTRL-BIND: the SHA-256 of 32 zero bytes equals the bench
+SEC_DIS digest; a false control logs ``CTRL-MISSING BIND``.
 
 FCOV owner window (``env/sep_fcov_gate.py``): open from the no-reset cell to
 CHK-TOKEN-CODES, closed by the first FAIL or missing control, and not reopened
@@ -141,7 +142,7 @@ from env.sep_efuse_plan import (
 )
 from env.sep_efuse_test_lib import (
     SepEfuseFd,
-    chk_bind,
+    ctrl_bind,
     hook_fail,
     rst_pulse,
     sig_bits,
@@ -358,7 +359,6 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
     """Token codes, mismatch shapes, hold, independence, no reset and retention."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-TOKEN",
         "CHK-TOKEN-CODES",
         "CHK-TOKEN-HOLD",
@@ -770,7 +770,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         w_hash: dict[str, int] = {}
         leg = p.leg
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
 
         self.write_efuse_image(p.image)
         await self.bring_up_no_cpu()

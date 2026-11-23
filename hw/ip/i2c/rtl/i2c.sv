@@ -80,8 +80,10 @@ module i2c
   output logic                             fifo_intg_err_o, // FIFO pointer or data parity
                                                             // integrity error; see i2c_core.
 
-  output logic [3:0]                       debug_o          // Four-bit debug bus; see i2c_core for
+  output logic [3:0]                       debug_o,         // Four-bit debug bus; see i2c_core for
                                                             // field definitions.
+  output logic [11:0]                      fsm_state_debug_o // FSM states; see i2c_core for field
+                                                             // definitions.
 );
 
   `include "prim_assert.sv"
@@ -137,7 +139,8 @@ module i2c
     .fifo_intg_err_o,
 
     // Debug Interface
-    .debug_o
+    .debug_o,
+    .fsm_state_debug_o
   );
 
 

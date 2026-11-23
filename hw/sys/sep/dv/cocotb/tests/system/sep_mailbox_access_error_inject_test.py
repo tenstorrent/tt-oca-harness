@@ -56,13 +56,20 @@ count of high bits of ``smc_mailbox_interrupt_o`` and as one port bit that
 rises, holds and drops while no other bit moves. Which port bit belongs to
 which mailbox is not graded: no text states the map.
 
-Checks: CHK-ERR-RD, CHK-ERR-WR, CHK-RO, CHK-HOLE, CHK-EXTENT,
+Checks: CHK-ERR-RD, CHK-ERR-WR, CHK-RO, CHK-HOLE, CHK-EXTENT, CHK-HOLE-FLAGS,
 CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN,
 CHK-MBX-ERR-UPPER-CLEAR.
+CHK-HOLE-FLAGS: after each K4 hole, K5 past-extent and K6 access, ``ERROR_FLAGS``
+reads 0 and ``IRQS`` bit 2 reads 0 on both ports of the mailbox
+(``hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc:57-58`` and
+``interface.adoc:50-53`` give the only set conditions: an empty ``READ_DATA`` read
+and a full ``WRITE_DATA`` write). Before the access both read 0 on both ports, else
+CTRL-MISSING. ``IRQS`` bits 0-1 hold live threshold state and are logged only.
+CHK-ERR-RD, CHK-ERR-WR and CHK-FLAGS-CLEAR show the same registers read 1 after a
+real FIFO error.
 Controls: CTRL-RESP (K6), CTRL-UPPER-CLEAR, CTRL-MISSING when a K4/K5 live value
 reads 0.
-Log only: the high 32-bit word of the ``WRITE_DATA`` read data, and
-``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``). CHK-ERR-RD
+Log only: the high 32-bit word of the ``WRITE_DATA`` read data. CHK-ERR-RD
 grades the high 32 bits of the empty read as 0.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, RAND-REP:
@@ -187,6 +194,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         "CHK-RO",
         "CHK-HOLE",
         "CHK-EXTENT",
+        "CHK-HOLE-FLAGS",
         "CHK-FLAGS-CLEAR",
         "CHK-FLAGS-BOTH",
         "CHK-ERR-LINE",
@@ -408,6 +416,32 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 chk,
                 f"mbox={m} port={port} pre error_flags=0x{flags:x} irqs=0x{irqs:x} exp 0x0 and bit2=0",
             )
+
+    async def _hole_flags_pre(self, kind: str, m: int) -> str:
+        """CHK-HOLE-FLAGS control: ``ERROR_FLAGS`` 0 and ``IRQS`` bit 2 0 on both ports."""
+        pre = []
+        for p in ("out", "in"):
+            flags = await self._rd(m, p, "ERROR_FLAGS")
+            irqs = await self._rd(m, p, "IRQS")
+            pre.append(f"{p}.pre_error_flags=0x{flags:x} {p}.pre_irqs=0x{irqs:x}")
+            if flags != 0 or irqs & IRQ_EIRQ:
+                self._ctrl_missing(
+                    f"CHK-HOLE-FLAGS kind={kind} mbox={m} {pre[-1]} exp 0x0 and bit2=0"
+                )
+        return " ".join(pre)
+
+    async def _hole_flags(self, kind: str, m: int, pre: str) -> None:
+        """CHK-HOLE-FLAGS: ``ERROR_FLAGS`` 0 and ``IRQS`` bit 2 0 on both ports, then clean-up."""
+        post = []
+        ok = True
+        for p in ("out", "in"):
+            flags, irqs = await self._clear_port(m, p)
+            post.append(f"{p}.error_flags=0x{flags:x} {p}.irqs=0x{irqs:x}")
+            ok = ok and flags == 0 and not irqs & IRQ_EIRQ
+        txt = f"kind={kind} mbox={m} {pre} {' '.join(post)} exp error_flags=0x0 irqs_bit2=0"
+        if not ok:
+            self._fail("CHK-HOLE-FLAGS", txt)
+        self._pass("CHK-HOLE-FLAGS", txt)
 
     async def _k1(self, inj: Inj) -> None:
         m, p = inj.m, inj.port
@@ -643,6 +677,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 self._ctrl_missing(
                     f"{inj.kind} mbox={m} snapshot {p}.{reg}=0x{v:x} model=0x{exp:x}"
                 )
+        flags_pre = await self._hole_flags_pre(inj.kind, m)
         resp, data = await self._ext(inj)
         after = {}
         for p in ("out", "in"):
@@ -688,22 +723,12 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             self._fail(chk, txt)
         self._pass(chk, txt)
         self._twin(inj.kind, m, inj.port, "STATUS", tresp)
-        # Not graded: the flag effect of a hole access. Clear it and log it.
-        obs = []
-        for p in ("out", "in"):
-            flags, irqs = await self._clear_port(m, p)
-            obs.append(f"{p}.error_flags=0x{flags:x} {p}.irqs=0x{irqs:x}")
-        self.logger.info(
-            "OBS-HOLE-FLAGS LOG seed=%d kind=%s mbox=%d %s",
-            self.seed,
-            inj.kind,
-            m,
-            " ".join(obs),
-        )
+        await self._hole_flags(inj.kind, m, flags_pre)
 
     async def _k6(self, inj: Inj) -> None:
         m = inj.m
         close_graded_window(self.logger)
+        flags_pre = await self._hole_flags_pre("K6", m)
         resp_open, _ = await self._ext(inj)
         idx = (2 * m, 2 * m + 1)
         for i in idx:
@@ -722,13 +747,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         if resp_open != RESP_SLVERR or resp_closed != RESP_DECERR:
             self._fail("CTRL-RESP", txt)
         self.logger.info("CTRL-RESP LOG seed=%d %s", self.seed, txt)
-        obs = []
-        for p in ("out", "in"):
-            flags, irqs = await self._clear_port(m, p)
-            obs.append(f"{p}.error_flags=0x{flags:x} {p}.irqs=0x{irqs:x}")
-        self.logger.info(
-            "OBS-HOLE-FLAGS LOG seed=%d kind=K6 mbox=%d %s", self.seed, m, " ".join(obs)
-        )
+        await self._hole_flags("K6", m, flags_pre)
         open_graded_window(TEST, self.logger)
         tresp, _ = await self._ext(
             inj, op="rd", addr=port_base(m, "in") + MBX_REGS.offset("STATUS")

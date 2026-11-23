@@ -72,8 +72,8 @@ Checkers:
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
                     after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
-                    stays 0. That write must get a B response of any code; no text
-                    states the code, so it is logged as ``OBS-LOCK0-RESP``.
+                    stays 0. That write must get a B response of any code; the
+                    code is logged as ``INFO-LOCK0-RESP`` and is not graded.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -115,7 +115,12 @@ Checkers:
                     leg (capture stops, architecture.adoc:182, :186): each
                     NOISE_OBS_RDATA / BIW_OBS_RDATA pop lowers that FIFO's LEVEL by
                     exactly 1 (entropy_source.rdl NOISE_OBS_RDATA, BIW_OBS_RDATA:
-                    "Returns and removes"), for every pop of the drain.
+                    "Returns and removes"), for every pop of the drain. In the same
+                    drain each pop moves RPTR to RPTR + 1 mod 64, WPTR keeps its
+                    value, and (WPTR - RPTR) mod 64 equals LEVEL mod 64 at every
+                    status read (NOISE_OBS_STATUS, BIW_OBS_STATUS WPTR and RPTR; the
+                    observe FIFOs use the same 64-entry FIFO as the output FIFO,
+                    architecture.adoc:189, :146).
   CHK-OBS-BIW-DRAIN same drain: the BIW observe FIFO reads LEVEL 64 before the first
                     pop and reads LEVEL 0 after exactly 64 pops (architecture.adoc:189,
                     :146: the same 64-entry FIFO as the output FIFO).
@@ -552,19 +557,49 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 raise AssertionError(f"{fifo} observe FIFO not empty after {pops} pops")
 
     async def _graded_drain(self, fifo: str) -> dict:
-        """Pop until LEVEL reads 0, reading LEVEL after every pop (at most FIFO_DEPTH_MAX + 1)."""
-        start = level = await self._level(fifo)
+        """Pop until LEVEL reads 0, reading STATUS after every pop (at most FIFO_DEPTH_MAX + 1).
+
+        Grades per pop LEVEL - 1, RPTR + 1 mod depth and WPTR kept, and at every
+        STATUS read (WPTR - RPTR) mod depth == LEVEL mod depth.
+        """
+        start, wptr0, rptr0 = await self._status_fields(fifo)
+        level, wptr, rptr = start, wptr0, rptr0
         pops = bad = 0
+        rptr_bad = wptr_bad = 0
+        ptr_level_bad = int((wptr0 - rptr0) % OBS_FIFO_DEPTH != start % OBS_FIFO_DEPTH)
         steps: list[str] = []
+        ptr_steps: list[str] = []
         while level and pops <= FIFO_DEPTH_MAX:
             await self._pop(fifo)
             pops += 1
-            after = await self._level(fifo)
+            after, w_after, r_after = await self._status_fields(fifo)
             if after != level - 1:
                 bad += 1
                 steps.append(f"{level}->{after}")
-            level = after
-        return {"level_start": start, "pops": pops, "level_end": level, "bad": bad, "steps": steps}
+            r_bad = r_after != (rptr + 1) % OBS_FIFO_DEPTH
+            w_bad = w_after != wptr0
+            pl_bad = (w_after - r_after) % OBS_FIFO_DEPTH != after % OBS_FIFO_DEPTH
+            rptr_bad += r_bad
+            wptr_bad += w_bad
+            ptr_level_bad += pl_bad
+            if r_bad or w_bad or pl_bad:
+                ptr_steps.append(f"{pops}:l{after}/w{w_after}/r{rptr}->{r_after}")
+            level, wptr, rptr = after, w_after, r_after
+        return {
+            "level_start": start,
+            "pops": pops,
+            "level_end": level,
+            "bad": bad,
+            "steps": steps,
+            "wptr_start": wptr0,
+            "rptr_start": rptr0,
+            "wptr_end": wptr,
+            "rptr_end": rptr,
+            "rptr_bad": rptr_bad,
+            "wptr_bad": wptr_bad,
+            "ptr_level_bad": ptr_level_bad,
+            "ptr_steps": ptr_steps,
+        }
 
     async def _status_fields(self, fifo: str) -> tuple[int, int, int]:
         addr, reg, _, _ = FIFOS[fifo]
@@ -917,7 +952,13 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             d = drain[fifo]
             self.chk.ok(
                 "OBS-POP-LEVEL",
-                raw[fifo] == 0 and d["pops"] > 0 and d["bad"] == 0 and d["level_end"] == 0,
+                raw[fifo] == 0
+                and d["pops"] > 0
+                and d["bad"] == 0
+                and d["level_end"] == 0
+                and d["rptr_bad"] == 0
+                and d["wptr_bad"] == 0
+                and d["ptr_level_bad"] == 0,
                 fifo=fifo,
                 raw_enable=raw[fifo],
                 level_start=d["level_start"],
@@ -925,6 +966,17 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 level_end=d["level_end"],
                 not_minus_one=d["bad"],
                 steps=",".join(d["steps"][:8]) or "none",
+                rptr_step=int(d["rptr_bad"] == 0),
+                wptr_kept=int(d["wptr_bad"] == 0),
+                ptr_level_ok=int(d["ptr_level_bad"] == 0),
+                rptr_not_plus_one=d["rptr_bad"],
+                wptr_moved=d["wptr_bad"],
+                ptr_level_mismatch=d["ptr_level_bad"],
+                wptr_start=d["wptr_start"],
+                wptr_end=d["wptr_end"],
+                rptr_start=d["rptr_start"],
+                rptr_end=d["rptr_end"],
+                ptr_steps=",".join(d["ptr_steps"][:8]) or "none",
             )
         d = drain["biw"]
         self.chk.ok(
@@ -1184,7 +1236,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         else:
             resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
-        self.logger.info("OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
+        self.chk.info("LOCK0-RESP", fifo=fifo, b=resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:

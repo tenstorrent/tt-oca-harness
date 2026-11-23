@@ -342,6 +342,7 @@ static uint32_t g_rec_n;
 static int recovery(const char *after) {
     mark('C', "recovery");
     dma_clear();
+    uint32_t ec_clr = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     uint32_t tag = 0x100u + g_rec_n++;
     uint32_t n = REC_LEN / 4u;
     stage_src(SRAM + B_REC_SRC, n, tag);
@@ -357,6 +358,7 @@ static int recovery(const char *after) {
     sep_mbx_puts(" after=");
     sep_mbx_puts(after);
     kv("tag", tag);
+    kv("ec_clr", ec_clr);
     rec_run(st);
     kv("nbad", bad);
     kv("dsum", h);
@@ -821,6 +823,7 @@ static void stack_leg(void) {
     uint32_t pre1 = g_pre;
     uint32_t ec1 = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     dma_clear();
+    uint32_t rec_ec_clr = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // Recovery copy inside the stack window; its record is printed below.
     uint32_t tag = 0x100u + g_rec_n++;
     uint32_t n = REC_LEN / 4u;
@@ -877,6 +880,7 @@ static void stack_leg(void) {
     rec("RECOV");
     sep_mbx_puts(" after=stack");
     kv("tag", tag);
+    kv("ec_clr", rec_ec_clr);
     kv("pre", rpre);
     kv("st", rst);
     kv("ec", rec_ec);
@@ -1247,9 +1251,10 @@ static void nc_legs(void) {
         else
             recovery("nc_km_src");
     }
-    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source,
-    // each logged. The write sets only enable bits whose IRQ_STATUS bit reads
-    // 0, so no mailbox interrupt rises; the CPU then restores the word.
+    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source.
+    // Each leg changes only enable bits whose IRQ_STATUS bit reads 0, so no
+    // mailbox interrupt rises; the CPU restores the word after the run. The
+    // read leg copies a value that differs from the value before the leg.
     if (!timed_out) {
         uint32_t s0 = rd(KM_IRQ_STATUS), e0 = rd(KM_IRQ_ENABLE);
         uint32_t v = e0 ^ (KM_IRQ_EN_FIELDS & ~s0);
@@ -1276,11 +1281,14 @@ static void nc_legs(void) {
             recovery("nc_km_wr");
     }
     if (!timed_out) {
-        uint32_t e1 = rd(KM_IRQ_ENABLE);
-        wr(d, ~e1);
+        uint32_t s1 = rd(KM_IRQ_STATUS), e1 = rd(KM_IRQ_ENABLE);
+        wr(KM_IRQ_ENABLE, e1 ^ (KM_IRQ_EN_FIELDS & ~s1));
+        uint32_t v1 = rd(KM_IRQ_ENABLE);
+        wr(d, ~v1);
         mark('C', "nc_km_rd");
         e = nc_run(KM_IRQ_ENABLE, d);
-        nc_rec("km_rd", e, 1, e1, rd(d));
+        wr(KM_IRQ_ENABLE, e1);
+        nc_rec("km_rd", e, 1, v1, rd(d));
         if (e == 2u)
             timed_out = 1;
         else
