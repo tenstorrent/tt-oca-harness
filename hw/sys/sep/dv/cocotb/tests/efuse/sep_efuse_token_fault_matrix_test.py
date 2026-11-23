@@ -46,12 +46,13 @@ bit exempt for the same clock and the six bits with an unstated idle level left
 out (``env/sep_bit_watch.pic_vector_watch``); no document states that no other
 source moves.
 
-Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
+Checkers: CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
 CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-FAULT-RESET-WORDS, CHK-LATCH-FREEZE.
 CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
 cell and prints their digest beside the digest of the expected token (the words
 are secret); it also fails when an expected word is 0, since a cleared word would
-read the same. Controls: CTRL-SEC-DIS-MATCH
+read the same. Controls: CTRL-BIND (the SHA-256 of 32 zero bytes equals the bench
+SEC_DIS digest), CTRL-SEC-DIS-MATCH
 (code ``0x15`` and ``security_disable_o`` 1) and CTRL-SEC-DIS-DROP (code ``0x2a``
 and ``security_disable_o`` 0), before each cell that uses the SEC_DIS channel. A
 common-mode cell logs the N/A line of the three fault-only checkers. A failing hook control logs
@@ -106,7 +107,7 @@ from env.sep_efuse_plan import (
     token_words,
     write_token,
 )
-from env.sep_efuse_test_lib import SepEfuseFd, chk_bind, hook_fail, sig_bits
+from env.sep_efuse_test_lib import SepEfuseFd, ctrl_bind, hook_fail, sig_bits
 from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -239,7 +240,6 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     """Comparator copy faults, common-mode flips and the digest latch freeze."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-FAULT-CELL",
         "CHK-SRC40-RISE",
         "CHK-FAULT-STICKY",
@@ -786,7 +786,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         faults = p.leg["faults"]
         order = p.leg["cell_order"]
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.sdis_ctl_seen = False
         self.graded_fail = False
         self.cell_idx = 0

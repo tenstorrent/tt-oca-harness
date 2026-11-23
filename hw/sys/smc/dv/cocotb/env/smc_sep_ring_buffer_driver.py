@@ -15,7 +15,8 @@ definition:
     hw/sys/smc/bootrom/prod/lib/include/smc_status.h        the 32-bit message format
 
 Two contracts live on the controller side instead:
-    fw/tests/sep_ring_buffer_test/main.c      scratch 10 magic, scratch 12 entry count
+    fw/tests/sep_ring_buffer_test/main.c      scratch 10 magic, scratch 12 entry count,
+                                              scratch 14 progress, scratch 5-6 read-backs
     fw/common/occp/sep_ring_buffer_model.h    the shadow buffer and the scratch 13 guard
 
 The shadow is what makes the firmware's checking possible. Every GET_SEP_STATUS compares
@@ -53,6 +54,12 @@ STATUS_TYPES = (STATUS_TYPE_STATUS, STATUS_TYPE_WARNING, STATUS_TYPE_ERROR)
 # Handshake with the controller firmware's wait_for_cocotb_ready().
 COCOTB_READY_MAGIC = 0xC0C0_7B00
 
+# Controller progress words in its scratch 14.
+CTRL_PHASE_BASELINE = 0x5EB0_0001  # GetVersion answered before any entry was written
+CTRL_PHASE_DRAINED = 0x5EB0_0002  # every retained entry read back and matched
+CTRL_PHASE_LIVE = 0x5EB0_0003  # GetVersion answered after the drain
+CTRL_PHASE_DONE = 0x5EB0_0004  # the empty-buffer reads passed
+
 # sep_ring_buffer_model.h: the mirror the controller firmware compares against, at a fixed
 # address in its own SRAM. Layout is head, tail, entries[] -- no num_entries word, so the
 # entry offset differs from the target buffer's.
@@ -71,6 +78,14 @@ ENTRY_GAP_CYCLES = 10
 
 def create_status_message(fw_id: int, msg_type: int, msg_value: int) -> int:
     return ((msg_type & 0xFF) << 24) | ((fw_id & 0xFF) << 16) | (msg_value & 0xFFFF)
+
+
+# A SEP BL0 status the SMC ROM must pass through, and the error the SEP ROM records before it
+# halts on a manifest signature failure (SEP_MSG_INVALID_SIGNATURE, SEP status_values.h).
+SEP_STATUS_CONTROL = create_status_message(STATUS_FW_ID_SEP_BL0, STATUS_TYPE_STATUS, 0x0001)
+SEP_TERMINAL_SIGNATURE_FAILURE = create_status_message(
+    STATUS_FW_ID_SEP_BL0, STATUS_TYPE_ERROR, 0x000E
+)
 
 
 def decode_status_message(message: int) -> tuple[int, int, int]:
@@ -187,14 +202,22 @@ class SepRingBufferDriver:
         )
         await self.ctrl.write("SHADOW_HEAD", SHADOW_BASE + SHADOW_HEAD_OFFSET, self.head)
 
-    async def write_entries(self, count: int, rng: random.Random) -> list[int]:
-        """Write count structured status messages, cycling the three message types."""
+    async def write_entries(
+        self, count: int, rng: random.Random, leading: tuple[int, ...] = ()
+    ) -> list[int]:
+        """Write count status messages: ``leading`` first, then seeded ones cycling the types."""
+        if len(leading) > count:
+            raise AssertionError(f"{len(leading)} named entries do not fit in {count}")
         self.log.info("writing %d SEP status entries (capacity %d)", count, RING_BUFFER_SIZE)
         for index in range(count):
-            entry = create_status_message(
-                fw_id=STATUS_FW_ID_SEP_BL0,
-                msg_type=STATUS_TYPES[index % len(STATUS_TYPES)],
-                msg_value=rng.randint(0, 0xFFFF),
+            entry = (
+                leading[index]
+                if index < len(leading)
+                else create_status_message(
+                    fw_id=STATUS_FW_ID_SEP_BL0,
+                    msg_type=STATUS_TYPES[index % len(STATUS_TYPES)],
+                    msg_value=rng.randint(0, 0xFFFF),
+                )
             )
             await self.write_entry(entry)
             await ClockCycles(self.clk, ENTRY_GAP_CYCLES)

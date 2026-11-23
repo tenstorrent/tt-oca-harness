@@ -43,8 +43,10 @@ The leaf also grades the read-error lifecycle on the same interface:
 * a successful read clears read_error_o, a read with the timeout enabled at
   its reset count completes without error and returns the sensed word, a read
   that outlives a short EFUSE_READ_REQ_TIMEOUT retires with the error set, and
-  the next legal read completes with no error and the sensed word
-  (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT-ARMED, -TIMEOUT, -CLEAR-REQUEST);
+  the next legal read, of a different spare word staged with a different
+  value, completes with no error and that word's sensed value, not the
+  timed-out word (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT-ARMED, -TIMEOUT,
+  -CLEAR-REQUEST);
 * with secure_tm latched, a read retires with the error set and zero data
   (CHK-READ-ERR-BLOCKED).
 
@@ -82,6 +84,12 @@ _MAX_SENSE_CYCLES = 20_000
 # so a recovery that returns 0 would match it. A recovery must not hand the
 # sensed spare back.
 _CONTROL_FIELD = "SPARE0"
+
+# The read after the timed-out one targets a different spare word whose staged
+# value differs from the control word, so data carried over from the timed-out
+# read cannot pass as the recovery read's data. Not SPARE7, which the program
+# legs use.
+_RECOVERY_FIELD = "SPARE1"
 
 # A SPARE word: programming one bit of it disturbs no graded field, and OTP is
 # write-once so the control must pick a fresh bit each time it runs.
@@ -281,13 +289,16 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         self.logger.info("CHK-READ-ERR-TIMEOUT PASS: %s", fields)
 
         # 4. The next legal read after the timed-out one completes with no
-        #    error and the sensed word (efuse_interface_ctrl.rdl:139, :145;
-        #    smc-programming.adoc:1678-1682). The error from leg 3 is the
-        #    precondition. When the flag clears is not stated; it is logged.
+        #    error and the sensed word of its own address
+        #    (architecture.adoc:99-104; efuse_interface_ctrl.rdl:139, :145;
+        #    smc-programming.adoc:1678-1682). It reads the recovery word, not
+        #    the timed-out control word, so the two expected words differ. The
+        #    error from leg 3 is the precondition. When the flag clears is not
+        #    stated; it is logged.
         await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
         _, _, err_after_cleanup, _ = await self._read_probe()
-        held = await self._kick_and_catch("read", self._control_word * 32)
+        held = await self._kick_and_catch("read", self._recovery_word * 32)
         assert held, (
             "CHK-READ-ERR-CLEAR-REQUEST FAIL: the read interface presented no bank "
             "command for the read after the timed-out one"
@@ -302,14 +313,16 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             err_after_cleanup,
             err_after_go,
         )
-        sensed = self._sensed_control_word
+        sensed = self._sensed_recovery_word
         rd_done = int(bool(ctrl & _RD_DONE))
         rd_busy = int(bool(ctrl & _RD_BUSY))
         rd_status = int(bool(ctrl & _RD_STATUS))
         fields = (
-            f"done={done} busy={busy} err={err} read_done={rd_done} read_busy={rd_busy} "
-            f"read_status={rd_status} data={data:#010x} read_data={rd_data:#010x} "
-            f"exp={sensed:#010x}"
+            f"timed_out_addr={self._control_word * 32:#x} "
+            f"timed_out_word={self._sensed_control_word:#010x} "
+            f"addr={self._recovery_word * 32:#x} done={done} busy={busy} err={err} "
+            f"read_done={rd_done} read_busy={rd_busy} read_status={rd_status} "
+            f"data={data:#010x} read_data={rd_data:#010x} exp={sensed:#010x}"
         )
         ok = (done, busy, err) == (1, 0, 0) and (rd_done, rd_busy, rd_status) == (1, 0, 0)
         assert ok and data == sensed and rd_data == sensed, (
@@ -719,6 +732,17 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"test bug: {_CONTROL_FIELD} word {self._control_word} is staged "
             "as 0, so a recovery that returns zero would not be "
             "distinguishable from a leaked fuse word"
+        )
+        self._recovery_word = img.field(_RECOVERY_FIELD).word
+        staged = img.words[self._recovery_word] & 0xFFFF_FFFF
+        if staged in (0, self._sensed_control_word):
+            inverted = (~self._sensed_control_word) & 0xFFFF_FFFF
+            img.words[self._recovery_word] = inverted or 0x5A5A_A5A5
+        self._sensed_recovery_word = img.shadow_word(self._recovery_word)
+        assert self._sensed_recovery_word not in (0, self._sensed_control_word), (
+            f"test bug: {_RECOVERY_FIELD} word {self._recovery_word} is staged as "
+            f"{self._sensed_recovery_word:#010x}, so the recovery read could not tell "
+            "its own word from zero or from the timed-out read's word"
         )
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)

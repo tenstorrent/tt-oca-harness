@@ -49,6 +49,12 @@ Checkers:
                    lowest-numbered region applies."
   CTRL-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
                    AxCACHE override ran (no DUT claim).
+
+INFO-ALIAS-OUT-CACHE (``chk=CHK-ALIAS-CACHE``): per OKAY probe, the address and
+AxCACHE at the alias remap output, which CHK-ALIAS-CACHE grades, and at PR-OUT,
+which is not graded: ``hw/sys/sep/doc/fabric.adoc`` (Transaction Routing) states
+that the SMU-aperture path sets the source ID and NS and names no AxCACHE
+carriage on that path.
 """
 
 from __future__ import annotations
@@ -269,8 +275,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         if seq.resp_code == RESP_OKAY:
             pr = next((b for b in self.tap_pr_out.since(mp, ch) if b.t_ps >= out.t_ps), None)
             self.logger.info(
-                "OBS-ALIAS-OUT-CACHE dir=%s src=0x%x alias_out_addr=%s alias_out_cache=%s "
-                "pr_out_addr=%s pr_out_cache=%s",
+                "INFO-ALIAS-OUT-CACHE dir=%s src=0x%x alias_out_addr=%s alias_out_cache=%s "
+                "pr_out_addr=%s pr_out_cache=%s chk=CHK-ALIAS-CACHE",
                 "W" if write else "R",
                 addr,
                 _hx(out.addr),

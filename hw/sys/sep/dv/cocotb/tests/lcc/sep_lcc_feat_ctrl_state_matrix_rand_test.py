@@ -128,7 +128,8 @@ OR-merged with the writes of the leaf).
                     control cell elsewhere; ``smc_fuse_dft_disable_o`` the same with
                     SIP_DBG, CHIPLET_DBG and SMC_FUSE_DBG. No level is named. Control:
                     the two control cells differ on each port.
-  CHK-BIND          leg C: the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
+  CTRL-BIND         (control, every leaf, before leg A) the SHA-256 of 32 zero
+                    bytes equals the bench SEC_DIS digest.
 
 Logged, not graded: ``OBS-LCC-WR-RESP`` gives the response of every DEMOTE write with
 ``applied=0`` for a write the RW1S golden leaves without effect (no document states the
@@ -177,7 +178,7 @@ from env.sep_efuse_test_lib import (
     SepEfuseFd,
     StrapHold,
     bit,
-    chk_bind,
+    ctrl_bind,
     hook_fail,
     log_line,
     rst_pulse,
@@ -922,7 +923,6 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         )
 
     async def _leg_c(self) -> None:
-        await chk_bind(self.chk)
         self.sdis_seen = False
         reg, probe = await self._feat()
         await self._feat_cell("c", reg, probe, sdis_port="na")
@@ -1179,7 +1179,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         extra = {
             LEG_B: ("CHK-DEMOTE-STEP", "CHK-DEMOTE-ENC", "CHK-DEMOTE-OTP", "CHK-DEMOTE-RESET"),
-            LEG_C: ("CHK-BIND",),
+            LEG_C: (),
             LEG_D_RMA: ("CHK-RMA-BYPASS",),
             LEG_D_EARLIER: ("CHK-DIS-EARLIER",),
             LEG_D_WALK: ("CHK-DIS-STEP",),
@@ -1200,6 +1200,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.pair_level_graded: set[tuple[int, int]] = set()
         self.mark_rng = SepSeededRng(seed ^ _MARK_SALT)
 
+        await ctrl_bind(self.chk)
         self.write_efuse_image(p.image)
         open_graded_window(TEST, self.logger)
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)

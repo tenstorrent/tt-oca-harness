@@ -9,6 +9,8 @@ jumped. TEST_FAIL in either instance's scratch 0 fails the run; TEST_PASS in eit
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import cocotb
@@ -40,11 +42,21 @@ PROGRESS_EVERY = 200
 REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY",)
 
 
+@dataclass(frozen=True)
+class OccpRomOnlyResult:
+    target_scratch0: int
+    controller_scratch0: int
+    target_post_code: int
+    # The run's AXI managers; a second agent on the same port would fight these.
+    dut_csr: DualCsr
+    bfm_csr: DualCsr
+
+
 def _poll_interval_ns() -> float:
     return POLL_CYCLES * SMC_CLK_PERIOD_NS
 
 
-def _poll_iterations() -> tuple[int, str]:
+def poll_iterations() -> tuple[int, str]:
     budget = cocotb.plusargs.get("rom_test_timeout")
     if budget is None:
         return DEFAULT_POLL_ITERS, f"default bound {DEFAULT_POLL_ITERS} polls"
@@ -66,41 +78,19 @@ def _case_name() -> str:
     return "smc_occp_rom_only_test"
 
 
-@dual_test(REQUIRED_EVIDENCE)
-async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
+async def await_occp_verdict(
+    harness: SmcDualHarness,
+    dut_csr: DualCsr,
+    bfm_csr: DualCsr,
+    *,
+    case: str,
+    consoles: tuple[VirtConsole, VirtConsole],
+) -> OccpRomOnlyResult:
+    """Poll both scratch 0 words until TEST_PASS or TEST_FAIL, then log the bus activity."""
     dut = harness.dut
-
-    required_plusarg("rom_bin64", "smc_occp_rom_only_test")
-    controller_image = required_plusarg("bfm_rom_hex", "smc_occp_rom_only_test")
-    case = _case_name()
-    poll_iters, poll_source = _poll_iterations()
-
-    cocotb.log.info(
-        "%s (RANDOM_SEED=%d): u_dut = production ROM target, u_bfm = %s controller; %s",
-        case,
-        random_seed(),
-        controller_image,
-        poll_source,
-    )
-
-    # The target samples its lifecycle at cold reset, so it must be passed to bring_up().
-    lc_named = cocotb.plusargs.get("lc_state")
-    await harness.bring_up(
-        hold_dut_boot=True,
-        hold_bfm_boot=True,
-        dut_lc_state=None if lc_named is None else int(str(lc_named), 0),
-    )
-
-    bfm_console = VirtConsole(dut.bfm_scratch2, "ctrl-fw")
-    dut_console = VirtConsole(dut.dut_scratch2, "target-fw")
-    cocotb.start_soon(bfm_console.run())
-    cocotb.start_soon(dut_console.run())
-
-    dut_csr = DualCsr("s_axi", dut.dut_rst_primary_smc_clk_no)
-    bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
-
-    await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)
-    await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM)
+    controller_image = required_plusarg("bfm_rom_hex", case)
+    poll_iters, poll_source = poll_iterations()
+    bfm_console, dut_console = consoles
 
     baseline_activity = bus_activity(dut)
     baseline_i2c = i2c_bus_activity(dut)
@@ -201,5 +191,67 @@ async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
         target_scratch0,
         ctrl_scratch0,
         describe_post_code(post),
+    )
+    return OccpRomOnlyResult(target_scratch0, ctrl_scratch0, post, dut_csr, bfm_csr)
+
+
+async def run_occp_rom_only(
+    harness: SmcDualHarness,
+    *,
+    case: str,
+    bring_up_kwargs: dict[str, object] | None = None,
+    before_release: Callable[[DualCsr, DualCsr], Awaitable[None]] | None = None,
+    dut_preload: tuple[tuple[int, int], ...] = (),
+    bfm_preload: tuple[tuple[int, int], ...] = (),
+) -> OccpRomOnlyResult:
+    """Bring up, release the target then the controller, and wait for the OCCP verdict.
+
+    ``before_release`` runs after bring-up and before either CPU fetches, so it can drive
+    pins the ROM samples early and read what they latched.
+    """
+    dut = harness.dut
+
+    required_plusarg("rom_bin64", case)
+    controller_image = required_plusarg("bfm_rom_hex", case)
+    _, poll_source = poll_iterations()
+
+    cocotb.log.info(
+        "%s (RANDOM_SEED=%d): u_dut = production ROM target, u_bfm = %s controller; %s",
+        case,
+        random_seed(),
+        controller_image,
+        poll_source,
+    )
+
+    await harness.bring_up(hold_dut_boot=True, hold_bfm_boot=True, **(bring_up_kwargs or {}))
+
+    bfm_console = VirtConsole(dut.bfm_scratch2, "ctrl-fw")
+    dut_console = VirtConsole(dut.dut_scratch2, "target-fw")
+    cocotb.start_soon(bfm_console.run())
+    cocotb.start_soon(dut_console.run())
+
+    dut_csr = DualCsr("s_axi", dut.dut_rst_primary_smc_clk_no)
+    bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
+
+    if before_release is not None:
+        await before_release(dut_csr, bfm_csr)
+
+    await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM, preload=dut_preload)
+    await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM, preload=bfm_preload)
+
+    return await await_occp_verdict(
+        harness, dut_csr, bfm_csr, case=case, consoles=(bfm_console, dut_console)
+    )
+
+
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
+    case = _case_name()
+    # The target samples its lifecycle at cold reset, so it must be passed to bring_up().
+    lc_named = cocotb.plusargs.get("lc_state")
+    await run_occp_rom_only(
+        harness,
+        case=case,
+        bring_up_kwargs={"dut_lc_state": None if lc_named is None else int(str(lc_named), 0)},
     )
     cocotb.log.info("%s PASS", case)

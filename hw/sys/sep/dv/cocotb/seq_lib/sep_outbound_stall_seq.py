@@ -163,10 +163,10 @@ def altered_requests(
     absent for an initiator whose attributes are not graded here. A request
     differs when its address is not an issued one, its AxLEN is not 0, its
     AxPROT is not the expected one, or ``grade`` refuses its AxUSER (the SMU
-    path sets SEP's ID, which has no stated number). A request at an issued
+    path sets SEP's ID, ``env.sep_fabric_common.SEP_SOURCE_ID``). A request at an issued
     address past the number of times that address was issued (a duplicate)
-    also differs. ``issued_user`` maps an address to the AxUSER the bench
-    issued at it.
+    also differs. ``issued_user`` maps an address to the AxUSER measured at
+    the master for it; an address it lacks has no measured value.
     """
     want = {k: Counter(v) for k, v in issued.items()}
     seen: dict = {k: Counter() for k in issued}

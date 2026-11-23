@@ -94,10 +94,10 @@ the scoreboard) return a value that equals the caller's own golden (``expect``
 or the wire) exactly when every word passes, so the caller's check keeps its
 name and fails on its own compare. The golden is always the expected byte
 stream (flash-model, queued or seeded bytes), never DUT data. A leaf whose
-words are all byte palindromes ends ``undecided``. ``log_obs`` prints the one
-``OBS-SPI-BYTEORDER`` line of the leaf::
+words are all byte palindromes ends ``undecided``. ``log_info`` prints the one
+``INFO-SPI-BYTEORDER`` line of the leaf::
 
-    OBS-SPI-BYTEORDER seed=<n> order=<lsb_first|msb_first|undecided>
+    INFO-SPI-BYTEORDER seed=<n> order=<lsb_first|msb_first|undecided>
         fixed_at=<where|-> decisive_words=<d> ambiguous_words=<a>
         other_order_words=<o> unmatched_words=<u> compares=<c>
         status_byteorder=<0|1|->
@@ -504,14 +504,14 @@ class SepSpiByteOrder:
             "compares": self.compares,
         }
 
-    def log_obs(self, logger: Any, seed: int, *, status_byteorder: int | None = None) -> None:
-        """Print the leaf's one ``OBS-SPI-BYTEORDER`` line, after its last compare."""
+    def log_info(self, logger: Any, seed: int, *, status_byteorder: int | None = None) -> None:
+        """Print the leaf's one ``INFO-SPI-BYTEORDER`` line, after its last compare."""
         if self._logged:
-            raise RuntimeError("OBS-SPI-BYTEORDER is logged once per leaf")
+            raise RuntimeError("INFO-SPI-BYTEORDER is logged once per leaf")
         self._logged = True
         text = " ".join(f"{k}={v}" for k, v in self.fields().items())
         sbo = "-" if status_byteorder is None else str(status_byteorder & 1)
-        logger.info("OBS-SPI-BYTEORDER seed=%d %s status_byteorder=%s", seed, text, sbo)
+        logger.info("INFO-SPI-BYTEORDER seed=%d %s status_byteorder=%s", seed, text, sbo)
 
 
 async def run_lane_frame(

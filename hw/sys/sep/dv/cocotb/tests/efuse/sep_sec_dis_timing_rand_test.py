@@ -49,8 +49,8 @@ release of the cold reset under the match, and on the first edge with
 ``security_disable_o``, sense done and ``lc_state_o``. No text states the
 feature-control value on those first cycles.
 
-Checkers: CHK-BIND, CHK-SDIS-HOLD, CHK-SDIS-RESET-VALUES, CHK-LC-STATE-PORT. A
-failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
+Checkers: CHK-SDIS-HOLD, CHK-SDIS-RESET-VALUES, CHK-LC-STATE-PORT. Control:
+CTRL-BIND. A failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
 The VPLAN evidence line of CHK-SDIS-HOLD names ``ctl_map_resp`` twice; the leaf
 logs the control-sense map read as ``ctl_map_resp`` and the read in the hold window
 as ``hold_map_resp``.
@@ -87,8 +87,8 @@ from env.sep_efuse_plan import (
 )
 from env.sep_efuse_test_lib import (
     SepEfuseFd,
-    chk_bind,
     clocks_to_sense,
+    ctrl_bind,
     hook_fail,
     log_line,
     rst_pulse,
@@ -246,7 +246,6 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
     """SEC_DIS match before and during sense; shadow hold and reset values."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-SDIS-HOLD",
         "CHK-SDIS-RESET-VALUES",
         "CHK-LC-STATE-PORT",
@@ -412,7 +411,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         staged = [w for w in range(256) if w != _LC_WORD and p.image.words[w] != 0]
         staged_val = {w: p.image.words[w] & 0xFFFF_FFFF for w in staged}
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
 
         # ---------------------------------------------------------- control sense
         self.write_efuse_image(p.image)

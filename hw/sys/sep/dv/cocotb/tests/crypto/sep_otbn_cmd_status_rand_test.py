@@ -273,11 +273,15 @@ Checkers:
                        start of the host read and never IDLE after it, the read
                        returns 0 while the word holds a non-zero value, ``STATUS``
                        reads LOCKED (0xFF), and ``ERR_BITS.illegal_bus_access`` and
-                       ``FATAL_ALERT_CAUSE.illegal_bus_access`` are set. "reads return
+                       ``FATAL_ALERT_CAUSE.illegal_bus_access`` are set, and crypto
+                       alert ``[2:1]`` is high on no clock from the OTBN reset to the
+                       host read and on at least one clock from the host read to the
+                       ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` reads at LOCKED. "reads return
                        zero" ... "a memory access when OTBN is neither idle nor
                        locked will cause OTBN to generate a fatal error with code
                        ILLEGAL_BUS_ACCESS" (ToO:30-31); class fatal (ToO:286-288);
-                       ToO:312-313. Phase exit: after an OTBN reset the probe shows
+                       ToO:312-313; "A fatal alert is raised" (ToO:175, :189);
+                       ``crypto.adoc`` :141 (OTBN receivers ``[2:1]``). Phase exit: after an OTBN reset the probe shows
                        0x04 then 0x00, ``STATUS`` reads IDLE and
                        ``FATAL_ALERT_CAUSE`` reads 0 (ToO:114; ``otbn.hjson``
                        :672-673).
@@ -314,16 +318,22 @@ program, a chance outcome); ``INFO-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
 ``INFO-OTBN-INTG-ALERT-IDX`` (the high clocks of each index of ``[2:1]`` after the
 ``CMD`` write and the rises of each index in the LOCKED window: no sentence names the
-fatal index or the repeat period), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
-``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
-error", ToO:186, does not fix the other bits); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
+fatal index or the repeat period), ``INFO-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
+``FATAL_ALERT_CAUSE`` of each integrity run; ``CHK-OTBN-IMEM-INTG`` and
+``CHK-OTBN-DMEM-INTG`` grade the bit of the flipped memory; "a non-zero value that
+describes the error", ToO:186, does not fix the other bits); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
 clean RND run, a chance outcome); ``INFO-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
-other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
-``FATAL_ALERT_CAUSE`` at LOCKED, and the response code of the host read: no
-sentence states the code); ``INFO-OTBN-CKSUM-ORDER`` (the record byte order that
+other bits); ``INFO-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
+``FATAL_ALERT_CAUSE`` at LOCKED, and the response code of the host read: no sentence
+states the code or the other bits); ``INFO-OTBN-CKSUM-ORDER`` (the record byte order that
 ``CHK-OTBN-LOAD-CKSUM`` matched: no sentence states it); ``OBS-OTBN-WIPE-MEM`` (two words of the wiped memory
-read after each SEC_WIPE command: the wipe makes the stored data unusable (ToO,
+read after each SEC_WIPE command, ``words``, next to the same two words read at IDLE before
+the ``CMD`` write, ``pre_read``; ``pre_src`` names the EXECUTE command ``cmd<k>`` that last
+wrote that memory and passed CHK-OTBN-CMD-END since the last wipe of that memory and the
+last OTBN reset, or ``none``, and ``pre_words`` holds the words that command left there
+(the first two program words, or the operand at ``DMEM_A`` and the result at
+``DMEM_RES``), or ``none``: the wipe makes the stored data unusable (ToO,
 ``registers.md`` ``CMD``) but no sentence states the value a read returns, and
 ``hw/sys/sep/doc/otbn.adoc`` ties the OTP scramble-key handshake to fixed values);
 ``INFO-OTBN-RSVD`` (the raw word, the mask of the bits outside every field and those
@@ -806,12 +816,11 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     async def _rd(self, addr: int, mask: int = 0xFFFF_FFFF) -> int:
         return (await self.otbn._rd(addr)) & mask
 
-    def _info_rsvd(self, seed: int, site: str, reg: str, raw: int) -> None:
+    def _info_rsvd(self, site: str, reg: str, raw: int) -> None:
         """Log the raw word of one ``reg`` read and its bits outside every field."""
         rsvd_mask = ~OTBN.mask32(reg) & 0xFFFF_FFFF
         self.chk.info(
             "OTBN-RSVD",
-            seed=seed,
             site=site,
             reg=reg,
             raw=f"0x{raw:08x}",
@@ -819,10 +828,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             rsvd=f"0x{raw & rsvd_mask:08x}",
         )
 
-    async def _rd_rsvd(self, seed: int, site: str, reg: str, mask: int) -> int:
+    async def _rd_rsvd(self, site: str, reg: str, mask: int) -> int:
         """Read ``reg`` once, log ``INFO-OTBN-RSVD``, return the word masked with ``mask``."""
         raw = await self.otbn._rd(OTBN.addr(reg))
-        self._info_rsvd(seed, site, reg, raw)
+        self._info_rsvd(site, reg, raw)
         return raw & mask
 
     async def _wr(self, addr: int, val: int) -> None:
@@ -1012,36 +1021,35 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self.idle_bound = _OUTER_CLK
 
         if exec_legs:
-            await self._init_leg(seed)
+            await self._init_leg()
         self._open_window()
         if exec_legs:
             if full_legs:
-                cmd_end_pass = await self._command_leg(seed, plan.seq, plan.gaps)
+                cmd_end_pass = await self._command_leg(plan.seq, plan.gaps)
             else:
-                cmd_end_pass = await self._command_leg(seed, plan.seq3, plan.gaps3)
+                cmd_end_pass = await self._command_leg(plan.seq3, plan.gaps3)
             self.idle_bound = max(_T_MULT * self.t_cmd, 1)
-            await self._insn_leg(seed)
-            await self._done_line_leg(seed)
-            busy_ok = await self._busy_write_leg(seed)
+            await self._insn_leg()
+            await self._done_line_leg()
+            busy_ok = await self._busy_write_leg()
         if err_legs:
-            await self._rnd_clean_leg(seed)
+            await self._rnd_clean_leg()
         if full_legs:
-            await self._intg_leg(seed, FLIP_IMEM)
-            await self._intg_leg(seed, FLIP_DMEM)
+            await self._intg_leg(FLIP_IMEM)
+            await self._intg_leg(FLIP_DMEM)
         if exec_legs:
-            recov_err = await self._sw_error_leg(seed, fatal=full_legs)
-            await self._ignored_leg(seed)
+            recov_err = await self._sw_error_leg(fatal=full_legs)
+            await self._ignored_leg()
         if err_legs:
-            await self._sw_kind_leg(seed)
+            await self._sw_kind_leg()
         if full_legs:
-            await self._illegal_bus_leg(seed)
+            await self._illegal_bus_leg()
         close_graded_window(self.logger)
 
         if exec_legs:
             self._ctrl(
                 "OTBN-CMD-IGNORE",
                 cmd_end_pass and busy_ok,
-                seed=seed,
                 cmd_end_done=int(cmd_end_pass),
                 busy_status_0x01=int(busy_ok),
             )
@@ -1049,15 +1057,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 self._ctrl(
                     "OTBN-LOCKED-HOLD",
                     cmd_end_pass,
-                    seed=seed,
                     cmd_at_idle_done=int(cmd_end_pass),
                 )
-            self._ctrl(
-                "OTBN-SWERR-RECOV", cmd_end_pass, seed=seed, cmd_end_err_bits_0=int(cmd_end_pass)
-            )
-            self._ctrl(
-                "OTBN-BUSYWR-ERR", recov_err != 0, seed=seed, recov_err_bits=f"0x{recov_err:x}"
-            )
+            self._ctrl("OTBN-SWERR-RECOV", cmd_end_pass, cmd_end_err_bits_0=int(cmd_end_pass))
+            self._ctrl("OTBN-BUSYWR-ERR", recov_err != 0, recov_err_bits=f"0x{recov_err:x}")
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
@@ -1067,7 +1070,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self.rst_t.stop()
         self.chk.finish()
 
-    async def _init_leg(self, seed: int) -> None:
+    async def _init_leg(self) -> None:
         """Steps 3-4: the power-on wipe ends at IDLE (ToO:98), then reset, wipe then IDLE;
         the done bit of the wipe is logged only."""
         dut = cocotb.top
@@ -1075,7 +1078,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         t_pre = _now_ps()
         pre_status = self.rd(dut.otbn_status_probe_o, mask=M_STATUS)
         init_arc_ok, init_arc = await self._reset_otbn("initial")
-        self._grade("OTBN-INITDONE", init_arc_ok, seed=seed, reset_arc=init_arc)
+        self._grade("OTBN-INITDONE", init_arc_ok, reset_arc=init_arc)
         # The probe holds IDLE from the read before the pulse up to the clock before the
         # gated reset falls, so the 0x04 after the release is caused by the pulse.
         pre_falls = self.rst_t.falls(t_pre, bit=0)
@@ -1085,7 +1088,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._ctrl(
             "OTBN-INITDONE",
             pre_idle and pre_status == ST_IDLE and pre_moves == 0 and at_fall == ST_IDLE,
-            seed=seed,
             pre_idle=int(pre_idle),
             status_before_reset=f"0x{pre_status:02x}",
             pre_polled=_runs(pre_vals),
@@ -1097,25 +1099,40 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         after = await self._clear_done()
         self.chk.info(
             "OTBN-INITDONE-DONE",
-            seed=seed,
             done=init_done,
             done_after_w1c=after,
             reason="done_after_reset_wipe_unstated",
         )
 
     # ---------------------------------------------------------- command leg
-    async def _command_leg(self, seed: int, seq: tuple[int, ...], gaps: tuple[int, ...]) -> bool:
+    async def _command_leg(self, seq: tuple[int, ...], gaps: tuple[int, ...]) -> bool:
         """Steps 5-9. Returns True when a command set ``done`` from a cleared state."""
         p = self.plan
         counts: list[int] = []
         any_pass = False
+        # Index of the EXECUTE that last wrote each memory and ended with a passing
+        # CHK-OTBN-CMD-END, since the last wipe of that memory and the last OTBN reset.
+        last: dict[str, int | None] = {"imem": None, "dmem": None}
+        prog = otbn_compute_prog(p.op)
+        # Words of the wipe addresses after a passing EXECUTE: the first two program words,
+        # the host operand at DMEM_A and the result the program stores at DMEM_RES.
+        staged = {
+            "imem": (prog[0], prog[1]),
+            "dmem": (p.opa, golden_result(p.op, p.opa, p.opb)),
+        }
         for idx, (cmd, gap) in enumerate(zip(seq, gaps, strict=True)):
             if gap:
                 await ClockCycles(cocotb.top.clk_i, gap)
             if cmd == CMD_EXECUTE:
-                await self._stage_compute(otbn_compute_prog(p.op))
-            done_before = await self._rd_rsvd(seed, f"cmd{idx}-pre", "INTR_STATE", M_DONE)
-            pre = await self._rd_rsvd(seed, f"cmd{idx}-pre", "STATUS", M_STATUS)
+                await self._stage_compute(prog)
+            done_before = await self._rd_rsvd(f"cmd{idx}-pre", "INTR_STATE", M_DONE)
+            pre = await self._rd_rsvd(f"cmd{idx}-pre", "STATUS", M_STATUS)
+            if cmd != CMD_EXECUTE:
+                if cmd == CMD_SEC_WIPE_DMEM:
+                    mem, addrs = "dmem", (OTBN_DMEM_BASE + DMEM_A, OTBN_DMEM_BASE + DMEM_RES)
+                else:
+                    mem, addrs = "imem", (OTBN_IMEM_BASE, OTBN_IMEM_BASE + 4)
+                pre_read = [f"0x{await self._rd(a):08x}" for a in addrs]
             t0 = _now_ps()
             await self._wr(A_CMD, cmd)
             ok, vals, clks = await self._wait_idle(_OUTER_CLK)
@@ -1130,7 +1147,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             arc_s = ",".join("X" if v is None else f"0x{v:02x}" for v in arc) or "-"
             self.chk.info(
                 "OTBN-STATUS-SEQ",
-                seed=seed,
                 idx=idx,
                 cmd=f"0x{cmd:02x}",
                 polled=_runs(vals),
@@ -1140,7 +1156,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             if self._grade(
                 "OTBN-CMD-BUSY",
                 first == ST_BUSY[cmd],
-                seed=seed,
                 idx=idx,
                 cmd=f"0x{cmd:02x}",
                 first_busy=first_s,
@@ -1151,7 +1166,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 self._grade(
                     "OTBN-CMD-END",
                     False,
-                    seed=seed,
                     idx=idx,
                     cmd=f"0x{cmd:02x}",
                     reason="timeout",
@@ -1160,13 +1174,13 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 )
                 await self._reset_otbn(f"cmd{idx}-timeout")
                 await self._clear_done()
+                last = {"imem": None, "dmem": None}
                 continue
             allowed = (ST_BUSY[cmd], ST_SEC_WIPE_INT) if cmd == CMD_EXECUTE else (ST_BUSY[cmd],)
             polled_busy = [v for v in vals if v != ST_IDLE]
             self._grade(
                 "OTBN-STATUS-SEQ",
                 bool(arc) and all(v in allowed for v in arc + polled_busy),
-                seed=seed,
                 idx=idx,
                 cmd=f"0x{cmd:02x}",
                 probe=arc_s,
@@ -1174,19 +1188,24 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 allowed=",".join(f"0x{v:02x}" for v in allowed),
             )
             counts.append(clks)
-            done = await self._rd_rsvd(seed, f"cmd{idx}-end", "INTR_STATE", M_DONE)
-            err = await self._rd_rsvd(seed, f"cmd{idx}-end", "ERR_BITS", M_ERR_BITS)
-            fatal = await self._rd_rsvd(seed, f"cmd{idx}-end", "FATAL_ALERT_CAUSE", M_FATAL)
+            done = await self._rd_rsvd(f"cmd{idx}-end", "INTR_STATE", M_DONE)
+            err = await self._rd_rsvd(f"cmd{idx}-end", "ERR_BITS", M_ERR_BITS)
+            fatal = await self._rd_rsvd(f"cmd{idx}-end", "FATAL_ALERT_CAUSE", M_FATAL)
             cleared = await self._clear_done()
             if cmd != CMD_EXECUTE:
-                if cmd == CMD_SEC_WIPE_DMEM:
-                    mem, addrs = "dmem", (OTBN_DMEM_BASE + DMEM_A, OTBN_DMEM_BASE + DMEM_RES)
-                else:
-                    mem, addrs = "imem", (OTBN_IMEM_BASE, OTBN_IMEM_BASE + 4)
                 words = [f"0x{await self._rd(a):08x}" for a in addrs]
+                src = last[mem]
                 self.chk.obs(
-                    "OTBN-WIPE-MEM", seed=seed, idx=idx, cmd=f"0x{cmd:02x}", mem=mem, words=words
+                    "OTBN-WIPE-MEM",
+                    idx=idx,
+                    cmd=f"0x{cmd:02x}",
+                    mem=mem,
+                    pre_src="none" if src is None else f"cmd{src}",
+                    pre_words="none" if src is None else [f"0x{v:08x}" for v in staged[mem]],
+                    pre_read=pre_read,
+                    words=words,
                 )
+                last[mem] = None
             cond = (
                 pre == ST_IDLE
                 and done_before == 0
@@ -1199,7 +1218,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             end_ok = self._grade(
                 "OTBN-CMD-END",
                 cond,
-                seed=seed,
                 idx=idx,
                 cmd=f"0x{cmd:02x}",
                 pre=f"0x{pre:02x}",
@@ -1214,12 +1232,14 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             )
             if end_ok:
                 await self._pass_label(OTBN_CMD_PASS_CMD_END)
+                if cmd == CMD_EXECUTE:
+                    last = {"imem": idx, "dmem": idx}
         self.t_cmd = max(counts) if counts else _OUTER_CLK
         self.logger.info("INFO-T-CMD t_cmd=%d clocks (bound=%d)", self.t_cmd, _OUTER_CLK)
         return any_pass
 
     # ---------------------------------------------------------- INSN_CNT leg
-    async def _insn_leg(self, seed: int) -> None:
+    async def _insn_leg(self) -> None:
         """Steps 10-12 for P(a) and P(b)."""
         p = self.plan
         cnt: dict[str, int] = {}
@@ -1245,7 +1265,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 self._grade(
                     "OTBN-INSN",
                     False,
-                    seed=seed,
                     run=name,
                     k=k,
                     reason="timeout",
@@ -1281,7 +1300,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         insn_ok = self._grade(
             "OTBN-INSN",
             cond,
-            seed=seed,
             a=p.a,
             b=p.b,
             cnt_reset=f"{resets['a']},{resets['b']}",
@@ -1297,7 +1315,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             await self._pass_label(OTBN_CMD_PASS_INSN)
 
     # --------------------------------------------------------- done-line leg
-    async def _done_line_leg(self, seed: int) -> None:
+    async def _done_line_leg(self) -> None:
         """Steps 13-16."""
         p = self.plan
         bound = self.idle_bound
@@ -1320,7 +1338,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 self._grade(
                     "OTBN-DONE-LINE",
                     False,
-                    seed=seed,
                     enable=en,
                     reason="timeout",
                     bound=bound,
@@ -1362,7 +1379,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 line_ok = self._grade(
                     "OTBN-DONE-LINE",
                     cond,
-                    seed=seed,
                     via="cmd",
                     enable=0,
                     vec29_falls_before_w1c=len(falls),
@@ -1404,7 +1420,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 line_ok = self._grade(
                     "OTBN-DONE-LINE",
                     cond,
-                    seed=seed,
                     via="cmd",
                     enable=1,
                     state=done,
@@ -1422,9 +1437,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 )
             if line_ok:
                 await self._pass_label(OTBN_CMD_PASS_DONE_LINE)
-        await self._intr_test_leg(seed, win)
+        await self._intr_test_leg(win)
 
-    async def _intr_test_leg(self, seed: int, win: int) -> None:
+    async def _intr_test_leg(self, win: int) -> None:
         """Step 16: the line follows the enable with the state set by INTR_TEST."""
         await self._wr(A_INTR_ENABLE, 0)
         mark = self.irq.mark()
@@ -1462,7 +1477,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         test_ok = self._grade(
             "OTBN-DONE-LINE",
             cond,
-            seed=seed,
             via="test",
             enable=0,
             state=st_set,
@@ -1494,7 +1508,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._ctrl(
             "OTBN-DONE-LINE",
             c_rose == 1 and not c_falls and c_clr == 0,
-            seed=seed,
             via="test",
             enable=1,
             vec29_rose=c_rose,
@@ -1504,7 +1517,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self._wr(A_INTR_ENABLE, 0)
 
     # -------------------------------------------------------- busy-write leg
-    async def _busy_write_leg(self, seed: int) -> bool:
+    async def _busy_write_leg(self) -> bool:
         """Steps 17-23. Returns True when STATUS read 0x01 before the busy writes."""
         p = self.plan
         dut = cocotb.top
@@ -1517,7 +1530,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._ctrl(
             "OTBN-ERRBITS-BUSYWR-PRE",
             bool(err_pre & M_ERR_ILLEGAL),
-            seed=seed,
             status=_runs(pre_vals),
             err_bits=f"0x{err_pre:x}",
             illegal_insn=int(bool(err_pre & M_ERR_ILLEGAL)),
@@ -1554,7 +1566,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             if self._grade(
                 "OTBN-CMD-IGNORE",
                 all(s == ST_BUSY_EXECUTE for s in st_after_cmd),
-                seed=seed,
                 case="busy_wipe",
                 cmd=f"0x{CMD_SEC_WIPE_DMEM:02x}",
                 status=",".join(f"0x{s:02x}" for s in st_after_cmd),
@@ -1570,7 +1581,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             self._grade(
                 "OTBN-ERRBITS-BUSYWR",
                 err_busy == err_pre and st_err_busy == ST_BUSY_EXECUTE,
-                seed=seed,
                 written=f"0x{p.errbits_v:08x}",
                 bresp=err_bresp,
                 err_bits_busy=f"0x{err_busy:x}",
@@ -1585,18 +1595,13 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         idle, ivals, _ = await self._wait_idle(_OUTER_CLK, gap=4)
         err = await self._rd(A_ERR_BITS, M_ERR_BITS)
         # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
-        self.chk.info(
-            "OTBN-BUSYWR-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
-        )
+        self.chk.info("OTBN-BUSYWR-RNDREP", rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP)))
         err_graded = err & ~M_ERR_RND_REP
         if not busy:
-            self._grade(
-                "OTBN-ERRBITS-BUSYWR", False, seed=seed, reason="timeout", bound=self.idle_bound
-            )
+            self._grade("OTBN-ERRBITS-BUSYWR", False, reason="timeout", bound=self.idle_bound)
         self._grade(
             "OTBN-BUSYWR-ERR",
             idle and err_graded == 0,
-            seed=seed,
             idle_after_release=int(idle),
             err_bits=f"0x{err:x}",
             err_bits_without_rnd_rep=f"0x{err_graded:x}",
@@ -1605,12 +1610,11 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         st_rel = await self._rd(A_STATUS, M_STATUS)
         await self._wr(A_CTRL, M_CTRL_SWERR)
         ctrl_idle = await self._rd(A_CTRL, M_CTRL_SWERR)
-        self._ctrl("OTBN-BUSYWR", ctrl_idle == 1, seed=seed, ctrl_after_idle_write=ctrl_idle)
+        self._ctrl("OTBN-BUSYWR", ctrl_idle == 1, ctrl_after_idle_write=ctrl_idle)
         if not busy:
             self._grade(
                 "OTBN-BUSYWR",
                 False,
-                seed=seed,
                 reason="timeout",
                 bound=self.idle_bound,
                 status=_runs(vals),
@@ -1627,7 +1631,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             busywr_ok = self._grade(
                 "OTBN-BUSYWR",
                 cond,
-                seed=seed,
                 ctrl_pre=ctrl_pre,
                 busy_status=f"0x{ST_BUSY_EXECUTE:02x}",
                 busy_writes=p.k,
@@ -1641,11 +1644,11 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             )
             if busywr_ok:
                 await self._pass_label(OTBN_CMD_PASS_BUSYWR)
-        await self._insn_cnt_busy_write(seed)
+        await self._insn_cnt_busy_write()
         await self._reset_otbn("busywr-end")
         return busy
 
-    async def _insn_cnt_busy_write(self, seed: int) -> None:
+    async def _insn_cnt_busy_write(self) -> None:
         """Write W to ``INSN_CNT`` while the nested-loop program executes.
 
         The control proves the counter is live (non-zero, ``STATUS`` 0x01) before the
@@ -1665,7 +1668,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         live = self._ctrl(
             "OTBN-INSNCNT-BUSYWR-LIVE",
             c0 >= 1 and st0 == ST_BUSY_EXECUTE,
-            seed=seed,
             insn_cnt_before_write=c0,
             status_after_read=f"0x{st0:02x}",
             bound=self.idle_bound,
@@ -1685,7 +1687,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and idle
             and final == n_exec
             and err == 0,
-            seed=seed,
             written=f"0x{p.insn_w:08x}",
             bresp=bresp,
             c0=c0,
@@ -1700,7 +1701,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         )
 
     # ------------------------------------------------------- RND-clean leg
-    async def _rnd_clean_leg(self, seed: int) -> None:
+    async def _rnd_clean_leg(self) -> None:
         """The RND program with the chain up; grade ERR_BITS at its end.
 
         Every value the check grades except ``ERR_BITS`` is read before the
@@ -1739,7 +1740,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._grade(
             "OTBN-RND-CLEAN",
             pre_ok and err_graded == 0,
-            seed=seed,
             reset_arc=arc,
             ctrl=ctrl,
             pre_done=done0,
@@ -1754,9 +1754,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             bound=_OUTER_CLK,
         )
         # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
-        self.chk.info(
-            "OTBN-RND-CLEAN-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
-        )
+        self.chk.info("OTBN-RND-CLEAN-RNDREP", rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP)))
 
     # ------------------------------------------------------ integrity legs
     async def _arm_flip_on_busy(self, bound: int) -> int | None:
@@ -1773,7 +1771,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     def _alert_high(self, watch: SepBitWatch, mark: BitMark) -> dict[int, int]:
         return {i: watch.high_clocks_since(mark, f"a{i}") for i in OTBN_ALERT_IDX}
 
-    async def _intg_leg(self, seed: int, mem: int) -> None:
+    async def _intg_leg(self, mem: int) -> None:
         """One EXECUTE of the compute program with one bit of each core read word of
         ``mem`` inverted ahead of the integrity check; grade the fatal reaction."""
         p = self.plan
@@ -1827,7 +1825,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._ctrl(
             name,
             arm_clk is not None and flips > 0,
-            seed=seed,
             mem=tag,
             flip_bit=flip_bit,
             armed_clk_after_cmd="none" if arm_clk is None else arm_clk,
@@ -1852,7 +1849,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         intg_ok = self._grade(
             name,
             cond,
-            seed=seed,
             mem=tag,
             flip_bit=flip_bit,
             status=_runs(vals),
@@ -1883,17 +1879,16 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             )
         self.chk.info(
             "OTBN-INTG-ALERT-IDX",
-            seed=seed,
             mem=tag,
             **{f"a{i}_high_clk": post_high[i] for i in OTBN_ALERT_IDX},
             **{f"a{i}_rises_locked": locked_rises[i] for i in OTBN_ALERT_IDX},
         )
-        self.chk.obs(
+        self.chk.info(
             "OTBN-INTG-CAUSE",
-            seed=seed,
             mem=tag,
             err_bits=f"0x{err:x}",
             fatal_cause=f"0x{fatal:x}",
+            graded="none",
         )
 
     # ---------------------------------------------------- software-error leg
@@ -1913,16 +1908,16 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         )
         return ctrl, done_before, vals, clks
 
-    async def _sw_error_leg(self, seed: int, *, fatal: bool) -> int:
+    async def _sw_error_leg(self, *, fatal: bool) -> int:
         """The ``unimp`` program, fatal (with ``fatal``) then recoverable.
 
         Returns ERR_BITS of the recoverable run.
         """
         if fatal:
-            await self._sw_error_fatal(seed)
-        return await self._sw_error_recov(seed)
+            await self._sw_error_fatal()
+        return await self._sw_error_recov()
 
-    async def _sw_error_fatal(self, seed: int) -> None:
+    async def _sw_error_fatal(self) -> None:
         """The ``unimp`` program with ``software_errs_fatal`` = 1, the LOCKED hold, the exit."""
         win = _IGNORE_WIN_MULT * self.t_cmd
         ctrl, done0, vals, clks = await self._run_unimp(1)
@@ -1939,7 +1934,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and err != 0
             and bool(err & M_ERR_FATAL_SW)
             and bool(fatal & M_FATAL_SW),
-            seed=seed,
             ctrl=ctrl,
             status=_runs(vals),
             final=f"0x{st:02x}",
@@ -1968,7 +1962,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and exit_ok
             and st_exit == ST_IDLE
             and fatal_exit == 0,
-            seed=seed,
             cmd=f"0x{CMD_EXECUTE:02x}",
             bresp=hold_bresp,
             hold_status=_runs(hvals),
@@ -1983,7 +1976,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         if hold_ok:
             await self._pass_label(OTBN_CMD_PASS_LOCKED_HOLD)
 
-    async def _sw_error_recov(self, seed: int) -> int:
+    async def _sw_error_recov(self) -> int:
         """The ``unimp`` program with ``software_errs_fatal`` = 0; returns its ERR_BITS."""
         rctrl, rdone0, rvals, rclks = await self._run_unimp(0)
         rst = rvals[-1]
@@ -1998,7 +1991,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and ST_LOCKED not in rvals
             and rdone == 1
             and bool(rerr & M_ERR_ILLEGAL),
-            seed=seed,
             ctrl=rctrl,
             status=_runs(rvals),
             final=f"0x{rst:02x}",
@@ -2012,20 +2004,17 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         if recov_ok:
             await self._pass_label(OTBN_CMD_PASS_SWERR_RECOV)
         # No sentence states the other ERR_BITS bits, or FATAL_ALERT_CAUSE, here.
-        self.chk.info(
-            "OTBN-SWERR-CAUSE", seed=seed, err_bits=f"0x{rerr:x}", fatal_cause=f"0x{rfatal:x}"
-        )
+        self.chk.info("OTBN-SWERR-CAUSE", err_bits=f"0x{rerr:x}", fatal_cause=f"0x{rfatal:x}")
         self._ctrl(
             "OTBN-SWERR-FATAL",
             rst == ST_IDLE and ST_LOCKED not in rvals,
-            seed=seed,
             software_errs_fatal=0,
             final=f"0x{rst:02x}",
         )
         return rerr
 
     # ------------------------------------------------------ ignored-cmd leg
-    async def _ignored_leg(self, seed: int) -> None:
+    async def _ignored_leg(self) -> None:
         """Step 23, then the ERR_BITS clear at IDLE."""
         p = self.plan
         win = _IGNORE_WIN_MULT * self.t_cmd
@@ -2042,12 +2031,11 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         ign_err_ok = self._grade(
             "OTBN-CMDIGN-ERR",
             err == err_pre,
-            seed=seed,
             cmd=f"0x{p.bad_cmd:02x}",
             err_bits_before=f"0x{err_pre:x}",
             err_bits=f"0x{err:x}",
         )
-        self._ctrl("OTBN-CMDIGN-ERR", err_pre != 0, seed=seed, err_bits_before=f"0x{err_pre:x}")
+        self._ctrl("OTBN-CMDIGN-ERR", err_pre != 0, err_bits_before=f"0x{err_pre:x}")
         if ign_err_ok:
             await self._pass_label(OTBN_CMD_PASS_IGN_ERR)
         # ERR_BITS clear: a write of the drawn value at IDLE.
@@ -2057,20 +2045,18 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         clr_ok = self._grade(
             "OTBN-ERRCLR",
             st_clr == ST_IDLE and err_clr == 0,
-            seed=seed,
             status=f"0x{st_clr:02x}",
             written=f"0x{p.errclr:08x}",
             err_bits_before=f"0x{err:x}",
             err_bits_after=f"0x{err_clr:x}",
         )
-        self._ctrl("OTBN-ERRCLR", err != 0, seed=seed, err_bits_before=f"0x{err:x}")
+        self._ctrl("OTBN-ERRCLR", err != 0, err_bits_before=f"0x{err:x}")
         if clr_ok:
             await self._pass_label(OTBN_CMD_PASS_ERRCLR)
         cond = ok and st0 == 0 and all(v == ST_IDLE for v in vals) and done == 0
         ign_ok = self._grade(
             "OTBN-CMD-IGNORE",
             cond,
-            seed=seed,
             case="idle_unrecognised",
             cmd=f"0x{p.bad_cmd:02x}",
             status=_runs(vals),
@@ -2087,9 +2073,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             await self._pass_label(OTBN_CMD_PASS_IGNORE)
 
     # ------------------------------------------------------- sw-kind leg
-    async def _run_sw_prog(
-        self, seed: int, prog: tuple[int, ...], tag: str, *, graded: bool
-    ) -> dict:
+    async def _run_sw_prog(self, prog: tuple[int, ...], tag: str, *, graded: bool) -> dict:
         """Reset OTBN, run ``prog`` with ``software_errs_fatal`` = 0, read the end state.
 
         With ``graded`` the window opens before the ``CMD`` write. Every value of the
@@ -2109,8 +2093,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         met, vals, clks = await self._poll_status(
             lambda s: s in (ST_IDLE, ST_LOCKED), self.idle_bound
         )
-        self._info_rsvd(seed, tag, "STATUS", self.status_raw)
-        done = await self._rd_rsvd(seed, tag, "INTR_STATE", M_DONE)
+        self._info_rsvd(tag, "STATUS", self.status_raw)
+        done = await self._rd_rsvd(tag, "INTR_STATE", M_DONE)
         pre_ok = (
             arc_ok
             and ctrl == 0
@@ -2123,8 +2107,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         if graded and not pre_ok:
             close_graded_window(self.logger)
         err_raw = await self._rd(A_ERR_BITS)
-        self._info_rsvd(seed, tag, "ERR_BITS", err_raw)
-        fatal = await self._rd_rsvd(seed, tag, "FATAL_ALERT_CAUSE", M_FATAL)
+        self._info_rsvd(tag, "ERR_BITS", err_raw)
+        fatal = await self._rd_rsvd(tag, "FATAL_ALERT_CAUSE", M_FATAL)
         return {
             "pre_ok": pre_ok,
             "reset_arc": arc,
@@ -2140,29 +2124,27 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             "clk": clks,
         }
 
-    async def _sw_kind_leg(self, seed: int) -> None:
+    async def _sw_kind_leg(self) -> None:
         """One drawn recoverable software error; the pass label follows the passing check."""
         p = self.plan
         kind = p.sw_kind
         mask = M_ERR_SW_KIND[kind]
         prog, legal = sw_kind_progs(kind, p.swk_off)
         close_graded_window(self.logger)
-        t = await self._run_sw_prog(seed, legal, "swkind-legal", graded=False)
+        t = await self._run_sw_prog(legal, "swkind-legal", graded=False)
         self._ctrl(
             "OTBN-SWERR-KIND",
             t["pre_ok"] and t["err"] == 0,
-            seed=seed,
             kind=SW_KINDS[kind],
             program="legal",
             status=t["status"],
             done=t["done"],
             err_bits=f"0x{t['err']:x}",
         )
-        r = await self._run_sw_prog(seed, prog, "swkind", graded=True)
+        r = await self._run_sw_prog(prog, "swkind", graded=True)
         passed = self._grade(
             "OTBN-SWERR-KIND",
             r["pre_ok"] and bool(r["err"] & mask),
-            seed=seed,
             kind=SW_KINDS[kind],
             off=p.swk_off,
             reset_arc=r["reset_arc"],
@@ -2186,7 +2168,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         # No sentence states the other ERR_BITS bits, or FATAL_ALERT_CAUSE, here.
         self.chk.info(
             "OTBN-SWERR-KIND-CAUSE",
-            seed=seed,
             kind=SW_KINDS[kind],
             err_bits=f"0x{r['err']:x}",
             fatal_cause=f"0x{r['fatal']:x}",
@@ -2194,10 +2175,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         # The MAI_CTRL write runs outside the graded window, so no outcome of it
         # samples. No sentence states the outcome with MAI not present.
         close_graded_window(self.logger)
-        m = await self._run_sw_prog(seed, OTBN_MAI_PROG, "mai", graded=False)
+        m = await self._run_sw_prog(OTBN_MAI_PROG, "mai", graded=False)
         self.chk.info(
             "OTBN-MAI-STUB-ERR",
-            seed=seed,
             csr=f"0x{CSR_MAI_CTRL:x}",
             wdata="0x0",
             ctrl=m["ctrl"],
@@ -2213,17 +2193,23 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         )
 
     # ------------------------------------------------------ bus-access leg
-    async def _illegal_bus_leg(self, seed: int) -> None:
+    async def _illegal_bus_leg(self) -> None:
         """A host IMEM or DMEM read while OTBN executes; the last leg, it locks OTBN.
 
-        Every value of the lock phase except ``ERR_BITS`` and ``FATAL_ALERT_CAUSE``
-        is read before those two reads; when one of them fails, the window closes
-        before them.
+        Every value of the lock phase except ``ERR_BITS``, ``FATAL_ALERT_CAUSE`` and
+        the alert count after the host read is taken before those two reads; when one
+        of them fails, the window closes before them.
         """
         p = self.plan
         dut = cocotb.top
         close_graded_window(self.logger)
         arc_ok, arc = await self._reset_otbn("iba")
+        alert = SepBitWatch(
+            dut.crypto_alert_pulse_probe_o,
+            {f"a{i}": i for i in OTBN_ALERT_IDX},
+            name="otbn_alert_iba",
+        ).start()
+        m_pre = alert.mark()
         await self._clear_done()
         prog = OTBN_RND_PROG
         await self.otbn.load_program(prog)
@@ -2241,7 +2227,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._ctrl(
             "OTBN-ILLEGAL-BUS",
             arc_ok and st_twin == ST_IDLE and staged != 0 and twin == staged,
-            seed=seed,
             mem=mem,
             idx=idx,
             status=f"0x{st_twin:02x}",
@@ -2272,6 +2257,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             size=2,
             allow_ungraded_read_resp=True,
         )
+        pre_high = self._alert_high(alert, m_pre)
+        m_rd = alert.mark()
         await self.start_seq(rd)
         st_at_rd = self.status_t.value_at(t0)
         locked, lvals, lclks = await self._poll_status(lambda s: s == ST_LOCKED, self.idle_bound)
@@ -2285,15 +2272,20 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and staged != 0
             and rd.rdata == 0
             and locked
+            and sum(pre_high.values()) == 0
         )
         if not pre_ok:
             close_graded_window(self.logger)
         err = await self._rd(A_ERR_BITS, M_ERR_BITS)
         fatal = await self._rd(A_FATAL, M_FATAL)
+        post_high = self._alert_high(alert, m_rd)
+        await alert.stop()
         iba_ok = self._grade(
             "OTBN-ILLEGAL-BUS",
-            pre_ok and bool(err & M_ERR_ILLEGAL_BUS) and bool(fatal & M_FATAL_ILLEGAL_BUS),
-            seed=seed,
+            pre_ok
+            and sum(post_high.values()) > 0
+            and bool(err & M_ERR_ILLEGAL_BUS)
+            and bool(fatal & M_FATAL_ILLEGAL_BUS),
             phase="lock",
             mem=mem,
             idx=idx,
@@ -2310,19 +2302,21 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             err_mask=f"0x{M_ERR_ILLEGAL_BUS:x}",
             fatal_bit=int(bool(fatal & M_FATAL_ILLEGAL_BUS)),
             fatal_mask=f"0x{M_FATAL_ILLEGAL_BUS:x}",
+            alert_before_rd=sum(pre_high.values()),
+            alert_after_rd=sum(post_high.values()),
             clk=bclks + lclks,
             bound=self.idle_bound,
         )
         if iba_ok:
             await self._pass_label(OTBN_CMD_PASS_ILLEGAL_BUS)
         # No sentence states the response code of the read, or the other bits.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-ILLEGAL-BUS-CAUSE",
-            seed=seed,
             mem=mem,
             resp_code=rd.resp_code,
             err_bits=f"0x{err:x}",
             fatal_cause=f"0x{fatal:x}",
+            graded="none",
         )
         close_graded_window(self.logger)
 
@@ -2335,7 +2329,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         self._grade(
             "OTBN-ILLEGAL-BUS",
             exit_ok and st_exit == ST_IDLE and fatal_exit == 0,
-            seed=seed,
             phase="exit",
             reset_arc=exit_arc,
             status_after_reset=f"0x{st_exit:02x}",
