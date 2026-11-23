@@ -99,11 +99,14 @@ Checkers:
                   (CTRL-PF-DISABLE-PIC16) and vector bit 15 of
                   ``sep_internal_interrupts_probe_o`` (PIC source 16) reads 0,
                   since no enabled source is set (entropy_source.rdl
-                  INTR_ENABLE). A set PERSISTENT_FAILURE bit leaves the value
-                  logged as OBS-PF-DISABLE-PIC16 and fails the check; the CHK
-                  line carries ``pic16_graded``. Control: every trip of the blocks that ran
+                  INTR_ENABLE). A set PERSISTENT_FAILURE bit fails the check;
+                  the CHK line carries ``pic16_graded``. Control: every trip of the blocks that ran
                   before it reaches the alert, and CHK-PIC16 of the same leaf
                   reads the source at 1.
+  CHK-PF-DISABLE-PIC16-SET  runs only when CHK-PF-DISABLE fails because an
+                  enabled INTR_STATUS bit is still set after the clear: PIC source
+                  16 reads 1 (entropy_source.rdl:141-145, :193). A correct DUT does
+                  not reach it, so it is not required evidence.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
                   ``esrc_compress_vld_o`` is silent for H = t_ref. Control: the
                   clean run shows 24 stream strobes in t_ref (CTRL-PF-STREAM;
@@ -121,16 +124,15 @@ Checkers:
                   Each line grades the whole ERR field (and the
                   PERSISTENT_FAILURE field where named); the read words are
                   logged.
-  OBS-SM-ERR-W0   the inject is dropped (the copies stay apart), a write of 0
-                  to MAIN_SM_STATUS, then ERR at the next read. Logged, not
+  INFO-SM-ERR-CAUSE-W0  the inject is dropped (the copies stay apart), a write
+                  of 0 to MAIN_SM_STATUS, then ERR at the next read. Logged, not
                   graded: the integrity error persists, so ERR latches again
-                  whatever the write did, and only a reset ends the error (which
-                  also clears ERR). No state with ERR 1 and the cause gone
-                  exists in which a write of 0 could fail.
+                  whatever the write did. CHK-SM-ERR-W0 grades the write of 0
+                  with no cause left.
   INFO-SM-ERR-CAUSE-W1C  a write of 1 to ERR while the integrity error
                   persists, then ERR at the next read. Logged, not graded: no
                   text states whether a write of 1 clears ERR while its cause
-                  persists. Both OBS writes run with the coverage window closed.
+                  persists. Both INFO writes run with the coverage window closed.
   CHK-SM-ERR ``leg=sticky``  after ``leg=reset_clears``, in its own window:
                   ERR reads 0, then ``esrc_main_sm_err_inject_i`` forces the
                   state machine error output to 1 for SM_ERR_WAIT_CLKS clocks
@@ -138,6 +140,10 @@ Checkers:
                   forced, so no cause remains; ``docs/SEP_TB_ARCH.adoc``), and
                   SM_ERR_WAIT_CLKS clocks later ERR still reads 1
                   (``entropy_source.rdl`` ERR: woclr, stickybit).
+  CHK-SM-ERR-W0   then a write of 0 to MAIN_SM_STATUS, and ERR still reads 1
+                  (``entropy_source.rdl`` ERR: woclr, so only a 1 clears).
+                  Control: CTRL-SM-ERR-W0, ERR read 0 before the force and 1
+                  before the write.
   CHK-SM-ERR-W1C  then a write of 1 to ERR, and ERR reads 0 (``entropy_source.rdl``
                   ERR: "Write one or reset the block to clear"). The leaf then
                   clears PERSISTENT_FAILURE, which the inject also set.
@@ -226,7 +232,7 @@ CHK-PF-DISABLE are logged before those checks are graded. CHK-PF-TRIP-HOLD
 is graded at the end of its trip: its values are taken before the halt and exit
 legs, which it does not grade. The ``cp_sm_err`` cells set and reset_clears are
 held and released by ``ESRC_PA_SM_ERR`` after the CHK-SM-ERR line of that leg
-passes, and the w1c_clears cell after CHK-SM-ERR-W1C passes; the two OBS
+passes, and the w1c_clears cell after CHK-SM-ERR-W1C passes; the two INFO
 writes of the ERR leg run with the window closed.
 """
 
@@ -393,7 +399,7 @@ SHARD_EVIDENCE = {
         "CHK-PF-RECOVER",
         "CHK-PIC16",
     ),
-    2: ("CHK-PF-RESET", "CHK-SM-ERR", "CHK-SM-ERR-W1C"),
+    2: ("CHK-PF-RESET", "CHK-SM-ERR", "CHK-SM-ERR-W0", "CHK-SM-ERR-W1C"),
     3: (
         "CHK-PF-RESET",
         "CHK-PF-TRIP-COUNT",
@@ -531,6 +537,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         "CHK-PF-RECOVER",
         "CHK-PIC16",
         "CHK-SM-ERR",
+        "CHK-SM-ERR-W0",
         "CHK-SM-ERR-W1C",
     )
 
@@ -667,7 +674,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         W1C every INTR_STATUS bit, then PIC16.
 
         Graded only when INTR_STATUS AND INTR_ENABLE reads 0 after the clear
-        (CTRL-PF-DISABLE-PIC16); otherwise PIC16 is logged as OBS-PF-DISABLE-PIC16.
+        (CTRL-PF-DISABLE-PIC16). Otherwise CHK-PF-DISABLE fails, and
+        CHK-PF-DISABLE-PIC16-SET grades PIC16 = 1 for the enabled bit that is set.
         The next clean start enables every source again.
         """
         await self._wr(ESRC_INTR_ENABLE, M_PF_EN)
@@ -677,7 +685,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         pic = self._pic16()
         fields = {"intr_status": f"0x{st:x}", "intr_enable": f"0x{en:x}"}
         if st & en:
-            self.chk.obs("PF-DISABLE-PIC16", **fields, pic16=pic)
+            self.chk.ok("PF-DISABLE-PIC16-SET", pic == 1, **fields, pic16=pic, expect_pic16=1)
             return {"pic16": None, "pic16_graded": 0}
         self.chk.ctrl("PF-DISABLE-PIC16", en == M_PF_EN, **fields)
         return {"pic16": pic, "pic16_graded": 1}
@@ -1771,7 +1779,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             await RisingEdge(cocotb.top.clk_i)
 
     async def _sm_err_leg(self) -> None:
-        """CHK-SM-ERR (set, reset_clears, sticky), CHK-SM-ERR-W1C and the OBS writes, the last leg.
+        """CHK-SM-ERR (set, reset_clears, sticky), CHK-SM-ERR-W0, CHK-SM-ERR-W1C and the INFO
+        writes, the last leg.
 
         Golden: entropy_source.adoc:410 (ERR, RW1C, reset 0x0: it latches a
         health-test counter integrity error; a reset of the block clears it) and
@@ -1789,8 +1798,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             return
         # Leg set: ERR 0 and PERSISTENT_FAILURE 0 (the probes), the inject, a wait,
         # then one read of each. A poll would pair two reads after the inject and is
-        # not used. The interrupt enables are written before the window opens: no
-        # text states whether a status bit latches while its enable is clear.
+        # not used. The interrupt enables are written before the window opens, so
+        # PIC source 16 follows each status bit (common rule "ESRC interrupt status").
         await self._wr(ESRC_INTR_ENABLE, INTR_ENABLE_ALL)
         open_graded_window(TEST, self.logger)
         err0, w0 = await self._err_read()
@@ -1824,8 +1833,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self._inject(False, bit_a)
         await self._wr(ESRC_MAIN_SM_STATUS, SM_W0)
         err2, w2 = await self._err_read()
-        self.chk.obs(
-            "SM-ERR-W0",
+        self.chk.info(
+            "SM-ERR-CAUSE-W0",
             err_before=err1,
             wr=f"0x{SM_W0:08x}",
             err=err2,
@@ -1878,12 +1887,12 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         await self._sm_err_sticky_leg()
 
     async def _sm_err_sticky_leg(self) -> None:
-        """CHK-SM-ERR leg sticky and CHK-SM-ERR-W1C, with the error-output inject.
+        """CHK-SM-ERR leg sticky, CHK-SM-ERR-W0 and CHK-SM-ERR-W1C, with the error-output inject.
 
         Golden: entropy_source.rdl MAIN_SM_STATUS.ERR (woclr, stickybit; "Write one
         or reset the block to clear"). The inject leaves no cause after its input
-        drops (docs/SEP_TB_ARCH.adoc), so ERR stays 1 only by the sticky latch, and a
-        write of 1 then clears it.
+        drops (docs/SEP_TB_ARCH.adoc), so ERR stays 1 only by the sticky latch: a
+        write of 0 leaves it 1, and a write of 1 then clears it.
         """
         close_graded_window(self.logger)
         open_graded_window(TEST, self.logger)
@@ -1909,13 +1918,27 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             word_forced=f"0x{w1:08x}",
             word=f"0x{w2:08x}",
         )
+        self._ctrl("SM-ERR-W0", err0 == 0 and err2 == 1, err_before_force=err0, err_before=err2)
+        await self._wr(ESRC_MAIN_SM_STATUS, SM_W0)
+        err_w0, w_w0 = await self._err_read()
+        await self._grade(
+            "SM-ERR-W0",
+            err2 == 1 and err_w0 == 1,
+            0,
+            err_before=err2,
+            expect_err_before=1,
+            wr=f"0x{SM_W0:08x}",
+            err=err_w0,
+            expect_err=1,
+            word=f"0x{w_w0:08x}",
+        )
         await self._wr(ESRC_MAIN_SM_STATUS, M_ERR)
         err3, w3 = await self._err_read()
         await self._grade(
             "SM-ERR-W1C",
-            err2 == 1 and err3 == 0,
+            err_w0 == 1 and err3 == 0,
             ESRC_PA_SM_ERR,
-            err_before=err2,
+            err_before=err_w0,
             expect_err_before=1,
             wr=f"0x{M_ERR:08x}",
             err=err3,

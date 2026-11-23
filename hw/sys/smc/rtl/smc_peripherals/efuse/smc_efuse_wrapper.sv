@@ -112,6 +112,9 @@ module smc_efuse_wrapper #(
                                                                      // access, read and program
                                                                      // timeouts, request error and
                                                                      // secure-test-mode block.
+  output logic [5:0]                                 efuse_fsm_state_debug_o,  // eFuse controller FSM
+                                                                               // states; see
+                                                                               // efuse_interface_controller.
 
   output logic                                       locked_field_access_interrupt_o  // High during an access
                                                                                       // to the eFuse map
@@ -330,6 +333,7 @@ module smc_efuse_wrapper #(
     .is_rma_chiplet_token_match_debug_o (),
 
     .token_match_fault_o                (),
+    .fsm_state_debug_o                  (efuse_fsm_state_debug_o),
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o)
   );

@@ -64,7 +64,7 @@ Checks:
     every TXDATA word of the leaf goes on the wire in one of the two in-word
     orders, the same order for every word (``SepSpiByteOrder`` of
     ``env/sep_spi_lane_responder.py``). Which order is not graded: one
-    OBS-SPI-BYTEORDER line per leaf logs it. The firmware read-back
+    INFO-SPI-BYTEORDER line per leaf logs it. The firmware read-back
     (CHK-DMA-TX) writes and reads through the same host and does not depend
     on the order.
     INFO-MULTICHUNK  : how the TX watermark paced each DMA transfer, logged and
@@ -333,7 +333,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         sb.finish()
-        order.log_obs(self.logger, self.random_seed())
+        order.log_info(self.logger, self.random_seed())
         # FCOV records only after every check above passed.
         for case in cases:
             await spi_lane_fcov(_TEST, "data", lanes=case.lanes, rx=False)

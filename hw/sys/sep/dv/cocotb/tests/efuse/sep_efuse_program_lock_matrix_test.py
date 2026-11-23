@@ -53,6 +53,14 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
         assert rd.rdata is not None
         return rd.rdata & 0xFFFF_FFFF
 
+    async def _shadow_judged(self, image: SepEfuseImage, fields: list[str], chk: str) -> int:
+        """Shadow check of ``fields`` (and the sense status); fail ``chk`` unless the
+        scoreboard judged every read of it. Returns the judged count."""
+        mark = self.sb_mark()
+        await self.start_seq(sep_efuse_shadow_check_seq(image, fields=fields))
+        n = 1 + sum(len(image.expected_field(f)) for f in fields)
+        return self.assert_sb_judged(mark, chk, expected=n)
+
     async def run_scenario(self) -> None:
         cfg = SepEfuseProgramLockCfg(self.random_seed())
         self.logger.info("efuse program-lock matrix: %s", cfg.summary())
@@ -92,11 +100,13 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
         )
         self.write_efuse_image(golden)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
-        await self.start_seq(sep_efuse_shadow_check_seq(golden, fields=[cell.field]))
+        judged = await self._shadow_judged(golden, [cell.field], "CHK-UNLOCK-PROGRAM")
         self.logger.info(
-            "CHK-UNLOCK-PROGRAM PASS: %s bit %d programmed and read back (OTP + resense shadow)",
+            "CHK-UNLOCK-PROGRAM PASS: %s bit %d programmed and read back (OTP + resense shadow, "
+            "scoreboard judged %d)",
             cell.field,
             cell.program_bit,
+            judged,
         )
 
         await self.start_seq(sep_efuse_otp_program_seq(cell.lock_bit))
@@ -130,10 +140,11 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
             f"write-locked {cell.field} bit {cell.reject_bit} burned (OTP word=0x{got:08x})"
         )
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
-        await self.start_seq(sep_efuse_shadow_check_seq(golden, fields=[cell.field, "LOCKS_SPARE"]))
+        judged = await self._shadow_judged(golden, [cell.field, "LOCKS_SPARE"], "CHK-LOCK-REJECT")
         self.logger.info(
             "CHK-LOCK-REJECT PASS: write-locked %s rejected bit %d; "
-            "OTP and resense golden unchanged for that bit",
+            "OTP and resense golden unchanged for that bit (scoreboard judged %d)",
             cell.field,
             cell.reject_bit,
+            judged,
         )

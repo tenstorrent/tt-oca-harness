@@ -23,10 +23,26 @@ records, the trace events, the pulse counts and the field record:
 * CHK-TCM-CE      the counters read 0 after reset; MCEIP is set exactly when
                   the count field reaches 2^t (DCCM in every sample, ICCM at the
                   sample before the block and the quiescent sample after it);
-                  every flipped DCCM load raises MDCCMECT; each arming that finds
-                  MCEIP set traps once with mcause 0x8000_001E, an arming below
-                  2^t does not; the arming at the count 0 reads mie[30] and
+                  each arming that finds MCEIP set traps once with mcause
+                  0x8000_001E, an arming below 2^t does not; the arming at the count 0 reads mie[30] and
                   mstatus.MIE set.
+* CHK-TCM-INCR    MDCCMECT rises by exactly 1 for each flipped DCCM load, and
+                  the MICCMECT delta from the sample before the ICCM block to
+                  the quiescent sample equals the number of
+                  ``ext_debug_bus_o[367]`` (ICCM single-bit) pulses in that
+                  interval, at least 2^t + 1, the number of flipped words; the
+                  block executes every slot, so each flipped word is fetched at
+                  least once. The count after each flipped slot is logged and
+                  not graded: a word can be fetched ahead and counted before
+                  the sample of the slot before it, and fetched and counted
+                  more than once (VeeR EL2 PRM
+                  ``docs/source/error-protection.md:311`` and ``:365``, ``:369``:
+                  the count rises for each correctable error detected on a fetch
+                  or on a retired load; ``:247``: every fetch error is counted,
+                  independent of execution; ``hw/sys/sep/doc/interrupts.adoc:413-415``:
+                  bit 367 pulses once per ICCM single-bit error). Each load of
+                  the straight-line DCCM leg retires. A correctable store is not
+                  driven, so the store clause of ``:369`` is not graded.
 * CHK-TCM-SILENT  with mstatus.MIE set and mie clear (every enable, mie[30] and
                   mie.MEIE included) the errors count with no trap and no trace
                   interrupt event, also at a count at or above 2^t. Every silent
@@ -61,12 +77,20 @@ records, the trace events, the pulse counts and the field record:
                   release is one clock wide. Each logs PASS or FAIL; the leaf
                   fails once after its other checks if any of them failed.
 
-Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366`` (the
-bit-366 pulse counts in total and in the windows other than ``iccm_ue``),
+Log only: ``INFO-TCM-ISLOT`` (the MICCMECT count after each flipped ICCM slot,
+which CHK-TCM-INCR also prints and does not grade),
+``INFO-TCM-FORM`` (a miss-first draw whose readback skipped 2^t - 1 runs in the
+reach-first form; a skip needs one load to count twice, which fails CHK-TCM-INCR
+on that sample, so a passing run does not print it),
+``INFO-TCM-DBG366-COUNT`` (the bit-366 pulse counts in total and in the windows
+other than ``iccm_ue``; the PRM acts on an ICCM double-bit fetch error for the
+oldest instruction in the pipeline only, fn-5 at ``:248``, and no source states
+how many bit-366 pulses a fetch outside that window makes, so no count there is
+wrong),
 ``INFO-TCM-DBG366-WIDTHS`` (the widths of the pulses outside that window, which no
 check of the leaf grades),
-``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
-each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
+``INFO-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
+each window), ``INFO-RAS-<FIELD>-COUNT`` (rises per window) and
 ``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
 which the interrupt chapter and the ``SEP_NMI_VEC`` register text state
 differently).
@@ -355,6 +379,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         "CHK-TCM-DBG",
         "CHK-TCM-DBG366",
         "CHK-TCM-NO-PIC",
+        "CHK-TCM-INCR",
         *(
             f"CHK-RAS-{fld.upper()}-{half}"
             for fld in ("iccm_ecc_ce", "iccm_ecc_ue", "dccm_ecc_ce", "dccm_ecc_ue")
@@ -596,18 +621,52 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             raise AssertionError(f"CHK-TCM-SILENT FAIL: {body} {csr_bad}")
         self.logger.info("CHK-TCM-SILENT PASS: %s", body)
         n += 1
-        # Per-slot ICCM samples: logged, not graded.
+        # ICCM count: one per detected correctable fetch error, so the count
+        # delta from the sample before the block to the quiet sample equals the
+        # bit-367 pulses from that sample's read to the end of the block. The
+        # block executes every slot, so each of the n flipped words is fetched
+        # at least once and the delta is at least n. A fetch error is counted
+        # independent of execution (PRM fn-4), so a word fetched ahead can be
+        # counted before the sample of an earlier slot, and a word can be
+        # counted more than once: the per-slot counts are logged, not graded.
+        before_line = next(
+            r.clk
+            for r in self._recs("SAMPLE")
+            if r.kv.get("leg") == "iccm" and r.kv.get("tag") == "before"
+        )
+        p367 = len(self._pulses_in((before_line, bwin[1]))[BIT_I_SB])
+        bcnt = int(bef["ic"]) & CNT_MASK
         slots = {int(r.kv["k"]): r.kv for r in self._recs("ISLOT")}
-        prev = 0
+        steps = []
+        prev = bcnt
         for s in cfg.islots:
-            cur = int(slots[s]["ic"]) & CNT_MASK
+            cur = int(slots[s]["ic"]) & CNT_MASK if s in slots else -1
+            steps.append((s, prev, cur))
             self.logger.info(
-                "OBS-TCM-INCR LOG mem=ICCM access=slot%d counter_before=%d counter_after=%d",
+                "INFO-TCM-ISLOT LOG mem=ICCM access=slot%d counter_before=%d counter_after=%d",
                 s,
                 prev,
                 cur,
             )
             prev = cur
+        failed = [
+            name
+            for name, bad in (
+                ("delta", qcnt - bcnt != p367),
+                ("min", p367 < cfg.n),
+            )
+            if bad
+        ]
+        body = (
+            f"mem=ICCM t={cfg.t} flipped_words={cfg.n} counter_before={bcnt} "
+            f"counter_quiet={qcnt} delta={qcnt - bcnt} bit367_pulses={p367} expect_min={cfg.n} "
+            f"slot_steps={','.join(f'slot{s}:{a}>{b}' for s, a, b in steps)} "
+            f"failed={','.join(failed) or 'none'}"
+        )
+        if failed:
+            raise AssertionError(f"CHK-TCM-INCR FAIL: {body}")
+        self.logger.info("CHK-TCM-INCR PASS: %s", body)
+        n += 1
 
         # DCCM leg.
         ds = self._samples("dccm")
@@ -618,7 +677,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             raise AssertionError(f"firmware ran order {fkv['order']}, drew {cfg.order}")
         if realized != order:
             self.logger.info(
-                "OBS-TCM-INCR LOG order=miss_first skipped the readback %d (count %d): "
+                "INFO-TCM-FORM LOG order=miss_first skipped the readback %d (count %d): "
                 "the leg runs in the reach-first form",
                 thr - 1,
                 int(fkv["cnt"]),
@@ -636,14 +695,14 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 bad.append(f"sample {kv['tag']} MICCMECT count {int(kv['ic']) & CNT_MASK}")
             if kv["tag"] in ("silent", "cross", "post"):
                 accesses += 1
-                self.logger.info(
-                    "OBS-TCM-INCR LOG mem=DCCM access=%d counter_before=%s counter_after=%d",
-                    int(kv["k"]),
-                    prev_cnt,
-                    cnt,
+                body = (
+                    f"mem=DCCM access={int(kv['k'])} sample={kv['tag']} "
+                    f"counter_before={prev_cnt} counter_after={cnt} expect_delta=1"
                 )
-                if prev_cnt is None or cnt < prev_cnt + 1:
-                    bad.append(f"access k={kv['k']} counter {prev_cnt} -> {cnt}")
+                if prev_cnt is None or cnt != prev_cnt + 1:
+                    raise AssertionError(f"CHK-TCM-INCR FAIL: {body}")
+                self.logger.info("CHK-TCM-INCR PASS: %s", body)
+                n += 1
             if cnt < thr:
                 last_below = (cnt, mceip)
             elif first_at is None:
@@ -943,7 +1002,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
         outside = [p for p in db366 if not win[0] <= p.nl <= win[1]]
         self.logger.info(
-            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_other_windows=%d",
+            "INFO-TCM-DBG366-COUNT LOG seed=%d pulses_total=%d pulses_other_windows=%d",
             self.random_seed(),
             len(db366),
             len(outside),

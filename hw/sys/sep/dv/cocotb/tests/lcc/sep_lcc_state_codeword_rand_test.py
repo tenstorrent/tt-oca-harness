@@ -17,7 +17,7 @@ Debug and Test Port Path Gating, row SEP OTP JTAG2AXIL path;
 ``hw/sys/sep/doc/security_disable.adoc``, sections Token Activation, Implementation
 Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
 
-  CHK-BIND          the SHA-256 of 32 zero bytes equals the SEC_DIS digest that the
+  CTRL-BIND         (control) the SHA-256 of 32 zero bytes equals the SEC_DIS digest that the
                     bench binds, read through the simulator handle of
                     ``SecDisTbDigest`` (``tb/tb_top.sv``).
   CHK-SIGINT        leg A, one line per inject epoch. The leaf walks the 30 pairs
@@ -125,7 +125,7 @@ from env.sep_efuse_plan import (
 from env.sep_efuse_test_lib import (
     SepEfuseFd,
     bit,
-    chk_bind,
+    ctrl_bind,
     hook_fail,
     sec_dis_go,
     wait_bit,
@@ -174,7 +174,6 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
     """Integrity error forces FEAT_CTRL to 0, SEC_DIS overrides it, the JTAG filter refuses."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-SIGINT",
         "CHK-SIGINT-PAIRS",
         "CHK-DEMOTE-PAIR-LEVEL",
@@ -882,7 +881,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         self.fd = SepEfuseFd(self)
         self.rng = SepSeededRng(seed ^ _WALK_SALT)
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.write_efuse_image(p.image)
         presense = cocotb.start_soon(self._presense_sample())
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)

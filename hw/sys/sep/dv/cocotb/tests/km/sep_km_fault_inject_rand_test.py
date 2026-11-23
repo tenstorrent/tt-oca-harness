@@ -96,7 +96,9 @@ Checks (HOST-UNREC unless marked):
   CHK-CRC-FIRST      the CRC fault precedes the policy refusal.
   CHK-NOFLUSH        the key fault keeps the sequence counters.
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
-  CHK-RESIDUE        a flip past the key end raises no fault.
+  CHK-RESIDUE        a flip past the key end raises no fault, and HK-KPV counts no
+                     read of that word (control: the HK-KPV count of the key-A
+                     flip is above 0).
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
                      (control CTRL-CPU-TRAP-CSR-SET: the KMCSR source of the
                      shared clock latched its IRQ_STATUS bit; for WIPE_STATE,
@@ -2050,7 +2052,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         assert p.residue_j >= len(p.key_c) % pl.SLOT_WORDS, "the residue flip is a key word"
         await self._set_kpv_flip(1, flip_index, p.residue_bit)
         sent18, f18 = await self._cmd_frames(KM_CMD_KEY_TRANSFER, [hc, AES_MASK])
-        flips18 = self.rd(top.km_kpv_flip_count_o, allow_unknown=True)
+        flips18 = self.rd_known(top.km_kpv_flip_count_o)
         await self._set_kpv_flip(0)
         r_code, r_arg = f18[-1].resp_cmd(KM_CMD_KEY_TRANSFER, sent18)
 
@@ -2136,14 +2138,15 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         )
         self.chk.ok(
             "RESIDUE",
-            len(f18) == 1 and r_code == KM_RC_SUCCESS,
+            len(f18) == 1 and r_code == KM_RC_SUCCESS and flips18 == 0 and flips14 > 0,
             size=len(p.key_c),
             flip_index=flip_index,
             j=p.residue_j,
             bit=p.residue_bit,
             code="none" if r_code is None else r_code,
             frames=_ids(f18),
-            flips_logged=flips18,
+            residue_flips=flips18,
+            control_flips=flips14,
         )
         await self._boot("key CRC leg")
 

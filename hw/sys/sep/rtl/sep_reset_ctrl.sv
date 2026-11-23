@@ -74,10 +74,13 @@ module sep_reset_ctrl (
                                                                // interconnect, same layout as
                                                                // sep_crypto_isolate_req_o.
 
-  output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no  // Isolation-sequenced resets to sep_crypto,
-                                                        // active-low, one per SW_RESET_N domain;
-                                                        // also asserted by the SEP reset and forced
-                                                        // by the JTAG overrides.
+  output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no,  // Isolation-sequenced resets to sep_crypto,
+                                                         // active-low, one per SW_RESET_N domain;
+                                                         // also asserted by the SEP reset and
+                                                         // forced by the JTAG overrides.
+  output logic [13:0] isolate_state_debug_o  // Isolation FSM states, 2 bits per domain in
+                                             // SW_RESET_N bit order (km at [1:0], abr at [13:12]):
+                                             // 0 reset, 1 drain, 2 run.
 );
   // Internal reset signal (after JTAG override) for efuse sensing being done
   logic sep_reset_n;
@@ -205,7 +208,8 @@ module sep_reset_ctrl (
     .sw_rst_req_ni(sw_reset_bits.abr),
     .isolated_i   (sep_crypto_isolated_i.host_abr & sep_crypto_isolated_i.km_abr),
     .isolate_req_o(abr_isolate_req),
-    .gated_rst_no (isolated_rst_n.abr)
+    .gated_rst_no (isolated_rst_n.abr),
+    .state_debug_o(isolate_state_debug_o[13:12])
   );
 
   sep_isolate_rst_seq u_otbn_isolate_seq (
@@ -214,7 +218,8 @@ module sep_reset_ctrl (
     .sw_rst_req_ni(sw_reset_bits.otbn),
     .isolated_i   (sep_crypto_isolated_i.host_otbn & sep_crypto_isolated_i.km_otbn),
     .isolate_req_o(otbn_isolate_req),
-    .gated_rst_no (isolated_rst_n.otbn)
+    .gated_rst_no (isolated_rst_n.otbn),
+    .state_debug_o(isolate_state_debug_o[3:2])
   );
 
   sep_isolate_rst_seq u_aes_isolate_seq (
@@ -223,7 +228,8 @@ module sep_reset_ctrl (
     .sw_rst_req_ni(sw_reset_bits.aes),
     .isolated_i   (sep_crypto_isolated_i.host_aes & sep_crypto_isolated_i.km_aes),
     .isolate_req_o(aes_isolate_req),
-    .gated_rst_no (isolated_rst_n.aes)
+    .gated_rst_no (isolated_rst_n.aes),
+    .state_debug_o(isolate_state_debug_o[5:4])
   );
 
   sep_isolate_rst_seq u_hmac_isolate_seq (
@@ -232,7 +238,8 @@ module sep_reset_ctrl (
     .sw_rst_req_ni(sw_reset_bits.hmac),
     .isolated_i   (sep_crypto_isolated_i.host_hmac & sep_crypto_isolated_i.km_hmac),
     .isolate_req_o(hmac_isolate_req),
-    .gated_rst_no (isolated_rst_n.hmac)
+    .gated_rst_no (isolated_rst_n.hmac),
+    .state_debug_o(isolate_state_debug_o[7:6])
   );
 
   sep_isolate_rst_seq u_kmac_isolate_seq (
@@ -241,7 +248,8 @@ module sep_reset_ctrl (
     .sw_rst_req_ni(sw_reset_bits.kmac),
     .isolated_i   (sep_crypto_isolated_i.host_kmac & sep_crypto_isolated_i.km_kmac),
     .isolate_req_o(kmac_isolate_req),
-    .gated_rst_no (isolated_rst_n.kmac)
+    .gated_rst_no (isolated_rst_n.kmac),
+    .state_debug_o(isolate_state_debug_o[9:8])
   );
 
   // KM reset waits for all of the KM's master paths to drain.
@@ -253,7 +261,8 @@ module sep_reset_ctrl (
                          sep_crypto_isolated_i.km_hmac & sep_crypto_isolated_i.km_kmac &
                          sep_crypto_isolated_i.km_abr  & sep_crypto_isolated_i.km_efuse),
     .isolate_req_o  (km_isolate_req),
-    .gated_rst_no   (isolated_rst_n.km)
+    .gated_rst_no   (isolated_rst_n.km),
+    .state_debug_o  (isolate_state_debug_o[1:0])
   );
 
   // The TRNG reset is shared by the entropy source, CSRNG, and EDN.
@@ -265,7 +274,8 @@ module sep_reset_ctrl (
                          sep_crypto_isolated_i.trng_csrng &
                          sep_crypto_isolated_i.trng_edn),
     .isolate_req_o  (trng_isolate_req),
-    .gated_rst_no   (isolated_rst_n.trng)
+    .gated_rst_no   (isolated_rst_n.trng),
+    .state_debug_o  (isolate_state_debug_o[11:10])
   );
 
   // Host-path isolates belong to their engine; KM-path isolates isolate when

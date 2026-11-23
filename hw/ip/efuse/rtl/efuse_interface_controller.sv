@@ -198,8 +198,10 @@ module efuse_interface_controller #(
   output logic                                  locked_field_access_interrupt_o,  // High during an APB access to the MAP
                                                                                   // window that a field lock blocks.
 
-  output logic                                  token_match_fault_o  // Token comparator redundancy fault, sticky until
-                                                                     // reset; tied low when HAS_LC_STATE is clear.
+  output logic                                  token_match_fault_o,  // Token comparator redundancy fault, sticky until
+                                                                      // reset; tied low when HAS_LC_STATE is clear.
+  output logic [5:0]                            fsm_state_debug_o  // [1:0] read FSM state, [3:2] program FSM
+                                                                   // state, [5:4] fuse sense FSM state.
 );
 
   localparam fuse_command_resp_t FuseCommandRespDefault = '0;
@@ -659,7 +661,8 @@ module efuse_interface_controller #(
     .fuse_command_req_o           (fuse_command_req_interface_ctrl_w),
     .fuse_command_resp_i          (fuse_command_resp_interface_ctrl_w),
 
-    .is_program_timeout_debug_o   (is_program_timeout_debug_o)
+    .is_program_timeout_debug_o   (is_program_timeout_debug_o),
+    .state_debug_o                (fsm_state_debug_o[3:2])
   );
 
   // Program response status to CSR
@@ -729,7 +732,8 @@ module efuse_interface_controller #(
     .fuse_command_req_o  (fuse_command_req_interface_ctrl_r),
     .fuse_command_resp_i (fuse_command_resp_interface_ctrl_r),
 
-    .is_read_timeout_debug_o (is_read_timeout_debug_o)
+    .is_read_timeout_debug_o (is_read_timeout_debug_o),
+    .state_debug_o           (fsm_state_debug_o[1:0])
   );
 
   // Read response status to CSR
@@ -818,7 +822,8 @@ module efuse_interface_controller #(
     .is_lc_state_access_o    (is_lc_state_access_o),
     .is_read_locked_o        (harness_read_locked),
 
-    .locked_field_access_interrupt_o  (harness_locked_access)
+    .locked_field_access_interrupt_o  (harness_locked_access),
+    .sense_state_debug_o              (fsm_state_debug_o[5:4])
   );
 
   ////////////////////////////////////////////////////////////////////////////
@@ -906,7 +911,8 @@ module efuse_interface_controller #(
       .is_lc_state_access_o (),
       .is_read_locked_o     (supplementary_read_locked),
 
-      .locked_field_access_interrupt_o (supplementary_locked_access)
+      .locked_field_access_interrupt_o (supplementary_locked_access),
+      .sense_state_debug_o             ()
     );
 
     assign fuse_sense_done = harness_sense_done && supplementary_sense_done;

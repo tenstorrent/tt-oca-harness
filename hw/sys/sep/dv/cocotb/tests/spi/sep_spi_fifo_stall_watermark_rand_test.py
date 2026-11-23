@@ -38,7 +38,7 @@ the wire decode and the RXDATA words the DUT delivered. No SEP text states the
 in-word byte order of TXDATA and RXDATA (``theory_of_operation.md:415-419``
 names two), so one ``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``)
 grades every Tx and Rx data word of the leaf in one order, the same order for
-every word; the order seen is logged once on OBS-SPI-BYTEORDER with
+every word; the order seen is logged once on INFO-SPI-BYTEORDER with
 STATUS.BYTEORDER, not graded. Each width also runs one Tx and one Rx data
 frame of seeded length.
 
@@ -61,7 +61,7 @@ Checkers:
                    RXFULL.
   CHK-SPI-WM       TXWM reads 0 at TX_WATERMARK 0 and 1 at the TX depth plus 1,
                    at each occupancy up to the full FIFO. RXWM equals
-                   (RXQD > RX_WATERMARK) one below and one above RX_WATERMARK
+                   (RXQD >= RX_WATERMARK) one below and one above RX_WATERMARK
                    0, 1 and a drawn mid value, and reads 0 when a drain takes
                    RXQD to RX_WATERMARK minus 1. Control: TX_WATERMARK 1 with
                    TXQD 0 gives TXWM=1. Control: CONTROL reads back each
@@ -71,6 +71,14 @@ Checkers:
                    occupancy q: TXWM "If high, the amount of data in the TX
                    FIFO has fallen below the level of CONTROL.TX_WATERMARK
                    words" (spi_host.hjson:282).
+  CHK-SPI-WM-EQ    RXWM reads 1 when the drain after the RX_WATERMARK plus 1
+                   segment takes RXQD to RX_WATERMARK (0, 1 and the mid value,
+                   per width): the RX watermark is reached at a depth of
+                   RX_WATERMARK words
+                   (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:60-62``),
+                   so RXWM sets at RXQD >= RX_WATERMARK. One PASS line per
+                   watermark; a drain that never reaches RXQD = RX_WATERMARK
+                   fails. INFO-SPI-WM logs the same read.
   CHK-SPI-QD       With ACTIVE=0 each RXDATA read lowers RXQD by 1. TXFULL is
                    set with ACTIVE=1 during a Tx segment of twice the TX depth
                    in words, and that segment ends with every sck cycle. An Rx
@@ -229,8 +237,8 @@ watermark leg has no segment and no width.
 Not graded: TXQD while ACTIVE=1 (logged with INFO-SPI-QD and INFO-SPI-TXQD-ACTIVE),
 RXQD while ACTIVE=1 outside the RX stall drain (INFO-SPI-QD), the CMDQD at which
 READY stays 0 and the head-segment count of CMDQD (logged with
-INFO-SPI-CMDQD-FULL), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F
-against the reset value, the in-word byte order (OBS-SPI-BYTEORDER), overflow
+INFO-SPI-CMDQD-FULL), RX_WATERMARK 0x7F
+against the reset value, the in-word byte order (INFO-SPI-BYTEORDER), overflow
 and underflow.
 
 Run mode: no_cpu (target ``lsu_stub_all_live``), ``+skip_fuse_sense``,
@@ -377,6 +385,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-TXSTALL",
         "CHK-SPI-RXSTALL",
         "CHK-SPI-WM",
+        "CHK-SPI-WM-EQ",
         "CHK-SPI-QD",
         "CHK-SPI-QD-IDLE",
         "CHK-SPI-QD-ACTIVE",
@@ -798,7 +807,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self._session_end()
         await self.wire.finish(self.logger, seed=self.seed)
         self._gate(False)
-        self.order.log_obs(
+        self.order.log_info(
             self.logger, self.seed, status_byteorder=self.ops.status_log[-1].byteorder
         )
         self.result_pass(TEST, self.seed, 10)
@@ -1266,6 +1275,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             # Step 11: drain after the Wr+1 run; each read lowers RXQD by 1.
             prev = rs[-1]
             crossed = False
+            at_wm = False
             words: list[int] = []
             while True:
                 st = await self.ops.read_status()
@@ -1283,8 +1293,22 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 steps_ok += 1
                 prev = st2.rxqd
                 if st2.rxqd == wr:
+                    if st2.rxwm != 1:
+                        self._fail("CHK-SPI-WM-EQ", f"side=rx wm={wr} q={wr} flag=0 expect=1")
+                    at_wm = True
                     self.logger.info(
-                        "OBS-SPI-WM seed=%d side=rx wm=%d q=%d flag=%d (not graded)",
+                        "CHK-SPI-WM-EQ PASS seed=%d width=%s side=rx wm=%d q=%d flag=%d "
+                        "expect=1 status_masked=0x%x mask=0x%x",
+                        self.seed,
+                        self._w,
+                        wr,
+                        wr,
+                        st2.rxwm,
+                        st2.raw & ST_RXWM,
+                        ST_RXWM,
+                    )
+                    self.logger.info(
+                        "INFO-SPI-WM seed=%d side=rx wm=%d q=%d flag=%d chk=CHK-SPI-WM-EQ",
                         self.seed,
                         wr,
                         wr,
@@ -1305,6 +1329,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                         st2.raw & ST_RXWM,
                         ST_RXWM,
                     )
+            if not at_wm:
+                self._fail("CHK-SPI-WM-EQ", f"side=rx wm={wr}: the drain never reached RXQD={wr}")
             if wr >= 1 and not crossed:
                 self._fail(
                     chk, f"side=rx crossing=out wm={wr}: the drain never reached RXQD={wr - 1}"

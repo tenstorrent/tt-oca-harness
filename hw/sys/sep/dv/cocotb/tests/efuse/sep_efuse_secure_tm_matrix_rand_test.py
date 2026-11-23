@@ -23,7 +23,7 @@ While Active; ``hw/sys/sep/doc/otp_fuse_controller.adoc``, sections Shadow Regis
 and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
 ``hw/sys/sep/doc/security_disable.adoc``, Token Activation):
 
-  CHK-BIND          the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
+  CTRL-BIND         (control) the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
   CHK-STM-CTL       controls: ``secure_tm_o`` is 0 from reset release until sense
                     done and equals the strap after it; at strap 1 each frontdoor
                     target write leaves the shadow unchanged and ``FEAT_CTRL`` equals
@@ -184,7 +184,7 @@ from env.sep_efuse_test_lib import (
     SepEfuseFd,
     StrapHold,
     bit,
-    chk_bind,
+    ctrl_bind,
     direct_word,
     hold_strap,
     hook_fail,
@@ -248,7 +248,6 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
     """At strap 1 programs, shadow writes and secret outputs are blocked; at strap 0 they are not."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-STM-CTL",
         "CHK-STM-BLOCK-RESP",
         "CHK-STM-PROG",
@@ -724,7 +723,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         row = feat_ctrl_profile(p.lc_raw, p.sip_dis, p.sys_dis)
         self.logger.info("INFO-GOLDEN feat %s value=0x%016x", row.log(), row.value)
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.write_efuse_image(p.image)
 
         # Strap-1 epoch.

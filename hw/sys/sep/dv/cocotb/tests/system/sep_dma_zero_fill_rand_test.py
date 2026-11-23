@@ -42,8 +42,7 @@ beats come from ``env/sep_dma_model.DmaZeroFill``.
   image are those of the same fill at the direct address. The SEP SRAM range is
   restored after it.
 * Leg B: a width-1 fill whose destination is BASE = LIMIT, total 2 to 4 bytes.
-  ERROR_CODE.BASE_LIMIT_ERROR names an "invalid value" of the pair without a
-  rule for BASE = LIMIT, so the outcome is logged only.
+  The range is inclusive, so it holds exactly the byte at BASE.
 * Leg L, last because the lock holds until reset: RANGE_REGWEN written False,
   a write that would widen LIMIT, then a fill that runs past the locked LIMIT.
 
@@ -136,12 +135,27 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          CTRL-MISSING): SEP_LOCAL_BASE_ADDR reads its reset
                          value, and BASE, LIMIT and DST_ADDR_LO, read before
                          GO, read back the alias-form values written.
+  CHK-DMA-ZF-BASELIM     the Leg B fill: ERROR=1, DONE=0, ERROR_CODE equal to
+                         DST_ADDR_ERROR alone; no AR; exactly one AW and one W,
+                         whose start address (AxADDR and the lowest WSTRB
+                         lane) is BASE and whose WSTRB enables one byte; the
+                         byte at BASE reads 0 and every other byte of the
+                         16-byte region keeps its fill (the fill words have no
+                         zero byte, so the write is visible). The fill "writes
+                         only inside the enabled memory range, from
+                         ``ENABLED_MEMORY_RANGE_BASE`` to
+                         ``ENABLED_MEMORY_RANGE_LIMIT`` inclusive"; "The first
+                         write that would leave the range is not issued: the
+                         fill stops with ``STATUS.ERROR`` and
+                         ``ERROR_CODE.DST_ADDR_ERROR``, and the writes before
+                         it remain" (``hw/sys/sep/doc/dma.adoc:98-104``).
+                         Control (``CTRL-DMA-ZF-BASELIM``, else CTRL-MISSING):
+                         BASE and LIMIT read back the value written, before GO.
 
 Logged: ``INFO-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract), and
 ``zero_words``, which CHK-DMA-ZERO-ABORT grades (``chk=CHK-DMA-ZERO-ABORT``);
-``OBS-DMA-ZF-BASELIM``, STATUS, ERROR_CODE, the AW list (address, WSTRB) and the
-words around BASE after the Leg B fill; ``INFO-DMA-ZERO-LOCK-RESP``, the response
+``INFO-DMA-ZERO-LOCK-RESP``, the response
 of the Leg L write of LIMIT + 64 under the lock (no specification text names
 the response of a write to a locked register).
 
@@ -149,10 +163,10 @@ Run mode: no_cpu, target ``lsu_stub_all_live``, ``+skip_fuse_sense``; Verilator
 and VCS. Graded-window owner code from ``tb/sep_fcov_owner_codes.svh``. The
 window opens one clock before the initial GO of each graded zero fill and
 closes when that fill ends. The set-up, the copies, the OPCODE 5 start, the
-reference fill and the recovery fill of Leg A and the control fill of Leg S run
-with the window closed. After every check of a graded fill passed, the leaf
-raises ``dma_zero_pass`` (``env/sep_fcov_gate.set_dma_zero_pass``) for two
-clocks; the sampler samples the cells it held for that fill only then.
+reference fill and the recovery fill of Leg A, the control fill of Leg S and the
+Leg B fill run with the window closed. After every check of a graded fill
+passed, the leaf raises ``dma_zero_pass`` (``env/sep_fcov_gate.set_dma_zero_pass``)
+for two clocks; the sampler samples the cells it held for that fill only then.
 """
 
 from __future__ import annotations
@@ -540,6 +554,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         "CHK-DMA-ZERO-SRC-ASID",
         "CHK-DMA-ZERO-WIN-LOCK",
         "CHK-DMA-ALIAS-FORM",
+        "CHK-DMA-ZF-BASELIM",
     )
 
     # ---- log helpers ------------------------------------------------------
@@ -1306,37 +1321,42 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         await self._idle()
         await ops.program_range(SRAM_BASE, SRAM_LIMIT, valid=True)
 
-    # ---- Leg B: a fill at BASE = LIMIT, logged only ------------------------
+    # ---- Leg B: a fill at BASE = LIMIT ---------------------------------------
     async def _leg_b(self, plan: Plan) -> None:
+        """CHK-DMA-ZF-BASELIM: a width-1 fill at BASE = LIMIT writes that one byte only."""
         ops = self.ops
         r = plan.b_region
         dst = plan.b_dst
         await ops.program_range(dst, dst, valid=True)
-        range_rb = (await ops.rd(RANGE_BASE), await ops.rd(RANGE_LIMIT))
+        rb = await self._range_rb("CHK-DMA-ZF-BASELIM", dst, dst)
         await self.mem.fill(r.addr, r.words)
         run = await self._run(
             opcode=OP_ZERO, dst=dst, total=plan.b_total, chunk=plan.b_total, width_enc=0
         )
         got = await self._read_region(r)
-        self.logger.info(
-            "OBS-DMA-ZF-BASELIM seed=%d base=limit=dst=0x%08x total=%d enc=0 range_readback="
-            "0x%08x..0x%08x %s error_code=0x%x ar=%d aw=[%s] b=[%s] region=0x%08x before=[%s] "
-            "after=[%s]",
-            self.seed,
-            dst,
-            plan.b_total,
-            range_rb[0],
-            range_rb[1],
-            run.status.fmt(),
-            run.error_code & ERROR_CODE_MASK,
-            len(run.ev.ar),
-            ",".join(
-                f"0x{aw.addr or 0:08x}/0x{wb.strb or 0:02x}" for aw, wb in zip(run.ev.aw, run.ev.w)
-            ),
-            ",".join(str(b.resp) for b in run.ev.b),
-            r.addr,
-            ",".join(f"0x{w:08x}" for w in r.words),
-            ",".join(f"0x{w:08x}" for w in got),
+        img = r.image()
+        img[dst] = 0
+        exp = bytes_to_words(img, r.addr, len(r.words))
+        st = run.status
+        ec = run.error_code & ERROR_CODE_MASK
+        aws = [(aw.addr, wb.strb) for aw, wb in zip(run.ev.aw, run.ev.w)]
+        one_beat = (
+            not run.ev.ar
+            and len(run.ev.aw) == 1
+            and len(run.ev.w) == 1
+            and beat_start(*aws[0]) == dst
+            and bin(aws[0][1] or 0).count("1") == 1
+        )
+        ok = st.error and not st.done and ec == DST_ERR and one_beat and got == exp
+        self._pass(
+            "CHK-DMA-ZF-BASELIM",
+            ok,
+            f"base=limit=dst=0x{dst:08x} total={plan.b_total} enc=0 {rb} {st.fmt()} "
+            f"error_code=0x{ec:x}/0x{DST_ERR:x} ar={len(run.ev.ar)}/0 "
+            f"aw=[{','.join(f'0x{a or 0:08x}/0x{w or 0:02x}' for a, w in aws)}]/1 "
+            f"b=[{','.join(str(x.resp) for x in run.ev.b)}] region=0x{r.addr:08x} "
+            f"before=[{','.join(f'0x{w:08x}' for w in r.words)}] "
+            f"after=[{','.join(f'0x{w:08x}' for w in got)}] {self._diff(got, exp, r.addr)}",
         )
         await self._idle()
         await ops.program_range(SRAM_BASE, SRAM_LIMIT, valid=True)

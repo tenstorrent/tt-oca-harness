@@ -55,7 +55,8 @@ Probes: register and SRAM frontdoor over ``s_axi``, register frontdoor over
 bit 9 of ``sep_internal_interrupts_probe_o`` (PIC source 10, DMA chunk done);
 the observation taps ``dma_axi_req_probe_o`` (DMA master AR/AW/W/B after the
 alias remap) and ``dma_status_probe_o`` (STATUS levels), read through
-``env/sep_dma_tap.py``, and ``dma_axi_wdata_probe_o`` (the W data of the same
+``env/sep_dma_tap.py``, the PR-DMACSR tap (``env/sep_fabric_tap.py``, AW at
+the DMA CSR target port), and ``dma_axi_wdata_probe_o`` (the W data of the same
 request), read with the W handshake of ``dma_axi_req_probe_o`` by the
 test-local ``_WdataSampler``. Hooks (``docs/SEP_TB_ARCH.adoc``): the m_axi WSTRB
 drive of one half-strobe write, and ``smn_outbound_resp_hold_i`` of the
@@ -100,15 +101,41 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       WSTRB, or the digest, equal the direct-form golden
                       (``env/sep_dma_model.DmaXfer``, hashlib). Control (else
                       CTRL-MISSING): SEP_LOCAL_BASE_ADDR reads its reset value.
-                      The fixed-source two-chunk run of OBS-DMA-FIXED-CHUNK
-                      takes a drawn direct or alias form and stays logged.
+  CHK-DMA-FIXED-CHUNK a copy of two chunks of a drawn 4 to 64 bytes at width 4,
+                      source INCREMENT=0 and WRAP=0, destination INCREMENT=1,
+                      with the source programmed in a drawn direct or alias
+                      form: exactly two GO writes, DONE=1, ERROR=0 and
+                      ERROR_CODE 0; every AR of chunk 1 (before the second GO
+                      write) is at the source address (INCREMENT=0, "All
+                      reads are done from the same address",
+                      ``secure_dma.rdl:259-262``), CHUNK_DATA_SIZE / 4 of
+                      them, and the first chunk of the destination holds the
+                      source word, CHUNK_DATA_SIZE / 4 times (the tap is after
+                      the alias remap, so the addresses are direct). Two RDL
+                      lines give different chunk-2 starts: the source address
+                      (``secure_dma.rdl:259-262``) or the source address plus
+                      CHUNK_DATA_SIZE (WRAP=0, "Chunks occupy contiguous
+                      ascending addresses", ``secure_dma.rdl:267``). Both give
+                      CHUNK_DATA_SIZE / 4 reads at one address, so chunk 2 is
+                      graded as that many reads at one of the two addresses,
+                      with the second chunk of the destination holding the
+                      source word at that address. Control (else
+                      CTRL-MISSING): CTRL-DMA-FIXED-CHUNK2, a second GO write
+                      and at least one chunk-2 AR. The chunk-2 address the DUT
+                      reads, with the address of each reading, is logged on
+                      OBS-DMA-FIXED-CHUNK-ADDR.
   CHK-DMA-CHUNK1      width 1 with CHUNK_DATA_SIZE 1 (the stated minimum) on a
                       drawn 2 to 16 bytes: image, beat counts, addresses and
                       WSTRB equal the model, n-1 to n CHUNK_DONE rises, n-1
                       stop reads and n GO writes; the Leg A checks follow.
-  CHK-DMA-RW1C        per Leg D continuation stop: a STATUS write of 0 leaves
-                      CHUNK_DONE 1 and a write of CHUNK_DONE clears it
-                      (``dma.adoc:131-132``).
+  CHK-DMA-RW1C        per Leg D continuation stop: a STATUS write of 0,
+                      answered OKAY, leaves CHUNK_DONE 1 and a write of
+                      CHUNK_DONE clears it (``dma.adoc:131-132``); the line
+                      logs both write responses. Control, else CTRL-MISSING
+                      (CTRL-DMA-RW1C-W0): the write of 0 shows exactly one AW
+                      handshake at the STATUS offset on the DMA CSR target
+                      port (PR-DMACSR), so a write that does not reach STATUS
+                      cannot pass on the CHUNK_DONE it found.
   CHK-DMA-RO-HOLD     after each Leg D continuation run: each SHA2_DIGEST word
                       v reads v after a write of ~v (``sw = r``); the write
                       response is logged.
@@ -125,16 +152,45 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       destination under the same range stops at LIMIT with
                       ERROR_CODE.DST_ADDR_ERROR (``dma.adoc:98-104``).
 
+  CHK-DMA-SHORT-LAST-CHUNK a firmware-paced copy at width 4 whose
+                      TOTAL_DATA_SIZE is a drawn 1 to 3 whole chunks of 4k
+                      bytes (k in 2..16) plus a tail of 4 to 4k-4 bytes: the
+                      destination and guard words equal the model image, and
+                      the W beats after the n-th GO write (n = the chunk
+                      count, the last chunk) enable exactly the tail bytes,
+                      and the run ends with DONE=1, ERROR=0 and ERROR_CODE 0
+                      (``secure_dma.rdl:299-300``, ``:313-314``).
+                      TOTAL_DATA_SIZE is the total byte count and the width
+                      transactions run "until TOTAL_DATA_SIZE bytes have been
+                      transferred" (``secure_dma.rdl:172``, ``:199``);
+                      CHUNK_DATA_SIZE is the "Size of each of the non-final
+                      chunks" (OpenTitan DMA ``theory_of_operation.md:135``).
+                      The leaf writes one GO per stop it reads, up to n + 2.
+                      Whether CHUNK_DONE rises and a GO is needed after the
+                      last chunk is not stated: the GO count, the W beats per
+                      chunk, CHUNK_DONE and CONTROL.GO at the end are logged
+                      on OBS-DMA-SHORT-LAST-CHUNK.
+  CHK-DMA-SIZE-LARGE  the copy at width encoding 2 (4 bytes) of 16388 to
+                      65536 bytes: the destination words equal the model
+                      image, both guard words keep the sentinel, and the AW
+                      and W counts each equal TOTAL_DATA_SIZE / 4
+                      (``secure_dma.rdl:172``, ``:199``), and the run ends
+                      with DONE=1, ERROR=0 and ERROR_CODE 0
+                      (``secure_dma.rdl:299-300``, ``:313-314``). The source and
+                      destination lie inside the enabled memory range (all of
+                      SRAM), so the restriction "based on OT DMA enabled
+                      memory space allocation" (``secure_dma.rdl:176``) does
+                      not apply. No text states another maximum
+                      TOTAL_DATA_SIZE: the size, the chunking and the GO
+                      count are logged on OBS-DMA-SIZE-LARGE.
+
 Logged only (no stated value): INFO-DMA-CHUNK1-W4 (width 4 with
 CHUNK_DATA_SIZE 1), INFO-DMA-BASELIM-COPY (a copy with BASE = LIMIT),
-OBS-DMA-SHORT-LAST-CHUNK (TOTAL_DATA_SIZE not a multiple of CHUNK_DATA_SIZE),
 OBS-DMA-CSR-64 (64-bit m_axi read, write and half-strobe write of a DMA
-register pair), INFO-DMA-BEAT-HOLD (a DMA read whose response the outbound
-responder holds for 20000 clocks) and OBS-DMA-SIZE-LARGE (the width-2 copy
-above 16384 bytes: how it ended, STATUS, ERROR_CODE, AW and W counts against
-TOTAL/4, destination mismatch words and guards; no text states a maximum
-TOTAL_DATA_SIZE, ``secure_dma.rdl:176``). A logged run that has not ended
-after its GO cap or poll bound is aborted and must reach BUSY=0.
+register pair) and INFO-DMA-BEAT-HOLD (a DMA read whose response the outbound
+responder holds for 20000 clocks). A run with the re-GO rule (the short last
+chunk, the large copy and these logged runs) that has not ended after its GO
+cap or poll bound is aborted and must reach BUSY=0.
   CHK-DMA-GEOM        per Leg B transfer and per narrow-width copy (line
                       ``leg=N width_enc=<0|1>``): DONE=1, BUSY=0, GO=0,
                       ERROR=0, ERROR_CODE=0, destination equals the model
@@ -302,8 +358,9 @@ asserts ``rst_ni``; Verilator and VCS. Graded-window owner code from
 ``tb/sep_fcov_owner_codes.svh``. The graded window opens at the GO write of
 each graded transfer (at the range writes of a Leg C cell) and closes after
 the checks of that transfer; setup, memory fills, the stale-digest read, the
-scrub runs, the control runs and the narrow-width and large copies run with
-it closed, so the graded narrow-width copies add no cell to the sampler. A
+scrub runs, the control runs, the fixed-source two-chunk copy, the short last
+chunk copy and the narrow-width and large copies run with it closed, so those
+graded copies add no cell to the sampler. A
 FAIL closes the window before it raises. The sampler holds every cell of this owner and samples the
 held cells only when the pass label ``dma_matrix_pass``
 (``env/sep_fcov_gate.set_dma_matrix_pass``) rises; the leaf writes 0 before
@@ -329,6 +386,7 @@ from env.sep_dma_model import (
     words_to_bytes,
 )
 from env.sep_dma_tap import FIELDS, DmaTapEvents, DmaTapMark, SepDmaTap
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -716,7 +774,7 @@ class Plan:
         self._sized(SepSeededRng(seed ^ SIZE_SALT))
 
     def _logged(self, rng: SepSeededRng) -> None:
-        """Logged runs, drawn after every graded leg so the graded draws keep their values."""
+        """The fixed-source copy and the busy CONTROL write, drawn last so other legs keep their draws."""
         chunk = 4 * rng.randrange(1, 17)
         # Fixed source (INCREMENT=0, WRAP=0), incrementing destination, two chunks.
         src, dst = place(rng, [2 * chunk, 2 * chunk])
@@ -740,7 +798,8 @@ class Plan:
             side = rng.choice(("src", "dst", "both"))
             si, sw = modes[rng.choice(tuple(modes))]
             di, dw = modes[rng.choice(tuple(modes))]
-            # A fixed side runs one chunk: the fixed multi-chunk source address is open.
+            # A fixed side runs one chunk; CHK-DMA-FIXED-CHUNK grades the fixed
+            # source over two chunks.
             n = 1 if not si or not di else rng.randrange(2, 9)
             chunk = 4 * rng.randrange(1, 17)
             cell = (si, sw, di, dw)
@@ -1037,6 +1096,13 @@ class _LoggedDmaOps(SepDmaOps):
         await super().wr(addr, data)
         self.writes.append((c0, self.tap.clk, addr, data))
 
+    async def wr_seq(self, addr: int, data: int) -> SepAxiAccessSeq:
+        """A logged write whose response the caller grades and logs."""
+        c0 = self.tap.clk
+        seq = await self.access(SepAxiOp.WRITE, addr, data)
+        self.writes.append((c0, self.tap.clk, addr, data))
+        return seq
+
     def status_writes(self, clk0: int, clk1: int) -> int:
         return sum(1 for a, b, addr, _ in self.writes if addr == STATUS and b > clk0 and a < clk1)
 
@@ -1224,6 +1290,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         "CHK-DMA-CHUNK1",
         "CHK-DMA-NOGO",
         "CHK-DMA-RANGE-COPY",
+        "CHK-DMA-FIXED-CHUNK",
+        "CHK-DMA-SHORT-LAST-CHUNK",
+        "CHK-DMA-SIZE-LARGE",
     )
 
     # ---- log helpers ------------------------------------------------------
@@ -1293,6 +1362,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.suppress_host_axi_transaction_info()
         dut = cocotb.top
         self.tap = SepDmaTap(dut).start()
+        self.csr_tap = SepFabricTap("PR-DMACSR", dut).start()
         self.busy = SepBitWatch(dut.dma_busy_probe_o, name="dma_busy_probe_o").start()
         self.wdata = _WdataSampler(dut).start()
         self.wdata_beats = 0
@@ -1308,7 +1378,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._leg_a(plan)
             await self._alias_runs(plan)
             await self._chunk1(plan)
-            await self._obs_fixed_chunk(plan)
+            await self._fixed_chunk(plan)
             await self._leg_b(plan)
             self._wdata_reach()
             await self._info_ctrl_busy(plan)
@@ -1319,16 +1389,17 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._range_copy(plan)
             await self._info_chunk1_w4(plan)
             await self._info_baselim_copy(plan)
-            await self._obs_short_last_chunk(plan)
+            await self._short_last_chunk(plan)
             await self._obs_csr64(plan)
             await self._info_beat_hold(plan)
             await self._narrow_copies(plan)
-            await self._obs_size_large(plan)
+            await self._size_large(plan)
             self._close()
             await self._release_matrix()
         finally:
             self._close()
             await self.tap.stop()
+            await self.csr_tap.stop()
             await self.busy.stop()
             await self.wdata.stop()
             if getattr(self, "irq", None) is not None:
@@ -2070,12 +2141,20 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 f"control_chunk_irq_rises={multi_irq_rises} total={total}",
             )
 
-    # ---- logged runs --------------------------------------------------------
-    async def _obs_fixed_chunk(self, plan: Plan) -> None:
-        """Source address of the second chunk of a two-chunk copy from a fixed source.
+    # ---- fixed-source two-chunk copy ------------------------------------------
+    async def _fixed_chunk(self, plan: Plan) -> None:
+        """CHK-DMA-FIXED-CHUNK: a two-chunk copy from a fixed source (INCREMENT=0, WRAP=0).
 
         The source is programmed in the drawn form (direct or local alias); the
-        tap addresses are after the alias remap.
+        tap addresses are after the alias remap, so the golden is the direct
+        address. Chunk 1 reads every word at ``src`` (SRC_CONFIG.INCREMENT=0,
+        ``secure_dma.rdl:259-262``). Two RDL lines give the chunk-2 start:
+        ``src`` ("All reads are done from the same address",
+        ``secure_dma.rdl:259-262``) or ``src + chunk`` (WRAP=0, "Chunks occupy
+        contiguous ascending addresses", ``secure_dma.rdl:267``). The check
+        grades what both readings state for chunk 2: CHUNK_DATA_SIZE / 4 reads
+        at one of those two addresses, and the destination holding the word
+        read there. OBS-DMA-FIXED-CHUNK-ADDR logs which address the DUT read.
         """
         ops = self.ops
         src, dst, chunk, s, words = plan.fixed
@@ -2102,21 +2181,55 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             for c0, _, addr, data in ops.writes
             if addr == CONTROL and data & GO_MASK and c0 >= m_tap.clk
         ]
-        second = [b.addr for b in ev.ar if len(gos) > 1 and b.clk >= gos[1]]
+        cut = gos[1] if len(gos) > 1 else None
+        first = [b.addr for b in ev.ar if cut is None or b.clk < cut]
+        second = [b.addr for b in ev.ar if cut is not None and b.clk >= cut]
         err = await ops.rd(ERROR_CODE)
+        got = await self.mem.read(dst, 2 * chunk // 4)
+        n = chunk // 4
+        ar1 = rle(["X" if a is None else f"0x{a:08x}" for a in first]) or "-"
+        ar2 = rle(["X" if a is None else f"0x{a:08x}" for a in second]) or "-"
+        ctrl = f"form={plan.fixed_form} chunk={chunk} go_writes={len(gos)} chunk2_ar={len(second)}"
+        if cut is None or not second:
+            self._ctrl_missing("CTRL-DMA-FIXED-CHUNK2", ctrl)
+        self.logger.info("CTRL-DMA-FIXED-CHUNK2 PASS seed=%d %s", self.seed, ctrl)
+        same_addr, next_chunk = src, src + chunk
+        start2 = second[0] if len(set(second)) == 1 else None
+        chunk2_ok = len(second) == n and start2 in (same_addr, next_chunk)
+        word2 = words[(start2 - src) // 4] if chunk2_ok else None
+        img1_ok = got[:n] == [words[0]] * n
+        img2_ok = chunk2_ok and got[n:] == [word2] * n
+        ok = (
+            len(gos) == 2
+            and first == [src] * n
+            and chunk2_ok
+            and img1_ok
+            and img2_ok
+            and res.status.done
+            and not res.status.error
+            and err == 0
+        )
+        self._pass(
+            "CHK-DMA-FIXED-CHUNK",
+            ok,
+            f"form={plan.fixed_form} chunk={chunk} go_writes={len(gos)}/2 "
+            f"done={res.status.done} error={res.status.error} error_code=0x{err:x} "
+            f"src=0x{src:08x} chunk1_ar={ar1} chunk1_expect=0x{src:08x}*{n} "
+            f"chunk2_ar_count={len(second)}/{n} chunk2_one_of=0x{same_addr:08x},0x{next_chunk:08x} "
+            f"chunk2_ok={int(chunk2_ok)} dst_chunk1_eq_golden={int(img1_ok)} "
+            f"dst_chunk2_eq_read_word={int(img2_ok)}",
+        )
+        reading = {same_addr: "same_address", next_chunk: "next_chunk"}[start2]
         self.logger.info(
-            "OBS-DMA-FIXED-CHUNK seed=%d form=%s chunk=%d go_writes=%d done=%d error=%d "
-            "error_code=0x%x src=0x%08x chunk2_ar=%s chunk2_first_off=%s",
+            "OBS-DMA-FIXED-CHUNK-ADDR seed=%d form=%s chunk=%d chunk2_ar=%s "
+            "same_address=0x%08x next_chunk=0x%08x dut=%s (value logged)",
             self.seed,
             plan.fixed_form,
             chunk,
-            res.go_writes,
-            res.status.done,
-            res.status.error,
-            err,
-            src,
-            ",".join("-" if a is None else f"0x{a:08x}" for a in second) or "-",
-            "-" if not second or second[0] is None else str(second[0] - src),
+            ar2,
+            same_addr,
+            next_chunk,
+            reading,
         )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 
@@ -2815,21 +2928,34 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         STATUS.CHUNK_DONE is RW1C (``secure_dma.adoc`` STATUS; "Status completion
         and error bits are write-one-to-clear", ``hw/sys/sep/doc/dma.adoc:131-132``):
         a write of 0 leaves it 1 and a write of 1 clears it. No GO is written
-        between the writes, so no chunk start clears it.
+        between the writes, so no chunk start clears it. CHUNK_DONE is already 1
+        before the write of 0, so CTRL-DMA-RW1C-W0 requires that write to reach
+        STATUS: one AW handshake at the STATUS offset on PR-DMACSR.
         """
         ops = self.ops
-        await ops.wr(STATUS, 0)
+        m_csr = self.csr_tap.mark()
+        w0 = await ops.wr_seq(STATUS, 0)
+        aw = [b.addr for b in self.csr_tap.since(m_csr, "aw")]
         st0 = await ops.read_status()
-        await ops.wr(STATUS, ST_CHUNK_DONE)
+        w1 = await ops.wr_seq(STATUS, ST_CHUNK_DONE)
         st1 = await ops.read_status()
+        at_status = [a for a in aw if a is not None and (a & 0xFFF) == (STATUS & 0xFFF)]
+        ctrl = (
+            f"stop={stop} w0_aw_addrs={[f'0x{a:08x}' if a is not None else 'x' for a in aw]} "
+            f"w0_aw_at_status={len(at_status)} expect=1 {tag}"
+        )
+        if len(aw) != 1 or len(at_status) != 1:
+            self._ctrl_missing("CTRL-DMA-RW1C-W0", ctrl)
+        self.logger.info("CTRL-DMA-RW1C-W0 PASS seed=%d %s", self.seed, ctrl)
         line = (
-            f"bit=CHUNK_DONE stop={stop} after_w0={st0.chunk_done} expect_after_w0=1 "
-            f"after_w1={st1.chunk_done} expect_after_w1=0 busy={st0.busy}/{st1.busy} "
-            f"done={st0.done}/{st1.done} {tag}"
+            f"bit=CHUNK_DONE stop={stop} w0_resp={w0.resp_code} after_w0={st0.chunk_done} "
+            f"expect_after_w0=1 w1_resp={w1.resp_code} after_w1={st1.chunk_done} "
+            f"expect_after_w1=0 busy={st0.busy}/{st1.busy} done={st0.done}/{st1.done} {tag}"
         )
         if st0.busy or st1.busy or st0.done or st1.done:
             self._ctrl_missing("CHK-DMA-RW1C", f"stop left: {line}")
-        self._pass("CHK-DMA-RW1C", st0.chunk_done == 1 and st1.chunk_done == 0, line)
+        ok = w0.resp_ok and w1.resp_ok and st0.chunk_done == 1 and st1.chunk_done == 0
+        self._pass("CHK-DMA-RW1C", ok, line)
 
     async def _digest_ro_hold(self, tag: str) -> None:
         """CHK-DMA-RO-HOLD: each SHA2_DIGEST word keeps value v after a write of ~v.
@@ -3169,8 +3295,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             st, err, ctl = await self._read_regs()
             await self._grade_geom(c, st, err, ctl, go_writes, "-", lead, self.tap.since(m_tap))
 
-    async def _obs_size_large(self, plan: Plan) -> None:
-        """A width-2 COPY above 16 KB; no text states the maximum TOTAL_DATA_SIZE."""
+    async def _size_large(self, plan: Plan) -> None:
+        """CHK-DMA-SIZE-LARGE: a COPY above 16 KB at width encoding 2 (4 bytes) that ends DONE."""
         ops = self.ops
         c, x = plan.large, plan.large.x
         # The narrow-width copies leave DONE=1; _logged_run ends on the first DONE=1 read.
@@ -3185,24 +3311,25 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         exp = c.expected_dst()
         mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
         sw = sentinel_word(c.sentinel)
+        guard_ok = got[0] == sw and got[-1] == sw
         self.logger.info(
-            "OBS-DMA-SIZE-LARGE seed=%d total=%d chunk=%d n=%d width_enc=%d ended=%s "
-            "go_writes=%d %s error_code=0x%x aw=%d w=%d expect_txn=%d dst_mismatch_words=%d "
-            "guard_ok=%d",
+            "OBS-DMA-SIZE-LARGE seed=%d total=%d chunk=%d n=%d width_enc=%d go_writes=%d",
             self.seed,
             x.total,
             x.chunk,
             x.n_chunks,
             x.width_enc,
-            ended,
             len(go_clks),
-            st.fmt(),
-            err,
-            len(ev.aw),
-            len(ev.w),
-            x.n_txn,
-            mism,
-            int(got[0] == sw and got[-1] == sw),
+        )
+        n_txn = x.total // 4
+        end_ok = ended == "done" and st.done and not st.error and err == 0
+        self._pass(
+            "CHK-DMA-SIZE-LARGE",
+            end_ok and mism == 0 and guard_ok and len(ev.aw) == n_txn and len(ev.w) == n_txn,
+            f"total={x.total} ended={ended}/done done={int(st.done)}/1 "
+            f"error={int(st.error)}/0 error_code=0x{err:x}/0x0 "
+            f"dst_mismatch_words={mism}/0 guard_ok={int(guard_ok)}/1 "
+            f"aw={len(ev.aw)}/{n_txn} w={len(ev.w)}/{n_txn}",
         )
         await ops.clean_state()
 
@@ -3306,8 +3433,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         await ops.clean_state()
         await self._set_range(SRAM_BASE, SRAM_LIMIT, "restore")
 
-    async def _obs_short_last_chunk(self, plan: Plan) -> None:
-        """A firmware-paced COPY whose TOTAL_DATA_SIZE is not a multiple of CHUNK_DATA_SIZE."""
+    async def _short_last_chunk(self, plan: Plan) -> None:
+        """CHK-DMA-SHORT-LAST-CHUNK: a firmware-paced COPY whose TOTAL is not a multiple of CHUNK."""
         ops = self.ops
         c, x = plan.short, plan.short.x
         await self._fill_copy(c)
@@ -3316,30 +3443,45 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         st, go_clks, ended = await self._logged_run(x.total, x.n_chunks + 2, "short-last")
         ev = self.tap.since(m_tap)
         ctl = await ops.rd(CONTROL)
+        err = await ops.rd(ERROR_CODE)
         got = await self.mem.read(c.dst_region, c.dst_region_words)
         # W beats of chunk i lie between GO write i and GO write i + 1.
         ends = go_clks[1:] + [ev.last_beat_clk() or go_clks[-1]]
-        per_chunk = []
-        last: list = []
-        for i, (c0, c1) in enumerate(zip(go_clks, ends)):
-            last = [b for b in ev.w if c0 <= b.clk and (b.clk < c1 or i == len(go_clks) - 1)]
-            strbs = rle([f"0x{b.strb:02x}" if b.strb is not None else "X" for b in last])
-            per_chunk.append(f"{i}:{len(last)}/{strbs or '-'}")
-        last_bytes = sum(bin(b.strb).count("1") for b in last if b.strb is not None)
+        windows = [
+            [b for b in ev.w if c0 <= b.clk and (b.clk < c1 or i == len(go_clks) - 1)]
+            for i, (c0, c1) in enumerate(zip(go_clks, ends))
+        ]
+        per_chunk = [
+            f"{i}:{len(w)}/{rle([f'0x{b.strb:02x}' if b.strb is not None else 'X' for b in w]) or '-'}"
+            for i, w in enumerate(windows)
+        ]
+        tail = x.total % x.chunk
+        k = x.n_chunks - 1
+        tail_bytes = (
+            sum(bin(b.strb).count("1") for b in windows[k] if b.strb is not None)
+            if len(windows) > k
+            else -1
+        )
+        dst_ok = got == c.expected_dst()
         self.logger.info(
-            "OBS-DMA-SHORT-LAST-CHUNK seed=%d total=%d chunk=%d tail=%d ended=%s go_writes=%d "
-            "w_per_chunk=%s last_chunk_bytes=%d %s control_go=%d dst_eq_model=%d",
+            "OBS-DMA-SHORT-LAST-CHUNK seed=%d total=%d chunk=%d tail=%d go_writes=%d "
+            "w_per_chunk=%s chunk_done=%d control_go=%d",
             self.seed,
             x.total,
             x.chunk,
-            x.total % x.chunk,
-            ended,
+            tail,
             len(go_clks),
             ",".join(per_chunk),
-            last_bytes,
-            st.fmt(),
+            int(st.chunk_done),
             int(bool(ctl & GO_MASK)),
-            int(got == c.expected_dst()),
+        )
+        end_ok = ended == "done" and st.done and not st.error and err == 0
+        self._pass(
+            "CHK-DMA-SHORT-LAST-CHUNK",
+            end_ok and dst_ok and tail_bytes == tail,
+            f"total={x.total} chunk={x.chunk} n={x.n_chunks} ended={ended}/done "
+            f"done={int(st.done)}/1 error={int(st.error)}/0 error_code=0x{err:x}/0x0 "
+            f"last_chunk_bytes={tail_bytes}/{tail} dst_eq_model={int(dst_ok)}/1",
         )
         await ops.clean_state()
 

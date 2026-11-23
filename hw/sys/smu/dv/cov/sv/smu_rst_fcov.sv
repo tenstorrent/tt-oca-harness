@@ -11,7 +11,8 @@
 // off, and the cell map records which points can fire.
 //
 // DISABLE CONVENTION, as in smu_boot_fcov: the gate is powergood, not reset,
-// so the reset sequence itself stays observable.
+// so the reset sequence itself stays observable. smu_secure_tm_window_cg
+// also samples only while the owning leaf holds tb_fcov_gate high.
 //
 // SEP PRESENCE: the points whose observable only exists with SEP elaborated
 // sit in the `g_sep` generate block, so a SEP=0 build carries no unhittable
@@ -66,7 +67,12 @@ module smu_rst_fcov #(
   input wire disable_sram_auto_init_i,
 
   // PTAP state, one-hot jtag_tap_pkg::tap_state_e widened to 32 bits.
-  input wire [31:0] jtag_ptap_state_i
+  input wire [31:0] jtag_ptap_state_i,
+  input wire fcov_gate_i,  // Graded-window gate (tb_fcov_gate), driven by the owning leaf.
+  input wire sep_clk_i,  // SEP wrapper clock mirror; its edges time the early capture.
+  input wire secure_tm_req_i,  // Secure test-mode request strap the bench drives.
+  input wire secure_tm_i,  // Secure test-mode output of the SEP eFuse wrapper.
+  input wire sep_efuse_shim_resp_valid_i  // SEP eFuse SHIM fuse-command response valid.
 );
 
   localparam logic [31:0] PtapTestLogicReset = 32'(jtag_tap_pkg::TEST_LOGIC_RESET);
@@ -75,6 +81,7 @@ module smu_rst_fcov #(
   localparam logic [5:0] ColdDeglitchCycles = 6'd32;
 
   wire not_powered = (powergood_i !== 1'b1);
+  wire gate_on = (fcov_gate_i === 1'b1);
 
   // ------------------------------------------------------------------
   // Cold reset pin against the stable ref-clock output, on clk_ref.
@@ -224,6 +231,158 @@ module smu_rst_fcov #(
     `OCAH_FCOV_COVER(c_xbar_released, xbar_released_e, clk_smu_i, not_powered)
     `OCAH_FCOV_COVER(c_sep_fuse_sense_done_asserted, sep_fuse_sense_done_asserted_e, clk_smu_i,
                      not_powered)
+
+    // smu_secure_tm_window_cg (SMU_FCOV.adoc): the strap pulse inside the
+    // owner's window, from its cold-reset release to after the sense that
+    // follows. cp_early_position is measured only: the pulse against the
+    // first and second rising SEP clock edges after the SEP reset rises (ends
+    // before the first, covers the first only, the second only, both, starts
+    // after the second). cp_sense_position is the response strobe count of
+    // the sense at the strap's fall, in thirds of the 256-word sense, sampled
+    // at the gate's fall after at least 512 clk_smu samples past the
+    // completion rise, with the strap at 0 at the rise and secure_tm_o never 1
+    // in the window. A sample of one coverpoint hands the other a value no bin
+    // lists. The strobe count and the edge tracker clear while rst_cold_ni is
+    // low, since a cold reset starts a new sense (test_mode.adoc).
+    covergroup smu_secure_tm_window_cg with function sample (
+        logic [2:0] early_cls, logic [1:0] drop_third
+    );
+      option.per_instance = 1;
+      cp_early_position: coverpoint early_cls {
+        bins ends_before_first = {3'd0};
+        bins covers_first_only = {3'd1};
+        bins covers_second_only = {3'd2};
+        bins covers_both = {3'd3};
+        bins starts_after_second = {3'd4};
+      }
+      cp_sense_position: coverpoint drop_third {
+        bins drop_1_85 = {2'd0}; bins drop_86_170 = {2'd1}; bins drop_171_255 = {2'd2};
+      }
+    endgroup
+
+    smu_secure_tm_window_cg u_cg_secure_tm_window = new();
+
+    localparam logic [2:0] EarlyEndsBeforeFirst = 3'd0;
+    localparam logic [2:0] EarlyCoversFirstOnly = 3'd1;
+    localparam logic [2:0] EarlyCoversSecondOnly = 3'd2;
+    localparam logic [2:0] EarlyCoversBoth = 3'd3;
+    localparam logic [2:0] EarlyStartsAfterSecond = 3'd4;
+    localparam logic [2:0] NoEarly = 3'd7;
+    localparam logic [1:0] NoThird = 2'd3;
+
+    // Thirds of the 256-word sense: 1 to 85, 86 to 170, 171 to 255.
+    function automatic logic [1:0] third_of(input logic [8:0] strobes);
+      if (strobes == '0 || strobes > 9'd255) return NoThird;
+      if (strobes <= 9'd85) return 2'd0;
+      if (strobes <= 9'd170) return 2'd1;
+      return 2'd2;
+    endfunction
+
+    wire cold_low = (rst_cold_ni !== 1'b1);
+    wire strap_on = (secure_tm_req_i === 1'b1);
+
+    // Response strobes of the sense, the strobe count at the strap's fall,
+    // secure_tm_o seen at 1, the strap at 0 at the completion rise and the
+    // clk_smu samples after it, on clk_smu.
+    localparam logic [9:0] AfterRiseSamples = 10'd512;
+    logic resp_valid_q, strap_q, dropped_q, tm_seen_q, rise_ok_q, gate_q;
+    logic [8:0] strobe_cnt_q, drop_cnt_q;
+    logic [9:0] after_cnt_q;
+    wire resp_rose = (sep_efuse_shim_resp_valid_i === 1'b1) && (resp_valid_q === 1'b0);
+    wire strap_fell = (secure_tm_req_i === 1'b0) && (strap_q === 1'b1);
+    wire rise_ok_e = gate_on && sep_fuse_sense_done_asserted_e && dropped_q
+        && (secure_tm_req_i === 1'b0);
+    wire sense_position_e = gate_q && !gate_on && rise_ok_q
+        && (after_cnt_q >= AfterRiseSamples) && !tm_seen_q;
+    always_ff @(posedge clk_smu_i) begin
+      if (not_powered) begin
+        resp_valid_q <= 1'b0;
+        strap_q <= 1'b0;
+        dropped_q <= 1'b0;
+        tm_seen_q <= 1'b0;
+        rise_ok_q <= 1'b0;
+        gate_q <= 1'b0;
+        strobe_cnt_q <= '0;
+        drop_cnt_q <= '0;
+        after_cnt_q <= '0;
+      end else begin
+        resp_valid_q <= sep_efuse_shim_resp_valid_i;
+        strap_q <= strap_on;
+        if (cold_low) begin
+          dropped_q <= 1'b0;
+          tm_seen_q <= 1'b0;
+          rise_ok_q <= 1'b0;
+          gate_q <= 1'b0;
+          strobe_cnt_q <= '0;
+          drop_cnt_q <= '0;
+          after_cnt_q <= '0;
+        end else begin
+          gate_q <= gate_on;
+          if (resp_rose && (strobe_cnt_q != '1)) strobe_cnt_q <= strobe_cnt_q + 9'd1;
+          if (gate_on && strap_fell) begin
+            drop_cnt_q <= strobe_cnt_q;
+            dropped_q <= 1'b1;
+          end
+          if (gate_on && (secure_tm_i === 1'b1)) tm_seen_q <= 1'b1;
+          if (rise_ok_e) rise_ok_q <= 1'b1;
+          if (rise_ok_q && (after_cnt_q != '1)) after_cnt_q <= after_cnt_q + 10'd1;
+        end
+        if (sense_position_e) u_cg_secure_tm_window.sample(NoEarly, third_of(drop_cnt_q));
+      end
+    end
+
+    // The two rising SEP clock edges after the SEP reset rises, the strap at
+    // each, and a pulse that rose and fell before the first, on the SEP clock.
+    logic sep_rst_s_q, strap_s_q, rose_s_q, pulse_before_e1_q, strap_e1_q, pending_q;
+    logic [1:0] edge_cnt_q;
+    wire sep_rst_rose_s = (sep_rst_ni === 1'b1) && (sep_rst_s_q === 1'b0);
+    wire strap_rose_s = strap_on && (strap_s_q === 1'b0);
+    wire strap_fell_s = (secure_tm_req_i === 1'b0) && (strap_s_q === 1'b1);
+    wire early_e1 = gate_on && sep_rst_rose_s && (edge_cnt_q == 2'd0);
+    wire early_e2 = gate_on && (edge_cnt_q == 2'd1);
+    wire [2:0] early_at_e2 = (strap_e1_q && strap_on) ? EarlyCoversBoth
+        : strap_e1_q ? EarlyCoversFirstOnly
+        : strap_on ? EarlyCoversSecondOnly
+        : pulse_before_e1_q ? EarlyEndsBeforeFirst : NoEarly;
+    always_ff @(posedge sep_clk_i) begin
+      if (not_powered) begin
+        sep_rst_s_q <= 1'b0;
+        strap_s_q <= 1'b0;
+        rose_s_q <= 1'b0;
+        pulse_before_e1_q <= 1'b0;
+        strap_e1_q <= 1'b0;
+        pending_q <= 1'b0;
+        edge_cnt_q <= '0;
+      end else begin
+        sep_rst_s_q <= sep_rst_ni;
+        strap_s_q <= strap_on;
+        if (cold_low) begin
+          rose_s_q <= 1'b0;
+          pulse_before_e1_q <= 1'b0;
+          strap_e1_q <= 1'b0;
+          pending_q <= 1'b0;
+          edge_cnt_q <= '0;
+        end else begin
+          if (gate_on && (edge_cnt_q == 2'd0)) begin
+            if (strap_rose_s) rose_s_q <= 1'b1;
+            if (strap_fell_s && rose_s_q) pulse_before_e1_q <= 1'b1;
+          end
+          if (early_e1) begin
+            strap_e1_q <= strap_on;
+            edge_cnt_q <= 2'd1;
+          end
+          if (early_e2) begin
+            edge_cnt_q <= 2'd2;
+            if (early_at_e2 != NoEarly) u_cg_secure_tm_window.sample(early_at_e2, NoThird);
+            else pending_q <= 1'b1;
+          end
+          if (gate_on && pending_q && strap_rose_s) begin
+            u_cg_secure_tm_window.sample(EarlyStartsAfterSecond, NoThird);
+            pending_q <= 1'b0;
+          end
+        end
+      end
+    end
   end
 
   // ------------------------------------------------------------------

@@ -27,9 +27,10 @@ The seed draws one leaf kind and its t=0 image through ``sep_efuse_plan.plan``
 the exempt cell 1, the order cell 2 and the chain leg 2.
 
 With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
-``_PIN`` in place of the run seed: ``chain`` draws the chain leg and ``single`` the
-single-bit image (its plan seed draws the write-lock kind of slot 1). The entry that sets it stages the same image
-with ``+sep_efuse_preload``. The run seed stays the ``seed=`` of every check line;
+``_PIN`` in place of the run seed: ``chain`` draws the chain leg, ``single`` the
+single-bit image (its plan seed draws the write-lock kind of slot 1) and ``exempt`` the
+exempt cell. The entry that sets it stages the same image with ``+sep_efuse_preload``.
+The run seed stays the ``seed=`` of every check line;
 INFO-SEED prints the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and
 ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell.
 CTRL-PIN-LEG: the plan draws the pinned leaf kind, and for ``single`` slot 1 with
@@ -74,10 +75,11 @@ Checkers:
                     ``efuse_interface_ctrl.rdl:127`` ``read_done``, ``:133``
                     ``read_status``). The line prints both values, the expected 1,
                     both values read before the go and ``fresh=1`` when the
-                    pre-go ``read_done`` is 0. Every request is graded, whatever
-                    its pre-go state. ``CTRL-LOCK-READ-DONE-FRESH`` needs at least
-                    one request with ``fresh=1``: only that request shows that the
-                    blocked go set ``read_done``. The lock leg runs the first
+                    pre-go ``read_done`` and ``read_status`` are both 0. Every
+                    request is graded, whatever its pre-go state.
+                    ``CTRL-LOCK-READ-DONE-FRESH`` needs at least one request
+                    with ``fresh=1``: only that request shows that the blocked
+                    go set both values. The lock leg runs the first
                     read-locked slot with a read bit ahead of the first unlocked
                     one, so its first read-interface request is a blocked one
                     (``INFO-LOCK-READ-ORDER`` logs the move).
@@ -379,6 +381,7 @@ _KIND_CHECK = {k: v[0] for k, v in _EVIDENCE.items()}
 _PIN = {
     "chain": (4, "chain", {}),
     "single": (5, "single_bit", {"slot": 1, "lock_kind": "write"}),
+    "exempt": (44, "exempt", {}),
 }
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
 # (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
@@ -811,7 +814,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             await self._chain()
 
         if "CHK-LOCK-READ-DONE" in self.required_evidence:
-            # A done 1 after a pre-go done 0 can only come from the request.
+            # A done 1 and status 1 after a pre-go 0 and 0 can only come from the request.
             self._control(
                 "LOCK-READ-DONE-FRESH",
                 self.fresh_read_done >= 1,
@@ -892,7 +895,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
                 )
-                fresh = r["pre_done"] == 0
+                fresh = r["pre_done"] == 0 and r["pre_status"] == 0
                 self.read_done_requests += 1
                 self.fresh_read_done += int(fresh)
                 self._grade(

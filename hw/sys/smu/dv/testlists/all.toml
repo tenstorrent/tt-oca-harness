@@ -5145,10 +5145,12 @@ args = [
   # TEST_DEV: every SEP debug path open, so the debug module's system bus can
   # open the SEP aperture.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
-  # +smu_axi_illegal_inject: for the whole run, the checkers on smu_in, the
-  # inbound cut and the crossbar ext_in port see INCR for a WRAP with AxLEN 0
+  # +smu_axi_illegal_inject: for the whole run, the checkers on the path an
+  # external inbound request takes (smu_in, the inbound cut, the crossbar ext_in,
+  # SEP and SMC ports, both converter outputs) see INCR for a WRAP with AxLEN 0
   # or the reserved burst encoding, and the 4 KiB-page start for a 4 KiB-crossing
-  # INCR; the DUT receives the request unchanged and no other checker is masked.
+  # INCR; the DUT receives the request unchanged and forwards it unchanged,
+  # which the leaf grades itself; no other checker is masked.
   "+smu_axi_illegal_inject",
   # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
   "+axi_sva_need_smu_in",

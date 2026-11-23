@@ -41,12 +41,12 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): lane k, the window W (256, 512 or 2048), the three clean gaps (2, 3
 or 4 windows), the non-zero masks m1 != m2, the non-zero mask m3 that is not
 all ones (its complement m3c is non-zero), the ``balanced`` masks and
-permutation, the order of the divide values 0 to 5, one divide value of 6 to
-the field maximum, the one enable (module or ring) of the one-enable step and
-its new divide value (0 to 5, at a ratio other than that of the last value), and
-the divide value of the guide step (0 to 5, at a ratio other than that of the
-one-enable value and of the value before it, so the guide ratio differs from the
-lane ratio before the guide write).
+permutation, the order of the divide values 0 to 5 (the divide-by-4 value never
+last), one divide value of 6 to the field maximum, the one enable (module or
+ring) of the one-enable step and its new divide value (0 to 5, at a ratio other
+than that of the last value), and the divide value of the guide step (0 to 5, at
+a ratio other than that of the one-enable value and of the value before it, so
+the guide ratio differs from the lane ratio before the guide write).
 
 Checkers:
   CHK-TUNE-MANUAL   probe == DETUNE readback == written mask for 0, m1, m2; with
@@ -65,13 +65,26 @@ Checkers:
   CHK-TUNE-AUTO     after each of three autotune bursts, AUTOTUNE_FAIL = 1 and
                     status k bit 0 = 1; both read 0 before each burst (control).
   CHK-TUNE-TOGGLE   in each autotune burst and its gap probe bit k changes at
-                    least once and no other probe bit changes (count logged).
+                    least once and no other probe bit changes (count logged);
+                    probe bit k does not change from the p0 sample of the
+                    ignored leg, or from the end of the previous gap, to the
+                    burst start (changes_outside); and each change of bit k
+                    holds at least two clk_i cycles (min_hold_clk). A toggle
+                    needs a rising edge of the failure (architecture.adoc:73),
+                    and two rising edges of one clk_i signal are at least two
+                    cycles apart. The hold after the last change is counted
+                    to the end of the gap. The stimulus of a burst is one
+                    whole window of stuck1, so the APT and Markov failures of
+                    the lane rise at one window boundary (architecture.adoc:124).
   CHK-TUNE-OFF      after the autotune-off burst status k bit 0 = 1 and
                     AUTOTUNE_FAIL = 0. Control: CHK-TUNE-AUTO sets it.
   CHK-TUNE-IRQ      with INTR_ENABLE = AUTOTUNE_FAIL only, after each autotune
                     burst INTR_STATUS.AUTOTUNE_FAIL = 1 (entropy_source.rdl:150,
-                    :198). The other INTR_STATUS bits have enable 0 and are
-                    logged on OBS-TUNE-PIC16.
+                    :198).
+  CHK-TUNE-PIC16    in the same read, AUTOTUNE_FAIL reads 1 and PIC source 16 reads 1:
+                    AUTOTUNE_FAIL is the only enabled source (entropy_source.rdl:150,
+                    :198). Controls: CTRL-TUNE-PIC16-LIVE, and CHK-TUNE-W1C reads the
+                    line 0 after the clear.
   CHK-TUNE-OFF-NOIRQ after the autotune-off burst INTR_STATUS.AUTOTUNE_FAIL = 0
                     and PIC source 16 reads 0: AUTOTUNE_FAIL is the only enabled
                     source (entropy_source.rdl:168-169). Controls: CHK-TUNE-IRQ
@@ -108,15 +121,13 @@ Checkers:
                     each equal the stated ratio of the guide value times the
                     source period, exact in ps. Positive probes in the same
                     line: RING_OSC_ENABLE reads the written word and
-                    MODULE_ENABLE reads 1 while the field is clear, and the
-                    DIVIDE readback is the guide value after the restore.
+                    MODULE_ENABLE reads 1 while the field is clear, and after
+                    the restore RING_OSC_ENABLE reads its reset value and the
+                    DIVIDE readback is the guide value.
 
 Logged only: INFO-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
 each burst (no text states whether a generator failure counts in it).
-OBS-TUNE-PIC16, PIC source 16 and the whole INTR_STATUS word while AUTOTUNE_FAIL
-is 1 after each autotune burst (no text states that a source other than
-PERSISTENT_FAILURE drives source 16, and the value of a status bit with its
-enable 0 is not stated). INFO-TUNE-DETUNE-AFTER, the probe bit k before each
+INFO-TUNE-DETUNE-AFTER, the probe bit k before each
 autotune burst and after its clean gap (no text states the detune after the
 failure ends).
 INFO-SCLK-ONE-ENABLE, with the graded window closed: only one of
@@ -188,6 +199,9 @@ PERIOD_STROBES = 8
 # Clocks the pass label stays 1, so the sampler sees its rise on a clk_i edge.
 LABEL_HOLD_CLK = 2
 
+# CHK-TUNE-TOGGLE: least clk_i cycles between two changes of the lane detune.
+TOGGLE_MIN_HOLD_CLK = 2
+
 # CHK-SCLK-DIV. architecture.adoc:75: SAMPLE_CLK_DIVIDE 0 to 5 select division by
 # 1, 2, 4, 8, 16 and 32 (in that order, entropy_source.rdl:674); a value outside
 # 0-5 selects divide-by-4.
@@ -220,12 +234,13 @@ SHARD_EVIDENCE = {
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
         "CHK-TUNE-IRQ",
+        "CHK-TUNE-PIC16",
         "CHK-TUNE-OFF-NOIRQ",
         "CHK-TUNE-W1C",
         "CHK-SCLK-DIV",
         "CHK-SCLK-GUIDE",
     ),
-    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE", "CHK-TUNE-IRQ", "CHK-TUNE-W1C"),
+    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE", "CHK-TUNE-IRQ", "CHK-TUNE-PIC16", "CHK-TUNE-W1C"),
 }
 
 
@@ -350,6 +365,10 @@ def draw_plan(seed: int) -> Plan:
     balanced = tuple(balanced_lanes(rng))
     div_order = list(range(len(DIV_RATIOS)))
     rng.shuffle(div_order)
+    # The value before div_other is not at DIV_OTHER_RATIO, so a lane that keeps its
+    # last divide on an out-of-range value fails CHK-SCLK-DIV.
+    if DIV_RATIOS[div_order[-1]] == DIV_OTHER_RATIO:
+        div_order.insert(0, div_order.pop())
     div_other = rng.randrange(len(DIV_RATIOS), DIVIDE_MAX + 1)
     one_enable = rng.choice(ONE_ENABLES)
     div_v2 = rng.choice(
@@ -400,6 +419,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
         "CHK-TUNE-IRQ",
+        "CHK-TUNE-PIC16",
         "CHK-TUNE-OFF-NOIRQ",
         "CHK-TUNE-W1C",
         "CHK-SCLK-DIV",
@@ -443,6 +463,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         self.timer = SepEdgeTimer(dut.esrc_detune_o, name="esrc_detune_o").start()
         # Time from each autotune burst start to the first change of probe bit k.
         self.first_toggle_ps: list[int] = []
+        # Start of the span before the next autotune burst in which probe bit k stays.
+        self.quiet_since_ps = _now_ps()
         set_esrc_tune_pass(False, self.logger)
 
         grades = shard in (None, 1)
@@ -540,8 +562,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             and en_rb == M_AUTOTUNE_EN,
             pf_set=int(bool(pf_set)),
             pic16_set=line_set,
-            pf_cleared=int(not pf_clr),
-            pic16_cleared=line_clr,
+            pf_after_clear=int(bool(pf_clr)),
+            pic16_after_clear=line_clr,
             intr_enable=f"0x{en_rb:08x}",
             want_intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
         )
@@ -681,6 +703,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         await self._write_autotune(1)
         p0 = await self._probe()
         t_p0 = _now_ps()
+        self.quiet_since_ps = t_p0
         probes = []
         readbacks = []
         try:
@@ -714,16 +737,21 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             t0, t1 = await self._burst(plan.gaps[i], f"auto{i + 1}")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
-            for name in ("TUNE-TOGGLE", "TUNE-AUTO", "TUNE-IRQ", "TUNE-W1C"):
+            for name in ("TUNE-TOGGLE", "TUNE-AUTO", "TUNE-IRQ", "TUNE-PIC16", "TUNE-W1C"):
                 self._ok(name, False, lane=k, burst=i + 1, reason=reason)
             await self._clear_status(clear_autotune=True)
+            self.quiet_since_ps = _now_ps()
             return None
-        edges = sorted(
-            self.timer.rises(t0, until_ps=t1, bit=k) + self.timer.falls(t0, until_ps=t1, bit=k)
-        )
+        edges = self._bit_changes(t0, t1, k)
         toggles = len(edges)
         if edges:
             self.first_toggle_ps.append(edges[0] - t0)
+        quiet = self.quiet_since_ps
+        outside = [t for t in self._bit_changes(quiet, t0, k) if quiet < t < t0]
+        self.quiet_since_ps = t1
+        sys_ps = self._sys_ps()
+        holds = [(b - a) // sys_ps for a, b in zip(edges, [*edges[1:], t1])]
+        min_hold = min(holds, default=None)
         moved = [
             j
             for j in range(NUM_LANES)
@@ -734,13 +762,21 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         ]
         self._ok(
             "TUNE-TOGGLE",
-            toggles >= 1 and not moved,
+            toggles >= 1
+            and not moved
+            and not outside
+            and min_hold is not None
+            and min_hold >= TOGGLE_MIN_HOLD_CLK,
             lane=k,
             burst=i + 1,
             changes_ge1=toggles >= 1,
             others_unchanged=not moved,
             toggles=toggles,
             moved_lanes=moved or "none",
+            changes_outside=len(outside),
+            outside_ps=t0 - quiet,
+            min_hold_clk="na" if min_hold is None else min_hold,
+            want_min_hold_clk=TOGGLE_MIN_HOLD_CLK,
         )
         fail, gen, intr = await self._reads()
         line = self._pic16()
@@ -757,10 +793,14 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             gen_status=f"0x{gen:02x}",
         )
         self._ok("TUNE-IRQ", fail == 1, lane=k, burst=i + 1, autotune_fail=fail)
-        self.chk.obs(
+        self._ok(
             "TUNE-PIC16",
+            fail == 1 and line == 1,
+            lane=k,
             burst=i + 1,
             pic16=line,
+            expect_pic16=1,
+            autotune_fail=fail,
             intr_status=f"0x{intr:08x}",
             intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
         )
@@ -795,6 +835,14 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             intr_status=f"0x{cleared:08x}",
         )
         return toggles
+
+    def _bit_changes(self, since_ps: int, until_ps: int, bit: int) -> list[int]:
+        """Times in ps of every change of probe ``bit`` from ``since_ps`` to ``until_ps``."""
+        t = self.timer
+        return sorted(
+            t.rises(since_ps, until_ps=until_ps, bit=bit)
+            + t.falls(since_ps, until_ps=until_ps, bit=bit)
+        )
 
     auto_fail_seen = False
 
@@ -888,11 +936,14 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         """Period of ``entropy_rosc_sample_clk_i`` the bench drives (env/sep_env_cfg.py)."""
         return round(self.cfg.entropy_clk_period_ns * 1000)
 
+    def _sys_ps(self) -> int:
+        """Period of ``clk_i`` the bench drives (env/sep_env_cfg.py)."""
+        return round(self.cfg.sys_clk_period_ns * 1000)
+
     def _edge_bound(self, edges: int) -> int:
         """clk_i cycles for ``edges`` rising edges at the largest stated ratio, with margin."""
-        sys_ps = round(self.cfg.sys_clk_period_ns * 1000)
         span_ps = (edges + 1) * max(DIV_RATIOS) * self._src_ps() * SCLK_BOUND_FACTOR
-        return -(-span_ps // sys_ps)
+        return -(-span_ps // self._sys_ps())
 
     async def _rises(self, sig, count: int) -> list[int]:
         """Times in ps of the next ``count`` rising edges of ``sig``, within a bound.
@@ -987,8 +1038,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
                 edges += 1
 
         counter = cocotb.start_soon(count())
-        sys_ps = round(self.cfg.sys_clk_period_ns * 1000)
-        await ClockCycles(cocotb.top.clk_i, -(-SCLK_ONE_HOLD * want_old // sys_ps))
+        await ClockCycles(cocotb.top.clk_i, -(-SCLK_ONE_HOLD * want_old // self._sys_ps()))
         counter.cancel()
         await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=plan.div_v2))
         if plan.one_enable == "module":
@@ -1019,12 +1069,16 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         men_rb = int(bool(await rd(A_CTRL) & M_MODULE_ENABLE))
         await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=v))
         await wr(A_RING_OSC_ENABLE, RING_OSC_ENABLE_RESET)
+        restore_rb = await rd(A_RING_OSC_ENABLE) & M_RING_OSC_ENABLE
+        restore_want = RING_OSC_ENABLE_RESET & M_RING_OSC_ENABLE
         div_rb = (await rd(A_DIV0) & M_DIVIDE) >> BP_DIVIDE
         want = div_ratio(v) * src_ps
         lane = cocotb.top.esrc_sample_clk_lane0_o
         periods = _periods(await self._rises(lane, SCLK_DISCARD + SCLK_GRADE + 1))[SCLK_DISCARD:]
         ring_want = ring_off & M_RING_OSC_ENABLE
-        probes_ok = en_rb == ring_want and men_rb == 1 and div_rb == v
+        probes_ok = (
+            en_rb == ring_want and restore_rb == restore_want and men_rb == 1 and div_rb == v
+        )
         self.chk.ok(
             "SCLK-GUIDE",
             probes_ok and len(periods) == SCLK_GRADE and all(p == want for p in periods),
@@ -1034,6 +1088,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             want_ps=want,
             ring_osc_enable_off_rb=f"0x{en_rb:06x}",
             ring_osc_enable_off_want=f"0x{ring_want:06x}",
+            ring_osc_enable_restore_rb=f"0x{restore_rb:06x}",
+            ring_osc_enable_restore_want=f"0x{restore_want:06x}",
             module_enable_rb=men_rb,
             divide_rb=div_rb,
             src_ps=src_ps,
