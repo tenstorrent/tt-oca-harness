@@ -33,6 +33,29 @@ words, where a narrow write has no side effect and the lane model is exact.
 sep_axi_strobe_window_test owns the strobe and window-data axis at default
 timing; the size cells here exist to cross size WITH ordering, which no other
 test does.
+
+One leg holds several same-ID transactions in flight at once, which the cell
+walk never does: it issues one access at a time. The leg targets
+SEP_SCRATCH_COLD, plain RW storage behind the system-CSR ``axi_to_axi_lite``
+bridge, which splits bursts and keeps the AXI IDs it needs for the responses
+(hw/sys/sep/doc/fabric.adoc, Interconnect). AXI orders responses of one ID in
+request order (IHI 0022 A6), so a path that reorders, drops or re-labels a
+same-ID read response hands a request its neighbour's word. A B carries no
+data, so the four same-ID B beats are graded by ID, OKAY, rank timing (each
+after the AW and W of its rank) and the readback of every register. One target and a
+non-zero ID: the s_axi demux holds back a same-ID read while that ID is
+outstanding to another target, so a second target would serialize the leg.
+
+* CTRL-BRIDGE-ID-PRIME: every register of the leg reads back its distinct
+  primed value before the reads, so each read beat has one register it can
+  match.
+* CTRL-BRIDGE-ID-DEPTH: on the pins, at least BRIDGE_ID_DEPTH_FLOOR AR (AW)
+  handshakes of the leg ID by the cycle of the first R (B) handshake of that
+  ID. Without it the leg could pass one access at a time.
+* CHK-BRIDGE-ID-ORDER: each R beat, sampled from the channel, carries the leg
+  ID, OKAY, RLAST and the primed value of the register named by the AR of the
+  same rank. Each B carries the leg ID and OKAY and follows the AW and W of the
+  same rank, and each register then reads back the value written to it.
 """
 
 from __future__ import annotations
@@ -40,11 +63,14 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
+import cocotb
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import AxiTimingProfile
 from sep_reg_meta import RegInfo, iter_register_walk, sym
 
+from seq_lib.sep_abr_bus_seq import ID_WIDTH, lane_value
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_reg_bit_bash_seq import (
     TOUCH_BLOCKS,
@@ -182,6 +208,122 @@ WRITE_ORDERS: tuple[tuple[str, int, int], ...] = (
 )
 
 
+# The same-ID leg. The system-CSR bridge holds four transactions
+# (sep_system_peripherals_xbar.sv, MaxTxns), so the leg issues four, and
+# requires three in flight on the pins before the first response.
+BRIDGE_ID_BLOCK = "SEP_SCRATCH_COLD"
+BRIDGE_ID_REQUESTS = 4
+BRIDGE_ID_DEPTH_FLOOR = 3
+# Bound on the whole leg, in system clocks. A healthy register access retires
+# in tens of clocks; the failure this bounds is a wedge.
+BRIDGE_ID_TIMEOUT_CYCLES = 4000
+# Clocks the pin sampler keeps running after the last access returns.
+BRIDGE_ID_SAMPLE_LAG = 8
+
+
+@dataclass(frozen=True)
+class SameIdLeg:
+    """The same-ID leg of one seed: registers in issue order, ID and values."""
+
+    regs: tuple[RegInfo, ...]
+    axi_id: int
+    primes: tuple[int, ...]
+    writes: tuple[int, ...]
+
+    @staticmethod
+    def draw(rng: SepSeededRng, bus: str) -> "SameIdLeg":
+        pool = [i for i in iter_register_walk().regs if i.block == BRIDGE_ID_BLOCK]
+        picked = rng.sample(pool, BRIDGE_ID_REQUESTS)
+        rng.shuffle(picked)
+        regs = tuple(picked)
+        axi_id = rng.randrange(1, 1 << ID_WIDTH[bus])
+        # Distinct values that differ from the reset value, so a beat that
+        # carries a neighbour's word, or a register that missed its write,
+        # never reads back as a match.
+        taken = {i.reset & write_mask(i) for i in regs}
+        values: list[int] = []
+        for info in regs + regs:
+            mask = write_mask(info)
+            v = rng.getrandbits(32) & mask
+            while v in taken:
+                v = rng.getrandbits(32) & mask
+            taken.add(v)
+            values.append(v)
+        n = len(regs)
+        return SameIdLeg(regs, axi_id, tuple(values[:n]), tuple(values[n:]))
+
+    def summary(self) -> str:
+        return f"id={self.axi_id} regs=[{' '.join(i.name for i in self.regs)}]"
+
+
+class _PinWatch:
+    """AR, AW, W, R and B handshakes of one master, sampled after ReadOnly().
+
+    A field that resolves to X or Z is recorded as -1, which matches no ID,
+    address, response or value.
+    """
+
+    _SIGS = (
+        "arvalid arready arid araddr awvalid awready awid awaddr wvalid wready wlast "
+        "rvalid rready rid rresp rdata rlast bvalid bready bid bresp"
+    ).split()
+
+    def __init__(self, bus: str) -> None:
+        dut = cocotb.top
+        self._clk = dut.clk_i
+        self._s = {n: getattr(dut, f"{bus}_{n}") for n in self._SIGS}
+        self.cycle = 0
+        self.ar: list[tuple[int, int, int]] = []
+        self.aw: list[tuple[int, int, int]] = []
+        self.w: list[tuple[int, int]] = []
+        self.r: list[tuple[int, int, int, int, int]] = []
+        self.b: list[tuple[int, int, int]] = []
+        self._task = None
+
+    def _v(self, name: str) -> int:
+        v = self._s[name].value
+        return int(v) if v.is_resolvable else -1
+
+    def _hs(self, ch: str) -> bool:
+        return self._v(f"{ch}valid") == 1 and self._v(f"{ch}ready") == 1
+
+    def start(self) -> "_PinWatch":
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    def stop(self) -> None:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+
+    async def settle(self) -> None:
+        """Keep sampling BRIDGE_ID_SAMPLE_LAG clocks past the last VIP return.
+
+        The VIP can return on the edge the sampler has not yet read, and a
+        late extra beat must still be recorded to fail the exact count.
+        """
+        for _ in range(BRIDGE_ID_SAMPLE_LAG):
+            await RisingEdge(self._clk)
+
+    async def _run(self) -> None:
+        v = self._v
+        while True:
+            await RisingEdge(self._clk)
+            await ReadOnly()
+            self.cycle += 1
+            c = self.cycle
+            if self._hs("ar"):
+                self.ar.append((c, v("arid"), v("araddr")))
+            if self._hs("aw"):
+                self.aw.append((c, v("awid"), v("awaddr")))
+            if self._hs("w"):
+                self.w.append((c, v("wlast")))
+            if self._hs("r"):
+                self.r.append((c, v("rid"), v("rresp"), v("rdata"), v("rlast")))
+            if self._hs("b"):
+                self.b.append((c, v("bid"), v("bresp")))
+
+
 @dataclass(frozen=True)
 class OrderCell:
     """One register under one write ordering, with its displacement witness."""
@@ -305,6 +447,8 @@ class SepAxiOrderSweepCfg:
                     w_bit = rng.randrange(0, 32)
                     cells.append(OrderCell(order, info, value, size, profile, witness, w_bit))
         self.cells = tuple(cells)
+        # Drawn after the cells, so the cells keep their seed-to-value mapping.
+        self.id_leg = SameIdLeg.draw(rng, bus)
 
     def n_cells(self) -> int:
         wide = sum(1 for i in self.regs if i.block not in SIZE_CROSS_BLOCKS)
@@ -599,6 +743,195 @@ class SepAxiOrderSweep:
         self.blocks_hit.add(info.block)
         return None
 
+    def _fail(self, rec: str, msg: str) -> None:
+        line = f"{rec} FAIL: bus={self.bus} {msg}"
+        self.test.logger.error("%s", line)
+        raise AssertionError(line)
+
+    async def _concurrent(self, leg: SameIdLeg, values: tuple[int, ...] | None) -> _PinWatch:
+        """Issue one access per leg register on the leg ID, all from one cycle.
+
+        ``values`` None issues reads; otherwise each register gets its value.
+        """
+        master = self._agent.driver.axi
+        timeout_ns = int(BRIDGE_ID_TIMEOUT_CYCLES * self.test.cfg.sys_clk_period_ns)
+        nbytes = SIZE_BYTES[SIZE_4B]
+        kw = dict(
+            size=SIZE_4B,
+            id=leg.axi_id,
+            check_response=False,
+            timeout_ns=timeout_ns,
+            allow_timeout=True,
+        )
+        self._driver().set_timing(AxiTimingProfile())
+        watch = _PinWatch(self.bus).start()
+        try:
+            if values is None:
+                calls = [master.read_bytes_result(i.addr, nbytes, **kw) for i in leg.regs]
+            else:
+                calls = [
+                    master.write_bytes_result(i.addr, v.to_bytes(nbytes, "little"), **kw)
+                    for i, v in zip(leg.regs, values)
+                ]
+            tasks = [cocotb.start_soon(c) for c in calls]
+            results = [await t for t in tasks]
+            await watch.settle()
+        finally:
+            watch.stop()
+        stuck = [i.name for i, r in zip(leg.regs, results) if r.timed_out]
+        if stuck:
+            op = "read" if values is None else "write"
+            self._fail(
+                "CHK-BRIDGE-ID-ORDER",
+                f"{op} id={leg.axi_id}: {stuck} got no response within "
+                f"{BRIDGE_ID_TIMEOUT_CYCLES} clocks",
+            )
+        return watch
+
+    def _grade_requests(self, op: str, leg: SameIdLeg, reqs: list) -> list[int]:
+        """The leg's requests on the pins: leg ID each, each register once.
+
+        Returns the request addresses in handshake order, which is the order
+        the same-ID responses must follow.
+        """
+        addrs = [a for _c, _i, a in reqs]
+        ids = {i for _c, i, _a in reqs}
+        if ids != {leg.axi_id} or sorted(addrs) != sorted(i.addr for i in leg.regs):
+            self._fail(
+                "CHK-BRIDGE-ID-ORDER",
+                f"{op} id={leg.axi_id}: requests on the pins "
+                f"{[(i, hex(a)) for _c, i, a in reqs]} are not the leg's "
+                f"{len(leg.regs)} requests on one ID",
+            )
+        return addrs
+
+    def _grade_depth(self, op: str, leg: SameIdLeg, reqs: list, resps: list) -> None:
+        """CTRL-BRIDGE-ID-DEPTH: requests accepted by the first response's cycle."""
+        key = "ar_before_first_r" if op == "read" else "aw_before_first_b"
+        if not resps:
+            self._fail("CTRL-MISSING BRIDGE-ID-DEPTH", f"{op} id={leg.axi_id}: no response")
+        first = resps[0][0]
+        depth = sum(1 for c, _i, _a in reqs if c <= first)
+        if depth < BRIDGE_ID_DEPTH_FLOOR:
+            line = (
+                f"CTRL-MISSING BRIDGE-ID-DEPTH: bus={self.bus} {op} id={leg.axi_id} "
+                f"{key}={depth} floor {BRIDGE_ID_DEPTH_FLOOR}; the leg did not hold "
+                "same-ID requests in flight, so its order check proves nothing"
+            )
+            self.test.logger.error("%s", line)
+            raise AssertionError(line)
+        self.test.logger.info(
+            "CTRL-BRIDGE-ID-DEPTH PASS: bus=%s %s id=%d %s=%d floor %d",
+            self.bus,
+            op,
+            leg.axi_id,
+            key,
+            depth,
+            BRIDGE_ID_DEPTH_FLOOR,
+        )
+
+    async def run_same_id_leg(self, leg: SameIdLeg) -> None:
+        """Prime, then same-ID reads and writes in flight together; raise on a miss."""
+        width = len(getattr(cocotb.top, f"{self.bus}_arid"))
+        if width != ID_WIDTH[self.bus]:
+            raise RuntimeError(
+                f"{self.bus}_arid is {width} bits, ID_WIDTH says {ID_WIDTH[self.bus]}"
+            )
+        self.test.logger.info("INFO-BRIDGE-ID leg bus=%s %s", self.bus, leg.summary())
+        self._driver().set_timing(AxiTimingProfile())
+        prime = {}
+        for info, value in zip(leg.regs, leg.primes):
+            wresp = await self._wr(info.addr, value)
+            rresp, got = await self._rd(info.addr)
+            mask = write_mask(info)
+            if wresp != RESP_OKAY or rresp != RESP_OKAY or (got & mask) != value:
+                line = (
+                    f"CTRL-MISSING BRIDGE-ID-PRIME: bus={self.bus} {info.name} "
+                    f"(0x{info.addr:08x}) wrote 0x{value:08x} resp={wresp}, read "
+                    f"0x{got:08x} resp={rresp} under mask 0x{mask:08x}"
+                )
+                self.test.logger.error("%s", line)
+                raise AssertionError(line)
+            prime[info.addr] = value
+        self.test.logger.info(
+            "CTRL-BRIDGE-ID-PRIME PASS: bus=%s %s",
+            self.bus,
+            " ".join(f"{i.name}=0x{v:08x}" for i, v in zip(leg.regs, leg.primes)),
+        )
+        names = {i.addr: i.name for i in leg.regs}
+
+        # Reads: the k-th R beat of the ID answers the k-th AR on the pins.
+        w = await self._concurrent(leg, None)
+        order = self._grade_requests("read", leg, w.ar)
+        self._grade_depth("read", leg, w.ar, w.r)
+        expected = list(order)
+        if len(w.r) != len(expected):
+            self._fail(
+                "CHK-BRIDGE-ID-ORDER",
+                f"read id={leg.axi_id}: {len(w.r)} R beat(s) for {len(expected)} reads",
+            )
+        beats = []
+        for k, ((cyc, rid, rresp, rdata, rlast), addr) in enumerate(zip(w.r, expected)):
+            got = lane_value(addr, SIZE_BYTES[SIZE_4B], rdata) if rdata >= 0 else -1
+            beats.append(f"{names[addr]}=0x{got & 0xFFFF_FFFF:08x}@{cyc}")
+            if (rid, rresp, rlast, got) != (leg.axi_id, RESP_OKAY, 1, prime[addr]):
+                self._fail(
+                    "CHK-BRIDGE-ID-ORDER",
+                    f"read id={leg.axi_id} R beat #{k} at cycle {cyc}: rid={rid} "
+                    f"rresp={rresp} rlast={rlast} data=0x{got & 0xFFFF_FFFF:08x}, "
+                    f"expected rid={leg.axi_id} OKAY rlast=1 "
+                    f"{names[addr]}=0x{prime[addr]:08x} (AR order "
+                    f"{[names[a] for a in order]})",
+                )
+        self.test.logger.info(
+            "CHK-BRIDGE-ID-ORDER PASS: bus=%s read id=%d R beats in AR order: %s",
+            self.bus,
+            leg.axi_id,
+            " ".join(beats),
+        )
+
+        # Writes: the k-th B of the ID follows the k-th AW and W on the pins,
+        # and each register then holds the value written to it.
+        w = await self._concurrent(leg, leg.writes)
+        order = self._grade_requests("write", leg, w.aw)
+        self._grade_depth("write", leg, w.aw, w.b)
+        if len(w.b) != len(order) or len(w.w) != len(order):
+            self._fail(
+                "CHK-BRIDGE-ID-ORDER",
+                f"write id={leg.axi_id}: {len(w.b)} B and {len(w.w)} W beat(s) "
+                f"for {len(order)} writes",
+            )
+        for k, ((cyc, bid, bresp), (aw_cyc, _i, addr), (w_cyc, wlast)) in enumerate(
+            zip(w.b, w.aw, w.w)
+        ):
+            if (bid, bresp, wlast) != (leg.axi_id, RESP_OKAY, 1) or cyc <= max(aw_cyc, w_cyc):
+                self._fail(
+                    "CHK-BRIDGE-ID-ORDER",
+                    f"write id={leg.axi_id} B #{k} at cycle {cyc}: bid={bid} "
+                    f"bresp={bresp}, for {names[addr]} AW at {aw_cyc} W at {w_cyc} "
+                    f"wlast={wlast}; expected bid={leg.axi_id} OKAY after both",
+                )
+        written = dict(zip((i.addr for i in leg.regs), leg.writes))
+        landed = []
+        for addr in order:
+            rresp, got = await self._rd(addr)
+            info = next(i for i in leg.regs if i.addr == addr)
+            if rresp != RESP_OKAY or (got & write_mask(info)) != written[addr]:
+                self._fail(
+                    "CHK-BRIDGE-ID-ORDER",
+                    f"write id={leg.axi_id}: {names[addr]} read 0x{got:08x} "
+                    f"resp={rresp} after the same-ID writes, expected "
+                    f"0x{written[addr]:08x}",
+                )
+            landed.append(f"{names[addr]}=0x{got:08x}")
+        self.test.logger.info(
+            "CHK-BRIDGE-ID-ORDER PASS: bus=%s write id=%d each B after the AW and W "
+            "of its rank, landed: %s",
+            self.bus,
+            leg.axi_id,
+            " ".join(landed),
+        )
+
     def coverage_report(self, cfg: SepAxiOrderSweepCfg) -> str:
         want = {o for o, _a, _w in WRITE_ORDERS}
         missing = sorted(want - set(self.covered))
@@ -670,6 +1003,20 @@ def _selftest() -> None:
             f"filter rule bank at 0x{infilt_base:08x}; that opens the external "
             f"master's own gate to rewriting"
         )
+    # The same-ID leg: distinct scratch registers, a non-zero ID that fits the
+    # bus, distinct values, and on m_axi inside an allow window.
+    for bus in ("s_axi", "m_axi"):
+        for seed in (1, 2, 3):
+            leg = SepAxiOrderSweepCfg(seed, bus=bus).id_leg
+            assert len({i.addr for i in leg.regs}) == BRIDGE_ID_REQUESTS >= BRIDGE_ID_DEPTH_FLOOR
+            assert all(i.block == BRIDGE_ID_BLOCK for i in leg.regs), leg.summary()
+            assert 0 < leg.axi_id < (1 << ID_WIDTH[bus]), leg.summary()
+            vals = leg.primes + leg.writes
+            assert len(set(vals)) == len(vals), leg
+            assert not {i.reset & write_mask(i) for i in leg.regs} & set(vals), leg
+            if bus == "m_axi":
+                for i in leg.regs:
+                    assert any(lo <= i.addr <= hi for _n, lo, hi in M_AXI_ALLOW_WINDOWS), i
     # Seed changes data, not coverage.
     a, b = SepAxiOrderSweepCfg(1), SepAxiOrderSweepCfg(2)
     assert {c.key for c in a.cells} == {c.key for c in b.cells}, (

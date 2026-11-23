@@ -15,7 +15,7 @@
 //     written and read back at the same base;
 //   * log the response codes, the readbacks and the DUT-side OTBN SRAM
 //     request and write counter increments (sep_tb_if probes) on one
-//     OBS-OTBN-MEM-BUSY-ACCESS line per memory. They are not graded: the
+//     INFO-OTBN-MEM-BUSY-ACCESS line per memory. They are not graded: the
 //     OTBN register text states that while OTBN is busy a memory read
 //     returns 0, a write is ignored and the access raises
 //     ILLEGAL_BUS_ACCESS; during the internal wipe the result is logged
@@ -130,13 +130,13 @@ class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
     `uvm_info(
         get_type_name(),
         $sformatf(
-            "OBS-OTBN-MEM-BUSY-ACCESS mem=imem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
+            "INFO-OTBN-MEM-BUSY-ACCESS mem=imem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
             status_word, tb_vif.otbn_imem_req_count - imem_req0,
             tb_vif.otbn_imem_write_count - imem_wr0, imem_words.size(), imem_fields), UVM_LOW)
     `uvm_info(
         get_type_name(),
         $sformatf(
-            "OBS-OTBN-MEM-BUSY-ACCESS mem=dmem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
+            "INFO-OTBN-MEM-BUSY-ACCESS mem=dmem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
             status_word, tb_vif.otbn_dmem_req_count - dmem_req0,
             tb_vif.otbn_dmem_write_count - dmem_wr0, dmem_words.size(), dmem_fields), UVM_LOW)
     finalize_evidence();

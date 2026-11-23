@@ -41,12 +41,12 @@ S12: every wait has a finite bound and fails the test on expiry with the last
 
 The per-beat response codes of a burst whose later beats leave the window, the
 data words of a SEP DECERR and the legality of the unaligned SEP values are OBS
-lines without a verdict (SF-005, SF-006, SF-007, SF-008, SF-029). Aperture
-placements and probe addresses are stimulus stated by the contract; register
-addresses come from the generated SEP and SMC headers. Every ext_in handshake is
-sampled on the pins each clk_smu_i cycle; the crossbar subordinate counters,
-the sep_in AR tap and the sep_in / smc_in channel levels on the AXI checker
-instances are read passively from the bench top. No force or deposit.
+lines without a verdict. Aperture placements and probe addresses are stimulus
+stated by the contract; register addresses come from the generated SEP and SMC
+headers. Every ext_in handshake is sampled on the pins each clk_smu_i cycle;
+the crossbar subordinate counters, the sep_in AR tap and the sep_in / smc_in
+channel levels on the AXI checker instances are read passively from the bench
+top. No force or deposit.
 """
 
 from __future__ import annotations
@@ -574,7 +574,7 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
         self.log.info(
             "OBS-SEP-NOALIGN-LEGAL: base=0x%x size=0x%x size_power_of_two=%s "
             "base_aligned_to_size=%s end=0x%x end_4k_aligned=%s port=%s readback=%s "
-            "(no constraint stated in sep_cpu_ctrl.adoc; SF-029 open)",
+            "(no constraint stated in sep_cpu_ctrl.adoc)",
             SEP_B0,
             SEP_SIZE0,
             SEP_SIZE0 & (SEP_SIZE0 - 1) == 0,
@@ -663,7 +663,7 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
         rd = await self._txn("S4_incr_read", write=False, addr=start, beats=8, xid=0x40)
         wr = await self._txn("S4_incr_write", write=True, addr=start, beats=8, xid=0x41)
         self.log.info(
-            "OBS-PAST-END-SEP-RESP: %s %s (beats past E: %d of 8; SF-005 open)",
+            "OBS-PAST-END-SEP-RESP: %s %s (beats past E: %d of 8)",
             self._resp_line("read", rd),
             self._resp_line("write", wr),
             sum(1 for k in range(8) if start + 8 * k >= SEP_END0),
@@ -716,8 +716,7 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
             "S5_fixed_write", write=True, addr=e8, beats=4, xid=0x52, burst=AXI_BURST_FIXED
         )
         self.log.info(
-            "OBS-WRAP-FIXED-RESP: %s %s %s (WRAP container [0x%x, 0x%x) straddles E=0x%x; "
-            "SF-005 open)",
+            "OBS-WRAP-FIXED-RESP: %s %s %s (WRAP container [0x%x, 0x%x) straddles E=0x%x)",
             self._resp_line("wrap_read", wrap),
             self._resp_line("fixed_read", frd),
             self._resp_line("fixed_write", fwr),
@@ -816,7 +815,7 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
         )
         edge = await self._txn("S7_read_edge", write=False, addr=WIDE_EDGE, beats=1, xid=0x3A)
         self.log.info(
-            "OBS-WIDE-SEP-RDATA: read_0x%x rdata=%s read_0x%x rdata=%s (SF-007, SF-008 open)",
+            "OBS-WIDE-SEP-RDATA: read_0x%x rdata=%s read_0x%x rdata=%s",
             WIDE_PAST,
             [_hx(e["rdata"]) for e in rd["r"]],
             WIDE_EDGE,
@@ -981,7 +980,7 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
         s9 = self.obs["s9"]
         self.log.info(
             "OBS-ADJ-RESP: S9 %s %s write_0x%x=[%s] read_0x%x=[%s] read_0x%x=[%s] "
-            "smc_word=[%s]; S10 %s read_0x%x=[%s] read_0x%x=[%s] (SF-005 open)",
+            "smc_word=[%s]; S10 %s read_0x%x=[%s] read_0x%x=[%s]",
             self._resp_line("sep_below_read", s9["brd"]),
             self._resp_line("sep_below_write", s9["bwr"]),
             SMC_B - 8,
@@ -1085,8 +1084,7 @@ class smu_xbar_aperture_edge_burst_test_seq(smu_xbar_reset_held_target_test_seq)
             "S11_incr_write", write=True, addr=start, beats=8, xid=0xB5, payload=bytes(64)
         )
         self.log.info(
-            "OBS-PAST-END-SMC-RESP: %s %s singles read_0x%x=[%s] write_0x%x=[%s] "
-            "(SF-005, SF-006 open)",
+            "OBS-PAST-END-SMC-RESP: %s %s singles read_0x%x=[%s] write_0x%x=[%s]",
             self._resp_line("read", brd),
             self._resp_line("write", bwr),
             SMC_END - 8,

@@ -121,6 +121,8 @@ module smu_wrapper_uvm_top
   assign dtp_smc_dbg_aw_valid_o = u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid;
   assign dtp_smc_dbg_w_valid_o  = u_dut.u_smu.dtp_axi_smc_dbg_req.w_valid;
   assign dtp_smc_dbg_ar_valid_o = u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid;
+  assign dtp_smc_dbg_aw_cache_o = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.cache;
+  assign dtp_smc_dbg_ar_cache_o = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.cache;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
@@ -518,6 +520,7 @@ module smu_wrapper_uvm_top
 
   assign secure_tm_req = tb_secure_tm_req;
   assign tb_secure_tm  = secure_tm_w;
+  assign tb_efuse_shim_resp_valid = u_dut.sep_efuse_shim_command_resp.valid;
   // ------------------------------------------------------------------
   // ext_in AXI master surface.
   //
@@ -1355,6 +1358,7 @@ module smu_wrapper_uvm_top
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
   assign tb_stap_sep_tck     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tck;
   assign tb_stap_sep_tms     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tms;
+  assign tb_stap_sep_host_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_sep_host_tdo_oen_o;
   // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
   // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
   // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
@@ -1830,18 +1834,27 @@ module smu_wrapper_uvm_top
     .smc_region_size_i        (smc_region_size_o),
     .s_axi_awvalid_i          (ext_in_awvalid),
     .s_axi_awready_i          (ext_in_awready),
+    .s_axi_awid_i             (ext_in_awid),
+    .s_axi_awlen_i            (ext_in_awlen),
+    .s_axi_awburst_i          (ext_in_awburst),
     .s_axi_wvalid_i           (ext_in_wvalid),
     .s_axi_wready_i           (ext_in_wready),
     .s_axi_wlast_i            (ext_in_wlast),
     .s_axi_bvalid_i           (ext_in_bvalid),
     .s_axi_bready_i           (ext_in_bready),
+    .s_axi_bid_i              (ext_in_bid),
     .s_axi_bresp_i            (ext_in_bresp),
     .s_axi_arvalid_i          (ext_in_arvalid),
     .s_axi_arready_i          (ext_in_arready),
+    .s_axi_arid_i             (ext_in_arid),
+    .s_axi_arlen_i            (ext_in_arlen),
+    .s_axi_arburst_i          (ext_in_arburst),
     .s_axi_rvalid_i           (ext_in_rvalid),
     .s_axi_rready_i           (ext_in_rready),
+    .s_axi_rid_i              (ext_in_rid),
     .s_axi_rlast_i            (ext_in_rlast),
     .s_axi_rresp_i            (ext_in_rresp),
+    .fcov_gate_i              (tb_fcov_gate),
     .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
     .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
     .axil_external_active_i   (tb_axil_external_active),
@@ -1961,7 +1974,12 @@ module smu_wrapper_uvm_top
     .skip_mem_repair_i           (skip_mem_repair_w),
     .init_mem_done_i             (smc_init_mem_done_o),
     .disable_sram_auto_init_i    (smc_disable_sram_auto_init),
-    .jtag_ptap_state_i           (jtag_ptap_state_w)
+    .jtag_ptap_state_i           (jtag_ptap_state_w),
+    .fcov_gate_i                 (tb_fcov_gate),
+    .sep_clk_i                   (obs_sep_clk_o),
+    .secure_tm_req_i             (tb_secure_tm_req),
+    .secure_tm_i                 (tb_secure_tm),
+    .sep_efuse_shim_resp_valid_i (tb_efuse_shim_resp_valid)
   );
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
@@ -2022,6 +2040,30 @@ module smu_wrapper_uvm_top
     .axi_out_aw_valid_i       (smu_axi_out_req.aw_valid),
     .axi_out_aw_ready_i       (smu_axi_out_resp.aw_ready),
     .axi_out_aw_id_i          (smu_axi_out_req.aw.id),
+    .s_axi_arvalid_i          (ext_in_arvalid),
+    .s_axi_arready_i          (ext_in_arready),
+    .s_axi_rvalid_i           (ext_in_rvalid),
+    .s_axi_rready_i           (ext_in_rready),
+    .s_axi_rlast_i            (ext_in_rlast),
+    .s_axi_rresp_i            (ext_in_rresp),
+    .out_awvalid_i            (u_axi_out_if.awvalid),
+    .out_awready_i            (u_axi_out_if.awready),
+    .out_awid_i               (u_axi_out_if.awid),
+    .out_awlen_i              (u_axi_out_if.awlen),
+    .out_bvalid_i             (u_axi_out_if.bvalid),
+    .out_bready_i             (u_axi_out_if.bready),
+    .out_bid_i                (u_axi_out_if.bid),
+    .out_bresp_i              (u_axi_out_if.bresp),
+    .out_arvalid_i            (u_axi_out_if.arvalid),
+    .out_arready_i            (u_axi_out_if.arready),
+    .out_arid_i               (u_axi_out_if.arid),
+    .out_arlen_i              (u_axi_out_if.arlen),
+    .out_rvalid_i             (u_axi_out_if.rvalid),
+    .out_rready_i             (u_axi_out_if.rready),
+    .out_rid_i                (u_axi_out_if.rid),
+    .out_rresp_i              (u_axi_out_if.rresp),
+    .out_rlast_i              (u_axi_out_if.rlast),
+    .fcov_gate_i              (tb_fcov_gate),
     .smc_efuse_bank_ctrl_awvalid_i (u_dut.smc_efuse_bank_ctrl_req.aw_valid),
     .smc_efuse_bank_ctrl_arvalid_i (u_dut.smc_efuse_bank_ctrl_req.ar_valid),
     .smc_efuse_bank_ctrl_bvalid_i  (u_dut.smc_efuse_bank_ctrl_resp.b_valid),
@@ -2140,6 +2182,202 @@ module smu_wrapper_uvm_top
     .xbar_sep_out_araddr_i     (xbar_sep_out_araddr_w)
   );
 
+  // The SEP debug module's system-bus master port, the bus the SEP-side
+  // register writes and system-bus probes of the FCOV owners travel on, read
+  // where the EL2 debug module drives it, before the local alias remap.
+  logic sep_sb_awvalid_w, sep_sb_awready_w, sep_sb_wvalid_w, sep_sb_wready_w;
+  logic sep_sb_bvalid_w, sep_sb_bready_w, sep_sb_arvalid_w, sep_sb_arready_w;
+  logic sep_sb_rvalid_w, sep_sb_rready_w, sep_sb_rlast_w;
+  logic [31:0] sep_sb_awaddr_w, sep_sb_araddr_w;
+  logic [63:0] sep_sb_wdata_w;
+  logic [1:0] sep_sb_bresp_w, sep_sb_rresp_w;
+
+  assign sep_sb_awvalid_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.aw_valid;
+  assign sep_sb_awready_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.aw_ready;
+  assign sep_sb_awaddr_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.aw.addr;
+  assign sep_sb_wvalid_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.w_valid;
+  assign sep_sb_wready_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.w_ready;
+  assign sep_sb_wdata_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.w.data;
+  assign sep_sb_bvalid_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.b_valid;
+  assign sep_sb_bready_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.b_ready;
+  assign sep_sb_bresp_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.b.resp;
+  assign sep_sb_arvalid_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.ar_valid;
+  assign sep_sb_arready_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.ar_ready;
+  assign sep_sb_araddr_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.ar.addr;
+  assign sep_sb_rvalid_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.r_valid;
+  assign sep_sb_rready_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_req_raw.r_ready;
+  assign sep_sb_rlast_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.r.last;
+  assign sep_sb_rresp_w = u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.dbg_axi_resp_raw.r.resp;
+
+  // The SEP outbound filter's request port: the address phases as the filter
+  // receives them, with the AxPROT[1] it matches against allow_ns, which the
+  // SEP's SMU path sets from address bit 55.
+  logic sep_flt_awvalid_w, sep_flt_awready_w, sep_flt_arvalid_w, sep_flt_arready_w;
+  logic [7:0] sep_flt_awlen_w, sep_flt_arlen_w;
+  logic [2:0] sep_flt_awprot_w, sep_flt_arprot_w;
+
+  assign sep_flt_awvalid_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_req.aw_valid;
+  assign sep_flt_awready_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_resp.aw_ready;
+  assign sep_flt_awlen_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_req.aw.len;
+  assign sep_flt_awprot_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_req.aw.prot;
+  assign sep_flt_arvalid_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_req.ar_valid;
+  assign sep_flt_arready_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_resp.ar_ready;
+  assign sep_flt_arlen_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_req.ar.len;
+  assign sep_flt_arprot_w =
+      u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.pre_outbound_filter_axi_req.ar.prot;
+
+  // The remap tables: the alias registers and accesses on the SMC debug AXI,
+  // the AP and STEE registers and accesses on the SEP system bus, the leaving
+  // address and AxCACHE on u_axi_out_if.
+  smu_remap_fcov u_smu_remap_fcov (
+    .clk_smu_i        (clk_smu),
+    .rst_cold_ni      (rst_cold_ni),
+    .fcov_gate_i      (tb_fcov_gate),
+    .smc_dbg_awvalid_i (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid),
+    .smc_dbg_awready_i (u_dut.u_smu.dtp_axi_smc_dbg_resp.aw_ready),
+    .smc_dbg_awaddr_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.aw.addr),
+    .smc_dbg_wvalid_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.w_valid),
+    .smc_dbg_wready_i  (u_dut.u_smu.dtp_axi_smc_dbg_resp.w_ready),
+    .smc_dbg_wdata_i   (u_dut.u_smu.dtp_axi_smc_dbg_req.w.data),
+    .smc_dbg_bvalid_i  (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid),
+    .smc_dbg_bready_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready),
+    .smc_dbg_bresp_i   (u_dut.u_smu.dtp_axi_smc_dbg_resp.b.resp),
+    .smc_dbg_arvalid_i (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid),
+    .smc_dbg_arready_i (u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready),
+    .smc_dbg_araddr_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.ar.addr),
+    .sep_sb_awvalid_i (sep_sb_awvalid_w),
+    .sep_sb_awready_i (sep_sb_awready_w),
+    .sep_sb_awaddr_i  (sep_sb_awaddr_w),
+    .sep_sb_wvalid_i  (sep_sb_wvalid_w),
+    .sep_sb_wready_i  (sep_sb_wready_w),
+    .sep_sb_wdata_i   (sep_sb_wdata_w),
+    .sep_sb_bvalid_i  (sep_sb_bvalid_w),
+    .sep_sb_bready_i  (sep_sb_bready_w),
+    .sep_sb_bresp_i   (sep_sb_bresp_w),
+    .sep_sb_arvalid_i (sep_sb_arvalid_w),
+    .sep_sb_arready_i (sep_sb_arready_w),
+    .sep_sb_araddr_i  (sep_sb_araddr_w),
+    .out_awvalid_i    (u_axi_out_if.awvalid),
+    .out_awready_i    (u_axi_out_if.awready),
+    .out_awid_i       (u_axi_out_if.awid),
+    .out_awaddr_i     (u_axi_out_if.awaddr[55:0]),
+    .out_awcache_i    (u_axi_out_if.awcache),
+    .out_arvalid_i    (u_axi_out_if.arvalid),
+    .out_arready_i    (u_axi_out_if.arready),
+    .out_arid_i       (u_axi_out_if.arid),
+    .out_araddr_i     (u_axi_out_if.araddr[55:0]),
+    .out_arcache_i    (u_axi_out_if.arcache)
+  );
+
+  // The traffic filters: the SMC inbound instance on the ext_in pins, the SMC
+  // outbound instance on the SMC debug AXI, the SEP outbound instance on the
+  // SEP system bus, the reached responder on u_axi_out_if.
+  smu_filter_fcov u_smu_filter_fcov (
+    .clk_smu_i        (clk_smu),
+    .rst_cold_ni      (rst_cold_ni),
+    .fcov_gate_i      (tb_fcov_gate),
+    .s_axi_awvalid_i  (ext_in_awvalid),
+    .s_axi_awready_i  (ext_in_awready),
+    .s_axi_awaddr_i   (ext_in_awaddr),
+    .s_axi_awlen_i    (ext_in_awlen),
+    .s_axi_awprot_i   (ext_in_awprot),
+    .s_axi_awuser_i   (ext_in_awuser),
+    .s_axi_bvalid_i   (ext_in_bvalid),
+    .s_axi_bready_i   (ext_in_bready),
+    .s_axi_bresp_i    (ext_in_bresp),
+    .s_axi_arvalid_i  (ext_in_arvalid),
+    .s_axi_arready_i  (ext_in_arready),
+    .s_axi_araddr_i   (ext_in_araddr),
+    .s_axi_arlen_i    (ext_in_arlen),
+    .s_axi_arprot_i   (ext_in_arprot),
+    .s_axi_aruser_i   (ext_in_aruser),
+    .s_axi_rvalid_i   (ext_in_rvalid),
+    .s_axi_rready_i   (ext_in_rready),
+    .s_axi_rlast_i    (ext_in_rlast),
+    .s_axi_rresp_i    (ext_in_rresp),
+    .smc_dbg_awvalid_i (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid),
+    .smc_dbg_awready_i (u_dut.u_smu.dtp_axi_smc_dbg_resp.aw_ready),
+    .smc_dbg_awaddr_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.aw.addr),
+    .smc_dbg_awlen_i   (u_dut.u_smu.dtp_axi_smc_dbg_req.aw.len),
+    .smc_dbg_awprot_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.aw.prot),
+    .smc_dbg_wvalid_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.w_valid),
+    .smc_dbg_wready_i  (u_dut.u_smu.dtp_axi_smc_dbg_resp.w_ready),
+    .smc_dbg_wdata_i   (u_dut.u_smu.dtp_axi_smc_dbg_req.w.data),
+    .smc_dbg_bvalid_i  (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid),
+    .smc_dbg_bready_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready),
+    .smc_dbg_bresp_i   (u_dut.u_smu.dtp_axi_smc_dbg_resp.b.resp),
+    .smc_dbg_arvalid_i (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid),
+    .smc_dbg_arready_i (u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready),
+    .smc_dbg_araddr_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.ar.addr),
+    .smc_dbg_arlen_i   (u_dut.u_smu.dtp_axi_smc_dbg_req.ar.len),
+    .smc_dbg_arprot_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.ar.prot),
+    .smc_dbg_rvalid_i  (u_dut.u_smu.dtp_axi_smc_dbg_resp.r_valid),
+    .smc_dbg_rready_i  (u_dut.u_smu.dtp_axi_smc_dbg_req.r_ready),
+    .smc_dbg_rlast_i   (u_dut.u_smu.dtp_axi_smc_dbg_resp.r.last),
+    .smc_dbg_rresp_i   (u_dut.u_smu.dtp_axi_smc_dbg_resp.r.resp),
+    .sep_sb_awvalid_i (sep_sb_awvalid_w),
+    .sep_sb_awready_i (sep_sb_awready_w),
+    .sep_sb_awaddr_i  (sep_sb_awaddr_w),
+    .sep_sb_wvalid_i  (sep_sb_wvalid_w),
+    .sep_sb_wready_i  (sep_sb_wready_w),
+    .sep_sb_wdata_i   (sep_sb_wdata_w),
+    .sep_sb_bvalid_i  (sep_sb_bvalid_w),
+    .sep_sb_bready_i  (sep_sb_bready_w),
+    .sep_sb_bresp_i   (sep_sb_bresp_w),
+    .sep_sb_arvalid_i (sep_sb_arvalid_w),
+    .sep_sb_arready_i (sep_sb_arready_w),
+    .sep_sb_araddr_i  (sep_sb_araddr_w),
+    .sep_sb_rvalid_i  (sep_sb_rvalid_w),
+    .sep_sb_rready_i  (sep_sb_rready_w),
+    .sep_sb_rlast_i   (sep_sb_rlast_w),
+    .sep_sb_rresp_i   (sep_sb_rresp_w),
+    .sep_flt_awvalid_i (sep_flt_awvalid_w),
+    .sep_flt_awready_i (sep_flt_awready_w),
+    .sep_flt_awlen_i  (sep_flt_awlen_w),
+    .sep_flt_awprot_i (sep_flt_awprot_w),
+    .sep_flt_arvalid_i (sep_flt_arvalid_w),
+    .sep_flt_arready_i (sep_flt_arready_w),
+    .sep_flt_arlen_i  (sep_flt_arlen_w),
+    .sep_flt_arprot_i (sep_flt_arprot_w),
+    .out_awvalid_i    (u_axi_out_if.awvalid),
+    .out_awready_i    (u_axi_out_if.awready),
+    .out_awid_i       (u_axi_out_if.awid),
+    .out_awlen_i      (u_axi_out_if.awlen),
+    .out_awprot_i     (u_axi_out_if.awprot),
+    .out_arvalid_i    (u_axi_out_if.arvalid),
+    .out_arready_i    (u_axi_out_if.arready)
+  );
+
+  // The lifecycle image and pair class at the SEP fuse-sense completion, the
+  // posture of the four gated debug paths, and the LC_STATE pair inject.
+  smu_lifecycle_fcov u_smu_lifecycle_fcov (
+    .clk_smu_i             (clk_smu),
+    .rst_cold_ni           (rst_cold_ni),
+    .fcov_gate_i           (tb_fcov_gate),
+    .lc_state_i            (lc_state_o),
+    .lcc_feat_ctrl_i       (lcc_feat_ctrl_o),
+    .sep_fuse_sense_done_i (sep_fuse_sense_done_o),
+    .dbg_ar_count_i        (dtp_smc_dbg_ar_count_o),
+    .dbg_aw_count_i        (dtp_smc_dbg_aw_count_o),
+    .dbg_b_count_i         (dtp_smc_dbg_b_count_o),
+    .ptap_tms_i            (jtag_tms),
+    .stap_io_tms_i         (tb_stap_io_tms),
+    .stap_io_tdo_oen_i     (tb_stap_io_tdo_oen),
+    .stap_sep_tms_i        (tb_stap_sep_tms),
+    .stap_sep_tdo_oen_i    (tb_stap_sep_host_tdo_oen),
+    .dft_secure_select_i   (tb_dft_secure_select),
+    .lc_sigint_inject_i    (lc_sigint_inject_i),
+    .smc_lc_state_in_i     (smc_lc_state_in_o),
+    .lc_sigint_err_i       (lc_sigint_err_o)
+  );
+
 
   // ------------------------------------------------------------------
   // Shared AXI4 protocol checkers (ocah_axi_sva) on the SMU AXI links: the
@@ -2187,16 +2425,20 @@ module smu_wrapper_uvm_top
   // of that port are zero.
   //
   // Illegal-encoding inject (+smu_axi_illegal_inject; error inject,
-  // docs/SMU_TB_ARCH.adoc). With the plusarg, the checkers on the external
-  // inbound path (u_smu_in_axi_sva, u_incut_axi_sva, u_xbar_ext_in_axi_sva)
-  // see AxBURST = INCR on an AW or AR that carries a WRAP burst with
-  // AxLEN = 0 or the reserved burst encoding, and see the 4 KiB-page start
-  // address on an INCR burst that crosses a 4 KiB boundary. They track such a
-  // request as a legal single-beat or page-aligned burst and grade every
-  // other rule on it, so AW/AR_LEN_WRAP_LEGAL, AW/AR_BURST_LEGAL and
-  // AW/AR_4KB_BOUNDARY cannot fire on those three instances while the
-  // plusarg is set. The DUT receives the illegal request unchanged, and no
-  // other instance sees the substitution.
+  // docs/SMU_TB_ARCH.adoc). With the plusarg, the checkers on the path an
+  // external inbound request takes (u_smu_in_axi_sva, u_incut_axi_sva,
+  // u_xbar_ext_in_axi_sva, the crossbar SEP and SMC target ports, both
+  // converter outputs and the SEP-reset instance of the SEP target port) see
+  // AxBURST = INCR on an AW or AR that carries a WRAP burst with AxLEN = 0
+  // or the reserved burst encoding, and see the 4 KiB-page start address on
+  // an INCR burst that crosses a 4 KiB boundary. They track such a request
+  // as a legal single-beat or page-aligned burst and grade every other rule
+  // on it, so AW/AR_LEN_WRAP_LEGAL, AW/AR_BURST_LEGAL and AW/AR_4KB_BOUNDARY
+  // cannot fire on those instances while the plusarg is set. The DUT
+  // receives the illegal request unchanged and forwards it unchanged to its
+  // target (integrator guide, AXI boundary contract); a leaf that arms the
+  // plusarg grades the forwarded fields itself. The instances on the links
+  // the SMU or another initiator originates are not masked.
   //
   // This checks PROTOCOL, not data: a read that returns wrong data breaks no
   // rule here.
@@ -2418,7 +2660,44 @@ module smu_wrapper_uvm_top
     .rvalid  (RSP.r_valid),                                                 \
     .rready  (REQ.r_ready)
 
-  // AxBURST and the start address the external-inbound checkers see under
+`define SMU_AXI_SVA_RST_INJ_PORTS(REQ, RSP, RST)                            \
+    .aclk    (clk_smu_i),                                                   \
+    .aresetn (RST),                                                         \
+    .awid    (REQ.aw.id),                                                   \
+    .awaddr  (sva_addr(REQ.aw.addr, REQ.aw.len, REQ.aw.size, REQ.aw.burst)),   \
+    .awlen   (REQ.aw.len),                                                  \
+    .awsize  (REQ.aw.size),                                                 \
+    .awburst (sva_burst(REQ.aw.burst, REQ.aw.len)),                         \
+    .awlock  (REQ.aw.lock),                                                 \
+    .awprot  (REQ.aw.prot),                                                 \
+    .awvalid (REQ.aw_valid),                                                \
+    .awready (RSP.aw_ready),                                                \
+    .wdata   (REQ.w.data),                                                  \
+    .wstrb   (REQ.w.strb),                                                  \
+    .wlast   (REQ.w.last),                                                  \
+    .wvalid  (REQ.w_valid),                                                 \
+    .wready  (RSP.w_ready),                                                 \
+    .bid     (RSP.b.id),                                                    \
+    .bresp   (RSP.b.resp),                                                  \
+    .bvalid  (RSP.b_valid),                                                 \
+    .bready  (REQ.b_ready),                                                 \
+    .arid    (REQ.ar.id),                                                   \
+    .araddr  (sva_addr(REQ.ar.addr, REQ.ar.len, REQ.ar.size, REQ.ar.burst)),   \
+    .arlen   (REQ.ar.len),                                                  \
+    .arsize  (REQ.ar.size),                                                 \
+    .arburst (sva_burst(REQ.ar.burst, REQ.ar.len)),                         \
+    .arlock  (REQ.ar.lock),                                                 \
+    .arprot  (REQ.ar.prot),                                                 \
+    .arvalid (REQ.ar_valid),                                                \
+    .arready (RSP.ar_ready),                                                \
+    .rid     (RSP.r.id),                                                    \
+    .rdata   (RSP.r.data),                                                  \
+    .rresp   (RSP.r.resp),                                                  \
+    .rlast   (RSP.r.last),                                                  \
+    .rvalid  (RSP.r_valid),                                                 \
+    .rready  (REQ.r_ready)
+
+  // AxBURST and the start address the inbound-path checkers see under
   // +smu_axi_illegal_inject: INCR for a WRAP burst with AxLEN = 0 or the
   // reserved burst encoding, and the 4 KiB-page start for an INCR burst whose
   // size-aligned span crosses a 4 KiB boundary; the request otherwise.
@@ -2499,8 +2778,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (10)
   ) u_xbar_sep_in_axi_sva (           // crossbar target port: SEP
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.sep_in_req_o,
-                       `SMU_AXI_XBAR.sep_in_resp_i)
+    `SMU_AXI_SVA_INJ_PORTS(`SMU_AXI_XBAR.sep_in_req_o,
+                           `SMU_AXI_XBAR.sep_in_resp_i)
   );
 
   ocah_axi_sva #(
@@ -2511,8 +2790,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (10)
   ) u_xbar_smc_in_axi_sva (           // crossbar target port: SMC
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.smc_in_req_o,
-                       `SMU_AXI_XBAR.smc_in_resp_i)
+    `SMU_AXI_SVA_INJ_PORTS(`SMU_AXI_XBAR.smc_in_req_o,
+                           `SMU_AXI_XBAR.smc_in_resp_i)
   );
 
   ocah_axi_sva #(
@@ -2698,8 +2977,8 @@ module smu_wrapper_uvm_top
     .MASTER_SYNC_RESET (1'b1)
   ) u_xbar_sep_in_sep_rst_axi_sva (   // crossbar target port: SEP, on sep_reset_n
     .en_i (`SMU_AXI_SEP_RST_ON(`SMU_AXI_XBAR.sep_in_req_o)),
-    `SMU_AXI_SVA_RST_PORTS(`SMU_AXI_XBAR.sep_in_req_o,
-                           `SMU_AXI_XBAR.sep_in_resp_i, sep_reset_n)
+    `SMU_AXI_SVA_RST_INJ_PORTS(`SMU_AXI_XBAR.sep_in_req_o,
+                               `SMU_AXI_XBAR.sep_in_resp_i, sep_reset_n)
   );
 
   ocah_axi_sva #(
@@ -2722,8 +3001,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (6)
   ) u_iwc_sep_axi_sva (               // ID-width converter output toward the SEP
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_PORTS(u_dut.u_smu.sep_smn_inbound_axi_req,
-                       u_dut.u_smu.sep_smn_inbound_axi_resp)
+    `SMU_AXI_SVA_INJ_PORTS(u_dut.u_smu.sep_smn_inbound_axi_req,
+                           u_dut.u_smu.sep_smn_inbound_axi_resp)
   );
 
   ocah_axi_sva #(
@@ -2734,8 +3013,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (6)
   ) u_iwc_smc_axi_sva (               // ID-width converter output toward the SMC
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_PORTS(u_dut.u_smu.smc_sys_axi_in_req,
-                       u_dut.u_smu.smc_sys_axi_in_resp)
+    `SMU_AXI_SVA_INJ_PORTS(u_dut.u_smu.smc_sys_axi_in_req,
+                           u_dut.u_smu.smc_sys_axi_in_resp)
   );
 
   ocah_axi_sva #(
@@ -3120,6 +3399,7 @@ module smu_wrapper_uvm_top
 `endif
 
 `undef SMU_AXI_SVA_INJ_PORTS
+`undef SMU_AXI_SVA_RST_INJ_PORTS
 `undef SMU_AXI_SEP_RST_ON
 `undef SMU_AXI_DATA_PORTS
 `undef SMU_AXIL_SVA_PORTS
@@ -3363,6 +3643,8 @@ module smu_wrapper_uvm_top
   assign tb_cool_reset_pin       = 1'b0;
   assign tb_secure_tm_req        = 1'b0;
   assign tb_smc_sram_auto_init_restore = 1'b0;
+  // FCOV graded-window gate: no covergroup that needs it is sampled here.
+  assign tb_fcov_gate = 1'b0;
 
   // GPIO pads undriven by the bench (the boot-stall pad follows smu_tb_if).
   assign tb_gpio0_drive_en  = 1'b0;

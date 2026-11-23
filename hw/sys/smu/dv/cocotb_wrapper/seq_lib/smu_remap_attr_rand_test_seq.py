@@ -24,12 +24,17 @@ differ from the reference AW AxCACHE; the last word inside each output window an
 past it; ``valid`` cleared after programming on every table (on an output table graded at an index
 other than 7, at which it is logged).
 
-S1: JTAG2AXI tap, apertures, reference write and read outside every region (AxCACHE reference).
+S1: JTAG2AXI tap, apertures, reference write and read outside every region (AxCACHE reference,
+    cross-checked against the AxCACHE the bridge issues on the DTP-to-SMC debug AXI tap).
 S2: alias region programmed at the pinned ``cacheable`` and read back; the pinned hit.
 S3: alias region at the drawn ``cacheable``, read back; hits at start and one granule below end.
 S4: alias misses one granule below start and at ``end_addr``.
 S5: alias ``valid`` cleared, read back; the access at start passes unchanged.
-S6: logged only: two valid alias regions over one page, an offset sum past bit 55; restore.
+S6: two valid alias regions over one page leave by the lowest-numbered region's offset and an
+    offset sum past bit 55 leaves at the sum modulo 2^44 (``alias_remap.rdl``, ``offset``); the
+    second region is drawn above or below the drawn region, its registers and the drawn region's
+    re-set ATTRS are read back before the access, so a lost write fails the read-back and the
+    leaving address grades the priority in either ordering; restore.
 S7: SEP debug module, admit pair, AP and STEE regions programmed and read back.
 S8: output hits at the drawn word and at the last word of each window.
 S9: output misses at the first word past each window.
@@ -41,7 +46,8 @@ from __future__ import annotations
 
 import random
 
-from cocotb.triggers import ClockCycles
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from ocah_jtag_vip import OcahJtagState
 
@@ -152,7 +158,7 @@ REF_ADDR = INPUT_BASE + (INPUT_PAGES - 1) * PAGE + 0x100
 ALIAS_TARGET_LO, ALIAS_TARGET_HI = 0x1_0000_0000, 0x8_0000_0000
 OVERLAP_TARGET_LO, OVERLAP_TARGET_HI = 0x8_0000_0000, 0x10_0000_0000
 OUT_TARGET = {"AP": (0x10_0000_0000, 0x40_0000_0000), "STEE": (0x40_0000_0000, 0x80_0000_0000)}
-# The page that the offset sum past bit 55 lands on when truncated to 56 bits; logged only.
+# The page the offset sum past bit 55 lands on, modulo 2^44.
 CARRY_WRAP_PAGE = 0x0900_0000
 
 SENTINEL = 0x5A5A_5A5A_5A5A_5A5A
@@ -166,15 +172,15 @@ STEP_CLOCK_GAP = 2
 STEPS = tuple(f"S{i}" for i in range(1, 12))
 J2A_STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
 SBA_STEPS = ("S7", "S8", "S9", "S10")
-# JTAG2AXI accesses: S1 2, S2 8, S3 6, S4 4, S5 4, S6 15 (sum 39).
-J2A_EXPECTED = 39
+# JTAG2AXI accesses: S1 2, S2 8, S3 6, S4 4, S5 4, S6 19 (sum 43).
+J2A_EXPECTED = 43
 # System-bus accesses: S7 6 + 2x2, S8 2x4, S9 2x2, S10 2x(2+2+1) (sum 32).
 SBA_EXPECTED = 32
 EXPECTED_WAIT_LABELS = (
     "j2a_poll",
-    "logged_observe",
     "responder_observe",
     "sba_busy_poll",
+    "stated_observe",
 )
 _CACHE = FIELDS.index("cache")
 # The fixed cells of the entries this one extends, named beside each drawn compare.
@@ -285,6 +291,32 @@ def cache_values(ref_aw: int, ref_ar: int, slot: int) -> tuple[int, int]:
     return pinned, rest[slot % len(rest)]
 
 
+class _IssuedCacheTap:
+    """AW and AR AxCACHE on the DTP-to-SMC debug AXI request at every clock its VALID is high."""
+
+    def __init__(self, dut) -> None:
+        self._dut = dut
+        self.seen: dict[str, list[int]] = {"aw": [], "ar": []}
+        self._task = cocotb.start_soon(self._watch())
+
+    async def _watch(self) -> None:
+        while True:
+            await RisingEdge(self._dut.clk_smu_i)
+            for ch, seen in self.seen.items():
+                valid = f"dtp_smc_dbg_{ch}_valid_o"
+                if sample(getattr(self._dut, valid), valid):
+                    cache = f"dtp_smc_dbg_{ch}_cache_o"
+                    seen.append(sample(getattr(self._dut, cache), cache))
+
+    def issued(self, ch: str) -> tuple[int, ...]:
+        """The distinct AxCACHE values seen on ``ch`` while its VALID was high."""
+        return tuple(sorted(set(self.seen[ch])))
+
+    def stop(self) -> None:
+        if not self._task.done():
+            self._task.cancel()
+
+
 class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
     """Alias, AP and STEE remap tables at seed-drawn regions, edges, offsets and attributes."""
 
@@ -372,7 +404,9 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
         aw, ar = self.tap.since(mark)
         return aw[0], ar[0], wst, rst, rdata, self.mem.read_int(leave, 8), data
 
-    async def _j2a_logged(self, addr: int, label: str) -> None:
+    async def _j2a_stated(self, addr: int, label: str) -> tuple[int, list[int]]:
+        """One JTAG2AXI write whose leaving address the register description states; returns the
+        initiator status and the AW addresses tapped on ``u_axi_out_if`` inside the bound."""
         mark = self.tap.mark()
         status, _ = await self._j2a(True, addr, self._next())
         used, aw = 0, []
@@ -384,12 +418,13 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
             used += 1
         aw, _ = self.tap.since(mark)
         last = f"{label} aw={[hex(p[0]) for p in aw]}" if aw else f"{label} no AW inside the bound"
-        self._site("logged_observe", OBSERVE_BOUND_CYCLES, used, last, "clk_smu cycles")
+        self._site("stated_observe", OBSERVE_BOUND_CYCLES, used, last, "clk_smu cycles")
         self._log(
             f"OBSERVATION {label}: issued=0x{addr:x} status={status} leaving="
             f"{[hex(p[0]) for p in aw] if aw else 'no AW inside the bound'} after {used} "
-            f"cycles; measured and logged only"
+            f"cycles; graded by CHK-RMAPA-TRANSLATE"
         )
+        return status, [p[0] for p in aw]
 
     def _attrs(self, offset: int, cache: int, valid: bool) -> int:
         word = (offset & ALIAS_OFFSET_BM) | (cache << ALIAS_CACHE_BP)
@@ -439,15 +474,21 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
         self._check_apertures()
         self.tap = _OutboundTap(self.dut)
         self._prefill(REF_ADDR)
-        aw, ar, wst, rst, rdata, _, data = await self._j2a_pair(REF_ADDR, REF_ADDR)
+        issued = _IssuedCacheTap(self.dut)
+        try:
+            aw, ar, wst, rst, rdata, _, data = await self._j2a_pair(REF_ADDR, REF_ADDR)
+        finally:
+            issued.stop()
         self.ref_aw, self.ref_ar = aw[_CACHE], ar[_CACHE]
+        self.issued_aw, self.issued_ar = issued.issued("aw"), issued.issued("ar")
         self.cache_pin, self.cache_drawn = cache_values(
             self.ref_aw, self.ref_ar, self.d["cache_slot"]
         )
         self._log(
             f"OBSERVATION reference access 0x{REF_ADDR:x}: aw={aw} ar={ar} status=({wst},{rst}) "
             f"AxCACHE aw={self.ref_aw} ar={self.ref_ar}; cacheable pinned={self.cache_pin} "
-            f"drawn={self.cache_drawn}"
+            f"drawn={self.cache_drawn}; issued AxCACHE on the DTP-to-SMC debug AXI tap "
+            f"aw={self.issued_aw} ar={self.issued_ar}"
         )
         if (aw[0], ar[0], rdata) != (REF_ADDR, REF_ADDR, data):
             raise AssertionError(f"reference access not at its own address: aw={aw} ar={ar}")
@@ -524,7 +565,9 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
             evidence="CHK-RMAPA-TRANSLATE",
         )
         caches = {k: res[k][2] for k in res}
+        caches["reference access (S1)"] = ((self.ref_aw,), (self.ref_ar,))
         want_cache = {
+            "reference access (S1)": (self.issued_aw, self.issued_ar),
             "pinned hit at start": (self.cache_pin,) * 2,
             "hit at start": (self.cache_drawn,) * 2,
             "hit one granule below end": (self.cache_drawn,) * 2,
@@ -538,7 +581,10 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
             caches,
             want_cache,
             f"(AW, AR) AxCACHE: hits carry the cacheable value, misses the reference "
-            f"(aw={self.ref_aw}, ar={self.ref_ar}), pinned cacheable={self.cache_pin}, drawn "
+            f"(aw={self.ref_aw}, ar={self.ref_ar}), and the reference leaves with the AxCACHE "
+            f"the bridge issued on the DTP-to-SMC debug AXI tap (aw={self.issued_aw}, "
+            f"ar={self.issued_ar}; fabric.adoc: a transaction that misses every alias region "
+            f"keeps the AxCACHE its initiator issued), pinned cacheable={self.cache_pin}, drawn "
             f"cacheable={self.cache_drawn}, {self.drawn}",
             evidence="CHK-RMAPA-CACHE",
         )
@@ -556,26 +602,71 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
             "alias ATTRS (valid cleared)": cleared_attrs,
         }
 
-        await self._mark("S6", "logged only: two valid regions over one page, sum past bit 55")
+        await self._mark("S6", "two valid regions over one page; an offset sum past bit 55")
         other = d["overlap_region"]
         overlap_offset = d["overlap_target"] - self.start
         await self._j2a_ok(True, smc_indexed_addr(_A_ATTRS, region), drawn_attrs)
-        await self._alias_regs(
-            other, self.start, self.start + PAGE, self._attrs(overlap_offset, 0, True)
+        other_attrs = self._attrs(overlap_offset, 0, True)
+        await self._alias_regs(other, self.start, self.start + PAGE, other_attrs)
+        # Both regions read back before the access: the leaving address evidences the second
+        # region only when it is the lower-numbered one, and the drawn region only when it is.
+        self.readback_obs[
+            "alias ATTRS (drawn region re-set for the overlap cell)"
+        ] = await self._alias_readback(region, _A_ATTRS)
+        self.readback_want["alias ATTRS (drawn region re-set for the overlap cell)"] = (
+            drawn_attrs,
         )
-        await self._j2a_logged(
+        self.readback_obs[
+            f"alias region {other} START, END, ATTRS (over the start page)"
+        ] = await self._alias_readback(other, _A_START, _A_END, _A_ATTRS)
+        self.readback_want[f"alias region {other} START, END, ATTRS (over the start page)"] = (
+            self.start,
+            self.start + PAGE,
+            other_attrs,
+        )
+        overlap_got = await self._j2a_stated(
             at_start,
             f"overlap regions {region} and {other}: candidates "
             f"0x{at_start + self.offset:x} and 0x{at_start + overlap_offset:x}",
         )
+        lowest_offset = self.offset if region < other else overlap_offset
         carry_page = self.end + PAGE
         carry_offset = ((1 << 56) + CARRY_WRAP_PAGE - carry_page) & ALIAS_OFFSET_BM
         await self._alias_regs(
             other, carry_page, carry_page + PAGE, self._attrs(carry_offset, 0, True)
         )
-        await self._j2a_logged(carry_page + low, "offset sum past bit 55")
+        carry_got = await self._j2a_stated(carry_page + low, "offset sum past bit 55")
         await self._alias_regs(region, 0, 0, 0)
         await self._alias_regs(other, 0, 0, 0)
+        # alias_remap.rdl, offset: "When more than one valid region contains the address, the
+        # lowest-numbered region applies"; "The addition is modulo 2^44, so a carry out of bit 55
+        # is discarded".
+        self._grade(
+            sb,
+            "CHK-RMAPA-TRANSLATE",
+            {
+                "two valid regions over one page": overlap_got,
+                "offset sum past bit 55": carry_got,
+            },
+            {
+                "two valid regions over one page": (
+                    J2A_STATUS_SUCCESS,
+                    [(at_start + lowest_offset) & ADDR56],
+                ),
+                "offset sum past bit 55": (
+                    J2A_STATUS_SUCCESS,
+                    [(carry_page + low + carry_offset) & ADDR56],
+                ),
+            },
+            f"(status, leaving AW addresses) of an address inside valid alias regions {region} "
+            f"and {other}, both read back, leave by the lowest-numbered region's offset "
+            f"({min(region, other)}; the second region {other} is "
+            f"{'below' if other < region else 'above'} the drawn region {region}) and of an "
+            f"offset sum past bit 55 leave at the sum modulo 2^44 (alias_remap.rdl, offset: the "
+            "lowest-numbered region applies; the addition is modulo 2^44, so a carry out of bit "
+            f"55 is discarded), {self.drawn}",
+            evidence="CHK-RMAPA-TRANSLATE",
+        )
 
     # System-bus side.
 
@@ -740,11 +831,14 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
         await self._mark("S1", "SETUP: JTAG2AXI tap, apertures, reference access")
         try:
             await self._s1(sb)
+            # smu_remap_cg samples the register writes and accesses of S2 to S10 only.
+            self.dut.tb_fcov_gate.value = 1
             await self._alias(sb)
             await self._output(sb)
             await self._mark("S11", "TIMEOUT: bounded waits and last state")
             self._timeout_paths(sb)
         finally:
+            self.dut.tb_fcov_gate.value = 0
             if self.tap is not None:
                 self.tap.stop()
         await ClockCycles(self.clk, STEP_CLOCK_GAP)

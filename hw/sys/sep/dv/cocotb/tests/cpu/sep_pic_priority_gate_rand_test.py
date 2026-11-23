@@ -91,11 +91,30 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  leaves ``mip`` bit 29 - k at 0; ``mitcnt`` written to B takes
                  one trap with the timer's ``mcause``. A timer that signals
                  one count or more before ``mitb`` fails the B - 1 step. Both
-                 timers run in every run, in a drawn order. No cited
-                 specification states the trap latency after the timer
-                 reaches its bound, so the clocks past B are logged
-                 (``OBS-INT-TIMER-TRAP-LATENCY``) and have no upper bound.
-* CHK-TIMER-PIN  (firmware, last leg) the host drives ``timer_int_i`` on each
+                 timers run in every run, in a drawn order. The clocks past
+                 B are logged (``INFO-INT-TIMER-TRAP-LATENCY``) and have no
+                 upper bound. Graded by ``CHK-INT-TIMER-TRAP``; no open
+                 specification question.
+* CHK-INT-TIMER-CASCADE (firmware, outside every graded window) both timers
+                 stopped, ``mitb0`` = B, ``mitb1`` 0xFFFF_FFFF, ``mitcnt1`` =
+                 H and ``mitcnt0`` = B - K, with H, K and B drawn and B well
+                 below 0xFFFF_FFFF; timer 1 enabled with ``mitctl1.cascade``
+                 (bit 3) 1, then timer 0. ``mitb0`` reads back B and
+                 ``mitctl1`` the written 0x9; a ``mitcnt1``, ``mitcnt0``,
+                 ``mitcnt1`` read after the enable holds ``mitcnt1`` H with
+                 ``mitcnt0`` in [B - K, B); once ``mitcnt0`` reads below
+                 B - K, ``mitcnt1`` reads H + 1. Then, timers running,
+                 ``mitb0`` 0xFFFF_FFFF, ``mitcnt1`` = H and ``mitcnt0`` =
+                 B + K (read back at or above B + K), ``mitb0`` = B is
+                 written; once ``mitcnt0`` reads below B, ``mitcnt1`` reads
+                 H + 1 (VeeR EL2 PRM ``docs/source/timers.md``: ``mitcnt1``
+                 increments in cascade mode only when ``mitcnt0`` is greater
+                 than or equal to ``mitb0``, a counter at or above its bound
+                 clears on the next clock, cascade is ``mitctl1`` bit 3). A
+                 plain 32-bit carry fails the first step and an equality
+                 compare the second. H stays below 0xFFFF_FFFE so that H + 1
+                 is below ``mitb1``.
+* CHK-TIMER-PIN  (firmware) the host drives ``timer_int_i`` on each
                  ``REQ tint`` line. With the pin 1, ``mip.MTIP`` reads 1; with
                  ``mie.MTIE`` 0 and mstatus.MIE 1 no trap for a hold window;
                  with ``mie.MTIE`` 1 one trap with ``mcause`` 0x8000_0007;
@@ -103,6 +122,17 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  (``hw/sys/sep/doc/interrupts.adoc:291``: the pin drives
                  ``mip.MTIP``; EL2 PRM tables 13.1 and 13.2 for ``mie.mtie``
                  and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
+* CHK-SOFT-PIN   (firmware, last leg) the host drives ``soft_int_i`` on each
+                 ``REQ sint`` line. With the pin 1, ``mip.MSIP`` reads 1; with
+                 ``mie`` read back as MEIE only and mstatus.MIE 1 no trap of
+                 any class for a hold window of 32 core clocks or more, and
+                 at the end of the window mstatus.MIE and ``mip.MSIP`` read
+                 1; the ``meip`` words outside the excluded idle bits read
+                 the same as with the pin 0 before and after the window; with
+                 the pin 0, ``mip.MSIP`` reads 0
+                 (``hw/sys/sep/doc/interrupts.adoc:291-292``: the pin drives
+                 ``mip.MSIP``; ``:261``: the pin bypasses the PIC; RISC-V
+                 privileged spec section 3.1.9: no trap with ``mie.MSIE`` 0).
 
 Open-value leg (logged, not graded): the priord flip leg arms a drawn source
 set at drawn ``meipl`` values (never the never value of either order) in one
@@ -112,13 +142,13 @@ write and sets mstatus.MIE. ``CTRL-PRIORD-PENDING`` (fails the leaf) needs
 in ``meip`` before the flip, 0 before the raise, and no handler run with
 mstatus.MIE 0. ``CTRL-PRIORD-FLIP`` (fails the leaf)
 needs ``mpiccfg.priord`` to read the flipped order after the write.
-``OBS-PRIORD-PENDING`` logs the first claimed source and the handler order,
+``INFO-PRIORD-PENDING`` logs the first claimed source and the handler order,
 with the winner of each order from the priority model for reference. After
 both controls pass, the test raises the ``priord_flip_pending`` bin of
 ``sep_open_value_leg_cg``.
 
 The host also checks that each record of the threshold, nesting and timer
-legs carries the drawn stimulus. Log only: ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
+legs carries the drawn stimulus. Log only: ``INFO-INT-TIMER-TRAP-LATENCY``. Expected values
 come from the drawn stimulus and the priority model, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
 Verilator and VCS.
 
@@ -146,6 +176,7 @@ from env.sep_fcov_gate import (
     PFP_NEST,
     PFP_RESET,
     PFP_ROUND,
+    PFP_SOFT,
     PFP_THRESHOLD,
     PFP_TIMER,
     close_graded_window,
@@ -201,6 +232,19 @@ IT_HOLD_MITB = 0
 PFP_HOLD_CLK = 2
 # Salt of the open-value leg draws, so the draws above keep their seed mapping.
 _LEG_SALT = 0x4F56_4C47 << 32
+# Salt of the cascade leg draws, so every other draw keeps its seed mapping.
+_CAS_SALT = 0x4341_5343 << 32
+# Salt of the cascade leg mitb0 draw, so every other draw keeps its seed mapping.
+_CAS_B0_SALT = 0x4341_4230 << 32
+# Cascade leg: mitcnt1 start H, below mitb1 - 1 (mitb1 0xFFFF_FFFF), so that
+# H + 1 stays below the bound; mitcnt0 starts K below mitb0. K covers the CSR
+# writes and the first read between the enable and the wrap.
+IT_CAS_HI_MAX = 0xFFFF_FFFD
+IT_CAS_K_MIN, IT_CAS_K_MAX = 512, 4095
+# Cascade leg mitb0 (B): above IT_CAS_K_MAX so that B - K is positive, and at
+# most 0x7FFF_FFFF so that B + K does not wrap and a plain 32-bit carry is far
+# from B.
+IT_CAS_B0_MIN, IT_CAS_B0_MAX = 0x0001_0000, 0x7FFF_FFFF
 # meipl values of the priord flip leg: none is the never value of either order.
 PF_RAWS = tuple(v for v in range(NUM_LEVELS) if v not in (never_value(0), never_value(1)))
 
@@ -237,6 +281,9 @@ class PrioCfg:
     pf_from: int = 0
     pf_srcs: list[int] = field(default_factory=list)
     pf_raws: list[int] = field(default_factory=list)
+    it_cas_hi: int = 0
+    it_cas_k: int = IT_CAS_K_MIN
+    it_cas_b0: int = IT_CAS_B0_MIN
 
     @classmethod
     def from_seed(cls, seed: int) -> "PrioCfg":
@@ -276,6 +323,12 @@ class PrioCfg:
         n = leg.randrange(2, S_MAX + 1)
         cfg.pf_srcs = leg.sample(CATALOG, n)
         cfg.pf_raws = leg.sample(PF_RAWS, n)
+        cas = SepSeededRng(seed ^ _CAS_SALT)
+        cfg.it_cas_hi = cas.randrange(0, IT_CAS_HI_MAX + 1)
+        cfg.it_cas_k = cas.randrange(IT_CAS_K_MIN, IT_CAS_K_MAX + 1)
+        cfg.it_cas_b0 = SepSeededRng(seed ^ _CAS_B0_SALT).randrange(
+            IT_CAS_B0_MIN, IT_CAS_B0_MAX + 1
+        )
         return cfg
 
     def _draw_tie(self, rng: SepSeededRng, r_eff1: int) -> None:
@@ -324,6 +377,7 @@ class PrioCfg:
         out += [LEG_HOLD_ITERS]
         pad = [0] * (S_MAX - len(self.pf_srcs))
         out += [self.pf_from, len(self.pf_srcs)] + self.pf_srcs + pad + self.pf_raws + pad
+        out += [self.it_cas_hi, self.it_cas_k, self.it_cas_b0]
         return out
 
     def draw_lines(self) -> list[str]:
@@ -339,7 +393,8 @@ class PrioCfg:
         out.append(
             f"INFO-DRAW LOG legs thr_src={self.thr_src} thr_t={self.thr_t} nest_a={self.nest_a} "
             f"nest_b={self.nest_b} nest_pl={self.nest_pl} it_first={self.it_first} "
-            f"it_bound={self.it_bound}"
+            f"it_bound={self.it_bound} it_cas_hi=0x{self.it_cas_hi:08x} it_cas_k={self.it_cas_k} "
+            f"it_cas_b0=0x{self.it_cas_b0:08x}"
         )
         out.append(
             f"INFO-DRAW LOG priord_flip from={self.pf_from} srcs={self.pf_srcs} raws={self.pf_raws}"
@@ -370,6 +425,9 @@ class PrioCfg:
             t = self.it_first ^ k
             got = (num("timer"), num("mitb"), num("bound"))
             exp = (t, self.it_bound[t], self.it_bound[t])
+        elif rec.name == "CHK-INT-TIMER-CASCADE":
+            got = (num("hi0"), num("k"), num("mitb0"))
+            exp = (self.it_cas_hi, self.it_cas_k, self.it_cas_b0)
         else:
             return None
         return None if got == exp else f"record {got} != drawn {exp}"
@@ -401,7 +459,13 @@ def _fmt(text: str) -> str:
 
 
 # Firmware checks whose records carry the drawn stimulus of their leg.
-_LEG_CHKS = ("CHK-THRESHOLD", "CHK-NEST", "CHK-INT-TIMER-HOLD", "CHK-INT-TIMER-TRAP")
+_LEG_CHKS = (
+    "CHK-THRESHOLD",
+    "CHK-NEST",
+    "CHK-INT-TIMER-HOLD",
+    "CHK-INT-TIMER-TRAP",
+    "CHK-INT-TIMER-CASCADE",
+)
 
 # The last check of each graded leg, and the pic_fw_pass bit that the pass of
 # every check of the leg releases.
@@ -412,6 +476,7 @@ _LEG_LAST = {
     "itimer_hold": ("CHK-INT-TIMER-HOLD", PFP_TIMER),
     "itimer_trap": ("CHK-INT-TIMER-TRAP", PFP_TIMER),
     "idle": ("CHK-NO-TIMER-TRAP", PFP_IDLE),
+    "soft_pin": ("CHK-SOFT-PIN", PFP_SOFT),
 }
 
 
@@ -436,7 +501,9 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         "CHK-NEST",
         "CHK-INT-TIMER-HOLD",
         "CHK-INT-TIMER-TRAP",
+        "CHK-INT-TIMER-CASCADE",
         "CHK-TIMER-PIN",
+        "CHK-SOFT-PIN",
         "CHK-LEVEL-SWEEP",
     )
 
@@ -681,7 +748,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         ids = _ids(flips[0].get("ids", "")) if len(flips) == 1 else []
         raws = dict(zip(cfg.pf_srcs, cfg.pf_raws, strict=True))
         self.logger.info(
-            "OBS-PRIORD-PENDING LOG priord_from=%d priord_to=%d raw=%s first=%s order=%s "
+            "INFO-PRIORD-PENDING LOG priord_from=%d priord_to=%d raw=%s first=%s order=%s "
             "winner_from=%d winner_to=%d",
             cfg.pf_from,
             cfg.pf_from ^ 1,
@@ -697,6 +764,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         cocotb.top.timer_int_i.value = 1 if int(kv["on"]) else 0
         self.logger.info("INFO-TINT-DRIVE LOG on=%d", int(kv["on"]))
 
+    async def _req_sint(self, kv: dict) -> None:
+        await RisingEdge(cocotb.top.clk_i)
+        cocotb.top.soft_int_i.value = 1 if int(kv["on"]) else 0
+        self.logger.info("INFO-SINT-DRIVE LOG on=%d", int(kv["on"]))
+
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = PrioCfg.from_seed(seed)
@@ -710,6 +782,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         close_graded_window(self.logger)
         set_pic_fw_pass(0, self.logger)
         self.con.on_request("tint", self._req_tint)
+        self.con.on_request("sint", self._req_sint)
         follower = cocotb.start_soon(self._label_follower())
         try:
             await self.boot_firmware(
@@ -725,6 +798,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             await self.con.stop()
             set_pic_fw_pass(0, self.logger)
             cocotb.top.timer_int_i.value = 0
+            cocotb.top.soft_int_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         prm = self.con.text_lines("INFO-PARAMS")
         want = f"seed=0x{seed & 0xFFFF_FFFF:08x} rounds={len(self.tcfg.rounds)}"
@@ -749,7 +823,9 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 "CHK-NEST": 1,
                 "CHK-INT-TIMER-HOLD": 4,
                 "CHK-INT-TIMER-TRAP": 2,
+                "CHK-INT-TIMER-CASCADE": 1,
                 "CHK-TIMER-PIN": 1,
+                "CHK-SOFT-PIN": 1,
                 "CHK-LEVEL-SWEEP": 32,
             }
         )
@@ -778,8 +854,8 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             trap_clk = int(rec.kv.get("trap_clk", -1))
             bound = int(rec.kv.get("bound", -1))
             self.logger.info(
-                "OBS-INT-TIMER-TRAP-LATENCY LOG timer=%s bound=%d trap_clk=%d "
-                "clocks_past_bound=%d (logged; no stated latency)",
+                "INFO-INT-TIMER-TRAP-LATENCY LOG timer=%s bound=%d trap_clk=%d "
+                "clocks_past_bound=%d chk=CHK-INT-TIMER-TRAP",
                 rec.kv.get("timer"),
                 bound,
                 trap_clk,

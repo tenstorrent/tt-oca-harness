@@ -56,6 +56,13 @@ Checkers:
                    KM_IRQ_STATUS bit, a write of 1 clears it; a write of 1
                    clears the KM_STATUS bit after a second event. Each clear is
                    graded only after a read of 1.
+  CHK-KMBOX-COUPLING per error pass: the KM_STATUS sticky bit stays 1 after
+                   the W1C of the KM_IRQ_STATUS bit of the same event; the two
+                   are separate sticky fields
+                   (``hw/ip/key_manager/regs/km_mailbox_km.rdl:158-204``,
+                   ``:258-300``). Its control (CTRL-KMBOX-COUPLING-PRE) needs
+                   the KM_STATUS bit read 1 before the IRQ clear and the
+                   KM_IRQ_STATUS bit read 1, then 0 after its W1C.
   CHK-KMBOX-FLUSH  per flush cell (KM or SEP flush, FIFOs both empty, one
                    non-empty, both non-empty): KM flush: both FIFOs read empty
                    on both sides and KM_CTRL.flush reads 0; SEP flush: the
@@ -81,9 +88,10 @@ raises CPU IRQ 3 and sets IRQ_STATUS.DRBG_ERR; KMCSR IRQ_STATUS shows no
 AXI_DECERR at any publish of the image and no AXI_SLVERR outside the error
 passes, so no counted KM readback had an error response.
 
-Log only: the read data of the empty reads, the value of the other sticky
-register after a clear (the coupling of the KM_STATUS and KM_IRQ_STATUS
-sticky bits is not stated), the flush poll counts, the reset value of the
+Log only: the read data of the empty reads, the KM_IRQ_STATUS bit after the
+KM_STATUS clear and the response of the second error access
+(INFO-KMBOX-COUPLING; no read shows the IRQ bit set before the KM_STATUS
+clear), the flush poll counts, the reset value of the
 level bits, and the reserved bits of every KM-side readback with their mask.
 
 Open-value leg (logged, not graded; its control fails the leaf). Flush race,
@@ -99,7 +107,7 @@ the attempt; the flush window is the clocks from the start of the host
 SEP_CTRL write to its response.
   CTRL-KMBOX-FLUSH-RACE  in one attempt the KM write handshake falls inside the
                    flush window and the image saw flushed_by_sep.
-  OBS-KMBOX-FLUSH-RACE   per attempt: d, the host delay, the write clock, the
+  INFO-KMBOX-FLUSH-RACE   per attempt: d, the host delay, the write clock, the
                    window, KM_STATUS right after the write and after the flush,
                    KM_IRQ_STATUS before and after the write of 1 to
                    flushed_by_sep, and the words the host drained from
@@ -110,7 +118,7 @@ SEP_CTRL write to its response.
 KM CPU ready mux (the bench counters ``km_{rom,sram,axi}_ready_{on,off}_target_count_o``,
 read at the end of the leaf): ``CTRL-KM-READY-TAP`` requires each on-target
 count to be non-zero (the image fetched from ROM, wrote KM SRAM and reached the
-mailbox through the AXI adapter); ``OBS-KM-READY-OFFTGT`` logs the three
+mailbox through the AXI adapter); ``INFO-KM-READY-OFFTGT`` logs the three
 off-target counts. ``architecture.adoc`` does not state whether a memory source
 may drive ready without a request for it.
 
@@ -178,6 +186,7 @@ _REQUIRED = (
     "CHK-KMBOX-OUT",
     "CHK-KMBOX-IN",
     "CHK-KMBOX-ERR",
+    "CHK-KMBOX-COUPLING",
     "CHK-KMBOX-FLUSH",
     "CHK-KMBOX-IRQ",
     "CHK-NONVAC",
@@ -379,7 +388,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                 f"check={_h(want[0])} n={want[1]} m={want[2]}"
             )
         self.rst = r[:5]
-        self.chk.obs("KMBOX-RST-LEVEL", level_logged=f"0x{r[4] & m.IRQ_LEVEL:x}")
+        self.chk.info("KMBOX-RST-LEVEL", level_logged=f"0x{r[4] & m.IRQ_LEVEL:x}")
         self._rsvd("KM_STATUS", r[0], m.ST_FIELDS)
         self._rsvd("KM_CTRL", r[1], m.CTRL_FIELDS)
         self._rsvd("KM_IRQ_ENABLE", r[2], m.EN_FIELDS)
@@ -581,7 +590,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                     raise AssertionError("FIFO model holds an inbound word before the underflow")
                 queue_ok = m.km_depths(r[9])[1] == 0 and m.fld(r[9], m.ST_IN_EMPTY) == 1
                 queue = m.km_depths(r[9])[1]
-                self.chk.obs(
+                self.chk.info(
                     "KMBOX-UDF-DATA", resp=resp, first_read=_h(r[7]), second_read=_h(r[14])
                 )
             sticky = [int(bool(r[9] & st_bit)), int(bool(r[10] & irq_bit))]
@@ -611,10 +620,26 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                 km_status_clear=st_clear,
                 pre_clear_reads=pre_clear,
             )
-            self.chk.obs(
+            st_before_irq_clear = int(bool(r[9] & st_bit))
+            st_after_irq_clear = int(bool(r[13] & st_bit))
+            self._ctrl(
+                "KMBOX-COUPLING-PRE",
+                bool(st_before_irq_clear) and w1c,
+                condition=cond,
+                km_status_before_irq_clear=st_before_irq_clear,
+                irq_w1c_clears=w1c,
+            )
+            self.chk.ok(
+                "KMBOX-COUPLING",
+                st_before_irq_clear == 1 and w1c and st_after_irq_clear == 1,
+                condition=cond,
+                km_status_before_irq_clear=st_before_irq_clear,
+                irq_w1c_clears=w1c,
+                km_status_after_irq_clear=st_after_irq_clear,
+            )
+            self.chk.info(
                 "KMBOX-COUPLING",
                 condition=cond,
-                km_status_after_irq_clear=int(bool(r[13] & st_bit)),
                 km_irq_after_status_clear=int(bool(r[18] & irq_bit)),
                 slverr_second=int(bool(r[15] & m.CSR_SLVERR)),
             )
@@ -735,7 +760,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                     and w1c
                 )
                 fields.update(km_depths=km_post, sep_depths=sep_post_d, km_flush_bit=flush_bit)
-                self.chk.obs("KMBOX-FLUSH-TIME", init=init, cell=cell, km_ctrl_polls=r[6])
+                self.chk.info("KMBOX-FLUSH-TIME", init=init, cell=cell, km_ctrl_polls=r[6])
             else:
                 poll_ok = not (sep_ctrl_last & m.S_CTRL_FLUSH)
                 ok = (
@@ -756,7 +781,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                     control_sep_flush_bit=int(bool(sep_ctrl_last & m.S_CTRL_FLUSH)),
                     flushed_seen=r[11],
                 )
-                self.chk.obs("KMBOX-FLUSH-TIME", init=init, cell=cell, sep_ctrl_polls=polls)
+                self.chk.info("KMBOX-FLUSH-TIME", init=init, cell=cell, sep_ctrl_polls=polls)
             self.chk.ok("KMBOX-FLUSH", ok, **fields)
             for i in (3, 7):
                 self._rsvd("KM_STATUS", r[i], m.ST_FIELDS)
@@ -841,7 +866,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             "km_irq_after_clear": _h(r[6]),
             "drained": drained,
         }
-        self.chk.obs("KMBOX-FLUSH-RACE", **rec)
+        self.chk.info("KMBOX-FLUSH-RACE", **rec)
         self._rsvd("KM_STATUS", r[2] | r[4], m.ST_FIELDS)
         self._rsvd("KM_IRQ_STATUS", r[5] | r[6], m.IRQ_FIELDS)
         await self._sync()
@@ -903,7 +928,7 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
             on[f"{src}_on"] = self.rd(getattr(dut, f"km_{src}_ready_on_target_count_o"))
             off[f"{src}_off"] = self.rd(getattr(dut, f"km_{src}_ready_off_target_count_o"))
         self.chk.ctrl("KM-READY-TAP", all(on.values()), **on)
-        self.chk.obs("KM-READY-OFFTGT", **off)
+        self.chk.info("KM-READY-OFFTGT", **off)
 
     # Steps 9 to 13.
     async def _step_irq(self) -> None:

@@ -887,8 +887,8 @@ class sep_boot_release_terms_test(sep_base_test):
         )
         await self._sense_status_post("final", self.n_polls)
 
-    async def _obs_smc_presense(self) -> None:
-        """OBS-SMC-PRESENSE-RESP: one LSU read inside the SMC aperture while the SMC input is 0.
+    async def _info_smc_presense(self) -> None:
+        """INFO-SMC-PRESENSE-RESP: one LSU read inside the SMC aperture while the SMC input is 0.
 
         ``sep_cpu_ctrl.adoc`` tells software to wait for
         ``smc_fuse_sense_done`` before a request to the SMC, and states that
@@ -919,7 +919,7 @@ class sep_boot_release_terms_test(sep_base_test):
         n_ar = tap.count(mark, "ar")
         await tap.stop()
         self.logger.info(
-            "OBS-SMC-PRESENSE-RESP input=%s addr=0x%08x pr_smc_ar=%d",
+            "INFO-SMC-PRESENSE-RESP input=%s addr=0x%08x pr_smc_ar=%d",
             level,
             self.smc_word,
             n_ar,
@@ -974,7 +974,7 @@ class sep_boot_release_terms_test(sep_base_test):
 
             await self._sense_status(hold)
             if hold:
-                await self._obs_smc_presense()
+                await self._info_smc_presense()
             set_rel_terms_pass(0, self.logger)
         except AssertionError:
             # The first FAIL closes the graded window before it fails the leaf.

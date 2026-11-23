@@ -4,7 +4,8 @@
 /*
  * Sends OCCP requests with an invalid MsgID, an invalid AppID, and both, and checks that the
  * ROM rejects each and logs the expected number of error entries in the SMC status buffer.
- * With the status-reporting-disable strap set, the status-buffer check is skipped.
+ * With the STATUS_RPT_DISABLE strap set, the status-buffer check is replaced by one GET_SMC_STATUS
+ * that must return Unsupported_StatusID.
  */
 
 #include "occp_test_common.h"
@@ -15,7 +16,13 @@ int exp_num_cmd_unknown_errors = 0;
 static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
     simputs("=== Reading and validating SMC status buffer ===\n");
     if (ctx->status_reporting_disabled) {
-        simputs("STATUS_RPT_DISABLE strap active; skipping SMC status buffer validation\n");
+        uint32_t rejected_status;
+        simputs("STATUS_RPT_DISABLE strap active; expecting GET_SMC_STATUS to be rejected\n");
+        if (occp_send_get_smc_status_command(ctx, ctx->slave_addr, &rejected_status) !=
+            OCCP_SUCCESS) {
+            simputs("FAIL: GET_SMC_STATUS not rejected with OCCP_UNSUPPORTED_STATUS\n");
+            ctx->overall_result = false;
+        }
         return;
     }
     uint32_t status_data = 0xdeadbeef;

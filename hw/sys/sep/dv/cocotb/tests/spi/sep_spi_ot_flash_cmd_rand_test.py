@@ -67,7 +67,7 @@ Checks:
                            returns the seeded words, and ERROR_STATUS stays 0.
     RXDATA order       : CHK-JEDEC fixes the in-word order of RXDATA from the
                            JEDEC ID word (the ID bytes and a zero pad in one
-                           order) and prints ``OBS-SPI-BYTEORDER fw order=``;
+                           order) and prints ``INFO-SPI-BYTEORDER fw order=``;
                            CHK-RDSR, CHK-WRDI, CHK-WEL-AUTOCLR, CHK-RDSR2,
                            CHK-ERR-RECOVER and CHK-SPI-LANE-READ take each
                            response byte in that order, and the bytes past the
@@ -103,7 +103,7 @@ Checks:
     (``SepSpiByteOrder`` of ``env/sep_spi_lane_responder.py``). The leaf
     takes the firmware's order with ``adopt``; an order that differs from the
     one the TX words showed fails CHK-SPI-SB-RX. Which order is not graded:
-    one OBS-SPI-BYTEORDER line per leaf logs it. The opcode and address bytes
+    one INFO-SPI-BYTEORDER line per leaf logs it. The opcode and address bytes
     in TXDATA[7:0] first, and the WIP poll of the flash driver, are stimulus
     that assumes the order with the first byte in bits 7:0.
     CHK-SPI-LANE-FW      : the firmware console holds exactly one PASS line per
@@ -168,7 +168,7 @@ _LANE_MAX = 5  # LANE_MAX in the firmware
 # Sectors of the lane leg: above the standard leg's sectors (1..31 and their
 # neighbours), inside the 16 MiB flash model.
 _LANE_SECTORS = range(32, 4096)
-_FW_ORDER = re.compile(r"OBS-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided)")
+_FW_ORDER = re.compile(r"INFO-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided)")
 _LANE_LINE = re.compile(
     r"(CHK-SPI-LANE-(?:READ|PROGRAM)) PASS: op=0x([0-9a-f]{8}) width=x(\d) "
     r"words=0x([0-9a-f]{8}) bytes=0x([0-9a-f]{8})"
@@ -458,7 +458,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             for entry in cfg.lanes:
                 await spi_lane_fcov(_TEST, "opcode", lanes=entry.lanes, opcode=entry.opcode)
                 await spi_lane_fcov(_TEST, "data", lanes=entry.lanes, rx=not entry.is_program)
-        order.log_obs(self.logger, self.random_seed())
+        order.log_info(self.logger, self.random_seed())
 
     def _adopt_fw_order(self, order: SepSpiByteOrder) -> None:
         """Take the firmware's RXDATA order; it must equal the order the leaf saw."""
@@ -467,7 +467,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         if len(found) != 1:
             raise AssertionError(
                 f"CTRL-MISSING seed={self.random_seed()}: {len(found)} firmware "
-                f"OBS-SPI-BYTEORDER line(s), expected 1. Console was:\n{console}"
+                f"INFO-SPI-BYTEORDER line(s), expected 1. Console was:\n{console}"
             )
         if found[0] == "undecided":
             return

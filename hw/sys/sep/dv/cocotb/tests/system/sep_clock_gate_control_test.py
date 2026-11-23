@@ -14,8 +14,7 @@ Every CLOCK_GATE_CTRL readback after an enable write reads both halves of the
 64-bit register without a mask. The graded value is the one specified field,
 pka_cg_enable (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:92, RW, reset 0x0), which
 must equal the written bit. Bits 63:1 are Reserved with no stated reset, access
-or read value (sep_cpu_ctrl.adoc:91), so every readback, the one after the
-all-ones write included, logs them as an OBS value only.
+or read value (sep_cpu_ctrl.adoc:91), so no readback grades them.
 
 FCOV: every check runs first with the graded window closed. Only after all of
 them pass does the leaf open the window (owner FcovOwnSepClockGateControlTest)
@@ -59,18 +58,10 @@ class sep_clock_gate_control_test(sep_base_test):
             raise AssertionError(msg)
 
     async def _read_back(self, gate: SepClockGate, chk: str, enable: int) -> tuple[int, int]:
-        """Read both halves after a write of ``enable``; grade pka_cg_enable, log the rest."""
+        """Read both halves after a write of ``enable``; grade pka_cg_enable."""
         want = enable & CLOCK_GATE_MASK
         hi = await gate.read_raw(CLOCK_GATE_CTRL_HI)
         lo = await gate.read_raw(CLOCK_GATE_CTRL)
-        self.logger.info(
-            "OBS-CG-RSVD: %s wrote %d, Reserved bits read 0x%08x (lower half) / 0x%08x "
-            "(upper half); no stated value, not graded",
-            chk,
-            enable,
-            lo & ~CLOCK_GATE_MASK & _WORD_MASK,
-            hi,
-        )
         self._grade(
             (lo & CLOCK_GATE_MASK) == want,
             f"{chk} FAIL: pka_cg_enable wrote {enable}, read 0x{lo & CLOCK_GATE_MASK:x} "
@@ -127,7 +118,7 @@ class sep_clock_gate_control_test(sep_base_test):
 
         # CHK-STORAGE, all-ones leg: drive all ones into both 32-bit halves. The
         # pka_cg_enable field must read 1. The Reserved bits 63:1 have no stated
-        # access or read value, so their readback is logged, not graded.
+        # access or read value, so their readback is not graded.
         # No document states the response of these writes, so this leaf logs it;
         # the pka_cg_enable readback below grades the lower-half write.
         resp = {}
@@ -138,7 +129,7 @@ class sep_clock_gate_control_test(sep_base_test):
             except AssertionError:
                 resp[half] = "not_OKAY"
         self.logger.info(
-            "OBS-CG-ALLONES-WR-RESP LOG lower=0x%08x resp=%s upper=0x%08x resp=%s wdata=0xffffffff",
+            "INFO-CG-ALLONES-WR-RESP LOG lower=0x%08x resp=%s upper=0x%08x resp=%s wdata=0xffffffff",
             CLOCK_GATE_CTRL,
             resp["lower"],
             CLOCK_GATE_CTRL_HI,
@@ -146,12 +137,6 @@ class sep_clock_gate_control_test(sep_base_test):
         )
         hi = await gate.read_raw(CLOCK_GATE_CTRL_HI)
         lo = await gate.read_raw(CLOCK_GATE_CTRL)
-        self.logger.info(
-            "OBS-CG-RSVD-ALLONES: all-ones write to both halves, Reserved bits read 0x%08x "
-            "(lower half) / 0x%08x (upper half); no stated value, not graded",
-            lo & ~CLOCK_GATE_MASK & _WORD_MASK,
-            hi,
-        )
         self._grade(
             (lo & CLOCK_GATE_MASK) == CLOCK_GATE_MASK,
             f"CHK-STORAGE FAIL: all-ones write, pka_cg_enable read "

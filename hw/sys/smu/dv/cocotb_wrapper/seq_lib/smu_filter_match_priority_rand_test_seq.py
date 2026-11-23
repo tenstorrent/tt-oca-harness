@@ -32,10 +32,10 @@ S2..S4: SYS_IN admit (lower entry permit over a higher entry deny on one window)
     (entry_enabled, range one granule up and down at both granules, allow_ns, src_id,
     allow_burst), permission per channel, priority in both programming orders, src_id 0 wildcard.
 S5..S9: SMC outbound reset-entry iDMA copy and bridge polarity probe, admit, term breaks of a deny
-    entry (an unmatched access passes), measured-only allow_ns and src_id cells, permission,
+    entry (an unmatched access passes), graded allow_ns and src_id cells, permission,
     priority, and the iDMA allow_burst cell (last: a refused copy may not complete).
-S10..S13: SEP outbound debug bring-up and polarity probe, admit, term breaks, measured-only
-    cells, permission, priority.
+S10..S13: SEP outbound debug bring-up and polarity probe, admit, term breaks, the graded
+    allow_ns cell and the measured-only non-zero src_id cell, permission, priority.
 S14: every bounded wait reports its bound, its use and its last state.
 """
 
@@ -196,6 +196,12 @@ ALLOWED_INDICES = {
 }
 # Unmatched-traffic policy of each instance (index.adoc instance table).
 UNMATCHED_BLOCKED = {SYS_IN: True, SMC_OUT: False, SEP_OUT: True}
+# The bridge's direct-path source ID (hw/sys/smc/doc/fabric.adoc, "SMC Source ID by Traffic
+# Path"): the one non-zero src_id an SMC outbound entry matches.
+SMC_SOURCE_ID = 0x3
+# The AxPROT[1] of a 32-bit system-bus address at the SEP outbound filter: the inverse of
+# address bit 55 (hw/sys/sep/doc/fabric.adoc, "Source ID and NS of SEP outbound traffic").
+SEP_OUT_NS = 1
 
 # index.adoc "Address Range Granule": 4 KB with allow_burst 1, 8 bytes with allow_burst 0.
 GRANULE_4K = 1 << FILTER_BURST_GRANULE_BITS
@@ -311,6 +317,10 @@ def draw_cells(seed: int) -> dict:
             cell["wild_users"] = rng.sample(
                 [u for u in range(1, SRC_ID_MAX) if u != cell["user"]], 2
             )
+        elif inst == SMC_OUT:
+            cell["meas_src_id"] = rng.choice(
+                [v for v in range(1, SRC_ID_MAX + 1) if v != SMC_SOURCE_ID]
+            )
         else:
             cell["meas_src_id"] = rng.randint(1, SRC_ID_MAX)
         out[inst] = cell
@@ -350,6 +360,7 @@ def check_cells(cells: dict) -> None:
             assert all(0 <= u <= SRC_ID_MAX for u in users)
         else:
             assert 1 <= cell["meas_src_id"] <= SRC_ID_MAX
+            assert inst != SMC_OUT or cell["meas_src_id"] != SMC_SOURCE_ID
 
 
 def _config(
@@ -1014,26 +1025,74 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             evidence="CHK-FMATCH-TERMS",
         )
         if inst != SYS_IN:
-            await self._measured(inst)
+            await self._walked(sb, inst)
 
-    async def _measured(self, inst: str) -> None:
-        """The refusing allow_ns value and a non-zero src_id: logged, not compared."""
+    async def _walked(self, sb, inst: str) -> None:
+        """The refusing allow_ns value and non-zero src_id values, each alone on the lower entry
+        and probed with one AW. The refusing allow_ns is graded on both instances: allow_ns is an
+        equality test, so the entry matches nothing and the access takes the instance's
+        unmatched-traffic policy, permitted on SMC outbound and blocked on SEP outbound
+        (hw/ip/axi_filter/doc/index.adoc, "Match, Then Permit" and the instance table); on SEP
+        outbound the refusing value is allow_ns 0, since every 32-bit system-bus address reaches
+        the filter with AxPROT[1] 1, the inverse of address bit 55 (hw/sys/sep/doc/fabric.adoc,
+        "Source ID and NS of SEP outbound traffic"), which S10 graded. On SMC outbound two src_id
+        values are graded: the pinned 3, the bridge's direct-path source ID SMC_ID
+        (hw/sys/smc/doc/fabric.adoc, "SMC Source ID by Traffic Path"), matches and the entry's
+        write_allowed (0 here) blocks the AW; the drawn value, never 3, leaves the access
+        unmatched, permitted. The SEP's source ID is stated by no document, so its drawn non-zero
+        src_id cell is logged only."""
         cell = self.cells[inst]
-        lo, ab = cell["lo"], cell["ab"]
+        lo, ab, src = cell["lo"], cell["ab"], cell["meas_src_id"]
         permit = 0 if inst == SMC_OUT else 1
         addr = self._edges(inst, ab)["low edge"]
-        out = {}
-        for label, kw in (
-            ("allow_ns other value", {"allow_ns": self.ns[inst] ^ 1}),
-            (f"src_id {cell['meas_src_id']}", {"src_id": cell["meas_src_id"]}),
-        ):
+        src_label = f"src_id {src}"
+        graded = {"allow_ns other value": not UNMATCHED_BLOCKED[inst]}
+        probes = [("allow_ns other value", {"allow_ns": self.ns[inst] ^ 1})]
+        if inst == SMC_OUT:
+            probes.append((f"src_id {SMC_SOURCE_ID}", {"src_id": SMC_SOURCE_ID}))
+            graded[f"src_id {SMC_SOURCE_ID}"] = bool(permit)
+            graded[src_label] = True
+        probes.append((src_label, {"src_id": src}))
+        obs, exp, logged, out = {}, {}, {}, {}
+        for label, kw in probes:
             cfg = self._base(inst, ab, read=permit, write=permit, **kw)
             await self._program(inst, lo, self.win[inst][ab], cfg)
-            o, _ = await self._probe(inst, AW, addr, True)
-            self.verdicts[inst]["admitted"] -= 1
+            admitted = graded.get(label, True)
+            o, e = await self._probe(inst, AW, addr, admitted)
+            self.verdicts[inst]["admitted" if admitted else "blocked"] -= 1
             out[label] = o
+            if label in graded:
+                obs[label], exp[label] = o, e
+            else:
+                logged[label] = o
         await self._program(inst, lo, config=self._base(inst, ab, read=permit, write=permit))
-        self._log(f"OBSERVATION {inst} measured only (no document states the outcome): {out}")
+        if inst == SMC_OUT:
+            text = (
+                f"entry {lo} alone (deny): allow_ns differing from the bridge's AxPROT[1] matches "
+                f"nothing and the unmatched AW passes (index.adoc, Match, Then Permit; the SMC "
+                f"outbound instance permits unmatched traffic); src_id {SMC_SOURCE_ID} is the "
+                f"bridge's SMC_ID and write_allowed 0 blocks the AW; src_id {src} is not the "
+                "bridge's SMC_ID, so the unmatched AW passes (smc fabric.adoc, SMC Source ID by "
+                "Traffic Path)"
+            )
+        else:
+            text = (
+                f"entry {lo} alone (permit): allow_ns {SEP_OUT_NS ^ 1}, differing from the "
+                f"AxPROT[1] {SEP_OUT_NS} every 32-bit system-bus address carries at the filter "
+                "(the inverse of address bit 55, sep fabric.adoc, graded at S10), matches nothing "
+                "and the unmatched AW is refused (index.adoc, Match, Then Permit; the SEP outbound "
+                "instance blocks unmatched traffic)"
+            )
+        self._chk(sb, "CHK-FMATCH-TERMS", inst, obs, exp, text, evidence="CHK-FMATCH-TERMS")
+        note = (
+            f"; measured only {sorted(logged)} (no document states the SEP's source ID)"
+            if logged
+            else ""
+        )
+        self._log(
+            f"OBSERVATION {inst} walked cells graded {sorted(obs)} under CHK-FMATCH-TERMS{note}; "
+            f"outcomes {out}"
+        )
 
     async def _perm(self, sb, inst: str) -> None:
         cell = self.cells[inst]
@@ -1312,10 +1371,24 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             f"OBSERVATION SEP_OUT system-bus polarity admitted={admitted}; AxPROT[1] of the probe "
             f"at the egress tap per allow_ns={tapped}"
         )
-        if sum(admitted.values()) != 1:
-            raise AssertionError(f"SEP_OUT polarity probe: admitted={admitted}, want exactly one")
-        self.ns[SEP_OUT] = 0 if admitted[0] else 1
-        self._cross_check_polarity(SEP_OUT, self.ns[SEP_OUT], self.ns[SEP_OUT], tapped)
+        # The document states the value: NS is the inverse of address bit 55, so a 32-bit
+        # system-bus address reaches the SEP outbound filter with AxPROT[1] 1 and the permit
+        # entry with allow_ns 1 is the one that admits (hw/sys/sep/doc/fabric.adoc, "Source ID
+        # and NS of SEP outbound traffic"; hw/ip/axi_filter/doc/index.adoc, "Match, Then Permit").
+        self.test.env.scoreboard.expect_eq(
+            f"CHK-FMATCH-TERMS SEP_OUT polarity probe: the permit entry with allow_ns "
+            f"{SEP_OUT_NS} admits the system bus and allow_ns {SEP_OUT_NS ^ 1} refuses it "
+            f"(AxPROT[1] {SEP_OUT_NS} on a 32-bit system-bus address, the inverse of address bit "
+            f"55, sep fabric.adoc), the admitted probe carries AxPROT[1] {SEP_OUT_NS} at the "
+            "egress tap and the refused probe reaches the tap with nothing",
+            (admitted, tapped),
+            (
+                {SEP_OUT_NS ^ 1: False, SEP_OUT_NS: True},
+                {SEP_OUT_NS ^ 1: [], SEP_OUT_NS: [SEP_OUT_NS]},
+            ),
+            evidence="CHK-FMATCH-TERMS",
+        )
+        self.ns[SEP_OUT] = SEP_OUT_NS
         await self._disable(SEP_OUT, cell["lo"])
 
     def _timeout_paths(self, sb) -> None:
@@ -1346,6 +1419,8 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         await self._mark("S1", "SETUP: TAP, JTAG2AXI gate, SMC aperture alias, master, tap")
         try:
             await self._s1()
+            # smu_filter_match_cg samples the probes of S2 to S13 only.
+            self.dut.tb_fcov_gate.value = 1
             await self._mark("S2", "SYS_IN admit and register read-back")
             await self._admit(sb, SYS_IN)
             await self._mark("S3", "SYS_IN term breaks")
@@ -1358,7 +1433,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             await self._smc_setup()
             await self._mark("S6", "SMC_OUT admit and register read-back")
             await self._admit(sb, SMC_OUT)
-            await self._mark("S7", "SMC_OUT term breaks and measured cells")
+            await self._mark("S7", "SMC_OUT term breaks and graded allow_ns and src_id cells")
             await self._terms(sb, SMC_OUT)
             await self._mark("S8", "SMC_OUT permission and priority")
             await self._perm(sb, SMC_OUT)
@@ -1369,7 +1444,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             await self._sep_setup()
             await self._mark("S11", "SEP_OUT admit and register read-back")
             await self._admit(sb, SEP_OUT)
-            await self._mark("S12", "SEP_OUT term breaks and measured cells")
+            await self._mark("S12", "SEP_OUT term breaks, graded allow_ns, measured-only src_id")
             await self._terms(sb, SEP_OUT)
             await self._mark("S13", "SEP_OUT permission, priority, wildcard")
             await self._perm(sb, SEP_OUT)
@@ -1387,6 +1462,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             await self._mark("S14", "TIMEOUT: bounded waits and last state")
             self._timeout_paths(sb)
         finally:
+            self.dut.tb_fcov_gate.value = 0
             if self.tap is not None:
                 self.tap.stop()
         await ClockCycles(self.clk, STEP_CLOCK_GAP)

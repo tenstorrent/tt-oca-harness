@@ -155,8 +155,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-                    error. Write `1` to clear.";
+            desc = "Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+                    integrity error: a parity mismatch on the entry at its head, or a pointer
+                    mismatch in its hardened counter. The parity error clears once that entry is
+                    read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+                    clear; the field stays set while the error persists.";
         } CONTROLLER_TX_FIFO_ERROR[16:16] = 0x0;
 
         field {
@@ -164,8 +167,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-                    error. Write `1` to clear.";
+            desc = "Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+                    integrity error: a parity mismatch on the entry at its head, or a pointer
+                    mismatch in its hardened counter. The parity error clears once that entry is
+                    read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+                    clear; the field stays set while the error persists.";
         } CONTROLLER_RX_FIFO_ERROR[17:17] = 0x0;
 
         field {
@@ -173,8 +179,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-                    Write `1` to clear.";
+            desc = "Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+                    error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+                    hardened counter. The parity error clears once that entry is read; the pointer
+                    error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+                    stays set while the error persists.";
         } TARGET_TX_FIFO_ERROR[18:18] = 0x0;
 
         field {
@@ -182,8 +191,11 @@ addrmap i2c {
             hw = rw;
             level intr;
             woclr;
-            desc = "Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-                    Write `1` to clear.";
+            desc = "Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+                    error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+                    hardened counter. The parity error clears once that entry is read; the pointer
+                    error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+                    stays set while the error persists.";
         } TARGET_RX_FIFO_ERROR[19:19] = 0x0;
     };
 
@@ -543,8 +555,9 @@ addrmap i2c {
                     environment. However, if this controller is known to be the first to join, this
                     ordering will enable skipping the idle wait.
 
-                    When `0`, the bus monitor will report that the bus is always free, so the
-                    Controller FSM is never blocked from transmitting.";
+                    When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+                    wait after a qualified STOP, so that wait is the only time the Controller FSM
+                    is blocked from transmitting.";
         } MULTI_CONTROLLER_MONITOR_EN[5:5] = 0x0;
 
         field {
@@ -937,10 +950,14 @@ addrmap i2c {
         field {
             sw = rw;
             hw = r;
-            desc = "Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-                    cycles. See Table 11 in the I2C Specification for details. This field is sized
-                    to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-                    requirement, assuming a 1 GHz system clock.";
+            desc = "Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+                    cycles: after driving a data or ACK bit, the target holds SCL low for
+                    `TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+                    not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+                    `t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+                    Specification for details. This field is sized to meet the I2C Standard-mode
+                    (100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+                    clock.";
         } TSU_DAT[8:0] = 0x0;
 
         field {
@@ -968,8 +985,18 @@ addrmap i2c {
         field {
             sw = rw;
             hw = r;
-            desc = "Global control: specifies the time between a STOP and START condition (`t_BUF`)
-                    in system clock cycles. See Table 11 in the I²C Specification for details. This
+            desc = "Global control: specifies the bus free time between a STOP and the following
+                    START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+                    Specification for details. The bus monitor starts this wait once SCL has stayed
+                    high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+                    holds a START back only while the wait runs. With
+                    `CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+                    Otherwise, a START behind the controller's own STOP waits only when that STOP
+                    is qualified before the controller takes the next FMT FIFO entry: when
+                    `THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+                    entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+                    entry already queued, the START follows the STOP's SDA rise after
+                    `TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
                     field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
                     requirement, assuming a 1 GHz system clock.";
         } T_BUF[28:16] = 0x0;
