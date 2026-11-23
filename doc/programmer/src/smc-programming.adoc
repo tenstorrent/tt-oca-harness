@@ -1548,7 +1548,8 @@ Thus `0x0` is secure unprivileged data, `0x1` secure privileged data, `0x2`
 non-secure unprivileged data, and `0x3` non-secure privileged data.
 
 . Choose `ACCESS_FILTER.awprot_requirement` and `arprot_requirement` for the
-  intended writers and readers. Both reset to `0x1`.
+  intended writers and readers. Both reset to `0x1`, the value every SMC
+  initiator issues, the CPU cores in every privilege mode included.
 . Set `write_filter_enable` and/or `read_filter_enable` to enforce those
   requirements. The current transaction must satisfy any filter already
   enabled.

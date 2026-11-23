@@ -6,7 +6,9 @@
 // With NO_ADDR_REMAP clear, requests inside the M-mode or Xvisor remap window at either SMC base go
 // through the matching output_remap, which rewrites the address and replaces AxUSER with the M-mode
 // or the other source ID; all other requests have AxUSER replaced with the SMC source ID; a mux
-// merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains. A
+// merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains.
+// AxPROT[1] (NS) is 1 on the Xvisor path and the inverse of address bit 55 of the outgoing address
+// on every other path; no path changes bit 55. A
 // clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port,
 // which it reaches through an axi_cut.
 
@@ -119,6 +121,13 @@ module smc_output_fabric #(
   smc_pkg::smc_output_56_64_8_12_axi_req_t  axi_filtered_req;
   smc_pkg::smc_output_56_64_8_12_axi_resp_t axi_filtered_resp;
 
+  function automatic smc_pkg::smc_56_64_6_12_axi_req_t set_ns_from_addr(
+      smc_pkg::smc_56_64_6_12_axi_req_t req);
+    req.aw.prot[1] = ~req.aw.addr[55];
+    req.ar.prot[1] = ~req.ar.addr[55];
+    return req;
+  endfunction
+
   /////////////////////////////
   // AXI-Lite Register Demux //
   /////////////////////////////
@@ -141,7 +150,7 @@ module smc_output_fabric #(
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
 
-      .axi_in_req_i       (axi_req_i),
+      .axi_in_req_i       (set_ns_from_addr(axi_req_i)),
       .axi_in_resp_o      (axi_resp_o),
       .axi_out_req_o      (axi_remapped_to_filter_req),
       .axi_out_resp_i     (axi_remapped_to_filter_resp)
@@ -272,7 +281,7 @@ module smc_output_fabric #(
       .axi_req_t        (smc_pkg::smc_56_64_6_12_axi_req_t),
       .axi_resp_t       (smc_pkg::smc_56_64_6_12_axi_resp_t)
     ) u_prim_axi_user_override_struct (
-      .axi_in_req_i   (axi_from_demux_req.filter),
+      .axi_in_req_i   (set_ns_from_addr(axi_from_demux_req.filter)),
       .axi_in_resp_o  (axi_from_demux_resp.filter),
       .axi_out_req_o  (axi_remap_out_req.filter),
       .axi_out_resp_i (axi_remap_out_resp.filter)
@@ -287,7 +296,8 @@ module smc_output_fabric #(
       .REGION_BASE        (MMODE_BASE_ADDR),
       .IDX_START          (smc_pkg::OutputRemapIdxStart),
       .USER_OVERRIDE_EN   (1'b1),
-      .USER_OVERRIDE_VAL  (smc_pkg::MmodeSrcId)
+      .USER_OVERRIDE_VAL  (smc_pkg::MmodeSrcId),
+      .PROT_NS_FROM_ADDR_EN(1'b1)
     ) u_mmode_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
@@ -310,7 +320,9 @@ module smc_output_fabric #(
       .REGION_BASE        (XVISOR_BASE_ADDR),
       .IDX_START          (smc_pkg::OutputRemapIdxStart),
       .USER_OVERRIDE_EN   (1'b1),
-      .USER_OVERRIDE_VAL  (smc_pkg::OthersSrcId)
+      .USER_OVERRIDE_VAL  (smc_pkg::OthersSrcId),
+      .PROT_NS_OVERRIDE_EN (1'b1),
+      .PROT_NS_OVERRIDE_VAL(1'b1)
     ) u_xvisor_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),

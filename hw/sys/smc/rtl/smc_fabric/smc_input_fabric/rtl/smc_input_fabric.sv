@@ -3,8 +3,9 @@
 
 // Route the SMC's inbound AXI initiators toward the local and output fabrics.
 //
-// Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, applies the alias
-// remap to those and the data accelerator port, muxes the four, and sends requests inside
+// Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, sets the AxPROT of the
+// JTAG, log and data accelerator ports to smc_pkg::SmcInitiatorProt, applies the alias remap to
+// those and the MMIO port, muxes the four, and sends requests inside
 // the local or global SMC window to the local output port truncated to 32 bits and all
 // others to the global output port. System inbound AXI passes a clock-gated access filter
 // that blocks by default; system and SEP requests outside the SMC window receive DECERR,
@@ -267,6 +268,17 @@ module smc_input_fabric #(
     .mst_resp_i         (log_axi_resp)
   );
 
+  //////////////////////
+  // Initiator AxPROT //
+  //////////////////////
+
+  function automatic smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t set_initiator_prot(
+      smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t req);
+    req.aw.prot = smc_pkg::SmcInitiatorProt;
+    req.ar.prot = smc_pkg::SmcInitiatorProt;
+    return req;
+  endfunction
+
   /////////////////
   // Alias Remap //
   /////////////////
@@ -275,16 +287,16 @@ module smc_input_fabric #(
   smc_pkg::input_fabric_mux_axi_resp_t        axi_to_input_mux_resp;
 
   smc_alias_remap_wrap u_smc_alias_remap_wrap (
-    .axi_in_jtag_req_i(axi_jtag_port_req_prepend_id),
+    .axi_in_jtag_req_i(set_initiator_prot(axi_jtag_port_req_prepend_id)),
     .axi_in_jtag_resp_o(axi_jtag_port_resp_prepend_id),
 
-    .axi_in_log_req_i(log_axi_req),
+    .axi_in_log_req_i(set_initiator_prot(log_axi_req)),
     .axi_in_log_resp_o(log_axi_resp),
 
     .axi_in_mmio_req_i(axi_mmio_port_req_prepend_id),
     .axi_in_mmio_resp_o(axi_mmio_port_resp_prepend_id),
 
-    .axi_in_data_accel_req_i(axi_in_data_accel_req_i),
+    .axi_in_data_accel_req_i(set_initiator_prot(axi_in_data_accel_req_i)),
     .axi_in_data_accel_resp_o(axi_in_data_accel_resp_o),
 
     .axi_out_remapped_mmio_req_o(axi_to_input_mux_req.mmio),
