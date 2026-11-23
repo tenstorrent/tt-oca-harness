@@ -1650,6 +1650,18 @@ module sep_uvm_top
     end
 
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
+    assign entropy_pool_axi_hs_o = {
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.r_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.r_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.ar_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.ar_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.b_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.b_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.w_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.w_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.aw_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.aw_valid
+    };
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_reset_active_probe_o =
@@ -4293,6 +4305,9 @@ module sep_uvm_top
     `ESRC_DECOR_NOISE_TAP(6);  `ESRC_DECOR_NOISE_TAP(7);  `ESRC_DECOR_NOISE_TAP(8);
     `ESRC_DECOR_NOISE_TAP(9);  `ESRC_DECOR_NOISE_TAP(10); `ESRC_DECOR_NOISE_TAP(11);
 `undef ESRC_DECOR_NOISE_TAP
+    //   * esrc_window_wrap_o: the entropy_source health-test window-wrap strobe
+    //     (window_wrap_pulse), 1 for the clk_i cycle that ends a window.
+    assign esrc_window_wrap_o = `SEP_ESRC.window_wrap_pulse;
     assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};
