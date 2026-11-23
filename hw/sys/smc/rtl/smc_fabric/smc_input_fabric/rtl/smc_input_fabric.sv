@@ -271,12 +271,28 @@ module smc_input_fabric #(
   // Initiator AxPROT //
   //////////////////////
 
-  function automatic smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t set_initiator_prot(
-      smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t req);
-    req.aw.prot = smc_pkg::SmcInitiatorProt;
-    req.ar.prot = smc_pkg::SmcInitiatorProt;
-    return req;
-  endfunction
+  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t axi_jtag_prot_req;
+  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t axi_log_prot_req;
+  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t axi_mmio_prot_req;
+  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t axi_data_accel_prot_req;
+
+  always_comb begin
+    axi_jtag_prot_req               = axi_jtag_port_req_prepend_id;
+    axi_jtag_prot_req.aw.prot       = smc_pkg::SmcInitiatorProt;
+    axi_jtag_prot_req.ar.prot       = smc_pkg::SmcInitiatorProt;
+
+    axi_log_prot_req                = log_axi_req;
+    axi_log_prot_req.aw.prot        = smc_pkg::SmcInitiatorProt;
+    axi_log_prot_req.ar.prot        = smc_pkg::SmcInitiatorProt;
+
+    axi_mmio_prot_req               = axi_mmio_port_req_prepend_id;
+    axi_mmio_prot_req.aw.prot       = smc_pkg::SmcInitiatorProt;
+    axi_mmio_prot_req.ar.prot       = smc_pkg::SmcInitiatorProt;
+
+    axi_data_accel_prot_req         = axi_in_data_accel_req_i;
+    axi_data_accel_prot_req.aw.prot = smc_pkg::SmcInitiatorProt;
+    axi_data_accel_prot_req.ar.prot = smc_pkg::SmcInitiatorProt;
+  end
 
   /////////////////
   // Alias Remap //
@@ -286,16 +302,16 @@ module smc_input_fabric #(
   smc_pkg::input_fabric_mux_axi_resp_t        axi_to_input_mux_resp;
 
   smc_alias_remap_wrap u_smc_alias_remap_wrap (
-    .axi_in_jtag_req_i(set_initiator_prot(axi_jtag_port_req_prepend_id)),
+    .axi_in_jtag_req_i(axi_jtag_prot_req),
     .axi_in_jtag_resp_o(axi_jtag_port_resp_prepend_id),
 
-    .axi_in_log_req_i(set_initiator_prot(log_axi_req)),
+    .axi_in_log_req_i(axi_log_prot_req),
     .axi_in_log_resp_o(log_axi_resp),
 
-    .axi_in_mmio_req_i(set_initiator_prot(axi_mmio_port_req_prepend_id)),
+    .axi_in_mmio_req_i(axi_mmio_prot_req),
     .axi_in_mmio_resp_o(axi_mmio_port_resp_prepend_id),
 
-    .axi_in_data_accel_req_i(set_initiator_prot(axi_in_data_accel_req_i)),
+    .axi_in_data_accel_req_i(axi_data_accel_prot_req),
     .axi_in_data_accel_resp_o(axi_in_data_accel_resp_o),
 
     .axi_out_remapped_mmio_req_o(axi_to_input_mux_req.mmio),
