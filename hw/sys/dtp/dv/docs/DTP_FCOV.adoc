@@ -115,6 +115,7 @@ checkers. Toggle and FSM coverage are not collected.
 |iJTAG SIBs |`cg_ijtag_sib` |`dtp_scan_fcov`
 |JTAG2AXI DMI status |`cg_j2a_dmi_status` |`dtp_j2a_fcov`
 |JTAG2AXI Debug Module access |`cg_j2a_dm_access` |`dtp_j2a_fcov`
+|JTAG2AXI System Bus Access |`cg_j2a_sba_access` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -495,6 +496,32 @@ update whose own scan captured status 0, which the bridge carries out. A
 value the access finds.
 `dtp_jtag2axi_dm_regs_test` reaches every `x_access` and `x_sbcs_ro` bin on
 each bridge in every pass.
+
+==== `cg_j2a_sba_access`
+
+*Description*: Covers the size, byte offset, and `sbautoincrement` of each bus
+access a JTAG2AXI bridge's Debug Module starts, and the autoincrements that
+carry from `sbaddress0` into `sbaddress1`.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_op` |`read`, `write`
+|`cp_size` |One bin per bridge and access size it supports: 1, 2, 4, and 8 bytes on the SMC fabric bridge, and 1, 2, and 4 bytes on each OTP bridge; a size wider than the bridge's data width, which starts no access, is an illegal bin
+|`cp_lane` |One bin per bridge, size, and offset in its beat aligned to the size: eight 1-byte, four 2-byte, two 4-byte, and one 8-byte on the SMC fabric bridge, and four 1-byte, two 2-byte, and one 4-byte on each OTP bridge; any other combination, which starts no access, is an illegal bin
+|`cp_autoinc` |`off`, `on`: the bridge's `sbautoincrement` at the access
+|`cp_carry` |`smc_axi_read`, `smc_axi_write`: the op of a completion whose autoincrement changes the address bits above bit 31; a carry on an OTP bridge, whose address is 32 bits wide, is an illegal bin
+|`x_lane` |`cp_lane` x `cp_op`
+|`x_autoinc` |`cp_size` x `cp_op` x `cp_autoinc`
+|===
+
+`dtp_j2a_fcov` takes each bridge's request to its bus adapter from its
+`tdr2axi` instance and samples on the bridges' system clock: an access when the
+adapter grants it, with the address modulo the bridge's beat as its offset, and
+a carry in the cycle a completion's autoincrement moves the address bits above
+bit 31, with the op of the access it completes.
+`dtp_jtag2axi_sba_sizes_test` reaches every `x_lane`, `x_autoinc`, and
+`cp_carry` bin in every pass.
 
 ==== `cg_ctp`
 
@@ -980,6 +1007,7 @@ review.
 |`jtag2axi` group |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi`, `cg_instruction_gate` bridge bins with `clear`
 |`dtp_jtag2axi_dmi_status_test` |`cg_j2a_dmi_status` `x_update` and `x_dmireset`
 |`dtp_jtag2axi_dm_regs_test` |`cg_j2a_dm_access` `x_access` and `x_sbcs_ro`
+|`dtp_jtag2axi_sba_sizes_test` |`cg_j2a_sba_access` `x_lane`, `x_autoinc`, and `cp_carry`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins

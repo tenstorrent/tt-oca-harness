@@ -353,6 +353,8 @@ localparam string DtpJ2aDtmCaptureCheckId = "CHK-J2A-DTM-CAPTURE";
 // The dmcontrol, sbcs, sbaddress and sbdata values a Debug Module register
 // read returns around a change of dmactive.
 localparam string DtpJ2aDmActiveCheckId = "CHK-J2A-DM-ACTIVE";
+// The sbaddress value after accesses with sbautoincrement.
+localparam string DtpJ2aAutoincCheckId = "CHK-J2A-AUTOINC";
 
 // One function per bridge: the widths come from the bench configuration
 // tb_top elaborates the DUT with (dtp_dv_cfg_pkg), and the TDR opcodes from

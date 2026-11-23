@@ -51,6 +51,7 @@ class dtp_test_cfg extends ocah_test_cfg;
   bit j2a_fault_status_negative;  // +DTP_J2A_FAULT_STATUS_NEGATIVE
   bit j2a_dtm_capture_negative;  // +DTP_J2A_DTM_CAPTURE_NEGATIVE
   bit j2a_dm_active_negative;  // +DTP_J2A_DM_ACTIVE_NEGATIVE
+  bit j2a_autoinc_negative;  // +DTP_J2A_AUTOINC_NEGATIVE
   bit jtag2axi_ref_model_negative;  // +DTP_J2A_REF_MODEL_NEGATIVE
   bit jtag2axi_status_model_negative;  // +DTP_J2A_STATUS_MODEL_NEGATIVE
   bit xtrig_csr_ref_model_negative;  // +DTP_XTRIG_CSR_REF_MODEL_NEGATIVE
@@ -93,6 +94,7 @@ class dtp_test_cfg extends ocah_test_cfg;
     j2a_fault_status_negative = ocah_knobs::is_set("DTP_J2A_FAULT_STATUS_NEGATIVE");
     j2a_dtm_capture_negative = ocah_knobs::is_set("DTP_J2A_DTM_CAPTURE_NEGATIVE");
     j2a_dm_active_negative = ocah_knobs::is_set("DTP_J2A_DM_ACTIVE_NEGATIVE");
+    j2a_autoinc_negative = ocah_knobs::is_set("DTP_J2A_AUTOINC_NEGATIVE");
     jtag2axi_ref_model_negative = ocah_knobs::is_set("DTP_J2A_REF_MODEL_NEGATIVE");
     jtag2axi_status_model_negative = ocah_knobs::is_set("DTP_J2A_STATUS_MODEL_NEGATIVE");
     xtrig_csr_ref_model_negative = ocah_knobs::is_set("DTP_XTRIG_CSR_REF_MODEL_NEGATIVE");

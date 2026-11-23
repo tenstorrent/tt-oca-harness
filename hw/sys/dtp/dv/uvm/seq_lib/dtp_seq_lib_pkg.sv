@@ -88,6 +88,7 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag2axi_single_write_read_test_seq.svh"
   `include "dtp_jtag2axi_dmi_status_test_seq.svh"
   `include "dtp_jtag2axi_dm_regs_test_seq.svh"
+  `include "dtp_jtag2axi_sba_sizes_test_seq.svh"
 
   // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
   `include "dtp_jtag_tmp_status_register_smoke_test_seq.svh"
