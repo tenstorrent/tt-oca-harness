@@ -262,7 +262,7 @@ def smc_otp_words(image: str) -> list[tuple[str, int]]:
     lo, hi = _image_words(image, 2)
     locks = {"LOCKS": lo | (hi << 32)}
     words = [(n, a) for n, a in words if not _read_locked(_SMC_EFUSE_MAP_H, n, locks)]
-    words += _block_words(_SMC_ADDR_H, "SMC_TOP_EFUSE_INTERFACE_CTRL", None)
+    words += _block_words(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL", None)
     return words
 
 
