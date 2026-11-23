@@ -5,7 +5,7 @@
 //
 // Exposes alias and output remap register hwifs, inbound and outbound filter ctrl/status,
 // aperture address/size outputs, NMI vector, external TRNG source select, Key Manager
-// wipe, and DMA/peripheral bus-error status/clear.
+// wipe, OTBN clock divide ratio, and DMA/peripheral bus-error status/clear.
 //
 // An AXI-Lite demux decodes the local-master alias remap, AP and STEE output remap, outbound
 // and inbound filter, sep_cpu_ctrl, and cold and warm scratch windows; any other address
@@ -69,6 +69,8 @@ module sep_system_csr (
 
   output logic km_wipe_state_o,               // KM_WIPE_CTRL.wipe_state register value; a rising
                                               // edge wipes the Key Manager.
+  output logic [7:0] pka_clk_div_o,           // PKA_CLK_DIV.div register value: the OTBN clock
+                                              // divide ratio.
 
   input  logic dma_reg_bus_err_i,             // Secure DMA register-path fault, reflected in
                                               // DMA_BUS_ERR_STATUS.reg_path_err.
@@ -841,6 +843,9 @@ module sep_system_csr (
 
   // KM_WIPE_CTRL
   assign km_wipe_state_o = sep_cpu_ctrl_hwif_out.KM_WIPE_CTRL.wipe_state.value;
+
+  // PKA_CLK_DIV
+  assign pka_clk_div_o = sep_cpu_ctrl_hwif_out.PKA_CLK_DIV.div.value;
 
   // DMA_BUS_ERR_STATUS / DMA_BUS_ERR_CLEAR
   assign sep_cpu_ctrl_hwif_in.DMA_BUS_ERR_STATUS.reg_path_err.next  = dma_reg_bus_err_i;

@@ -400,6 +400,7 @@ module sep #(
   logic lc_sigint_err;
   logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
   logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
+  logic [7:0] pka_clk_div; // OTBN clock divide ratio from sep_cpu_ctrl
   // Isolation handshake and sequenced resets between sep_reset_ctrl and sep_crypto
   sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req;
   sep_pkg::sep_crypto_isolate_t sep_crypto_isolated;
@@ -973,6 +974,7 @@ NumSramDemuxPorts
 
     .ext_trng_src_sel_i                     (ext_trng_src_sel),
     .km_wipe_state_i                        (km_wipe_state),
+    .pka_clk_div_i                          (pka_clk_div),
 
     // Crypto subsystem interrupts
     .intr_hmac_done_o                       (intr_hmac_done),
@@ -1132,6 +1134,7 @@ NumSramDemuxPorts
 
     .ext_trng_src_sel_o               (ext_trng_src_sel),
     .km_wipe_state_o                  (km_wipe_state),
+    .pka_clk_div_o                    (pka_clk_div),
 
     .dma_reg_bus_err_i                (dma_reg_bus_err),
     .dma_host_intg_err_i              (dma_host_intg_err),

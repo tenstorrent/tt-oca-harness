@@ -445,12 +445,14 @@ _EDN_ACK_CYCLES = 200_000
 # after the first URND acknowledge of that burst, so the edge walks the phase
 # at which URND holds a staged word. _EDN_HOLD_STEP is above the steady URND
 # acknowledge period, so each pass of the step walks every phase. The check
-# fails if none of the attempts arm.
+# fails if none of the attempts arm. The period grows with PKA_CLK_DIV, since
+# the OTBN side of the URND handshake runs on the OTBN clock; a measured period
+# of _EDN_HOLD_STEP or more fails as unwalkable.
 _EDN_HOLD_ATTEMPTS = 40
-_EDN_HOLD_STEP = 13
+_EDN_HOLD_STEP = 17
 # Recovery bound for CHK-EDN-HOLD-KEEP. The steady URND acknowledge period
-# is ~10 cycles, so this is far above a re-request round trip and well below
-# a hang. Exceeding it means the sibling did not recover by itself.
+# is below _EDN_HOLD_STEP, so this is far above a re-request round trip and
+# well below a hang. Exceeding it means the sibling did not recover by itself.
 _EDN_KEEP_CYCLES = 20_000
 # EDN-LEAD resets per engine. Each OTBN phase trial issues the reset a
 # different number of cycles after a URND acknowledge.
@@ -1938,7 +1940,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 )
             recent = [acks[i] - acks[i - 1] for i in range(1, len(acks))][-4:]
             steady = max(recent)
-            if not 2 <= steady <= 16:
+            if not 2 <= steady < _EDN_HOLD_STEP:
                 raise AssertionError(
                     f"{tag} FAIL: URND acknowledge period {steady} is not walkable"
                 )

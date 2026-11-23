@@ -5616,3 +5616,55 @@ qualified as `{imem, idx, wdata}` fails.
 *Scope limit*: This test grades one program of base instructions on the two completion paths. Big-number instructions, the RND source and error paths are on the no_cpu OTBN tests. The `INSN_CNT` is logged only.
 
 '''''
+
+[[sep_otbn_clk_div_test]]
+===== 1.62 `sep_otbn_clk_div_test`
+
+*Phase*: 2
+
+*Area*: Crypto and entropy
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+
+*Source Module*: `sep_otbn_clk_div_test`
+
+*BFM / Model*: ocah_axi_vip, entropy golden (strict CHK1..CHK4 plus `CHK5_otbn_urnd` in observe mode); `base-insns.yml` under `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/` as the golden source of the `loopi` program
+
+*Randomization*: RAND-REP -- the seed orders the ratios 0, 1, 2, 3 and 4 and sets the loop step. Every ratio runs on every seed.
+
+*Objective*: Shows that OTBN runs correctly at each `PKA_CLK_DIV` ratio and that its clock follows the ratio (`hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc`, `PKA_CLK_DIV`; `hw/sys/sep/doc/otbn.adoc`, OCAH Modifications).
+
+*Test Coverage*: `PKA_CLK_DIV` reset value and readback; OTBN execution at the undivided ratios 0 and 1, the reset ratio 2, the odd ratio 3 and ratio 4; ratio changes between runs with OTBN idle. Functional coverage: none.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up `no_cpu`, park AES/HMAC/KMAC, bring up entropy for the OTBN URND wipe and reseeds, and wait for OTBN to reach IDLE after its post-reset wipe.
+. Read `PKA_CLK_DIV` before any write.
+. For each ratio in seed order, write it to `PKA_CLK_DIV` and read it back. Run the `loopi` capability program with 10 iterations and then with 1000, each staged with its result words pre-seeded with the complement of the golden, EXECUTE polled to the end, and `ERR_BITS` and the result words read. Record the EXECUTE-to-IDLE time of each run in `clk_i` cycles.
+. Grade the 990-iteration time (the difference of the two runs) of every ratio against the time at ratio 1, then restore `PKA_CLK_DIV` to 2.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-CLKDIV-RESET
+|`PKA_CLK_DIV.div` reads 2, its RDL reset value, before any write.
+|CHK-CLKDIV-RW
+|`PKA_CLK_DIV.div` reads back each ratio just written.
+|CHK-CLKDIV-EXEC
+|Every run ends with `STATUS` = IDLE in a bounded poll, `ERR_BITS` = 0, and both result words equal to the `loopi n, 2` golden, n x step and n (`base-insns.yml`, `loopi`). A divided clock that corrupts OTBN state or stops it fails here. Evidence: one `CHK-CLKDIV-EXEC PASS seed=<n> ratio=<r> loop_n=<n> status=0x00 ... cycles=<c>` line per run.
+|CHK-CLKDIV-SCALE
+|For each ratio r with effective ratio e = max(r, 1), the 990-iteration time divided by its value at ratio 1 is between 0.75 x e and 1.25 x e. The URND reseed at the start of each EXECUTE runs on `clk_i` with a latency the EDN sets, and cancels out of the difference with the secure wipe at the end. A divider that ignores the field, that does not bypass at 0 or 1, or that divides by the wrong ratio fails here. Evidence: one `CHK-CLKDIV-SCALE PASS seed=<n> ratio=<r> body_cycles=<c> base_body_cycles=<b> scale=<s>` line per ratio.
+|CHK1..CHK4 / CHK5_otbn_urnd
+|The strict entropy scoreboard runs against the chained golden, with `CHK5_otbn_urnd` in observe mode, because each EXECUTE reseeds URND.
+|INFO-RANDCFG
+|The leaf logs the ratio order and the two loop counts. The line reports the stimulus the seed drew, cannot fail on the DUT, and is not a checker.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope limit*: The ratio changes only while OTBN is idle, as `PKA_CLK_DIV` requires; a change during EXECUTE and ratios above 4 are not graded.
+
+'''''

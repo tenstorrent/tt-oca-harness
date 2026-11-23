@@ -19754,6 +19754,28 @@ latches.</ipxact:description>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
+          <ipxact:name>PKA_CLK_DIV</ipxact:name>
+          <ipxact:description>OTBN PKA clock divider. OTBN and its instruction and data memories run on the SEP
+clock divided by div. The divided clock is high for div/2 SEP clock cycles,
+rounded down, and low for the rest, so an even ratio gives a 50% duty cycle.
+Change div only while OTBN is idle.</ipxact:description>
+          <ipxact:addressOffset>'h1c8</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>div</ipxact:name>
+            <ipxact:description>Divide ratio: 2 to 255 divide the SEP clock by that value; 0 and 1 run OTBN on
+the undivided SEP clock.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h2</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>8</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
           <ipxact:name>SEP_VERSION_ID</ipxact:name>
           <ipxact:addressOffset>'h1000</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>

@@ -898,6 +898,11 @@ To use a delivered key, the OTBN program reads the two shares through the
 XOR them itself. Reading
 a share that is not valid sets `ERR_BITS.KEY_INVALID` and stops the program.
 
+OTBN runs on `clk_i` divided by `SEP_CPU_CTRL.PKA_CLK_DIV`, which is 2 after
+reset; a ratio of 0 or 1 runs it undivided. Change the ratio only while OTBN
+`STATUS` reads IDLE. A program's run time in `clk_i` cycles scales with the
+ratio.
+
 [[sep-adams-bridge]]
 ===== Adams Bridge
 

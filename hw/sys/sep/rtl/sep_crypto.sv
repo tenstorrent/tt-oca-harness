@@ -170,6 +170,8 @@ module sep_crypto #(
                                                                // control; a rising edge zeroes the
                                                                // Key Manager key state (from
                                                                // sep_cpu_ctrl via sep_system_csr).
+  input  logic [7:0]                         pka_clk_div_i,  // OTBN clock divide ratio (from
+                                                             // sep_cpu_ctrl via sep_system_csr).
 
   output logic                               intr_hmac_done_o,  // HMAC done interrupt, to the SEP
                                                                 // PIC.
@@ -517,6 +519,9 @@ module sep_crypto #(
   sep_crypto_otbn_wrapper u_sep_crypto_otbn_wrapper_s3c_scan (
     .clk_i,
     .rst_ni                       (gated_rst_ni.otbn),
+    .test_en_i,
+    .scan_rst_ni,
+    .clk_div_i                    (pka_clk_div_i),
     .otbn_axil_req_i              (otbn_axil_isolated_req),
     .otbn_axil_resp_o             (otbn_axil_isolated_resp),
     .otbn_key_axil_req_i          (otbn_key_axil_isolated_req),

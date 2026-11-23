@@ -3991,7 +3991,8 @@ module sep_uvm_top
         otbn_intg_flip_arm && (otbn_intg_flip_mem_i == 1'b1) &&
         (32'(otbn_intg_flip_bit_i) < OtbnDmemW) && (`OTBN_U.dmem_access_core === 1'b1) &&
         (`OTBN_U.u_dmem.rvalid_o === 1'b1);
-    always @(negedge clk_i) begin
+    // OTBN samples the read data on its own clock, which PKA_CLK_DIV divides from clk_i.
+    always @(negedge `OTBN_U.clk_i) begin
         if (otbn_imem_rel_chk && (`OTBN_U.imem_rdata_core !== otbn_imem_live))
             $fatal(1, "[tb] +sep_otbn_intg_flip: IMEM read data differs from the live value %s",
                    "after the release");
@@ -4277,14 +4278,22 @@ module sep_uvm_top
     assign crypto_edn_sync_data_o[63:32]  = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.data_o[31:0];
     assign crypto_edn_sync_req_o[2]       =
         `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_req_i;
-    assign crypto_edn_sync_ack_o[2]       =
-        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_ack_o;
     assign crypto_edn_sync_data_o[95:64]  =
         `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.data_o[31:0];
     assign crypto_edn_sync_req_o[3]       = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_req_i;
-    assign crypto_edn_sync_ack_o[3]       = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_ack_o;
     assign crypto_edn_sync_data_o[127:96] =
         `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.data_o[31:0];
+    // The OTBN side runs on the OTBN clock, which PKA_CLK_DIV divides from clk_i, so one
+    // handshake there can span several clk_i cycles; its ack tap holds for the first only.
+    logic [3:2] otbn_edn_sync_ack, otbn_edn_sync_hs_q;
+    assign otbn_edn_sync_ack[2] =
+        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_ack_o;
+    assign otbn_edn_sync_ack[3] = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_ack_o;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) otbn_edn_sync_hs_q <= '0;
+        else            otbn_edn_sync_hs_q <= crypto_edn_sync_req_o[3:2] & otbn_edn_sync_ack;
+    end
+    assign crypto_edn_sync_ack_o[3:2] = otbn_edn_sync_ack & ~otbn_edn_sync_hs_q;
 `undef EDN_SYNC_AES
 `undef EDN_SYNC_KMAC
 `undef EDN_SYNC_OTBN
@@ -4397,10 +4406,6 @@ module sep_uvm_top
             km_cpu_fetch_cnt_q  <= '0;
             km_kmcsr_irq_entry_cnt_q <= '0;
             km_kmcsr_eoi_q      <= 1'b0;
-            otbn_imem_req_cnt_q <= '0;
-            otbn_imem_wr_cnt_q  <= '0;
-            otbn_dmem_req_cnt_q <= '0;
-            otbn_dmem_wr_cnt_q  <= '0;
         end else begin
             if (u_dut.km_rom_mem_req.req)  km_rom_req_cnt_q  <= km_rom_req_cnt_q + 32'd1;
             // A KM CPU instruction fetch that completes, whatever its target. A ROM
@@ -4420,16 +4425,27 @@ module sep_uvm_top
                 km_sram_req_cnt_q <= km_sram_req_cnt_q + 32'd1;
                 if (u_dut.km_sram_mem_req.we) km_sram_wr_cnt_q <= km_sram_wr_cnt_q + 32'd1;
             end
-            if (u_dut.sep_crypto_pka_imem_sram_req.enable) begin
-                otbn_imem_req_cnt_q <= otbn_imem_req_cnt_q + 32'd1;
-                if (u_dut.sep_crypto_pka_imem_sram_req.write)
-                    otbn_imem_wr_cnt_q <= otbn_imem_wr_cnt_q + 32'd1;
-            end
-            if (u_dut.sep_crypto_pka_dmem_sram_req.enable) begin
-                otbn_dmem_req_cnt_q <= otbn_dmem_req_cnt_q + 32'd1;
-                if (u_dut.sep_crypto_pka_dmem_sram_req.write)
-                    otbn_dmem_wr_cnt_q <= otbn_dmem_wr_cnt_q + 32'd1;
-            end
+        end
+    end
+    // The OTBN SRAMs run on the OTBN clock, which PKA_CLK_DIV divides from clk_i.
+    always_ff @(posedge u_dut.sep_crypto_pka_imem_sram_req.clk or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            otbn_imem_req_cnt_q <= '0;
+            otbn_imem_wr_cnt_q  <= '0;
+        end else if (u_dut.sep_crypto_pka_imem_sram_req.enable) begin
+            otbn_imem_req_cnt_q <= otbn_imem_req_cnt_q + 32'd1;
+            if (u_dut.sep_crypto_pka_imem_sram_req.write)
+                otbn_imem_wr_cnt_q <= otbn_imem_wr_cnt_q + 32'd1;
+        end
+    end
+    always_ff @(posedge u_dut.sep_crypto_pka_dmem_sram_req.clk or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            otbn_dmem_req_cnt_q <= '0;
+            otbn_dmem_wr_cnt_q  <= '0;
+        end else if (u_dut.sep_crypto_pka_dmem_sram_req.enable) begin
+            otbn_dmem_req_cnt_q <= otbn_dmem_req_cnt_q + 32'd1;
+            if (u_dut.sep_crypto_pka_dmem_sram_req.write)
+                otbn_dmem_wr_cnt_q <= otbn_dmem_wr_cnt_q + 32'd1;
         end
     end
     assign km_rom_req_count_o      = km_rom_req_cnt_q;

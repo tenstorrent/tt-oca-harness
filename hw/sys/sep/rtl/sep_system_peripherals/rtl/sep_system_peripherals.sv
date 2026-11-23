@@ -5,7 +5,7 @@
 //
 // Bridges local and SMN AXI into mailbox, system CSR, and filtered outbound/inbound paths.
 // Publishes mailbox interrupts, remap debug, filter hit debug, NMI vector, TRNG source
-// select, KM wipe, and DMA/peripheral bus-error clear.
+// select, KM wipe, OTBN clock divide ratio, and DMA/peripheral bus-error clear.
 //
 // Local-master requests are widened from 32 to 56 address bits, pass the 16-region alias
 // remap and a register cut, and are decoded in priority order: the SMC aperture to
@@ -85,6 +85,8 @@ module sep_system_peripherals (
 
   output logic km_wipe_state_o,               // KM_WIPE_CTRL.wipe_state register value; a rising
                                               // edge wipes the Key Manager.
+  output logic [7:0] pka_clk_div_o,           // PKA_CLK_DIV.div register value: the OTBN clock
+                                              // divide ratio.
 
   input  logic dma_reg_bus_err_i,             // Secure DMA register-path fault, reflected in
                                               // DMA_BUS_ERR_STATUS.reg_path_err.
@@ -647,6 +649,7 @@ module sep_system_peripherals (
 
     .ext_trng_src_sel_o                        (ext_trng_src_sel_o),
     .km_wipe_state_o                           (km_wipe_state_o),
+    .pka_clk_div_o                             (pka_clk_div_o),
     .dma_reg_bus_err_i                         (dma_reg_bus_err_i),
     .dma_host_intg_err_i                       (dma_host_intg_err_i),
     .dma_err_clr_o                             (dma_err_clr_o),

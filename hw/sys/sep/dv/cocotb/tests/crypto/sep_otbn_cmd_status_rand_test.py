@@ -420,6 +420,7 @@ from env.sep_spec_tables import ot_rdl_table_code
 from sep_base_test import sep_base_test
 from sep_reg_meta import OTBN
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_esrc_bringup_seq import SepEntropyCfg
 from seq_lib.sep_otbn_compute_seq import OPS, golden_result, loopi, otbn_compute_prog
 from seq_lib.sep_otbn_seq import (
     OTBN_DMEM_BASE,
@@ -968,12 +969,14 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     # ----------------------------------------------------- bring-up helpers
     async def _bring_up_chain(self, sinks: dict) -> None:
         close_graded_window(self.logger)
-        await self.bring_up_entropy(strict=True, score_km=False, score_sinks=sinks)
-        self.start_fifo_drain()
+        # CHK2 reads the entropy FIFO input with the FIFO closed. A host drain of
+        # FIFO_RDATA shares the bus with the OTBN accesses and can fall behind the
+        # entropy rate until the FIFO discards a word.
+        cfg = SepEntropyCfg(fifo_enable=0, chk2_source="backdoor")
+        await self.bring_up_entropy(cfg, strict=True, score_km=False, score_sinks=sinks)
 
     async def _retire_chain(self) -> None:
         """Grade the running chain, then end its scoreboard before a TRNG reset."""
-        await self.stop_fifo_drain()
         assert self.drbg_sb.report()
         await self.drbg_sb.stop()
 
@@ -995,7 +998,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=("aes", "hmac", "kmac", "abr"))
         self.suppress_host_axi_transaction_info()
         self.swrst = getattr(self, "swrst", None) or SepSwReset(self)
-        # SepEntropyCfg() selects the internal source in EXT_TRNG_SRC_SEL. Without the
+        # The chain config selects the internal source in EXT_TRNG_SRC_SEL. Without the
         # busy-write leg, the RND sink is scored from the start.
         sinks = {"otbn_urnd": "observe"}
         if not exec_legs:
@@ -1062,7 +1065,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             self._ctrl("OTBN-SWERR-RECOV", cmd_end_pass, cmd_end_err_bits_0=int(cmd_end_pass))
             self._ctrl("OTBN-BUSYWR-ERR", recov_err != 0, recov_err_bits=f"0x{recov_err:x}")
 
-        await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
         await self.irq.stop()

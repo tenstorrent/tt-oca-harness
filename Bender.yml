@@ -748,6 +748,7 @@ sources:
       - hw/common/tlul/rtl/tlul_data_integ_enc.sv
       - hw/common/tlul/rtl/tlul_err.sv
       - hw/common/tlul/rtl/tlul_err_resp.sv
+      - hw/common/tlul/rtl/tlul_fifo_async.sv
       - hw/common/tlul/rtl/tlul_fifo_sync.sv
       - hw/common/tlul/rtl/tlul_rsp_intg_chk.sv
       - hw/common/tlul/rtl/tlul_rsp_intg_gen.sv

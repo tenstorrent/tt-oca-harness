@@ -564,6 +564,21 @@
         endfunction : build
     endclass : sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR
 
+    // reg - sep_cpu_ctrl.PKA_CLK_DIV
+    class sep_cpu_ctrl__PKA_CLK_DIV extends uvm_reg;
+        `uvm_object_utils(sep_cpu_ctrl__PKA_CLK_DIV)
+        rand uvm_reg_field div;
+
+        function new(string name = "sep_cpu_ctrl__PKA_CLK_DIV");
+            super.new(name, 64, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.div = uvm_reg_field::type_id::create("div");
+            this.div.configure(this, 8, 0, "RW", 0, 'h2, 1, 1, 0);
+        endfunction : build
+    endclass : sep_cpu_ctrl__PKA_CLK_DIV
+
     // reg - sep_cpu_ctrl.SEP_VERSION_ID
     class sep_cpu_ctrl__SEP_VERSION_ID extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_VERSION_ID)
@@ -615,6 +630,7 @@
         rand sep_cpu_ctrl__DMA_BUS_ERR_CLEAR DMA_BUS_ERR_CLEAR;
         rand sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS PERIPH_BUS_ERR_STATUS;
         rand sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR PERIPH_BUS_ERR_CLEAR;
+        rand sep_cpu_ctrl__PKA_CLK_DIV PKA_CLK_DIV;
         rand sep_cpu_ctrl__SEP_VERSION_ID SEP_VERSION_ID;
 
         function new(string name = "sep_cpu_ctrl");
@@ -788,6 +804,11 @@
 
             this.PERIPH_BUS_ERR_CLEAR.build();
             this.default_map.add_reg(this.PERIPH_BUS_ERR_CLEAR, 'h1c0);
+            this.PKA_CLK_DIV = sep_cpu_ctrl__PKA_CLK_DIV::type_id::create("PKA_CLK_DIV");
+            this.PKA_CLK_DIV.configure(this);
+
+            this.PKA_CLK_DIV.build();
+            this.default_map.add_reg(this.PKA_CLK_DIV, 'h1c8);
             this.SEP_VERSION_ID = sep_cpu_ctrl__SEP_VERSION_ID::type_id::create("SEP_VERSION_ID");
             this.SEP_VERSION_ID.configure(this);
 

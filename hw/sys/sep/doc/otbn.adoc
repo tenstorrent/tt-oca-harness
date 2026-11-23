@@ -48,6 +48,7 @@ connections are described in the integration details below.
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
+* Core clock divided from `clk_i` by a software-programmable ratio
 
 The OTBN host path is the most complex OpenTitan path. The crypto interconnect
 applies a `CACHE_MODIFIABLE` bit fix before the `axi_dw_converter`, because the
@@ -56,6 +57,17 @@ be rejected by the AXI-to-AXI-Lite converter. After data-width conversion and
 AXI-Lite isolation, `sep_crypto_otbn_wrapper` bridges the request to TL-UL and
 drives the standard `otbn` core configured with `Stub = 0` and
 `RegFile = RegFileFF`.
+
+The OTBN core and its IMEM and DMEM run on `clk_i` divided by
+`SEP_CPU_CTRL.PKA_CLK_DIV.div`, which is 2 after reset. The divided clock is
+high for `div`/2 `clk_i` cycles, rounded down, and low for the rest, so even
+ratios give a 50% duty cycle; a ratio of 0 or 1 runs OTBN on `clk_i`
+undivided. The divider holds the OTBN clock low while the OTBN reset is
+asserted. Software changes the ratio only while OTBN is idle. The TL-UL
+control/status port crosses from `clk_i` to the OTBN clock through an
+asynchronous FIFO, which adds a few `clk_i` cycles to each register and memory
+access. OTBN's EDN and OTP key interfaces stay on `clk_i`, and OTBN
+synchronizes them itself.
 
 OTBN's instruction and data memories are external SRAM macros; the IMEM and
 DMEM `prim_ram_1p_scr` ports are brought out of the wrapper to the `sep_crypto`

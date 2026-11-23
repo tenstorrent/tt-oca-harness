@@ -261,6 +261,7 @@ module sep_cpu_ctrl_reg (
         logic DMA_BUS_ERR_CLEAR;
         logic PERIPH_BUS_ERR_STATUS;
         logic PERIPH_BUS_ERR_CLEAR;
+        logic PKA_CLK_DIV;
         logic SEP_VERSION_ID;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -342,6 +343,8 @@ module sep_cpu_ctrl_reg (
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1b8);
         decoded_reg_strb.PERIPH_BUS_ERR_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h1c0) & cpuif_req_is_wr;
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1c0);
+        decoded_reg_strb.PKA_CLK_DIV = cpuif_req_masked & (cpuif_addr == 13'h1c8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1c8);
         decoded_reg_strb.SEP_VERSION_ID = cpuif_req_masked & (cpuif_addr == 13'h1000) & !cpuif_req_is_wr;
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1000);
         is_valid_addr = cpuif_addr < 13'h1008;
@@ -553,6 +556,12 @@ module sep_cpu_ctrl_reg (
                 logic load_next;
             } wdt;
         } PERIPH_BUS_ERR_CLEAR;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } div;
+        } PKA_CLK_DIV;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -716,6 +725,11 @@ module sep_cpu_ctrl_reg (
                 logic value;
             } wdt;
         } PERIPH_BUS_ERR_CLEAR;
+        struct {
+            struct {
+                logic [7:0] value;
+            } div;
+        } PKA_CLK_DIV;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -1556,6 +1570,29 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.PERIPH_BUS_ERR_CLEAR.wdt.value = field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value;
+    // Field: sep_cpu_ctrl.PKA_CLK_DIV.div
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PKA_CLK_DIV.div.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PKA_CLK_DIV && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PKA_CLK_DIV.div.value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end
+        field_combo.PKA_CLK_DIV.div.next = next_c;
+        field_combo.PKA_CLK_DIV.div.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PKA_CLK_DIV.div.value <= 8'h2;
+        end else begin
+            if(field_combo.PKA_CLK_DIV.div.load_next) begin
+                field_storage.PKA_CLK_DIV.div.value <= field_combo.PKA_CLK_DIV.div.next;
+            end
+        end
+    end
+    assign hwif_out.PKA_CLK_DIV.div.value = field_storage.PKA_CLK_DIV.div.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1678,6 +1715,9 @@ module sep_cpu_ctrl_reg (
             readback_data_var[4] = hwif_in.PERIPH_BUS_ERR_STATUS.csrng.next;
             readback_data_var[5] = hwif_in.PERIPH_BUS_ERR_STATUS.edn.next;
             readback_data_var[6] = hwif_in.PERIPH_BUS_ERR_STATUS.wdt.next;
+        end
+        if(rd_mux_addr == 13'h1c8) begin
+            readback_data_var[7:0] = field_storage.PKA_CLK_DIV.div.value;
         end
         if(rd_mux_addr == 13'h1000) begin
             readback_data_var[31:0] = 32'hdeadbeef;

@@ -3662,6 +3662,9 @@ SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_TYPE = 'SEP_CPU_CTRL_PERIPH_BUS_ERR_STATU
 SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_OFFSET = 0x000001C0
 SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_ADDR = 0x10A301C0
 SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_TYPE = 'SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR'
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_OFFSET = 0x000001C8
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_ADDR = 0x10A301C8
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_TYPE = 'SEP_CPU_CTRL_PKA_CLK_DIV'
 SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET = 0x00001000
 SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR = 0x10A31000
 SEP_CPU_CTRL_SEP_VERSION_ID_REG_TYPE = 'SEP_CPU_CTRL_SEP_VERSION_ID'
@@ -20410,6 +20413,43 @@ class SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_u, self).__init__(*args, **kwargs)
         self.val = SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_DEFAULT = 0x0000000000000002
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_FIELD_ACCESS = (
+    ('div', 'rw', '', '', False),
+)
+
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_WIDTH = 64
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_FIELDS = (
+    ('div', 0, 7, 'rw', 'r', '', '', False, False, 2),
+)
+
+class SEP_CPU_CTRL_PKA_CLK_DIV_reg_t(Structure):
+    _fields_ = [
+        ('div', c_uint8, 8),
+    ]
+
+SEP_CPU_CTRL_PKA_CLK_DIV_REG_DEFAULT = 0x0000000000000002
+
+class SEP_CPU_CTRL_PKA_CLK_DIV_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', SEP_CPU_CTRL_PKA_CLK_DIV_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SEP_CPU_CTRL_PKA_CLK_DIV_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_CPU_CTRL_PKA_CLK_DIV_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

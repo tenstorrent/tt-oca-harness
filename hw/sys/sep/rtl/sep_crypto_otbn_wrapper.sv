@@ -14,6 +14,14 @@
 // Exposes RND and URND EDN clients, the done interrupt, two alerts (index 0 fatal, index 1
 // recoverable), and external IMEM/DMEM SRAM structs from prim_ram_1p_scr_ext.
 // bus_err_o sticks on a TL-UL error response until bus_err_clr_i.
+// The OTBN core and its IMEM/DMEM clocks run on clk_i divided by clk_div_i, with clk_div_i/2
+// clk_i cycles high (rounded down) and the rest low; a ratio below 2, or test_en_i, runs them on
+// clk_i undivided. The divider holds the OTBN clock low from rst_ni asserting until 16 clk_i
+// cycles after it deasserts, then starts at the reset ratio of 2. OTBN and the OTBN side of the
+// crossing take rst_ni synchronized to the OTBN clock, so they are reset on its first edges.
+// The TL-UL port crosses to the OTBN clock through tlul_fifo_async, and OTBN synchronizes its
+// EDN and OTP key interfaces from clk_i itself. The key sideload, alerts and done interrupt
+// connect directly: both clocks come from clk_i.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
@@ -22,6 +30,12 @@
 module sep_crypto_otbn_wrapper (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
+  input  logic test_en_i,                     // DFT test enable; runs OTBN on clk_i undivided.
+  input  logic scan_rst_ni,                   // DFT scan reset for the clock divider's and the
+                                              // OTBN clock's reset synchronizers, active-low.
+  input  logic [7:0] clk_div_i,               // OTBN clock divide ratio from
+                                              // SEP_CPU_CTRL.PKA_CLK_DIV; below 2 runs OTBN on
+                                              // clk_i undivided.
 
   input  sep_pkg::sep_32_32_axil_req_t  otbn_axil_req_i,  // OTBN CSR request, bridged to the OTBN
                                                           // TL-UL port; the isolated interconnect
@@ -90,6 +104,55 @@ module sep_crypto_otbn_wrapper (
     .tl_i           (tl_resp),
     .err_o          (bus_err_o),
     .err_clr_i      (bus_err_clr_i)
+  );
+
+  // ========================================================================
+  // OTBN clock divider and TL-UL clock crossing
+  // ========================================================================
+
+  logic clk_otbn;
+
+  // update_settings_i is held high so the divider tracks clk_div_i, including after a reset
+  // that returns it to INITIAL_DIVIDER_VAL while the CSR keeps its value.
+  prim_prog_clk_div_posedge #(
+    .INITIAL_DIVIDER_VAL    (8'd2),
+    .DIVIDED_CLOCK_ON_RESET (1'b1)
+  ) u_otbn_clk_div (
+    .clk_i,
+    .rst_ni,
+    .update_settings_i (1'b1),
+    .divider_i         (clk_div_i),
+    .duty_cycle_i      (8'h80),
+    .use_clk_div_i     ((clk_div_i > 8'd1) & ~test_en_i),
+    .test_en_i,
+    .scan_rst_ni,
+    .clk_o             (clk_otbn)
+  );
+
+  logic rst_otbn_n;
+
+  prim_sync_reset #(
+    .WIDTH(2)
+  ) u_otbn_rst_sync (
+    .clk_i       (clk_otbn),
+    .rst_ni,
+    .test_mode_i (test_en_i),
+    .scan_rst_ni,
+    .sync_rst_no (rst_otbn_n)
+  );
+
+  tlul_pkg::tl_h2d_t tl_req_otbn;
+  tlul_pkg::tl_d2h_t tl_resp_otbn;
+
+  tlul_fifo_async u_otbn_tl_cdc (
+    .clk_h_i  (clk_i),
+    .rst_h_ni (rst_ni),
+    .clk_d_i  (clk_otbn),
+    .rst_d_ni (rst_otbn_n),
+    .tl_h_i   (tl_req),
+    .tl_h_o   (tl_resp),
+    .tl_d_o   (tl_req_otbn),
+    .tl_d_i   (tl_resp_otbn)
   );
 
   // ========================================================================
@@ -187,11 +250,11 @@ module sep_crypto_otbn_wrapper (
     .FeatStubMai (1'b1),
     .RegFile     (otbn_pkg::RegFileFF)
   ) u_otbn (
-    .clk_i,
-    .rst_ni,
+    .clk_i  (clk_otbn),
+    .rst_ni (rst_otbn_n),
 
-    .tl_i (tl_req),
-    .tl_o (tl_resp),
+    .tl_i (tl_req_otbn),
+    .tl_o (tl_resp_otbn),
 
     .idle_o          (/* unused */),
     .intr_done_o     (intr_done_o),
