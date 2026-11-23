@@ -5939,14 +5939,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBG-SEP-OTP-HOLE-SINGLE",
             "CHK-DBG-SEP-OTP-HOLE-SINGLE",
-            "a SINGLE_OP read at 0x1093001C captures op 1 and the SINGLE_OP read of SPARE0 word "
+            "a SINGLE_OP read at 0x10930024 captures op 1 and the SINGLE_OP read of SPARE0 word "
             "0 right after it captures op 0 with 0x13579BDF; the data word of the SLVERR read "
             "is measured and logged only",
         ),
         (
             "CHK-DBG-SEP-OTP-HOLE-SERIES",
             "CHK-DBG-SEP-OTP-HOLE-SERIES",
-            "SERIES_CTRL.op reads 0 before a series beat at 0x1093001C and 1 after it, the "
+            "SERIES_CTRL.op reads 0 before a series beat at 0x10930024 and 1 after it, the "
             "single-load read of SPARE0 word 0 after it returns 0x13579BDF with op 1, and op "
             "stays 1 beside a SINGLE_OP read that captures op 0; the first capture of the SPARE0 "
             "load after the series hole beat is measured and logged only",
