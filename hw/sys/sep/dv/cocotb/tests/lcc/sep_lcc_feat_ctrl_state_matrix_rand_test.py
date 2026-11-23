@@ -128,7 +128,8 @@ OR-merged with the writes of the leaf).
                     control cell elsewhere; ``smc_fuse_dft_disable_o`` the same with
                     SIP_DBG, CHIPLET_DBG and SMC_FUSE_DBG. No level is named. Control:
                     the two control cells differ on each port.
-  CTRL-BIND         (control, every leaf, before leg A) the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
+  CTRL-BIND         (control, every leaf, before leg A) the SHA-256 of 32 zero
+                    bytes equals the bench SEC_DIS digest.
 
 Logged, not graded: ``OBS-LCC-WR-RESP`` gives the response of every DEMOTE write with
 ``applied=0`` for a write the RW1S golden leaves without effect (no document states the
