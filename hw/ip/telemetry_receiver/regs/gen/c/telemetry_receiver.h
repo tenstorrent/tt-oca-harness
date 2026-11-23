@@ -15,18 +15,7 @@ extern "C" {
 
 // reg - telemetry_receiver::CTRL
 // Control Register
-// Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
-// Writing `1` pops the buffer and thus updates the data in the
-// `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
-// registers.
-#define TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm 0x1
-#define TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bp 0
-#define TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bw 1
-#define TELEMETRY_RECEIVER__CTRL__BUFFER_POP_reset 0x0
-// Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
-// pointer. Stored payload bytes are not cleared. In particular, a later short
-// message can retain trailing counter values and validity from an earlier
-// message. This operation does not erase storage.
+// Telemetry Receiver Flush. Writing `1` discards all beats queued in the buffer.
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm 0x10
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bp 4
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bw 1
@@ -35,46 +24,38 @@ extern "C" {
 // transmitter. The flushing is done via the ATB AF interface. This bit clears
 // itself when the transmitter acknowledges the flush. Writing `0` while a
 // flush is pending withdraws the request, so other fields of this register
-// must be updated with a read-modify-write while the bit is set.
+// must be updated with a read-modify-write while the bit is set. The
+// transmitter can finish a flush only while the buffer has space, so firmware
+// must read `TELEMETRY_DATA` while this bit is set.
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm 0x100
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bp 8
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bw 1
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_reset 0x0
-// Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
-// asserted when the number of entries in the buffer is greater than this value.
-// Only the low log2(queue depth)+1 bits are compared, so values alias modulo
-// twice the queue depth, and only values below the queue depth can assert the
-// interrupt.
+// Telemetry Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
+// asserted when the number of beats in the buffer is greater than this value.
+// Only values below the buffer depth can assert the interrupt.
 #define TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bm 0xfff000
 #define TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp 12
 #define TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bw 12
 #define TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
-        // Writing `1` pops the buffer and thus updates the data in the
-        // `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
-        // registers.
-        uint32_t BUFFER_POP :1;
-        uint32_t :3;
-        // Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
-        // pointer. Stored payload bytes are not cleared. In particular, a later short
-        // message can retain trailing counter values and validity from an earlier
-        // message. This operation does not erase storage.
+        uint32_t :4;
+        // Telemetry Receiver Flush. Writing `1` discards all beats queued in the buffer.
         uint32_t TELEMETRY_RX_FLUSH :1;
         uint32_t :3;
         // Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
         // transmitter. The flushing is done via the ATB AF interface. This bit clears
         // itself when the transmitter acknowledges the flush. Writing `0` while a
         // flush is pending withdraws the request, so other fields of this register
-        // must be updated with a read-modify-write while the bit is set.
+        // must be updated with a read-modify-write while the bit is set. The
+        // transmitter can finish a flush only while the buffer has space, so firmware
+        // must read `TELEMETRY_DATA` while this bit is set.
         uint32_t TELEMETRY_TX_FLUSH :1;
         uint32_t :3;
-        // Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
-        // asserted when the number of entries in the buffer is greater than this value.
-        // Only the low log2(queue depth)+1 bits are compared, so values alias modulo
-        // twice the queue depth, and only values below the queue depth can assert the
-        // interrupt.
+        // Telemetry Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
+        // asserted when the number of beats in the buffer is greater than this value.
+        // Only values below the buffer depth can assert the interrupt.
         uint32_t BUFFER_THRESHOLD :12;
         uint32_t :8;
     } f;
@@ -83,22 +64,22 @@ typedef union {
 
 // reg - telemetry_receiver::STATUS
 // Status Register
-// Telemetry Message Buffer Empty.
+// Telemetry Buffer Empty. Set when the buffer holds no beats.
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm 0x1
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bp 0
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bw 1
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_reset 0x1
-// Telemetry Message Buffer Full.
+// Telemetry Buffer Full. Set when the buffer holds the maximum number of beats.
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_bm 0x10
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_bp 4
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_bw 1
 #define TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Telemetry Message Buffer Empty.
+        // Telemetry Buffer Empty. Set when the buffer holds no beats.
         uint32_t BUFFER_EMPTY :1;
         uint32_t :3;
-        // Telemetry Message Buffer Full.
+        // Telemetry Buffer Full. Set when the buffer holds the maximum number of beats.
         uint32_t BUFFER_FULL :1;
         uint32_t :27;
     } f;
@@ -107,15 +88,8 @@ typedef union {
 
 // reg - telemetry_receiver::INTR_STATUS
 // Interrupt Status Register
-// Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
-// received a Last Packet flag when the maximum number of packets a message can
-// consist of has been received.
-#define TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bm 0x1
-#define TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bp 0
-#define TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bw 1
-#define TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_reset 0x0
-// Telemetry Message Buffer Threshold Interrupt. Asserted when the number of
-// telemetry messages in the Telemetry Message Buffer is greater than
+// Telemetry Buffer Threshold Interrupt. Asserted when the number of beats in the
+// buffer is greater than
 // `CTRL.BUFFER_THRESHOLD`.
 #define TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm 0x10
 #define TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bp 4
@@ -123,13 +97,9 @@ typedef union {
 #define TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
-        // received a Last Packet flag when the maximum number of packets a message can
-        // consist of has been received.
-        uint32_t MISSING_LAST :1;
-        uint32_t :3;
-        // Telemetry Message Buffer Threshold Interrupt. Asserted when the number of
-        // telemetry messages in the Telemetry Message Buffer is greater than
+        uint32_t :4;
+        // Telemetry Buffer Threshold Interrupt. Asserted when the number of beats in the
+        // buffer is greater than
         // `CTRL.BUFFER_THRESHOLD`.
         uint32_t BUFFER_THRESHOLD :1;
         uint32_t :27;
@@ -139,22 +109,15 @@ typedef union {
 
 // reg - telemetry_receiver::INTR_ENABLE
 // Interrupt Enable Register
-// Last Packet Missing Interrupt Enable.
-#define TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bm 0x1
-#define TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bp 0
-#define TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bw 1
-#define TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_reset 0x0
-// Telemetry Message Buffer Threshold Interrupt Enable.
+// Telemetry Buffer Threshold Interrupt Enable.
 #define TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bm 0x10
 #define TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bp 4
 #define TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bw 1
 #define TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Last Packet Missing Interrupt Enable.
-        uint32_t MISSING_LAST :1;
-        uint32_t :3;
-        // Telemetry Message Buffer Threshold Interrupt Enable.
+        uint32_t :4;
+        // Telemetry Buffer Threshold Interrupt Enable.
         uint32_t BUFFER_THRESHOLD :1;
         uint32_t :27;
     } f;
@@ -163,12 +126,7 @@ typedef union {
 
 // reg - telemetry_receiver::INTR_TEST
 // Interrupt Test Register
-// Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
-#define TELEMETRY_RECEIVER__INTR_TEST__MISSING_LAST_bm 0x1
-#define TELEMETRY_RECEIVER__INTR_TEST__MISSING_LAST_bp 0
-#define TELEMETRY_RECEIVER__INTR_TEST__MISSING_LAST_bw 1
-#define TELEMETRY_RECEIVER__INTR_TEST__MISSING_LAST_reset 0x0
-// Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
+// Telemetry Buffer Threshold Interrupt Test. Writing `1` forces the
 // interrupt and writing `0` releases it.
 #define TELEMETRY_RECEIVER__INTR_TEST__BUFFER_THRESHOLD_bm 0x10
 #define TELEMETRY_RECEIVER__INTR_TEST__BUFFER_THRESHOLD_bp 4
@@ -176,10 +134,8 @@ typedef union {
 #define TELEMETRY_RECEIVER__INTR_TEST__BUFFER_THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
-        uint32_t MISSING_LAST :1;
-        uint32_t :3;
-        // Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
+        uint32_t :4;
+        // Telemetry Buffer Threshold Interrupt Test. Writing `1` forces the
         // interrupt and writing `0` releases it.
         uint32_t BUFFER_THRESHOLD :1;
         uint32_t :27;
@@ -187,59 +143,37 @@ typedef union {
     uint32_t w;
 } telemetry_receiver__INTR_TEST_t;
 
-// reg - telemetry_receiver::TELEMETRY_PROBE_ID
-// Telemetry Probe ID Register
-// Probe ID. Contains the Probe ID field of the telemetry message at the bottom of
-// the Telemetry Message Buffer.
-#define TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm 0x1f
-#define TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bp 0
-#define TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bw 5
-#define TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_reset 0x0
+// reg - telemetry_receiver::TELEMETRY_DATA
+// Telemetry Data Register. One read returns `DATA`, `ATID` and `VALID` of the oldest beat
+// in the buffer and removes that beat. A read while the buffer is empty returns
+// `0x0000_0000` and removes nothing.
+// ATB Data. Contains `atdata` of the oldest beat in the buffer.
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bm 0xff
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bp 0
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bw 8
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_reset 0x0
+// ATB ID. Contains `atid` of the oldest beat in the buffer.
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bm 0x7f00
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bp 8
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bw 7
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_reset 0x0
+// Beat Valid. Set when the buffer holds a beat, so `DATA` and `ATID` are valid.
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_bm 0x80000000
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_bp 31
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_bw 1
+#define TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Probe ID. Contains the Probe ID field of the telemetry message at the bottom of
-        // the Telemetry Message Buffer.
-        uint32_t PROBE_ID :5;
-        uint32_t :27;
+        // ATB Data. Contains `atdata` of the oldest beat in the buffer.
+        uint32_t DATA :8;
+        // ATB ID. Contains `atid` of the oldest beat in the buffer.
+        uint32_t ATID :7;
+        uint32_t :16;
+        // Beat Valid. Set when the buffer holds a beat, so `DATA` and `ATID` are valid.
+        uint32_t VALID :1;
     } f;
     uint32_t w;
-} telemetry_receiver__TELEMETRY_PROBE_ID_t;
-
-// reg - telemetry_receiver::TELEMETRY_COUNTER_VLDS
-// Telemetry Counter Valid Bits Register
-// Counter Valid Bits. Indicates which of the counter values in the telemetry
-// message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for
-// the `i`-th counter.
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bm 0xffffffff
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bp 0
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bw 32
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        // Counter Valid Bits. Indicates which of the counter values in the telemetry
-        // message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for
-        // the `i`-th counter.
-        uint32_t COUNTER_VLDS :32;
-    } f;
-    uint32_t w;
-} telemetry_receiver__TELEMETRY_COUNTER_VLDS_t;
-
-// reg - telemetry_receiver::TELEMETRY_COUNTER
-// Telemetry Counter Register
-// Counter Value. Contains one of the 32 counter values in the telemetry message
-// at the bottom of the Telemetry Message Buffer.
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bm 0xffffffff
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bp 0
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bw 32
-#define TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        // Counter Value. Contains one of the 32 counter values in the telemetry message
-        // at the bottom of the Telemetry Message Buffer.
-        uint32_t COUNTER :32;
-    } f;
-    uint32_t w;
-} telemetry_receiver__TELEMETRY_COUNTER_t;
+} telemetry_receiver__TELEMETRY_DATA_t;
 
 // addrmap - telemetry_receiver
 // Configuration, status, and data-buffer registers for a single telemetry receiver channel.
@@ -249,14 +183,11 @@ typedef struct __attribute__ ((__packed__)) {
     telemetry_receiver__INTR_STATUS_t INTR_STATUS;
     telemetry_receiver__INTR_ENABLE_t INTR_ENABLE;
     telemetry_receiver__INTR_TEST_t INTR_TEST;
-    telemetry_receiver__TELEMETRY_PROBE_ID_t TELEMETRY_PROBE_ID;
-    telemetry_receiver__TELEMETRY_COUNTER_VLDS_t TELEMETRY_COUNTER_VLDS;
-    uint8_t RESERVED_1c_7f[0x64];
-    telemetry_receiver__TELEMETRY_COUNTER_t TELEMETRY_COUNTER[32];
+    telemetry_receiver__TELEMETRY_DATA_t TELEMETRY_DATA;
 } telemetry_receiver_t;
 
 
-static_assert(sizeof(telemetry_receiver_t) == 0x100, "Packing error");
+static_assert(sizeof(telemetry_receiver_t) == 0x18, "Packing error");
 
 #ifdef __cplusplus
 }

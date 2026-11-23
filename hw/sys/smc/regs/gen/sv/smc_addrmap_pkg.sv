@@ -111,7 +111,7 @@ function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETR
     return 64'hC0009000 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_NUM = 64'h3;
-localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE = 64'h100;
+localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STRIDE = 64'h100;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TOTAL_SIZE = 64'h300;
 
@@ -941,18 +941,10 @@ function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETR
     return 64'hC0009010 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_TEST_NUM = 64'h3;
-function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(input int unsigned telemetry_receiver_idx);
+function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_DATA_BASE_ADDR(input int unsigned telemetry_receiver_idx);
     return 64'hC0009014 + (telemetry_receiver_idx * 64'h100);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_NUM = 64'h3;
-function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC0009018 + (telemetry_receiver_idx * 64'h100);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_NUM = 64'h3;
-function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(input int unsigned telemetry_receiver_idx, input int unsigned TELEMETRY_COUNTER_idx);
-    return 64'hC0009080 + (telemetry_receiver_idx * 64'h100) + (TELEMETRY_COUNTER_idx * 64'h4);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_NUM = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_DATA_NUM = 64'h3;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR = 64'hC000A000;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR = 64'hC000A004;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR = 64'hC000A008;

@@ -10,7 +10,7 @@ module telemetry_receiver_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [7:0] s_axil_awaddr,
+        input wire [4:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module telemetry_receiver_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [7:0] s_axil_araddr,
+        input wire [4:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module telemetry_receiver_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [7:0] cpuif_addr;
+    logic [4:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module telemetry_receiver_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [7:0] axil_araddr;
+    logic [4:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [7:0] axil_awaddr;
+    logic [4:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module telemetry_receiver_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[7:2], 2'b0};
+                cpuif_addr = {axil_araddr[4:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[7:2], 2'b0};
+                cpuif_addr = {axil_awaddr[4:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[7:2], 2'b0};
+                cpuif_addr = {axil_araddr[4:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -216,10 +216,12 @@ module telemetry_receiver_reg (
     end
 
     logic cpuif_req_masked;
+    logic external_pending;
 
     // Read & write latencies are balanced. Stalls not required
-    assign cpuif_req_stall_rd = '0;
-    assign cpuif_req_stall_wr = '0;
+    // except if external
+    assign cpuif_req_stall_rd = external_pending;
+    assign cpuif_req_stall_wr = external_pending;
     assign cpuif_req_masked = cpuif_req
                             & !(!cpuif_req_is_wr & cpuif_req_stall_rd)
                             & !(cpuif_req_is_wr & cpuif_req_stall_wr);
@@ -233,13 +235,13 @@ module telemetry_receiver_reg (
         logic INTR_STATUS;
         logic INTR_ENABLE;
         logic INTR_TEST;
-        logic TELEMETRY_PROBE_ID;
-        logic TELEMETRY_COUNTER_VLDS;
-        logic TELEMETRY_COUNTER[32];
+        logic TELEMETRY_DATA;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [7:0] decoded_addr;
+    logic decoded_req_is_external;
+
+    logic [4:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -248,28 +250,42 @@ module telemetry_receiver_reg (
     always_comb begin
         automatic logic is_valid_addr;
         automatic logic is_valid_rw;
+        automatic logic is_external;
+        is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 8'h0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h0);
-        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 8'h4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4);
-        decoded_reg_strb.INTR_STATUS = cpuif_req_masked & (cpuif_addr == 8'h8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h8);
-        decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 8'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc);
-        decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 8'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h10);
-        decoded_reg_strb.TELEMETRY_PROBE_ID = cpuif_req_masked & (cpuif_addr == 8'h14) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h14);
-        decoded_reg_strb.TELEMETRY_COUNTER_VLDS = cpuif_req_masked & (cpuif_addr == 8'h18) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h18);
-        for(int i0=0; i0<32; i0++) begin
-            decoded_reg_strb.TELEMETRY_COUNTER[i0] = cpuif_req_masked & (cpuif_addr == 8'h80 + (8)'(i0) * 8'h4) & !cpuif_req_is_wr;
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h80 + (8)'(i0) * 8'h4);
-        end
-        is_valid_addr = '1;
+        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 5'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h0);
+        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 5'h4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h4);
+        decoded_reg_strb.INTR_STATUS = cpuif_req_masked & (cpuif_addr == 5'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h8);
+        decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 5'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'hc);
+        decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 5'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h10);
+        decoded_reg_strb.TELEMETRY_DATA = cpuif_req_masked & (cpuif_addr == 5'h14) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 5'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h14);
+        is_valid_addr = cpuif_addr < 5'h18;
         decoded_err = ~is_valid_addr & decoded_req;
+        decoded_req_is_external = is_external;
+    end
+    logic external_wr_ack;
+    logic external_rd_ack;
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            external_pending <= '0;
+        end else begin
+            if(decoded_req_is_external & ~external_wr_ack & ~external_rd_ack) external_pending <= '1;
+            else if(external_wr_ack | external_rd_ack) external_pending <= '0;
+            `ifndef SYNTHESIS
+                assert_bad_ext_wr_ack: assert(!external_wr_ack || (external_pending | decoded_req_is_external))
+                    else $error("An external wr_ack strobe was asserted when no external request was active");
+                assert_bad_ext_rd_ack: assert(!external_rd_ack || (external_pending | decoded_req_is_external))
+                    else $error("An external rd_ack strobe was asserted when no external request was active");
+            `endif
+        end
     end
 
     // Pass down signals to next stage
@@ -287,10 +303,6 @@ module telemetry_receiver_reg (
             struct {
                 logic next;
                 logic load_next;
-            } BUFFER_POP;
-            struct {
-                logic next;
-                logic load_next;
             } TELEMETRY_RX_FLUSH;
             struct {
                 logic next;
@@ -305,23 +317,9 @@ module telemetry_receiver_reg (
             struct {
                 logic next;
                 logic load_next;
-            } MISSING_LAST;
-        } INTR_STATUS;
-        struct {
-            struct {
-                logic next;
-                logic load_next;
-            } MISSING_LAST;
-            struct {
-                logic next;
-                logic load_next;
             } BUFFER_THRESHOLD;
         } INTR_ENABLE;
         struct {
-            struct {
-                logic next;
-                logic load_next;
-            } MISSING_LAST;
             struct {
                 logic next;
                 logic load_next;
@@ -332,9 +330,6 @@ module telemetry_receiver_reg (
 
     typedef struct {
         struct {
-            struct {
-                logic value;
-            } BUFFER_POP;
             struct {
                 logic value;
             } TELEMETRY_RX_FLUSH;
@@ -348,20 +343,9 @@ module telemetry_receiver_reg (
         struct {
             struct {
                 logic value;
-            } MISSING_LAST;
-        } INTR_STATUS;
-        struct {
-            struct {
-                logic value;
-            } MISSING_LAST;
-            struct {
-                logic value;
             } BUFFER_THRESHOLD;
         } INTR_ENABLE;
         struct {
-            struct {
-                logic value;
-            } MISSING_LAST;
             struct {
                 logic value;
             } BUFFER_THRESHOLD;
@@ -369,32 +353,6 @@ module telemetry_receiver_reg (
     } field_storage_t;
     field_storage_t field_storage;
 
-    // Field: telemetry_receiver.CTRL.BUFFER_POP
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CTRL.BUFFER_POP.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CTRL.BUFFER_POP.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.CTRL.BUFFER_POP.next = next_c;
-        field_combo.CTRL.BUFFER_POP.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CTRL.BUFFER_POP.value <= 1'h0;
-        end else begin
-            if(field_combo.CTRL.BUFFER_POP.load_next) begin
-                field_storage.CTRL.BUFFER_POP.value <= field_combo.CTRL.BUFFER_POP.next;
-            end
-        end
-    end
-    assign hwif_out.CTRL.BUFFER_POP.value = field_storage.CTRL.BUFFER_POP.value;
     // Field: telemetry_receiver.CTRL.TELEMETRY_RX_FLUSH
     always_comb begin
         automatic logic [0:0] next_c;
@@ -470,57 +428,6 @@ module telemetry_receiver_reg (
         end
     end
     assign hwif_out.CTRL.BUFFER_THRESHOLD.value = field_storage.CTRL.BUFFER_THRESHOLD.value;
-    // Field: telemetry_receiver.INTR_STATUS.MISSING_LAST
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.INTR_STATUS.MISSING_LAST.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.INTR_STATUS && decoded_req_is_wr) begin // SW write 1 clear
-            next_c = field_storage.INTR_STATUS.MISSING_LAST.value & ~(decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end else if(hwif_in.INTR_STATUS.MISSING_LAST.next) begin // stickybit
-            next_c = '1;
-            load_next_c = '1;
-        end
-        field_combo.INTR_STATUS.MISSING_LAST.next = next_c;
-        field_combo.INTR_STATUS.MISSING_LAST.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.INTR_STATUS.MISSING_LAST.value <= 1'h0;
-        end else begin
-            if(field_combo.INTR_STATUS.MISSING_LAST.load_next) begin
-                field_storage.INTR_STATUS.MISSING_LAST.value <= field_combo.INTR_STATUS.MISSING_LAST.next;
-            end
-        end
-    end
-    assign hwif_out.INTR_STATUS.MISSING_LAST.value = field_storage.INTR_STATUS.MISSING_LAST.value;
-    assign hwif_out.INTR_STATUS.intr =
-        |field_storage.INTR_STATUS.MISSING_LAST.value;
-    // Field: telemetry_receiver.INTR_ENABLE.MISSING_LAST
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.INTR_ENABLE.MISSING_LAST.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.INTR_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.INTR_ENABLE.MISSING_LAST.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end
-        field_combo.INTR_ENABLE.MISSING_LAST.next = next_c;
-        field_combo.INTR_ENABLE.MISSING_LAST.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.INTR_ENABLE.MISSING_LAST.value <= 1'h0;
-        end else begin
-            if(field_combo.INTR_ENABLE.MISSING_LAST.load_next) begin
-                field_storage.INTR_ENABLE.MISSING_LAST.value <= field_combo.INTR_ENABLE.MISSING_LAST.next;
-            end
-        end
-    end
-    assign hwif_out.INTR_ENABLE.MISSING_LAST.value = field_storage.INTR_ENABLE.MISSING_LAST.value;
     // Field: telemetry_receiver.INTR_ENABLE.BUFFER_THRESHOLD
     always_comb begin
         automatic logic [0:0] next_c;
@@ -544,32 +451,6 @@ module telemetry_receiver_reg (
         end
     end
     assign hwif_out.INTR_ENABLE.BUFFER_THRESHOLD.value = field_storage.INTR_ENABLE.BUFFER_THRESHOLD.value;
-    // Field: telemetry_receiver.INTR_TEST.MISSING_LAST
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.INTR_TEST.MISSING_LAST.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.INTR_TEST && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.INTR_TEST.MISSING_LAST.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.INTR_TEST.MISSING_LAST.next = next_c;
-        field_combo.INTR_TEST.MISSING_LAST.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.INTR_TEST.MISSING_LAST.value <= 1'h0;
-        end else begin
-            if(field_combo.INTR_TEST.MISSING_LAST.load_next) begin
-                field_storage.INTR_TEST.MISSING_LAST.value <= field_combo.INTR_TEST.MISSING_LAST.next;
-            end
-        end
-    end
-    assign hwif_out.INTR_TEST.MISSING_LAST.value = field_storage.INTR_TEST.MISSING_LAST.value;
     // Field: telemetry_receiver.INTR_TEST.BUFFER_THRESHOLD
     always_comb begin
         automatic logic [0:0] next_c;
@@ -593,20 +474,50 @@ module telemetry_receiver_reg (
         end
     end
     assign hwif_out.INTR_TEST.BUFFER_THRESHOLD.value = field_storage.INTR_TEST.BUFFER_THRESHOLD.value;
+    // External register: telemetry_receiver.TELEMETRY_DATA
+
+    assign hwif_out.TELEMETRY_DATA.req = !decoded_req_is_wr ? decoded_reg_strb.TELEMETRY_DATA : '0;
+    assign hwif_out.TELEMETRY_DATA.req_is_wr = decoded_req_is_wr;
 
     //--------------------------------------------------------------------------
     // Write response
     //--------------------------------------------------------------------------
-    assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
+    always_comb begin
+        automatic logic wr_ack;
+        wr_ack = '0;
+        
+        external_wr_ack = wr_ack;
+    end
+    assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
     assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
     //--------------------------------------------------------------------------
+    logic readback_external_rd_ack_c;
+    always_comb begin
+        automatic logic rd_ack;
+        rd_ack = '0;
+        rd_ack |= hwif_in.TELEMETRY_DATA.rd_ack;
+        readback_external_rd_ack_c = rd_ack;
+    end
 
-    logic [7:0] rd_mux_addr;
-    assign rd_mux_addr = decoded_addr;
+    logic readback_external_rd_ack;
+
+    assign readback_external_rd_ack = readback_external_rd_ack_c;
+
+    logic [4:0] rd_mux_addr;
+    logic [4:0] pending_rd_addr;
+    // Hold read mux address to guarantee it is stable throughout any external accesses
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            pending_rd_addr <= '0;
+        end else begin
+            if(decoded_req) pending_rd_addr <= decoded_addr;
+        end
+    end
+    assign rd_mux_addr = decoded_req ? decoded_addr : pending_rd_addr;
 
     logic readback_err;
     logic readback_done;
@@ -614,42 +525,33 @@ module telemetry_receiver_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 8'h0) begin
+        if(rd_mux_addr == 5'h0) begin
             readback_data_var[8] = field_storage.CTRL.TELEMETRY_TX_FLUSH.value;
             readback_data_var[23:12] = field_storage.CTRL.BUFFER_THRESHOLD.value;
         end
-        if(rd_mux_addr == 8'h4) begin
+        if(rd_mux_addr == 5'h4) begin
             readback_data_var[0] = hwif_in.STATUS.BUFFER_EMPTY.next;
             readback_data_var[4] = hwif_in.STATUS.BUFFER_FULL.next;
         end
-        if(rd_mux_addr == 8'h8) begin
-            readback_data_var[0] = field_storage.INTR_STATUS.MISSING_LAST.value;
+        if(rd_mux_addr == 5'h8) begin
             readback_data_var[4] = hwif_in.INTR_STATUS.BUFFER_THRESHOLD.next;
         end
-        if(rd_mux_addr == 8'hc) begin
-            readback_data_var[0] = field_storage.INTR_ENABLE.MISSING_LAST.value;
+        if(rd_mux_addr == 5'hc) begin
             readback_data_var[4] = field_storage.INTR_ENABLE.BUFFER_THRESHOLD.value;
         end
-        if(rd_mux_addr == 8'h10) begin
+        if(rd_mux_addr == 5'h10) begin
             readback_data_var[4] = field_storage.INTR_TEST.BUFFER_THRESHOLD.value;
         end
-        if(rd_mux_addr == 8'h14) begin
-            readback_data_var[4:0] = hwif_in.TELEMETRY_PROBE_ID.PROBE_ID.next;
-        end
-        if(rd_mux_addr == 8'h18) begin
-            readback_data_var[31:0] = hwif_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next;
-        end
-        for(int i0=0; i0<32; i0++) begin
-            if(rd_mux_addr == 8'h80 + (8)'(i0) * 8'h4) begin
-                readback_data_var[31:0] = hwif_in.TELEMETRY_COUNTER[i0].COUNTER.next;
-            end
+        if(rd_mux_addr == 5'h14) begin
+            readback_data_var = hwif_in.TELEMETRY_DATA.rd_data;
         end
         readback_data = readback_data_var;
-        readback_done = decoded_req & ~decoded_req_is_wr;
+        readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
         readback_err = decoded_err;
     end
 
-    assign cpuif_rd_ack = readback_done;
+    assign external_rd_ack = readback_external_rd_ack;
+    assign cpuif_rd_ack = readback_done | readback_external_rd_ack;
     assign cpuif_rd_data = readback_data;
     assign cpuif_rd_err = readback_err;
 endmodule
