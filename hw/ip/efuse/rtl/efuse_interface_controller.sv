@@ -357,43 +357,19 @@ module efuse_interface_controller #(
     .AXI_ADDR_WIDTH(ADDR_WIDTH),
     .AXI_DATA_WIDTH(DATA_WIDTH),
     .ADDR_START(32'h0000_0000),
-    .ADDR_END(32'hFFFF_FFFF)  // Full address range
+    .ADDR_END(32'hFFFF_FFFF),  // Full address range
+    .axil_req_t(efuse_axil_req_t),
+    .axil_resp_t(efuse_axil_resp_t),
+    .apb_req_t(efuse_apb_req_t),
+    .apb_resp_t(efuse_apb_resp_t)
   ) u_prim_axi_lite_to_apb_single (
-    .clk_i                (clk_i),
-    .rst_ni               (rst_ni),
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
 
-    // AXI-Lite input signals
-    .axi_lite_awvalid_i   (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw_valid),
-    .axi_lite_awaddr_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.addr),
-    .axi_lite_awprot_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.prot),
-    .axi_lite_awready_o   (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].aw_ready),
-    .axi_lite_wvalid_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w_valid),
-    .axi_lite_wdata_i     (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.data),
-    .axi_lite_wstrb_i     (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.strb),
-    .axi_lite_wready_o    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].w_ready),
-    .axi_lite_bvalid_o    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b_valid),
-    .axi_lite_bresp_o     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b.resp),
-    .axi_lite_bready_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].b_ready),
-    .axi_lite_arvalid_i   (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar_valid),
-    .axi_lite_araddr_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.addr),
-    .axi_lite_arprot_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.prot),
-    .axi_lite_arready_o   (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].ar_ready),
-    .axi_lite_rvalid_o    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r_valid),
-    .axi_lite_rdata_o     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.data),
-    .axi_lite_rresp_o     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.resp),
-    .axi_lite_rready_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].r_ready),
-
-    // APB output signals
-    .psel_o               (apb_mux_req.psel),
-    .penable_o            (apb_mux_req.penable),
-    .pwrite_o             (apb_mux_req.pwrite),
-    .paddr_o              (apb_mux_req.paddr),
-    .pwdata_o             (apb_mux_req.pwdata),
-    .pstrb_o              (apb_mux_req.pstrb),
-    .pprot_o              (apb_mux_req.pprot),
-    .pready_i             (apb_mux_resp.pready),
-    .pslverr_i            (apb_mux_resp.pslverr),
-    .prdata_i             (apb_mux_resp.prdata)
+    .axil_req_i (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL]),
+    .axil_resp_o(axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL]),
+    .apb_req_o  (apb_mux_req),
+    .apb_resp_i (apb_mux_resp)
   );
 
 
