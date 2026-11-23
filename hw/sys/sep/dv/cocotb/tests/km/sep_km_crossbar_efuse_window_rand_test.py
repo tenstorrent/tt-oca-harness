@@ -110,6 +110,8 @@ Checks (anchor):
                   and fails the leaf
   CHK-REMAP-BUS   ``efuse_req_o`` after the remap keeps bits [11:0] of the KM
                   offset and holds one constant [31:12] (``KM-BUS`` tap)
+  CHK-REMAP-BASE  that constant [31:12] equals the eFuse page of the SEP
+                  map (``SHADOW_BASE``, 0x1093_0000)
 
 Logged only (no verdict): ``INFO-XBAR-UNSTATED`` (the first word of the mailbox
 and the DRBG sampler, which have no stated read response, and the response class
@@ -120,7 +122,7 @@ grades),
 program check), ``OBS-EFW-TM-TUPLE`` (the secure test program done, busy and
 efuse_req_error values and the read done, status and word; no text states that
 read_status carries the error of a blocked read, and efuse_req_error is stated
-for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE``).
+for lock refusals only).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
@@ -656,6 +658,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         "CHK-EFW-DENY",
         "CHK-EFW-TM",
         "CHK-REMAP-BUS",
+        "CHK-REMAP-BASE",
         "CHK-EFW-WLOCK-SHADOW",
     )
 
@@ -1663,13 +1666,22 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             problems.append(f"efuse_req_o bits [31:12] take {len(uppers)} values: {sorted(uppers)}")
         self._fail("CHK-REMAP-BUS", problems + self._xz_problems())
         base = next(iter(uppers)) << KM_EFUSE_LOW_BITS
-        self.logger.info("OBS-REMAP-BASE base=0x%08x", base)
         self.logger.info(
             "CHK-REMAP-BUS PASS draws=%d low12=ok base_constant=1 base=0x%08x xz_cycles=%d",
             len(draws),
             base,
             self.mon_xz,
         )
+        # OTP_EFUSE_REMAP_BASE is the address of the eFuse controller
+        # (hw/ip/key_manager/doc/architecture.adoc:68-71, :88-89); the SEP map places
+        # the eFuse shadow map, interface controller and MMR in the one 4 KiB page
+        # at 0x1093_0000 (hw/sys/sep/regs/sep.rdl:108, :111, :114).
+        exp = SHADOW_BASE & ~KM_EFUSE_LOW
+        self._fail(
+            "CHK-REMAP-BASE",
+            [] if base == exp else [f"efuse_req_o bits [31:12] 0x{base:08x} != 0x{exp:08x}"],
+        )
+        self.logger.info("CHK-REMAP-BASE PASS base=0x%08x exp=0x%08x", base, exp)
 
     # --- steps 9, 10 and 12: programs -----------------------------------------
 
