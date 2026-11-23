@@ -625,9 +625,9 @@ class SepUnmappedCfg:
             for op in ("r", "w", "r"):
                 self.probes.append(Probe(g, addr, op, note))
         # Offset 0 of SEP CPU control lies below its first register,
-        # CLOCK_GATE_CTRL. doc/trm/src/memory_map.adoc:91 covers an offset
-        # between registers only, so no authored text states its response. The
-        # leaf logs it as OBS-CPU-CTRL-BASE-CODE outside the graded walk.
+        # CLOCK_GATE_CTRL. hw/sys/sep/regs/include/sep_memory_map.rdl:13
+        # states the hole response (OKAY, 0x0 / OKAY). The leaf grades it as
+        # CHK-CPU-CTRL-BASE-CODE outside the graded walk.
         self.cpu_ctrl_base = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
     def _self_check(self) -> None:

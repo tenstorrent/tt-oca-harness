@@ -1,31 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# The t=0 image of the transient RMA plan at plan seed 27: PROD with the
-# transient RMA enable set, the plan that runs leg S and not leg B.
+# The t=0 image of the lock-slot matrix plan at plan seed 44: the exempt image
+# with every assigned lock slot burned, the plan that programs an LC_STATE bit.
 #
-# Each table sets the whole register value. sep_efuse_transient_rma_rand_test
+# Each table sets the whole register value. sep_efuse_lock_slot_matrix_rand_test
 # builds the same image from the plan and grades the sensed shadow against it.
 #
-# Used by sep_efuse_transient_rma_rand_test_simul.
+# Used by sep_efuse_lock_slot_matrix_rand_test_exempt.
+
+[LOCKS]
+value = 0xffffffffffffffff
+
+[LOCKS_SPARE]
+value = 0x3ffff
 
 [LC_STATE]
-value = 0xe1
-
-[TRANSIENT_RMA_EN]
-value = 0x1
+value = 0xf0
 
 [SIP_DIS]
-value = 0x68f30f05a6740504
+value = 0x62254dc3e86e4bfc
 
 [SYS_DIS]
-value = 0x93de8b3c8af4eb50
+value = 0x7d077d70df0c3c3a
 
 [RMA_SIP_TOKEN_DIGEST]
-value = 0xe1dafe5507844336af126f89340a285afb616470f10e381144819e66db5d7b32
+value = 0x744837470c6afe8ff29c462ebe3b5751b28526ebaa885976f617349c86b09d54
 
 [RMA_CHIPLET_TOKEN_DIGEST]
-value = 0xc68ad13ca005de25f132274d8d2574371586cfe9a2e395fc8f17a3e0fe032473
+value = 0xfa2a17c44b0ff6c69d6b9852e40b0b69d486e486f553844149188df399d37be9
 
 [CLASS_KEY]
 value = 0x8b094d41ed8054072279204517c9e54bce172db5621fddf52421c1baca5f19c3

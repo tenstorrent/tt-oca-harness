@@ -91,8 +91,10 @@ outstanding read is not observable.
 Logged only: ``INFO-DMA-RESET-INFLIGHT`` (the open beats at the ``rst_ni`` fall,
 the AR, AW, W and B handshakes from the fall to t_clean clocks after the reset
 release, and STATUS and CONTROL after the release; no text states the fate of a
-transfer in flight at reset), ``OBS-DMA-ABORT`` (BUSY, GO, DONE and ERROR after the abort, which
-the register description does not state) and the destination content after the
+transfer in flight at reset), ``INFO-DMA-ABORT chk=CHK-DMA-ABORT,CHK-DMA-ABORT-BEATS``
+(BUSY, GO, DONE and ERROR after the abort, which the register description does
+not state; the stated part, ABORTED set and no further beats, is graded by
+CHK-DMA-ABORT and CHK-DMA-ABORT-BEATS) and the destination content after the
 abort.
 """
 
@@ -530,11 +532,12 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         ops = self.ops
         rec, redraws, landing = await self._graded_attempt(plan)
 
-        # Step 8: OBS-DMA-ABORT.
+        # Step 8: INFO-DMA-ABORT.
         st = await ops.read_status()
         ctl = await ops.rd(CONTROL)
         self.logger.info(
-            "OBS-DMA-ABORT seed=%d busy=%d go=%d done=%d error=%d",
+            "INFO-DMA-ABORT chk=CHK-DMA-ABORT,CHK-DMA-ABORT-BEATS seed=%d busy=%d go=%d done=%d "
+            "error=%d",
             c.seed,
             st.busy,
             int(bool(ctl & CTRL_GO_MASK)),

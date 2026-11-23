@@ -570,8 +570,8 @@ class sep_base_test(uvm_test):
         for pin in ("mbox_lane_inject_arm_i", "mbox_lane_inject_mbx_i", "mbox_lane_inject_data_i"):
             self._set_if_exists(dut, pin, 0)
         # DFT pins in functional mode, DMI enables off, the core TAP pins on the
-        # tb_top registers, and the TCM and ROM bit-flip injects idle
-        # (docs/SEP_TB_ARCH.adoc).
+        # tb_top registers, and the TCM and ROM bit-flip injects and the runtime
+        # warm-handler deposit idle (docs/SEP_TB_ARCH.adoc).
         self._set_if_exists(dut, "test_en_i", 0)
         self._set_if_exists(dut, "scan_rst_ni_i", 1)
         self._set_if_exists(dut, "dmi_core_enable_i", 0)
@@ -584,6 +584,8 @@ class sep_base_test(uvm_test):
         for pin in ("tcm_flip_i", "tcm_flip_addr_i", "tcm_flip_mask_i"):
             self._set_if_exists(dut, pin, 0)
         for pin in ("rom_flip_i", "rom_flip_index_i", "rom_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
+        for pin in ("runtime_cold_scratch7_we_i", "runtime_cold_scratch7_wdata_i"):
             self._set_if_exists(dut, pin, 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
@@ -1255,20 +1257,28 @@ class sep_base_test(uvm_test):
         sb = self.env.scoreboard
         return len(sb.errors), sb.value_checks
 
-    def assert_sb_judged(self, mark: tuple[int, int], chk: str) -> None:
+    def assert_sb_judged(self, mark: tuple[int, int], chk: str, expected: int | None = None) -> int:
         """Fail ``chk`` unless the scoreboard judged a read and rejected none since ``mark``.
 
         SepScoreboard.write compares every read that carries ``item.expected``:
         a mismatch goes to ``errors`` and fails the test only at check_phase, and
         a match counts in ``value_checks``. A CHK PASS line logged after this
         call rests on that judgment, so it cannot print for a value the
-        scoreboard rejected.
+        scoreboard rejected. With ``expected``, the number of judged reads
+        since ``mark`` must equal it. Returns the number of judged reads.
         """
         errs, judged = mark
         sb = self.env.scoreboard
         new = sb.errors[errs:]
         assert not new, f"{chk} FAIL: scoreboard rejected {len(new)} read(s): " + "; ".join(new)
-        assert sb.value_checks > judged, f"{chk} FAIL: the scoreboard judged no read value"
+        n = sb.value_checks - judged
+        if expected is None:
+            assert n > 0, f"{chk} FAIL: the scoreboard judged no read value"
+        else:
+            assert n == expected, (
+                f"{chk} FAIL: the scoreboard judged {n} read value(s), expected {expected}"
+            )
+        return n
 
     def watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
         """Record system-CSR AXI-Lite handshakes until the caller kills the task.
@@ -1721,6 +1731,13 @@ class sep_base_test(uvm_test):
                 digest.update(chunk)
         return digest.hexdigest(), os.path.getsize(path)
 
+    def log_image_identity(self, label: str, path: str) -> None:
+        """Record sha256 of an image the test reads by path, so the log binds its bytes."""
+        digest, nbytes = self._sha256_file(path)
+        self.logger.info(
+            "RUN-IDENTITY-IMAGE: %s=%s sha256=%s bytes=%d", label, path, digest, nbytes
+        )
+
     def _log_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
         """Record sha256 of the staged TCM images, then check their build identity.
 
@@ -2054,6 +2071,24 @@ class sep_base_test(uvm_test):
                     "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
                     ",".join(shown_areas),
                 )
+                # Same form as `git ls-files --others --exclude-standard | LC_ALL=C sort |
+                # xargs sha256sum | sha256sum`, so the digest can be recomputed.
+                repo_ok, repo_out = _git("rev-parse", "--show-toplevel", timeout=10)
+                repo = repo_out.decode("utf-8", "replace").strip() if repo_ok else git_dir
+                lines = []
+                for path in sorted(untracked):
+                    try:
+                        digest, _ = self._sha256_file(os.path.join(repo, path))
+                    except OSError:
+                        digest = "unreadable"
+                    lines.append(f"{digest}  {path}\n")
+                self.logger.info(
+                    "RUN-IDENTITY-UNTRACKED-SHA256: %s over %d file(s)",
+                    hashlib.sha256("".join(lines).encode()).hexdigest()[:16],
+                    len(lines),
+                )
+                for line in lines[:_RUN_IDENTITY_MAX_PATHS]:
+                    self.logger.info("RUN-IDENTITY-UNTRACKED-FILE: %s", line.rstrip("\n"))
 
     def _install_evidence_filter(self, filt: "_EvidenceFilter") -> None:
         """Put the evidence filter where every CHK-* record passes through it.

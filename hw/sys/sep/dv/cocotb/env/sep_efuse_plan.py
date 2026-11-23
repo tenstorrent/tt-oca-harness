@@ -322,6 +322,8 @@ def _lock_slots() -> tuple[tuple[str, int, int], ...]:
 LOCK_SLOTS = _lock_slots()
 LOCK_SLOT_FIELD: tuple[str, ...] = tuple(s[0] for s in LOCK_SLOTS)
 SLOT_OF_FIELD: dict[str, int] = {n: i for i, n in enumerate(LOCK_SLOT_FIELD)}
+_UID_LOCK_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID"))
+_ORDER_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("SIP_DIS", "SYS_DIS", "REQUIRED_ALGS"))
 # otp_fuse_controller.adoc LOCK field: 41 slots, write lock at bit 2s, read lock at 2s+1.
 for _s, (_n, _wb, _rb) in enumerate(LOCK_SLOTS):
     if (_wb, _rb) != (2 * _s, 2 * _s + 1) or _n not in FIELD_NAMES:
@@ -1723,7 +1725,7 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
                 continue
             kinds = (
                 (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_WR)
-                if s in (11, 13, 15)
+                if s in _UID_LOCK_SLOTS
                 else (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR)
             )
             layout[s] = d.choice(f"lock_kind.{s}", kinds)
@@ -1785,12 +1787,12 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
         leg["class_key_bit"] = _pick_bit(d, "class_key_bit", img, "CLASS_KEY", zero=False)
         leg["locks_bit"] = _pick_bit(d, "locks_bit", img, "LOCKS", zero=False)
     elif kind == "order":
-        slot = d.choice("order_slot", (3, 4, 22))
+        slot = d.choice("order_slot", _ORDER_SLOTS)
         perm = d.shuffled("order_permutation", ("write_a", "lock", "write_b"))
         img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_)
         fname = LOCK_SLOT_FIELD[slot]
         abc = d.sample("order_bits_abc", zero_bits(img, fname), 3)
-        ctl_slot = d.choice("control_slot", [s for s in (3, 4, 22) if s != slot])
+        ctl_slot = d.choice("control_slot", [s for s in _ORDER_SLOTS if s != slot])
         leg.update(slot=slot, permutation=perm, bits_abc=abc, control_slot=ctl_slot)
         leg["control_bit"] = _pick_bit(d, "control_bit", img, LOCK_SLOT_FIELD[ctl_slot])
     else:

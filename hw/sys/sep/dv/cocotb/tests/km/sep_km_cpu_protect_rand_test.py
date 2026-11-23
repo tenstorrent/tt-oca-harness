@@ -32,7 +32,7 @@ a mismatch.
 Plan (RAND-REP, ``SepSeededRng`` from the run seed). Every seed runs the six trap
 kinds (a) to (f) in a drawn order, each in its own boot, and the cases C0 to C6.
 The seed draws the misalignment of kind (c), the funct3 of kind (f), the major
-opcode of the logged non-zero illegal word, the reset kind after each trap (at
+opcode of the CHK-TRAP-OPC word, the reset kind after each trap (at
 least one warm and one cold among the six), the witnesses, the snippet regions,
 the C5 window and the C5 and C6 enables.
 
@@ -55,6 +55,12 @@ Checks:
   CHK-TRAP-ENGINE    a trap clears the HMAC key_valid (the trap is a wipe event);
                      the tap shows 0 and 1 after the two control writes.
   CHK-TRAP-STATUS    KM-CSR IRQ_STATUS.WIPE_STATE is 1 after a trap, 0 before.
+  CHK-TRAP-OPC       a non-zero word of a major opcode outside RV32EMC and
+                     custom0, run by EXEC with every CPU interrupt masked,
+                     traps: PIC bit 30 rises and stays 1 to the window end,
+                     the port equals it on every clock and rises once, and the
+                     op list does not complete. CTRL-TRAP-OPC-QUIET: bit 30
+                     and the port read 0 before the post.
   CHK-EXEC           C1, C3, C5, C6: EXEC_VIOLATION is 0 at the jump and rises
                      in the window; ROM_ACCESS_VIOLATION stays 0.
   CHK-EXEC-OK        C0 and C2: the permitted fetch lands its marker with no
@@ -77,8 +83,7 @@ Checks:
   CHK-NONVAC         each "stays 0" check has a hit of the same signal elsewhere
                      in the leaf.
 
-Logged only: ``OBS-TRAP-OPC`` (a non-zero word of a major opcode outside the base
-set: the KM CPU ISA is not stated, so its outcome is not graded), the handler
+Logged only: ``INFO-TRAP-OPC`` (the drawn major opcode and its word), the handler
 result words of the refused fetches, the snippet marker of a refused fetch, the
 CRC results of the legal encodings, the CTRL reads after the reset, and the
 ROM store controls before the lockout. ``INFO-EXEC-ROM-HI-REQ`` logs the
@@ -411,7 +416,7 @@ class Plan:
     mis_scratch: int
     mis_data: int
     f3: int
-    obs_opcode: str
+    trap_opcode: str
     rom_addr: int
     rom_word: int
     rom_store: int
@@ -454,7 +459,7 @@ class Plan:
             mis_scratch=scratch,
             mis_data=_nz(rng),
             f3=rng.randrange(3, 8),
-            obs_opcode=rng.choice(sorted(kp.EX_MAJOR_OPCODE)),
+            trap_opcode=rng.choice(sorted(kp.EX_MAJOR_OPCODE)),
             rom_addr=rom_addr,
             rom_word=rom_word,
             rom_store=_nz(rng, (rom_word,)),
@@ -481,7 +486,7 @@ class Plan:
             f"DRAW kind_c access={self.mis_access} offset=+{self.mis_offset} "
             f"base=0x{self.mis_scratch:08x} data=0x{self.mis_data:08x}",
             f"DRAW kind_f funct3={self.f3}",
-            f"DRAW obs_opcode={self.obs_opcode}",
+            f"DRAW trap_opcode={self.trap_opcode}",
             f"DRAW rom_addr=0x{self.rom_addr:05x} rom_word=0x{self.rom_word:08x} "
             f"rom_store=0x{self.rom_store:08x}",
             f"DRAW c1_region_locked={self.c1_regions['locked']} "
@@ -662,6 +667,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         "CHK-TRAP-CTRL",
         "CHK-TRAP-ENGINE",
         "CHK-TRAP-STATUS",
+        "CHK-TRAP-OPC",
         "CHK-EXEC",
         "CHK-EXEC-OK",
         "CHK-EXEC-ROM-HI",
@@ -1320,27 +1326,73 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             rom1 - rom0,
         )
 
-    async def _obs_opcode(self) -> None:
-        """A non-zero word of a major opcode outside the base set: logged, not graded."""
-        name = self.plan.obs_opcode
+    async def _trap_opcode(self) -> None:
+        """A non-zero word of a major opcode outside RV32EMC and custom0 traps the KM CPU.
+
+        EXEC runs its entry with every CPU interrupt masked (``km_rom_poke.S``, op
+        EXEC), so the illegal instruction takes the PicoRV32 trap state: the CPU
+        halts and ``unrecoverable_err_o`` asserts. Golden:
+        ``hw/ip/key_manager/doc/architecture.adoc:781-785`` (illegal instruction
+        with its interrupt masked), ``:532-533`` and ``:744-746`` (the trap halts
+        the CPU and asserts ``unrecoverable_err_o``), ``:1063-1066`` (custom0
+        encodings other than the CRC ones take illegal-instruction handling), and
+        ``hw/ip/key_manager/doc/assets/km-architecture.svg:97`` (RV32EMC).
+        """
+        name = self.plan.trap_opcode
         entry = kp.EX_MAJOR_OPCODE[name]
         word = kp.rom_word(kp.exec_entry_addr(entry))
+        self.logger.info("INFO-TRAP-OPC opcode=%s word=0x%08x", name, word)
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        err0 = self._err()
+        port0 = self._port()
+        assert err0 == 0 and port0 == 0, (
+            f"CTRL-MISSING TRAP-OPC-QUIET: opcode={name}: PIC bit 30={err0} port={port0} "
+            "before the post; the trap window has no 0 to rise from"
+        )
+        self.logger.info("CTRL-TRAP-OPC-QUIET seen: opcode=%s err_o=0 port=0", name)
+        await RisingEdge(cocotb.top.clk_i)
+        pmark = self.portw.mark()
         handle = await self.poke.post([kp.exec_(entry, self.plan.mis_scratch, 0)])
-        err = 0
+        rise = None
         done = 0
-        for _ in range(WINDOW_CLKS):
+        for k in range(WINDOW_CLKS):
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
-            err |= self._err()
-            st = self.poke.state()
-            done |= int(st == (kp.ST_DONE, handle.tag))
+            done |= int(self.poke.state() == (kp.ST_DONE, handle.tag))
+            if self._err():
+                rise = k
+                break
+        assert rise is not None, (
+            f"CHK-TRAP-OPC FAIL: opcode={name} word=0x{word:08x}: PIC bit 30 did not rise "
+            f"within {WINDOW_CLKS} clocks of the post"
+        )
+        high, rom0, rom1 = await self._hold_window()
+        done |= int(self.poke.state() == (kp.ST_DONE, handle.tag))
+        span = self.portw.since(pmark)
+        assert (
+            high == WINDOW_CLKS
+            and rom0 == rom1
+            and done == 0
+            and span.mismatch == 0
+            and span.port_rises == 1
+            and span.port_high >= WINDOW_CLKS
+        ), (
+            f"CHK-TRAP-OPC FAIL: opcode={name} word=0x{word:08x}: rise_clk={rise} "
+            f"high={high}/{WINDOW_CLKS} rom_req={rom0}->{rom1} list_done={done} {span.text()}; "
+            f"expected PIC bit 30 to stay 1 for {WINDOW_CLKS} clocks after the rise, "
+            "km_rom_req_count_o to stop, the port equal to the bit with one rise, "
+            "and the op list not done"
+        )
         self.logger.info(
-            "OBS-TRAP-OPC LOG opcode=%s word=0x%08x err_o=%d list_done=%d (the KM CPU ISA is "
-            "not stated; not graded)",
+            "CHK-TRAP-OPC PASS: opcode=%s word=0x%08x err_o=1 rise_clk=%d held=%d rom_req=%d "
+            "list_done=0 %s",
             name,
             word,
-            err,
-            done,
+            rise,
+            high,
+            rom1,
+            span.text(),
         )
         await self._reset("warm")
 
@@ -1852,7 +1904,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         for kind in self.plan.kind_order:
             await self._trap_leg(kind)
 
-        await self._obs_opcode()
+        await self._trap_opcode()
 
         await self._case_c0()
 

@@ -9,9 +9,9 @@ use these helpers; ``env/sep_efuse_plan.py`` holds their seed plans and goldens.
   ``rd``/``wr`` are 32-bit accesses that fail on a response that is not OKAY;
   ``rd64``/``wr64`` are 64-bit single beats; ``access`` returns the sequence of an
   access whose response the leaf grades or logs itself.
-* ``chk_bind``: CHK-BIND of every leaf that makes a SEC_DIS go. The bound digest is
-  read from the simulator handle of the bench parameter only; a build that does not
-  show the handle fails the leaf with ``CHK-HOOK FAIL``.
+* ``ctrl_bind``: CTRL-BIND of every leaf that makes a SEC_DIS go, a bench control. The
+  bound digest is read from the simulator handle of the bench parameter only; a build
+  that does not show the handle fails the leaf with ``CHK-HOOK FAIL``.
 * ``hook_fail``: ``CHK-HOOK FAIL`` and the leaf verdict (the later steps are not
   graded).
 * ``log_line``: a ``<tag> LOG seed=<n> k=v ...`` line. It has no PASS token, so the
@@ -188,12 +188,14 @@ def bound_sec_dis_digest() -> int | None:
         return None
 
 
-async def chk_bind(chk: Any) -> int:
-    """CHK-BIND: SHA-256 of 32 zero bytes equals the bound SEC_DIS digest.
+async def ctrl_bind(chk: Any) -> int:
+    """CTRL-BIND: SHA-256 of 32 zero bytes equals the bound SEC_DIS digest.
 
-    The bound digest comes from the simulator handle of the bench net, never
-    from the bench source text. A build that does not show the handle fails the leaf
-    with ``CHK-HOOK FAIL``. At time 0 a 4-state simulator can still hold the net at X
+    A bench control, not a DUT check: both sides are constants of the bench, so a
+    false control fails the leaf as ``CTRL-MISSING BIND``. The bound digest comes
+    from the simulator handle of the bench net, never from the bench source text.
+    A build that does not show the handle fails the leaf with ``CHK-HOOK FAIL``. At
+    time 0 a 4-state simulator can still hold the net at X
     before its continuous assignment runs; the read is then repeated once after one
     simulator time step (no wait when the first read resolves).
     """
@@ -206,7 +208,7 @@ async def chk_bind(chk: Any) -> int:
         reason = "bound_digest_value_unknown" if visible else "bound_digest_handle_not_visible"
         hook_fail(chk, reason=reason, handle=SEC_DIS_DIGEST_HANDLE)
         raise AssertionError("unreachable: hook_fail ends the leaf")
-    chk.ok(
+    chk.ctrl(
         "BIND",
         bound == SEC_DIS_ZERO_DIGEST,
         digest=f"0x{SEC_DIS_ZERO_DIGEST:064x}",

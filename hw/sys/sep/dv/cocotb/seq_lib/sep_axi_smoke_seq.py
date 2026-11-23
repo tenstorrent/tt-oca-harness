@@ -63,7 +63,7 @@ WRITE_READBACK = [
 class sep_axi_smoke_seq(uvm_sequence):
     def __init__(self, name: str = "sep_axi_smoke_seq") -> None:
         super().__init__(name)
-        # (op, addr, response code) of every access, for OBS-RESP in the test.
+        # (op, addr, response code) of every access, for INFO-RESP in the test.
         self.responses: list[tuple[str, int, int]] = []
 
     async def _read(self, addr: int, expected: int) -> SepAxiItem:

@@ -17,11 +17,12 @@ check line. INFO-SEED prints the plan seed as ``seed=`` and both seeds as
 ``run_seed=`` and ``plan_seed=``.
 
 With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
-``_PIN`` in place of the run seed. Cell ``prod`` draws enable 0 and start PROD, so
-the leaf runs neither leg B nor leg S and reaches the out-of-order program of
-bit 2. Cell ``simul`` draws enable 1 and start PROD, so the leaf runs leg S. The entry
-that sets it stages the same image with ``+sep_efuse_preload``. INFO-SEED also
-prints ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell;
+``_PIN`` in place of the run seed. ``prod`` draws enable 0 and start PROD, so the
+leaf runs neither leg B nor leg S and reaches the out-of-order program of bit 2.
+``rma_sip`` draws enable 1, start RMA_SIP and the script SIP then CHIPLET, so the
+leaf reaches the CHIPLET match after the leg-A cold reset. ``legs`` draws enable
+1 and start PROD, so the leaf runs leg S. The entry that sets a cell stages the
+same image with ``+sep_efuse_preload``. INFO-SEED also prints ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell;
 ``+sep_pin_cell`` with ``+sep_rma_require_legb`` is a setup failure. CTRL-PIN-LEG:
 the plan draws the pinned pair; a plan that draws another pair logs
 ``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
@@ -38,6 +39,13 @@ for the new state (``hw/sys/sep/doc/lifecycle_controller.adoc``, section
 Per-LC-state Feature Control Profile). The OTP ``LC_STATE`` word stays the staged
 word, and no program command reaches the post-guard port during the script. A
 cold reset restores the sensed state.
+
+After that reset, when the enable is 1, the start is RMA_SIP and a leg-A CHIPLET
+match moved the shadow to RMA_CHIPLET, a CHIPLET match from the restored RMA_SIP
+state lands RMA_CHIPLET again (CHK-TRANSIENT ``step=a_rst_chp``): the update
+follows each token match, and the update before the reset does not block it. The
+match then ends, and a second cold reset restores the sensed state
+(CHK-TRANSIENT-RESET ``leg=a_rst_chp``).
 
 Leg S (enable 1, start TEST_DEV or PROD): an RMA_CHIPLET match is held while
 ``TOKEN_T1`` matches on RMA_SIP. The chiplet path has priority and needs
@@ -57,8 +65,10 @@ cold reset restores the sensed state. The lone SIP and CHIPLET matches and the
 cold reset after them run with the graded coverage window closed.
 
 Every ``LC_STATE`` shadow read is graded as the whole 32-bit word: ``{~r, r}``
-in bits [7:0] and 0 in the reserved bits [31:8]
-(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, register ``LC_STATE``).
+in bits [7:0] and, in the reserved bits [31:8], the staged word's 0: a read of
+those bits returns what the fuse word or the last write left in them
+(``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl:594``), the staged
+word holds 0 there, and the transient update writes only [7:0].
 
 Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 with
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
@@ -215,7 +225,15 @@ _S_B = 8
 # Pinned cells: plan seed and the draw the cell needs.
 _PIN = {
     "prod": (15, lambda p: p.leg["enable"] == 0 and p.leg["start"] == "PROD"),
-    "simul": (27, lambda p: p.leg["enable"] == 1 and p.leg["start"] in _LEG_S_STARTS),
+    "rma_sip": (
+        9,
+        lambda p: (
+            p.leg["enable"] == 1
+            and p.leg["start"] == "RMA_SIP"
+            and tuple(p.leg["script"]) == ("SIP", "CHIPLET")
+        ),
+    ),
+    "legs": (27, lambda p: p.leg["enable"] == 1 and p.leg["start"] == "PROD"),
 }
 
 
@@ -235,7 +253,9 @@ def _hex2(code: int | None) -> str:
 
 def _lc_word(raw: int) -> int:
     """Whole LC_STATE shadow word for raw state ``raw``: ``{~raw, raw}`` in [7:0], 0 in
-    the reserved bits [31:8] (``regs/gen/adoc/blocks/sep_efuse_map.adoc:164-165``)."""
+    the reserved bits [31:8]. Those bits read what the fuse word or the last write left
+    in them (``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl:594``); the staged
+    word holds 0 there and the transient update writes only [7:0]."""
     return lc_encode(raw)
 
 
@@ -727,6 +747,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         after = await self._lc_and_feat()
         if self._grade_reset("a", pre_reset_codes, after, raw != raw0, shadow_pre_reset):
             await self._label(TR_PASS_RESET)
+        if en == 1 and start == ST_RMA_SIP and CH_CHIPLET in script:
+            await self._chiplet_after_reset(raw0)
 
         if leg_s:
             await self._simul(raw0)
@@ -747,6 +769,29 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         await self._prog_order(raw0, staged_word, leg_b)
         await self.shim.stop()
         self.chk.finish()
+
+    async def _chiplet_after_reset(self, raw0: int) -> None:
+        """A CHIPLET match after the leg-A cold reset lands RMA_CHIPLET again.
+
+        Leg A moved the shadow from RMA_SIP to RMA_CHIPLET, and the cold reset
+        restored RMA_SIP. The update follows each token match
+        (``otp_fuse_controller.adoc:237-243``; ``token_processing.adoc:178-184``),
+        so the CHIPLET match after the reset sets bit 2 again (CHK-TRANSIENT
+        ``step=a_rst_chp``). The match ends, and a cold reset restores the sensed
+        state (CHK-TRANSIENT-RESET ``leg=a_rst_chp``).
+        """
+        raw = raw0 | (1 << _LC_CHP_BIT)
+        code = await self._match(CH_CHIPLET, "a_rst.chp")
+        await ClockCycles(cocotb.top.clk_i, self.w)
+        got = await self._lc_and_feat()
+        if self._grade_transient("a_rst_chp", CH_CHIPLET, code, raw, got):
+            await self._label(TR_PASS_TRANSIENT)
+        codes = {_CH_NAME[CH_CHIPLET]: await self._mismatch(CH_CHIPLET, "a_rst.chp_end")}
+        self._stop_if_held("TRANSIENT-RESET", codes, leg="a_rst_chp")
+        await self.pulse_rst_ni()
+        after = await self._lc_and_feat()
+        if self._grade_reset("a_rst_chp", codes, after, True, got["word"]):
+            await self._label(TR_PASS_RESET)
 
     async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
         """OBS-PROG-LC-ORDER: a program of bit 2 with RMA_CHIPLET matched and bit 1 clear.
