@@ -121,7 +121,7 @@
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:4</td><td>cool_reset_cause</td><td>R</td><td>0x0</td><td>Cause of the most recent cool reset: 0 none, 1 pin, 2 seq_ack, 3 seq_timeout.<br>Held through the cool reset and overwritten by the next one; cleared only by<br>the cold reset.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>isolate_req_pin</td><td>R</td><td>0x1</td><td>Isolate request pin, synchronized to the SMC clock. The board holds the pin<br>high through a cold reset it asserts to keep the pin-enabled subsystems alive, so<br>a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.</td></tr>
+<tr><td>0</td><td>isolate_req_pin</td><td>R</td><td>0x1</td><td>Isolate request pin, synchronized to the SMC clock.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</h3>
 <table>
@@ -136,6 +136,6 @@
 <h3 id="ISOLATE_REQ_ACK_CAPTURE">ISOLATE_REQ_ACK_CAPTURE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_ack_capture</td><td>R</td><td>0x0</td><td>isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.<br>After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear<br>here are the subsystems that did not acknowledge. Held through the cool reset<br>and overwritten by the next isolation sequence; cleared only by the cold reset.</td></tr>
+<tr><td>31:0</td><td>isolate_req_ack_capture</td><td>R</td><td>0x0</td><td>isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.<br>Held through the cool reset and overwritten by the next isolation sequence;<br>cleared only by the cold reset.</td></tr>
 </table>
 </div>

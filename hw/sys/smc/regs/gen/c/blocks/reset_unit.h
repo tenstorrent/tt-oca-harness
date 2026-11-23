@@ -266,9 +266,7 @@ typedef union {
 } reset_unit__ISOLATE_REQ_SMCEN_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_VIS
-// Isolate request pin, synchronized to the SMC clock. The board holds the pin
-// high through a cold reset it asserts to keep the pin-enabled subsystems alive, so
-// a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.
+// Isolate request pin, synchronized to the SMC clock.
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bm 0x1
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bp 0
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bw 1
@@ -282,9 +280,7 @@ typedef union {
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Isolate request pin, synchronized to the SMC clock. The board holds the pin
-        // high through a cold reset it asserts to keep the pin-enabled subsystems alive, so
-        // a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.
+        // Isolate request pin, synchronized to the SMC clock.
         uint32_t isolate_req_pin :1;
         uint32_t :3;
         // Cause of the most recent cool reset: 0 none, 1 pin, 2 seq_ack, 3 seq_timeout.
@@ -330,9 +326,8 @@ typedef union {
 
 // reg - reset_unit::ISOLATE_REQ_ACK_CAPTURE
 // isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.
-// After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear
-// here are the subsystems that did not acknowledge. Held through the cool reset
-// and overwritten by the next isolation sequence; cleared only by the cold reset.
+// Held through the cool reset and overwritten by the next isolation sequence;
+// cleared only by the cold reset.
 #define RESET_UNIT__ISOLATE_REQ_ACK_CAPTURE__ISOLATE_REQ_ACK_CAPTURE_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_ACK_CAPTURE__ISOLATE_REQ_ACK_CAPTURE_bp 0
 #define RESET_UNIT__ISOLATE_REQ_ACK_CAPTURE__ISOLATE_REQ_ACK_CAPTURE_bw 32
@@ -340,9 +335,8 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         // isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.
-        // After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear
-        // here are the subsystems that did not acknowledge. Held through the cool reset
-        // and overwritten by the next isolation sequence; cleared only by the cold reset.
+        // Held through the cool reset and overwritten by the next isolation sequence;
+        // cleared only by the cold reset.
         uint32_t isolate_req_ack_capture :32;
     } f;
     uint32_t w;

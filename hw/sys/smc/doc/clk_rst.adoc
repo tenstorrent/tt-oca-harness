@@ -231,10 +231,7 @@ synchronised isolation pin or `ISOLATE_REQ_SMC` is set.
 `u_reset_unit_reg` is reset by `rst_primary_smc_clk_no`, as are the
 `SS_CONFIG` and `SS_COLD_RESET_N` registers in `u_smc_subsystem_resets`;
 the isolation registers and FLR counters are reset only by the stable cold
-reset, so they survive a cool reset. A cool reset therefore exists only
-inside the SMU: it clears `SS_COLD_RESET_N`, so every subsystem sees its cold
-reset assert as it does on a chip cold reset, and an isolated subsystem
-survives only if it gates that reset with its `isolate_req_o` bit. The
+reset, so they survive a cool reset (see <<smc-cool-reset-scope>>). The
 per-subsystem cold and warm resets leave `ss_reset_ctrl_o` unsynchronised, and
 each subsystem synchronises them.
 In test mode, `scan_rst_ni` replaces the stretched powergood, the
@@ -365,6 +362,17 @@ The sequence asserts the cool reset when every subsystem enabled in
 `ISOLATE_REQ_FLR_COUNTER_VALUE` expires, whichever is first. With no subsystem
 enabled, or the acknowledges tied low, the delay is the full count, so it must
 still cover the system's isolation requirements.
+
+[[smc-cool-reset-scope]]
+A cool reset exists only inside the SMU. It is the SMC's primary reset with
+the `ISOLATE_REQ_*` registers and FLR counters left intact, so that isolation
+outlasts it. Nothing outside the SMU receives a cool reset: the primary reset
+clears `SS_COLD_RESET_N`, so each `ss_reset_ctrl_o[i].cold_reset_n` asserts
+exactly as on a chip cold reset. The SMC does not hold that reset off an
+isolated subsystem; each subsystem alone is responsible for surviving it. Gate
+the reset the subsystem receives with its `isolate_req_o` bit, so that the
+subsystem stays out of reset while the bit is high and the bit falls only after
+the reset has released.
 
 === Isolation Controls
 

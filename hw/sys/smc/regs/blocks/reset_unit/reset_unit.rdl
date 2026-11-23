@@ -158,18 +158,14 @@ addrmap reset_unit {
         seq_ack     = 2'd2 { desc = "The isolation sequence, after every subsystem enabled in
                                      ISOLATE_REQ_SMCEN_REG acknowledged its isolation request"; };
         seq_timeout = 2'd3 { desc = "The isolation sequence, when ISOLATE_REQ_FLR_COUNTER_VALUE
-                                     expired. Subsystems set in ISOLATE_REQ_SMCEN_REG and clear in
-                                     ISOLATE_REQ_ACK_CAPTURE had not acknowledged, may have had a
-                                     transaction cut, and must be reset before use"; };
+                                     expired"; };
     };
 
     reg ISOLATE_REQ_VIS {
         field {
             sw = r;
             hw = w;
-            desc = "Isolate request pin, synchronized to the SMC clock. The board holds the pin
-                    high through a cold reset it asserts to keep the pin-enabled subsystems alive, so
-                    a 1 read at boot with cool_reset_cause none identifies that isolated cold reset.";
+            desc = "Isolate request pin, synchronized to the SMC clock.";
         } isolate_req_pin[0:0] = 0x1;
 
         field {
@@ -187,9 +183,8 @@ addrmap reset_unit {
             sw = r;
             hw = w;
             desc = "isolate_req_ack_i, captured when the isolation sequence asserts the cool reset.
-                    After a seq_timeout cool reset, the bits set in ISOLATE_REQ_SMCEN_REG and clear
-                    here are the subsystems that did not acknowledge. Held through the cool reset
-                    and overwritten by the next isolation sequence; cleared only by the cold reset.";
+                    Held through the cool reset and overwritten by the next isolation sequence;
+                    cleared only by the cold reset.";
         } isolate_req_ack_capture[31:0] = 0x0;
     };
 

@@ -705,13 +705,17 @@ full count whenever such a subsystem is enabled in `ISOLATE_REQ_SMCEN_REG`.
 Isolation remains asserted until SMC firmware writes 1 to `ISOLATE_REQ_SMC_REG`
 bit 0 to clear the FLR isolation latch; it is not released by the cool reset.
 
-The cool reset is internal to the SMU and keeps only the SMC's isolation
-registers. Subsystems never see a cool reset: it clears `SS_COLD_RESET_N`, so
-each `ss_reset_ctrl_o[i].cold_reset_n` asserts as it does on a chip cold reset.
-The SMC does not hold that reset off an isolated subsystem; each subsystem
-alone is responsible for surviving it. Gate the reset each subsystem receives
-with its `isolate_req_o` bit, so that the subsystem stays out of reset while the
-bit is high.
+Subsystems never see a cool reset: each `ss_reset_ctrl_o[i].cold_reset_n`
+asserts as on a chip cold reset, and the SMC does not hold it off an isolated
+subsystem. Gate the reset each subsystem receives with its `isolate_req_o` bit
+so that the subsystem stays out of reset while the bit is high. The
+ifdef::backend-html5[]
+xref:ocah-docs:smc:clk_rst.adoc#smc-cool-reset-scope[Function Level Reset and Isolation]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Function Level Reset and Isolation_
+endif::backend-pdf[]
+section of the Technical Reference Manual describes the cool reset.
 
 See `hw/top/smu_wrapper.sv` and `hw/top/smc_ip_integration.sv` for reference
 bring-up wiring examples covering clock, reset, strap, and peripheral connections.

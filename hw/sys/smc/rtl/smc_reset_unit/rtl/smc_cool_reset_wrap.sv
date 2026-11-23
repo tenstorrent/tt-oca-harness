@@ -339,13 +339,12 @@ module smc_cool_reset_wrap (
     end
   end
 
-  // SMC implements isolate_req_smc_reg to assert isolate_req_o[] once isolate_sequence_trigger_i is asserted
   always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
     if (~rst_cold_smc_ni) begin
       isolate_req_smc_reg <= 1'b0;
     end else begin
       if (isolate_sequence_trigger_sync_smc_posedge) begin
-        isolate_req_smc_reg <= 1'b1; // Asserts isolate_req_smc_reg once isolate_sequence_trigger_i is asserted
+        isolate_req_smc_reg <= 1'b1;
       end else if (isolate_req_smc_reg_wr_en &&
                    hwif_out_i.ISOLATE_REQ_SMC_REG.wr_biten.isolate_req_smc_reg &&
                    hwif_out_i.ISOLATE_REQ_SMC_REG.wr_data.isolate_req_smc_reg) begin
@@ -423,7 +422,7 @@ module smc_cool_reset_wrap (
     .clk_i              (clk_ref_i),
     .rst_ni             (rst_cold_ref_ni),        // top level cold reset
     .clear_i            (1'b0),
-    .set_i              (flr_set),                // Starts counting down once isolate_sequence_trigger_i is asserted
+    .set_i              (flr_set),
     .set_cnt_i          (flr_set_cnt_ref_clk),    // Set value for the counter (synchronized from SMCCLK).
     .incr_en_i          (1'b0),
     .decr_en_i          (1'b1),                   // Decrement always
