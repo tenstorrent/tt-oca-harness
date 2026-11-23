@@ -46,10 +46,10 @@ the run's commit, simulator and figures. No `hosted`-only figure is recorded
 tracker
 |===
 
-`cov/sv/` carries twelve functional-coverage modules, 204 points in all; the
+`cov/sv/` carries thirteen functional-coverage modules, 204 points in all; the
 counts are the `OCAH_FCOV_COVER` invocations in each file, and the Coverage
 Summary of `hw/sys/smu/dv/docs/SMU_FCOV.adoc` is their record.
-`tb/tb_wrapper_top.sv` instantiates all twelve, and 197 points enter the
+`tb/tb_wrapper_top.sv` instantiates all thirteen, and 197 points enter the
 database on its single target, `compile_smu_chiplet`, which has SEP present:
 three points sit behind `SMU_FCOV_PHASE2`, which no configuration defines,
 and the four inside `g_nosep` generate blocks exist only on a SEP=0
@@ -64,7 +64,7 @@ handshake, all four response encodings, inbound traffic not forwarded outbound
 |`smu_boot_fcov.sv` |21 |Reset-release edges, boot-stall sources and release,
 lifecycle broadcast, fuse sense, SRAM auto-init
 |`smu_rst_fcov.sv` |17 |Cold-reset assertion and release, per-domain reset
-order, powergood
+order, powergood, the secure test-mode strap window
 |`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
 |`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI
 boundary
@@ -75,6 +75,7 @@ boundary
 |`smu_clk_fcov.sv` |3 |Clock mirrors `tb/tb_wrapper_top.sv` exposes
 |`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
 |`smu_remap_fcov.sv` |0 |The alias and output remap windows and attributes; covergroup only
+|`smu_lifecycle_fcov.sv` |0 |The lifecycle image and disable-vector pair class, the posture of the gated debug paths, and the LC_STATE pair inject; covergroups only
 |===
 
 [[smu-cov-paths]]
