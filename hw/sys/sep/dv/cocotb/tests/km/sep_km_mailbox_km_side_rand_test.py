@@ -56,6 +56,13 @@ Checkers:
                    KM_IRQ_STATUS bit, a write of 1 clears it; a write of 1
                    clears the KM_STATUS bit after a second event. Each clear is
                    graded only after a read of 1.
+  CHK-KMBOX-COUPLING per error pass: the KM_STATUS sticky bit stays 1 after
+                   the W1C of the KM_IRQ_STATUS bit of the same event; the two
+                   are separate sticky fields
+                   (``hw/ip/key_manager/regs/km_mailbox_km.rdl:158-204``,
+                   ``:258-300``). Its control (CTRL-KMBOX-COUPLING-PRE) needs
+                   the KM_STATUS bit read 1 before the IRQ clear and the
+                   KM_IRQ_STATUS bit read 1, then 0 after its W1C.
   CHK-KMBOX-FLUSH  per flush cell (KM or SEP flush, FIFOs both empty, one
                    non-empty, both non-empty): KM flush: both FIFOs read empty
                    on both sides and KM_CTRL.flush reads 0; SEP flush: the
@@ -81,9 +88,10 @@ raises CPU IRQ 3 and sets IRQ_STATUS.DRBG_ERR; KMCSR IRQ_STATUS shows no
 AXI_DECERR at any publish of the image and no AXI_SLVERR outside the error
 passes, so no counted KM readback had an error response.
 
-Log only: the read data of the empty reads, the value of the other sticky
-register after a clear (the coupling of the KM_STATUS and KM_IRQ_STATUS
-sticky bits is not stated), the flush poll counts, the reset value of the
+Log only: the read data of the empty reads, the KM_IRQ_STATUS bit after the
+KM_STATUS clear and the response of the second error access
+(INFO-KMBOX-COUPLING; no read shows the IRQ bit set before the KM_STATUS
+clear), the flush poll counts, the reset value of the
 level bits, and the reserved bits of every KM-side readback with their mask.
 
 Open-value leg (logged, not graded; its control fails the leaf). Flush race,
@@ -178,6 +186,7 @@ _REQUIRED = (
     "CHK-KMBOX-OUT",
     "CHK-KMBOX-IN",
     "CHK-KMBOX-ERR",
+    "CHK-KMBOX-COUPLING",
     "CHK-KMBOX-FLUSH",
     "CHK-KMBOX-IRQ",
     "CHK-NONVAC",
@@ -611,10 +620,26 @@ class sep_km_mailbox_km_side_rand_test(sep_base_test):
                 km_status_clear=st_clear,
                 pre_clear_reads=pre_clear,
             )
-            self.chk.obs(
+            st_before_irq_clear = int(bool(r[9] & st_bit))
+            st_after_irq_clear = int(bool(r[13] & st_bit))
+            self._ctrl(
+                "KMBOX-COUPLING-PRE",
+                bool(st_before_irq_clear) and w1c,
+                condition=cond,
+                km_status_before_irq_clear=st_before_irq_clear,
+                irq_w1c_clears=w1c,
+            )
+            self.chk.ok(
+                "KMBOX-COUPLING",
+                st_before_irq_clear == 1 and w1c and st_after_irq_clear == 1,
+                condition=cond,
+                km_status_before_irq_clear=st_before_irq_clear,
+                irq_w1c_clears=w1c,
+                km_status_after_irq_clear=st_after_irq_clear,
+            )
+            self.chk.info(
                 "KMBOX-COUPLING",
                 condition=cond,
-                km_status_after_irq_clear=int(bool(r[13] & st_bit)),
                 km_irq_after_status_clear=int(bool(r[18] & irq_bit)),
                 slverr_second=int(bool(r[15] & m.CSR_SLVERR)),
             )

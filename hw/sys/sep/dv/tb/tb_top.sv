@@ -1741,6 +1741,7 @@ module sep_uvm_top
     assign iso_slv_ar_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid & \
                                       `SEP_ISO_IC.inst.slv_resp_o.ar_ready; \
     assign iso_slv_ar_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid; \
+    assign iso_slv_aw_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.aw_valid; \
     assign iso_slv_b_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.b_valid & \
                                       `SEP_ISO_IC.inst.slv_req_i.b_ready; \
     assign iso_slv_r_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.r_valid & \
@@ -3060,6 +3061,16 @@ module sep_uvm_top
     // doc/otp_fuse_controller.adoc names.
     assign efuse_shadow_resp_valid_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_command_resp_i.valid;
     assign efuse_shadow_sense_done_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_sense_done_o;
+    // The registered APB response of the shadow map (efuse_shadow_regs apb_resp_q):
+    // pready and pslverr. rst_ni clears the register asynchronously.
+    assign efuse_shadow_apb_pready_o = `EFUSE_CTRL.u_efuse_shadow_regs.apb_resp_q.pready;
+    assign efuse_shadow_apb_pslverr_o = `EFUSE_CTRL.u_efuse_shadow_regs.apb_resp_q.pslverr;
+    // The program-fail drop of the bank model: prog_fail_act is high for the
+    // one APB setup clock of a bank write whose data the model zeroes, with
+    // the paddr of that write. prog_fail_act has no reset of its own; the
+    // drop count re-arms on every rst_ni.
+    assign efuse_bank_prog_drop_o = `SEP_IPI.u_efuse_bank_model.prog_fail_act;
+    assign efuse_bank_prog_drop_paddr_o = `SEP_IPI.u_efuse_bank_model.apb_req_i.paddr;
     // The APB select of the shim request to the bank model (efuse_model_otp_req in
     // sep_ip_integration): a request that the guard blocks starts no bank access.
     assign efuse_bank_psel_o = `SEP_IPI.efuse_model_otp_req.psel;
@@ -3111,7 +3122,8 @@ module sep_uvm_top
     // input routed by the READ command). It is a variable of an always_comb
     // block that also drives the APB request, so the block runs again on the
     // next request change and the released pslverr takes the bank value again
-    // within one clock. The bank pslverr itself has a constant driver, so a
+    // at that change; the shim reads that copy only in ST_READ_WAIT, after a new
+    // request. The bank pslverr itself has a constant driver, so a
     // released force there would keep the value 1 (Verilator release of a
     // variable) and fail every later sense word, also after rst_ni.
     // The sense streams words 0..255 from bit address 0 and the shim reads
@@ -3121,24 +3133,74 @@ module sep_uvm_top
     // evaluated at the clock edge that starts the APB access phase (psel high,
     // penable not yet high), so the force covers the whole access phase.
     // Re-issued every clock and released when the gate drops. Default 0.
+    //
+    // Three post-sense modes use the same word select and the same gate
+    // timing, each only after sense done (fuse_sense_done high):
+    // - efuse_status_inject_read_i=1: a frontdoor READ of the word; force
+    //   target apb_fuse_bank_resp_r.pslverr, as above.
+    // - efuse_status_inject_write_i=1: the bank write (pwrite=1) of a PROGRAM
+    //   command to the word; force target apb_fuse_bank_resp_w.pslverr, the
+    //   write-phase copy that the shim keeps for the program response.
+    // - efuse_status_inject_readback_i=1: the bank read-back (pwrite=0) of a
+    //   PROGRAM command to the word; force target
+    //   apb_fuse_bank_resp_w_readback.pslverr.
+    // apb_fuse_bank_resp_w and apb_fuse_bank_resp_w_readback are variables of
+    // the same always_comb block as apb_fuse_bank_resp_r, so the release
+    // argument above holds for them. The sense-time term is independent of
+    // these inputs. Each mode input defaults to 0.
 `define EFUSE_OTP_REQ  `SEP_IPI.efuse_model_otp_req
-`define EFUSE_SHIM_RESP_R `SEP_IPI.u_efuse_interface_shim.apb_fuse_bank_resp_r
+`define EFUSE_SHIM     `SEP_IPI.u_efuse_interface_shim
+`define EFUSE_SHIM_CMD `SEP_CORE.efuse_shim_command_req_o
+    wire efuse_status_word_sel =
+        (`EFUSE_SHIM_CMD.valid === 1'b1) &&
+        (`EFUSE_OTP_REQ.psel === 1'b1) &&
+        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
     wire efuse_sense_status_hit =
         (efuse_sense_status_inject_i === 1'b1) &&
         (`EFUSE_CTRL.fuse_sense_done === 1'b0) &&
-        (`SEP_CORE.efuse_shim_command_req_o.valid === 1'b1) &&
-        (`SEP_CORE.efuse_shim_command_req_o.command === efuse_pkg::FUSE_COMMAND_READ) &&
-        (`EFUSE_OTP_REQ.psel === 1'b1) &&
-        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        efuse_status_word_sel;
+    wire efuse_status_read_hit =
+        (efuse_status_inject_read_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        efuse_status_word_sel;
+    wire efuse_status_write_hit =
+        (efuse_status_inject_write_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_PROGRAM) &&
+        (`EFUSE_OTP_REQ.pwrite === 1'b1) &&
+        efuse_status_word_sel;
+    wire efuse_status_readback_hit =
+        (efuse_status_inject_readback_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_PROGRAM) &&
+        (`EFUSE_OTP_REQ.pwrite === 1'b0) &&
+        efuse_status_word_sel;
     always @(posedge clk_i) begin
-        if (efuse_sense_status_hit) begin
-            force `EFUSE_SHIM_RESP_R.pslverr = 1'b1;
+        if (efuse_sense_status_hit || efuse_status_read_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_r.pslverr = 1'b1;
         end else begin
-            release `EFUSE_SHIM_RESP_R.pslverr;
+            release `EFUSE_SHIM.apb_fuse_bank_resp_r.pslverr;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (efuse_status_write_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (efuse_status_readback_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_w_readback.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_SHIM.apb_fuse_bank_resp_w_readback.pslverr;
         end
     end
 `undef EFUSE_OTP_REQ
-`undef EFUSE_SHIM_RESP_R
+`undef EFUSE_SHIM
+`undef EFUSE_SHIM_CMD
 
     // ------------------------------------------------------------------
     // eFuse shim response hold.
@@ -6102,6 +6164,9 @@ module sep_uvm_top
     assign jtag_filter_lc_sigint_inject_i = 1'b0;
     assign efuse_sense_status_inject_i = 1'b0;
     assign efuse_sense_status_word_i = '0;
+    assign efuse_status_inject_read_i = 1'b0;
+    assign efuse_status_inject_write_i = 1'b0;
+    assign efuse_status_inject_readback_i = 1'b0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign mbox_lane_inject_arm_i   = 1'b0;
