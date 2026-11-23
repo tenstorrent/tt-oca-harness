@@ -258,7 +258,7 @@ def smc_otp_words(image: str) -> list[tuple[str, int]]:
     smc_efuse_map.rdl: a register whose read lock is set is not readable, with no response
     stated, so a word whose read lock the Run mode's shadow image sets is not drawn.
     """
-    words = _block_words(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP", _SMC_EFUSE_MAP_H)
+    words = _block_words(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP", _SMC_EFUSE_MAP_H)
     lo, hi = _image_words(image, 2)
     locks = {"LOCKS": lo | (hi << 32)}
     words = [(n, a) for n, a in words if not _read_locked(_SMC_EFUSE_MAP_H, n, locks)]
@@ -761,7 +761,7 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         smc_image = str(cocotb.plusargs["smc_shadow_reg_preload"])
         sep_image = str(cocotb.plusargs["sep_shadow_reg_preload"])
         self.otp_image = {
-            "smc_otp": image_map(smc_image, _SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP"),
+            "smc_otp": image_map(smc_image, _SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP"),
             "sep_otp": image_map(
                 sep_image,
                 _SEP_ADDR_H,
