@@ -39,10 +39,10 @@ controller from the interface shim, which an adopter replaces with one for its
 fuse technology.
 
 Both `sep_efuse_wrapper` and `smc_efuse_wrapper` decode the OTP JTAG port
-behind a lifecycle filter. The eFuse register page goes to the controller, the
-shim CSR window to the shim's bank control registers through a multiplexer
-shared with the functional shim port, and any other or blocked access answers
-SLVERR with read data `0xBADCAB1E`. In the controller, an AXI-Lite multiplexer
+behind a lifecycle filter. The eFuse register page and, in the SMC, the supplementary fuse
+window go to the controller, the shim CSR window to the shim's bank control registers
+through a multiplexer shared with the functional shim port, and any other or blocked access
+answers SLVERR with read data `0xBADCAB1E`. In the controller, an AXI-Lite multiplexer
 merges the functional and JTAG ports into the AXI-Lite to APB bridge. The
 control and MMR blocks answer SLVERR with read data 0 past their last register,
 and the APB decode answers SLVERR with `0xBADCAB1E` elsewhere in the page. The
