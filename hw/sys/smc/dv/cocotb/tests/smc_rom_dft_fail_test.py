@@ -32,7 +32,7 @@ import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.smc_dft_status_driver import EXPECTED_STATUS, SmcDftStatusDriver
+from env.smc_dft_status_driver import DFX_CTRL_STATUS_SMU, EXPECTED_STATUS, SmcDftStatusDriver
 from env.smc_virt_console import VirtConsole
 from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
@@ -51,11 +51,6 @@ from smc_occp_dual_defs import (
 
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
-
-# The register the ROM's early check reads (DFX_CTRL_STATUS_SMU_REG_ADDR in smc_rom_defs.h).
-# Fields: mem_repair_done[0], mem_repair_success[1], mbist_done[4], mbist_pass[8],
-# mbist_abort[12].
-DFX_CTRL_STATUS_SMU = 0xC001_7000
 
 # Halt observation. The settle lets the ROM reach WFI after writing scratch 15; the window
 # is long enough that a boot that merely paused would be seen resuming.

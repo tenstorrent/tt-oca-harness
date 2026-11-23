@@ -34,9 +34,9 @@ START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[ADDR_WIDTH-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
 is write-once, so the field must not change once set, and every later write to
-the entry's FILTER_CONFIG, START_ADDR and END_ADDR completes DECERR
+the entry's FILTER_CONFIG, START_ADDR and END_ADDR completes SLVERR
 (filter_ctrl.rdl locked; hw/ip/axi_filter/doc/index.adoc "Locking a Filter
-Entry"). The held field, the DECERR code and the still-granted page are the
+Entry"). The held field, the SLVERR code and the still-granted page are the
 contract.
 """
 
@@ -409,13 +409,11 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write accepting any AXI response; return the resp_code.
 
-        A write to a locked entry completes DECERR by the spec; the caller grades
-        the code and proves the lock by read-back. One DECERR credit is armed on
-        the bus monitor for the write and handed back when the write answers
-        anything else. A timeout is not a completion and fails here.
+        A write to a locked entry completes SLVERR by the spec; the caller grades
+        the code and proves the lock by read-back. No DECERR credit is armed, so
+        a DECERR answer also fails on the bus monitor. A timeout is not a
+        completion and fails here.
         """
-        mon = self.test.env.axi_monitor
-        mon.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",
             op=SepAxiOp.WRITE,
@@ -425,8 +423,6 @@ class SepInboundFilter(SepAxiRegDriver):
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
-        if seq.timed_out or seq.resp_code != RESP_DECERR:
-            mon.release_expected_decerr(1)
         assert not seq.timed_out, f"write 0x{addr:08x} to a locked entry timed out (no BRESP)"
         return seq.resp_code
 

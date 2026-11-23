@@ -31,7 +31,8 @@ a Key Manager wipe clears KEY_VALID and both shares;
 ``hw/ip/key_manager/doc/architecture.adoc:511-517``: the wipe pulse clears both
 shares and KEY_VALID of every sideload block). It brings up the
 entropy stack so AES can run, then for share 0 and share 1 (order drawn): the
-image writes both AES shares non-zero and sets KEY_VALID, the host pulses
+image writes both AES shares non-zero and sets KEY_VALID of all eight banks,
+the host pulses
 ``SEP_CPU_CTRL.KM_WIPE_CTRL.wipe_state``, the image writes only the drawn share
 with K and sets KEY_VALID, and the host encrypts one block with AES-256 ECB
 from the sideload key.
@@ -73,6 +74,15 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    wipe, after it and after the share write
                    (``hw/ip/key_manager/regs/aes_wrapper_key.rdl:78-84``,
                    ``rsvd[31:1]``, ``sw = r``, ``reset = 31'h0``)
+  CHK-BANK-WIPE    after each single-share wipe, KEY_CTRL.key_valid of all
+                   eight sideload banks reads 0 and every read is accepted
+                   (``hw/sys/sep/doc/crypto.adoc:196``,
+                   ``hw/ip/key_manager/doc/architecture.adoc:515-518``). Its
+                   control ``CTRL-BANK-WIPE-LIVE`` requires the key_valid
+                   writes to all eight banks accepted and all eight read set
+                   right before the wipe. The ML-KEM shared-key KEY_VALID that
+                   the same sentence names is not graded here: only a delivery
+                   sets it
   CHK-BANK-RST     after each engine ``SW_RESET_N`` park and release, that
                    engine's own banks read KEY_CTRL.key_valid 0; after the ABR
                    reset the shared-key KEY_CTRL.key_valid and the 8 KEY words
@@ -83,12 +93,30 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    the same field in each wrapper), shared-key ``KEY``
                    ``reset = 32'h0`` and ``KEY_VALID`` ``reset = 1'b0``
                    (``abr_wrapper_key.rdl:103``, ``:129``). Right before each
-                   reset the leaf writes key_valid 1 to the engine's own banks
-                   (and for ABR redelivers the shared key when it is not held);
-                   its control ``CTRL-BANK-RST-LIVE`` requires those writes
-                   accepted and the banks read set. The state of the own banks
-                   before that write, and the other banks after the reset, are
-                   logged (``OBS-BANK-RST``)
+                   reset the leaf writes key_valid 1 to every bank (and for
+                   ABR redelivers the shared key when it is not held); its
+                   control ``CTRL-BANK-RST-LIVE`` requires those writes
+                   accepted and all eight banks read set. The state of the own
+                   banks before that write and the shared-key status after the
+                   reset are logged (``INFO-BANK-RST``)
+  CHK-BANK-RST-OTHERS after each engine ``SW_RESET_N`` park and release, the
+                   banks of every other engine still read KEY_CTRL.key_valid 1:
+                   the ``gated_rst_ni`` bit of an engine resets that engine's
+                   wrapper only (``reset_controller.adoc:130-131``)
+  CHK-KM-PARK      POKE image (``km_rom_poke``, no boot shred): the eight
+                   KEY_CTRL.key_valid bits read the same after a KM
+                   ``SW_RESET_N`` park and release as before it. The KM warm
+                   reset does not list the engine banks
+                   (``hw/ip/key_manager/doc/architecture.adoc:158-176``,
+                   ``reset_controller.adoc:182-186``), and only a rising edge
+                   of ``wipe_state_i`` or a CPU trap clears them
+                   (``architecture.adoc:512-518``). Its control
+                   ``CTRL-KM-PARK-LIVE`` requires the set writes accepted and
+                   all eight banks read set before the park.
+                   ``CTRL-KM-PARK-REBOOT`` requires the KM bit of
+                   ``SW_RESET_N`` to read 0 during the hold, STATE to read
+                   other than BOOT before the park, and a fresh BOOT marker
+                   after the release, so the KM did reset and boot again
 
 Controls: the non-zero, accepted write of each share word before its read; the
 vector 0 after the share reads; the status and key_valid 0 before each delivery;
@@ -113,26 +141,28 @@ their seed mapping.
                    (``km_axi_wr_addr_o``, ``km_axi_wr_strb_o``) shows a write
                    to the share word with strobe 0x1 (byte) or 0x3 (half), and
                    the snippet marker reads back.
-  OBS-BANK-SUBWORD the ciphertext against the AES-256 goldens of each
+  INFO-BANK-SUBWORD the ciphertext against the AES-256 goldens of each
                    per-word outcome: ``merged`` (only the strobed lanes take the
                    value), ``whole`` (the word takes the bus data, the value
                    repeated across the lanes), ``ignored`` (K stays); with
                    IRQ_STATUS, KEY_CTRL and the sub-word count. Neither
                    ``architecture.adoc`` ("Key Delivery") nor
                    ``aes_wrapper_key.rdl`` states a strobe rule for the share
-                   words.
+                   words, the AMBA AXI write-strobe rule binds the manager only,
+                   and ``hw/sys/sep/doc/fabric.adoc:24-27`` leaves the rule to
+                   each register definition.
 
 Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg.
 ``+sep_shard=1`` runs steps 2 to 7. ``+sep_shard=2`` runs every leg too; its
 step 6 grades CHK-BANK-SK-CONSUME and logs the KEY words after the consume and
 after the refused set (``OBS-SK-WORDS``) without CHK-BANK-SK-SW. Both the run
-without a shard and shard 2 grade CHK-BANK-RST.
+without a shard and shard 2 grade CHK-BANK-RST, CHK-BANK-RST-OTHERS and
+CHK-KM-PARK.
 
 Logged only: the share-read responses; the reserved KEY_CTRL bits of the eight
 banks at reset; the shared-key words before the consume (``OBS-SK-WORDS``,
-``phase=before_consume``); whether an engine reset keeps the banks of the other
-engines and the shared-key IRQ_STATUS after it (``OBS-BANK-RST``; no sentence
-states either); the bank state after a KM PARK (``OBS-KM-PARK``; not stated).
+``phase=before_consume``); the shared-key KEY_CTRL and IRQ_STATUS after an
+engine reset (``INFO-BANK-RST``) and after a KM PARK (``INFO-KM-PARK``).
 """
 
 from __future__ import annotations
@@ -226,6 +256,7 @@ _STEPS_EVIDENCE = (
     "CHK-BANK-SK-SW",
     "CHK-BANK-SK-IRQ",
 )
+_RESET_EVIDENCE = ("CHK-BANK-RST", "CHK-BANK-RST-OTHERS", "CHK-KM-PARK")
 _SHARD_EVIDENCE = {
     1: _STEPS_EVIDENCE,
     2: (
@@ -238,7 +269,8 @@ _SHARD_EVIDENCE = {
         "CHK-BANK-SK-IRQ",
         "CHK-SINGLE-SHARE",
         "CHK-SS-KEY-CTRL-RSVD",
-        "CHK-BANK-RST",
+        "CHK-BANK-WIPE",
+        *_RESET_EVIDENCE,
     ),
 }
 
@@ -269,6 +301,11 @@ def _ok(r: kp.PokeResult) -> bool:
 
 def _ctrl_ops() -> list[kp.PokeOp]:
     return [kp.rd(b.ctrl) for b in pl.BANKS]
+
+
+def _bank_vec(res: list[kp.PokeResult]) -> int:
+    """The key_valid vector of the eight banks from the results of ``_ctrl_ops``."""
+    return pl.vector({b.bit: res[i].value for i, b in enumerate(pl.BANKS)})
 
 
 def _set_all_ops() -> list[kp.PokeOp]:
@@ -308,7 +345,12 @@ def _stage_msg_ops(plan: pl.Plan) -> list[kp.PokeOp]:
 class sep_km_key_bank_register_rand_test(sep_base_test):
     """KM-bus view of the wrapper key registers and the ML-KEM shared-key block."""
 
-    required_evidence = (*_STEPS_EVIDENCE, "CHK-SINGLE-SHARE", "CHK-SS-KEY-CTRL-RSVD")
+    required_evidence = (
+        *_STEPS_EVIDENCE,
+        "CHK-SINGLE-SHARE",
+        "CHK-SS-KEY-CTRL-RSVD",
+        "CHK-BANK-WIPE",
+    )
 
     # ------------------------------------------------------------------ main
 
@@ -317,7 +359,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         shard = sep_shard(self, _SHARD_EVIDENCE)
         if shard is None:
-            self.required_evidence = (*self.required_evidence, "CHK-BANK-RST")
+            self.required_evidence = (*self.required_evidence, *_RESET_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.failed = False
         self.plan = pl.draw_plan(seed)
@@ -907,29 +949,53 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         mask = a.valid_mask
         own = (a.share0, a.share1)[leg.share]
         set_km_ss_pass(False, self.logger)
+        n = pl.N_BANKS
         pre = await self._run(
             [kp.wrblk(a.share0[0], leg.pre[0]), kp.wrblk(a.share1[0], leg.pre[1])]
-            + [kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+            + _set_all_ops()
+            + _ctrl_ops()
         )
         await self._km_wipe()
         post = await self._run(
-            [kp.rd(a.ctrl), kp.wrblk(own[0], leg.key), kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+            _ctrl_ops() + [kp.wrblk(own[0], leg.key), kp.wr(a.ctrl, mask), kp.rd(a.ctrl)]
+        )
+        ctrl_pre, ctrl_wipe, ctrl_post = pre[2 + n :], post[:n], post[n + 2]
+        before, after = _bank_vec(ctrl_pre), _bank_vec(ctrl_wipe)
+        self._control(
+            "BANK-WIPE-LIVE",
+            before == pl.ALL_BANKS and all(_ok(x) for x in pre),
+            share=leg.share,
+            before=_v(before),
+            expect=_v(pl.ALL_BANKS),
+            resp_ok=all(_ok(x) for x in pre),
+        )
+        self._grade(
+            "BANK-WIPE",
+            after == 0 and all(_ok(x) for x in ctrl_wipe),
+            contract="sep/doc/crypto.adoc:196;key_manager/doc/architecture.adoc:515-518",
+            share=leg.share,
+            before=_v(before),
+            after=_v(after),
+            expect=_v(0),
+            resp_ok=all(_ok(x) for x in ctrl_wipe),
         )
         ct = await self._aes_block(leg.pt)
         golden = aes256_ecb_encrypt_words(list(leg.key), list(leg.pt))
-        v_pre = int(bool(pre[3].value & mask))
-        v_wipe = int(bool(post[0].value & mask))
-        v_post = int(bool(post[3].value & mask))
+        i_aes = pl.BANKS.index(a)
+        aes_pre, aes_wipe = ctrl_pre[i_aes], ctrl_wipe[i_aes]
+        v_pre = int(bool(aes_pre.value & mask))
+        v_wipe = int(bool(aes_wipe.value & mask))
+        v_post = int(bool(ctrl_post.value & mask))
         resp = all(_ok(x) for x in pre + post)
-        rsvd = [x.value & pl.AES_KEY_CTRL_RSVD for x in (pre[3], post[0], post[3])]
+        rsvd = [x.value & pl.AES_KEY_CTRL_RSVD for x in (aes_pre, aes_wipe, ctrl_post)]
         self._grade(
             "SS-KEY-CTRL-RSVD",
             not any(rsvd) and resp,
             contract="key_manager/regs/aes_wrapper_key.rdl:78-84",
             share=leg.share,
-            before_wipe=_h(pre[3].value),
-            after_wipe=_h(post[0].value),
-            after_write=_h(post[3].value),
+            before_wipe=_h(aes_pre.value),
+            after_wipe=_h(aes_wipe.value),
+            after_write=_h(ctrl_post.value),
             rsvd_mask=_h(pl.AES_KEY_CTRL_RSVD),
             expect_rsvd=_h(0),
             resp_ok=resp,
@@ -1060,7 +1126,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 k[stores[0][1]], k[stores[1][1]] = b_word, h_word
                 if aes256_ecb_encrypt_words(k, list(pt)) == ct:
                     match = f"byte:{b_name},half:{h_name}"
-        self.chk.obs(
+        self.chk.info(
             "BANK-SUBWORD",
             ct=[_h(w) for w in ct],
             match=match,
@@ -1109,10 +1175,9 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         raise AssertionError(f"{probe} did not read isolated within {_ISO_BOUND} clocks")
 
     async def _rearm(self, eng: str) -> dict:
-        """Set key_valid of the banks of ``eng`` (and redeliver the ABR shared key
-        when it is not held) right before its reset; return the state read after."""
-        own = pl.ENGINE_BANKS[eng]
-        ops = [kp.wr(b.ctrl, b.valid_mask) for b in pl.BANKS if (own >> b.bit) & 1]
+        """Set key_valid of every bank (and redeliver the ABR shared key when it is
+        not held) right before the reset of ``eng``; return the state read after."""
+        ops = _set_all_ops()
         prior = self.state
         redeliver = eng == "abr" and not (prior["sk_valid"] and any(prior["sk_words"]))
         on_sync = None
@@ -1149,7 +1214,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             sk_cleared = not after["sk_valid"] and not any(after["sk_words"])
             self._control(
                 "BANK-RST-LIVE",
-                (before["vec"] & own) == own
+                before["vec"] == pl.ALL_BANKS
                 and before["ok"]
                 and before["rearm_ok"]
                 and (not abr or (before["sk_valid"] and any(before["sk_words"]))),
@@ -1177,15 +1242,26 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 resp_ok=after["ok"],
                 how=how,
             )
-            self.chk.obs(
+            # The gated_rst_ni bit of an engine resets that engine's wrapper only
+            # (hw/sys/sep/doc/reset_controller.adoc:130-131).
+            others = pl.ALL_BANKS & ~own
+            self._grade(
+                "BANK-RST-OTHERS",
+                (after["vec"] & others) == others and after["ok"],
+                contract="sep/doc/reset_controller.adoc:130-131",
+                eng=eng,
+                before=_v(before["vec"]),
+                after=_v(after["vec"]),
+                others_after=_v(after["vec"] & others),
+                expect_others=_v(others),
+                resp_ok=after["ok"],
+            )
+            self.chk.info(
                 "BANK-RST",
                 eng=eng,
                 own_before_rearm=_v(prior["vec"] & own),
                 sk_valid_before_rearm=prior["sk_valid"],
                 sk_redelivered=before["redelivered"],
-                before=_v(before["vec"]),
-                after=_v(after["vec"]),
-                others_kept=(after["vec"] & ~own) == (before["vec"] & ~own),
                 sk_valid=after["sk_valid"],
                 sk_irq=after["sk_irq"],
                 sk_words_zero=not any(after["sk_words"]),
@@ -1196,22 +1272,47 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
 
     async def _park(self) -> None:
         r = await self._run(_set_all_ops() + _ctrl_ops())
-        before = pl.vector({b.bit: r[pl.N_BANKS + i].value for i, b in enumerate(pl.BANKS)})
+        before = _bank_vec(r[pl.N_BANKS :])
+        self._control(
+            "KM-PARK-LIVE",
+            before == pl.ALL_BANKS and all(_ok(x) for x in r),
+            before=_v(before),
+            expect=_v(pl.ALL_BANKS),
+            resp_ok=all(_ok(x) for x in r),
+        )
         await self.poke.prepare_reset()
         # The SEP mailbox FIFO keeps its words across a warm reset and the
         # image reads a leftover word as a list header: start the reset empty.
         await self.poke.mbox.flush()
+        state_before = self.poke.state()
         await self.swrst.park("km")
+        held = await self.swrst.read_back()
         await ClockCycles(self.dut.clk_i, _PARK_HOLD_CLKS)
         await self.swrst.release("km")
-        await self.poke.wait_boot()
-        after = _decode_state(await self._run(_state_ops(words=False)))
-        self.logger.info(
-            "OBS-KM-PARK seed=%d before=%s after=%s sk_valid=%d sk_irq=%d resp_ok=%d",
-            self.plan.seed,
-            _v(before),
-            _v(after["vec"]),
-            after["sk_valid"],
-            after["sk_irq"],
-            after["ok"],
+        boot_wait = await self.poke.wait_boot()
+        km_held = (held >> SW_RESET_N_BIT["km"]) & 1 == 0
+        self._control(
+            "KM-PARK-REBOOT",
+            km_held and state_before is not None and state_before[0] != kp.ST_BOOT,
+            sw_reset_n_held=f"0x{held:08x}",
+            state_before="none"
+            if state_before is None
+            else kp.STATE_NAMES.get(state_before[0], hex(state_before[0])),
+            boot_wait_clks=boot_wait,
         )
+        after = _decode_state(await self._run(_state_ops(words=False)))
+        # POKE image: no boot shred runs. The KM warm reset does not list the engine
+        # banks (hw/ip/key_manager/doc/architecture.adoc:158-176,
+        # hw/sys/sep/doc/reset_controller.adoc:182-186); only a rising edge of
+        # wipe_state_i or a CPU trap clears them (architecture.adoc:512-518).
+        self._grade(
+            "KM-PARK",
+            after["vec"] == before and after["ok"],
+            contract="key_manager/doc/architecture.adoc:158-176,512-518;"
+            "sep/doc/reset_controller.adoc:182-186",
+            image="km_rom_poke",
+            before=_v(before),
+            after=_v(after["vec"]),
+            resp_ok=after["ok"],
+        )
+        self.chk.info("KM-PARK", sk_valid=after["sk_valid"], sk_irq=after["sk_irq"])

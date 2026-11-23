@@ -302,12 +302,6 @@ Toggle csrng_axil_resp_o.b.resp [0] "logic csrng_axil_resp_o.b.resp[1:0]"
 Toggle edn_axil_resp_o.r.resp [0] "logic edn_axil_resp_o.r.resp[1:0]"
 Toggle edn_axil_resp_o.b.resp [0] "logic edn_axil_resp_o.b.resp[1:0]"
 
-CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
-Toggle esrc_axil_resp_o.r.resp "logic esrc_axil_resp_o.r.resp[1:0]"
-Toggle esrc_axil_resp_o.b.resp "logic esrc_axil_resp_o.b.resp[1:0]"
-
 CHECKSUM: "251540385 1629975084"
 ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
@@ -395,12 +389,6 @@ Toggle edn_axis_o[0].tstrb "logic edn_axis_o[0].tstrb[3:0]"
 Toggle edn_axis_o[1].tstrb "logic edn_axis_o[1].tstrb[3:0]"
 Toggle edn_axis_o[2].tstrb "logic edn_axis_o[2].tstrb[3:0]"
 
-CHECKSUM: "3295933835 1628216908"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
-Toggle s_axil_bresp_o "logic s_axil_bresp_o[1:0]"
-Toggle s_axil_rresp_o "logic s_axil_rresp_o[1:0]"
-
 CHECKSUM: "3536466054 1976754700"
 ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
@@ -449,12 +437,6 @@ Toggle abr_mem_req_o.mem_inst1.waddr [10:6] "logic abr_mem_req_o.mem_inst1.waddr
 Toggle abr_mem_req_o.mem_inst1.raddr [10:6] "logic abr_mem_req_o.mem_inst1.raddr[10:0]"
 Toggle abr_mem_req_o.mem_inst1_masked.waddr [10:6] "logic abr_mem_req_o.mem_inst1_masked.waddr[10:0]"
 Toggle abr_mem_req_o.mem_inst1_masked.raddr [10:6] "logic abr_mem_req_o.mem_inst1_masked.raddr[10:0]"
-
-CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
-Toggle esrc_axil_isolated_resp.r.resp "logic esrc_axil_isolated_resp.r.resp[1:0]"
-Toggle esrc_axil_isolated_resp.b.resp "logic esrc_axil_isolated_resp.b.resp[1:0]"
 
 CHECKSUM: "3536466054 1976754700"
 ANNOTATION: "SEP-DRBG-RESP-BIT0: drbg_axil64_lane_adapter returns AXI_RESP_OKAY, AXI_RESP_SLVERR or the axi_lite_to_tlul response, and axi_lite_to_tlul returns only 2'b00 or 2'b10, so resp bit 0 holds 0. hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv:44-45,112,158-159,214,229,250,280,258,287; hw/common/axi/axi_lite_to_tlul.sv:54-55,128-129,195,234"
@@ -750,12 +732,6 @@ CHECKSUM: "3661006289 2996815061"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_fifo
 ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties clr_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:414) on this entropy_fifo instance, so this input port holds 0. NOT waived: entropy_churn_enable_i, which follows the FIFO_CTRL CSR; the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
 Toggle clr_i "logic clr_i"
-
-CHECKSUM: "3264199385 4205087039"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.s_axil
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Toggle BRESP "logic BRESP[1:0]"
-Toggle RRESP "logic RRESP[1:0]"
 
 CHECKSUM: "1095994296 3660477044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_sha256_whitener
@@ -1584,20 +1560,6 @@ ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_ax
 Toggle lifecycle_axi_resp_o.b.user "logic lifecycle_axi_resp_o.b.user[11:0]"
 Toggle lifecycle_axi_resp_o.r.user "logic lifecycle_axi_resp_o.r.user[11:0]"
 
-CHECKSUM: "1196780505 2936465847"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_efuse_shim_id_conv
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
-Toggle axi_out_resp_i.b.user "logic axi_out_resp_i.b.user[11:0]"
-Toggle axi_out_resp_i.r.user "logic axi_out_resp_i.r.user[11:0]"
-Toggle axi_in_resp_o.b.user "logic axi_in_resp_o.b.user[11:0]"
-Toggle axi_in_resp_o.r.user "logic axi_in_resp_o.r.user[11:0]"
-
-CHECKSUM: "1196780505 2936465847"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_efuse_shim_id_conv
-ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
-Toggle axi_out_req_o.aw.id [5:4] "logic axi_out_req_o.aw.id[5:0]"
-Toggle axi_out_req_o.ar.id [5:4] "logic axi_out_req_o.ar.id[5:0]"
-
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
 ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
@@ -1841,48 +1803,6 @@ INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
 ANNOTATION: "SEP-KM-EFUSE-REMAP-BASE: efuse_req_o address bits [31:12] come from OTP_EFUSE_REMAP_BASE (hw/ip/key_manager/rtl/key_manager.sv:393-396, OtpPageMask at hw/ip/key_manager/rtl/km_intf_pkg.sv:172-174), bound to a package constant at hw/sys/sep/rtl/sep_crypto.sv:1028. NOT waived: page-offset bits [11:2]."
 Toggle efuse_req_o.aw.addr [31:12] "logic efuse_req_o.aw.addr[31:0]"
 Toggle efuse_req_o.ar.addr [31:12] "logic efuse_req_o.ar.addr[31:0]"
-
-CHECKSUM: "2671987447 2027082395"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
-ANNOTATION: "SEP-KM-OTP-ERR-SLV-TIE: u_otp_err_slv answers with the parameters RESP = SLVERR and RESP_DATA = 32'hBADCAB1E (hw/ip/key_manager/rtl/key_manager.sv:373-381); prim_axi_lite_err_slv ties AxCACHE to 0 (hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv:73-87); axi_lite_to_axi ties size to the elaborated width, burst to FIXED, last to 1 and the other AXI4 fields to '0 (vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:39-67); axi_err_slv drives resp and data from the parameters and echoes the tied ID (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143-145,194-197). NOT waived: request address, prot, data and strobe, and every valid/ready handshake."
-Toggle otp_port_resp[0].r.resp "logic otp_port_resp[0].r.resp[1:0]"
-Toggle otp_port_resp[0].r.data "logic otp_port_resp[0].r.data[31:0]"
-Toggle otp_port_resp[0].b.resp "logic otp_port_resp[0].b.resp[1:0]"
-
-CHECKSUM: "1849182084 2569679982"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_otp_err_slv
-ANNOTATION: "SEP-KM-OTP-ERR-SLV-TIE: u_otp_err_slv answers with the parameters RESP = SLVERR and RESP_DATA = 32'hBADCAB1E (hw/ip/key_manager/rtl/key_manager.sv:373-381); prim_axi_lite_err_slv ties AxCACHE to 0 (hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv:73-87); axi_lite_to_axi ties size to the elaborated width, burst to FIXED, last to 1 and the other AXI4 fields to '0 (vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:39-67); axi_err_slv drives resp and data from the parameters and echoes the tied ID (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143-145,194-197). NOT waived: request address, prot, data and strobe, and every valid/ready handshake."
-Toggle axil_resp_o.r.resp "logic axil_resp_o.r.resp[1:0]"
-Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[31:0]"
-Toggle axil_resp_o.b.resp "logic axil_resp_o.b.resp[1:0]"
-Toggle axi_req.aw.user "logic axi_req.aw.user"
-Toggle axi_req.aw.region "logic axi_req.aw.region[3:0]"
-Toggle axi_req.aw.qos "logic axi_req.aw.qos[3:0]"
-Toggle axi_req.aw.cache "logic axi_req.aw.cache[3:0]"
-Toggle axi_req.aw.lock "logic axi_req.aw.lock"
-Toggle axi_req.aw.burst "logic axi_req.aw.burst[1:0]"
-Toggle axi_req.aw.size "logic axi_req.aw.size[2:0]"
-Toggle axi_req.aw.len "logic axi_req.aw.len[7:0]"
-Toggle axi_req.aw.id "logic axi_req.aw.id"
-Toggle axi_req.ar.user "logic axi_req.ar.user"
-Toggle axi_req.ar.region "logic axi_req.ar.region[3:0]"
-Toggle axi_req.ar.qos "logic axi_req.ar.qos[3:0]"
-Toggle axi_req.ar.cache "logic axi_req.ar.cache[3:0]"
-Toggle axi_req.ar.lock "logic axi_req.ar.lock"
-Toggle axi_req.ar.burst "logic axi_req.ar.burst[1:0]"
-Toggle axi_req.ar.size "logic axi_req.ar.size[2:0]"
-Toggle axi_req.ar.len "logic axi_req.ar.len[7:0]"
-Toggle axi_req.ar.id "logic axi_req.ar.id"
-Toggle axi_req.aw.atop "logic axi_req.aw.atop[5:0]"
-Toggle axi_req.w.last "logic axi_req.w.last"
-Toggle axi_req.w.user "logic axi_req.w.user"
-Toggle axi_resp.r.user "logic axi_resp.r.user"
-Toggle axi_resp.r.resp "logic axi_resp.r.resp[1:0]"
-Toggle axi_resp.r.id "logic axi_resp.r.id"
-Toggle axi_resp.b.user "logic axi_resp.b.user"
-Toggle axi_resp.b.resp "logic axi_resp.b.resp[1:0]"
-Toggle axi_resp.b.id "logic axi_resp.b.id"
-Toggle axi_resp.r.data "logic axi_resp.r.data[31:0]"
 
 CHECKSUM: "2110255361 4285487034"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_cpu

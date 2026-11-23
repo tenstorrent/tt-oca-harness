@@ -44,9 +44,38 @@ each HMAC / KMAC / OTBN CSR gap:
   CHK-BUSERR-DMA-WR a write to the DMA hole is BRESP SLVERR; exclusive
                     reg_path_err; [40]=1, then cleared (CHK-BUSERR-DMA-WR-CLR)
 
-A beat past an adapter window is DECERR and never sets err_o. AES, CSRNG,
-EDN and WDT windows are packed to the last register. This leaf does not
-start a DMA transfer, so it does not prove host_path_err / bit 41.
+Then the Past Extent note spans (hw/sys/sep/regs/gen/adoc/memory_map.adoc,
+rows DMA :42, watchdog :43, AES :49, EDN :52, CSRNG :53, SPI host :75; notes
+:88-92 and :95). Up to the offset a note states, the unit answers SLVERR with
+read data 0xFFFFFFFF and latches the flag the note names: PIC source 41
+(DMA_BUS_ERR_STATUS.reg_path_err, vector bit 40) for the DMA, the
+PERIPH_BUS_ERR_STATUS bit of the block (vector bit 42) for the watchdog, AES,
+EDN and CSRNG, no flag for the SPI host. Past that offset the row's Past Extent
+cell applies as stated, SLVERR 0xBADCAB1E, and no note latches anything. The
+spans, the codes and the flags come from the generated map
+(env/sep_decode_resp.expected_unbacked). Per row, the first and the last word
+of the note span and the first and the last word of the page past it, each
+read and written once:
+  CHK-BUSERR-NOTE     a note-span access answers the map's code (and read data
+                      for a read); both STATUS words hold exactly the named
+                      flag; its vector bit is 1 and the other two of bits 40 to
+                      42 are 0; on the bench tap sep_ras_probe_o the
+                      dma_reg_bus_err and periph_bus_err bits hold exactly the
+                      named latch (hw/sys/sep/doc/port_table.adoc:130, row
+                      sep_ras_o: periph_bus_err indexed by periph_bus_err_e).
+                      A span whose note names no flag is graded as CHK-BUSERR-PAST.
+  CHK-BUSERR-NOTE-CLR the CLEAR write of that flag returns both STATUS words,
+                      vector bits 40 to 42 and those tap bits to 0
+  CHK-BUSERR-PAST     an access past the note span answers the map's code and
+                      read data, and both STATUS words, vector bits 40 to 42
+                      and those tap bits stay 0
+A DUT that does not latch CSRNG or EDN, latches the wrong bit, latches past the
+note's offset, or answers the span with the wrong data fails here. The leg runs
+twice: with the graded FCOV window closed, then open, so a sep_ras_cg bin of
+this owner samples only an access that already passed once.
+
+This leaf does not start a DMA transfer, so it does not prove host_path_err /
+bit 41.
 Lockstep punch-through has no frontdoor.
 
 INTR_TEST sets INTR_STATE regardless of IP functional state, so no entropy bring-
@@ -66,8 +95,9 @@ order of the cells after the cell (1, 1), the masks and the flip order.
                     low line is one that rose in the cell (1, 1) of the same run, and a
                     write-one clear drops state and line
   CHK-INTR-FLIP     with the state set, the line follows each enable toggle both ways
-  CHK-INTR-LINE     after INTR_TEST of mask T, INTR_STATE reads T and each line equals
-                    state AND enable over a hold of 4 times t_rise
+  CHK-INTR-LINE     INTR_ENABLE reads back E, after INTR_TEST of mask T INTR_STATE
+                    reads T, and each line equals state AND enable over a hold of 4
+                    times t_rise
   CHK-INTR-CLEAR    a write-one clear of mask C leaves T AND NOT C and the lines follow
 The leg grades only the cells the body above and the simultaneous fan-in test do not
 walk; the other cells run as controls (CTRL-INTR-OPEN). t_rise is the clocks from the
@@ -112,11 +142,13 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
+from env.sep_decode_resp import expected_unbacked
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_ras_map import PERIPH_BUS_ERR_BLOCKS, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import pic
 from sep_base_test import sep_base_test
-from sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, HMAC, KMAC, sym
+from sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, HMAC, KMAC, SEP_CPU_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import (
     DMA_CLEAR_ADDR,
@@ -130,9 +162,12 @@ from seq_lib.sep_irq_aggregator_seq import (
     PERIPH_CLEAR_ADDR,
     PERIPH_STATUS_ADDR,
     IrqSrc,
+    NoteSpan,
     SepIrqIp,
     agg_from_pic,
     dma_reg_unmapped_addr,
+    note_flag,
+    note_spans,
     periph_holes,
 )
 from seq_lib.sep_irq_fanin_seq import FANIN_SOURCES
@@ -144,6 +179,19 @@ def _baseline_x_field() -> str:
     or Z bit raises in the AXI master; "n/a" on Verilator, which is 2-state and checks nothing.
     """
     return "n/a" if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower() else "0"
+
+
+# Note-span leg: the flags the generated map names, the bus-error bits of the
+# sep_ras_probe_o tap, and the data written to each probed word.
+NOTE_FLAGS = frozenset(("dma_reg", "aes", "csrng", "edn", "wdt"))
+RAS_FLAG_BIT = {
+    "dma_reg": ras_bit("dma_reg_bus_err"),
+    **{n: ras_bit("periph_bus_err", k) for k, n in enumerate(PERIPH_BUS_ERR_BLOCKS)},
+}
+RAS_BUSERR_MASK = sum(1 << b for b in RAS_FLAG_BIT.values())
+NOTE_WDATA = 0xA5A5_1234
+AGG_BUSERR = (IRQ_DMA_REG_PATH, IRQ_DMA_HOST_PATH, IRQ_PERIPH_OR)
+AGG_BUSERR_MASK = sum(1 << b for b in AGG_BUSERR)
 
 
 # Clocks an Event source must keep its aggregate bit at 1 after INTR_TEST=0
@@ -383,6 +431,9 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         "CHK-ESRC-DISABLED",
         "CHK-ESRC-PAIR",
         "CHK-ESRC-ONE-CLEARED",
+        "CHK-BUSERR-NOTE",
+        "CHK-BUSERR-NOTE-CLR",
+        "CHK-BUSERR-PAST",
     )
 
     async def _sample_agg_known(self, mask: int) -> int:
@@ -525,6 +576,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             status_release_max,
         )
         await self._check_bus_err_paths()
+        await self._note_span_leg()
         await self._crypto_line_leg()
 
     async def _agg_bit(self, idx: int) -> int:
@@ -671,6 +723,98 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 "CHK-BUSERR-CLR PASS: PERIPH_BUS_ERR_CLEAR.%s; STATUS=0; [42]=0",
                 hole.name,
             )
+
+    # ---- Past Extent note spans ----------------------------------------------------------
+    async def _note_span_leg(self) -> None:
+        """CHK-BUSERR-NOTE, CHK-BUSERR-NOTE-CLR and CHK-BUSERR-PAST (module docstring)."""
+        check_tap_width(cocotb.top.sep_ras_probe_o)
+        spans = note_spans()
+        flags = {s.flag for s in spans} - {""}
+        assert flags == NOTE_FLAGS, (
+            f"CTRL-BUSERR-NOTE FAIL: the map's note flags are {sorted(flags)}, "
+            f"the leg grades {sorted(NOTE_FLAGS)}"
+        )
+        for run in ("closed", "graded"):
+            if run == "graded":
+                open_graded_window(TEST, self.logger)
+            try:
+                for span in spans:
+                    for addr in dict.fromkeys((span.first, span.past - 4, span.past, span.last)):
+                        for op in ("r", "w"):
+                            await self._note_probe(span, addr, op, run)
+            finally:
+                await RisingEdge(cocotb.top.clk_i)
+                close_graded_window(self.logger)
+
+    async def _note_probe(self, span: NoteSpan, addr: int, op: str, run: str) -> None:
+        exp = expected_unbacked(addr, op)
+        flag = note_flag(exp.latch)
+        seq = SepAxiAccessSeq(
+            f"note_{op}",
+            op=SepAxiOp.READ if op == "r" else SepAxiOp.WRITE,
+            addr=addr,
+            wdata=NOTE_WDATA,
+            size=2,
+            allow_ungraded_read_resp=op == "r",
+            allow_unverified_write_resp=op == "w",
+        )
+        await self.start_seq(seq)
+        rdata = None if op == "w" else seq.rdata & 0xFFFF_FFFF
+        if flag == "dma_reg":
+            want = (DMA_REG_PATH_BIT, 0, IRQ_DMA_REG_PATH)
+        elif flag:
+            want = (0, SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", flag), IRQ_PERIPH_OR)
+        else:
+            want = (0, 0, None)
+        ras_want = 1 << RAS_FLAG_BIT[flag] if flag else 0
+        chk = "CHK-BUSERR-NOTE" if flag else "CHK-BUSERR-PAST"
+        got = await self._buserr_state(want[2])
+        line = (
+            f"run={run} unit={span.unit!r} addr=0x{addr:08x} op={op} column={exp.column} "
+            f"resp={seq.resp_code} rdata={'na' if rdata is None else f'0x{rdata:08x}'} "
+            f"expect={exp.resp}/{'na' if exp.rdata is None else f'0x{exp.rdata:08x}'} "
+            f"flag={flag or 'none'} dma=0x{got[0]:x} periph=0x{got[1]:x} vec42_40={got[2]:03b} "
+            f"ras=0x{got[3]:x} want=0x{want[0]:x}/0x{want[1]:x}/0x{ras_want:x}"
+        )
+        vec_want = 0 if want[2] is None else 1 << AGG_BUSERR.index(want[2])
+        ok = (
+            not seq.timed_out
+            and seq.resp_code == exp.resp
+            and rdata == exp.rdata
+            and got == (want[0], want[1], vec_want, ras_want)
+        )
+        assert ok, f"{chk} FAIL: {line}"
+        self.logger.info("%s PASS: %s", chk, line)
+        if not flag:
+            return
+        if flag == "dma_reg":
+            await self.irq.write32(DMA_CLEAR_ADDR, DMA_CLR_BIT)
+        else:
+            await self.irq.write32(
+                PERIPH_CLEAR_ADDR, SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", flag)
+            )
+        got = await self._buserr_state(want[2], 0)
+        line = (
+            f"run={run} unit={span.unit!r} addr=0x{addr:08x} op={op} flag={flag} "
+            f"dma=0x{got[0]:x} periph=0x{got[1]:x} vec42_40={got[2]:03b} ras=0x{got[3]:x}"
+        )
+        assert got == (0, 0, 0, 0), f"CHK-BUSERR-NOTE-CLR FAIL: {line}"
+        self.logger.info("CHK-BUSERR-NOTE-CLR PASS: %s", line)
+
+    async def _buserr_state(self, vec_idx: int | None, level: int = 1) -> tuple[int, int, int, int]:
+        """(DMA_BUS_ERR_STATUS, PERIPH_BUS_ERR_STATUS, vector bits 40 to 42, tap bus-error bits).
+
+        With ``vec_idx``, the vector bit is first polled to ``level``. Every
+        sampled bit must be 0 or 1.
+        """
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        per_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        if vec_idx is not None:
+            await self._poll_agg(vec_idx, level)
+        vec = await self._sample_agg_known(AGG_BUSERR_MASK)
+        ras = self.rd_known(cocotb.top.sep_ras_probe_o, RAS_BUSERR_MASK) & RAS_BUSERR_MASK
+        vec3 = sum(((vec >> b) & 1) << i for i, b in enumerate(AGG_BUSERR))
+        return dma_st, per_st, vec3, ras
 
     # ---- Crypto interrupt-line leg -------------------------------------------------------
     # Outer limits of the clean-time measurements of the leg; never a contract.
@@ -995,6 +1139,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         m0 = self.vec.mark()
         self._open()
         await self.irq.write32(src0.enable_addr, trial.enable)
+        en_rb = await self.irq.read32(src0.enable_addr) & drv
         await self.irq.write32(src0.test_addr, trial.test)
         st = await self.irq.read32(src0.state_addr) & drv
         expect = st & trial.enable
@@ -1017,10 +1162,11 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         self._grade(
             "chk",
             "INTR-LINE",
-            rise_ok and bits_ok and st == trial.test,
+            rise_ok and bits_ok and st == trial.test and en_rb == trial.enable & drv,
             block=block,
             trial=trial.kind,
             enable=f"0x{trial.enable:x}",
+            enable_rb=f"0x{en_rb:x}",
             test=f"0x{trial.test:x}",
             state=f"0x{st:x}",
             vec=f"0x{vec:x}",
@@ -1337,13 +1483,12 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             bound=self._LEG_RISE_BOUND,
             hold=4 * tr,
         )
-        # Which register names the contributor of source 16 is an open specification
-        # question: the INTR_STATUS value with the line is logged only.
-        self.chk.obs(
+        self.chk.info(
             "ESRC-CONTRIBUTOR",
             run=self._run_tag,
             line=self.evec.level(),
             intr_status=f"0x{st:08x}",
+            chk="CHK-ESRC-PAIR",
         )
         # Clear one of the two: the line stays high, and the cleared bit drops (probe).
         mc = self.evec.mark()

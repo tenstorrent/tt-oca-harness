@@ -60,6 +60,7 @@ from sep_reg_meta import (
 
 # isort: split
 import sep_reg  # noqa: E402
+from sep_decode_resp import sep_map_row, sep_map_rows  # noqa: E402
 from sep_efuse_image import (  # noqa: E402
     LC_PROD,
     LC_PROD_END,
@@ -322,6 +323,8 @@ def _lock_slots() -> tuple[tuple[str, int, int], ...]:
 LOCK_SLOTS = _lock_slots()
 LOCK_SLOT_FIELD: tuple[str, ...] = tuple(s[0] for s in LOCK_SLOTS)
 SLOT_OF_FIELD: dict[str, int] = {n: i for i, n in enumerate(LOCK_SLOT_FIELD)}
+_UID_LOCK_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID"))
+_ORDER_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("SIP_DIS", "SYS_DIS", "REQUIRED_ALGS"))
 # otp_fuse_controller.adoc LOCK field: 41 slots, write lock at bit 2s, read lock at 2s+1.
 for _s, (_n, _wb, _rb) in enumerate(LOCK_SLOTS):
     if (_wb, _rb) != (2 * _s, 2 * _s + 1) or _n not in FIELD_NAMES:
@@ -1073,9 +1076,14 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     rest = d.sample("past_extent_rest", [c for c in cands if c != alias], 6)
     offsets = d.shuffled("past_extent_offsets", [alias, *rest])
     rw_offs = {field_offset(n) + 4 * w for n in SHADOW_RW_FIELDS for w in range(field_n_words(n))}
-    pinned = {0x600, 0xC1C, 0xFFFC}
-    zone1 = [a for a in range(0x604, 0x1000, 4) if a not in pinned]
-    zone2 = [a for a in range(0x1000, 0xFFFC, 4) if a not in pinned]
+    # Zone 1: the words of the eFuse wrapper page past each sub-block's register
+    # extent (SLVERR); zone 2: the Reserved row past the page (DECERR). The
+    # pinned words are the last word of the page and both ends of zone 2.
+    page = [r for r in sep_map_rows() if r.base >> 12 == SHADOW_BASE >> 12]
+    gap = sep_map_row(page[-1].end + 1)
+    pinned = (page[-1].end - 3, gap.base, gap.end - 3)
+    zone1 = [a for r in page for a in range(r.base + r.extent, r.end, 4) if a not in pinned]
+    zone2 = [a for a in range(gap.base, gap.end, 4) if a not in pinned]
     a1 = d.choice("rsvd_alias_zone1", [a for a in zone1 if a & 0x3FF in rw_offs])
     a2 = d.choice("rsvd_alias_zone2", [a for a in zone2 if a & 0x3FF in rw_offs])
     more = d.sample("rsvd_rest", [a for a in zone1 + zone2 if a not in (a1, a2)], 4)
@@ -1085,7 +1093,8 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
         "past_extent_addrs": [
             EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS") + o for o in offsets
         ],
-        "rsvd_addrs": [SHADOW_BASE + a for a in rsvd],
+        "rsvd_pinned": list(pinned),
+        "rsvd_addrs": rsvd,
         "ctl_word_addr": shadow_addr("SYS_DIS", w),
         "rw_shadow_offsets": sorted(rw_offs),
     }
@@ -1723,7 +1732,7 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
                 continue
             kinds = (
                 (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_WR)
-                if s in (11, 13, 15)
+                if s in _UID_LOCK_SLOTS
                 else (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR)
             )
             layout[s] = d.choice(f"lock_kind.{s}", kinds)
@@ -1785,12 +1794,12 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
         leg["class_key_bit"] = _pick_bit(d, "class_key_bit", img, "CLASS_KEY", zero=False)
         leg["locks_bit"] = _pick_bit(d, "locks_bit", img, "LOCKS", zero=False)
     elif kind == "order":
-        slot = d.choice("order_slot", (3, 4, 22))
+        slot = d.choice("order_slot", _ORDER_SLOTS)
         perm = d.shuffled("order_permutation", ("write_a", "lock", "write_b"))
         img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_)
         fname = LOCK_SLOT_FIELD[slot]
         abc = d.sample("order_bits_abc", zero_bits(img, fname), 3)
-        ctl_slot = d.choice("control_slot", [s for s in (3, 4, 22) if s != slot])
+        ctl_slot = d.choice("control_slot", [s for s in _ORDER_SLOTS if s != slot])
         leg.update(slot=slot, permutation=perm, bits_abc=abc, control_slot=ctl_slot)
         leg["control_bit"] = _pick_bit(d, "control_bit", img, LOCK_SLOT_FIELD[ctl_slot])
     else:

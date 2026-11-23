@@ -151,6 +151,11 @@ Checkers:
                   CONTROL.GO reads 0 after the clear ("Firmware clears the go
                   bit to stop the hardware handshake operation earlier.",
                   secure_dma.adoc, CONTROL.GO).
+  INFO-STOP-RETRIG re-trigger leg: the chunk count after the second segment,
+                  the per-chunk fill map, the trigger level before the segment
+                  and its rises. The chunks are graded by CHK-HS-STOP (at least
+                  one more chunk, data and sentinel); the exact count has no
+                  golden and is logged.
   CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run,
                   and with INTR_ENABLE.DMA_CHUNK_DONE=1 PIC source 10 (bit 9 of
                   ``sep_internal_interrupts_probe_o``) stays low at every clock
@@ -287,7 +292,7 @@ Checkers:
                   and HANDSHAKE_INTR_ENABLE read back as written before GO,
                   and the trigger probe is high in the window.
 
-  OBS-SPI-BYTEORDER  one line at the end of the leaf: the in-word byte order
+  INFO-SPI-BYTEORDER one line at the end of the leaf: the in-word byte order
                   the words carried (``lsb_first``, ``msb_first`` or
                   ``undecided``), the compare that fixed it, the word counts
                   and STATUS.BYTEORDER of the last STATUS read. Logged, not
@@ -391,7 +396,8 @@ TEST = "sep_spi_dma_handshake_rand_test"
 M32 = 0xFFFF_FFFF
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
-# Handshake range: the SRAM base to the end of the SPI window (memory_map.adoc).
+# Handshake range: the SRAM base to 0x10BF_FFFF, which holds the SPI host page
+# and the SRAM destination (memory_map.adoc).
 HS_RANGE_BASE = SRAM_BASE
 HS_RANGE_LIMIT = 0x10BF_FFFF
 # Normal-mode range: the SEP SRAM.
@@ -1153,8 +1159,13 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # HARDWARE_HANDSHAKE_ENABLE is sw=rw, hw=r and resets to 0; only the GO
         # write of this run sets it.
         hs_enable = int(bool(control & HS_ENABLE_MASK))
-        go_line = f"run={tag} hs_enable={hs_enable} expect=1 control=0x{control:08x}"
-        if not hs_enable:
+        # MASK bit 0 is clear, so the written mask differs from the reset 0x7FF.
+        mask_rb = await self.dma.rd(HANDSHAKE_INTR_ENABLE) & HS_MASK_FIELD
+        go_line = (
+            f"run={tag} hs_enable={hs_enable} expect=1 control=0x{control:08x} "
+            f"mask_rb=0x{mask_rb:03x} expect_mask=0x{mask & HS_MASK_FIELD:03x}"
+        )
+        if not hs_enable or mask_rb != mask & HS_MASK_FIELD:
             self._ctrl_missing("CTRL-HS-MASKED-GO", go_line)
         self.logger.info("CTRL-HS-MASKED-GO PASS seed=%d %s", cfg.seed, go_line)
         # Negative-control hook: ``go_exp = 0`` for one run; CHK-HS-MASKED fails while
@@ -1923,8 +1934,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             and all(w == self.sentinel for w in img_re[re_words:])
         )
         self.logger.info(
-            "OBS-STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
-            "trigger_rises=%d",
+            "INFO-STOP-RETRIG chk=CHK-HS-STOP seed=%d n_moved_retrigger=%d filled=%s "
+            "trigger_low_before=%d trigger_rises=%d",
             cfg.seed,
             n_re,
             "".join(str(int(f)) for f in filled_re),
@@ -2016,6 +2027,6 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         for variant, range_base, bus, leg in CLR_VARIANTS:
             await self._clear_obs_run(variant, range_base, bus, leg, clr_rng, t_fill)
         last = self.spi.status_log[-1] if self.spi.status_log else None
-        self.order.log_obs(
+        self.order.log_info(
             self.logger, cfg.seed, status_byteorder=None if last is None else last.byteorder
         )

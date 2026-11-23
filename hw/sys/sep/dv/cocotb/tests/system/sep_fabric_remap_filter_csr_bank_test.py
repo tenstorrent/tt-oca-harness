@@ -54,8 +54,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     REMAP_OFFSET_LO_MASK,
     REMAP_RW_HI_MASK,
     REMAP_STRIDE,
-    RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     STEE_BASE,
     WOSET_HI_BIT,
     SepFabricCsrBank,
@@ -342,11 +342,11 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
 
         # CHK-WOSET: inbound + outbound filter FILTER_CONFIG[63] locked is write-once-set
         # (seeded lock entry, DISTINCT from the field-R/W entry; the lock is permanent so
-        # this is last). The set sticks, the clear-attempt write completes DECERR and the
-        # bit stays 1. The bit staying 1 shows the woset storage; the DECERR on the clear
+        # this is last). The set sticks, the clear-attempt write completes SLVERR and the
+        # bit stays 1. The bit staying 1 shows the woset storage; the SLVERR on the clear
         # write shows the lock steers the hi-word write away. While the lock
         # is set, a write to the FILTER_CONFIG lo word (the R/W rule fields), START_ADDR
-        # and END_ADDR also completes DECERR and leaves the word unchanged. Source:
+        # and END_ADDR also completes SLVERR and leaves the word unchanged. Source:
         # filter_ctrl.rdl FILTER_CONFIG.locked and hw/ip/axi_filter/doc/index.adoc
         # ("Locking a Filter Entry").
         # Every locked write runs and is logged before any code is graded, so a
@@ -391,24 +391,24 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
                     )
             for reg, code in resps:
                 self.logger.info(
-                    "CHK-WOSET %s e%d locked %s write resp=%d (spec DECERR=%d)",
+                    "CHK-WOSET %s e%d locked %s write resp=%d (spec SLVERR=%d)",
                     name,
                     entry,
                     reg,
                     code,
-                    RESP_DECERR,
+                    RESP_SLVERR,
                 )
-                if code != RESP_DECERR:
+                if code != RESP_SLVERR:
                     fails.append(
-                        f"{name} e{entry} locked {reg} write resp={code}, expected DECERR "
-                        f"({RESP_DECERR}): a write to a locked entry goes to the AXI error "
+                        f"{name} e{entry} locked {reg} write resp={code}, expected SLVERR "
+                        f"({RESP_SLVERR}): a write to a locked entry goes to the AXI error "
                         "subordinate"
                     )
         assert not fails, "CHK-WOSET FAIL: " + "; ".join(fails)
         self.logger.info(
             "CHK-WOSET PASS (INFILT e%d, OUTFILT e%d locked): set sticks; the "
-            "FILTER_CONFIG hi clear write completes DECERR; writes to the FILTER_CONFIG "
-            "lo word, START_ADDR and END_ADDR complete DECERR and leave the word "
+            "FILTER_CONFIG hi clear write completes SLVERR; writes to the FILTER_CONFIG "
+            "lo word, START_ADDR and END_ADDR complete SLVERR and leave the word "
             "unchanged",
             cfg.infilt_lock_entry,
             cfg.outfilt_lock_entry,

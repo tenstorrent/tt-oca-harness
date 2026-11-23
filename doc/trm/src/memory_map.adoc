@@ -115,7 +115,8 @@ Each element of an array counts as a block, and the windows are sized as
 follows:
 
 * Each element of an array owns the space up to the next element, the array's
-  stride.
+  stride. A wrapper that holds only an array owns only those strides, so the
+  space between its last element and the next block has no owner.
 * A vendored block owns the window its own decoder implies.
 * Any other block owns the space up to the next block or, if it is the last
   block, the window its register block decodes.

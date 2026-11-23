@@ -21,6 +21,8 @@
 // Console lines (one per access group):
 //   TWIN-PARAMS scratch=<v> csid=<v> sram_start=<v> sram_end=<v> marker=<v>
 //               local_base=<v> moved_base=<v> moved_marker=<v>
+//   TWIN-ATTR word=<addr> alias=<addr> mrac_side_effect=<v> mrac_cacheable=<v>
+//             mrac_restored=<v>           mrac read back around the attribute accesses
 //   TWIN unit=<name> d1=<v> a=<v> d2=<v>   static word: direct, alias, direct
 //   TWIN unit=<name> d1=<v> a=<v>          SRAM word: direct, alias
 //   TWIN-WR alias=<addr> direct=<v>        marker write through the alias
@@ -60,6 +62,26 @@
 #define ESRC_WORD SEP_TOP_ENTROPY_SOURCE_COMPONENT_ID_BASE_ADDR
 #define SRAM_START_WORD SRAM_BASE
 #define SRAM_END_WORD (SRAM_BASE + SRAM_SIZE - 4u)
+// SRAM word of the LSU attribute accesses. It is 8-byte aligned, so a cacheable
+// access, which the core issues 8-byte aligned, keeps its address, and it is
+// neither SRAM word of the twin. Must equal _ATTR_OFF of the cocotb test.
+#define ATTR_WORD (SRAM_BASE + 0x40u)
+
+// mrac (CSR 0x7C0) holds two bits per 256 MiB region r, bit 2r cacheable and
+// bit 2r+1 side-effect. MRAC_BOOT is the crt0 value: every region side-effect
+// except region 0xC. MRAC_CACHEABLE also makes region 0xD (the alias window at
+// its reset base) cacheable and not side-effect.
+#define MRAC_BOOT 0xA8AAAAAAu
+#define MRAC_CACHEABLE 0xA4AAAAAAu
+
+#define CSR_READ(n) \
+    ({ \
+        uint32_t v_; \
+        __asm__ volatile("csrr %0, " #n : "=r"(v_)::"memory"); \
+        v_; \
+    })
+#define CSR_WRITE(n, v) __asm__ volatile("csrw " #n ", %0" ::"r"(v) : "memory")
+#define FENCE() __asm__ volatile("fence" ::: "memory")
 
 // Layout: [0]=magic, [1]=scratch value, [2]=CSID value, [3]=SRAM start-word
 // value, [4]=SRAM last-word value, [5]=marker, [6]=local region base,
@@ -124,6 +146,32 @@ int main(void) {
     put_kv(" local_base=", g_twin_params[6]);
     put_kv(" moved_base=", g_twin_params[7]);
     put_kv(" moved_marker=", g_twin_params[8]);
+    sep_mbx_puts("\n");
+
+    // LSU attribute accesses: one store and one load of ATTR_WORD direct
+    // (region 1, side-effect under MRAC_BOOT), then one store and one load of
+    // its alias with region 0xD cacheable, then MRAC_BOOT again. The fences
+    // put each access on the bus before the next one and before the mrac
+    // change. They run before the seed writes, because the test pairs the
+    // SRAM reads of the twin with the last two SRAM writes, and the twin
+    // accesses below run under MRAC_BOOT.
+    uint32_t mrac_se = CSR_READ(0x7C0);
+    wr32(ATTR_WORD, 0x5EFFEC75u);
+    FENCE();
+    (void)rd32(ATTR_WORD);
+    FENCE();
+    CSR_WRITE(0x7C0, MRAC_CACHEABLE);
+    uint32_t mrac_c = CSR_READ(0x7C0);
+    wr32(ALIAS_OF(ATTR_WORD), 0xCAC4EAB1u);
+    FENCE();
+    (void)rd32(ALIAS_OF(ATTR_WORD));
+    FENCE();
+    CSR_WRITE(0x7C0, MRAC_BOOT);
+    put_kv("TWIN-ATTR word=", ATTR_WORD);
+    put_kv(" alias=", ALIAS_OF(ATTR_WORD));
+    put_kv(" mrac_side_effect=", mrac_se);
+    put_kv(" mrac_cacheable=", mrac_c);
+    put_kv(" mrac_restored=", CSR_READ(0x7C0));
     sep_mbx_puts("\n");
 
     // Seed each writable static word and both SRAM words at the direct address.

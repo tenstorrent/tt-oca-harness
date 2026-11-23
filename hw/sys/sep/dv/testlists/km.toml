@@ -64,6 +64,21 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
+# The SEP CPU moves SEP SRAM blocks through AES under a key it loads into the KM
+# and transfers to AES. The EL2 firmware and the KM rom_main image build in one
+# c_compile (mode el2_km_rom_main); rom_main reads OTP at boot, so the leaf
+# senses a PROD image staged at t=0.
+name = "sep_km_aes_sram_cpu_rand_test"
+module = "km.sep_km_aes_sram_cpu_rand_test"
+firmware = { name = "km_aes_sram_cpu_rand_test", mode = "el2_km_rom_main" }
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["km", "aes", "cpu", "subsystem", "entropy", "sep_spec_log"]
+run_modes = ["cpu"]
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
 # KM -> HMAC sideload consume-proof KAT on a known 256-bit key, frontdoor only.
 name = "sep_km_hmac_sideload_kat_test"
 module = "km.sep_km_hmac_sideload_kat_test"

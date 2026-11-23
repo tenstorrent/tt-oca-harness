@@ -145,6 +145,8 @@ module smc_cpu_wrapper #(
                                                // fuse_reset_ni releases.
   output logic      init_mem_done_o,    // High once the scratch RAM zero-fill has completed or been
                                         // skipped.
+  output logic [2:0] mem_zero_state_debug_o,  // Scratch RAM zero-fill FSM state: 001 idle,
+                                              // 010 busy, 100 done.
 
   input  wire logic rom_flip_endianness_i,  // High byte-reverses each ROM word returned to the
                                             // cluster.
@@ -366,6 +368,7 @@ module smc_cpu_wrapper #(
 
     .disable_sram_auto_init_i     (disable_sram_auto_init_i),
     .init_mem_done_o              (init_mem_done_o),
+    .mem_zero_state_debug_o       (mem_zero_state_debug_o),
 
     .test_en_i                    (test_en_i),
     .scan_rst_ni                  (scan_rst_ni)

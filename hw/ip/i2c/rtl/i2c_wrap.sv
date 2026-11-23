@@ -98,7 +98,9 @@ module i2c_wrap #(
   output logic [NUM_I2CS-1:0] i2c_fifo_intg_err_o,          // Per-instance FIFO pointer or data
                                                             // parity integrity error; see i2c_core.
 
-  output logic [NUM_I2CS-1:0][3:0] i2c_debug_o              // Per-instance four-bit debug; see
+  output logic [NUM_I2CS-1:0][3:0] i2c_debug_o,             // Per-instance four-bit debug; see
+                                                            // i2c_core.
+  output logic [NUM_I2CS-1:0][11:0] i2c_fsm_state_debug_o   // Per-instance FSM states; see
                                                             // i2c_core.
 );
 
@@ -216,7 +218,8 @@ module i2c_wrap #(
       .fifo_intg_err_o          (i2c_fifo_intg_err_o[i]),
 
       // Debug Interface
-      .debug_o                  (i2c_debug_o[i])
+      .debug_o                  (i2c_debug_o[i]),
+      .fsm_state_debug_o        (i2c_fsm_state_debug_o[i])
     );
 
   end

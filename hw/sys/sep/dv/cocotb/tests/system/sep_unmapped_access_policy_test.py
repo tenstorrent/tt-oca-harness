@@ -23,11 +23,14 @@ CHK-SYSCSR-HOLE-REFUSE, CHK-SYS-RESERVED-REFUSE, CHK-MBOX-UPPER-REFUSE,
 CHK-EFUSE-CTRL-PAST-REFUSE, CHK-EFUSE-MMR-PAST-REFUSE and CHK-SPI-PAST-REFUSE:
 every read and write in that set is refused (never OKAY, never a timeout).
 
-CHK-SYSCSR-HOLE-DECODE: no system-CSR hole or reserved-row probe reaches the
-system-CSR AXI-Lite port. The system-peripherals crossbar refuses them itself,
-so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
-any write error behind it. A watched write and read of SEP_NMI_VEC must each
-show their handshake at that port, so a watcher that sees nothing fails.
+CHK-SYSCSR-HOLE-DECODE: a system-CSR hole or reserved-row probe reaches the
+system-CSR AXI-Lite port exactly when it lies in the scratch page or a system
+CSR page. The peripheral crossbar sends those pages whole to the system CSR
+block and answers the rest of 0x10A0_8000-0x10A4_FFFF itself
+(hw/sys/sep/doc/fabric.adoc:144-149, hw/sys/sep/doc/memory_map.adoc:106-107).
+The page bounds are the unit rows of the generated map. The walk must watch
+probes of both kinds. A watched write and read of SEP_NMI_VEC must each show
+their handshake at that port, so a watcher that sees nothing fails.
 
 CHK-SYS-RESERVED-NO-LOOPBACK: no system-CSR hole or reserved-row probe arrives
 at the local crossbar's ext initiator. The peripheral crossbar forwards an
@@ -60,22 +63,29 @@ UNMAPPED-MAP-DISAGREE. Past the efuse_interface_ctrl and spi_controller
 extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the
 read data of every error response for X/Z, so an unknown payload fails instead
 of reading as zero; every such read must have been lane-checked. The golden is
-the generated map, hw/sys/sep/regs/gen/adoc/memory_map.adoc, whose codes were
-assigned from the RTL; hw/sys/sep/doc/fabric.adoc:143-146 states the DECERR
-class between the register blocks of the system CSR windows. The eFuse token
-span past the efuse_mmr extent answers SLVERR, 0x0 (memory_map.adoc, SEP eFuse
-Wrapper row), as hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states; the leaf
-also logs each of its codes as OBS-EFUSE-TOKEN-PAST-CODE.
+the generated map, hw/sys/sep/regs/gen/adoc/memory_map.adoc;
+hw/sys/sep/doc/fabric.adoc:147-149 states DECERR for the
+addresses of 0x10A0_8000-0x10A4_FFFF outside the mailbox and system CSR pages.
+The eFuse token span past the efuse_mmr extent answers SLVERR, 0x0
+(memory_map.adoc:60, SEP eFuse Wrapper row). The first two words past the SPI
+host extent answer SLVERR with read data 0xFFFFFFFF and the rest of its page
+SLVERR, 0xBADCAB1E (memory_map.adoc:75 and its note); no probe lies in a span
+whose note latches a bus-error flag.
 The in-extent holes, one word between two mailbox sub-blocks and one between
 two SEP CPU control registers on each bus lane, are read, written and read
-again: they answer the Hole in Extent cell of their row (memory_map.adoc:69,
-SLVERR, 0x0; :79, OKAY, 0x0), so the second read shows the write was
+again: they answer the Hole in Extent cell of their row (memory_map.adoc:66,
+SLVERR, 0x0; :73, OKAY, 0x0), so the second read shows the write was
 discarded.
 
-OBS-CPU-CTRL-BASE-CODE: offset 0 of SEP CPU control lies below its first
-register. doc/trm/src/memory_map.adoc:91 states the answer for an offset
-between registers only, so the leaf reads it, writes it and reads it again
-after the graded walk and logs each response and read data with no verdict.
+CHK-CPU-CTRL-BASE-CODE: offset 0 of SEP CPU control lies below its first
+register, CLOCK_GATE_CTRL, inside the unit's decoded extent. After the graded
+walk the leaf reads it, writes PROBE_WDATA and reads it again: each access
+completes with OKAY and both reads return 0x0. The golden is the SEP hole
+response, hw/sys/sep/regs/include/sep_memory_map.rdl:13 (OKAY, 0x0 / OKAY,
+defined at :8), and doc/trm/src/memory_map.adoc:80-81 (the Hole in Extent
+column covers an unbacked offset inside the decoded extent) with :114-115 (an
+OKAY read returns the listed data and a write has no effect). The word is not
+an in-extent hole probe, so CHK-UNMAPPED-CODE does not grade it.
 
 CHK-UNMAPPED-NO-ALIAS: no refused read returns a programmed value, no probe
 write moves a watched live word, and a closing re-read of every live word
@@ -102,6 +112,7 @@ from dataclasses import dataclass, field
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep
+from env.sep_decode_resp import expected_unbacked
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from sep_base_test import sep_base_test
 from seq_lib.sep_unmapped_access_seq import (
@@ -123,6 +134,7 @@ from seq_lib.sep_unmapped_access_seq import (
     TOKEN_MATCH_FAULT_RESET,
     SepUnmappedAccess,
     SepUnmappedCfg,
+    reaches_syscsr,
 )
 
 TEST = "sep_unmapped_access_policy_test"
@@ -173,6 +185,7 @@ class _Walk:
     tail_codes: Counter = field(default_factory=Counter)
     n_code: int = 0
     n_watched: int = 0
+    n_lite_in: int = 0
     n_hole: int = 0
     n_in: int = 0
     n_past: int = 0
@@ -349,6 +362,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 "their read data lane-checked for X/Z"
             )
         verdict["CHK-UNMAPPED-CODE"] = w.code
+        err_reads = ua.err_reads
 
         # --- closing full compare (outside the window) ---------------------
         moved = await ua.compare(list(ua.snap))
@@ -366,7 +380,8 @@ class sep_unmapped_access_policy_test(sep_base_test):
             )
         verdict["CHK-UNMAPPED-PINS"] = pin_fail
 
-        await self._cpu_ctrl_base_obs(cfg, ua)
+        base_fail, base_log = await self._cpu_ctrl_base_chk(cfg, ua)
+        verdict["CHK-CPU-CTRL-BASE-CODE"] = base_fail
         await ua.restore()
 
         # --- verdicts ---------------------------------------------------------
@@ -384,8 +399,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
             "CHK-UNMAPPED-CODE": (
                 f"{w.n_code} probe and tail access(es), {w.n_hole} of them at an in-extent "
                 "hole, answered the response code and read data the SEP memory map states; "
-                f"all {ua.err_reads} error-response read(s) were lane-checked for X/Z"
+                f"all {err_reads} error-response read(s) were lane-checked for X/Z"
             ),
+            "CHK-CPU-CTRL-BASE-CODE": base_log,
             "CHK-UNMAPPED-NO-ALIAS": (
                 f"no refused read returned a programmed value, no probe write moved "
                 f"a watched word, and all {len(ua.snap)} live words match the snapshot"
@@ -400,8 +416,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
             counts[_CHK[g]] = f"all {n} {g} probe(s) were refused"
         counts["CHK-SYSCSR-HOLE-DECODE"] = (
             f"the watcher saw the {cfg.lite_ctrl.name} control write and read at the "
-            f"system-CSR AXI-Lite port, and none of the {w.n_watched} "
-            f"{' and '.join(LITE_WATCHED)} probe(s) reached it"
+            f"system-CSR AXI-Lite port; of the {w.n_watched} {' and '.join(LITE_WATCHED)} "
+            f"probe(s), the {w.n_lite_in} in the system CSR pages reached it and the "
+            f"{w.n_watched - w.n_lite_in} outside them did not"
         )
         counts["CHK-SYS-RESERVED-NO-LOOPBACK"] = (
             f"the watcher saw the 0x{EXT_LOOPBACK_CTRL:08x} control write and read at the "
@@ -418,31 +435,49 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 self.logger.info("%s PASS: %s", chk, counts[chk])
         assert not bad, "unmapped-access checker(s) failed: " + ", ".join(bad)
 
-    async def _cpu_ctrl_base_obs(self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess) -> None:
-        """Log the response of SEP CPU control offset 0; no verdict.
+    async def _cpu_ctrl_base_chk(
+        self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess
+    ) -> tuple[list[str], str]:
+        """Read, write and re-read SEP CPU control offset 0; return failures and values.
 
-        It runs after the FCOV window closed and after every count the
-        verdicts use, so it releases no sample and changes no graded tally.
+        The golden is the hole response the SEP memory map states for this
+        offset (hw/sys/sep/regs/include/sep_memory_map.rdl:13: OKAY with read
+        data 0x0, write OKAY). A write to a hole has no effect, so the re-read
+        returns the same data and every live word still matches the snapshot.
+        It runs after the FCOV window closed and after every count the other
+        verdicts use, so it releases no sample and changes no other tally.
         """
         addr = cfg.cpu_ctrl_base
+        e_r = expected_unbacked(addr, "r")
+        e_w = expected_unbacked(addr, "w")
         r_resp, r_data, r_to = await ua.access("r", addr, may_refuse=True)
         w_resp, _d, w_to = await ua.access("w", addr, wdata=PROBE_WDATA, may_refuse=True)
         rr_resp, rr_data, rr_to = await ua.access("r", addr, may_refuse=True)
-        self.logger.info(
-            "OBS-CPU-CTRL-BASE-CODE: 0x%08x (SEP CPU control offset 0, below CLOCK_GATE_CTRL) "
-            "read resp=%s rdata=0x%08x timed_out=%s; write 0x%08x resp=%s timed_out=%s; "
-            "re-read resp=%s rdata=0x%08x timed_out=%s",
-            addr,
-            _code(r_resp),
-            r_data,
-            r_to,
-            PROBE_WDATA,
-            _code(w_resp),
-            w_to,
-            _code(rr_resp),
-            rr_data,
-            rr_to,
+        fail = []
+        for what, resp, data, to, e in (
+            ("read", r_resp, r_data, r_to, e_r),
+            ("write", w_resp, None, w_to, e_w),
+            ("re-read", rr_resp, rr_data, rr_to, e_r),
+        ):
+            if to:
+                fail.append(f"0x{addr:08x} {what} timed out")
+            elif resp != e.resp:
+                fail.append(f"0x{addr:08x} {what} resp={_code(resp)}, expected {_code(e.resp)}")
+            elif data is not None and data != e.rdata:
+                fail.append(f"0x{addr:08x} {what} rdata=0x{data:08x}, expected 0x{e.rdata:08x}")
+        for live in ua.snap:
+            for moved in await ua.compare([live]):
+                fail.append(f"write to 0x{addr:08x} moved live word 0x{live:08x}: {moved}")
+        log = (
+            f"0x{addr:08x} (SEP CPU control offset 0, below CLOCK_GATE_CTRL) "
+            f"read resp={_code(r_resp)} rdata=0x{r_data:08x}; "
+            f"write 0x{PROBE_WDATA:08x} resp={_code(w_resp)}; "
+            f"re-read resp={_code(rr_resp)} rdata=0x{rr_data:08x}; no timeout; "
+            f"all {len(ua.snap)} live words match the snapshot after the write; "
+            f"the map states {_code(e_r.resp)}, 0x{e_r.rdata:08x} / {_code(e_w.resp)} "
+            f"({e_r.row}, {e_r.column})"
         )
+        return fail, log
 
     async def _probe_walk(self, cfg: SepUnmappedCfg, ua: SepUnmappedAccess, w: _Walk, gate):
         """Every probe in walk order, each graded before the next one starts."""
@@ -457,8 +492,14 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 tally[0] += int(r.lite_reached)
                 tally[1] += 1
                 w.n_watched += 1
-                if r.lite_reached:
-                    w.decode.append(f"{where} reached the system-CSR AXI-Lite port")
+                in_page = reaches_syscsr(p.addr)
+                w.n_lite_in += int(in_page)
+                if r.lite_reached != in_page:
+                    w.decode.append(
+                        f"{where} {'did not reach' if in_page else 'reached'} the system-CSR "
+                        f"AXI-Lite port; it lies {'in' if in_page else 'outside'} the system "
+                        "CSR pages"
+                    )
                 if r.ext_reached:
                     w.loop.append(f"{where} arrived at the local crossbar's ext initiator")
             if p.group == GROUP_INEXTENT:
@@ -494,19 +535,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 r.rdata,
                 lite_note,
             )
-            if p.group == GROUP_EFUSE_MMR and not r.timed_out:
-                # The generated memory map (graded above) and the eFuse
-                # controller text differ on the code of this span.
-                e = cfg.expect[(p.addr, p.op)]
-                self.logger.info(
-                    "OBS-EFUSE-TOKEN-PAST-CODE: %s resp=%s rdata=%s map=%s/%s "
-                    "otp_fuse_controller_text=SLVERR",
-                    where,
-                    _code(r.resp),
-                    "-" if r.rdata is None else f"0x{r.rdata:08x}",
-                    _code(e.resp),
-                    "-" if e.rdata is None else f"0x{e.rdata:08x}",
-                )
             if p.addr == cfg.mmr_end and p.op == "r":
                 if r.timed_out or r.resp == RESP_OKAY:
                     w.tok.append(

@@ -118,19 +118,22 @@ CSR_EN_FIELDS = fmask(KCSR, "IRQ_ENABLE_REG")
 _S = KM_MAILBOX_SEP
 S_IN_EMPTY = _S.field_mask("SEP_STATUS", "inbound_empty")
 S_IN_FULL = _S.field_mask("SEP_STATUS", "inbound_full")
+S_IN_OVF = _S.field_mask("SEP_STATUS", "inbound_overflow")
 S_OUT_EMPTY = _S.field_mask("SEP_STATUS", "outbound_empty")
 S_OUT_FULL = _S.field_mask("SEP_STATUS", "outbound_full")
 S_IN_DEPTH = _S.field_mask("SEP_STATUS", "inbound_depth")
 S_OUT_DEPTH = _S.field_mask("SEP_STATUS", "outbound_depth")
 S_OUT_SEP = _S.field_mask("SEP_STATUS", "outbound_separator")
 S_FLUSHED_BY_KM = _S.field_mask("SEP_IRQ_STATUS", "flushed_by_km")
+S_IRQ_IN_OVF = _S.field_mask("SEP_IRQ_STATUS", "inbound_overflow")
 S_CTRL_FLUSH = _S.field_mask("SEP_CTRL", "flush")
+S_CTRL_IN_OVF_RESP = _S.field_mask("SEP_CTRL", "inbound_overflow_resp")
 S_CTRL_FIELDS = _S.mask32("SEP_CTRL")
 
 # Image layout (tests/km_fw/km_rom_mbox_km.S).
 SIG_WORD = 0x80 // 4
 SIG_MAGIC = 0x4D42_4B4D
-LAYOUT_VERSION = 2
+LAYOUT_VERSION = 4
 STATE_MAGIC = 0x4D42_0000
 SYNC_WORD = 0x5359_4E43
 RACE_END_WORD = 0x454E_4421
@@ -147,6 +150,7 @@ N_R = 93
 CYCLE_WORDS = 5
 IRQ_RUN_CYCLE_BASE = 8
 N_CYCLES = 11
+OVR_WORDS = 38
 
 PH_RST = 0x01
 PH_OUT = 0x02
@@ -164,6 +168,9 @@ PH_IRQ_CTL = 0x0D
 PH_END = 0x0E
 PH_RACE_READY = 0x0F
 PH_RACE_DONE = 0x10
+PH_OVR_READY = 0x11
+PH_OVR = 0x12
+PH_OVR_MID = 0x13
 PH_ERROR = 0xEE
 PHASE_NAMES = {
     PH_RST: "RST",
@@ -182,6 +189,9 @@ PHASE_NAMES = {
     PH_END: "END",
     PH_RACE_READY: "RACE_READY",
     PH_RACE_DONE: "RACE_DONE",
+    PH_OVR_READY: "OVR_READY",
+    PH_OVR: "OVR",
+    PH_OVR_MID: "OVR_MID",
     PH_ERROR: "ERROR",
 }
 ERR_NAMES = {
@@ -248,6 +258,7 @@ def image_table() -> list[tuple[str, int]]:
         ("state_magic", STATE_MAGIC),
         ("race_end_word", RACE_END_WORD),
         ("race_word", RACE_WORD),
+        ("st_in_ovf", ST_IN_OVF),
     ]
 
 
@@ -310,13 +321,22 @@ class HostDraws:
     irq_in: list[int]
 
 
-# A second SepSeededRng stream for the host-only words. It is a fixed
-# function of the leaf seed and does not touch the plan stream.
+@dataclass
+class OvrDraws:
+    """Inbound words of the overrun phase: 16 fill words, then overflow words A and B."""
+
+    fill: list[int]
+    overflow: list[int]
+
+
+# Second and third SepSeededRng streams: the host-only words and the overrun
+# words. Each is a fixed function of the leaf seed and touches no other stream.
 HOST_STREAM = 0x7330_0000_0000
+OVR_STREAM = 0x4F56_5200_0000
 
 
-def host_draws(rng) -> HostDraws:
-    """The extra inbound word of each pass and the source-0 word of each run."""
+def _fresh_words(rng):
+    """A generator of non-zero words, pairwise different and not SYNC_WORD."""
     taken = {SYNC_WORD}
 
     def fresh() -> int:
@@ -327,7 +347,19 @@ def host_draws(rng) -> HostDraws:
                 return v
         raise RuntimeError("no fresh host word")
 
+    return fresh
+
+
+def host_draws(rng) -> HostDraws:
+    """The extra inbound word of each pass and the source-0 word of each run."""
+    fresh = _fresh_words(rng)
     return HostDraws(extra=[fresh() for _ in range(4)], irq_in=[fresh() for _ in range(2)])
+
+
+def ovr_draws(rng) -> OvrDraws:
+    """The overrun words; each overflow word differs from every fill word and from the other."""
+    fresh = _fresh_words(rng)
+    return OvrDraws(fill=[fresh() for _ in range(DEPTH)], overflow=[fresh() for _ in range(2)])
 
 
 class Fifo:

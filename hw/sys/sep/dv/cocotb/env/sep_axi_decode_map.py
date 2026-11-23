@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sep_decode_resp import sep_map_row
 from sep_reg_meta import indexed_block_count, sep_reg, sym
 
 # A row at least this wide is a container the detailed rows carve up, not an
@@ -87,6 +88,16 @@ def _rdl_window_rows(
     return tuple(rows)
 
 
+def _page_rows(stem: str, unit: str, desc: str) -> tuple[tuple[int, int, str, str], ...]:
+    """Rows for a unit alone in its page: its decoded extent, then a reserved row.
+
+    The page bounds are the unit's row in the generated memory map
+    (``hw/sys/sep/regs/gen/py/sep_memory_map.py``).
+    """
+    page = sep_map_row(sym(f"{stem}_REG_MAP_BASE_ADDR"))
+    return _rdl_window_rows(page.base, page.end, ((stem, unit, desc),))
+
+
 # Dual scratch register banks (0x1080_2000-0x1080_2FFF), OTP (0x1093_0000-0x1093_FFFF)
 # and System Bus I/F (0x10A0_0000-0x10A3_FFFF): each window holds several RDL
 # blocks with reserved space between them, so its rows come from the export.
@@ -111,6 +122,8 @@ _OTP_ROWS = _rdl_window_rows(
         ("SEP_EFUSE_WRAP_EFUSE_MMR", "OTP MMR", "eFuse security-token registers"),
     ),
 )
+
+
 _SYS_ROWS = _rdl_window_rows(
     0x10A0_0000,
     0x10A3_FFFF,
@@ -173,10 +186,8 @@ _MAP_ROWS = (
     (0x1091_0000, 0x1091_0FFF, "AES", "Block Cipher"),
     (0x1091_1000, 0x1091_2FFF, "HMAC-SHA2", "Hash / MAC"),
     (0x1091_3000, 0x1091_3FFF, "KMAC-SHA3", "Hash / MAC"),
-    (0x1091_4000, 0x1091_4047, "EDN", "Entropy Distribution Network"),
-    (0x1091_4048, 0x1091_4FFF, _RSV, "Reserved"),
-    (0x1091_5000, 0x1091_505F, "CSRNG", "Deterministic Random Bit Generator"),
-    (0x1091_5060, 0x1091_5FFF, _RSV, "Reserved"),
+    *_page_rows("EDN", "EDN", "Entropy Distribution Network"),
+    *_page_rows("CSRNG", "CSRNG", "Deterministic Random Bit Generator"),
     (0x1091_6000, 0x1091_6FFF, "ESRC", "Entropy Source"),
     (0x1091_7000, 0x1091_7FFF, "TRNG", "External TRNG CSR passthrough"),
     (0x1091_8000, 0x1091_8FFF, "LC", "Life Cycle Controller"),
@@ -200,7 +211,7 @@ _MAP_ROWS = (
     (0x1095_1000, 0x109F_FFFF, _RSV, "Reserved"),
     *_SYS_ROWS,
     (0x10A4_0000, 0x10AF_FFFF, _RSV, "Reserved"),
-    (0x10B0_0000, 0x10BF_FFFF, "IO", "External IO Peripherals Bridge: UART, GPIO etc."),
+    *_page_rows("SPI_CONTROLLER", "SPI", "SPI Host"),
     (
         0x1100_0000,
         0x117F_FFFF,
@@ -325,6 +336,11 @@ def _selftest() -> None:
     assert may_complete(0x1080_1FFF, regions), "WDT window top read as unallocated"
     assert not may_complete(0x1080_3008, regions), "reset-ctrl gap read as allocated"
     assert not may_complete(0x1092_1000, regions), "KM reserved gap read as allocated"
+    for stem in ("EDN", "CSRNG", "SPI_CONTROLLER"):
+        top = sym(f"{stem}_REG_MAP_BASE_ADDR") + sym(f"{stem}_REG_MAP_SIZE")
+        assert may_complete(top - 4, regions), f"{stem} last register read as unallocated"
+        assert not may_complete(top, regions), f"{stem} past-extent word read as allocated"
+    assert not may_complete(0x10B0_1000, regions), "Reserved row past SPI read as allocated"
     assert not may_complete(0x10FF_0000, regions), "SEP-local hole read as allocated"
 
     dma = region_of(0x1080_0000, regions)

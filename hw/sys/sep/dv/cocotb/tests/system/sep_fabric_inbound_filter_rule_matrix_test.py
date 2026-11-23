@@ -82,9 +82,9 @@ that WDT probe and turns the scratch register DECERR. Each probe is therefore
 proven reachable, so neither DECERR can be an address-decode hole.
 CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
 cannot move. The lock is write-once, and every later write to the entry's
-FILTER_CONFIG completes DECERR (filter_ctrl.rdl locked;
+FILTER_CONFIG completes SLVERR (filter_ctrl.rdl locked;
 hw/ip/axi_filter/doc/index.adoc "Locking a Filter Entry"), so both refused
-writes must answer DECERR. Each refused write is graded against a read of
+writes must answer SLVERR. Each refused write is graded against a read of
 the same register just before it: the low word reads back unchanged, and
 locked stays 1. A 2-beat INCR
 inside the widened page still passes OKAY as two Lite singles. A single beat
@@ -104,7 +104,7 @@ Functional coverage: the window of this leaf holds only the graded bursts
 and the refused FILTER_CONFIG writes with their read-backs. A
 ``cp_lite_split`` cell samples only after the check of its burst passed
 (``lite_split_pass``); ``cp_locked_write`` samples at the read-back when it
-equals the read before the DECERR write, the read pair that
+equals the read before the SLVERR write, the read pair that
 CHK-CONFIG-LOCK grades.
 
 Run mode: no_cpu with the external SMN master and real PROD fuse sense
@@ -137,6 +137,7 @@ from seq_lib.sep_inbound_filter_rule_seq import (
     PAGE_SIZE,
     RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     SepInboundFilter,
     SepInboundFilterCfg,
     SepInboundFilterMatrixCfg,
@@ -754,11 +755,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             )
         self.logger.info(
             "INFO-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
-            "(spec DECERR=%d)",
+            "(spec SLVERR=%d)",
             wcfg.entry,
             resp_lo,
             resp_hi,
-            RESP_DECERR,
+            RESP_SLVERR,
         )
         # The frozen bit still drives the hardware, not just the CSR readback.
         # START/END already hold the widened page, so a single beat inside it is
@@ -783,15 +784,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             data,
             [hex(a) for a in lite_ar],
         )
-        assert (resp_lo, resp_hi) == (RESP_DECERR, RESP_DECERR), (
+        assert (resp_lo, resp_hi) == (RESP_SLVERR, RESP_SLVERR), (
             f"CHK-CONFIG-LOCK FAIL: writes to locked FILTER_CONFIG answered lo resp={resp_lo}, "
-            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI error subordinate "
-            f"and completes DECERR ({RESP_DECERR})"
+            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI-Lite error subordinate "
+            f"and completes SLVERR ({RESP_SLVERR})"
         )
         self.logger.info(
-            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d, DECERR) "
+            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d, SLVERR) "
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
-            "(resp=%d, DECERR) leaves the bit set, and a 2-beat INCR at 0x%08x still "
+            "(resp=%d, SLVERR) leaves the bit set, and a 2-beat INCR at 0x%08x still "
             "passes OKAY rdata=0x%08x as Lite AR %s",
             wcfg.entry,
             resp_lo,

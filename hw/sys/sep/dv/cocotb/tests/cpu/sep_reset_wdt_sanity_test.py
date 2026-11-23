@@ -11,9 +11,9 @@ The reset_wdt_sanity firmware:
     probe is writable again after release;
   * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
     (count == 2), the load's with the load-bus-error ``mcause`` and its address in ``mdseac``;
-  * stores to a target that answers DECERR (the reset-controller gap) and to one that answers
-    SLVERR (the read-only entropy pool), and reports the NMI count, ``mcause`` and ``mdseac`` of
-    each; then stores to an OKAY register (OTBN ``INTR_ENABLE``) and restores it, and reports
+  * stores to a target that answers DECERR (the Reserved gap past the reset-controller page)
+    and to one that answers SLVERR (the read-only entropy pool), and reports the NMI count,
+    ``mcause`` and ``mdseac`` of each; then stores to an OKAY register (OTBN ``INTR_ENABLE``) and restores it, and reports
     the NMI count and the readback;
   * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
 
@@ -35,8 +35,8 @@ AWADDR to 8 bytes outside side-effect regions). This test grades, from the firmw
                      store address, which also equals the address the testbench derives
                      from the register map. A missing AW or B, a wrong BRESP, a store that
                      completes with no NMI (nmi=0), or a wrong ``mcause`` or ``mdseac``
-                     fails. Targets: ``hw/sys/sep/regs/sep.rdl`` (reset-controller aperture:
-                     DECERR write response past its one register) and
+                     fails. Targets: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (the
+                     Reserved row past the reset-controller page: DECERR) and
                      ``hw/sys/sep/doc/entropy_pool.adoc`` (a write to any offset ends with
                      BRESP=SLVERR).
   CHK-STORE-OK-QUIET the OKAY store and its restore (the two AWs to the OKAY word after
@@ -66,6 +66,9 @@ below logs its own PASS or FAIL line, and the leaf fails once at its end if any 
                           word and W strobe lane).
   CHK-RAS-WDT_BARK-CLEAR  0 at ``CHK-WDT-CLEAR PASS``, which the firmware prints after it
                           reads the bark state cleared.
+  CHK-RAS-WDT_BARK-BARK2  after the second rise, no fall before the first CPU write to the
+                          WDT ``INTR_STATE`` register on the same tap; the firmware NMI
+                          handler clears every bark, so a missing write fails.
   CHK-RAS-WDT_BITE-IDLE   0 on every clock from the CPU release to the clock
                           ``wdt_timer_rst_req_o`` reads 1, after ``CHK-WDT-REBARK PASS``.
   CHK-RAS-WDT_BITE-RISE   high within ``_BITE_POLL_CYCLES`` of ``wdt_timer_rst_req_o``
@@ -73,8 +76,7 @@ below logs its own PASS or FAIL line, and the leaf fails once at its end if any 
   CHK-RAS-WDT_BITE-SHAPE  no fall for ``_RAS_BITE_HOLD`` clocks after the rise.
 Logged: ``INFO-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write to each
 rise; not graded), ``INFO-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the
-fall; graded by ``CHK-RAS-WDT_BARK-SHAPE``), ``OBS-RAS-WDT_BARK-BARK2`` (the field after the
-second bark, whose clear the leaf does not grade: the watchdog stays enabled toward the bite),
+fall; graded by ``CHK-RAS-WDT_BARK-SHAPE``),
 ``INFO-RAS-WDT_BITE-DELAY`` (clocks from ``wdt_timer_rst_req_o`` to the rise; graded by
 ``CHK-RAS-WDT_BITE-RISE``) and ``INFO-RAS-WDT_BITE-CLEAR`` (the leaf drives no
 ``wdt_rst_ni``, so the field is held to the end of the window). The leaf opens its FCOV
@@ -97,6 +99,7 @@ import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_decode_resp import RESP_CODE, expected_unbacked, sep_map_row
 from env.sep_fabric_tap import SepFabricTap, TapBeat
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
@@ -134,17 +137,17 @@ _BANNER = "SEP reset+WDT sanity test"
 # a store bus error and 0xF000_0001 a load bus error.
 _MCAUSE_STORE_BUS_ERR = 0xF000_0000
 _MCAUSE_LOAD_BUS_ERR = 0xF000_0001
-# Store address of each error-response leg, from the register map: the word past
-# the reset-controller register (its aperture answers DECERR past the register,
-# hw/sys/sep/regs/sep.rdl) and the entropy pool STATUS register (any write is
-# SLVERR, hw/sys/sep/doc/entropy_pool.adoc).
-_RESET_CTRL_END = sym("SEP_RESET_CTRL_REG_MAP_BASE_ADDR") + sym("SEP_RESET_CTRL_REG_MAP_SIZE")
+# Store address of each error-response leg, from the memory map: the first word
+# of the Reserved row past the reset-controller page (DECERR) and the entropy
+# pool STATUS register (any write is SLVERR, hw/sys/sep/doc/entropy_pool.adoc).
 _STORE_ERR_ADDR = {
-    "DECERR": SEP_RESET_CTRL_SW_RESET_N + 0x8,
+    "DECERR": sep_map_row(SEP_RESET_CTRL_SW_RESET_N).end + 1,
     "SLVERR": sym("ENTROPY_POOL_STATUS_REG_ADDR"),
 }
-if _STORE_ERR_ADDR["DECERR"] < _RESET_CTRL_END:
-    raise RuntimeError("the DECERR store address is inside the reset-controller register map")
+# The DECERR store and the CHK-BADADDR load 8 bytes above it.
+for _addr, _op in ((_STORE_ERR_ADDR["DECERR"], "w"), (_STORE_ERR_ADDR["DECERR"] + 0x8, "r")):
+    if expected_unbacked(_addr, _op).resp != RESP_CODE["DECERR"]:
+        raise RuntimeError(f"0x{_addr:08x}: the memory map states no DECERR here")
 _OKAY_ADDR = sym("OTBN_INTR_ENABLE_REG_ADDR")
 # The value the restore store writes: the RDL reset of OTBN INTR_ENABLE.
 _OKAY_RESET = OTBN.reset("INTR_ENABLE")
@@ -415,7 +418,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         mk = {line: self.ras_lines.get(line) for line in _RAS_LINES}
         missing = [line for line, m in mk.items() if m is None]
         if missing:
-            for half in ("IDLE", "RISE", "SHAPE", "CLEAR"):
+            for half in ("IDLE", "RISE", "SHAPE", "CLEAR", "BARK2"):
                 self._ras(fld, half, False, console_lines_not_seen=missing)
             return
         bad, nmi, clr = mk[_BADADDR_LINE], mk[_WDT_NMI_LINE], mk[_WDT_CLEAR_LINE]
@@ -502,12 +505,18 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             exp=0,
         )
         w2 = self._write_after("intr_state", r2[0], self.ras.clk) if r2 else None
-        self.ras_chk.obs(
-            "RAS-WDT_BARK-BARK2",
+        f2 = self._span(fld, "fall", r2[0], self.ras.clk) if r2 else []
+        self._ras(
+            fld,
+            "BARK2",
+            w2 is not None and (not f2 or f2[0] >= w2.clk),
+            rise_clk=r2[0] if r2 else "none",
+            intr_state_write_clk=w2.clk if w2 is not None else "none",
+            first_fall_clk=f2[0] if f2 else "none",
             level_at_rebark_line=len(self._span(fld, "rise", bad.clk, rebark.clk))
             - len(self._span(fld, "fall", bad.clk, rebark.clk)),
-            intr_state_write_clk=w2.clk if w2 is not None else "none",
-            falls_after_rise=self._span(fld, "fall", r2[0], self.ras.clk)[:4] if r2 else "none",
+            falls_after_rise=f2[:4] if r2 else "none",
+            exp="no_fall_before_write",
         )
 
     async def _bite_req_watch(self) -> None:

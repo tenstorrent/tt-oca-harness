@@ -2,15 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Interface-control and token window reset values, read-write behaviour, and window decode.
 
-After a real fuse sense the interface-control window (``0x1093_0400``, 28 bytes) and
-the token window (``0x1093_0500``) hold the described registers with their reset
+After a real fuse sense the interface-control window (``0x1093_0000``, 28 bytes) and
+the token window (``0x1093_0400``) hold the described registers with their reset
 values and read-write behaviour. No access past the interface-control extent and no
-access in the reserved span at ``0x1093_0600`` changes ``EFUSE_INTERFACE_CTRL_STATUS``,
+access in the reserved span changes ``EFUSE_INTERFACE_CTRL_STATUS``,
 ``EFUSE_PROGRAM_CTRL`` or ``EFUSE_READ_CTRL``, or aliases a software-writable shadow
-word.
+word. The reserved span has two zones: the words of the eFuse wrapper page past the
+register extent of each of its three sub-blocks (SLVERR), and the Reserved row
+``0x1093_1000`` to ``0x1093_FFFF`` (DECERR).
 
-Sources: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (rows eFuse Interface Control,
-eFuse Token Registers, Reserved); ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
+Sources: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (rows SEP eFuse Wrapper Address
+Map, Reserved); ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
 (reset and access columns); ``hw/ip/efuse/regs/gen/adoc/efuse_mmr.adoc`` (token arrays,
 ``TOKEN_MATCH_FAULT``); ``hw/sys/sep/regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc``
 (``FEAT_CTRL``, access R); ``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``
@@ -22,7 +24,7 @@ Image: fixed TEST_DEV image of ``env/sep_efuse_plan.py`` (one fixed filter-legal
 disable-vector pair, each 256-bit field its own fixed vector, no lock bit), written
 before the first reset. Draws: ``plan(test, seed)`` (timeout counts, control-register
 patterns, token word orders, past-extent offsets, reserved-span addresses, control
-word w).
+word w); the word of the pre-sense read from a separate seeded stream.
 
 Checkers:
   CHK-CSR-RESET   the five interface-control registers read their reset values after
@@ -38,6 +40,12 @@ Checkers:
   CHK-WIN-DECODE  past-extent and reserved accesses change no graded register and no
                   software-writable shadow word; the control write of a ``SYS_DIS``
                   word reads back all ones; the 256-word sweep matches the model.
+  CHK-WIN-PRESENSE-RESET  after a cold reset that cut a shadow-map read with a live
+                  response, the first OTP JTAG read of the same word answers SLVERR
+                  while ``sep_fuse_sense_done_o`` reads 0 (``otp_fuse_controller.adoc``,
+                  Fuse Sensing and Boot Sequencing); after sense done a read of a
+                  second word j, staged with a different value, answers OKAY with the
+                  staged word of j.
 
 Control: ``CTRL-LCC-WR-TAP``: the ``FEAT_CTRL`` write reaches the AXI-Lite port of
 the lifecycle register block. The write tap (``lcc_wr_count_probe_o``,
@@ -49,7 +57,14 @@ bank sets ``efuse_read_addr_error`` before the second status write, so that writ
 has an effect a lost write cannot show. ``CTRL-RO-WR``: the 0x71 write to the status
 register gets an OKAY or SLVERR B response, so a mapped target answered it; which
 of the two is not graded. The second status write shows that the path reaches the
-register.
+register. ``CTRL-WIN-RESET-LIVE``: on the rising-edge sample before the ``rst_ni``
+fall, the shadow APB response tap (``efuse_shadow_apb_pready_o``,
+``efuse_shadow_apb_pslverr_o``) shows a live OKAY response, sense done reads 1, the
+JTAG read of the word has not completed, and no rising edge lies between that sample
+and the fall. ``rst_ni`` clears the tapped register, so the tap is not read after
+the fall. ``CTRL-WIN-PRESENSE-REACH``: during the pre-sense JTAG read the same tap
+shows ``pready`` 1 with ``pslverr`` 1 while ``sep_fuse_sense_done_o`` reads 0, so the
+read reached the shadow file and not only the JTAG lifecycle filter.
 
 Log-only: the response and read data past the extent and in the reserved span
 (``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``),
@@ -60,6 +75,9 @@ seeded AxPROT and AxCACHE (``OBS-EFUSE-AXATTR LOG``; AxLOCK, AxUSER and AxATOP k
 the bench default), and, after the last graded step, a byte write, a halfword write
 and an unaligned halfword read on ``EFUSE_PROGRAM_CTRL`` and on one ``SYS_DIS``
 shadow word (``OBS-EFUSE-SUBWORD LOG``: response, data, the word before and after).
+The read data of the pre-sense JTAG read has no stated value (``OBS-WIN-PRESENSE-DATA
+LOG``), and the outcome of the read the reset cut is logged
+(``INFO-WIN-CUT-READ LOG``).
 The timeout write and readback is re-logged as ``INFO-CSR-RW LOG``; ``CHK-UNMAPPED-LIVE`` of
 ``sep_unmapped_access_policy_test`` grades it.
 The FCOV graded window is closed around these controls.
@@ -69,15 +87,20 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import NUM_FUSE_WORDS, SHADOW_BASE
 from env.sep_efuse_plan import (
     CHANNELS,
+    DIGEST_FIELDS,
+    FIELD_NAMES,
     MATCH_ADDR,
     PROGRAM_CTRL_ADDR,
     READ_CTRL_ADDR,
+    SECRET_FIELDS,
+    SHADOW_RW_FIELDS,
     STATUS_ADDR,
     T_WINDOW_DECODE,
     TOKEN_ARRAY_ADDR,
@@ -85,15 +108,19 @@ from env.sep_efuse_plan import (
     TOKEN_OTHER,
     TOKEN_T1,
     TOKEN_T2,
+    field_n_words,
+    field_word,
     plan,
     read_ctrl_word,
     shadow_addr,
     token_words,
 )
-from env.sep_efuse_test_lib import SepEfuseFd, log_line
+from env.sep_efuse_test_lib import RST_HOLD, SepEfuseFd, clocks_to_sense, log_line
+from env.sep_fabric_common import RESP_OKAY, RESP_SLVERR
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import EFUSE_ERR_SLV_RDATA
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -149,11 +176,17 @@ _OBS_SALT = 0x5357_4158
 _SHADOW_LAST_IDX = NUM_FUSE_WORDS - 1
 _SHADOW_LAST = SHADOW_BASE + 4 * _SHADOW_LAST_IDX
 _PAST_EXTENT_PINNED = STATUS_ADDR + 0x1C
-_RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
 _ARRAY_TOKEN = {"sip": TOKEN_T1, "chiplet": TOKEN_T2, "sec_dis": TOKEN_OTHER}
 _ARRAY_TAG = {"sip": "sip", "chiplet": "chp", "sec_dis": "sdis"}
 _RESP = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
 _WORD = 0xFFFF_FFFF
+# The draw of the step 21 word comes from its own stream, so earlier draws keep their
+# seed mapping.
+_PRESENSE_SALT = 0x5749_4E52
+# Bound of each JTAG read of step 21: the default bound of ``jtag_axil_op``.
+_JTAG_TIMEOUT_NS = 50_000
+# Bound of the step 21 sense wait: the bound ``bring_up_no_cpu`` uses.
+_SENSE_BOUND = 20_000
 
 
 @pyuvm.test()
@@ -166,6 +199,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         "CHK-TOKEN-RW",
         "CHK-FEAT-RO",
         "CHK-WIN-DECODE",
+        "CHK-WIN-PRESENSE-RESET",
     )
 
     async def _rd(self, addr: int, *, ungraded: bool = False) -> tuple[int, bool, int]:
@@ -626,12 +660,12 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         # Step 13: control reads before the first unmapped access.
         await self._control_reads("before")
 
-        # Step 14: past-extent leg (pinned 0x1093_041C, then the seven drawn offsets).
+        # Step 14: past-extent leg (pinned STATUS + 0x1C, then the seven drawn offsets).
         for addr in (_PAST_EXTENT_PINNED, *p.leg["past_extent_addrs"]):
             await self._decode_access("ctrl", addr)
 
         # Step 15: reserved leg (three pinned, then the six drawn addresses).
-        for addr in (*_RSVD_PINNED, *p.leg["rsvd_addrs"]):
+        for addr in (*p.leg["rsvd_pinned"], *p.leg["rsvd_addrs"]):
             await self._decode_access("rsvd", addr)
 
         # Step 16: control reads after the last unmapped access.
@@ -694,4 +728,175 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             {"byte": obs_rng.randrange(4), "half": 2 * obs_rng.randrange(2)},
             _WORD,
         )
+
+        # Step 21: cold reset on a live shadow-map response, then a pre-sense read.
+        await self._reset_on_live_response(p, seed)
         self.chk.finish()
+
+    def _presense_word(self, p, seed: int) -> tuple[int, int, int, int]:
+        """Draw the shadow words of step 21: (word i, staged i, word j, staged j).
+
+        Candidates hold a staged value that is not 0, not all ones and not the error
+        data, in a field that is not a secret, a digest, ``LC_STATE`` or a shadow
+        register with writable bits, and are not the last word (step 13 control read).
+        Word j, read after sense done, is a candidate whose staged value differs from
+        that of word i, so a response left from the cut read of word i fails.
+        """
+        skip = {*SECRET_FIELDS, *DIGEST_FIELDS, *SHADOW_RW_FIELDS, "LC_STATE"}
+        cands = [
+            idx
+            for f in FIELD_NAMES
+            if f not in skip
+            for idx in range(field_word(f), field_word(f) + field_n_words(f))
+            if idx != _SHADOW_LAST_IDX
+            and 4 * idx not in self.rw_offsets
+            and p.image.words[idx] not in (0, _WORD, EFUSE_ERR_SLV_RDATA)
+        ]
+        rng = SepSeededRng(seed ^ _PRESENSE_SALT)
+        idx = rng.choice(cands)
+        self._log("INFO-DRAW", name="presense_reset.word", value=idx, candidates=len(cands))
+        post = [k for k in cands if p.image.words[k] != p.image.words[idx]]
+        jdx = rng.choice(post)
+        self._log("INFO-DRAW", name="presense_reset.post_word", value=jdx, candidates=len(post))
+        return idx, int(p.image.words[idx]), jdx, int(p.image.words[jdx])
+
+    async def _reset_on_live_response(self, p, seed: int) -> None:
+        """Procedure step 21: ``rst_ni`` falls while a shadow-map read has a live response.
+
+        A JTAG read of word i runs until the shadow response tap shows ``pready``=1 on a
+        rising-edge sample. ``rst_ni`` falls before the next rising edge, so the read is
+        cut while its response is live. ``rst_ni`` clears the tapped response register,
+        so the tap is sampled before the fall only. After the release, the first JTAG
+        read of word i must answer SLVERR before sense done
+        (``hw/sys/sep/doc/otp_fuse_controller.adoc``, Fuse Sensing and Boot Sequencing);
+        the shadow APB response tap shows that read reach the shadow file
+        (``CTRL-WIN-PRESENSE-REACH``). After sense done a JTAG read of word j answers
+        OKAY with the staged word of j.
+
+        The cut read uses the JTAG master with ``allow_timeout``: the master drops an
+        operation in flight at ``rst_ni``, and an operation that never completes ends at
+        the same bound as every other JTAG read of the step. Its outcome is logged only.
+        """
+        dut = cocotb.top
+        idx, staged, jdx, staged_j = self._presense_word(p, seed)
+        addr = SHADOW_BASE + 4 * idx
+        cut = cocotb.start_soon(
+            self.jtag_axil_master().read_result(
+                addr,
+                check_response=False,
+                timeout_ns=_JTAG_TIMEOUT_NS,
+                allow_timeout=True,
+            )
+        )
+        t0 = get_sim_time("ns")
+        live = None
+        while get_sim_time("ns") - t0 < _JTAG_TIMEOUT_NS:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.efuse_shadow_apb_pready_o):
+                live = {
+                    "tap_pready": 1,
+                    "tap_pslverr": self.rd(dut.efuse_shadow_apb_pslverr_o),
+                    "sense_done": self.rd(dut.sep_fuse_sense_done_o),
+                    "rst_ni": self.rd(dut.rst_ni),
+                    "live_done": int(cut.done()),
+                }
+                break
+        if live is None:
+            self.chk.ctrl("WIN-RESET-LIVE", False, word=idx, addr=f"0x{addr:08x}", tap_pready=0)
+            await cut
+            return
+        edges = [0]
+        stop = [False]
+
+        async def _count_edges() -> None:
+            while not stop[0]:
+                await RisingEdge(dut.clk_i)
+                if not stop[0]:
+                    edges[0] += 1
+
+        cocotb.start_soon(_count_edges())
+        await FallingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        stop[0] = True
+        self.chk.ctrl(
+            "WIN-RESET-LIVE",
+            live["tap_pslverr"] == 0
+            and live["sense_done"] == 1
+            and live["rst_ni"] == 1
+            and live["live_done"] == 0
+            and edges[0] == 0,
+            word=idx,
+            addr=f"0x{addr:08x}",
+            **live,
+            edges_to_fall=edges[0],
+        )
+        await ClockCycles(dut.clk_i, RST_HOLD)
+        dut.rst_ni.value = 1
+
+        reach = {"n": 0, "pslverr": None, "sense_done": None}
+        reach_stop = [False]
+
+        async def _reach_mon() -> None:
+            while not reach_stop[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if not reach_stop[0] and self.rd(dut.efuse_shadow_apb_pready_o):
+                    reach["n"] += 1
+                    if reach["pslverr"] is None:
+                        reach["pslverr"] = self.rd(dut.efuse_shadow_apb_pslverr_o)
+                        reach["sense_done"] = self.rd(dut.sep_fuse_sense_done_o)
+
+        cocotb.start_soon(_reach_mon())
+        pre_resp, pre_data = await self.jtag_axil_op(
+            write=False, addr=addr, timeout_ns=_JTAG_TIMEOUT_NS
+        )
+        reach_stop[0] = True
+        sense_at_resp = self.rd(dut.sep_fuse_sense_done_o)
+        self.chk.ctrl(
+            "WIN-PRESENSE-REACH",
+            reach["n"] >= 1 and reach["pslverr"] == 1 and reach["sense_done"] == 0,
+            word=idx,
+            addr=f"0x{addr:08x}",
+            tap_pready_samples=reach["n"],
+            tap_pslverr="none" if reach["pslverr"] is None else reach["pslverr"],
+            sense_done="none" if reach["sense_done"] is None else reach["sense_done"],
+        )
+        cut_res = await cut
+        self._log(
+            "INFO-WIN-CUT-READ",
+            word=idx,
+            resp=_RESP.get(cut_res.resp, cut_res.resp),
+            timed_out=int(cut_res.timed_out),
+            rdata=f"0x{cut_res.data & _WORD:08x}",
+        )
+        sense = await clocks_to_sense(self, _SENSE_BOUND, started=True)
+        if sense is None:
+            raise AssertionError(f"sense did not complete within {_SENSE_BOUND} clocks")
+        addr_j = SHADOW_BASE + 4 * jdx
+        post_resp, post_data = await self.jtag_axil_op(
+            write=False, addr=addr_j, timeout_ns=_JTAG_TIMEOUT_NS
+        )
+        self.chk.ok(
+            "WIN-PRESENSE-RESET",
+            pre_resp == RESP_SLVERR
+            and sense_at_resp == 0
+            and post_resp == RESP_OKAY
+            and post_data & _WORD == staged_j,
+            word=idx,
+            addr=f"0x{addr:08x}",
+            resp=_RESP.get(pre_resp, pre_resp),
+            sense_done_at_resp=sense_at_resp,
+            post_word=jdx,
+            post_resp=_RESP.get(post_resp, post_resp),
+            post_data=f"0x{post_data & _WORD:08x}",
+            staged=f"0x{staged_j:08x}",
+        )
+        self.chk.obs(
+            "WIN-PRESENSE-DATA",
+            word=idx,
+            staged=f"0x{staged:08x}",
+            pre_resp=_RESP.get(pre_resp, pre_resp),
+            pre_data=f"0x{pre_data & _WORD:08x}",
+            graded=0,
+        )

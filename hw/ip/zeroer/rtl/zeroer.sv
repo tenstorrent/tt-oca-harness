@@ -59,8 +59,10 @@ module zeroer #(
   input  mst_resp_t mst_axi_resp_i,                         // Clearing AXI master response.
 
   output logic zeroer_clk_active_o,                         // Register clock is running.
-  output logic zeroer_bus_active_o                          // Ctrl bus has a transaction in
+  output logic zeroer_bus_active_o,                         // Ctrl bus has a transaction in
                                                             // progress.
+  output logic [2:0] state_debug_o                          // Clear FSM state: 000 error, 001 idle,
+                                                            // 010 issue address, 100 issue data.
 );
 
   `include "ocah_assert.svh"
@@ -100,6 +102,8 @@ module zeroer #(
     ST_ISSUE_DATA = 3'b100
   } state_e;
   state_e cur_state, nxt_state;
+
+  assign state_debug_o = cur_state;
 
   // ----------
 

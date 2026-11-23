@@ -68,7 +68,7 @@ module sep_local_axi_xbar_wrapper #(
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_io_axi_resp_i,  // Response from sep_io.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     entropy_fifo_axi_req_o,  // Request for the entropy pool,
-                                                                        // 0x1095_0000-0x1095_FFFF.
+                                                                        // 0x1095_0000-0x1095_0FFF.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    entropy_fifo_axi_resp_i,  // Response from the entropy pool.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_system_peripherals_axi_req_o,  // Request for sep_system_peripherals:

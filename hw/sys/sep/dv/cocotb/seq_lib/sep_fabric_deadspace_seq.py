@@ -4,41 +4,54 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused -- DECERR or SLVERR. Truncating the address, wrapping it onto a live
-register and answering OKAY is what this sequence exists to catch.
+refused with the response the memory map sets. Truncating the address,
+wrapping it onto a live register and answering OKAY is what this sequence
+exists to catch.
 
-Every block window except TRNG has a past-extent response in
-``hw/sys/sep/regs/include/sep_memory_map.rdl``: ``<unit>->ocah_past_extent_resp``, with no path
-qualifier. Each probe there is graded exactly against it: a read answers the
-RDL ``rresp`` with the RDL ``rdata`` word, and a write answers the RDL
-``bresp``. For every one of these windows that is DECERR, ``0xBADCAB1E`` /
-DECERR. The values come from ``hw/sys/sep/regs/gen/py/sep_memory_map.py``,
-generated from ``sep.rdl`` and read through ``env/sep_decode_resp.py``
-(``expected_unbacked``), so no code or word is typed here. Every probe goes
-through the CPU-LSU splice (``s_axi``, ``SepBaseTest.start_seq``).
+Every probe outside the TRNG window is graded exactly against the cell the
+generated memory map states for its word: the Past Extent cell of the block's
+row (``hw/sys/sep/regs/include/sep_memory_map.rdl``,
+``<unit>->ocah_past_extent_resp``), or the cell of the Reserved row between the
+end of that row and the next block. A read answers the stated read code with
+the stated ``rdata`` word, and a write answers the stated write code. The
+values come from ``hw/sys/sep/regs/gen/py/sep_memory_map.py``, generated from
+``sep.rdl`` and read through ``env/sep_decode_resp.py`` (``expected_unbacked``),
+so no code or word is typed here. Where a Past Extent note states that the
+block answers up to an offset with read data ``0xFFFFFFFF`` and latches a
+bus-error flag (DMA, watchdog timer, AES, CSRNG, EDN, SPI controller), a word
+in that span is graded against the note's read data; the flag it latches is
+not graded here. Every probe goes through the CPU-LSU splice (``s_axi``,
+``SepBaseTest.start_seq``).
 
-Two windows also have the code in prose, and the window build checks that the
-RDL agrees:
+Two windows also have the past-extent response in prose, and the window build
+checks that the RDL agrees at the first word past any note's span:
 
-* ABR: ``hw/sys/sep/doc/adams_bridge.adoc`` ("abr-aperture-decode") -- the
-  crypto demux answers every access past the register map with DECERR.
-* SPI controller: ``hw/sys/sep/doc/peripheral_subsystem.adoc`` -- the local
-  crossbar answers the rest of the SPI aperture with DECERR on reads and
-  writes.
+* ABR: ``hw/sys/sep/doc/adams_bridge.adoc`` ("abr-aperture-decode") -- the ABR
+  wrapper answers every access past the register map with SLVERR and read data
+  ``0xBADCAB1E``.
+* SPI controller: ``hw/sys/sep/doc/peripheral_subsystem.adoc`` -- ``sep_io``
+  answers the rest of the SPI page with SLVERR and read data ``0xBADCAB1E``.
 
 The TRNG window has no past-extent response in ``sep.rdl`` (see below); for it
-the OBS-DEADSPACE-CODE line logs the code and read data of every probe.
+the INFO-DEADSPACE-CODE line logs the code and read data of every probe, which
+CHK-TRNG-UNOWNED grades.
 
 Allocated size comes from the generated export (or the OT/IP header for
-CSRNG / EDN / entropy_source). Window end comes from
-``hw/sys/sep/doc/memory_map.adoc``. RTL decode width is never the judge
-of legality.
+CSRNG / EDN / entropy_source). Window end is the next block's base, or the end
+of the block's memory-map row where no block follows (KM mailbox, SPI
+controller). RTL decode width is never the judge of legality.
 
-Windows cover CSR apertures whose memory-map window is larger than
-``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox,
-lifecycle, SPI). HMAC/KMAC fill their map window so they have no
-intra-window dead span here. Remap / filter arrays and scratch are
-owned elsewhere for live programming.
+Windows cover CSR blocks with unbacked space between their registers and the
+window end (DMA, WDT, AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox,
+lifecycle, SPI). The OTBN dead span is the Reserved row past its row. HMAC/KMAC
+run up to the next block so they have no dead span here. Remap / filter arrays
+and scratch are owned elsewhere for live programming. These tests grade the
+past-extent cells of the other windows: reset control
+(sep_fabric_row_response_matrix_test); eFuse interface control, eFuse token and
+SEP CPU control (sep_unmapped_access_policy_test); the AXI-Lite mailbox
+(sep_mailbox_access_error_inject_test, sep_unmapped_access_policy_test); the
+entropy pool (sep_entropy_pool_aperture_test); the EL2 PIC
+(sep_pic_reg_rand_test).
 
 The TRNG window is forwarded whole to an adopter endpoint on
 ``ext_trng_axil``; SEP allocates no register in it. With no external TRNG
@@ -58,7 +71,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_decode_resp import expected_unbacked, sep_map_row
+from env.sep_decode_resp import expected_unbacked, sep_map_row, sep_map_rows
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
     block_size,
@@ -75,11 +88,16 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE
 
 RESP_OKAY = 0
+RESP_SLVERR = 2
 RESP_DECERR = 3
 
-# Specification of record for the past-extent response of every non-adopter
-# window.
-RDL_REF = "hw/sys/sep/regs/include/sep_memory_map.rdl (ocah_past_extent_resp)"
+# Specification of record for the response of every non-adopter dead word.
+RDL_REF = "hw/sys/sep/regs/include/sep_memory_map.rdl (generated sep_memory_map.py)"
+
+# Data of the two issues of every write probe and write burst. The words are
+# complementary, so a stored write differs from the snapshot of any read-write
+# bit it lands on in one of the two issues, whatever that bit holds.
+WRITE_PATTERNS = (0xFFFF_FFFF, 0x0000_0000)
 
 # Watch-list names that pop a FIFO or fire a trigger. Snapshotting them
 # is a side effect, so they are not part of the no-alias compare.
@@ -111,7 +129,6 @@ class DeadWindow:
     window_end: int
     alloc: int
     watch: tuple[int, ...]
-    write_ok: bool = True
     # Watched addresses hardware may change on its own (sep_reg_meta.reg_hw_updating,
     # the same source the bit-bash reset walk uses). Excluded from the per-probe
     # change compare -- see probe(). They stay in the snapshot for the read-alias
@@ -132,26 +149,39 @@ class DeadWindow:
     # of every probe.
     adopter: bool = False
     watch_from: str = ""
-    # Past-extent response code that a prose specification also states for this
-    # window (both channels), or None. ``stated_ref`` names that file. The
-    # graded value is the sep.rdl one; dead_windows() checks that they agree.
+    # Past-extent response that a prose specification also states for this
+    # window: the code on both channels and the read word, or None.
+    # ``stated_ref`` names that file. The graded value is the sep.rdl one;
+    # dead_windows() checks that they agree.
     stated_resp: int | None = None
+    stated_rdata: int | None = None
     stated_ref: str = ""
 
     @property
     def store_visible(self) -> frozenset[int]:
         """Watched addresses on which a stored write can show.
 
-        A register qualifies when the generated IP-XACT gives it at least one
-        ``read-write`` field. A ``read-only`` field has no bus write path and a
-        ``write-only`` field reads back nothing, so a register made only of
-        those is compared but cannot show a store.
+        A 32-bit word qualifies when the generated IP-XACT gives it at least one
+        ``read-write`` bit. A ``read-only`` field has no bus write path and a
+        ``write-only`` field reads back nothing, so a word made only of those is
+        compared but cannot show a store.
         """
         return _store_visible(self.watch)
 
     def armed(self, snap: dict[int, int]) -> int:
         """Snapshot registers the change compare reads that can show a store."""
         return sum(1 for a in snap if a not in self.hw_updating and a in self.store_visible)
+
+    def rw_pattern(self, snap: dict[int, int]) -> tuple[int, int]:
+        """Armed registers whose snapshot is all ones / all zeros on their RW bits."""
+        ones = zeros = 0
+        for addr, val in snap.items():
+            if addr in self.hw_updating or addr not in self.store_visible:
+                continue
+            mask = _word_rw_mask(addr)
+            ones += val & mask == mask
+            zeros += val & mask == 0
+        return ones, zeros
 
     @property
     def dead_lo(self) -> int:
@@ -163,9 +193,25 @@ class DeadWindow:
 
 
 def _store_visible(watch: tuple[int, ...]) -> frozenset[int]:
-    return frozenset(
-        addr for addr in watch if any(f.access == "read-write" for f in register_fields(addr)[1])
-    )
+    return frozenset(addr for addr in watch if _word_rw_mask(addr))
+
+
+def _word_rw_mask(addr: int) -> int:
+    """Read-write bits of the watched 32-bit word at ``addr``.
+
+    Word ``k`` of a register wider than 32 bits sits ``4 * k`` above the
+    register address and holds its bits ``[32k+31:32k]``.
+    """
+    for word in range(addr // 4 + 1):
+        try:
+            width, fields = register_fields(addr - 4 * word)
+        except KeyError:
+            continue
+        if 32 * word >= width:
+            break
+        rw = sum(f.mask for f in fields if f.access == "read-write")
+        return (rw >> (32 * word)) & 0xFFFF_FFFF
+    raise KeyError(f"0x{addr:08x} is not a word of a register in the IP-XACT")
 
 
 def _watch_skip(name: str) -> bool:
@@ -173,10 +219,13 @@ def _watch_skip(name: str) -> bool:
 
 
 def _sep_watch(base: int, alloc: int) -> tuple[int, ...]:
+    """Every 32-bit word of the allocated registers, so a store into the upper
+    word of a 64-bit register shows in the change compare."""
     addrs = [
-        addr
+        addr + 4 * word
         for _block, name, addr in iter_addrs()
         if base <= addr < base + alloc and not _watch_skip(name)
+        for word in range(max(register_fields(addr)[0] // 32, 1))
     ]
     return tuple(sorted(set(addrs)))
 
@@ -213,29 +262,52 @@ def in_crypto_region(addr: int) -> bool:
     return CRYPTO_LO <= addr < CRYPTO_HI
 
 
+def graded_dead(win, exp) -> bool:
+    """True when ``exp`` is a cell the dead span of ``win`` may hold: the Past
+    Extent of the block's own row, or a Reserved row."""
+    if exp.row == "Reserved":
+        return True
+    return exp.column == "Past Extent" and exp.row == sep_map_row(win.base).unit
+
+
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width.
 
-    Raises if a non-adopter window's dead span is not the Past Extent of its
-    sep.rdl row, or if a prose-stated code disagrees with the RDL one.
+    Raises if a word of a non-adopter window's dead span is neither in the
+    Past Extent of its sep.rdl row nor in a Reserved row, or if a prose-stated
+    response disagrees with the RDL one.
     """
     windows = _dead_windows()
     for win in windows:
         if win.adopter or win.dead_lo >= win.dead_hi:
             continue
-        for addr in (win.dead_lo, win.dead_hi - 4):
+        # The Past Extent of a row is contiguous and a Reserved row has one
+        # cell, so the first dead word of each row the span meets covers it.
+        firsts = [
+            max(row.base, win.dead_lo)
+            for row in sep_map_rows()
+            if row.end >= win.dead_lo and row.base < win.dead_hi
+        ]
+        for addr in firsts:
             for op in ("r", "w"):
                 exp = expected_unbacked(addr, op)
-                if exp.column != "Past Extent":
+                if not graded_dead(win, exp):
                     raise RuntimeError(
                         f"{win.name}: 0x{addr:08x} is in the {exp.column} column of "
-                        f"{exp.row}, not Past Extent ({RDL_REF})"
+                        f"{exp.row}, neither Past Extent nor Reserved ({RDL_REF})"
                     )
-                if win.stated_resp is not None and exp.resp != win.stated_resp:
-                    raise RuntimeError(
-                        f"{win.name}: {RDL_REF} gives code {exp.resp} for {op} "
-                        f"0x{addr:08x}, {win.stated_ref} states {win.stated_resp}"
-                    )
+        if win.stated_resp is None:
+            continue
+        addr = sep_map_row(win.base).past_from
+        for op in ("r", "w"):
+            exp = expected_unbacked(addr, op)
+            want = win.stated_rdata if op == "r" else None
+            if exp.column != "Past Extent" or exp.resp != win.stated_resp or exp.rdata != want:
+                raise RuntimeError(
+                    f"{win.name}: {RDL_REF} gives {exp.column} code {exp.resp} rdata "
+                    f"{exp.rdata} for {op} 0x{addr:08x}, {win.stated_ref} states code "
+                    f"{win.stated_resp} rdata {want}"
+                )
     return windows
 
 
@@ -276,7 +348,8 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
             sym("ENTROPY_POOL_REG_MAP_BASE_ADDR"),
             block_size("ABR"),
             _sep_watch(_ABR, block_size("ABR")),
-            stated_resp=RESP_DECERR,
+            stated_resp=RESP_SLVERR,
+            stated_rdata=0xBADC_AB1E,
             stated_ref="hw/sys/sep/doc/adams_bridge.adoc (abr-aperture-decode)",
         ),
         DeadWindow(
@@ -333,7 +406,6 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
                 sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
                 block_size("SEP_LIFECYCLE_CTRL"),
             ),
-            write_ok=False,
         ),
         DeadWindow(
             "spi_controller",
@@ -346,7 +418,8 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
                 sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
                 block_size("SPI_CONTROLLER"),
             ),
-            stated_resp=RESP_DECERR,
+            stated_resp=RESP_SLVERR,
+            stated_rdata=0xBADC_AB1E,
             stated_ref="hw/sys/sep/doc/peripheral_subsystem.adoc (SEP peripheral extension port)",
         ),
         DeadWindow(
@@ -374,34 +447,58 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
 
 
 _TRNG = sym("TRNG_REG_MAP_BASE_ADDR")
+_KM_MBOX = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
+_WDT = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
+_AES = sym("AES_REG_MAP_BASE_ADDR")
+_OTBN = sym("OTBN_REG_MAP_BASE_ADDR")
+_LIFECYCLE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
+
+# ESRC register with a software read-write field and no hardware write. A TRNG
+# write anchor sits at its offset, which an access that drops address bit 12
+# reaches, so a refused TRNG write that still stores moves it.
+TRNG_ALIAS_REG = "HEALTH_TEST_WINDOW_SIZE"
+TRNG_ALIAS_OFFSET = dict(ot_reg_offsets("entropy_source"))[TRNG_ALIAS_REG]
+# While FIPS_LOCK.LOCK is set, software writes to TRNG_ALIAS_REG are ignored
+# (hw/ip/entropy_source/regs/entropy_source.rdl, HEALTH_TEST_WINDOW_SIZE.SIZE).
+TRNG_ALIAS_LOCK_OFFSET = dict(ot_reg_offsets("entropy_source"))["FIPS_LOCK"]
 
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
-    ("km_mailbox", 0x1092_0414, "w"),
-    ("km_mailbox", 0x1092_0C04, "w"),
-    ("km_mailbox", 0x1092_0FF8, "w"),
-    ("km_mailbox", 0x1092_080C, "r"),
-    ("wdt_timer", 0x1080_1428, "w"),
-    ("wdt_timer", 0x1080_181C, "w"),
-    ("wdt_timer", 0x1080_1C0C, "w"),
-    ("edn", 0x1091_4A34, "w"),
-    ("edn", 0x1091_4E10, "w"),
-    ("csrng", 0x1091_5248, "w"),
-    ("entropy_src", 0x1091_651C, "w"),
-    ("secure_dma", 0x1080_08A8, "w"),
-    # First word past the ABR map, error_intr_en_r with offset bit 14 set, and
-    # the last word of the ABR window.
+    ("km_mailbox", _KM_MBOX + 0x414, "w"),
+    ("km_mailbox", _KM_MBOX + 0xC04, "w"),
+    ("km_mailbox", _KM_MBOX + 0xFF8, "w"),
+    ("km_mailbox", _KM_MBOX + 0x80C, "r"),
+    ("wdt_timer", _WDT + 0x428, "w"),
+    ("wdt_timer", _WDT + 0x81C, "w"),
+    ("wdt_timer", _WDT + 0xC0C, "w"),
+    ("edn", EDN_BASE + 0xA34, "w"),
+    ("edn", EDN_BASE + 0xE10, "w"),
+    ("csrng", CSRNG_BASE + 0x248, "w"),
+    ("entropy_src", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR") + 0x51C, "w"),
+    ("secure_dma", sym("SECURE_DMA_REG_MAP_BASE_ADDR") + 0x8A8, "w"),
+    # First word past the ABR map, error_intr_en_r with offset bit 14 set, the
+    # last word of the ABR row and the last word of the ABR window, in the
+    # Reserved row that follows.
     ("abr", _ABR + block_size("ABR"), "r"),
     ("abr", _ABR + block_size("ABR"), "w"),
     ("abr", sym("ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_REG_ADDR") | 0x4000, "w"),
+    ("abr", sep_map_row(_ABR).end + 1 - 4, "w"),
     ("abr", sym("ENTROPY_POOL_REG_MAP_BASE_ADDR") - 4, "w"),
-    # First, middle and last word of the adopter TRNG window, read and write.
+    # First word past the AES and OTBN maps, and the first and last word of the
+    # lifecycle dead span: these windows get a write every seed.
+    ("aes", _AES + block_size("AES"), "w"),
+    ("otbn", _OTBN + block_size("OTBN"), "w"),
+    ("lifecycle", _LIFECYCLE + block_size("SEP_LIFECYCLE_CTRL"), "w"),
+    ("lifecycle", _KM_MBOX - 4, "w"),
+    # First, middle and last word of the adopter TRNG window, read and write,
+    # and a write at the alias offset of TRNG_ALIAS_REG.
     ("trng", _TRNG + 0x000, "r"),
     ("trng", _TRNG + 0x000, "w"),
     ("trng", _TRNG + 0x800, "r"),
     ("trng", _TRNG + 0x800, "w"),
     ("trng", _TRNG + 0xFFC, "r"),
     ("trng", _TRNG + 0xFFC, "w"),
+    ("trng", _TRNG + TRNG_ALIAS_OFFSET, "w"),
 )
 
 
@@ -422,6 +519,13 @@ class SepDeadspaceCfg:
         missing = {name for name, _a, _op in DEADSPACE_ANCHORS if name not in self.windows}
         if missing:
             raise RuntimeError(f"anchor window(s) not in dead_windows(): {sorted(missing)}")
+        outside = [
+            f"{name}@0x{addr:08x}"
+            for name, addr, _op in DEADSPACE_ANCHORS
+            if not self.windows[name].dead_lo <= addr < self.windows[name].dead_hi
+        ]
+        if outside:
+            raise RuntimeError(f"anchor(s) outside the dead span of their window: {outside}")
         probes = [DeadProbe(name, addr, op, True) for name, addr, op in DEADSPACE_ANCHORS]
         rng = SepSeededRng(seed)
         taken = {(p.window, p.addr, p.op) for p in probes}
@@ -443,7 +547,7 @@ class SepDeadspaceCfg:
                 addr = rng.randrange(win.dead_lo, win.dead_hi) & ~0x3
                 if addr < win.dead_lo:
                     continue
-                op = "r" if (not win.write_ok or rng.getrandbits(1)) else "w"
+                op = "r" if rng.getrandbits(1) else "w"
                 key = (win.name, addr, op)
                 if key in taken:
                     continue
@@ -598,13 +702,14 @@ class SepDeadspace:
         return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
     async def burst_write(
-        self, win, start: int, snap: dict[int, int]
+        self, win, start: int, snap: dict[int, int], word: int
     ) -> tuple[int, bool, list[str]]:
         """Write a four-beat INCR burst at ``start``; return BRESP, timeout and changes.
 
-        Every beat carries all ones, so a beat that reached a writable register
-        moves it. One BRESP covers the burst, and the change compare is what
-        shows whether any beat landed.
+        Every beat carries ``word``. The caller issues the burst once with each
+        ``WRITE_PATTERNS`` word, so a beat that reached a read-write bit moves
+        it in one of the two. One BRESP covers the burst, and the change
+        compare is what shows whether any beat landed.
         """
         beats = 4
         mon = self.test.env.axi_monitor
@@ -613,7 +718,7 @@ class SepDeadspace:
             f"dead_burst_wr_0x{start:08x}",
             op=SepAxiOp.WRITE,
             addr=start,
-            wdata=(1 << (32 * beats)) - 1,
+            wdata=sum(word << (32 * i) for i in range(beats)),
             length=4 * beats,
             size=2,
             expect_error=True,
@@ -625,7 +730,8 @@ class SepDeadspace:
             mon.release_expected_decerr(1)
         if seq.timed_out:
             return resp, True, []
-        return resp, False, await self.changed_registers(win, snap, f"write burst 0x{start:08x}")
+        label = f"write burst 0x{start:08x} wdata=0x{word:08x}"
+        return resp, False, await self.changed_registers(win, snap, label)
 
     async def snapshot(self, win) -> dict[int, int]:
         """Read every watched address twice; return the stable values.
@@ -741,22 +847,50 @@ class SepDeadspace:
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec.
 
-        A non-adopter window is graded exactly against the Past Extent response
-        of its ``hw/sys/sep/regs/include/sep_memory_map.rdl`` row (``ocah_past_extent_resp``): a
-        read must answer the RDL ``rresp`` with the RDL ``rdata`` word, and a
-        write the RDL ``bresp``. The adopter (TRNG) window has no such
-        response; the caller grades its code, and this method fails it on OKAY
-        and on a read word equal to a live register value.
+        A non-adopter window is graded exactly against the cell the memory map
+        states for the word (``expected_unbacked``): the Past Extent cell of
+        its ``hw/sys/sep/regs/include/sep_memory_map.rdl`` row, with the read
+        data of a Past Extent note where the word is in the note's span, or
+        the cell of the Reserved row after it. A read must answer the stated
+        read code with the stated ``rdata`` word, and a write the stated write
+        code. The adopter (TRNG) window has no such response; the caller grades
+        its code, and this method fails it on OKAY and on a read word equal to
+        a live register value.
+
+        A write is issued once with each ``WRITE_PATTERNS`` word, all ones then
+        all zeros. Each issue gets its own response grade and its own change
+        compare, and the two issues must answer the same code. ``last_resp``
+        holds the code of the second issue.
         """
+        if item.op != "w":
+            return await self._probe_once(win, item, snap, None)
+        fails: list[str] = []
+        codes = []
+        for word in WRITE_PATTERNS:
+            fails.extend(await self._probe_once(win, item, snap, word))
+            codes.append(self.last_resp)
+        if codes[0] != codes[1]:
+            fails.append(
+                f"{win.name} w 0x{item.addr:08x} answered code {codes[0]} with "
+                f"wdata=0x{WRITE_PATTERNS[0]:08x} and code {codes[1]} with "
+                f"wdata=0x{WRITE_PATTERNS[1]:08x}"
+            )
+        return fails
+
+    async def _probe_once(
+        self, win, item: DeadProbe, snap: dict[int, int], wdata: int | None
+    ) -> list[str]:
+        """Issue ``item`` once (``wdata`` for a write, None for a read) and grade it."""
+        what = f"{item.op} 0x{item.addr:08x}" + ("" if wdata is None else f" wdata=0x{wdata:08x}")
         fails: list[str] = []
         rdata: int | None = None
         exp = None
         if not win.adopter:
             exp = expected_unbacked(item.addr, item.op)
-            if exp.column != "Past Extent":
+            if not graded_dead(win, exp):
                 raise RuntimeError(
                     f"{win.name} {item.op} 0x{item.addr:08x} is in the {exp.column} "
-                    f"column of {exp.row}, not Past Extent ({RDL_REF})"
+                    f"column of {exp.row}, neither Past Extent nor Reserved ({RDL_REF})"
                 )
         mon = self.test.env.axi_monitor
         # Arm one credit for a DECERR refuse. Hand it back unless this beat
@@ -768,7 +902,7 @@ class SepDeadspace:
             resp, _rd, timed_out = await self._access(
                 SepAxiOp.WRITE,
                 item.addr,
-                wdata=0xFFFF_FFFF,
+                wdata=wdata,
                 expect_error=True,
             )
         else:
@@ -801,7 +935,7 @@ class SepDeadspace:
             self.last_expected = f"{exp.resp}, 0x{exp.rdata:08x}"
         if win.adopter:
             self.log.info(
-                "OBS-DEADSPACE-CODE: %s %s 0x%08x resp=%s rdata=%s",
+                "INFO-DEADSPACE-CODE: %s %s 0x%08x resp=%s rdata=%s chk=CHK-TRNG-UNOWNED",
                 win.name,
                 item.op,
                 item.addr,
@@ -809,22 +943,21 @@ class SepDeadspace:
                 "n/a" if rdata is None or timed_out else f"0x{rdata:08x}",
             )
         if timed_out:
-            fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
+            fails.append(f"{win.name} {what} timed out")
             return fails
         got = f"code {resp}" + ("" if rdata is None else f" rdata 0x{rdata:08x}")
         if exp is None:
             if resp == RESP_OKAY:
                 fails.append(
-                    f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
-                    f"expected refuse (no register in the window)"
+                    f"{win.name} {what} resp=OKAY, expected refuse (no register in the window)"
                 )
         elif resp != exp.resp or (exp.rdata is not None and rdata != exp.rdata):
             want = f"code {exp.resp}" + ("" if exp.rdata is None else f" rdata 0x{exp.rdata:08x}")
             # "resp=OKAY" marks an accepted probe in the caller's tally.
             accepted = " resp=OKAY" if resp == RESP_OKAY else ""
             fails.append(
-                f"{win.name} {item.op} 0x{item.addr:08x} answered {got}, expected "
-                f"{want} ({RDL_REF}, {exp.row} Past Extent, allocated ends at "
+                f"{win.name} {what} answered {got}, expected "
+                f"{want} ({RDL_REF}, {exp.row} {exp.column}, allocated ends at "
                 f"+0x{win.alloc:x}){accepted}"
             )
         # A read of a dead offset must not return a live register's value, and
@@ -845,5 +978,5 @@ class SepDeadspace:
         # `snap` for the read-alias compare above. Every `sw = rw` register
         # stays armed, so an access that aliases onto a control register is
         # still caught -- at that control register, where it lands.
-        fails.extend(await self.changed_registers(win, snap, f"{item.op} 0x{item.addr:08x}"))
+        fails.extend(await self.changed_registers(win, snap, what))
         return fails
