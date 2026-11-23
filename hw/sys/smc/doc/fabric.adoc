@@ -659,15 +659,17 @@ their initiators unchanged.
 [width="100%",cols="35%,15%,50%",options="header",]
 |=======================================================================
 |Initiator |AxPROT |Where it is set
-|CPU cores, MMIO port |`0x1` |In the CPU cluster, for every core and
-privilege mode
-|Debug module system bus access, MMIO port |`0x1` |In the CPU cluster
+|CPU cores, every core and privilege mode |`0x1` |Input fabric, MMIO port
+|Debug module system bus access |`0x1` |Input fabric, MMIO port
 |JTAG-to-AXI bridge |`0x1` |Input fabric, JTAG port
 |DMA and zeroer |`0x1` |Input fabric, data accelerator port
 |UART log engine |`0x1` |Input fabric, log port
-|Request entering the CPU cluster front port and leaving on its MMIO port
-|Unchanged |Keeps the AxPROT of the initiator that sent it to the cluster
 |=======================================================================
+
+The cluster's MMIO port carries only these two initiators: no window the
+local fabric routes to the cluster front port lies in the cluster's MMIO
+address range, so a request entering the front port never leaves on the MMIO
+port.
 
 On the way to the SMC's outbound port, only the output remaps change AxPROT,
 and only its NS bit (<<smc-fabric-privilege-controlled-remapping>>). The filters

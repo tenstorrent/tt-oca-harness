@@ -3,9 +3,8 @@
 
 // Route the SMC's inbound AXI initiators toward the local and output fabrics.
 //
-// Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, sets the AxPROT of the
-// JTAG, log and data accelerator ports to smc_pkg::SmcInitiatorProt, applies the alias remap to
-// those and the MMIO port, muxes the four, and sends requests inside
+// Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, sets the AxPROT of all
+// four ports to smc_pkg::SmcInitiatorProt, applies the alias remap to them, muxes the four, and sends requests inside
 // the local or global SMC window to the local output port truncated to 32 bits and all
 // others to the global output port. System inbound AXI passes a clock-gated access filter
 // that blocks by default; system and SEP requests outside the SMC window receive DECERR,
@@ -293,7 +292,7 @@ module smc_input_fabric #(
     .axi_in_log_req_i(set_initiator_prot(log_axi_req)),
     .axi_in_log_resp_o(log_axi_resp),
 
-    .axi_in_mmio_req_i(axi_mmio_port_req_prepend_id),
+    .axi_in_mmio_req_i(set_initiator_prot(axi_mmio_port_req_prepend_id)),
     .axi_in_mmio_resp_o(axi_mmio_port_resp_prepend_id),
 
     .axi_in_data_accel_req_i(set_initiator_prot(axi_in_data_accel_req_i)),
