@@ -81,16 +81,6 @@ package smu_pkg;
                                                         // ignored, and the SMC lanes are
                                                         // always pulse sync.
 
-    // Pipeline depths
-    logic [1:0] SMC_OTP_RD_PL_DEPTH;  // DTP JTAG2AXI read pipeline depth toward the SMC OTP, 0
-                                      // to 3; 0 is a single outstanding read.
-    logic [1:0] SMC_OTP_WR_PL_DEPTH;  // Write pipeline depth toward the SMC OTP, 0 to 3; it is
-                                      // reported in the JTAG2AXI CAPS only.
-    logic [1:0] SMC_RD_PL_DEPTH;      // DTP JTAG2AXI read pipeline depth toward the SMC fabric,
-                                      // 0 to 3; 0 is a single outstanding read.
-    logic [1:0] SMC_WR_PL_DEPTH;      // Write pipeline depth toward the SMC fabric, 0 to 3; it
-                                      // is reported in the JTAG2AXI CAPS only.
-
     // SMC
     int unsigned MAX_TRANS;            // Maximum outstanding AXI-Lite transactions in the SMC
                                        // pad-ring GPIO demux and each GPIO interface, at least
@@ -156,15 +146,11 @@ package smu_pkg;
       JTAG_IDCODE_MFR_ID: 11'h000,
       JTAG_IDCODE_PART_NUM: 16'h0000,
       JTAG_IDCODE_SI_REV: 4'h0,
-      JTAG_OCH_VER: 8'h00,
+      JTAG_OCH_VER: 8'h01,
       XTRIG_NUM_CTP: dtp_pkg::DefaultNumCtp,
       XTRIG_NUM_INT_CT: dtp_pkg::DefaultNumIntCt - XtrigSmcIntCtLanes,
       XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DefaultNumClkStopReq - XtrigSmcClkStopLanes,
       XTRIG_INT_CT_MODE: '0,
-      SMC_OTP_RD_PL_DEPTH: 2'h3,
-      SMC_OTP_WR_PL_DEPTH: 2'h3,
-      SMC_RD_PL_DEPTH: 2'h3,
-      SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
       SEP: 1'b1,
@@ -193,15 +179,11 @@ package smu_pkg;
       JTAG_IDCODE_MFR_ID: 11'h000,
       JTAG_IDCODE_PART_NUM: 16'h0000,
       JTAG_IDCODE_SI_REV: 4'h0,
-      JTAG_OCH_VER: 8'h00,
+      JTAG_OCH_VER: 8'h01,
       XTRIG_NUM_CTP: dtp_pkg::DefaultNumCtp,
       XTRIG_NUM_INT_CT: dtp_pkg::DefaultNumIntCt - XtrigSmcIntCtLanes,
       XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DefaultNumClkStopReq - XtrigSmcClkStopLanes,
       XTRIG_INT_CT_MODE: '0,
-      SMC_OTP_RD_PL_DEPTH: 2'h3,
-      SMC_OTP_WR_PL_DEPTH: 2'h3,
-      SMC_RD_PL_DEPTH: 2'h3,
-      SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
       SEP: 1'b0,

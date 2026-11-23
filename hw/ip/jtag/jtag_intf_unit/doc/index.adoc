@@ -37,7 +37,7 @@ endif::backend-html5[]
 
 The JIU is configured through the PTAP feature enables, the I/O, SMC debug and SEP
 debug STAP enables, the number of additional STAPs, the IDCODE and JTAG_CAPS values,
-and the JTAG2AXI pipeline depths.
+and the AXI types of the JTAG2AXI manager ports.
 
 ifdef::backend-html5[]
 The parameters of `jtag_intf_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].

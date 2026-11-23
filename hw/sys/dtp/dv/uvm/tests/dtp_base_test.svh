@@ -130,9 +130,8 @@ class dtp_base_test extends ocah_test;
       ocah_axi_uvm_pkg::ocah_axi_checker   evidence;
       ocah_axi_uvm_pkg::ocah_axi_ref_model ref_model;
       m_env.axi_bundle(name, cfg, evidence, ref_model);
-      seq.target_cfgs[name]       = cfg;
-      seq.target_evidence[name]   = evidence;
-      seq.target_ref_models[name] = ref_model;
+      seq.target_cfgs[name]     = cfg;
+      seq.target_evidence[name] = evidence;
     end
   endfunction
 

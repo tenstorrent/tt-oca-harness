@@ -57,10 +57,10 @@ from seq_lib.smu_jtag_helpers import (
     axi64_unpack32,
     jtag2axi_single_read,
     jtag2axi_single_write,
+    jtag2axi_start,
+    jtag2axi_wait,
     make_smu_jtag_tap,
-    pack_otp_single_op,
     require_jtag_tdo_resolved,
-    unpack_otp_single_op,
 )
 from seq_lib.smu_tb_pins import smu_scope
 from smu_base_test import smu_base_test
@@ -158,18 +158,10 @@ class smu_dtp_jtag2axi_address_walk_test(smu_base_test):
             raise AssertionError(f"read @0x{addr:x} status={st}")
         return axi64_unpack32(addr, rdata)
 
-    async def _otp(self, jtag, tdr: str, write: bool, addr: int) -> int:
+    async def _otp(self, jtag, target: str, write: bool, addr: int) -> int:
         op = J2A_OP_WRITE if write else J2A_OP_READ
-        await jtag.write(tdr, pack_otp_single_op(op, addr, 0, wstrb=0))
-        require_jtag_tdo_resolved(f"{tdr} issue @0x{addr:x}")
-        await ClockCycles(cocotb.top.clk_smu_i, 32)
-        status = J2A_STATUS_BUSY
-        for _ in range(POLLS):
-            capt = await jtag.read(tdr, shift_value=0)
-            status, _ = unpack_otp_single_op(capt)
-            if status != J2A_STATUS_BUSY:
-                break
-            await ClockCycles(cocotb.top.clk_smu_i, 16)
+        access = await jtag2axi_start(jtag, op, addr, target=target, wstrb=0 if write else None)
+        status, _ = await jtag2axi_wait(jtag, access, poll_limit=POLLS)
         return status
 
     async def run_scenario(self) -> None:
@@ -263,15 +255,15 @@ class smu_dtp_jtag2axi_address_walk_test(smu_base_test):
         )
 
         otp_addrs = [0] + [1 << k for k in range(32)] + [0xFFFF_FFFF]
-        for tdr, net, token in (
-            ("SMC_OTP_AXI_SINGLE_OP", "dtp_axil_smc_otp_jtag", "CHK-J2A-WALK-SMC-OTP"),
-            ("SEP_OTP_AXI_SINGLE_OP", "dtp_axil_sep_otp_jtag", "CHK-J2A-WALK-SEP-OTP"),
+        for target, net, token in (
+            ("smc_otp", "dtp_axil_smc_otp_jtag", "CHK-J2A-WALK-SMC-OTP"),
+            ("sep_otp", "dtp_axil_sep_otp_jtag", "CHK-J2A-WALK-SEP-OTP"),
         ):
             tap = _AxilTap(hier(smu, f"{net}_req"), hier(smu, f"{net}_resp"), dut.clk_smu_i)
             statuses, issued = [], []
             for addr in otp_addrs:
-                statuses.append(await self._otp(jtag, tdr, False, addr))
-                statuses.append(await self._otp(jtag, tdr, True, addr))
+                statuses.append(await self._otp(jtag, target, False, addr))
+                statuses.append(await self._otp(jtag, target, True, addr))
                 issued += [("r", addr), ("w", addr)]
             arrived = tap.take()
             tap.stop()

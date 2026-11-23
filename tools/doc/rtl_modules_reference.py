@@ -298,7 +298,6 @@ _TITLES = {
     "ocah_prim": "ocah_prim",
     "ocah_prim_generic": "ocah_prim_generic",
     "idma_wrapper": "iDMA",
-    "jtag2axi": "JTAG to AXI",
     "jtag_intf_unit": "JTAG Interface Unit",
     "jtag_ptap": "JTAG PTAP",
     "jtag_stap": "JTAG STAP",

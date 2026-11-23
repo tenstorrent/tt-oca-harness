@@ -72,7 +72,6 @@ from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_IC_RESET,
     DTP_IR_JTAG_CAPS,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     DTP_IR_TAP_3DCR,
     DTP_IR_WIDTH,
     DTP_JTAG_CAPS_LEN,
@@ -81,20 +80,19 @@ from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     PTAP_3DCR_WIDTH,
-    SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_EXT_PORT,
     SMU_IC_RESET_LEN,
     SMU_IC_RESET_SEP_PORTS,
+    Jtag2AxiScanPort,
     ic_reset_control_bit,
     ic_reset_enable_bit,
+    jtag2axi_start,
+    jtag2axi_status,
     make_smu_jtag_tap,
     pack_ic_reset_ports,
-    pack_single_op,
     ptap_3dcr_value,
     require_jtag_tdo_resolved,
-    unpack_single_op,
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_PRESENSE
 
@@ -183,9 +181,6 @@ TLR_TCKS = 5
 CONFIG_HOLD_CLEAR = 0
 PTAP_3DCR_SELECT = 1
 SEP_STAP_NAME = "sep"
-# hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_AXI_SINGLE_OP wstrb: all eight byte lanes of the
-# 64-bit SMC fabric beat.
-WSTRB_FULL = 0xFF
 FABRIC_OP_OKAY = J2A_STATUS_SUCCESS
 
 # Bounds and windows.
@@ -205,7 +200,7 @@ SMC_WINDOW = 500
 TLR_WINDOW = 400
 RELEASE_WINDOW = 200
 
-# Wait sites per kind: the sensing wait; the SMC SINGLE_OP capture polls of the scratch write and
+# Wait sites per kind: the sensing wait; the SMC JTAG2AXI status polls of the scratch write and
 # read; the reset fall waits of the two overrides; the reset rise waits of the two releases; the
 # external-output waits of the control leg; ten system-bus completion polls (S2 two, S3 one, S4
 # one, S7 three, S9 three); dmi retry loops of the non-poll dmi accesses (four activations of two
@@ -495,22 +490,17 @@ class smu_dtp_sep_ic_reset_effect_test_seq:
         dmcontrol = await self._dmi_op(DMCONTROL_ADDR, 0, DMI_OP_READ, f"{label}_dmactive_rd")
         return dmcontrol & DMCONTROL_DMACTIVE
 
+    async def _ptap_scan(self, opcode: int, value: int, width: int, label: str) -> int:
+        captured, _ = await self._dr(opcode, value, width, label)
+        return captured
+
     async def _fabric(self, op: int, addr: int, data: int, label: str) -> tuple[int, int]:
-        """SMC fabric SINGLE_OP; captures until op leaves busy, bounded."""
-        size = SMC_DBG_AXSIZE_8B
-        wstrb = WSTRB_FULL if op == J2A_OP_WRITE else 0
-        raw = pack_single_op(op, addr, data, wstrb=wstrb, size=size)
-        await self._dr(DTP_IR_SMC_AXI_SINGLE_OP, raw, SMC_DBG_SINGLE_OP_LEN, f"{label}_issue")
+        """One 64-bit SMC fabric JTAG2AXI access; samples it until it completes, bounded."""
+        port = Jtag2AxiScanPort(self._ptap_scan, self.jtag)
+        access = await jtag2axi_start(port, op, addr, data)
         used = 0
         while True:
-            captured, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=used == 0,
-            )
-            status, rdata = unpack_single_op(captured)
+            status, rdata = await jtag2axi_status(port, access)
             used += 1
             if status != J2A_STATUS_BUSY:
                 break

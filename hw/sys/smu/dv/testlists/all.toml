@@ -662,7 +662,7 @@ args = [
 
 # TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
 # ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
+# and a JTAG2AXI read must reach the DTP->SMC debug AXI port. This is the
 # permissive half; without it, 'no transaction' in the gated case could equally
 # mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
 # feat_ctrl is zero except func_reserved until a demote opens the window, so
@@ -695,7 +695,7 @@ args = [
 
 # TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
 # ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
+# and a JTAG2AXI read must reach the DTP->SMC debug AXI port. This is the
 # permissive half; without it, 'no transaction' in the gated case could equally
 # mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
 # feat_ctrl is zero except func_reserved until a demote opens the window, so
@@ -728,7 +728,7 @@ args = [
 
 # TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
 # ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
+# and a JTAG2AXI read must reach the DTP->SMC debug AXI port. This is the
 # permissive half; without it, 'no transaction' in the gated case could equally
 # mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
 # feat_ctrl is zero except func_reserved until a demote opens the window, so
@@ -761,7 +761,7 @@ args = [
 
 # TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
 # ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
+# and a JTAG2AXI read must reach the DTP->SMC debug AXI port. This is the
 # permissive half; without it, 'no transaction' in the gated case could equally
 # mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
 # feat_ctrl is zero except func_reserved until a demote opens the window, so
@@ -2496,28 +2496,6 @@ args = [
 ]
 
 [[tests]]
-name = "smu_dtp_jtag2axi_smc_error_path_test"
-module = "smu_dtp_jtag2axi_smc_error_path_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: no OTP/eFuse data is read.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
-
-[[tests]]
 # JTAG2AXI accesses into the SMC fabric during and across the cool-reset pin, the FLR-timed
 # cool reset and the CORE0 watchdog warm reset.
 name = "smu_dtp_jtag2axi_smc_reset_inflight_test"
@@ -2591,28 +2569,6 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
   "+pll_sys_period_ns=10",
-]
-
-[[tests]]
-name = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
-module = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: no OTP/eFuse data is read.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -2691,29 +2647,6 @@ module = "smu_dtp_otp_smc_map_rw_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 1800
-tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
-
-[[tests]]
-name = "smu_dtp_otp_smc_series_error_test"
-module = "smu_dtp_otp_smc_series_error_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
 run_modes = ["sep_rtl"]
@@ -2938,72 +2871,6 @@ args = [
 ]
 
 [[tests]]
-name = "smu_dtp_jtag2axi_series_contention_test"
-module = "smu_dtp_jtag2axi_series_contention_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-timeout_sec = 6000
-tags = ["depth", "dtp", "jtag2axi"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: no OTP/eFuse data is read.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
-
-[[tests]]
-name = "smu_dtp_jtag2axi_caps_single_op_test"
-module = "smu_dtp_jtag2axi_caps_single_op_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-timeout_sec = 3000
-tags = ["depth", "dtp", "jtag2axi"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: no OTP/eFuse data is read.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
-
-[[tests]]
-name = "smu_dtp_otp_sep_series_error_test"
-module = "smu_dtp_otp_sep_series_error_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-timeout_sec = 3000
-tags = ["depth", "dtp", "jtag2axi", "otp"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: the SEP OTP shadow map is read from the preloaded image, not sensed.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
-
-[[tests]]
 name = "smu_dtp_sep_ic_reset_effect_test"
 module = "smu_dtp_sep_ic_reset_effect_test"
 target = "compile_smu_chiplet"
@@ -3025,31 +2892,6 @@ args = [
   # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
   # STAP and the debug module's system bus is reachable.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
-]
-
-[[tests]]
-name = "smu_dtp_jtag2axi_ratio_floor_test"
-module = "smu_dtp_jtag2axi_ratio_floor_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-reseed = 3
-timeout_sec = 3000
-tags = ["depth", "dtp", "jtag2axi"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: no OTP/eFuse data is read.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-  # +pll_sys_period_ns=10: the 100 MHz system clock setting, 10 ns against the TCK legs.
-  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
@@ -4419,19 +4261,12 @@ tests = [
   "smu_dtp_bsr_ijtag_scan_test",
   "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-  # Two leaves end in an SMC fabric SERIES INCR write, which returns zeros or
-  # parks SERIES_CTRL in BUSY whenever the drawn jtag_period_ns /
-  # smu_clk_period_ns ratio is under 4; both pin the ratio to >= 4 through
-  # smu_base_test.min_jtag_smu_ratio.
-  "smu_dtp_jtag2axi_smc_error_path_test",
   "smu_dtp_jtag2axi_smc_rw_matrix_test",
   "smu_dtp_jtag2axi_address_walk_test",
-  "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
   "smu_dtp_jtag_smc_cpu_register_test",
   "smu_dtp_jtag_smoke_test",
   "smu_dtp_otp_smc_complete_rw_test",
   "smu_dtp_otp_smc_map_rw_test",
-  "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_sep_dm_dmi_test",
   "smu_dtp_sep_dm_sba_test",
   "smu_sep_sba_fabric_sweep_test",
@@ -4454,7 +4289,6 @@ tests = [
   "smu_xtrig_ctm_remap_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_xtrig_ctp_pad_test",
-  "smu_jtag2axi_access_matrix_rand_test",
 ]
 
 # PR-gate tier: .github/workflows/sim.yml runs `--items smoke` on every hardware
@@ -4494,15 +4328,12 @@ tests = [
   "smu_dtp_bsr_ijtag_scan_test",
   "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-  "smu_dtp_jtag2axi_smc_error_path_test",
   "smu_dtp_jtag2axi_smc_rw_matrix_test",
   "smu_dtp_jtag2axi_address_walk_test",
-  "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
   "smu_dtp_jtag_smc_cpu_register_test",
   "smu_dtp_jtag_smoke_test",
   "smu_dtp_otp_smc_complete_rw_test",
   "smu_dtp_otp_smc_map_rw_test",
-  "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_sep_dm_dmi_test",
   "smu_dtp_sep_dm_sba_test",
   "smu_sep_sba_fabric_sweep_test",
@@ -4621,11 +4452,7 @@ tests = [
   "smu_lc_dis_sys_not_binding_rma_sip_test",
   "smu_lc_dis_sip_sep_dbg_rma_sip_test",
   "smu_lc_secure_tm_scope_prod_test",
-  "smu_dtp_jtag2axi_series_contention_test",
-  "smu_dtp_jtag2axi_caps_single_op_test",
-  "smu_dtp_otp_sep_series_error_test",
   "smu_dtp_sep_ic_reset_effect_test",
-  "smu_dtp_jtag2axi_ratio_floor_test",
   "smu_dtp_smc_dm_dmi_test",
   "smu_sep_external_irq_pins_test",
   "smu_sep_wdt_bite_to_smc_reset_test",
@@ -4642,7 +4469,6 @@ tests = [
   "smu_sep_output_remap_region_matrix_test",
   "smu_ext_in_error_inject_rand_test",
   "smu_reset_retention_matrix_rand_test",
-  "smu_jtag2axi_access_matrix_rand_test",
   "smu_filter_match_priority_rand_test",
   "smu_remap_attr_rand_test",
   "smu_lc_disable_vector_matrix_test_dev_test",
@@ -4656,7 +4482,7 @@ tests = [
   "smu_lc_disable_vector_matrix_prod_sip_sys_test",
   "smu_lc_disable_vector_matrix_prod_all_test",
 ]
-expected_count = 178
+expected_count = 170
 
 # The VCS run of record of the AXI protocol checkers in tb_wrapper_top.sv: the
 # leaves that drive the checked links, all but one of which name a checker with a
@@ -4737,15 +4563,12 @@ tests = [
   "smu_dtp_bsr_ijtag_scan_test",
   "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-  "smu_dtp_jtag2axi_smc_error_path_test",
   "smu_dtp_jtag2axi_smc_rw_matrix_test",
   "smu_dtp_jtag2axi_address_walk_test",
-  "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
   "smu_dtp_jtag_smc_cpu_register_test",
   "smu_dtp_jtag_smoke_test",
   "smu_dtp_otp_smc_complete_rw_test",
   "smu_dtp_otp_smc_map_rw_test",
-  "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_sep_dm_dmi_test",
   "smu_dtp_sep_dm_sba_test",
   "smu_sep_sba_fabric_sweep_test",
@@ -4872,11 +4695,7 @@ tests = [
   "smu_lc_dis_sys_not_binding_rma_sip_test",
   "smu_lc_dis_sip_sep_dbg_rma_sip_test",
   "smu_lc_secure_tm_scope_prod_test",
-  "smu_dtp_jtag2axi_series_contention_test",
-  "smu_dtp_jtag2axi_caps_single_op_test",
-  "smu_dtp_otp_sep_series_error_test",
   "smu_dtp_sep_ic_reset_effect_test",
-  "smu_dtp_jtag2axi_ratio_floor_test",
   "smu_dtp_smc_dm_dmi_test",
   "smu_sep_external_irq_pins_test",
   "smu_sep_wdt_bite_to_smc_reset_test",
@@ -4893,7 +4712,6 @@ tests = [
   "smu_sep_output_remap_region_matrix_test",
   "smu_ext_in_error_inject_rand_test",
   "smu_reset_retention_matrix_rand_test",
-  "smu_jtag2axi_access_matrix_rand_test",
   "smu_filter_match_priority_rand_test",
   "smu_remap_attr_rand_test",
   "smu_lc_disable_vector_matrix_test_dev_test",
@@ -4915,7 +4733,7 @@ tests = [
   "smu_axi_sep_lsu_initiator_stall_test",
   "smu_axi_sep_reset_in_flight_test",
 ]
-expected_count = 225
+expected_count = 217
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -6054,32 +5872,6 @@ args = [
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
   # +skip_fuse_sense: the claim is a register value, not an eFuse word.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-  "+pll_sys_period_ns=10",
-]
-
-# Seed-drawn address, size, strobe, payload, series and sticky cells over the three DTP
-# JTAG2AXI bridges; every access is issued over JTAG, the span set by the JTAG period.
-[[tests]]
-name = "smu_jtag2axi_access_matrix_rand_test"
-module = "smu_jtag2axi_access_matrix_rand_test"
-target = "compile_smu_chiplet"
-firmware = { name = "elaboration", mode = "elaboration" }
-seed = 1
-reseed = 3
-timeout_sec = 6000
-tags = ["depth", "dtp", "jtag2axi", "otp"]
-run_modes = ["sep_rtl"]
-args = [
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
-  "+sep_itcm_hex=sep_itcm_default.hex",
-  "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: the OTP bridges read the preloaded shadow images.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",

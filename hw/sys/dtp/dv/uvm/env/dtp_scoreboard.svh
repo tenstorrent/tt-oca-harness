@@ -27,12 +27,10 @@
 //                    the strobed write data must match; every transaction
 //                    must have been predicted and every prediction must
 //                    land). A system or power-on reset cancels the
-//                    predictions still pending, and a completion while the
-//                    bridge's lifecycle disable is asserted cancels the
-//                    ones queued behind it.
+//                    pending predictions.
 //   jtag2axi_status  expected: dtp_jtag2axi_status_ref_model. Observed: the
-//                    status field, and after a completed read the data
-//                    field, of the SINGLE_OP or SERIES_CTRL capture.
+//                    DTMCS or DMI capture, on the bits the expected item
+//                    masks.
 //
 // A required feature (dtp_test_cfg.required_features through the env cfg)
 // that ends with zero comparisons fails the run. The cocotb twin is
@@ -89,8 +87,6 @@ class dtp_scoreboard extends ocah_scoreboard;
 
   protected bit [31:0] m_sys_rst_seen;
   protected bit [31:0] m_por_seen;
-  // The bridge behind each port monitor (the item `source`).
-  protected string     m_target_by_source[string];
 
   function new(string name = "dtp_scoreboard", uvm_component parent = null);
     super.new(name, parent);
@@ -183,19 +179,12 @@ class dtp_scoreboard extends ocah_scoreboard;
     push_expected(DtpFeatureXtrigDecode, t);
   endfunction
 
-  // Name the monitor whose items carry a bridge's transactions
-  // (connect_phase of dtp_env).
-  function void bind_port(string target, string source);
-    m_target_by_source[source] = target;
-  endfunction
-
   // Bridge transactions pair per port: the item's source names the
   // monitor that published it, and the reference model stamps the same
   // source on its predictions.
   function void write_dtp_jtag2axi_req_observed(ocah_axi_item t);
     sync_reset();
     push_observed(DtpFeatureJtag2axiReq, t, t.source);
-    drop_queued_predictions(t.source);
   endfunction
 
   function void write_dtp_jtag2axi_req_expected(ocah_axi_item t);
@@ -301,34 +290,19 @@ class dtp_scoreboard extends ocah_scoreboard;
     return s;
   endfunction
 
-  // One verdict per bridge capture: the status field, and the data field
-  // after a completed OKAY read.
+  // One verdict per bridge capture, on the bits the expected item masks.
   protected function void compare_jtag2axi_status(uvm_object expected, uvm_object observed);
     dtp_jtag2axi_status_item exp;
     ocah_jtag_scan_item      obs;
-    dtp_j2a_target_t         t;
-    dtp_j2a_status_e         status_e;
-    bit [63:0]               status_o;
-    bit [63:0]               rdata_o = '0;
-    string                   diff    = "";
+    bit               [63:0] captured;
     if (!$cast(exp, expected))
       `uvm_fatal(get_type_name(), "jtag2axi_status: expected item type mismatch")
     if (!$cast(obs, observed))
       `uvm_fatal(get_type_name(), "jtag2axi_status: observed item is not an ocah_jtag_scan_item")
     if (!exp.compare) return;
-    t        = dtp_j2a_target_by_name(exp.target);
-    status_o = dtp_bits_field(obs.tdo_bits, 0, 2);
-    if (status_o !== 64'(exp.status)) diff = {diff, " status"};
-    if (exp.compare_rdata) begin
-      int unsigned data_off = 2 + t.size_bits + t.wstrb_bits;
-      rdata_o = dtp_bits_field(obs.tdo_bits, data_off, t.data_width) & exp.rdata_mask;
-      if (rdata_o !== (exp.rdata & exp.rdata_mask)) diff = {diff, " rdata"};
-    end
-    status_e = dtp_j2a_status_e'(int'(status_o));
-    record_compare(
-        DtpFeatureJtag2axiStatus, diff == "", exp.convert2string(), $sformatf(
-        "status=%s%s", status_e.name(), exp.compare_rdata ? $sformatf(" rdata=0x%0h", rdata_o) : ""
-        ), {exp.context_s, (diff == "") ? "" : {" mismatch:", diff}});
+    captured = obs.tdo_value() & exp.mask;
+    record_compare(DtpFeatureJtag2axiStatus, captured == (exp.expected & exp.mask),
+                   exp.convert2string(), $sformatf("0x%0h", captured), exp.context_s);
   endfunction
 
   // ------------------------------------------------------------------
@@ -336,7 +310,7 @@ class dtp_scoreboard extends ocah_scoreboard;
   // ------------------------------------------------------------------
 
   // A system or power-on reset aborts the bridge transactions in flight,
-  // so the predictions still waiting for them are withdrawn.
+  // so the predictions waiting for them are withdrawn.
   protected function void sync_reset();
     int unsigned dropped;
     if ((tb_vif.sys_rst_assert_count === m_sys_rst_seen) &&
@@ -348,22 +322,6 @@ class dtp_scoreboard extends ocah_scoreboard;
     if (dropped != 0)
       `uvm_info(get_type_name(), $sformatf(
                 "reset withdrew %0d predicted bridge transaction(s)", dropped), UVM_MEDIUM)
-  endfunction
-
-  // A completion while the bridge's lifecycle disable is asserted leaves the
-  // bridge idle and disabled, which drops the requests queued behind it, so
-  // the predictions waiting on its port are withdrawn.
-  protected function void drop_queued_predictions(string source);
-    dtp_j2a_target_t target;
-    int unsigned dropped;
-    if (!m_target_by_source.exists(source)) return;
-    target = dtp_j2a_target_by_name(m_target_by_source[source]);
-    if (!dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path)) return;
-    dropped = flush_expected(DtpFeatureJtag2axiReq, source);
-    if (dropped != 0)
-      `uvm_info(get_type_name(), $sformatf(
-                "%s: the disable dropped %0d queued bridge request(s)", source, dropped),
-                UVM_MEDIUM)
   endfunction
 
   protected function dtp_expected_item cast_expected(uvm_object expected);

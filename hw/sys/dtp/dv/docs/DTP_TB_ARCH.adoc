@@ -115,7 +115,6 @@ dtp_<scenario>_test_seq       virtual sequence on dtp_virtual_sequencer; one flo
   -> dtp_base_test_seq           TAP-state tracking, DTP checks, system-domain waits
        starts reusable operations on the virtual sequencer's typed handles:
          dtp_jtag_<op>_seq          -> m_jtag_seqr   (ocah_jtag_master_sequence)
-         dtp_jtag2axi_<op>_seq      -> m_jtag_seqr
          dtp_axi_csr_<op>_seq       -> m_xtrig_seqr  (ocah_axi_master_sequence)
          responder backdoor/inject  -> m_<target>_slave_seq, m_stap_ds_seq[i]
        per-scenario evidence checker (required IDs) -> finalize() at end of body()
@@ -152,8 +151,8 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
   dtp_tb_if                   control domain: clock and period, resets and counters,
                               named debug disables, TAP-state and debug-TDR observables,
                               request-activity and READY-stall counters, CSR port
-                              spill-register and crossbar demux counters, JTAG2AXI bridge
-                              state flags, pending and CDC-clear observables, SVA enables
+                              spill-register and crossbar demux counters, the JTAG2AXI
+                              read-armed reset and response holds, SVA enables
   dtp_scan_if                 scan domain: scan-chain controls, iJTAG and STAP host scan
                               outputs, forwarded STAP pins, downstream-TAP attach enables
   dtp_xtrig_if                cross-trigger domain: CTM req/ack pairs, CTP pad quartets,
@@ -207,7 +206,7 @@ out; `dtp_tb_if` publishes the build's own, which the bypass reference models re
 |JTAG TAP |`u_jtag_if` (`ocah_jtag_if`): the shared JTAG master drives tck/tms/trst_n/tdi, the DUT drives tdo/tdo_oen
 |SMC fabric AXI4 |`+axi_smc_dbg_*+` structs flattened onto `u_smc_axi_slave_if` (responder) and mirrored onto `u_m_axi_if` (monitor); real geometry ID 2 / ADDR 56 / DATA 64 / USER 12 in the VIP configs; an R beat the responder answers with SLVERR or DECERR carries the errored-beat word its injection armed; the responder answers seeded random BUSER and RUSER (`randomize_resp_user`), and `tb_top` drives RLAST low while RVALID is low
 |Debug disables |One named `dtp_tb_if.dbg_disable_<field>` member per `dbg_disable_i` path (init 1 = fail-closed), bound by field name into the typed `sep_lifecycle_ctrl_pkg::dbg_disable_t` that `tb_top` forwards to `dbg_disable_i`; cocotb deposits the members by name and SV-UVM writes them through `dtp_tb_if.drive_dbg_disable`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly. The path-to-field binding is the "DTP debug-disable paths" table of `hw/sys/dtp/doc/jtag.adoc`; SV-UVM holds it once, as `dtp_dbg_path_e` with `dtp_dbg_path_set` / `dtp_dbg_path_disabled` in `uvm/env/dtp_types.svh`, and every driven vector and every gating prediction starts from a path
-|JTAG2AXI bridge state |`dtp_tb_if.<target>_fsm_idle`, `<target>_fsm_write_path`, `<target>_fsm_read_path`, `<target>_op_pending` and the sticky `<target>_cdc_clear_seen` per bridge, driven by `tb_top` from the bridges' TCK-domain state machines (decoded by state name) and pending registers and the `axi_cdc_clearable` instance's `src_clear_pending_o` through the hierarchical references the coverage instance uses; `cdc_clear_seen_clear` clears the sticky flags. The phase of the CDC clear sequences, `j2a_cdc_aclk_clear`, `j2a_cdc_aclk_wait_clear_phase_ack`, `j2a_cdc_aclk_post_clear` and `j2a_cdc_aclk_finished` for the ACLK-side initiator and `j2a_cdc_tck_dst_wait_ack` and `j2a_cdc_aclk_dst_wait_ack` for the four-phase receivers in `WAIT_DOWNSTREAM_ACK`, read by `tb_top` from the smc_axi bridge's AW crossing; the bridges' controllers share `rst_n_i`, `clk_i`, TCK and the TAP's Test-Logic-Reset, so that crossing's phase is every crossing's phase. cocotb reads them through `DtpTbIf.bridge_fsm_idle`, `bridge_fsm_on_path`, `bridge_op_pending` and `cdc_clear_seen`; SV-UVM through the JTAG2AXI base sequence's functions of the same names. The `dtp_j2a_state_flags` instance `tb_top` binds into each bridge, which decodes those states, also hands the coverage instance the transaction each bridge's state machine completes, its SINGLE_OP update with the scanned op field, its synchronized disable, and its CDC clear with what the clear discards
+|JTAG2AXI response holds |`dtp_tb_if.j2a_b_hold` and `j2a_r_hold`, one bit per bridge in the `sys_rst_on_ar_arm` order (0 `smc_axi`, 1 `smc_otp`, 2 `sep_otp`): while a bit is set, `tb_top` accepts that bridge's write or read responses from its responder into a four-entry queue and shows the bridge none of them, and once the bit clears the bridge takes them in order. The responder sees each response accepted, so it takes the next request while earlier responses wait; `<target>_b_held` and `<target>_r_held` report each queue's occupancy. A sequence sets a hold only while its channel carries no response, and `DTP_J2A_HOLD_VALID_HELD` asserts that no VALID the bridge sees falls before its handshake. cocotb sets a bridge's holds through `DtpTbIf.hold_responses`, and SV-UVM through the JTAG2AXI base sequence's `hold_responses` on the virtual interface
 |BSR |Looped back; the chain controls mirrored onto `dtp_scan_if`
 |iJTAG SIB host chains |One `prim_jtag_scan_reg` instrument stub per SIB (4, 5, 6 bits behind secure DFT, non-secure DFT, DFD) that captures its own update register, so open-SIB subsets have distinct chain lengths and a written value reads back on the next scan; the chain controls and host scan outputs mirrored onto `dtp_scan_if`
 |STAP host ports |Loopback (`tdi <- tdo`) by default; `dtp_scan_if.stap_<x>_ds_en` splices the downstream `u_stap_<x>_ds_if` TAP behind the port for the STAP-selection and zero-length-bypass scenarios; the forwarded TAP pins mirrored onto `dtp_scan_if`, with a per-port flag that records whether the forwarded TMS differed from the primary TMS at the last rising TCK edge, which the forwarding windows require to stay low, and a per-port count of forwarded TRST assertions, which the STAP-selection scenarios require to stay flat across the gate
@@ -215,23 +214,24 @@ out; `dtp_tb_if` publishes the build's own, which the bypass reference models re
 |SMC/SEP OTP AXI-Lite |Flattened onto `u_smc_otp_slave_if` / `u_sep_otp_slave_if` (responders) and `u_smc_otp_axil_if` / `u_sep_otp_axil_if` (monitors); geometry from the bench configuration; an errored R beat carries the errored-beat word its injection armed, as on the SMC fabric port
 |DEBUG_CONTROL and IC_RESET |Boot-stall, clock-stop, and IC_RESET struct outputs flattened onto `dtp_tb_if`; `dtp_tb_if.xtrig_clk_stop_req` drives the CLA clock-stop requests, registered onto `xtrig_clk_stop_req_i` at `clk_i` falling edges; `tb_top` counts the `stop_clks_o` changes while `rst_n_i` is high, and those among them outside a `clk_i` rising edge, onto `dtp_tb_if`
 |XTRIG CSR/CTP/CTM |`u_xtrig_master_if` (initiator) and `u_xtrig_axil_if` (monitor) for the CSR port (the generated CSR blocks elaborate under Verilator); `tb_top` reads the handshakes and state of the AXI-Lite demux behind the port by hierarchical reference into the network's crossbar and drives onto `dtp_tb_if` the demux AW-lock and pending-W mirrors, the demux stall and open-request counters, and the spill-register counters, which it keeps from the beats each spill register (the crossbar's two-beat register on each CSR port channel) holds, counted from the port's and the demux's handshakes; CTM/CTP pins on `dtp_xtrig_if`. Every CT_Req_out pad sits on an open-drain wire (`ocah_open_drain_bus`, `hw/common/dv/shims/analog/`): a private wire with one bench-side chiplet driver, or the group wire the pads in `xtrig_ctp_wire_group` share; each wire rests at the pull of the board built for its port's INVERT sense, and the resolved wires and the ports' receive pulses are mirrored onto `dtp_xtrig_if`
-|Clocks/resets |`dtp_tb_if.clk`, `sys_rst_n`, `por_rst_n`: cocotb deposits them, the UVM harness generates the clock and sequences drive the resets; `sys_rst_on_ar_arm` and `sys_rst_on_ar_cycles` arm `tb_top` to assert the system reset on the clock edge that completes a bridge's AR handshake, and `rst_n` is the system reset the DUT and the AXI responders see; the responders drive BVALID and RVALID low from its assertion. The JTAG master owns TCK/TRST sequencing
+|Clocks/resets |`dtp_tb_if.clk`, `sys_rst_n`, `por_rst_n`: cocotb deposits them, the UVM harness generates the clock and sequences drive the resets; `sys_rst_on_ar_arm` and `sys_rst_on_ar_cycles` arm `tb_top` to assert the system reset on the clock edge that completes a bridge's AR handshake (cocotb `DtpTbIf.arm_reset_on_read` and `disarm_reset_on_read`), and `rst_n` is the system reset the DUT and the AXI responders see; the responders drive BVALID and RVALID low from its assertion. The JTAG master owns TCK/TRST sequencing
 |===
 
-The three JTAG2AXI bridge geometries (bus type, address width, data width, and
-the read and write pipeline depths) come from the bench configuration table,
-which also elaborates the DUT: `tb_top` passes the bridge AXI types it declares
-and the six pipeline-depth parameters to `dtp`. The SMC fabric bridge's widths
-are those of SMC `jtag_axi_in_req_i` in the SMC port table; the OTP widths and
-the depths are the bench's choice, with a different read and write depth on
-every bridge. `JTAG2AXI_TARGETS` in `cocotb/env/dtp_types.py` and the
-`dtp_j2a_target_*` functions in `uvm/env/dtp_types.svh` read that table; every
-other TDR field width derives from the widths by the `*_AXI_SINGLE_OP` and
-`*_AXI_SERIES_CTRL` tables of the PTAP document. Every JTAG2AXI scenario opens
-each pass with the geometry gate in the JTAG2AXI base sequence's `pre_body`: it
-reads the three `*_JTAG2AXI_CAPS` TDRs and records `CHK-J2A-GEOMETRY` against
-the table, so a DUT that publishes a different geometry fails before any bridge
-request is packed.
+The three JTAG2AXI bridge geometries (bus type, address width, and data width)
+come from the bench configuration table, which also elaborates the DUT:
+`tb_top` passes the bridge AXI types it declares to `dtp`. The SMC fabric
+bridge's widths are those of SMC `jtag_axi_in_req_i` in the SMC port table,
+and the OTP widths are the bench's choice. `JTAG2AXI_TARGETS` in
+`cocotb/env/dtp_types.py` and the `dtp_j2a_target_*` functions in
+`uvm/env/dtp_types.svh` read that table and add each bridge's DTMCS and DMI
+opcodes and debug-disable field; the DTMCS, DMI, and Debug Module register
+layouts are those of the JTAG2AXI Support section of
+`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`. Every JTAG2AXI scenario opens
+each pass with the geometry gate in the JTAG2AXI base sequence's `pre_body`:
+for each bridge it reads DTMCS, activates the Debug Module, reads sbcs, and
+records `CHK-J2A-GEOMETRY` for the DTMCS value, `sbversion`, `sbasize`, and
+the `sbaccess` size bits against the table, so a DUT that publishes a
+different geometry fails before any bus access is packed.
 
 === Environment Components
 
@@ -301,8 +301,8 @@ from the observation under check.
 |`bypass` |`dtp_bypass_ref_model` (`dtp_jtag_ir_model`) on the scan and event streams |Reconstructed DR scans (TDO bits) |Under a bypass-class instruction, including a boundary-scan instruction whose enables the build (`dtp_tb_if`) clears, the TDO is TDI delayed by one TCK; INV_BYPASS the inverted delayed image behind a captured 1; ZERO_LENGTH_BYPASS TDI itself. Predictions need the PTAP 3DCR select clear, where ZERO_LENGTH_BYPASS is zero-length |bypass, inverted bypass, zero-length bypass, undefined-instruction, boundary-scan-disabled, sanity tests
 |`xtrig_csr` |`dtp_xtrig_csr_ref_model` (`dtp_xtrig_csr_model`) on the XTRIG monitor stream |Passive XTRIG AXI-Lite monitor items (read data) |Every OKAY read of a CSR with a readback contract (CTM selects, CTP CONFIG, STRETCH_MULT) equals the shadow rebuilt from the observed writes and cleared on every reset (`dtp_tb_if` reset counters), and every OKAY read of a hole (a word inside the matrix register extent or a port window that no register backs) reads 0; an access reaches the word that contains its address |every cross-trigger test
 |`xtrig_decode` |`dtp_xtrig_decode_ref_model` (stateless) on the XTRIG monitor stream |Passive XTRIG AXI-Lite monitor items (response) |Every access completes with the response the network memory map gives the word it addresses: DECERR in the matrix aperture past its register extent (`0x0D0` to `0x1FF`) and past the last port window (`0x300` and up), OKAY on every register and hole |the read-decode backpressure test, the outstanding test, and the two deterministic CSR sweeps
-|`jtag2axi_req` |`dtp_jtag2axi_req_ref_model` (`dtp_jtag_ir_model`, `dtp_jtag2axi_model`) on the scan and event streams and the three bridge port streams |Passive monitor items of the three bridge ports, one lane per port |Every bridge transaction is the one its decoded JTAG request asked for (direction, address, size on AXI4, one beat, strobes, strobed write data), in order; every request that the bridge accepts lands on the bus, none does while the bridge's lifecycle disable is asserted, and a completion while the disable is asserted drops the requests queued behind it |every test arming a bridge recorder
-|`jtag2axi_status` |`dtp_jtag2axi_status_ref_model` (`dtp_jtag_ir_model`, `dtp_jtag2axi_model`) on the same streams |Reconstructed DR scans (the SINGLE_OP or SERIES_CTRL capture) |While the PTAP 3DCR select is clear, the captured status is the outcome of the completed transactions behind it (SUCCESS, SLVERR, DECERR, BUSY_OR_FULL while pending) and the SINGLE_OP data field after a completed OKAY read is the word the bus returned; a SERIES_CTRL capture carries the first series error since the last Test-Logic-Reset or `SERIES_CTRL.reset`, and SINGLE_OP completions do not reach it; a system reset reports the operations it discarded as DECERR, on SINGLE_OP for a single or with-status operation and on the sticky status for a series operation when no earlier series error is held, and keeps every other status; `dtp_jtag2axi_series_corner_all_bridges_test` judges the error code the PTAP document holds until `SERIES_CTRL.reset` (`CHK-J2A-FAULT-STATUS`) |every test arming a bridge recorder
+|`jtag2axi_req` |`dtp_jtag2axi_req_ref_model` (`dtp_jtag2axi_model` through `dtp_jtag2axi_tracker`) on the scan and event streams and the three bridge port streams |Passive monitor items of the three bridge ports, one lane per port |Every bridge transaction is the system bus access the bridge's Debug Module registers describe when the triggering DMI operation reaches it (direction, address, size, one beat, strobes, strobed write data), in order; no access starts while `sberror` is set or for a size or alignment the bridge rejects, and none reaches the port while the bridge's lifecycle disable is asserted |every test arming a bridge recorder
+|`jtag2axi_status` |`dtp_jtag2axi_status_ref_model` (`dtp_jtag2axi_model` through `dtp_jtag2axi_tracker`) on the same streams |Reconstructed DR scans (the DTMCS or DMI capture) |While the PTAP 3DCR select is clear, a DTMCS capture is version 1, abits 7, and idle 7 with the sticky DMI status in `dmistat`, and a DMI capture is the last loaded address, the last loaded data or the read response, and the sticky DMI status; the `dtp_jtag2axi_status_item` carries the expected value and the mask of the bits with a contract, which leaves out the data a completed write loads into `sbdata` |every test arming a bridge recorder
 |===
 
 Composed scans (a wider instruction scan spanning the STAP chain, or a DR
@@ -317,22 +317,58 @@ TDO side, so the models that predict TDO (idcode, bypass and the
 jtag2axi_status capture) stand down as well. An instruction scan that reaches Update-IR without a Shift-IR
 cycle latches the Capture-IR pattern, 01 in the two LSBs and zeros above
 (IEEE 1149.1 7.1.1, `jtag_inst_reg`), which is the IDCODE opcode; the models
-track it as an IDCODE load. STATUS reads carry no data contract. A reference
-model on a one-to-one stream publishes one expected item per observed item,
-marking the ones outside its contract as carrying none, so the two streams
-stay in lockstep; the bridge request model publishes one item per launched
-transaction on the lane of its port. The bridge model follows the jtag2axi
-update, capture, and completion rules (single-operation rejection while
-pending, the series address and read budget per CTRL programming, the
-byte-lane placement of series transfers, the queued requests a completion
-drops while the bridge is disabled, reset on Test-Logic-Reset, where the
-requests already on the fabric complete as orphans the AXI side consumes)
-and applies completions at the capture or update that follows them, so a
-capture during a shift sees the state of its own Capture-DR; a capture
-inside the CDC settle window after a completion carries no contract; the
-series read-data FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
-record through the shared evidence recorder; a required feature with zero
-comparisons fails, and so does any item left unpaired.
+track it as an IDCODE load. A reference model on a one-to-one stream
+publishes one expected item per observed item, marking the ones outside its
+contract as carrying none, so the two streams stay in lockstep; the bridge
+request model publishes one item per launched transaction on the lane of its
+port.
+
+Each JTAG2AXI reference model holds a `dtp_jtag2axi_tracker`, which applies
+the scan stream, the TCK events, and the three port streams to one
+`dtp_jtag2axi_model`. The tracker takes a bridge's DTMCS or DMI capture from
+the active instruction on the TCK cycle that leaves Capture-DR, and applies its
+update on the TCK cycle that leaves Update-DR with the captured value shifted
+by the bits the scan shifted, so a DR scan of any length counts, one that
+shifts no bit included. It yields the expected capture, masked to the bits the
+scan shifted out, while the PTAP 3DCR select is clear, and reads the bridge's
+debug disable and response holds from `dtp_tb_if` at the update; a TAP reset
+drops a scan that has not reached its Update-DR, the power-on reset counter
+resets the TAP model, and the system reset counter resets the bridges. The
+model follows the Debug Module rules of the PTAP document. A DMI update loads
+the scanned address and data and reads or writes that Debug Module register.
+A read or write is in progress from its update until the Debug Module's
+response returns: a DMI capture during a read sets the sticky DMI error and
+returns the read's own address and data, and an update during either sets it,
+or clears it for op 3, and loads nothing. A busy response from the Debug
+Module sets the sticky error too, and a refused read returns `0xB051B051`.
+The sticky error blocks every later update until an op-3 update or a DTMCS
+`dmireset` clears it. While `dmcontrol.dmactive` is 0 the SBA registers hold
+their reset values and start no access.
+The SBA registers start one bus beat per access: a size above the beat width
+sets `sberror` 4 and an unaligned address 3, both without a transaction, and a
+SLVERR or DECERR response sets 2. With the bridge's lifecycle disable asserted
+an access completes as DECERR without reaching the port. A completion observed
+on the port applies at the first update at least one TCK cycle after its
+handshake. A system reset returns every bridge to its reset state, and the
+accesses already on the fabric complete as orphans that the model consumes
+without applying them.
+
+The model places every DMI capture and update against the last read or write
+update. Within `DtpDmiBusyTck` (6) TCK cycles the operation is in progress,
+since its request and response cross between TCK and the system clock through
+synchronizers whatever the clock ratio; from `DtpDmiSettleTck` (24) TCK cycles
+on it has completed at the bench clock ratios; between the two the ratio
+decides, and the model has no prediction. While a bus access is outstanding
+only sbcs is read, unless the bridge's response hold for that access is set,
+which keeps the completion from the bridge until the hold releases. The bench
+idles in Run-Test/Idle for 64 TCK cycles after every DMI scan (`DmiIdleTck` in
+SV-UVM, `DtpEnvCfg.idle_tck` in cocotb), and the raw scans of the DMI status
+scenario close each case with the same idle. A scan outside the scope is a
+scope error, `DtpJtag2AxiScopeError` in cocotb and a UVM error in SV-UVM.
+
+Each feature ends the run as one `CHK-SB-<FEATURE>` record through the shared
+evidence recorder; a required feature with zero comparisons fails, and so does
+any item left unpaired.
 
 The cocotb `DtpScoreboard` judges the same seven features on the same
 contracts, through reference models of the same basenames:
@@ -379,7 +415,8 @@ reference model or by a scenario sequence: `dtp_jtag_ir_model` (TAP state,
 the active primary-TAP instruction and the PTAP 3DCR select, held by every
 JTAG reference model),
 `dtp_xtrig_csr_model` (the CSR readback shadow), `dtp_jtag2axi_model` (the
-JTAG-visible state of the three bridges), `dtp_ijtag_sib_model` (SIB
+JTAG-visible state of the three bridges) with `dtp_jtag2axi_tracker` (the
+streams applied to it), `dtp_ijtag_sib_model` (SIB
 requested, gated, and effective state under a disable mask),
 `dtp_stap_ds_state` and `dtp_stap_3dcr_model` (the PTAP 3DCR and STAP
 configuration chain with the downstream TAP segments, composed-scan values
@@ -399,21 +436,20 @@ Two tiers, one readable flow per scenario.
 [cols=",,",options="header",]
 |===
 |Tier |Role |Names
-|Reusable operation |One DUT operation on one agent, built from the VIP sequence API, started by a scenario on the virtual sequencer's handle for that agent |`dtp_jtag_tap_reset_seq`, `dtp_jtag_trst_seq`, `dtp_jtag_tms_walk_seq`, `dtp_jtag_goto_state_seq`, `dtp_jtag_ir_scan_seq`, `dtp_jtag_dr_scan_seq`, `dtp_jtag_read_tdr_seq`, `dtp_jtag_write_tdr_seq`, `dtp_jtag2axi_single_op_seq`, `dtp_jtag2axi_single_status_seq`, `dtp_jtag2axi_series_ctrl_seq`, `dtp_jtag2axi_series_data_seq`, `dtp_axi_csr_write_seq`, `dtp_axi_csr_read_seq`
+|Reusable operation |One DUT operation on one agent, built from the VIP sequence API, started by a scenario on the virtual sequencer's handle for that agent |`dtp_jtag_tap_reset_seq`, `dtp_jtag_trst_seq`, `dtp_jtag_tms_walk_seq`, `dtp_jtag_goto_state_seq`, `dtp_jtag_ir_scan_seq`, `dtp_jtag_dr_scan_seq`, `dtp_jtag_read_tdr_seq`, `dtp_jtag_write_tdr_seq`, `dtp_axi_csr_write_seq`, `dtp_axi_csr_read_seq`
 |Base virtual sequence |Operation wrappers with TAP-state tracking, DTP-local checks (TAP state, scan length, BYPASS latency), reset and dbg_disable sequencing, system-domain waits derived from the env clock period, per-pass seeding |`dtp_base_test_seq`
-|Family layer |Domain helpers and per-pass family evidence: basic JTAG (bypass, loopback, decoded-IR, TMP_STATUS), JTAG2AXI (bridge codec, polling bound, evidence arming, responder backdoor, gating), debug TDR, scan network (iJTAG SIBs, STAP 3DCR chain, downstream TAPs, temporal windows), cross-trigger (CSR map, CTM model, pin surface) |`dtp_jtag_base_test_seq`, `dtp_jtag2axi_base_test_seq`, `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, `dtp_xtrig_base_test_seq`
-|Scenario |One VPLAN scenario, or a family of them selected by the `scenario` string the test sets, as a virtual sequence: seed first, one flow of operations per scenario, named evidence with required IDs finalized once |`dtp_<scenario>_test_seq`, or a family sequence such as `dtp_jtag2axi_error_test_seq` or `dtp_xtrig_csr_test_seq`
+|Family layer |Domain helpers and per-pass family evidence: basic JTAG (bypass, loopback, decoded-IR, TMP_STATUS), JTAG2AXI (DMI and SBA access, the geometry gate, the sbcs polling bound, the bus-request ledger, responder backdoor), debug TDR, scan network (iJTAG SIBs, STAP 3DCR chain, downstream TAPs, temporal windows), cross-trigger (CSR map, CTM model, pin surface) |`dtp_jtag_base_test_seq`, `dtp_jtag2axi_base_test_seq`, `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, `dtp_xtrig_base_test_seq`
+|Scenario |One VPLAN scenario, or a family of them selected by the `scenario` string the test sets, as a virtual sequence: seed first, one flow of operations per scenario, named evidence with required IDs finalized once |`dtp_<scenario>_test_seq`, or a family sequence such as `dtp_jtag2axi_single_write_read_test_seq` or `dtp_xtrig_csr_test_seq`
 |===
 
 Every scenario has one test, `tests/<scenario>_test`. A scenario with a flow
 of its own has its own sequence, `seq_lib/<scenario>_test_seq`; the scenarios
 of one family share a family sequence that dispatches on the `scenario`
-string: the iJTAG and the STAP scan scenarios, the SMC fabric write and read
-scenarios, the OTP bridge scenarios, the bridge error and robustness
-scenarios, and the cross-trigger route, CSR, and CTM route scenarios. Both
-realizations have the same test and scenario-sequence basenames. Tests end in
-`_test`, scenario and family sequences in `_test_seq`, reusable operations in
-`_seq`.
+string, or on the bridge it targets: the iJTAG and the STAP scan scenarios,
+the three JTAG2AXI scenarios, and the cross-trigger route, CSR, and CTM route
+scenarios. Both realizations have the same test and scenario-sequence
+basenames. Tests end in `_test`, scenario and family sequences in `_test_seq`,
+reusable operations in `_seq`.
 
 === Clock and Reset Strategy
 
@@ -426,31 +462,31 @@ realizations have the same test and scenario-sequence basenames. Tests end in
 |TRST |JTAG engine TAP-reset operation, and `assert_trst` / `release_trst` for a held level |`dtp_jtag_tap_reset_seq` (VIP TAP reset) and `dtp_jtag_trst_seq` (VIP TRST level) |Reset-family scenarios hold TRST through the JTAG VIP's TRST-level operation and sample the TAP state before the first TCK edge
 |===
 
-JTAG2AXI sequences poll response status, and every system-domain wait
-derives from the clock period on the TB interface, so CDC and AXI latency
-handling holds across the randomized timing.
+JTAG2AXI sequences poll sbcs, at most eight reads per bus access, and every
+system-domain wait derives from the clock period on the TB interface, so CDC
+and AXI latency handling holds across the randomized timing.
 
 === Stimulus Strategy
 
 Stimulus is directed and deterministic except for seeded randomization in
-the debug TDR and Basic JTAG pattern sweeps, the JTAG2AXI random operations,
-and the cross-trigger route selections. Randomization happens at the
-test-cfg level (timing) and in
-each scenario pass from its per-pass seed.
+the debug TDR and Basic JTAG pattern sweeps, the JTAG2AXI target addresses
+and data words, and the cross-trigger route selections. Randomization happens
+at the test-cfg level (timing) and in each scenario pass from its per-pass
+seed.
 
 [cols=",",options="header",]
 |===
 |Area |Strategy
 |Smoke |Verify one basic scenario per feature area: TAP FSM traversal and IDCODE readout, TMP_STATUS readback, an iJTAG scan with every SIB open, an SMC fabric JTAG2AXI write and read-back, and CTP wire-OR routing
 |Basic JTAG |Verify primary TAP instruction decode, bypass variants, reset behavior, and compact BSR loopback smoke behavior
-|Debug TDR |Verify TMP_STATUS, IC_RESET, DEBUG_CONTROL, JTAG_CAPS, and JTAG2AXI_CAPS with decoded logs, deterministic loops, seeded random patterns, and read-only sweeps
-|JTAG2AXI write |Shift a single-op write request, poll completion, check the responder memory
-|JTAG2AXI read |Backdoor-preload the responder memory, shift a single-op read request, poll completion, compare data
+|Debug TDR |Verify TMP_STATUS, IC_RESET, DEBUG_CONTROL, and JTAG_CAPS with decoded logs, deterministic loops, seeded random patterns, and read-only sweeps
+|JTAG2AXI write |On each bridge, activate the Debug Module, write a seeded word and its neighbour through `sbaddress0` and `sbdata0`, poll sbcs, check the responder memory after each write
+|JTAG2AXI read |Read the first word back through `sbaddress0` with `sbreadonaddr`, poll sbcs, compare `sbdata0` with the written word
 |===
 
-Additional stimulus categories cover OTP bridge operations, STAP/3DCR, iJTAG,
-XTRIG CSR, CTP, CTM, and per-field debug-disable gating (the `dbg_disable`
-matrix tests drive one-hot, boundary, and seeded multi-hot disable vectors).
+Additional stimulus categories cover STAP/3DCR, iJTAG, XTRIG CSR, CTP, CTM,
+and per-field debug-disable gating (the scan `dbg_disable` matrix test drives
+one-hot, boundary, and seeded multi-hot disable vectors).
 
 Every looped scenario runs at least 16 passes with `scenario_seed = seed +
 pass`, resolved through the same knob names in both realizations:
@@ -464,10 +500,10 @@ base-test hooks are `create_scenario_seq`, `configure_test_cfg`,
 `plumb_scenario_seq`, `bring_up`, `run_looped_scenario`,
 `specific_loops_knob`, `group_loops_knob`, and `default_loops`; a cocotb test
 overrides `run_scenario` and passes its sequence, scenario string, and knob
-names to `start_looped_seq`. The two `dbg_disable` matrix tests run one pass
-in both realizations: their rows (all-clear, one-hot per field,
+names to `start_looped_seq`. The `dbg_disable` matrix test runs one pass in
+both realizations: its rows (all-clear, one-hot per field,
 `DTP_DBG_DISABLE_MULTI_HOT_ROWS` seeded multi-hot, all-disabled) are the
-seeded iterations, and no loop knob applies to them.
+seeded iterations, and no loop knob applies to it.
 
 === Checking Strategy
 
@@ -489,7 +525,7 @@ report through their assertion action blocks.
 The scoreboard features cover instruction decode, IDCODE, BYPASS, the
 JTAG2AXI request and status pairings, and the cross-trigger CSR readback and
 decode. No feature in either realization judges the debug TDRs (TMP_STATUS,
-DEBUG_CONTROL, IC_RESET, the CAPS registers), the boundary-scan controls and
+DEBUG_CONTROL, IC_RESET, JTAG_CAPS), the boundary-scan controls and
 the RUNBIST and DFT chains, the iJTAG and STAP scan network, or cross-trigger
 routing, stretch, handshake, and reset quiescence. The per-scenario checker
 is the only judge of those intents: it compares the DUT with bench models the
@@ -497,28 +533,23 @@ scenario builds from its own stimulus and the design collateral
 (`CHK-TMP-*`, `CHK-DBG-*`, `CHK-CAPS*`, `CHK-BSR-*`, `CHK-DFT-*`,
 `CHK-RUNBIST-*`, `CHK-SCAN-*`, `CHK-DS-*`, `CHK-XTRIG-*`).
 
-The JTAG2AXI write and read scenarios of VPLAN sections 2 and 3, security
-gating excepted, and the error single-operation and series scenarios of
-section 4 judge every bridge operation from the scenario sequence as
-`CHK-J2A-BUS-REQ`, the same way in both realizations: once the operation
-completes, the port monitor has completed exactly one single-beat transaction of
-its direction, at the address the request carried over the full bridge address
-width, at its size on AXI4, and for a write with the strobes and strobed data
-the request drives; no other transaction reaches the port between operations or
-between passes, and none reaches the other two bridge ports. Each responder
-stores an access at its address modulo a 64 KiB window, and the backdoor
-accesses, preloads, and byte images index the same window, so the series and
-random-operation scenarios and the seeded single-write cases of sections 2 and 3
-draw seeded address bits above it, and the plain incrementing series streams
-cross its top in a seeded half of the passes, carrying the series address into
-those bits: the bits reach the bus, where this check judges them.
+The JTAG2AXI scenarios of VPLAN section 2 judge every bus access from
+the scenario sequence as `CHK-J2A-BUS-REQ`, the same way in both
+realizations: once sbcs reports the access complete, the port monitor has
+completed exactly one single-beat transaction of its direction, at the address
+the access carried over the full bridge address width, at its size on AXI4,
+and for a write with the strobes and strobed data the access drives; no other
+transaction reaches the port between accesses or between passes, and none
+reaches the other two bridge ports. Each responder stores an access at its
+address modulo a 64 KiB window, and the backdoor accesses index the same
+window, so the scenarios draw seeded address bits above it: the bits reach the
+bus, where this check judges them.
 
 Negative validation proves each checking path can fail:
 `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` corrupts every family expectation,
 `DTP_JTAG_TAP_CHECKER_NEGATIVE` desyncs the cocotb TAP reference model and
-arms a wrong expected IDCODE in SV-UVM, `DTP_AXI_SCOREBOARD_NEGATIVE`
-arms the wrong expected response, `DTP_XTRIG_CHECKER_NEGATIVE` inverts the
-CTM model selects, `+DTP_XTRIG_NEGATIVE_CHECK=<n>+` corrupts the observed
+arms a wrong expected IDCODE in SV-UVM, `DTP_XTRIG_CHECKER_NEGATIVE` inverts
+the CTM model selects, `+DTP_XTRIG_NEGATIVE_CHECK=<n>+` corrupts the observed
 value of one cross-trigger evidence ID wherever the scenario records it (1
 `CHK-XTRIG-CSR`, 2 `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4
 `CHK-XTRIG-ISOLATION`, 5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7
@@ -528,51 +559,27 @@ value of one cross-trigger evidence ID wherever the scenario records it (1
 corrupted addresses so the scoreboard pairing fails against the observed bus,
 `DTP_XTRIG_CSR_REF_MODEL_NEGATIVE` and `DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE`
 flip one bit of every compared `xtrig_csr` and `xtrig_decode` prediction,
-`DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
-CAPS comparison,
+`DTP_J2A_STATUS_MODEL_NEGATIVE` keeps the bridge model's status at 0 where a
+capture or update finds an operation in progress,
+`DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected `sbasize` of the per-pass
+geometry gate and of each later `CHK-J2A-GEOMETRY` record,
 `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each `CHK-J2A-BUS-REQ` record
-expects,
-`DTP_J2A_ORPHAN_NEGATIVE` flips bit 0 of the value each `CHK-J2A-ORPHAN-*`
-record expects,
-`DTP_J2A_REFUSED_NEGATIVE` and `DTP_J2A_UPDATE_EDGE_NEGATIVE` flip bit 0 of the
-value each `CHK-J2A-REFUSED` and `CHK-J2A-UPDATE-EDGE` record expects,
-`DTP_J2A_REFUSED_NO_STALL` and `DTP_J2A_UPDATE_EDGE_EARLY`, each a bridge mask
-(1 `smc_axi`, 2 `smc_otp`, 4 `sep_otp`), mutate the stimulus on the bridges
-they select: the first stalls no channel behind the long-stall scenario's
-first refused-operation step, so its SINGLE_OP write completes at once and
-nothing behind it is refused, and the second leaves Pause-DR without waiting
-for the state machine, so the second SINGLE_OP's Update-DR lands before the
-held write's response is taken and the bridge refuses it,
-`DTP_J2A_SERIES_IMAGE_NEGATIVE` flips bit 0 of the expected image byte at the
-last series beat's address in the random-operation scenarios,
-`DTP_J2A_SERIES_ADDR_NEGATIVE` expects each of their series programmings to
-end one stride further,
-`DTP_J2A_SERIES_STATUS_BIT_NEGATIVE` expects a status bit of 1 from each of
-their with-status series beats,
-`DTP_J2A_GATE_SERIES_NEGATIVE` leaves the bridge enabled across the gated
-SERIES_CTRL scan of the write security-gating scenarios, and
-`DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
-its expectation stands; a run with any of them set must fail. The same
-knob names are environment variables in cocotb and plusargs in SV-UVM.
-
-One knob adds legs that are off by default and run with the checks of a
-default run: `DTP_J2A_VISIBLE_RESPONSE_RESET` adds the visible-response legs to
-`dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test` (VPLAN 4.31), a
-system reset zero to six TCK edges after a SLVERR response's handshake. As
-with the other knobs, it is an environment variable in cocotb and a plusarg in
-SV-UVM.
+expects, `DTP_J2A_FAULT_STATUS_NEGATIVE` swaps the DMI status each
+`CHK-J2A-FAULT-STATUS` capture record expects between 0 and 3,
+`DTP_J2A_DTM_CAPTURE_NEGATIVE` flips bit 0 of each value `CHK-J2A-DTM-CAPTURE`
+expects, and `DTP_J2A_DM_ACTIVE_NEGATIVE` flips bit 0 of each Debug Module
+register value `CHK-J2A-DM-ACTIVE` expects; a run with any of them set must
+fail. The
+same knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy
 
 The `cov/sv/` coverage modules, instantiated once in the shared `tb_top`,
 carry the covergroups that are the functional coverage model, and every flow
-compiles them. `dtp_jtag2axi_fcov` also keeps three labeled `cover property`
-points for a condition no covergroup bin records; Verilator records them as
-user coverage, and VCS grades them with the assertions. The debug-disable
-22-cell contract keeps its checker-gated Python ledger; `cg_dbg_disable_scan`
-and `cg_dbg_disable_jtag2axi` record the same cells in both realizations.
-Assertion coverage and full code coverage come from the commercial
-simulators. See `DTP_FCOV.adoc`.
+compiles them. The 16-cell scan-side debug-disable contract keeps its
+checker-gated Python ledger, and `cg_dbg_disable_scan` records the same cells
+in both realizations. Assertion coverage and full code coverage come from the
+commercial simulators. See `DTP_FCOV.adoc`.
 
 === Canonical RTL Selection
 
@@ -636,20 +643,19 @@ conventions under `uvm/` with identical basenames, one class per file:
   the scenario virtual sequences on `dtp_base_test_seq`.
 . `uvm/tests/` — thin test classes named exactly like the scenario;
   `uvm/tests/dtp_tests.sv` is the include manifest `include`d by `tb_top.sv`
-  under `ifdef UVM` (`+UVM_TESTNAME` selects the class). Two group bases sit
+  under `ifdef UVM` (`+UVM_TESTNAME` selects the class). One group base sits
   between `dtp_base_test` and the thin tests: `dtp_xtrig_base_test` for the
   cross-trigger scenarios, which drive no JTAG traffic (it requires the
-  `xtrig_csr` scoreboard feature and lifts the TAP checker's activity demand),
-  and `dtp_jtag2axi_robustness_base_test` for the cross-bridge scenarios,
-  which arms the evidence contract of all three bridge recorders.
+  `xtrig_csr` scoreboard feature and lifts the TAP checker's activity
+  demand).
 
 Compile order is explicit and load-bearing: the library and VIP layers come
 from their manifests (`ocah_lib/uvm/sources.toml`,
 `ocah_jtag_vip/uvm/sources.toml`, `ocah_axi_vip/uvm/sources.toml`, listed in
 `[frameworks.uvm.build].source_lists` and expanded ahead of the bench's own
 `sources`), then the bench configuration package `dtp_dv_cfg_pkg`, which sizes
-the TB interfaces' signals, the bridge state-flag module, the bench SVA modules,
-the `cov/sv/` coverage modules, and the open-drain wire shim, then the three
+the TB interfaces' signals, the bench SVA modules, the `cov/sv/` coverage
+modules, and the open-drain wire shim, then the three
 DTP TB interfaces, the generated cross-trigger port address map,
 `dtp_env_pkg`, `dtp_seq_lib_pkg`, and `tb_top.sv` last.
 
@@ -673,14 +679,13 @@ below; each row states what each realization does.
 [cols="1,3,3",options="header",]
 |===
 |Element |cocotb realization |SV-UVM realization
-|Primary TAP agent |DUT-local `DtpJtagAgent`: a sequencer and `DtpJtagDriver` over the shared `OcahJtagMasterDriver` engine, with `DtpJtagItem` carrying the TAP, TDR, and JTAG2AXI operations |Shared `ocah_jtag_master_env`; the operations are `dtp_jtag_<op>_seq` and `dtp_jtag2axi_<op>_seq` on its sequencer
+|Primary TAP agent |DUT-local `DtpJtagAgent`: a sequencer and `DtpJtagDriver` over the shared `OcahJtagMasterDriver` engine, with `DtpJtagItem` carrying the TAP and TDR operations, the bridges' DTMCS and DMI scans among them |Shared `ocah_jtag_master_env`; the operations are `dtp_jtag_<op>_seq` on its sequencer
 |Scenario coordination |Every scenario runs on the JTAG agent's sequencer; the XTRIG CSR master and the CTP/CTM pin BFM are reached through `DtpEnvCfg` handles |`dtp_virtual_sequencer` with typed handles; every scenario is a virtual sequence
 |Configuration |One `DtpEnvCfg` with `randomize_timing(seed)` |`dtp_test_cfg` randomized from the seed and the derived `dtp_env_cfg`
 |Cross-trigger pins |`DtpXtrigBfm` (`env/dtp_xtrig_agent.py`), reached through `DtpEnvCfg`, drives the CTP and CTM pins and samples them for the scenario |No CTP/CTM BFM or pin monitor: the cross-trigger sequences drive and sample the pins through the DUT-local `dtp_xtrig_if` (`xtrig_vif`)
 |Scoreboard |`DtpScoreboard` pairing seven `Dtp<Feature>RefModel` streams, always on; a required feature with zero comparisons fails, and a test that sets `use_axi_scoreboard` requires `jtag2axi_req` and `jtag2axi_status`. `DtpAxiScoreboard` builds the shared `ocah_axi_vip` reference models and scoreboard when a test opts in (`use_axi_scoreboard`, required IDs, stream minimums); every JTAG2AXI test does. A record from any bridge stream meets a required ID of the shared scoreboard, and the stream minimums hold each bridge to compared transactions; a test that drives the three bridges in one pass names its scenario IDs per bridge (`axi_checker_target_required_ids`), and `DtpAxiScoreboard` gives each bridge a checker that must record every one of them |`dtp_scoreboard` pairing seven `dtp_<feature>_ref_model` streams, always on; a required feature with zero comparisons fails. Each bridge's passive recorder requires the IDs the test names for that bridge
-|Debug-disable ledger |The two matrix tests fill the 22-cell `DtpDbgDisableFcov` ledger (`env/dtp_fcov.py`), and `require_cells` fails a run with a missing cell |No ledger: every matrix pass runs each field's one-hot row and both boundary rows; `cg_dbg_disable_scan` and `cg_dbg_disable_jtag2axi` record the cells in both realizations
-|JTAG2AXI responder write order |The responder accepts a write's W beat independently of its AW, so `arm_w_before_aw()` changes nothing on the wires |The responder accepts AW first; `arm_w_before_aw()` makes it accept the next write's W beat while that write's AW waits (the AW-only leg of `dtp_jtag2axi_backpressure_long_stall_test`)
-|TAP reference model |The VIP next-state and TMS-path helpers (`next_jtag_state`, `jtag_tms_path`) in the scenario layer; the `OcahJtagChecker` is attached per scenario. `CHK-TAP-STATE` covers only the TMS steps and parked states a scenario judges (`tms_expect`, the reset scenarios' state samples, a SINGLE_OP held in Update-DR): the TCK cycles inside driver-executed scans are not checked, and the cross-trigger scenarios and the JTAG2AXI scenarios outside those held operations have no TAP-state check |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model, records each illegal transition as a `CHK-TAP-STATE` failure with the expected and observed states
+|Debug-disable ledger |The scan matrix test fills the 16-cell `DtpDbgDisableFcov` ledger (`env/dtp_fcov.py`), and `require_cells` fails a run with a missing cell |No ledger: every matrix pass runs each field's one-hot row and both boundary rows; `cg_dbg_disable_scan` records the cells in both realizations
+|TAP reference model |The VIP next-state and TMS-path helpers (`next_jtag_state`, `jtag_tms_path`) in the scenario layer; the `OcahJtagChecker` is attached per scenario. `CHK-TAP-STATE` covers only the TMS steps and parked states a scenario judges (`tms_expect` and the reset scenarios' state samples): the TCK cycles inside driver-executed scans are not checked, and the cross-trigger and JTAG2AXI scenarios have no TAP-state check |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model, records each illegal transition as a `CHK-TAP-STATE` failure with the expected and observed states
 |Reset-count evidence |`CHK-RESET-COUNT` on the scenario's evidence checker: the attached `OcahJtagChecker` in the basic JTAG, debug-TDR, and scan scenarios, the cross-trigger checker in the cross-trigger scenarios, and the shared AXI scoreboard in the JTAG2AXI scenarios; an inline assertion where the scenario attaches none |`CHK-RESET-COUNT` on the cross-trigger checker in the cross-trigger scenarios, and elsewhere on the env `ocah_jtag_checker`, which judges its required IDs once per run
 |Per-scan length evidence |`CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, and `CHK-SCAN-DR-LEN` on the family checker, from the DUT's Shift-x episodes against the scans the sequence issued, in the basic JTAG, debug-TDR, and scan scenarios; `dtp_sanity_test` judges each issued scan's length as it returns; `dtp_jtag_idcode_test` and `dtp_jtag_tlr_reset_test` record none, since their random TMS walks visit Shift-x outside an issued scan |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan on the env `ocah_jtag_checker` in every scenario that keeps the env scan builder; the scan scenarios' family checker also requires `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, and `CHK-SCAN-DR-LEN`
 |One-sided env modules |`env/dtp_axi_agent.py` and `env/dtp_xtrig_agent.py` (the bridge responders and port monitors, the XTRIG CSR master and pin BFM), `env/dtp_xtrig_types.py` (cross-trigger register constants), `env/dtp_dbg_disable.py` (debug-disable names), `env/dtp_tap_device.py` (the primary-TAP TDR map the JTAG driver and the sequences share), `env/dtp_jtag_bypass_model.py` and `env/dtp_scan_model.py` (BYPASS and BSR loopback prediction), `env/dtp_stap_ds_agent.py` (the downstream STAP devices), and `env/dtp_tb_if.py` and `env/dtp_dv_cfg.py` (the Python views of `tb/dtp_tb_if.sv` and `tb/dtp_dv_cfg_pkg.sv`) |`dtp_env` composes the shared VIP agents and builds the downstream STAP devices itself; `dtp_types.svh` holds the instruction encodings, the cross-trigger constants, and the debug-disable paths; `dtp_jtag_base_test_seq` predicts the BYPASS delay and the BSR loopback; the TB interfaces and `dtp_dv_cfg_pkg` are used directly
@@ -699,11 +704,11 @@ realization. To add the SV-UVM twin of a cocotb scenario:
   The sequence is a virtual sequence on the family layer that matches the
   scenario: `dtp_jtag_base_test_seq` for instruction-family scenarios
   (per-pass family evidence and scan-builder cross-checks),
-  `dtp_jtag2axi_base_test_seq` for bridge scenarios (single and series
-  operations, responder backdoor, error arming),
+  `dtp_jtag2axi_base_test_seq` for bridge scenarios (DMI and SBA access,
+  the geometry gate, the bus-request ledger, responder backdoor),
   `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, or
   `dtp_xtrig_base_test_seq`. The scenario starts the reusable operations
-  (`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq`)
+  (`dtp_jtag_<op>_seq`, `dtp_axi_csr_<op>_seq`)
   through the base wrappers and never a VIP driver or interface; a missing
   operation becomes a new `_seq` on the VIP sequence API first. Start
   `body()` with `seed_scenario_rng()` so every pass replays from `--seed`,

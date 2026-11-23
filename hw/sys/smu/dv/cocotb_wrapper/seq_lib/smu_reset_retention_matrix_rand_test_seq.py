@@ -26,7 +26,7 @@ reset.
 Every graded register is read back as its non-zero drawn pattern before the reset, so a 0 after
 a clearing reset separates cleared from kept on every simulator, the all-zero reset values
 included. The scratch banks, the ``ss_reset_ctrl_o`` lanes, the target of the operation and the
-SINGLE_OP capture after the reset are printed, not compared.
+JTAG2AXI status after the reset are printed, not compared.
 
 Every register access is a JTAG2AXI access on the SMC fabric; nothing is forced.
 """
@@ -61,15 +61,12 @@ from seq_lib.smu_jtag_helpers import (
     SMC_DBG_AXSIZE_4B,
     axi64_pack32,
     axi64_unpack32,
-    jtag2axi_single_read,
-    jtag2axi_single_write,
+    jtag2axi_poll,
+    jtag2axi_start,
+    jtag2axi_status,
     make_smu_jtag_tap,
-    pack_single_op,
-    require_jtag_tdo_resolved,
-    unpack_single_op,
     wdt_unlock,
 )
-from seq_lib.smu_lc_export_seq import _ReadCounter
 from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 COOL, COLD, WARM = "cool", "cold", "warm"
@@ -315,37 +312,28 @@ class smu_reset_retention_matrix_rand_test_seq:
     def _now(self) -> int:
         return int(get_sim_time(unit="ps"))
 
-    def _account(self, tap: _ReadCounter, what: str, status: int) -> None:
-        """Record the status polls one JTAG2AXI access used; a BUSY status is an expiry."""
-        self.j2a_polls.append(tap.reads)
-        self.j2a_last = f"{what} status={status} polls={tap.reads}"
+    async def _j2a32(self, op: int, addr: int, beat: int, what: str) -> int:
+        """One 32-bit JTAG2AXI access; records the status polls it used, a BUSY status
+        being an expiry, and returns its beat."""
+        access = await jtag2axi_start(self.jtag, op, addr, beat, size=SMC_DBG_AXSIZE_4B)
+        status, rdata, polls = await jtag2axi_poll(self.jtag, access, poll_limit=J2A_POLL_LIMIT)
+        self.j2a_polls.append(polls)
+        self.j2a_last = f"{what} status={status} polls={polls}"
         if status == J2A_STATUS_BUSY:
             self.j2a_busy += 1
             raise AssertionError(
-                f"TIMEOUT j2a {what}: bound={J2A_POLL_LIMIT} polls used={tap.reads} polls"
+                f"TIMEOUT j2a {what}: bound={J2A_POLL_LIMIT} polls used={polls} polls"
             )
+        if status != J2A_STATUS_SUCCESS:
+            raise AssertionError(f"{what} @0x{addr:08x} status={status}")
+        return rdata
 
     async def _rd32(self, addr: int, what: str) -> int:
-        tap = _ReadCounter(self.jtag)
-        status, rdata = await jtag2axi_single_read(
-            tap, addr, size=SMC_DBG_AXSIZE_4B, poll_limit=J2A_POLL_LIMIT
-        )
-        require_jtag_tdo_resolved(f"{what} RD @0x{addr:08x}")
-        self._account(tap, f"RD {what}", status)
-        if status != J2A_STATUS_SUCCESS:
-            raise AssertionError(f"{what} read @0x{addr:08x} status={status}")
-        return axi64_unpack32(addr, rdata)
+        return axi64_unpack32(addr, await self._j2a32(J2A_OP_READ, addr, 0, f"RD {what}"))
 
     async def _wr32(self, addr: int, data: int, what: str) -> None:
-        wstrb, beat = axi64_pack32(addr, data)
-        tap = _ReadCounter(self.jtag)
-        status, _ = await jtag2axi_single_write(
-            tap, addr, beat, wstrb=wstrb, size=SMC_DBG_AXSIZE_4B, poll_limit=J2A_POLL_LIMIT
-        )
-        require_jtag_tdo_resolved(f"{what} WR @0x{addr:08x}")
-        self._account(tap, f"WR {what}", status)
-        if status != J2A_STATUS_SUCCESS:
-            raise AssertionError(f"{what} write @0x{addr:08x} status={status}")
+        _, beat = axi64_pack32(addr, data)
+        await self._j2a32(J2A_OP_WRITE, addr, beat, f"WR {what}")
 
     async def _unlock(self) -> None:
         status = await wdt_unlock(self.jtag)
@@ -431,17 +419,14 @@ class smu_reset_retention_matrix_rand_test_seq:
     # Reset triggers.
 
     async def _issue_op(self, cell: dict) -> None:
-        """Issue the drawn single operation without polling it."""
+        """Start the drawn JTAG2AXI access without polling it."""
+        self.j2a_access = None
         if cell["op"] == "none":
             return
         addr = REGS[cell["target"]][0]
-        if cell["op"] == "write":
-            wstrb, beat = axi64_pack32(addr, cell["op_value"])
-            raw = pack_single_op(J2A_OP_WRITE, addr, beat, wstrb=wstrb, size=SMC_DBG_AXSIZE_4B)
-        else:
-            raw = pack_single_op(J2A_OP_READ, addr, 0, wstrb=0, size=SMC_DBG_AXSIZE_4B)
-        await self.jtag.write("SMC_AXI_SINGLE_OP", raw)
-        require_jtag_tdo_resolved(f"pre-reset {cell['op']} issue @0x{addr:08x}")
+        op = J2A_OP_WRITE if cell["op"] == "write" else J2A_OP_READ
+        _, beat = axi64_pack32(addr, cell["op_value"])
+        self.j2a_access = await jtag2axi_start(self.jtag, op, addr, beat, size=SMC_DBG_AXSIZE_4B)
 
     @staticmethod
     def _first(trace: list[Sample], field: str, level: int, start: int = 0) -> int:
@@ -564,9 +549,9 @@ class smu_reset_retention_matrix_rand_test_seq:
         sampler.cancel()
         await ClockCycles(self.clk, SYNC_CYCLES)
         await self._open_tap(f"after the {kind} reset")
-        capt = await self.jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
-        require_jtag_tdo_resolved("SINGLE_OP status after the reset")
-        op_status, op_data = unpack_single_op(capt)
+        op_status, op_data = "none", 0
+        if self.j2a_access is not None:
+            op_status, op_data = await jtag2axi_status(self.jtag, self.j2a_access)
 
         after = {}
         for name, (addr, _mask, _reset, _bank) in REGS.items():
@@ -591,8 +576,8 @@ class smu_reset_retention_matrix_rand_test_seq:
                 a,
             )
         self.log.info(
-            "OBSERVATION %s pre-reset op %s target=%s value=0x%08x lead=%d clk_smu_i: SINGLE_OP "
-            "capture after the reset op=%d data=0x%x, target after=0x%08x; logged only",
+            "OBSERVATION %s pre-reset op %s target=%s value=0x%08x lead=%d clk_smu_i: JTAG2AXI "
+            "status after the reset %s data=0x%x, target after=0x%08x; logged only",
             kind,
             cell["op"],
             cell["target"],

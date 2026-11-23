@@ -196,13 +196,14 @@ endif::backend-pdf[]
 
 <<dtp-clock-tree>> shows which DTP blocks use the system clock and which use TCK.
 The DTP has two clocks and no clock gates. `clk_i`, the system clock (`clk_smu_i`
-in the SMU), clocks the whole cross-trigger network and the AXI side of the three
-JTAG2AXI bridges. TCK, from `jtag_ptap_client_tap_ctrl_i.tck`, clocks the rest of
-the JTAG interface unit. Each block is tinted by the clock that runs it, and each
+in the SMU), clocks the whole cross-trigger network, the AXI side of the three
+JTAG2AXI bridges and the synchronizers of their three `dbg_disable_i` fields. TCK,
+from `jtag_ptap_client_tap_ctrl_i.tck`, clocks the rest of the JTAG interface unit. Each block is tinted by the clock that runs it, and each
 clock has one arrow into each hierarchy it reaches. CDC badges mark the blocks that
 synchronize a signal from another domain: the cross-trigger port input
 synchronizers, the clock-stop controller, the `dbg_disable_i` synchronizers, the
-DEBUG_CONTROL `cla_clock_stop` synchronizer and the JTAG2AXI bridges' `u_axi_cdc`.
+DEBUG_CONTROL `cla_clock_stop` synchronizer and the DMI request and response
+crossings of the JTAG2AXI bridges.
 TCK leaves the DTP unchanged on the host TAP control of every STAP and on the host
 scan control of the boundary-scan, extended STAP, DFT and DFD ports.
 
@@ -219,7 +220,8 @@ the SMU nets that drive them. Gate and flop symbols show where resets are combin
 and a reset ends on the bottom edge of the flop it resets.
 
 * `rst_n_i` (`rst_primary_smc_clk_no` in the SMU) resets the cross-trigger network
-  and the AXI side of the JTAG2AXI bridges.
+  and the JTAG2AXI bridges. Each bridge synchronizes the release of `rst_n_i` into
+  `clk_i` for its AXI side and into TCK for its TCK side.
 * `pwr_on_rst_ni` (`powergood_stable` in the SMU) sets the `dbg_disable_i`
   synchronizers to 1, disabling every debug path until the lifecycle value arrives.
   `u_trst_n_and` ANDs it with the TRST pin to form the combined TRST.
@@ -230,7 +232,8 @@ and a reset ends on the bottom edge of the flop it resets.
 * The TAP controller derives the scan reset `rst_n`, which is low in
   Test-Logic-Reset, and the scan channel reset `chrst_n`, which the TMP persistence
   mode holds released through Test-Logic-Reset. `rst_n` resets the instruction
-  register, most TDRs, the TCK side of the JTAG2AXI bridges, the STAPs and the SIBs.
+  register, most TDRs, the DTMCS and DMI registers of the JTAG2AXI bridges, the
+  STAPs and the SIBs.
   The 3DCR TDR takes it only while its hold bit is clear, and the IC_RESET TDR only
   while its `reset_hold` bit is set. `chrst_n` is not used inside the DTP; both
   leave on the host scan control of the boundary-scan, extended STAP, DFT and DFD
@@ -238,8 +241,9 @@ and a reset ends on the bottom edge of the flop it resets.
 
 The two-flop `cla_clock_stop` synchronizer in the DEBUG_CONTROL TDR has no reset.
 `test_en_i` drives the test mode of the cross-trigger network and the JTAG2AXI
-bridges. `scan_rst_ni` is not connected inside the DTP, which has no reset
-synchronizer, so `rst_n_i` must arrive scan-controlled. A STAP whose enable
+bridges. While `test_en_i` is 1, `scan_rst_ni` replaces the synchronized resets of
+the JTAG2AXI bridges. No other DTP logic has a reset synchronizer, so `rst_n_i`
+must arrive scan-controlled. A STAP whose enable
 parameter is 0 drives its host TRST low.
 
 [[dtp-reset-tree]]

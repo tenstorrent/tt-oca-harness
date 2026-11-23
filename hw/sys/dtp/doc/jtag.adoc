@@ -69,44 +69,52 @@ the PTAP.
 [[dtp-jtag2axi-bridges]]
 == JTAG2AXI Bridges
 
-The PTAP contains three JTAG2AXI bridges, each selected by its own group of six
-instructions (<<dtp-jtag2axi-bridges-table>>). The request and response type
-parameters of a bridge set its bus type, address width and data width. Its read
-and write pipeline-depth parameters set how many transactions it queues, where
-0 allows a single outstanding transaction. The table lists the DTP defaults.
-Each bridge reports its configuration in its `*_JTAG2AXI_CAPS` register.
-Every output of a bridge's manager port depends only on the bridge's
-internal state, so no combinational path runs from the port's inputs to its
-outputs. A bridge accepts a response from the cycle after its request
-handshake completes.
+The PTAP contains three JTAG2AXI bridges, each selected by its own DTMCS and
+DMI instructions (<<dtp-jtag2axi-bridges-table>>). A bridge is a RISC-V Debug
+Module whose System Bus Access registers issue AXI transfers, one transfer at a
+time and one beat for each transfer. The request and response type parameters
+of a bridge set its bus type, address width and data width; the table lists the
+DTP defaults. `sbcs` of each bridge reports its address width and access sizes.
+No combinational path runs from the inputs of a bridge's manager port to its
+outputs.
+The registers, the transfer attributes, the reset behavior and the limits are in
+ifdef::backend-html5[]
+xref:ip:jtag_ptap/doc/index.adoc#ptap-jtag2axi-support[PTAP JTAG2AXI Support].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ptap-jtag2axi-support,PTAP JTAG2AXI Support>>.
+endif::backend-pdf[]
 
 [[dtp-jtag2axi-bridges-table]]
-[cols="<11%,<15%,<11%,<12%,<24%,<27%",options="header"]
+[cols="<13%,<22%,<12%,<15%,<38%",options="header"]
 .DTP JTAG2AXI bridges
 |===
-|Bridge |Instructions |Bus |Address / data width (bits) |Type parameters |Pipeline-depth parameters (default 3)
+|Bridge |Instructions |Bus |Address / data width (bits) |Type parameters
 
 |SMC fabric
-|0x27–0x2C (`SMC_*`)
+|0x1F `SMC_DTMCS`, 0x20 `SMC_DMI`
 |AXI4
 |56 / 64
 |`smc_jtag_axi_req_t`, `smc_jtag_axi_resp_t`
-|`SMC_RD_PL_DEPTH`, `SMC_WR_PL_DEPTH`
 
 |SMC OTP
-|0x1B–0x20 (`SMC_OTP_*`)
+|0x1B `SMC_OTP_DTMCS`, 0x1C `SMC_OTP_DMI`
 |AXI4-Lite
 |32 / 32
 |`smc_otp_axil_req_t`, `smc_otp_axil_resp_t`
-|`SMC_OTP_RD_PL_DEPTH`, `SMC_OTP_WR_PL_DEPTH`
 
 |SEP OTP
-|0x21–0x26 (`SEP_OTP_*`)
+|0x1D `SEP_OTP_DTMCS`, 0x1E `SEP_OTP_DMI`
 |AXI4-Lite
 |32 / 32
 |`sep_otp_axil_req_t`, `sep_otp_axil_resp_t`
-|`SEP_OTP_RD_PL_DEPTH`, `SEP_OTP_WR_PL_DEPTH`
 |===
+
+The integration meets two constraints of the bridges. `rst_n_i` also resets the
+AXI subordinates that the bridges access, so that no transfer stays open on one
+side. TRST does not assert or deassert at the rising TCK edge that leaves
+Update-DR of a bridge register; asserting and releasing TRST only while TCK is
+stopped meets this constraint.
 
 ifdef::backend-html5[]
 [[clock-domains]]
@@ -126,8 +134,9 @@ endif::backend-html5[]
 
 `dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is a per-path
 debug/test disable vector. Each field is active-high (1 = path disabled). The
-JTAG interface unit synchronizes the vector into the TCK domain and applies
-each field to the named path.
+JTAG interface unit synchronizes the STAP and iJTAG fields into the TCK domain
+and the three JTAG2AXI fields into the `clk_i` domain, and each field applies
+to the named path.
 
 <<dtp-debug-disable-paths-table>> maps each debug path to its active-high disable field.
 
@@ -172,9 +181,11 @@ each field to the named path.
 |===
 
 A disabled path remains observable only where required for control and
-readback. For a JTAG2AXI bridge, disabling means TDR update registers are not
-latched. The disable gates the idle state: an active AXI transaction
-continues to completion, and buffered requests are flushed when idle is reached. For a STAP, the host-visible scan
+readback. A disabled JTAG2AXI bridge directs each AXI request to an internal
+error slave that answers DECERR, so no request reaches its manager port and the
+debugger reads `sbcs.sberror` = 2. Its DTMCS and DMI registers and its Debug
+Module registers stay accessible. A transfer that the manager port accepted
+before the disable completes there. For a STAP, the host-visible scan
 access is clamped so the disabled path cannot reach downstream secure logic.
 
 The STAP and iJTAG fields are applied in `jtag_intf_unit`; the three JTAG2AXI

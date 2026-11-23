@@ -81,6 +81,11 @@ The cited revision is not specified in this manual.
 |IEEE 1687-2014
 |DTP iJTAG instrumentation and segment insertion bits (SIBs).
 
+|[[ref-riscv-debug]] https://github.com/riscv/riscv-debug-spec[RISC-V External Debug Support specification], version 0.13
+|SMC CPU Debug Module. DTM control and status (DTMCS) register, Debug Module
+Interface (DMI) register, Debug Module registers and System Bus Access of the
+DTP JTAG2AXI bridges.
+
 |I2C-bus specification, revisions 6 and 7.0
 |I2C controller. The feature overview cites revision 7.0; the architecture
 chapter cites revision 6 for electrical and timing requirements.
@@ -138,6 +143,10 @@ documentation used by the subsystem chapters.
 
 |https://github.com/pulp-platform/iDMA[iDMA]
 |SMC DMA engine.
+
+|https://github.com/tenstorrent/tt-riscv-dbg[tt-riscv-dbg] `tdr2axi` documentation
+|DTP JTAG2AXI bridges: the bridge from the DMI test data register to the AXI
+manager port.
 
 |[[ref-adams-bridge]] https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation]
 |SEP post-quantum cryptographic accelerator.

@@ -7,7 +7,7 @@ The primary TAP selects the SMC STAP through TAP_3DCR. The SMC cluster's debug t
 which sizes every dmi scan. CPU_CTRL RESET_CTRL holds the debug module in reset (bit 24, active
 low): while bit 24 reads 0 a dmi read of dmcontrol after a write of dmactive does not answer op 0
 with dmactive 1 and a dmi read of dmstatus does not answer op 0 with version 2. The fabric
-SINGLE_OP write of the RESET_CTRL word with bit 24 set releases it, after which the same reads
+JTAG2AXI write of the RESET_CTRL word with bit 24 set releases it, after which the same reads
 answer op 0 with dmactive 1 and version 2, and the dmstatus and sbcs capability fields and a debug
 system-bus write and read of CPU_CTRL SCRATCH[15] are compared. The held op values are logged; op
 1 is reserved in External Debug 0.13.
@@ -64,7 +64,6 @@ from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     DTP_IR_TAP_3DCR,
     DTP_IR_WIDTH,
     J2A_OP_READ,
@@ -74,12 +73,12 @@ from seq_lib.smu_jtag_helpers import (
     PTAP_3DCR_WIDTH,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
-    SMC_DBG_SINGLE_OP_LEN,
+    Jtag2AxiScanPort,
+    jtag2axi_start,
+    jtag2axi_status,
     make_smu_jtag_tap,
-    pack_single_op,
     ptap_3dcr_value,
     require_jtag_tdo_resolved,
-    unpack_single_op,
 )
 
 # hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL RESET_CTRL (0xC0039020) and the 8-byte SCRATCH
@@ -101,10 +100,6 @@ RESET_DEBUG_BIT = 24
 RESET_DEBUG_HELD = 0
 RESET_DEBUG_RELEASED = 1
 RESET_LOW_BITS_MASK = (1 << (RESET_UNCORE_BIT + 1)) - 1
-# hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_AXI_SINGLE_OP wstrb: eight lanes for a 64-bit
-# beat, four for a 32-bit word on the low lane.
-WSTRB_FULL = 0xFF
-WSTRB_WORD = 0x0F
 FABRIC_OP_OKAY = J2A_STATUS_SUCCESS
 
 # hw/sys/smc/doc/cpu.adoc, Debug Module Configuration: RISC-V External Debug Support 0.13. The
@@ -178,7 +173,7 @@ CAPTURE_POLL_CLK = 16
 DMI_RETRY_LIMIT = 16
 SBA_POLL_LIMIT = 16
 
-# Wait sites per kind: the gate wait; the five fabric SINGLE_OP capture polls (RESET_CTRL read,
+# Wait sites per kind: the gate wait; the five fabric JTAG2AXI status polls (RESET_CTRL read,
 # release write and read-back, SCRATCH[14] write, SCRATCH[15] read); sixteen dmi access retry loops
 # (held three, dmactive two, capability two, system-bus write four, system-bus reads five); three
 # sbbusy polls (write one, reads two).
@@ -428,26 +423,20 @@ class smu_dtp_smc_dm_dmi_test_seq:
 
     # ---- fabric access -----------------------------------------------------------------------
 
+    async def _ptap_scan(self, opcode: int, value: int, width: int, label: str) -> int:
+        captured, _ = await self._dr(opcode, value, width, label)
+        return captured
+
     async def _fabric(
         self, op: int, addr: int, data: int, size: int, label: str
     ) -> tuple[int, int, tuple[int, int, int]]:
-        """SMC fabric SINGLE_OP; captures until op leaves busy, bounded; one wait site."""
-        wstrb = (
-            (WSTRB_FULL if size == SMC_DBG_AXSIZE_8B else WSTRB_WORD) if op == J2A_OP_WRITE else 0
-        )
+        """SMC fabric JTAG2AXI access; samples it until it leaves busy, bounded; one wait site."""
         base = self._counts()
-        raw = pack_single_op(op, addr, data, wstrb=wstrb, size=size)
-        await self._dr(DTP_IR_SMC_AXI_SINGLE_OP, raw, SMC_DBG_SINGLE_OP_LEN, f"{label}_issue")
+        port = Jtag2AxiScanPort(self._ptap_scan, self.jtag)
+        access = await jtag2axi_start(port, op, addr, data, size=size)
         used = 0
         while True:
-            captured, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=used == 0,
-            )
-            status, rdata = unpack_single_op(captured)
+            status, rdata = await jtag2axi_status(port, access)
             used += 1
             if status != J2A_STATUS_BUSY:
                 break

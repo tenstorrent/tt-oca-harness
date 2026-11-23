@@ -28,7 +28,6 @@
 package dtp_seq_lib_pkg;
 
   import uvm_pkg::*;
-  `include "uvm_macros.svh"
 
   import ocah_checker_uvm_pkg::*;  // protocol-neutral named-evidence base
   import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
@@ -46,10 +45,6 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag_dr_scan_seq.svh"
   `include "dtp_jtag_read_tdr_seq.svh"
   `include "dtp_jtag_write_tdr_seq.svh"
-  `include "dtp_jtag2axi_single_op_seq.svh"
-  `include "dtp_jtag2axi_single_status_seq.svh"
-  `include "dtp_jtag2axi_series_ctrl_seq.svh"
-  `include "dtp_jtag2axi_series_data_seq.svh"
   `include "dtp_axi_csr_write_seq.svh"
   `include "dtp_axi_csr_read_seq.svh"
   `include "dtp_axi_csr_pipeline_seq.svh"
@@ -90,13 +85,9 @@ package dtp_seq_lib_pkg;
 
   // JTAG2AXI bridge scenarios.
   `include "dtp_jtag2axi_base_test_seq.svh"
-  `include "dtp_jtag2axi_smc_axi_wr_test_seq.svh"
-  `include "dtp_jtag2axi_smc_axi_rd_test_seq.svh"
-  `include "dtp_jtag2axi_error_test_seq.svh"
-  `include "dtp_jtag2axi_otp_axi_test_seq.svh"
-  `include "dtp_jtag2axi_robustness_test_seq.svh"
-  `include "dtp_jtag2axi_cdc_jitter_test_seq.svh"
-  `include "dtp_jtag2axi_dbg_disable_matrix_test_seq.svh"
+  `include "dtp_jtag2axi_single_write_read_test_seq.svh"
+  `include "dtp_jtag2axi_dmi_status_test_seq.svh"
+  `include "dtp_jtag2axi_dm_regs_test_seq.svh"
 
   // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
   `include "dtp_jtag_tmp_status_register_smoke_test_seq.svh"
@@ -108,9 +99,6 @@ package dtp_seq_lib_pkg;
   `include "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq.svh"
   `include "dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq.svh"
   `include "dtp_dbg_ctrl_boot_stall_test_seq.svh"
-  `include "dtp_dbg_smc_jtag2axi_caps_test_seq.svh"
-  `include "dtp_dbg_smc_otp_jtag2axi_caps_test_seq.svh"
-  `include "dtp_dbg_sep_otp_jtag2axi_caps_test_seq.svh"
 
   // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrix).
   `include "dtp_ijtag_scan_test_seq.svh"

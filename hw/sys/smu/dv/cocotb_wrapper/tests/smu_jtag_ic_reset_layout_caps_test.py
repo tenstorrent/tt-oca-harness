@@ -28,7 +28,7 @@ an image with reset_hold and one control bit cleared, which only a reset can res
 JTAG_CAPS expected value: field map from architecture.adoc (JTAG Capabilities) with the default
 configuration values of smu-composition.adoc: num_xtrig_ctp 16, num_xtra_stap 1, stap_io_en,
 sep_dbg_en and smc_dbg_en 1, num_smc_ic_rst 68, num_sep_ic_rst 8, num_ext_ic_rst 1, every
-instruction enable 1, och_ver 8'h00 (JTAG_OCH_VER). num_xtrig_int_ct is the SMU-exposed 8 or
+instruction enable 1, och_ver 8'h01 (JTAG_OCH_VER). num_xtrig_int_ct is the SMU-exposed 8 or
 8 plus the 2 SMC-reserved lanes (dtp overview.adoc: the first two lanes connect to the SMC DFD
 CLA); bits 59:54 are accepted as 8 or 10, excluded from the exact compare and logged as
 measured.
@@ -192,7 +192,7 @@ def _caps_expected() -> int:
         | (N_SEP << 25)
         | (1 << 17)
         | (0x1FF << 8)
-        | 0x00
+        | 0x01
     )
 
 

@@ -115,13 +115,6 @@ package dtp_dv_cfg_pkg;
   localparam int unsigned OtpAxilAddrWidth = 32;
   localparam int unsigned OtpAxilDataWidth = 32;
 
-  localparam logic [1:0] SmcOtpRdPlDepth = 2'd2;
-  localparam logic [1:0] SmcOtpWrPlDepth = 2'd1;
-  localparam logic [1:0] SepOtpRdPlDepth = 2'd3;
-  localparam logic [1:0] SepOtpWrPlDepth = 2'd2;
-  localparam logic [1:0] SmcRdPlDepth = 2'd3;
-  localparam logic [1:0] SmcWrPlDepth = 2'd0;
-
   typedef logic [SmcAxiAddrWidth-1:0] smc_axi_addr_t;
   typedef logic [SmcAxiIdWidth-1:0] smc_axi_id_t;
   typedef logic [SmcAxiDataWidth-1:0] smc_axi_data_t;

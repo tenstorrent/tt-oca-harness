@@ -25,12 +25,10 @@ per observed item. Expected values never originate here.
                    (direction, address, size on AXI4, strobes, and the
                    strobed write data must match; every transaction must have
                    been predicted and every prediction must land). A system
-                   or power-on reset withdraws the pending predictions,
-                   and a completion while the bridge's lifecycle disable is
-                   asserted withdraws the ones queued behind it.
+                   or power-on reset withdraws the pending predictions.
   jtag2axi_status  expected: ``DtpJtag2AxiStatusRefModel``. Observed: the
-                   status field, and after a completed read the data field,
-                   of the SINGLE_OP or SERIES_CTRL capture.
+                   DTMCS or DMI capture, on the bits the expected item
+                   masks.
 
 A required feature (``DtpEnvCfg.required_features``, set by the test) that
 ends with zero comparisons fails the run. The scan, XTRIG and bridge-port
@@ -62,8 +60,6 @@ from .dtp_types import (
     DTP_FEATURE_JTAG2AXI_STATUS,
     DTP_FEATURE_XTRIG_CSR,
     DTP_FEATURE_XTRIG_DECODE,
-    JTAG2AXI_TARGETS,
-    DtpJtag2AxiStatus,
 )
 from .dtp_xtrig_agent import DtpXtrigAgent
 
@@ -80,11 +76,9 @@ class DtpScoreboard(OcahScoreboard):
         self.scan_builder: DtpJtagScanBuilder | None = None
         self.xtrig_agent: DtpXtrigAgent | None = None
         self.axi_agent: DtpAxiAgent | None = None
-        # The bridge behind each port monitor (the item `source`).
-        self._target_by_source: dict[str, str] = {}
         self._resets_seen = (0, 0)
-        # Predicted bridge transactions withdrawn, by cause (reset, disable).
-        self._withdrawn = {"reset": 0, "disable": 0}
+        # Predicted bridge transactions the resets withdrew.
+        self._withdrawn = 0
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -112,10 +106,6 @@ class DtpScoreboard(OcahScoreboard):
             "jtag2axi_req_expected_export", self, self.write_jtag2axi_req_expected
         )
 
-    def bind_port(self, target: str, source: str) -> None:
-        """Name the monitor whose items carry a bridge's transactions."""
-        self._target_by_source[source] = target
-
     def check_phase(self) -> None:
         jtag = self.scan_builder.monitor if self.scan_builder is not None else None
         xtrig = self.xtrig_agent.monitor if self.xtrig_agent is not None else None
@@ -138,11 +128,7 @@ class DtpScoreboard(OcahScoreboard):
                     0,
                     context="reference-model exceptions the monitors swallowed",
                 )
-        self.logger.info(
-            "jtag2axi_req withdrew %d prediction(s) at resets and %d behind lifecycle disables",
-            self._withdrawn["reset"],
-            self._withdrawn["disable"],
-        )
+        self.logger.info("jtag2axi_req withdrew %d prediction(s) at resets", self._withdrawn)
         super().check_phase()
 
     # ------------------------------------------------------------------
@@ -175,7 +161,6 @@ class DtpScoreboard(OcahScoreboard):
     def write_jtag2axi_req_observed(self, item: OcahAxiItem) -> None:
         self._sync_reset()
         self.push_observed(DTP_FEATURE_JTAG2AXI_REQ, item, item.source)
-        self._drop_queued_predictions(item.source)
 
     def write_jtag2axi_req_expected(self, item: OcahAxiItem) -> None:
         self._sync_reset()
@@ -277,33 +262,20 @@ class DtpScoreboard(OcahScoreboard):
         return text
 
     def _compare_jtag2axi_status(self, observed: object, expected: object) -> None:
-        """One verdict per bridge capture: the status field, and the data after an OKAY read."""
+        """One verdict per bridge capture, on the bits the expected item masks."""
         if not isinstance(observed, OcahJtagScanItem) or not isinstance(
             expected, DtpJtag2AxiStatusItem
         ):
             raise TypeError(f"jtag2axi_status: unexpected pair {type(observed)}, {type(expected)}")
         if not expected.compare:
             return
-        target = JTAG2AXI_TARGETS[expected.target]
-        status = observed.tdo_value & 0x3
-        diff = []
-        if status != int(expected.status):
-            diff.append("status")
-        rdata = 0
-        if expected.compare_rdata:
-            data_off = 2 + target.size_bits + target.wstrb_bits
-            rdata = (observed.tdo_value >> data_off) & expected.rdata_mask
-            if rdata != expected.rdata & expected.rdata_mask:
-                diff.append("rdata")
-        observed_text = f"status={DtpJtag2AxiStatus(status).name}"
-        if expected.compare_rdata:
-            observed_text += f" rdata=0x{rdata:x}"
+        captured = observed.tdo_value & expected.mask
         self.record_compare(
             DTP_FEATURE_JTAG2AXI_STATUS,
-            passed=not diff,
+            passed=captured == expected.expected & expected.mask,
             expected=expected.describe(),
-            observed=observed_text,
-            context=expected.context + (f" mismatch: {' '.join(diff)}" if diff else ""),
+            observed=f"0x{captured:x}",
+            context=expected.context,
         )
 
     # ------------------------------------------------------------------
@@ -319,16 +291,6 @@ class DtpScoreboard(OcahScoreboard):
             return
         self._resets_seen = seen
         dropped = self.flush_expected(DTP_FEATURE_JTAG2AXI_REQ)
-        self._withdrawn["reset"] += dropped
+        self._withdrawn += dropped
         if dropped:
             self.logger.info("reset withdrew %d predicted bridge transaction(s)", dropped)
-
-    def _drop_queued_predictions(self, source: str) -> None:
-        """A completion while the bridge's disable is asserted drops the requests behind it."""
-        target = self._target_by_source.get(source)
-        if target is None or not self.tb_if.dbg_field(JTAG2AXI_TARGETS[target].dbg_disable_bit):
-            return
-        dropped = self.flush_expected(DTP_FEATURE_JTAG2AXI_REQ, source)
-        self._withdrawn["disable"] += dropped
-        if dropped:
-            self.logger.info("%s: the disable dropped %d queued bridge request(s)", source, dropped)

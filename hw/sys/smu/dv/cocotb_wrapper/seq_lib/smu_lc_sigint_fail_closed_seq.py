@@ -88,8 +88,8 @@ HOLD_MAX_CYCLES = 4095
 PINNED_INJECT = INJECT_ARM
 PINNED_BROKEN = LC_TEST_DEV ^ (1 << N_RAIL_SHIFT)
 PINNED_LABEL = "pinned bit=0 rail=n hold=0"
-SMC_OTP = "SMC_OTP_AXI_SINGLE_OP"
-SEP_OTP = "SEP_OTP_AXI_SINGLE_OP"
+SMC_OTP = "smc_otp"
+SEP_OTP = "sep_otp"
 
 
 class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):

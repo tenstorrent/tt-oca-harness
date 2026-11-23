@@ -17,7 +17,7 @@ The PROD eFuse shadow image is the only stimulus besides the JTAG accesses and
 
 S1, setup: ``+lc_sigint_inject`` armed, ``lc_sigint_inject_i`` low, ``sep_fuse_sense_done_o`` rises.
 S2, closed posture: ``lcc_feat_ctrl_o``, the security-disable net at the SMU and at the SMC, the
-    SEP STAP host TMS, the SMC fabric AW/AR/B counters over one SINGLE_OP read and write, and a
+    SEP STAP host TMS, the SMC fabric AW/AR/B counters over one JTAG2AXI read and write, and a
     SEC_DISABLE_TOKEN_MATCH read over the SEP OTP bridge as the positive control.
 S3, token: eight all-zero token words, TOKEN_EOP with the go bit, a SEC_DISABLE_TOKEN_I[0] read
     and the match read, every access over the SEP OTP bridge.
@@ -26,7 +26,7 @@ S5, feature control: ``lcc_feat_ctrl_o``.
 S6, SEP STAP: selected over the PTAP, its host TMS follows the PTAP TMS.
 S7, other STAPs: the same for the I/O, SMC and extra STAPs.
 S8, SIBs: under SELECT_IJTAG the three SIBs open, capture 1 and their bench cells join the loop.
-S9, fabric: one SINGLE_OP read and write launch AR, AW and B; from Test-Logic-Reset an SMC OTP
+S9, fabric: one JTAG2AXI read and write launch AR, AW and B; from Test-Logic-Reset an SMC OTP
     read of JTAG_PUBLIC_IDENTITY word 0 completes with SUCCESS.
 S10, injection: ``lc_sigint_inject_i`` raised; ``lc_sigint_err_o`` is 1; feature control, the SEP
     STAP host TMS and the fabric launch hold; the SMC OTP read of JTAG_PUBLIC_IDENTITY is
@@ -67,16 +67,12 @@ from seq_lib.smu_jtag_helpers import (
     DTP_IR_IDCODE,
     DTP_IR_TAP_3DCR,
     DTP_IR_WIDTH,
+    J2A_OP_READ,
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_SUCCESS,
     PTAP_3DCR_WIDTH,
-    SMC_OTP_AXSIZE_4B,
-    otp_jtag2axi_single_read,
-    pack_otp_single_op,
     ptap_3dcr_value,
-    require_jtag_tdo_resolved,
-    unpack_otp_single_op,
 )
 from seq_lib.smu_lc_export_seq import (
     FEAT_CTRL_ALL_ENABLED,
@@ -88,7 +84,6 @@ from seq_lib.smu_lc_export_seq import (
     NOT_LAUNCHED,
     OTP_POLL_BOUND,
     ExportSpec,
-    _ReadCounter,
     smu_lc_export_seq,
 )
 from seq_lib.smu_lc_sigint_fail_closed_seq import INJECT_TAKE_CYCLES
@@ -126,8 +121,6 @@ TOKEN_WORD_VALUE = 0
 #: hw/sys/sep/doc/otp_fuse_controller.adoc: PROD admits the eFuse MMR token block, so each access
 #: completes with the success response (J2A status 0).
 TOKEN_OP_ADMITTED = J2A_STATUS_SUCCESS
-#: Full-word byte strobes of a 32-bit eFuse MMR access (hw/ip/efuse/regs/efuse_mmr.rdl).
-OTP_WRITE_WSTRB = 0xF
 #: Polls of the match read before the wait expires.
 MATCH_POLL_BOUND = 8
 #: hw/sys/smu/dv/tb/tb_wrapper_top.sv, LC_STATE pair fault inject: lc_sigint_err_o while the pair
@@ -185,28 +178,13 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
         return self._rd("lcc_feat_ctrl_o")
 
     async def _sep_otp_write(self, addr: int, data: int, name: str) -> int:
-        """One SEP OTP SINGLE_OP write; returns the response status."""
-        await self._ensure_tap()
-        counter = _ReadCounter(self.tap)
-        raw = pack_otp_single_op(
-            J2A_OP_WRITE, addr, data, wstrb=OTP_WRITE_WSTRB, size=SMC_OTP_AXSIZE_4B
-        )
-        await self.tap.write("SEP_OTP_AXI_SINGLE_OP", raw)
-        require_jtag_tdo_resolved(f"SEP OTP J2A WR issue {name}")
-        await ClockCycles(self.dut.clk_smu_i, 32)
-        status = J2A_STATUS_BUSY
-        for _ in range(OTP_POLL_BOUND):
-            capt = await counter.read("SEP_OTP_AXI_SINGLE_OP", shift_value=0)
-            require_jtag_tdo_resolved(f"SEP OTP J2A WR poll {name}")
-            status, _ = unpack_otp_single_op(capt)
-            if status != J2A_STATUS_BUSY:
-                break
-            await ClockCycles(self.dut.clk_smu_i, 16)
+        """One SEP OTP write; returns the response status."""
+        status, _, polls = await self._j2a_op("sep_otp", J2A_OP_WRITE, addr, data)
         last = f"status={status}"
         self._record(
             "otp_write",
             OTP_POLL_BOUND,
-            counter.reads,
+            polls,
             "polls",
             last,
             expired=(status == J2A_STATUS_BUSY),
@@ -310,14 +288,11 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
         """One SMC OTP read of JTAG_PUBLIC_IDENTITY word 0 from Test-Logic-Reset, which clears
         the PTAP STAP-select bit so the PTAP alone is scanned; returns its verdict."""
         await self._tlr()
-        counter = _ReadCounter(self.tap)
-        status, rdata = await otp_jtag2axi_single_read(
-            counter, SMC_PUBLIC_IDENTITY, poll_limit=OTP_POLL_BOUND
-        )
+        status, rdata, polls = await self._j2a_op("smc_otp", J2A_OP_READ, SMC_PUBLIC_IDENTITY)
         self._record(
             f"smc_otp_public_{tag}",
             OTP_POLL_BOUND,
-            counter.reads,
+            polls,
             "polls",
             f"status={status}",
             expired=(status == J2A_STATUS_BUSY),
@@ -494,7 +469,7 @@ class smu_lc_sec_dis_over_sigint_prod_test_seq(smu_lc_export_seq):
             ),
         )
 
-        await self._mark("SMC fabric SINGLE_OP read then write after the match")
+        await self._mark("SMC fabric JTAG2AXI read then write after the match")
         start, end, delta_after = await self._fabric_deltas(launches=True, tag="_open")
         self._check(
             "CHK-LC-SECDIS-FABRIC-LAUNCH-PROD",

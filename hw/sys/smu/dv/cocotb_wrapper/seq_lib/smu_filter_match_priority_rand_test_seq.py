@@ -105,17 +105,17 @@ from seq_lib.smu_filter_helpers import (
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
+    J2A_OP_READ,
+    J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
-    jtag2axi_single_read,
-    jtag2axi_single_write,
+    jtag2axi_poll,
+    jtag2axi_start,
     make_smu_jtag_tap,
-    require_jtag_tdo_resolved,
 )
-from seq_lib.smu_lc_export_seq import _ReadCounter
 from seq_lib.smu_out_filter_rule_matrix_test_seq import OUTBOUND_ENTRIES, _EgressTap
 from seq_lib.smu_sep_out_filter_rule_matrix_test_seq import (
     ADMIT_ENTRY_HIGH,
@@ -525,19 +525,14 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
     # ------------------------------------------------------------------
 
     async def _j2a(self, write: bool, addr: int, data: int = 0, **kw) -> tuple[int, int]:
-        tap = _ReadCounter(self.j2a_tap)
-        if write:
-            status, raw = await jtag2axi_single_write(
-                tap, addr, data, poll_limit=J2A_POLL_LIMIT, **kw
-            )
-        else:
-            status, raw = await jtag2axi_single_read(tap, addr, poll_limit=J2A_POLL_LIMIT, **kw)
-        require_jtag_tdo_resolved(f"J2A @0x{addr:x}")
+        op = J2A_OP_WRITE if write else J2A_OP_READ
+        access = await jtag2axi_start(self.j2a_tap, op, addr, data, **kw)
+        status, raw, polls = await jtag2axi_poll(self.j2a_tap, access, poll_limit=J2A_POLL_LIMIT)
         expired = status == J2A_STATUS_BUSY
         last = f"@0x{addr:x} status={status}"
-        self._site("j2a", J2A_POLL_LIMIT, "polls", tap.reads, last, expired=expired)
+        self._site("j2a", J2A_POLL_LIMIT, "polls", polls, last, expired=expired)
         if expired:
-            raise AssertionError(f"TIMEOUT j2a {last} after {tap.reads} polls")
+            raise AssertionError(f"TIMEOUT j2a {last} after {polls} polls")
         self.step_access[self.step] += 1
         return status, int(raw)
 

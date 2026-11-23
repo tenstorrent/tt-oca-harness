@@ -10,6 +10,42 @@ minor release it updates.
 
 ## [Unreleased]
 
+### Added
+
+- DTP JTAG2AXI bridges are RISC-V Debug Modules: each bridge has a DTMCS and a
+  DMI instruction (`SMC_OTP_DTMCS` `0x1B`, `SMC_OTP_DMI` `0x1C`, `SEP_OTP_DTMCS`
+  `0x1D`, `SEP_OTP_DMI` `0x1E`, `SMC_DTMCS` `0x1F`, `SMC_DMI` `0x20`), and the
+  System Bus Access registers issue the AXI transfers.
+- `vendor/pulp-platform/riscv-dbg` vendors `tdr2axi` and the Debug Module
+  sources it uses from `tenstorrent/tt-riscv-dbg`.
+- `jtag_ptap` and `jtag_intf_unit` gain a `scan_rst_ni` port, which the DTP
+  drives from its `scan_rst_ni` for the test-mode reset of the bridges.
+
+### Changed
+
+- A JTAG2AXI bridge that its `dbg_disable_i` field disables answers each AXI
+  access from an error slave with DECERR (`sbcs.sberror` = 2) and sends no
+  request to its target. Its registers stay accessible. The three bridge fields
+  of `dbg_disable_i` are synchronized to `clk_i`.
+- The JTAG2AXI bridges reset from `rst_n_i` only; TRST and Test-Logic-Reset
+  reset their DTMCS and DMI registers.
+- The default of `JTAG_OCH_VER`, which the `och_ver` field of JTAG_CAPS
+  reports, is `8'h01`. This value identifies the PTAP instruction map with the
+  DTMCS and DMI instructions of the JTAG2AXI bridges. The instruction map
+  before it has `8'h00`.
+
+### Removed
+
+- PTAP instructions `0x1B` to `0x2C` of the previous JTAG2AXI bridge: the
+  `*_JTAG2AXI_CAPS` registers and the `*_AXI_SINGLE_OP`, `*_AXI_SERIES_CTRL`,
+  `*_AXI_SERIES_DATA_INCR`, `*_AXI_SERIES_DATA_NO_INCR` and
+  `*_AXI_SERIES_DATA_WITH_ERROR_STATUS` registers. Instructions `0x21` to `0x2C`
+  select BYPASS.
+- The `*_RD_PL_DEPTH` and `*_WR_PL_DEPTH` parameters of `jtag_ptap`,
+  `jtag_intf_unit` and `dtp`, and the `SMC_OTP_RD_PL_DEPTH`,
+  `SMC_OTP_WR_PL_DEPTH`, `SMC_RD_PL_DEPTH` and `SMC_WR_PL_DEPTH` fields of
+  `smu_pkg::smu_cfg_t`.
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added

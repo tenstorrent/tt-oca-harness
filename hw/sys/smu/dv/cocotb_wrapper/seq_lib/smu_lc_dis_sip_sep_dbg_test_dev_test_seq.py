@@ -13,7 +13,7 @@ is the only stimulus besides the JTAG accesses. The steps run in this order:
 
 S1, setup: the image is the leaf's own and ``sep_fuse_sense_done_o`` rises within its bound.
 S2, feature control: ``lcc_feat_ctrl_o`` has bit 0 clear and every other bit set.
-S3, fabric: an SMC fabric SINGLE_OP read and write launch AR, AW and B.
+S3, fabric: an SMC fabric JTAG2AXI read and write launch AR, AW and B.
 S4, SMC debug STAP: selected over the PTAP, its host TMS follows the PTAP TMS.
 S5, extra STAP: the same.
 S6, DFT non-secure SIB: opens, captures 1 and its bench cell joins the loop.
@@ -124,7 +124,7 @@ class smu_lc_dis_sip_sep_dbg_test_dev_test_seq(smu_lc_dis_sys_chiplet_dbg_test_d
             (FEAT_CTRL_SEP_DBG_CLOSED, True),
         )
 
-        await self._mark("SMC fabric SINGLE_OP read then write, DTP-to-SMC AR/AW/B counters")
+        await self._mark("SMC fabric JTAG2AXI read then write, DTP-to-SMC AR/AW/B counters")
         await self._tlr()
         lane_before = self._rd("lcc_dbg_disable_smc_jtag2axi_o")
         start, end, delta = await self._fabric_deltas(launches=True)

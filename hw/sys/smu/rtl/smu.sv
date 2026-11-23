@@ -591,12 +591,6 @@ module smu #(
     .smc_otp_axil_resp_t       (smc_pkg::smc_axil_32_32_resp_t),
     .sep_otp_axil_req_t        (smc_pkg::smc_axil_32_32_req_t),
     .sep_otp_axil_resp_t       (smc_pkg::smc_axil_32_32_resp_t),
-    .SMC_OTP_RD_PL_DEPTH       (CFG.SMC_OTP_RD_PL_DEPTH),
-    .SMC_OTP_WR_PL_DEPTH       (CFG.SMC_OTP_WR_PL_DEPTH),
-    .SEP_OTP_RD_PL_DEPTH       (2'h3),
-    .SEP_OTP_WR_PL_DEPTH       (2'h3),
-    .SMC_RD_PL_DEPTH           (CFG.SMC_RD_PL_DEPTH),
-    .SMC_WR_PL_DEPTH           (CFG.SMC_WR_PL_DEPTH),
     .xtrig_axil_req_t          (smc_pkg::smc_axil_32_32_req_t),
     .xtrig_axil_resp_t         (smc_pkg::smc_axil_32_32_resp_t)
   ) u_dtp (

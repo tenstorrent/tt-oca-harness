@@ -30,10 +30,10 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
-  // System reset armed on a JTAG2AXI read (driven by the reset-abort
-  // sequences): while bit t is set (0 smc_axi, 1 smc_otp, 2 sep_otp), tb_top
-  // asserts the system reset for sys_rst_on_ar_cycles clocks from the clock
-  // edge that completes bridge t's next AR handshake, once per arming.
+  // System reset armed on a JTAG2AXI read (driven by the sequences): while
+  // bit t is set (0 smc_axi, 1 smc_otp, 2 sep_otp), tb_top asserts the
+  // system reset for sys_rst_on_ar_cycles clocks from the clock edge that
+  // completes bridge t's next AR handshake, once per arming.
   logic [2:0] sys_rst_on_ar_arm    = '0;
   logic [3:0] sys_rst_on_ar_cycles = 4'd1;
 
@@ -208,49 +208,6 @@ interface dtp_tb_if;
   // from the CTP busy outputs); STATUS.BUSY reads the same flop.
   logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_busy;
 
-  // JTAG2AXI bridge state per target for the stall and reset-abort
-  // scenarios, decoded by tb_top from each bridge's TCK-domain AXI state
-  // machine by state name: idle; on the write path (address, data, or
-  // response wait); on the read path (address or data wait). Beside them the
-  // single-op pending flag, the response the state machine takes on the
-  // next TCK edge (beat_done), and a sticky flag set once the bridge's CDC
-  // has run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears
-  // the sticky flags.
-  logic smc_axi_fsm_idle;
-  logic smc_axi_fsm_write_path;
-  logic smc_axi_fsm_read_path;
-  logic smc_axi_op_pending;
-  logic smc_axi_fsm_beat_done;
-  logic smc_axi_cdc_clear_seen;
-  logic smc_otp_fsm_idle;
-  logic smc_otp_fsm_write_path;
-  logic smc_otp_fsm_read_path;
-  logic smc_otp_op_pending;
-  logic smc_otp_fsm_beat_done;
-  logic smc_otp_cdc_clear_seen;
-  logic sep_otp_fsm_idle;
-  logic sep_otp_fsm_write_path;
-  logic sep_otp_fsm_read_path;
-  logic sep_otp_op_pending;
-  logic sep_otp_fsm_beat_done;
-  logic sep_otp_cdc_clear_seen;
-  logic cdc_clear_seen_clear = 1'b0;
-
-  // Phase of the JTAG2AXI bridges' CDC clear sequences (driven by tb_top
-  // from the smc_axi bridge's AW crossing): the ACLK-side initiator in
-  // CLEAR, WAIT_CLEAR_PHASE_ACK, POST_CLEAR or FINISHED, and the TCK-side
-  // and ACLK-side four-phase receivers in WAIT_DOWNSTREAM_ACK. The three
-  // bridges' controllers share rst_n_i, clk_i, TCK and the TAP's
-  // Test-Logic-Reset, and the CDC jitter model passes data through unless
-  // +cdc_instrumentation_enabled is set, so one crossing's phase is the
-  // phase of every crossing.
-  logic j2a_cdc_aclk_clear;
-  logic j2a_cdc_aclk_wait_clear_phase_ack;
-  logic j2a_cdc_aclk_post_clear;
-  logic j2a_cdc_aclk_finished;
-  logic j2a_cdc_tck_dst_wait_ack;
-  logic j2a_cdc_aclk_dst_wait_ack;
-
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.
   logic stop_clks;
@@ -292,12 +249,6 @@ interface dtp_tb_if;
   logic [7:0]  cfg_smc_axi_data_width  = 8'(dtp_dv_cfg_pkg::SmcAxiDataWidth);
   logic [7:0]  cfg_otp_axil_addr_width = 8'(dtp_dv_cfg_pkg::OtpAxilAddrWidth);
   logic [7:0]  cfg_otp_axil_data_width = 8'(dtp_dv_cfg_pkg::OtpAxilDataWidth);
-  logic [7:0]  cfg_smc_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpRdPlDepth);
-  logic [7:0]  cfg_smc_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpWrPlDepth);
-  logic [7:0]  cfg_sep_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpRdPlDepth);
-  logic [7:0]  cfg_sep_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpWrPlDepth);
-  logic [7:0]  cfg_smc_rd_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcRdPlDepth);
-  logic [7:0]  cfg_smc_wr_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcWrPlDepth);
 
   // The build target's boundary-scan enables, which the bypass reference
   // models read.

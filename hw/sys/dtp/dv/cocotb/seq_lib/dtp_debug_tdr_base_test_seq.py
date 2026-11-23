@@ -19,15 +19,12 @@ import random
 from env.dtp_dv_cfg import DTP_DEFAULT_IDCODE, DTP_NUM_CLK_STOP_REQ
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
-    DTP_EXPECTED_JTAG2AXI_CAPS,
     DTP_EXPECTED_JTAG_CAPS,
     DTP_IC_RESET_LEN,
-    DTP_JTAG2AXI_CAPS_LEN,
     DTP_JTAG_CAPS_LEN,
     DTP_TMP_STATUS_LEN,
-    unpack_jtag2axi_caps,
 )
-from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr
+from env.dtp_types import DtpJtagInstr
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -53,7 +50,7 @@ IC_RESET_PORT_INDEX = {
     "smc": 2,
 }
 
-EXPECTED_CAPS_BY_REG = {"JTAG_CAPS": DTP_EXPECTED_JTAG_CAPS, **DTP_EXPECTED_JTAG2AXI_CAPS}
+EXPECTED_CAPS_BY_REG = {"JTAG_CAPS": DTP_EXPECTED_JTAG_CAPS}
 
 # The debug-TDR pin observables and their values with DEBUG_CONTROL at 0x00
 # and IC_RESET at its all-ones default (every slice enable inactive drives
@@ -336,10 +333,8 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         return value
 
     async def read_caps_tdr(self, reg: str) -> int:
-        """Read a JTAG_CAPS or JTAG2AXI_CAPS TDR."""
-        value = await self.read_tdr(reg)
-        width = DTP_JTAG_CAPS_LEN if reg == "JTAG_CAPS" else DTP_JTAG2AXI_CAPS_LEN
-        return value & self.bit_mask(width)
+        """Read the JTAG_CAPS TDR."""
+        return await self.read_tdr(reg) & self.bit_mask(DTP_JTAG_CAPS_LEN)
 
     def expect_caps_value(
         self,
@@ -381,31 +376,6 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         self.log.info("JTAG_CAPS raw=0x%015x", value)
         for name, field_value in decoded.items():
             self.log.info("  %-18s = %d", name, field_value)
-        return decoded
-
-    def decode_jtag2axi_caps(self, value: int) -> dict[str, int]:
-        """Decode a *_JTAG2AXI_CAPS value; ``data_width_bits`` expands ``data_size``."""
-        fields = unpack_jtag2axi_caps(value)
-        return {
-            "raw": value & self.bit_mask(DTP_JTAG2AXI_CAPS_LEN),
-            **fields,
-            "data_width_bits": 8 << fields["data_size"],
-        }
-
-    def log_jtag2axi_caps(self, reg: str, value: int) -> dict[str, int]:
-        """Log a decoded ``*_JTAG2AXI_CAPS`` capture and return its fields."""
-        decoded = self.decode_jtag2axi_caps(value)
-        self.log.info("%s raw=0x%04x", reg, decoded["raw"])
-        self.log.info("  rd_pl_depth    = %d", decoded["rd_pl_depth"])
-        self.log.info("  wr_pl_depth    = %d", decoded["wr_pl_depth"])
-        self.log.info("  data_size      = %d", decoded["data_size"])
-        self.log.info("  data_width_bits= %d", decoded["data_width_bits"])
-        self.log.info("  addr_size      = %d", decoded["addr_size"])
-        self.log.info(
-            "  bus_type       = %d (%s)",
-            decoded["bus_type"],
-            "AXI4-Lite" if decoded["bus_type"] else "AXI4",
-        )
         return decoded
 
     async def check_caps_multi_read(
@@ -477,35 +447,6 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             self.family_check(
                 CAPS_CHECK_ID, f"{reg} after instruction switch", reread, value, context=instr.name
             )
-
-    async def check_jtag2axi_caps(self, target: DtpJtag2AxiTargetCfg) -> int:
-        """Run the common JTAG2AXI_CAPS field, stability, and RO checks for one bridge."""
-        reg = target.caps_reg
-        value = await self.read_caps_tdr(reg)
-        decoded = self.log_jtag2axi_caps(reg, value)
-        self.expect_caps_value(reg, value)
-
-        expected_fields = {
-            "bus_type": target.bus_type,
-            "addr_size": target.addr_width,
-            "data_width_bits": target.data_width,
-            "rd_pl_depth": target.rd_pl_depth,
-            "wr_pl_depth": target.wr_pl_depth,
-        }
-        for name, expected in expected_fields.items():
-            self.family_check(CAPS_CHECK_ID, f"{reg}.{name}", decoded[name], expected)
-
-        self.family_check(
-            CAPS_CHECK_ID, f"{reg} multi-read value", await self.check_caps_multi_read(reg), value
-        )
-        self.family_check(
-            CAPS_CHECK_ID,
-            f"{reg} read-only sweep",
-            await self.check_caps_read_only_patterns(reg, DTP_JTAG2AXI_CAPS_LEN),
-            value,
-        )
-        await self.check_caps_after_instruction_switch(reg, value)
-        return value
 
     async def wait_for_signal_value(
         self,

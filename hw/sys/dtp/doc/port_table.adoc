@@ -20,9 +20,9 @@ endif::backend-html5[]
 |Interface Name |Type |Dir |Width |Description / Default |Connection
 
 |`clk_i` |`logic` |In |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock
-|`rst_n_i` |`logic` |In |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset
+|`rst_n_i` |`logic` |In |1 |System reset (active low). Resets the cross trigger logic and the JTAG2AXI bridges; does not affect the TAP controller. |System reset
 |`pwr_on_rst_ni` |`logic` |In |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset
-|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |In |- |Per-path lifecycle controls for disabling debug and test interfaces. Active-high (1 = path disabled). DTP synchronizes each field into the JTAG TCK domain. |SEP lifecycle controller or adopter-equivalent policy source
+|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |In |- |Per-path lifecycle controls for disabling debug and test interfaces. Active-high (1 = path disabled). DTP synchronizes the STAP and iJTAG fields into the JTAG TCK domain and the JTAG2AXI fields into the `clk_i` domain. |SEP lifecycle controller or adopter-equivalent policy source
 
 |`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |In |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads
 |`jtag_ptap_client_tdi_i` |`logic` |In |1 |Primary JTAG TDI. |External JTAG pads
@@ -119,7 +119,7 @@ endif::backend-html5[]
 |`xtrig_ctp_ack_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out input enable. |GPIO pad ring
 
 |`test_en_i` |`logic` |In |1 |DFT test-mode enable (active high) for the JTAG2AXI bridges and the cross trigger CSR crossbar. Default: 0 in functional mode. |DFT controller
-|`scan_rst_ni` |`logic` |In |1 |DFT scan reset (active low). Unused: DTP has no reset synchronizer, so `rst_n_i` must arrive scan-controlled. |DFT controller, or tie high
+|`scan_rst_ni` |`logic` |In |1 |DFT scan reset (active low). Resets the JTAG2AXI bridges while `test_en_i` is 1. No other DTP logic has a reset synchronizer, so `rst_n_i` must arrive scan-controlled. |DFT controller, or tie high
 |===
 
 ifdef::backend-html5[]

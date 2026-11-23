@@ -141,6 +141,9 @@ configure_ip_block -names [cdc_mod {cdc_reset_ctrlr_half}] -type {cdc}
 configure_ip_block -names [cdc_mod {cdc_4phase}] -type {cdc}
 configure_ip_block -names [cdc_mod {cdc_4phase_src}] -type {cdc}
 configure_ip_block -names [cdc_mod {cdc_4phase_dst}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_2phase_clearable}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_2phase_src_clearable}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_2phase_dst_clearable}] -type {cdc}
 
 # Handshake-based data synchronizer, used in AVS Bus
 configure_ip_block -names [cdc_mod {prim_sync_data_autohs}] -type {cdc}
@@ -149,8 +152,8 @@ configure_ip_block -names [cdc_mod {prim_sync_data_autohs}] -type {cdc}
 # cdc_reset_ctrlr FLUSH-STATE DISTRIBUTION
 ################################################################################
 # The cdc_reset_ctrlr (common_cells) sequences a flush of both sides of a
-# clearable CDC FIFO through a 4-phase-synchronized state machine.
-# By construction both FIFO sides are held in isolate/clear for the whole state
+# clearable CDC FIFO or handshake through a 4-phase-synchronized state machine.
+# By construction both sides are held in isolate/clear for the whole state
 # transition, so no live data can capture an intermediate value
 set cdc_rstctrl_state_src [list]
 foreach _rstctrl_cell [get_object_name [get_cells -hier -filter "ref_name =~ ${::MODPREFIX}cdc_4phase_src*" -quiet]] {

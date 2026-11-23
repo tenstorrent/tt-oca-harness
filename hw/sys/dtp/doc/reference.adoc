@@ -46,8 +46,8 @@ ifdef::backend-pdf[]
   <<jtag-interface-unit,JTAG Interface Unit>>
 endif::backend-pdf[]
   page.
-* *PTAP* parameters (IC_RESET struct types, IDCODE fields, JTAG2AXI pipeline
-  depths, feature-enable enables) — see the
+* *PTAP* parameters (IC_RESET struct types, IDCODE fields, JTAG2AXI AXI
+  types, feature-enable enables) — see the
 ifdef::backend-html5[]
   xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP]
 endif::backend-html5[]

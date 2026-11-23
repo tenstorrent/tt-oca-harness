@@ -430,12 +430,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the SMC is in reset while the cool reset pin is held, and after it a "
             "JTAG_PUBLIC_IDENTITY read over the SMC OTP bridge returns SUCCESS",
         ),
-        (
-            "CHK-OTP-PROD-SMC-SERIES",
-            "CHK-OTP-PROD-SMC-SERIES",
-            "an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3 completes "
-            "with SUCCESS",
-        ),
     ],
     "smu_lc_rma_chip_1_export_test": [
         (
@@ -500,7 +494,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FABRIC-LAUNCH-TEST-DEV",
             "CHK-LC-FABRIC-LAUNCH-TEST-DEV",
-            "an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and "
+            "an SMC fabric JTAG2AXI read and write advance the DTP-to-SMC debug AXI AR, AW and "
             "B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0",
         ),
         (
@@ -548,7 +542,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FABRIC-NOLAUNCH-PROD",
             "CHK-LC-FABRIC-NOLAUNCH-PROD",
-            "an SMC fabric SINGLE_OP read and write leave the AR, AW and B counters unchanged "
+            "an SMC fabric JTAG2AXI read and write leave the AR, AW and B counters unchanged "
             "with lcc_dbg_disable_smc_jtag2axi_o at 1'b1, and in the same leaf a SEP OTP bridge "
             "write of 0x5A3CA5C3 to SEC_DISABLE_TOKEN_I[7] and a read back both complete with "
             "op 0 and the read returns 0x5A3CA5C3",
@@ -620,7 +614,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FABRIC-NOLAUNCH-PROD-END",
             "CHK-LC-FABRIC-NOLAUNCH-PROD-END",
-            "an SMC fabric SINGLE_OP read and write leave the AR, AW and B counters unchanged "
+            "an SMC fabric JTAG2AXI read and write leave the AR, AW and B counters unchanged "
             "with lcc_dbg_disable_smc_jtag2axi_o at 1'b1, and in the same leaf a SEP OTP bridge "
             "read of LC_STATE completes with op 0 and returns 0x78",
         ),
@@ -690,7 +684,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FABRIC-LAUNCH-RMA-SIP",
             "CHK-LC-FABRIC-LAUNCH-RMA-SIP",
-            "an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and "
+            "an SMC fabric JTAG2AXI read and write advance the DTP-to-SMC debug AXI AR, AW and "
             "B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0",
         ),
         (
@@ -735,7 +729,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-FABRIC-LAUNCH-RMA-CHIPLET",
             "CHK-LC-FABRIC-LAUNCH-RMA-CHIPLET",
-            "an SMC fabric SINGLE_OP read and write advance the DTP-to-SMC debug AXI AR, AW and "
+            "an SMC fabric JTAG2AXI read and write advance the DTP-to-SMC debug AXI AR, AW and "
             "B counters by 1 each with lcc_dbg_disable_smc_jtag2axi_o at 1'b0",
         ),
         (
@@ -809,7 +803,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD",
             "with lc_sigint_inject_i high and the match held, lc_sigint_err_o is 1, "
             "lcc_feat_ctrl_o equals 64'hFFFF_FFFF_FFFF_FFFF, the SEP STAP host TMS follows the "
-            "PTAP TMS and an SMC fabric SINGLE_OP launches AR, AW and B; after the release "
+            "PTAP TMS and an SMC fabric JTAG2AXI launches AR, AW and B; after the release "
             "lc_sigint_err_o is 0 and lcc_feat_ctrl_o stays all ones",
         ),
         (
@@ -916,7 +910,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-FABRIC-NOLAUNCH-SYS-DIS-CHIPLET-DBG",
             "CHK-LC-FABRIC-NOLAUNCH-SYS-DIS-CHIPLET-DBG",
             "AR, AW and B at the DTP-to-SMC debug AXI port do not move across an SMC fabric "
-            "SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b1 before and "
+            "JTAG2AXI read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b1 before and "
             "after, with the Case 1 control passing in the same leaf",
         ),
         (
@@ -978,7 +972,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-FABRIC-LAUNCH-SIP-DIS-SEP-DBG-TEST-DEV",
             "CHK-LC-FABRIC-LAUNCH-SIP-DIS-SEP-DBG-TEST-DEV",
             "AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC "
-            "fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 "
+            "fabric JTAG2AXI read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 "
             "before and after (Case 2 open, SEP_DBG disabled)",
         ),
         (
@@ -1103,7 +1097,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-FABRIC-CONTROL-RMA-SIP-SYS-DIS",
             "CHK-LC-FABRIC-CONTROL-RMA-SIP-SYS-DIS",
             "AR, AW and B at the DTP-to-SMC debug AXI port each advance by 1 across an SMC "
-            "fabric SINGLE_OP read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 "
+            "fabric JTAG2AXI read and write and lcc_dbg_disable_smc_jtag2axi_o equals 1'b0 "
             "before and after (nothing closed with SYS_DIS bits 0, 1 and 24 set)",
         ),
         (
@@ -1140,7 +1134,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-LC-CASE2-CONTROL-SIP-DIS-RMA-SIP",
             "the SMC debug STAP host TMS edge count equals the PTAP TMS edge count with both "
             "levels seen and its TDO-enable asserted, and AR, AW and B at the DTP-to-SMC debug "
-            "AXI port each advance by 1 across an SMC fabric SINGLE_OP read and write (Case 2 "
+            "AXI port each advance by 1 across an SMC fabric JTAG2AXI read and write (Case 2 "
             "open: SEP_DBG alone is cleared)",
         ),
         (
@@ -2037,43 +2031,23 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-B2B-GATE-OPEN",
             "CHK-B2B-GATE-OPEN",
-            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+            "the SMC J2A gate reads 0 and SMC_DTMCS reads the expected DTMCS value",
         ),
         ("CHK-B2B-ALLOW", "CHK-B2B-ALLOW", "VERSION_LO reads its reset value over JTAG2AXI"),
-        ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),
         (
-            "CHK-B2B-WR-DECERR",
-            "CHK-B2B-WR-DECERR",
-            "the unmapped write returns DECERR and VERSION_LO still reads its reset value",
+            "CHK-J2A-B2B",
+            "J2A_B2B_OK",
+            "the unmapped read returns DECERR with 0xBADCAB1E, then VERSION_LO reads SUCCESS",
+        ),
+        (
+            "CHK-B2B-WR-BUSERR",
+            "CHK-B2B-WR-BUSERR",
+            "the unmapped write returns a bus error and VERSION_LO still reads its reset value",
         ),
         (
             "CHK-B2B-STICKY",
             "CHK-B2B-STICKY",
-            "the sticky status reads SUCCESS after the error-then-success pair",
-        ),
-    ],
-    "smu_dtp_jtag2axi_smc_error_path_test": [
-        (
-            "CHK-J2A-ERROR-JTAG-READY",
-            "CHK-J2A-ERROR-JTAG-READY",
-            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
-        ),
-        (
-            "CHK-J2A-ERROR-GATE-OPEN",
-            "CHK-J2A-ERROR-GATE-OPEN",
-            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
-        ),
-        (
-            "CHK-J2A-ERROR-ALLOW",
-            "CHK-J2A-ERROR-ALLOW",
-            "VERSION_LO reads its reset value on the allowed path",
-        ),
-        ("CHK-J2A-DECERR", "J2A_DECERR_POISON", "unmapped access returns DECERR"),
-        ("CHK-J2A-RECOVERY", "J2A_RECOVERY_OK", "VERSION_LO SUCCESS after error"),
-        (
-            "CHK-J2A-ERROR-SERIES-INCR",
-            "CHK-J2A-ERROR-SERIES-INCR",
-            "the SERIES_DATA_INCR readback equals the written series",
+            "sbcs sberror still reports the bus error after the unmapped read completes",
         ),
     ],
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [
@@ -2085,41 +2059,22 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-J2A-MATRIX-GATE-OPEN",
             "CHK-J2A-MATRIX-GATE-OPEN",
-            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+            "the SMC J2A gate reads 0 and SMC_DTMCS reads the expected DTMCS value",
         ),
         (
             "CHK-J2A-WSTRB-WIDTH",
             "CHK-J2A-WSTRB-WIDTH",
-            "1/2/4/8-byte WSTRB writes on SPM read back the strobed bytes only",
-        ),
-        ("CHK-J2A-RW-MATRIX", "J2A_RW_MATRIX_OK", "partial WSTRB 0x55/0xAA merge"),
-        (
-            "CHK-J2A-MATRIX-STICKY",
-            "CHK-J2A-MATRIX-STICKY",
-            "the sticky status reads SUCCESS and VERSION_LO its reset value after the matrix",
-        ),
-    ],
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test": [
-        (
-            "CHK-J2A-WSTRB-JTAG-READY",
-            "CHK-J2A-WSTRB-JTAG-READY",
-            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+            "1/2/4/8-byte writes on SPM read back the written bytes only",
         ),
         (
-            "CHK-J2A-WSTRB-GATE-OPEN",
-            "CHK-J2A-WSTRB-GATE-OPEN",
-            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+            "CHK-J2A-RW-MATRIX",
+            "J2A_RW_MATRIX_OK",
+            "byte writes on the even and odd lanes merge as WSTRB 0x55/0xAA would",
         ),
         (
-            "CHK-J2A-WSTRB-SEED",
-            "CHK-J2A-WSTRB-SEED",
-            "both seed words read back as written before the partial writes",
-        ),
-        ("CHK-J2A-WSTRB-NBR", "J2A_WSTRB_NEIGHBOR", "partial merge; neighbor intact"),
-        (
-            "CHK-J2A-WSTRB-STICKY",
-            "CHK-J2A-WSTRB-STICKY",
-            "the sticky status reads SUCCESS after the partial writes",
+            "CHK-J2A-MATRIX-CSR-READ",
+            "CHK-J2A-MATRIX-CSR-READ",
+            "a 4-byte VERSION_LO read after the matrix returns its reset value",
         ),
     ],
     "smu_dtp_jtag_smc_cpu_register_test": [
@@ -2131,7 +2086,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CPU-REG-GATE-OPEN",
             "CHK-CPU-REG-GATE-OPEN",
-            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+            "the SMC J2A gate reads 0 and SMC_DTMCS reads the expected DTMCS value",
         ),
         ("CHK-JTAG2AXI-RW", "JTAG2AXI_RW_OK", "SCRATCH_15 two-pattern R/W"),
         ("CHK-CPU-REG-STALL", "CPU_REG_STALL", "DEBUG_CONTROL boot_stall hold"),
@@ -2177,48 +2132,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
         ("CHK-OTP-SMC-MAP-GATE-OPEN", "CHK-OTP-SMC-MAP-GATE-OPEN", "the OTP J2A gate reads 0"),
         (
-            "CHK-OTP-SMC-MAP-CAPS",
-            "CHK-OTP-SMC-MAP-CAPS",
-            "SMC OTP JTAG2AXI CAPS equals the expected geometry",
+            "CHK-OTP-SMC-MAP-DTMCS",
+            "CHK-OTP-SMC-MAP-DTMCS",
+            "SMC_OTP_DTMCS reads the expected DTMCS value",
         ),
         ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP SPARE[0] R/W"),
         (
             "CHK-OTP-SMC-MAP-ALLOW-PATH",
             "CHK-OTP-SMC-MAP-ALLOW-PATH",
             "the allowed-path readback equals the written pattern",
-        ),
-    ],
-    "smu_dtp_otp_smc_series_error_test": [
-        (
-            "CHK-OTP-SMC-SERIES-JTAG-READY",
-            "CHK-OTP-SMC-SERIES-JTAG-READY",
-            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
-        ),
-        (
-            "CHK-OTP-SMC-SERIES-GATE-OPEN",
-            "CHK-OTP-SMC-SERIES-GATE-OPEN",
-            "the OTP J2A gate reads 0",
-        ),
-        (
-            "CHK-OTP-SMC-SERIES-RW",
-            "CHK-OTP-SMC-SERIES-RW",
-            "the series write then readback returns the written word",
-        ),
-        (
-            "CHK-OTP-SMC-SINGLE-OP-ALLOW",
-            "CHK-OTP-SMC-SINGLE-OP-ALLOW",
-            "a SINGLE_OP on the allowed path reads back the expected word",
-        ),
-        (
-            "CHK-OTP-SMC-DECODE-SLVERR",
-            "CHK-OTP-SMC-DECODE-SLVERR",
-            "the gap's first word and every further seed-drawn OTP decode-hole word, read in the "
-            "drawn order, return SLVERR",
-        ),
-        (
-            "CHK-OTP-SMC-SPARE-STABLE",
-            "CHK-OTP-SMC-SPARE-STABLE",
-            "SPARE reads the same word after each decode-hole error",
         ),
     ],
     "smu_dtp_smc_stap_smoke_test": [
@@ -3590,15 +3512,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-FABRIC-BLOCKED",
             "CHK-OTP-FABRIC-BLOCKED",
-            "with SMC_AXI_SINGLE_OP selected, a non-zero pattern and its complement "
-            "shifted through the SINGLE_OP register come back after exactly 132 bits; "
-            "then, with the bridge's PTAP disable input at 1 before and after, a "
-            "SINGLE_OP read on the primary TAP moves neither the AW nor the AR handshake "
-            "count on the DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high "
-            "or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP "
-            "capture reads op 0 and address 0 (update not latched); the open-posture "
-            "controls are smu_jtag2axi_access_matrix_rand_test (same driver: "
-            "make_smu_jtag_tap and pack_single_op) and smu_sep_dbg_gating_test_dev_test",
+            "with SMC_DMI selected, a non-zero pattern and its complement shifted "
+            "through the DMI register come back after exactly 41 bits; then, with the "
+            "bridge's PTAP disable input at 1 before and after, a JTAG2AXI read on the "
+            "primary TAP moves neither the AW nor the AR handshake count on the DTP -> SMC "
+            "debug AXI port, no AWVALID, WVALID or ARVALID is high or X/Z on any clk_smu_i "
+            "edge of the window, and the bridge completes the read with DECERR; the "
+            "open-posture control is smu_sep_dbg_gating_test_dev_test",
         ),
         (
             "CHK-OTP-SMC-RW-WHILE-BLOCKED",
@@ -4192,18 +4112,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
             "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
-            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+            "the SMC J2A gate reads 0 and SMC_DTMCS reads the expected DTMCS value",
         ),
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
         (
             "CHK-JTAG2AXI-SMOKE-SPM",
             "CHK-JTAG2AXI-SMOKE-SPM",
-            "SINGLE_OP 64-bit write and readback of the SPM base word, data equal",
-        ),
-        (
-            "CHK-JTAG2AXI-SMOKE-SERIES-INCR",
-            "CHK-JTAG2AXI-SMOKE-SERIES-INCR",
-            "SERIES_DATA_INCR write then readback at SPM+0x40, data equal",
+            "64-bit write and readback of the SPM base word, data equal",
         ),
     ],
     "smu_smc_mailbox_aperture_layout_test": [
@@ -5469,7 +5384,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-XBAR-SELF-SMC-LOCAL",
             "CHK-XBAR-SELF-SMC-LOCAL",
-            "a JTAG2AXI SINGLE_OP write and read at GLOBAL_BASE plus the VERSION_LO offset, the "
+            "a JTAG2AXI write and read at GLOBAL_BASE plus the VERSION_LO offset, the "
             "SMC's own global window at its reset values, answer SUCCESS, the read returns the "
             "VERSION_LO reset value, and neither reaches the crossbar's smc_out port nor the "
             "smc_in, sep_in and ext_out taps; the local-alias VERSION_LO read answers SUCCESS "
@@ -5738,225 +5653,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "bounded J2A and pad waits with last state",
         ),
     ],
-    "smu_dtp_jtag2axi_series_contention_test": [
-        (
-            "CHK-DBG-J2A-SERIES-SETUP",
-            "CHK-DBG-J2A-SERIES-SETUP",
-            "the SMC fabric gate tap reads 0 before the first bridge scan, SERIES_CTRL scans 63 "
-            "bits wide and reads op 0 after SERIES_CTRL.reset, and the AW, AR and B counter "
-            "baselines are sampled",
-        ),
-        (
-            "CHK-DBG-J2A-SERIES-INCR",
-            "CHK-DBG-J2A-SERIES-INCR",
-            "an eight-beat 32-bit INCR write raises the AW and B counters by 8 and leaves op 0, "
-            "SINGLE_OP reads return W0, W1, W6 and W7, a single-load series read returns W1 on "
-            "capture 2, the 64-bit leg raises the counters by 2 and reads back both words, and "
-            "the eight-scan read stream is measured and logged only",
-        ),
-        (
-            "CHK-DBG-J2A-SERIES-NOINCR",
-            "CHK-DBG-J2A-SERIES-NOINCR",
-            "a two-beat NO_INCR write leaves the last word at word 5 with the AW and B counters "
-            "up by 2, word 4 of the same 8-byte beat is unchanged, and a single-load NO_INCR read"
-            " returns X2 before a SINGLE_OP rewrite and X3 after it",
-        ),
-        (
-            "CHK-DBG-J2A-SERIES-ERRSTATUS",
-            "CHK-DBG-J2A-SERIES-ERRSTATUS",
-            "WITH_ERROR_STATUS scans are 33 bits wide, report status 0 on every OKAY beat, land "
-            "P0, P2, P3 on words 0 to 2 by the increment bits with the counters up by 4, a "
-            "single-load read returns P0 with status 0, a read of 0xC0017000 followed by two "
-            "scans with increment 0 shifts out status 1 on the second, and SERIES_CTRL.reset "
-            "returns op from 2 to 0",
-        ),
-        (
-            "CHK-DBG-J2A-SERIES-PIPELINE",
-            "CHK-DBG-J2A-SERIES-PIPELINE",
-            "for pl_depth 0 and 3 two back-to-back write beats raise the AW and B counters by 2 "
-            "and land in order, and op reads 0 after the leg; the pending indication is measured "
-            "and logged only",
-        ),
-        (
-            "CHK-DBG-J2A-STICKY-SLVERR-FIRST",
-            "CHK-DBG-J2A-STICKY-SLVERR-FIRST",
-            "with the mailbox STATUS read showing EMPTY, a series read of the empty mailbox "
-            "READ_DATA returns 0xFEEDDEAD and SERIES_CTRL.op reads 1, stays 1 after an OKAY beat "
-            "and after a DECERR gap read (0xBADCAB1E), and a single-load read of word 6 is clean;"
-            " the 0x1_7000 window write response is measured and logged only",
-        ),
-        (
-            "CHK-DBG-J2A-STICKY-DECERR-FIRST",
-            "CHK-DBG-J2A-STICKY-DECERR-FIRST",
-            "SERIES_CTRL.op reads 2 after a DECERR gap read and stays 2 after a clean single-load"
-            " read and an empty mailbox READ_DATA series read that returns 0xFEEDDEAD",
-        ),
-        (
-            "CHK-DBG-J2A-STICKY-RESET",
-            "CHK-DBG-J2A-STICKY-RESET",
-            "SERIES_CTRL.reset returns op from 1 and from 2 to 0 and a following OKAY beat keeps "
-            "it 0",
-        ),
-        (
-            "CHK-DBG-J2A-SINGLE-INDEP",
-            "CHK-DBG-J2A-SINGLE-INDEP",
-            "with series code 2 latched a SINGLE_OP OKAY read reports op 0 and a SINGLE_OP read "
-            "of the empty mailbox READ_DATA reports op 1 with 0xFEEDDEAD, and SERIES_CTRL.op "
-            "stays 2 after each",
-        ),
-        (
-            "CHK-DBG-J2A-BUSY-OP3",
-            "CHK-DBG-J2A-BUSY-OP3",
-            "the op field and AR delta of unspaced SINGLE_OP pairs are measured and logged only, "
-            "the retry after 64 Run-Test/Idle TCKs reads op 0 with word 7, and spaced pairs read "
-            "op 0",
-        ),
-        (
-            "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS",
-            "the gate wait, the SERIES_CTRL.op polls, the B counter waits, the SINGLE_OP capture "
-            "polls, the unspaced-attempt loop and its single retry capture site finish inside "
-            "their "
-            "bounds with a recorded last state and the stated site count per kind",
-        ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "ordered sim-time fence S1<...<S12<PASS, the pass point is stamped after the last "
-            "step and every step S1 to S11 has a nonzero scan count",
-        ),
-    ],
-    "smu_dtp_jtag2axi_caps_single_op_test": [
-        (
-            "CHK-DBG-J2A-CAPS-SETUP",
-            "CHK-DBG-J2A-CAPS-SETUP",
-            "the SMC fabric gate tap reads 0 before the first bridge scan, IDCODE reads the "
-            "documented value and the AW, AR and B counter baselines are sampled",
-        ),
-        (
-            "CHK-DBG-J2A-CAPS-SMC",
-            "CHK-DBG-J2A-CAPS-SMC",
-            "SMC_JTAG2AXI_CAPS reads 0x3DF0 with bus_type 0, addr_size 56, data_size 3, "
-            "wr_pl_depth 3 and rd_pl_depth 3, each field compared separately",
-        ),
-        (
-            "CHK-DBG-J2A-CAPS-OTP",
-            "CHK-DBG-J2A-CAPS-OTP",
-            "SMC_OTP and SEP_OTP JTAG2AXI_CAPS both read 0x3D41 with bus_type 1, addr_size 32, "
-            "data_size 2, wr_pl_depth 3 and rd_pl_depth 3, each field compared separately",
-        ),
-        (
-            "CHK-DBG-J2A-CAPS-STABLE",
-            "CHK-DBG-J2A-CAPS-STABLE",
-            "each CAPS word recaptures as 0x3DF0, 0x3D41 and 0x3D41 after zeros, ones and 0x2AAA "
-            "shift-ins and after an intervening IDCODE scan and BYPASS load",
-        ),
-        (
-            "CHK-DBG-J2A-SINGLE-SLVERR",
-            "CHK-DBG-J2A-SINGLE-SLVERR",
-            "STATUS reads EMPTY with op 0, the empty-mailbox READ_DATA read captures op 1 with "
-            "0xFEEDDEAD and raises the AR counter by 1 after a capture of op 0, the SINGLE_OP "
-            "scan is 132 bits wide, and the response of the 0xC0017000 window write is measured "
-            "and logged only",
-        ),
-        (
-            "CHK-DBG-J2A-SINGLE-DECERR",
-            "CHK-DBG-J2A-SINGLE-DECERR",
-            "a read at 0xC0017000 captures op 2 with 0xBADCAB1E and raises the AR counter by 1",
-        ),
-        (
-            "CHK-DBG-J2A-SINGLE-OKAY",
-            "CHK-DBG-J2A-SINGLE-OKAY",
-            "the capture before a write of SCRATCH[13] reads op 2, the write reads op 0 with the "
-            "AW and B counters up by 1, a gap read right before the read of SCRATCH[13] captures "
-            "op 2 with 0xBADCAB1E, and the read returns 0x0A11CE5E with op 0 and the AR counter "
-            "up by 1",
-        ),
-        (
-            "CHK-DBG-J2A-SINGLE-RECOVERY",
-            "CHK-DBG-J2A-SINGLE-RECOVERY",
-            "a second empty-mailbox READ_DATA read captures op 1 with 0xFEEDDEAD and a clean read "
-            "of SCRATCH[13] captures op 0 with 0x0A11CE5E",
-        ),
-        (
-            "CHK-DBG-J2A-SINGLE-NOP",
-            "CHK-DBG-J2A-SINGLE-NOP",
-            "two op 0 scans with a non-zero address, data and strobe leave the AR counter flat "
-            "and, after the op 1 scan of the same fields completes, the AW counter flat and the "
-            "AR counter up by 1",
-        ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "ordered sim-time fence S1<...<S11<PASS, the pass point is stamped after the last "
-            "step and every step S1 to S10 has a nonzero scan count",
-        ),
-        (
-            "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS",
-            "the gate wait and the ten SINGLE_OP capture polls finish inside their bounds with a "
-            "recorded last state and the stated site count per kind",
-        ),
-    ],
-    "smu_dtp_otp_sep_series_error_test": [
-        (
-            "CHK-DBG-SEP-OTP-SETUP",
-            "CHK-DBG-SEP-OTP-SETUP",
-            "lc_state_o leaves its pre-sense value inside its bound, the SEP OTP gate tap reads "
-            "0, IDCODE reads the documented value, the AW, AR and B counter baselines are "
-            "sampled and SERIES_CTRL.reset leaves op 0",
-        ),
-        (
-            "CHK-DBG-SEP-OTP-POSCTRL",
-            "CHK-DBG-SEP-OTP-POSCTRL",
-            "NO_INCR writes of 0x13579BDF and 0x2468ACE0 to the SPARE0 words leave op 0, the "
-            "single-load NO_INCR read returns the first word and the single-load INCR reads "
-            "return both words with op 0, and the 72-bit SINGLE_OP read of word 0 captures op 0 "
-            "with the first word; the three-scan INCR stream is measured and logged only",
-        ),
-        (
-            "CHK-DBG-SEP-OTP-HOLE-SINGLE",
-            "CHK-DBG-SEP-OTP-HOLE-SINGLE",
-            "a SINGLE_OP read at 0x1093041C captures op 1 and the SINGLE_OP read of SPARE0 word "
-            "0 right after it captures op 0 with 0x13579BDF; the data word of the SLVERR read "
-            "is measured and logged only",
-        ),
-        (
-            "CHK-DBG-SEP-OTP-HOLE-SERIES",
-            "CHK-DBG-SEP-OTP-HOLE-SERIES",
-            "SERIES_CTRL.op reads 0 before a series beat at 0x1093041C and 1 after it, the "
-            "single-load read of SPARE0 word 0 after it returns 0x13579BDF with op 1, and op "
-            "stays 1 beside a SINGLE_OP read that captures op 0; the first capture of the SPARE0 "
-            "load after the series hole beat is measured and logged only",
-        ),
-        (
-            "CHK-DBG-SEP-OTP-ISOLATION",
-            "CHK-DBG-SEP-OTP-ISOLATION",
-            "the AW, AR and B counters equal their baselines after all SEP OTP traffic, then "
-            "the SMC fabric SINGLE_OP read at 0xC0017000 captures op 2 and the read of "
-            "0xC00390E8 captures op 0 with the AR counter up by 2 and the AW and B counters "
-            "unchanged",
-        ),
-        (
-            "CHK-DBG-SEP-OTP-RESET",
-            "CHK-DBG-SEP-OTP-RESET",
-            "the SERIES_CTRL write with bit 38 set captures op 1 and the next capture reads "
-            "op 0, and the single-load series read of SPARE0 word 0 after it returns "
-            "0x13579BDF with op 0",
-        ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
-            "step and every step S1 to S7 has a nonzero scan count",
-        ),
-        (
-            "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS",
-            "the sensing wait, the SERIES_CTRL.op polls and the SINGLE_OP capture polls finish "
-            "inside their bounds with a recorded last state and the stated site count per kind",
-        ),
-    ],
     "smu_dtp_sep_ic_reset_effect_test": [
         (
             "CHK-DBG-IC-SEP-SETUP",
@@ -6016,59 +5712,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the sensing wait, the capture polls, the reset and external-output waits, the "
             "system-bus completion polls and the dmi retry loops finish inside their bounds "
             "with a recorded last state and the stated site count per kind",
-        ),
-    ],
-    "smu_dtp_jtag2axi_ratio_floor_test": [
-        (
-            "CHK-DBG-RATIO-SETUP",
-            "CHK-DBG-RATIO-SETUP",
-            "the clk_smu_i period measured over four rising edges is within 1 % of the 10 ns "
-            "system clock setting and the bench period from +pll_sys_period_ns equals it, the "
-            "absent TCK floor is logged, the gate tap reads 0 before the first bridge scan, "
-            "SERIES_CTRL.reset leaves op 0 and the counter baselines are sampled",
-        ),
-        (
-            "CHK-DBG-RATIO-COMPLETE-4P0",
-            "CHK-DBG-RATIO-COMPLETE-4P0",
-            "at the seed-drawn TCK period of 40 to 47 ns the four-word series write raises the "
-            "AW and B counters by 4 and the four single-load series reads return the four "
-            "words with op 0 after every load; the AR delta is measured and logged only",
-        ),
-        (
-            "CHK-DBG-RATIO-COMPLETE-4P8",
-            "CHK-DBG-RATIO-COMPLETE-4P8",
-            "at the seed-drawn TCK periods of 48 to 69 ns and of 70 to 100 ns the four-word "
-            "series write raises the AW and B counters by 4 and the four single-load series "
-            "reads return the four words with op 0 after every load",
-        ),
-        (
-            "CHK-DBG-RATIO-OP3-RULE",
-            "CHK-DBG-RATIO-OP3-RULE",
-            "every SERIES_CTRL.op capture of the seed-drawn 20 to 39 ns leg and of the 20 ns leg "
-            "run in every seed is 0 or 3 and never 1 or 2, and the graded legs read 0; a leg that "
-            "never reads 3 is reported as NOT-EXERCISED for that branch",
-        ),
-        (
-            "CHK-DBG-RATIO-RECOVERY",
-            "CHK-DBG-RATIO-RECOVERY",
-            "after SERIES_CTRL.reset at TCK 40 ns op reads 0 and a new four-word series write "
-            "and four single-load reads complete with equal data, op 0 after every load and "
-            "the AW and B counters up by 4",
-        ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "ordered sim-time fence S1<...<S9<PASS, the pass point is stamped after the last step, "
-            "every scanning step has a nonzero access count, and each checker token registered its "
-            "stated number of compares (the 48 to 69 and 70 to 100 ns legs two under one token, "
-            "the op code rule over the two logged legs one)",
-        ),
-        (
-            "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS",
-            "the gate wait, the op polls, the B counter waits and the retry loops of the two "
-            "logged legs finish inside their bounds with a recorded last state and the stated site "
-            "count per kind",
         ),
     ],
     "smu_dtp_smc_dm_dmi_test": [
@@ -6373,70 +6016,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "inside its bound with its clk_smu_i cycles and last state recorded and none expires; "
             "the JTAG2AXI record carries the most status polls one access used against the "
             "128-poll limit",
-        ),
-    ],
-    "smu_jtag2axi_access_matrix_rand_test": [
-        (
-            "CHK-J2AMX-ADDR",
-            "CHK-J2AMX-ADDR",
-            "every pinned and drawn adopter and DTP CSR offset (a read and a zero-strobe write) "
-            "arrives on its far-end link at the issued offset, every drawn OTP register word "
-            "reads op 0 and arrives on its DTP-to-OTP link as issued, every outside address "
-            "leaves on u_axi_out_if AW and AR exactly as issued, and the SPM and SCRATCH_COLD "
-            "word at the issued address reads back the merged payload after a write with op 0",
-        ),
-        (
-            "CHK-J2AMX-SIZE",
-            "CHK-J2AMX-SIZE",
-            "AxSIZE of the AW and AR of every outside cell equals min(size field, data size 3), "
-            "the four sizes on every seed",
-        ),
-        (
-            "CHK-J2AMX-WSTRB",
-            "CHK-J2AMX-WSTRB",
-            "the W strobe of every outside cell equals the drawn strobe with the responder "
-            "doublewords on either side unchanged, and every SPM doubleword holds the strobe "
-            "merge of the payload over its complement with both neighbours intact, a full and a "
-            "partial strobe on every seed",
-        ),
-        (
-            "CHK-J2AMX-DATA",
-            "CHK-J2AMX-DATA",
-            "every SPM, SCRATCH_COLD and outside write and read completes with op 0, the read at "
-            "the issued address returns the merged payload on the selected lanes and the word "
-            "held equals the merge, and every eFuse-map word read through an OTP bridge equals "
-            "the shadow preload word at its index; adopter and DTP CSR responses and the "
-            "interface-control, MMR and SEP LC_STATE words are measured and logged only",
-        ),
-        (
-            "CHK-J2AMX-SERIES",
-            "CHK-J2AMX-SERIES",
-            "every series write reads status 0 after the reset, its address list is A + k x 2^E "
-            "on the SMC external bus tap or u_axi_out_if and the B counter moves by the count; "
-            "outside both apertures AxSIZE is E, the responder holds every word and the status "
-            "reads 0 after it; the status after an adopter-window series is logged only",
-        ),
-        (
-            "CHK-J2AMX-STICKY-DRAWN",
-            "CHK-J2AMX-STICKY-DRAWN",
-            "the series status reads 0 after a reset, 2 after a failed read at the first drawn "
-            "address between unit apertures, still 2 after a read of the SPM word the pinned "
-            "full-strobe cell wrote whose error-status bit reads 0 with the modelled low word, "
-            "still 2 after a second failure at the second drawn address, and 0 after "
-            "AXI_SERIES_CTRL.reset",
-        ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "a graded cell per bridge and per cell kind, a graded non-zero image word per OTP "
-            "bridge, and all four sizes on the outbound tap; the step stamps and the seed are "
-            "logged, not compared",
-        ),
-        (
-            "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS",
-            "every JTAG2AXI poll and counter wait finishes inside its bound with a recorded last "
-            "state and none expires; sites per kind equal the number the drawn cells make",
         ),
     ],
     "smu_filter_match_priority_rand_test": [

@@ -189,27 +189,7 @@ class DtpTbIf:
                 f"dtp_dv_cfg.py disagrees with dtp_dv_cfg_pkg.sv (observed, expected): {mismatches}"
             )
 
-    # --- JTAG2AXI bridge state --------------------------------------------------
-    def bridge_fsm_idle(self, target: str) -> int:
-        """1 while the bridge's AXI state machine is idle."""
-        return self.sample(f"{target}_fsm_idle")
-
-    def bridge_fsm_on_path(self, target: str, *, read: bool) -> int:
-        """1 while the bridge's AXI state machine is on the read or the write path."""
-        return self.sample(f"{target}_fsm_{'read' if read else 'write'}_path")
-
-    def bridge_op_pending(self, target: str) -> int:
-        """1 while the bridge holds a launched SINGLE_OP."""
-        return self.sample(f"{target}_op_pending")
-
-    def cdc_clear_seen(self, target: str) -> int:
-        """1 once the bridge's CDC has run its TCK-side isolate-and-clear since the last clear."""
-        return self.sample(f"{target}_cdc_clear_seen")
-
-    def set_cdc_clear_seen_clear(self, value: int) -> None:
-        """Hold ``cdc_clear_seen_clear``: 1 clears every bridge's sticky clear-seen flag."""
-        self.handle("cdc_clear_seen_clear").value = value
-
+    # --- JTAG2AXI bridge ports --------------------------------------------------
     def arm_reset_on_read(self, target: str, *, cycles: int = 1) -> None:
         """Arm one system-reset pulse of ``cycles`` clocks on ``target``'s next AR handshake."""
         self.ctrl.sys_rst_on_ar_cycles.value = cycles
@@ -218,6 +198,13 @@ class DtpTbIf:
     def disarm_reset_on_read(self) -> None:
         """Clear the read-armed system reset of every bridge."""
         self.ctrl.sys_rst_on_ar_arm.value = 0
+
+    def hold_responses(self, target: str, *, b: bool, r: bool) -> None:
+        """Set ``target``'s write (``b``) and read (``r``) response holds; the other bridges
+        keep theirs. Set a hold only while its channel shows the bridge no response."""
+        bit = 1 << JTAG2AXI_TARGETS[target].reset_arm_bit
+        for name, hold in (("j2a_b_hold", b), ("j2a_r_hold", r)):
+            self.handle(name).value = (self.sample(name) & ~bit) | (bit if hold else 0)
 
     # --- shared AXI VIP binding -----------------------------------------------
     def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:

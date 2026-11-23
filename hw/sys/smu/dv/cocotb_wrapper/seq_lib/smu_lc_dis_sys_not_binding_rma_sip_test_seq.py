@@ -21,7 +21,7 @@ S3, DFT secure SIB: opens, captures 1 and its bench cell joins the loop.
 S4, SMC debug STAP: the same as S2.
 S5, I/O STAP: the same as S2.
 S6, DFD SIB: opens, captures 1 and its bench cell joins the loop.
-S7, fabric: an SMC fabric SINGLE_OP read and write launch AR, AW and B.
+S7, fabric: an SMC fabric JTAG2AXI read and write launch AR, AW and B.
 S8, read-back, witness and feature control: the SEP STAP is selected over the PTAP 3DCR with the
     configuration held, the debug module comes out of reset and its system bus reads the two
     SYS_DIS words the DUT holds; then ``lc_state_o`` is the RMA_SIP word and ``lcc_feat_ctrl_o``
@@ -278,7 +278,7 @@ class smu_lc_dis_sys_not_binding_rma_sip_test_seq(smu_lc_dis_sys_chiplet_dbg_tes
             "CHK-LC-SIB-DFD-OPEN-RMA-SIP-SYS-DIS", "DFD", await self._dfd_control()
         )
 
-        await self._mark("SMC fabric SINGLE_OP read then write, DTP-to-SMC AR/AW/B counters")
+        await self._mark("SMC fabric JTAG2AXI read then write, DTP-to-SMC AR/AW/B counters")
         await self._tlr()
         lane_before = self._rd("lcc_dbg_disable_smc_jtag2axi_o")
         start, end, delta = await self._fabric_deltas(launches=True)

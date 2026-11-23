@@ -5,9 +5,8 @@
 Counts every write and read the port's shared monitor completes and keeps the
 newest item of each direction, so a scenario can wait for the transaction an
 operation put on the port, judge it and prove that no other one appeared
-(``CHK-J2A-BUS-REQ``), and compare an errored read beat with its capture
-(``CHK-J2A-ERR-RDATA``). ``mark`` holds the counts the last ledgered pass
-closed with. Publishes nothing and checks nothing. The SV-UVM twin is
+(``CHK-J2A-BUS-REQ``). ``mark`` holds the counts the last ledgered pass closed
+with. Publishes nothing and checks nothing. The SV-UVM twin is
 ``uvm/env/dtp_axi_port_history.svh``.
 """
 

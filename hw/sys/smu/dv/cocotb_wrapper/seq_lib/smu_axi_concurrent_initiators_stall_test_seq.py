@@ -110,15 +110,14 @@ from seq_lib.smu_dtp_sep_ic_reset_effect_test_seq import CAPTURE_POLL_CLK, DMI_O
 from seq_lib.smu_filter_helpers import PASS_ALL_END, PASS_RW_CONFIG, SMC_APERTURE_LOCAL_BASE
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
-    DTP_IR_SMC_AXI_SINGLE_OP,
     J2A_OP_READ,
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
-    SMC_DBG_SINGLE_OP_LEN,
-    pack_single_op,
-    unpack_single_op,
+    Jtag2AxiScanPort,
+    jtag2axi_start,
+    jtag2axi_status,
 )
 from seq_lib.smu_tb_pins import smc_primary_reset
 from seq_lib.smu_xbar_decerr_burst_response_test_seq import _hx, _rn, _val
@@ -411,22 +410,13 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
     async def _j2a(
         self, op: int, addr: int, data: int = 0, *, size: int = 3, label: str
     ) -> tuple[int, int]:
-        """One JTAG2AXI single operation; captures until it leaves busy, bounded in polls."""
-        nbytes = 1 << size
-        wstrb = (((1 << nbytes) - 1) << (addr & 7 & ~(nbytes - 1))) if op == J2A_OP_WRITE else 0
-        raw = pack_single_op(op, addr, data, wstrb=wstrb & 0xFF, size=size)
+        """One JTAG2AXI access; samples it until it leaves busy, bounded in polls."""
+        port = Jtag2AxiScanPort(self._ptap_scan, self.jtag)
         self.j2a_count += 1
-        await self._dr(DTP_IR_SMC_AXI_SINGLE_OP, raw, SMC_DBG_SINGLE_OP_LEN, f"{label}_issue")
+        access = await jtag2axi_start(port, op, addr, data, size=size)
         used = 0
         while True:
-            captured, _ = await self._dr(
-                DTP_IR_SMC_AXI_SINGLE_OP,
-                0,
-                SMC_DBG_SINGLE_OP_LEN,
-                f"{label}_c{used}",
-                counted=False,
-            )
-            status, rdata = unpack_single_op(captured)
+            status, rdata = await jtag2axi_status(port, access)
             used += 1
             if status != J2A_STATUS_BUSY:
                 break
