@@ -91,6 +91,9 @@ if { [sizeof_collection [get_cells -quiet gen_sep.u_sep]] > 0 } {
     puts "INFO: SMU [string toupper $::cdc_app]: gen_sep.u_sep not present (CFG.SEP is 0) - SEP constraints skipped"
 }
 
+# SMU's own pad boundary, on clocks the children's replays created.
+source -echo [file join $ocah_smu_cdc_dir smu.pad_boundary.tcl]
+
 # ---------------------------------------------------------------------------------
 # One merged asynchronous clock grouping: each domain's group is its clock plus every
 # generated clock registered by the files above (cdc_group_extra); domains whose clocks

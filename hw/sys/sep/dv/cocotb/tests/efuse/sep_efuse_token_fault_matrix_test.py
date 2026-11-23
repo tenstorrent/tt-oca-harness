@@ -48,7 +48,10 @@ source moves.
 
 Checkers: CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
 CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-FAULT-RESET-WORDS, CHK-LATCH-FREEZE.
-CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
+CTRL-LATCH-GO-REACH (each freeze cell): the token array reads back the frozen
+token and the go write under the freeze completes OKAY, so an unchanged digest is
+not a go that never reached the channel; a miss logs ``CHK-HOOK FAIL`` and ends the
+leaf. CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
 cell and prints their digest beside the digest of the expected token (the words
 are secret); it also fails when an expected word is 0, since a cleared word would
 read the same. Controls: CTRL-BIND (the SHA-256 of 32 zero bytes equals the bench
@@ -730,6 +733,22 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         dig_f, val_f, _te = self._latch(ch)
         readback = [await self.fd.rd(a) for a in TOKEN_ARRAY_ADDR[ch]]
         rb_ok = readback == token_words(tok_b)
+        # The frozen digest proves no update only if the token and the go reached the
+        # channel: the array reads back token B, and the go write completed OKAY.
+        go_done = int(not go.timed_out)
+        go_resp = RESP_NAME.get(-1 if go.timed_out else int(go.resp_code), str(go.resp_code))
+        if not self.chk.ctrl(
+            "LATCH-GO-REACH",
+            rb_ok and go_done and go_resp == "OKAY",
+            ch=_CH_NAME[ch],
+            readback_b=int(rb_ok),
+            go_done=go_done,
+            go_resp=go_resp,
+        ):
+            getattr(dut, _TE_INJECT[ch]).value = 0
+            hook_fail(
+                self.chk, reason="latch_go_reach", ch=_CH_NAME[ch], go_done=go_done, go_resp=go_resp
+            )
 
         getattr(dut, _TE_INJECT[ch]).value = 0
         await ClockCycles(dut.clk_i, 2)

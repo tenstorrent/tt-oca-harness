@@ -601,6 +601,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_smc_cold_boot_release_order_test` |smc |3 |Across two leaf-driven cold boots the stable power-good, the stable cold reset and the two primary resets hold, stretch and release as the SMC reset chapter states.
 |`smu_smc_cpu_ctrl_boot_state_test` |smc |3 |After boot the SMC CPU_CTRL registers read their documented reset values and the SMC_ATTRIBUTES fields decode the documented SMC configuration over JTAG2AXI.
 |`smu_smc_efuse_shadow_map_readback_test` |smc |3 |The words the SMC eFuse sense streams across the shim are the words the SMC eFuse map returns over JTAG2AXI, both equal the eFuse image the run loads, and the eFuse interface reports the sense done.
+|`smu_smc_efuse_supplementary_shadow_test` |smc |3 |35 sampled words of the SMC supplementary fuse window read over JTAG2AXI after the boot sense equal the stream words and the image words of the same index, all 128 supplementary stream words equal the image words, and SUPPLEMENTARY_LOCKS reads its image words.
 |`smu_smc_mailbox_aperture_layout_test` |smc |3 |The SMC mailbox apertures answer each register at its documented offset with per-aperture register state, and SMC_ATTRIBUTES reports 32 mailboxes of depth 2.
 |`smu_smc_mailbox_status_error_test` |smc |3 |Outbound mailbox 0 reports FIFO occupancy in STATUS, answers an empty read and a full write with SLVERR and the matching error flags, raises and drops its interrupt lane on enable and acknowledge, and refuses writes to its read-only registers.
 |`smu_smc_mailbox_threshold_lane_test` |smc |3 |The write-threshold interrupt of outbound mailbox 0 latches independently of IRQEN, reaches interrupt lane 0 only while enabled, returns to baseline on flush and acknowledge, and follows the clamped WIRQT threshold.
@@ -6381,26 +6382,26 @@ completion the bus returned. The cocotb TDO-resolved checks run on cocotb only.
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `efuse`, `smc`, `boot`, `sep`, `real_rtl`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+smc_efuse_hex=hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex`.
 
-*Randomization*: RAND-REP: the seed draws the sixteen sampled indices (0 to 255 of the 256-word bank, sixteen distinct indices: the six named element words 0, 2, 10, 28, 30 and 32 of `CHK-BOOT-SHADOW-ELEMENTS` (LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 255, the last word of the bank and the last store of the sense's running count (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), pinned beside them in every set, and the other nine drawn from the remaining 249 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the six pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
+*Randomization*: RAND-REP: the seed draws the sixteen sampled indices (0 to 63 of the 64 harness map words, sixteen distinct indices: the seven named element words 0, 2, 4, 12, 30, 32 and 34 of `CHK-BOOT-SHADOW-ELEMENTS` (HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 63, the last harness map word, pinned beside them in every set, and the other eight drawn from the remaining 56 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the seven pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; the 128 supplementary stream words (64 to 191, word 191 the last store of the sense's running count, `doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs) are compared with the image directly and are not drawn; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
 
 *Objective*: the words the SMC eFuse sense streams across the shim are the words the SMC eFuse map returns over JTAG2AXI, both equal the eFuse image the run loads, and the eFuse interface reports the sense done.
 
 *Test Coverage*:
 
-* The sense stores each `valid` strobe's `data` into the shadow word at the running count, one 32-bit word per strobe, for a 256-word bank (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), and the SMC eFuse map exposes those shadow words from `smc_efuse_map @ BASE_ADDR + 0x000_7000` (`hw/sys/smc/regs/smc.rdl`; `hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, address map). The response layout `{data, status, valid}` is `hw/ip/efuse/doc/interface.adoc`, Response Structure.
-* The leaf requires the capture to hold exactly 256 strobes by the time `smc_fuse_sense_done_o` has risen and 64 further edges have passed.
-* Sixteen map words at 4-byte offsets, their indices drawn from the seed with the six named element words (0, 2, 10, 28, 30 and 32) and word 255, the last word of the bank, pinned into every set, each read with a 4-byte access over JTAG2AXI in the drawn order, and the stream words of the same indices equal the word of that index in the eFuse image the run loads; each map word also equals the stream word of the same index.
-* The first word of each named map element equals its word in the eFuse image the run loads: LOCKS at +0x0, JTAG_PUBLIC_IDENTITY at +0x8, I2C_I3C_ID[0] at +0x28, SMC_CONFIG at +0x70, OCCP_TRANSPORT_TIMEOUT at +0x78 and SPARE[0] at +0x80 (`smc_efuse_map.rdl`, register placement).
+* The sense stores each `valid` strobe's `data` into the shadow word at the running count, one 32-bit word per strobe, for a 192-word stream (64 harness plus 128 supplementary words) (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), and the SMC eFuse map exposes those shadow words from `smc_efuse_map @ BASE_ADDR + 0x000_7000` (`hw/sys/smc/regs/smc.rdl`; `hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, address map). The response layout `{data, status, valid}` is `hw/ip/efuse/doc/interface.adoc`, Response Structure.
+* The leaf requires the capture to hold exactly 192 strobes by the time `smc_fuse_sense_done_o` has risen and 64 further edges have passed.
+* Sixteen map words at 4-byte offsets, their indices drawn from the seed with the seven named element words (0, 2, 4, 12, 30, 32 and 34) and word 63, the last harness map word, pinned into every set, each read with a 4-byte access over JTAG2AXI in the drawn order, and the stream words of the same indices equal the word of that index in the eFuse image the run loads; each map word also equals the stream word of the same index. The 128 supplementary stream words (64 to 191, word 191 the last store of the sense's running count) equal the image words of the same index; they are compared on the stream alone, since the SMC map window holds only the harness words.
+* The first word of each named map element equals its word in the eFuse image the run loads: HARNESS_LOCKS at +0x0, SUPPLEMENTARY_LOCKS at +0x8, JTAG_PUBLIC_IDENTITY at +0x10, I2C_I3C_ID[0] at +0x30, SMC_CONFIG at +0x78, OCCP_TRANSPORT_TIMEOUT at +0x80 and SPARE[0] at +0x88 (`smc_efuse_map.rdl`, register placement).
 * EFUSE_INTERFACE_CTRL_STATUS at `efuse_interface_ctrl @ BASE_ADDR + 0x000_8000` (`smc.rdl`) reads `efuse_sense_done` 1 after `smc_fuse_sense_done_o` has risen (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl`, "Indicates if the eFuse state machine has completed").
 * Measured and logged only: the first and last stream words, the number of strobes whose `status` bit is set, the per-index slices of `smc_shadow_regs` next to the stream words and whether each is equal, whether `smc_shadow_regs` is all zero, and the raw status word. The leaf does not read the status before the sense, assembles no multi-word element and does not compare `smc_shadow_regs`.
-* The 240 map words the leaf does not read are out of scope.
+* The 48 map words the leaf does not read over JTAG2AXI are out of scope; the supplementary words are never read over the SMC map.
 
 *Test Procedure*:
 
 [arabic]
-. Draw the sixteen sampled indices and their order from the seed and log them; arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 256 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 256 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
-. Read the sixteen drawn map words in the drawn order, compare each map word and the stream word of the same index with the image word of that index, and compare each map word with the stream word.
-. Compare the first word of each of the six named map elements with its image word.
+. Draw the sixteen sampled indices and their order from the seed and log them; arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 192 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 192 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
+. Read the sixteen drawn map words in the drawn order, compare each map word and the stream word of the same index with the image word of that index, and compare each map word with the stream word; compare the 128 supplementary stream words with the image words of the same index.
+. Compare the first word of each of the seven named map elements with its image word.
 . Read EFUSE_INTERFACE_CTRL_STATUS and require `efuse_sense_done` at 1.
 . Sample `smc_shadow_regs` one `clk_smu_i` edge later, require it resolvable and log the per-index slices and whether it is all zero.
 . Check that the capture, the done-rise wait and every JTAG2AXI poll finished inside their bounds.
@@ -6410,15 +6411,62 @@ completion the bus returned. The cocotb TDO-resolved checks run on cocotb only.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-BOOT-SHADOW-SAMPLES` |the sixteen sampled SMC eFuse map words (the six named element words and word 255, the last word of the bank, pinned, nine drawn from the seed), read over JTAG2AXI in the drawn order, and the stream words of the same indices equal the words of the eFuse image the run loads, and the map words equal the stream words
-|`CHK-BOOT-SHADOW-ELEMENTS` |the first word of each of the six named map elements equals its word in the eFuse image the run loads
+|`CHK-BOOT-SHADOW-SAMPLES` |the sixteen sampled SMC eFuse map words (the seven named element words and word 63, the last harness map word, pinned, eight drawn from the seed), read over JTAG2AXI in the drawn order, and the stream words of the same indices equal the words of the eFuse image the run loads, the map words equal the stream words, and the 128 supplementary stream words equal the image words of the same index
+|`CHK-BOOT-SHADOW-ELEMENTS` |the first word of each of the seven named map elements equals its word in the eFuse image the run loads
 |`CHK-BOOT-SENSE-STATUS` |`efuse_sense_done` of EFUSE_INTERFACE_CTRL_STATUS reads 1 after `smc_fuse_sense_done_o` rose
 |`CHK-TIMEOUT-PATHS` |the stream capture, the done-rise wait and every JTAG2AXI poll finish inside their bounds and no wait record shows an expiry
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: Measured and logged only: the first and last stream words, the number of strobes whose `status` bit is set, the per-index slices of `smc_shadow_regs` next to the stream words and whether each is equal, whether `smc_shadow_regs` is all zero, and the raw status word. The 240 map words the leaf does not read are out of scope.
+*Scope limit*: Measured and logged only: the first and last stream words, the number of strobes whose `status` bit is set, the per-index slices of `smc_shadow_regs` next to the stream words and whether each is equal, whether `smc_shadow_regs` is all zero, and the raw status word. The 48 map words the leaf does not read are out of scope.
+
+'''''
+[[sec-209-smu_smc_efuse_supplementary_shadow_test]]
+===== 209 `smu_smc_efuse_supplementary_shadow_test`
+
+*Phase*: 3
+
+*Area*: SMC
+
+*Source Module*: `smu_smc_efuse_supplementary_shadow_test` (`cocotb_wrapper/tests/`; the sequence `smu_smc_efuse_supplementary_shadow_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the stream capture class `SmuEfuseStreamCapture` of `smu_smc_efuse_shadow_map_readback_test_seq`, armed ahead of the shared bring-up, which records every rising `valid` of `smc_efuse_shim_command_resp` under `u_dut` and the rise of `smc_fuse_sense_done_o` on `clk_smu_i`; SMC eFuse bank model inside the wrapper composition (declared in *Bench stand-ins and exceptions*); `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge, read-only 4-byte accesses); bench observation `tb_smc_jtag2axi_security_disable`; `elaboration` firmware mode under the `sep_rtl_fuse_sense` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images, where `+smc_efuse_hex` names `hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex` (192 words, one per line), which the sequence also reads as the expected words
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `efuse`, `smc`, `boot`, `sep`, `real_rtl`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (no `reseed` key, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+smc_efuse_hex={repo_root}/hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex`.
+
+*Randomization*: RAND-NONE: directed, the 35 sampled window words are read in index order under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+
+*Objective*: 35 sampled words of the SMC supplementary fuse window (every fourth word and the first and last word of each lock region) read over JTAG2AXI after the boot sense equal the stream words and the image words of the same index, all 128 supplementary stream words equal the image words, and SUPPLEMENTARY_LOCKS reads its image words.
+
+*Test Coverage*:
+
+* The reference SMC wrapper of the SMU composition carries the supplementary fuse region of the reference wrappers, "128 words in three lock regions" (`hw/ip/efuse/doc/architecture.adoc`, Supplementary Fuse Region: Configuration), sensed after the 64 harness words in one READ and served through the window at the base of the `fuse` slot of the `smc_external` supplementary region, `SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR` (`doc/integrator/src/smu-smc.adoc`, Supplementary Fuse Region; `hw/sys/smc/doc/memmap.adoc`, the supplementary fuse window).
+* Each of the 35 sampled window words (words 0, 4, 8, ... 124 plus the region boundaries 63, 64, 95, 96 and 127; the lock regions end at words 64, 96 and 128, `hw/ip/efuse/doc/architecture.adoc`, Supplementary Locks), read with a 4-byte access over JTAG2AXI in index order, equals the stream word of the same index (64 to 191, the stores of the sense's running count) and the word of that index in the eFuse image the run loads; all 128 supplementary stream words equal the image words of the same index. The window is sampled because a JTAG2AXI read is slow; the 93 words not read over the window are proven on the stream only.
+* `SUPPLEMENTARY_LOCKS` at `smc_efuse_map` +0x8 (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`) is reachable after the boot sense and reads its two image words; both are 0 in the asset, so the row proves the register is served and no supplementary lock is set, not a non-zero store.
+* Measured and logged only: the first and last supplementary stream words, the number of strobes whose `status` bit is set, and each sampled window word next to its stream and image words. The harness map words, the 93 window words not sampled, the word past the window and the response of a locked region are out of scope; the harness words are the business of `smu_smc_efuse_shadow_map_readback_test`.
+
+*Test Procedure*:
+
+[arabic]
+. Arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 192 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 192 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
+. Read the 35 sampled window words in index order, compare each with the stream word and the image word of the same index, and compare all 128 supplementary stream words with the image words.
+. Read both `SUPPLEMENTARY_LOCKS` words and require the image words.
+. Check that the capture, the done-rise wait and every JTAG2AXI poll finished inside their bounds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SUPP-SHADOW-WINDOW` |the 35 sampled words of the SMC supplementary fuse window, read over JTAG2AXI after the boot sense, and their stream words equal the eFuse image words of the same index, and all 128 supplementary stream words (64 to 191) equal the image words
+|`CHK-SUPP-LOCKS-WORD` |`SUPPLEMENTARY_LOCKS` is reachable after the boot sense and reads its two image words (0 in the asset)
+|`CHK-TIMEOUT-PATHS` |the stream capture, the done-rise wait and every JTAG2AXI poll finish inside their bounds and no wait record shows an expiry
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: Measured and logged only: the first and last supplementary stream words, the status-bit count and each sampled window word. The harness map words, the 93 window words not read over the window (proven on the stream only), the word past the window and the response of a locked region are out of scope.
 
 '''''
 [[sec-160-smu_smc_mailbox_aperture_layout_test]]
@@ -8090,9 +8138,9 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 * The sense is the claim, so the leaf runs on the fuse-sense run mode and requires `+skip_fuse_sense` to be absent; `smc_fuse_sense_done_o` has to be observed rising 0 -> 1, and a run that begins with it already high fails.
 * The expected value comes from the image file the leaf loads and from `smc_addr.h`, both DV-owned; no RTL package or module supplies a golden or a walk.
-* `SMC_TOP_SMC_EFUSE_MAP_SIZE` sets the map at 1024 bytes and the fuse word at 4 bytes, so fuse word `i` is shadow bits `32i+31..32i`. The register base addresses in `smc_addr.h` are required to tile that map with no hole and no overlap, and each register's slice of the port is compared against its own bytes of the image: LOCKS, JTAG_PUBLIC_IDENTITY, the nine I2C_I3C_ID elements, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and the twenty-eight SPARE regions.
+* `SMC_TOP_SMC_EFUSE_MAP_SIZE` sets the map at 256 bytes and the fuse word at 4 bytes, so fuse word `i` is shadow bits `32i+31..32i`. The register base addresses in `smc_addr.h` are required to tile that map with no hole and no overlap, and each register's slice of the port is compared against its own bytes of the image: LOCKS, JTAG_PUBLIC_IDENTITY, the nine I2C_I3C_ID elements, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and the twenty-eight SPARE regions.
 * Every field of every register in `smc_efuse_map.rdl` resets to `0x0`, so the reset value of the whole map is zero; that is the value required before the sense completes and again while the cold reset is held, each over a 64-cycle window rather than at one instant.
-* The image sets all 8192 fuse bits, which the leaf requires of it before it compares anything. Both directions are then counted: the sense has to move all 8192 bits 0 -> 1 and the cold reset all 8192 bits 1 -> 0, so a port stuck at either value fails rather than passing on a partial match.
+* The image sets all 2048 fuse bits, which the leaf requires of it before it compares anything. Both directions are then counted: the sense has to move all 2048 bits 0 -> 1 and the cold reset all 2048 bits 1 -> 0, so a port stuck at either value fails rather than passing on a partial match.
 * A uniform image cannot distinguish one word of the map from another. The word-for-word claim here is that each register's slice carries its own bytes of the image at the port's full width; distinct data at named offsets is placed by `smu_dtp_otp_smc_map_rw_test` and `smu_otp_vs_fabric_map_race_test`.
 
 *Test Procedure*:
@@ -8101,7 +8149,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 . Bring the wrapper up on the fuse-sense run mode and require `+skip_fuse_sense` to be absent and `smc_shadow_regs` to be as wide as the map size declares.
 . Read the image `+smc_efuse_hex` names, require it to program every bit of the map, and sample `smc_shadow_regs` before the sense completes.
 . Wait for `smc_fuse_sense_done_o` to rise, then compare each register's slice of `smc_shadow_regs` against its bytes of the image, count the bits that moved 0 -> 1, and require the port to hold that value for 64 clk_smu.
-. Assert `rst_cold_ni`, wait for `smc_fuse_sense_done_o` to fall, and require `smc_shadow_regs` to read the map reset value, all 8192 bits having moved 1 -> 0.
+. Assert `rst_cold_ni`, wait for `smc_fuse_sense_done_o` to fall, and require `smc_shadow_regs` to read the map reset value, all 2048 bits having moved 1 -> 0.
 . Require that reset value to hold for a further 64 clk_smu with `rst_cold_ni` still asserted.
 
 *Checkers*:
@@ -8944,15 +8992,15 @@ sequence's own raise, outside the scoreboard
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 16500; tags `depth`, `dtp`, `sep`, `smc`, `sba`, `efuse`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+sep_efuse_prog_fail_count=1`, `+smc_efuse_prog_fail_count=1`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`, `+pll_sys_period_ns=10`.
 
-*Randomization*: RAND-NONE: directed, the fuse bit addresses (bit 0, the middle of the array with each address bit set, the fresh words and one bit past the array) are fixed values from the generated headers walked on both blocks in every run, and the failing first program comes from the fixed plusargs; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+*Randomization*: RAND-NONE: directed, the fuse bit addresses (bit 0, the spare word with each address bit set, the fresh words and one bit past the array) are fixed values from the generated headers walked on both blocks in every run, and the failing first program comes from the fixed plusargs; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
 
 *Objective*: start eFuse read and program commands on the SEP and SMC fuse-command ports, which leave the SMU for the wrapper's eFuse shims, over every fuse address bit. Extends `smu_dtp_sep_dm_dmi_test`.
 
 *Test Coverage*:
 
-* Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at a fuse bit address, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
-* S4: a read at bit address 0, and at the middle of the array with each address bit set in turn, completes with `read_done` and no `read_status` error. The middle of the array is spare space that no lock field of the shadow preloads covers, so no read there is blocked.
-* S5: programs of four bits of the fuse word at the middle of the array complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
+* Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at the fuse bit address written to EFUSE_READ_ADDR or EFUSE_PROGRAM_ADDR, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers plus the 32 x WORDS supplementary bits, 128 words in the reference wrappers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
+* S4: a read at bit address 0, and at the spare word with each address bit set in turn (addresses inside the array only), completes with `read_done` and no `read_status` error. The spare word is the middle of the SEP array and the first word of SPARE[1] on the SMC: space that no lock field of the shadow preloads covers, so no read there is blocked.
+* S5: programs of four bits of the spare fuse word complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
 * S6: a read and a program one bit past the array complete with an error and set the sticky read and program address errors, and the clear strobes clear both.
 * S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. Every program ends with the SHIM's verify read of the word, so a program at a fresh bit reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
 * S8: programs of all 32 bits of a fresh word complete without error, the word reads back `0xFFFF_FFFF`, and the word after it still reads 0.
@@ -8970,7 +9018,7 @@ sequence's own raise, outside the scoreboard
 |Checker |Description
 |`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
 |`CHK-EFUSE-CMD-READ` |on both blocks every walk read completes with `read_done` and no error
-|`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the middle fuse word reads back with every programmed bit set
+|`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the spare fuse word reads back with every programmed bit set
 |`CHK-EFUSE-CMD-OOB` |on both blocks the out-of-range read and program complete with an error, set both sticky address errors, and the clear strobes clear them
 |`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks a program against a failing bank reports `program_status` 1 from its verify read and the word reads 0
 |`CHK-EFUSE-CMD-WORD` |on both blocks the all-ones word reads back `0xFFFF_FFFF` and the next word reads 0
@@ -13203,7 +13251,11 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_smc_efuse_shadow_map_readback_test` (159)
 |SMC
 |RAND-REP
-|the seed draws the sixteen sampled indices (0 to 255 of the 256-word bank, sixteen distinct indices: the six named element words 0, 2, 10, 28, 30 and 32 of `CHK-BOOT-SHADOW-ELEMENTS` (LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 255, the last word of the bank and the last store of the sense's running count (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), pinned beside them in every set, and the other nine drawn from the remaining 249 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the six pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
+|the seed draws the sixteen sampled indices (0 to 63 of the 64 harness map words, sixteen distinct indices: the seven named element words 0, 2, 4, 12, 30, 32 and 34 of `CHK-BOOT-SHADOW-ELEMENTS` (HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 63, the last harness map word, pinned beside them in every set, and the other eight drawn from the remaining 56 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the seven pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; the 128 supplementary stream words (64 to 191, word 191 the last store of the sense's running count) are compared with the image directly and are not drawn; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
+|`smu_smc_efuse_supplementary_shadow_test` (209)
+|SMC
+|RAND-NONE
+|none; directed: the 35 sampled window words are read in index order under the entry's checked-in `+smc_efuse_hex` image; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
 |`smu_smc_mailbox_aperture_layout_test` (160)
 |SMC
 |RAND-NONE

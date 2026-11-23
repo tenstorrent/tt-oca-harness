@@ -42,7 +42,7 @@ The first bank write after reset is dropped:
                       golden has a bit set that is clear in the held word, the READ
                       returns its golden and EFUSE_PROGRAM_INTERFACE_READ_DATA still
                       equals the word of the kept program
-                      (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:156``: held until the
+                      (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:144``: held until the
                       next successful program). A register that loads, ORs in, or
                       loads only a non-zero READ result fails.
 
@@ -77,7 +77,14 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_image import SepEfuseImage
-from env.sep_efuse_plan import PROGRAM_CTRL_ADDR, STATUS_ADDR, program_ctrl_word, shadow_addr
+from env.sep_efuse_plan import (
+    PROGRAM_ADDR_ADDR,
+    PROGRAM_CTRL_ADDR,
+    STATUS_ADDR,
+    program_addr_word,
+    program_ctrl_word,
+    shadow_addr,
+)
 from env.sep_efuse_test_lib import SepEfuseFd
 from env.sep_lcc_golden import LC_TEST_DEV
 from env.sep_locked_field_irq import SPARE_COUNT, spare_zero_pins
@@ -252,8 +259,9 @@ class sep_efuse_program_verify_test(sep_base_test):
 
         pre_err = await self._clear_req_err()
         m_x = cmds.mark()
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(x))
         dut.efuse_shim_resp_hold_i.value = 1
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(x))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word())
         busy_pre = await self._poll_pg(_M_PG_BUSY)
         lock_seq = await self.fd.access(SepAxiOp.WRITE, lock_addr, lock_mask, unverified_write=True)
         lock_rb = await self.fd.rd(lock_addr)
@@ -304,8 +312,9 @@ class sep_efuse_program_verify_test(sep_base_test):
 
         want_y = self.golden.words[word_y]
         pre_y = await self._req_err()
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(y))
         m_y = cmds.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(y))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word())
         pg_y = await self._poll_pg(_M_PG_DONE)
         err_y = await self._req_err()
         await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
