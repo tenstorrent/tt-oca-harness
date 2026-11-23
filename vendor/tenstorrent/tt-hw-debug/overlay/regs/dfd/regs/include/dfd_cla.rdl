@@ -797,7 +797,7 @@ addrmap dfd_cla {
         } PosEdgeSignal1[15:15] = 0x0;
     } CDbgSignalEdgeDetectCfg @ 0x180;
     reg {
-        desc = "Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.";
+        desc = "Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit. A status bit sets in every cycle in which its EAP relation holds while its node is current and EnableEap is set, and that set takes priority over a w2c write in the same cycle, which then leaves the bit at 1. Write the w2c bit once the relation is false, the node is no longer current or EnableEap is clear.";
         regwidth = 64;
 
         field {
