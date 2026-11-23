@@ -45,7 +45,7 @@
 #define SCRATCH_SENSE 7u
 #define TOKEN_POLL_BOUND 4096u
 
-#define TOKEN_WORDS SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_NUM
+#define TOKEN_WORDS SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_NUM
 
 // Index 0 holds token[31:0] (token_processing.adoc, token submission
 // registers). SiP: TOKEN_T1; chiplet: TOKEN_OTHER, then TOKEN_T2
@@ -74,7 +74,7 @@ static uint32_t token_submit(uint32_t array_base, uint32_t go_mask, uint32_t mat
 
     *pre = READ_REG(match_addr);
     efuse_write_8_words(array_base, token);
-    WRITE_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR, go_mask);
+    WRITE_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR, go_mask);
     while (n < TOKEN_POLL_BOUND) {
         value = READ_REG(match_addr);
         n++;
@@ -100,25 +100,25 @@ int main(void) {
     // RMA results stay idle until fuse sensing completes.
     uint32_t sense = efuse_wait_sense_done() == 0 ? 0u : 1u;
 
-    efuse_read_word_raw(EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR), &rd);
+    efuse_read_word_raw(EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR), &rd);
     // read_enable is cleared after the last word so a program can own the
     // command path.
-    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0);
 
     uint32_t sip = token_submit(
-        SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0), EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm,
-        SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR, SIP_TOKEN, &sip_pre, &sip_reads);
-    uint32_t chip = token_submit(SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
+        SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0), EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm,
+        SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR, SIP_TOKEN, &sip_pre, &sip_reads);
+    uint32_t chip = token_submit(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
                                  EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm,
-                                 SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR, CHIP_TOKEN,
+                                 SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR, CHIP_TOKEN,
                                  &chip_pre, &chip_reads);
     // The second start clears the retained digest validity, so the result
     // reads idle until the new digest is compared.
-    uint32_t chip2 = token_submit(SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
+    uint32_t chip2 = token_submit(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
                                   EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm,
-                                  SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR,
+                                  SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR,
                                   CHIP_MATCH_TOKEN, &chip2_pre, &chip2_reads);
-    uint32_t fault = READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
+    uint32_t fault = READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
 
     sep_scratch_wr(SCRATCH_READ_FLAGS,
                    (rd.completed & 1u) | ((rd.read_status & 1u) << 1) | ((rd.req_error & 1u) << 2));

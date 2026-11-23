@@ -82,7 +82,7 @@ _EFUSE_MMR_SEC_DIS_MATCH = sym("SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH
 # Seeded into SEC_DISABLE_TOKEN_I[0] before the token-block sample reads it.
 _SEC_DIS_I0_SEED = 0x5A5A_4001
 # Interface control sits outside the token block and is blocked in PROD.
-# For SEP, architecture.adoc:351-353 (JTAG Access Control Based on LC_STATE) states
+# For SEP, architecture.adoc:355-357 (JTAG Access Control Based on LC_STATE) states
 # that accesses outside the MMR space "are blocked with an SLVERR response", and
 # otp_fuse_controller.adoc:124-131 gives every such access SLVERR and read data 0xBADCAB1E.
 _JTAG_DENY_RESP = RESP_SLVERR

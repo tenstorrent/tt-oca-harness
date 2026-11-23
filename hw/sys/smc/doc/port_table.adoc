@@ -41,6 +41,7 @@ endif::backend-html5[]
 |`efuse_shim_command_req_o` |`smc_efuse_pkg::fuse_command_req_t` |Output |- |eFuse command interface request. |eFuse controller → eFuse Shim |N/A
 |`efuse_shim_command_resp_i` |`smc_efuse_pkg::fuse_command_resp_t` |Input |- |eFuse command interface response. |eFuse Shim → eFuse controller |N/A
 |`shadow_regs_o` |`smc_efuse_pkg::efuse_map_t` |Output |- |eFuse shadow register output. |eFuse controller → External systems |N/A
+|`supplementary_shadow_regs_o` |`logic [N-1:0][31:0]` |Output |32 × max(1, `SUPPLEMENTARY_FUSE.WORDS`) |Supplementary fuse shadow register output; one word tied to zero with no supplementary region. |eFuse controller → External systems |N/A
 |`pll_clk_obs_i` |`logic` |Input |1 |PLL clock observation input. |PLL → GPIO padring (muxed) |N/A
 |`pll_clk_obs_en_i` |`logic` |Input |1 |PLL clock observation enable. |Control logic → GPIO padring |N/A
 |`pvt_process_clk_obs_i` |`logic` |Input |1 |PVT process monitor clock observation input. |PVT → GPIO padring (muxed) |N/A

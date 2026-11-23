@@ -41,6 +41,7 @@ if { $::cdc_app eq "cdc" } {
 # then the SMC instance-level annotation.
 source -echo [file join $ocah_smc_flows_dir cdc cdc_rdc_setup.tcl]
 source -echo [file join $ocah_smc_cdc_dir smc.cdc_rdc_setup.tcl]
+source -echo [file join $ocah_smc_cdc_dir smc.pad_boundary.tcl]
 
 # CDC-only: convergence constraints (contributions are emitted once by
 # cdc_conv_apply after every file has been read).

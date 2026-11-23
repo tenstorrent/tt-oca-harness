@@ -10,73 +10,29 @@
 <p>Address map for efuse shadow registers providing access to various chip configuration and ID fields</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x28, stride 0x8</li>
-<li><strong>SPARE[28]</strong>: 28 registers, base 0x80, stride 0x20</li>
+<li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x30, stride 0x8</li>
+<li><strong>SPARE[3]</strong>: 3 registers, base 0x88, stride 0x20</li>
+<li><strong>SPARE_TAIL[3]</strong>: 3 registers, base 0xE8, stride 0x8</li>
 </ul>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.<br><br>A write to the shadow register of a write-locked field, or a read of the shadow<br>register of a read-locked field, completes with SLVERR and read data 0xBADCAB1E,<br>leaves the shadow register unchanged and raises the locked-field access interrupt<br>for the duration of the access. An attempted fuse program of a write-locked field,<br>or an attempted fuse read of a read-locked field, started through the eFuse<br>interface control registers is refused and sets<br>EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</td></tr>
-<tr><td>0x8</td><td><a href="#JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</a></td><td>RW</td><td>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range<br>are admitted while every JTAG write and every other JTAG read is blocked. When<br>the lifecycle state fails its integrity check, JTAG reads of this range are<br>blocked as well. Encoding<br>is adopter-defined; the harness does not interpret or consume the value. The<br>slot-0 read lock still hides the bits when set.</td></tr>
-<tr><td>0x28 - 0x68</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
-<tr><td>0x70</td><td><a href="#SMC_CONFIG">SMC_CONFIG</a></td><td>RW</td><td>SMC boot and configuration controls sourced from fuse. Only the low word carries<br>assigned bits, so firmware reads it as a single 32-bit access.</td></tr>
-<tr><td>0x78</td><td><a href="#OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</a></td><td>RW</td><td>OCCP transport timeout in the low word; upper word reserved.</td></tr>
-<tr><td>0x80 - 0x3E0</td><td><a href="#SPARE_28_">SPARE[28]</a></td><td>RW</td><td>Individually lockable 256-bit spare region, reserved for fields assigned after the<br>RTL is frozen. Each element has its own write/read lock pair in LOCKS.</td></tr>
+<tr><td>0x0</td><td><a href="#HARNESS_LOCKS">HARNESS_LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.<br><br>A write to the shadow register of a write-locked field, or a read of the shadow<br>register of a read-locked field, completes with SLVERR and read data 0xBADCAB1E,<br>leaves the shadow register unchanged and raises the locked-field access interrupt<br>for the duration of the access. An attempted fuse program of a write-locked field,<br>or an attempted fuse read of a read-locked field, started through the eFuse<br>interface control registers is refused and sets<br>EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</td></tr>
+<tr><td>0x8</td><td><a href="#SUPPLEMENTARY_LOCKS">SUPPLEMENTARY_LOCKS</a></td><td>RW</td><td>Lock controls for the supplementary fuse region. When write locked, the corresponding<br>supplementary lock region is not programmable. When read locked, its shadow register is<br>not readable.</td></tr>
+<tr><td>0x10</td><td><a href="#JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</a></td><td>RW</td><td>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range<br>are admitted while every JTAG write and every other JTAG read is blocked. When<br>the lifecycle state fails its integrity check, JTAG reads of this range are<br>blocked as well. Encoding<br>is adopter-defined; the harness does not interpret or consume the value. The<br>slot-0 read lock still hides the bits when set.</td></tr>
+<tr><td>0x30 - 0x70</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
+<tr><td>0x78</td><td><a href="#SMC_CONFIG">SMC_CONFIG</a></td><td>RW</td><td>SMC boot and configuration controls sourced from fuse. Only the low word carries<br>assigned bits, so firmware reads it as a single 32-bit access.</td></tr>
+<tr><td>0x80</td><td><a href="#OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</a></td><td>RW</td><td>OCCP transport timeout in the low word; upper word reserved.</td></tr>
+<tr><td>0x88 - 0xC8</td><td><a href="#SPARE_3_">SPARE[3]</a></td><td>RW</td><td>Individually lockable 256-bit spare region, reserved for fields assigned after the<br>RTL is frozen. Each element has its own write/read lock pair in HARNESS_LOCKS.</td></tr>
+<tr><td>0xE8 - 0xF8</td><td><a href="#SPARE_TAIL_3_">SPARE_TAIL[3]</a></td><td>RW</td><td>64-bit spare region at the end of the map, reserved for fields assigned after the<br>RTL is frozen. All elements share the slot-7 write/read lock pair in<br>HARNESS_LOCKS.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="LOCKS">LOCKS</h3>
+<h3 id="HARNESS_LOCKS">HARNESS_LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>spare27_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</td></tr>
-<tr><td>62</td><td>spare27_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.</td></tr>
-<tr><td>61</td><td>spare26_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.</td></tr>
-<tr><td>60</td><td>spare26_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.</td></tr>
-<tr><td>59</td><td>spare25_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.</td></tr>
-<tr><td>58</td><td>spare25_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.</td></tr>
-<tr><td>57</td><td>spare24_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.</td></tr>
-<tr><td>56</td><td>spare24_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.</td></tr>
-<tr><td>55</td><td>spare23_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.</td></tr>
-<tr><td>54</td><td>spare23_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.</td></tr>
-<tr><td>53</td><td>spare22_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.</td></tr>
-<tr><td>52</td><td>spare22_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.</td></tr>
-<tr><td>51</td><td>spare21_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.</td></tr>
-<tr><td>50</td><td>spare21_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.</td></tr>
-<tr><td>49</td><td>spare20_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.</td></tr>
-<tr><td>48</td><td>spare20_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.</td></tr>
-<tr><td>47</td><td>spare19_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.</td></tr>
-<tr><td>46</td><td>spare19_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.</td></tr>
-<tr><td>45</td><td>spare18_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.</td></tr>
-<tr><td>44</td><td>spare18_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.</td></tr>
-<tr><td>43</td><td>spare17_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.</td></tr>
-<tr><td>42</td><td>spare17_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.</td></tr>
-<tr><td>41</td><td>spare16_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.</td></tr>
-<tr><td>40</td><td>spare16_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.</td></tr>
-<tr><td>39</td><td>spare15_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.</td></tr>
-<tr><td>38</td><td>spare15_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.</td></tr>
-<tr><td>37</td><td>spare14_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.</td></tr>
-<tr><td>36</td><td>spare14_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.</td></tr>
-<tr><td>35</td><td>spare13_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.</td></tr>
-<tr><td>34</td><td>spare13_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.</td></tr>
-<tr><td>33</td><td>spare12_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.</td></tr>
-<tr><td>32</td><td>spare12_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.</td></tr>
-<tr><td>31</td><td>spare11_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.</td></tr>
-<tr><td>30</td><td>spare11_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.</td></tr>
-<tr><td>29</td><td>spare10_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.</td></tr>
-<tr><td>28</td><td>spare10_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.</td></tr>
-<tr><td>27</td><td>spare9_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.</td></tr>
-<tr><td>26</td><td>spare9_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.</td></tr>
-<tr><td>25</td><td>spare8_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.</td></tr>
-<tr><td>24</td><td>spare8_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.</td></tr>
-<tr><td>23</td><td>spare7_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.</td></tr>
-<tr><td>22</td><td>spare7_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.</td></tr>
-<tr><td>21</td><td>spare6_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.</td></tr>
-<tr><td>20</td><td>spare6_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.</td></tr>
-<tr><td>19</td><td>spare5_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.</td></tr>
-<tr><td>18</td><td>spare5_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.</td></tr>
-<tr><td>17</td><td>spare4_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.</td></tr>
-<tr><td>16</td><td>spare4_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.</td></tr>
-<tr><td>15</td><td>spare3_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.</td></tr>
-<tr><td>14</td><td>spare3_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.</td></tr>
+<tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>spare_tail_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare tail read lock (slot 7). When set, no SPARE_TAIL element is readable.</td></tr>
+<tr><td>14</td><td>spare_tail_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare tail write lock (slot 7). When set, no SPARE_TAIL element is writable.</td></tr>
 <tr><td>13</td><td>spare2_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.</td></tr>
 <tr><td>12</td><td>spare2_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.</td></tr>
 <tr><td>11</td><td>spare1_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.</td></tr>
@@ -91,6 +47,74 @@
 <tr><td>2</td><td>i2c_i3c_id_write_lock</td><td>RW1S</td><td>0x0</td><td>I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.</td></tr>
 <tr><td>1</td><td>jtag_public_identity_read_lock</td><td>RW1S</td><td>0x0</td><td>JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.</td></tr>
 <tr><td>0</td><td>jtag_public_identity_write_lock</td><td>RW1S</td><td>0x0</td><td>JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.</td></tr>
+</table>
+<h3 id="SUPPLEMENTARY_LOCKS">SUPPLEMENTARY_LOCKS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>region31_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 31 read lock. When set, supplementary lock region 31 is not readable.</td></tr>
+<tr><td>62</td><td>region31_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 31 write lock. When set, supplementary lock region 31 is not writable.</td></tr>
+<tr><td>61</td><td>region30_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 30 read lock. When set, supplementary lock region 30 is not readable.</td></tr>
+<tr><td>60</td><td>region30_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 30 write lock. When set, supplementary lock region 30 is not writable.</td></tr>
+<tr><td>59</td><td>region29_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 29 read lock. When set, supplementary lock region 29 is not readable.</td></tr>
+<tr><td>58</td><td>region29_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 29 write lock. When set, supplementary lock region 29 is not writable.</td></tr>
+<tr><td>57</td><td>region28_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 28 read lock. When set, supplementary lock region 28 is not readable.</td></tr>
+<tr><td>56</td><td>region28_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 28 write lock. When set, supplementary lock region 28 is not writable.</td></tr>
+<tr><td>55</td><td>region27_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 27 read lock. When set, supplementary lock region 27 is not readable.</td></tr>
+<tr><td>54</td><td>region27_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 27 write lock. When set, supplementary lock region 27 is not writable.</td></tr>
+<tr><td>53</td><td>region26_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 26 read lock. When set, supplementary lock region 26 is not readable.</td></tr>
+<tr><td>52</td><td>region26_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 26 write lock. When set, supplementary lock region 26 is not writable.</td></tr>
+<tr><td>51</td><td>region25_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 25 read lock. When set, supplementary lock region 25 is not readable.</td></tr>
+<tr><td>50</td><td>region25_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 25 write lock. When set, supplementary lock region 25 is not writable.</td></tr>
+<tr><td>49</td><td>region24_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 24 read lock. When set, supplementary lock region 24 is not readable.</td></tr>
+<tr><td>48</td><td>region24_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 24 write lock. When set, supplementary lock region 24 is not writable.</td></tr>
+<tr><td>47</td><td>region23_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 23 read lock. When set, supplementary lock region 23 is not readable.</td></tr>
+<tr><td>46</td><td>region23_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 23 write lock. When set, supplementary lock region 23 is not writable.</td></tr>
+<tr><td>45</td><td>region22_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 22 read lock. When set, supplementary lock region 22 is not readable.</td></tr>
+<tr><td>44</td><td>region22_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 22 write lock. When set, supplementary lock region 22 is not writable.</td></tr>
+<tr><td>43</td><td>region21_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 21 read lock. When set, supplementary lock region 21 is not readable.</td></tr>
+<tr><td>42</td><td>region21_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 21 write lock. When set, supplementary lock region 21 is not writable.</td></tr>
+<tr><td>41</td><td>region20_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 20 read lock. When set, supplementary lock region 20 is not readable.</td></tr>
+<tr><td>40</td><td>region20_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 20 write lock. When set, supplementary lock region 20 is not writable.</td></tr>
+<tr><td>39</td><td>region19_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 19 read lock. When set, supplementary lock region 19 is not readable.</td></tr>
+<tr><td>38</td><td>region19_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 19 write lock. When set, supplementary lock region 19 is not writable.</td></tr>
+<tr><td>37</td><td>region18_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 18 read lock. When set, supplementary lock region 18 is not readable.</td></tr>
+<tr><td>36</td><td>region18_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 18 write lock. When set, supplementary lock region 18 is not writable.</td></tr>
+<tr><td>35</td><td>region17_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 17 read lock. When set, supplementary lock region 17 is not readable.</td></tr>
+<tr><td>34</td><td>region17_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 17 write lock. When set, supplementary lock region 17 is not writable.</td></tr>
+<tr><td>33</td><td>region16_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 16 read lock. When set, supplementary lock region 16 is not readable.</td></tr>
+<tr><td>32</td><td>region16_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 16 write lock. When set, supplementary lock region 16 is not writable.</td></tr>
+<tr><td>31</td><td>region15_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 15 read lock. When set, supplementary lock region 15 is not readable.</td></tr>
+<tr><td>30</td><td>region15_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 15 write lock. When set, supplementary lock region 15 is not writable.</td></tr>
+<tr><td>29</td><td>region14_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 14 read lock. When set, supplementary lock region 14 is not readable.</td></tr>
+<tr><td>28</td><td>region14_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 14 write lock. When set, supplementary lock region 14 is not writable.</td></tr>
+<tr><td>27</td><td>region13_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 13 read lock. When set, supplementary lock region 13 is not readable.</td></tr>
+<tr><td>26</td><td>region13_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 13 write lock. When set, supplementary lock region 13 is not writable.</td></tr>
+<tr><td>25</td><td>region12_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 12 read lock. When set, supplementary lock region 12 is not readable.</td></tr>
+<tr><td>24</td><td>region12_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 12 write lock. When set, supplementary lock region 12 is not writable.</td></tr>
+<tr><td>23</td><td>region11_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 11 read lock. When set, supplementary lock region 11 is not readable.</td></tr>
+<tr><td>22</td><td>region11_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 11 write lock. When set, supplementary lock region 11 is not writable.</td></tr>
+<tr><td>21</td><td>region10_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 10 read lock. When set, supplementary lock region 10 is not readable.</td></tr>
+<tr><td>20</td><td>region10_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 10 write lock. When set, supplementary lock region 10 is not writable.</td></tr>
+<tr><td>19</td><td>region9_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 9 read lock. When set, supplementary lock region 9 is not readable.</td></tr>
+<tr><td>18</td><td>region9_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 9 write lock. When set, supplementary lock region 9 is not writable.</td></tr>
+<tr><td>17</td><td>region8_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 8 read lock. When set, supplementary lock region 8 is not readable.</td></tr>
+<tr><td>16</td><td>region8_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 8 write lock. When set, supplementary lock region 8 is not writable.</td></tr>
+<tr><td>15</td><td>region7_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 7 read lock. When set, supplementary lock region 7 is not readable.</td></tr>
+<tr><td>14</td><td>region7_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 7 write lock. When set, supplementary lock region 7 is not writable.</td></tr>
+<tr><td>13</td><td>region6_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 6 read lock. When set, supplementary lock region 6 is not readable.</td></tr>
+<tr><td>12</td><td>region6_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 6 write lock. When set, supplementary lock region 6 is not writable.</td></tr>
+<tr><td>11</td><td>region5_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 5 read lock. When set, supplementary lock region 5 is not readable.</td></tr>
+<tr><td>10</td><td>region5_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 5 write lock. When set, supplementary lock region 5 is not writable.</td></tr>
+<tr><td>9</td><td>region4_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 4 read lock. When set, supplementary lock region 4 is not readable.</td></tr>
+<tr><td>8</td><td>region4_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 4 write lock. When set, supplementary lock region 4 is not writable.</td></tr>
+<tr><td>7</td><td>region3_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 3 read lock. When set, supplementary lock region 3 is not readable.</td></tr>
+<tr><td>6</td><td>region3_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 3 write lock. When set, supplementary lock region 3 is not writable.</td></tr>
+<tr><td>5</td><td>region2_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 2 read lock. When set, supplementary lock region 2 is not readable.</td></tr>
+<tr><td>4</td><td>region2_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 2 write lock. When set, supplementary lock region 2 is not writable.</td></tr>
+<tr><td>3</td><td>region1_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 1 read lock. When set, supplementary lock region 1 is not readable.</td></tr>
+<tr><td>2</td><td>region1_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 1 write lock. When set, supplementary lock region 1 is not writable.</td></tr>
+<tr><td>1</td><td>region0_read_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 0 read lock. When set, supplementary lock region 0 is not readable.</td></tr>
+<tr><td>0</td><td>region0_write_lock</td><td>RW1S</td><td>0x0</td><td>Supplementary region 0 write lock. When set, supplementary lock region 0 is not writable.</td></tr>
 </table>
 <h3 id="JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</h3>
 <table>
@@ -118,9 +142,14 @@
 <tr><td>63:32</td><td>timeout_rsvd</td><td>RW</td><td>0x0</td><td>Reserved for extension of the timeout encoding.</td></tr>
 <tr><td>31:0</td><td>timeout</td><td>RW</td><td>0x0</td><td>Transport timeout value consumed by the boot ROM OCCP driver.</td></tr>
 </table>
-<h3 id="SPARE_28_">SPARE[28]</h3>
+<h3 id="SPARE_3_">SPARE[3]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>255:0</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Spare fuse bits for future use.</td></tr>
+</table>
+<h3 id="SPARE_TAIL_3_">SPARE_TAIL[3]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Spare fuse bits for future use.</td></tr>
 </table>
 </div>

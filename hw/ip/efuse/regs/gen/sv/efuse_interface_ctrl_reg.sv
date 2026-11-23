@@ -97,6 +97,8 @@ module efuse_interface_ctrl_reg (
         logic EFUSE_READ_INTERFACE_READ_DATA;
         logic EFUSE_READ_REQ_TIMEOUT;
         logic EFUSE_PROGRAM_REQ_TIMEOUT;
+        logic EFUSE_PROGRAM_ADDR;
+        logic EFUSE_READ_ADDR;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -125,7 +127,11 @@ module efuse_interface_ctrl_reg (
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h14);
         decoded_reg_strb.EFUSE_PROGRAM_REQ_TIMEOUT = cpuif_req_masked & (cpuif_addr == 10'h18);
         is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h18);
-        is_valid_addr = cpuif_addr < 10'h1c;
+        decoded_reg_strb.EFUSE_PROGRAM_ADDR = cpuif_req_masked & (cpuif_addr == 10'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h1c);
+        decoded_reg_strb.EFUSE_READ_ADDR = cpuif_req_masked & (cpuif_addr == 10'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h20);
+        is_valid_addr = cpuif_addr < 10'h24;
         decoded_err = ~is_valid_addr & decoded_req;
     end
 
@@ -156,10 +162,6 @@ module efuse_interface_ctrl_reg (
         } EFUSE_INTERFACE_CTRL_STATUS;
         struct {
             struct {
-                logic [15:0] next;
-                logic load_next;
-            } efuse_addr;
-            struct {
                 logic next;
                 logic load_next;
             } efuse_data;
@@ -173,10 +175,6 @@ module efuse_interface_ctrl_reg (
             } program_enable;
         } EFUSE_PROGRAM_CTRL;
         struct {
-            struct {
-                logic [15:0] next;
-                logic load_next;
-            } efuse_addr;
             struct {
                 logic next;
                 logic load_next;
@@ -206,6 +204,18 @@ module efuse_interface_ctrl_reg (
                 logic load_next;
             } program_req_timeout_enable;
         } EFUSE_PROGRAM_REQ_TIMEOUT;
+        struct {
+            struct {
+                logic [31:0] next;
+                logic load_next;
+            } efuse_addr;
+        } EFUSE_PROGRAM_ADDR;
+        struct {
+            struct {
+                logic [31:0] next;
+                logic load_next;
+            } efuse_addr;
+        } EFUSE_READ_ADDR;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -223,9 +233,6 @@ module efuse_interface_ctrl_reg (
         } EFUSE_INTERFACE_CTRL_STATUS;
         struct {
             struct {
-                logic [15:0] value;
-            } efuse_addr;
-            struct {
                 logic value;
             } efuse_data;
             struct {
@@ -236,9 +243,6 @@ module efuse_interface_ctrl_reg (
             } program_enable;
         } EFUSE_PROGRAM_CTRL;
         struct {
-            struct {
-                logic [15:0] value;
-            } efuse_addr;
             struct {
                 logic value;
             } efuse_read_go;
@@ -262,6 +266,16 @@ module efuse_interface_ctrl_reg (
                 logic value;
             } program_req_timeout_enable;
         } EFUSE_PROGRAM_REQ_TIMEOUT;
+        struct {
+            struct {
+                logic [31:0] value;
+            } efuse_addr;
+        } EFUSE_PROGRAM_ADDR;
+        struct {
+            struct {
+                logic [31:0] value;
+            } efuse_addr;
+        } EFUSE_READ_ADDR;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -343,29 +357,6 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value = field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value;
-    // Field: efuse_interface_ctrl.EFUSE_PROGRAM_CTRL.efuse_addr
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.EFUSE_PROGRAM_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.next = next_c;
-        field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value <= 16'h0;
-        end else begin
-            if(field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.load_next) begin
-                field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value <= field_combo.EFUSE_PROGRAM_CTRL.efuse_addr.next;
-            end
-        end
-    end
-    assign hwif_out.EFUSE_PROGRAM_CTRL.efuse_addr.value = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
     // Field: efuse_interface_ctrl.EFUSE_PROGRAM_CTRL.efuse_data
     always_comb begin
         automatic logic [0:0] next_c;
@@ -438,29 +429,6 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_PROGRAM_CTRL.program_enable.value = field_storage.EFUSE_PROGRAM_CTRL.program_enable.value;
-    // Field: efuse_interface_ctrl.EFUSE_READ_CTRL.efuse_addr
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.EFUSE_READ_CTRL.efuse_addr.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.EFUSE_READ_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.EFUSE_READ_CTRL.efuse_addr.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.EFUSE_READ_CTRL.efuse_addr.next = next_c;
-        field_combo.EFUSE_READ_CTRL.efuse_addr.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.EFUSE_READ_CTRL.efuse_addr.value <= 16'h0;
-        end else begin
-            if(field_combo.EFUSE_READ_CTRL.efuse_addr.load_next) begin
-                field_storage.EFUSE_READ_CTRL.efuse_addr.value <= field_combo.EFUSE_READ_CTRL.efuse_addr.next;
-            end
-        end
-    end
-    assign hwif_out.EFUSE_READ_CTRL.efuse_addr.value = field_storage.EFUSE_READ_CTRL.efuse_addr.value;
     // Field: efuse_interface_ctrl.EFUSE_READ_CTRL.efuse_read_go
     always_comb begin
         automatic logic [0:0] next_c;
@@ -602,6 +570,52 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_enable.value = field_storage.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_enable.value;
+    // Field: efuse_interface_ctrl.EFUSE_PROGRAM_ADDR.efuse_addr
+    always_comb begin
+        automatic logic [31:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.EFUSE_PROGRAM_ADDR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            load_next_c = '1;
+        end
+        field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.next = next_c;
+        field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value <= 32'h0;
+        end else begin
+            if(field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.load_next) begin
+                field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value <= field_combo.EFUSE_PROGRAM_ADDR.efuse_addr.next;
+            end
+        end
+    end
+    assign hwif_out.EFUSE_PROGRAM_ADDR.efuse_addr.value = field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value;
+    // Field: efuse_interface_ctrl.EFUSE_READ_ADDR.efuse_addr
+    always_comb begin
+        automatic logic [31:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.EFUSE_READ_ADDR.efuse_addr.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.EFUSE_READ_ADDR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.EFUSE_READ_ADDR.efuse_addr.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            load_next_c = '1;
+        end
+        field_combo.EFUSE_READ_ADDR.efuse_addr.next = next_c;
+        field_combo.EFUSE_READ_ADDR.efuse_addr.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.EFUSE_READ_ADDR.efuse_addr.value <= 32'h0;
+        end else begin
+            if(field_combo.EFUSE_READ_ADDR.efuse_addr.load_next) begin
+                field_storage.EFUSE_READ_ADDR.efuse_addr.value <= field_combo.EFUSE_READ_ADDR.efuse_addr.next;
+            end
+        end
+    end
+    assign hwif_out.EFUSE_READ_ADDR.efuse_addr.value = field_storage.EFUSE_READ_ADDR.efuse_addr.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -630,7 +644,6 @@ module efuse_interface_ctrl_reg (
             readback_data_var[6] = hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error.next;
         end
         if(rd_mux_addr == 10'h4) begin
-            readback_data_var[15:0] = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
             readback_data_var[16] = field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value;
             readback_data_var[17] = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value;
             readback_data_var[24] = hwif_in.EFUSE_PROGRAM_CTRL.program_busy.next;
@@ -639,7 +652,6 @@ module efuse_interface_ctrl_reg (
             readback_data_var[27] = field_storage.EFUSE_PROGRAM_CTRL.program_enable.value;
         end
         if(rd_mux_addr == 10'h8) begin
-            readback_data_var[15:0] = field_storage.EFUSE_READ_CTRL.efuse_addr.value;
             readback_data_var[16] = field_storage.EFUSE_READ_CTRL.efuse_read_go.value;
             readback_data_var[24] = hwif_in.EFUSE_READ_CTRL.read_busy.next;
             readback_data_var[25] = hwif_in.EFUSE_READ_CTRL.read_done.next;
@@ -659,6 +671,12 @@ module efuse_interface_ctrl_reg (
         if(rd_mux_addr == 10'h18) begin
             readback_data_var[27:0] = field_storage.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_cycles.value;
             readback_data_var[28] = field_storage.EFUSE_PROGRAM_REQ_TIMEOUT.program_req_timeout_enable.value;
+        end
+        if(rd_mux_addr == 10'h1c) begin
+            readback_data_var[31:0] = field_storage.EFUSE_PROGRAM_ADDR.efuse_addr.value;
+        end
+        if(rd_mux_addr == 10'h20) begin
+            readback_data_var[31:0] = field_storage.EFUSE_READ_ADDR.efuse_addr.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

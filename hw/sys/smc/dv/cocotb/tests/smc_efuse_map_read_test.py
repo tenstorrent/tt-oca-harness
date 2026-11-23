@@ -36,7 +36,7 @@ class smc_efuse_map_read_test(smc_base_test):
             min_csr_accesses=len(EFUSE_MAP_READS),
             csr_accesses=seq.accesses,
             proxy=False,
-            # Transport/decode claim over the named 1 KiB map fields, not
+            # Transport/decode claim over the named 256 B map fields, not
             # the window as a whole and not fuse programming.
             details=(
                 "SMC_EFUSE_MAP direct read: LOCKS lo/hi, JTAG_PUBLIC_IDENTITY, "

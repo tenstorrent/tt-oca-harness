@@ -57,7 +57,9 @@ BLOCK_SIGNATURE = 0xBADCAB1E
 WRITE_PATTERN = 0xA5A5_5A5A
 # The map words on either side of the JTAG_PUBLIC_IDENTITY window: the high LOCKS word
 # below it and the first I2C_I3C_ID word above it (generated map).
-SMC_EFUSE_MAP_LOCKS_HI = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4
+SMC_EFUSE_MAP_LOCKS_HI = (
+    smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR") + 4
+)
 SMC_EFUSE_MAP_I2C_I3C_ID0 = smc_indexed_addr(
     "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0
 )

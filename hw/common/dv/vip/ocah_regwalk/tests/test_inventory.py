@@ -101,7 +101,7 @@ class SepWalkPartition(unittest.TestCase):
 
     def test_counts(self):
         walk = self.walk
-        self.assertEqual((walk.export, walk.inventory, walk.nometa), (2126, 1952, 174))
+        self.assertEqual((walk.export, walk.inventory, walk.nometa), (2128, 1954, 174))
         self.assertEqual(len(self.model.registers), walk.export)
         self.assertEqual(len(self.by_addr), walk.export)
 
