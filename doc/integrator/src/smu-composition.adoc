@@ -194,7 +194,7 @@ outbound path drives on `smu_axi_out`.
 [cols="2,3,1,1,2",options="header"]
 |===
 |Subsystem |Path |Source ID (AxUSER[3:0]) |Value |NS (AxPROT[1])
-|SMC |Direct path |`SMC_ID` |0x3 |Inverse of address bit 55
+|SMC |Direct path |`SMC_ID` |0x3 |Initiator's: 0 from every SMC initiator
 |SMC |M-mode remap window, for another processor's machine-mode firmware |`MMODE_ID` |0xC |Inverse of bit 55 of the remapped address
 |SMC |Xvisor remap window, for another processor's hypervisor and guests |`OTHER_ID` |0x0 |1
 |SEP |SMU aperture, or an address at or above `0x1_0000_0000`, from any SEP master |SEP |0xF |Inverse of address bit 55
@@ -221,7 +221,7 @@ Outbound attributes::
 The system fabric must carry NS from `smu_axi_out` into its own security
 attribute (AXI AxPROT[1], or CHI NS or PAS), and AxUSER[3:0] wherever a
 downstream filter matches on the requester. The SMC and SEP outbound paths set
-both per path, including the rule that NS is the inverse of address bit 55.
+both per path, including the SEP rule that NS is the inverse of address bit 55.
 Overriding or dropping either attribute is a security decision of the
 integrator and must be recorded.
 

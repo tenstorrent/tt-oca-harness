@@ -421,15 +421,13 @@ modes: SMC firmware runs in machine mode whichever window it uses. The address
 window alone selects the remap and the source ID; the privilege mode of the
 issuing SMC hart does not.
 
-Each path also sets the NS bit, AxPROT[1], of the request it carries; the
-other AxPROT bits pass unchanged, and no path changes address bit 55:
+The remaps also set the NS bit, AxPROT[1], of the request they carry; the
+other AxPROT bits pass unchanged, and neither remap changes address bit 55:
 
 * Xvisor remap: NS is 1.
-* M-mode remap: NS is the inverse of bit 55 of the remapped address.
-* Direct path: NS is the inverse of address bit 55.
-
-A request through the direct path or the M-mode window is therefore secure
-when its outgoing address has bit 55 set, and non-secure otherwise.
+* M-mode remap: NS is the inverse of bit 55 of the remapped address, so a
+  region whose offset sets bit 55 issues secure requests.
+* Direct path: AxPROT passes unchanged, NS included.
 
 == Filtering and Protection
 
@@ -671,7 +669,7 @@ privilege mode
 |Unchanged |Keeps the AxPROT of the initiator that sent it to the cluster
 |=======================================================================
 
-On the way to the SMC's outbound port, only the output paths change AxPROT,
+On the way to the SMC's outbound port, only the output remaps change AxPROT,
 and only its NS bit (<<smc-fabric-privilege-controlled-remapping>>). The filters
 block or allow transactions on their protection bits without altering them.
 
