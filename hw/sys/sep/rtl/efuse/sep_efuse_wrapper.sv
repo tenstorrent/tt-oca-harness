@@ -331,7 +331,7 @@ module sep_efuse_wrapper #(
   // so this check finds the malformed map.
   for (genvar i = 0; i < sep_efuse_pkg::NumEfuseFields; i++) begin : gen_field_lock_idx
     `OCAH_ASSERT_STATIC(FieldMapIdxHasLockPair_A,
-        (sep_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
+                        (sep_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
         (int'(sep_efuse_pkg::EfuseFieldMap[i].idx) < int'(sep_efuse_pkg::NumEfuseFields - 1)))
   end
 

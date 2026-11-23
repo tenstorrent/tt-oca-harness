@@ -222,11 +222,11 @@ module smc_peripherals #(
                                                     // until fuse sensing completes unless
                                                     // sep_security_disable_i is set.
   output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary fuse shadow-register
-                                                                                  // contents; zero until fuse
-                                                                                  // sensing completes unless
-                                                                                  // sep_security_disable_i is set,
-                                                                                  // and always without the supplementary
-                                                                                  // region.
+                                                                                                                                                                    // contents; zero until fuse
+                                                                                                                                                                    // sensing completes unless
+                                                                                                                                                                    // sep_security_disable_i is set,
+                                                                                                                                                                    // and always without the supplementary
+                                                                                                                                                                    // region.
                supplementary_shadow_regs_o,
 
   input  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_i,    // Asynchronous NDM reset
@@ -1354,18 +1354,15 @@ module smc_peripherals #(
 
   `OCAH_ASSERT_STATIC(
       SupplementaryFuseWindow_A,
-      SUPPLEMENTARY_FUSE.WORDS == 0 ||
-      (SUPPLEMENTARY_FUSE.BASE % 4 == 0 &&
-       SUPPLEMENTARY_FUSE.BASE >= EFUSE_SHIM_SIZE &&
-       64'(SUPPLEMENTARY_FUSE.BASE) + 4 * SUPPLEMENTARY_FUSE.WORDS <= 64'(smc_pkg::SmcExternalWindowSize)),
+      SUPPLEMENTARY_FUSE.WORDS == 0 || (SUPPLEMENTARY_FUSE.BASE % 4 == 0 && SUPPLEMENTARY_FUSE.BASE >= EFUSE_SHIM_SIZE && 64'(SUPPLEMENTARY_FUSE.BASE) + 4 * SUPPLEMENTARY_FUSE.WORDS <= 64'(smc_pkg::SmcExternalWindowSize)),
       "SUPPLEMENTARY_FUSE.BASE must be word aligned with the window in smc_external at or above EFUSE_SHIM_SIZE")
   `OCAH_ASSERT_STATIC(
       SupplementaryFuseWords_A,
       SUPPLEMENTARY_FUSE.WORDS <= smc_efuse_pkg::MaxSupplementaryFuseWords,
       "SUPPLEMENTARY_FUSE.WORDS exceeds the supplementary fuse slot that sizes the fuse command")
   `OCAH_ASSERT_STATIC(
-      SupplementaryLockRegionEnd_A,
-      smc_efuse_pkg::supplementary_lock_region_end_valid(SUPPLEMENTARY_FUSE),
+      SupplementaryLockRegionEnd_A, smc_efuse_pkg::supplementary_lock_region_end_valid(
+      SUPPLEMENTARY_FUSE),
       "SUPPLEMENTARY_FUSE.LOCK_REGION_END must strictly increase, then be 0, and end at SUPPLEMENTARY_FUSE.WORDS")
 
   smc_efuse_wrapper #(

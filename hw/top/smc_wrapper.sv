@@ -19,7 +19,7 @@
 
 module smc_wrapper #(
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '{  // Supplementary fuse
-                                                                              // region.
+                                                                                                                                                           // region.
       BASE: smc_supplementary_fuse_example_pkg::Base,
       WORDS: smc_supplementary_fuse_example_pkg::FuseWords,
       LOCK_REGION_END: smc_supplementary_fuse_example_pkg::LockRegionEnd

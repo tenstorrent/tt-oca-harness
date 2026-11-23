@@ -164,7 +164,9 @@ package smc_efuse_pkg;
           (
               smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR
           ),
-          HarnessLockFieldBits + efuse_pkg::SupplementaryLockBits,
+          HarnessLockFieldBits
+          +
+          efuse_pkg::SupplementaryLockBits,
           NumFuseWordWidth
       ),
       default: '0
@@ -224,10 +226,14 @@ package smc_efuse_pkg;
           )
       };
     end
-    map[5+NumSpareRegions] = '{ // SPARE_TAIL[3] -- all three elements share the last slot
+    map[5+NumSpareRegions] = '{  // SPARE_TAIL[3] -- all three elements share the last slot
         idx: efuse_pkg::EfuseFieldMapIdxWidth'(4 + NumSpareRegions),
         lock: {WriteUnlock, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)),
+        start_addr:
+        efuse_offset
+        (
+            smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)
+        ),
         end_addr: int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE) - 1
     };
 
@@ -249,9 +255,9 @@ package smc_efuse_pkg;
                                                 // 2048 harness fuse bits; 0 for no region, at
                                                 // most MaxSupplementaryFuseWords.
     supplementary_lock_region_end_t LOCK_REGION_END;  // Word offset one past the end of each lock
-                                                // region, region n starting where region n-1
-                                                // ends: strictly increasing, then 0 for unused
-                                                // regions, the last used entry equal to WORDS.
+    // region, region n starting where region n-1
+    // ends: strictly increasing, then 0 for unused
+    // regions, the last used entry equal to WORDS.
   } supplementary_fuse_cfg_t;
 
   // Each used LOCK_REGION_END entry exceeds the one before it, every entry after the first 0 is
@@ -282,7 +288,8 @@ package smc_efuse_pkg;
   //   1      1     0x100         0x17F         words  64-95
   //   2      2     0x180         0x1FF         words 96-127
   //   3-31   '1    0xFFFF_FFFF   0x0000_0000   nothing, never locked
-  function automatic efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] build_supplementary_field_map(supplementary_lock_region_end_t region_end);
+  function automatic efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] build_supplementary_field_map(
+      supplementary_lock_region_end_t region_end);
     efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] map;
     int unsigned region_start;
 

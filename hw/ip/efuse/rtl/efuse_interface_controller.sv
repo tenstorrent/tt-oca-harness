@@ -222,15 +222,19 @@ module efuse_interface_controller #(
   // The HAS_LC_STATE APB decode has no supplementary window.
   `OCAH_ASSERT_STATIC(SupplementaryFusesWithoutLcState_A, !(HAS_LC_STATE && HasSupplementaryFuses))
   `OCAH_ASSERT_STATIC(SupplementaryLocksAboveHarnessPairs_A,
-      !HasSupplementaryFuses || (SUPPLEMENTARY_LOCKS_BIT_OFFSET >= HarnessLockBits))
-  `OCAH_ASSERT_STATIC(SupplementaryLocksWordAligned_A,
+                      !HasSupplementaryFuses || (SUPPLEMENTARY_LOCKS_BIT_OFFSET >= HarnessLockBits))
+  `OCAH_ASSERT_STATIC(
+      SupplementaryLocksWordAligned_A,
       !HasSupplementaryFuses || (SUPPLEMENTARY_LOCKS_BIT_OFFSET % EFUSE_MACRO_WORD_WIDTH == 0))
 
   localparam bit [31:0] InterfaceEndAddr =
       HAS_LC_STATE ? EfuseMmrRegMapEndAddr : EfuseCtrlRegMapEndAddr;
   localparam bit [31:0] SupplementaryRegMapEndAddr = SUPPLEMENTARY_REG_MAP_BASE_ADDR + 32'(4 * SupplementaryPortWords) - 32'd1;
-  localparam int unsigned SupplementaryRegAddrWidth =
-      $clog2(4 * SupplementaryPortWords) > 4 ? $clog2(4 * SupplementaryPortWords) : 4;
+  localparam int unsigned SupplementaryRegAddrWidth = $clog2(
+      4 * SupplementaryPortWords
+  ) > 4 ? $clog2(
+      4 * SupplementaryPortWords
+  ) : 4;
 
   ////////////////////////////////////////////////////////////////////////////
   // Signal Declarations
@@ -324,7 +328,8 @@ module efuse_interface_controller #(
 
   // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR (SEP only); the
   // supplementary window may sit anywhere outside that span.
-  function automatic efuse_pkg::efuse_req_decode_select_e decode_select(logic [ADDR_WIDTH-1:0] addr);
+  function automatic efuse_pkg::efuse_req_decode_select_e decode_select(
+      logic [ADDR_WIDTH-1:0] addr);
     if ((addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:InterfaceEndAddr]}) ||
         (HasSupplementaryFuses && (addr inside {[SUPPLEMENTARY_REG_MAP_BASE_ADDR:SupplementaryRegMapEndAddr]}))) begin
       return efuse_pkg::INTERFACE_SEL;
@@ -751,8 +756,8 @@ module efuse_interface_controller #(
   fuse_command_resp_t fuse_command_resp_shadow_regs;
 
   logic                       harness_sense_done;
-  logic                       harness_write_locked, harness_read_locked, harness_locked_access;
-  logic [ShadowLockBits-1:0]  shadow_lock_vector;
+  logic harness_write_locked, harness_read_locked, harness_locked_access;
+  logic [ShadowLockBits-1:0] shadow_lock_vector;
 
   efuse_shadow_regs #(
     .FUSE_MAP_REG_MAP_BASE_ADDR(EFUSE_MAP_REG_MAP_BASE_ADDR),
@@ -839,8 +844,8 @@ module efuse_interface_controller #(
   if (HasSupplementaryFuses) begin : gen_supplementary_shadow_regs
     supplementary_map_t supplementary_shadow_regs;
     logic         supplementary_sense_done;
-    logic         supplementary_write_locked, supplementary_read_locked, supplementary_locked_access;
-    logic [31:0]  supplementary_paddr;
+    logic supplementary_write_locked, supplementary_read_locked, supplementary_locked_access;
+    logic [31:0] supplementary_paddr;
 
     assign supplementary_lock_vector =
         shadow_lock_vector[SUPPLEMENTARY_LOCKS_BIT_OFFSET +: SupplementaryLockBits];

@@ -97,11 +97,11 @@ module smc_efuse_wrapper #(
                                                                      // sep_security_disable_i is
                                                                      // set.
   output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary shadow-register
-                                                                                  // contents; zero until fuse
-                                                                                  // sensing completes unless
-                                                                                  // sep_security_disable_i is set,
-                                                                                  // and always without the supplementary
-                                                                                  // region.
+                                                                                                                                                                    // contents; zero until fuse
+                                                                                                                                                                    // sensing completes unless
+                                                                                                                                                                    // sep_security_disable_i is set,
+                                                                                                                                                                    // and always without the supplementary
+                                                                                                                                                                    // region.
                                                      supplementary_shadow_regs_o,
 
   output logic [9:0]                                 efuse_debug_o,  // eFuse controller status,
@@ -213,9 +213,12 @@ module smc_efuse_wrapper #(
   /////////////////////////////////////////////////////////////////////////
 
   localparam efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] SupplementaryFieldMap =
-      smc_efuse_pkg::build_supplementary_field_map(SUPPLEMENTARY_FUSE.LOCK_REGION_END);
+      smc_efuse_pkg::build_supplementary_field_map(
+      SUPPLEMENTARY_FUSE.LOCK_REGION_END
+  );
 
-  `OCAH_ASSERT_STATIC(SupplementaryLocksFollowHarnessLocks_A,
+  `OCAH_ASSERT_STATIC(
+      SupplementaryLocksFollowHarnessLocks_A,
       smc_efuse_pkg::SupplementaryLocksBitOffset == smc_efuse_pkg::HarnessLockFieldBits,
       "efuse_lock_view_t places SUPPLEMENTARY_LOCKS directly after HARNESS_LOCKS; the RDL map must too")
 
@@ -224,12 +227,14 @@ module smc_efuse_wrapper #(
   // lookups read an idx outside its vector as locked, so this check finds the malformed map.
   for (genvar i = 0; i < smc_efuse_pkg::NumEfuseFields; i++) begin : gen_field_lock_idx
     `OCAH_ASSERT_STATIC(FieldMapIdxHasLockPair_A,
-        (smc_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
+                        (smc_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
         (int'(smc_efuse_pkg::EfuseFieldMap[i].idx) < int'(smc_efuse_pkg::NumEfuseFields - 1)))
   end
-  for (genvar i = 0; i < efuse_pkg::SupplementaryLockRegions; i++) begin : gen_supplementary_lock_idx
+  for (
+      genvar i = 0; i < efuse_pkg::SupplementaryLockRegions; i++
+  ) begin : gen_supplementary_lock_idx
     `OCAH_ASSERT_STATIC(SupplementaryMapIdxHasLockPair_A,
-        (SupplementaryFieldMap[i].idx == '1) ||
+                        (SupplementaryFieldMap[i].idx == '1) ||
         (int'(SupplementaryFieldMap[i].idx) < int'(efuse_pkg::SupplementaryLockBits / 2)))
   end
 

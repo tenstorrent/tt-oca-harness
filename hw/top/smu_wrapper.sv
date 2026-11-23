@@ -39,7 +39,7 @@ module smu_wrapper #(
   parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
   parameter bit   SUPPLEMENTARY_FUSE_EXAMPLE = 1'b1,  // Set to replace the CFG supplementary fuse region
-                                                // with the example map.
+  // with the example map.
 
   localparam int unsigned  XtrigNumCtp          = CFG.XTRIG_NUM_CTP,
   localparam int unsigned  XtrigNumIntCt        = CFG.XTRIG_NUM_INT_CT,
@@ -384,7 +384,9 @@ module smu_wrapper #(
     return cfg;
   endfunction
 
-  localparam smu_pkg::smu_cfg_t SmuCfg = SUPPLEMENTARY_FUSE_EXAMPLE ? with_example_supplementary_fuses(CFG) : CFG;
+  localparam smu_pkg::smu_cfg_t SmuCfg = SUPPLEMENTARY_FUSE_EXAMPLE ? with_example_supplementary_fuses(
+      CFG
+  ) : CFG;
 
   smu #(
     .CFG            (SmuCfg),

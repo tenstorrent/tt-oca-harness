@@ -101,9 +101,9 @@ package smu_pkg;
                                        // smc_pkg::SmcExternalWindowSize; forwarded to the
                                        // SMC EFUSE_SHIM_SIZE.
     smc_efuse_pkg::supplementary_fuse_cfg_t SMC_SUPPLEMENTARY_FUSE;  // Supplementary fuse region, '0 for none;
-                                                         // see smc_efuse_pkg::supplementary_fuse_cfg_t
-                                                         // for the constraints. Forwarded to
-                                                         // the SMC SUPPLEMENTARY_FUSE.
+    // see smc_efuse_pkg::supplementary_fuse_cfg_t
+    // for the constraints. Forwarded to
+    // the SMC SUPPLEMENTARY_FUSE.
 
     // SEP
     bit          SEP;                    // 1 includes the Secure Execution Processor and the

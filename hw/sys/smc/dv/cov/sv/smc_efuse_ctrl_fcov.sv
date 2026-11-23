@@ -382,8 +382,9 @@ module smc_efuse_ctrl_fcov #(
   localparam logic [55:0] SpareNum = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
   localparam logic [55:0] SpareEnd = Spare0Base + SpareNum * SpareStride;
   localparam logic [55:0] TailBase = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0));
-  localparam logic [55:0] TailStride =
-      56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(1)) - TailBase;
+  localparam logic [55:0] TailStride = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(
+      1
+  )) - TailBase;
   localparam logic [55:0] TailEnd =
       TailBase + 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM) * TailStride;
   localparam int unsigned NumSlots = 8;
