@@ -86,6 +86,8 @@
 `endif // not def SYNTHESIS
 
 module OCAH4CORECluster_ChipyardPRCICtrlClockSinkDomain(	// @[generators/rocket-chip/src/main/scala/prci/ClockDomain.scala:14:9]
+  input  test_en_i,
+  input  scan_rst_ni,
   input  auto_resetSynchronizer_in_member_allClocks_uncore_clock,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  auto_resetSynchronizer_in_member_allClocks_uncore_reset,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input  auto_resetSynchronizer_in_member_allClocks_core_3_clock,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -109,6 +111,8 @@ module OCAH4CORECluster_ChipyardPRCICtrlClockSinkDomain(	// @[generators/rocket-
 );
 
   OCAH4CORECluster_ClockGroupResetSynchronizer resetSynchronizer (	// @[generators/rocket-chip/src/main/scala/prci/ResetSynchronizer.scala:91:69]
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
     .auto_in_member_allClocks_uncore_clock  (auto_resetSynchronizer_in_member_allClocks_uncore_clock),
     .auto_in_member_allClocks_uncore_reset  (auto_resetSynchronizer_in_member_allClocks_uncore_reset),
     .auto_in_member_allClocks_core_3_clock  (auto_resetSynchronizer_in_member_allClocks_core_3_clock),

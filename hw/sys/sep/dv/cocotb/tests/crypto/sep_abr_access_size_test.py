@@ -72,7 +72,7 @@ lines 99-100), so the bench count of clocks with ``hresp`` high
 included. Control ``CTRL-ABR-AHB-TAP``: each full-word access with an OKAY
 response at a word that an ABR register or memory window owns raises the
 bench transfer count (``abr_ahb_xfer_count_o``) by at least 1, so the tap
-watches a live bus. ``OBS-ABR-AHB-RESP`` logs, per access, the transfer count
+watches a live bus. ``INFO-ABR-AHB-RESP`` logs, per access, the transfer count
 and the wait clocks (``abr_ahb_wait_count_o``) it added: no text states the
 wait states of an ABR access.
 
@@ -368,7 +368,7 @@ class sep_abr_access_size_test(sep_base_test):
         """Issue ``acc``, tolerating exactly one monitor DECERR when ``expect`` is DECERR.
 
         Grades CHK-ABR-AHB-HRESP and CTRL-ABR-AHB-TAP on the access and logs
-        OBS-ABR-AHB-RESP.
+        INFO-ABR-AHB-RESP.
         """
         mon = self.env.axi_monitor
         if expect == RESP_DECERR:
@@ -380,7 +380,7 @@ class sep_abr_access_size_test(sep_base_test):
         x1, w1, e1 = self._ahb_counts()
         what = f"addr=0x{acc.addr:08x} {acc.op} bytes={acc.nbytes} size={acc.size}"
         self.logger.info(
-            "OBS-ABR-AHB-RESP %s resp=%s xfer_delta=%d wait_clocks=%d",
+            "INFO-ABR-AHB-RESP %s resp=%s xfer_delta=%d wait_clocks=%d",
             what,
             acc.resp_name,
             x1 - x0,

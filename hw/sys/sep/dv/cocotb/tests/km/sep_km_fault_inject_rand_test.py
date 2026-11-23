@@ -96,7 +96,9 @@ Checks (HOST-UNREC unless marked):
   CHK-CRC-FIRST      the CRC fault precedes the policy refusal.
   CHK-NOFLUSH        the key fault keeps the sequence counters.
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
-  CHK-RESIDUE        a flip past the key end raises no fault.
+  CHK-RESIDUE        a flip past the key end raises no fault, and HK-KPV counts no
+                     read of that word (control: the HK-KPV count of the key-A
+                     flip is above 0).
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
                      (control CTRL-CPU-TRAP-CSR-SET: the KMCSR source of the
                      shared clock latched its IRQ_STATUS bit; for WIPE_STATE,
@@ -377,7 +379,6 @@ AES_POLL_GAP = 20
 DRBG_REQ_WORDS = 128  # CMD_KEY_GENERATE size of the DRBG stall point
 EXT_KM = 0  # external stream and EXT_TRNG_SRC_SEL bit of the KM path
 EXT_DRAIN_BOUND = 20_000  # clocks for the last offered external beat to transfer
-KPV_INDEX_MAX = pl.SLOT_WORDS * 64
 
 # Fixed witness stimulus. The second message differs from the first, so a
 # stale digest cannot match the golden of the run after the report.
@@ -605,8 +606,8 @@ class _FatalWatch:
             if depth == 0:
                 self.seen_zero = True
             elif self.seen_zero and self.first is None:
-                words_nz, words_unk = _word_counts(_bitstr(top.km_kpv_words_o), 1024, 32)
-                ctrl_nz, ctrl_unk = _word_counts(_bitstr(top.km_kpv_ctrl_o), 64, 4)
+                words_nz, words_unk = _word_counts(_bitstr(top.km_kpv_words_o), pl.KPV_WORDS, 32)
+                ctrl_nz, ctrl_unk = _word_counts(_bitstr(top.km_kpv_ctrl_o), pl.SLOTS, 4)
                 self.first = {
                     "cyc": self.cyc,
                     "keyvalid": t.rd(top.km_engine_key_valid_o, allow_unknown=True),
@@ -866,13 +867,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     def _kpv(self) -> tuple[int, int, int]:
         """KM-KPV: (non-zero words, unknown words, non-zero or unknown CTRL)."""
         top = cocotb.top
-        nz, unk = _word_counts(_bitstr(top.km_kpv_words_o), 1024, 32)
-        cnz, cunk = _word_counts(_bitstr(top.km_kpv_ctrl_o), 64, 4)
+        nz, unk = _word_counts(_bitstr(top.km_kpv_words_o), pl.KPV_WORDS, 32)
+        cnz, cunk = _word_counts(_bitstr(top.km_kpv_ctrl_o), pl.SLOTS, 4)
         return nz, unk, cnz + cunk
 
     def _ctrl_slots(self) -> list[int]:
         v = self.rd_known(cocotb.top.km_kpv_ctrl_o)
-        return [(v >> (4 * s)) & 0xF for s in range(64)]
+        return [(v >> (4 * s)) & 0xF for s in range(pl.SLOTS)]
 
     async def _graded(self, on: bool) -> None:
         # The gate is a signal write, which cocotb refuses in the ReadOnly phase.
@@ -1476,7 +1477,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             graded_by=graded_by,
         )
         if state:
-            self.chk.obs("QUIET-WINDOW-STATE", point=point, **state)
+            self.chk.info("QUIET-WINDOW-STATE", point=point, **state)
         return pre
 
     def _shred_first(self, pre: _Pre, watch: _FatalWatch, point: str) -> None:
@@ -1697,7 +1698,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 hmac_after=hmac_after,
                 msg_changed=1,
             )
-            self.chk.obs("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
+            self.chk.info("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
             # The wipe pulse clears both shares and KEY_VALID of the AES
             # sideload block (architecture.adoc, "Wipe State"), and an
             # automatic-mode AES starts only with a valid sideload key (OT aes
@@ -1725,7 +1726,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             err_o=int(rose),
         )
         self.chk.info("REAL-WIPE", W=p.wipe_w)
-        self.chk.obs(
+        self.chk.info(
             "REAL-WIPE-STATUS",
             W=p.wipe_w,
             err_o_end=b_end,
@@ -1923,7 +1924,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         top = cocotb.top
         await RisingEdge(top.clk_i)
         if en:
-            if not 0 <= index < KPV_INDEX_MAX:
+            if not 0 <= index < pl.KPV_WORDS:
                 raise AssertionError(f"HK-KPV index {index} outside the KPV")
             top.km_kpv_flip_index_i.value = index
             top.km_kpv_flip_bit_i.value = bit
@@ -1931,7 +1932,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await ClockCycles(top.clk_i, 2)
 
     def _run_of(self, before: list[int], after: list[int], words: int, what: str) -> list[int]:
-        run = [s for s in range(64) if before[s] != after[s]]
+        run = [s for s in range(pl.SLOTS) if before[s] != after[s]]
         want = pl.slots_of(words)
         if not run or run != list(range(run[0], run[0] + want)):
             raise AssertionError(
@@ -2051,7 +2052,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         assert p.residue_j >= len(p.key_c) % pl.SLOT_WORDS, "the residue flip is a key word"
         await self._set_kpv_flip(1, flip_index, p.residue_bit)
         sent18, f18 = await self._cmd_frames(KM_CMD_KEY_TRANSFER, [hc, AES_MASK])
-        flips18 = self.rd(top.km_kpv_flip_count_o, allow_unknown=True)
+        flips18 = self.rd_known(top.km_kpv_flip_count_o)
         await self._set_kpv_flip(0)
         r_code, r_arg = f18[-1].resp_cmd(KM_CMD_KEY_TRANSFER, sent18)
 
@@ -2137,14 +2138,15 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         )
         self.chk.ok(
             "RESIDUE",
-            len(f18) == 1 and r_code == KM_RC_SUCCESS,
+            len(f18) == 1 and r_code == KM_RC_SUCCESS and flips18 == 0 and flips14 > 0,
             size=len(p.key_c),
             flip_index=flip_index,
             j=p.residue_j,
             bit=p.residue_bit,
             code="none" if r_code is None else r_code,
             frames=_ids(f18),
-            flips_logged=flips18,
+            residue_flips=flips18,
+            control_flips=flips14,
         )
         await self._boot("key CRC leg")
 

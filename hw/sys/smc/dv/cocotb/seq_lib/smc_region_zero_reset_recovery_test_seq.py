@@ -104,7 +104,8 @@ _CHECKERS = (
     ("CHK-REGION-SIZE-RECOVERY", "S8"),
 )
 
-# REGION_SIZE = 1 << k for every k of the sweep; k = _K_TOP is measured, not compared (SF-032).
+# REGION_SIZE = 1 << k for every k of the sweep; k = _K_TOP is measured, not compared (open:
+# the answer at REGION_SIZE 1 << 31).
 _K_TOP = 31
 _K_VALUES = tuple(range(_K_TOP + 1))
 _K_TERMS = ("WRITE", "READ", "BEYOND", "STRADDLE", "BELOW", "RESET")
@@ -200,10 +201,10 @@ _PINNED_UNITS = frozenset(
         "DFX",
     }
 )
-# Cluster units whose inbound answer at REGION_SIZE >= _SF035_MIN_SIZE is open (SF-035):
+# Cluster units whose inbound answer at REGION_SIZE >= _CLUSTER_OPEN_MIN_SIZE is open:
 # measured and logged there, compared below it.
 _CLUSTER_UNITS = frozenset({"PLIC", "CLINT", "BEU0", "BEU1", "BEU2", "BEU3"})
-_SF035_MIN_SIZE = 0x1000_0000
+_CLUSTER_OPEN_MIN_SIZE = 0x1000_0000
 # Units probed in addition to the first unit beyond at the reset size, k = 24.
 _K_RESET = 24
 _RESET_SIZE_BEYOND = ("PLIC", "CLINT", "BEU0", "BEU1", "BEU2", "BEU3")
@@ -846,13 +847,13 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         name = self._below_unit(k)
         if name is not None:
             addr, reset, static, length = self._first_word(local_base, name)
-            if top or (name in _CLUSTER_UNITS and size >= _SF035_MIN_SIZE):
+            if top or (name in _CLUSTER_UNITS and size >= _CLUSTER_OPEN_MIN_SIZE):
                 self._excuse(excused, addr)
                 rd = await self._measure(SmcSysAxiOp.READ, addr, length=length)
                 text = (
                     f"k={k} unit={name}@0x{addr:x} rresp={_RESP_NAME[rd.resp_code]} "
-                    f"rdata=0x{rd.rdata:x} (measured, LINKED-ISSUE "
-                    f"{'SF-032' if top else 'SF-035'})"
+                    f"rdata=0x{rd.rdata:x} (measured, LINKED-ISSUE: the answer at REGION_SIZE "
+                    f"{'1 << 31' if top else '0x1000_0000 and above for the cluster units'})"
                 )
                 if top:
                     self._top.append(text)
@@ -893,16 +894,17 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-REGION-SIZE-READBACK",
             f"k=17..30 wr OKAY rb=1<<k ({n_rb} exact compares: "
             f"{'; '.join(sw['readback'][:-1])}); {sw['readback'][-1]} "
-            f"(measured, LINKED-ISSUE SF-032)",
+            f"(measured, LINKED-ISSUE: the answer at REGION_SIZE 1 << 31)",
         )
         self._log_chk(
             "CHK-REGION-SIZE-SELF-DECERR",
             f"k=0..16 wr OKAY, rd DECERR ({len(sw['self_decerr'])} exact; rdata logged, "
-            f"SF-011): {'; '.join(sw['self_decerr'])}",
+            f"open: the read data of a DECERR answer): {'; '.join(sw['self_decerr'])}",
         )
         self._log_chk(
             "CHK-REGION-SIZE-BEYOND",
-            f"{len(sw['beyond'])} units read and written DECERR (exact; rdata logged, SF-011); "
+            f"{len(sw['beyond'])} units read and written DECERR (exact; rdata logged, "
+            f"open: the read data of a DECERR answer); "
             f"k=24 PLIC/CLINT/BEU0..3 DECERR: {'; '.join(sw['beyond'])}",
         )
         self._log_chk(
@@ -914,7 +916,8 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._log_chk(
             "CHK-REGION-SIZE-BELOW",
             f"{len(sw['below'])} probes for k=10..30, rresp=OKAY exact except the cluster "
-            f"units at REGION_SIZE >= 0x{_SF035_MIN_SIZE:08X}, reset compare where pinned: {'; '.join(sw['below'])}; top step "
+            f"units at REGION_SIZE >= 0x{_CLUSTER_OPEN_MIN_SIZE:08X}, reset compare where pinned: "
+            f"{'; '.join(sw['below'])}; top step "
             f"{'; '.join(t for t in self._top if t.startswith('k='))}",
         )
         self._log_chk(

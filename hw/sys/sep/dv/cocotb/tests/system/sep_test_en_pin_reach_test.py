@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """test_en_i reaches every SEP-owned clock-gater test port and AXI cell test input.
 
-no_cpu on ``lsu_stub_all_live`` with ``+skip_fuse_sense`` (no fuse content is
-used), VCS only (the walk reads the hierarchy). No draw: every run walks the
-same hierarchy and drives the same two edges. The test drives no AXI
+no_cpu with ``+skip_fuse_sense`` (no fuse content is used) and
+``+sep_require_full_cpu``, VCS only (the walk reads the hierarchy). On VCS the
+``lsu_stub_all_live`` target runs on the full-CPU default build. No draw: every
+run walks the same hierarchy and drives the same two edges. The test drives no AXI
 traffic, so it builds no AXI environment and no AXI scoreboard
 (``build_env = False``); its evidence is the CHK line on the DUT pins.
 
@@ -18,12 +19,14 @@ the AXI demultiplexer test input):
 * Every graded pin equals ``test_en_i`` within ``PIN_BOUND`` ``clk_i`` cycles
   after the 0 to 1 edge and after the 1 to 0 edge of ``test_en_i``.
 
-Graded set: the committed inventory ``GRADED_PINS``
-(``sep_test_en_pin_inventory.py``, path and class of each pin). Its selection
-rule is the SEP-owned boundary: the test inputs of the clock-gater and AXI cell
-instances that OCAH RTL instantiates, without the pins inside ``sep_cpu`` (a
-different module on the CPU-stub and the full-CPU build), on the
-``lsu_stub_all_live`` build. The inventory changes only by a reviewed edit.
+Graded set: the committed inventory (``sep_test_en_pin_inventory.py``, path
+and class of each pin): ``GRADED_PINS`` on every build, plus
+``CPU_GRADED_PINS`` on the full-CPU build. Its selection rule is the SEP-owned
+boundary: the test inputs of the clock-gater and AXI cell instances that OCAH
+RTL instantiates. The SEP-owned AXI cells inside ``sep_cpu`` are graded on the
+full-CPU build; vendor IP inside ``sep_cpu`` stays out. The CPU stub is a
+different ``sep_cpu`` module, so a stub build grades ``GRADED_PINS`` only. The
+inventory changes only by a reviewed edit.
 It is bench configuration that sets the scope of the "every such input"
 reading, not a behaviour golden. ``env/sep_test_en_walk.py`` walks ``u_dut``
 and finds the handle of each inventory pin. Its source-tree ownership scan
@@ -32,6 +35,8 @@ a graded pin. ``PIN_BOUND`` is a bench bound: the specification states no
 latency.
 
 Checkers:
+  CTRL-FULL-CPU      with +sep_require_full_cpu, the build has the full
+                    ``sep_cpu`` with the VeeR core; a CPU-stub build fails.
   CTRL-PIN-WALK      every inventory pin is in the walk with its inventory
                     class: a FAIL names every inventory pin that is not walked
                     and every class mismatch. Walked pins that are not in the
@@ -44,6 +49,11 @@ Checkers:
                     that holds 0 on both edges equals test_en_i after the 1 to
                     0 edge, so it fails the 0 to 1 edge only; the FAIL line
                     counts it in fail_pins and in stuck_0.
+  OBS-TEST-EN-CORE-SCAN-MODE  logged, not graded: the VeeR core ``scan_mode``
+                    input (no specification names it) before the first edge,
+                    on the first clk_i edge after each drive, and PIN_BOUND
+                    cycles after it, as 0, 1 or X. A stub build logs that the
+                    pin is absent.
 
 Coverage: the test owns ``sep_static_tieoff_cg.cp_test_en_consumer``. Its
 graded window opens after CTRL-PIN-WALK passes and the base read, right before
@@ -73,13 +83,21 @@ from env.sep_test_en_walk import (
 )
 from sep_base_test import sep_base_test
 
-from tests.system.sep_test_en_pin_inventory import GRADED_PINS
+from tests.system.sep_test_en_pin_inventory import CPU_GRADED_PINS, GRADED_PINS
 
 TEST = "sep_test_en_pin_reach_test"
 
 H = 32  # hold after the bound, clk_i cycles (test parameter)
 SENSE_BOUND = 20_000
 FAIL_LINES = 64  # failing pins printed in the FAIL line; every pin has a log line
+
+
+def _bit(handle: Any) -> str:
+    """Bit 0 of ``handle`` as ``0``/``1``, or ``X`` when it holds X or Z."""
+    v = handle.value
+    if not getattr(v, "is_resolvable", True):
+        return "X"
+    return str(int(v) & 1)
 
 
 @pyuvm.test()
@@ -90,13 +108,14 @@ class sep_test_en_pin_reach_test(sep_base_test):
     required_evidence = ("CHK-TEST-EN-PINS",)
 
     async def _edge(
-        self, pins: list[TestEnPin], value: int
-    ) -> tuple[list[TestEnPin], int, dict[str, int | None]]:
+        self, pins: list[TestEnPin], value: int, scan_mode: Any | None
+    ) -> tuple[list[TestEnPin], int, dict[str, int | None], tuple[str, str]]:
         """Drive test_en_i to ``value`` and read the pins PIN_BOUND cycles later.
 
         Returns the pins that do not equal ``value`` at that edge, the count
-        that equal it on the first clk_i edge after the drive, and the value of
-        each pin at the PIN_BOUND read.
+        that equal it on the first clk_i edge after the drive, the value of
+        each pin at the PIN_BOUND read, and the core ``scan_mode`` value on the
+        first clk_i edge and at the PIN_BOUND read (``-`` when absent).
         """
         dut: Any = cocotb.top
         await RisingEdge(dut.clk_i)
@@ -104,22 +123,26 @@ class sep_test_en_pin_reach_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         first = sum(1 for p in pins if pin_value(p) == value)
+        sm_first = _bit(scan_mode) if scan_mode is not None else "-"
         await ClockCycles(dut.clk_i, PIN_BOUND - 1)
         await ReadOnly()
         bad = pins_not_equal(pins, value)
         vals = {p.path: pin_value(p) for p in pins}
+        sm_bound = _bit(scan_mode) if scan_mode is not None else "-"
         await RisingEdge(dut.clk_i)
         await ClockCycles(dut.clk_i, H)
-        return bad, first, vals
+        return bad, first, vals, (sm_first, sm_bound)
 
     @staticmethod
-    def _select_inventory(walk: TestEnWalk) -> tuple[list[TestEnPin], list[str]]:
+    def _select_inventory(
+        walk: TestEnWalk, inventory: tuple[tuple[str, str], ...]
+    ) -> tuple[list[TestEnPin], list[str]]:
         """The walked pin of each inventory path, and every inventory pin that
         is not walked or has another class."""
         walked = walk.by_path()
         graded: list[TestEnPin] = []
         problems: list[str] = []
-        for path, cls in GRADED_PINS:
+        for path, cls in inventory:
             p = walked.get(path)
             if p is None:
                 problems.append(f"missing {path} class={cls} (not walked)")
@@ -140,8 +163,18 @@ class sep_test_en_pin_reach_test(sep_base_test):
         dut.test_en_i.value = 0
         dut.scan_rst_ni_i.value = 1
 
+        full_cpu = self.full_cpu_build()
+        required = "sep_require_full_cpu" in cocotb.plusargs
+        if required and not full_cpu:
+            raise AssertionError(
+                "CTRL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
+            )
+        self.logger.info("CTRL-FULL-CPU: required=%d full_cpu=%d", required, full_cpu)
+        inventory = GRADED_PINS + (CPU_GRADED_PINS if full_cpu else ())
+        scan_mode = dut.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper.scan_mode if full_cpu else None
+
         walk = walk_test_en_pins(dut.u_dut, "u_dut")
-        graded, problems = self._select_inventory(walk)
+        graded, problems = self._select_inventory(walk, inventory)
         in_inventory = {p.path for p in graded}
         others = [p for p in walk.pins if p.path not in in_inventory]
         self.logger.info(
@@ -149,7 +182,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
             walk.root,
             walk.scopes,
             len(walk.pins),
-            len(GRADED_PINS),
+            len(inventory),
             walk.index.files,
             len(walk.unwalkable),
         )
@@ -169,7 +202,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
         for line in problems:
             self.logger.info("CTRL-PIN-WALK mismatch: %s", line)
         assert not problems, (
-            f"CTRL-PIN-WALK FAIL: walked={len(graded)} inventory={len(GRADED_PINS)} "
+            f"CTRL-PIN-WALK FAIL: walked={len(graded)} inventory={len(inventory)} "
             f"problems={len(problems)}: "
             + "; ".join(problems[:FAIL_LINES])
             + (" ..." if len(problems) > FAIL_LINES else "")
@@ -178,7 +211,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
             "CTRL-PIN-WALK: graded=%d inventory=%d missing=0 class_mismatch=0 %s "
             "walked=%d not_in_inventory=%d unwalkable=%d inventory_groups=%s logged=%s",
             len(graded),
-            len(GRADED_PINS),
+            len(inventory),
             " ".join(f"{c}={n}" for c, n in per_class.items()),
             len(walk.pins),
             len(others),
@@ -189,6 +222,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
 
         await ReadOnly()
         base = pins_not_equal(graded, 0)
+        sm_base = _bit(scan_mode) if scan_mode is not None else "-"
         await RisingEdge(dut.clk_i)
         self.logger.info(
             "INFO-TEST-EN-BASE LOG: test_en_i=0 graded pins not 0 before the first edge=%d",
@@ -197,8 +231,23 @@ class sep_test_en_pin_reach_test(sep_base_test):
 
         open_graded_window(TEST, self.logger)
         set_test_en_pin_pass(0, self.logger)
-        rise_bad, rise_first, rise_val = await self._edge(graded, 1)
-        fall_bad, fall_first, fall_val = await self._edge(graded, 0)
+        rise_bad, rise_first, rise_val, rise_sm = await self._edge(graded, 1, scan_mode)
+        fall_bad, fall_first, fall_val, fall_sm = await self._edge(graded, 0, scan_mode)
+        if scan_mode is None:
+            self.logger.info(
+                "OBS-TEST-EN-CORE-SCAN-MODE: absent (CPU-stub build, no VeeR core); not graded"
+            )
+        else:
+            self.logger.info(
+                "OBS-TEST-EN-CORE-SCAN-MODE: path=u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper."
+                "scan_mode not graded (no specification names it): test_en_i=0 base=%s "
+                "test_en_i=1 first_edge=%s at_bound=%s test_en_i=0 first_edge=%s at_bound=%s "
+                "pin_bound=%d",
+                sm_base,
+                *rise_sm,
+                *fall_sm,
+                PIN_BOUND,
+            )
 
         failing: list[tuple[TestEnPin, str]] = [(p, "0to1") for p in rise_bad]
         failing += [(p, "1to0") for p in fall_bad]

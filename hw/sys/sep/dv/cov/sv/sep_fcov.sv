@@ -42,12 +42,17 @@
 // gate costs no cell; pipelined firmware traffic is sampled only where it
 // happens to be serial. A missed sample is a missed hit, never a false one.
 //
-// Encodings come from the generated register header (`sep_reg.svh`) and the
-// memory-window package (`sep_top_addrmap_pkg`). Where a vendored block exports no
-// field symbol, the bit position is named in a comment against the driver that
-// programs it.
+// Encodings come from the generated register headers (`sep_reg.svh`, and
+// `km_csr_reg.svh` and `km_drbg_sampler_reg.svh` for the Key Manager) and the
+// memory-window packages (`sep_top_addrmap_pkg`, `key_manager_addrmap_pkg`). Where
+// a vendored block exports no field symbol, the bit position is named in a comment
+// against the driver that programs it.
 
 `timescale 1ps / 1fs
+
+// The KM port widths read these headers, so they are included ahead of the module.
+`include "km_csr_reg.svh"
+`include "km_drbg_sampler_reg.svh"
 
 module sep_fcov (
   input wire        clk_i,
@@ -315,6 +320,7 @@ module sep_fcov (
   input wire                 tlu_take_nmi_i,
   input wire                 tlu_take_timer_i,
   input wire                 tlu_take_soft_i,
+  input wire                 tlu_soft_int_i,  // soft_int (core pin, TLU input)
   // MB[m]: gen_mailbox[m].u_axi_lite_mailbox. Port index 0 is i_slv_port_0
   // (outbound aperture), 1 is i_slv_port_1 (inbound aperture). FIFO index 0
   // is i_mbox_0_to_1 (FIFO A), 1 is i_mbox_1_to_0 (FIFO B).
@@ -612,8 +618,8 @@ module sep_fcov (
   input sep_efuse_pkg::efuse_axil_req_t     jtag_req_i,      // axil_sep_otp_jtag_req_i
   input sep_efuse_pkg::efuse_axil_resp_t    jtag_resp_i,     // axil_sep_otp_jtag_resp_o
   input wire                                irq_token_fault_i,  // PIC source 40 request line
-  input wire [5:0]                          tok_sip_i,       // ext_debug_bus_o[229:224]
-  input wire [5:0]                          tok_chp_i,       // ext_debug_bus_o[213:208]
+  input wire [5:0]                          tok_sip_i,       // RMA_SIP_TOKEN_MATCH status code
+  input wire [5:0]                          tok_chp_i,       // RMA_CHIPLET_TOKEN_MATCH status code
   input wire [5:0]                          tok_sdis_i,      // TOKEN_PROC sec_disable_token_match_q
   input wire [2:0]                          tok_fault_i,     // TOKEN_PROC token_match_fault_sticky_q
   input wire [2:0]                          token_go_i,      // TOKEN_PROC hash start pulses
@@ -657,24 +663,27 @@ module sep_fcov (
   input wire                                km_cpu_irq_i,     // KM cpu_irq (KMCSR aggregate)
   input wire                                km_cpu_mbox_irq_i, // KM cpu_mbox_irq
   input wire                                km_cpu_sk_irq_i,  // KM abr_mlkem_sharedkey_irq_i
-  input wire [11:0]                         km_irq_status_i,  // km_csr_irq_status_o
-  input wire [11:0]                         km_irq_enable_i,  // km_csr_irq_enable_o
+  input wire [KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT-1:0] km_irq_status_i,  // km_csr_irq_status_o
+  input wire [KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT-1:0] km_irq_enable_i,  // km_csr_irq_enable_o
   input wire                                km_cold_boot_done_i,
   input wire                                km_sram_exec_mode_i,
-  input wire [31:0]                         km_sram_lock_i,   // KM sram_lock_bits
+  input wire [$countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK)-1:0] km_sram_lock_i,  // KM sram_lock_bits
   input wire [31:0]                         km_sram_viol_i,   // SRAM_WRITE_LOCK_VIOLATION
   input wire [31:0]                         km_sram_viol_pulse_i, // sram_write_lock_violation_region
   input wire [31:0]                         km_scr_key_i,     // SCRAMBLER_KEY register value
   input wire [1:0]                          km_scr_ctrl_i,    // SCRAMBLER_CTRL {lock, enable}
   input wire                                km_scr_en_i,      // KM scrambler_enable
   input wire                                km_scr_lock_i,    // KM scrambler_lock
-  input wire [8:0]                          km_otp_rlock_i,   // OTP_READ_LOCK
-  input wire [8:0]                          km_otp_rlock_cold_i, // OTP_READ_LOCK_COLD
-  input wire [8:0]                          km_otp_chg_i,     // OTP_CHANGE_STATUS
+  // OTP_READ_LOCK, OTP_READ_LOCK_COLD and OTP_CHANGE_STATUS: one bit per OTP
+  // readout field, in OTP_READ_LOCK bit order.
+  input wire [KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT-1:0] km_otp_rlock_i,
+  input wire [KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT-1:0] km_otp_rlock_cold_i,
+  input wire [KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT-1:0] km_otp_chg_i,
   input wire [31:0]                         km_irq_entry_addr_i,
   input wire                                km_irq_entry_lock_i,
-  input wire [255:0]                        km_kpv_ctrl_i,    // km_kpv_ctrl_o
-  input wire [32767:0]                      km_kpv_words_i,   // km_kpv_words_o
+  // km_kpv_ctrl_o: CTRL[s] at [4*s +: 4]; km_kpv_words_o: stored word i at [32*i +: 32].
+  input wire [4*key_manager_addrmap_pkg::KEY_MANAGER_KPV_CTRL_NUM-1:0] km_kpv_ctrl_i,
+  input wire [8*key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE-1:0] km_kpv_words_i,
   input wire [31:0]                         km_kpv_scr_key_i, // KPV_SCRAMBLER_KEY register
   input wire [1:0]                          km_kpv_scr_ctrl_i, // KPV_SCRAMBLER_CTRL {lock, enable}
   input wire [4:0]                          km_mbx_in_depth_i,  // inbound (SEP to KM) depth
@@ -737,7 +746,9 @@ module sep_fcov (
   input wire [4:0]                          km_key_aw_ready_i,
   input wire [5*32-1:0]                     km_key_aw_addr_i,
   input wire                                km_kpv_flip_en_i, // HK-KPV arm, read as stimulus
-  input wire [9:0]                          km_kpv_flip_idx_i, // HK-KPV logical word index
+  // HK-KPV logical word index: slot x words per slot + word.
+  input wire [$clog2(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE / 4)-1:0]
+      km_kpv_flip_idx_i,
   input wire                                km_par_fired_i,   // HK-PAR flip since the arm
   input wire                                km_par_mem_i,     // HK-PAR memory (0 ROM, 1 SRAM)
   input wire [1:0]                          km_par_lane_i,    // HK-PAR flipped lane
@@ -1250,6 +1261,59 @@ module sep_fcov (
   wire         sram_write = wr_ev && in_win(aw_addr_q, SramBase, SramEnd);
   wire         sram_readback = rd_ev && sram_valid_q && (ar_addr_q == sram_addr_q) &&
       (lsu_r_data_i == sram_data_q);
+
+  // Pass label sram_access_pass of the owner-graded points of
+  // sep_sram_access_cg: value {point, cell} = point * 256 + cell, 0 idle.
+  // Point 1 cp_sram_wstrb (cell = WSTRB), 2 cp_xmaster_pair (cell = writer * 4
+  // + reader; 0 System Interface, 1 CPU LSU, 2 DMA), 3 cp_pattern_class, 4
+  // cp_addr_line_class. The owner writes the value after the check that grades
+  // that cell passed, holds it two clocks and writes 0. A rise from 0 samples
+  // the cell one clk_i edge later when the last window opened in the run
+  // belongs to the owner of the point, also after that window closed; a value
+  // of another owner samples nothing. The cell is the stimulus value that the
+  // passing check graded on a DUT readback; the label drives nothing. A point 1
+  // cell samples only when an inbound W handshake inside the window of its
+  // owner carried that WSTRB since the last point 1 release (sa_strb_seen);
+  // the release and the next window open of the owner clear sa_strb_seen.
+  int unsigned sram_access_pass = 0;
+  logic        sa_pass_q = 1'b0;
+  int unsigned sa_owner_q = FcovOwnNone;
+  logic [2:0]  sa_pt_q = '0;
+  logic [7:0]  sa_cell_q = '0;
+  logic        sa_own_strb_q = 1'b0;
+  logic [15:0] sa_strb_seen = '0;
+  wire         sa_own_strb = (graded_owner == FcovOwnSepSramAxiShapeMatrixTest);
+  wire         sa_rise = (sram_access_pass != 0) && !sa_pass_q;
+  wire         sa_strb_rel = sa_rise && ((sram_access_pass >> 8) == 1);
+  function automatic int unsigned sa_point_owner(input int unsigned pt);
+    case (pt)
+      1: return FcovOwnSepSramAxiShapeMatrixTest;
+      2: return FcovOwnSepSramInboundBurstAttrTest;
+      3, 4: return FcovOwnSepSramDatapathBreadthTest;
+      default: return FcovOwnNone;
+    endcase
+  endfunction
+  wire sa_owner_ok = (sa_owner_q != FcovOwnNone) &&
+      (sa_point_owner(sram_access_pass >> 8) == sa_owner_q);
+  wire sa_strb_ok = !sa_strb_rel ||
+      ((sram_access_pass[7:0] < 16) && sa_strb_seen[sram_access_pass[3:0]]);
+  always @(posedge clk_i) begin
+    sa_pass_q     <= (sram_access_pass != 0);
+    sa_own_strb_q <= sa_own_strb;
+    if (graded_owner != FcovOwnNone) sa_owner_q <= graded_owner;
+    if ((sa_own_strb && !sa_own_strb_q) || sa_strb_rel) begin
+      sa_strb_seen <= '0;
+    end else if (!in_reset && sa_own_strb && (in_req_i.w_valid === 1'b1) &&
+                 (in_resp_i.w_ready === 1'b1) && (in_req_i.w.strb[7:4] == 4'h0)) begin
+      sa_strb_seen[in_req_i.w.strb[3:0]] <= 1'b1;
+    end
+    if (sa_rise && sa_owner_ok && sa_strb_ok) begin
+      sa_pt_q   <= 3'(sram_access_pass >> 8);
+      sa_cell_q <= 8'(sram_access_pass);
+    end else begin
+      sa_pt_q <= 3'd0;
+    end
+  end
 
   // --- Boot ROM ----------------------------------------------------------
   wire rom_ifu = !in_reset && (cpu_trace_valid_i === 1'b1) &&
@@ -2353,11 +2417,18 @@ module sep_fcov (
   // DMA master AR and AW handshakes after the alias remap (dma_req_i).
   wire dm_ar = !in_reset && (dma_req_i.ar_valid === 1'b1) && (dma_resp_i.ar_ready === 1'b1);
   wire dm_aw = !in_reset && (dma_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1);
-  // Interrupt clear write of source 0 on the DMA host port (CLEAR_INTR_BUS
-  // bit 0 = 1): a DMA master AW to INTR_SRC_ADDR_0 with CLEAR_INTR_SRC bit 0 set.
-  wire dma_intr_clr_aw = dm_aw && (dma_reg2hw_i.clear_intr_src.q[0] === 1'b1) &&
-      (dma_reg2hw_i.clear_intr_bus.q[0] === 1'b1) &&
-      (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[0].q);
+  // Interrupt clear write of source i on the DMA host port (CLEAR_INTR_BUS
+  // bit i = 1): a DMA master AW to INTR_SRC_ADDR_i with CLEAR_INTR_SRC bit i
+  // set (dma.hjson CLEAR_INTR_SRC, NumIntClearSources).
+  localparam int unsigned DmaNumClr = $bits(secure_dma_reg_pkg::dma_reg2hw_clear_intr_src_reg_t);
+  logic [DmaNumClr-1:0] dma_intr_clr_aw;
+  always_comb begin
+    for (int i = 0; i < DmaNumClr; i++) begin
+      dma_intr_clr_aw[i] = dm_aw && (dma_reg2hw_i.clear_intr_src.q[i] === 1'b1) &&
+          (dma_reg2hw_i.clear_intr_bus.q[i] === 1'b1) &&
+          (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[i].q);
+    end
+  end
   // Pass label of sep_spi_dma_handshake_rand_test: bit 0 releases the held
   // cp_hs_mask cell, bit 1 the held cp_intr_clear cell, bit 2 the other held
   // cells of that leaf (hr_pend_q, SPI and DMA section). The leaf writes 0 at
@@ -2366,12 +2437,15 @@ module sep_fcov (
   // the window with the label 0; a window close or a reset drops the held
   // cells. It gates a sample; it is never a DUT value and drives nothing.
   int unsigned hs_mask_pass = 0;
-  logic ic_pend_q = 1'b0, ic_pass_q = 1'b0;
-  wire ic_rel = own_spi_dma_hs && ic_pend_q && ((hs_mask_pass & 32'h2) != 0) && !ic_pass_q;
+  logic [DmaNumClr-1:0] ic_pend_q = '0;
+  logic ic_pass_q = 1'b0;
+  // The held clear sources at the rise of bit 1, else 0.
+  wire ic_rel_ev = own_spi_dma_hs && ((hs_mask_pass & 32'h2) != 0) && !ic_pass_q;
+  wire [DmaNumClr-1:0] ic_rel = ic_rel_ev ? ic_pend_q : '0;
   always @(posedge clk_i) begin
     ic_pass_q <= ((hs_mask_pass & 32'h2) != 0);
-    if (in_reset || !own_spi_dma_hs || ic_rel) ic_pend_q <= 1'b0;
-    else if (dma_intr_clr_aw) ic_pend_q <= 1'b1;
+    if (in_reset || !own_spi_dma_hs || ic_rel_ev) ic_pend_q <= '0;
+    else ic_pend_q <= ic_pend_q | dma_intr_clr_aw;
   end
   // CFG_REGWEN read response with the busy probe at that clock.
   wire [4:0] dma_cfg_rw = {d_busy, rd_data[3:0]};
@@ -2402,6 +2476,18 @@ module sep_fcov (
   wire        dr_status = rd_ev && rhit4(ar_addr_q, ar_size_q, DmaStatus);
   wire [31:0] dr_status_d = word4(lsu_r_data_i, DmaStatus);
   wire        dr_ist = rd_ev && rhit4(ar_addr_q, ar_size_q, DmaIntrState);
+  wire [31:0] dr_ist_d = word4(lsu_r_data_i, DmaIntrState);
+  // Per event {ERROR, CHUNK_DONE, DONE} of an INTR_STATE read: the bit reads 1
+  // with its INTR_ENABLE bit 0 and its STATUS bit 1. The STATUS bit leaves out
+  // a bit that only INTR_TEST set.
+  wire [2:0]  dr_ist_ungated = {
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_ERROR_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_error.q === 1'b0) && d_err,
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_CHUNK_DONE_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_chunk_done.q === 1'b0) && d_chunk,
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_DONE_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_done.q === 1'b0) && d_done
+  };
 
   // --- Secure DMA: latched fields ----------------------------------------
   logic [31:0] d_src_q, d_dst_q, d_total_q, d_chunk_q, d_base_q, d_limit_q;
@@ -2437,11 +2523,11 @@ module sep_fcov (
   logic d_gswap_q;  // CONTROL.DIGEST_SWAP of the last initial GO
   logic go_q, busy_q, done_q, chunk_q, dvalid_q, aborted_q, abort_q, size_err_q;
   logic ir_v_q;
-  logic [1:0] ir_src_q, ir_dst_q;
+  logic [1:0] ir_dst_q;
   logic dv_arm_q, dv_hash_q;
   logic szk_v_q, hwf_v_q;
   logic [1:0]  szk_q;
-  logic        hwf_q;
+  logic [2:0]  hwf_q;  // {CONTROL.OPCODE[1:0], TRANSFER_WIDTH[0]} of the faulty GO
   logic        ea_v_q;
   logic ab_beat_q, ab_on_q, ab_after_q;
   logic        uc_v_q;
@@ -2481,6 +2567,113 @@ module sep_fcov (
       (wr_data != rl_old_q) && (d_limit_now == rl_old_q);
   wire dl_valid = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRangeValid) &&
       (dl_valid_wd != rvv_old_q) && (d_valid_now == rvv_old_q);
+
+  // The registers that dma.hjson marks regwen "CFG_REGWEN", locked while the
+  // DMA is busy (CFG_REGWEN description). cl_reg is the cp_locked_write_refused
+  // value of each: 4 to 7 the address registers that hardware also writes
+  // (hwaccess "hrw"), 8 to 18 the others; 0 is any other address.
+  localparam logic [31:0] DmaSrcHi = SECURE_DMA_SRC_ADDR_HI_REG_ADDR;
+  localparam logic [31:0] DmaDstHi = SECURE_DMA_DST_ADDR_HI_REG_ADDR;
+  localparam logic [31:0] DmaAsid = SECURE_DMA_ADDR_SPACE_ID_REG_ADDR;
+  localparam logic [31:0] DmaHsIntrEn = SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR;
+  localparam logic [31:0] DmaClrSrc = SECURE_DMA_CLEAR_INTR_SRC_REG_ADDR;
+  localparam logic [31:0] DmaClrBus = SECURE_DMA_CLEAR_INTR_BUS_REG_ADDR;
+  localparam logic [31:0] DmaClrAddr0 = SECURE_DMA_INTR_SRC_ADDR_0_0__REG_ADDR;
+  localparam logic [31:0] DmaClrAddrEnd = SECURE_DMA_INTR_SRC_ADDR_0_10__REG_ADDR + 32'd4;
+  localparam logic [31:0] DmaClrVal0 = SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR;
+  localparam logic [31:0] DmaClrValEnd = SECURE_DMA_INTR_SRC_WR_VAL_0_10__REG_ADDR + 32'd4;
+  function automatic logic [4:0] cl_reg(input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return 5'd17;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return 5'd18;
+    case (a)
+      DmaSrcLo:    return 5'd4;
+      DmaSrcHi:    return 5'd5;
+      DmaDstLo:    return 5'd6;
+      DmaDstHi:    return 5'd7;
+      DmaAsid:     return 5'd8;
+      DmaTotal:    return 5'd9;
+      DmaChunk:    return 5'd10;
+      DmaWidth:    return 5'd11;
+      DmaSrcCfg:   return 5'd12;
+      DmaDstCfg:   return 5'd13;
+      DmaHsIntrEn: return 5'd14;
+      DmaClrSrc:   return 5'd15;
+      DmaClrBus:   return 5'd16;
+      default:     return 5'd0;
+    endcase
+  endfunction
+  // The writable fields of the register at `a`, at their register positions.
+  function automatic logic [31:0] cl_mask(input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return SECURE_DMA_INTR_SRC_ADDR_0_ADDR_0_MASK;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return SECURE_DMA_INTR_SRC_WR_VAL_0_WR_VAL_0_MASK;
+    case (a)
+      DmaSrcLo:    return SECURE_DMA_SRC_ADDR_LO_SRC_ADDR_LO_MASK;
+      DmaSrcHi:    return SECURE_DMA_SRC_ADDR_HI_SRC_ADDR_HI_MASK;
+      DmaDstLo:    return SECURE_DMA_DST_ADDR_LO_DST_ADDR_LO_MASK;
+      DmaDstHi:    return SECURE_DMA_DST_ADDR_HI_DST_ADDR_HI_MASK;
+      DmaAsid:
+      return SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_MASK | SECURE_DMA_ADDR_SPACE_ID_DST_ASID_MASK;
+      DmaTotal:    return SECURE_DMA_TOTAL_DATA_SIZE_DATA_SIZE_MASK;
+      DmaChunk:    return SECURE_DMA_CHUNK_DATA_SIZE_DATA_SIZE_MASK;
+      DmaWidth:    return SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_MASK;
+      DmaSrcCfg:   return SECURE_DMA_SRC_CONFIG_INCREMENT_MASK | SECURE_DMA_SRC_CONFIG_WRAP_MASK;
+      DmaDstCfg:   return SECURE_DMA_DST_CONFIG_INCREMENT_MASK | SECURE_DMA_DST_CONFIG_WRAP_MASK;
+      DmaHsIntrEn: return SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_MASK;
+      DmaClrSrc:   return SECURE_DMA_CLEAR_INTR_SRC_SOURCE_MASK;
+      DmaClrBus:   return SECURE_DMA_CLEAR_INTR_BUS_BUS_MASK;
+      default:     return 32'h0;
+    endcase
+  endfunction
+  // The stored value of the register at `a` (reg2hw), at its register positions.
+  function automatic logic [31:0] cl_val(input secure_dma_reg_pkg::dma_reg2hw_t r,
+                                         input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return r.intr_src_addr[4'((a-DmaClrAddr0)>>2)].q;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return r.intr_src_wr_val[4'((a-DmaClrVal0)>>2)].q;
+    case (a)
+      DmaSrcLo:    return r.src_addr_lo.q;
+      DmaSrcHi:    return r.src_addr_hi.q;
+      DmaDstLo:    return r.dst_addr_lo.q;
+      DmaDstHi:    return r.dst_addr_hi.q;
+      DmaAsid:
+      return (32'(r.addr_space_id.src_asid.q) << SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_SHIFT) |
+          (32'(r.addr_space_id.dst_asid.q) << SECURE_DMA_ADDR_SPACE_ID_DST_ASID_SHIFT);
+      DmaTotal:    return r.total_data_size.q;
+      DmaChunk:    return r.chunk_data_size.q;
+      DmaWidth:
+      return 32'(r.transfer_width.q) << SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_SHIFT;
+      DmaSrcCfg:
+      return (32'(r.src_config.increment.q) << SECURE_DMA_SRC_CONFIG_INCREMENT_SHIFT) |
+          (32'(r.src_config.wrap.q) << SECURE_DMA_SRC_CONFIG_WRAP_SHIFT);
+      DmaDstCfg:
+      return (32'(r.dst_config.increment.q) << SECURE_DMA_DST_CONFIG_INCREMENT_SHIFT) |
+          (32'(r.dst_config.wrap.q) << SECURE_DMA_DST_CONFIG_WRAP_SHIFT);
+      DmaHsIntrEn:
+      return 32'(r.handshake_intr_enable.q) << SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_SHIFT;
+      DmaClrSrc:
+      return 32'(r.clear_intr_src.q) << SECURE_DMA_CLEAR_INTR_SRC_SOURCE_SHIFT;
+      DmaClrBus:   return 32'(r.clear_intr_bus.q) << SECURE_DMA_CLEAR_INTR_BUS_BUS_SHIFT;
+      default:     return 32'h0;
+    endcase
+  endfunction
+  // A full-word write to a protected register, issued and answered (any
+  // response: none is stated for a locked write) while BUSY is 1, that did not
+  // land. Hardware also writes the address registers, so for those the stored
+  // value differs from the written one; for the others it is the value before
+  // the write, and the write carried another value.
+  logic [31:0] cl_pre_q;
+  logic        cl_busy_q;
+  wire         wr_done_any = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
+  wire  [4:0]  cl_lw = cl_reg(aw_addr_q);
+  wire  [31:0] cl_wd = wr_data & cl_mask(aw_addr_q);
+  wire  [31:0] cl_now = cl_val(dma_reg2hw_i, aw_addr_q);
+  wire         cl_refused = wr_done_any && (cl_lw != 5'd0) && (wr_strb == 4'hF) && cl_busy_q &&
+      d_busy && ((cl_lw <= 5'd7) ? (cl_now != cl_wd) : ((cl_wd != cl_pre_q) && (cl_now == cl_pre_q)));
+  always_ff @(posedge clk_i) begin
+    if (wr_issue) begin
+      cl_pre_q  <= cl_val(dma_reg2hw_i, wi_addr);
+      cl_busy_q <= d_busy;
+    end
+  end
 
   // Position of a region against the range: 0 at BASE, 1 interior,
   // 2 at LIMIT (last byte at LIMIT), 3 other.
@@ -2741,10 +2934,10 @@ module sep_fcov (
       if (d_chunk && !chunk_q) cdc_wr_q <= 1'b0;
       else if (di_status) cdc_wr_q <= 1'b1;
 
-      // In-range position of each side at the initial GO, scored at DONE.
+      // In-range position of the destination of a zero fill at the initial
+      // GO, scored at DONE.
       if (d_go && dg_init) begin
-        ir_v_q   <= 1'b1;
-        ir_src_q <= rng_pos(d_src_q, d_total_q, d_base_q, d_limit_q);
+        ir_v_q   <= (dg_op == DmaOpZero);
         ir_dst_q <= rng_pos(d_dst_q, d_total_q, d_base_q, d_limit_q);
       end else if (d_done && !done_q) begin
         ir_v_q <= 1'b0;
@@ -2764,7 +2957,7 @@ module sep_fcov (
         szk_v_q <= (d_total_q == 32'h0) || (d_chunk_q == 32'h0);
         szk_q   <= (d_total_q == 32'h0) ? ((d_chunk_q == 32'h0) ? 2'd2 : 2'd0) : 2'd1;
         hwf_v_q <= di_hash && (d_width_q <= 2'd1);
-        hwf_q   <= d_width_q[0];
+        hwf_q   <= {di_op[1:0], d_width_q[0]};
       end else if (d_size_err && !size_err_q) begin
         szk_v_q <= 1'b0;
         hwf_v_q <= 1'b0;
@@ -2794,7 +2987,8 @@ module sep_fcov (
         uc_v_q <= 1'b0;
       end
 
-      // Interrupt trial: lines held from the GO issue to the INTR_STATE read.
+      // Interrupt trial: lines held from the GO issue to the INTR_STATE read
+      // at its end.
       if (di_go && di_init && (di_op == DmaOpCopy)) begin
         it_on_q  <= 1'b1;
         it_en_q  <= d_ien_q;
@@ -2802,7 +2996,9 @@ module sep_fcov (
         it_cls_q <= (d_total_q == 32'h0) ? 2'd2 : (d_single ? 2'd0 : (d_multi ? 2'd1 : 2'd3));
       end else if (it_on_q) begin
         it_l_q <= it_l_q | {irq_d_err, irq_d_chunk, irq_d_done};
-        if (dr_ist) begin
+        // A read at a CHUNK_DONE stop before DONE or ERROR is not the end of
+        // the trial.
+        if (dr_ist && !(d_chunk && !d_done && !d_err)) begin
           it_on_q           <= 1'b0;
           dma_irq_cell_q    <= {it_en_q, it_cls_q};
           dma_irq_cell_ev_q <= own_dma_irq && (it_cls_q != 2'd3) &&
@@ -3881,6 +4077,37 @@ module sep_fcov (
     option.name = "sep_sram_access_cg";
     cp_write: coverpoint sram_write {bins write = {1'b1};}
     cp_match: coverpoint sram_readback {bins write_then_read = {1'b1};}
+    // Owner-gated through sram_access_pass. WSTRB of an 8-byte inbound write
+    // beat (lanes 4 to 7 unstrobed) after CHK-SRAM-STRB passed for it (owner
+    // sep_sram_axi_shape_matrix_test).
+    cp_sram_wstrb: coverpoint sa_cell_q iff (sa_pt_q == 3'd1) {
+      bins strb[] = {[8'h00 : 8'h0F]};
+    }
+    // Ordered {writer, reader} pair of one SRAM word after CHK-SRAM-XMASTER
+    // passed for it (owner sep_sram_inbound_burst_attr_test).
+    cp_xmaster_pair: coverpoint sa_cell_q iff (sa_pt_q == 3'd2) {
+      bins si_to_lsu = {8'h01};
+      bins si_to_dma = {8'h02};
+      bins lsu_to_si = {8'h04};
+      bins lsu_to_dma = {8'h06};
+      bins dma_to_si = {8'h08};
+      bins dma_to_lsu = {8'h09};
+    }
+    // Data pattern class after CHK-PATTERN passed for it (owner
+    // sep_sram_datapath_breadth_test).
+    cp_pattern_class: coverpoint sa_cell_q iff (sa_pt_q == 3'd3) {
+      bins pat_aa = {8'd0};
+      bins pat_55 = {8'd1};
+      bins walk_one = {8'd2};
+      bins walk_zero = {8'd3};
+      bins fixed = {8'd4};
+      bins seed_random = {8'd5};
+    }
+    // Address-line class (base word, offset 2^k for k = 3 to 17, top word)
+    // after CHK-ADDR-LINES passed for it (owner sep_sram_datapath_breadth_test).
+    cp_addr_line_class: coverpoint sa_cell_q iff (sa_pt_q == 3'd4) {
+      bins base = {8'd0}; bins line[] = {[8'd3 : 8'd17]}; bins top = {8'd18};
+    }
   endgroup
 
   covergroup sep_boot_rom_cg @(posedge clk_i);
@@ -4035,8 +4262,22 @@ module sep_fcov (
     option.name = "sep_otbn_execute_cg";
     cp_cmd: coverpoint otbn_execute {bins execute = {1'b1};}
     cp_done: coverpoint otbn_done {bins idle_err_bits_zero = {1'b1};}
-    cp_imem_rdback: coverpoint otbn_imem_rdback {bins write_then_read = {1'b1};}
-    cp_dmem_rdback: coverpoint otbn_dmem_rdback {bins write_then_read = {1'b1};}
+    // Word written and read back at IDLE, by its offset in the window (owner
+    // sep_otbn_load_checksum_read_test). Accesses outside that owner window,
+    // such as those under the OTBN wipe-state memory access exception
+    // (docs/test_contracts/smoke_uvm.adoc), do not sample.
+    cp_imem_rdback: coverpoint ar_addr_q iff (otbn_imem_rdback &&
+        (graded_owner == FcovOwnSepOtbnLoadChecksumReadTest)) {
+      bins first_word = {OTBN_IMEM_MEM_BASE_ADDR};
+      bins mid_word = {[OTBN_IMEM_MEM_BASE_ADDR + 32'd4 : OtbnImemEnd - 32'd8]};
+      bins last_word = {OtbnImemEnd - 32'd4};
+    }
+    cp_dmem_rdback: coverpoint ar_addr_q iff (otbn_dmem_rdback &&
+        (graded_owner == FcovOwnSepOtbnLoadChecksumReadTest)) {
+      bins first_word = {OTBN_DMEM_MEM_BASE_ADDR};
+      bins mid_word = {[OTBN_DMEM_MEM_BASE_ADDR + 32'd4 : OtbnDmemEnd - 32'd8]};
+      bins last_word = {OtbnDmemEnd - 32'd4};
+    }
   endgroup
 
   covergroup sep_abr_keygen_cg @(posedge clk_i);
@@ -4373,10 +4614,21 @@ module sep_fcov (
     cp_cfg_regwen: coverpoint dmx_crw_cv iff (dmx_crw_rv) {
       bins busy_false = {5'b1_1001}; bins idle_true = {5'b0_0110};
     }
-    // Interrupt clear write of source 0 on the DMA host port, in the window of
-    // its owner, held until hs_mask_pass bit 1 rises.
+    // Interrupt clear write of source 0 (clear_wr_host) and of each source 1 to
+    // 10 (clear_wr_host_idx<i>) on the DMA host port, in the window of its
+    // owner, held until hs_mask_pass bit 1 rises.
     cp_intr_clear: coverpoint ic_rel {
-      bins clear_wr_host = {1'b1};
+      wildcard bins clear_wr_host = {11'b???_????_???1};
+      wildcard bins clear_wr_host_idx1 = {11'b???_????_??1?};
+      wildcard bins clear_wr_host_idx2 = {11'b???_????_?1??};
+      wildcard bins clear_wr_host_idx3 = {11'b???_????_1???};
+      wildcard bins clear_wr_host_idx4 = {11'b???_???1_????};
+      wildcard bins clear_wr_host_idx5 = {11'b???_??1?_????};
+      wildcard bins clear_wr_host_idx6 = {11'b???_?1??_????};
+      wildcard bins clear_wr_host_idx7 = {11'b???_1???_????};
+      wildcard bins clear_wr_host_idx8 = {11'b??1_????_????};
+      wildcard bins clear_wr_host_idx9 = {11'b?1?_????_????};
+      wildcard bins clear_wr_host_idx10 = {11'b1??_????_????};
     }
   endgroup
 
@@ -5826,6 +6078,8 @@ module sep_fcov (
   logic [1:0] fx_filter_csr_write = '0;  // 1 unlocked_lo, 2 unlocked_hi, 3 locked
   logic [3:0] fx_cpu_single = '0;    // {AxLEN class, channel}: see cp_cpu_single_beat
   logic [1:0] fx_shim_byte = '0;     // 1 lsu_w, 2 si_w
+  logic [1:0] fx_tcm_t2t = '0;       // see cp_tcm_dma_t2t
+  logic [3:0] fx_alias_run = '0;     // see cp_dma_alias_run
   logic [1:0] fx_shim_burst = '0;    // 1 read, 2 write
   logic [2:0] fx_array_tail = '0;    // 1 alias, 2 infilt, 3 outfilt, 4 ap, 5 stee
   logic [1:0] fx_valid0 = '0;        // 1 ap, 2 stee
@@ -5986,8 +6240,8 @@ module sep_fcov (
   // (NS 1 for ap, the inverse of address bit 55 for smu and stee); 7 ap and
   // 8 stee with AxUSER[3:0] 0 while the LSU drove non-zero; 9 smu with a
   // source ID that is not OTHERS (0) and not the one the LSU drove; 10 DMA on
-  // smu with a source ID that is not OTHERS. SEP's ID has no stated number,
-  // so bins 9 and 10 sample its class, not a value.
+  // smu with a source ID that is not OTHERS. Bins 9 and 10 sample the class of
+  // SEP's ID, not its value 0xF; CHK-OUT-SRC-ID and CHK-CPU-SRC-ID grade it.
   covergroup sep_fabric_outbound_route_cg with function sample (
       logic [3:0] cls_dir,
       logic own_cls,
@@ -6459,6 +6713,12 @@ module sep_fcov (
     cp_tcm_dma_dir_range: coverpoint tcm_cell iff (own_tcm) {
       bins r_iccm = {2'b00}; bins r_dccm = {2'b01}; bins w_iccm = {2'b10}; bins w_dccm = {2'b11};
     }
+    // {1, write range (0 ICCM, 1 DCCM)} of a DMA TCM write hit whose last DMA
+    // read since the GO rise is in the other TCM range (owner
+    // sep_tcm_dma_aperture_ecc_test, inside its window).
+    cp_tcm_dma_t2t: coverpoint fx_tcm_t2t iff (fx_tcm_t2t != 2'd0) {
+      bins iccm_to_dccm = {2'b1_1}; bins dccm_to_iccm = {2'b1_0};
+    }
     // CPU path cells (memory, boot, reset groups): {backdoor request, cell}.
     // Cell 0 IFU read ICCM, 1 LSU read ICCM, 2 LSU write ICCM, 3 LSU read
     // DCCM, 4 LSU write DCCM.
@@ -6586,6 +6846,31 @@ module sep_fcov (
     cp_src_x_dst_endpoint: coverpoint ep iff (ep_v) {
       bins sram_to_sram = {2'd1}; bins spi_to_sram = {2'd2};
     }
+    // A DMA run with a side in the local-alias form that ends DONE with no
+    // error (alr_* block): codes 1 to 12 owner
+    // sep_dma_transfer_matrix_rand_test (held until dma_matrix_pass), code 13
+    // owner sep_dma_zero_fill_rand_test (held until dma_zero_pass).
+    // verilator lint_off COVERIGN
+    cp_dma_alias_run: coverpoint fx_alias_run iff (fx_alias_run != 4'd0) {
+      bins copy_enc0 = {4'd1};
+      bins copy_enc1 = {4'd2};
+      bins copy_enc2 = {4'd3};
+      bins copy_one_chunk = {4'd4};
+      bins copy_multi_chunk = {4'd5};
+      bins copy_alias_src_increment = {4'd6};
+      bins copy_alias_src_wrap = {4'd7};
+      bins copy_alias_src_fixed = {4'd8};
+      bins copy_alias_dst_increment = {4'd9};
+      bins copy_alias_dst_wrap = {4'd10};
+      bins copy_alias_dst_fixed = {4'd11};
+      bins sha_alias_src = {4'd12};
+      bins zero_alias_dst = {4'd13};
+      // A copy with a side of INCREMENT 0 and WRAP 0 over two or more chunks:
+      // no document states the start address of a later chunk, so the owner
+      // runs it only as a logged run with the window closed.
+      ignore_bins copy_fixed_multi_chunk = {4'd14};
+    }
+  // verilator lint_on COVERIGN
   endgroup
 
   // ---------------------------------------------------------------------
@@ -7506,6 +7791,13 @@ module sep_fcov (
   // DMA TCM cell: a DMA request into ICCM or DCCM, confirmed by tcm activity.
   logic       tcm_pend_q;
   logic [1:0] tcm_cell_q;
+  // {in a TCM range, 0 ICCM 1 DCCM} of the last DMA AR handshake since the
+  // GO rise.
+  logic [1:0] t2t_rd_q;
+  wire        t2t_ar_iccm = in_rng(dma_req_i.ar.addr, 32'(SEP_ICCM_MEM_BASE_ADDR),
+                                   32'(SEP_ICCM_MEM_BASE_ADDR) + 32'(SEP_ICCM_MEM_SIZE) - 32'd1);
+  wire        t2t_ar_dccm = in_rng(dma_req_i.ar.addr, 32'(SEP_DCCM_MEM_BASE_ADDR),
+                                   32'(SEP_DCCM_MEM_BASE_ADDR) + 32'(SEP_DCCM_MEM_SIZE) - 32'd1);
   // The enable of the range that the pending DMA access addresses:
   // tcm_cell_q[0] is 0 for the ICCM range and 1 for the DCCM range.
   wire tcm_clken = tcm_cell_q[0] ? dccm_clken_i : iccm_clken_i;
@@ -7528,7 +7820,10 @@ module sep_fcov (
       dma_ext_q <= 1'b0;
       tcm_pend_q <= 1'b0;
       tcm_cell_q <= '0;
+      t2t_rd_q <= '0;
     end else begin
+      if (dq_ar_hs) t2t_rd_q <= {t2t_ar_iccm || t2t_ar_dccm, t2t_ar_dccm};
+      else if (d_go_q && !go_q) t2t_rd_q <= '0;
       irq_dma_done_q2 <= (irq_dma_done_i === 1'b1);
       irq_dma_err_q2  <= (irq_dma_error_i === 1'b1);
       if (dma_run_end) begin
@@ -8049,9 +8344,13 @@ module sep_fcov (
       if (ext_r_hs)
         u_sep_fabric_dedicated_port_cg.sample(3'd0, own_ext, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
                                               1'b0, 1'b0, {1'b0, ext_resp_i.r.resp}, 1'b1);
-      if (tcm_hit)
+      if (tcm_hit) begin
+        fx_tcm_t2t = (own_tcm_dma && tcm_cell_q[1] && t2t_rd_q[1] &&
+                      (t2t_rd_q[0] != tcm_cell_q[0])) ? {1'b1, tcm_cell_q[0]} : 2'd0;
         u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, tcm_cell_q, own_tcm_dma,
                                               4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
+        fx_tcm_t2t = 2'd0;
+      end
       // Alias remap input.
       if (al_ar_hs || al_aw_hs) begin
         logic    w;
@@ -9606,7 +9905,9 @@ module sep_fcov (
       logic cc_v,
       logic cdc_v,
       logic [1:0] cd,
-      logic cd_v
+      logic cd_v,
+      logic [2:0] ist,
+      logic ist_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_completion_cg";
@@ -9637,6 +9938,14 @@ module sep_fcov (
       bins multi_exact_wrap0 = {2'b10};
       bins multi_exact_wrap1 = {2'b11};
     }
+    // INTR_STATE read with the bit of an event 1, its INTR_ENABLE bit 0 and its
+    // STATUS bit 1, per event {ERROR, CHUNK_DONE, DONE} (secure_dma.adoc
+    // INTR_STATE, INTR_ENABLE): the enable gates the line, not the state bit.
+    cp_intr_state_seen: coverpoint ist iff (ist_v) {
+      wildcard bins dma_done = {3'b??1};
+      wildcard bins dma_chunk_done = {3'b?1?};
+      wildcard bins dma_error = {3'b1??};
+    }
   endgroup
 
   covergroup sep_dma_range_config_cg with function sample (
@@ -9647,11 +9956,13 @@ module sep_fcov (
     cp_range_valid_at_go: coverpoint rv_v {bins valid1 = {1'b1};}
     cp_base_limit_rel: coverpoint bl_v {bins limit_gt_base = {1'b1};}
     // {side (0 source, 1 destination), position (0 at BASE, 1 interior,
-    // 2 at LIMIT)} of a transfer that ends with DONE and no error.
+    // 2 at LIMIT)} of a zero fill that ends with DONE and no error. The
+    // range bounds zero-fill writes only, not a source or a copy, so no
+    // source cell has stimulus (NO-STIMULUS in docs/SEP_FCOV.adoc).
     cp_inrange_pos_x_side: coverpoint ip iff (ip_v) {
-      bins src_at_base = {3'b0_00};
-      bins src_interior = {3'b0_01};
-      bins src_at_limit = {3'b0_10};
+      ignore_bins src_at_base = {3'b0_00};
+      ignore_bins src_interior = {3'b0_01};
+      ignore_bins src_at_limit = {3'b0_10};
       bins dst_at_base = {3'b1_00};
       bins dst_interior = {3'b1_01};
       bins dst_at_limit = {3'b1_10};
@@ -9714,7 +10025,7 @@ module sep_fcov (
   covergroup sep_dma_config_fault_cg with function sample (
       logic [1:0] sz,
       logic sz_v,
-      logic hw,
+      logic [2:0] hw,
       logic hw_v,
       logic [1:0] ah,
       logic ah_v,
@@ -9727,7 +10038,15 @@ module sep_fcov (
     cp_size_zero_kind: coverpoint sz iff (sz_v) {
       bins total_zero = {2'd0}; bins chunk_zero = {2'd1}; bins both_zero = {2'd2};
     }
-    cp_hash_width_fault: coverpoint hw iff (hw_v) {bins enc0 = {1'b0}; bins enc1 = {1'b1};}
+    // {OPCODE[1:0] (1 SHA-256, 2 SHA-384, 3 SHA-512), TRANSFER_WIDTH encoding}.
+    cp_hash_width_fault: coverpoint hw iff (hw_v) {
+      bins sha256_enc0 = {3'b01_0};
+      bins sha256_enc1 = {3'b01_1};
+      bins sha384_enc0 = {3'b10_0};
+      bins sha384_enc1 = {3'b10_1};
+      bins sha512_enc0 = {3'b11_0};
+      bins sha512_enc1 = {3'b11_1};
+    }
     // {side 0 SRC_ADDR_HI 1 DST_ADDR_HI, a write address landed in the LO
     // destination}, scored at the first DONE or ERROR rise after the GO. No
     // document states the destination footprint, so a LO write is not scored.
@@ -9760,12 +10079,37 @@ module sep_fcov (
     }
   endgroup
 
-  covergroup sep_dma_error_terminal_cg with function sample (logic ea_v, logic ao_v, logic aq_v);
+  // ERROR_CODE bits of the configuration faults that a start can carry together
+  // (programmers_guide.md, Error Condition: all detected errors are reported).
+  localparam logic [7:0] DmaEcOpcode = 8'(SECURE_DMA_ERROR_CODE_OPCODE_ERROR_MASK);
+  localparam logic [7:0] DmaEcAsid = 8'(SECURE_DMA_ERROR_CODE_ASID_ERROR_MASK);
+  localparam logic [7:0] DmaEcSize = 8'(SECURE_DMA_ERROR_CODE_SIZE_ERROR_MASK);
+  localparam logic [7:0] DmaEcDst = 8'(SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_MASK);
+  localparam logic [7:0] DmaEcOpcAsid = DmaEcOpcode | DmaEcAsid;
+  localparam logic [7:0] DmaEcOpcSize = DmaEcOpcode | DmaEcSize;
+  localparam logic [7:0] DmaEcOpcDst = DmaEcOpcode | DmaEcDst;
+  localparam logic [7:0] DmaEcAsidSize = DmaEcAsid | DmaEcSize;
+  localparam logic [7:0] DmaEcAsidDst = DmaEcAsid | DmaEcDst;
+  localparam logic [7:0] DmaEcSizeDst = DmaEcSize | DmaEcDst;
+
+  covergroup sep_dma_error_terminal_cg with function sample (
+      logic ea_v, logic ao_v, logic aq_v, logic [7:0] me, logic me_v
+  );
     option.per_instance = 1;
     option.name = "sep_dma_error_terminal_cg";
     cp_error_x_aggregate: coverpoint ea_v {bins size_error_status_and_intr_state = {1'b1};}
     cp_abort_outcome: coverpoint ao_v {bins aborted_set = {1'b1};}
     cp_abort_quiet: coverpoint aq_v {bins no_beat_after_aborted = {1'b1};}
+    // ERROR_CODE at the STATUS.ERROR rise, equal to exactly two of the
+    // OPCODE_ERROR, ASID_ERROR, SIZE_ERROR and DST_ADDR_ERROR bits.
+    cp_error_multi_class: coverpoint me iff (me_v) {
+      bins opcode_asid = {DmaEcOpcAsid};
+      bins opcode_size = {DmaEcOpcSize};
+      bins opcode_dst_addr = {DmaEcOpcDst};
+      bins asid_size = {DmaEcAsidSize};
+      bins asid_dst_addr = {DmaEcAsidDst};
+      bins size_dst_addr = {DmaEcSizeDst};
+    }
   endgroup
 
   // --- Secure DMA: zero fill ---------------------------------------------
@@ -9870,10 +10214,12 @@ module sep_fcov (
   // Range lock (sep-programming.adoc, zero fill procedure; dma.adoc, Zero
   // Fill). Every bin of the range-lock coverpoints is a BASE, LIMIT or
   // RANGE_VALID write after the lock write (dl_locked) that leaves the register
-  // value unchanged. cp_dma_lock_recovery is sampled by the memory, boot and
+  // value unchanged. The configuration lock bins of cp_locked_write_refused are
+  // a write to a CFG_REGWEN-protected register while BUSY is 1 that did not
+  // land (cl_refused). cp_dma_lock_recovery is sampled by the memory, boot and
   // reset owner.
   covergroup sep_dma_containment_cg with function sample (
-      logic [1:0] lw,
+      logic [4:0] lw,
       logic lw_v,
       logic [1:0] iv,
       logic iv_v,
@@ -9886,9 +10232,28 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_dma_containment_cg";
     // The register of a refused write; regwen_true is a refused write after an
-    // unlock write of True to RANGE_REGWEN.
+    // unlock write of True to RANGE_REGWEN. 4 to 18: the register of a write
+    // refused by the configuration lock (dma.hjson regwen "CFG_REGWEN").
     cp_locked_write_refused: coverpoint lw iff (lw_v) {
-      bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2}; bins regwen_true = {2'd3};
+      bins base = {5'd0};
+      bins limit = {5'd1};
+      bins valid = {5'd2};
+      bins regwen_true = {5'd3};
+      bins cfg_src_addr_lo = {5'd4};
+      bins cfg_src_addr_hi = {5'd5};
+      bins cfg_dst_addr_lo = {5'd6};
+      bins cfg_dst_addr_hi = {5'd7};
+      bins cfg_addr_space_id = {5'd8};
+      bins cfg_total_data_size = {5'd9};
+      bins cfg_chunk_data_size = {5'd10};
+      bins cfg_transfer_width = {5'd11};
+      bins cfg_src_config = {5'd12};
+      bins cfg_dst_config = {5'd13};
+      bins cfg_handshake_intr_enable = {5'd14};
+      bins cfg_clear_intr_src = {5'd15};
+      bins cfg_clear_intr_bus = {5'd16};
+      bins cfg_intr_src_addr = {5'd17};
+      bins cfg_intr_src_wr_val = {5'd18};
     }
     // A refused write after an unlock write of that value to RANGE_REGWEN.
     cp_regwen_invalid_value: coverpoint iv iff (iv_v) {
@@ -10205,13 +10570,13 @@ module sep_fcov (
         dh_dst_q <= (dh_dst_hi != 0);
         if (dh_cell && dh_pre_q && (dh_ended_q || dh_rise)) begin
           u_sep_dma_config_fault_cg.sample(
-              2'd0, 1'b0, 1'b0, 1'b0, {(dh_dst_hi != 0), dh_wrote_q || dh_aw}, 1'b1, 3'd0, 1'b0);
+              2'd0, 1'b0, 3'd0, 1'b0, {(dh_dst_hi != 0), dh_wrote_q || dh_aw}, 1'b1, 3'd0, 1'b0);
           dh_on_q <= 1'b0;
         end else begin
           dh_on_q <= dh_cell && dh_pre_q;
         end
       end else if (dh_on_q && dh_rise) begin
-        u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, {dh_dst_q, dh_wrote_q || dh_aw},
+        u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 3'd0, 1'b0, {dh_dst_q, dh_wrote_q || dh_aw},
                                          1'b1, 3'd0, 1'b0);
         dh_on_q <= 1'b0;
       end
@@ -10286,7 +10651,7 @@ module sep_fcov (
     end else begin
       for (int c = 0; c < 6; c++) begin
         if (ec_rel[c] && ec_hold_q[c])
-          u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0, 3'(c), 1'b1);
+          u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0, 3'(c), 1'b1);
       end
       ec_hold_q <= ec_hold_q & ~ec_rel;
       if (ec_go_q && !(di_go && di_init) && ec_rd && ec_rose_q && d_err && (ec_cls_q != 3'd7) &&
@@ -10449,8 +10814,8 @@ module sep_fcov (
         gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd, cd_v
       })] = 1;
     else
-      u_sep_dma_completion_cg.sample(gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd,
-                                     cd_v);
+      u_sep_dma_completion_cg.sample(gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd, cd_v,
+                                     3'd0, 1'b0);
   endfunction
   function automatic void dmx_range_config(logic rv_v, logic bl_v, logic [2:0] ip, logic ip_v,
                                            logic [1:0] uw, logic uw_v);
@@ -10476,7 +10841,7 @@ module sep_fcov (
   endfunction
   function automatic void dmx_completion_rel(dmx_completion_t k);
     u_sep_dma_completion_cg.sample(k.gl, k.gl_v, k.bp, k.bp_v, k.ds, k.ds_v, k.dcp_v, k.cc, k.cc_v,
-                                   k.cdc_v, k.cd, k.cd_v);
+                                   k.cdc_v, k.cd, k.cd_v, 3'd0, 1'b0);
   endfunction
   function automatic void dmx_range_config_rel(dmx_range_config_t k);
     u_sep_dma_range_config_cg.sample(k.rv_v, k.bl_v, k.ip, k.ip_v, k.uw, k.uw_v);
@@ -10536,6 +10901,103 @@ module sep_fcov (
         end
         if (dma_cfg_rw_rd && (dma_cfg_rw == DmxCrwBusyFalse)) dmx_crw_p[0] <= 1'b1;
         if (dma_cfg_rw_rd && (dma_cfg_rw == DmxCrwIdleTrue)) dmx_crw_p[1] <= 1'b1;
+      end
+    end
+  end
+
+  // cp_dma_alias_run. A GO rise of the engine with INITIAL_TRANSFER 1 starts a
+  // run and latches OPCODE, TRANSFER_WIDTH, the chunk class (TOTAL_DATA_SIZE
+  // above CHUNK_DATA_SIZE) and the mode of each side, from the DMA registers.
+  // A DMA AR (AW) handshake of the run whose pre-remap address is the
+  // local-alias form of the remapped address marks the source (destination)
+  // alias. At the DONE rise with STATUS.ERROR 0 and ERROR_CODE 0 the run holds
+  // one bit per code it reached (bit code - 1): a copy with an alias side
+  // holds its width, chunk class and the mode of each alias side, a hash with
+  // an alias source holds 12, a zero fill with an alias destination holds 13,
+  // and a copy with a fixed side over two or more chunks holds only 14. The
+  // codes of a run inside the window of sep_dma_transfer_matrix_rand_test
+  // (copy and hash) sample when dma_matrix_pass rises; a reset drops them, a
+  // window close does not. The code of a run inside the window of
+  // sep_dma_zero_fill_rand_test (zero fill) samples when dma_zero_pass rises;
+  // the next initial GO in that window and a reset drop it.
+  localparam logic [1:0] AlrInc = 2'd1, AlrWrap = 2'd2, AlrFixed = 2'd3;
+  function automatic logic [1:0] alr_mode(input logic inc, input logic wrap);
+    if (inc) return wrap ? AlrWrap : AlrInc;
+    return wrap ? 2'd0 : AlrFixed;
+  endfunction
+  logic alr_on_q, alr_tm_q, alr_zf_q, alr_src_q, alr_dst_q, alr_multi_q;
+  logic [3:0] alr_op_q;
+  logic [1:0] alr_w_q, alr_smode_q, alr_dmode_q;
+  logic [13:0] alr_tm_p = '0, alr_zf_p = '0;
+  wire alr_go = d_go_q && !go_q && (dma_reg2hw_i.control.initial_transfer.q === 1'b1);
+  wire alr_tm_rel = (dma_matrix_pass != 0) && !dmx_pass_q;
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      alr_on_q <= 1'b0;
+      alr_tm_p <= '0;
+      alr_zf_p <= '0;
+    end else begin
+      if (alr_tm_rel) begin
+        for (int k = 0; k < 14; k++) begin
+          if (alr_tm_p[k]) begin
+            fx_alias_run = 4'(k + 1);
+            u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, 3'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0);
+            fx_alias_run = 4'd0;
+          end
+        end
+        alr_tm_p <= '0;
+      end
+      if (dzp_rel) begin
+        for (int k = 0; k < 14; k++) begin
+          if (alr_zf_p[k]) begin
+            fx_alias_run = 4'(k + 1);
+            u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, 3'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0);
+            fx_alias_run = 4'd0;
+          end
+        end
+        alr_zf_p <= '0;
+      end
+      if (alr_go) begin
+        alr_on_q    <= 1'b1;
+        alr_tm_q    <= own_dma_matrix;
+        alr_zf_q    <= own_dma_zero;
+        alr_src_q   <= 1'b0;
+        alr_dst_q   <= 1'b0;
+        alr_op_q    <= dma_reg2hw_i.control.opcode.q;
+        alr_w_q     <= dma_reg2hw_i.transfer_width.q;
+        alr_multi_q <= dma_reg2hw_i.total_data_size.q > dma_reg2hw_i.chunk_data_size.q;
+        alr_smode_q <= alr_mode(dma_reg2hw_i.src_config.increment.q,
+                                dma_reg2hw_i.src_config.wrap.q);
+        alr_dmode_q <= alr_mode(dma_reg2hw_i.dst_config.increment.q,
+                                dma_reg2hw_i.dst_config.wrap.q);
+        if (own_dma_zero && !dzp_rel) alr_zf_p <= '0;
+      end else if (alr_on_q) begin
+        if (dq_ar_hs && (alias_form(dma_raw_req_i.ar.addr, dma_req_i.ar.addr) == 2'd1))
+          alr_src_q <= 1'b1;
+        if (dq_aw_hs && (alias_form(dma_raw_req_i.aw.addr, dma_req_i.aw.addr) == 2'd1))
+          alr_dst_q <= 1'b1;
+        if (d_done && !done_q) begin
+          logic [13:0] m;
+          m = '0;
+          if (!d_err && d_no_err) begin
+            if ((alr_op_q == DmaOpCopy) && (alr_src_q || alr_dst_q)) begin
+              if (alr_multi_q && ((alr_smode_q == AlrFixed) || (alr_dmode_q == AlrFixed))) begin
+                m[13] = 1'b1;
+              end else begin
+                if (alr_w_q != 2'd3) m[alr_w_q] = 1'b1;
+                m[alr_multi_q?4 : 3] = 1'b1;
+                if (alr_src_q && (alr_smode_q != 2'd0)) m[4+alr_smode_q] = 1'b1;
+                if (alr_dst_q && (alr_dmode_q != 2'd0)) m[7+alr_dmode_q] = 1'b1;
+              end
+            end
+            if ((alr_op_q inside {DmaOpSha256, DmaOpSha384, DmaOpSha512}) && alr_src_q)
+              m[11] = 1'b1;
+            if ((alr_op_q == DmaOpZero) && alr_dst_q) m[12] = 1'b1;
+          end
+          if (alr_tm_q && own_dma_matrix) alr_tm_p <= alr_tm_p | (m & ~14'h1000);
+          if (alr_zf_q && own_dma_zero) alr_zf_p <= alr_zf_p | (m & 14'h1000);
+          alr_on_q <= 1'b0;
+        end
       end
     end
   end
@@ -11292,8 +11754,6 @@ module sep_fcov (
 
       // ---- DMA range ----
       if (d_done && !done_q && ir_v_q && d_no_err && !d_err) begin
-        dmx_range_config(1'b0, 1'b0, {1'b0, ir_src_q}, own_dma_matrix && (ir_src_q != 2'd3), 2'd0,
-                         1'b0);
         dmx_range_config(1'b0, 1'b0, {1'b1, ir_dst_q}, own_dma_matrix && (ir_dst_q != 2'd3), 2'd0,
                          1'b0);
       end
@@ -11320,13 +11780,25 @@ module sep_fcov (
       end
 
       // ---- DMA faults, errors and abort ----
+      // The size-zero kind and the aggregate cell need SIZE_ERROR alone in
+      // ERROR_CODE; a start with a second configuration fault is a multi-error
+      // class.
       if (d_size_err && !size_err_q)
-        u_sep_dma_config_fault_cg.sample(szk_q, own_dma_irq && szk_v_q, hwf_q,
-                                         own_dma_irq && hwf_v_q, 2'd0, 1'b0, 3'd0, 1'b0);
-      if (ea_v_q && d_err && d_ist_err) u_sep_dma_error_terminal_cg.sample(own_dma_irq, 1'b0, 1'b0);
-      if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
+        u_sep_dma_config_fault_cg.sample(szk_q,
+                                         own_dma_irq && szk_v_q && (dma_err_code_i == DmaEcSize),
+                                         hwf_q, own_dma_irq && hwf_v_q, 2'd0, 1'b0, 3'd0, 1'b0);
+      if (ea_v_q && d_err && d_ist_err)
+        u_sep_dma_error_terminal_cg.sample(own_dma_irq && (dma_err_code_i == DmaEcSize), 1'b0, 1'b0,
+                                           8'd0, 1'b0);
+      if (d_aborted && !aborted_q)
+        u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0, 8'd0, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
-        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
+        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort, 8'd0, 1'b0);
+      if (d_err && !dma_err_q)
+        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, 1'b0, dma_err_code_i, own_dma_irq);
+      if (dr_ist && (dr_ist_ungated != 3'b000))
+        u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0, 1'b0,
+                                       2'd0, 1'b0, dr_ist_ungated, own_dma_irq);
       // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
       if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(
@@ -11346,15 +11818,18 @@ module sep_fcov (
     // Refused BASE, LIMIT and RANGE_VALID writes after the lock write, each
     // with the latest unlock value written before it.
     if (dl_base || dl_limit || dl_valid) begin
-      u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
+      u_sep_dma_containment_cg.sample(dl_base ? 5'd0 : (dl_limit ? 5'd1 : 5'd2), own_dma_irq,
                                       lk_last_q[1] ? 2'd0 : (lk_last_q[2] ? 2'd1 : 2'd2),
                                       own_dma_irq && (lk_last_q[3:1] != 3'b000),
                                       own_dma_irq && (lk_try_q == 4'hF), d_err,
                                       own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
       if (lk_last_q[0])
-        u_sep_dma_containment_cg.sample(2'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
+        u_sep_dma_containment_cg.sample(5'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
                                         1'b0);
     end
+    // A write the configuration lock refused while the DMA was busy.
+    if (cl_refused)
+      u_sep_dma_containment_cg.sample(cl_lw, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
 
     // ---- Held cells of the DMA handshake leaf ----
     hr_pass_q <= hr_pass;
@@ -11368,11 +11843,11 @@ module sep_fcov (
       for (int g = 3; g <= 5; g++) begin
         if (hr_pend_q[g])
           u_sep_dma_completion_cg.sample(3'(g - 1), 1'b1, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0,
-                                         1'b0, 2'd0, 1'b0);
+                                         1'b0, 2'd0, 1'b0, 3'd0, 1'b0);
       end
       if (hr_pend_q[6])
         u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd2, 1'b1, 1'b0,
-                                       2'd0, 1'b0);
+                                       2'd0, 1'b0, 3'd0, 1'b0);
       hr_pend_q <= '0;
     end
   end
@@ -11793,6 +12268,7 @@ module sep_fcov (
   localparam int unsigned PfpNest = 3;  // CHK-NEST
   localparam int unsigned PfpTimer = 4;  // CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP
   localparam int unsigned PfpIdle = 5;  // CHK-MIP-IDLE, CHK-CONTROL, CHK-NO-TIMER-TRAP
+  localparam int unsigned PfpSoft = 6;  // CHK-SOFT-PIN
   localparam int unsigned PfpDrop320 = 7;  // drop the held owner-320 cells
   localparam int unsigned PfpNmiInExt = 16;  // CHK-NMI-IN-EXT
   localparam int unsigned PfpPicReg = 17;  // every CHK line of a sep_pic_reg_rand_test leg
@@ -13195,6 +13671,8 @@ module sep_fcov (
     logic       tl_v;
     logic [1:0] it;
     logic it_v;   // internal timer: 0 timer 0 trap, 1 timer 1 trap, 2 and 3 no trap
+    logic [1:0] sp;
+    logic sp_v;   // soft pin: 0 pin1_msip1, 1 pin0_msip0, 2 toggled, 3 pic_independent
   } pnp_t;
 
   covergroup sep_cpu_nonpic_irq_cg with function sample (pnp_t s);
@@ -13216,6 +13694,14 @@ module sep_fcov (
       bins timer1_trap_1C = {2'd1};
       bins mitie_clear_no_trap = {2'd2};
       bins mtie_msie_only_no_trap = {2'd3};
+    }
+    // soft_int pin (hw/sys/sep/doc/interrupts.adoc:291-292: the pin drives
+    // mip.MSIP; :261: the pin bypasses the PIC).
+    cp_soft_pin: coverpoint s.sp iff (s.sp_v) {
+      bins pin1_msip1 = {2'd0};
+      bins pin0_msip0 = {2'd1};
+      bins toggled = {2'd2};
+      bins pic_independent = {2'd3};
     }
   endgroup
 
@@ -13292,6 +13778,55 @@ module sep_fcov (
       pnp_q.nt_v <= own_pprio;
     end
     if (take_r) pnp_q.tl_v <= own_pprio;
+  end
+  // cp_soft_pin tracker, one pin cycle at a time. After a pin edge, the first
+  // clock within PairWin clocks at which mip.MSIP follows the pin is a hit:
+  // bit 0 pin1_msip1 (with mie.MSIE 0), bit 1 pin0_msip0, bit 2 toggled (both
+  // in one cycle), bit 3 pic_independent (toggled, and while the pin is 1 the
+  // gateway outputs outside the idle bits keep their value at the rise and no
+  // external interrupt is taken). One clock can hit several cells.
+  logic sp_pin_q, sp_arm_q, sp_hi_q, sp_pic_ok_q;
+  logic [8:0] sp_wait_q;
+  logic [255:0] sp_gw_q;
+  logic [3:0] sp_hit_q;
+  always_ff @(posedge clk_i) begin
+    sp_hit_q <= '0;
+    sp_pin_q <= (tlu_soft_int_i === 1'b1);
+    if (in_reset) begin
+      sp_arm_q    <= 1'b0;
+      sp_hi_q     <= 1'b0;
+      sp_pic_ok_q <= 1'b0;
+      sp_wait_q   <= '0;
+      sp_gw_q     <= '0;
+    end else if ((tlu_soft_int_i === 1'b1) && !sp_pin_q) begin
+      sp_arm_q    <= 1'b1;
+      sp_wait_q   <= '0;
+      sp_hi_q     <= 1'b0;
+      sp_pic_ok_q <= 1'b1;
+      sp_gw_q     <= gw_live;
+    end else if ((tlu_soft_int_i !== 1'b1) && sp_pin_q) begin
+      sp_arm_q  <= 1'b1;
+      sp_wait_q <= '0;
+    end else begin
+      if (sp_pin_q && ((gw_live != sp_gw_q) || (tlu_take_ext_i === 1'b1))) sp_pic_ok_q <= 1'b0;
+      if (sp_arm_q) begin
+        if (sp_pin_q && (tlu_mip_i[0] === 1'b1) && (tlu_mie_i[0] === 1'b0)) begin
+          sp_arm_q    <= 1'b0;
+          sp_hi_q     <= 1'b1;
+          sp_hit_q[0] <= own_pprio;
+        end else if (!sp_pin_q && (tlu_mip_i[0] === 1'b0)) begin
+          sp_arm_q    <= 1'b0;
+          sp_hi_q     <= 1'b0;
+          sp_hit_q[1] <= own_pprio;
+          sp_hit_q[2] <= own_pprio && sp_hi_q;
+          sp_hit_q[3] <= own_pprio && sp_hi_q && sp_pic_ok_q;
+        end else if (sp_wait_q == 9'(PairWin)) begin
+          sp_arm_q <= 1'b0;
+        end else begin
+          sp_wait_q <= sp_wait_q + 9'd1;
+        end
+      end
+    end
   end
 
   // =====================================================================
@@ -15863,7 +16398,8 @@ module sep_fcov (
   localparam int unsigned PpNnt = 13;  // cp_no_nonpic_trap (hold_window_clean)
   localparam int unsigned PpTl = 14;  // cp_trap_path_live
   localparam int unsigned PpIt = 15;  // cp_int_timer
-  localparam int unsigned PpPoints = 16;
+  localparam int unsigned PpSp = 16;  // cp_soft_pin
+  localparam int unsigned PpPoints = 17;
   logic [15:0] pp_pend[PpPoints] = '{default: '0};
   logic [7:0] pfp_q = '0;
   wire [7:0] pfp_rise = 8'(pic_fw_pass) & ~pfp_q;
@@ -15879,6 +16415,7 @@ module sep_fcov (
       PpNs: return 8'(1 << PfpNest);
       PpIt: return 8'(1 << PfpTimer);
       PpMi, PpNnt: return 8'(1 << PfpIdle);
+      PpSp: return 8'(1 << PfpSoft);
       default: return 8'(1 << PfpRound);
     endcase
   endfunction
@@ -15948,6 +16485,10 @@ module sep_fcov (
         n.it = v[1:0];
         n.it_v = 1'b1;
       end
+      PpSp: begin
+        n.sp = v[1:0];
+        n.sp_v = 1'b1;
+      end
       default: ;
     endcase
     if (e != '0) u_sep_pic_enable_priority_cg.sample(e);
@@ -15994,6 +16535,7 @@ module sep_fcov (
       if (pnp_q.nt_v && !pnp_q.nt) pp_hold(PpNnt, 4'd0);
       if (pnp_q.tl_v) pp_hold(PpTl, 4'd1);
       if (pnp_it_q.it_v) pp_hold(PpIt, 4'(pnp_it_q.it));
+      for (int v = 0; v < 4; v++) if (sp_hit_q[v]) pp_hold(PpSp, 4'(v));
     end
   end
 
@@ -19689,10 +20231,10 @@ module sep_fcov (
     // or a cold reset, then the next read.
     if (rd_ev && (di == MrDmaRegwen)) begin
       if (mr_rg_pulse && (rd_data[3:0] == 4'h0) && mr_own_ret) begin
-        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
+        u_sep_dma_containment_cg.sample(5'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
       end
       if (mr_rg_cold && (rd_data[3:0] == 4'h6) && mr_own_ret) begin
-        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
+        u_sep_dma_containment_cg.sample(5'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
       end
       mr_rg_pulse   <= 1'b0;
       mr_rg_cold    <= 1'b0;
@@ -20766,6 +21308,8 @@ module sep_fcov (
     logic ci_v;  // 0 ICCM fetch by the IFU, 1 DCCM access by the LSU
     logic rn;
     logic rn_v;  // cp_rom_noecc: 0 one flipped bit, 1 two
+    logic ro;
+    logic ro_v;  // cp_rom_op_order: 0 read before store, 1 store before read
   } mm_ap_t;
 
   covergroup sep_mem_aperture_cg with function sample (mm_ap_t s);
@@ -20842,6 +21386,11 @@ module sep_fcov (
     // bits: OKAY, the data the macro returns, and no trap.
     cp_rom_noecc: coverpoint s.rn iff (s.rn_v) {
       bins flip1_okay_stored = {1'b0}; bins flip2_okay_stored = {1'b1};
+    }
+    // Two adjacent CPU LSU address handshakes at one 64-bit ROM word: a load
+    // then a store, or a store then a load.
+    cp_rom_op_order: coverpoint s.ro iff (s.ro_v) {
+      bins read_before_store = {1'b0}; bins store_before_read = {1'b1};
     }
   endgroup
 
@@ -20927,8 +21476,8 @@ module sep_fcov (
   int unsigned rom_noecc_pass = 0;
   // Pass label rom_ap_pass of the other points of the boot ROM leaf:
   // cp_mem_x_class (ROM cells), cp_access_size, cp_macro_if (ROM cells),
-  // cp_otf_reset_x_path[rom_read], cp_rom_write_master[cpu_store_readback_only]
-  // and cp_rom_write_response. Inside the window of that leaf each legal
+  // cp_otf_reset_x_path[rom_read], cp_rom_write_master[cpu_store_readback_only],
+  // cp_rom_write_response and cp_rom_op_order. Inside the window of that leaf each legal
   // outcome of these points is counted as pending and does not sample. The
   // leaf writes 1 after the checks of a graded leg pass and 0 after it; the
   // rise samples every pending count, also after the window closed. The first
@@ -21046,6 +21595,10 @@ module sep_fcov (
       4'd7: begin
         e.dt   = v[2:0];
         e.dt_v = 1'b1;
+      end
+      4'd9: begin
+        e.ro   = v[0];
+        e.ro_v = 1'b1;
       end
       default: begin
         e.ci   = v[0];
@@ -21674,6 +22227,28 @@ module sep_fcov (
     if (mm_own_rom && b_any && mm_rom(aw_addr_q) && (wr_lanes inside {4'd1, 4'd2})) begin
       mm_ap_rom(4'd1, {4'd0, (wr_lanes == 4'd2)});
       if (lsu_b_resp_i != 2'b01) mm_abs_rom(2'd1, 2'd0);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_rom_op_order: the CPU LSU address handshake (AR or AW) that follows a
+  // ROM-word handshake of the other kind with no LSU address handshake
+  // between them, at the same 64-bit ROM word. An AR and an AW in one clk_i
+  // edge order nothing and end the pair.
+  // ---------------------------------------------------------------------
+  logic        mm_oo_v = 1'b0;
+  logic        mm_oo_wr = 1'b0;  // the last handshake was an AW
+  logic [28:0] mm_oo_word = '0;
+  always @(posedge clk_i) begin
+    if (in_reset || !mm_own_rom || (ar_hs && aw_hs)) begin
+      mm_oo_v <= 1'b0;
+    end else if (ar_hs || aw_hs) begin
+      if (mm_oo_v && (mm_oo_wr == ar_hs) &&
+          ((aw_hs ? lsu_aw_addr_i[31:3] : lsu_ar_addr_i[31:3]) == mm_oo_word))
+        mm_ap_rom(4'd9, {4'd0, ar_hs});
+      mm_oo_v    <= mm_rom(aw_hs ? lsu_aw_addr_i : lsu_ar_addr_i);
+      mm_oo_wr   <= aw_hs;
+      mm_oo_word <= aw_hs ? lsu_aw_addr_i[31:3] : lsu_ar_addr_i[31:3];
     end
   end
 
@@ -22979,7 +23554,10 @@ module sep_fcov (
       return (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) ||
           (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
       12: return graded_owner == FcovOwnSepOtbnCmdStatusRandTest;
-      6, 10: return graded_owner == FcovOwnSepDrbgCmdSequenceRandTest;
+      // Source 7 (cs_entropy_req) of this owner: any hardware rise of the source
+      // inside an open owner window, including the rises at the EDN 0x901
+      // instantiates of the EDN software leg and the instantiate-seed leg.
+      6, 7, 10: return graded_owner == FcovOwnSepDrbgCmdSequenceRandTest;
       9, 11: return graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest;
       default: return 1'b0;
     endcase
@@ -23050,6 +23628,7 @@ module sep_fcov (
       bins kmac_done = {4'd3};
       bins kmac_err = {4'd5};
       bins cs_cmd_req_done = {4'd6};
+      bins cs_entropy_req = {4'd7};
       bins cs_fatal_err = {4'd9};
       bins edn_cmd_req_done = {4'd10};
       bins edn_fatal_err = {4'd11};
@@ -23651,6 +24230,8 @@ module sep_fcov (
     logic s3_v;  // KMAC SHA3-128, bit clear: 0 blocked, 1 absorbed
     logic [2:0] kc;
     logic kc_v;  // {0 SHAKE / 1 cSHAKE / 2 SHA3, 1 ERR_CODE[31:24] is 0x06}
+    logic [3:0] ec;
+    logic ec_v;  // {1 held HMAC ERR_CODE equals the label, label code[2:0]}
   } cy_inv_t;
 
   covergroup sep_crypto_invalid_encoding_cg with function sample (cy_inv_t s);
@@ -23695,6 +24276,14 @@ module sep_fcov (
     cp_kmac_err_recover: coverpoint s.kr_v iff (s.kr_v) {bins recovered = {1'b1};}
     cp_hmac_err_code: coverpoint s.hc iff (s.hc_v) {
       bins sw_invalid_config = {1'b1}; illegal_bins other_code = {1'b0};
+    }
+    // HMAC ERR_CODE of an error class whose check passed (hmac.hjson ERR_CODE).
+    cp_hmac_err_class: coverpoint s.ec iff (s.ec_v) {
+      bins sw_hash_start_sha_disabled = {4'b1_010};
+      bins sw_update_key_in_process = {4'b1_011};
+      bins sw_hash_start_active = {4'b1_100};
+      bins sw_push_msg_disallowed = {4'b1_101};
+      wildcard illegal_bins label_code_mismatch = {4'b0_???};
     }
     cp_kmac_sha3_128: coverpoint s.s3 iff (s.s3_v) {
       bins blocked = {1'b0}; illegal_bins absorbed_with_bit_clear = {1'b1};
@@ -24319,6 +24908,10 @@ module sep_fcov (
         e.s3   = v[0];
         e.s3_v = 1'b1;
       end
+      8: begin
+        e.ec   = v[3:0];
+        e.ec_v = 1'b1;
+      end
       default: begin
         e.kc   = v[2:0];
         e.kc_v = 1'b1;
@@ -24727,6 +25320,28 @@ module sep_fcov (
   logic       cy_fe_on = 1'b0;
   logic       cy_fe_full = 1'b0;
   int unsigned cy_fe_cnt = 0;
+  // cp_hmac_err_class. After CHK-HMAC-ERR-CLASS passes for one class,
+  // sep_hmac_illegal_cfg_start_test writes the class code into hmac_ec_want
+  // and adds 1 to hmac_ec_seq (hmac_err_class_fcov in the leaf). The first
+  // clock that sees a new hmac_ec_seq inside the owner window samples the
+  // class; the bin is legal only when the last non-zero ERR_CODE the IP wrote
+  // inside that window equals the label. cy_ec_win survives an HMAC reset
+  // inside the window and clears when the window closes. These variables
+  // drive nothing.
+  logic [3:0] hmac_ec_want = '0;
+  logic [31:0] hmac_ec_seq = '0;
+  logic [31:0] cy_ec_seq_q = '0;
+  logic [31:0] cy_ec_win = '0;
+  always @(posedge clk_i) begin
+    cy_ec_seq_q <= hmac_ec_seq;
+    if (!cy_own_hblk) cy_ec_win <= '0;
+    else if (cy_t(hmac_hw2reg_i.err_code.de) && cy_ip[3] && (hmac_hw2reg_i.err_code.d != '0)) begin
+      cy_ec_win <= hmac_hw2reg_i.err_code.d;
+    end
+    if ((hmac_ec_seq != cy_ec_seq_q) && cy_own_hblk) begin
+      cy_inv(8, {1'b0, (cy_ec_win == {28'd0, hmac_ec_want}), hmac_ec_want[2:0]});
+    end
+  end
   // Pass label of the points of owner sep_hmac_fifo_stream_rand_test, written by
   // set_hmac_fifo_pass of env/sep_fcov_gate.py. Bit 0 x_len_class, bit 1
   // x_fifo_state_mode, bit 2 cp_backpressure, bit 3 cp_hmac_fifo_empty_qual
@@ -27280,6 +27895,122 @@ module sep_fcov (
   end
 
   // ---------------------------------------------------------------------
+  // KMAC: cp_kmac_err_code_class (owner sep_kmac_unsupported_cfg_inject_test)
+  // and sep_kmac_ms_cg (owner sep_kmac_mode_strength_rand_test).
+  // ---------------------------------------------------------------------
+  // A CMD.start write. Both groups drop a held outcome on it.
+  wire cy_kx_start = wr_ev && (aw_addr_q == KMAC_CMD_REG_ADDR) && (wr_data[5:0] == KmacCmdStart6);
+
+  // ERR_CODE[31:24] of an error-code leg whose check passed (kmac.hjson
+  // ERR_CODE; theory_of_operation.md error table). 0x80 is the Sha3Control
+  // code that the SwCmdSequence error also reports, so it counts as 0x08.
+  // 0x03 needs a command from the application interface, which SEP ties off.
+  covergroup sep_kmac_err_class_cg with function sample (logic [7:0] code);
+    option.per_instance = 1;
+    option.name = "sep_kmac_err_class_cg";
+    cp_kmac_err_code_class: coverpoint code {
+      bins sw_pushed_msg_fifo = {8'h02};
+      bins incorrect_entropy_mode = {8'h05};
+      bins incorrect_function_name = {8'h07};
+      bins sw_cmd_sequence = {8'h08, 8'h80};
+      ignore_bins sw_cmd_in_app_active = {8'h03};
+      illegal_bins other_code = {[8'h00 : 8'h01], 8'h04, 8'h06, [8'h09 : 8'h7F], [8'h81 : 8'hFF]};
+    }
+  endgroup
+  sep_kmac_err_class_cg u_sep_kmac_err_class_cg = new();
+
+  // The last OKAY ERR_CODE read inside the owner-135 window is held and
+  // samples when kmac_unsup_pass rises to 4. The window close, a KMAC reset
+  // and a CMD.start drop it.
+  logic [7:0] cy_kec_code = '0;
+  logic cy_kec_v = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_own_kunsup || !cy_ip[4] || cy_kx_start) begin
+      cy_kec_v <= 1'b0;
+    end else if (rd_ev && cy_rd_known && (ar_addr_q == KMAC_ERR_CODE_REG_ADDR)) begin
+      cy_kec_code <= rd_data[31:24];
+      cy_kec_v    <= 1'b1;
+    end else if (cy_ku_rise && (kmac_unsup_pass == 4) && cy_kec_v) begin
+      u_sep_kmac_err_class_cg.sample(cy_kec_code);
+      cy_kec_v <= 1'b0;
+    end
+  end
+
+  // cSHAKE and KMAC cells of the mode-and-strength leaf whose digest check
+  // passed. `pfx` is 1 when the PREFIX words decode (cSHAKE with N empty, KMAC
+  // with N = "KMAC"); `s_empty` is 1 when S is the empty string
+  // (programmers_guide.md PREFIX layout; SP 800-185 encode_string("") = 01 00).
+  covergroup sep_kmac_ms_cg with function sample (
+      logic en, logic [1:0] mode, logic [2:0] strength, logic pfx, logic s_empty
+  );
+    option.per_instance = 1;
+    option.name = "sep_kmac_ms_cg";
+    cp_prefix_custom: coverpoint {
+      en, s_empty
+    } iff ((mode == KmacCshake) && pfx) {
+      bins cshake_s_set = {2'b00};
+      bins cshake_s_empty = {2'b01};
+      bins kmac_s_set = {2'b10};
+      bins kmac_s_empty = {2'b11};
+    }
+    cp_cell_digest_ok: coverpoint {
+      en, strength
+    } iff (mode == KmacCshake) {
+      bins cshake_128 = {{1'b0, KmacL128}};
+      bins cshake_256 = {{1'b0, KmacL256}};
+      bins kmac_128 = {{1'b1, KmacL128}};
+      bins kmac_256 = {{1'b1, KmacL256}};
+    }
+  endgroup
+  sep_kmac_ms_cg u_sep_kmac_ms_cg = new();
+
+  // Pass label of sep_kmac_mode_strength_rand_test (owner 787): 1 after the
+  // digest check of a cell passed, 0 before the next cell starts. The leaf
+  // writes it through the u_sep_fcov handle. The cell outcome is held at
+  // kmac_cell_done and samples on the rise of the label inside the window; the
+  // window close, a KMAC reset and a CMD.start drop it. The label gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned kmac_mode_pass = 0;
+  wire cy_own_kms = (graded_owner == FcovOwnSepKmacModeStrengthRandTest);
+  logic cy_kms_pass_q = 1'b0;
+  logic [31:0] cy_kms_p0 = '0;  // last PREFIX_0 write
+  logic [31:0] cy_kms_p1 = '0;  // last PREFIX_1 write
+  logic cy_kms_v = 1'b0;
+  logic cy_kms_en = 1'b0;
+  logic [1:0] cy_kms_mode = '0;
+  logic [2:0] cy_kms_str = '0;
+  logic cy_kms_pfx = 1'b0;
+  logic cy_kms_se = 1'b0;
+  always @(posedge clk_i) begin
+    cy_kms_pass_q <= (kmac_mode_pass != 0);
+    if (!cy_ip[4]) begin
+      cy_kms_p0 <= '0;
+      cy_kms_p1 <= '0;
+    end else if (wr_ev && (wr_strb == 4'hF)) begin
+      if (aw_addr_q == KMAC_PREFIX_0__REG_ADDR) cy_kms_p0 <= wr_data;
+      if (aw_addr_q == KMAC_PREFIX_1__REG_ADDR) cy_kms_p1 <= wr_data;
+    end
+    if (!cy_own_kms || !cy_ip[4] || cy_kx_start) begin
+      cy_kms_v <= 1'b0;
+    end else if (kmac_cell_done) begin
+      cy_kms_v    <= 1'b1;
+      cy_kms_en   <= kmac_en_q;
+      cy_kms_mode <= kmac_mode_q;
+      cy_kms_str  <= kmac_str_q;
+      if (kmac_en_q) begin
+        cy_kms_pfx <= (cy_kms_p0 == 32'h4D4B_2001) && (cy_kms_p1[15:0] == 16'h4341);
+        cy_kms_se  <= (cy_kms_p1[31:16] == 16'h0001);
+      end else begin
+        cy_kms_pfx <= (cy_kms_p0[15:0] == 16'h0001);
+        cy_kms_se  <= (cy_kms_p0[31:16] == 16'h0001);
+      end
+    end else if (cy_kms_v && (kmac_mode_pass != 0) && !cy_kms_pass_q) begin
+      u_sep_kmac_ms_cg.sample(cy_kms_en, cy_kms_mode, cy_kms_str, cy_kms_pfx, cy_kms_se);
+      cy_kms_v <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
   // ABR: cp_parked_cmd (owner sep_abr_command_matrix_rand_test) and
   // cp_abr_pic (owner sep_abr_mldsa_keygen_kat_test), sep_abr_completion_cg.
   // ---------------------------------------------------------------------
@@ -28302,8 +29033,8 @@ module sep_fcov (
     logic sf_v;  // 0 failing startup window held, 1 push with BOOT_PHASE_DONE 0
     logic [1:0] tm;
     logic tm_v;  // fall with 0 BOOT_PHASE_DONE 0, 1 BOOT_PHASE_DONE 1, 2 failing pattern
-    logic te;
-    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5
+    logic [1:0] te;
+    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5, 2 value 0
     logic [1:0] wc;
     logic wc_v;  // stored window 0 below 1024, 1 1024, 2 2048, 3 above 2048
     logic [3:0] ts;
@@ -28342,7 +29073,7 @@ module sep_fcov (
       bins failing_pattern = {2'd2};
     }
     cp_test_enable_set: coverpoint s.te iff (s.te_v) {
-      bins enable_6 = {1'b0}; bins enable_5 = {1'b1};
+      bins enable_6 = {2'd0}; bins enable_5 = {2'd1}; bins enable_0 = {2'd2};
     }
     cp_window_class: coverpoint s.wc iff (s.wc_v) {
       bins below_1024 = {2'd0};
@@ -28374,7 +29105,7 @@ module sep_fcov (
       bins ones_status_bit_3_apt_high_total = {2'd3};
     }
     // Not graded (docs/SEP_FCOV.adoc, crypto and entropy, Bins not graded):
-    // the owner logs the repetition count after the disable on OBS-HT-REPCOUNT-AFTER,
+    // the owner logs the repetition count after the disable on INFO-HT-REPCOUNT-AFTER,
     // so no value of it is a bin.
     // verilator lint_off COVERIGN
     cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
@@ -28469,12 +29200,12 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      // While the integrity error persists ERR latches again whatever a write
-      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      // A write of 0 cannot fail while the integrity error persists (INFO-SM-ERR-CAUSE-W0);
+      // a write of 0 with no cause left is in this cell too, graded by CHK-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
-      // No text states whether a write of 1 clears ERR while the integrity
-      // error that set it persists; the owner logs that read as OBS-SM-ERR-W1C.
-      ignore_bins w1c_clears = {2'd2};
+      // A write of 1 clears ERR once the state machine error output that set it
+      // is gone (CHK-SM-ERR-W1C).
+      bins w1c_clears = {2'd2};
       bins reset_clears = {2'd3};
     }
   endgroup
@@ -28518,6 +29249,18 @@ module sep_fcov (
     logic [1:0] dv;
     logic dv_v;  // SAMPLE_CLK_DIV change, lane 0 on: 0 up, 1 down to >= count, 2 down below count
     logic rs_v;  // DOWNSAMPLE_RATE changed while the gated stream is stopped, then a gated strobe
+    logic [1:0] pf;
+    logic pf_v;  // {BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE} with FIFO_CTRL.ENABLE 0
+    logic [2:0] mc;
+    logic mc_v;  // {BYPASS_ENTROPY_COMPRESSOR, mask class 0 few, 1 half, 2 all}, feedback on
+    logic lp;
+    logic lp_v;  // RING_OSC_ENABLE population: 0 no lane, 1 one lane
+    logic di;
+    logic di_v;  // stored DOWNSAMPLE_RATE at a CHK-COND-DS-INTERVAL pass: 0 rate 1, 1 rate 2 to 15
+    logic [4:0] fop;
+    logic fop_v;  // {op 0 push, 1 pop, 2 push and pop, LEVEL class before the op}
+    logic [2:0] cl;
+    logic cl_v;  // LEVEL class before a push with ENTROPY_CHURN_ENABLE 1
   } cz_cond_t;
 
   covergroup sep_esrc_conditioning_cg with function sample (cz_cond_t s);
@@ -28603,6 +29346,57 @@ module sep_fcov (
       bins decrease_below_count = {2'd2};
     }
     cp_ds_resume: coverpoint s.rs_v iff (s.rs_v) {bins rate_write_while_stopped = {1'b1};}
+    x_path_fifo_off: coverpoint s.pf iff (s.pf_v) {
+      bins bypass_whitened_fifo_off = {2'b11};
+      bins bypass_raw_fifo_off = {2'b10};
+      bins compressor_whitened_fifo_off = {2'b01};
+      bins compressor_raw_fifo_off = {2'b00};
+    }
+    x_decor_mask_class: coverpoint s.mc iff (s.mc_v) {
+      bins compressor_few = {3'b0_00};
+      bins compressor_half = {3'b0_01};
+      bins compressor_all = {3'b0_10};
+      bins bypass_few = {3'b1_00};
+      bins bypass_half = {3'b1_01};
+      bins bypass_all = {3'b1_10};
+    }
+    cp_lane_pop: coverpoint s.lp iff (s.lp_v) {bins no_lane = {1'b0}; bins one_lane = {1'b1};}
+    cp_ds_interval: coverpoint s.di iff (s.di_v) {bins rate_1 = {1'b0}; bins rate_2_to_15 = {1'b1};}
+    // LEVEL classes: 0, 1, mid (2 to 61), 62_63, 64.
+    x_fifo_op_level: coverpoint s.fop iff (s.fop_v) {
+      bins push_level_0 = {5'b00_000};
+      bins push_level_1 = {5'b00_001};
+      bins push_level_mid = {5'b00_010};
+      bins push_level_62_63 = {5'b00_011};
+      bins push_level_64 = {5'b00_100};
+      bins pop_level_1 = {5'b01_001};
+      bins pop_level_mid = {5'b01_010};
+      bins pop_level_62_63 = {5'b01_011};
+      bins pop_level_64 = {5'b01_100};
+      bins push_pop_level_1 = {5'b10_001};
+      bins push_pop_level_mid = {5'b10_010};
+      // A FIFO_RDATA read of an empty FIFO returns undefined data and sets
+      // FIFO_UNDERFLOW (entropy_source.rdl:305); the flags leg grades the flag.
+      ignore_bins pop_level_0 = {5'b01_000};
+      ignore_bins push_pop_level_0 = {5'b10_000};
+      // The stream offers SHA-256 output in 8-word bursts, so a pop window that
+      // starts at 62 or 63 and holds a push can reach a full FIFO and lose a
+      // word; the live pop leg grades no window from 63, grades a window from 62
+      // only when at most two words arrive in it, and aims no push and pop
+      // window at 62.
+      ignore_bins push_pop_level_62_63 = {5'b10_011};
+      // A push and a pop at LEVEL 64 have no stated result: the register text
+      // states only that a write while full is discarded (entropy_source.rdl:129).
+      ignore_bins push_pop_level_64 = {5'b10_100};
+    }
+    x_churn_level: coverpoint s.cl iff (s.cl_v) {
+      bins level_0 = {3'd0};
+      bins level_1 = {3'd1};
+      bins level_mid = {3'd2};
+      bins level_62_63 = {3'd3};
+      // A write while full is discarded (entropy_source.rdl:129): no word is churned.
+      ignore_bins level_64 = {3'd4};
+    }
   endgroup
 
   typedef struct packed {
@@ -28656,12 +29450,20 @@ module sep_fcov (
     logic [2:0] ra;
     logic ra_v;  // RECOV_ALERT_STS set request: 0-3 CTRL fields, 4 flag0, 5 bit 13, 6 bit 15
     logic [1:0] cs;
-    logic cs_v;  // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4)
-    logic rs;
-    logic rs_v;  // 0 Generate refused at the limit, 1 Generate accepted after a Reseed
+    // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4),
+    // 3 INVALID_CMD_SEQ.
+    logic cs_v;
+    logic [1:0] rs;
+    // 0 Generate refused at the limit, 1 accepted after a Reseed, 2 refused after an Update.
+    logic rs_v;
     logic gg_v;  // GENBITS read 0 with GENBITS_VLD 1 and SW_APP_ENABLE not True
     logic kg_v;  // four GENBITS reads equal the CTR_DRBG known answer of the seed
     logic ia_v;  // EDN instantiate acknowledged only after a full ESRC seed handshake
+    logic [1:0] fp;
+    // {instance flag0 True, GENBITS_FIPS} at the first GENBITS_VLD read with GENBITS_VLD 1.
+    logic fp_v;
+    logic [5:0] cm;
+    logic cm_v;  // {CTRL field 0-3, invalid MuBi4 value} at the field alert set request
   } cz_ccmd_t;
 
   covergroup sep_csrng_cmd_cg with function sample (cz_ccmd_t s);
@@ -28673,7 +29475,7 @@ module sep_fcov (
       bins hw_port0_acknowledged = {2'd2};
     }
     // CMD_RDY after the acknowledge is not stated (csrng.adoc SW_CMD_STS: polled
-    // before a command); the owner logs it (OBS-CSRNG-RDY-AFTER-ACK): not scored.
+    // before a command); the owner logs it (INFO-CSRNG-RDY-AFTER-ACK): not scored.
     cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
       bins cmd_rdy_before = {2'd0};
       bins cmd_ack_after = {2'd1};
@@ -28688,15 +29490,39 @@ module sep_fcov (
       bins invalid_acmd = {3'd5};
       bins reseed_cnt = {3'd6};
     }
+    // invalid_cmd_seq: a Generate to an instance that is not instantiated
+    // (CHK-CSRNG-UNINST-REFUSE).
     cp_sw_cmd_sts: coverpoint s.cs iff (s.cs_v) {
-      bins invalid_acmd = {2'd1}; bins reseed_cnt_exceeded = {2'd2};
+      bins invalid_acmd = {2'd1}; bins reseed_cnt_exceeded = {2'd2}; bins invalid_cmd_seq = {2'd3};
     }
+    // refused_after_update: the Generate after an Update that followed a
+    // refusal at the limit (CHK-CSRNG-UPDATE).
     cp_reseed_limit: coverpoint s.rs iff (s.rs_v) {
-      bins refused_at_limit = {1'b0}; bins accepted_after_reseed = {1'b1};
+      bins refused_at_limit = {2'd0};
+      bins accepted_after_reseed = {2'd1};
+      bins refused_after_update = {2'd2};
     }
     cp_genbits_gate: coverpoint s.gg_v iff (s.gg_v) {bins read_zero_gated = {1'b1};}
     cp_kat_generate: coverpoint s.kg_v iff (s.kg_v) {bins four_words_match = {1'b1};}
     cp_inst_ack_vs_seed: coverpoint s.ia_v iff (s.ia_v) {bins ack_after_seed = {1'b1};}
+    // GENBITS_FIPS of the words of a software instance follows its flag0
+    // (CHK-DRBG-FIPS-PROV). A mismatch fails that check, which drops the
+    // held sample, so it is ignored rather than illegal.
+    cp_fips_prov: coverpoint s.fp iff (s.fp_v) {
+      bins flag0_true_fips_0 = {2'b10};
+      bins flag0_false_fips_1 = {2'b01};
+      ignore_bins graded_mismatch = {2'b00, 2'b11};
+    }
+    // CTRL field x invalid MuBi4 value of a field alert (CHK-CSRNG-CTRL-MUBI):
+    // 0 ENABLE, 1 SW_APP_ENABLE, 2 READ_INT_STATE, 3 FIPS_FORCE_ENABLE.
+    // Sampled only while the other CTRL fields read MuBi4False.
+    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {
+      bins f[] = {[0 : 3]};
+    }
+    cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
+      bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
+    }
+    x_ctrl_mubi: cross cp_ctrl_mubi_field, cp_ctrl_mubi_value;
   endgroup
 
   typedef struct packed {
@@ -28716,7 +29542,11 @@ module sep_fcov (
     logic es_v;  // CMD_STS at the software ack: 0 SUCCESS, 1 INVALID_ACMD
     logic ae_v;  // RECOV_ALERT_STS.CSRNG_ACK_ERR set request
     logic [1:0] hc;
-    logic hc_v;  // hardware command while AUTO_MODE 1: 0 generate, 1 reseed after N = 1 generates, 2 reseed after N = 2 to 4
+    // Hardware command while AUTO_MODE 1: 0 generate, 1 reseed after N = 1 generates,
+    // 2 reseed after N = 2 to 4, 3 reseed after N = 64 to 128.
+    logic hc_v;
+    logic [5:0] cm;
+    logic cm_v;  // {CTRL field 0-3, invalid MuBi4 value} at the field alert set request
   } cz_edn_t;
 
   covergroup sep_edn_mode_cg with function sample (cz_edn_t s);
@@ -28743,8 +29573,13 @@ module sep_fcov (
     cp_boot_cmd_reset: coverpoint s.bc iff (s.bc_v) {
       bins boot_ins_0x901 = {1'b0}; bins boot_gen_0xfff003 = {1'b1};
     }
+    // reseed_after_n64_128: the large-N auto trial (CHK-EDN-AUTO-SEQ). No bin
+    // for N 5 to 63 or above 128: the owner draws N in 1 to 4 and 64 to 128.
     cp_auto_hw_cmd: coverpoint s.hc iff (s.hc_v) {
-      bins generate_cmd = {2'd0}; bins reseed_after_n1 = {2'd1}; bins reseed_after_n2_4 = {2'd2};
+      bins generate_cmd = {2'd0};
+      bins reseed_after_n1 = {2'd1};
+      bins reseed_after_n2_4 = {2'd2};
+      bins reseed_after_n64_128 = {2'd3};
     }
     cp_ctrl_field_alert: coverpoint s.fa iff (s.fa_v) {
       bins edn_enable_field = {2'd0};
@@ -28757,6 +29592,16 @@ module sep_fcov (
       ignore_bins success = {1'b0}; bins invalid_acmd = {1'b1};
     }
     cp_csrng_ack_err: coverpoint s.ae_v iff (s.ae_v) {bins set_by_error_ack = {1'b1};}
+    // CTRL field x invalid MuBi4 value of a field alert (CHK-EDN-CTRL-MUBI):
+    // 0 EDN_ENABLE, 1 BOOT_REQ_MODE, 2 AUTO_REQ_MODE, 3 CMD_FIFO_RST.
+    // Sampled only while the other CTRL fields read MuBi4False.
+    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {
+      bins f[] = {[0 : 3]};
+    }
+    cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
+      bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
+    }
+    x_ctrl_mubi: cross cp_ctrl_mubi_field, cp_ctrl_mubi_value;
   endgroup
 
   typedef struct packed {
@@ -28928,7 +29773,7 @@ module sep_fcov (
         e.tm_v = 1'b1;
       end
       5: begin
-        e.te   = v[0];
+        e.te   = v[1:0];
         e.te_v = 1'b1;
       end
       6: begin
@@ -29074,6 +29919,31 @@ module sep_fcov (
         e.dv_v = 1'b1;
       end
       22: e.rs_v = 1'b1;
+      23: begin
+        e.pf   = v[1:0];
+        e.pf_v = 1'b1;
+      end
+      24: begin
+        e.mc   = v[2:0];
+        e.mc_v = 1'b1;
+      end
+      25: begin
+        e.lp   = v[0];
+        e.lp_v = 1'b1;
+      end
+      26: begin
+        e.di   = v[0];
+        e.di_v = 1'b1;
+      end
+      // x_fifo_op_level: index 27 push, 28 pop, 29 push and pop; v is the LEVEL class.
+      27, 28, 29: begin
+        e.fop   = {2'(pt - 27), v[2:0]};
+        e.fop_v = 1'b1;
+      end
+      30: begin
+        e.cl   = v[2:0];
+        e.cl_v = 1'b1;
+      end
       // Index 11 (cp_obs_lock); every other index has its own arm above.
       default: e.lk_v = 1'b1;
     endcase
@@ -29142,12 +30012,12 @@ module sep_fcov (
     u_sep_drbg_err_inject_cg.sample(e);
   endtask
 
-  task automatic cz_ccmd(input int unsigned pt, input logic [2:0] v);
-    if (cy_own_dcmd) cz_dsp_hold(2'd0, pt, {3'd0, v});
+  task automatic cz_ccmd(input int unsigned pt, input logic [5:0] v);
+    if (cy_own_dcmd) cz_dsp_hold(2'd0, pt, v);
     else cz_ccmd_rel(pt, v);
   endtask
 
-  task automatic cz_ccmd_rel(input int unsigned pt, input logic [2:0] v);
+  task automatic cz_ccmd_rel(input int unsigned pt, input logic [5:0] v);
     cz_ccmd_t e;
     e = '0;
     case (pt)
@@ -29160,7 +30030,7 @@ module sep_fcov (
         e.hs_v = 1'b1;
       end
       2: begin
-        e.ra   = v;
+        e.ra   = v[2:0];
         e.ra_v = 1'b1;
       end
       3: begin
@@ -29168,39 +30038,47 @@ module sep_fcov (
         e.cs_v = 1'b1;
       end
       4: begin
-        e.rs   = v[0];
+        e.rs   = v[1:0];
         e.rs_v = 1'b1;
       end
       6: e.kg_v = 1'b1;
       7: e.ia_v = 1'b1;
+      8: begin
+        e.fp   = v[1:0];
+        e.fp_v = 1'b1;
+      end
+      9: begin
+        e.cm   = v;
+        e.cm_v = 1'b1;
+      end
       default: e.gg_v = 1'b1;
     endcase
     u_sep_csrng_cmd_cg.sample(e);
   endtask
 
-  task automatic cz_edn(input int unsigned pt, input logic [1:0] v);
-    if (cy_own_dcmd && !((pt == 1) && (v == 2'd1))) cz_dsp_hold(2'd1, pt, {4'd0, v});
+  task automatic cz_edn(input int unsigned pt, input logic [5:0] v);
+    if (cy_own_dcmd && !((pt == 1) && (v == 6'd1))) cz_dsp_hold(2'd1, pt, v);
     else cz_edn_rel(pt, v);
   endtask
 
-  task automatic cz_edn_rel(input int unsigned pt, input logic [1:0] v);
+  task automatic cz_edn_rel(input int unsigned pt, input logic [5:0] v);
     cz_edn_t e;
     e = '0;
     case (pt)
       0: begin
-        e.mf   = v;
+        e.mf   = v[1:0];
         e.mf_v = 1'b1;
       end
       1: begin
-        e.rm   = v;
+        e.rm   = v[1:0];
         e.rm_v = 1'b1;
       end
       2: begin
-        e.sp   = v;
+        e.sp   = v[1:0];
         e.sp_v = 1'b1;
       end
       3: begin
-        e.aw   = v;
+        e.aw   = v[1:0];
         e.aw_v = 1'b1;
       end
       4: begin
@@ -29208,7 +30086,7 @@ module sep_fcov (
         e.bc_v = 1'b1;
       end
       5: begin
-        e.fa   = v;
+        e.fa   = v[1:0];
         e.fa_v = 1'b1;
       end
       6: begin
@@ -29218,6 +30096,10 @@ module sep_fcov (
       8: begin
         e.hc   = v[1:0];
         e.hc_v = 1'b1;
+      end
+      9: begin
+        e.cm   = v;
+        e.cm_v = 1'b1;
       end
       default: e.ae_v = 1'b1;
     endcase
@@ -29394,12 +30276,13 @@ module sep_fcov (
   localparam int unsigned CzPaHalt = 5;  // CHK-PF-HALT
   localparam int unsigned CzPaRecoverE = 6;  // CHK-PF-RECOVER, exit by MODULE_ENABLE
   localparam int unsigned CzPaRecoverR = 7;  // CHK-PF-RECOVER, exit by TRNG reset
-  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears)
+  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears), CHK-SM-ERR-W1C
   logic [8:0] cz_pa_q = '0;
   wire  [8:0] cz_pa_rel = 9'(esrc_pa_pass) & ~cz_pa_q;
   always @(posedge clk_i) cz_pa_q <= 9'(esrc_pa_pass);
-  // Pass label of the counter checks of sep_esrc_conditioning_matrix_rand_test
-  // (bits CzCnt*). cp_sample_clk_div, cp_first_strobe and cp_ds_first_push
+  // Pass label of the checks of sep_esrc_conditioning_matrix_rand_test (bits
+  // CzCnt*). cp_sample_clk_div, cp_first_strobe, cp_ds_first_push,
+  // x_path_fifo_off, x_decor_mask_class, cp_lane_pop and cp_ds_interval
   // sample the stored value only when the bit of the check that grades it
   // rises. The leaf writes the bit through the u_sep_fcov handle after that
   // check passes, while the graded value is still stored, holds it two clocks
@@ -29408,9 +30291,33 @@ module sep_fcov (
   localparam int unsigned CzCntPeriod = 0;  // CHK-COND-PERIOD-RATIO
   localparam int unsigned CzCntFirstStrobe = 1;  // CHK-COND-FIRST-STROBE
   localparam int unsigned CzCntFirstPush = 2;  // CHK-COND-FIRST-PUSH
-  logic [2:0] cz_cnt_q = '0;
-  wire  [2:0] cz_cnt_rel = 3'(esrc_cnt_pass) & ~cz_cnt_q;
-  always @(posedge clk_i) cz_cnt_q <= 3'(esrc_cnt_pass);
+  // CHK-COND-CTRL-CELL, one bit per cell {BYPASS_ENTROPY_COMPRESSOR,
+  // SHA256_WHITENING_ENABLE} with FIFO_CTRL.ENABLE 0: bit 3 (1,1), 4 (1,0),
+  // 5 (0,1), 6 (0,0).
+  localparam int unsigned CzCntCtrlCell = 3;
+  localparam int unsigned CzCntDecorMask = 7;  // CHK-COND-DECOR-MASK
+  localparam int unsigned CzCntLanesOff = 8;  // CHK-COND-LANES-OFF
+  localparam int unsigned CzCntOneLane = 9;  // CHK-COND-ONE-LANE
+  localparam int unsigned CzCntDsInterval = 10;  // CHK-COND-DS-INTERVAL
+  logic [10:0] cz_cnt_q = '0;
+  wire  [10:0] cz_cnt_rel = 11'(esrc_cnt_pass) & ~cz_cnt_q;
+  always @(posedge clk_i) cz_cnt_q <= 11'(esrc_cnt_pass);
+  // Pass label of sep_esrc_fifo_flow_rand_test (bits CzFifo*), the release of
+  // x_fifo_op_level and x_churn_level. The sampler holds each cell at its DUT
+  // event inside the window and samples it only when the bit of the check
+  // that grades it rises; every rise then drops all held cells, so a cell is
+  // released only by the check of the leg that drove it. The leaf writes the
+  // bit through the u_sep_fcov handle after that check passes, holds it two
+  // clocks and writes 0. It gates a sample; it is never a DUT value and drives
+  // nothing.
+  int unsigned esrc_fifo_pass = 0;
+  localparam int unsigned CzFifoFill = 0;  // CHK-FIFO-FILL
+  localparam int unsigned CzFifoPop = 1;  // CHK-FIFO-POP
+  localparam int unsigned CzFifoPopLive = 2;  // CHK-FIFO-POP-LIVE, one graded window
+  localparam int unsigned CzFifoChurn = 3;  // CHK-FIFO-CHURN
+  logic [3:0] cz_fifo_q = '0;
+  wire  [3:0] cz_fifo_rel = 4'(esrc_fifo_pass) & ~cz_fifo_q;
+  always @(posedge clk_i) cz_fifo_q <= 4'(esrc_fifo_pass);
   // A hardware set request: the {d, de} pair of a register field, both 1.
   function automatic logic cz_dd(input logic [1:0] p);
     return p === 2'b11;
@@ -29651,7 +30558,11 @@ module sep_fcov (
   // under that owner only the cells of that source are taken, and each is
   // held as pending until a check that reads the bit passes (esrc_pa_pass):
   // 0 {status 0, enable 0}, 1 {status 0, enable 1}, 2 {status 1, enable 1},
-  // 3 the hardware raise.
+  // 3 the hardware raise. The bit of CHK-SM-ERR releases these cells only while
+  // no MAIN_SM_STATUS read of the window has shown ERR 1 with the state machine
+  // error output 0 (cz_se_gone): that state follows the error-output inject,
+  // which also drives the PERSISTENT_FAILURE term, and the check that releases
+  // the bit then grades ERR only.
   localparam int unsigned CzPaPfSrc = ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_SHIFT / 4;
   localparam logic [8:0] CzPaIrNc = 9'((1 << CzPaNotrip) | (1 << CzPaConsec));
   localparam logic [8:0] CzPaIrRel[4] = '{
@@ -29661,9 +30572,11 @@ module sep_fcov (
       9'((1 << CzPaTripCount) | (1 << CzPaSmErr))
   };
   logic [3:0] cz_pa_ir = '0;
+  logic cz_se_gone = 1'b0;  // ERR 1 read with esrc_sm_err_i 0 since the window opened
+  wire [8:0] cz_pa_ir_rel = cz_pa_rel & ~(cz_se_gone ? 9'(1 << CzPaSmErr) : 9'h0);
   always @(posedge clk_i) begin
     for (int k = 0; k < 4; k++) begin
-      if (cz_pa_ir[k] && ((cz_pa_rel & CzPaIrRel[k]) != 9'h0)) begin
+      if (cz_pa_ir[k] && ((cz_pa_ir_rel & CzPaIrRel[k]) != 9'h0)) begin
         if (k == 3) cy_intr(7, 6'(CzPaPfSrc));
         else cy_intr(6, 6'({3'(CzPaPfSrc), (k == 2), (k != 0)}));
         cz_pa_ir[k] <= 1'b0;
@@ -30324,6 +31237,7 @@ module sep_fcov (
     if (cy_own_eshp && cz_es_on && cz_sv_ev) begin
       if (cz_ht_en == 3'd6) cz_sth(5, 4'd0);
       if (cz_ht_en == 3'd5) cz_sth(5, 4'd1);
+      if (cz_ht_en == 3'd0) cz_sth(5, 4'd2);
     end
     if (cy_own_eshp && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
       if (cz_wsize < 16'd1024) cz_sth(6, 4'd0);
@@ -31118,6 +32032,129 @@ module sep_fcov (
     end
   end
 
+  // x_path_fifo_off, x_decor_mask_class, cp_lane_pop, cp_ds_interval (1.45):
+  // the stored value at the rise of the esrc_cnt_pass bit of the check that
+  // grades it. A stored value other than the graded one samples nothing.
+  // x_decor_mask_class needs the feedback on for every lane
+  // (DECORRELATOR_CTRL.BYPASS 0); its class is few (1 to 3 mask bits set),
+  // half (4) or all (0xFF).
+  localparam logic [1:0] CzCtrlCells[4] = '{2'b11, 2'b10, 2'b01, 2'b00};
+  wire [11:0] cz_dbyp = esrc_reg_out_i.DECORRELATOR_CTRL.BYPASS.value;
+  wire [1:0] cz_path = {
+    esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value,
+    esrc_reg_out_i.CTRL.SHA256_WHITENING_ENABLE.value
+  };
+  wire cz_path_known = !$isunknown(cz_path);
+  wire cz_fen0 = (esrc_reg_out_i.FIFO_CTRL.ENABLE.value === 1'b0);
+
+  always @(posedge clk_i) begin
+    if (cy_own_escond && cz_es_on) begin
+      for (int c = 0; c < 4; c++) begin
+        if (cz_cnt_rel[CzCntCtrlCell+c] && cz_fen0 && cz_path_known && (cz_path == CzCtrlCells[c]))
+          cz_cond(23, {2'b00, CzCtrlCells[c]});
+      end
+      if (cz_cnt_rel[CzCntDecorMask] && (cz_dbyp === 12'h000) && cz_bmask_known &&
+          cz_path_known) begin
+        if (cz_bmask == 8'hFF) cz_cond(24, {1'b0, cz_path[1], 2'd2});
+        else if ($countones(cz_bmask) == 4) cz_cond(24, {1'b0, cz_path[1], 2'd1});
+        else if (($countones(cz_bmask) >= 1) && ($countones(cz_bmask) <= 3)) begin
+          cz_cond(24, {1'b0, cz_path[1], 2'd0});
+        end
+      end
+      if (cz_cnt_rel[CzCntLanesOff] && (cz_roen === 12'h000)) cz_cond(25, 4'd0);
+      if (cz_cnt_rel[CzCntOneLane] && !$isunknown(cz_roen) && ($countones(cz_roen) == 1)) begin
+        cz_cond(25, 4'd1);
+      end
+      if (cz_cnt_rel[CzCntDsInterval] && cz_bypass && !$isunknown(cz_drate)) begin
+        if (cz_drate == 10'd1) cz_cond(26, 4'd0);
+        else if ((cz_drate >= 10'd2) && (cz_drate <= 10'd15)) cz_cond(26, 4'd1);
+      end
+    end
+  end
+
+  // x_fifo_op_level, x_churn_level (1.46): main FIFO operations of owner 146,
+  // each with the class of LEVEL before it (0, 1, mid 2 to 61, 62_63, 64).
+  // A push is a write-pointer step, or a stream word offered with
+  // FIFO_CTRL.ENABLE 1 while LEVEL has read 64 for two clocks (a discarded
+  // write); a pop is a read-pointer step. Each cell is held at its event and
+  // samples on the rise of the esrc_fifo_pass bit of its check: push cells
+  // with churn off on CzFifoFill, pops with ENABLE 0 since the last FIFO_CTRL
+  // write on CzFifoPop, churn pushes since the churn enable on CzFifoChurn.
+  // A pop window runs from one FIFO_STATUS read to the next; a window with
+  // ENABLE 1 and exactly one pop is a pop (no push in it) or a push and pop
+  // cell with the class at its first read, and only the last window before
+  // the rise of CzFifoPopLive samples. Every rise, a window open or a clock
+  // outside the window drops all held cells.
+  function automatic logic [2:0] cz_lvl_cls(input logic [6:0] l);
+    if (l == 7'd0) return 3'd0;
+    if (l == 7'd1) return 3'd1;
+    if (l <= 7'd61) return 3'd2;
+    if (l <= 7'd63) return 3'd3;
+    return 3'd4;
+  endfunction
+  wire cz_fs_rd = rd_ev && (ar_addr_q == ENTROPY_SOURCE_FIFO_STATUS_REG_ADDR);
+  wire cz_fc_wr = cz_w1 && (cz_w1_a == ENTROPY_SOURCE_FIFO_CTRL_REG_ADDR);
+  logic [4:0] cz_fo_push = '0;
+  logic [4:0] cz_fo_pop = '0;
+  logic [4:0] cz_fo_churn = '0;
+  logic [2:0] cz_fo_wcls = '0;  // pop window: LEVEL class at its first read
+  int unsigned cz_fo_wpops = 0;
+  logic cz_fo_wpush = 1'b0;
+  logic cz_fo_wen = 1'b1;  // ENABLE 1 at every pop of the window
+  logic cz_fo_lv = 1'b0;  // last closed pop window: held, op index, class
+  int unsigned cz_fo_lop = 0;
+  logic [2:0] cz_fo_lcls = '0;
+
+  always @(posedge clk_i) begin
+    logic push;
+    logic pop;
+    logic [2:0] cls;
+    push = (cz_fwp != cz_fwp_q);
+    pop  = (cz_frp != cz_frp_q);
+    cls  = cz_lvl_cls(cz_flvl_q);
+    if (cy_own_esfifo && cz_es_on) begin
+      for (int c = 0; c < 5; c++) begin
+        if (cz_fifo_rel[CzFifoFill] && cz_fo_push[c]) cz_cond(27, 4'(c));
+        if (cz_fifo_rel[CzFifoPop] && cz_fo_pop[c]) cz_cond(28, 4'(c));
+        if (cz_fifo_rel[CzFifoChurn] && cz_fo_churn[c]) cz_cond(30, 4'(c));
+      end
+      if (cz_fifo_rel[CzFifoPopLive] && cz_fo_lv) cz_cond(cz_fo_lop, {1'b0, cz_fo_lcls});
+    end
+    if (!cy_own_esfifo || !cz_es_on || cz_win_open || (cz_fifo_rel != 4'h0) || $isunknown(
+            {cz_flvl, cz_flvl_q, cz_fwp, cz_fwp_q, cz_frp, cz_frp_q, cz_fen0}
+        )) begin
+      cz_fo_push  <= '0;
+      cz_fo_pop   <= '0;
+      cz_fo_churn <= '0;
+      cz_fo_wpops <= 0;
+      cz_fo_wpush <= 1'b0;
+      cz_fo_wen   <= 1'b1;
+      cz_fo_lv    <= 1'b0;
+    end else begin
+      if (cz_fen && !cz_churn && (push || (cz_cvld && (cz_flvl == 7'd64) &&
+                                           (cz_flvl_q == 7'd64)))) begin
+        cz_fo_push[cls] <= 1'b1;
+      end
+      if (cz_fc_wr) cz_fo_pop <= '0;
+      else if (pop && cz_fen0) cz_fo_pop[cls] <= 1'b1;
+      if (cz_churn && !cz_churn_q) cz_fo_churn <= '0;
+      else if (push && cz_fen && cz_churn) cz_fo_churn[cls] <= 1'b1;
+      if (cz_fs_rd) begin
+        cz_fo_lv    <= (cz_fo_wpops == 1) && cz_fo_wen;
+        cz_fo_lop   <= cz_fo_wpush ? 29 : 28;
+        cz_fo_lcls  <= cz_fo_wcls;
+        cz_fo_wcls  <= cls;
+        cz_fo_wpops <= 0;
+        cz_fo_wpush <= 1'b0;
+        cz_fo_wen   <= 1'b1;
+      end else begin
+        if (pop) cz_fo_wpops <= cz_fo_wpops + 1;
+        if (pop && cz_fen0) cz_fo_wen <= 1'b0;
+        if (push) cz_fo_wpush <= 1'b1;
+      end
+    end
+  end
+
   // ---------------------------------------------------------------------
   // CSRNG and EDN error codes. A set request is the de/d pair of an
   // ERR_CODE field; the vector carries it at the register bit of the field.
@@ -31587,19 +32624,34 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // CSRNG and EDN command cells of the DRBG command-sequence owner: the
   // RECOV_ALERT_STS set requests, CMD_STS at the software acknowledge, the
-  // reseed limit, the GENBITS gate and the reset read of the EDN boot words.
+  // reseed limit, the GENBITS gate, the reset read of the EDN boot words,
+  // the FIPS/CC flag of the software instance and the CTRL field x invalid
+  // MuBi4 value of each field alert.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzEdBootIns = 32'h0000_0901;  // edn.hjson BOOT_INS_CMD resval
   localparam logic [31:0] CzEdBootGen = 32'h00FF_F003;  // edn.hjson BOOT_GEN_CMD resval
   logic [3:0] cz_cs_acmd = '0;  // acmd of the last software CMD_REQ header word
   logic cz_rl_ref = 1'b0;       // a Generate refused at the limit since the TRNG reset
   logic cz_rl_rsd = 1'b0;       // a Reseed acknowledged after that refusal
+  logic cz_rl_upd = 1'b0;       // an Update acknowledged with CMD_STS 0 after that refusal
   logic cz_ed_wr = 1'b0;        // an EDN register write since the TRNG reset
   logic cz_ed_ack_q = 1'b0;
+  // A software Instantiate with a legal flag0, and no GENBITS_VLD 1 read yet.
+  logic cz_fp_arm = 1'b0;
+  logic cz_fp_f0t = 1'b0;       // flag0 of that Instantiate is True
+  // Every 4-bit CTRL field of v other than field f reads MuBi4False.
+  function automatic logic cz_mubi_others_false(input logic [15:0] v, input int f);
+    for (int k = 0; k < 4; k++) if ((k != f) && (v[4*k+:4] !== CzMubiFalse)) return 1'b0;
+    return 1'b1;
+  endfunction
+  logic [3:0] cz_cm_q = '0;     // CSRNG CTRL field alert set requests, last clock
+  logic [3:0] cz_fm_q = '0;     // EDN CTRL field alert set requests, last clock
   wire cz_gb_vld = cy_t(csrng_hw2reg_i.genbits_vld.genbits_vld.d);
   always @(posedge clk_i) begin
     logic [6:0] ra;
     logic [3:0] fa;
+    logic [15:0] csv;
+    logic [15:0] edv;
     logic cs_ack;
     logic ed_ack_rise;
     ra = {cz_dd(csrng_hw2reg_i.recov_alert_sts.cmd_stage_reseed_cnt_alert),
@@ -31613,15 +32665,44 @@ module sep_fcov (
           cz_dd(edn_hw2reg_i.recov_alert_sts.auto_req_mode_field_alert),
           cz_dd(edn_hw2reg_i.recov_alert_sts.boot_req_mode_field_alert),
           cz_dd(edn_hw2reg_i.recov_alert_sts.edn_enable_field_alert)};
+    // CTRL field values in the order of the field alert bits 0-3 of ra and fa.
+    csv = {csrng_reg2hw_i.ctrl.fips_force_enable.q, csrng_reg2hw_i.ctrl.read_int_state.q,
+           csrng_reg2hw_i.ctrl.sw_app_enable.q, csrng_reg2hw_i.ctrl.enable.q};
+    edv = {edn_reg2hw_i.ctrl.cmd_fifo_rst.q, edn_reg2hw_i.ctrl.auto_req_mode.q,
+           edn_reg2hw_i.ctrl.boot_req_mode.q, edn_reg2hw_i.ctrl.edn_enable.q};
+    cz_cm_q <= ra[3:0];
+    cz_fm_q <= fa;
     // The CSRNG software acknowledge writes CMD_STS (its de is the ack
     // pulse); the EDN CMD_ACK is a level, so its rise is the acknowledge.
     cs_ack = cy_t(csrng_hw2reg_i.sw_cmd_sts.cmd_sts.de);
     ed_ack_rise = cz_ed_ack_set && !cz_ed_ack_q;
     cz_ed_ack_q <= cz_ed_ack_set;
+    // cp_fips_prov. A software Instantiate header (acmd 0x1) with flag0 True
+    // or False arms the cell with that flag0; the first GENBITS_VLD read with
+    // GENBITS_VLD 1 after it samples {flag0 True, GENBITS_FIPS} and disarms.
+    // An Uninstantiate header (acmd 0x5), an Instantiate header with another
+    // flag0 and a TRNG reset disarm. The arm and the disarm do not depend on
+    // the window: the owner instantiates its reseed leg before the window
+    // opens. Header bits [11:8] are flag0
+    // (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md
+    // :156-188).
+    if (cz_fp_arm && rd_ev && cy_rd_known && (ar_addr_q == CSRNG_GENBITS_VLD_REG_ADDR) &&
+        ((rd_data & CSRNG_GENBITS_VLD_GENBITS_VLD_MASK) != 32'h0)) begin
+      cz_fp_arm <= 1'b0;
+      if (cy_own_dcmd && !cz_trng && cy_ip[5]) begin
+        cz_ccmd(8, {4'd0, cz_fp_f0t, ((rd_data & CSRNG_GENBITS_VLD_GENBITS_FIPS_MASK) != 32'h0)});
+      end
+    end
     if (cy_t(csrng_reg2hw_i.cmd_req.qe)) begin
       if (cz_cs_rem == 4'd0) begin
         cz_cs_acmd <= csrng_reg2hw_i.cmd_req.q[3:0];
         cz_cs_rem  <= csrng_reg2hw_i.cmd_req.q[7:4];
+        if (csrng_reg2hw_i.cmd_req.q[3:0] == 4'h1) begin
+          cz_fp_arm <= csrng_reg2hw_i.cmd_req.q[11:8] inside {CzMubiTrue, CzMubiFalse};
+          cz_fp_f0t <= (csrng_reg2hw_i.cmd_req.q[11:8] == CzMubiTrue);
+        end else if (csrng_reg2hw_i.cmd_req.q[3:0] == 4'h5) begin
+          cz_fp_arm <= 1'b0;
+        end
       end else begin
         cz_cs_rem <= cz_cs_rem - 4'd1;
       end
@@ -31631,20 +32712,43 @@ module sep_fcov (
       cz_cs_rem <= '0;
       cz_rl_ref <= 1'b0;
       cz_rl_rsd <= 1'b0;
+      cz_rl_upd <= 1'b0;
       cz_ed_wr  <= 1'b0;
+      cz_fp_arm <= 1'b0;
     end else if (cy_own_dcmd) begin
       for (int b = 0; b < 7; b++) if (ra[b]) cz_ccmd(2, 3'(b));
       for (int b = 0; b < 4; b++) if (fa[b]) cz_edn(5, 2'(b));
+      // x_ctrl_mubi: the field and its invalid value at the rise of the
+      // field alert set request, only while every other CTRL field reads
+      // MuBi4False (the CTRL word of a MuBi trial; a CTRL write with ENABLE
+      // True does not fill a cell).
+      for (int b = 0; b < 4; b++) begin
+        if (ra[b] && !cz_cm_q[b] && cz_mubi_others_false(csv, b)) begin
+          cz_ccmd(9, {2'(b), csv[4*b+:4]});
+        end
+        if (fa[b] && !cz_fm_q[b] && cz_mubi_others_false(edv, b)) begin
+          cz_edn(9, {2'(b), edv[4*b+:4]});
+        end
+      end
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin
+        // Code 3 samples only at a Generate acknowledge
+        // (CHK-CSRNG-UNINST-REFUSE). The owner grades the CMD_STS of a repeated
+        // Instantiate (CHK-CSRNG-INVSEQ-STS) and of an Uninstantiate of an
+        // instantiated instance (CHK-CSRNG-UNINST-STS) outside these bins.
         case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
           3'd1: cz_ccmd(3, 3'd1);
+          3'd3: if (cz_cs_acmd == 4'h3) cz_ccmd(3, 3'd3);
           3'd4: cz_ccmd(3, 3'd2);
           default: ;
         endcase
+        // cp_reseed_limit. A Generate refused at the limit samples
+        // refused_after_update when an Update acknowledged with CMD_STS 0
+        // since the last refusal; a Reseed or an Instantiate ends that
+        // state. Update is acmd 0x4 (theory_of_operation.md:255-263).
         if (cz_cs_acmd == 4'h3) begin
           if (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd4) begin
-            cz_ccmd(4, 3'd0);
+            cz_ccmd(4, cz_rl_upd ? 3'd2 : 3'd0);
             cz_rl_ref <= 1'b1;
             cz_rl_rsd <= 1'b0;
           end else if (cz_rl_rsd) begin
@@ -31654,6 +32758,12 @@ module sep_fcov (
         end
         if ((cz_cs_acmd == 4'h2) && cz_rl_ref && (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
           cz_rl_rsd <= 1'b1;
+        end
+        if ((cz_cs_acmd == 4'h4) && cz_rl_ref &&
+            (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
+          cz_rl_upd <= 1'b1;
+        end else if (cz_cs_acmd inside {4'h1, 4'h2}) begin
+          cz_rl_upd <= 1'b0;
         end
       end
       if (ed_ack_rise) begin
@@ -32219,8 +33329,8 @@ module sep_fcov (
   // true, the command words that EDN hands to CSRNG on its hardware port
   // (edn_csrng_cmd_*): the generates since the last instantiate or reseed
   // are counted; a reseed after exactly N of them (N =
-  // MAX_NUM_REQS_BETWEEN_RESEEDS, 1 to 4), then a generate as the next
-  // command, samples the cell of N. Additional-data words of a command are
+  // MAX_NUM_REQS_BETWEEN_RESEEDS, 1 to 4 or 64 to 128), then a generate as
+  // the next command, samples the cell of N. Additional-data words of a command are
   // skipped by its clen. The acmd field is header bits [3:0], decoded
   // whole: Instantiate 0x1, Reseed 0x2, Generate 0x3
   // (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md
@@ -32257,8 +33367,9 @@ module sep_fcov (
             cz_ah_gens <= (cz_ah_gens == 32'hFFFF_FFFF) ? cz_ah_gens : cz_ah_gens + 32'd1;
           end
           CzAcmdRes: begin
-            cz_ah_rsd  <= (cz_ah_gens == n) && (n >= 32'd1) && (n <= 32'd4);
-            cz_ah_cell <= (n == 32'd1) ? 2'd1 : 2'd2;
+            cz_ah_rsd  <= (cz_ah_gens == n) &&
+                (((n >= 32'd1) && (n <= 32'd4)) || ((n >= 32'd64) && (n <= 32'd128)));
+            cz_ah_cell <= (n == 32'd1) ? 2'd1 : (n <= 32'd4) ? 2'd2 : 2'd3;
             cz_ah_gens <= '0;
           end
           default: ;
@@ -32352,8 +33463,8 @@ module sep_fcov (
     end else if ((drbg_seq_pass == 1) && !cz_dsp_q) begin
       foreach (cz_dsp[i]) begin
         case (cz_dsp[i].k)
-          2'd0: cz_ccmd_rel(int'(cz_dsp[i].pt), cz_dsp[i].v[2:0]);
-          2'd1: cz_edn_rel(int'(cz_dsp[i].pt), cz_dsp[i].v[1:0]);
+          2'd0: cz_ccmd_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
+          2'd1: cz_edn_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
           2'd2: cz_alert_rel(cz_dsp[i].v[0]);
           default: cy_intr_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
         endcase
@@ -32664,10 +33775,13 @@ module sep_fcov (
   // sep_esrc_fault_alert_cg cp_sm_err (ESRC_RDL MAIN_SM_STATUS.ERR, sticky,
   // write one to clear). Each cell is a pair of OKAY MAIN_SM_STATUS reads:
   // set (0, then 1 after a counter-copy inject), cleared by the TRNG reset
-  // (1, TRNG reset window, 0). Both are held as pending at the second read
-  // and sample on the rise of esrc_pa_pass bit 8 (CHK-SM-ERR, which also
-  // grades PERSISTENT_FAILURE); a window open drops them. The writes of 0
-  // and 1 run with the window closed and are ignore_bins.
+  // (1, TRNG reset window, 0), cleared by a write of 1 (1, a write of 1, 0,
+  // with esrc_sm_err_i, the state machine error output, 0 from the first read
+  // to the second and no inject or TRNG reset between). Each is held as
+  // pending at the second read and samples on the rise of esrc_pa_pass bit 8
+  // (CHK-SM-ERR, which also grades PERSISTENT_FAILURE, or CHK-SM-ERR-W1C); a
+  // window open drops them. The writes while the counter-copy cause persists
+  // run with the window closed; the write of 0 is an ignore_bins.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzErrMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ERR_MASK);
   logic       cz_se_v = 1'b0;    // a MAIN_SM_STATUS read since the window opened
@@ -32675,21 +33789,27 @@ module sep_fcov (
   logic [1:0] cz_se_w = '0;      // 0 no write, 1 a write of 0, 2 a write of 1 since that read
   logic       cz_se_inj = 1'b0;  // a counter-copy inject since that read
   logic       cz_se_rst = 1'b0;  // a TRNG reset window since that read
+  logic       cz_se_live = 1'b0; // esrc_sm_err_i 1 at that read or since
   logic       cz_se_inj_q = 1'b0;
-  logic [1:0] cz_se_pend = '0;   // pending {reset_clears, set}
+  logic [2:0] cz_se_pend = '0;   // pending {w1c_clears, reset_clears, set}
   always @(posedge clk_i) begin
     cz_se_inj_q <= esrc_cntr_inj_i;
     if (cz_pa_rel[CzPaSmErr]) begin
       if (cz_se_pend[0]) cz_falt(8, 6'd0);
       if (cz_se_pend[1]) cz_falt(8, 6'd3);
+      if (cz_se_pend[2]) cz_falt(8, 6'd2);
       cz_se_pend <= '0;
     end
-    if (cz_win_open || in_reset) cz_se_pend <= '0;
+    if (cz_win_open || in_reset) begin
+      cz_se_pend <= '0;
+      cz_se_gone <= 1'b0;
+    end
     if (!cy_own_espa || in_reset) begin
       cz_se_v <= 1'b0;
     end else begin
       if (esrc_cntr_inj_i && !cz_se_inj_q) cz_se_inj <= 1'b1;
       if (cz_trng_rise) cz_se_rst <= 1'b1;
+      if (esrc_sm_err_i) cz_se_live <= 1'b1;
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR)) begin
         cz_se_w <= ((wr_data & CzErrMask) != 32'h0) ? 2'd2 : 2'd1;
       end
@@ -32699,12 +33819,17 @@ module sep_fcov (
         if (cz_se_v) begin
           if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) cz_se_pend[0] <= 1'b1;
           if (cz_se_rd && !e && (cz_se_w == 2'd0) && cz_se_rst) cz_se_pend[1] <= 1'b1;
+          if (cz_se_rd && !e && (cz_se_w == 2'd2) && !cz_se_inj && !cz_se_rst && !cz_se_live &&
+              !esrc_sm_err_i)
+            cz_se_pend[2] <= 1'b1;
         end
-        cz_se_v   <= 1'b1;
-        cz_se_rd  <= e;
-        cz_se_w   <= 2'd0;
-        cz_se_inj <= 1'b0;
-        cz_se_rst <= 1'b0;
+        if (e && !esrc_sm_err_i) cz_se_gone <= 1'b1;
+        cz_se_v    <= 1'b1;
+        cz_se_rd   <= e;
+        cz_se_w    <= 2'd0;
+        cz_se_inj  <= 1'b0;
+        cz_se_rst  <= 1'b0;
+        cz_se_live <= esrc_sm_err_i;
       end
     end
   end
@@ -32829,6 +33954,11 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   localparam int unsigned CzCwRing = 64;
   localparam int unsigned CzSwRing = 96;
+  // cp_biw_scored, cp_seed_handshake and cp_esrc_sink take their events only
+  // while CTRL.BYPASS_ENTROPY_COMPRESSOR reads 0. The default entry also runs
+  // a compressor bypass flow in the same window; its FIFO words and seeds are
+  // bypass words, not compressor output.
+  wire cz_e2e_compress = (esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value === 1'b0);
   logic [31:0] cz_cw[CzCwRing] = '{default: '0};
   logic [CzCwRing-1:0] cz_cw_v = '0;
   int unsigned cz_cw_wp = 0;
@@ -32885,7 +34015,7 @@ module sep_fcov (
       cz_sd_ok  <= 0;
       cz_sd_bad <= 1'b0;
     end
-    if (cz_own_e2e && !in_reset) begin
+    if (cz_own_e2e && !in_reset && cz_e2e_compress) begin
       if (!cz_fifo_closed && rd_ev && cy_rd_known &&
           (ar_addr_q == ENTROPY_SOURCE_FIFO_RDATA_REG_ADDR) && (cz_ar_flvl != 7'd0)) begin
         logic hit;
@@ -32898,6 +34028,8 @@ module sep_fcov (
         if (cz_seed_words_held(drbg_es_bits_i)) cz_sd_ok <= cz_sd_ok + 1;
         else cz_sd_bad <= 1'b1;
       end
+    end
+    if (cz_own_e2e && !in_reset) begin
       if (drbg_genbits_vld_i === 1'b1) begin
         if (drbg_genbits_fips_i === 1'b1) cz_e2e_hit[2] <= 1'b1;
         else cz_cond(14, 4'd0);
@@ -34292,16 +35424,16 @@ module sep_fcov (
     logic sp_v;  // x_slot_prog: {bad, (slot - 1) * 2 + write-lock}
     logic [7:0] sr;
     logic sr_v;  // x_slot_read: {bad, (slot - 1) * 2 + read-lock}
-    logic [3:0] ko;
-    logic ko_v;  // x_kind_op: {bad, kind * 2 + op}
+    logic [4:0] ko;
+    logic ko_v;  // x_kind_op: {bad, source, kind * 2 + op}
     logic [1:0] nf;
     logic nf_v;  // x_neighbor_free: {0 previous / 1 next, 0 program / 1 read}
     logic [1:0] ex;
     logic ex_v;  // x_exempt: 0 LC_STATE, 1 LOCKS, 2 LOCKS_SPARE
     logic sl;
     logic sl_v;  // cp_sense_fills_locked: 0 secret, 1 other
-    logic [3:0] sw;
-    logic sw_v;  // x_shadow_write_lock: {bad, field * 2 + write-lock}
+    logic [4:0] sw;
+    logic sw_v;  // x_shadow_write_lock: {bad, source, field * 2 + write-lock}
     logic [1:0] lo;
     logic lo_v;  // cp_lock_order
     logic pv;
@@ -34328,9 +35460,16 @@ module sep_fcov (
     x_slot_read: coverpoint s.sr iff (s.sr_v) {
       bins cells[] = {[8'd0 : 8'd79]}; illegal_bins wrong_outcome = {[8'd128 : 8'd207]};
     }
-    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read.
+    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read;
+    // source 0 frontdoor, 1 JTAG. The JTAG cells are the programs of the
+    // write-lock kinds; a JTAG read or a JTAG program of a kind without a
+    // write-lock is not a cell.
     x_kind_op: coverpoint s.ko iff (s.ko_v) {
-      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+      bins cells[] = {[5'd0 : 5'd7]};
+      bins jtag_cells[] = {5'd10, 5'd14};
+      ignore_bins jtag_other = {5'd8, 5'd9, 5'd11, 5'd12, 5'd13, 5'd15, 5'd25, 5'd27, 5'd29, 5'd31};
+      illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
+      illegal_bins jtag_wrong_outcome = {5'd24, 5'd26, 5'd28, 5'd30};
     }
     x_neighbor_free: coverpoint s.nf iff (s.nf_v) {
       bins previous_program = {2'b0_0};
@@ -34345,9 +35484,13 @@ module sep_fcov (
       bins secret_field = {1'b0}; bins other_field = {1'b1};
     }
     // Field 0 SIP_DIS, 1 SYS_DIS, 2 REQUIRED_SIGNERS, 3 REQUIRED_ALGS: lock
-    // clear changes the shadow (OR), lock set leaves it unchanged.
+    // clear changes the shadow (OR), lock set leaves it unchanged. Source 0
+    // frontdoor (cells), 1 JTAG (jtag_cells).
     x_shadow_write_lock: coverpoint s.sw iff (s.sw_v) {
-      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+      bins cells[] = {[5'd0 : 5'd7]};
+      bins jtag_cells[] = {[5'd8 : 5'd15]};
+      illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
+      illegal_bins jtag_wrong_outcome = {[5'd24 : 5'd31]};
     }
     cp_lock_order: coverpoint s.lo iff (s.lo_v) {
       bins write_before_lock_lands = {2'd0};
@@ -34651,8 +35794,8 @@ module sep_fcov (
     logic dr_v;  // x_digest_replay: {channel, Match}
     logic ss;
     logic ss_v;  // cp_stops_sense: 0 match during sense, 1 before sense
-    logic [2:0] sf;
-    logic sf_v;  // x_state_strap_feat: state * 2 + strap
+    logic [3:0] sf;
+    logic sf_v;  // x_state_strap_feat: cell class * 2 + strap
     logic rv;
     logic rv_v;  // cp_reset_values_hold
     logic xs;
@@ -34671,9 +35814,10 @@ module sep_fcov (
     cp_stops_sense: coverpoint s.ss iff (s.ss_v) {
       bins match_during_sense = {1'b0}; bins match_before_sense = {1'b1};
     }
-    // State 0 TEST_DEV, 1 PROD, 2 RMA_SIP.
+    // Cell class 0 TEST_DEV, 1 PROD, 2 RMA_SIP, 3 PROD_END, 4 RMA_CHIPLET,
+    // 5 INVALID.
     x_state_strap_feat: coverpoint s.sf iff (s.sf_v) {
-      bins cells[] = {[3'd0 : 3'd5]};
+      bins cells[] = {[4'd0 : 4'd11]};
     }
     // The LC_STATE word holds its reset value 0x0F, every other word 0.
     cp_reset_values_hold: coverpoint s.rv iff (s.rv_v) {
@@ -34687,7 +35831,7 @@ module sep_fcov (
   endgroup
 
   typedef struct packed {
-    logic [2:0] ca;
+    logic [3:0] ca;
     logic ca_v;  // cp_case
     logic [3:0] fl;
     logic fl_v;  // cp_flags: {read_status, read_addr, program_addr, req}
@@ -34711,14 +35855,15 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_if_status_cg";
     cp_case: coverpoint s.ca iff (s.ca_v) {
-      bins pre_sense_prog = {3'd0};
-      bins read_no_enable = {3'd1};
-      bins read_oob = {3'd2};
-      bins prog_oob = {3'd3};
-      bins prog_wlocked = {3'd4};
-      bins read_rlocked = {3'd5};
-      bins both_enables = {3'd6};
-      bins prog_data0 = {3'd7};
+      bins pre_sense_prog = {4'd0};
+      bins read_no_enable = {4'd1};
+      bins read_oob = {4'd2};
+      bins prog_oob = {4'd3};
+      bins prog_wlocked = {4'd4};
+      bins read_rlocked = {4'd5};
+      bins both_enables = {4'd6};
+      bins prog_data0 = {4'd7};
+      bins prog_no_enable = {4'd9};
     }
     // Sampled for read_no_enable, read_oob, prog_oob, prog_wlocked and the
     // accepted twins.
@@ -34947,14 +36092,11 @@ module sep_fcov (
     return 1'b0;
   endfunction
 
-  // Post-guard shim command (READ 2'b00, PROGRAM 2'b01, PROGRAM_READ_BACK
-  // 2'b10, interface.adoc Fuse Command Protocol) and response.
+  // Post-guard shim command (READ 1'b0, PROGRAM 1'b1, interface.adoc Fuse
+  // Command Protocol) and response.
   wire ef_cmd_v = (shim_cmd_i.valid === 1'b1);
   wire ef_cmd_rd = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_READ);
-  // A program command is PROGRAM or PROGRAM_READ_BACK: the read-back flag of
-  // EFUSE_PROGRAM_CTRL selects the second, and both burn the bit.
-  wire ef_cmd_pg = ef_cmd_v && ((shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) ||
-                                (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK));
+  wire ef_cmd_pg = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM);
   wire [12:0] ef_cmd_addr = 13'(shim_cmd_i.address);
   wire ef_resp_v = (shim_resp_i.valid === 1'b1);
 
@@ -35236,13 +36378,13 @@ module sep_fcov (
       e.sr_v = 1'b0;
       e.sr = '0;
     end
-    if (e.ko_v && e.ko[3]) begin
+    if (e.ko_v && e.ko[4]) begin
       ill.ko = e.ko;
       ill.ko_v = 1'b1;
       e.ko_v = 1'b0;
       e.ko = '0;
     end
-    if (e.sw_v && e.sw[3]) begin
+    if (e.sw_v && e.sw[4]) begin
       ill.sw = e.sw;
       ill.sw_v = 1'b1;
       e.sw_v = 1'b0;
@@ -35601,7 +36743,7 @@ module sep_fcov (
         e.sr_v = 1'b1;
       end
       2: begin
-        e.ko = v[3:0];
+        e.ko = v[4:0];
         e.ko_v = 1'b1;
       end
       3: begin
@@ -35617,7 +36759,7 @@ module sep_fcov (
         e.sl_v = 1'b1;
       end
       6: begin
-        e.sw = v[3:0];
+        e.sw = v[4:0];
         e.sw_v = 1'b1;
       end
       7: begin
@@ -35747,7 +36889,7 @@ module sep_fcov (
     e = '0;
     case (which)
       0: begin
-        e.ca = v[2:0];
+        e.ca = v[3:0];
         e.ca_v = 1'b1;
       end
       1: begin
@@ -35802,12 +36944,12 @@ module sep_fcov (
     u_sep_sec_dis_activation_cg.sample(e);
   endtask
 
-  task automatic ef_rob(input int unsigned which, input logic [2:0] v);
+  task automatic ef_rob(input int unsigned which, input logic [3:0] v);
     ef_rob_t e;
     e = '0;
     case (which)
       0: begin
-        e.dr = v;
+        e.dr = v[2:0];
         e.dr_v = 1'b1;
       end
       1: begin
@@ -36158,10 +37300,18 @@ module sep_fcov (
           endcase
           ef_act(2, {feat_ctrl_i !== '1, dcell});
         end
-        // x_state_strap_feat: sampled with sec_dis_i 0.
-        if (!ef_sd && (ef_lc inside {EfTd, EfProd, EfRs}) && !$isunknown(secure_tm_i)) begin
-          ef_rob(2,
-                 3'((ef_lc == EfTd ? 0 : ef_lc == EfProd ? 1 : 2) * 2) + 3'(secure_tm_i === 1'b1));
+        // x_state_strap_feat: sampled with sec_dis_i 0, every state class.
+        if (!ef_sd && !$isunknown(secure_tm_i)) begin
+          logic [3:0] scell;
+          case (ef_lc)
+            EfTd: scell = 4'd0;
+            EfProd: scell = 4'd1;
+            EfRs: scell = 4'd2;
+            EfPe: scell = 4'd3;
+            EfRc: scell = 4'd4;
+            default: scell = 4'd5;
+          endcase
+          ef_rob(2, 4'(scell * 2) + 4'(secure_tm_i === 1'b1));
         end
       end
 
@@ -36316,15 +37466,16 @@ module sep_fcov (
 
   // Case of a request (efuse_interface_ctrl.adoc): 0 pre_sense_prog,
   // 1 read_no_enable, 2 read_oob, 3 prog_oob, 4 prog_wlocked, 5
-  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 15 none.
+  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 9
+  // prog_no_enable (data 1, program_enable 0), 15 none.
   function automatic logic [3:0] ef_pg_case(input logic [15:0] a, input logic d, input logic en,
                                             input logic sensed);
     if (!sensed) return 4'd0;
     if (a >= 16'(EfFuseBits)) return 4'd3;
     if (ef_wlock(ef_slot_of(11'(a[12:3])))) return 4'd4;
     if (!d) return 4'd7;
-    if (en) return 4'd8;
-    return 4'd15;
+    if (!en) return 4'd9;
+    return 4'd8;
   endfunction
   function automatic logic [3:0] ef_rg_case(input logic [15:0] a, input logic en, input logic pen);
     if (!en) return 4'd1;
@@ -36367,7 +37518,7 @@ module sep_fcov (
       wl = ef_wlock(s);
       rl = ef_rlock(s);
       ef_lk(0, {landed == wl, 7'((s - 6'd1) * 2) + 7'(wl)});
-      ef_lk(2, 8'({landed == wl, rl, wl, 1'b0}));
+      ef_lk(2, 8'({landed == wl, 1'b0, rl, wl, 1'b0}));
       if (!wl && !rl && landed) begin
         if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd0);
         sn = s + 6'd1;
@@ -36496,7 +37647,8 @@ module sep_fcov (
               end
             end else begin
               ef_ifs(0, 7'(ef_pg_cs));
-              if (ef_pg_clean) begin
+              // x_case_flags has no prog_no_enable cell: its case field is three bits.
+              if (ef_pg_clean && (ef_pg_cs != 4'd9)) begin
                 ef_ifs(2, {ef_pg_cs[2:0], ef_flags});
                 if (ef_pg_cs inside {4'd3, 4'd4}) ef_ifs(1, 7'(ef_flags));
               end
@@ -36565,7 +37717,8 @@ module sep_fcov (
               )) begin
             // Refused only on a known efuse_req_error of 1.
             ef_lk(1, {(rd_data & EfReqErrMask) !== EfReqErrMask, 7'((s - 6'd1) * 2 + 1)});
-            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b1, ef_wlock(s), 1'b1}));
+            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b0, 1'b1, ef_wlock(s), 1'b1
+                  }));
           end
         end
         if (ef_rg_idle_open && (((ef_rg_cnt >= EfReqWait) && ef_idle && (ef_rg_cs != 4'd6)) ||
@@ -36669,7 +37822,7 @@ module sep_fcov (
           bad = (rd_data != ef_word(off[9:0]));
           if (bad || (ef_word(off[9:0]) != 32'h0)) begin
             ef_lk(1, {bad, 7'((s - 6'd1) * 2)});
-            ef_lk(2, 8'({bad, 1'b0, ef_wlock(s), 1'b1}));
+            ef_lk(2, 8'({bad, 1'b0, 1'b0, ef_wlock(s), 1'b1}));
             if (!ef_wlock(s) && !bad) begin
               if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd1);
               sn = s + 6'd1;
@@ -36789,6 +37942,121 @@ module sep_fcov (
     end
   end
 
+  // ---------------------------------------------------------------------
+  // JTAG source of x_kind_op (program) and x_shadow_write_lock, lock leaf
+  // only. A JTAG write is qualified by the state at its JTAG AW: the LOCKS
+  // words, sense done, secure_tm_i and, for a program go, efuse_req_error
+  // known 0. The address, the W data and the target word before the write
+  // are the JTAG latches ef_sw_jaw, ef_sw_jw and ef_sw_jpre. A JTAG program
+  // go (known B response) lands when a program command to its bit address reaches the
+  // shim after its AW; the outcome is taken at the first frontdoor STATUS
+  // read with program_busy 0 at least EfReqWait clocks after the B. A JTAG
+  // shadow write is compared EfWrSettle clocks after its B; a second JTAG
+  // write that completes inside the settle drops the first.
+  // ---------------------------------------------------------------------
+  logic [95:0] ef_ja_locks = '0;  // {LOCKS_SPARE, LOCKS} at the JTAG AW
+  logic ef_ja_ok = 1'b0;  // sense done and secure_tm_i known 0
+  logic ef_ja_rqe = 1'b0;  // efuse_req_error not known 0
+  logic ef_ja_pcmd_v = 1'b0;  // a program command reached the shim since the JTAG AW
+  logic [12:0] ef_ja_pcmd_addr = '0;
+  logic ef_jg_v = 1'b0, ef_jg_seen = 1'b0, ef_jg_wl = 1'b0, ef_jg_rl = 1'b0;
+  logic [15:0] ef_jg_addr = '0;
+  int unsigned ef_jg_cnt = 0;
+  logic ef_jsw_v = 1'b0, ef_jsw_wl = 1'b0;
+  logic [1:0] ef_jsw_f = '0;
+  logic [9:0] ef_jsw_off = '0;
+  logic [31:0] ef_jsw_pre = '0, ef_jsw_data = '0;
+  int unsigned ef_jsw_cnt = 0;
+
+  function automatic logic ef_ja_lock(input logic [95:0] l, input logic [5:0] s, input logic r);
+    if (s < 6'd32) return l[2*s+r];
+    if (s < 6'(EfSlots)) return l[64+2*(s-6'd32)+r];
+    return 1'b0;
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic j_b, wl;
+    logic [5:0] s;
+    logic [10:0] off;
+    logic [15:0] pa;
+    logic [31:0] now;
+    if ((jtag_req_i.aw_valid === 1'b1) && (jtag_resp_i.aw_ready === 1'b1)) begin
+      ef_ja_locks <= {ef_locks_sp, ef_locks};
+      ef_ja_ok <= (fuse_sense_done_i === 1'b1) && (secure_tm_i === 1'b0);
+      ef_ja_rqe <= (req_err_i !== 1'b0);
+      ef_ja_pcmd_v <= ef_cmd_pg;
+      ef_ja_pcmd_addr <= ef_cmd_addr;
+    end else if (ef_cmd_pg) begin
+      ef_ja_pcmd_v <= 1'b1;
+      ef_ja_pcmd_addr <= ef_cmd_addr;
+    end
+    j_b = (jtag_resp_i.b_valid === 1'b1) && (jtag_req_i.b_ready === 1'b1);
+    if (in_reset) begin
+      ef_jg_v <= 1'b0;
+      ef_jsw_v <= 1'b0;
+    end else if (j_b) begin
+      ef_jg_v <= 1'b0;
+      ef_jsw_v <= 1'b0;
+      if (ef_own_lock && ef_ja_ok) begin
+        pa = 16'(ef_sw_jw & EfPgAddrMask);
+        s = ef_slot_of({1'b0, pa[12:3]});
+        // Program go with program_enable and data 1 to a fuse bit of a field.
+        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && !$isunknown(
+                jtag_resp_i.b.resp
+            ) && !$isunknown(
+                ef_sw_jw
+            ) && ((ef_sw_jw & EfPgGoMask) != 32'h0) && ((ef_sw_jw & EfPgEnMask) != 32'h0) &&
+                ((ef_sw_jw & EfPgDataMask) != 32'h0) && (pa < 16'(EfFuseBits)) && (s != EfNoSlot) &&
+                (s != 6'd0)) begin
+          ef_jg_v <= 1'b1;
+          ef_jg_addr <= pa;
+          ef_jg_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
+          ef_jg_rl <= ef_ja_lock(ef_ja_locks, s, 1'b1);
+          ef_jg_seen <= ef_ja_pcmd_v && (16'(ef_ja_pcmd_addr) == pa);
+          ef_jg_cnt <= 0;
+        end
+        // Shadow write of a new bit to SIP_DIS, SYS_DIS, REQUIRED_SIGNERS or
+        // REQUIRED_ALGS.
+        off = 11'(ef_sw_jaw - EfMapBase);
+        s = ef_slot_of(off);
+        if ((ef_win(
+                ef_sw_jaw
+            ) == EfWShadow) && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
+                !$isunknown(
+                {ef_sw_jw, ef_sw_jpre}
+            ) && ((ef_sw_jw & ~ef_sw_jpre) != 32'h0)) begin
+          ef_jsw_v <= 1'b1;
+          ef_jsw_cnt <= 0;
+          ef_jsw_off <= off[9:0];
+          ef_jsw_pre <= ef_sw_jpre;
+          ef_jsw_data <= ef_sw_jw;
+          ef_jsw_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
+          ef_jsw_f <= (s == EfSlotSipDis) ? 2'd0 : (s == EfSlotSysDis) ? 2'd1 :
+              (s == EfSlotSigners) ? 2'd2 : 2'd3;
+        end
+      end
+    end else begin
+      if (ef_jg_v) begin
+        if (ef_cmd_pg && (16'(ef_cmd_addr) == ef_jg_addr)) ef_jg_seen <= 1'b1;
+        if (ef_jg_cnt < EfReqWait) ef_jg_cnt <= ef_jg_cnt + 1;
+        if (ef_status_rd && (efuse_program_busy_i === 1'b0) && (ef_jg_cnt >= EfReqWait)) begin
+          ef_jg_v <= 1'b0;
+          ef_lk(2, 8'({ef_jg_seen == ef_jg_wl, 1'b1, ef_jg_rl, ef_jg_wl, 1'b0}));
+        end
+      end
+      if (ef_jsw_v && (ef_jsw_cnt < EfWrSettle)) begin
+        ef_jsw_cnt <= ef_jsw_cnt + 1;
+      end else if (ef_jsw_v) begin
+        ef_jsw_v <= 1'b0;
+        now = ef_word(ef_jsw_off);
+        wl = ef_jsw_wl;
+        ef_lk(6, 8'({
+              wl ? (now !== ef_jsw_pre) : (now !== (ef_jsw_pre | ef_jsw_data)), 1'b1, ef_jsw_f, wl
+              }));
+      end
+    end
+  end
+
   // cp_sense_fills_locked and cp_round_count at sense done. The previous
   // sensed copy survives the cold reset between two senses.
   logic [EfFuseBits-1:0] ef_rc_prev = '0;
@@ -36887,7 +38155,7 @@ module sep_fcov (
                 ef_pw_data
             ) && ((ef_pw_data & ~pre) != 32'h0)) begin
           wr_ok = wl ? (now === pre) : (now === (pre | ef_pw_data));
-          ef_lk(6, 8'({!wr_ok, f, wl}));
+          ef_lk(6, 8'({!wr_ok, 1'b0, f, wl}));
           if (!wl && wr_ok) ef_lk(7, 8'd0);
           if (wl && wr_ok) ef_lk(7, 8'd1);
         end
@@ -37166,7 +38434,7 @@ module sep_fcov (
                   ef_tc(2, {1'b0, code == EfCodeMatch, 4'(c * 3) + 4'(ef_go_shape[c])});
                 if ((c < 2) && ef_go_sensed[c] && (code == EfCodeMatch))
                   ef_tc(3, {3'd0, 2'(c), 1'b1});
-                if (ef_go_replay[c]) ef_rob(0, {2'(c), code == EfCodeMatch});
+                if (ef_go_replay[c]) ef_rob(0, {1'b0, 2'(c), code == EfCodeMatch});
               end
               if (ef_go_others_ok[c] && (ef_code[o1] === ef_code_q[o1]) &&
                   (ef_code[o2] === ef_code_q[o2]))
@@ -37503,13 +38771,13 @@ module sep_fcov (
       ef_ss_cnt <= ef_ss_cnt + 1;
       if ((efuse_sdis_hold_bound != 0) && (ef_ss_cnt + 1 == efuse_sdis_hold_bound)) begin
         if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap)) begin
-          ef_rob(1, {2'b00, ef_ss_phase});
+          ef_rob(1, {3'b000, ef_ss_phase});
           // cp_reset_values_hold: at the end of the same bounded hold, in the
           // window that starts at a reset release, when every shadow word read
           // its reset value (0x0F for the LC_STATE word, 0 for every other
           // word) at the release and on every clock of the hold. A design that senses under the match loads a word
           // inside the bound, so the bin cannot fill on the release clock.
-          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 3'd1);
+          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 4'd1);
         end
       end
     end
@@ -37852,11 +39120,11 @@ module sep_fcov (
     if (!ef_own_ovr || in_reset) begin
       ef_xs_pend <= 1'b0;
     end else if (ovr_pass_rise[1] && ef_xs_pend) begin
-      ef_rob(4, 3'b000);
+      ef_rob(4, 4'b0000);
       ef_xs_pend <= 1'b0;
     end
     if (cond && (!ef_xs_q || ((secure_tm_i === 1'b1) != ef_xs_stm_q))) begin
-      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 3'b001);
+      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 4'b0001);
       else if ((secure_tm_i === 1'b0) && ef_own_ovr) ef_xs_pend <= 1'b1;
     end
   end
@@ -37990,12 +39258,12 @@ module sep_fcov (
   // cp_src_exclusive_other bins s35, s36 and s41 to s43: an exclusive rise in
   // the window of its owner (exo_hold_ev_q) is held as pending and samples
   // only when bit (source - 32) of exo_pass rises: the owner writes that bit
-  // after CHK-SRC<source>-EXCL (sources 35 and 36) or CHK-SRC<source>-RISE
-  // (sources 41 to 43) passed over the run. For sources 41 to 43 the
-  // exclusivity of a held rise is this sampler's compare only; the owner
-  // grades that the bit rose and logs the other bits that moved. The release
-  // does not depend on the window, because the bridge-fault owner grades its
-  // RISE checks at the end of the run, after the window closed. A reset drops
+  // after CHK-SRC<source>-RISE (sources 35, 36 and 41 to 43) passed over the
+  // run. The exclusivity of a held rise is this sampler's compare only; the
+  // owner grades that the bit rose and logs the other bits that moved. The
+  // release does not depend on the window, because the bridge-fault owner
+  // grades its RISE checks at the end of the run, after the window closed.
+  // A reset drops
   // every pending rise; a leaf whose check fails never writes the bit, so its
   // rises never sample. exo_pass gates a sample; it is never a DUT value
   // and drives nothing.
@@ -38711,6 +39979,35 @@ module sep_fcov (
   wire km_own_romw = (graded_owner == FcovOwnSepKmRomWriteErrTest);
   wire km_own_pubid = (graded_owner == FcovOwnSepEfuseKmPublicIdTest);
 
+  // KPV slots, words per slot and stored words. The KM-KPV taps hold 4 CTRL
+  // bits per slot and 32 bits per word.
+  localparam int unsigned KmKpvSlots = 32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_CTRL_NUM);
+  localparam int unsigned KmKpvSlotWords =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM);
+  localparam int unsigned KmKpvSlotBytes =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_STRIDE);
+  localparam int unsigned KmKpvWords = KmKpvSlots * KmKpvSlotWords;
+  localparam int unsigned KmKpvLast = KmKpvSlots - 1;
+  localparam int unsigned KmKpvSlotBits = $clog2(KmKpvSlots);
+  localparam int unsigned KmKpvSlotWordBits = $clog2(KmKpvSlotWords);
+  localparam int unsigned KmKpvWordBits = $clog2(KmKpvWords);
+  // SRAM_LOCK holds one lock bit per equal region of the KM SRAM.
+  localparam int unsigned KmSramRegions = $countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK);
+  localparam int unsigned KmSramLast = KmSramRegions - 1;
+  localparam int unsigned KmSramRegionBits = $clog2(KmSramRegions);
+  // IRQ_STATUS sources, and the bit of each source a point reads.
+  localparam int unsigned KmIrqBits = KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT;
+  localparam int unsigned KmIrqRomWrite = KM_CSR_IRQ_STATUS_REG_ROM_WRITE_ERR_SHIFT;
+  localparam int unsigned KmIrqSramLock = KM_CSR_IRQ_STATUS_REG_SRAM_WRITE_LOCK_ERR_SHIFT;
+  localparam int unsigned KmIrqSlverr = KM_CSR_IRQ_STATUS_REG_AXI_SLVERR_SHIFT;
+  localparam int unsigned KmIrqDecerr = KM_CSR_IRQ_STATUS_REG_AXI_DECERR_SHIFT;
+  localparam int unsigned KmIrqDrbg = KM_CSR_IRQ_STATUS_REG_DRBG_ERR_SHIFT;
+  localparam int unsigned KmIrqOtpChange = KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_SHIFT;
+  localparam int unsigned KmIrqSigint = KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_SHIFT;
+  localparam int unsigned KmIrqRomAccess = KM_CSR_IRQ_STATUS_REG_ROM_ACCESS_VIOLATION_SHIFT;
+  // OTP readout fields, one OTP_READ_LOCK bit each.
+  localparam int unsigned KmOtpFields = KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT;
+
   localparam int unsigned KmSettle = 2;  // clocks from a B or a reset release to its effect
   localparam int unsigned KmStoreWin = 6;  // clocks a store has to reach the SRAM macro
   localparam int unsigned KmQuietWin = 64;  // quiet window of the no-effect bins
@@ -38728,6 +40025,8 @@ module sep_fcov (
   localparam logic [31:0] KmSramBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_BASE_ADDR);
   localparam logic [31:0] KmSramEnd = KmSramBase +
       32'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE);
+  localparam int unsigned KmSramRegionBytes = (KmSramEnd - KmSramBase) / KmSramRegions;
+  localparam int unsigned KmSramRegionWords = KmSramRegionBytes / 4;
   localparam logic [31:0] KmMbxBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_MAILBOX_KM_BASE_ADDR);
   localparam logic [31:0] KmEfMapBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR);
@@ -38736,7 +40035,7 @@ module sep_fcov (
   localparam logic [31:0] KmEfMmrBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR);
   localparam logic [31:0] KmKpvBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_BASE_ADDR);
-  // CTRL[0] follows the 64 key entries.
+  // CTRL[0] follows the key entries.
   localparam logic [31:0] KmKpvCtrl0 = KmKpvBase +
       32'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE);
   localparam logic [31:0] KmKpvScrKey =
@@ -38787,10 +40086,20 @@ module sep_fcov (
       32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_READ_LOCK_COLD_BASE_ADDR);
   localparam logic [31:0] KmCsrChgStatus =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_CHANGE_STATUS_BASE_ADDR);
-  // The 7 dual-rail readout fields in OTP_READ_LOCK bit order 2 to 8, each 8
-  // value words then 8 complement words (km_csr.adoc).
-  localparam logic [31:0] KmCsrOtpChipletUid = KmCsrBase + 32'h200;
-  localparam logic [31:0] KmCsrOtpSepChipletId = KmCsrBase + 32'h400;
+  // The dual-rail readout fields in OTP_READ_LOCK bit order, each its value
+  // words then its complement words: CHIPLET_UID to CLASS_KEY in one window,
+  // SEP_CHIPLET_ID to SEP_SYS_ID in another.
+  localparam logic [31:0] KmCsrOtpChipletUid =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_CHIPLET_UID_VAL_0_BASE_ADDR);
+  localparam logic [31:0] KmCsrOtpUidEnd =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_CLASS_KEY_CPL_7_BASE_ADDR) + 32'd4;
+  localparam logic [31:0] KmCsrOtpSepChipletId =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_SEP_CHIPLET_ID_VAL_0_BASE_ADDR);
+  localparam logic [31:0] KmCsrOtpSepIdEnd =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_SEP_SYS_ID_CPL_7_BASE_ADDR) + 32'd4;
+  localparam logic [31:0] KmCsrOtpFieldBytes =
+      32'(key_manager_addrmap_pkg::KEY_MANAGER_KMCSR_OTP_SIP_UID_VAL_0_BASE_ADDR) -
+      KmCsrOtpChipletUid;
   // DRBG sampler registers.
   localparam logic [31:0] KmSmpData = 32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR);
   localparam logic [31:0] KmSmpCfg = 32'(key_manager_addrmap_pkg::KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR);
@@ -38808,15 +40117,19 @@ module sep_fcov (
       32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_BASE_ADDR);
   localparam logic [31:0] KmSkIrqEnable =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR);
-  // Reset values from km_csr.adoc: VERSION major 1, minor 0, patch 0;
-  // DEBUG magic; IRQ_ENTRY_ADDR 0x10. SOFT_RST_CODE accepts 'SRST'.
-  localparam logic [31:0] KmVersionReset = 32'h0001_0000;
-  localparam logic [31:0] KmDebugMagic = 32'hCAFE_BEEF;
-  localparam logic [31:0] KmEntryReset = 32'h0000_0010;
+  // Reset values of VERSION, DEBUG and IRQ_ENTRY_ADDR. SOFT_RST_CODE accepts
+  // 'SRST'.
+  localparam logic [31:0] KmVersionReset = 32'(KM_CSR_VERSION_REG_REG_DEFAULT);
+  localparam logic [31:0] KmDebugMagic = 32'(KM_CSR_DEBUG_REG_REG_DEFAULT);
+  localparam logic [31:0] KmEntryReset = 32'(KM_CSR_IRQ_ENTRY_ADDR_REG_REG_DEFAULT);
   localparam logic [31:0] KmSoftRstCode = 32'h5352_5354;
-  // KM DRBG sampler CFG reset (km_drbg_sampler.adoc, CFG: timeout 0x100,
-  // prefetch 0) and the bad response data of the eFuse gaps.
-  localparam logic [16:0] KmSmpCfgReset = {16'h0100, 1'b0};
+  // KM DRBG sampler CFG reset in the km_smp_cfg_i packing {timeout, prefetch},
+  // and the bad response data of the eFuse gaps.
+  localparam logic [31:0] KmSmpCfgDefault = 32'(KM_DRBG_SAMPLER_CFG_REG_REG_DEFAULT);
+  localparam logic [16:0] KmSmpCfgReset = {
+    16'(KmSmpCfgDefault >> KM_DRBG_SAMPLER_CFG_REG_TIMEOUT_SHIFT),
+    KmSmpCfgDefault[KM_DRBG_SAMPLER_CFG_REG_PREFETCH_SHIFT]
+  };
   localparam logic [31:0] KmBadcab = 32'hBADC_AB1E;
   // eFuse program control (efuse_interface_ctrl.adoc), at its SEP address.
   localparam logic [31:0] KmEfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
@@ -38826,6 +40139,7 @@ module sep_fcov (
   // stream error.
   localparam logic [2:0] KmStIdle = 3'd0;
   localparam logic [2:0] KmStRequest = 3'd1;
+  localparam logic [2:0] KmStByteAssembly = 3'd2;
   localparam logic [2:0] KmStTimeout = 3'd4;
   localparam logic [2:0] KmStStreamErr = 3'd5;
   // Release write of km_sw_rst_n: the leaf raises AWVALID of the SW_RESET_N
@@ -38875,20 +40189,27 @@ module sep_fcov (
     return 32'(km_bank_words(b)) << 3;
   endfunction
 
-  // OTP readout field of a KMCSR address: 0 life cycle, 1 demotion, 2..8 the
-  // dual-rail fields in OTP_READ_LOCK order; rail 1 is the complement half.
-  // field 4'hF when the address is not a readout word.
+  // OTP readout word of a KMCSR address: {field, word}, field the OTP_READ_LOCK
+  // bit of the field. A dual-rail field counts its value words, then its
+  // complement words; word 16 is the single life-cycle or demotion register.
+  // Field 4'hF when the address is not a readout word.
   function automatic logic [8:0] km_otp_word(logic [31:0] a);
     logic [31:0] off;
-    if (a == KmCsrLifeCycle) return {4'd0, 5'd16};
-    if (a == KmCsrDemotion) return {4'd1, 5'd16};
-    if (km_in(a, KmCsrOtpChipletUid, 32'h100)) begin
+    if (a == KmCsrLifeCycle) return {4'(KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_SHIFT), 5'd16};
+    if (a == KmCsrDemotion) return {4'(KM_CSR_OTP_READ_LOCK_REG_DEMOTION_SHIFT), 5'd16};
+    if (km_in(a, KmCsrOtpChipletUid, KmCsrOtpUidEnd - KmCsrOtpChipletUid)) begin
       off = a - KmCsrOtpChipletUid;
-      return {4'(2 + off[7:6]), 1'b0, off[5:2]};
+      return {
+        4'(KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_SHIFT + off / KmCsrOtpFieldBytes),
+        5'((off % KmCsrOtpFieldBytes) >> 2)
+      };
     end
-    if (km_in(a, KmCsrOtpSepChipletId, 32'hC0)) begin
+    if (km_in(a, KmCsrOtpSepChipletId, KmCsrOtpSepIdEnd - KmCsrOtpSepChipletId)) begin
       off = a - KmCsrOtpSepChipletId;
-      return {4'(6 + off[7:6]), 1'b0, off[5:2]};
+      return {
+        4'(KM_CSR_OTP_READ_LOCK_REG_SEP_CHIPLET_ID_SHIFT + off / KmCsrOtpFieldBytes),
+        5'((off % KmCsrOtpFieldBytes) >> 2)
+      };
     end
     return {4'hF, 5'd0};
   endfunction
@@ -38917,15 +40238,15 @@ module sep_fcov (
   logic [31:0] kw_addr = '0, kw_data = '0;
   logic [1:0] kw_resp = '0;
   // Snapshots at the start of the write and of the read (pre values).
-  logic [11:0] kwp_irq_status = '0, krp_irq_status = '0;
-  logic [11:0] kwp_irq_enable = '0;
+  logic [KmIrqBits-1:0] kwp_irq_status = '0, krp_irq_status = '0;
+  logic [KmIrqBits-1:0] kwp_irq_enable = '0;
   logic [31:0] kwp_scr_key = '0, kwp_sram_lock = '0, kwp_entry_addr = '0, kwp_sram_viol = '0;
   logic [1:0] kwp_scr_ctrl = '0;
   logic kwp_scr_lock = 1'b0, kwp_scr_en = 1'b0, kwp_entry_lock = 1'b0, kwp_exec = 1'b0;
   logic krp_scr_lock = 1'b0, krp_scr_en = 1'b0, krp_pf = 1'b0, krp_tvalid = 1'b0;
-  logic [8:0] kwp_rlock = '0, kwp_rlock_cold = '0, kwp_chg = '0;
-  logic [8:0] krp_rlock = '0, krp_rlock_cold = '0;
-  logic [255:0] kwp_kpv_ctrl = '0, krp_kpv_ctrl = '0;
+  logic [KmOtpFields-1:0] kwp_rlock = '0, kwp_rlock_cold = '0, kwp_chg = '0;
+  logic [KmOtpFields-1:0] krp_rlock = '0, krp_rlock_cold = '0;
+  logic [4*KmKpvSlots-1:0] kwp_kpv_ctrl = '0, krp_kpv_ctrl = '0;
   logic [1:0] kwp_kpv_scr = '0;
   logic [1:0] kwp_smp_sticky = '0;
   logic [15:0] kwp_good = '0;
@@ -38934,7 +40255,7 @@ module sep_fcov (
   logic kwp_sk_valid = 1'b0, kwp_sk_irq = 1'b0;
   logic [7:0] kwp_key_valid = '0;
   logic kwp_engaged = 1'b0;
-  logic [32767:0] kwp_kpv_words = '0;
+  logic [32*KmKpvWords-1:0] kwp_kpv_words = '0;
   logic krp_secure_tm = 1'b0, krp_sigint = 1'b0;
   // ROM lockout (architecture.adoc, ROM Lockout): armed by
   // SRAM_EXEC_MODE.enable, engaged on the first committed instruction fetch
@@ -39002,7 +40323,7 @@ module sep_fcov (
         krp_pf <= (km_smp_prefetched_i === 1'b1);
         krp_tvalid <= (km_smp_tvalid_i === 1'b1);
         krp_secure_tm <= (km_secure_tm_i === 1'b1);
-        krp_sigint <= (km_irq_status_i[9] === 1'b1);
+        krp_sigint <= (km_irq_status_i[KmIrqSigint] === 1'b1);
       end
       if (kx_r_hs && kx_rbusy) kx_rbusy <= 1'b0;
     end
@@ -39023,7 +40344,8 @@ module sep_fcov (
   wire km_mb_wr = (km_mem_wstrb_i !== 4'h0) && !$isunknown(km_mem_wstrb_i);
   wire km_mb_rom = km_in(km_mem_addr_i, KmRomBase, KmRomEnd - KmRomBase);
   wire km_mb_sram = km_in(km_mem_addr_i, KmSramBase, KmSramEnd - KmSramBase);
-  wire [4:0] km_mb_region = 5'((km_mem_addr_i - KmSramBase) >> 10);
+  wire [KmSramRegionBits-1:0] km_mb_region =
+      KmSramRegionBits'((km_mem_addr_i - KmSramBase) / KmSramRegionBytes);
   // Committed fetch: an instruction fetch that completes.
   wire km_fetch_done = km_mb_v && km_mb_rdy && km_mb_instr;
   always @(posedge clk_i) begin
@@ -39050,11 +40372,11 @@ module sep_fcov (
   logic km_rel_cold = 1'b0;  // the release in progress is a cold release
   logic km_rel_ev = 1'b0;  // KmSettle clocks after a reset release
   // Previous-clock copies and the pre-reset record.
-  logic [255:0] km_ctrl_q = '0, km_rst_pre_ctrl = '0;
+  logic [4*KmKpvSlots-1:0] km_ctrl_q = '0, km_rst_pre_ctrl = '0;
   logic [1:0] km_kpv_scr_q = '0, km_rst_pre_kpv_scr = '0;
   logic [1:0] km_scr_ctrl_q = '0, km_rst_pre_scr_ctrl = '0;
   logic [31:0] km_sram_lock_q = '0, km_rst_pre_sram_lock = '0;
-  logic [8:0]
+  logic [KmOtpFields-1:0]
       km_rlock_q = '0, km_rlock_cold_q = '0, km_rst_pre_rlock = '0, km_rst_pre_rlock_cold = '0;
   logic km_cbd_q = 1'b0, km_rst_pre_cbd = 1'b0;
   logic km_exec_q = 1'b0, km_rst_pre_exec = 1'b0, km_rst_pre_engaged = 1'b0;
@@ -39245,9 +40567,10 @@ module sep_fcov (
       bins cleared_by_cold_reset = {3'd5};
       bins lock_with_enable0_forces_scrambling = {3'd6};
     }
-    // Region 1 to 31 set by a write of 1 and kept by a later write of 0.
+    // Regions 1 to the last, each set by a write of 1 and kept by a later write
+    // of 0.
     cp_km_sram_region: coverpoint v[4:0] iff (pt == 5'd3) {
-      bins region[] = {[5'd1 : 5'd31]};
+      bins region[] = {[1 : KmSramLast]};
     }
     cp_mem_r31: coverpoint v[0] iff (pt == 5'd4) {
       bins locked_store_dropped = {1'b0}; bins unlocked_store_accepted = {1'b1};
@@ -39268,8 +40591,10 @@ module sep_fcov (
   covergroup sep_km_kpv_slot_cg with function sample (logic [4:0] pt, logic [15:0] v);
     option.per_instance = 1;
     option.name = "sep_km_kpv_slot_cg";
-    cp_kpv_slot_index: coverpoint v[5:0] iff (pt == 5'd0) {bins slot[] = {[6'd0 : 6'd63]};}
-    cp_kpv_word_index: coverpoint v[3:0] iff (pt == 5'd1) {bins word[] = {[4'd0 : 4'd15]};}
+    cp_kpv_slot_index: coverpoint v[5:0] iff (pt == 5'd0) {bins slot[] = {[0 : KmKpvLast]};}
+    cp_kpv_word_index: coverpoint v[3:0] iff (pt == 5'd1) {
+      bins word[] = {[0 : KmKpvSlotWords - 1]};
+    }
     cp_kpv_post_reset: coverpoint v[0] iff (pt == 5'd2) {
       bins all_ctrl_zero_after_cold = {1'b0}; bins all_ctrl_zero_after_warm = {1'b1};
     }
@@ -39400,7 +40725,7 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_km_kmcsr_status_cg";
     cp_csr_version: coverpoint v[0] iff (pt == 5'd0) {bins version_1_0_0 = {1'b1};}
-    cp_csr_irq_source: coverpoint v[3:0] iff (pt == 5'd1) {bins source[] = {[4'd0 : 4'd11]};}
+    cp_csr_irq_source: coverpoint v[3:0] iff (pt == 5'd1) {bins source[] = {[0 : KmIrqBits - 1]};}
     // {source[3:0], rule (0 W1C clears, 1 write 0 keeps, 2 W1C of other bits
     // keeps)}.
     cp_csr_status_semantics: coverpoint v[5:0] iff (pt == 5'd2) {
@@ -39538,12 +40863,13 @@ module sep_fcov (
     // with 0xBADCAB1E)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
+      bins shadow_slverr = {4'b000_1};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
       bins gap_1141c_slverr = {4'b011_1};
       bins gap_11574_slverr = {4'b100_1};
       bins reserved_11600_slverr = {4'b101_1};
-      ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
+      ignore_bins no_such_response = {4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
     // secure test strap set)}.
@@ -39714,15 +41040,17 @@ module sep_fcov (
     cp_smp_read_service: coverpoint v[0] iff (pt == 5'd0) {
       bins prefetched_word_at_once = {1'b0}; bins tready_and_wait = {1'b1};
     }
-    // The delayed-arrival bins need the PROPOSED drive HK-STRM-PAT and are
-    // not declared.
-    cp_smp_tvalid_arrival: coverpoint v[0] iff (pt == 5'd1) {
-      bins tvalid_high_at_read_start = {1'b1};
+    // 0: TVALID high at the read start; 1, 2, 3: TVALID first high 1, 2, or 3
+    // or more clocks after it.
+    cp_smp_tvalid_arrival: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins tvalid_high_at_read_start = {2'd0};
+      bins tvalid_delayed_1 = {2'd1};
+      bins tvalid_delayed_2 = {2'd2};
+      bins tvalid_delayed_3_or_more = {2'd3};
     }
-    // Every TSTRB value other than 0xF needs the PROPOSED drive HK-STRM-PAT
-    // and is not declared.
+    // TSTRB of a beat that the active read path takes.
     cp_smp_strb: coverpoint v[3:0] iff (pt == 5'd2) {
-      bins strb_f = {4'hF}; ignore_bins strb_0_not_stated = {4'h0};
+      bins strb_0 = {4'h0}; bins strb_partial[] = {[4'h1 : 4'hE]}; bins strb_f = {4'hF};
     }
     cp_smp_freshness: coverpoint v[0] iff (pt == 5'd3) {bins new_word_per_read = {1'b1};}
     cp_smp_prefetch_mode: coverpoint v[2:0] iff (pt == 5'd4) {
@@ -39782,10 +41110,8 @@ module sep_fcov (
     cp_df_timeout_value: coverpoint v[0] iff (pt == 5'd0) {
       bins timeout1 = {1'b0}; bins timeout65535 = {1'b1};
     }
-    // The timeout from ST_BYTE_ASSEMBLY needs the PROPOSED drive HK-STRM-PAT
-    // and is not declared.
     cp_df_entry_state: coverpoint v[0] iff (pt == 5'd1) {
-      bins from_request = {1'b0};
+      bins from_request = {1'b0}; bins from_byte_assembly = {1'b1};
     }
     cp_df_timeout_outcome: coverpoint v[1:0] iff (pt == 5'd2) {
       bins slverr_data0 = {2'd0};
@@ -40077,6 +41403,48 @@ module sep_fcov (
   sep_km_vault_wipe_cg         u_sep_km_vault_wipe_cg         = new();
 
   // ---------------------------------------------------------------------
+  // S-box inputs of the KM SRAM scrambler (sep_km_sram_scrambler_key_rand_test).
+  // The leaf writes km_sbox_in through the u_sep_fcov handle, one accepted
+  // scrambled store of its 64-store run at a time, after the checks of that
+  // run pass: bit 45 valid, [44:32] the 13-bit plaintext word index, [31:0]
+  // W ^ Rkey from its plan and the specification round key. The sampler
+  // samples on each rise of bit 45. A data lane is the S-box input of that
+  // nibble (hw/ip/scrambler/doc/architecture.adoc, "Scrambling"). An address
+  // lane is the plaintext lane value; all 64 stores use one key, so every
+  // value of a lane maps to every S-box input value of that lane, whatever
+  // key bits the address path XORs. km_sbox_in is a model value, never a
+  // DUT value, and drives nothing.
+  // ---------------------------------------------------------------------
+  covergroup sep_km_sram_sbox_in_cg with function sample (logic [44:0] s);
+    option.per_instance = 1;
+    option.name = "sep_km_sram_sbox_in_cg";
+    cp_data_lane0: coverpoint s[3:0] {bins val[] = {[0 : 15]};}
+    cp_data_lane1: coverpoint s[7:4] {bins val[] = {[0 : 15]};}
+    cp_data_lane2: coverpoint s[11:8] {bins val[] = {[0 : 15]};}
+    cp_data_lane3: coverpoint s[15:12] {bins val[] = {[0 : 15]};}
+    cp_data_lane4: coverpoint s[19:16] {bins val[] = {[0 : 15]};}
+    cp_data_lane5: coverpoint s[23:20] {bins val[] = {[0 : 15]};}
+    cp_data_lane6: coverpoint s[27:24] {bins val[] = {[0 : 15]};}
+    cp_data_lane7: coverpoint s[31:28] {bins val[] = {[0 : 15]};}
+    // Word index lanes [12:9] (sbox4), [8:6], [5:3], [2:0] (sbox3).
+    cp_addr_lane0: coverpoint s[44:41] {
+      bins val[] = {[0 : 15]};
+    }
+    cp_addr_lane1: coverpoint s[40:38] {bins val[] = {[0 : 7]};}
+    cp_addr_lane2: coverpoint s[37:35] {bins val[] = {[0 : 7]};}
+    cp_addr_lane3: coverpoint s[34:32] {bins val[] = {[0 : 7]};}
+  endgroup
+
+  sep_km_sram_sbox_in_cg u_sep_km_sram_sbox_in_cg = new();
+  logic [45:0] km_sbox_in = '0;
+  logic km_sbox_in_q = 1'b0;
+  always @(posedge clk_i) begin
+    km_sbox_in_q <= (km_sbox_in[45] === 1'b1);
+    if (km_own_scr && (km_sbox_in[45] === 1'b1) && !km_sbox_in_q && !$isunknown(km_sbox_in))
+      u_sep_km_sram_sbox_in_cg.sample(km_sbox_in[44:0]);
+  end
+
+  // ---------------------------------------------------------------------
   // Pass label of sep_km_cpu_protect_rand_test (km_cpu_pass, bits Kcp*).
   // Each cell of that owner in cp_mem_iface_req, the execute-protection
   // points, cp_fr_err_out (except port_equals_pic), cp_km_trap_cause,
@@ -40195,24 +41563,25 @@ module sep_fcov (
   // A lock written with the enable at 0, waiting for the next SRAM write.
   logic km_lock_en0_pend = 1'b0;
   // SRAM_LOCK bits set by a write of 1 in this boot (cp_km_sram_region).
-  logic [31:0] km_region_set = '0;
+  logic [KmSramRegions-1:0] km_region_set = '0;
   // IRQ_ENTRY_ADDR written since the last KM reset.
   logic km_entry_written = 1'b0;
   // Identical consecutive writes: CTRL[s] (cp_kpv_ctrl_write) and the OTP
   // lock registers (cp_otp_lock_reg).
   logic [31:0] km_rep_addr = '0, km_rep_data = '0;
   logic [3:0] km_rep_post = '0;
-  logic [8:0] km_rep_lock_post = '0;
+  logic [KmOtpFields-1:0] km_rep_lock_post = '0;
   logic [1:0] km_rep_cnt = '0;
   // Per-slot state: retired-slot refusals before and after a repeated
   // erase, the seal-during-erase try, and the trailing-word record.
-  logic [63:0] km_ret_rerased = '0;
-  logic [63:0] km_ret_rd_ref0 = '0, km_ret_wr_ref0 = '0, km_ret_rd_ref1 = '0, km_ret_wr_ref1 = '0;
-  logic [63:0] km_race_armed = '0, km_race_seen = '0;
-  logic [63:0] km_tr_erased = '0, km_tr_wrote = '0;
-  logic [15:0] km_tr_wmask[64];
-  logic [15:0] km_tr_have[64];
-  logic [31:0] km_tr_val[64][16];
+  logic [KmKpvSlots-1:0] km_ret_rerased = '0;
+  logic [KmKpvSlots-1:0]
+      km_ret_rd_ref0 = '0, km_ret_wr_ref0 = '0, km_ret_rd_ref1 = '0, km_ret_wr_ref1 = '0;
+  logic [KmKpvSlots-1:0] km_race_armed = '0, km_race_seen = '0;
+  logic [KmKpvSlots-1:0] km_tr_erased = '0, km_tr_wrote = '0;
+  logic [KmKpvSlotWords-1:0] km_tr_wmask[KmKpvSlots];
+  logic [KmKpvSlotWords-1:0] km_tr_have[KmKpvSlots];
+  logic [31:0] km_tr_val[KmKpvSlots][KmKpvSlotWords];
   // The last key write for cp_kpv_scramble_mode.
   logic [31:0] km_scr_last_addr = '0, km_scr_last_data = '0;
   logic km_scr_last_v = 1'b0;
@@ -40250,23 +41619,27 @@ module sep_fcov (
   wire km_xbar_rise = km_own_xbar && (km_xbar_pass != '0) && !km_xbar_pass_q;
   logic [1:0] km_remap_ok = '0;
   initial begin
-    for (int s = 0; s < 64; s++) begin
+    for (int s = 0; s < KmKpvSlots; s++) begin
       km_tr_wmask[s] = '0;
       km_tr_have[s] = '0;
-      for (int w = 0; w < 16; w++) km_tr_val[s][w] = '0;
+      for (int w = 0; w < KmKpvSlotWords; w++) km_tr_val[s][w] = '0;
     end
   end
 
   // KPV address decode: slot and word of a key-word address, slot of a CTRL
   // address.
   function automatic logic km_kpv_key(logic [31:0] a);
-    return km_in(a, KmKpvBase, 32'h1000);
+    return km_in(a, KmKpvBase, KmKpvCtrl0 - KmKpvBase);
   endfunction
   function automatic logic km_kpv_ctl(logic [31:0] a);
-    return km_in(a, KmKpvCtrl0, 32'h100);
+    return km_in(a, KmKpvCtrl0, 32'(4 * KmKpvSlots));
   endfunction
-  function automatic logic [5:0] km_kpv_slot(logic [31:0] a);
-    return km_kpv_key(a) ? 6'((a - KmKpvBase) >> 6) : 6'((a - KmKpvCtrl0) >> 2);
+  function automatic logic [KmKpvSlotBits-1:0] km_kpv_slot(logic [31:0] a);
+    return KmKpvSlotBits'(km_kpv_key(a) ? (a - KmKpvBase) / KmKpvSlotBytes : (a - KmKpvCtrl0) >> 2);
+  endfunction
+  // Word of a key-word address within its slot.
+  function automatic logic [KmKpvSlotWordBits-1:0] km_kpv_word(logic [31:0] a);
+    return KmKpvSlotWordBits'(((a - KmKpvBase) % KmKpvSlotBytes) >> 2);
   endfunction
   // Slot state of a CTRL value {seal, erase, lock_use, lock_write}: 0 free,
   // 1 write-locked, 2 read-locked, 3 both, 4 sealed, 5 retired, 7 other.
@@ -40284,8 +41657,8 @@ module sep_fcov (
 
   always @(posedge clk_i) begin
     logic [3:0] pre_c, post_c, b;
-    logic [5:0] s;
-    logic [3:0] w;
+    logic [KmKpvSlotBits-1:0] s;
+    logic [KmKpvSlotWordBits-1:0] w;
     logic [8:0] ow;
     logic [2:0] st;
     int unsigned nchg;
@@ -40343,15 +41716,15 @@ module sep_fcov (
 
     // ---- register writes ----
     if (kw_ev) begin
-      // KMCSR IRQ_STATUS: W1C, write 0, W1C of other bits (12 sources).
+      // KMCSR IRQ_STATUS: W1C, write 0, W1C of other bits (every source).
       if ((kw_addr == KmCsrIrqStatus) && km_own_csr) begin
-        for (int i = 0; i < 12; i++) begin
+        for (int i = 0; i < KmIrqBits; i++) begin
           if (kwp_irq_status[i]) begin
             if (kw_data[i] && (km_irq_status_i[i] === 1'b0))
               u_sep_km_kmcsr_status_cg.sample(5'd2, 16'({4'(i), 2'd0}));
-            else if ((kw_data[11:0] == 12'h0) && (km_irq_status_i[i] === 1'b1))
+            else if ((kw_data[KmIrqBits-1:0] == '0) && (km_irq_status_i[i] === 1'b1))
               u_sep_km_kmcsr_status_cg.sample(5'd2, 16'({4'(i), 2'd1}));
-            else if (!kw_data[i] && (kw_data[11:0] != 12'h0) && (km_irq_status_i[i] === 1'b1))
+            else if (!kw_data[i] && (kw_data[KmIrqBits-1:0] != '0) && (km_irq_status_i[i] === 1'b1))
               u_sep_km_kmcsr_status_cg.sample(5'd2, 16'({4'(i), 2'd2}));
           end
         end
@@ -40413,7 +41786,7 @@ module sep_fcov (
       end
       // SRAM_LOCK (cp_km_sram_region): set by a write of 1, kept by a 0.
       if (kw_addr == KmCsrSramLock) begin
-        for (int r = 1; r < 32; r++) begin
+        for (int r = 1; r < KmSramRegions; r++) begin
           if (kw_data[r] && !kwp_sram_lock[r] && (km_sram_lock_i[r] === 1'b1))
             km_region_set[r] <= 1'b1;
           if (!kw_data[r] && km_region_set[r] && (km_sram_lock_i[r] === 1'b1) && km_own_csr)
@@ -40430,24 +41803,26 @@ module sep_fcov (
       end
       // OTP_READ_LOCK and OTP_READ_LOCK_COLD (cp_otp_lock_reg).
       if ((kw_addr == KmCsrReadLock) || (kw_addr == KmCsrReadLockCold)) begin
-        logic [8:0] pre_l, post_l;
+        logic [KmOtpFields-1:0] pre_l, post_l, wr_l;
         logic cold_reg;
         cold_reg = (kw_addr == KmCsrReadLockCold);
+        wr_l = kw_data[KmOtpFields-1:0];
         pre_l = cold_reg ? kwp_rlock_cold : kwp_rlock;
         post_l = cold_reg ? km_otp_rlock_cold_i : km_otp_rlock_i;
         if (km_own_otp || km_own_ho) begin
-          if (|(kw_data[8:0] & ~pre_l) && ((post_l & kw_data[8:0]) == kw_data[8:0]))
+          if (|(wr_l & ~pre_l) && ((post_l & wr_l) == wr_l))
             u_sep_km_otp_readout_cg.sample(5'd5, cold_reg ? 16'd1 : 16'd0);
-          if ((pre_l != 9'h0) && ((kw_data[8:0] & pre_l) != pre_l) && ((post_l & pre_l) == pre_l))
+          if ((pre_l != '0) && ((wr_l & pre_l) != pre_l) && ((post_l & pre_l) == pre_l))
             u_sep_km_otp_readout_cg.sample(5'd5, 16'd2);
           if ((km_rep_cnt == 2'd2) && (km_rep_addr == kw_addr) && (km_rep_data == kw_data) &&
-              (post_l === km_rep_lock_post) && (kw_data[8:0] != 9'h0))
+              (post_l === km_rep_lock_post) && (wr_l != '0))
             u_sep_km_otp_readout_cg.sample(5'd5, 16'd5);
         end
       end
       // OTP_CHANGE_STATUS W1C (cp_otp_change).
       if ((kw_addr == KmCsrChgStatus) && km_own_otp) begin
-        if (|(kw_data[8:0] & kwp_chg & ~km_otp_chg_i)) u_sep_km_otp_readout_cg.sample(5'd3, 16'd12);
+        if (|(kw_data[KmOtpFields-1:0] & kwp_chg & ~km_otp_chg_i))
+          u_sep_km_otp_readout_cg.sample(5'd3, 16'd12);
       end
       // KPV CTRL[s] (cp_kpv_ctrl_write, cp_kpv_lock_write, cp_kpv_lock_use,
       // cp_kpv_seal, cp_kpv_erase, cp_kpv_locked_write, cp_kpv_state_x_op).
@@ -40488,11 +41863,11 @@ module sep_fcov (
             u_sep_km_kpv_locked_access_cg.sample(5'd1, 16'd2);
           if (kw_data[2] && (st != 3'd7) && !((st == 3'd1)))
             u_sep_km_kpv_locked_access_cg.sample(5'd0, 16'({st, 2'd2}));
-          if ((s == 6'd0) || (s == 6'd63)) begin
+          if ((s == '0) || (s == KmKpvLast)) begin
             if (st inside {3'd1, 3'd2, 3'd3})
-              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == 6'd63}));
-            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == 6'd63}));
-            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == 6'd63}));
+              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == KmKpvLast}));
+            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == KmKpvLast}));
+            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == KmKpvLast}));
           end
         end
         // A repeated erase of a retired slot, and a seal written while the
@@ -40509,7 +41884,7 @@ module sep_fcov (
       // cp_kpv_scramble_mode, cp_kpv_trailing).
       if (km_kpv_key(kw_addr)) begin
         s = km_kpv_slot(kw_addr);
-        w = 4'(kw_addr[5:2]);
+        w = km_kpv_word(kw_addr);
         pre_c = kwp_kpv_ctrl[4*s+:4];
         st = km_slot_state(pre_c);
         if (km_own_kpv) begin
@@ -40521,13 +41896,13 @@ module sep_fcov (
             u_sep_km_kpv_slot_cg.sample(5'd5, 16'd4);
           if ((st != 3'd7) && (st != 3'd1))
             u_sep_km_kpv_locked_access_cg.sample(5'd0, 16'({st, 2'd1}));
-          if (pre_c[0] && (kw_resp == KmSlverr) && (km_irq_status_i[4] === 1'b1))
+          if (pre_c[0] && (kw_resp == KmSlverr) && (km_irq_status_i[KmIrqSlverr] === 1'b1))
             u_sep_km_kpv_locked_access_cg.sample(5'd1, 16'd0);
-          if ((s == 6'd0) || (s == 6'd63)) begin
+          if ((s == '0) || (s == KmKpvLast)) begin
             if (st inside {3'd1, 3'd2, 3'd3})
-              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == 6'd63}));
-            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == 6'd63}));
-            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == 6'd63}));
+              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == KmKpvLast}));
+            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == KmKpvLast}));
+            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == KmKpvLast}));
           end
           // Scrambler: with enable 1, two writes of different data to one
           // cell change exactly one stored word.
@@ -40535,7 +41910,7 @@ module sep_fcov (
           if (kwp_kpv_scr[0] && km_scr_last_v && (km_scr_last_addr == kw_addr) &&
               (km_scr_last_data != kw_data) && (kw_resp == KmOkay)) begin
             nchg = 0;
-            for (int i = 0; i < 1024; i++)
+            for (int i = 0; i < KmKpvWords; i++)
             if (km_kpv_words_i[32*i+:32] !== kwp_kpv_words[32*i+:32]) nchg++;
             if (nchg == 1) u_sep_km_kpv_slot_cg.sample(5'd8, 16'd1);
           end
@@ -40684,7 +42059,7 @@ module sep_fcov (
           if ((fld inside {[4'd2 : 4'd5]}) && !(lw || lc)) begin
             if (!krp_secure_tm && !ow[3] && (kr_data != 32'h0))
               u_sep_km_otp_readout_cg.sample(5'd6, 16'd0);
-            if (krp_secure_tm && !krp_sigint && (km_irq_status_i[9] === 1'b0) &&
+            if (krp_secure_tm && !krp_sigint && (km_irq_status_i[KmIrqSigint] === 1'b0) &&
                 ((!ow[3] && (kr_data == 32'h0)) || (ow[3] && (kr_data == 32'hFFFF_FFFF))))
               u_sep_km_otp_readout_cg.sample(5'd6, 16'd1);
             if ((ow[3:0] == 4'd0) && (kr_data != 32'h0))
@@ -40723,11 +42098,11 @@ module sep_fcov (
         st = km_slot_state(pre_c);
         if (km_own_kpv) begin
           u_sep_km_kpv_slot_cg.sample(5'd0, 16'(s));
-          if ((s == 6'd0) || (s == 6'd63)) begin
+          if ((s == '0) || (s == KmKpvLast)) begin
             if (st inside {3'd1, 3'd2, 3'd3})
-              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == 6'd63}));
-            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == 6'd63}));
-            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == 6'd63}));
+              u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd0, s == KmKpvLast}));
+            if (st == 3'd4) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd1, s == KmKpvLast}));
+            if (st == 3'd5) u_sep_km_kpv_locked_access_cg.sample(5'd4, 16'({2'd2, s == KmKpvLast}));
           end
         end
         if (km_kpv_ctl(kr_addr) && km_race_armed[s]) begin
@@ -40735,7 +42110,7 @@ module sep_fcov (
           km_race_seen[s] <= kr_data[2];
         end
         if (km_kpv_key(kr_addr)) begin
-          w = 4'(kr_addr[5:2]);
+          w = km_kpv_word(kr_addr);
           if (km_own_kpv) begin
             u_sep_km_kpv_slot_cg.sample(5'd1, 16'(w));
             if (!pre_c[1] && (kr_resp == KmOkay)) u_sep_km_kpv_slot_cg.sample(5'd5, 16'd1);
@@ -40775,7 +42150,7 @@ module sep_fcov (
 
     // ---- per-slot KPV edges (cp_kpv_erase, cp_kpv_lock_use, cp_kpv_seal,
     // cp_kpv_locked_read) ----
-    for (int i = 0; i < 64; i++) begin
+    for (int i = 0; i < KmKpvSlots; i++) begin
       if (km_ctrl_q[4*i+2] && (km_kpv_ctrl_i[4*i+2] === 1'b0) && km_rst_warm_n && km_rst_cold_n) begin
         km_tr_erased[i] <= 1'b1;
         km_tr_wrote[i] <= 1'b0;
@@ -41118,8 +42493,8 @@ module sep_fcov (
       end
     end
     if (km_dec_pend && km_own_xbar &&
-        (((km_dec_cls == 2'd0) && (km_irq_status_i[5] === 1'b1)) ||
-         ((km_dec_cls != 2'd0) && (km_irq_status_i[4] === 1'b1))))
+        (((km_dec_cls == 2'd0) && (km_irq_status_i[KmIrqDecerr] === 1'b1)) ||
+         ((km_dec_cls != 2'd0) && (km_irq_status_i[KmIrqSlverr] === 1'b1))))
       km_dec_ok[{km_dec_cls, km_dec_wr}] <= 1'b1;
     // eFuse read class.
     if (kr_ev && km_own_xbar && km_rng(kr_addr, KmEfMapBase, KmKpvBase)) begin
@@ -41141,7 +42516,7 @@ module sep_fcov (
   wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0);
   wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1);
   logic [3:0] km_st_cnt = '0;
-  logic [4:0] km_st_region = '0;
+  logic [KmSramRegionBits-1:0] km_st_region = '0;
   logic [12:0] km_st_word = '0;
   logic km_st_locked = 1'b0, km_st_we = 1'b0, km_st_viol = 1'b0;
   // Fetch outcome window (cp_ex_mode_x_target) and the ROM store after the
@@ -41177,15 +42552,16 @@ module sep_fcov (
       if (km_sram_viol_pulse_i[km_st_region] === 1'b1) km_st_viol <= 1'b1;
       if (km_st_cnt == 4'(KmStoreWin)) begin
         km_st_cnt <= '0;
-        if (km_own_csr && (km_st_region != 5'd0)) begin
-          if (km_st_locked && !km_st_we && km_st_viol && (km_irq_status_i[3] === 1'b1) &&
+        if (km_own_csr && (km_st_region != '0)) begin
+          if (km_st_locked && !km_st_we && km_st_viol &&
+              (km_irq_status_i[KmIrqSramLock] === 1'b1) &&
               (km_sram_viol_i[km_st_region] === 1'b1)) begin
             u_sep_km_integrity_fault_cg.sample(5'd4, 16'({km_st_region, 1'b0}));
-            if (km_st_region == 5'd31) u_sep_km_memory_boot_cg.sample(5'd4, 16'd0);
+            if (km_st_region == KmSramLast) u_sep_km_memory_boot_cg.sample(5'd4, 16'd0);
           end
           if (!km_st_locked && km_st_we && !km_st_viol) begin
             u_sep_km_integrity_fault_cg.sample(5'd4, 16'({km_st_region, 1'b1}));
-            if (km_st_region == 5'd31) u_sep_km_memory_boot_cg.sample(5'd4, 16'd1);
+            if (km_st_region == KmSramLast) u_sep_km_memory_boot_cg.sample(5'd4, 16'd1);
           end
         end
       end else km_st_cnt <= km_st_cnt + 4'd1;
@@ -41245,11 +42621,11 @@ module sep_fcov (
   // KMCSR interrupt sources, enable and aggregate (cp_csr_irq_source,
   // cp_csr_src_x_en, cp_csr_aggregate).
   // ---------------------------------------------------------------------
-  logic [11:0] km_irqs_q = '0, km_rise_q = '0, km_rise_en_q = '0, km_mask_q = '0;
+  logic [KmIrqBits-1:0] km_irqs_q = '0, km_rise_q = '0, km_rise_en_q = '0, km_mask_q = '0;
   logic km_cpu_irq_q = 1'b0;
   always @(posedge clk_i) begin
-    logic [11:0] st, en, rise;
-    for (int i = 0; i < 12; i++) begin
+    logic [KmIrqBits-1:0] st, en, rise;
+    for (int i = 0; i < KmIrqBits; i++) begin
       st[i] = (km_irq_status_i[i] === 1'b1);
       en[i] = (km_irq_enable_i[i] === 1'b1);
     end
@@ -41260,23 +42636,24 @@ module sep_fcov (
     km_mask_q <= st & en;
     km_cpu_irq_q <= (km_cpu_irq_i === 1'b1);
     if ((km_own_csr || km_own_fi) && km_rst_cold_n && km_rst_warm_n)
-      for (int i = 0; i < 12; i++) if (rise[i]) u_sep_km_kmcsr_status_cg.sample(5'd1, 16'(i));
+      for (int i = 0; i < KmIrqBits; i++)
+      if (rise[i]) u_sep_km_kmcsr_status_cg.sample(5'd1, 16'(i));
     if (km_own_csr && km_rst_cold_n && km_rst_warm_n) begin
-      for (int i = 0; i < 12; i++) begin
+      for (int i = 0; i < KmIrqBits; i++) begin
         if (km_rise_q[i]) begin
           if (km_rise_en_q[i] && (km_cpu_irq_i === 1'b1))
             u_sep_km_kmcsr_status_cg.sample(5'd3, 16'({4'(i), 1'b1}));
-          if (!km_rise_en_q[i] && ((st & en) == 12'h0) && (km_cpu_irq_i === 1'b0))
+          if (!km_rise_en_q[i] && ((st & en) == '0) && (km_cpu_irq_i === 1'b0))
             u_sep_km_kmcsr_status_cg.sample(5'd3, 16'({4'(i), 1'b0}));
         end
       end
-      if (!km_cpu_irq_q && (km_cpu_irq_i === 1'b1) && ((st & en) != 12'h0))
+      if (!km_cpu_irq_q && (km_cpu_irq_i === 1'b1) && ((st & en) != '0))
         u_sep_km_kmcsr_status_cg.sample(5'd4, 16'd0);
-      if (km_cpu_irq_q && (km_cpu_irq_i === 1'b0) && (km_mask_q != 12'h0) && ((st & en) == 12'h0) &&
+      if (km_cpu_irq_q && (km_cpu_irq_i === 1'b0) && (km_mask_q != '0) && ((st & en) == '0) &&
           (en == km_rise_en_q))
         u_sep_km_kmcsr_status_cg.sample(5'd4, 16'd1);
     end
-    if (km_own_csr && km_rel_ev && (km_irq_enable_i === 12'h0))
+    if (km_own_csr && km_rel_ev && (km_irq_enable_i === '0))
       u_sep_km_kmcsr_status_cg.sample(5'd4, 16'd2);
   end
 
@@ -41295,9 +42672,9 @@ module sep_fcov (
   wire km_lsu_aw_start = (lsu_aw_valid_i === 1'b1) && (lsu_aw_addr_i == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR);
   always @(posedge clk_i) begin
     logic warm;
-    logic [255:0] lw_mask, lu_mask, seal_mask;
+    logic [4*KmKpvSlots-1:0] lw_mask, lu_mask, seal_mask;
     warm = !km_rel_cold;
-    for (int i = 0; i < 64; i++) begin
+    for (int i = 0; i < KmKpvSlots; i++) begin
       lw_mask[4*i+:4] = 4'b0001;
       lu_mask[4*i+:4] = 4'b0010;
       seal_mask[4*i+:4] = 4'b1000;
@@ -41328,11 +42705,11 @@ module sep_fcov (
       // OTP lock registers (cp_otp_lock_reg; the reset bins also belong to
       // the KMCSR reset test).
       if (km_own_otp || km_own_csr) begin
-        if (warm && (km_rst_pre_rlock != 9'h0) && (km_rst_pre_rlock_cold != 9'h0) &&
-            (km_otp_rlock_i === 9'h0) && (km_otp_rlock_cold_i === km_rst_pre_rlock_cold))
+        if (warm && (km_rst_pre_rlock != '0) && (km_rst_pre_rlock_cold != '0) &&
+            (km_otp_rlock_i === '0) && (km_otp_rlock_cold_i === km_rst_pre_rlock_cold))
           u_sep_km_otp_readout_cg.sample(5'd5, 16'd3);
-        if (!warm && ((km_rst_pre_rlock | km_rst_pre_rlock_cold) != 9'h0) &&
-            (km_otp_rlock_i === 9'h0) && (km_otp_rlock_cold_i === 9'h0))
+        if (!warm && ((km_rst_pre_rlock | km_rst_pre_rlock_cold) != '0) &&
+            (km_otp_rlock_i === '0) && (km_otp_rlock_cold_i === '0))
           u_sep_km_otp_readout_cg.sample(5'd5, 16'd4);
       end
       // SRAM_EXEC_MODE and the lockout (cp_ex_mode_enable,
@@ -41451,14 +42828,14 @@ module sep_fcov (
     logic [31:0] f;
     unrec = (km_unrec_err_i === 1'b1);
     km_trap_q <= (km_trap_i === 1'b1);
-    km_rav_q <= (km_irq_status_i[11] === 1'b1);
+    km_rav_q <= (km_irq_status_i[KmIrqRomAccess] === 1'b1);
     trap_rise = !km_trap_q && (km_trap_i === 1'b1);
     if (!km_rst_warm_n || !km_rst_cold_n) begin
       km_run_cnt <= '0;
       km_run_done <= 1'b0;
       km_rav_seen <= 1'b0;
     end else begin
-      if (!km_rav_q && (km_irq_status_i[11] === 1'b1)) km_rav_seen <= 1'b1;
+      if (!km_rav_q && (km_irq_status_i[KmIrqRomAccess] === 1'b1)) km_rav_seen <= 1'b1;
       if (!unrec && !km_run_done) begin
         if (km_run_cnt == 11'(KmRunWin)) begin
           km_run_done <= 1'b1;
@@ -41718,6 +43095,8 @@ module sep_fcov (
   logic [7:0] km_bad_q = '0;
   logic [1:0] km_sticky_q = '0;
   logic km_wait_req = 1'b0;  // a DATA read started with no prefetched word
+  logic km_arr_v = 1'b0;  // a read started with TVALID low; waits for its arrival
+  logic [1:0] km_arr_cnt = '0;
   logic km_prev_data_ok = 1'b0;
   logic [15:0] km_hs_since = '0;
   logic km_pf_read_done = 1'b0;  // a DATA read completed with prefetch 1
@@ -41767,6 +43146,7 @@ module sep_fcov (
     km_strm_pass_q <= (km_strm_pass != 0);
     if (!km_rst_warm_n || !km_rst_cold_n) begin
       km_wait_req <= 1'b0;
+      km_arr_v <= 1'b0;
       km_prev_data_ok <= 1'b0;
       km_pf_read_done <= 1'b0;
       km_pf_dis_word <= 1'b0;
@@ -41793,9 +43173,17 @@ module sep_fcov (
       if ((km_smp_st_q == KmStIdle) && (st == KmStRequest)) begin
         if (km_wait_req && km_tr) u_sep_km_drbg_sampler_cg.sample(5'd0, 16'd1);
         km_wait_req <= 1'b0;
-        if (km_tv) u_sep_km_drbg_sampler_cg.sample(5'd1, 16'd1);
+        if (km_tv) u_sep_km_drbg_sampler_cg.sample(5'd1, 16'd0);
+        km_arr_v   <= !km_tv;
+        km_arr_cnt <= 2'd1;
+      end else if (km_arr_v) begin
+        if (km_tv && (st == KmStRequest)) begin
+          u_sep_km_drbg_sampler_cg.sample(5'd1, 16'(km_arr_cnt));
+          km_arr_v <= 1'b0;
+        end else if (st != KmStRequest) km_arr_v <= 1'b0;
+        else if (km_arr_cnt != 2'd3) km_arr_cnt <= km_arr_cnt + 2'd1;
       end
-      if (km_smp_hs && ((st == KmStRequest) || (st == 3'd2)))
+      if (km_smp_hs && ((st == KmStRequest) || (st == KmStByteAssembly)))
         u_sep_km_drbg_sampler_cg.sample(5'd2, 16'(km_smp_tstrb_i));
       // Freshness: a sink handshake between two OKAY DATA reads.
       if (km_smp_hs && (km_hs_since != 16'hFFFF)) km_hs_since <= km_hs_since + 16'd1;
@@ -41861,13 +43249,14 @@ module sep_fcov (
         if (km_smp_cfg_i[16:1] == 16'd1) u_sep_km_drbg_fault_cg.sample(5'd0, 16'd0);
         if (km_smp_cfg_i[16:1] == 16'hFFFF) u_sep_km_drbg_fault_cg.sample(5'd0, 16'd1);
         if (km_smp_st_q == KmStRequest) u_sep_km_drbg_fault_cg.sample(5'd1, 16'd0);
+        if (km_smp_st_q == KmStByteAssembly) u_sep_km_drbg_fault_cg.sample(5'd1, 16'd1);
         km_to_cnt <= 4'd1;
         km_to_bad <= km_bad_q;
         km_to_slv <= 1'b0;
         if ((km_smp_sticky_i[0] === 1'b1) && !km_sticky_q[0])
           u_sep_km_drbg_fault_cg.sample(5'd2, 16'd1);
         // IRQ_STATUS.DRBG_ERR sets on the same edge as the TIMEOUT entry.
-        if (!km_irqs_q[6] && (km_irq_status_i[6] === 1'b1))
+        if (!km_irqs_q[KmIrqDrbg] && (km_irq_status_i[KmIrqDrbg] === 1'b1))
           u_sep_km_drbg_fault_cg.sample(5'd2, 16'd3);
       end else if (km_to_cnt != 4'd0) begin
         if (!km_sticky_q[0] && (km_smp_sticky_i[0] === 1'b1))
@@ -41876,7 +43265,7 @@ module sep_fcov (
           u_sep_km_drbg_fault_cg.sample(5'd2, 16'd2);
         if ((km_to_bad == 8'hFF) && (km_to_cnt == 4'd8) && (km_smp_count_bad_i === 8'hFF))
           u_sep_km_drbg_sampler_cg.sample(5'd7, 16'd3);
-        if (!km_irqs_q[6] && (km_irq_status_i[6] === 1'b1))
+        if (!km_irqs_q[KmIrqDrbg] && (km_irq_status_i[KmIrqDrbg] === 1'b1))
           u_sep_km_drbg_fault_cg.sample(5'd2, 16'd3);
         km_to_cnt <= (km_to_cnt == 4'd8) ? 4'd0 : km_to_cnt + 4'd1;
       end
@@ -41900,7 +43289,7 @@ module sep_fcov (
         end
       end else if (km_se_cnt != 4'd0) begin
         if (!km_se_active && (km_se_cnt == 4'd4) && (km_smp_sticky_i[1] === 1'b1) &&
-            (km_smp_count_bad_i === km_se_bad + 8'd1) && (km_irq_status_i[6] === 1'b1))
+            (km_smp_count_bad_i === km_se_bad + 8'd1) && (km_irq_status_i[KmIrqDrbg] === 1'b1))
           u_sep_km_drbg_fault_cg.sample(5'd3, 16'd0);
         km_se_cnt <= (km_se_cnt == 4'd4) ? 4'd0 : km_se_cnt + 4'd1;
       end
@@ -41908,7 +43297,7 @@ module sep_fcov (
         km_se_rd_pend <= 1'b0;
         km_or_race_v <= 1'b0;
         if ((kr_resp == KmSlverr) && (kr_data == 32'h0) && (km_smp_sticky_i[1] === 1'b1) &&
-            (km_irq_status_i[6] === 1'b1) && (km_smp_count_bad_i > km_se_bad)) begin
+            (km_irq_status_i[KmIrqDrbg] === 1'b1) && (km_smp_count_bad_i > km_se_bad)) begin
           km_sv_pend_v <= 1'b1;
           km_or_pend_v <= km_or_race_v;
           km_or_pend <= km_or_race;
@@ -41939,9 +43328,9 @@ module sep_fcov (
   // strap (cp_otp_change, cp_if_otp_dual_rail, cp_otp_secure_tm).
   // ---------------------------------------------------------------------
   km_intf_pkg::km_otp_data_t km_otp_q;
-  logic [8:0] km_chg_q = '0, km_chg_rise_q = '0;
-  logic [1:0] km_dr_cls[9];
-  logic [2:0] km_dr_cnt[9];
+  logic [KmOtpFields-1:0] km_chg_q = '0, km_chg_rise_q = '0;
+  logic [1:0] km_dr_cls[KmOtpFields];
+  logic [2:0] km_dr_cnt[KmOtpFields];
   logic [3:0] km_dem_base = '0;
   logic [6:0] km_quiet_cnt = '0;
   logic km_quiet_armed = 1'b0, km_quiet_warm = 1'b0;
@@ -41949,7 +43338,7 @@ module sep_fcov (
   logic [10:0] km_strap_cnt = '0;
   initial begin
     km_otp_q = '0;
-    for (int f = 0; f < 9; f++) begin
+    for (int f = 0; f < KmOtpFields; f++) begin
       km_dr_cls[f] = '0;
       km_dr_cnt[f] = '0;
     end
@@ -41977,7 +43366,7 @@ module sep_fcov (
     logic [511:0] now, prev;
     logic [255:0] m;
     logic dv, dc, cons;
-    logic [8:0] rise;
+    logic [KmOtpFields-1:0] rise;
     logic [3:0] dem;
     km_otp_q <= km_otp_data_i;
     km_chg_q <= km_otp_chg_i;
@@ -41986,7 +43375,7 @@ module sep_fcov (
       km_dem_base <= dem;
       km_dem_changed <= 1'b0;
     end else if (km_rst_cold_n && (dem !== km_dem_base)) km_dem_changed <= 1'b1;
-    for (int f = 0; f < 9; f++) begin
+    for (int f = 0; f < KmOtpFields; f++) begin
       now = km_otp_rails(km_otp_data_i, f);
       prev = km_otp_rails(km_otp_q, f);
       m = km_rail_mask(f);
@@ -41996,7 +43385,7 @@ module sep_fcov (
       if (km_dr_cnt[f] != 3'd0) begin
         if (km_dr_cnt[f] == 3'd4) begin
           km_dr_cnt[f] <= '0;
-          if (km_own_otp && ((km_dr_cls[f] == 2'd0) || (km_irq_status_i[9] === 1'b1)))
+          if (km_own_otp && ((km_dr_cls[f] == 2'd0) || (km_irq_status_i[KmIrqSigint] === 1'b1)))
             u_sep_km_integrity_fault_cg.sample(5'd5, 16'({4'(f), km_dr_cls[f]}));
         end else km_dr_cnt[f] <= km_dr_cnt[f] + 3'd1;
       end
@@ -42007,14 +43396,14 @@ module sep_fcov (
     end
     // Change status: per-field rise with both rails consistent and
     // IRQ_STATUS.otp_change set; several fields in one clock.
-    for (int f = 0; f < 9; f++) rise[f] = !km_chg_q[f] && (km_otp_chg_i[f] === 1'b1);
+    for (int f = 0; f < KmOtpFields; f++) rise[f] = !km_chg_q[f] && (km_otp_chg_i[f] === 1'b1);
     km_chg_rise_q <= km_rst_cold_n ? rise : '0;
     if (km_own_otp && km_rst_cold_n) begin
-      for (int f = 0; f < 9; f++) begin
+      for (int f = 0; f < KmOtpFields; f++) begin
         now = km_otp_rails(km_otp_data_i, f);
         m = km_rail_mask(f);
         if (km_chg_rise_q[f] && (((now[255:0] ^ now[511:256]) & m) == m) &&
-            (km_irq_status_i[8] === 1'b1))
+            (km_irq_status_i[KmIrqOtpChange] === 1'b1))
           u_sep_km_otp_readout_cg.sample(5'd3, 16'(f));
       end
       if ($countones(rise) >= 2) u_sep_km_otp_readout_cg.sample(5'd3, 16'd11);
@@ -42026,7 +43415,8 @@ module sep_fcov (
       km_quiet_warm <= !km_rel_cold;
       km_quiet_cnt <= '0;
     end else if (km_quiet_armed) begin
-      if ((km_otp_data_i !== km_otp_q) || (km_otp_chg_i !== 9'h0) || (km_irq_status_i[8] !== 1'b0) ||
+      if ((km_otp_data_i !== km_otp_q) || (km_otp_chg_i !== '0) ||
+          (km_irq_status_i[KmIrqOtpChange] !== 1'b0) ||
           !km_rst_warm_n)
         km_quiet_armed <= 1'b0;
       else if (km_quiet_cnt == 7'(KmQuietWin)) begin
@@ -42294,8 +43684,8 @@ module sep_fcov (
       nsr = 0;
       any_seal = 1'b0;
       any_ret = 1'b0;
-      for (int i = 0; i < 1024; i++) if (km_kpv_words_i[32*i+:32] != 32'h0) nz++;
-      for (int s = 0; s < 64; s++) begin
+      for (int i = 0; i < KmKpvWords; i++) if (km_kpv_words_i[32*i+:32] != 32'h0) nz++;
+      for (int s = 0; s < KmKpvSlots; s++) begin
         if (km_slot_state(km_kpv_ctrl_i[4*s+:4]) == 3'd4) begin
           any_seal = 1'b1;
           nsr++;
@@ -42478,7 +43868,7 @@ module sep_fcov (
     logic [31:0] p0;        // payload word 0
     logic [31:0] p1;        // payload word 1
     logic        flip;      // HK-KPV armed at the frame end
-    logic [9:0]  flip_idx;  // logical KPV word index that HK-KPV arms
+    logic [KmKpvWordBits-1:0] flip_idx;  // logical KPV word index that HK-KPV arms
   } kq_frame_t;
 
   localparam logic [7:0] KqRespReady = 8'h55;
@@ -42656,20 +44046,20 @@ module sep_fcov (
   // IRQ_STATUS bit of the fatal source at priority rank r (firmware.adoc,
   // Interrupt Priority): wipe_state, rom_parity, sram_parity, rom_write,
   // sram_write_lock, axi_decerr, drbg_err, axi_slverr, otp_sigint, exec,
-  // rom_access (km_csr.adoc, IRQ_STATUS bit order).
+  // rom_access.
   function automatic logic [3:0] kq_rank_bit(logic [3:0] r);
     case (r)
-      4'd0: return 4'd7;
-      4'd1: return 4'd0;
-      4'd2: return 4'd1;
-      4'd3: return 4'd2;
-      4'd4: return 4'd3;
-      4'd5: return 4'd5;
-      4'd6: return 4'd6;
-      4'd7: return 4'd4;
-      4'd8: return 4'd9;
-      4'd9: return 4'd10;
-      default: return 4'd11;
+      4'd0: return 4'(KM_CSR_IRQ_STATUS_REG_WIPE_STATE_SHIFT);
+      4'd1: return 4'(KM_CSR_IRQ_STATUS_REG_ROM_PARITY_ERR_SHIFT);
+      4'd2: return 4'(KM_CSR_IRQ_STATUS_REG_SRAM_PARITY_ERR_SHIFT);
+      4'd3: return 4'(KM_CSR_IRQ_STATUS_REG_ROM_WRITE_ERR_SHIFT);
+      4'd4: return 4'(KM_CSR_IRQ_STATUS_REG_SRAM_WRITE_LOCK_ERR_SHIFT);
+      4'd5: return 4'(KM_CSR_IRQ_STATUS_REG_AXI_DECERR_SHIFT);
+      4'd6: return 4'(KM_CSR_IRQ_STATUS_REG_DRBG_ERR_SHIFT);
+      4'd7: return 4'(KM_CSR_IRQ_STATUS_REG_AXI_SLVERR_SHIFT);
+      4'd8: return 4'(KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_SHIFT);
+      4'd9: return 4'(KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_SHIFT);
+      default: return 4'(KM_CSR_IRQ_STATUS_REG_ROM_ACCESS_VIOLATION_SHIFT);
     endcase
   endfunction
 
@@ -42705,16 +44095,16 @@ module sep_fcov (
     endcase
   endfunction
 
-  function automatic logic [63:0] kq_lock_write(logic [255:0] c);
-    logic [63:0] r;
-    for (int s = 0; s < 64; s++) r[s] = (c[4*s] === 1'b1);
+  function automatic logic [KmKpvSlots-1:0] kq_lock_write(logic [4*KmKpvSlots-1:0] c);
+    logic [KmKpvSlots-1:0] r;
+    for (int s = 0; s < KmKpvSlots; s++) r[s] = (c[4*s] === 1'b1);
     return r;
   endfunction
 
-  function automatic logic [5:0] kq_lowest(logic [63:0] m);
-    logic [5:0] r;
+  function automatic logic [KmKpvSlotBits-1:0] kq_lowest(logic [KmKpvSlots-1:0] m);
+    logic [KmKpvSlotBits-1:0] r;
     r = '0;
-    for (int s = 63; s >= 0; s--) if (m[s]) r = 6'(s);
+    for (int s = KmKpvLast; s >= 0; s--) if (m[s]) r = KmKpvSlotBits'(s);
     return r;
   endfunction
 
@@ -42745,8 +44135,9 @@ module sep_fcov (
   logic [255:0] kq_hv = '0;  // handle_table: handle valid
   logic [7:0] kq_hsize[256];  // key words
   logic [7:0] kq_hpol[256];  // stored DEST_VALID policy
-  logic [5:0] kq_hslot[256];  // first slot of the run
-  logic [63:0] kq_lw_q = '0, kq_lw_rise = '0;  // CTRL lock_write rises since the frame end
+  logic [KmKpvSlotBits-1:0] kq_hslot[256];  // first slot of the run
+  // CTRL lock_write rises since the frame end.
+  logic [KmKpvSlots-1:0] kq_lw_q = '0, kq_lw_rise = '0;
   logic [8:0] kq_kv_q = '0;  // {shared key, engine key_valid[7:0]}
   logic kq_kv_rise = 1'b0;  // a key_valid rose since the frame end
   // Events, one clock after the host access.
@@ -42775,7 +44166,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     logic [31:0] w;
     logic [8:0] n1;
-    logic [63:0] lw;
+    logic [KmKpvSlots-1:0] lw;
     logic [8:0] kv;
     kq_frame_t f, h;
     logic push, pop, clr_q, clr_all, done, mv;
@@ -43210,12 +44601,12 @@ module sep_fcov (
   logic kq_otp_chg_q = 1'b0;
   logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
   logic kq_unrec_q = 1'b0;
-  logic [11:0] kq_st_q = '0;
+  logic [KmIrqBits-1:0] kq_st_q = '0;
   // IRQ_STATUS on the clock bit 30 rises. The halt trap sets wipe_state
   // (rank 0) one clock later, so the winner of an unrecoverable report is
   // decoded from this copy, not from the status at the host read. A report
   // that ends before the clock after the rise decodes the live status.
-  logic [11:0] kq_st_rep = '0;
+  logic [KmIrqBits-1:0] kq_st_rep = '0;
   // Fatal episode: a wipe edge or a fatal IRQ_STATUS rise, to the bit 30
   // rise.
   logic kq_ep_on = 1'b0, kq_ep_wipe = 1'b0, kq_ep_kvclr = 1'b0, kq_ep_fl = 1'b0;
@@ -43249,15 +44640,17 @@ module sep_fcov (
     logic has_arg, valid, rcmd, jump, gw, ofd;
     logic [2:0] ff, cls;
     logic [3:0] pr, r, rb;
-    logic [11:0] st, sw, hi_m, lo_m, ranked;
+    logic [KmIrqBits-1:0] st, sw, hi_m, lo_m, ranked;
     logic [8:0] kv;
     logic [7:0] aw, awc;
-    logic [9:0] off;
+    logic [KmKpvWordBits-1:0] off;
     kq_frame_t m;
-    for (int i = 0; i < 12; i++) st[i] = (km_irq_status_i[i] === 1'b1);
+    for (int i = 0; i < KmIrqBits; i++) st[i] = (km_irq_status_i[i] === 1'b1);
     for (int i = 0; i < 8; i++) kv[i] = (km_key_valid_i[i] === 1'b1);
     kv[8] = (km_sk_valid_i === 1'b1);
-    ranked = 12'hEFF;  // every IRQ_STATUS source but otp_change
+    // Every IRQ_STATUS source but otp_change.
+    ranked = '1;
+    ranked[KmIrqOtpChange] = 1'b0;
     {awc, aw} = kq_bank_aw(km_key_aw_valid_i, km_key_aw_ready_i, km_key_aw_addr_i);
     kq_unrec_q <= kq_unrec;
     kq_st_q <= st;
@@ -43455,12 +44848,12 @@ module sep_fcov (
         // came first, then this failure, RECOVERABLE_ERR set and no engine
         // key_valid rise; or a residue flip that passes.
         if (km_own_fi && valid && (m.id == KmCmdTransfer) && m.flip && kq_hv[m.p0[7:0]]) begin
-          off = m.flip_idx - 10'({kq_hslot[m.p0[7:0]], 4'h0});
+          off = m.flip_idx - KmKpvWordBits'(kq_hslot[m.p0[7:0]] * KmKpvSlotWords);
           sz = kq_hsize[m.p0[7:0]];
-          if (off == 10'd0) cls = 3'd0;
-          else if (off == 10'(sz - 8'd1)) cls = 3'd2;
-          else if (off < 10'(sz)) cls = 3'd1;
-          else if (off < 10'({sz[7:4] + (sz[3:0] != 4'h0), 4'h0})) cls = 3'd3;
+          if (off == '0) cls = 3'd0;
+          else if (off == KmKpvWordBits'(sz - 8'd1)) cls = 3'd2;
+          else if (off < KmKpvWordBits'(sz)) cls = 3'd1;
+          else if (off / KmKpvSlotWords < (sz + KmKpvSlotWords - 1) / KmKpvSlotWords) cls = 3'd3;
           else cls = 3'd7;
           if ((cls <= 3'd2) && kq_fe_pend && (kq_fe_code == 8'hFF) && (rc == KqRcFail) && !has_arg &&
               kq_recov && !kq_ev_kvr)
@@ -43564,8 +44957,8 @@ module sep_fcov (
             if (k > r) lo_m[rb] = 1'b1;
           end
           sw = kq_unrec_q ? kq_st_rep : st;
-          if (sw[kq_rank_bit(r)] && ((sw & hi_m) == 12'h0))
-            u_sep_km_kmcsr_status_cg.sample(5'd9, 16'({r, (sw & lo_m) != 12'h0}));
+          if (sw[kq_rank_bit(r)] && ((sw & hi_m) == '0))
+            u_sep_km_kmcsr_status_cg.sample(5'd9, 16'({r, (sw & lo_m) != '0}));
           if (kq_unrec && st[kq_rank_bit(r)]) u_sep_km_fault_report_cg.sample(5'd9, 16'(r));
         end
         if (km_own_ho && kq_ho_pend && !kq_ho_path && !kq_ho_rcmd) begin
@@ -43636,7 +45029,7 @@ module sep_fcov (
     // report restarts it and keeps the key_valid set seen so far, so a source
     // that rose at the boot does not hide the keys of a later fatal point.
     if ((!kq_ep_on || !kq_ep_rep) && !kq_held && !kq_unrec &&
-        ((km_wipe_i[1] === 1'b1) || ((st & ~kq_st_q & ranked) != 12'h0))) begin
+        ((km_wipe_i[1] === 1'b1) || ((st & ~kq_st_q & ranked) != '0))) begin
       kq_ep_on <= 1'b1;
       kq_ep_wipe <= (km_wipe_i[1] === 1'b1) || (kq_ep_on && kq_ep_wipe);
       kq_ep_kv0 <= kv | (kq_ep_on ? kq_ep_kv0 : 9'h0);
@@ -43650,7 +45043,7 @@ module sep_fcov (
     end else if (kq_ep_on) begin
       // Firmware cleared every ranked source with bit 30 low: the episode was
       // not fatal (the fatal path ends in the halt), so it ends with no sample.
-      if (!kq_unrec && ((kq_st_q & ranked) != 12'h0) && ((st & ranked) == 12'h0)) kq_ep_on <= 1'b0;
+      if (!kq_unrec && ((kq_st_q & ranked) != '0) && ((st & ranked) == '0)) kq_ep_on <= 1'b0;
       if ((kq_ep_kv0 != 9'h0) && (kv == 9'h0)) kq_ep_kvclr <= 1'b1;
       if (!kq_mbx_fl_q[0] && (km_mbx_flush_i[0] === 1'b1)) kq_ep_fl <= 1'b1;
       if (!kq_ep_rep && kq_ep_fl && (km_mbx_flush_i[0] !== 1'b1) && ofd) begin
@@ -43716,7 +45109,7 @@ module sep_fcov (
       if (km_own_ho || km_own_br) u_sep_km_handover_cg.sample(5'd0, 16'(kq_ho_path));
       if (km_own_ho) begin
         if (!kq_ho_path && !kq_ho_rcmd && !kq_ho_ff) u_sep_km_handover_cg.sample(5'd2, 16'd1);
-        if (km_irq_enable_i === 12'h0) u_sep_km_handover_cg.sample(5'd3, 16'd0);
+        if (km_irq_enable_i === '0) u_sep_km_handover_cg.sample(5'd3, 16'd0);
         if (km_mbx_km_en_i === 5'h0) u_sep_km_handover_cg.sample(5'd3, 16'd1);
         if (km_irq_entry_addr_i === KmEntryReset) u_sep_km_handover_cg.sample(5'd3, 16'd2);
         if (km_irq_entry_lock_i === 1'b0) u_sep_km_handover_cg.sample(5'd3, 16'd3);
@@ -43952,8 +45345,8 @@ module sep_fcov (
     // ---- cp_csr_irq_set: IRQ_STATUS equals the mask one clock after the B
     // of the IRQ_SET write, from a clear IRQ_STATUS ----
     if (km_own_csr && kw_ev && (kw_addr == KmCsrIrqSet) && (kw_resp == KmOkay) &&
-        (kw_data[11:0] != 12'h0) && (kw_data[31:12] == 20'h0) && (kwp_irq_status == 12'h0) &&
-        (km_irq_status_i === kw_data[11:0]))
+        (kw_data[KmIrqBits-1:0] != '0) && ((kw_data & KM_CSR_IRQ_SET_REG_RSVD_MASK) == '0) &&
+        (kwp_irq_status == '0) && (km_irq_status_i === kw_data[KmIrqBits-1:0]))
       u_sep_km_kmcsr_status_cg.sample(5'd10, 16'd1);
 
     // ---- cp_mbf_sticky_x_resp ----
@@ -44029,26 +45422,30 @@ module sep_fcov (
         km_vr_wr <= kw_ev;
       end
     end
-    if (km_vr_pend && km_own_xbar && (km_irq_status_i[5] === 1'b1)) km_vr_ok[km_vr_wr] <= 1'b1;
+    if (km_vr_pend && km_own_xbar && (km_irq_status_i[KmIrqDecerr] === 1'b1))
+      km_vr_ok[km_vr_wr] <= 1'b1;
 
     // ---- cp_if_rom_write[rom_write_pre_lockout_dropped]: a ROM store with
     // the lockout not engaged sets IRQ_STATUS.rom_write_err within four
     // clocks from a clear status, and sets neither AXI error bit nor
     // ROM_ACCESS_VIOLATION ----
     if (km_rp_cnt != 3'd0) begin
-      if ((km_irq_status_i[4] === 1'b1) || (km_irq_status_i[5] === 1'b1) || km_fx_rav)
+      if ((km_irq_status_i[KmIrqSlverr] === 1'b1) || (km_irq_status_i[KmIrqDecerr] === 1'b1) ||
+          km_fx_rav)
         km_rp_bad <= 1'b1;
       if (km_rp_cnt == 3'd4) begin
         km_rp_cnt <= '0;
-        if (km_own_romw && km_rp_clean && !km_rp_bad && !km_fx_rav && (km_irq_status_i[2] === 1'b1) &&
-            (km_irq_status_i[4] === 1'b0) && (km_irq_status_i[5] === 1'b0))
+        if (km_own_romw && km_rp_clean && !km_rp_bad && !km_fx_rav &&
+            (km_irq_status_i[KmIrqRomWrite] === 1'b1) &&
+            (km_irq_status_i[KmIrqSlverr] === 1'b0) && (km_irq_status_i[KmIrqDecerr] === 1'b0))
           u_sep_km_integrity_fault_cg.sample(5'd6, 16'd0);
       end else km_rp_cnt <= km_rp_cnt + 3'd1;
     end
     if (km_mb_start && km_mb_rom && km_mb_wr && !km_mb_instr && km_rst_warm_n && !km_engaged) begin
       km_rp_cnt <= 3'd1;
-      km_rp_clean <= (km_irq_status_i[2] === 1'b0) && (km_irq_status_i[4] === 1'b0) &&
-          (km_irq_status_i[5] === 1'b0);
+      km_rp_clean <= (km_irq_status_i[KmIrqRomWrite] === 1'b0) &&
+          (km_irq_status_i[KmIrqSlverr] === 1'b0) &&
+          (km_irq_status_i[KmIrqDecerr] === 1'b0);
       km_rp_bad <= km_fx_rav;
     end
 
@@ -44366,10 +45763,11 @@ module sep_fcov (
         km_hs_on <= 1'b0;
         ok = 1'b0;
         hit = 1'b1;
-        for (int r = 0; r < 32; r++) begin
+        for (int r = 0; r < KmSramRegions; r++) begin
           if (km_sram_lock_i[r] !== 1'b1) begin
             ok = 1'b1;
-            for (int w = 0; w < 256; w++) if (!km_hs_wr[256*r+w]) hit = 1'b0;
+            for (int w = 0; w < KmSramRegionWords; w++)
+            if (!km_hs_wr[KmSramRegionWords*r+w]) hit = 1'b0;
           end
         end
         if (km_own_ho && ok && hit) u_sep_km_handover_cg.sample(5'd6, 16'd1);
@@ -44427,7 +45825,9 @@ module sep_fcov (
   // states (docs/SEP_FCOV.adoc, open-value stimulus legs).
   // ---------------------------------------------------------------------
   // Bin k is the leg of code k (OPEN_VALUE_LEGS index k - 1 in
-  // cocotb/env/sep_fcov_gate.py). The owner of the leg writes the code to
+  // cocotb/env/sep_fcov_gate.py). Codes 19 and 20 have no bin: CHK-SRAM-STRB grades
+  // both legs, sep_sram_access_cg.cp_sram_wstrb records WSTRB 0x00-0x0F, and the drawn
+  // 8-bit sparse strobe has no bin. The owner of the leg writes the code to
   // open_value_leg_pass after the CTRL reach line of that leg passed, holds it
   // two clocks and writes 0. A rise from 0 samples the code only when the last
   // window opened in the run belongs to the owner of that leg; a code of
@@ -44494,8 +45894,6 @@ module sep_fcov (
       bins gwclr_same_cycle = {5'd16};
       bins nmi_during_handler = {5'd17};
       bins priord_flip_pending = {5'd18};
-      bins sram_wstrb_sparse = {5'd19};
-      bins sram_wstrb_zero = {5'd20};
       bins sram_macro_bit_flip = {5'd21};
       bins spi_cmdinval_spien1 = {5'd22};
       bins wdt_pause_in_sleep_set = {5'd23};

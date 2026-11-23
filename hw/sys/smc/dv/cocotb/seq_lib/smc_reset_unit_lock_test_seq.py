@@ -20,7 +20,7 @@ chapter, never from the implementation:
   targets are reset by the primary reset, which includes the stable cool reset;
   the locks mask writes to the corresponding target bits.
 
-The bus response to a write that hits locked bits is not specified (SF-014),
+The bus response to a write that hits locked bits is not specified,
 so the masked writes accept any response code, log it, and require only that
 it is the same code for all 32 writes of a pair.
 
@@ -188,7 +188,7 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert item.resp_code == OKAY, f"{name} @ 0x{addr:x}: BRESP={item.resp_code}"
 
     async def _wr_masked(self, name: str, addr: int, data: int) -> int:
-        """Write hitting locked bits; the response code is measured, not expected (SF-014)."""
+        """Write hitting locked bits; the response code is measured, not expected."""
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
@@ -318,7 +318,8 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         self._chk(
             f"CHK-LOCK-{label}-MASKED-RESP",
-            "%d masked writes, BRESP=%d (uniform), LINKED-ISSUE SF-014 (pre-lock writes "
+            "%d masked writes, BRESP=%d (uniform), LINKED-ISSUE: the response to a write "
+            "that hits locked bits (pre-lock writes "
             "BRESP %s, logged only)",
             len(bresps),
             codes[0],
@@ -432,7 +433,8 @@ class smc_reset_unit_lock_test_seq(SmcResetSeqBase, SmcCsrSeq):
             self._chk(
                 f"CHK-LOCK-{label}-PRIMARY-RESET",
                 "lock 0x%08x->0x%08x, %s 0x%08x->0x%08x, rb 0x%08x, first-access=%d smc "
-                "cycles from release (measured; SF-016 waived by proxy); lifecycle set@%dps "
+                "cycles from release (measured; the bound from primary reset release to the "
+                "first accepted write is waived by proxy); lifecycle set@%dps "
                 "observed 0x%08x before the pulse, cleared %d-%dps, checked_cleared@%dps",
                 pre[f"{label}_LOCK"],
                 lk,

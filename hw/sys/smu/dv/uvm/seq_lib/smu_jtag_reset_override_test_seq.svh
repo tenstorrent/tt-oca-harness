@@ -67,8 +67,8 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     run_clear();
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
-    mark_step("PASS", "scenario complete");
     finalize_evidence();
+    mark_step("END", "scenario complete");
   endtask
 
   protected task run_setup();

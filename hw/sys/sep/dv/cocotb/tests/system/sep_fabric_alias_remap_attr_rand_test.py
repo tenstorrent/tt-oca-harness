@@ -49,6 +49,12 @@ Checkers:
                    lowest-numbered region applies."
   CTRL-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
                    AxCACHE override ran (no DUT claim).
+
+INFO-ALIAS-OUT-CACHE (``chk=CHK-ALIAS-CACHE``): per OKAY probe, the address and
+AxCACHE at the alias remap output, which CHK-ALIAS-CACHE grades, and at PR-OUT,
+which is not graded: ``hw/sys/sep/doc/fabric.adoc`` (Transaction Routing) states
+that the SMU-aperture path sets the source ID and NS and names no AxCACHE
+carriage on that path.
 """
 
 from __future__ import annotations
@@ -269,8 +275,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         if seq.resp_code == RESP_OKAY:
             pr = next((b for b in self.tap_pr_out.since(mp, ch) if b.t_ps >= out.t_ps), None)
             self.logger.info(
-                "OBS-ALIAS-OUT-CACHE dir=%s src=0x%x alias_out_addr=%s alias_out_cache=%s "
-                "pr_out_addr=%s pr_out_cache=%s",
+                "INFO-ALIAS-OUT-CACHE dir=%s src=0x%x alias_out_addr=%s alias_out_cache=%s "
+                "pr_out_addr=%s pr_out_cache=%s chk=CHK-ALIAS-CACHE",
                 "W" if write else "R",
                 addr,
                 _hx(out.addr),
@@ -284,9 +290,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         """Two valid regions over the same pages with different offsets: one read.
 
         CHK-ALIAS-OVERLAP: the alias remap output carries one AR at the source
-        translated by the offset of the lower-numbered region. The response
-        comes from the outbound filter entry, which covers region ``k``'s
-        translation only, and is logged (``INFO-ALIAS-OVERLAP``).
+        translated by the offset of the lower-numbered region, and the read is
+        OKAY. The only filter entry covers that translation, so a read remapped
+        by the other region's offset is refused with DECERR.
         """
         cfg = self.tcfg
         k2 = cfg.overlap_region
@@ -302,7 +308,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             attrs_word(cfg.overlap_offset, cfg.cacheable, True),
             "overlap",
         )
-        await self.filt.program(cfg.entry, self._entry(translate(mid, cfg.offset)))
+        low_offset = cfg.offset if cfg.region < k2 else cfg.overlap_offset
+        want = translate(mid, low_offset)
+        await self.filt.program(cfg.entry, self._entry(want))
         mo = self.tap_out.mark()
         self.env.axi_monitor.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
@@ -319,17 +327,17 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         if seq.resp_code != RESP_DECERR:
             self.env.axi_monitor.release_expected_decerr(1)
         outs = self.tap_out.since(mo, "ar")
-        low_offset = cfg.offset if cfg.region < k2 else cfg.overlap_offset
-        want = translate(mid, low_offset)
         line = (
             f"region_a={cfg.region} offset_a=0x{cfg.offset:014x} region_b={k2} "
             f"offset_b=0x{cfg.overlap_offset:014x} src=0x{mid:x} "
             f"alias_out_addr={','.join(_hx(b.addr) for b in outs) or 'none'} n_out={len(outs)} "
-            f"expect=0x{want:x} (region {min(cfg.region, k2)})"
+            f"expect=0x{want:x} (region {min(cfg.region, k2)}) "
+            f"resp={_rname(seq.resp_code)} expect_resp=OKAY"
         )
-        assert [b.addr for b in outs] == [want], f"CHK-ALIAS-OVERLAP FAIL: {line}"
+        assert [b.addr for b in outs] == [want] and seq.resp_code == RESP_OKAY, (
+            f"CHK-ALIAS-OVERLAP FAIL: {line}"
+        )
         self.logger.info("CHK-ALIAS-OVERLAP PASS: %s", line)
-        self.logger.info("INFO-ALIAS-OVERLAP resp=%s", _rname(seq.resp_code))
         # Clear valid first: a valid region with START 0 covers this register block.
         await alias._wr64(ALIAS_BASE + k2 * ALIAS_STRIDE + ALIAS_ATTRS, 0)
         await alias.program(k2, 0, 0, 0, "overlap_clear")

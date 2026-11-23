@@ -732,7 +732,7 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             "CHK-I2C1-OVRD-VAL",
             "VAL bit 0 (SCL_RX) and bit 16 (SDA_RX) equalled the pad levels in every case: "
             + "; ".join(f"{how} {pads} VAL=0x{v:08x}" for pads, how, v in vals)
-            + " (full VAL logged; sampling rate open, SF-014)",
+            + " (full VAL logged; sampling rate open)",
         )
         self._step_done("S4")
 
@@ -799,7 +799,8 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             f"(STATUS=0x{full:08x}); the {len(popped)} bytes popped until STATUS.RXEMPTY=1 "
             f"(STATUS=0x{empty_status:08x}) are one in-order run of consecutive EEPROM bytes "
             f"from offset 0x{starts[0]:02x}; writing 0x8 left INTR_STATE=0x{intr_clr:08x} with "
-            f"RX_OVERFLOW=0. Measured, not compared (LINKED-ISSUE SF-004): RXLVL at RXFULL="
+            f"RX_OVERFLOW=0. Measured, not compared (LINKED-ISSUE: the RX FIFO level, flag and "
+            f"bytes kept on overflow): RXLVL at RXFULL="
             f"{level_at_full}, INTR_STATE at RXFULL=0x{intr_full:08x} (RX_OVERFLOW="
             f"{int(bool(intr_full & INTR_RX_OVERFLOW))}), INTR_STATE before the clear=0x"
             f"{intr_end:08x}, {len(late)} further bytes popped after the first RXEMPTY until "

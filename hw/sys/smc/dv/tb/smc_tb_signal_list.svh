@@ -505,6 +505,10 @@
 
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
+// REFERENCE_COUNTER reload crossing: the count held in the reference-clock
+// domain and the one-cycle update strobe that sends a written value across.
+`SMC_TB_OUT(logic [63:0], tb_cpu_ref_count)
+`SMC_TB_OUT(logic, tb_cpu_ref_count_update)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
 `SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NumSramBanks*32-1:0], tb_cpu_scratch_bank_read_count)
 // Scratch macro peek: the 64 data bits of the macro word at the bank and entry
@@ -627,6 +631,7 @@
 `SMC_TB_IN(logic, tb_efuse_read_state_inject_en)
 `SMC_TB_IN(logic [1:0], tb_efuse_read_state_inject)
 `SMC_TB_IN(logic [1:0], tb_efuse_read_error_inject)
+`SMC_TB_IN(logic, tb_efuse_write_pslverr_inject)
 `SMC_TB_OUT(logic [1:0], tb_efuse_read_state)
 `SMC_TB_OUT(logic, tb_efuse_read_req_valid)
 `SMC_TB_OUT(logic, tb_efuse_read_busy)
@@ -684,6 +689,12 @@
 // The three contributors the combined UART bit ORs together, before the OR.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_raw)
 `SMC_TB_OUT(logic [3:0], tb_uart_err_raw)
+// The three I2C instances' FIFO integrity error outputs (`i2c_fifo_intg_err_o`,
+// before the OR), and the two RAS bits the SMC ORs them and `uart_err_o` into
+// (`smc_ras_o.i2c_intg_err`, `smc_ras_o.uart_intg_err`).
+`SMC_TB_OUT(logic [2:0], tb_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_uart_intg_err)
 `SMC_TB_OUT(logic [3:0], tb_logengine_irq_raw)
 `SMC_TB_OUT(logic [2:0], tb_telemetry_irq)
 `SMC_TB_OUT(logic, tb_sep_wdt_irq_sync)

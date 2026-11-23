@@ -16,6 +16,13 @@ extern "C" {
 // reg - smc_efuse_map::LOCKS
 // Lock controls for each fuse field. When write locked, the corresponding field is not
 // programmable. When read locked, the shadow register is not readable.
+// A write to the shadow register of a write-locked field, or a read of the shadow
+// register of a read-locked field, completes with SLVERR and read data 0xBADCAB1E,
+// leaves the shadow register unchanged and raises the locked-field access interrupt
+// for the duration of the access. An attempted fuse program of a write-locked field,
+// or an attempted fuse read of a read-locked field, started through the eFuse
+// interface control registers is refused and sets
+// EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.
 // JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bm 0x1
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bp 0
@@ -339,7 +346,9 @@ extern "C" {
 
 // reg - smc_efuse_map::JTAG_PUBLIC_IDENTITY
 // JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
-// are admitted while JTAG access to every other fuse field is blocked. Encoding
+// are admitted while every JTAG write and every other JTAG read is blocked. When
+// the lifecycle state fails its integrity check, JTAG reads of this range are
+// blocked as well. Encoding
 // is adopter-defined; the harness does not interpret or consume the value. The
 // slot-0 read lock still hides the bits when set.
 // Opaque payload. Encoding is adopter-defined; the harness does not interpret

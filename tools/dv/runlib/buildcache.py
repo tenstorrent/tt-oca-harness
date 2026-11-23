@@ -224,6 +224,7 @@ def fingerprint_build_args(build_args: list[str]) -> list[str]:
 
 def build_fingerprint(
     *,
+    root: Path,
     build_args: list[str],
     top_module: str,
     tool_version: str,
@@ -232,8 +233,11 @@ def build_fingerprint(
 ) -> str:
     """Stable 12-hex digest over the declared build inputs (not per-seed).
 
-    The compile job count in ``build_args`` is left out (``fingerprint_build_args``).
+    The compile job count in ``build_args`` is left out (``fingerprint_build_args``). Every
+    path under ``root`` enters relative to it, so one tree checked out at two paths builds
+    under one fingerprint.
     """
+    prefix = str(root)
     hasher = hashlib.sha256()
     for part in (
         top_module,
@@ -242,7 +246,7 @@ def build_fingerprint(
         *fingerprint_build_args(build_args),
         *extra,
     ):
-        hasher.update(str(part).encode("utf-8"))
+        hasher.update(str(part).replace(prefix, "<root>").encode("utf-8"))
         hasher.update(b"\0")
     return hasher.hexdigest()[:12]
 

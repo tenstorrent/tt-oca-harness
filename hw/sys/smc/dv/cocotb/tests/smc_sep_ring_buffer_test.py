@@ -8,26 +8,36 @@
 Unlike the rom-only family, the testbench is a participant here, not just an observer: no
 SEP instance exists in this bench, so this test writes the status entries SEP would have
 written, over the target's inbound AXI port. The controller then asks for them back one
-GET_SEP_STATUS at a time and checks that the buffer drains to empty.
+GET_SEP_STATUS at a time and, with the STATUS_RPT_DISABLE strap clear, checks that the buffer
+drains to empty.
 
 Members differ only in how many entries are written, which is what selects the boundary
 under test:
 
-    +sep_rb_entries=0     underflow  -- every read must return an empty buffer
+    +sep_rb_entries=0     underflow  -- every read must return an empty buffer (strap clear)
     +sep_rb_entries=600   overflow   -- 512-slot buffer, so the oldest 89 are dropped
     (unset)               nominal    -- randomised 1..512
 
 Gating follows the rom-only family: poll both instances' scratch 0, fail on TEST_FAIL from
 either, pass on TEST_PASS. The firmware walks min(count, 511) entries and then requires ten
-further reads to return 0. It logs the entry values but compares none of them, so neither
-side checks which entries the ROM returns. The entries this driver wrote are logged so a
-failure can be read against them by hand.
+further reads to return 0; its GET_SEP_STATUS helper compares each entry, in FIFO order, with
+the shadow this driver mirrors into controller SRAM. With the STATUS_RPT_DISABLE strap set,
+every GET_SEP_STATUS must instead return Unsupported_StatusID (0x07), and neither the entries
+nor the empty buffer are checked. The entries this driver wrote are logged so a failure can be
+read against them by hand.
+
+The controller answers GetVersion before any entry is written and again after the drain. With
++sep_rb_terminal the first two entries are a SEP status and the error the SEP ROM records before
+it halts on a manifest signature failure. status-coordination.adoc and occp-processing.adoc let
+the primary SMC ROM leave its OCCP loop only on its own terminal paths, a scratch 3 park request
+or a successful hand-off, so that entry must neither park hart 0 nor end OCCP service.
 
 Plusargs:
     +rom_bin64=<image>        target production ROM               (required)
     +bfm_rom_hex=<image>      controller rom-mode image           (required)
     +sep_rb_case=<name>       label for log and assertion text    (default: module name)
     +sep_rb_entries=<n>       entries to write                    (default: random 1..512)
+    +sep_rb_terminal          lead with the named entries; needs +FORCE_STATUS_REPORTING
     +rom_test_timeout=<ns>    completion bound in ns              (default: DEFAULT_POLL_ITERS)
 """
 
@@ -38,7 +48,14 @@ import random
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.smc_sep_ring_buffer_driver import RING_BUFFER_SIZE, SepRingBufferDriver
+from env.smc_sep_ring_buffer_driver import (
+    CTRL_PHASE_BASELINE,
+    CTRL_PHASE_DONE,
+    RING_BUFFER_SIZE,
+    SEP_STATUS_CONTROL,
+    SEP_TERMINAL_SIGNATURE_FAILURE,
+    SepRingBufferDriver,
+)
 from env.smc_virt_console import VirtConsole
 from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
@@ -49,21 +66,28 @@ from smc_dual_base_test import (
 )
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
+    POST_CODE_BOOT_PHASE_OCCP_PROC,
     SCRATCH_PASS_FAIL,
     SCRATCH_POST_CODE,
     SCRATCH_SEP_RB_COUNT,
+    SCRATCH_SEP_RB_FIRST,
     SCRATCH_SEP_RB_GUARD,
+    SCRATCH_SEP_RB_PHASE,
     SCRATCH_SEP_RB_READY,
+    SCRATCH_SEP_RB_SECOND,
     SCRATCH_STATUS_BUFFER_ADDR,
     SCRATCH_STATUS_TO_SEP,
     SMC_SRAM_BASE,
+    STRAP_BITS,
     TEST_FAIL,
     TEST_PASS,
     bus_activity,
     describe_post_code,
     format_activity,
+    post_code_boot_phase,
     required_plusarg,
 )
+from smc_rom_park_defs import HART0_PARKED, PARK_REQ_VALUE, SCRATCH_PARK_REQ, park_loop_pcs
 
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
@@ -74,6 +98,16 @@ PROGRESS_EVERY = 200
 # budget: 10 ms of sim time at POLL_CYCLES granularity.
 READY_POLL_ITERS = 1000
 REQUIRED_EVIDENCE = ("CHK-SEP-RING-BUFFER",)
+TERMINAL_EVIDENCE = (
+    "CHK-SEP-TERMINAL-ENTRY",
+    "CHK-SEP-TERMINAL-OCCP-LIVE",
+    "CHK-SEP-TERMINAL-NO-PARK",
+)
+TERMINAL_ENTRIES = (SEP_STATUS_CONTROL, SEP_TERMINAL_SIGNATURE_FAILURE)
+
+# Hart 0 sampling after the exchange: a parked hart retires only the park loop.
+NO_PARK_WINDOW_CYCLES = 4000
+NO_PARK_SAMPLE_CYCLES = 50
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -89,16 +123,92 @@ def _poll_iterations() -> tuple[int, str]:
     return iters, f"+rom_test_timeout={budget_ns} ns / {interval} ns -> {iters} polls"
 
 
-def _entry_count(rng: random.Random) -> tuple[int, str]:
+def _entry_count(rng: random.Random, leading: int) -> tuple[int, str]:
     """How many entries to write, and where that number came from."""
+    # The ring keeps one slot empty, so a full write would drop the named leading entries.
+    maximum = RING_BUFFER_SIZE - 1 if leading else RING_BUFFER_SIZE
     named = cocotb.plusargs.get("sep_rb_entries")
     if named is None:
-        count = rng.randint(1, RING_BUFFER_SIZE)
+        count = rng.randint(max(1, leading), maximum)
         return count, f"randomised to {count} (no +sep_rb_entries)"
     count = int(str(named), 0)
-    if count < 0:
-        raise AssertionError(f"+sep_rb_entries must not be negative, got {named!r}")
+    if count < leading:
+        raise AssertionError(f"+sep_rb_entries must be at least {leading}, got {named!r}")
+    if leading and count > maximum:
+        raise AssertionError(
+            f"+sep_rb_entries={named} overwrites the {leading} named leading entries; "
+            f"use at most {maximum}"
+        )
     return count, f"+sep_rb_entries={count}"
+
+
+async def _await_ctrl_phase(dut, bfm_csr: DualCsr, want: int, poll_iters: int) -> int:
+    phase = 0
+    for _ in range(poll_iters):
+        phase = await bfm_csr.read("CTRL_PHASE", SCRATCH_SEP_RB_PHASE)
+        if phase == want:
+            return phase
+        if await bfm_csr.read("CTRL_PASS", SCRATCH_PASS_FAIL) == TEST_FAIL:
+            break
+        await ClockCycles(dut.clk_smc_i, POLL_CYCLES)
+    raise AssertionError(f"controller never reached phase {want:#010x}; last {phase:#010x}")
+
+
+async def _check_terminal(dut, harness: SmcDualHarness, dut_csr: DualCsr, bfm_csr: DualCsr):
+    """The named entries came back exactly, OCCP stayed live, and hart 0 never parked."""
+    first = await bfm_csr.read("CTRL_FIRST_ENTRY", SCRATCH_SEP_RB_FIRST)
+    second = await bfm_csr.read("CTRL_SECOND_ENTRY", SCRATCH_SEP_RB_SECOND)
+    if (first, second) != TERMINAL_ENTRIES:
+        raise AssertionError(
+            f"controller read back {first:#010x}, {second:#010x}; the driver wrote "
+            f"{TERMINAL_ENTRIES[0]:#010x}, {TERMINAL_ENTRIES[1]:#010x}"
+        )
+    cocotb.log.info(
+        "CHK-SEP-TERMINAL-ENTRY: GetStatus 0x8000 returned the control entry %#010x and then the "
+        "SEP terminal signature-failure entry %#010x, each equal to the shadow",
+        first,
+        second,
+    )
+    phase = await bfm_csr.read("CTRL_PHASE", SCRATCH_SEP_RB_PHASE)
+    if phase != CTRL_PHASE_DONE:
+        raise AssertionError(f"controller phase {phase:#010x}, want {CTRL_PHASE_DONE:#010x}")
+    cocotb.log.info(
+        "CHK-SEP-TERMINAL-OCCP-LIVE: GetVersion 1.0.0 answered before the entries were written "
+        "and again after the terminal entry was drained (controller phase %#010x)",
+        phase,
+    )
+
+    park_req = await dut_csr.read("TARGET_PARK_REQ", SCRATCH_PARK_REQ)
+    scratch_9 = await dut_csr.read("TARGET_SEP_STATUS", SCRATCH_STATUS_TO_SEP)
+    post = await dut_csr.read("TARGET_POST_CODE_TERMINAL", SCRATCH_POST_CODE)
+    loop = park_loop_pcs()
+    pcs: set[int] = set()
+    for _ in range(NO_PARK_WINDOW_CYCLES // NO_PARK_SAMPLE_CYCLES):
+        pcs.add(int(dut.dut_wb_pc0.value))
+        await ClockCycles(dut.clk_smc_i, NO_PARK_SAMPLE_CYCLES)
+    parked = sorted(hex(pc) for pc in pcs & loop)
+    if (
+        park_req == PARK_REQ_VALUE
+        or scratch_9 & HART0_PARKED
+        or parked
+        or post_code_boot_phase(post) != POST_CODE_BOOT_PHASE_OCCP_PROC
+    ):
+        raise AssertionError(
+            f"after the terminal entry: target scratch 3 = {park_req:#010x}, scratch 9 = "
+            f"{scratch_9:#010x}, park-loop PCs retired {parked}, POST {describe_post_code(post)}"
+            f"\nCPU state:\n{harness.cpu_trace_report()}"
+        )
+    cocotb.log.info(
+        "CHK-SEP-TERMINAL-NO-PARK: target scratch 3 = %#010x (no park request), scratch 9 = "
+        "%#010x (HART0_PARKED clear), %d hart-0 PCs over %d cycles none in the park loop %s, "
+        "POST %s",
+        park_req,
+        scratch_9,
+        len(pcs),
+        NO_PARK_WINDOW_CYCLES,
+        sorted(hex(pc) for pc in loop),
+        describe_post_code(post),
+    )
 
 
 @dual_test(REQUIRED_EVIDENCE)
@@ -112,7 +222,13 @@ async def smc_sep_ring_buffer_test(harness: SmcDualHarness) -> None:
 
     seed = random_seed()
     rng = random.Random(seed)
-    entry_count, count_source = _entry_count(rng)
+    terminal = cocotb.plusargs.get("sep_rb_terminal") is not None
+    if terminal:
+        if cocotb.plusargs.get("FORCE_STATUS_REPORTING") is None:
+            raise AssertionError("+sep_rb_terminal needs +FORCE_STATUS_REPORTING")
+        harness.required_evidence += TERMINAL_EVIDENCE
+    leading = TERMINAL_ENTRIES if terminal else ()
+    entry_count, count_source = _entry_count(rng, len(leading))
 
     cocotb.log.info(
         "%s (RANDOM_SEED=%d): u_dut = production ROM target, u_bfm = %s controller; "
@@ -126,6 +242,8 @@ async def smc_sep_ring_buffer_test(harness: SmcDualHarness) -> None:
     )
 
     await harness.bring_up(hold_dut_boot=True, hold_bfm_boot=True)
+    if terminal and harness.straps["dut"] >> STRAP_BITS["STATUS_RPT_DISABLE"] & 1:
+        raise AssertionError("STATUS_RPT_DISABLE is set; the terminal entry could not be read")
 
     bfm_console = VirtConsole(dut.bfm_scratch2, "ctrl-fw")
     dut_console = VirtConsole(dut.dut_scratch2, "target-fw")
@@ -168,7 +286,10 @@ async def smc_sep_ring_buffer_test(harness: SmcDualHarness) -> None:
             f"CPU state:\n{harness.cpu_trace_report()}"
         ) from exc
 
-    written = await driver.write_entries(entry_count, rng)
+    await _await_ctrl_phase(dut, bfm_csr, CTRL_PHASE_BASELINE, poll_iters)
+    cocotb.log.info("%s: controller GetVersion answered before any entry was written", case)
+
+    written = await driver.write_entries(entry_count, rng, leading)
     retained = driver.retained_entries()
 
     # The controller reads back at most one less than capacity, because the ring keeps one
@@ -268,6 +389,9 @@ async def smc_sep_ring_buffer_test(harness: SmcDualHarness) -> None:
             "NOTE: no I3C channel saw an SCL fall. The pass did not come from GET_SEP_STATUS "
             "traffic on the wire; this is informational, not a gate."
         )
+
+    if terminal:
+        await _check_terminal(dut, harness, dut_csr, bfm_csr)
 
     cocotb.log.info(
         "CHK-SEP-RING-BUFFER: %d entries written, %d retained; target scratch0=%#010x, "

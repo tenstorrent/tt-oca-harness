@@ -20,9 +20,10 @@ Interface p drives pad p, observed through `tb_core2pad_o`,
 `tb_core2pad_en_o` and `tb_pad2core_en_o`. A hardware LSIO request outranks
 interface_enable and lsio_disable gates it, so every TX, direction, RX and
 use_reg_* word sets lsio_disable. The RX drive leaves out pads 53 and 63, whose
-inputs feed the isolate request and the cool-reset input (SF-023). With
-interface_enable and every use_reg_* clear the pad values are logged, not
-compared (SF-022 is open).
+inputs feed the isolate request and the cool-reset input; which source raises
+each pad's LSIO request is open. With interface_enable and every use_reg_* clear
+the pad values are logged, not compared; what drives the pads while
+interface_enable is clear is open.
 """
 
 from __future__ import annotations
@@ -401,7 +402,8 @@ class smc_gpio_pad_enable_walk_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-GPIO-IFACE-CLEAR",
             f"{len(self.walked)} pads from lsio_disable start, not following register {len(self.walked)}/{WALKED_COUNT}, "
-            "values=<logged, LINKED-ISSUE SF-022> out/oe/ie per write (DC=0, DCE=0, "
+            "values=<logged, LINKED-ISSUE: what drives the pads while interface_enable is clear> "
+            "out/oe/ie per write (DC=0, DCE=0, "
             "01c0, 01c1, 01c0, 00c0, 01c0, lsio_disable 1, 0): " + " ".join(logged),
         )
 

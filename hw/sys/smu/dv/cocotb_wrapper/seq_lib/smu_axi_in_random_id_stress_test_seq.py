@@ -842,11 +842,15 @@ class smu_axi_in_random_id_stress_test_seq:
             for step, text, body in plan:
                 await self._mark(step, text)
                 await body(sb)
+                if step == "S1":
+                    # smu_outstanding_cg samples the stream and read-back of S2 to S5 only.
+                    self.dut.tb_fcov_gate.value = 1
             await self._mark("S6", "TIMEOUT: bounded waits and last state")
             self._s6(sb)
             await ClockCycles(self.clk, 2)
             self.step_ts["PASS"] = get_sim_time("ns")
         finally:
+            self.dut.tb_fcov_gate.value = 0
             self.trace.stop()
             self.tap.stop()
         order = [*STEPS, "PASS"]

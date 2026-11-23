@@ -58,6 +58,12 @@
 #                word i and KM_STATUS after it. The image waits for one more
 #                word.
 #   PH_IN        R5+2m/R6+2m the extra word and KM_STATUS after it. Then sync.
+#   PH_OVR_READY R0 KM_STATUS with the outbound FIFO full; the image waits for
+#                a free outbound slot (see phase_ovr).
+#   PH_OVR_MID   R1-R3 after the first overrun (see phase_ovr); the image
+#                waits for a free outbound slot again.
+#   PH_OVR       R4-R37 of the second overrun and the drain (see phase_ovr).
+#                Then sync.
 #   PH_ERR       one error pass (see err_udf / err_ovf). Then sync.
 #   PH_FL_FILLED one flush cell is filled on the KM side; the image waits for
 #                the host fill and a sync word behind it.
@@ -128,6 +134,7 @@
     .equ ST_OUT_FULL,     KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bm
     .equ ST_IN_DEPTH_LSB, 4
     .equ ST_DEPTH_FIELD,  0xFF
+    .equ ST_IN_OVF,       (1 << 20)
     .equ ST_OUT_OVF,      (1 << 21)
     .equ ST_IN_UDF,       (1 << 22)
     .equ ST_STICKY,       (0xF << 20)
@@ -145,15 +152,12 @@
     // KMCSR IRQ_STATUS / IRQ_ENABLE / IRQ_SET
     .equ CSR_SLVERR,      KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm
     .equ CSR_DRBG,        KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bm
-    .equ CSR_DRBG_EN,     (1 << 6)
-    .equ CSR_DRBG_SET,    (1 << 6)
-    .equ CSR_IRQ_ALL,     0xFFF
+    .equ CSR_DRBG_EN,     KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bm
+    .equ CSR_DRBG_SET,    KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bm
+    .equ CSR_IRQ_ALL,     (KM_CSR__IRQ_STATUS_REG__RSVD_bm ^ 0xFFFFFFFF)
 
     .if (ST_IN_EMPTY != 0x1) || (ST_OUT_FULL != 0x8) || (SEP_SET != 0x1)
     .error "KM_STATUS / KM_WRITE_SEPARATOR fields moved; update the typed masks"
-    .endif
-    .if (CSR_DRBG != CSR_DRBG_EN) || (CSR_SLVERR != 0x10)
-    .error "KMCSR IRQ fields moved; update the typed masks"
     .endif
 
     // SRAM words
@@ -191,6 +195,9 @@
     .equ PH_END,       0x0E
     .equ PH_RACE_READY, 0x0F
     .equ PH_RACE_DONE, 0x10
+    .equ PH_OVR_READY, 0x11
+    .equ PH_OVR,       0x12
+    .equ PH_OVR_MID,   0x13
     .equ PH_ERROR,     0xEE
 
     .equ ERR_PARAM,     1       // detail: 1 magic, 2 id, 3 length, 4 check word
@@ -285,7 +292,7 @@ irq_vec:
     // Layout table: the host reads it from the committed .parhex.
     .org SIG_ADDR
     .word 0x4D424B4D            // "MBKM"
-    .word 2                     // layout version
+    .word 4                     // layout version
     .word PARAM_BASE
     .word PARAM_ID_WORD
     .word PAYLOAD_WORDS
@@ -300,6 +307,7 @@ irq_vec:
     .word CSR_SLVERR, CSR_DRBG, CSR_DRBG_EN, CSR_DRBG_SET, CSR_IRQ_ALL
     .word STATE_MAGIC
     .word RACE_END_WORD, RACE_WORD
+    .word ST_IN_OVF
 sig_end:
 
 boot:
@@ -372,6 +380,7 @@ boot:
 
     jal   x1, phase_out
     jal   x1, phase_in
+    jal   x1, phase_ovr
     jal   x1, phase_err
     jal   x1, phase_flush
     jal   x1, phase_race
@@ -653,6 +662,67 @@ in_pass:
     lw    x7, MB_STATUS(x4)
     sw    x7, 4(x15)
     PUB   PH_IN
+    jal   x1, sync
+    POP   x1
+    jalr  x0, 0(x1)
+
+# ---------------------------------------------------------------------------
+# Inbound overrun: the host overruns the full inbound FIFO, then the image
+# drains it.
+
+    # Both FIFOs are empty at entry. The image fills the outbound FIFO with the
+    # 16 words at OFF_OVERFLOW, writes R0 KM_STATUS and publishes PH_OVR_READY.
+    # The host fills the inbound FIFO, writes overflow word A and reads one
+    # outbound word. R1 KM_STATUS after that, R2 KM_STATUS after a write of 1
+    # to inbound_overflow, then the image writes OFF_OVERFLOW word 0 again,
+    # R3 KM_STATUS with the outbound FIFO full again, and PH_OVR_MID. The host
+    # writes overflow word B and reads one outbound word. R4 KM_STATUS after
+    # that, R5+2i/R6+2i inbound word i and KM_STATUS after it (i = 0..15), R37
+    # KM_STATUS after a write of 1 to inbound_overflow. Then sync (the host
+    # drains the outbound FIFO first). The image waits for each free outbound
+    # slot with KM_STATUS reads only, so it pops no inbound word before both
+    # overruns.
+phase_ovr:
+    PUSH  x1
+    addi  x11, x6, OFF_OVERFLOW * 4
+    li    x12, 16
+    jal   x1, wr_words
+    lw    x7, MB_STATUS(x4)
+    RST   x7, 0
+    PUB   PH_OVR_READY
+    jal   x1, wait_out_not_full
+    bnez  x10, 1f
+    FAIL  ERR_WAIT_TO, 0x81
+1:  lw    x7, MB_STATUS(x4)
+    RST   x7, 1
+    li    x7, ST_IN_OVF
+    sw    x7, MB_STATUS(x4)
+    lw    x7, MB_STATUS(x4)
+    RST   x7, 2
+    PW    x7, OFF_OVERFLOW
+    sw    x7, MB_WDATA(x4)
+    lw    x7, MB_STATUS(x4)
+    RST   x7, 3
+    PUB   PH_OVR_MID
+    jal   x1, wait_out_not_full
+    bnez  x10, 1f
+    FAIL  ERR_WAIT_TO, 0x82
+1:  lw    x7, MB_STATUS(x4)
+    RST   x7, 4
+    addi  x15, x3, (W_R + 5) * 4
+    li    x12, 16
+2:  lw    x7, MB_RDATA(x4)
+    sw    x7, 0(x15)
+    lw    x7, MB_STATUS(x4)
+    sw    x7, 4(x15)
+    addi  x15, x15, 8
+    addi  x12, x12, -1
+    bnez  x12, 2b
+    li    x7, ST_IN_OVF
+    sw    x7, MB_STATUS(x4)
+    lw    x7, MB_STATUS(x4)
+    RST   x7, 37
+    PUB   PH_OVR
     jal   x1, sync
     POP   x1
     jalr  x0, 0(x1)

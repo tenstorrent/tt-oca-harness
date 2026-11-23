@@ -18,6 +18,11 @@ single source of truth. Stays at sep_debug=0 the whole time and proves
 the per-entry allow-by-rule vs block-by-default policy, not the global
 sep_debug skip gate (sep_lcc_uvm_inbound_filter_gating_test).
 
+CTRL-FILTER-ACTIVE (bench precondition at bring-up): the FEAT_CTRL readback
+equals ``feat_ctrl_expected`` for the PROD image, with SEC_DIS from
+``lcc_security_disable_probe_o``, and SEP_DBG reads 0, so the inbound filter
+is active. A mismatch fails the leaf before any check runs.
+
 CHK-OWNERSHIP grades the CPU-vs-external asymmetry at the CSRs that
 reposition the inbound remap or program a filter: inbound CFG, outbound
 CFG[0], alias/AP/STEE remap bases, SEP_GLOBAL_BASE_ADDR, and
@@ -219,7 +224,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         return seq.resp_code, (seq.rdata & 0xFFFF_FFFF)
 
     async def _assert_ext_deny_read(
-        self, addr: int, *, user: int = 0, tag: str = "deny", staged: int | None = None
+        self, addr: int, *, chk: str, user: int = 0, tag: str = "deny", staged: int | None = None
     ) -> int:
         """Require DECERR and, when the live value is known, that it is not returned.
 
@@ -231,7 +236,12 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         """
         resp, data = await self._ext_read(addr, user=user)
         self.logger.info(
-            "OBS-FILT-DENY-RDATA addr=0x%08x user=0x%x resp=%d rdata=0x%08x", addr, user, resp, data
+            "INFO-FILT-DENY-RDATA addr=0x%08x user=0x%x resp=%d rdata=0x%08x chk=%s",
+            addr,
+            user,
+            resp,
+            data,
+            chk,
         )
         assert resp == RESP_DECERR, f"{tag}: ext read 0x{addr:08x} resp={resp}, expected DECERR"
         if staged is not None:
@@ -647,6 +657,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         await self._assert_ext_deny_read(
             adj,
+            chk="CHK-PAGE-BOUND",
             tag=(
                 f"CHK-PAGE-BOUND FAIL: 0x{adj:08x} is in the page below the granted "
                 f"0x{start_rb:08x}..0x{end_rb:08x}"
@@ -669,6 +680,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         await self._assert_ext_deny_read(
             rev,
+            chk="CHK-PAGE-BOUND",
             staged=dict(wcfg.staged)[rev],
             tag=(
                 f"CHK-PAGE-BOUND FAIL: 0x{rev:08x} is in the page above the granted "
@@ -740,14 +752,6 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 f"0x{hi_after:08x} (locked={(hi_after >> FILTER_LOCKED_HI_BIT) & 1}); "
                 f"expected locked to stay 1",
             )
-        rsvd = (lock_bit - 1) & 0xFFFF_FFFF
-        self.logger.info(
-            "OBS-CONFIG-LOCK-HI-RSVD: entry %d FILTER_CONFIG hi bits [62:32] before 0x%08x, "
-            "after 0x%08x (filter_ctrl.rdl names no field there; not graded)",
-            wcfg.entry,
-            pre_hi & rsvd,
-            hi_after & rsvd,
-        )
         self.logger.info(
             "INFO-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
             "(spec DECERR=%d)",
@@ -967,11 +971,21 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
-        assert ctl.sep_debug == 0, (
-            f"sep_debug must be 0 (filter active) in PROD, got {ctl.sep_debug} "
-            f"(FEAT_CTRL=0x{ctl.feat_ctrl:016x})"
+        state = lc_state_name(image.lc_raw())
+        if ctl.feat_ctrl != feat or ctl.sep_debug != 0:
+            msg = (
+                f"CTRL-FILTER-ACTIVE FAIL: feat_ctrl=0x{ctl.feat_ctrl:016x} golden=0x{feat:016x} "
+                f"sep_debug={ctl.sep_debug} sec_dis={sec_dis} lc={state}"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-FILTER-ACTIVE PASS: feat_ctrl=0x%016x golden=0x%016x sep_debug=0 sec_dis=%d lc=%s",
+            ctl.feat_ctrl,
+            feat,
+            sec_dis,
+            state,
         )
-        self.logger.info("INFO-FILTER-ACTIVE %s sep_debug=0", lc_state_name(image.lc_raw()))
 
     async def run_scenario(self) -> None:
         mcfg = SepInboundFilterMatrixCfg.from_seed(self.random_seed())
@@ -1013,6 +1027,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 await self._src_mismatch_premise(cell, addr, val, read_ok, write_ok)
                 await self._assert_ext_deny_read(
                     addr,
+                    chk="CHK-SRC-ID",
                     user=axi_user,
                     staged=val,
                     tag=f"cell entry={entry} w{widx} {mode} {src_class}: src mismatch read",
@@ -1048,6 +1063,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 else:
                     data = await self._assert_ext_deny_read(
                         addr,
+                        chk="CHK-ALLOW-RULE",
                         user=axi_user,
                         staged=val,
                         tag=f"cell entry={entry} w{widx} {mode} {src_class}: read_allowed=0",
@@ -1091,6 +1107,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
 
             data = await self._assert_ext_deny_read(
                 mcfg.blocked_addr,
+                chk="CHK-BLOCK-DEFAULT",
                 user=axi_user,
                 tag=(
                     f"cell entry={entry} w{widx} {mode} {src_class}: "
@@ -1184,6 +1201,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 )
             await self._assert_ext_deny_read(
                 addr,
+                chk="CHK-OWNERSHIP",
                 staged=before,
                 tag=(
                     f"CHK-OWNERSHIP FAIL: external read of {name} 0x{addr:08x} "

@@ -18,7 +18,7 @@ leaves cover the episode. The CPU MMIO episodes are not driven. A cold reset rep
 
 Graded: the compares named by the ``CHK-*`` lines the sequence prints. ``OBS-*`` content is
 printed inside the matching ``CHK-OBS-*`` line and on its own ``EVIDENCE:`` line, never
-compared, and names its spec finding or ruling. The drain claims count the parked reads the
+compared, and names its ruling where one applies. The drain claims count the parked reads the
 isolate counted as pending (the first ``tb_cpu_l2_pending_ar`` peak reads in front-port AR
 order) and time their RLAST at the front port, the isolate boundary; a read the front port
 accepted that the isolate never counted is an observation that must complete after the
@@ -735,7 +735,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 f"OBS-STATUS-READ-UNDER-STALL: port={names[raw.port]} completed={done} "
                 f"stalled_request={'+'.join(stalled) or 'none'} hold={'+'.join(holds) or 'none'} "
                 f"label={raw.label} issued={raw.issued} resp={self._code_text(code)} "
-                f"fields={self._fields_text(self._rt_fields(value))} sf=SF-026"
+                f"fields={self._fields_text(self._rt_fields(value))}"
             )
         return out
 
@@ -1036,7 +1036,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self.obs["core"].append(
             f"OBS-CORE-RESET-ACCESS: held rd={self._code_data(held_rd_code, held_rd)} "
             f"wr={self._code_text(held_wr)}; released rd={self._code_data(rel_rd_code, rel_rd)} "
-            f"wr={self._code_text(rel_wr)} sf=SF-022,SF-038"
+            f"wr={self._code_text(rel_wr)}"
         )
         self._grade(
             T,
@@ -1308,7 +1308,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         )
         obs5 = (
             f"OBS-L2F-FIFTH-READ: front_ar_sample={ar5} isolate_req={a_idx} applied={res_idx} "
-            f"reconnect={recon} sf=SF-005"
+            f"reconnect={recon}"
         )
         self.obs_lines.append(obs5)
         text2 = (
@@ -1534,7 +1534,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             self.obs_lines.append(
                 f"OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING: read={p.k} front_ar_sample={p.far} "
                 f"isolate_req={a} pending_peak={pend_peak} rlast={self._opt(p.frl)} "
-                f"completed_after_reconnect={'yes' if ok else 'no'} sf=SF-005,SF-006"
+                f"completed_after_reconnect={'yes' if ok else 'no'}"
             )
         for r in reads:
             if not r.event.is_set():
@@ -1569,7 +1569,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         if rise is not None:
             self.obs["expiry"].append(
                 f"OBS-RESET-TIMEOUT-EXPIRY: value={TIMEOUT_CYCLES} from_write={rise - resp} "
-                f"from_isolate_req={rise - (a if a is not None else iss)} sf=SF-028"
+                f"from_isolate_req={rise - (a if a is not None else iss)}"
             )
         else:
             self._fail(TE, "no expiry edge observed")
@@ -1700,7 +1700,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self.obs["flush"] += [
             "OBS-DRAIN-FLUSH-RESPONSES: episode=not-driven ruling=#2449",
             f"OBS-DRAIN-FLUSH-RESPONSES: episode=give_up drained rresp={','.join(codes)} "
-            f"rdata={','.join(data)} sf=SF-006",
+            f"rdata={','.join(data)}",
         ]
         cocotb.log.info(
             "INFO-CELL-NOT-DRIVABLE: force episode S7 (ruling #2449, covered by the pinned wedge "
@@ -1711,9 +1711,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
     # S8 -------------------------------------------------------------------------------------------
     async def _s8_not_driven(self) -> None:
         await RisingEdge(cocotb.top.clk_smc_i)
-        self.obs["mmio"] = [
-            "OBS-MMIO-RESET: episode=none items=0 not-driven sf=SF-004,SF-022,SF-035"
-        ]
+        self.obs["mmio"] = ["OBS-MMIO-RESET: episode=none items=0 not-driven"]
         cocotb.log.info("INFO-CELL-NOT-DRIVABLE: MMIO episodes (c-fw image not staged)")
         self._stamp("MMIO", 1)
 
@@ -1804,9 +1802,9 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         cold_l2 = None if fall is None or later is None else fall - later
         cold_mm = None if mm_fall is None or later is None else mm_fall - later
         self.obs["iso"] = [
-            f"OBS-ISOLATION-DELAY: source=sw l2={sw_l2} mmio={sw_mm} sf=SF-026",
+            f"OBS-ISOLATION-DELAY: source=sw l2={sw_l2} mmio={sw_mm}",
             f"OBS-ISOLATION-DELAY: source=cold_bypass l2={cold_l2} mmio={cold_mm} "
-            f"init_mem_done@{e_init} uncore_release@{e_unc} sf=SF-026",
+            f"init_mem_done@{e_init} uncore_release@{e_unc}",
         ]
         later_event = (
             "none"
@@ -1829,7 +1827,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
     # report ---------------------------------------------------------------------------------------
     def _valid_obs(self) -> None:
         """OBS-VALID-UNCORE-SW: the cluster-side VALIDs at every sampled edge of the drained
-        software uncore resets; recorded, never compared (SF-003, SF-019)."""
+        software uncore resets; recorded, never compared."""
         edges, xz, high = 0, 0, []
         for tag, a, b in self.valid_windows:
             for i in range(a, min(b, self.n)):
@@ -1848,8 +1846,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             self._fail("CHK-OBS-VALID-UNCORE-SW", "no sampled edge of the software uncore reset")
         more = f",+{len(high) - 8}" if len(high) > 8 else ""
         self.obs["valid"] = [
-            f"OBS-VALID-UNCORE-SW: edges={edges} high={','.join(high[:8]) + more or 'none'} "
-            f"xz={xz} sf=SF-019"
+            f"OBS-VALID-UNCORE-SW: edges={edges} high={','.join(high[:8]) + more or 'none'} xz={xz}"
         ]
 
     def _reset_term(self) -> None:
@@ -1912,7 +1909,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             f"{len(self.graded_status)} inbound-manager reads of RESET_TIMEOUT with no stalled "
             f"front-port request, all OKAY; reset_applied=1 while applied ({' '.join(labels)}; "
             f"CORE_RESET_PULSE_COUNT with each) | OBS-STATUS-READ-UNDER-STALL: "
-            f"{len(self.stall_reads)} reads recorded apart, sf=SF-026",
+            f"{len(self.stall_reads)} reads recorded apart",
         )
 
     def _fence_check(self) -> str:
@@ -1965,7 +1962,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         pulse_text = (
             f"OBS-PULSE-AND-STATUS: pulse_vs_uncore={order} wb_pc_core0={wb_text} "
             f"restart_start_to_assert={restart} (runs {runs}, second write {gap} samples after the "
-            f"first; wdt_count={self.notes.get('wdt_count')}) sf=SF-027"
+            f"first; wdt_count={self.notes.get('wdt_count')})"
         )
         self._ok("CHK-OBS-PULSE-AND-STATUS", pulse_text)
         self._ok("CHK-NONVAC", self._fence_check())

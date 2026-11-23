@@ -2,11 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_atomic_operation_test - non-ATOP SMN read path on the wrapper.
 
-ATOP is not drivable on this bench. ``tb/tb_wrapper_top.sv`` ties
-``smu_axi_in_req.aw.atop`` to ``'0``, the flat ``ext_in`` port list carries no
-ATOP pin, and the package contains no ATOP driver, so no ATOP transaction ever
-reaches the DUT. This test makes no claim about ATOP rejection and a green run
-here is not ATOP non-support credit.
+ATOP is out of the ``smu_axi_in`` boundary contract (integrator guide, AXI
+boundary contract): ``AWATOP`` must be 0, and the SMU neither refuses nor
+answers an atomic request. ``tb/tb_wrapper_top.sv`` ties
+``smu_axi_in_req.aw.atop`` to ``'0`` and the flat ``ext_in`` port list carries
+no ATOP pin, so no atomic ever reaches the DUT and the leaf claims nothing
+about one.
 
 What it proves: with the SMC aperture and an INBOUND0 window programmed over
 JTAG, a plain 32-bit read of ``VERSION_LO`` on the SMN path is answered OKAY
@@ -50,8 +51,8 @@ class smu_axi_atomic_operation_test(smu_base_test):
         arid = random.Random(seed ^ 0xFAB_A709).randint(1, 0xFF)
         self.logger.info("SEED: %d non-ATOP arid=0x%x", seed, arid)
         self.logger.info(
-            "ATOP NOT EXERCISED: tb ties smu_axi_in_req.aw.atop='0 and the package has no "
-            "ATOP driver; ATOP rejection is not observed or claimed by this test"
+            "ATOP NOT EXERCISED: tb ties smu_axi_in_req.aw.atop='0; AWATOP is 0 by the "
+            "smu_axi_in boundary contract, so no atomic reaches the DUT and none is claimed"
         )
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
@@ -102,5 +103,5 @@ class smu_axi_atomic_operation_test(smu_base_test):
 
         self.logger.info(
             "smu_axi_atomic_operation_test: non-ATOP SMN read completed with RID==ARID; "
-            "no ATOP was driven, so no ATOP-reject property is proven"
+            "ATOP is out by the smu_axi_in boundary contract and none was driven"
         )

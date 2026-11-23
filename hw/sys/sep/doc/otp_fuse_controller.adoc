@@ -38,8 +38,9 @@ carry a fuse command and its response. The dashed line separates the OCAH
 controller from the interface shim, which an adopter replaces with one for its
 fuse technology.
 
-Both wrappers pass the OTP JTAG port through a lifecycle filter that answers a
-blocked access with an error response. Inside the controller, an AXI-Lite
+Both `sep_efuse_wrapper` and `smc_efuse_wrapper` pass the OTP JTAG port through
+a lifecycle filter that answers a blocked access with SLVERR and read data
+`0xBADCAB1E`. Inside the controller, an AXI-Lite
 multiplexer merges the functional and JTAG ports. Addresses from the MAP window
 to the end of the last register window go through the AXI-Lite to APB bridge,
 and all others go to the shim's bank control registers. The APB decode answers
@@ -102,12 +103,15 @@ unwritten. The strobe that arrives while the counter is 255 stores the last
 word and moves the FSM to ST_FINISHED, and `fuse_sense_done_o` rises one cycle
 later. Until then, APB accesses to the MAP window return SLVERR.
 
+[[sep-efuse-shadow-access-control]]
 == Shadow Register and JTAG Access Control
 
 Each assigned lock slot contains an independent write-lock and read-lock bit.
 A write-lock blocks fuse programming and shadow writes; a read-lock blocks
 software and JTAG reads of both the fuse field and its shadow. The sensing FSM
-can still read locked fuses to populate the shadows.
+can still read locked fuses to populate the shadows. A shadow write or read
+that a lock blocks completes with SLVERR and read data `0xBADCAB1E`, leaves
+the shadow unchanged, and raises the locked-field access interrupt.
 
 There are two exceptions: the `LOCKS` and `LOCKS_SPARE` registers have no lock
 slot of their own, and `LC_STATE` ignores its assigned lock bits. Lifecycle
@@ -123,7 +127,8 @@ reach only the eFuse MMR token block. That block is the three token-input arrays
 (RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
 register that triggers a match, and the three match-status registers. Every
 other JTAG access to the fuse block — the shadow registers, the interface
-control registers and the SHIM — shall complete with an error response.
+control registers and the SHIM — shall complete with SLVERR and read data
+`0xBADCAB1E`.
 
 == Fuse Programming and RMA Authorization
 
@@ -462,6 +467,14 @@ endif::backend-html5[]
 
 Register offsets are relative to the block base in the subsystem memory map.
 The detailed map below defines each register and its fields.
+
+The software access the detailed map gives a shadow-register field is its
+access while the field's locks are clear, as listed in
+<<sep-fuse-fields-table>>: writable fields are read-write and set-only fields
+are write-1-to-set. The access a given transfer receives is decided by the
+per-field lock rules in <<sep-efuse-shadow-access-control>> and by secure test
+mode, not by the detailed map; no register RTL is generated from it for these
+shadow registers.
 
 === Detailed Register Map
 

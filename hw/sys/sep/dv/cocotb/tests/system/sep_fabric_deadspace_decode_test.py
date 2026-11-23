@@ -6,24 +6,38 @@ Run mode: no_cpu with +skip_fuse_sense and +sep_ext_trng_axil_responder.
 RANDCFG: known wrap-offset anchors every seed, plus seed-selected dead offsets
 inside each block window; the TRNG passthrough legs draw their addresses, data,
 leg order, burst length and split-beat code pairs from the seed.
+CTRL-DEADSPACE-RAND (bench control on the seeded probe plan, before bring-up):
+every window holds its full quota of random probes, and every window gets at
+least one read and one write probe from its anchors, random probes and cell
+probes. The PASS line logs the random and anchor probe count and the read and
+write count of each window; a short window, or a window without a read or
+without a write, fails the leaf (CTRL-MISSING). Directed write anchors at the
+first word past the AES and OTBN maps and at the first and last word of the
+lifecycle dead span give those windows a write every seed.
 
 A write or read past a block's allocated size must answer the past-extent
-response of its unit, and no live register in that block may change.
+response of its unit, and no live register in that block may change. Each write
+probe is issued with all ones and then all zeros, and each issue is graded on
+its own, so a refused write that stores shows on a read-write bit whatever that
+bit holds. INFO-DEADSPACE-PATTERN logs, per window, the armed registers and how
+many of them hold all ones or all zeros on their read-write bits (not graded).
 CHK-DEADSPACE-REFUSE grades the response exactly in every window except TRNG:
-``hw/sys/sep/regs/include/sep_memory_map.rdl`` sets ``<unit>->ocah_past_extent_resp`` to DECERR,
-``0xBADCAB1E`` / DECERR for secure_dma, wdt_timer, aes, otbn, abr, csrng, edn,
-entropy_source, sep_lifecycle_ctrl, km_mailbox_sep and the SPI controller, with
-no path qualifier. A read must answer DECERR with the word ``0xBADCAB1E``, and
-a write must answer DECERR. The values are read from the generated
+``hw/sys/sep/regs/include/sep_memory_map.rdl`` sets ``<unit>->ocah_past_extent_resp`` to
+``OCAH_SEP_DECERR`` (``sep_memory_map.rdl:10``: DECERR, ``0xBADCAB1E`` / DECERR) for
+secure_dma, wdt_timer, aes, otbn, abr, csrng, edn, entropy_source,
+sep_lifecycle_ctrl, km_mailbox_sep and the SPI controller, with no path
+qualifier. A read must answer DECERR with the word ``0xBADCAB1E``, and a write
+must answer DECERR. The values are read from the generated
 ``regs/gen/py/sep_memory_map.py`` (built from ``sep.rdl``) through
 ``env/sep_decode_resp.py``. For ABR (``adams_bridge.adoc``,
-"abr-aperture-decode") and the SPI controller (``peripheral_subsystem.adoc``)
-the prose also states DECERR, and the window build checks that the RDL agrees.
+"abr-aperture-decode") and the SPI controller
+(``hw/sys/sep/doc/peripheral_subsystem.adoc:43-44``) the prose also states DECERR, and the window build checks that the RDL agrees.
 Every probe uses the CPU-LSU splice (``s_axi``).
 
-OBS-DEADSPACE-CODE (logged only): the response code and read data of every
-TRNG-window probe. ``sep.rdl`` gives that window no past-extent response; its
-code is graded under CHK-TRNG-UNOWNED. A checker that only inspects the
+INFO-DEADSPACE-CODE: the response code and read data of every TRNG-window
+probe, with ``chk=CHK-TRNG-UNOWNED``. ``sep.rdl`` gives that window no
+past-extent response; CHK-TRNG-UNOWNED grades the code and the read word of
+each logged probe. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while still writing
 the register, so every probe reads back the window's live registers as well.
 The past extent is the part of the aperture that no register backs (Decoded
@@ -37,13 +51,26 @@ CHK-TRNG-UNOWNED covers the TRNG window, which SEP forwards whole to an
 adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
-``memory_map.adoc`` also states the code for that case: the window ends in a
-DECERR slave, so a single-beat read or write answers DECERR. Each TRNG probe is
+``hw/sys/sep/doc/memory_map.adoc:86-88`` states the code for that case: the
+window ends in a DECERR slave, so a single-beat read or write answers DECERR,
+refuses the access and never aliases onto a live register. Each TRNG probe is
 graded against that code, and each TRNG read against the read word
-``0xBADCAB1E``. Only the generated memory map states that word (note 2 of the
-External TRNG row, ``hw/sys/sep/regs/gen/adoc/memory_map.adoc:94``: "DECERR,
-0xBADCAB1E / DECERR"); the leaf reads code and word from the same note in
-``regs/gen/py/sep_memory_map.py`` and grades them as the golden.
+``0xBADCAB1E``. The TRNG note in ``hw/sys/sep/regs/include/sep_memory_map.rdl:35``
+("With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E /
+DECERR") states code and word, and ``sep_memory_map.rdl:10`` defines the same
+DECERR response. The leaf reads code and word from that note through the
+generated ``regs/gen/py/sep_memory_map.py`` and checks that the code agrees with
+``memory_map.adoc:86-88``.
+
+CTRL-TRNG-ALIAS-ARMED (bench control, after the snapshot): a directed TRNG
+write anchor sits at the offset of the ESRC read-write register
+``HEALTH_TEST_WINDOW_SIZE``, which an access that drops address bit 12
+reaches, and that register is armed in the TRNG window's change compare
+(readable, not hardware-updating, with a read-write field) and writable:
+the ESRC ``FIPS_LOCK.LOCK`` bit in the snapshot is 0, since a set lock makes
+the register ignore software writes. A refused TRNG write that still stores
+then moves it. A missing anchor, an unarmed register or a set or unread lock
+fails the leaf (CTRL-MISSING).
 
 Row cells (FCOV window). The probe walk and its checks above run with the FCOV
 window closed. After they pass, the leaf issues one cell probe per block
@@ -66,18 +93,17 @@ register region is outside the specification and is not graded. The crypto
 region is the exception: ``crypto.adoc`` ("Single-Beat Access Only") answers
 every access whose AxLEN is non-zero with DECERR on every beat, and no beat
 reaches an accelerator. For each block window in that region the test issues a
-four-beat INCR read burst and, where the window takes writes, a four-beat INCR
-write burst, across the extent where the window allows it and at the window base
-otherwise.
+four-beat INCR read burst and a four-beat INCR write burst, across the extent
+where the window allows it and at the window base otherwise.
 
 CHK-DEADSPACE-BEAT: the bus monitor's per-beat RRESP vector of every read
 burst is DECERR on every beat, inside the extent as well as past it.
 
 CHK-DEADSPACE-BURST: no read-burst beat returns the value of a live register
-in the window snapshot, the write burst answers DECERR, and no armed register
-moves. A burst that times out fails. At least one window must answer a single
-beat at a burst address OKAY, which shows the refusal is the burst rule and
-not a dead address.
+in the window snapshot, the write burst, issued with all ones and then all
+zeros, answers DECERR each time, and no armed register moves. A burst that
+times out fails. At least one window must answer a single beat at a burst
+address OKAY, which shows the refusal is the burst rule and not a dead address.
 
 TRNG window passthrough. Every check above runs with the reference DECERR slave
 on the TRNG AXI-Lite port. After them the bench TRNG responder answers that port
@@ -97,13 +123,13 @@ CHK-TRNG-REPLY: a single-beat (AxSIZE 2) read and a single-beat write, each
 answered OKAY, SLVERR and DECERR at the port, reach the port as exactly one
 AXI-Lite access with exactly one reply beat, and the initiator receives the
 port code. SEP does not decode offsets inside the window
-(``doc/integrator/src/smu-sep.adoc:117-119``), so the address of that port
+(``doc/integrator/src/smu-sep.adoc:133-135``), so the address of that port
 access carries the issued window offset in its low 12 bits (the 4 KiB
 aperture). Besides the drawn offsets, every run issues a read and a write at
 the first word (offset 0x000), the last word (0xFFC) and one drawn interior
 word, each code once per direction.
 
-OBS-TRNG-PORT-ADDR (logged only): the port address bits above the window
+INFO-TRNG-PORT-ADDR (logged only): the port address bits above the window
 offset of each single-beat access. The specification states forwarding, not
 those bits.
 
@@ -115,7 +141,7 @@ CHK-TRNG-BURST: a read burst and a write burst (AxLEN above 0) with the port set
 to answer OKAY answer DECERR on every R beat and on the B, and no handshake of
 any channel occurs on the port.
 
-OBS-TRNG-SPLIT-PREC (logged only): the code the initiator receives for a 64-bit
+INFO-TRNG-SPLIT-PREC (logged only): the code the initiator receives for a 64-bit
 write whose last fragment errs and for a 64-bit read whose two halves answer
 different codes. The specification does not state that code.
 
@@ -147,7 +173,7 @@ from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import register_fields, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_deadspace_seq import (
     CRYPTO_HI,
@@ -155,6 +181,10 @@ from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
+    TRNG_ALIAS_LOCK_OFFSET,
+    TRNG_ALIAS_OFFSET,
+    TRNG_ALIAS_REG,
+    WRITE_PATTERNS,
     DeadProbe,
     SepDeadspace,
     SepDeadspaceCfg,
@@ -171,13 +201,13 @@ _RESP_NAME = {
 }
 
 _TRNG_BASE = sym("TRNG_REG_MAP_BASE_ADDR")
-# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:117); the
+# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:133); the
 # port address carries the window offset in these low bits.
 _TRNG_SIZE = sym("TRNG_REG_MAP_SIZE")
 _TRNG_OFF_MASK = _TRNG_SIZE - 1
-# Response with no TRNG fitted: note 2 of the External TRNG row of the
-# generated memory map (hw/sys/sep/regs/gen/adoc/memory_map.adoc:94, "DECERR,
-# 0xBADCAB1E / DECERR"), read from the same note in sep_memory_map.py.
+# Response with no TRNG fitted: the TRNG note of
+# hw/sys/sep/regs/include/sep_memory_map.rdl:35 ("DECERR, 0xBADCAB1E / DECERR"),
+# read through the generated sep_memory_map.py.
 _TRNG_NOTE_RE = re.compile(
     r"answers (OKAY|SLVERR|DECERR), 0x([0-9A-Fa-f]{8}) / (OKAY|SLVERR|DECERR)\."
 )
@@ -195,17 +225,29 @@ def _trng_unowned_expect() -> tuple[dict[str, int], int]:
 
 
 # Code per channel and read word of an unowned TRNG-window offset with no
-# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:82-84 states the
+# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:86-88 states the
 # DECERR code in prose; the leaf checks that the note agrees.
 TRNG_UNOWNED_RESP, TRNG_UNOWNED_RDATA = _trng_unowned_expect()
 if TRNG_UNOWNED_RESP != {"r": RESP_DECERR, "w": RESP_DECERR}:
     raise RuntimeError(
         f"sep_memory_map.py TRNG note codes {TRNG_UNOWNED_RESP} disagree with the DECERR "
-        "of hw/sys/sep/doc/memory_map.adoc:82-84"
+        "of hw/sys/sep/doc/memory_map.adoc:86-88"
     )
 # Windows where the row-cell sampler also takes an LSU write cell (the SPI
 # controller past extent and the TRNG window); elsewhere the cell is a read.
 _CELL_WRITE_WINDOWS = ("spi_controller", "trng")
+
+
+def _cell_items(cfg: SepDeadspaceCfg) -> list[DeadProbe]:
+    """Cell probes: the first dead word of every window, read, and written in
+    the _CELL_WRITE_WINDOWS."""
+    items = []
+    for win in cfg.windows.values():
+        items.append(DeadProbe(win.name, win.dead_lo, "r", True))
+        if win.name in _CELL_WRITE_WINDOWS:
+            items.append(DeadProbe(win.name, win.dead_lo, "w", True))
+    return items
+
 
 TEST = "sep_fabric_deadspace_decode_test"
 # Pass label u_sep_fcov.row_pass: 1 releases the held row cells of a cell probe
@@ -255,12 +297,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         cfg = SepDeadspaceCfg(self.random_seed())
         self.logger.info("deadspace config: %s", cfg.summary())
         self._trng_drive_idle()
-        assert not cfg.short_windows, (
-            "CHK-DEADSPACE-RAND FAIL: window(s) short of the random-probe quota: "
-            + ", ".join(
-                f"{name}={got}/{want}" for name, (got, want) in sorted(cfg.short_windows.items())
-            )
-        )
+        self._ctrl_deadspace_rand(cfg)
         await self.bring_up_no_cpu()
         dead = SepDeadspace(self)
 
@@ -307,6 +344,15 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 hw_updating,
                 armed,
             )
+            ones, zeros = win.rw_pattern(snap)
+            self.logger.info(
+                "INFO-DEADSPACE-PATTERN: %s armed=%d rw_all_ones=%d rw_all_zeros=%d",
+                win.name,
+                armed,
+                ones,
+                zeros,
+            )
+        self._ctrl_trng_alias_armed(cfg, snaps["trng"])
 
         refused = 0
         aliased = 0
@@ -411,19 +457,25 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                         break
             if any(sresp == RESP_OKAY for sresp, _ in singles):
                 controlled.append(win.name)
-            if win.write_ok:
-                bresp, wr_timed_out, moved = await dead.burst_write(win, start, snaps[win.name])
+            for word in WRITE_PATTERNS:
+                bresp, wr_timed_out, moved = await dead.burst_write(
+                    win, start, snaps[win.name], word
+                )
                 self.logger.info(
-                    "deadspace burst-audit: %s write burst 0x%08x BRESP=%s",
+                    "deadspace burst-audit: %s write burst 0x%08x wdata=0x%08x BRESP=%s",
                     win.name,
                     start,
+                    word,
                     _RESP_NAME.get(bresp, str(bresp)),
                 )
                 if wr_timed_out:
-                    burst_fails.append(f"{win.name} write burst at 0x{start:08x} timed out")
-                elif bresp != RESP_DECERR:
                     burst_fails.append(
-                        f"{win.name} write burst at 0x{start:08x} answered "
+                        f"{win.name} write burst at 0x{start:08x} wdata=0x{word:08x} timed out"
+                    )
+                    break
+                if bresp != RESP_DECERR:
+                    burst_fails.append(
+                        f"{win.name} write burst at 0x{start:08x} wdata=0x{word:08x} answered "
                         f"{_RESP_NAME.get(bresp, str(bresp))}; the crypto demux answers DECERR"
                     )
                 burst_fails.extend(moved)
@@ -536,6 +588,64 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
 
         await self._trng_passthrough(cfg)
 
+    def _ctrl_deadspace_rand(self, cfg: SepDeadspaceCfg) -> None:
+        """CTRL-DEADSPACE-RAND: every window holds its full random-probe quota and
+        gets at least one read and one write probe (walk and cell pass)."""
+        if cfg.short_windows:
+            short = " ".join(
+                f"{n}={got}/{want}" for n, (got, want) in sorted(cfg.short_windows.items())
+            )
+            msg = f"CTRL-DEADSPACE-RAND FAIL: seed={cfg.seed} window(s) short of the random-probe quota: {short}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        rand: dict[str, int] = dict.fromkeys(cfg.windows, 0)
+        anchor: dict[str, int] = dict.fromkeys(cfg.windows, 0)
+        ops: dict[str, dict[str, int]] = {n: {"r": 0, "w": 0} for n in cfg.windows}
+        for p in cfg.probes:
+            (anchor if p.anchor else rand)[p.window] += 1
+            ops[p.window][p.op] += 1
+        for p in _cell_items(cfg):
+            ops[p.window][p.op] += 1
+        op_text = " ".join(f"{n}=r{ops[n]['r']}w{ops[n]['w']}" for n in sorted(ops))
+        missing = [n for n in sorted(ops) if not (ops[n]["r"] and ops[n]["w"])]
+        if missing:
+            msg = (
+                f"CTRL-DEADSPACE-RAND FAIL: seed={cfg.seed} CTRL-MISSING window(s) without "
+                f"both a read and a write probe: {' '.join(missing)} ops=[{op_text}]"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-DEADSPACE-RAND PASS: seed=%d windows=%d random=[%s] anchors=[%s] ops=[%s]",
+            cfg.seed,
+            len(cfg.windows),
+            " ".join(f"{n}={rand[n]}" for n in sorted(rand)),
+            " ".join(f"{n}={anchor[n]}" for n in sorted(anchor)),
+            op_text,
+        )
+
+    def _ctrl_trng_alias_armed(self, cfg: SepDeadspaceCfg, snap: dict[int, int]) -> None:
+        """CTRL-TRNG-ALIAS-ARMED: a TRNG write anchor lands on the bit-12 alias of
+        an ESRC register that the change compare can see a store on."""
+        win = cfg.windows["trng"]
+        addr = win.base + TRNG_ALIAS_OFFSET
+        esrc = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
+        alias = esrc + TRNG_ALIAS_OFFSET
+        anchor = DeadProbe("trng", addr, "w", True) in cfg.probes
+        armed = alias in snap and alias not in win.hw_updating and alias in win.store_visible
+        lock_addr = esrc + TRNG_ALIAS_LOCK_OFFSET
+        lock_mask = next(f.mask for f in register_fields(lock_addr)[1] if f.name == "LOCK")
+        lock = "unread" if lock_addr not in snap else int(bool(snap[lock_addr] & lock_mask))
+        line = (
+            f"trng w 0x{addr:08x} alias=esrc+0x{TRNG_ALIAS_OFFSET:03x} {TRNG_ALIAS_REG} "
+            f"anchor={int(anchor)} armed={int(armed)} fips_lock={lock}"
+        )
+        if not (anchor and armed and lock == 0):
+            msg = f"CTRL-TRNG-ALIAS-ARMED FAIL: CTRL-MISSING {line}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-TRNG-ALIAS-ARMED PASS: %s", line)
+
     @staticmethod
     def _trng_unowned_fail(op: str, addr: int, resp: int, rdata: int | None) -> str:
         """CHK-TRNG-UNOWNED compare of one probe; empty when it matches."""
@@ -547,7 +657,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         exp_d = "" if want_d is None else f" rdata=0x{want_d:08x}"
         return (
             f"{op} 0x{addr:08x} answered {_rname(resp)}{got_d}, the memory map states "
-            f"{_rname(want)}{exp_d} (regs/gen/adoc/memory_map.adoc:94)"
+            f"{_rname(want)}{exp_d} (hw/sys/sep/regs/include/sep_memory_map.rdl:35)"
         )
 
     def _grade(self, ok: bool, chk: str, line: str, graded: bool) -> None:
@@ -579,11 +689,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             f"responder on={on} before the cell probes, expected 0 (no TRNG fitted)",
             False,
         )
-        items = []
-        for win in cfg.windows.values():
-            items.append(DeadProbe(win.name, win.dead_lo, "r", True))
-            if win.write_ok and win.name in _CELL_WRITE_WINDOWS:
-                items.append(DeadProbe(win.name, win.dead_lo, "w", True))
+        items = _cell_items(cfg)
         for graded in (False, True):
             if graded:
                 open_graded_window(TEST, self.logger)
@@ -820,7 +926,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             return [f"{tag} port reply carries X/Z: {rep.fmt()}"]
         port_addr = c["addr_beats"][0].addr
         self.logger.info(
-            "OBS-TRNG-PORT-ADDR: %s port address bits above the window offset=%s",
+            "INFO-TRNG-PORT-ADDR: %s port address bits above the window offset=%s",
             tag,
             "X" if port_addr is None else f"0x{port_addr & ~_TRNG_OFF_MASK:08x}",
         )
@@ -1085,7 +1191,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # One more graded instance of each sampled shape inside the FCOV window.
         await self._trng_window_pass(edge_plan + [split_spec, burst_rd_spec, burst_wr_spec])
 
-        # OBS-TRNG-SPLIT-PREC: halves that differ in a way the spec does not resolve.
+        # INFO-TRNG-SPLIT-PREC: halves that differ in a way the spec does not resolve.
         wr_pair = rng.choice(_SPLIT_PREC_WR)
         rd_pair = rng.choice(_SPLIT_PREC_RD)
         obs = [
@@ -1108,7 +1214,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         ]
         for c in obs:
             self.logger.info(
-                "OBS-TRNG-SPLIT-PREC: %s driven=[%s] port=[%s] port_beats=%d init=%s",
+                "INFO-TRNG-SPLIT-PREC: %s driven=[%s] port=[%s] port_beats=%d init=%s",
                 self._trng_tag(c),
                 ",".join(_rname(x) for x in c["codes"]),
                 ",".join(_rname(b.resp) for b in c["rep"]),

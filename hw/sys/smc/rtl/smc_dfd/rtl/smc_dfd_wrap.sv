@@ -46,7 +46,9 @@ module smc_dfd_wrap #(
                                                // complete with PSLVERR while it is stopped.
 
   output logic                                             external_action_debug_interrupt_o,  // Debug interrupt raised by a CLA
-                                                                                               // external action.
+                                                                                               // external action; held until
+                                                                                               // EnableEap is cleared and the
+                                                                                               // EAP status W2C is then written.
   output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,  // Custom CLA external-action
                                                                                       // outputs, one bit per custom
                                                                                       // action.
@@ -56,10 +58,10 @@ module smc_dfd_wrap #(
   input  smc_pkg::xtrigger_t xtrigger_ss_i,  // Cross-trigger lanes into the CLA.
   input  logic               tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
                                                             // action as a clock stop.
-  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while a CLA halt-clock
-                                                                    // action, enabled by the mask and
-                                                                    // tdr_dbg_ctrl_clock_stop_en_i, is
-                                                                    // requesting a clock stop.
+  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // CLA clock-halt request, set by a
+                                                                    // halt-clock action and held until
+                                                                    // primary reset; gated by the mask
+                                                                    // and tdr_dbg_ctrl_clock_stop_en_i.
 
   input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,  // Debug-bus mux select register,
                                                                     // shared by every level-2 and

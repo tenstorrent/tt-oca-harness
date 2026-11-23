@@ -65,7 +65,7 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
-# SPI host COMMAND speed and direction cells at the pads: lane data and output enables per segment, sck edges, Rx word count, dummy cycles, CSAAT chains and the illegal cells. The seed draws the cell order, the data and the long dummy leg.
+# SPI host COMMAND speed and direction cells at the pads: lane data and output enables per segment, sck edges, Rx word count, dummy cycles, CSAAT chains and the illegal cells. The seed draws the cell order and the data; the long dummy leg runs last on every seed.
 name = "sep_spi_pad_speed_dir_matrix_test"
 module = "spi.sep_spi_pad_speed_dir_matrix_test"
 seed = 1

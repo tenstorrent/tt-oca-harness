@@ -270,7 +270,7 @@ class smc_gpio_intf_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         cocotb.log.info(
             "CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY: %d/%d AWPROT=%d writes DECERR, %d/%d "
             "readbacks == armed word (write_filter_enable still 1, read with ARPROT=%d); "
-            "SF-016 observed: %s accesses between the armed write and the AWPROT=%d write",
+            "observed: %s accesses between the armed write and the AWPROT=%d write",
             self.write_denials,
             instances,
             _PROT_ALL_ONES,

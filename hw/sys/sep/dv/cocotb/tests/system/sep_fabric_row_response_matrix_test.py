@@ -14,7 +14,8 @@ in Extent and Past Extent columns, through ``env.sep_decode_resp``), the
 allocation of the generated IP-XACT (``seq_lib.sep_row_response_seq``). The
 table states each cell for a 32-bit access at the inbound AXI port, so every
 graded single beat uses AxSIZE 2 in both halves of the 64-bit data bus; an
-AxSIZE 3 access is logged and not graded. The reset-control rows state what the
+AxSIZE 3 access is logged (``INFO-ROW-SIZE3``) and not graded, except the
+straddle cell below. The reset-control rows state what the
 SEP CPU sees, so the reset-control cells are graded from the LSU.
 
 Every SI access goes through inbound entry 0, which covers 0x1000_0000 to
@@ -41,7 +42,11 @@ CTRL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 CHK-ROW-NOALIAS: a reset-control gap or tail write and an HMAC or KMAC hole
 write leave the live reference register (``SW_RESET_N``, HMAC ``CFG``, a KMAC
 ``PREFIX`` word) unchanged; an in-extent write to the same register changes it
-(control, run before the draws of that register).
+(control, run before the draws of that register). The response code of each
+AxSIZE 0, 1 and 3 reset-control gap write is logged (``INFO-ROW-NOALIAS-RESP``):
+no register backs the gap, so no RDL access type states it, and
+``hw/sys/sep/doc/memory_map.adoc`` states the unbacked-offset responses for
+32-bit accesses only.
 
 CHK-ROW-CACHE: an OTBN register access answers OKAY with AxCACHE[1] = 0 and 1 on
 both channels (``hw/sys/sep/doc/otbn.adoc``, OCAH Modifications). The AxCACHE of
@@ -73,7 +78,7 @@ carries none of the staged non-zero register values. A write burst lands its
 in-extent beats, answers a B response other than OKAY, and changes no other
 stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``: the
 error responder of ``sep_io`` answers only the beats past the extent). The
-exact past-beat code and data are logged as ``OBS-ROW-SPI-BURST-CODE``.
+exact past-beat code and data are logged as ``INFO-ROW-SPI-BURST-CODE``.
 CHK-ROW-SPI-BURST-CONTROL: the same burst shape wholly inside the extent answers
 OKAY on every beat and lands every beat.
 
@@ -101,7 +106,7 @@ logged, not graded)
 (``hw/sys/sep/doc/fabric.adoc``, Fabric Topology: the inbound crossbar reaches
 the system CSRs; ``hw/sys/sep/doc/memory_map.adoc``, Units Unreachable from the
 Inbound Port). The AP and STEE remap ``ATTRS`` words are logged
-(``OBS-ROW-FABRIC-CSR``).
+(``INFO-ROW-FABRIC-CSR``).
 
 CHK-REG-SUBWORD-WDT: an LSU AxSIZE 0 read at byte offset 1 and an AxSIZE 1 read
 at byte offset 2 of the watchdog ``WKUP_THOLD_LO`` word answer OKAY, and the
@@ -110,7 +115,32 @@ returns OKAY"; a partial write, "a byte strobe that misses a byte the register
 owns", gets a TL-UL error and "the faulting access also received SLVERR
 synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
-write and the other sub-word targets are logged (``OBS-REG-SUBWORD``).
+write and the other sub-word targets are logged (``INFO-REG-SUBWORD``). Control
+CTRL-REG-SUBWORD-SHAPE: the LSU (``s_axi``) read address handshake of each shape
+carries the byte address and AxSIZE 0 or 1, since a 32-bit read also answers
+OKAY; the CHK line passes only when the control holds.
+
+CHK-REG-SUBWORD-KEEP: after each AxSIZE 0 and AxSIZE 1 LSU write to a sub-word
+target, the bytes of the target word that the write strobe does not enable read
+back as they read before the write, whether the write landed or was refused. AXI4
+(Arm IHI 0022, the bus protocol named in ``hw/sys/sep/doc/fabric.adoc``) gives
+WSTRB the meaning that a deasserted strobe lane is not updated. The line grades
+only the unstrobed bytes and states the write response and ``landing``:
+``landed`` after CTRL-REG-SUBWORD-LAND, ``refused`` for a non-OKAY write (no text
+states the word after a refused write, so only the unstrobed bytes are graded), ``no_rw_strobed`` where the strobed bytes hold no ``sw = rw`` bit
+(the Key Manager mailbox interrupt-enable word and ``SW_RESET_N``). Control
+CTRL-REG-SUBWORD-LAND: on the scratch word and ``SEP_NMI_VEC`` the write answers
+OKAY and the ``sw = rw`` bits of its strobed bytes read back as the written
+complement, so a dropped write is a recorded failure. Control
+CTRL-REG-SUBWORD-PRELOAD: each register target that takes the complement is first
+written with a seeded value inside its ``sw = rw`` fields with the lowest such bit
+set, and every graded word reads non-zero in the unstrobed bytes of both shapes.
+The two eFuse targets are not graded: ``EFUSE_PROGRAM_CTRL`` holds fields that
+hardware writes (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``, ``program_busy``
+and the other ``hw = w`` status fields), and the shadow map takes its access from
+the fuse lock rules, not from its RDL properties
+(``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``). The responses and
+the strobed bytes of the other targets are logged (``INFO-REG-SUBWORD``).
 
 CHK-OTBN-IMEM-SUBWORD-CRC: OTBN ``LOAD_CHECKSUM`` reads the same value before and
 after each AxSIZE 0 and AxSIZE 1 write to the ``otbn_imem`` word: "Writes that are
@@ -125,7 +155,7 @@ follows the writes to that memory.
 After the graded window closes, each live word is read again from SI with the
 AxPROT[2], AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell;
 the table states one cell per row for any attributes, so CHK-ROW grades the read
-as at the default-attribute read. OBS-ROW-ATTR: SI accesses with attributes that
+as at the default-attribute read. INFO-ROW-ATTR: SI accesses with attributes that
 no specification gives a response for: exclusive
 reads with drawn attributes of the pool ``STATUS`` (one 64-bit access), an ABR
 register, the SPI host ``CSID`` and the DMA live word; an SI write of ``CSID``
@@ -133,15 +163,28 @@ with drawn AW attributes and WUSER. The line logs the response, the read data or
 grades nothing. CTRL-ROW-ATTR: the SI address handshake (and the W beat) carried
 the drawn attributes, address and size; every live row has its drawn read.
 
-OBS-ROW-NARROW: 1- and 2-byte SI reads and writes to a drawn Reserved, Past
+INFO-ROW-NARROW: 1- and 2-byte SI reads and writes to a drawn Reserved, Past
 Extent and Hole in Extent cell; the table states the cells for 32-bit accesses
 only. CTRL-ROW-NARROW: the SI address handshake carried AxSIZE 0 or 1 at the
 drawn address.
 
+CHK-ROW-SIZE3: an SI AxSIZE 3 read and write at the last register of the
+entropy source block (its register extent is 4 mod 8, so the upper half of the
+beat lies past the extent) answer SLVERR on RRESP and on BRESP
+(``hw/sys/sep/doc/memory_map.adoc:78-80``: a generated register block answers
+SLVERR past its last register, "a 64-bit access to the last register of a
+block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:93-96``).
+The leaf derives the cell from the generated register allocation and fails
+when that extent is not 4 mod 8. The 64-bit read data has no stated value and
+is logged on ``INFO-ROW-SIZE3 kind=straddle``, as is an AES straddle read at its
+last register: the AES block is bridged to TL-UL, not generated from
+SystemRDL, so no line states its response. The straddle cells run after the
+hole and live cells and fill no FCOV bin.
+
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
 a register region outside the crypto region and the SPI host extent (the
 specification states none); any AxSIZE 3 access except the pool ``STATUS``
-probe.
+probe and the entropy source straddle cell.
 """
 
 from __future__ import annotations
@@ -231,6 +274,14 @@ SPI_EVENT_ENABLE = sep_reg.SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR
 SPI_CROSS_STARTS = (SPI_ERROR_STATUS, SPI_EVENT_ENABLE)
 SPI_INSIDE_START = SPI_ERROR_ENABLE
 SPI_MAX_PAST_BEATS = 8
+# First past beat that lies beyond the extent rounded up to a power of two, so a
+# decode that rounds the extent up does not cover it. Each direction of each seed
+# runs one crossing burst with at least this many past beats.
+_SPI_EXTENT = SPI_END - SPI_BASE
+SPI_DEEP_PAST_BEATS = ((1 << (_SPI_EXTENT - 1).bit_length()) - _SPI_EXTENT) // 4 + 1
+assert SPI_DEEP_PAST_BEATS <= SPI_MAX_PAST_BEATS
+# Separates the deep-burst choice from the cell walk stream of the same seed.
+_SPI_DEEP_SALT = 0x5350_4450
 AXI_SIZE_32 = 2
 # A pinned PROD image whose SIP_DIS and SYS_DIS keep the inbound filter active.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
@@ -245,6 +296,15 @@ AXI_INCR = 1
 AX_ATTRS = ("prot", "user", "cache", "qos", "region", "lock")
 # Separates the stream of the open-value legs from the cell walk of the same seed.
 _ATTR_SALT = 0x524F_5741
+# Separates the straddle-cell write data from the cell walk and open-value streams.
+_STRADDLE_SALT = 0x5354_5244
+# Straddle cells: an AxSIZE 3 access at the last 32-bit register of a block whose
+# register extent is 4 mod 8, so the upper half lies past that extent.
+# hw/sys/sep/doc/memory_map.adoc:78-80 states SLVERR for a block generated from
+# SystemRDL (entropy source); the AES block is bridged to TL-UL, so its read is
+# logged only and it takes no write (its last register is shadowed).
+STRADDLE_GRADED = ("esrc",)
+STRADDLE_LOGGED = ("aes",)
 # The inbound entry admits the whole SEP Local region of the CPU logical map.
 _SEP_LOCAL = logical_region("logical:sep_local")
 # Last register word of the rows whose 2-beat SI burst runs one beat past the extent.
@@ -271,6 +331,16 @@ SUBWORD_TARGETS = (
 # answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
 # the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
 SUBWORD_GRADED = "wdt_wkup_thold_lo"
+# Sub-word targets whose unstrobed lanes are not graded: the word holds fields
+# that hardware writes, or the RDL properties do not state the access.
+SUBWORD_KEEP_UNGRADED = frozenset(("efuse_shadow", "efuse_program_ctrl"))
+# Sub-word targets whose narrow write lands: the strobed bytes hold sw = rw bits.
+SUBWORD_LANDS = frozenset(("scratch", "cpu_ctrl_nmi_vec"))
+# Sub-word access shapes: (AxSIZE, byte offset in the word).
+SUBWORD_SHAPES = ((0, 1), (1, 2))
+# The sub-word preload values come from their own stream, so the draws of the
+# later legs keep their seed mapping.
+SUBWORD_PRELOAD_SALT = 0x5357_504C
 OTBN_LOAD_CHECKSUM = sep_reg.OTBN_LOAD_CHECKSUM_REG_ADDR
 # LOAD_CHECKSUM record byte orders: theory_of_operation.md:449-453 fixes the 48b
 # layout, not the order.
@@ -374,6 +444,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-FILTER-SRC",
         "CHK-ROW-FABRIC-CSR",
         "CHK-OTBN-IMEM-SUBWORD-CRC",
+        "CHK-ROW-SIZE3",
+        "CHK-REG-SUBWORD-KEEP",
     )
 
     # ------------------------------------------------------------------ access
@@ -557,14 +629,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         )
         self._walk(row, kind, d, init)
 
-    def _log_size3(self, row: str, kind: str, resp: int, rdata: int, d: str) -> None:
+    def _log_size3(
+        self, row: str, kind: str, resp: int, rdata: int, d: str, chk: str | None = None
+    ) -> None:
         self.logger.info(
-            "OBS-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=0",
+            "INFO-ROW-SIZE3 LOG: row=%s kind=%s dir=%s size=3 resp=%s rdata=0x%016x graded=%d%s",
             row,
             kind,
             d,
             _RN.get(resp),
             rdata,
+            chk is not None,
+            "" if chk is None else f" chk={chk}",
         )
 
     def _expect_reg(self, addr: int) -> int:
@@ -730,7 +806,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 else:
                     self.logger.info("INFO-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d", a, size)
                     self.logger.info(
-                        "OBS-ROW-NOALIAS-RESP LOG: seed=%d addr=0x%08x size=%d resp=%s",
+                        "INFO-ROW-NOALIAS-RESP LOG: seed=%d addr=0x%08x size=%d resp=%s",
                         self.random_seed(),
                         a,
                         size,
@@ -929,6 +1005,15 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     await self._release()
                 s = await self._si(op, word, size=3, wdata=(comp << 32) | comp)
                 self._log_size3(unit, "hole", s.resp_code, s.rdata, d)
+                if unit in STRADDLE_GRADED and op is SepAxiOp.READ:
+                    # Both halves are holes, so the beat answers OKAY: the SLVERR of
+                    # the straddle cell then comes from the past-extent half.
+                    self.size3_hole_ok[unit] = self._ctrl(
+                        "ROW-SIZE3",
+                        s.resp_code == RESP_OKAY,
+                        f"row={unit} kind=hole init=SI dir=R size=3 addr=0x{word:08x} "
+                        f"resp={_RN.get(s.resp_code)} expect=OKAY",
+                    )
             self._close()
             if unit == "abr":
                 # ABR has no stable register with a non-zero reset, so its live
@@ -1010,6 +1095,53 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             await self._begin()
             if await self._live_word(key, rr.live_word(key)):
                 await self._release()
+
+    @staticmethod
+    def _straddle_addr(key: str) -> int:
+        """Address of the last 32-bit register of ``key``; its extent must be 4 mod 8."""
+        row = rr.map_row(key)
+        last = max(r.addr for r in rr.row_regs(key))
+        ext = last + 4 - row.base
+        if ext != row.extent or ext % 8 != 4:
+            raise RuntimeError(
+                f"{key}: last register 0x{last:08x} gives extent 0x{ext:x}, decoded extent "
+                f"0x{row.extent:x}; a straddle cell needs one extent that is 4 mod 8"
+            )
+        return last
+
+    async def _straddle_leg(self) -> None:
+        """AxSIZE 3 SI accesses whose lower half is the last register of a block.
+
+        Runs after the hole and live cells, so the entropy source
+        ``NOISE_OBS_RDATA`` pop of the straddle read cannot move a graded value.
+        The samples of these accesses are never released."""
+        rng = SepSeededRng(self.random_seed() ^ _STRADDLE_SALT)
+        for key in STRADDLE_LOGGED:
+            a = self._straddle_addr(key)
+            s = await self._si(SepAxiOp.READ, a, size=3)
+            self._log_size3(key, "straddle", s.resp_code, s.rdata, "R")
+        for key in STRADDLE_GRADED:
+            a = self._straddle_addr(key)
+            if key not in self.size3_hole_ok:
+                self._ctrl(
+                    "ROW-SIZE3", False, f"row={key} no hole AxSIZE 3 read before the straddle"
+                )
+            for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+                d = "R" if op is SepAxiOp.READ else "W"
+                wd = rng.getrandbits(64) if op is SepAxiOp.WRITE else 0
+                s = await self._si(op, a, size=3, wdata=wd)
+                if op is SepAxiOp.READ:
+                    self._log_size3(key, "straddle", s.resp_code, s.rdata, d, "CHK-ROW-SIZE3")
+                line = (
+                    f"row={key} kind=straddle init=SI dir={d} size=3 addr=0x{a:08x} "
+                    f"wdata={'na' if op is SepAxiOp.READ else f'0x{wd:016x}'} "
+                    f"resp={_RN.get(s.resp_code)} expect=SLVERR"
+                )
+                if s.resp_code == RESP_SLVERR:
+                    self.logger.info("CHK-ROW-SIZE3 PASS: %s", line)
+                else:
+                    self._fail("CHK-ROW-SIZE3", line)
+        await self._begin()
 
     async def _km_leg(self) -> None:
         """Step 15: Key Manager mailbox window from SI with KM held in reset."""
@@ -1395,11 +1527,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         else:
             self._fail("CHK-ROW-SPI-BURST-CONTROL", line)
 
-    async def _spi_cross(self, op: SepAxiOp, start: int) -> None:
-        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end."""
+    async def _spi_cross(self, op: SepAxiOp, start: int, deep_past: int | None = None) -> int:
+        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end.
+
+        ``deep_past`` replaces the drawn past-beat count. Returns the past-beat
+        count of the address handshake on the m_axi pins, 0 when none was seen.
+        """
         d = "R" if op is SepAxiOp.READ else "W"
         n_in = (SPI_END - start) // 4
-        nbeats = n_in + self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        past = self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        if deep_past is not None:
+            past = deep_past
+        nbeats = n_in + past
         addrs = [start + 4 * i for i in range(nbeats)]
         assert (start & ~0xFFF) == ((addrs[-1] + 3) & ~0xFFF), "burst crosses a 4 KB page"
         live = self._spi_live_set()
@@ -1456,7 +1595,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 f"live_set={[hex(v) for v in live_words]} ax={ax}"
             )
             self.logger.info(
-                "OBS-ROW-SPI-BURST-CODE: dir=R start=0x%08x past_resp=%s past_data=%s",
+                "INFO-ROW-SPI-BURST-CODE: dir=R start=0x%08x past_resp=%s past_data=%s "
+                "chk=CHK-ROW-SPI-BURST",
                 start,
                 [_RN.get(r, r) for r in past_resp],
                 [hex(v) for v in past_data],
@@ -1475,7 +1615,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 f"diff={diff} ax={ax}"
             )
             self.logger.info(
-                "OBS-ROW-SPI-BURST-CODE: dir=W start=0x%08x bresp=%s",
+                "INFO-ROW-SPI-BURST-CODE: dir=W start=0x%08x bresp=%s chk=CHK-ROW-SPI-BURST",
                 start,
                 _RN.get(s.resp_code, s.resp_code),
             )
@@ -1485,16 +1625,41 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             await self._release()
         else:
             self._fail("CHK-ROW-SPI-BURST", line)
+        return ax["len"] + 1 - n_in if ax is not None else 0
 
     async def _spi_leg(self) -> None:
-        """SPI host extent: staging and control with the window closed, then the crossing bursts."""
+        """SPI host extent: staging and control with the window closed, then the crossing bursts.
+
+        Per direction, one start drawn from a stream of its own carries a
+        past-beat count drawn from SPI_DEEP_PAST_BEATS to SPI_MAX_PAST_BEATS.
+        """
         await self._spi_stage()
         await self._spi_control()
         starts = list(SPI_CROSS_STARTS)
         self.rng.shuffle(starts)
+        deep_rng = SepSeededRng(self.random_seed() ^ _SPI_DEEP_SALT)
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+            d = "R" if op is SepAxiOp.READ else "W"
+            forced = deep_rng.choice(starts)
+            deep_past = deep_rng.randrange(SPI_DEEP_PAST_BEATS, SPI_MAX_PAST_BEATS + 1)
+            self.logger.info(
+                "INFO-ROW-SPI-DEEP-BURST LOG: dir=%s start=0x%08x past_beats=%d",
+                d,
+                forced,
+                deep_past,
+            )
+            seen = {}
             for start in starts:
-                await self._spi_cross(op, start)
+                seen[start] = await self._spi_cross(
+                    op, start, deep_past if start == forced else None
+                )
+            self._ctrl(
+                "ROW-SPI-DEEP-BURST",
+                max(seen.values()) >= SPI_DEEP_PAST_BEATS,
+                f"dir={d} past_beats_on_m_axi="
+                + " ".join(f"0x{a:08x}:{n}" for a, n in seen.items())
+                + f" need>={SPI_DEEP_PAST_BEATS}",
+            )
 
     # -------------------------------------------------------- open-value legs
     def _draw_attrs(self, *, lock: int | None = None) -> dict[str, int]:
@@ -1578,7 +1743,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         only pool access shape the pool states, with no LSU reads (``fifo_level``
         moves while the pool fills). ``graded``: the word is a live row cell, and
         CHK-ROW grades the read against the table as at its default-attribute
-        read; otherwise the read is logged (OBS-ROW-ATTR)."""
+        read; otherwise the read is logged (INFO-ROW-ATTR)."""
         if reg is None:
             a, size, mask = addr, 3, (1 << 64) - 1
             lsu_b = lsu_a = None
@@ -1609,7 +1774,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             )
             return ctrl and ok
         self.logger.info(
-            "OBS-ROW-ATTR LOG: row=%s dir=R size=%d addr=0x%08x attrs=[%s] resp=%s "
+            "INFO-ROW-ATTR LOG: row=%s dir=R size=%d addr=0x%08x attrs=[%s] resp=%s "
             "rdata=0x%x lsu_before=%s lsu_after=%s field_mask=0x%x graded=0",
             row,
             size,
@@ -1665,7 +1830,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         s, seen = await self._si_attrs(SepAxiOp.WRITE, SPI_CSID, drawn, wdata=wd, wuser=wuser)
         _r, back = await self._lsu(SepAxiOp.READ, SPI_CSID)
         self.logger.info(
-            "OBS-ROW-ATTR LOG: row=spi_host dir=W size=2 addr=0x%08x reg=CSID attrs=[%s] "
+            "INFO-ROW-ATTR LOG: row=spi_host dir=W size=2 addr=0x%08x reg=CSID attrs=[%s] "
             "wuser=%s bresp=%s wdata=0x%08x before=0x%08x readback=0x%08x graded=0",
             SPI_CSID,
             _attr_txt(drawn),
@@ -1712,7 +1877,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     s = await self._si(op, a, size=size, wdata=wd or 0, rng=r)
                     seen = take_handshake(hs)
                     self.logger.info(
-                        "OBS-ROW-NARROW LOG: cell=%s kind=%s dir=%s size=%d addr=0x%08x resp=%s "
+                        "INFO-ROW-NARROW LOG: cell=%s kind=%s dir=%s size=%d addr=0x%08x resp=%s "
                         "rdata=%s wdata=%s graded=0",
                         row,
                         kind,
@@ -1737,7 +1902,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
 
     async def _open_value_legs(self) -> None:
         """Window closed: the attribute and narrow legs, whose results no
-        specification states, log OBS lines behind their CTRL lines."""
+        specification states, log INFO lines behind their CTRL lines."""
         await self._attr_read_leg()
         await self._attr_cell_leg()
         await self._attr_write_leg()
@@ -1748,7 +1913,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     async def _burst_past_leg(self) -> None:
         """A 2-beat SI INCR burst from the last register word of a non-crypto row.
 
-        The response codes and data are logged (``OBS-ROW-BURST``); the response ID
+        The response codes and data are logged (``INFO-ROW-BURST``); the response ID
         of each burst is graded by ``CHK-SI-ID-ECHO`` in ``_si``.
         """
         mon = self.env.ext_axi_monitor
@@ -1771,7 +1936,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             finally:
                 self.cfg.axi_timeout_ns = saved
             self.logger.info(
-                "OBS-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
+                "INFO-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
                 "rdata=0x%016x lsu_before=0x%08x lsu_after=0x%08x",
                 name,
                 last,
@@ -1787,14 +1952,26 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         _r, crc = await self._lsu(SepAxiOp.READ, OTBN_LOAD_CHECKSUM)
         return crc & 0xFFFF_FFFF
 
+    async def _subword_set(self, addr: int, wdata: int, tag: str) -> int:
+        """LSU write and read-back of a sub-word target, with the watchdog CDC bound."""
+        saved = self.cfg.axi_timeout_ns
+        self.cfg.axi_timeout_ns = max(saved, WDT_CDC_CLKS * self.cfg.wdt_clk_period_ns)
+        try:
+            got, _exp, _mask = await self._lsu_write_reg(addr, wdata, tag)
+        finally:
+            self.cfg.axi_timeout_ns = saved
+        return got & 0xFFFF_FFFF
+
     async def _subword_leg(self) -> None:
         """LSU AxSIZE 0 and 1 reads and writes to registers and memories."""
+        prng = SepSeededRng(self.random_seed() ^ SUBWORD_PRELOAD_SALT)
         for name, addr, restore in SUBWORD_TARGETS:
             otbn = name == "otbn_imem"
             if otbn:
-                # A memory word holds a written value before its first read.
+                # A memory word holds a written value before its first read; bit 0
+                # makes its unstrobed lanes non-zero in both shapes.
                 await self._lsu(SepAxiOp.WRITE, OTBN_LOAD_CHECKSUM, wdata=0)
-                wd = self.rng.getrandbits(32)
+                wd = self.rng.getrandbits(32) | 1
                 await self._lsu(SepAxiOp.WRITE, addr, wdata=wd)
                 idx = (addr - sep_reg.OTBN_IMEM_MEM_BASE_ADDR) // 4
                 crc = await self._load_checksum()
@@ -1807,11 +1984,40 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 )
             _r, cur = await self._lsu(SepAxiOp.READ, addr)
             cur &= 0xFFFF_FFFF
-            for size, off in ((0, 1), (1, 2)):
+            orig = cur
+            preload = restore and not otbn
+            if preload:
+                # A seeded value inside the read-write fields, with the lowest such
+                # bit set: byte 0 is unstrobed in both shapes.
+                rw = rr.reg_by_word()[addr].rw_mask(addr)
+                pre = (prng.getrandbits(32) & rw) | (rw & -rw)
+                cur = await self._subword_set(addr, pre, f"{name} sub-word preload")
+            keep = name not in SUBWORD_KEEP_UNGRADED
+            if keep:
+                kept = [cur & ~(((1 << (8 << z)) - 1) << (8 * o)) for z, o in SUBWORD_SHAPES]
+                self._ctrl(
+                    "REG-SUBWORD-PRELOAD",
+                    all(kept),
+                    f"target={name} addr=0x{addr:08x} preload={int(preload)} "
+                    f"word=0x{cur:08x} unstrobed_bits="
+                    + ",".join(f"0x{k & 0xFFFF_FFFF:08x}" for k in kept),
+                )
+            for size, off in SUBWORD_SHAPES:
                 mask = (1 << (8 << size)) - 1
                 old = (cur >> (8 * off)) & mask
                 wv = (~old & mask) if restore else old
+                wdt = name == SUBWORD_GRADED
+                ar = cocotb.start_soon(capture_addr_handshake("ar")) if wdt else None
                 rd_resp, rdata = await self._lsu(SepAxiOp.READ, addr + off, size=size, expect="any")
+                if wdt:
+                    seen = take_handshake(ar)
+                    shaped = self._ctrl(
+                        "REG-SUBWORD-SHAPE",
+                        seen is not None and (seen["addr"], seen["size"]) == (addr + off, size),
+                        f"target={name} addr=0x{addr + off:08x} "
+                        f"araddr={_hex(None if seen is None else seen['addr'])} "
+                        f"arsize={_hex(None if seen is None else seen['size'])} expect={size}",
+                    )
                 if otbn:
                     crc_before = await self._load_checksum()
                     tl_before = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value)
@@ -1837,9 +2043,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     else:
                         self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
                 _r, rb = await self._lsu(SepAxiOp.READ, addr)
+                rb &= 0xFFFF_FFFF
+                chks = [c for c, on in (("WDT", wdt), ("KEEP", keep)) if on]
                 self.logger.info(
-                    "OBS-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
-                    "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x",
+                    "INFO-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
+                    "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x%s",
                     name,
                     addr + off,
                     size,
@@ -1848,20 +2056,53 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     _RN.get(wr_resp),
                     wv,
                     cur,
-                    rb & 0xFFFF_FFFF,
+                    rb,
+                    (" chk=" + ",".join(f"CHK-REG-SUBWORD-{c}" for c in chks)) if chks else "",
                 )
-                if name == SUBWORD_GRADED:
+                if keep:
+                    reg = rr.reg_by_word().get(addr)
+                    rw = reg.rw_mask(addr) & (mask << (8 * off)) if reg else 0
+                    if name in SUBWORD_LANDS:
+                        landed = self._ctrl(
+                            "REG-SUBWORD-LAND",
+                            wr_resp == OKAY and rw != 0 and rb & rw == (wv << (8 * off)) & rw,
+                            f"target={name} addr=0x{addr + off:08x} size={size} "
+                            f"wr_resp={_RN.get(wr_resp)} strobed_rw_mask=0x{rw:08x} "
+                            f"wdata=0x{wv:x} word_after=0x{rb:08x} "
+                            "expect=OKAY,strobed_rw=wdata",
+                        )
+                        landing = "landed" if landed else "missing"
+                    elif wr_resp != OKAY:
+                        landing = "refused"
+                    elif reg and rw == 0:
+                        landing = "no_rw_strobed"
+                    else:
+                        landing = "not_graded"
+                    unstrobed = 0xFFFF_FFFF & ~(mask << (8 * off))
+                    line = (
+                        f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"wr_resp={_RN.get(wr_resp)} landing={landing} "
+                        f"unstrobed_mask=0x{unstrobed:08x} word_before=0x{cur:08x} "
+                        f"word_after=0x{rb:08x} expect=0x{cur & unstrobed:08x}"
+                    )
+                    if rb & unstrobed == cur & unstrobed:
+                        self.logger.info("CHK-REG-SUBWORD-KEEP PASS: %s", line)
+                    else:
+                        self._fail("CHK-REG-SUBWORD-KEEP", line)
+                if wdt:
                     line = (
                         f"target={name} addr=0x{addr + off:08x} size={size} "
                         f"rd_resp={_RN.get(rd_resp)} wr_resp={_RN.get(wr_resp)} "
                         f"expect=OKAY/SLVERR"
                     )
-                    if (rd_resp, wr_resp) == (OKAY, SLVERR):
+                    if shaped and (rd_resp, wr_resp) == (OKAY, SLVERR):
                         self.logger.info("CHK-REG-SUBWORD-WDT PASS: %s", line)
                     else:
                         self._fail("CHK-REG-SUBWORD-WDT", line)
                 if restore:
                     await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+            if preload:
+                await self._subword_set(addr, orig, f"{name} sub-word restore")
 
     async def _fabric_csr_leg(self) -> None:
         """SI reads of fabric CSRs that the LSU staged, and of FEAT_CTRL.
@@ -1874,7 +2115,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         START word and of ``FEAT_CTRL`` returns the staged value or the bring-up
         golden. No TT text states the response code of these reads; it is logged in
         the same line. The AP and STEE remap words are logged
-        (``OBS-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
+        (``INFO-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
         regions as unreachable from the inbound port.
         """
         targets = (
@@ -1896,7 +2137,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 f"si_rdata=0x{s.rdata & 0xFFFF_FFFF:08x}"
             )
             if name in ("ap_attrs", "stee_attrs"):
-                self.logger.info("OBS-ROW-FABRIC-CSR %s", line)
+                self.logger.info("INFO-ROW-FABRIC-CSR %s", line)
             elif (s.rdata & 0xFFFF_FFFF) == staged:
                 self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s expect=staged", line)
             else:
@@ -1975,6 +2216,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         self._open()
         await self._past_leg()
         await self._live_leg()
+        await self._straddle_leg()
         await self._km_leg()
         await self._burst_leg()
         await self._pool_leg()
@@ -1988,6 +2230,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())
         self.walked: set[tuple[str, str, str, str]] = set()
+        self.size3_hole_ok: dict[str, bool] = {}
         self.fails: list[str] = []
         self.released = 0
         self.si_id_ok = 0

@@ -83,6 +83,7 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define CSR_MSCAUSE 0x7FF
 #define CSR_MEIVT 0xBC8
 #define MIE_MCEIE (1u << 30)
+#define MSTATUS_MPIE (1u << 7)
 #define CNT_MASK 0x07FFFFFFu
 #define MCAUSE_IRQ 0x80000000u
 #define PIC_SRC 2u  // mailbox interrupt 1 (hw/sys/sep/doc/interrupts.adoc)
@@ -119,6 +120,8 @@ static volatile struct trap_rec g_tlog[TLOG];
 static volatile uint32_t g_ntrap;
 static volatile uint32_t g_tag;
 static uint32_t g_tprinted;
+// 1 while a silent site runs with mstatus.MIE set and mie clear.
+static volatile uint32_t g_silent;
 
 // Per-slot samples of the ICCM block: MICCMECT, MDCCMECT, mip.
 static volatile uint32_t g_iccm_samp[NFLIP_MAX * 3u];
@@ -194,8 +197,13 @@ void __attribute__((interrupt("machine"), aligned(4))) trap_handler(void) {
     if (mc & MCAUSE_IRQ) {
         // The handler clears the enable of the request it took, so mret does
         // not re-enter: mie[30] for MCEIP, mie.MEIE for an external interrupt.
+        // An MCEIP trap in a silent site also clears mstatus.MPIE, so mret
+        // returns with mstatus.MIE clear even on a core that ignores mie[30].
         if ((mc & 0x7FFFFFFFu) == 30u) {
             CSR_CLEAR(mie, MIE_MCEIE);
+            if (g_silent) {
+                CSR_CLEAR(mstatus, MSTATUS_MPIE);
+            }
         } else {
             CSR_CLEAR(mie, MIE_MEIE);
         }
@@ -309,6 +317,21 @@ static uint32_t arm_wait_clear(uint32_t tag) {
     return n0;
 }
 
+// A silent site runs with mstatus.MIE set and every mie enable clear: PIC
+// source 2 is pending with its PIC enable set, so mie.MEIE must stay clear too.
+// The corrected errors of the site are counted and raise MCEIP, but no
+// interrupt is taken while mie[30] is clear.
+static void silent_begin(void) {
+    g_silent = 1u;
+    CSR_WRITE(mie, 0u);
+    CSR_SET(mstatus, MSTATUS_MIE);
+}
+
+static void silent_end(void) {
+    CSR_CLEAR(mstatus, MSTATUS_MIE);
+    g_silent = 0u;
+}
+
 static void put_arm(const char *leg, const char *kind, uint32_t n0, const struct samp *s) {
     sep_mbx_puts("ARM");
     rec_str("leg", leg);
@@ -357,12 +380,14 @@ static void iccm_leg(void) {
     struct samp s;
     uint32_t n = g_prm[P_NFLIP];
     rec_mark(1, "iccm");
+    silent_begin();
     take(&s);
     put_samp("iccm", "before", 0u, &s);
     mark("B", "iccm_block", 0u);
     iccm_block(g_iccm_samp);
     take_after(&s, 1u, n);
     mark("E", "iccm_block", 0u);
+    silent_end();
     put_samp("iccm", "quiet", n, &s);
     for (uint32_t i = 0; i < NFLIP_MAX; i++) {
         sep_mbx_puts("ISLOT");
@@ -429,6 +454,7 @@ static void dccm_leg(void) {
     put_samp("dccm", "pre", 0u, &s);
     uint32_t goal = order == 0u ? thr - 1u : thr;
     uint32_t cnt = s.dc & CNT_MASK;
+    silent_begin();
     while (k < n && cnt < goal) {
         uint32_t v = dccm_access(k, TAG_DCCM_SILENT, &s);
         put_samp("dccm", "silent", k, &s);
@@ -436,6 +462,7 @@ static void dccm_leg(void) {
         cnt = s.dc & CNT_MASK;
         k++;
     }
+    silent_end();
     uint32_t form = order;
     if (order == 0u && cnt != thr - 1u) {
         form = 1u; // the readback skipped 2^t - 1: the reach-first form
@@ -474,12 +501,14 @@ static void dccm_leg(void) {
         mark("E", "dccm_reach_arm", 0u);
         put_arm("dccm", "reach", n0, &s);
     }
+    silent_begin();
     while (k < n) {
         uint32_t v = dccm_access(k, TAG_DCCM_POST, &s);
         put_samp("dccm", "post", k, &s);
         put_data(k, v);
         k++;
     }
+    silent_end();
     put_traps();
 }
 

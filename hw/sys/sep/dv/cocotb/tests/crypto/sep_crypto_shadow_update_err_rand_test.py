@@ -67,6 +67,11 @@ Checkers:
                        reads its reset value 0 (``aes.hjson:992-995``). Control:
                        the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
+                       Control: CTRL-SHADOW-RECOV-RB, CTRL_SHADOWED reads R
+                       after the pair (``aes.hjson:633``). R differs from the
+                       value read before the pair (logged as ``held_before``):
+                       its PRNG_RESEED_RATE is PER_64 when that value equals
+                       the PER_8K word.
   CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up
                        to the second write, the first rise within 4 x c_err
                        clocks of it, ALERT_FATAL_FAULT 0. Control:
@@ -114,7 +119,7 @@ Checkers:
                        rises during the malformed pair on a clock 2 to
                        4 x c - 1 (inclusive) after the mark. The level after
                        the release and its quiet window are logged
-                       (OBS-ALERT-MALFORMED-POST): no text states them.
+                       (INFO-ALERT-MALFORMED-POST): no text states them.
                        c: the ALERT_TEST delay of the block in the same trial.
                        The mark is the last clock sampled before the inject:
                        the leaf drives the inject on clock 1 and the pair is
@@ -131,17 +136,24 @@ instance passed and before the window closes (``env/sep_fcov_gate.py``,
 cells. ``cp_fatal_quiet`` samples at the graded STATUS read itself: its sample
 condition is the per-read compare of CHK-SHADOW-FATAL-QUIET.
 
-``OBS-AES-SEC-PARAMS`` logs the AES build parameters SecMasking and
+``INFO-AES-SEC-PARAMS`` logs the AES build parameters SecMasking and
 SecAllowForcingMasks at leaf start (``aes_sec_params_o``): ``aes.hjson`` gives
 only the OpenTitan defaults and no SEP text states the build values.
 
-``OBS-SHADOW-GCM`` logs ``STATUS.IDLE`` after the mismatched GCM pair, and the
+``INFO-SHADOW-MIS-RB`` logs the CTRL_SHADOWED read after the mismatched AES pair, with
+A, B, the reset value and the drawn field; ``INFO-SHADOW-RECOV-STATUS`` logs STATUS,
+ALERT_RECOV_CTRL_UPDATE_ERR and ALERT_FATAL_FAULT after the recovery pair R, R and
+again after the recovery block: no text states the value held after a mismatched
+pair, or that the rewrite clears the update error (``aes.hjson`` CTRL_SHADOWED,
+STATUS).
+
+``INFO-SHADOW-GCM`` logs ``STATUS.IDLE`` after the mismatched GCM pair, and the
 reserved bits of CTRL_GCM_SHADOWED after the equal pair: no text states either
 value. Every KMAC result
 (``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
-``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
+``INFO-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
 sequence of those registers; one equal CFG_SHADOWED pair with a read between
-the writes is logged as ``OBS-SHADOW-KMAC-RDGAP`` for the same reason; the
+the writes is logged as ``INFO-SHADOW-KMAC-RDGAP`` for the same reason; the
 ALERT_TEST write of each block is the timing reference ``INFO-ALERT-REF``.
 """
 
@@ -188,6 +200,7 @@ from seq_lib.sep_aes_seq import (
     AES_MODE_ECB,
     AES_OP_DEC,
     AES_OP_ENC,
+    AES_PRS_RATE_PER_64,
     AES_STATUS,
     AES_TRIGGER,
     AES_TRIGGER_DATA_OUT_CLEAR,
@@ -242,6 +255,7 @@ AES_ST_OV = AES.field_mask("STATUS", "output_valid")
 AES_ST_ERR = AES.field_mask("STATUS", "alert_recov_ctrl_update_err")
 AES_ST_FATAL = AES.field_mask("STATUS", "alert_fatal_fault")
 AES_CTRL_MASK = AES.mask32("CTRL_SHADOWED")
+AES_CTRL_RESET = AES.reset32("CTRL_SHADOWED")
 AES_AUX = AES.addr("CTRL_AUX_SHADOWED")
 AES_AUX_MASK = AES.mask32("CTRL_AUX_SHADOWED")
 AES_AUX_KTFR = AES.field_mask("CTRL_AUX_SHADOWED", "key_touch_forces_reseed")
@@ -514,7 +528,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         sec = self.rd(dut.aes_sec_params_o)
-        self.chk.obs("AES-SEC-PARAMS", sec_masking=sec & 1, sec_allow_forcing_masks=(sec >> 1) & 1)
+        self.chk.info("AES-SEC-PARAMS", sec_masking=sec & 1, sec_allow_forcing_masks=(sec >> 1) & 1)
         self.aes = SepAes(self)
         self.kmac = SepKmac(self)
         self.bus = SepAxiRegDriver(self)
@@ -673,6 +687,41 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         await self._pulse("aes")
         await self._aes_idle("aes_idle_after_reset")
 
+    async def _mismatch_readback(self) -> int:
+        """INFO-SHADOW-MIS-RB: CTRL_SHADOWED after the mismatched pair (A then B).
+
+        aes.hjson CTRL_SHADOWED states the alert and that a read clears the phase
+        tracking, not which value the register holds after a mismatched pair.
+        Returns the read.
+        """
+        plan = self.plan
+        rb = await self.aes._rd(AES_CTRL_SHADOWED)
+        self.chk.info(
+            "SHADOW-MIS-RB",
+            raw=f"0x{rb:08x}",
+            readback=f"0x{rb & AES_CTRL_MASK:x}",
+            a=f"0x{plan.a & AES_CTRL_MASK:x}",
+            b=f"0x{plan.b & AES_CTRL_MASK:x}",
+            reset=f"0x{AES_CTRL_RESET & AES_CTRL_MASK:x}",
+            field=plan.a_desc.split()[0].removeprefix("field="),
+        )
+        return rb
+
+    async def _recovery_status(self, point: str) -> None:
+        """INFO-SHADOW-RECOV-STATUS: STATUS during the recovery that follows a mismatch.
+
+        aes.hjson STATUS.ALERT_RECOV_CTRL_UPDATE_ERR says the unit "needs to be
+        restarted by re-writing" the register, not whether that rewrite clears the bit.
+        """
+        st = await self.aes._rd(AES_STATUS)
+        self.chk.info(
+            "SHADOW-RECOV-STATUS",
+            point=point,
+            status=f"0x{st:08x}",
+            alert_recov_ctrl_update_err=int(bool(st & AES_ST_ERR)),
+            alert_fatal_fault=int(bool(st & AES_ST_FATAL)),
+        )
+
     # --- AES pass -------------------------------------------------------------------
     async def _aes_pass(self) -> int:
         plan = self.plan
@@ -684,6 +733,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         c_err: int | None = None
         reason = ""
         m1 = None
+        held = -1
         try:
             m1, m2 = await self._pair(
                 self.aes, AES_CTRL_SHADOWED, plan.a, plan.b, plan.gaps["aes_mis"]
@@ -696,6 +746,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             except BitWatchTimeout:
                 reason = f"no_alert_rise bound={WAIT_LIMIT}"
             fatal = int(bool(await self.aes._rd(AES_STATUS) & AES_ST_FATAL))
+            held = await self._mismatch_readback()
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         cycles = self.vec.high_clocks_since(m1, "alert") if m1 is not None else 0
@@ -718,14 +769,25 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # Recovery: R written twice, then one block.
         key = plan.key
         golden = aes_encrypt_words("ecb", key, _le_words(AES_PT))
-        r = build_aes_ctrl(
+        # R differs from the value held before the pair, so a pair that does not land
+        # fails CTRL-SHADOW-RECOV-RB. R uses PRNG_RESEED_RATE PER_8K, or PER_64 when the
+        # held value equals that word; both are legal values, and the field sets the
+        # reseed rate of the masking PRNG only (aes.hjson:768-799), so the golden block
+        # does not change with it.
+        r_cfg = dict(
             sideload=False, operation=AES_OP_ENC, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256
         )
+        r = build_aes_ctrl(**r_cfg)
+        if (held ^ r) & AES_CTRL_MASK == 0:
+            r = build_aes_ctrl(**r_cfg, reseed_rate=AES_PRS_RATE_PER_64)
         ct = None
         reason = ""
+        rr = -1
         try:
             await self.aes._wr(AES_CTRL_SHADOWED, r)
             await self.aes._wr(AES_CTRL_SHADOWED, r)
+            rr = await self.aes._rd(AES_CTRL_SHADOWED)
+            await self._recovery_status("after_ctrl_rewrite")
             await self.aes.write_key(key)
             await self._aes_idle("idle_after_key")
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
@@ -734,12 +796,23 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
             await self._poll(self.aes, AES_STATUS, AES_ST_OV, AES_ST_OV, WAIT_LIMIT, "output_valid")
             ct = [await self.aes._rd(AES_DATA_OUT_0 + 4 * i) for i in range(4)]
+            await self._recovery_status("after_block")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
+        # Two equal writes change the content of CTRL_SHADOWED while the unit is idle
+        # (aes.hjson:631-633); the mismatch read before the pair clears the phase
+        # tracking (:635), so the first R is the first write of the pair.
+        rr_ok = self._control(
+            "SHADOW-RECOV-RB",
+            rr >= 0 and (rr & AES_CTRL_MASK) == (r & AES_CTRL_MASK),
+            readback=f"0x{rr & AES_CTRL_MASK:x}" if rr >= 0 else "none",
+            written=f"0x{r & AES_CTRL_MASK:x}",
+            held_before=f"0x{held & AES_CTRL_MASK:x}" if held >= 0 else "none",
+        )
         fields = {"reg": "aes_ctrl", "op==golden": int(ct == golden)}
         if reason:
             fields["reason"] = reason
-        if self._grade("SHADOW-RESTART", ct == golden, **fields):
+        if self._grade("SHADOW-RESTART", ct == golden, **fields) and rr_ok:
             await self._passed(AES_SHADOW_PASS_RECOVERY)
         self._close()
 
@@ -932,7 +1005,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             idle = int(bool(st & AES_ST_IDLE))
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
-        self.chk.obs("SHADOW-GCM", pair="mismatched", idle=idle)
+        self.chk.info("SHADOW-GCM", pair="mismatched", idle=idle)
         status_ok = self._grade(
             "GCM-SHADOW-STATUS",
             not reason and pre_err == 0 and status_err == 1,
@@ -997,7 +1070,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             rb = await self.aes._rd(AES_GCM)
             st = await self.aes._rd(AES_STATUS)
             status_err = int(bool(st & AES_ST_ERR))
-            self.chk.obs("SHADOW-GCM", pair="equal", rsvd=f"0x{rb & ~GCM_FIELDS & 0xFFFF_FFFF:x}")
+            self.chk.info("SHADOW-GCM", pair="equal", rsvd=f"0x{rb & ~GCM_FIELDS & 0xFFFF_FFFF:x}")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         fields = {
@@ -1037,7 +1110,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await self._until(m2, WINDOW_FACTOR * c_err)
             st = await self.kmac._rd(KMAC_STATUS)
             rb = await self.kmac._rd(addr) if pair == "equal" else None
-            self.chk.obs(
+            self.chk.info(
                 "SHADOW-KMAC",
                 reg=reg,
                 pair=pair,
@@ -1048,7 +1121,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 readback="na" if rb is None else f"0x{rb:x}",
             )
         except TrialTimeout as exc:
-            self.chk.obs(
+            self.chk.info(
                 "SHADOW-KMAC", reg=reg, pair=pair, reason=f"timeout:{exc.what}", bound=exc.bound
             )
 
@@ -1062,7 +1135,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         assert cfg.cfg_word() == KMAC_R, "the KMAC recovery word is not R"
         try:
             digest = await self.kmac.run_family(cfg, tag="shadow-recovery")
-            self.chk.obs(
+            self.chk.info(
                 "SHADOW-KMAC",
                 reg="kmac_cfg",
                 step="recovery",
@@ -1073,7 +1146,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             # DUT (the kmac_done write-one clear) is not caught and fails the leaf.
             if "timeout" not in str(exc):
                 raise
-            self.chk.obs("SHADOW-KMAC", reg="kmac_cfg", step="recovery", reason=str(exc)[:80])
+            self.chk.info("SHADOW-KMAC", reg="kmac_cfg", step="recovery", reason=str(exc)[:80])
         await self._kmac_pair_obs("kmac_cfg", KMAC_CFG_SHADOWED, a, a, plan.gaps["kmac_eq"], c_err)
         t1, t2 = plan.thr
         await self._kmac_pair_obs("kmac_thr", KMAC_THR, t1, t2, plan.gaps["thr_mis"], c_err)
@@ -1085,7 +1158,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
 
         No text states whether a read between the two writes of a shadowed pair
         restarts the pair, so the stored value and the error bit are logged as
-        OBS-SHADOW-KMAC-RDGAP.
+        INFO-SHADOW-KMAC-RDGAP.
         """
         try:
             await self._pulse("kmac")
@@ -1097,7 +1170,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await self._until(m2, WINDOW_FACTOR * c_err)
             st = await self.kmac._rd(KMAC_STATUS)
             stored = await self.kmac._rd(KMAC_CFG_SHADOWED)
-            self.chk.obs(
+            self.chk.info(
                 "SHADOW-KMAC-RDGAP",
                 written=f"0x{value:x}",
                 read_between=f"0x{mid:x}",
@@ -1107,7 +1180,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 c_err=self._first_rise(m2),
             )
         except TrialTimeout as exc:
-            self.chk.obs("SHADOW-KMAC-RDGAP", reason=f"timeout:{exc.what}", bound=exc.bound)
+            self.chk.info("SHADOW-KMAC-RDGAP", reason=f"timeout:{exc.what}", bound=exc.bound)
 
     # --- AUX lock and AES reset --------------------------------------------------------
     async def _aux_write(self, value: int) -> int:
@@ -1170,7 +1243,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # CTRL_AUX_SHADOWED resets to the RDL value (aes.adoc CTRL_AUX_SHADOWED:
         # FORCE_MASKS 0x0, KEY_TOUCH_FORCES_RESEED 0x1).
         aux_reset = aux & AES_AUX_MASK == AES_AUX_RESET & AES_AUX_MASK
-        self.chk.obs("AUX-RESET", status_rsvd=f"0x{st & ~AES_ST_FIELDS & 0xFFFF_FFFF:x}")
+        self.chk.info("AUX-RESET", status_rsvd=f"0x{st & ~AES_ST_FIELDS & 0xFFFF_FFFF:x}")
         # A_AUX differs from the reset value and B_AUX from A_AUX, so each pair,
         # the first one after the reset included, changes the register.
         after_a = await self._aux_write(A_AUX)
@@ -1275,7 +1348,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             raised = int(raise_clk is not None and ALERT_RISE_CLK_MIN <= raise_clk <= rise_max)
             # No text states that bit 32 drops once the pair is legal again, so the
             # level after the release is logged, not graded.
-            self.chk.obs(
+            self.chk.info(
                 "ALERT-MALFORMED-POST",
                 block=blk,
                 post=post,

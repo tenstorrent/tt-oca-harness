@@ -8,8 +8,11 @@ schema_version = 1
 # the named strap plusargs. `occp_rom` runs every ROM case except
 # smc_occp_ring_buffer_stress_test, left out for its runtime (run it by name);
 # it includes smc_occp_dual_unsecure_boot_test, whose full payload transfer
-# takes hours. `sanity` is the dual-SMC bring-up set; it is held out of `all`,
-# which elaborates one target per run.
+# takes hours. Every `occp_rom` member runs on the dual target except
+# smc_rom_efuse_shadow_override_test, which needs the single-SMC target: only
+# that target drives the JTAG-facing eFuse port (`ej_axi`), which the dual
+# target ties off. `sanity` is the dual-SMC bring-up set; it is held out of
+# `all`, which elaborates one target per run.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -313,12 +316,19 @@ args = [
 
 # The status-reporting members below run on the same rom-only driver as the entries
 # above: the firmware images self-report through scratch 0 like the rest of the family.
+# The seed draws STATUS_RPT_DISABLE; when it is set every GetStatus must return
+# Unsupported_StatusID (0x07), and the status-value checks run only when it is clear.
 
 [[tests]]
 name = "smc_occp_boot_sequence_status_test"
-module = "smc_occp_rom_only_test"
+module = "smc_occp_boot_sequence_status_test"
 target = "dual"
 seed = 1
+# Each seed draws the target's PRIMARY_CHIPLET and BOOT_RECOVERY; the four
+# {primary, recovery} cells close over the union of passing seeds
+# (env/smc_rom_mode_coverage.py merge). +FORCE_STATUS_REPORTING keeps
+# STATUS_RPT_DISABLE clear, because the checks read the status ring.
+reseed = 32
 timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
@@ -328,7 +338,6 @@ args = [
     "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_boot_sequence_status_test.rom.hex",
-    "+occp_case=smc_occp_boot_sequence_status_test",
     "+rom_test_timeout=1000000000",
 ]
 
@@ -343,7 +352,6 @@ run_modes = ["dual"]
 firmware = { name = "occp_crc_err_injection_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
-    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_crc_err_injection_test.rom.hex",
     "+occp_case=smc_occp_crc_err_injection_test",
@@ -417,7 +425,6 @@ firmware = { name = "occp_interface_latch_test", mode = "occp_rom_only" }
 # cannot be told from "the ROM answered on both".
 args = [
     "+BOOT_I3C",
-    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_interface_latch_test.rom.hex",
     "+occp_case=smc_occp_interface_latch_test",
@@ -439,7 +446,6 @@ firmware = { name = "occp_interface_unlatch_test", mode = "occp_rom_only" }
 # Same +fuse_i2c_ids reason as smc_occp_interface_latch_test above.
 args = [
     "+BOOT_I3C",
-    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_interface_unlatch_test.rom.hex",
     "+occp_case=smc_occp_interface_unlatch_test",
@@ -461,7 +467,6 @@ firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
 # buffer that smc_sep_ring_buffer_test covers.
 args = [
     "+BOOT_I3C",
-    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_ring_buffer_stress_test.rom.hex",
     "+occp_case=smc_occp_ring_buffer_stress_test",
@@ -477,13 +482,18 @@ timeout_sec = 21600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
-# No +sep_rb_entries: the count is drawn 1..512 from the run seed.
+# No +sep_rb_entries: the count is drawn 2..512 from the run seed.
+# +sep_rb_terminal writes a SEP status and the SEP terminal signature-failure
+# entry first, and grades GetVersion around them and the absence of a park;
+# reading them back needs +FORCE_STATUS_REPORTING. The overflow and underflow
+# members keep the seeded STATUS_RPT_DISABLE draw.
 args = [
     "+BOOT_I3C",
     "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
     "+sep_rb_case=smc_sep_ring_buffer_test",
+    "+sep_rb_terminal",
     "+rom_test_timeout=500000000",
 ]
 
@@ -497,12 +507,11 @@ tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
 # 600 writes into 512 slots; the ring keeps one slot empty, so at most 511 are retained.
-# The firmware checks only the number of successful reads and that the reads after
-# them report an empty buffer; it logs the entry values without comparing them, so
-# which 511 entries the ROM hands back is not checked.
+# With STATUS_RPT_DISABLE clear, each read is compared in FIFO order with the shadow
+# the driver mirrors into controller SRAM, and the reads after them must report an
+# empty buffer; with it set, every GET_SEP_STATUS must return Unsupported_StatusID.
 args = [
     "+BOOT_I3C",
-    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
     "+sep_rb_case=smc_sep_ring_buffer_overflow_test",
@@ -520,10 +529,10 @@ tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
 # Nothing written. Every GET_SEP_STATUS must report an empty buffer rather than returning
-# stale contents or failing the command.
+# stale contents or failing the command; with STATUS_RPT_DISABLE set, it must return
+# Unsupported_StatusID instead.
 args = [
     "+BOOT_I3C",
-    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
     "+sep_rb_case=smc_sep_ring_buffer_underflow_test",
@@ -654,6 +663,146 @@ args = [
     "+rom_test_timeout=200000000",
 ]
 
+# The continuation members below take the same DFT line patterns as the three
+# terminal members above, plus a bypass strap or SMC_CONFIG.dft_ignore_error,
+# and must keep booting: occp_sanity's GetVersion and its WriteData of
+# TEST_PASS into target scratch 0 prove OCCP service after the check. Every
+# member names +fuse_dft_ignore_error explicitly. An MBIST abort with
+# dft_ignore_error set has no member; the specification does not settle it.
+
+[[tests]]
+name = "smc_rom_mem_repair_bypass_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+MEM_REPAIR_BYPASS",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=mem_repair_bypass",
+    "+fuse_dft_ignore_error=0",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_mbist_bypass_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+# The lines report an MBIST abort, which halts without the strap.
+args = [
+    "+MEM_BIST_BYPASS",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=mbist_bypass",
+    "+fuse_dft_ignore_error=0",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_both_dft_bypasses_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+MEM_REPAIR_BYPASS",
+    "+MEM_BIST_BYPASS",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=both_bypasses",
+    "+fuse_dft_ignore_error=0",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_mem_repair_ignore_error_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=mem_repair_ignore",
+    "+fuse_dft_ignore_error=1",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_mbist_ignore_error_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=mbist_ignore",
+    "+fuse_dft_ignore_error=1",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_efuse_shadow_override_test"
+module = "smc_rom_efuse_shadow_override_test"
+seed = 1
+timeout_sec = 7200
+tags = ["occp_boot", "prod_rom"]
+run_modes = ["prod_rom"]
+firmware = { name = "prod_rom", mode = "bootrom" }
+# +smc_hold_cpu_boot stalls the CPU from t=0 while fuse sensing runs, which is
+# the window the ej_axi override uses. The relative +smc_efuse_hex overrides
+# the run mode's image: the leaf writes it, with I2C slots 6 and 7 programmed,
+# before the bank model leaves reset.
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+smc_hold_cpu_boot",
+    "+fuse_i2c_ids",
+    "+fuse_transport_timeout=400",
+    "+smc_efuse_hex=smc_rom_efuse_shadow_override_test.hex",
+]
+
+[[tests]]
+name = "smc_prod_rom_mid_boot_cold_reset_test"
+module = "smc_prod_rom_mid_boot_cold_reset_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+# The target boots alone up to IFACE_CONFIG, takes a cold reset on the pin and
+# boots again; occp_sanity then proves OCCP service after the second boot.
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
 [[tests]]
 name = "smc_occp_random_jump_test"
 module = "smc_occp_random_jump_test"
@@ -760,7 +909,7 @@ tests = [
 
 [[groups]]
 name = "occp_rom"
-expected_count = 35
+expected_count = 42
 tests = [
     "smc_occp_sanity_test",
     "smc_occp_random_command_test",
@@ -793,6 +942,13 @@ tests = [
     "smc_rom_mem_repair_fail_test",
     "smc_rom_mbist_fail_test",
     "smc_rom_mbist_timeout_test",
+    "smc_rom_mem_repair_bypass_test",
+    "smc_rom_mbist_bypass_test",
+    "smc_rom_both_dft_bypasses_test",
+    "smc_rom_mem_repair_ignore_error_test",
+    "smc_rom_mbist_ignore_error_test",
+    "smc_rom_efuse_shadow_override_test",
+    "smc_prod_rom_mid_boot_cold_reset_test",
     "smc_occp_random_jump_test",
     "smc_occp_validate_boot_test",
     "smc_occp_secure_boot_test",

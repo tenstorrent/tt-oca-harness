@@ -9,8 +9,8 @@
 [cols=",",options="header"]
 |===
 |Field |Value
-|Design Under Test |The production SMC Boot ROM (BL0), `hw/sys/smc/bootrom/prod`, executing on the target instance of the dual-SMC model
-|Platform |The `dual` RTL target in `smc_sim_cfg.toml`: two SMC instances on a shared I3C bus. The target runs the production ROM and the controller runs DV firmware
+|Design Under Test |The production SMC Boot ROM (BL0), `hw/sys/smc/bootrom/prod`, executing on the target instance of the dual-SMC model, or on the single-SMC model for the eFuse shadow override
+|Platform |The `dual` RTL target in `smc_sim_cfg.toml`: two SMC instances on a shared I3C bus. The target runs the production ROM and the controller runs DV firmware. `smc_rom_efuse_shadow_override_test` alone runs on the `default` single-SMC target, the only one that drives the JTAG-facing eFuse port
 |Repository |`tt-oca-harness`
 |Project |OCAH
 |Framework |cocotb, with the OCCP checks in the controller firmware
@@ -20,7 +20,7 @@
 |Register sources |`hw/sys/smc/regs/` (SystemRDL) and the generated export `hw/sys/smc/regs/gen/`
 |Testbench architecture |<<smc-dv-testbench-architecture,SMC_TB_ARCH>>
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut smc --items occp_rom`)
-|Tests |Every entry of `testlists/smc_rom.toml`: 36 tests
+|Tests |Every entry of `testlists/smc_rom.toml`: 45 tests
 |===
 
 This plan is the technical contract for the SMC Boot ROM firmware tests. It
@@ -43,11 +43,12 @@ never the ROM itself.
 
 * *ROM image.* Every build stage of these tests builds `hw/sys/smc/bootrom/prod` with `I3C_CORE=chipsalliance` and `ENABLE_RELEASE_PRINTS=1` (virtual console only) into `prod_rom.bin64`, and `+rom_bin64` loads it into both instances.
 * *Controller.* `+bfm_rom_hex` replaces the controller ROM with a DV image from `hw/sys/smc/dv/fw/tests/<name>/`, linked with the OCCP controller library in `hw/sys/smc/dv/fw/common/occp/`. The image sends the OCCP sequence of the test.
-* *Straps and lifecycle.* `smc_dual_base_test` forces the per-instance straps before strap capture. `+BOOT_I3C` selects I3C, `+FORCE_STATUS_REPORTING` clears `STATUS_RPT_DISABLE`, and `+lc_state` sets the target lifecycle.
-* *eFuse.* The harness regenerates the eFuse image for the run seed before cold reset. `+fuse_transport_timeout` pins the OCCP transport timeout, and `+fuse_i2c_ids` programs I2C ID slots 6 and 7 with two distinct seeded addresses.
-* *DFT status.* `+dft_scenario` drives the target memory-repair and MBIST status lines to a failure pattern. Without it, the lines are tied to passing.
+* *Straps and lifecycle.* `smc_dual_base_test` forces the per-instance straps before strap capture. `+BOOT_I3C` selects I3C and `+lc_state` sets the target lifecycle. `STATUS_RPT_DISABLE` is drawn from the seed: when it is set, every GetStatus must return error 0x07 (Unsupported_StatusID), and the status-value checks run only when it is clear. `+FORCE_STATUS_REPORTING` clears it and `+STATUS_RPT_DISABLE` sets it; `smc_occp_boot_sequence_status_test` and `smc_sep_ring_buffer_test` pass `+FORCE_STATUS_REPORTING` because they read entries back. `+MEM_REPAIR_BYPASS` and `+MEM_BIST_BYPASS` set the target bypass straps. `bring_up(dut_primary=, dut_recovery=)` sets the target `PRIMARY_CHIPLET` and `BOOT_RECOVERY` straps, and `chiplet_is_primary` follows `PRIMARY_CHIPLET`; the controller stays primary.
+* *eFuse.* `env/smc_efuse_stimulus.py` regenerates the eFuse image for the run seed before cold reset, on both targets. `+fuse_transport_timeout` pins the OCCP transport timeout, `+fuse_i2c_ids` programs I2C ID slots 6 and 7 with two distinct seeded addresses, and `+fuse_dft_ignore_error=0|1` sets `SMC_CONFIG.dft_ignore_error`. On the single-SMC target the `ej_axi` AXI-Lite manager drives the JTAG-facing eFuse port.
+* *DFT status.* `+dft_scenario` (terminal) or `+dft_continue_case` (continuation) drives the target memory-repair and MBIST status lines to a failure pattern. Without either, the lines are tied to passing.
+* *Cold reset.* `smc_prod_rom_mid_boot_cold_reset_test` pulls the shared `rst_cold_ni` pin low during a target boot and holds it until the primary reset asserts.
 * *Payload.* `+occp_payload_bin` and `+occp_payload_sym` supply the image that the hand-off tests transfer or stage.
-* *SEP ring buffer.* The dual bench has no SEP. `env/smc_sep_ring_buffer_driver.py` takes its place and writes SEP status entries into the target SEP ring buffer over the target AXI port, plus a mirror copy in controller SRAM that the firmware compares against. `+sep_rb_entries` sets the entry count (drawn 1..512 from the seed when absent), and `+sep_rb_case` only labels the case.
+* *SEP ring buffer.* The dual bench has no SEP. `env/smc_sep_ring_buffer_driver.py` takes its place and writes SEP status entries into the target SEP ring buffer over the target AXI port, plus a mirror copy in controller SRAM that the firmware compares against when `STATUS_RPT_DISABLE` is clear. `+sep_rb_entries` sets the entry count (drawn from the seed when absent), `+sep_rb_terminal` makes the first two entries the SEP status 0x01010001 and the SEP terminal signature-failure error 0x0F01000E, and `+sep_rb_case` only labels the case.
 
 [[smc-rom-vplan-checking]]
 ==== Checking
@@ -59,6 +60,7 @@ never the ROM itself.
 * *Evidence.* `dual_test` fails a test that does not log every `CHK-<ID>` in its `REQUIRED_EVIDENCE`. Each procedure group names those IDs.
 * *Halt.* A terminal test samples the target hart 0 retired PC and requires a span of a few PCs for a fixed window.
 * *Memory.* The hand-off tests read the target SRAM over AXI or through the backdoor peek and compare it with the payload.
+* *Functional coverage.* The dual target collects no simulator coverage. A passing `smc_occp_boot_sequence_status_test` seed writes its `{PRIMARY_CHIPLET, BOOT_RECOVERY}` cell to `smc_rom_mode_coverage.json` in its run directory, and `env/smc_rom_mode_coverage.py merge <run-dir>` unions the cells of the PASS runs; closure is all four cells, `satisfied=true`.
 
 [[smc-rom-vplan-bringup]]
 ==== Bring-up
@@ -75,7 +77,9 @@ never the ROM itself.
 Each rom-only test is one controller image. The image draws its command mix,
 addresses and transfer sizes from the run seed, which the harness writes into
 scratch 3. Every test runs on `seed = 1`, so a randomized test covers one draw
-per regression.
+per regression, except `smc_occp_boot_sequence_status_test`, which runs
+`reseed = 32` seeds so that the union of its draws closes the four boot-mode
+cells.
 
 === Naming Rules
 
@@ -90,7 +94,7 @@ per regression.
 |Testlist entry |`name` is the test, `module` is the cocotb module under `cocotb/tests/`
 |===
 
-These 28 entries have a `module` that differs from the test name:
+These 32 entries have a `module` that differs from the test name:
 
 * `smc_occp_sanity_test` runs `smc_occp_rom_only_test` with the controller image `occp_sanity`.
 * `smc_occp_random_command_test` runs `smc_occp_rom_only_test` with the controller image `occp_random_test`.
@@ -106,7 +110,6 @@ These 28 entries have a `module` that differs from the test name:
 * `smc_occp_register_access_test` runs `smc_occp_rom_only_test` with the controller image `occp_register_access_test`.
 * `smc_occp_validate_boot_invalid_region_test` runs `smc_occp_rom_only_test` with the controller image `occp_validate_boot_invalid_region_test`.
 * `smc_occp_secure_access_test` runs `smc_occp_rom_only_test` with the controller image `occp_secure_access_test`.
-* `smc_occp_boot_sequence_status_test` runs `smc_occp_rom_only_test` with the controller image `occp_boot_sequence_status_test`.
 * `smc_occp_crc_err_injection_test` runs `smc_occp_rom_only_test` with the controller image `occp_crc_err_injection_test`.
 * `smc_occp_undersize_body_test` runs `smc_occp_rom_only_test` with the controller image `occp_undersize_body_test`.
 * `smc_occp_oversize_body_test` runs `smc_occp_rom_only_test` with the controller image `occp_oversize_body_test`.
@@ -120,6 +123,11 @@ These 28 entries have a `module` that differs from the test name:
 * `smc_rom_mem_repair_fail_test` runs `smc_rom_dft_fail_test` with the controller image `occp_master`.
 * `smc_rom_mbist_fail_test` runs `smc_rom_dft_fail_test` with the controller image `occp_master`.
 * `smc_rom_mbist_timeout_test` runs `smc_rom_dft_fail_test` with the controller image `occp_master`.
+* `smc_rom_mem_repair_bypass_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
+* `smc_rom_mbist_bypass_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
+* `smc_rom_both_dft_bypasses_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
+* `smc_rom_mem_repair_ignore_error_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
+* `smc_rom_mbist_ignore_error_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
 
 === BFM Policy
 
@@ -128,7 +136,8 @@ These 28 entries have a `module` that differs from the test name:
 |Interface / Protocol |VIP / Model |Purpose
 |OCCP over I2C and I3C |Controller instance with DV firmware |Sends OCCP requests to the target ROM and checks every response
 |AXI into each instance |`DualCsr` in `smc_dual_base_test` |Programs reset vectors and reads scratch, POST and SRAM
-|eFuse |Seeded eFuse image generator |Supplies the sensed configuration for each run
+|eFuse |Seeded eFuse image generator (`env/smc_efuse_stimulus.py`) |Supplies the sensed configuration for each run
+|JTAG-facing eFuse port (single-SMC target) |`ej_axi` AXI-Lite manager (`OcahAxiLiteMasterAgent`) |Rewrites and reads an eFuse shadow register during boot stall
 |SEP ring buffer |`env/smc_sep_ring_buffer_driver.py` |Writes SEP entries into the target buffer
 |DFT status |`env/smc_dft_status_driver.py` |Drives the memory-repair and MBIST status lines
 |Virtual console |`env/smc_virt_console.py` |Decodes the firmware trace on scratch 2 of both instances
@@ -141,7 +150,8 @@ a checker that can fail. Activity on an interface is not proof.
 === Verification Scope
 
 This plan claims SMC Boot ROM behaviour from the release of the target core to
-the end of OCCP service, as the SMC Boot ROM chapters define it, on the `dual` target.
+the end of OCCP service, as the SMC Boot ROM chapters define it, on the `dual`
+target, plus one eFuse shadow override on the single-SMC target.
 
 [cols="1,2",options="header"]
 |===
@@ -150,13 +160,16 @@ the end of OCCP service, as the SMC Boot ROM chapters define it, on the `dual` t
 |OCCP memory-access policy |Verified by <<smc-rom-vplan-memory-policy>>
 |Malformed and corrupted requests |Verified by <<smc-rom-vplan-malformed>>
 |Interface latching |Verified by <<smc-rom-vplan-latch>>
-|Status and SEP ring buffers |Verified by <<smc-rom-vplan-status-ring>>
+|Status and SEP ring buffers, boot-mode status, and OCCP service after a SEP terminal status |Verified by <<smc-rom-vplan-status-ring>>
 |Lifecycle policy |Verified by <<smc-rom-vplan-lifecycle>>
-|Memory-repair and MBIST gate |Verified by <<smc-rom-vplan-dft-gate>>
+|Memory-repair and MBIST gate, bypass straps and `dft_ignore_error` continuation |Verified by <<smc-rom-vplan-dft-gate>>. An MBIST abort with `dft_ignore_error` set is not graded; see <<smc-rom-vplan-known-limitations>>
+|eFuse shadow override during boot stall |Verified by <<smc-rom-vplan-efuse-shadow>> on the JTAG-facing eFuse port. The JTAG TAP and JTAG-to-AXI bridge are out of scope
+|Cold reset during boot |Verified by <<smc-rom-vplan-cold-reset>>
 |ExecuteImage and AuthenticateImage hand-off |Verified by <<smc-rom-vplan-handoff>>
 |Dual-SMC platform |Qualified by <<smc-rom-vplan-harness>>. These tests grade no ROM behaviour
 |SMC hardware |Owned by <<smc-vplan>>
 |SEP Boot ROM |Owned by the SEP plans. This bench models the SEP side through the ring-buffer driver
+|Secondary SMC flow after `AuthenticateImage` |Not claimed. The SEP terminal-status check covers the primary flow only
 |===
 
 A green regression proves only the sections that the traceability matrix credits.
@@ -184,7 +197,7 @@ A green regression proves only the sections that the traceability matrix credits
 |===
 |Group |Role
 |`sanity` |Dual-SMC bring-up: `smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test` (`expected_count = 3`)
-|`occp_rom` |The ROM regression: 35 tests (`expected_count = 35`). `smc_occp_ring_buffer_stress_test` is left out for its runtime and runs by name
+|`occp_rom` |The ROM regression: 42 tests (`expected_count = 42`), all on the `dual` target except `smc_rom_efuse_shadow_override_test`. `smc_occp_ring_buffer_stress_test` is left out for its runtime and runs by name
 |`all` |Not a member. It belongs to <<smc-vplan>>
 |===
 
@@ -209,35 +222,39 @@ the procedure groups whose tests map to the section. *Tests* counts those tests.
 [cols="3,4,4,1",options="header"]
 |===
 |Section |Summary |Groups |Tests
-|`boot-flow.adoc`, Assembly early boot |Pre-C checks, including the DFT gate |<<smc-rom-vplan-dft-gate>> |3
-|`boot-flow.adoc`, Boot flow |Overall boot sequence and halt behaviour |<<smc-rom-vplan-dft-gate>> |3
-|`boot-flow.adoc`, C boot phases |Phase order and the POST phases |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |3
-|`hardware-initialization.adoc`, MBIST and memory repair |Failure codes and halt on repair or MBIST failure |<<smc-rom-vplan-dft-gate>> |3
-|`interfaces.adoc`, Address selection |OCCP target address selection |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-latch>> |3
+|`boot-flow.adoc`, Assembly early boot |Pre-C checks, including the DFT gate |<<smc-rom-vplan-dft-gate>> |8
+|`boot-flow.adoc`, Boot flow |Overall boot sequence and halt behaviour |<<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-cold-reset>> |9
+|`boot-flow.adoc`, C boot phases |Phase order and the POST phases |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-cold-reset>> |4
+|`hardware-initialization.adoc`, Straps and eFuses |Bypass, role and recovery straps; `SMC_CONFIG.dft_ignore_error` |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>> |6
+|`hardware-initialization.adoc`, MBIST and memory repair |Failure and bypass codes, halt, and continuation under `dft_ignore_error` |<<smc-rom-vplan-dft-gate>> |8
+|`interfaces.adoc`, Address selection |OCCP target address selection |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-latch>>, <<smc-rom-vplan-efuse-shadow>> |4
 |`interfaces.adoc`, GPIO side effects |Ready GPIO that tells the controller the ROM can serve |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>> |4
 |`memory-security.adoc`, Image and SRAM layout |SRAM windows that OCCP can reach |<<smc-rom-vplan-memory-policy>> |1
 |`memory-security.adoc`, Lifecycle handling |Lifecycle validation and the secure-state limits |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |3
 |`memory-security.adoc`, OCCP memory-access policy |Permitted windows, alignment and image-address checks |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |13
 |`occp-processing.adoc`, Failed-frame cleanup |Recovery after a rejected frame |<<smc-rom-vplan-malformed>> |4
-|`occp-processing.adoc`, Polling and latching |Interface latch and unlatch rules |<<smc-rom-vplan-latch>>, <<smc-rom-vplan-park>> |3
+|`occp-processing.adoc`, Polling and latching |Interface latch and unlatch rules; only a park request stops the loop |<<smc-rom-vplan-latch>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-park>> |4
 |`occp-processing.adoc`, Receive and dispatch |Command dispatch |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>> |2
 |`occp-processing.adoc`, Terminal commands |ExecuteImage and AuthenticateImage end OCCP service |<<smc-rom-vplan-handoff>> |3
 |`occp-protocol.adoc`, Applications and commands |Command set |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>> |2
 |`occp-protocol.adoc`, Error responses |Error codes in the response header |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-latch>>, <<smc-rom-vplan-lifecycle>> |14
 |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage |Jump and manifest hand-off |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |9
 |`occp-protocol.adoc`, GetStatus |Status IDs and ring-buffer reads |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-latch>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |16
-|`occp-protocol.adoc`, GetVersion |Protocol version response |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |8
+|`occp-protocol.adoc`, GetVersion |Protocol version response |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>>, <<smc-rom-vplan-cold-reset>> |15
 |`occp-protocol.adoc`, I2C and I3C transport binding |Frame transport and length rules on the bus |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |7
 |`occp-protocol.adoc`, Integrity checks |Header and body CRC |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |12
 |`occp-protocol.adoc`, Packet format |Header layout and maximum body size |<<smc-rom-vplan-occp-command>> |1
 |`occp-protocol.adoc`, ReadData |Memory read command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |11
-|`occp-protocol.adoc`, WriteData |Memory write command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |15
-|`status-coordination.adoc`, Hart 0 park interlock |Park request, D-cache write-back and HART0_PARKED |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |4
-|`status-coordination.adoc`, POST word |POST phase and error fields |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |2
-|`status-coordination.adoc`, Ring buffers |SMC and SEP ring-buffer layout and order |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>> |7
-|`status-coordination.adoc`, Ring-buffer status values |Status codes that the ROM records |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>> |8
-|`status-coordination.adoc`, Scratch registers |Scratch-register contract with the SEP and the host |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |9
+|`occp-protocol.adoc`, WriteData |Memory write command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>>, <<smc-rom-vplan-cold-reset>> |21
+|`status-coordination.adoc`, Hart 0 park interlock |Park request, D-cache write-back and HART0_PARKED; SEP ring data parks nothing |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |5
+|`status-coordination.adoc`, POST word |POST phase and error fields |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-efuse-shadow>>, <<smc-rom-vplan-cold-reset>> |4
+|`status-coordination.adoc`, Ring buffers |SMC and SEP ring-buffer layout and order |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-cold-reset>> |8
+|`status-coordination.adoc`, Ring-buffer status values |Status codes that the ROM records |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-cold-reset>> |9
+|`status-coordination.adoc`, Scratch registers |Scratch-register contract with the SEP and the host |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>>, <<smc-rom-vplan-cold-reset>> |15
 |`status-coordination.adoc`, Software OCCP status word |Interface-status and command-count fields |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-latch>> |2
+|`hw/sys/smc/doc/rom.adoc`, ROM region and reset vector |The cold-reset CPU vector `0xC0040000` |<<smc-rom-vplan-cold-reset>> |1
+|`hw/sys/smc/doc/clk_rst.adoc`, Power-Good and Cold Reset |Cold-reset de-glitch and extension, primary reset, fuse re-sense |<<smc-rom-vplan-efuse-shadow>>, <<smc-rom-vplan-cold-reset>> |2
+|`hw/sys/smc/doc/port_table.adoc`, SMC Port Declaration |`axil_smc_otp_jtag_req_i`, `smc_fuse_sense_done_o` and the eFuse shadow output |<<smc-rom-vplan-efuse-shadow>> |1
 |===
 
 [[smc-rom-vplan-summary]]
@@ -279,10 +296,10 @@ Procedure: <<smc-rom-vplan-memory-policy>>.
 |===
 |Test |Expected outcome
 |`smc_occp_mem_boundary_access_test` |Every access in both windows returns no error with a valid header CRC, and each ReadData body passes its CRC check when Body CRC present is set; each read byte equals the last byte written there, or 0 if not written in this run; controller scratch 0 = 0xACAFACA1.
-|`smc_occp_unaligned_access_test` |Each unaligned request gets error code 0x06 (Invalid_Address); when status reporting is on, the SMC ring holds 4 each of READ_ACCESS_DENIED (0x121), WRITE_ACCESS_DENIED (0x131), VALIDATE_ADDRESS_FAILED (0x141) and JUMP_READ_FAILED (0x202); controller scratch 0 = 0xACAFACA1.
-|`smc_occp_secure_access_test` |Each protected-range access gets error code 0x06; valid-window writes read back; when status reporting is on, the READ_ACCESS_DENIED and WRITE_ACCESS_DENIED counts equal the rejected reads and writes (6 total) and no other SMC BL0 command error entry but CMD_FAILED exists; controller scratch 0 = 0xACAFACA1.
-|`smc_occp_jump_invalid_region_test` |Each of the 6 JUMPs gets error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries of type 0x0F, firmware ID 0x03, value 0x202 when status reporting is on; random commands succeed; controller scratch 0 = 0xACAFACA1.
-|`smc_occp_validate_boot_invalid_region_test` |The 6 invalid VALIDATE_BOOT requests get error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries (0x0F, 0x03, 0x141) when status reporting is on; the final VALIDATE_BOOT gets a no-error response; controller scratch 0 = 0xACAFACA1.
+|`smc_occp_unaligned_access_test` |Each unaligned request gets error code 0x06 (Invalid_Address); when STATUS_RPT_DISABLE is clear, the SMC ring holds 4 each of READ_ACCESS_DENIED (0x121), WRITE_ACCESS_DENIED (0x131), VALIDATE_ADDRESS_FAILED (0x141) and JUMP_READ_FAILED (0x202), and when it is set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch 0 = 0xACAFACA1.
+|`smc_occp_secure_access_test` |Each protected-range access gets error code 0x06; valid-window writes read back; when STATUS_RPT_DISABLE is clear, the READ_ACCESS_DENIED and WRITE_ACCESS_DENIED counts equal the rejected reads and writes (6 total) and no other SMC BL0 command error entry but CMD_FAILED exists, and when it is set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch 0 = 0xACAFACA1.
+|`smc_occp_jump_invalid_region_test` |Each of the 6 JUMPs gets error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries of type 0x0F, firmware ID 0x03, value 0x202 when STATUS_RPT_DISABLE is clear, and the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) when it is set; random commands succeed; controller scratch 0 = 0xACAFACA1.
+|`smc_occp_validate_boot_invalid_region_test` |The 6 invalid VALIDATE_BOOT requests get error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries (0x0F, 0x03, 0x141) when STATUS_RPT_DISABLE is clear, and the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) when it is set; the final VALIDATE_BOOT gets a no-error response; controller scratch 0 = 0xACAFACA1.
 |===
 
 ==== Malformed and corrupted requests
@@ -292,11 +309,11 @@ Procedure: <<smc-rom-vplan-malformed>>.
 [cols="3,4",options="header"]
 |===
 |Test |Expected outcome
-|`smc_occp_invalid_cmd_test` |Each invalid frame gets an error response with code 0x02 (invalid MsgID) or 0x01 (invalid AppID or both); each GetVersion succeeds; when status reporting is on, the SMC ring holds 6 entries of type 0x0F, firmware ID 0x03, value 0x101 under mask 0xF01 (CMD_UNKNOWN and CMD_FAILED, 2 per rejected frame); controller scratch 0 = 0xACAFACA1.
+|`smc_occp_invalid_cmd_test` |Each invalid frame gets an error response with code 0x02 (invalid MsgID) or 0x01 (invalid AppID or both); each GetVersion succeeds; when STATUS_RPT_DISABLE is clear, the SMC ring holds 6 entries of type 0x0F, firmware ID 0x03, value 0x101 under mask 0xF01 (CMD_UNKNOWN and CMD_FAILED, 2 per rejected frame), and when it is set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch 0 = 0xACAFACA1.
 |`smc_occp_invalid_length_field_test` |Every injected request gets a response with the Error bit set. Every valid GetVersion and random valid command succeeds; controller scratch 0 = 0xACAFACA1.
 |`smc_occp_undersize_header_test` |Each truncated header gets an error response with code 0x00010000 (Incomplete_msg); GetVersion before and after succeeds; random valid commands succeed with version 1.0.0 and a matching command count when drawn; controller scratch 0 = 0xACAFACA1.
 |`smc_occp_zero_length_rw_test` |Each zero-size WriteData and ReadData gets an error response with code 0x03 (Invalid_header); later random valid commands succeed, and when a command-count check is drawn with status reporting on, the count includes the 10 rejected requests; controller scratch 0 = 0xACAFACA1.
-|`smc_occp_crc_err_injection_test` |Header 1-3 flips and header CRC flips get error 0x04 (Corrupt_header); body 1-3 flips (0x07 also accepted) and body CRC flips get 0x05 (Corrupt_Data); header 5-8 flips accept 0x04 or a normal response and undetectable body flips accept 0x05, 0x07 or a normal response; controller scratch 0 = 0xACAFACA1.
+|`smc_occp_crc_err_injection_test` |Header 1-3 flips and header CRC flips get error 0x04 (Corrupt_header); body 1-3 flips (0x07 also accepted) and body CRC flips get 0x05 (Corrupt_Data); header 5-8 flips accept 0x04 or a normal response and undetectable body flips accept 0x05, 0x07 or a normal response; with STATUS_RPT_DISABLE set, every GetStatus whose header the ROM accepts gets 0x07 (Unsupported_StatusID), including one with a corrupted body or body CRC; controller scratch 0 = 0xACAFACA1.
 |`smc_occp_undersize_body_test` |Each truncated request returns an error response (length 4) with code 0x00010000 (Incomplete_msg), or 0x00000007 (Unsupported_StatusID) for a GetStatus when the random STATUS_RPT_DISABLE strap is set; every later valid command succeeds (GET_VERSION 1.0.0 when drawn, scoreboard data matches); controller scratch0 = 0xACAFACA1.
 |`smc_occp_oversize_body_test` |Each oversize request returns an error response (length 4) with code 0x00010001 (Oversize_msg), or 0x00000007 (Unsupported_StatusID) for a GetStatus when the random STATUS_RPT_DISABLE strap is set; ExecuteImage and AuthenticateImage return the error, so the target neither jumps nor parks; valid commands succeed; controller scratch0 = 0xACAFACA1.
 |`smc_occp_unsupported_status_id_test` |Each injected GetStatus returns an error response (Error bit, length 4) with code 0x00000007 (Unsupported_StatusID); all valid commands succeed; controller scratch0 = 0xACAFACA1.
@@ -309,8 +326,8 @@ Procedure: <<smc-rom-vplan-latch>>.
 [cols="3,4",options="header"]
 |===
 |Test |Expected outcome
-|`smc_occp_interface_latch_test` |Commands on A succeed; the command on B gets no response (I2C_TIMEOUT); GET_OCCP_COMMAND_COUNT on A bits 7:0 = 1, so B was not processed; controller scratch0 = 0xACAFACA1.
-|`smc_occp_interface_unlatch_test` |Each invalid command returns its case error code (body-CRC cases also accept 0x07; any error for the invalid-length case); the valid command on B after A's 5 errors and on A after B's 5 errors get correct responses; controller scratch0 = 0xACAFACA1.
+|`smc_occp_interface_latch_test` |Commands on A succeed, except that with STATUS_RPT_DISABLE set a random GetStatus-family command on A must return error 0x07; the command on B gets no response (I2C_TIMEOUT); with STATUS_RPT_DISABLE clear, GET_OCCP_COMMAND_COUNT on A bits 7:0 = 1, so B was not processed, and with it set, GET_OCCP_COMMAND_COUNT returns error 0x07 (Unsupported_StatusID); controller scratch0 = 0xACAFACA1.
+|`smc_occp_interface_unlatch_test` |Each invalid command returns its case error code (body-CRC cases also accept 0x07; any error for the invalid-length case); with STATUS_RPT_DISABLE set, every GetStatus whose header the ROM accepts returns error 0x07 (Unsupported_StatusID), including one with a corrupted body, and the valid commands are GetVersion; the valid command on B after A's 5 errors and on A after B's 5 errors get correct responses; controller scratch0 = 0xACAFACA1.
 |===
 
 ==== Status ring buffers
@@ -320,11 +337,11 @@ Procedure: <<smc-rom-vplan-status-ring>>.
 [cols="3,4",options="header"]
 |===
 |Test |Expected outcome
-|`smc_occp_boot_sequence_status_test` |The drain returns at least one non-zero entry and contains SMC BL0 (firmware ID 0x03) values ROM_STARTED 0x001, BOOT_START 0x010 to 0x01F, OCCP_READY 0x031 and BOOT_COMPLETE 0x050, with no OCCP_INIT_FAILED 0x030 or UNEXPECTED_EXIT 0x0FF; target and controller scratch 0 = 0xACAFACA1.
-|`smc_occp_ring_buffer_stress_test` |Each failing command adds 2 entries (type 0x0F, fw_id 0x03), 0x131, 0x331, 0x321 or 0x141, then 0x112 (CMD_FAILED); GetStatus 0x8001 returns them oldest-first; after the wrap only the newest 511 remain; empty reads return 0; controller scratch0 = 0xACAFACA1.
-|`smc_sep_ring_buffer_test` |Target scratch 9 bits 0 and 2 set, scratch 11 valid, head == tail at handover; min(N,511) GetStatus 0x8000 responses are non-error and equal the written words in FIFO order; 10 more return 0; controller scratch0 = 0xACAFACA1.
-|`smc_sep_ring_buffer_overflow_test` |511 GetStatus 0x8000 responses succeed and equal the newest 511 written entries (0-based writes 89 to 599) in write order; the next 10 return 0; controller scratch0 = 0xACAFACA1.
-|`smc_sep_ring_buffer_underflow_test` |Head == tail at handover; all 10 GetStatus 0x8000 responses are non-error, CRC-valid and carry value 0x00000000; controller scratch0 = 0xACAFACA1.
+|`smc_occp_boot_sequence_status_test` |Per seed the target PRIMARY_CHIPLET and BOOT_RECOVERY straps and SMC_ATTRIBUTES.chiplet_is_primary read back as drawn and STATUS_RPT_DISABLE reads 0; the one GetStatus 0x8001 drain holds, each with firmware ID 0x03, exactly ROM_STARTED 0x001, COORDINATION_ACTIVE 0x040, ROM_STARTED 0x001, PRIMARY_MODE 0x021 or SECONDARY_MODE 0x022 as the strap selects, RECOVERY_MODE 0x020 (Warning) only with the recovery strap, BOOT_START 0x010, OCCP_READY 0x031 and BOOT_COMPLETE 0x050 (Status unless noted), in that order, with no other boot code and no command report before BOOT_COMPLETE; ten composite GetStatus (IDs 0 to 3) succeed; target and controller scratch 0 = 0xACAFACA1; the passing seeds of one run hit all four {primary, recovery} cells.
+|`smc_occp_ring_buffer_stress_test` |Each failing command adds 2 entries (type 0x0F, fw_id 0x03), 0x131, 0x331, 0x321 or 0x141, then 0x112 (CMD_FAILED); with STATUS_RPT_DISABLE clear, GetStatus 0x8001 returns them oldest-first, after the wrap only the newest 511 remain and empty reads return 0; with it set, every GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) and no entry is checked; controller scratch0 = 0xACAFACA1.
+|`smc_sep_ring_buffer_test` |Target scratch 9 bits 0 and 2 set, scratch 11 valid, head == tail at handover; GetVersion returns 1.0.0 before any entry is written; min(N,511) GetStatus 0x8000 responses are non-error and equal the written words in FIFO order, the first two being 0x01010001 and 0x0F01000E, and 10 more return 0; GetVersion returns 1.0.0 again after the drain; then target scratch 3 holds no park request, scratch 9 bit 4 is clear, hart 0 retires outside `smc_park_hart0_wfi` and the POST phase is OCCP_PROC; controller scratch0 = 0xACAFACA1.
+|`smc_sep_ring_buffer_overflow_test` |With STATUS_RPT_DISABLE clear, 511 GetStatus 0x8000 responses succeed and equal the newest 511 written entries (0-based writes 89 to 599) in write order and the next 10 return 0; with it set, all 521 return error 0x07 (Unsupported_StatusID); controller scratch0 = 0xACAFACA1.
+|`smc_sep_ring_buffer_underflow_test` |Head == tail at handover; with STATUS_RPT_DISABLE clear, all 10 GetStatus 0x8000 responses are non-error, CRC-valid and carry value 0x00000000, and with it set, all 10 return error 0x07 (Unsupported_StatusID); controller scratch0 = 0xACAFACA1.
 |===
 
 ==== Lifecycle policy
@@ -334,7 +351,7 @@ Procedure: <<smc-rom-vplan-lifecycle>>.
 [cols="3,4",options="header"]
 |===
 |Test |Expected outcome
-|`smc_occp_jump_rejection_test` |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with status reporting on, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry; controller scratch0 = 0xACAFACA1.
+|`smc_occp_jump_rejection_test` |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with STATUS_RPT_DISABLE clear, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry, and with it set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch0 = 0xACAFACA1.
 |`smc_rom_invalid_lc_state_test` |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`.
 |===
 
@@ -348,6 +365,11 @@ Procedure: <<smc-rom-vplan-dft-gate>>.
 |`smc_rom_mem_repair_fail_test` |Target scratch 15 = 0xBADC0FFE (memory repair failed) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle).
 |`smc_rom_mbist_fail_test` |Target scratch 15 = 0xDEADBEEF (MBIST failed) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle).
 |`smc_rom_mbist_timeout_test` |Target scratch 15 = 0xDEADC0DE (MBIST abort or timeout) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle).
+|`smc_rom_mem_repair_bypass_test` |MEM_REPAIR_BYPASS = 1, MEM_BIST_BYPASS = 0, dft_ignore_error = 0 and the repair-failure DFX pattern read back before the target fetches; target scratch 15 = 0x12340001 (memory repair bypassed); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`.
+|`smc_rom_mbist_bypass_test` |MEM_BIST_BYPASS = 1, MEM_REPAIR_BYPASS = 0, dft_ignore_error = 0 and the MBIST-abort DFX pattern read back before the target fetches; target scratch 15 = 0x12340002 (MBIST bypassed); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`.
+|`smc_rom_both_dft_bypasses_test` |Both bypass straps = 1, dft_ignore_error = 0 and the MBIST-abort DFX pattern read back before the target fetches; target scratch 15 = 0x12340001 (the repair check runs second and replaces the MBIST-bypass code); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`.
+|`smc_rom_mem_repair_ignore_error_test` |Bypass straps = 0, SMC_CONFIG.dft_ignore_error = 1 and the repair-failure DFX pattern read back before the target fetches; target scratch 15 = 0xBADC0FFE (memory repair failed, ignored); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`.
+|`smc_rom_mbist_ignore_error_test` |Bypass straps = 0, SMC_CONFIG.dft_ignore_error = 1 and the MBIST-failure DFX pattern read back before the target fetches; target scratch 15 = 0xDEADBEEF (MBIST failed, ignored); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`.
 |===
 
 ==== Image hand-off
@@ -372,6 +394,26 @@ Procedure: <<smc-rom-vplan-park>>.
 |Test |Expected outcome
 |`smc_rom_park_request_test` |After the controller's WriteData, part of the written block is still missing from the SRAM array; the park request in target scratch 3 then sets target scratch 9 bit 4; hart 0 retires only the park loop; all 256 written bytes are in the SRAM array by backdoor; a probe the live target answered goes unanswered after the park.
 |`smc_rom_park_entry_clear_test` |With the park request in target scratch 3 at reset, the ROM clears scratch 3, never sets scratch 9 bit 4, never enters `smc_park_hart0`, and services the controller's GET_VERSION and its write of 0xACAFACA1 to target scratch0.
+|===
+
+==== eFuse shadow override
+
+Procedure: <<smc-rom-vplan-efuse-shadow>>.
+
+[cols="3,4",options="header"]
+|===
+|Test |Expected outcome
+|`smc_rom_efuse_shadow_override_test` |With boot_stall held and 0 CPU ROM reads, fuse_sense_done rises; lc_state_i = 0xF0 (TEST_DEV), the LOCKS I2C_I3C_ID write lock reads 0 and slot 6 reads the image value A; the ej_axi write of B (a legal address other than A, slot 7's C and 0x55) to slot 6 at 0xC0007058 returns OKAY and reads back B; after the ROM reaches OCCP_PROC, I2C0 TARGET_ID (0xC0005054) ADDRESS0 = B and I2C1 TARGET_ID (0xC0005254) ADDRESS0 = C; a cold reset clears and re-raises fuse_sense_done and slot 6 reads A again; tb_efuse_program_req_valid never rises.
+|===
+
+==== Mid-boot cold reset
+
+Procedure: <<smc-rom-vplan-cold-reset>>.
+
+[cols="3,4",options="header"]
+|===
+|Test |Expected outcome
+|`smc_prod_rom_mid_boot_cold_reset_test` |The first boot shows POST IFACE_CONFIG with target ROM reads > 0, controller ROM reads = 0 and fuse_sense_done = 1; after rst_cold_ni falls the primary and cold-stable resets assert, fuse_sense_done goes 1 to 0 to 1, and RESET_VECTOR_0, written with a seeded non-default value at IFACE_CONFIG, reads 0xC0040000; hart 0's first retirement after the core reset releases is 0xC0040000 and target ROM reads increase; the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1, POST OCCP_PROC); the SMC ring, read from tail to head over AXI, holds exactly one boot's entries in order (ROM_STARTED, COORDINATION_ACTIVE, ROM_STARTED, PRIMARY_MODE, RECOVERY_MODE only with the recovery strap, BOOT_START, OCCP_READY, BOOT_COMPLETE).
 |===
 
 [[smc-rom-vplan-procedures]]
@@ -485,10 +527,10 @@ verdict and every checker in its member row pass.
 |`smc_occp_sanity_test` |`fw: getversion-value` |The returned version word equals 0x1, else the verdict is TEST_FAIL.
 |`smc_occp_sanity_test` |`fw: response-integrity` |The GetVersion response passes header CRC-8 and body CRC when present with the Error bit clear.
 |`smc_occp_random_command_test` |`fw: version-value` |GetVersion and GetVersion-boot responses equal 0x00000001 (1.0.0).
-|`smc_occp_random_command_test` |`fw: command-count` |GetStatus ID 2 count[7:0] equals the controller-tracked command count.
-|`smc_occp_random_command_test` |`fw: composite-status` |Composite GetStatus count byte equals the controller count and the interface nibble equals 0x1 (READY).
+|`smc_occp_random_command_test` |`fw: command-count` |With STATUS_RPT_DISABLE clear, GetStatus ID 2 count[7:0] equals the controller-tracked command count; with it set, GetStatus ID 2 returns error 0x07.
+|`smc_occp_random_command_test` |`fw: composite-status` |With STATUS_RPT_DISABLE clear, Composite GetStatus count byte equals the controller count and the interface nibble equals 0x1 (READY); with it set, each GetStatus of the composite returns error 0x07.
 |`smc_occp_random_command_test` |`fw: scoreboard-readback` |ReadData of a previously written sub-range returns identical bytes.
-|`smc_occp_random_command_test` |`fw: sep-status-model` |GetStatus 0x8000 equals 0 when the controller SEP model is empty, else the modelled entry.
+|`smc_occp_random_command_test` |`fw: sep-status-model` |With STATUS_RPT_DISABLE clear, GetStatus 0x8000 equals 0 when the controller SEP model is empty, else the modelled entry; with it set, GetStatus 0x8000 returns error 0x07.
 |`smc_occp_random_command_test` |`fw: status-disabled` |With STATUS_RPT_DISABLE set, each GetStatus returns error Unsupported_StatusID (0x07).
 |`smc_occp_random_command_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_register_access_test` |`fw: 64bit-readback` |8-byte WriteData and ReadData succeed and all 8 read bytes equal the written bytes.
@@ -539,10 +581,10 @@ verdict and every checker in its member row pass.
 |===
 |Test |Stimulus |Expected |Checkers |Specification
 |`smc_occp_mem_boundary_access_test` |Controller firmware over I3C sends 5 random ReadData or WriteData commands, each in the lowest (from 0xC0066400) or highest (0xC015FF00 up to 0xC0160000, inside the SEP ring-buffer object) 256-byte SRAM window, at an aligned random offset with length clipped to stay inside the window. DV shortcut: none beyond the shared harness forces. |Every access in both windows returns no error with a valid header CRC, and each ReadData body passes its CRC check when Body CRC present is set; each read byte equals the last byte written there, or 0 if not written in this run; controller scratch 0 = 0xACAFACA1. |`fw: boundary-access-accepted`, `fw: boundary-scoreboard`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Image and SRAM layout; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, Integrity checks; `interfaces.adoc`, GPIO side effects
-|`smc_occp_unaligned_access_test` |Controller firmware over I3C sends 1 random valid command and GetVersion, then 4 WriteData (1 to 2035 bytes), 4 ReadData (1 to 16 bytes), 4 VALIDATE_BOOT and, in non-secure lifecycle, 4 JUMP, each at a random address in 0xC0066400 to 0xC0157000 that is not 4-byte aligned, with GetVersion after each group, then drains the SMC ring and sends 1 random valid command. DV shortcut: none beyond the shared harness forces. |Each unaligned request gets error code 0x06 (Invalid_Address); when status reporting is on, the SMC ring holds 4 each of READ_ACCESS_DENIED (0x121), WRITE_ACCESS_DENIED (0x131), VALIDATE_ADDRESS_FAILED (0x141) and JUMP_READ_FAILED (0x202); controller scratch 0 = 0xACAFACA1. |`fw: invalid-address-code`, `fw: ring-record-counts`, `fw: smc-status-transport`, `fw: getversion-recovery`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values; `status-coordination.adoc`, Ring buffers
-|`smc_occp_secure_access_test` |Controller firmware over I3C sends WriteData and ReadData below 0xC0066400 and at 0xC0060000, write and read-back at 0xC0066400 plus offset and near 0xC0160000, 2 random protected-range accesses, 2 random valid commands and an SMC ring drain. Lifecycle is TEST_DEV and STATUS_RPT_DISABLE is random. DV shortcut: none beyond the shared harness forces. |Each protected-range access gets error code 0x06; valid-window writes read back; when status reporting is on, the READ_ACCESS_DENIED and WRITE_ACCESS_DENIED counts equal the rejected reads and writes (6 total) and no other SMC BL0 command error entry but CMD_FAILED exists; controller scratch 0 = 0xACAFACA1. |`fw: protected-access-rejected`, `fw: window-readback`, `fw: access-denied-counts`, `fw: random-commands`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values
-|`smc_occp_jump_invalid_region_test` |Controller firmware over I3C sends random valid commands, then JUMP to 0xC0060000, to 0xC00663FC and to 4 random aligned addresses in 0xC0060000 to 0xC00663FF, with GetVersion between groups, an SMC ring drain and random valid commands. STATUS_RPT_DISABLE is random. DV shortcut: none beyond the shared harness forces. |Each of the 6 JUMPs gets error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries of type 0x0F, firmware ID 0x03, value 0x202 when status reporting is on; random commands succeed; controller scratch 0 = 0xACAFACA1. |`fw: jump-rejected`, `fw: jump-read-failed-count`, `fw: getversion-recovery`, `fw: random-commands`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values
-|`smc_occp_validate_boot_invalid_region_test` |Controller firmware over I3C sends 5 random valid commands, then VALIDATE_BOOT at one aligned address up to 0x5000 below 0xC0066400, one up to 0x10 below it and 4 random aligned addresses in 0xC0060000 to 0xC00663FF, with GetVersion between groups, an SMC ring drain, 5 random commands, then one VALIDATE_BOOT at a valid SRAM address. STATUS_RPT_DISABLE is random. DV shortcut: none beyond the shared harness forces. |The 6 invalid VALIDATE_BOOT requests get error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries (0x0F, 0x03, 0x141) when status reporting is on; the final VALIDATE_BOOT gets a no-error response; controller scratch 0 = 0xACAFACA1. |`fw: validate-boot-rejected`, `fw: validate-address-failed-count`, `fw: validate-boot-accepted`, `fw: random-commands`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values
+|`smc_occp_unaligned_access_test` |Controller firmware over I3C sends 1 random valid command and GetVersion, then 4 WriteData (1 to 2035 bytes), 4 ReadData (1 to 16 bytes), 4 VALIDATE_BOOT and, in non-secure lifecycle, 4 JUMP, each at a random address in 0xC0066400 to 0xC0157000 that is not 4-byte aligned, with GetVersion after each group, then drains the SMC ring and sends 1 random valid command. DV shortcut: none beyond the shared harness forces. |Each unaligned request gets error code 0x06 (Invalid_Address); when STATUS_RPT_DISABLE is clear, the SMC ring holds 4 each of READ_ACCESS_DENIED (0x121), WRITE_ACCESS_DENIED (0x131), VALIDATE_ADDRESS_FAILED (0x141) and JUMP_READ_FAILED (0x202), and when it is set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch 0 = 0xACAFACA1. |`fw: invalid-address-code`, `fw: ring-record-counts`, `fw: smc-status-transport`, `fw: getversion-recovery`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values; `status-coordination.adoc`, Ring buffers
+|`smc_occp_secure_access_test` |Controller firmware over I3C sends WriteData and ReadData below 0xC0066400 and at 0xC0060000, write and read-back at 0xC0066400 plus offset and near 0xC0160000, 2 random protected-range accesses, 2 random valid commands and an SMC ring drain. Lifecycle is TEST_DEV and STATUS_RPT_DISABLE is random. DV shortcut: none beyond the shared harness forces. |Each protected-range access gets error code 0x06; valid-window writes read back; when STATUS_RPT_DISABLE is clear, the READ_ACCESS_DENIED and WRITE_ACCESS_DENIED counts equal the rejected reads and writes (6 total) and no other SMC BL0 command error entry but CMD_FAILED exists, and when it is set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch 0 = 0xACAFACA1. |`fw: protected-access-rejected`, `fw: window-readback`, `fw: access-denied-counts`, `fw: random-commands`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values
+|`smc_occp_jump_invalid_region_test` |Controller firmware over I3C sends random valid commands, then JUMP to 0xC0060000, to 0xC00663FC and to 4 random aligned addresses in 0xC0060000 to 0xC00663FF, with GetVersion between groups, an SMC ring drain and random valid commands. STATUS_RPT_DISABLE is random. DV shortcut: none beyond the shared harness forces. |Each of the 6 JUMPs gets error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries of type 0x0F, firmware ID 0x03, value 0x202 when STATUS_RPT_DISABLE is clear, and the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) when it is set; random commands succeed; controller scratch 0 = 0xACAFACA1. |`fw: jump-rejected`, `fw: jump-read-failed-count`, `fw: getversion-recovery`, `fw: random-commands`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values
+|`smc_occp_validate_boot_invalid_region_test` |Controller firmware over I3C sends 5 random valid commands, then VALIDATE_BOOT at one aligned address up to 0x5000 below 0xC0066400, one up to 0x10 below it and 4 random aligned addresses in 0xC0060000 to 0xC00663FF, with GetVersion between groups, an SMC ring drain, 5 random commands, then one VALIDATE_BOOT at a valid SRAM address. STATUS_RPT_DISABLE is random. DV shortcut: none beyond the shared harness forces. |The 6 invalid VALIDATE_BOOT requests get error code 0x06 (Invalid_Address); the SMC ring holds exactly 6 entries (0x0F, 0x03, 0x141) when STATUS_RPT_DISABLE is clear, and the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) when it is set; the final VALIDATE_BOOT gets a no-error response; controller scratch 0 = 0xACAFACA1. |`fw: validate-boot-rejected`, `fw: validate-address-failed-count`, `fw: validate-boot-accepted`, `fw: random-commands`, `fw: response-integrity` |`memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring-buffer status values
 |===
 
 *Checker contracts:*
@@ -554,24 +596,24 @@ verdict and every checker in its member row pass.
 |`smc_occp_mem_boundary_access_test` |`fw: boundary-scoreboard` |Each read byte equals the scoreboard byte for that address; unwritten bytes are expected to be 0.
 |`smc_occp_mem_boundary_access_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_unaligned_access_test` |`fw: invalid-address-code` |Each unaligned WriteData, ReadData, VALIDATE_BOOT and JUMP gets an Error-bit response with code exactly 0x06.
-|`smc_occp_unaligned_access_test` |`fw: ring-record-counts` |Counts of type 0x0F, firmware ID 0x03 records 0x121, 0x131, 0x141, 0x202 are 4 each.
-|`smc_occp_unaligned_access_test` |`fw: smc-status-transport` |Each GET_SMC_STATUS returns success with a 4-byte body; the body CRC is verified when the response sets Body CRC present.
+|`smc_occp_unaligned_access_test` |`fw: ring-record-counts` |With STATUS_RPT_DISABLE clear, counts of type 0x0F, firmware ID 0x03 records 0x121, 0x131, 0x141, 0x202 are 4 each; with it set, the drain GetStatus 0x8001 must return error 0x07.
+|`smc_occp_unaligned_access_test` |`fw: smc-status-transport` |With STATUS_RPT_DISABLE clear, each GET_SMC_STATUS returns success with a 4-byte body and the body CRC is verified when the response sets Body CRC present; with it set, the GET_SMC_STATUS must return error 0x07.
 |`smc_occp_unaligned_access_test` |`fw: getversion-recovery` |GetVersion before and after the injected or rejected requests returns success.
 |`smc_occp_unaligned_access_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_secure_access_test` |`fw: protected-access-rejected` |Each protected-range WriteData and ReadData gets an Error-bit response with code exactly 0x06.
 |`smc_occp_secure_access_test` |`fw: window-readback` |WriteData at 0xC0066400 plus offset and near 0xC0160000 succeeds and ReadData returns identical bytes.
-|`smc_occp_secure_access_test` |`fw: access-denied-counts` |0x121 and 0x131 ring counts match the rejections and no other non-CMD_FAILED error entry exists.
-|`smc_occp_secure_access_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0, command count and scoreboard read-back match when drawn.
+|`smc_occp_secure_access_test` |`fw: access-denied-counts` |With STATUS_RPT_DISABLE clear, 0x121 and 0x131 ring counts match the rejections and no other non-CMD_FAILED error entry exists; with it set, the drain GetStatus 0x8001 must return error 0x07.
+|`smc_occp_secure_access_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0 and scoreboard read-back match when drawn, the command count only with STATUS_RPT_DISABLE clear, and a drawn GetStatus returns error 0x07 with it set.
 |`smc_occp_secure_access_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_jump_invalid_region_test` |`fw: jump-rejected` |Each JUMP gets an Error-bit response with code exactly 0x06.
-|`smc_occp_jump_invalid_region_test` |`fw: jump-read-failed-count` |Ring entries of type 0x0F, firmware ID 0x03, value 0x202 equal 6.
+|`smc_occp_jump_invalid_region_test` |`fw: jump-read-failed-count` |With STATUS_RPT_DISABLE clear, ring entries of type 0x0F, firmware ID 0x03, value 0x202 equal 6; with it set, the drain GetStatus 0x8001 must return error 0x07.
 |`smc_occp_jump_invalid_region_test` |`fw: getversion-recovery` |GetVersion before and after the injected or rejected requests returns success.
-|`smc_occp_jump_invalid_region_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0, command count and scoreboard read-back match when drawn.
+|`smc_occp_jump_invalid_region_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0 and scoreboard read-back match when drawn, the command count only with STATUS_RPT_DISABLE clear, and a drawn GetStatus returns error 0x07 with it set.
 |`smc_occp_jump_invalid_region_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_validate_boot_invalid_region_test` |`fw: validate-boot-rejected` |Each invalid VALIDATE_BOOT gets an Error-bit response with code exactly 0x06.
-|`smc_occp_validate_boot_invalid_region_test` |`fw: validate-address-failed-count` |Ring entries of type 0x0F, firmware ID 0x03, value 0x141 equal 6.
+|`smc_occp_validate_boot_invalid_region_test` |`fw: validate-address-failed-count` |With STATUS_RPT_DISABLE clear, ring entries of type 0x0F, firmware ID 0x03, value 0x141 equal 6; with it set, the drain GetStatus 0x8001 must return error 0x07.
 |`smc_occp_validate_boot_invalid_region_test` |`fw: validate-boot-accepted` |VALIDATE_BOOT at an allowed SRAM address returns a response without the Error bit.
-|`smc_occp_validate_boot_invalid_region_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0, command count and scoreboard read-back match when drawn.
+|`smc_occp_validate_boot_invalid_region_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0 and scoreboard read-back match when drawn, the command count only with STATUS_RPT_DISABLE clear, and a drawn GetStatus returns error 0x07 with it set.
 |`smc_occp_validate_boot_invalid_region_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |===
 
@@ -609,11 +651,11 @@ verdict and every checker in its member row pass.
 [cols="3,4,4,3,3",options="header"]
 |===
 |Test |Stimulus |Expected |Checkers |Specification
-|`smc_occp_invalid_cmd_test` |Controller firmware over I3C sends a random valid command, then 3 frames with a valid header CRC and random body: invalid MsgID (4 to 255), invalid AppID (2 to 255), and both, each followed by GetVersion; then a random command and an SMC ring drain. DV shortcut: none beyond the shared harness forces. |Each invalid frame gets an error response with code 0x02 (invalid MsgID) or 0x01 (invalid AppID or both); each GetVersion succeeds; when status reporting is on, the SMC ring holds 6 entries of type 0x0F, firmware ID 0x03, value 0x101 under mask 0xF01 (CMD_UNKNOWN and CMD_FAILED, 2 per rejected frame); controller scratch 0 = 0xACAFACA1. |`fw: expected-error-code`, `fw: getversion-recovery`, `fw: cmd-unknown-count`, `fw: random-commands`, `fw: response-integrity` |`occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, Applications and commands; `occp-protocol.adoc`, GetStatus; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, Integrity checks; `occp-processing.adoc`, Receive and dispatch; `occp-processing.adoc`, Failed-frame cleanup; `status-coordination.adoc`, Ring-buffer status values; `interfaces.adoc`, GPIO side effects
+|`smc_occp_invalid_cmd_test` |Controller firmware over I3C sends a random valid command, then 3 frames with a valid header CRC and random body: invalid MsgID (4 to 255), invalid AppID (2 to 255), and both, each followed by GetVersion; then a random command and an SMC ring drain. DV shortcut: none beyond the shared harness forces. |Each invalid frame gets an error response with code 0x02 (invalid MsgID) or 0x01 (invalid AppID or both); each GetVersion succeeds; when STATUS_RPT_DISABLE is clear, the SMC ring holds 6 entries of type 0x0F, firmware ID 0x03, value 0x101 under mask 0xF01 (CMD_UNKNOWN and CMD_FAILED, 2 per rejected frame), and when it is set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch 0 = 0xACAFACA1. |`fw: expected-error-code`, `fw: getversion-recovery`, `fw: cmd-unknown-count`, `fw: random-commands`, `fw: response-integrity` |`occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, Applications and commands; `occp-protocol.adoc`, GetStatus; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, Integrity checks; `occp-processing.adoc`, Receive and dispatch; `occp-processing.adoc`, Failed-frame cleanup; `status-coordination.adoc`, Ring-buffer status values; `interfaces.adoc`, GPIO side effects
 |`smc_occp_invalid_length_field_test` |Controller firmware over I3C sends 1 random valid command and GetVersion, then 4 random commands with an invalid header Length (WriteData 0 to 11; ReadData 0, 1 to 11 or 13 to 256; GetStatus-family 0, 1 or 3 to 2047; GetVersion 1 to 256) and a recomputed valid header CRC, with random fill when the Length exceeds the real body, then GetVersion, then a JUMP (non-secure only) and a VALIDATE_BOOT at 0xC0066400 with Length 0, 1 to 9 or 11 to 256, then 1 random valid command, GetVersion and 1 random valid command. DV shortcut: none beyond the shared harness forces. |Every injected request gets a response with the Error bit set. Every valid GetVersion and random valid command succeeds; controller scratch 0 = 0xACAFACA1. |`fw: error-under-injection`, `fw: getversion-recovery`, `fw: random-commands`, `fw: response-integrity` |`occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, GetStatus; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `occp-processing.adoc`, Failed-frame cleanup
 |`smc_occp_undersize_header_test` |Controller firmware over I3C sends 5 random valid commands and GetVersion, then 4 random commands whose frames stop after 1 to 7 bytes of the 8-byte header (one truncated frame per command), then GetVersion and 5 random valid commands. DV shortcut: none beyond the shared harness forces. |Each truncated header gets an error response with code 0x00010000 (Incomplete_msg); GetVersion before and after succeeds; random valid commands succeed with version 1.0.0 and a matching command count when drawn; controller scratch 0 = 0xACAFACA1. |`fw: incomplete-msg-code`, `fw: getversion-recovery`, `fw: random-commands`, `fw: response-integrity` |`occp-protocol.adoc`, I2C and I3C transport binding; `occp-protocol.adoc`, Error responses
 |`smc_occp_zero_length_rw_test` |Controller firmware over I3C sends 5 random valid commands, then 10 WriteData or ReadData requests to one aligned SRAM address with header Length 12 and a data size of 0, then 5 random valid commands. The frame Length field is never 0. DV shortcut: none beyond the shared harness forces. |Each zero-size WriteData and ReadData gets an error response with code 0x03 (Invalid_header); later random valid commands succeed, and when a command-count check is drawn with status reporting on, the count includes the 10 rejected requests; controller scratch 0 = 0xACAFACA1. |`fw: invalid-header-code`, `fw: random-commands`, `fw: response-integrity` |`occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, Error responses
-|`smc_occp_crc_err_injection_test` |With {plus}FORCE_STATUS_REPORTING, controller firmware over I3C sends 5 random valid commands, 6 cases of 2 commands with bit flips: 1-3 or 5-8 in header bytes 1-7, 1-3 or (5-8 CRC-8, 7-16 CRC-32) in the body, 1-8 in the header CRC, and in the body CRC, with GetVersion after cases 2, 4 and 6, then 5 random valid commands. DV shortcut: none beyond the shared harness forces. Each command is drawn from GetVersion to JUMP (header cases) or the GetStatus family to JUMP (body cases). |Header 1-3 flips and header CRC flips get error 0x04 (Corrupt_header); body 1-3 flips (0x07 also accepted) and body CRC flips get 0x05 (Corrupt_Data); header 5-8 flips accept 0x04 or a normal response and undetectable body flips accept 0x05, 0x07 or a normal response; controller scratch 0 = 0xACAFACA1. |`fw: header-corruption-detected`, `fw: body-corruption-detected`, `fw: service-after-injection`, `fw: response-integrity` |`occp-protocol.adoc`, Integrity checks; `occp-protocol.adoc`, Error responses; `occp-processing.adoc`, Failed-frame cleanup
+|`smc_occp_crc_err_injection_test` |Controller firmware over I3C sends 5 random valid commands, 6 cases of 2 commands with bit flips: 1-3 or 5-8 in header bytes 1-7, 1-3 or (5-8 CRC-8, 7-16 CRC-32) in the body, 1-8 in the header CRC, and in the body CRC, with GetVersion after cases 2, 4 and 6, then 5 random valid commands. STATUS_RPT_DISABLE is random per seed. DV shortcut: none beyond the shared harness forces. Each command is drawn from GetVersion to JUMP (header cases) or the GetStatus family to JUMP (body cases). |Header 1-3 flips and header CRC flips get error 0x04 (Corrupt_header); body 1-3 flips (0x07 also accepted) and body CRC flips get 0x05 (Corrupt_Data); header 5-8 flips accept 0x04 or a normal response and undetectable body flips accept 0x05, 0x07 or a normal response; with STATUS_RPT_DISABLE set, every GetStatus whose header the ROM accepts gets 0x07 (Unsupported_StatusID), including one with a corrupted body or body CRC; controller scratch 0 = 0xACAFACA1. |`fw: header-corruption-detected`, `fw: body-corruption-detected`, `fw: service-after-injection`, `fw: response-integrity` |`occp-protocol.adoc`, Integrity checks; `occp-protocol.adoc`, Error responses; `occp-processing.adoc`, Failed-frame cleanup
 |`smc_occp_undersize_body_test` |Controller firmware (I3C): 10 random commands cut inside the body or body CRC (GET_VERSION excluded); truncated ExecuteImage and AuthenticateImage to 0xC0066400; 5 random valid commands. STATUS_RPT_DISABLE is random per seed. DV shortcut: none beyond the shared harness. |Each truncated request returns an error response (length 4) with code 0x00010000 (Incomplete_msg), or 0x00000007 (Unsupported_StatusID) for a GetStatus when the random STATUS_RPT_DISABLE strap is set; every later valid command succeeds (GET_VERSION 1.0.0 when drawn, scoreboard data matches); controller scratch0 = 0xACAFACA1. |`fw: response-integrity`, `fw: random-command-result`, `fw: scoreboard-read-back`, `fw: truncated-jump-validate-boot` |`occp-protocol.adoc`, I2C and I3C transport binding; `occp-protocol.adoc`, Error responses
 |`smc_occp_oversize_body_test` |Controller firmware (I3C): 5 random valid commands and GET_VERSION; 4 random commands with 1 to 64 extra bytes; a valid GET_VERSION; oversize ExecuteImage, AuthenticateImage (0xC0066400) and GET_VERSION; 5 random valid commands. STATUS_RPT_DISABLE random. DV shortcut: none beyond the shared harness. |Each oversize request returns an error response (length 4) with code 0x00010001 (Oversize_msg), or 0x00000007 (Unsupported_StatusID) for a GetStatus when the random STATUS_RPT_DISABLE strap is set; ExecuteImage and AuthenticateImage return the error, so the target neither jumps nor parks; valid commands succeed; controller scratch0 = 0xACAFACA1. |`fw: response-integrity`, `fw: random-command-result`, `fw: scoreboard-read-back`, `fw: explicit-oversize-commands` |`occp-protocol.adoc`, I2C and I3C transport binding; `occp-protocol.adoc`, Error responses; `occp-protocol.adoc`, GetVersion; `occp-processing.adoc`, Failed-frame cleanup
 |`smc_occp_unsupported_status_id_test` |Controller firmware (I3C): 5 random valid commands and GET_VERSION; 4 GetStatus requests whose 16-bit status ID is random outside {0x0000-0x0003, 0x8000, 0x8001}, with a randomly present, correct body CRC; a valid GET_VERSION; 5 random valid commands. STATUS_RPT_DISABLE random. DV shortcut: none beyond the shared harness. |Each injected GetStatus returns an error response (Error bit, length 4) with code 0x00000007 (Unsupported_StatusID); all valid commands succeed; controller scratch0 = 0xACAFACA1. |`fw: response-integrity`, `fw: unsupported-id-loop`, `fw: random-command-result` |`occp-protocol.adoc`, GetStatus; `occp-protocol.adoc`, Error responses
@@ -626,8 +668,8 @@ verdict and every checker in its member row pass.
 |Test |Checker |Contract
 |`smc_occp_invalid_cmd_test` |`fw: expected-error-code` |Each invalid frame gets an Error-bit response with code 0x02 (MsgID mode) or 0x01 (AppID and both modes).
 |`smc_occp_invalid_cmd_test` |`fw: getversion-recovery` |GetVersion before and after the injected or rejected requests returns success.
-|`smc_occp_invalid_cmd_test` |`fw: cmd-unknown-count` |Ring entries of type 0x0F, firmware ID 0x03, value 0x101 under mask 0xF01 equal 6.
-|`smc_occp_invalid_cmd_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0, command count and scoreboard read-back match when drawn.
+|`smc_occp_invalid_cmd_test` |`fw: cmd-unknown-count` |With STATUS_RPT_DISABLE clear, ring entries of type 0x0F, firmware ID 0x03, value 0x101 under mask 0xF01 equal 6; with it set, the drain GetStatus 0x8001 must return error 0x07.
+|`smc_occp_invalid_cmd_test` |`fw: random-commands` |Random valid commands succeed; GetVersion = 1.0.0 and scoreboard read-back match when drawn, the command count only with STATUS_RPT_DISABLE clear, and a drawn GetStatus returns error 0x07 with it set.
 |`smc_occp_invalid_cmd_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_invalid_length_field_test` |`fw: error-under-injection` |A response with the Error bit clear during length injection fails the test.
 |`smc_occp_invalid_length_field_test` |`fw: getversion-recovery` |GetVersion before and after the injected or rejected requests returns success.
@@ -641,8 +683,8 @@ verdict and every checker in its member row pass.
 |`smc_occp_zero_length_rw_test` |`fw: random-commands` |Random valid commands succeed; version, scoreboard and a command count that includes the 10 rejected requests match when drawn.
 |`smc_occp_zero_length_rw_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_crc_err_injection_test` |`fw: header-corruption-detected` |Detectable or CRC-byte header corruption gets an Error-bit response with code 0x04; a no-error response fails.
-|`smc_occp_crc_err_injection_test` |`fw: body-corruption-detected` |Detectable or CRC body corruption gets error 0x05 (0x07 also accepted when detectable); a no-error response or other code fails.
-|`smc_occp_crc_err_injection_test` |`fw: service-after-injection` |GetVersion after each case pair succeeds; the final random valid commands succeed, with version, scoreboard and count checks when drawn.
+|`smc_occp_crc_err_injection_test` |`fw: body-corruption-detected` |Detectable or CRC body corruption gets error 0x05 (0x07 also accepted when detectable); with STATUS_RPT_DISABLE set, a body-corrupted GetStatus must get 0x07 instead; a no-error response or other code fails.
+|`smc_occp_crc_err_injection_test` |`fw: service-after-injection` |GetVersion after each case pair succeeds; the final random valid commands succeed, with version and scoreboard checks when drawn, count checks only with STATUS_RPT_DISABLE clear, and error 0x07 for a drawn GetStatus with it set.
 |`smc_occp_crc_err_injection_test` |`fw: response-integrity` |Each response passes header CRC-8 and body CRC when present, and its Error bit and code match the expected outcome.
 |`smc_occp_undersize_body_test` |`fw: response-integrity` |Response header CRC-8 verifies; an error response has length 4, its body CRC verifies when the response flags one, and its code matches the expected code; an unexpected success fails.
 |`smc_occp_undersize_body_test` |`fw: random-command-result` |Any failed random command fails the test; clean-phase GET_VERSION must be 1.0.0 and, with status reporting enabled, GET_OCCP_COMMAND_COUNT must match the model.
@@ -654,7 +696,7 @@ verdict and every checker in its member row pass.
 |`smc_occp_oversize_body_test` |`fw: explicit-oversize-commands` |Explicit GET_VERSION, ExecuteImage and AuthenticateImage return success when clean or Oversize_msg when injected.
 |`smc_occp_unsupported_status_id_test` |`fw: response-integrity` |Response header CRC-8 verifies; an error response has length 4, its body CRC verifies when the response flags one, and its code matches the expected code; an unexpected success fails.
 |`smc_occp_unsupported_status_id_test` |`fw: unsupported-id-loop` |Each injected GetStatus must return an error response with code Unsupported_StatusID; any other result fails.
-|`smc_occp_unsupported_status_id_test` |`fw: random-command-result` |Any failed random command fails the test; clean-phase GET_VERSION must be 1.0.0 and, with status reporting enabled, GET_OCCP_COMMAND_COUNT must match the model.
+|`smc_occp_unsupported_status_id_test` |`fw: random-command-result` |Any failed random command fails the test; clean-phase GET_VERSION must be 1.0.0 and, with STATUS_RPT_DISABLE clear, GET_OCCP_COMMAND_COUNT must match the model; with it set, a drawn GetStatus must return error 0x07 (Unsupported_StatusID).
 |===
 
 [[smc-rom-vplan-latch]]
@@ -691,8 +733,8 @@ verdict and every checker in its member row pass.
 [cols="3,4,4,3,3",options="header"]
 |===
 |Test |Stimulus |Expected |Checkers |Specification
-|`smc_occp_interface_latch_test` |Controller firmware picks I2C interfaces A and B at random; 1 random valid command on A; 1 on B with a short receive timeout; GET_OCCP_COMMAND_COUNT on A; 1 more on A. {plus}FORCE_STATUS_REPORTING pins status reporting on. DV shortcut: {plus}fuse_i2c_ids puts two I2C target addresses in the target eFuse and controller scratch 4. |Commands on A succeed; the command on B gets no response (I2C_TIMEOUT); GET_OCCP_COMMAND_COUNT on A bits 7:0 = 1, so B was not processed; controller scratch0 = 0xACAFACA1. |`fw: b-ignored`, `fw: command-count-unchanged`, `fw: response-integrity` |`occp-processing.adoc`, Polling and latching; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Software OCCP status word; `interfaces.adoc`, Address selection
-|`smc_occp_interface_unlatch_test` |Controller firmware picks distinct I2C interfaces A and B: 1 valid command on A; 5 invalid commands on A from 13 error cases (CRC, alignment, range, length, size, AppID/MsgID, status ID); 1 valid on B; 5 invalid on B; 1 valid on A. {plus}FORCE_STATUS_REPORTING. DV shortcut: {plus}fuse_i2c_ids sets the target I2C addresses. |Each invalid command returns its case error code (body-CRC cases also accept 0x07; any error for the invalid-length case); the valid command on B after A's 5 errors and on A after B's 5 errors get correct responses; controller scratch0 = 0xACAFACA1. |`fw: response-integrity`, `fw: invalid-command-result`, `fw: random-command-result`, `fw: b-reachable-after-unlatch` |`occp-processing.adoc`, Polling and latching; `occp-protocol.adoc`, Error responses; `interfaces.adoc`, Address selection
+|`smc_occp_interface_latch_test` |Controller firmware picks I2C interfaces A and B at random; 1 random valid command on A; 1 on B with a short receive timeout; GET_OCCP_COMMAND_COUNT on A; 1 more on A. STATUS_RPT_DISABLE is random per seed. DV shortcut: {plus}fuse_i2c_ids puts two I2C target addresses in the target eFuse and controller scratch 4. |Commands on A succeed, except that with STATUS_RPT_DISABLE set a random GetStatus-family command on A must return error 0x07; the command on B gets no response (I2C_TIMEOUT); with STATUS_RPT_DISABLE clear, GET_OCCP_COMMAND_COUNT on A bits 7:0 = 1, so B was not processed, and with it set, GET_OCCP_COMMAND_COUNT returns error 0x07 (Unsupported_StatusID); controller scratch0 = 0xACAFACA1. |`fw: b-ignored`, `fw: command-count-unchanged`, `fw: response-integrity` |`occp-processing.adoc`, Polling and latching; `occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Software OCCP status word; `interfaces.adoc`, Address selection
+|`smc_occp_interface_unlatch_test` |Controller firmware picks distinct I2C interfaces A and B: 1 valid command on A; 5 invalid commands on A from 13 error cases (CRC, alignment, range, length, size, AppID/MsgID, status ID); 1 valid on B; 5 invalid on B; 1 valid on A. STATUS_RPT_DISABLE is random per seed; with it set, each valid command is GetVersion. DV shortcut: {plus}fuse_i2c_ids sets the target I2C addresses. |Each invalid command returns its case error code (body-CRC cases also accept 0x07; any error for the invalid-length case); with STATUS_RPT_DISABLE set, every GetStatus whose header the ROM accepts returns error 0x07 (Unsupported_StatusID), including one with a corrupted body, and the valid commands are GetVersion; the valid command on B after A's 5 errors and on A after B's 5 errors get correct responses; controller scratch0 = 0xACAFACA1. |`fw: response-integrity`, `fw: invalid-command-result`, `fw: random-command-result`, `fw: b-reachable-after-unlatch` |`occp-processing.adoc`, Polling and latching; `occp-protocol.adoc`, Error responses; `interfaces.adoc`, Address selection
 |===
 
 *Checker contracts:*
@@ -701,11 +743,11 @@ verdict and every checker in its member row pass.
 |===
 |Test |Checker |Contract
 |`smc_occp_interface_latch_test` |`fw: b-ignored` |A response on B, instead of the expected I2C timeout, fails the test.
-|`smc_occp_interface_latch_test` |`fw: command-count-unchanged` |GET_OCCP_COMMAND_COUNT on A succeeds and its low byte equals the model count; a processed B command adds 1.
+|`smc_occp_interface_latch_test` |`fw: command-count-unchanged` |With STATUS_RPT_DISABLE clear, GET_OCCP_COMMAND_COUNT on A succeeds and its low byte equals the model count, and a processed B command adds 1; with it set, the request must return error 0x07.
 |`smc_occp_interface_latch_test` |`fw: response-integrity` |Response header CRC-8 verifies; an error response has length 4, its body CRC verifies when the response flags one, and its code matches the expected code; an unexpected success fails.
 |`smc_occp_interface_unlatch_test` |`fw: response-integrity` |Response header CRC-8 verifies; an error response has length 4, its body CRC verifies when the response flags one, and its code matches the expected code; an unexpected success fails.
 |`smc_occp_interface_unlatch_test` |`fw: invalid-command-result` |Each invalid command must return its expected error response; a missing or wrong error fails the test.
-|`smc_occp_interface_unlatch_test` |`fw: random-command-result` |Valid commands on B and A after each unlatch succeed; GET_OCCP_COMMAND_COUNT matches the handed-over model count when drawn.
+|`smc_occp_interface_unlatch_test` |`fw: random-command-result` |Valid commands on B and A after each unlatch succeed; with STATUS_RPT_DISABLE clear, GET_OCCP_COMMAND_COUNT matches the handed-over model count when drawn; with it set, the valid commands are GetVersion, so no rejected GetStatus counts toward the five-error unlatch.
 |`smc_occp_interface_unlatch_test` |`fw: b-reachable-after-unlatch` |B's receive has no timeout, so a ROM still latched to A hangs the controller until the TB completion timeout.
 |===
 
@@ -714,16 +756,18 @@ verdict and every checker in its member row pass.
 
 *Tests:* 5.
 
-*Base:* `hw/sys/smc/dv/cocotb/tests/smc_sep_ring_buffer_test.py` (SEP ring buffer), `hw/sys/smc/dv/cocotb/tests/smc_occp_rom_only_test.py` (the others).
+*Base:* `hw/sys/smc/dv/cocotb/tests/smc_sep_ring_buffer_test.py` (SEP ring buffer), `hw/sys/smc/dv/cocotb/tests/smc_occp_boot_sequence_status_test.py` (boot-mode status), `hw/sys/smc/dv/cocotb/tests/smc_occp_rom_only_test.py` (the others).
 
-*Objective:* The ROM records boot and command status in the SMC status ring buffer and serves it through GetStatus, and it serves the SEP ring buffer through GetStatus ID 0x8000 in order, including the full and empty cases.
+*Objective:* The ROM records boot and command status in the SMC status ring buffer and serves it through GetStatus, with boot-mode entries that match the sampled role and recovery straps, and it serves the SEP ring buffer through GetStatus ID 0x8000 in order, including the full and empty cases. A SEP terminal error in the SEP ring does not park hart 0 or end OCCP service on the primary flow.
 
 *Procedure:*
 
-. Bring up both instances with status reporting forced on where the member sets `+FORCE_STATUS_REPORTING`.
-. For the SEP ring buffer: wait for the target to publish the buffer, then write a seeded number of entries into the target buffer and into a controller-side shadow copy.
-. The controller reads the buffer through GetStatus ID 0x8001 (SMC) or 0x8000 (SEP) and compares every entry with its model.
+. Bring up both instances with `STATUS_RPT_DISABLE` drawn from the seed, or cleared by `+FORCE_STATUS_REPORTING` for the boot-mode and nominal SEP members.
+. For the boot-mode status: draw the target `PRIMARY_CHIPLET` and `BOOT_RECOVERY` from the seed, drive `chiplet_is_primary` to match, read the captured straps and SMC_ATTRIBUTES back before the target fetches, and pass the selection to the controller in its scratch 14.
+. For the SEP ring buffer: wait for the target to publish the buffer and for the controller's first GetVersion, then write a seeded number of entries into the target buffer and into a controller-side shadow copy; with `+sep_rb_terminal` the first two are the named control and terminal entries.
+. The controller reads the buffer through GetStatus ID 0x8001 (SMC) or 0x8000 (SEP) and, with `STATUS_RPT_DISABLE` clear, compares every entry with its model. With it set, every GetStatus must return error 0x07 (Unsupported_StatusID) and no entry is compared.
 . The controller writes `TEST_PASS` or `TEST_FAIL` to scratch 0. The driver polls both instances.
+. For the boot-mode status, read the controller's drain summary from its scratch 15 and record the seed's cell in `smc_rom_mode_coverage.json`. For `+sep_rb_terminal`, read the controller's read-backs and progress word, then the target's scratch 3, 9, POST word and hart 0 PC.
 
 *Checkers:*
 
@@ -731,10 +775,17 @@ verdict and every checker in its member row pass.
 |===
 |Checker |Contract
 |`CHK-OCCP-SANITY` |`TEST_PASS` (`0xACAFACA1`) appears in scratch 0 of either instance before the poll budget ends, and `TEST_FAIL` appears in neither. The production ROM has no writer for this code, so it comes from the controller firmware.
+|`CHK-ROM-STATUS-MODE-STIMULUS` |`smc_occp_boot_sequence_status_test`: before the target fetches, its captured PRIMARY_CHIPLET and BOOT_RECOVERY equal the draw, STATUS_RPT_DISABLE reads 0 and SMC_ATTRIBUTES.chiplet_is_primary equals PRIMARY_CHIPLET.
+|`CHK-ROM-STATUS-RAW-SEQUENCE` |`smc_occp_boot_sequence_status_test`: the controller drained the ring once, logged every raw word, and its summary holds the drain magic and the expected number of boot entries.
+|`CHK-ROM-STATUS-REQUIRED-FORBIDDEN` |`smc_occp_boot_sequence_status_test`: the mode codes in the drain match the draw exactly, and no forbidden boot code appears.
+|`CHK-ROM-STATUS-FORMAT-ORDER` |`smc_occp_boot_sequence_status_test`: every drained entry carries firmware ID 0x03 and a defined type, and the boot entries equal the expected list in order.
 |`CHK-SEP-RING-BUFFER` |Required by the three `smc_sep_ring_buffer*` tests: `TEST_PASS` appears in scratch 0 of either instance before the poll budget ends, and `TEST_FAIL` appears in neither.
+|`CHK-SEP-TERMINAL-ENTRY` |`smc_sep_ring_buffer_test`: the controller read back 0x01010001 and then 0x0F01000E, each equal to the shadow entry.
+|`CHK-SEP-TERMINAL-OCCP-LIVE` |`smc_sep_ring_buffer_test`: GetVersion returned 1.0.0 before any entry was written and again after the drain (controller progress word 0x5EB00004).
+|`CHK-SEP-TERMINAL-NO-PARK` |`smc_sep_ring_buffer_test`: target scratch 3 is not 0x50524B31, scratch 9 bit 4 is clear, no hart-0 PC sampled over 4000 cycles is in `smc_park_hart0_wfi`, and the POST phase is OCCP_PROC.
 |===
 
-*Anti-vacuity:* Expected entries come from the controller model or the testbench-written shadow copy, not from the ROM. The drain loop requires the empty-buffer reads to return zero.
+*Anti-vacuity:* Expected entries come from the controller model, the testbench-written shadow copy, or the specification's boot order, not from the ROM. The drain loop requires the empty-buffer reads to return zero when `STATUS_RPT_DISABLE` is clear. With it set, each read must return error 0x07, so a zero word passes no check. The boot-mode drain is the only read of the ring, so an empty second read cannot supply the proof, and the testbench compares the mode codes the firmware saw against its own draw. A coverage cell is counted only from a PASS run.
 
 *Observation:* Scratch 0 of both instances, the target POST word in scratch 1, the virtual consoles of both instances on scratch 2, and the I3C and I2C SCL and START counters. Target scratch 9 and 11, and the SEP ring-buffer head and tail in target SRAM.
 
@@ -743,11 +794,11 @@ verdict and every checker in its member row pass.
 [cols="3,4,4,3,3",options="header"]
 |===
 |Test |Stimulus |Expected |Checkers |Specification
-|`smc_occp_boot_sequence_status_test` |With {plus}FORCE_STATUS_REPORTING, controller firmware over I3C reads GetStatus 0x8001 until 20 zeros in a row (200 max), reads 0x8001 20 more times, sends GetStatus IDs 0 to 3 ten times, a WriteData with write size 0 (Length 12) and a protected 8-byte WriteData, reads 0x8001 up to 20 times until zero, then writes its verdict to target scratch 0. DV shortcut: none beyond the shared harness forces. |The drain returns at least one non-zero entry and contains SMC BL0 (firmware ID 0x03) values ROM_STARTED 0x001, BOOT_START 0x010 to 0x01F, OCCP_READY 0x031 and BOOT_COMPLETE 0x050, with no OCCP_INIT_FAILED 0x030 or UNEXPECTED_EXIT 0x0FF; target and controller scratch 0 = 0xACAFACA1. |`fw: drain-returns-data`, `fw: required-boot-codes`, `fw: format-compliance`, `fw: forbidden-codes`, `fw: response-integrity` |`status-coordination.adoc`, Ring-buffer status values; `status-coordination.adoc`, Ring buffers; `occp-protocol.adoc`, GetStatus; `boot-flow.adoc`, C boot phases
-|`smc_occp_ring_buffer_stress_test` |Controller firmware (I3C) makes ROM ring entries by repeating one failing command per fill call, drawn at random from 4 (unaligned WRITE, protected WRITE, protected READ, AuthenticateImage at all-ones), with GET_VERSION after every 4 failures. Phases: fill 32, drain; wrap past 511, drain; fill 160, read 60, fill 200, drain; read empty. With {plus}FORCE_STATUS_REPORTING. DV shortcut: none beyond the shared harness. |Each failing command adds 2 entries (type 0x0F, fw_id 0x03), 0x131, 0x331, 0x321 or 0x141, then 0x112 (CMD_FAILED); GetStatus 0x8001 returns them oldest-first; after the wrap only the newest 511 remain; empty reads return 0; controller scratch0 = 0xACAFACA1. |`fw: ring-entry-compare`, `fw: empty-buffer`, `fw: command-must-fail`, `fw: get-version-keep-alive` |`status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Ring-buffer status values; `occp-protocol.adoc`, GetStatus; `memory-security.adoc`, OCCP memory-access policy
-|`smc_sep_ring_buffer_test` |Controller firmware (I3C) sends min(N,511) GetStatus 0x8000 requests, N read from controller scratch 12, then 10 more; {plus}FORCE_STATUS_REPORTING. N = 1 to 512 entries from the seed. DV shortcut: no SEP; a cocotb driver writes N words into the target SEP ring buffer over AXI, moves head and tail itself and mirrors them to a controller shadow. |Target scratch 9 bits 0 and 2 set, scratch 11 valid, head == tail at handover; min(N,511) GetStatus 0x8000 responses are non-error and equal the written words in FIFO order; 10 more return 0; controller scratch0 = 0xACAFACA1. |`tb: sep-buffer-ready`, `tb: sep-buffer-offset-valid`, `tb: sep-buffer-empty-at-handover`, `fw: get-sep-status-entry`, `fw: drained-buffer-empty`, `fw: tb-ready-handshake`, `tb: scratch0-verdict-poll` |`status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetStatus
-|`smc_sep_ring_buffer_overflow_test` |Controller firmware (I3C) sends min(N,511) = 511 GetStatus 0x8000 requests, N = 600 read from controller scratch 12, then 10 more; {plus}FORCE_STATUS_REPORTING. {plus}sep_rb_entries=600 overfills the 512-slot buffer. DV shortcut: no SEP; a cocotb driver writes 600 words into the target SEP buffer over AXI, moves head and tail on wrap itself and mirrors them to a controller shadow. |511 GetStatus 0x8000 responses succeed and equal the newest 511 written entries (0-based writes 89 to 599) in write order; the next 10 return 0; controller scratch0 = 0xACAFACA1. |`tb: sep-buffer-ready`, `tb: sep-buffer-offset-valid`, `tb: sep-buffer-empty-at-handover`, `fw: get-sep-status-entry`, `fw: drained-buffer-empty`, `fw: tb-ready-handshake`, `tb: scratch0-verdict-poll` |`status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetStatus
-|`smc_sep_ring_buffer_underflow_test` |Controller firmware (I3C) sends 10 GetStatus 0x8000 requests to an empty SEP buffer. {plus}FORCE_STATUS_REPORTING enables status reporting. {plus}sep_rb_entries=0. DV shortcut: no SEP; the cocotb SEP stand-in writes no entries but still publishes count 0 and the ready magic to the controller. |Head == tail at handover; all 10 GetStatus 0x8000 responses are non-error, CRC-valid and carry value 0x00000000; controller scratch0 = 0xACAFACA1. |`tb: sep-buffer-ready`, `tb: sep-buffer-offset-valid`, `tb: sep-buffer-empty-at-handover`, `fw: drained-buffer-empty`, `fw: tb-ready-handshake`, `tb: scratch0-verdict-poll` |`occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Scratch registers
+|`smc_occp_boot_sequence_status_test` |`reseed = 32`; each seed draws the target PRIMARY_CHIPLET and BOOT_RECOVERY. Controller firmware over I3C checks the mode word 0x3299000x in its scratch 14, reads GetStatus 0x8001 until it returns 0 (64 entries at most) and keeps every raw entry, grades that one drain, writes its summary to its scratch 15, sends GetStatus IDs 0 to 3 ten times, then writes its verdict to target scratch 0. {plus}FORCE_STATUS_REPORTING. DV shortcut: TB forces the target straps and drives chiplet_is_primary. |Per seed the target PRIMARY_CHIPLET and BOOT_RECOVERY straps and SMC_ATTRIBUTES.chiplet_is_primary read back as drawn and STATUS_RPT_DISABLE reads 0; the one GetStatus 0x8001 drain holds, each with firmware ID 0x03, exactly ROM_STARTED 0x001, COORDINATION_ACTIVE 0x040, ROM_STARTED 0x001, PRIMARY_MODE 0x021 or SECONDARY_MODE 0x022 as the strap selects, RECOVERY_MODE 0x020 (Warning) only with the recovery strap, BOOT_START 0x010, OCCP_READY 0x031 and BOOT_COMPLETE 0x050 (Status unless noted), in that order, with no other boot code and no command report before BOOT_COMPLETE; ten composite GetStatus (IDs 0 to 3) succeed; target and controller scratch 0 = 0xACAFACA1; the passing seeds of one run hit all four {primary, recovery} cells. |`CHK-OCCP-SANITY`, `CHK-ROM-STATUS-MODE-STIMULUS`, `CHK-ROM-STATUS-RAW-SEQUENCE`, `CHK-ROM-STATUS-REQUIRED-FORBIDDEN`, `CHK-ROM-STATUS-FORMAT-ORDER`, `fw: mode-word`, `fw: single-drain`, `fw: format`, `fw: required-forbidden`, `fw: exact-order`, `fw: composite-status` |`status-coordination.adoc`, Ring-buffer status values; `status-coordination.adoc`, Ring buffers; `occp-protocol.adoc`, GetStatus; `boot-flow.adoc`, C boot phases
+|`smc_occp_ring_buffer_stress_test` |Controller firmware (I3C) makes ROM ring entries by repeating one failing command per fill call, drawn at random from 4 (unaligned WRITE, protected WRITE, protected READ, AuthenticateImage at all-ones), with GET_VERSION after every 4 failures. Phases: fill 32, drain; wrap past 511, drain; fill 160, read 60, fill 200, drain; read empty. STATUS_RPT_DISABLE is random per seed. DV shortcut: none beyond the shared harness. |Each failing command adds 2 entries (type 0x0F, fw_id 0x03), 0x131, 0x331, 0x321 or 0x141, then 0x112 (CMD_FAILED); with STATUS_RPT_DISABLE clear, GetStatus 0x8001 returns them oldest-first, after the wrap only the newest 511 remain and empty reads return 0; with it set, every GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) and no entry is checked; controller scratch0 = 0xACAFACA1. |`fw: ring-entry-compare`, `fw: empty-buffer`, `fw: command-must-fail`, `fw: get-version-keep-alive` |`status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Ring-buffer status values; `occp-protocol.adoc`, GetStatus; `memory-security.adoc`, OCCP memory-access policy
+|`smc_sep_ring_buffer_test` |Controller firmware (I3C) sends GetVersion, waits for the TB, sends min(N,511) GetStatus 0x8000 requests, N read from controller scratch 12, GetVersion again, then 10 more GetStatus 0x8000. {plus}FORCE_STATUS_REPORTING and {plus}sep_rb_terminal. N = 2 to 511 entries from the seed, so the ring keeps both named entries; entries 0 and 1 are 0x01010001 (SEP BL0 status) and 0x0F01000E (SEP BL0 error, signature failure). DV shortcut: no SEP; a cocotb driver writes N words into the target SEP ring buffer over AXI after the first GetVersion, moves head and tail itself and mirrors them to a controller shadow. |Target scratch 9 bits 0 and 2 set, scratch 11 valid, head == tail at handover; GetVersion returns 1.0.0 before any entry is written; min(N,511) GetStatus 0x8000 responses are non-error and equal the written words in FIFO order, the first two being 0x01010001 and 0x0F01000E, and 10 more return 0; GetVersion returns 1.0.0 again after the drain; then target scratch 3 holds no park request, scratch 9 bit 4 is clear, hart 0 retires outside `smc_park_hart0_wfi` and the POST phase is OCCP_PROC; controller scratch0 = 0xACAFACA1. |`tb: sep-buffer-ready`, `tb: sep-buffer-offset-valid`, `tb: sep-buffer-empty-at-handover`, `fw: get-sep-status-entry`, `fw: drained-buffer-empty`, `fw: tb-ready-handshake`, `fw: get-version-around-drain`, `tb: scratch0-verdict-poll`, `CHK-SEP-TERMINAL-ENTRY`, `CHK-SEP-TERMINAL-OCCP-LIVE`, `CHK-SEP-TERMINAL-NO-PARK` |`status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Scratch registers; `status-coordination.adoc`, Hart 0 park interlock; `occp-processing.adoc`, Polling and latching; `occp-protocol.adoc`, GetStatus; `occp-protocol.adoc`, GetVersion
+|`smc_sep_ring_buffer_overflow_test` |Controller firmware (I3C) sends min(N,511) = 511 GetStatus 0x8000 requests, N = 600 read from controller scratch 12, then 10 more; STATUS_RPT_DISABLE is random per seed. {plus}sep_rb_entries=600 overfills the 512-slot buffer. DV shortcut: no SEP; a cocotb driver writes 600 words into the target SEP buffer over AXI, moves head and tail on wrap itself and mirrors them to a controller shadow. |With STATUS_RPT_DISABLE clear, 511 GetStatus 0x8000 responses succeed and equal the newest 511 written entries (0-based writes 89 to 599) in write order and the next 10 return 0; with it set, all 521 return error 0x07 (Unsupported_StatusID); controller scratch0 = 0xACAFACA1. |`tb: sep-buffer-ready`, `tb: sep-buffer-offset-valid`, `tb: sep-buffer-empty-at-handover`, `fw: get-sep-status-entry`, `fw: drained-buffer-empty`, `fw: tb-ready-handshake`, `tb: scratch0-verdict-poll` |`status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetStatus
+|`smc_sep_ring_buffer_underflow_test` |Controller firmware (I3C) sends 10 GetStatus 0x8000 requests to an empty SEP buffer. STATUS_RPT_DISABLE is random per seed. {plus}sep_rb_entries=0. DV shortcut: no SEP; the cocotb SEP stand-in writes no entries but still publishes count 0 and the ready magic to the controller. |Head == tail at handover; with STATUS_RPT_DISABLE clear, all 10 GetStatus 0x8000 responses are non-error, CRC-valid and carry value 0x00000000, and with it set, all 10 return error 0x07 (Unsupported_StatusID); controller scratch0 = 0xACAFACA1. |`tb: sep-buffer-ready`, `tb: sep-buffer-offset-valid`, `tb: sep-buffer-empty-at-handover`, `fw: drained-buffer-empty`, `fw: tb-ready-handshake`, `tb: scratch0-verdict-poll` |`occp-protocol.adoc`, GetStatus; `status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Scratch registers
 |===
 
 *Checker contracts:*
@@ -755,33 +806,42 @@ verdict and every checker in its member row pass.
 [cols="3,2,5",options="header"]
 |===
 |Test |Checker |Contract
-|`smc_occp_boot_sequence_status_test` |`fw: drain-returns-data` |Each drain GET_SMC_STATUS succeeds and at least one non-zero entry is read.
-|`smc_occp_boot_sequence_status_test` |`fw: required-boot-codes` |ROM_STARTED, BOOT_START (0x010 to 0x01F), OCCP_READY and BOOT_COMPLETE each appear at least once with firmware ID 0x03.
-|`smc_occp_boot_sequence_status_test` |`fw: format-compliance` |Up to 20 GET_SMC_STATUS reads right after the drain; an SMC BL0 entry must have type 0x0F or less and the type that matches its known value.
-|`smc_occp_boot_sequence_status_test` |`fw: forbidden-codes` |OCCP_INIT_FAILED and UNEXPECTED_EXIT are absent.
-|`smc_occp_boot_sequence_status_test` |`fw: response-integrity` |Each drain GET_SMC_STATUS response passes header CRC-8, body CRC and the no-error check.
-|`smc_occp_ring_buffer_stress_test` |`fw: ring-entry-compare` |Each GetStatus 0x8001 read succeeds, is non-zero and matches the model msg_type, fw_id 0x03 and 16-bit value in order.
-|`smc_occp_ring_buffer_stress_test` |`fw: empty-buffer` |GetStatus 0x8001 on an empty buffer returns 0.
+|`smc_occp_boot_sequence_status_test` |`fw: mode-word` |Controller scratch 14 holds 0x3299 in bits 31:16 and nothing but the primary (bit 0) and recovery (bit 1) bits below; anything else fails. A set STATUS_RPT_DISABLE also fails.
+|`smc_occp_boot_sequence_status_test` |`fw: single-drain` |GetStatus 0x8001 is read until it returns 0; every read must succeed and a 65th non-zero entry fails; every raw word is printed.
+|`smc_occp_boot_sequence_status_test` |`fw: format` |Every drained entry has firmware ID 0x03 and type 0x01, 0x08 or 0x0F.
+|`smc_occp_boot_sequence_status_test` |`fw: required-forbidden` |ROM_STARTED twice; COORDINATION_ACTIVE, BOOT_START, OCCP_READY and BOOT_COMPLETE once; PRIMARY_MODE once and SECONDARY_MODE never on a primary draw, the reverse on a secondary one; RECOVERY_MODE once with the recovery bit and never without; INVALID_SEC_MODE, OCCP_INIT_FAILED and UNEXPECTED_EXIT never.
+|`smc_occp_boot_sequence_status_test` |`fw: exact-order` |The entries below 0x100, in drain order, equal the expected list with its types; an entry of 0x100 or above before BOOT_COMPLETE fails.
+|`smc_occp_boot_sequence_status_test` |`fw: composite-status` |Ten GetStatus IDs 0 to 3 after the drain succeed.
+|`smc_occp_boot_sequence_status_test` |`CHK-ROM-STATUS-MODE-STIMULUS` |See the group checkers.
+|`smc_occp_boot_sequence_status_test` |`CHK-ROM-STATUS-RAW-SEQUENCE` |Controller scratch 15 bits 31:24 = 0xB5 and bits 23:16 = 7, or 8 with recovery.
+|`smc_occp_boot_sequence_status_test` |`CHK-ROM-STATUS-REQUIRED-FORBIDDEN` |Controller scratch 15 bits 7:0 = 0x1 (primary) or 0x2 (secondary), plus 0x4 with recovery, as drawn.
+|`smc_occp_boot_sequence_status_test` |`CHK-ROM-STATUS-FORMAT-ORDER` |Controller scratch 15 bits 15:8 = 0x7: format, required/forbidden and order all passed.
+|`smc_occp_ring_buffer_stress_test` |`fw: ring-entry-compare` |With STATUS_RPT_DISABLE clear, each GetStatus 0x8001 read succeeds, is non-zero and matches the model msg_type, fw_id 0x03 and 16-bit value in order; with it set, each read must return error 0x07.
+|`smc_occp_ring_buffer_stress_test` |`fw: empty-buffer` |With STATUS_RPT_DISABLE clear, GetStatus 0x8001 on an empty buffer returns 0; with it set, it must return error 0x07.
 |`smc_occp_ring_buffer_stress_test` |`fw: command-must-fail` |Each stimulus command must not succeed; any failure kind is accepted.
 |`smc_occp_ring_buffer_stress_test` |`fw: get-version-keep-alive` |The interleaved GET_VERSION must succeed.
 |`smc_sep_ring_buffer_test` |`tb: sep-buffer-ready` |Target scratch 9 bits 0 (SRAM init) and 2 (status buffer ready) set within the poll budget.
 |`smc_sep_ring_buffer_test` |`tb: sep-buffer-offset-valid` |Target scratch 11 (SEP status-buffer offset) is not 0xFFFFFFFF.
 |`smc_sep_ring_buffer_test` |`tb: sep-buffer-empty-at-handover` |The ROM-initialized SEP ring buffer has head == tail when the ROM signals ready.
-|`smc_sep_ring_buffer_test` |`fw: get-sep-status-entry` |Each of min(N,511) GetStatus 0x8000 responses is CRC-valid, has no error bit and equals the shadow entry in FIFO order.
-|`smc_sep_ring_buffer_test` |`fw: drained-buffer-empty` |10 further GetStatus 0x8000 responses succeed with value 0.
+|`smc_sep_ring_buffer_test` |`fw: get-sep-status-entry` |Each of min(N,511) GetStatus 0x8000 responses is CRC-valid, has no error bit and equals the shadow entry in FIFO order when STATUS_RPT_DISABLE is clear; with it set, each must return error 0x07.
+|`smc_sep_ring_buffer_test` |`fw: drained-buffer-empty` |With STATUS_RPT_DISABLE clear, 10 further GetStatus 0x8000 responses succeed with value 0; with it set, each must return error 0x07.
 |`smc_sep_ring_buffer_test` |`fw: tb-ready-handshake` |Controller sees the TB ready magic 0xC0C07B00 in its scratch 10 within 1,000,000 polls.
 |`smc_sep_ring_buffer_test` |`tb: scratch0-verdict-poll` |Fails when either scratch0 reads 0xFFFFFFFF or neither reaches 0xACAFACA1 within {plus}rom_test_timeout.
+|`smc_sep_ring_buffer_test` |`fw: get-version-around-drain` |GetVersion returns 1.0.0 before the TB writes any entry (progress 0x5EB00001) and after the drain (0x5EB00003); a failure ends the run with TEST_FAIL.
+|`smc_sep_ring_buffer_test` |`CHK-SEP-TERMINAL-ENTRY` |Controller scratch 5 = 0x01010001 and scratch 6 = 0x0F01000E, the first two GetStatus 0x8000 responses.
+|`smc_sep_ring_buffer_test` |`CHK-SEP-TERMINAL-OCCP-LIVE` |Controller scratch 14 = 0x5EB00004 after the verdict, so both GetVersion commands and the empty reads passed.
+|`smc_sep_ring_buffer_test` |`CHK-SEP-TERMINAL-NO-PARK` |Target scratch 3 != 0x50524B31, scratch 9 bit 4 = 0, no hart-0 PC sampled every 50 cycles over 4000 cycles is `smc_park_hart0_wfi` or `smc_park_hart0_wfi` + 4, and POST phase = 0x5.
 |`smc_sep_ring_buffer_overflow_test` |`tb: sep-buffer-ready` |Target scratch 9 bits 0 (SRAM init) and 2 (status buffer ready) set within the poll budget.
 |`smc_sep_ring_buffer_overflow_test` |`tb: sep-buffer-offset-valid` |Target scratch 11 (SEP status-buffer offset) is not 0xFFFFFFFF.
 |`smc_sep_ring_buffer_overflow_test` |`tb: sep-buffer-empty-at-handover` |The ROM-initialized SEP ring buffer has head == tail when the ROM signals ready.
-|`smc_sep_ring_buffer_overflow_test` |`fw: get-sep-status-entry` |Each of 511 GetStatus 0x8000 responses is CRC-valid, has no error bit and equals the shadow entry in FIFO order.
-|`smc_sep_ring_buffer_overflow_test` |`fw: drained-buffer-empty` |10 further GetStatus 0x8000 responses succeed with value 0.
+|`smc_sep_ring_buffer_overflow_test` |`fw: get-sep-status-entry` |Each of 511 GetStatus 0x8000 responses is CRC-valid, has no error bit and equals the shadow entry in FIFO order when STATUS_RPT_DISABLE is clear; with it set, each must return error 0x07.
+|`smc_sep_ring_buffer_overflow_test` |`fw: drained-buffer-empty` |With STATUS_RPT_DISABLE clear, 10 further GetStatus 0x8000 responses succeed with value 0; with it set, each must return error 0x07.
 |`smc_sep_ring_buffer_overflow_test` |`fw: tb-ready-handshake` |Controller sees the TB ready magic 0xC0C07B00 in its scratch 10 within 1,000,000 polls.
 |`smc_sep_ring_buffer_overflow_test` |`tb: scratch0-verdict-poll` |Fails when either scratch0 reads 0xFFFFFFFF or neither reaches 0xACAFACA1 within {plus}rom_test_timeout.
 |`smc_sep_ring_buffer_underflow_test` |`tb: sep-buffer-ready` |Target scratch 9 bits 0 (SRAM init) and 2 (status buffer ready) set within the poll budget.
 |`smc_sep_ring_buffer_underflow_test` |`tb: sep-buffer-offset-valid` |Target scratch 11 (SEP status-buffer offset) is not 0xFFFFFFFF.
 |`smc_sep_ring_buffer_underflow_test` |`tb: sep-buffer-empty-at-handover` |The ROM-initialized SEP ring buffer has head == tail when the ROM signals ready.
-|`smc_sep_ring_buffer_underflow_test` |`fw: drained-buffer-empty` |All 10 GetStatus 0x8000 responses are CRC-valid, have no error bit and carry value 0.
+|`smc_sep_ring_buffer_underflow_test` |`fw: drained-buffer-empty` |With STATUS_RPT_DISABLE clear, all 10 GetStatus 0x8000 responses are CRC-valid, have no error bit and carry value 0; with it set, each must return error 0x07.
 |`smc_sep_ring_buffer_underflow_test` |`fw: tb-ready-handshake` |Controller sees the TB ready magic 0xC0C07B00 in its scratch 10 within 1,000,000 polls.
 |`smc_sep_ring_buffer_underflow_test` |`tb: scratch0-verdict-poll` |Fails when either scratch0 reads 0xFFFFFFFF or neither reaches 0xACAFACA1 within {plus}rom_test_timeout.
 |===
@@ -811,7 +871,7 @@ verdict and every checker in its member row pass.
 |`CHK-OCCP-SANITY` |`TEST_PASS` (`0xACAFACA1`) appears in scratch 0 of either instance before the poll budget ends, and `TEST_FAIL` appears in neither. The production ROM has no writer for this code, so it comes from the controller firmware.
 |===
 
-*Anti-vacuity:* The illegal-lifecycle check requires one specific phase and error pair that only the lifecycle branch writes. The ExecuteImage refusal expects the Invalid_Msgid error code, and a JUMP_SECURITY ring entry when status reporting is on, and GetVersion must succeed after it, so the target did not jump.
+*Anti-vacuity:* The illegal-lifecycle check requires one specific phase and error pair that only the lifecycle branch writes. The ExecuteImage refusal expects the Invalid_Msgid error code, and a JUMP_SECURITY ring entry when STATUS_RPT_DISABLE is clear (error 0x07 from the drain GetStatus when it is set), and GetVersion must succeed after it, so the target did not jump.
 
 *Observation:* Target scratch 0 and the POST word in scratch 1, controller scratch 0, and the target status ring buffer.
 
@@ -820,7 +880,7 @@ verdict and every checker in its member row pass.
 [cols="3,4,4,3,3",options="header"]
 |===
 |Test |Stimulus |Expected |Checkers |Specification
-|`smc_occp_jump_rejection_test` |{plus}lc_state=1 sets target lifecycle PROD (secure). Controller firmware (I3C): 10 random commands; GET_VERSION; 4 ExecuteImage to random addresses in [0xC0066400, 0xC0157000); GET_VERSION; drain GetStatus 0x8001 to 0; 5 random commands. STATUS_RPT_DISABLE random. DV shortcut: TB drives the target lc_state pins. |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with status reporting on, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry; controller scratch0 = 0xACAFACA1. |`fw: jump-rejected-invalid-msgid`, `fw: get-version-around-jump`, `fw: jump-security-in-ring`, `fw: random-command-result` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Lifecycle handling; `status-coordination.adoc`, Ring-buffer status values; `occp-protocol.adoc`, GetStatus
+|`smc_occp_jump_rejection_test` |{plus}lc_state=1 sets target lifecycle PROD (secure). Controller firmware (I3C): 10 random commands; GET_VERSION; 4 ExecuteImage to random addresses in [0xC0066400, 0xC0157000); GET_VERSION; drain GetStatus 0x8001 to 0; 5 random commands. STATUS_RPT_DISABLE random. DV shortcut: TB drives the target lc_state pins. |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with STATUS_RPT_DISABLE clear, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry, and with it set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch0 = 0xACAFACA1. |`fw: jump-rejected-invalid-msgid`, `fw: get-version-around-jump`, `fw: jump-security-in-ring`, `fw: random-command-result` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Lifecycle handling; `status-coordination.adoc`, Ring-buffer status values; `occp-protocol.adoc`, GetStatus
 |`smc_rom_invalid_lc_state_test` |TB drives the target lc_state to a well-formed but undefined value (0x9 to 0xF with complementary halves; 0xA for seed 1) before cold reset. No controller command is checked. DV shortcut: TB drives the target lc_state pins to the illegal value. |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`. |`tb: post-error-invalid-sec-mode`, `tb: no-pass-on-illegal-lifecycle`, `tb: illegal-value-guard`, `CHK-ROM-PARK-ON-HALT` |`memory-security.adoc`, Lifecycle handling; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word; `status-coordination.adoc`, Hart 0 park interlock
 |===
 
@@ -831,8 +891,8 @@ verdict and every checker in its member row pass.
 |Test |Checker |Contract
 |`smc_occp_jump_rejection_test` |`fw: jump-rejected-invalid-msgid` |Each ExecuteImage response must be an error response with code Invalid_Msgid; a success response fails.
 |`smc_occp_jump_rejection_test` |`fw: get-version-around-jump` |GET_VERSION succeeds before and after the 4 ExecuteImage commands, so the target did not jump.
-|`smc_occp_jump_rejection_test` |`fw: jump-security-in-ring` |At least one GetStatus 0x8001 entry is type 0x0F, fw_id 0x03, value 0x201.
-|`smc_occp_jump_rejection_test` |`fw: random-command-result` |Every random command gets a CRC-valid response with the expected error state; GET_VERSION is 1.0.0, GetStatus 0x0002 bits 7:0 match the command count, GetStatus 0x8000 matches the SEP ring model, and scoreboard reads match earlier writes.
+|`smc_occp_jump_rejection_test` |`fw: jump-security-in-ring` |With STATUS_RPT_DISABLE clear, at least one GetStatus 0x8001 entry is type 0x0F, fw_id 0x03, value 0x201; with it set, the drain GetStatus 0x8001 must return error 0x07.
+|`smc_occp_jump_rejection_test` |`fw: random-command-result` |Every random command gets a CRC-valid response with the expected error state; GET_VERSION is 1.0.0, with STATUS_RPT_DISABLE clear GetStatus 0x0002 bits 7:0 match the command count and GetStatus 0x8000 matches the SEP ring model (with it set, each GetStatus returns error 0x07), and scoreboard reads match earlier writes.
 |`smc_rom_invalid_lc_state_test` |`tb: post-error-invalid-sec-mode` |POST boot phase == 0x7 and POST error == 0x5 within {plus}rom_test_timeout.
 |`smc_rom_invalid_lc_state_test` |`tb: no-pass-on-illegal-lifecycle` |Target scratch0 must not equal 0xACAFACA1.
 |`smc_rom_invalid_lc_state_test` |`tb: illegal-value-guard` |A named {plus}lc_state outside 0x9 to 0xF is rejected, so the test cannot run on a legal state.
@@ -842,18 +902,18 @@ verdict and every checker in its member row pass.
 [[smc-rom-vplan-dft-gate]]
 ==== Early DFT gate
 
-*Tests:* 3.
+*Tests:* 8.
 
-*Base:* `hw/sys/smc/dv/cocotb/tests/smc_rom_dft_fail_test.py`.
+*Base:* `hw/sys/smc/dv/cocotb/tests/smc_rom_dft_fail_test.py` (terminal), `hw/sys/smc/dv/cocotb/tests/smc_rom_dft_continue_test.py` (continuation).
 
-*Objective:* The ROM checks the memory-repair and MBIST results in its assembly early boot, records the failure code in scratch 15, and halts.
+*Objective:* The ROM checks the memory-repair and MBIST results in its assembly early boot. Without a bypass or `SMC_CONFIG.dft_ignore_error`, it records the failure code in scratch 15 and halts. A bypass strap skips its check and records the bypass code; with `dft_ignore_error` set, a memory-repair or MBIST failure records its failure code and boot continues to OCCP service.
 
 *Procedure:*
 
-. Bring up both instances with the target DFT status lines held low, then drive the `+dft_scenario` pattern before the target leaves `boot_stall`.
+. Bring up both instances with the target DFT status lines held low, then drive the `+dft_scenario` or `+dft_continue_case` pattern before the target leaves `boot_stall`. For a continuation member, read back the DFX status register, the bypass straps and the `SMC_CONFIG` shadow before the target fetches.
 . Release the target and the controller at the ROM base.
-. Poll target scratch 15 until it leaves its reset and progress values, and require the failure code of the scenario.
-. Sample the target hart 0 retired PC for 20000 cycles and require a halt.
+. Terminal: poll target scratch 15 until it leaves its reset and progress values, require the failure code of the scenario, then sample the target hart 0 retired PC for 20000 cycles and require a halt.
+. Continuation: wait for occp_sanity's TEST_PASS in target scratch 0, require the POST phase OCCP_PROC, sample hart 0 outside the DFT halt loops and the park loop, and read scratch 15.
 
 *Checkers:*
 
@@ -861,20 +921,30 @@ verdict and every checker in its member row pass.
 |===
 |Checker |Contract
 |`CHK-ROM-DFT-FAIL` |Target scratch 15 holds the failure code of the scenario, and the target hart 0 then halts.
+|`CHK-ROM-DFT-STIMULUS` |Continuation members: before the target fetches, DFX_CTRL_STATUS_SMU latched exactly the case's line pattern, the captured bypass straps equal the case, and the `SMC_CONFIG` shadow bit 15 and the generated image both equal the case's `dft_ignore_error`.
+|`CHK-ROM-DFT-CONTINUE` |Continuation members: target scratch 0 = 0xACAFACA1 from the controller's WriteData, POST phase OCCP_PROC with no error, and no sampled hart-0 PC inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`.
+|`CHK-ROM-DFT-MEM-REPAIR-BYPASS`, `CHK-ROM-DFT-MBIST-BYPASS`, `CHK-ROM-DFT-BOTH-BYPASSES`, `CHK-ROM-DFT-MEM-REPAIR-IGNORE`, `CHK-ROM-DFT-MBIST-IGNORE` |One per continuation member: target scratch 15 equals that member's code.
 |===
 
-*Anti-vacuity:* Each failure code is written only on its failure branch, and the normal and bypass paths write different values. The halt window catches a ROM that records the failure and continues.
+*Anti-vacuity:* Each failure code is written only on its failure branch, and the normal and bypass paths write different values. The halt window catches a ROM that records the failure and continues. Each continuation member reports a failing DFT pattern that halts the ROM without its strap or fuse, as the terminal members show; the MBIST bypass members report an abort with `dft_ignore_error` clear, so only the strap explains the continued boot. Target scratch 0 = 0xACAFACA1 needs a serviced OCCP WriteData, which a halted ROM cannot give.
 
-*Observation:* Target scratch 15, the target hart 0 retired PC, and the target DFX status register (logged).
+*Specification-blocked:* an MBIST abort with `dft_ignore_error` set. hardware-initialization.adoc lets the fuse continue past an abort, and the current ROM records 0xDEADC0DE and halts without reading the fuse. No member grades it; `smc_rom_mbist_timeout_test` runs with the fuse clear and observes the current 0xDEADC0DE and halt only. No final compliance is claimed until the architecture and ROM owners rule.
+
+*Observation:* Target scratch 0 and 15, the POST word, the target hart 0 retired PC, the target DFX status register, the captured straps and the `SMC_CONFIG` shadow.
 
 *Members:*
 
 [cols="3,4,4,3,3",options="header"]
 |===
 |Test |Stimulus |Expected |Checkers |Specification
-|`smc_rom_mem_repair_fail_test` |No controller command is checked; the target fails its early memory-repair check. {plus}dft_scenario=mem_repair_fail. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=0, mbist_done=1, mbist_pass=1, mbist_abort=0 before the target boot release. |Target scratch 15 = 0xBADC0FFE (memory repair failed) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle). |`tb: scratch15-dft-status`, `tb: halt-check`, `tb: dft-scenario-valid` |`hardware-initialization.adoc`, MBIST and memory repair; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers
-|`smc_rom_mbist_fail_test` |No controller command is checked; the target fails its early MBIST check. {plus}dft_scenario=mbist_fail. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=1, mbist_done=1, mbist_pass=0, mbist_abort=0 before the target boot release. |Target scratch 15 = 0xDEADBEEF (MBIST failed) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle). |`tb: scratch15-dft-status`, `tb: halt-check`, `tb: dft-scenario-valid` |`hardware-initialization.adoc`, MBIST and memory repair; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers
-|`smc_rom_mbist_timeout_test` |No controller command is checked; the target fails its early MBIST check. {plus}dft_scenario=mbist_timeout. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mbist_done=1, mbist_pass=0, mbist_abort=1 (abort stands for timeout), memory repair passing before the target boot release. |Target scratch 15 = 0xDEADC0DE (MBIST abort or timeout) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle). |`tb: scratch15-dft-status`, `tb: halt-check`, `tb: dft-scenario-valid` |`hardware-initialization.adoc`, MBIST and memory repair; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers
+|`smc_rom_mem_repair_fail_test` |No controller command is checked; the target fails its early memory-repair check. {plus}dft_scenario=mem_repair_fail. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=0, mem_repair_abort=0, mbist_done=1, mbist_pass=1, mbist_abort=0 before the target boot release. |Target scratch 15 = 0xBADC0FFE (memory repair failed) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle). |`tb: scratch15-dft-status`, `tb: halt-check`, `tb: dft-scenario-valid` |`hardware-initialization.adoc`, MBIST and memory repair; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers
+|`smc_rom_mbist_fail_test` |No controller command is checked; the target fails its early MBIST check. {plus}dft_scenario=mbist_fail. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0, mbist_done=1, mbist_pass=0, mbist_abort=0 before the target boot release. |Target scratch 15 = 0xDEADBEEF (MBIST failed) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle). |`tb: scratch15-dft-status`, `tb: halt-check`, `tb: dft-scenario-valid` |`hardware-initialization.adoc`, MBIST and memory repair; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers
+|`smc_rom_mbist_timeout_test` |No controller command is checked; the target fails its early MBIST check. {plus}dft_scenario=mbist_timeout. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mbist_done=1, mbist_pass=0, mbist_abort=1 (abort stands for timeout), mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0 before the target boot release. |Target scratch 15 = 0xDEADC0DE (MBIST abort or timeout) and hart-0 retired PC then takes at most 2 distinct values (sampled every 20 cycles over 20000 cycles after a 2000-cycle settle). |`tb: scratch15-dft-status`, `tb: halt-check`, `tb: dft-scenario-valid` |`hardware-initialization.adoc`, MBIST and memory repair; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers
+|`smc_rom_mem_repair_bypass_test` |occp_sanity controller (I2C or I3C from the seed): GetVersion, then a WriteData of 0xACAFACA1 to target scratch 0. {plus}dft_continue_case=mem_repair_bypass, {plus}MEM_REPAIR_BYPASS, {plus}fuse_dft_ignore_error=0. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=0, mem_repair_abort=0, mbist_done=1, mbist_pass=1, mbist_abort=0 before the target boot release. |MEM_REPAIR_BYPASS = 1, MEM_BIST_BYPASS = 0, dft_ignore_error = 0 and the repair-failure DFX pattern read back before the target fetches; target scratch 15 = 0x12340001 (memory repair bypassed); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`. |`CHK-OCCP-SANITY`, `CHK-ROM-DFT-STIMULUS`, `CHK-ROM-DFT-CONTINUE`, `CHK-ROM-DFT-MEM-REPAIR-BYPASS` |`hardware-initialization.adoc`, MBIST and memory repair; `hardware-initialization.adoc`, Straps and eFuses; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
+|`smc_rom_mbist_bypass_test` |occp_sanity controller (I2C or I3C from the seed): GetVersion, then a WriteData of 0xACAFACA1 to target scratch 0. {plus}dft_continue_case=mbist_bypass, {plus}MEM_BIST_BYPASS, {plus}fuse_dft_ignore_error=0. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mbist_done=1, mbist_pass=0, mbist_abort=1, mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0 before the target boot release. |MEM_BIST_BYPASS = 1, MEM_REPAIR_BYPASS = 0, dft_ignore_error = 0 and the MBIST-abort DFX pattern read back before the target fetches; target scratch 15 = 0x12340002 (MBIST bypassed); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`. |`CHK-OCCP-SANITY`, `CHK-ROM-DFT-STIMULUS`, `CHK-ROM-DFT-CONTINUE`, `CHK-ROM-DFT-MBIST-BYPASS` |`hardware-initialization.adoc`, MBIST and memory repair; `hardware-initialization.adoc`, Straps and eFuses; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
+|`smc_rom_both_dft_bypasses_test` |occp_sanity controller (I2C or I3C from the seed): GetVersion, then a WriteData of 0xACAFACA1 to target scratch 0. {plus}dft_continue_case=both_bypasses, {plus}MEM_REPAIR_BYPASS, {plus}MEM_BIST_BYPASS, {plus}fuse_dft_ignore_error=0. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mbist_done=1, mbist_pass=0, mbist_abort=1, mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0 before the target boot release. |Both bypass straps = 1, dft_ignore_error = 0 and the MBIST-abort DFX pattern read back before the target fetches; target scratch 15 = 0x12340001 (the repair check runs second and replaces the MBIST-bypass code); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`. |`CHK-OCCP-SANITY`, `CHK-ROM-DFT-STIMULUS`, `CHK-ROM-DFT-CONTINUE`, `CHK-ROM-DFT-BOTH-BYPASSES` |`hardware-initialization.adoc`, MBIST and memory repair; `hardware-initialization.adoc`, Straps and eFuses; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
+|`smc_rom_mem_repair_ignore_error_test` |occp_sanity controller (I2C or I3C from the seed): GetVersion, then a WriteData of 0xACAFACA1 to target scratch 0. {plus}dft_continue_case=mem_repair_ignore, {plus}fuse_dft_ignore_error=1. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=0, mem_repair_abort=0, mbist_done=1, mbist_pass=1, mbist_abort=0 before the target boot release. |Bypass straps = 0, SMC_CONFIG.dft_ignore_error = 1 and the repair-failure DFX pattern read back before the target fetches; target scratch 15 = 0xBADC0FFE (memory repair failed, ignored); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`. |`CHK-OCCP-SANITY`, `CHK-ROM-DFT-STIMULUS`, `CHK-ROM-DFT-CONTINUE`, `CHK-ROM-DFT-MEM-REPAIR-IGNORE` |`hardware-initialization.adoc`, MBIST and memory repair; `hardware-initialization.adoc`, Straps and eFuses; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
+|`smc_rom_mbist_ignore_error_test` |occp_sanity controller (I2C or I3C from the seed): GetVersion, then a WriteData of 0xACAFACA1 to target scratch 0. {plus}dft_continue_case=mbist_ignore, {plus}fuse_dft_ignore_error=1. DV shortcut: cocotb holds the six target DFT status pins low through cold reset, then sets mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0, mbist_done=1, mbist_pass=0, mbist_abort=0 before the target boot release. |Bypass straps = 0, SMC_CONFIG.dft_ignore_error = 1 and the MBIST-failure DFX pattern read back before the target fetches; target scratch 15 = 0xDEADBEEF (MBIST failed, ignored); the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1); POST phase OCCP_PROC with no error; hart-0 retired PC, sampled every 20 cycles over 4000 cycles, is never inside `mbist_halt_loop`, `memory_repair_halt_loop` or `smc_park_hart0_wfi`. |`CHK-OCCP-SANITY`, `CHK-ROM-DFT-STIMULUS`, `CHK-ROM-DFT-CONTINUE`, `CHK-ROM-DFT-MBIST-IGNORE` |`hardware-initialization.adoc`, MBIST and memory repair; `hardware-initialization.adoc`, Straps and eFuses; `boot-flow.adoc`, Assembly early boot; `boot-flow.adoc`, Boot flow; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
 |===
 
 *Checker contracts:*
@@ -891,6 +961,21 @@ verdict and every checker in its member row pass.
 |`smc_rom_mbist_timeout_test` |`tb: scratch15-dft-status` |The first scratch 15 value other than 0 or the in-progress code must equal 0xDEADC0DE within the timeout.
 |`smc_rom_mbist_timeout_test` |`tb: halt-check` |After a 2000-cycle settle, hart-0 retired PC takes at most 2 distinct values over 20000 cycles.
 |`smc_rom_mbist_timeout_test` |`tb: dft-scenario-valid` |{plus}dft_scenario must be mem_repair_fail, mbist_fail or mbist_timeout.
+|`smc_rom_mem_repair_bypass_test` |`CHK-ROM-DFT-STIMULUS` |DFX_CTRL_STATUS_SMU decodes to mem_repair_done=1, mem_repair_success=0, mem_repair_abort=0, mbist_done=1, mbist_pass=1, mbist_abort=0; MEM_REPAIR_BYPASS = 1, MEM_BIST_BYPASS = 0, dft_ignore_error = 0 and the repair-failure DFX pattern.
+|`smc_rom_mem_repair_bypass_test` |`CHK-ROM-DFT-CONTINUE` |Target scratch 0 = 0xACAFACA1, POST phase 0x5 with error 0, and no hart-0 PC sampled every 20 cycles over 4000 cycles in the DFT halt loops or the park loop.
+|`smc_rom_mem_repair_bypass_test` |`CHK-ROM-DFT-MEM-REPAIR-BYPASS` |Target scratch 15 = 0x12340001.
+|`smc_rom_mbist_bypass_test` |`CHK-ROM-DFT-STIMULUS` |DFX_CTRL_STATUS_SMU decodes to mbist_done=1, mbist_pass=0, mbist_abort=1, mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0; MEM_BIST_BYPASS = 1, MEM_REPAIR_BYPASS = 0, dft_ignore_error = 0 and the MBIST-abort DFX pattern.
+|`smc_rom_mbist_bypass_test` |`CHK-ROM-DFT-CONTINUE` |Target scratch 0 = 0xACAFACA1, POST phase 0x5 with error 0, and no hart-0 PC sampled every 20 cycles over 4000 cycles in the DFT halt loops or the park loop.
+|`smc_rom_mbist_bypass_test` |`CHK-ROM-DFT-MBIST-BYPASS` |Target scratch 15 = 0x12340002.
+|`smc_rom_both_dft_bypasses_test` |`CHK-ROM-DFT-STIMULUS` |DFX_CTRL_STATUS_SMU decodes to mbist_done=1, mbist_pass=0, mbist_abort=1, mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0; Both bypass straps = 1, dft_ignore_error = 0 and the MBIST-abort DFX pattern.
+|`smc_rom_both_dft_bypasses_test` |`CHK-ROM-DFT-CONTINUE` |Target scratch 0 = 0xACAFACA1, POST phase 0x5 with error 0, and no hart-0 PC sampled every 20 cycles over 4000 cycles in the DFT halt loops or the park loop.
+|`smc_rom_both_dft_bypasses_test` |`CHK-ROM-DFT-BOTH-BYPASSES` |Target scratch 15 = 0x12340001.
+|`smc_rom_mem_repair_ignore_error_test` |`CHK-ROM-DFT-STIMULUS` |DFX_CTRL_STATUS_SMU decodes to mem_repair_done=1, mem_repair_success=0, mem_repair_abort=0, mbist_done=1, mbist_pass=1, mbist_abort=0; Bypass straps = 0, SMC_CONFIG.dft_ignore_error = 1 and the repair-failure DFX pattern.
+|`smc_rom_mem_repair_ignore_error_test` |`CHK-ROM-DFT-CONTINUE` |Target scratch 0 = 0xACAFACA1, POST phase 0x5 with error 0, and no hart-0 PC sampled every 20 cycles over 4000 cycles in the DFT halt loops or the park loop.
+|`smc_rom_mem_repair_ignore_error_test` |`CHK-ROM-DFT-MEM-REPAIR-IGNORE` |Target scratch 15 = 0xBADC0FFE.
+|`smc_rom_mbist_ignore_error_test` |`CHK-ROM-DFT-STIMULUS` |DFX_CTRL_STATUS_SMU decodes to mem_repair_done=1, mem_repair_success=1, mem_repair_abort=0, mbist_done=1, mbist_pass=0, mbist_abort=0; Bypass straps = 0, SMC_CONFIG.dft_ignore_error = 1 and the MBIST-failure DFX pattern.
+|`smc_rom_mbist_ignore_error_test` |`CHK-ROM-DFT-CONTINUE` |Target scratch 0 = 0xACAFACA1, POST phase 0x5 with error 0, and no hart-0 PC sampled every 20 cycles over 4000 cycles in the DFT halt loops or the park loop.
+|`smc_rom_mbist_ignore_error_test` |`CHK-ROM-DFT-MBIST-IGNORE` |Target scratch 15 = 0xDEADBEEF.
 |===
 
 [[smc-rom-vplan-handoff]]
@@ -1026,6 +1111,92 @@ verdict and every checker in its member row pass.
 |`smc_rom_park_entry_clear_test` |`tb: request-cleared` |The preload reads back 0x50524B31 before `boot_stall` drops, and target scratch 3 reads 0 once the exchange completes.
 |===
 
+[[smc-rom-vplan-efuse-shadow]]
+==== eFuse shadow override
+
+*Tests:* 1.
+
+*Base:* `hw/sys/smc/dv/cocotb/tests/smc_rom_efuse_shadow_override_test.py` on the `default` single-SMC target, with `seq_lib/smc_prod_rom_boot_seq.py`.
+
+*Objective:* A shadow value written through the JTAG-facing eFuse port during boot stall, after fuse sensing and before the CPU fetches, is the value the production ROM uses to select its I2C0 target address, and the next sense reloads the OTP value. The dual target ties `ej_axi` off, so it cannot carry this test.
+
+*Procedure:*
+
+. Write the seeded image with I2C slots 6 (A) and 7 (C) programmed before the bank model leaves reset, and draw an override B that is legal and differs from A, C and 0x55.
+. With `+smc_hold_cpu_boot`, wait for `fuse_sense_done`; check boot stall, the CPU ROM read count, the lifecycle pins and the I2C_I3C_ID write lock; read slot 6, write B over `ej_axi` and read it back.
+. Release boot stall and follow the POST word to OCCP_PROC; read I2C0 and I2C1 TARGET_ID over SEP_IN.
+. Pulse `rst_cold_ni`, wait for `fuse_sense_done` to fall and rise again, and read slot 6.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-EFUSE-SHADOW-STALL` |`fuse_sense_done` rises while `boot_stall_combined_o` = 1 and `tb_cpu_rom_read_count` = 0.
+|`CHK-EFUSE-SHADOW-WRITE` |`lc_state_i` = 0xF0 (TEST_DEV), LOCKS bit 2 = 0, slot 6 reads (A, 0) before and (B, 0) after the two `ej_axi` writes; every `ej_axi` response is OKAY.
+|`CHK-EFUSE-SHADOW-NO-OTP-PROGRAM` |From before bring-up through the override, `tb_efuse_program_req_valid` never rises and never reads X/Z while the primary reset is released.
+|`CHK-EFUSE-SHADOW-ROM-USED` |At OCCP_PROC, I2C0 TARGET_ID ADDRESS0 = B (not A, not 0x55) and I2C1 TARGET_ID ADDRESS0 = C.
+|`CHK-EFUSE-SHADOW-RESENSE` |After the cold reset `fuse_sense_done` falls and rises, slot 6 reads (A, 0), and `tb_efuse_program_req_valid` never rose in the run.
+|`CHK-PROD-ROM-OCCP-PROC` |The POST word reaches OCCP_PROC with CPU ROM fetches since the release, and its error field is 0.
+|===
+
+*Anti-vacuity:* B differs from A, C and the 0x55 fallback, so ADDRESS0 = B can come only from the override; I2C1 = C shows the ROM read its fuses at all. The read-back before the write shows A, and the re-sense shows A again, so the OTP was not programmed. The stall check runs on the CPU's own fetch counter.
+
+*Scope limit:* the test drives the JTAG-facing AXI-Lite port. A JTAG TAP, DTP or JTAG-to-AXI bridge in front of it is not exercised. OTP programming is not stimulus here.
+
+*Observation:* `tb_fuse_sense_done`, `tb_boot_stall_combined_o`, `tb_cpu_rom_read_count`, `tb_lc_state`, `tb_efuse_program_req_valid`, the `ej_axi` responses, the POST word and the I2C TARGET_ID registers.
+
+*Members:*
+
+[cols="3,4,4,3,3",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers |Specification
+|`smc_rom_efuse_shadow_override_test` |No OCCP traffic. {plus}smc_hold_cpu_boot, {plus}fuse_i2c_ids, {plus}fuse_transport_timeout=400 and a relative {plus}smc_efuse_hex that the leaf writes. `ej_axi` writes B to 0xC0007058 and 0 to 0xC000705C during boot stall. DV shortcut: TB drives the boot-stall pad and the cold-reset pin; the image is written by the leaf. |With boot_stall held and 0 CPU ROM reads, fuse_sense_done rises; lc_state_i = 0xF0 (TEST_DEV), the LOCKS I2C_I3C_ID write lock reads 0 and slot 6 reads the image value A; the ej_axi write of B (a legal address other than A, slot 7's C and 0x55) to slot 6 at 0xC0007058 returns OKAY and reads back B; after the ROM reaches OCCP_PROC, I2C0 TARGET_ID (0xC0005054) ADDRESS0 = B and I2C1 TARGET_ID (0xC0005254) ADDRESS0 = C; a cold reset clears and re-raises fuse_sense_done and slot 6 reads A again; from before bring-up to the end, tb_efuse_program_req_valid never rises and never reads X/Z out of reset. |`CHK-EFUSE-SHADOW-STALL`, `CHK-EFUSE-SHADOW-WRITE`, `CHK-EFUSE-SHADOW-NO-OTP-PROGRAM`, `CHK-EFUSE-SHADOW-ROM-USED`, `CHK-EFUSE-SHADOW-RESENSE`, `CHK-PROD-ROM-OCCP-PROC` |`interfaces.adoc`, Address selection; `hardware-initialization.adoc`, Straps and eFuses; `status-coordination.adoc`, POST word; `hw/sys/smc/doc/port_table.adoc`, SMC Port Declaration; `hw/sys/smc/doc/clk_rst.adoc`, Power-Good and Cold Reset
+|===
+
+[[smc-rom-vplan-cold-reset]]
+==== Mid-boot cold reset
+
+*Tests:* 1.
+
+*Base:* `hw/sys/smc/dv/cocotb/tests/smc_prod_rom_mid_boot_cold_reset_test.py`, with `await_occp_verdict` from `smc_occp_rom_only_test.py`.
+
+*Objective:* A cold reset that passes the de-glitcher in the middle of a production-ROM boot resets the primary domain, restarts fuse sensing and restarts hart 0 at the cold-reset vector; the second boot re-initializes the status ring and serves OCCP. The ROM has no reset handler of its own.
+
+*Procedure:*
+
+. Bring up both instances with boot stall held; release only the target.
+. Poll the target POST word every 100 cycles until IFACE_CONFIG.
+. Write a seeded value with bit 55 set to RESET_VECTOR_0 and read it back.
+. Drive `rst_cold_ni` low until the primary reset asserts, hold boot stall again, keep the pin low for 32 more `clk_ref_i` cycles, release it and wait for strap capture, the primary reset release and `fuse_sense_done`.
+. Read RESET_VECTOR_0, release the target and the occp_sanity controller as in a first boot, and wait for its verdict.
+. Read the SMC status ring over AXI from tail to head; it sits directly below the SEP ring that scratch 11 locates.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-ROM-COLD-RESET-INTERRUPT` |At the interrupt the POST phase is IFACE_CONFIG, target ROM reads > 0, controller ROM reads = 0 and target `fuse_sense_done` = 1.
+|`CHK-ROM-COLD-RESET-RESENSE` |The primary reset asserts within 400 `clk_ref_i` with `rst_cold_stable` low, stays low while the pin is low, and `fuse_sense_done` goes 1 to 0 and back to 1 within 200000 `clk_smc_i`.
+|`CHK-ROM-COLD-RESET-RESTART` |RESET_VECTOR_0 reads back the seeded non-default value before the reset and the register default 0xC0040000 after it, hart 0's first retirement after its core reset releases is 0xC0040000, and target ROM reads increase.
+|`CHK-ROM-COLD-RESET-STATUS` |The SMC ring holds exactly the expected one-boot sequence for the target's straps, in order.
+|`CHK-ROM-COLD-RESET-OCCP` |Target scratch 0 = 0xACAFACA1 and the POST phase is OCCP_PROC.
+|`CHK-OCCP-SANITY` |As in <<smc-rom-vplan-occp-command>>.
+|===
+
+*Anti-vacuity:* The first boot is interrupted before OCCP_PROC, so the OCCP verdict can come only from the second boot. A ring that kept first-boot entries would hold two boot sequences and fail the exact compare. The controller never ran before the reset. Scratch 15 is not required to clear: the ROM preserves it by design, and old ring entries outside tail..head are not read.
+
+*Observation:* Target POST word, scratch 0, 9 and 11, RESET_VECTOR_0, the SMC ring in target SRAM, the cold-stable and primary resets, `fuse_sense_done`, the ROM read counters and the hart-0 trace.
+
+*Members:*
+
+[cols="3,4,4,3,3",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers |Specification
+|`smc_prod_rom_mid_boot_cold_reset_test` |TB releases only the target, pulls the shared `rst_cold_ni` low at POST IFACE_CONFIG, then releases target and controller again. occp_sanity controller: GetVersion, then a WriteData of 0xACAFACA1 to target scratch 0. {plus}fuse_transport_timeout=400. DV shortcut: TB drives the cold-reset pin and boot stall. |The first boot shows POST IFACE_CONFIG with target ROM reads > 0, controller ROM reads = 0 and fuse_sense_done = 1; after rst_cold_ni falls the primary and cold-stable resets assert, fuse_sense_done goes 1 to 0 to 1, and RESET_VECTOR_0, written with a seeded non-default value at IFACE_CONFIG, reads 0xC0040000; hart 0's first retirement after the core reset releases is 0xC0040000 and target ROM reads increase; the controller's GetVersion and WriteData are serviced (target scratch 0 = 0xACAFACA1, POST OCCP_PROC); the SMC ring, read from tail to head over AXI, holds exactly one boot's entries in order (ROM_STARTED, COORDINATION_ACTIVE, ROM_STARTED, PRIMARY_MODE, RECOVERY_MODE only with the recovery strap, BOOT_START, OCCP_READY, BOOT_COMPLETE). |`CHK-ROM-COLD-RESET-INTERRUPT`, `CHK-ROM-COLD-RESET-RESENSE`, `CHK-ROM-COLD-RESET-RESTART`, `CHK-ROM-COLD-RESET-STATUS`, `CHK-ROM-COLD-RESET-OCCP`, `CHK-OCCP-SANITY` |`hw/sys/smc/doc/clk_rst.adoc`, Power-Good and Cold Reset; `hw/sys/smc/doc/rom.adoc`, ROM region and reset vector; `boot-flow.adoc`, Boot flow; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, Ring buffers; `status-coordination.adoc`, Ring-buffer status values; `status-coordination.adoc`, Scratch registers; `status-coordination.adoc`, POST word; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
+|===
+
 [[smc-rom-vplan-regression-groups]]
 === Regression Groups
 
@@ -1033,7 +1204,7 @@ verdict and every checker in its member row pass.
 |===
 |Group |Members |Use
 |`sanity` |`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test` |Dual-SMC bring-up gate
-|`occp_rom` |35 tests: every entry except the two harness tests and `smc_occp_ring_buffer_stress_test` |ROM regression
+|`occp_rom` |42 tests: every entry except the two harness tests and `smc_occp_ring_buffer_stress_test`; `smc_occp_boot_sequence_status_test` runs 32 seeds |ROM regression
 |By name |`smc_occp_ring_buffer_stress_test` |Long-running stress, run on demand
 |===
 
@@ -1047,9 +1218,12 @@ verdict and every checker in its member row pass.
 |Limitation |Impact
 |No CI tier runs `occp_rom` or `sanity` |Boot ROM evidence comes only from a local run with the firmware toolchain
 |The rom-only verdict accepts `TEST_PASS` from either instance |The checks of those tests live in the controller firmware. The driver judges only scratch 0, so the strength of each test is the strength of its controller image
-|Status-ring checks depend on the `STATUS_RPT_DISABLE` strap |The strap is drawn from the seed unless `+FORCE_STATUS_REPORTING` is set. The controller firmware runs its status-ring checks when status reporting is on
-|DFT status is forced |`+dft_scenario` drives the target memory-repair and MBIST status lines. The tests judge the ROM reaction to those lines
-|Specification and ROM disagree on the DFT continue control |`hardware-initialization.adoc` names eFuse `RESERVED_2[0]` as the control that lets boot continue after a memory-repair or MBIST failure. The ROM reads `SMC_CONFIG` bit 15 (`boot/memory_repair_check_override.S`). The ROM owner decides which one is correct
+|Status-ring checks depend on the `STATUS_RPT_DISABLE` strap |The strap is drawn from the seed except in `smc_occp_boot_sequence_status_test` and `smc_sep_ring_buffer_test`, which pass `+FORCE_STATUS_REPORTING`. With the strap set, every GetStatus must return error 0x07 (Unsupported_StatusID); the controller firmware runs its status-value checks only when the strap is clear, so a seeded member proves only one of the two paths per seed
+|DFT status is forced |`+dft_scenario` and `+dft_continue_case` drive the target memory-repair and MBIST status lines. The tests judge the ROM reaction to those lines
+|MBIST abort with `dft_ignore_error` is specification-blocked |`hardware-initialization.adoc` lets the fuse continue past an abort; the current ROM records 0xDEADC0DE and halts without reading the fuse. No test grades that combination, and `smc_rom_mbist_timeout_test` observes the current behaviour with the fuse clear only. No final compliance is claimed until the architecture and ROM owners rule
+|Boot-mode closure comes from test-owned JSON |The dual target collects no simulator coverage. Closure of the four `{PRIMARY_CHIPLET, BOOT_RECOVERY}` cells is the merge of the passing seeds' `smc_rom_mode_coverage.json`, not a VCS or Verilator coverage database
+|The eFuse shadow override covers the JTAG-facing AXI-Lite port only |The JTAG TAP, DTP and JTAG-to-AXI bridge in front of the port belong to an SMU integration test
+|SEP terminal status covers the primary flow only |A secondary SMC parks after a successful `AuthenticateImage` and has no OCCP loop left to keep; that flow is not graded here
 |===
 
 [[smc-rom-vplan-formal]]
@@ -1063,7 +1237,7 @@ The SMC Boot ROM has no formal flow.
 [cols="3,1,4",options="header"]
 |===
 |Item |Status |Evidence
-|Every `smc_rom.toml` entry has a procedure group |Yes |36 entries, 9 groups
+|Every `smc_rom.toml` entry has a procedure group |Yes |45 entries, 11 groups
 |Every member names its stimulus, expected outcome and checkers |Yes |Member tables in <<smc-rom-vplan-procedures>>
 |A regression run supplies the evidence |No |This plan records no run
 |The ROM owner reviewed the section mappings |No |This plan maps the tests to sections from their behaviour

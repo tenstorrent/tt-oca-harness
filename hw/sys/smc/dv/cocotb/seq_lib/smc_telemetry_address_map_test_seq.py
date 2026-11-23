@@ -82,8 +82,8 @@ _UNBACKED_WRITE = 0x11
 _FOURTH_WRITE = 0x11
 
 # ATB framing: 8-bit beats, 64-bit packet, 9-bit blocks (telemetry_receiver/doc/interface.adoc,
-# architecture.adoc). The last-packet bit 63 and probe ID [60:56] are in architecture.adoc;
-# the next-block field position is not stated there.
+# architecture.adoc); the last-packet bit 63, probe ID [60:56] and block i at [9i+8:9i] are in
+# doc/index.adoc (Telemetry packet fields).
 _BEAT_BITS = 8
 _BEATS_PER_PACKET = 64 // _BEAT_BITS
 _BLOCK_BITS = 9
