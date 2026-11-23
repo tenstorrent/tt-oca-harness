@@ -6,13 +6,14 @@ The capture leaf sends one message and pops it. The receiver has two bounded
 stores behind the ATB port, and this leaf drives each past its bound:
 
 * **The message buffer.** Messages are sent without popping until
-  `STATUS.BUFFER_FULL` sets, then two more. The buffer depth is read off
-  `STATUS.BUFFER_FULL` rather than assumed: the IP documents give it as both
-  8 and 16. Popping afterwards has to return exactly as many messages as the
-  buffer held when it filled, as one unbroken run of the probe IDs sent, in
-  the order sent -- a buffer that grew, or that interleaved the extra
-  messages, fails that. Which end of the run survived is recorded, not
-  asserted; no document states it. `CTRL.BUFFER_THRESHOLD` with its
+  `STATUS.BUFFER_FULL` sets, then two more. The depth read off
+  `STATUS.BUFFER_FULL` has to be the IP's default of eight messages
+  (`doc/interface.adoc` `BUFFER_DEPTH`), the depth the receiver 1 and 2 legs
+  below are graded against. Popping afterwards has to return exactly those
+  eight messages as the last eight probe IDs sent, in the order sent:
+  `doc/architecture.adoc` states that on arrival while full the hardware
+  drops the oldest message, so a buffer that grew, that interleaved the extra
+  messages, or that kept the oldest ones fails. `CTRL.BUFFER_THRESHOLD` with its
   interrupt enabled is checked on the way up: `telemetry_receiver.rdl` raises
   `INTR_STATUS.BUFFER_THRESHOLD` while the number of messages is greater than
   the threshold, and clears it when the level drops back. The same RDL
@@ -113,8 +114,10 @@ ATID = 0x21
 THRESHOLD = 2
 #: Messages sent after the buffer reports full.
 EXTRA_MESSAGES = 2
-#: Upper bound on the buffer depth; the documents give 8 and 16.
+#: Bound on the fill loop; the buffer reports full at BUFFER_DEPTH, well below it.
 MAX_DEPTH = 32
+#: Message buffer depth, the `doc/interface.adoc` BUFFER_DEPTH default.
+BUFFER_DEPTH = 8
 #: Upper bound on the packets of one message.
 MAX_PACKETS = 16
 PROBE_ID_MASK = PROBE_ID_BM
@@ -362,6 +365,9 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         else:
             raise AssertionError(f"STATUS.BUFFER_FULL never set after {MAX_DEPTH} messages")
         self.depth = sent
+        assert self.depth == BUFFER_DEPTH, (
+            f"STATUS.BUFFER_FULL set at {self.depth} messages, not the documented {BUFFER_DEPTH}"
+        )
         assert self.depth > THRESHOLD, (
             f"the buffer filled at {self.depth} messages, not above the threshold {THRESHOLD}"
         )
@@ -408,19 +414,23 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"the {self.depth} messages popped, {[hex(p) for p in self.popped]}, are not an "
             f"unbroken run of the probe IDs sent in order, {[hex(p) for p in sent_ids]}"
         )
-        kept = {0: "the first", EXTRA_MESSAGES: "the last"}.get(start, f"from message {start}")
+        assert start == EXTRA_MESSAGES, (
+            f"the drain kept messages {start}..{start + self.depth - 1} of the "
+            f"{self.depth + EXTRA_MESSAGES} sent, {[hex(p) for p in self.popped]}; a full buffer "
+            f"drops the oldest on arrival, so the last {self.depth} must survive"
+        )
         await self.csr_write("FILL_INTR_DISABLE", INTR_ENABLE, 0)
         await self.csr_write("FILL_THRESHOLD_OFF", CTRL, 0)
         cocotb.log.info(
-            "CHK-TELEMETRY-BUFFER-OVERFLOW: STATUS.BUFFER_FULL set at %d messages and stayed "
-            "set through %d more; the drain returned exactly %d messages, %s %d of the %d sent "
-            "in order, and left the buffer empty",
+            "CHK-TELEMETRY-BUFFER-OVERFLOW: STATUS.BUFFER_FULL set at %d messages (documented "
+            "depth %d) and stayed set through %d more; the drain returned exactly the last %d of "
+            "the %d sent in order, the %d oldest dropped on arrival, and left the buffer empty",
             self.depth,
+            BUFFER_DEPTH,
             EXTRA_MESSAGES,
             self.depth,
-            kept,
-            self.depth,
             self.depth + EXTRA_MESSAGES,
+            EXTRA_MESSAGES,
         )
 
     async def _missing_last(self) -> None:
