@@ -10,6 +10,12 @@ minor release it updates.
 
 ## [Unreleased]
 
+### Removed
+
+- SEP eFuse `ROM_CTL` fields `rom_endianness_ctrl` and `rom_swap_ctrl`. No SEP
+  logic read them. `ROM_CTL` is now reserved; its offset and lock slot are
+  unchanged (#3883).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added

@@ -4292,14 +4292,8 @@ localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_RPT_SHIFT                      
 localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_RESERVED_MASK                                                    = 32'hFFFFFFFC;
 localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_RESERVED_SHIFT                                                   = 2;
 
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_ENDIANNESS_CTRL_MASK                                            = 32'h1;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_ENDIANNESS_CTRL_SHIFT                                           = 0;
-
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_SWAP_CTRL_MASK                                                  = 32'h3E;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_SWAP_CTRL_SHIFT                                                 = 1;
-
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_MASK                                                       = 32'hFFFFFFC0;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_SHIFT                                                      = 6;
+localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_MASK                                                       = 32'hFFFFFFFF;
+localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_SHIFT                                                      = 0;
 
 localparam int unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_SYSCLK_FREQ_MHZ_MASK                                        = 32'h7FF;
 localparam int unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_SYSCLK_FREQ_MHZ_SHIFT                                       = 0;
@@ -5234,9 +5228,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [25:0]   reserved ;
-    logic [4:0]   rom_swap_ctrl ;
-    logic [0:0]   rom_endianness_ctrl ;
+    logic [31:0]   reserved ;
 } sep_efuse_map_rom_ctl_reg_t;
 
 

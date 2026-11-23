@@ -312,9 +312,7 @@ boot ROM samples an SMC GPIO (STATUS_RPT) to determine whether to report
 status. When STATUS_RPT[1:0] == 2'b01, the boot ROM reports status; otherwise,
 it does not.
 
-|ROM_CTL |17 |32 |true |true |ROM_CTL[0]: 0 = little-endian, 1 = big-endian.
-ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
-reserved.
+|ROM_CTL |17 |32 (0 used) |true |true |Reserved.
 
 |SYSCLK_FREQ_MHZ |18 |32 (11 used) |true |true |Configured sysclk PLL frequency
 in MHz (`sysclk_freq_mhz[10:0]`). Ignored when 0. Consumed by boot ROM clock
