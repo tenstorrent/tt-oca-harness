@@ -1650,6 +1650,18 @@ module sep_uvm_top
     end
 
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
+    assign entropy_pool_axi_hs_o = {
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.r_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.r_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.ar_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.ar_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.b_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.b_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.w_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.w_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.aw_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.aw_valid
+    };
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_reset_active_probe_o =
@@ -2724,6 +2736,41 @@ module sep_uvm_top
 `endif
             $display("[tb] cold_scratch[7] seeded 0x%08x (+sep_cold_scratch7)",
                      cold_scratch7_seed);
+        end
+    end
+
+    // Runtime warm-handler deposit: the same leaf and per-tool mechanics as
+    // cold_scratch7_seed_deposit, so a leaf can arm the slot after the ROM has
+    // started and then raise a second CPU reset. Handshake order:
+    //   1. cocotb drives runtime_cold_scratch7_wdata_i, then raises _we_i.
+    //   2. tb writes the value into COLD Scratch 7.
+    //   3. tb raises _ack_o; the slot already holds the value.
+    //   4. cocotb drops _we_i; tb drops _ack_o.
+    logic [31:0] runtime_cold_scratch7_q;
+    initial begin : runtime_cold_scratch7_deposit
+        runtime_cold_scratch7_ack_o = 1'b0;
+        forever begin
+            @(posedge runtime_cold_scratch7_we_i);
+            if (runtime_cold_scratch7_we_i === 1'b1) begin
+                runtime_cold_scratch7_q = runtime_cold_scratch7_wdata_i;
+`ifdef VERILATOR
+                `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+`else
+                force `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+                @(posedge clk_i);
+                release `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
+`endif
+                $display("%0t: [tb] cold_scratch[7] = 0x%08x (runtime_cold_scratch7_we_i)",
+                         $time, runtime_cold_scratch7_q);
+                runtime_cold_scratch7_ack_o = 1'b1;
+                wait (runtime_cold_scratch7_we_i !== 1'b1);
+                runtime_cold_scratch7_ack_o = 1'b0;
+            end
         end
     end
 
@@ -4325,6 +4372,9 @@ module sep_uvm_top
     `ESRC_DECOR_NOISE_TAP(6);  `ESRC_DECOR_NOISE_TAP(7);  `ESRC_DECOR_NOISE_TAP(8);
     `ESRC_DECOR_NOISE_TAP(9);  `ESRC_DECOR_NOISE_TAP(10); `ESRC_DECOR_NOISE_TAP(11);
 `undef ESRC_DECOR_NOISE_TAP
+    //   * esrc_window_wrap_o: the entropy_source health-test window-wrap strobe
+    //     (window_wrap_pulse), 1 for the clk_i cycle that ends a window.
+    assign esrc_window_wrap_o = `SEP_ESRC.window_wrap_pulse;
     assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};
@@ -6325,6 +6375,8 @@ module sep_uvm_top
     assign rom_flip_i               = 1'b0;
     assign rom_flip_index_i         = '0;
     assign rom_flip_mask_i          = '0;
+    assign runtime_cold_scratch7_we_i    = 1'b0;
+    assign runtime_cold_scratch7_wdata_i = '0;
 
     // Test classes compile as part of this top (module scope).
     `include "sep_tests.sv"
